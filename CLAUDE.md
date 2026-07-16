@@ -17,6 +17,16 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 - `make protocol` — regenerate `web/src/lib/protocol.ts` after editing `server/internal/protocol/` (commit both)
 - `make build` — single binary with embedded SPA
 
+## GitHub workflow (use the gh CLI)
+
+All work is tracked as GitHub issues on milestones **M0–M6**; TODO.md is only ordering notes. Find work with `gh issue list --milestone "M0 — Foundations"` (or `--label good-first-issue`); read context with `gh issue view <n> --comments` before starting — decisions sometimes land in comments.
+
+- Labels: `ble`, `rooms`, `workouts`, `game-modes`, `infra`, `docs`, `backlog` (parked — don't pick up without asking). Don't invent new labels or milestones; propose instead.
+- Starting an issue: `gh issue comment <n> -b "picking this up — <one-line approach>"` so work isn't duplicated.
+- PRs: `gh pr create` with a conventional-commit title (it becomes the squash commit) and `Closes #<n>` in the body. Check CI with `gh pr checks`; find review feedback with `gh pr view --comments` and `gh api repos/natrontech/wattroom/pulls/<n>/comments` (inline comments).
+- Discovering out-of-scope work mid-task: `gh issue create` with the right milestone + label, don't scope-creep the current PR.
+- New product/architecture decisions in an issue/PR discussion still get an ADR in `docs/decisions/` — GitHub threads are not the decision record.
+
 ## Hard rules
 
 - `web/src/lib/protocol.ts` is **generated** — edit the Go structs, never the TS.
