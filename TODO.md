@@ -1,15 +1,20 @@
 # TODO
 
 The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WATTROOM.md)).
-Contributor-ready items get mirrored as GitHub issues; this file is the scratchpad and stays authoritative for ordering.
+**Every work item below is mirrored as a GitHub issue** (milestones M0–M6) — issues are where work gets claimed; this file is the scratchpad for ordering and quick notes.
 
 ## Not code (owner: Jan)
 
 - [ ] Register **wattroom.cc** + handles (GitHub org social preview, Strava, Instagram)
 - [ ] OAuth apps when M2 nears: Google, GitHub, Strava (starts single-athlete; Standard Tier ≤10 users needs no review)
 - [ ] YouTube Data API key (M3)
-- [ ] Flip on branch protection (require CI + review) — after first CI-green push
-- [ ] Enable Renovate on the repo
+
+## Backlog (parked, `backlog` label)
+
+- Branch protection + required CI on main (#7)
+- GitHub Sponsors + FUNDING.yml (#8)
+- Install Renovate app (#9)
+- Custom sound/reaction packs per room (fast-follow)
 
 ## M0 — Foundations (in progress)
 
