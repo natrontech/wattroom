@@ -33,11 +33,11 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 | Area | Decision |
 |---|---|
-| Distribution | **Hosted service first** (wattroom.cc). Self-hosting possible (it's AGPL + k8s manifests) but not the optimization target. |
+| Distribution | **Hosted service first** (wattroom.cc). Self-hosting possible (it's AGPL + a compose stack, [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)) but not the optimization target. |
 | License | **AGPL-3.0** — protects the hosted model. Auuki (also AGPL) is **architectural reference only, never copy code**: copying is license-compatible but would add an external copyright holder and forfeit any future relicensing flexibility. Write the FTMS layer from the Bluetooth SIG spec. |
 | Stack | **Go** server (API + WebSocket + embedded frontend) + **SvelteKit** SPA + **PostgreSQL** + **LiveKit** (self-hosted). |
 | Repo | Monorepo at **github.com/natrontech/wattroom**: `/web` + `/server`. Protected main, PRs with CI green, squash merge, conventional commits. |
-| Deploy | **Kubernetes-native** (Helm chart / manifests). LiveKit as its own deployment via the official Helm chart — **requires `hostNetwork: true`** (media needs real UDP 50000–60000 on node IPs; private/NAT-ed clusters unsupported), embedded TURN (no coturn), Redis optional single-node. docker-compose for local dev only. |
+| Deploy | ~~Kubernetes-native~~ **Superseded by [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)**: single VM, docker compose stack (app + Postgres + LiveKit host-network + Caddy TLS). The k8s/LiveKit networking research stays valid in RESEARCH.md §2 for whenever scale demands it. |
 | Auth | **Social OAuth only**: Google, GitHub, Strava. No passwords, ever. Strava OAuth doubles as the fitness integration. |
 | AV | **LiveKit from day one** — voice, camera, screenshare are the product's identity, not a later add-on. |
 | Jukebox | **In MVP.** Synced YouTube queue (IFrame Player API per client, server holds queue + position). **Hard TOS constraints (YouTube RMF, verified 2026-04 version)**: player tile ≥200×200 px, always visible while media plays, **nothing overlaid on it** (no HUD over video), no auto-advance while the player is offscreen, and **no audio-only/background mode** — the "music" use case is a visible player tile, period. |
@@ -70,7 +70,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 | Replay | **Out.** The ride summary (curve, score, medals, graphs) is the record; AV is never recorded regardless. Question closed. |
 | FTP | **All three sources.** Manual entry (the fallback, MVP), **built-in ramp test** (special workout on the existing engine, FTP = 75% of best 1-min), **auto-detect** (server *prompts* when the 90-day curve outgrows the setting — never silently changes it, FTP moves every workout's difficulty). |
 | Sprint physics | **Auto-switch to slope mode.** ERG pins you at target watts, so when a sprint arms the client flips the trainer FTMS ERG→slope (fixed gradient) for the window, then back. Real sprint feel; mode-switch robustness is shared with reconnect handling. |
-| Hosting | **Existing Natron k8s infra.** Zero new spend, familiar tooling. Revisit (data residency story + separating community project from company cluster) before widening past the alpha circle. |
+| Hosting | ~~Existing Natron k8s infra~~ **Superseded by [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)**: any single VM (Natron-provided or a cheap cloud VM; pick at deploy time — a Swiss provider stays open for the data-residency story). |
 | Feel layer | **Session sound design** (countdown beeps, sprint klaxon, elimination sting, medal fanfare — synthwave-coherent, mixed under voice), **spectator emoji cheers** that pop on rider dashboards, **rider quick-reactions** (🔥 💀 🤮 — for when you're too gassed to talk). Sounds and reaction sets are **swappable/extensible per room** (insider memes, custom packs) — base set MVP, custom packs fast-follow. |
 
 ---
@@ -244,7 +244,7 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 **M6 — Alpha polish**
 - Strava auto-upload
 - Account export-all + delete (full purge)
-- K8s manifests/Helm chart, wattroom.cc deployment, Grafana dashboards
+- Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.cc deployment, Grafana dashboards
 - Calibration/spindown, sensor dropout handling, UX polish
 - Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
 

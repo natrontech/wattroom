@@ -40,4 +40,4 @@ A mode = a rule module plugged into the room hub: the workout engine keeps produ
 
 ## Deployment
 
-Single Go binary with the SPA embedded (`make build`). Kubernetes: app deployment + CloudNativePG + LiveKit via its Helm chart (**requires hostNetwork + public UDP on node IPs** — the one awkward ops constraint, see RESEARCH.md §2). Local dev never touches k8s: `make infra` + two hot-reload processes.
+Single Go binary with the SPA embedded (`make build`). Production is deliberately boring ([ADR-0002](decisions/0002-single-vm-compose-deploy.md)): **one VM, one docker compose stack** — wattroom-server, Postgres, LiveKit (host network — WebRTC UDP is trivial on a VM, awkward on k8s), Caddy for TLS. Deploy = pull + `docker compose up -d`; backups = `pg_dump` cron. Prod looks like the dev compose file on purpose. Local dev: `make infra` + two hot-reload processes.

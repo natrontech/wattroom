@@ -71,6 +71,6 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 ## M6 — Alpha polish
 
 - [ ] Strava auto-upload; account export-all + delete
-- [ ] K8s manifests, wattroom.cc deploy, Grafana dashboards
+- [ ] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups, Grafana; wattroom.cc live
 - [ ] Calibration guidance, sensor dropout handling, UX polish
 - [ ] Alpha: weekly rides with the crew — success = they keep choosing it

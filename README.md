@@ -12,7 +12,7 @@ Indoor training is boring alone. Zwift fixes that with a game world; WattRoom fi
 
 ## Stack
 
-Go server (in-memory room hub, one goroutine per room) · SvelteKit SPA (Web Bluetooth for FTMS/HR/power) · PostgreSQL · LiveKit (self-hosted WebRTC) · single binary with embedded frontend · Kubernetes-native deploy.
+Go server (in-memory room hub, one goroutine per room) · SvelteKit SPA (Web Bluetooth for FTMS/HR/power) · PostgreSQL · LiveKit (self-hosted WebRTC) · single binary with embedded frontend · deployed as one docker compose stack on a single VM.
 
 Every architecture and product decision is recorded in [WATTROOM.md](WATTROOM.md) (the founding document) and [docs/decisions/](docs/decisions/) (everything since). The research behind them: [docs/RESEARCH.md](docs/RESEARCH.md).
 
