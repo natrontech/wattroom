@@ -1,0 +1,11 @@
+name: Feature / idea
+description: Propose something
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: Check WATTROOM.md first — locked decisions (privacy stance, no virtual world, stack) need an ADR proposal, not a feature request.
+    validations:
+      required: true
