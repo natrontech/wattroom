@@ -14,21 +14,21 @@ via tygo (see WATTROOM.md decisions: WS protocol).
  * RiderMetrics is one rider's live sample, sent client -> server at ~1 Hz.
  */
 export interface RiderMetrics {
-  watts: number /* int */;
-  hr?: number /* int */;
-  cadence?: number /* int */;
-  seq: number /* int */; // monotonic per ride, for reconnect dedup
+	watts: number /* int */;
+	hr?: number /* int */;
+	cadence?: number /* int */;
+	seq: number /* int */; // monotonic per ride, for reconnect dedup
 }
 /**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
-  metrics?: RiderMetrics;
+	metrics?: RiderMetrics;
 }
 /**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest sample.
  */
 export interface ServerTick {
-  at: number /* int64 */; // unix millis
-  riders: { [key: string]: RiderMetrics};
+	at: number /* int64 */; // unix millis
+	riders: { [key: string]: RiderMetrics };
 }

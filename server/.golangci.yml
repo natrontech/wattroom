@@ -1,7 +1,17 @@
 version: "2"
 
+# standard = errcheck, govet, staticcheck, unused, ineffassign + friends.
+# Additions: security (gosec), error-wrapping correctness (errorlint),
+# leaked ctx/body (noctx, bodyclose), spelling, pointless conversions.
 linters:
   default: standard
   enable:
+    - gosec
+    - errorlint
+    - noctx
+    - bodyclose
     - misspell
     - unconvert
+  settings:
+    errcheck:
+      check-type-assertions: true

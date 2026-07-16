@@ -26,7 +26,7 @@ test:
 	cd server && go test -race ./...
 
 lint:
-	cd server && go vet ./...
+	cd server && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 	cd web && pnpm run check
 
 ci: test lint ## what CI runs

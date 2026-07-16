@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -36,8 +37,15 @@ func main() {
 	if v := os.Getenv("WATTROOM_ADDR"); v != "" {
 		addr = v
 	}
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+		// Header timeout only: /ws connections are long-lived, so no blanket
+		// read/write timeouts here — the hub owns per-message deadlines.
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	log.Info("wattroom-server listening", "addr", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
 	}

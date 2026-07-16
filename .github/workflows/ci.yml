@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 6 * * 1' # weekly vuln scan — new CVEs appear after code ships
 
 jobs:
   server:
@@ -25,6 +27,15 @@ jobs:
         run: |
           go tool tygo generate
           git diff --exit-code ../web/src/lib/protocol.ts
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: golang/govulncheck-action@v1
+        with:
+          work-dir: server
+          go-version-file: server/go.mod
 
   web:
     runs-on: ubuntu-latest
