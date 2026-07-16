@@ -1,0 +1,5 @@
+.env
+bin/
+node_modules/
+web/build/
+web/.svelte-kit/

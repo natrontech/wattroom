@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+/* Pain cave theme: near-black surfaces, one hot accent reserved for live data. */
+@theme {
+	--color-surface: #0a0a0f;
+	--color-surface-raised: #14141c;
+	--color-watt: #f5d90a; /* electric watt-yellow: live data only, never chrome */
+	--color-muted: #8b8b99;
+}

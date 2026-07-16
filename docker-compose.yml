@@ -1,0 +1,23 @@
+# Local dev: infra in containers, app processes run natively (see Makefile).
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: wattroom
+      POSTGRES_PASSWORD: wattroom
+      POSTGRES_DB: wattroom
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  livekit:
+    image: livekit/livekit-server:v1.13
+    command: --dev --bind 0.0.0.0
+    ports:
+      - '7880:7880' # WS signaling
+      - '7881:7881' # WebRTC/TCP
+      - '50000-50100:50000-50100/udp' # media (narrow range for dev)
+
+volumes:
+  pgdata:
