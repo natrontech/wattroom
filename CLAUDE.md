@@ -17,15 +17,9 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 - `make protocol` — regenerate `web/src/lib/protocol.ts` after editing `server/internal/protocol/` (commit both)
 - `make build` — single binary with embedded SPA
 
-## GitHub workflow (use the gh CLI)
+## Git & GitHub
 
-All work is tracked as GitHub issues on milestones **M0–M6**; TODO.md is only ordering notes. Find work with `gh issue list --milestone "M0 — Foundations"` (or `--label good-first-issue`); read context with `gh issue view <n> --comments` before starting — decisions sometimes land in comments.
-
-- Labels: `ble`, `rooms`, `workouts`, `game-modes`, `infra`, `docs`, `backlog` (parked — don't pick up without asking). Don't invent new labels or milestones; propose instead.
-- Starting an issue: `gh issue comment <n> -b "picking this up — <one-line approach>"` so work isn't duplicated.
-- PRs: `gh pr create` with a conventional-commit title (it becomes the squash commit) and `Closes #<n>` in the body. Check CI with `gh pr checks`; find review feedback with `gh pr view --comments` and `gh api repos/natrontech/wattroom/pulls/<n>/comments` (inline comments).
-- Discovering out-of-scope work mid-task: `gh issue create` with the right milestone + label, don't scope-creep the current PR.
-- New product/architecture decisions in an issue/PR discussion still get an ADR in `docs/decisions/` — GitHub threads are not the decision record.
+Full conventions in `.claude/rules/git.md` (auto-loaded): commit at logical units without asking, conventional commits with wattroom scopes, when to push direct vs branch+PR, gh CLI workflow over the M0–M6 issue board. Companion rules: `errors.md` (API error contract + frontend error UX), `code-quality.md` (search-first, one home per concept, size ceilings), `ux.md` (95% rule, mid-ride interaction).
 
 ## Hard rules
 
@@ -34,4 +28,3 @@ All work is tracked as GitHub issues on milestones **M0–M6**; TODO.md is only 
 - Privacy is architecture: metrics room-scoped, AV never recorded, rides private by default. Never loosen.
 - Never copy code from Auuki (AGPL reference-reading only).
 - The watt-yellow accent (`--color-watt`) marks live data only, never UI chrome.
-- Conventional commits; PRs squash-merge.
