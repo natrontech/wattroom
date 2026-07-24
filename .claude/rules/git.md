@@ -21,12 +21,19 @@ feat(game): backyard ramp elimination rules
 docs: ADR-0003 …
 ```
 
-## When to push / branch / PR (Claude decides)
+## When to push / branch / PR (multi-contributor phase — humans + Claude + Codex in parallel)
 
-- **Direct to main, push after each logical commit**: docs, specs, ADRs, CI/tooling, small self-contained fixes with green `make ci`. (Valid while main is unprotected — see issue #7; once protection is on, everything below applies.)
-- **Branch + PR**: multi-commit features, anything touching the protocol or privacy-relevant paths, risky refactors, or work worth reviewing. Branch `feat/<slug>` or `fix/<slug>`, PR title in conventional-commit form (it becomes the squash commit), body has `Closes #<n>`. Open as draft early if work spans sessions.
+- **Branch + PR is the default for all feature work.** Branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
+- **Direct to main** only for trivial doc fixes and ADR text (and only while main is unprotected — see issue #7; flip protection ends this exception).
 - **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, or mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them).
 
-## GitHub (gh CLI)
+## GitHub (gh CLI) — claim before you code
 
-Work lives in issues on milestones M0–M6. `gh issue list --milestone …`; read `gh issue view <n> --comments` before starting; comment when picking one up. Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked — ask first). Out-of-scope discoveries become new issues, not PR scope-creep. Decisions made in threads still get an ADR — GitHub is not the decision record.
+Work lives in issues on milestones M0–M6; nobody (human or agent) works untracked.
+
+1. `gh issue view <n> --comments` — if it's assigned or claimed, coordinate there instead of duplicating.
+2. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment.
+3. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
+4. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
+
+Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked — ask first).

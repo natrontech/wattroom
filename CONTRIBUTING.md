@@ -53,6 +53,25 @@ make ci      # what CI runs
 
 One Playwright smoke (simulated trainer → 2-min workout → .fit file) guards the core flow once M1 lands. Non-trivial logic gets a table test; UI polish doesn't need one.
 
+## Issue flow (humans and coding agents alike)
+
+This repo is co-developed by people working with different coding agents (Claude Code, Codex, …). The coordination protocol is identical for everyone:
+
+1. **Claim before you code**: check the issue is unassigned (`gh issue view <n> --comments`), then assign yourself and comment your approach in one line. An issue someone else claimed = coordinate in its thread, don't duplicate.
+2. **Draft PR early** with `Closes #<n>` — in-flight drafts are the live "who's working on what" board.
+3. **Progress lives in the issue/PR thread** — blockers, findings, decisions. Not in private chats; other contributors' agents can only see what's on GitHub.
+4. Out-of-scope discoveries become new issues, never PR scope-creep.
+
 ## PR flow
 
-Branch from `main`, keep PRs scoped to one thing, make CI green. `main` is protected once CI exists; a maintainer review lands it. Good first issues are labeled [`good-first-issue`](https://github.com/natrontech/wattroom/labels/good-first-issue).
+Branch `feat/<slug>` from `main`, keep PRs scoped to one issue, make CI green. PR title in conventional-commit form (squash merge uses it). Good first issues are labeled [`good-first-issue`](https://github.com/natrontech/wattroom/labels/good-first-issue).
+
+## Agent setup
+
+Both agents read the same instructions — [AGENTS.md](AGENTS.md) (root + `server/` + `web/`) is the single source of truth:
+
+- **Codex** picks up `AGENTS.md` natively (root, then nested files as you work deeper).
+- **Claude Code** loads `CLAUDE.md`, which imports `AGENTS.md` — plus repo-level extras in `.claude/` (auto-loaded rule files, skills, permission allowlist, format-on-edit hooks).
+- The rule files in `.claude/rules/` are vendor-neutral canon despite the path — AGENTS.md points every agent at them.
+
+If you use another agent, point it at `AGENTS.md` and you're covered.
