@@ -11,7 +11,6 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 
 ## Backlog (parked, `backlog` label)
 
-- Branch protection + required CI on main (#7)
 - GitHub Sponsors + FUNDING.yml (#8)
 - Install Renovate app (#9)
 - Custom sound/reaction packs per room (fast-follow)
