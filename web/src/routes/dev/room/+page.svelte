@@ -5,6 +5,7 @@
 	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';
 	import RoomRail from './RoomRail.svelte';
+	import SprintMoment from './SprintMoment.svelte';
 	import SidePanel from './SidePanel.svelte';
 	import TargetWidget from './TargetWidget.svelte';
 	import TvMode from './TvMode.svelte';
@@ -146,6 +147,11 @@
 						>Drop trainer</button
 					>
 					<button
+						onclick={() => room.armSprint()}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Arm sprint</button
+					>
+					<button
 						onclick={() => room.breakRoom(false)}
 						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
 						>Drop room</button
@@ -240,16 +246,31 @@
 					</div>
 				</div>
 
-				<div class="mt-2">
-					<IntervalStrip
-						block={room.block}
-						bias={room.bias}
-						onBias={(step) => room.nudgeBias(step)}
-					/>
-				</div>
-				<div class="mt-2">
-					<TargetWidget {you} variant="notch" compact={layout !== 'metrics'} />
-				</div>
+				{#if room.sprint !== 'idle'}
+					<div class="mt-2">
+						<SprintMoment
+							state={room.sprint}
+							secondsLeft={room.sprintLeft}
+							riders={room.riders}
+							podium={room.podium}
+						/>
+					</div>
+				{:else}
+					<div class="mt-2">
+						<IntervalStrip
+							block={room.block}
+							bias={room.bias}
+							onBias={(step) => room.nudgeBias(step)}
+						/>
+					</div>
+					<div class="mt-2">
+						<TargetWidget
+							{you}
+							variant="notch"
+							compact={layout !== 'metrics'}
+						/>
+					</div>
+				{/if}
 				<div class="mt-2 overflow-hidden rounded-lg">
 					<IntervalGraph
 						segments={room.segments}

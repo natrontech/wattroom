@@ -30,6 +30,20 @@ export type Phase = 'lounge' | 'countdown' | 'live';
  * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
  * status, never a toast — the rider is on a bike three metres from the screen.
  */
+/**
+ * A 15 s all-out window (WATTROOM.md). The trainer leaves ERG for slope mode, the
+ * room bursts to 4 Hz, and a w/kg battle renders — the one sanctioned outlet for
+ * racing instinct inside a structured session.
+ */
+export type SprintState = 'idle' | 'armed' | 'active' | 'podium';
+
+export interface SprintResult {
+	name: string;
+	wkg: number;
+	watts: number;
+	you: boolean;
+}
+
 export type Fault =
 	| { kind: 'trainer'; state: 'reconnecting' | 'lost' }
 	| { kind: 'room'; state: 'reconnecting' | 'lost' };
@@ -127,6 +141,8 @@ interface RiderSeed {
 	discipline: number;
 	/** resting-HR spread: two riders at the same %FTP are nowhere near the same bpm */
 	hrOffset: number;
+	/** peak sprint power as a multiple of FTP — diesels and sprinters are different animals */
+	sprintFactor: number;
 }
 
 const SEEDS: RiderSeed[] = [
@@ -139,6 +155,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: true,
 		discipline: 1.01,
 		hrOffset: -12,
+		sprintFactor: 2.6,
 	},
 	{
 		name: 'Ruben',
@@ -148,6 +165,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: true,
 		discipline: 1.06,
 		hrOffset: 7,
+		sprintFactor: 3.6,
 	},
 	{
 		name: 'Milo',
@@ -158,6 +176,7 @@ const SEEDS: RiderSeed[] = [
 		muted: true,
 		discipline: 0.94,
 		hrOffset: 14,
+		sprintFactor: 2.4,
 	},
 	{
 		name: 'Sara',
@@ -167,6 +186,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: true,
 		discipline: 0.99,
 		hrOffset: -6,
+		sprintFactor: 2.9,
 	},
 	{
 		name: 'Tobi',
@@ -176,6 +196,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: false,
 		discipline: 1.03,
 		hrOffset: 18,
+		sprintFactor: 3.4,
 	},
 	{
 		name: 'You',
@@ -186,6 +207,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: true,
 		discipline: 1.0,
 		hrOffset: 0,
+		sprintFactor: 3.0,
 	},
 ];
 
@@ -287,6 +309,11 @@ export function createRoom() {
 	/** Rider-facing intensity trim, the one control riders reach for mid-interval. */
 	let bias = $state(1);
 	let fault = $state<Fault | null>(null);
+	let sprint = $state<SprintState>('idle');
+	let sprintLeft = $state(0);
+	let podium = $state<SprintResult[]>([]);
+	let peaks = SEEDS.map(() => 0);
+	let sprintTimer: ReturnType<typeof setInterval> | undefined;
 	/** Buffered locally while the room link is down (#19 IndexedDB ride buffer). */
 	let bufferedSeconds = $state(0);
 	let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -334,14 +361,17 @@ export function createRoom() {
 				const rider = riders[i];
 				rider.watts = sample.watts;
 				rider.cadence = sample.cadence;
+				const targetHr = Math.min(
+					195,
+					96 + SEEDS[i].hrOffset + (sample.watts / rider.ftp) * 78,
+				);
+				// Heart rate trails effort by ~30 s; stepping it with watts is what made a
+				// 15 s sprint read 195 bpm across the whole room.
 				rider.hr =
 					sample.watts < 20
 						? 0
 						: Math.round(
-								Math.min(
-									195,
-									96 + SEEDS[i].hrOffset + (sample.watts / rider.ftp) * 78,
-								),
+								rider.hr ? rider.hr + (targetHr - rider.hr) * 0.08 : targetHr,
 							);
 				if (rider.target > 0) {
 					banded[i].ridden++;
@@ -349,6 +379,8 @@ export function createRoom() {
 						banded[i].inside++;
 					rider.execution = banded[i].inside / banded[i].ridden;
 				}
+				if (sprint === 'active' && sample.watts > peaks[i])
+					peaks[i] = sample.watts;
 				if (phase === 'live')
 					rider.trace = [...rider.trace, { t: elapsed, w: sample.watts }].slice(
 						-120,
@@ -377,6 +409,7 @@ export function createRoom() {
 			// Looping back to the warmup would smear stale samples across the graph.
 			if (next >= total) for (const rider of riders) rider.trace = [];
 			elapsed = next % total;
+			if (sprint === 'armed' || sprint === 'active') return;
 			SEEDS.forEach((seed, i) => {
 				const info = targetAt(segments, seed.ftp, elapsed, {
 					bias: seed.you ? bias : 1,
@@ -394,6 +427,7 @@ export function createRoom() {
 		clearInterval(ticker);
 		clearInterval(voice);
 		clearTimeout(recoveryTimer);
+		clearInterval(sprintTimer);
 		void Promise.all(trainers.map((t) => t.disconnect()));
 	}
 
@@ -416,12 +450,60 @@ export function createRoom() {
 		start,
 		stop,
 		setPhase,
+		/** Coach arms the window; the workout file can arm it too (WATTROOM.md). */
+		armSprint() {
+			if (sprint !== 'idle' || phase !== 'live') return;
+			peaks = SEEDS.map(() => 0);
+			podium = [];
+			sprint = 'armed';
+			sprintLeft = 3;
+
+			clearInterval(sprintTimer);
+			sprintTimer = setInterval(() => {
+				sprintLeft -= 1;
+				if (sprintLeft > 0) return;
+
+				if (sprint === 'armed') {
+					sprint = 'active';
+					sprintLeft = 15;
+					// Slope mode, not ERG: a sprint is the rider's watts, not the trainer's.
+					SEEDS.forEach((seed, i) => {
+						const grade = (seed.sprintFactor / 0.7 - 1) / 0.08;
+						void trainers[i].setSimulation(grade);
+					});
+				} else if (sprint === 'active') {
+					sprint = 'podium';
+					sprintLeft = 8;
+					podium = SEEDS.map((seed, i) => ({
+						name: seed.name,
+						watts: peaks[i],
+						wkg: +(peaks[i] / seed.kg).toFixed(1),
+						you: seed.you ?? false,
+					}))
+						.sort((a, b) => b.wkg - a.wkg)
+						.slice(0, 3);
+				} else {
+					sprint = 'idle';
+					clearInterval(sprintTimer);
+				}
+			}, 1000);
+		},
+		get sprint() {
+			return sprint;
+		},
+		get sprintLeft() {
+			return sprintLeft;
+		},
+		get podium() {
+			return podium;
+		},
 		/** Recovery is automatic where it can be; the manual path is one big button. */
 		breakTrainer(recovers: boolean) {
 			const you = SEEDS.findIndex((seed) => seed.you);
 			riders[you].stale = true;
 			fault = { kind: 'trainer', state: 'reconnecting' };
 			clearTimeout(recoveryTimer);
+			clearInterval(sprintTimer);
 			recoveryTimer = setTimeout(() => {
 				if (recovers) {
 					riders[you].stale = false;
@@ -435,12 +517,14 @@ export function createRoom() {
 			fault = { kind: 'room', state: 'reconnecting' };
 			bufferedSeconds = 0;
 			clearTimeout(recoveryTimer);
+			clearInterval(sprintTimer);
 			recoveryTimer = setTimeout(() => {
 				fault = recovers ? null : { kind: 'room', state: 'lost' };
 			}, 6000);
 		},
 		recover() {
 			clearTimeout(recoveryTimer);
+			clearInterval(sprintTimer);
 			for (const rider of riders) rider.stale = false;
 			fault = null;
 			bufferedSeconds = 0;
