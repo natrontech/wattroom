@@ -1,14 +1,35 @@
 <script lang="ts">
+	import { active } from '../palettes.svelte';
+
 	const surfaces = [
-		{ name: 'surface', hex: '#0a0a0f', use: 'page background' },
-		{ name: 'surface-raised', hex: '#14141c', use: 'cards, tiles, nav' },
+		{ name: 'surface', cls: 'bg-surface', use: 'page background' },
+		{
+			name: 'surface-raised',
+			cls: 'bg-surface-raised',
+			use: 'cards, tiles, nav',
+		},
 		{
 			name: 'muted',
-			hex: '#8b8b99',
+			cls: 'bg-muted',
 			use: 'labels, secondary text, borders at low alpha',
 		},
-		{ name: 'watt', hex: '#f5d90a', use: 'live data only — never chrome' },
+		{
+			name: 'neon',
+			cls: 'bg-neon',
+			use: 'horizons, grids, mark accents — structural, never glows',
+		},
+		{ name: 'watt', cls: 'bg-watt', use: 'live data only — never chrome' },
 	];
+
+	// Swatches read their own resolved colour, so switching palette relabels them.
+	let swatches = $state<HTMLElement[]>([]);
+	let resolved = $state<string[]>([]);
+	$effect(() => {
+		active.palette; // re-read once the palette swaps the underlying vars
+		resolved = swatches.map((el) =>
+			el ? getComputedStyle(el).backgroundColor : '',
+		);
+	});
 
 	// Coggan 7-zone. Boundaries are the standard model; colours deliberately skip yellow.
 	const zones = [
@@ -47,13 +68,15 @@
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
 		Surfaces &amp; accent
 	</h2>
-	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		{#each surfaces as token (token.name)}
+	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+		{#each surfaces as token, i (token.name)}
 			<div class="border-muted/15 overflow-hidden rounded-lg border">
-				<div class="h-20" style="background: {token.hex}"></div>
+				<div class="h-20 {token.cls}" bind:this={swatches[i]}></div>
 				<div class="bg-surface-raised px-4 py-3">
 					<div class="font-mono text-xs">--color-{token.name}</div>
-					<div class="text-muted mt-1 font-mono text-[11px]">{token.hex}</div>
+					<div class="text-muted mt-1 font-mono text-[11px]">
+						{resolved[i] ?? ''}
+					</div>
 					<div class="text-muted mt-2 text-xs">{token.use}</div>
 				</div>
 			</div>

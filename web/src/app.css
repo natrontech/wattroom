@@ -1,36 +1,58 @@
 @import 'tailwindcss';
 
-/* Pain cave theme: near-black surfaces, one hot accent reserved for live data. */
+/*
+ * Pain cave theme, synthwave. Deep violet-black surfaces, one hue reserved for
+ * live data, a second neon for horizons and mark accents.
+ * Defaults below are the "Outrun" candidate; /dev overrides them per palette.
+ */
 @theme {
-	--color-surface: #0a0a0f;
-	--color-surface-raised: #14141c;
-	--color-watt: #f5d90a; /* electric watt-yellow: live data only, never chrome */
-	--color-muted: #8b8b99;
+	--color-surface: #0a0118;
+	--color-surface-raised: #1a0736;
+	--color-muted: #9182b8;
+	--color-watt: #ff3d8b; /* live data only, never chrome */
+	--color-neon: #8b2bff; /* horizons, grids, mark accents — structural, doesn't glow */
 
-	/* Coggan 7-zone ramp. Deliberately skips yellow — that hue belongs to live wattage alone. */
-	--color-z1: #46506b;
-	--color-z2: #2f6fd0;
-	--color-z3: #12a8a0;
-	--color-z4: #46c26a;
-	--color-z5: #f2842b;
-	--color-z6: #ef4444;
-	--color-z7: #d946ef;
+	/* Coggan 7-zone ramp: violet recovery climbing to magenta sprint. */
+	--color-z1: #4a3a78;
+	--color-z2: #4361ee;
+	--color-z3: #00b4d8;
+	--color-z4: #06d6a0;
+	--color-z5: #ffa62b;
+	--color-z6: #ff4d6d;
+	--color-z7: #ff2e88;
 }
 
 /*
  * Glow scale. Driven by currentColor so a zone-coloured element glows in its own hue.
- * Restraint rule (WATTROOM.md §7): glow marks live data — never chrome.
+ * Restraint rule: glow marks live data — chrome stays flat however neon the palette gets.
  */
 @utility glow-text {
 	text-shadow: 0 0 0.35em color-mix(in oklab, currentColor 45%, transparent);
 }
 @utility glow-text-strong {
 	text-shadow:
-		0 0 0.22em color-mix(in oklab, currentColor 75%, transparent),
-		0 0 0.7em color-mix(in oklab, currentColor 40%, transparent);
+		0 0 0.2em color-mix(in oklab, currentColor 85%, transparent),
+		0 0 0.65em color-mix(in oklab, currentColor 45%, transparent),
+		0 0 1.4em color-mix(in oklab, currentColor 25%, transparent);
 }
 @utility glow-stroke {
 	filter: drop-shadow(
 		0 0 6px color-mix(in oklab, currentColor 55%, transparent)
 	);
+}
+
+/* Perspective-free horizon grid, faded out at the top. Backdrop only — never behind text. */
+@utility bg-gridlines {
+	background-image:
+		repeating-linear-gradient(
+			to right,
+			color-mix(in oklab, var(--color-neon) 30%, transparent) 0 1px,
+			transparent 1px 44px
+		),
+		repeating-linear-gradient(
+			to bottom,
+			color-mix(in oklab, var(--color-neon) 30%, transparent) 0 1px,
+			transparent 1px 44px
+		);
+	mask-image: linear-gradient(to bottom, transparent, black 85%);
 }
