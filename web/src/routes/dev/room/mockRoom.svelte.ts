@@ -26,6 +26,14 @@ const COUNTDOWN = 10;
 /** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
 export type Phase = 'lounge' | 'countdown' | 'live';
 
+/**
+ * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
+ * status, never a toast — the rider is on a bike three metres from the screen.
+ */
+export type Fault =
+	| { kind: 'trainer'; state: 'reconnecting' | 'lost' }
+	| { kind: 'room'; state: 'reconnecting' | 'lost' };
+
 export const ROOM_NAME = 'Thursday Sufferfest';
 
 /** Optional per-tile metrics. Zwift shows everyone's HR; whether you want it is taste. */
@@ -99,6 +107,8 @@ export interface MockRider {
 	watts: number;
 	cadence: number;
 	hr: number;
+	/** their trainer stopped reporting — their numbers are last-known, not live */
+	stale: boolean;
 	target: number;
 	execution: number;
 	trace: { t: number; w: number }[];
@@ -276,6 +286,10 @@ export function createRoom() {
 	let phase = $state<Phase>('lounge');
 	/** Rider-facing intensity trim, the one control riders reach for mid-interval. */
 	let bias = $state(1);
+	let fault = $state<Fault | null>(null);
+	/** Buffered locally while the room link is down (#19 IndexedDB ride buffer). */
+	let bufferedSeconds = $state(0);
+	let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
 	let block = $state<Block | null>(null);
 	let countdown = $state(COUNTDOWN);
 
@@ -293,6 +307,7 @@ export function createRoom() {
 			watts: 0,
 			cadence: 0,
 			hr: 0,
+			stale: false,
 			target: 0,
 			execution: 1,
 			trace: [],
@@ -357,6 +372,7 @@ export function createRoom() {
 				for (const trainer of trainers) void trainer.setTargetPower(0);
 				return;
 			}
+			if (fault?.kind === 'room') bufferedSeconds += SPEED;
 			const next = elapsed + SPEED;
 			// Looping back to the warmup would smear stale samples across the graph.
 			if (next >= total) for (const rider of riders) rider.trace = [];
@@ -377,6 +393,7 @@ export function createRoom() {
 	function stop() {
 		clearInterval(ticker);
 		clearInterval(voice);
+		clearTimeout(recoveryTimer);
 		void Promise.all(trainers.map((t) => t.disconnect()));
 	}
 
@@ -399,6 +416,41 @@ export function createRoom() {
 		start,
 		stop,
 		setPhase,
+		/** Recovery is automatic where it can be; the manual path is one big button. */
+		breakTrainer(recovers: boolean) {
+			const you = SEEDS.findIndex((seed) => seed.you);
+			riders[you].stale = true;
+			fault = { kind: 'trainer', state: 'reconnecting' };
+			clearTimeout(recoveryTimer);
+			recoveryTimer = setTimeout(() => {
+				if (recovers) {
+					riders[you].stale = false;
+					fault = null;
+				} else {
+					fault = { kind: 'trainer', state: 'lost' };
+				}
+			}, 6000);
+		},
+		breakRoom(recovers: boolean) {
+			fault = { kind: 'room', state: 'reconnecting' };
+			bufferedSeconds = 0;
+			clearTimeout(recoveryTimer);
+			recoveryTimer = setTimeout(() => {
+				fault = recovers ? null : { kind: 'room', state: 'lost' };
+			}, 6000);
+		},
+		recover() {
+			clearTimeout(recoveryTimer);
+			for (const rider of riders) rider.stale = false;
+			fault = null;
+			bufferedSeconds = 0;
+		},
+		get fault() {
+			return fault;
+		},
+		get bufferedSeconds() {
+			return bufferedSeconds;
+		},
 		nudgeBias(step: number) {
 			// ±1 % steps, clamped: a trim, not a way to rewrite the workout.
 			bias = Math.min(

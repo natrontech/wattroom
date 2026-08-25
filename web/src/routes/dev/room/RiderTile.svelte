@@ -89,7 +89,11 @@
 
 	<!-- Power, top-right. Only your own tile glows. -->
 	{#if live}
-		<div class="absolute top-2 right-2.5 text-right">
+		<div
+			class="absolute top-2 right-2.5 text-right {rider.stale
+				? 'opacity-40'
+				: ''}"
+		>
 			<span
 				class="font-display text-2xl leading-none font-bold tabular-nums drop-shadow {rider.you
 					? 'text-watt glow-text'
@@ -99,7 +103,15 @@
 		</div>
 	{/if}
 
-	{#if live && extras.length}
+	{#if rider.stale}
+		<div class="absolute inset-0 grid place-items-center bg-black/55">
+			<span class="text-z5 text-[11px] font-medium tracking-wider uppercase"
+				>no signal</span
+			>
+		</div>
+	{/if}
+
+	{#if live && extras.length && !rider.stale}
 		<div
 			class="absolute right-2.5 bottom-3 flex gap-2.5 font-mono text-[11px] text-white/85 tabular-nums drop-shadow"
 		>

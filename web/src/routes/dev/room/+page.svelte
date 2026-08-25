@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FaultBanner from './FaultBanner.svelte';
 	import IntervalGraph from './IntervalGraph.svelte';
 	import IntervalStrip from './IntervalStrip.svelte';
 	import PlayerTile from './PlayerTile.svelte';
@@ -138,6 +139,18 @@
 						>
 					{/each}
 				</div>
+				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+					<button
+						onclick={() => room.breakTrainer(true)}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Drop trainer</button
+					>
+					<button
+						onclick={() => room.breakRoom(false)}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Drop room</button
+					>
+				</div>
 				<button
 					onclick={() => (tv = true)}
 					class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
@@ -157,6 +170,16 @@
 					</div>
 				{/if}
 			</header>
+
+			{#if room.fault}
+				<div class="mb-3">
+					<FaultBanner
+						fault={room.fault}
+						bufferedSeconds={room.bufferedSeconds}
+						onRecover={() => room.recover()}
+					/>
+				</div>
+			{/if}
 
 			{#if layout === 'media'}
 				<!-- Media-focus: the player takes the main area, riders drop to a strip beneath it. -->
