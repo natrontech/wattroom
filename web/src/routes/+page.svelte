@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Logo from '$lib/brand/Logo.svelte';
+
 	let health = $state<string | null>(null);
 
 	async function ping() {
@@ -10,9 +12,7 @@
 <main
 	class="bg-surface flex min-h-screen flex-col items-center justify-center gap-6 text-white"
 >
-	<h1 class="text-5xl font-bold tracking-tight">
-		Watt<span class="text-watt">Room</span>
-	</h1>
+	<Logo size={72} wordmark />
 	<p class="text-muted">Train together, not alone.</p>
 	<button
 		class="border-muted/30 text-muted rounded border px-4 py-2 text-sm hover:text-white"

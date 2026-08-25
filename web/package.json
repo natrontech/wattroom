@@ -15,11 +15,8 @@
 		"test": "vitest run"
 	},
 	"devDependencies": {
-		"@fontsource-variable/space-grotesk": "^5.3.0",
 		"@fontsource/barlow": "^5.3.0",
-		"@fontsource/barlow-condensed": "^5.3.0",
 		"@fontsource/chakra-petch": "^5.3.0",
-		"@fontsource/orbitron": "^5.3.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",

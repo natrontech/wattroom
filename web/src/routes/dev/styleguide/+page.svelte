@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { active } from '../palettes.svelte';
-
 	const surfaces = [
 		{ name: 'surface', cls: 'bg-surface', use: 'page background' },
 		{
@@ -25,7 +23,6 @@
 	let swatches = $state<HTMLElement[]>([]);
 	let resolved = $state<string[]>([]);
 	$effect(() => {
-		active.palette; // re-read once the palette swaps the underlying vars
 		resolved = swatches.map((el) =>
 			el ? getComputedStyle(el).backgroundColor : '',
 		);

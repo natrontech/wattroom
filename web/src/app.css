@@ -6,6 +6,10 @@
  * Defaults below are the "Outrun" candidate; /dev overrides them per palette.
  */
 @theme {
+	/* Chakra Petch carries display and every number; Barlow does the reading. */
+	--font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Chakra Petch', var(--font-sans);
+
 	--color-surface: #0a0118;
 	--color-surface-raised: #1a0736;
 	--color-muted: #9182b8;
