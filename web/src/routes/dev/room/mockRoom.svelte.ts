@@ -20,10 +20,15 @@ export const workout: Workout = {
 
 /** Workout-clock seconds per real second, so a 65 min session is watchable in 8. */
 const SPEED = 8;
+/** docs/SPEC.md: 10 s countdown before the shared timeline starts. */
+const COUNTDOWN = 10;
+
+/** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
+export type Phase = 'lounge' | 'countdown' | 'live';
 
 /** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
-function inBand(watts: number, target: number): boolean {
-	return Math.abs(watts - target) <= Math.max(target * 0.05, 10);
+export function bandWatts(target: number): number {
+	return Math.max(target * 0.05, 10);
 }
 
 /** Coggan 7-zone, boundaries per docs/SPEC.md. */
@@ -44,13 +49,16 @@ export interface MockRider {
 	kg: number;
 	you: boolean;
 	coach: boolean;
+	cameraOn: boolean;
+	muted: boolean;
+	speaking: boolean;
+	/** stand-in for a camera feed's dominant colour, so the grid isn't uniformly dark */
+	hue: number;
 	watts: number;
 	cadence: number;
 	hr: number;
 	target: number;
-	/** seconds ridden inside the tolerance band / seconds ridden */
 	execution: number;
-	/** workout-clock timestamped samples, so the trace lines up with the timeline */
 	trace: { t: number; w: number }[];
 }
 
@@ -58,25 +66,79 @@ interface RiderSeed {
 	name: string;
 	ftp: number;
 	kg: number;
+	hue: number;
 	you?: boolean;
 	coach?: boolean;
+	cameraOn?: boolean;
+	muted?: boolean;
 	/** how faithfully they hold the target — 1.0 nails it, 1.06 always overcooks */
 	discipline: number;
 }
 
 const SEEDS: RiderSeed[] = [
-	{ name: 'You', ftp: 265, kg: 74, you: true, discipline: 1.0 },
-	{ name: 'Nina', ftp: 240, kg: 62, coach: true, discipline: 1.01 },
-	{ name: 'Ruben', ftp: 310, kg: 78, discipline: 1.06 },
-	{ name: 'Milo', ftp: 195, kg: 71, discipline: 0.94 },
-	{ name: 'Sara', ftp: 285, kg: 66, discipline: 0.99 },
-	{ name: 'Tobi', ftp: 225, kg: 83, discipline: 1.03 },
+	{
+		name: 'Nina',
+		ftp: 240,
+		kg: 62,
+		hue: 268,
+		coach: true,
+		cameraOn: true,
+		discipline: 1.01,
+	},
+	{
+		name: 'Ruben',
+		ftp: 310,
+		kg: 78,
+		hue: 198,
+		cameraOn: true,
+		discipline: 1.06,
+	},
+	{
+		name: 'Milo',
+		ftp: 195,
+		kg: 71,
+		hue: 22,
+		cameraOn: false,
+		muted: true,
+		discipline: 0.94,
+	},
+	{
+		name: 'Sara',
+		ftp: 285,
+		kg: 66,
+		hue: 330,
+		cameraOn: true,
+		discipline: 0.99,
+	},
+	{
+		name: 'Tobi',
+		ftp: 225,
+		kg: 83,
+		hue: 150,
+		cameraOn: false,
+		discipline: 1.03,
+	},
+	{
+		name: 'You',
+		ftp: 265,
+		kg: 74,
+		hue: 290,
+		you: true,
+		cameraOn: true,
+		discipline: 1.0,
+	},
+];
+
+export const queue = [
+	{ title: 'Kavinsky — Nightcall', length: '4:18', by: 'Nina' },
+	{ title: 'The Midnight — Los Angeles', length: '6:02', by: 'Ruben' },
+	{ title: 'Carpenter Brut — Turbo Killer', length: '4:41', by: 'You' },
+	{ title: 'Perturbator — Sentient', length: '5:29', by: 'Sara' },
 ];
 
 /**
- * A room of simulated riders on the same workout. Every tile is a real
- * SimulatedTrainer holding a real ERG target — the numbers move the way they
- * will in the app, which is the only way to judge glow and density.
+ * A room of simulated riders on one workout, across the phases a real room moves
+ * through. Every tile is a real SimulatedTrainer holding a real ERG target.
  */
 export function createRoom() {
 	const segments: Segment[] = flatten(workout);
@@ -86,6 +148,9 @@ export function createRoom() {
 	);
 
 	let elapsed = $state(0);
+	let phase = $state<Phase>('lounge');
+	let countdown = $state(COUNTDOWN);
+
 	const riders = $state<MockRider[]>(
 		SEEDS.map((s) => ({
 			name: s.name,
@@ -93,6 +158,10 @@ export function createRoom() {
 			kg: s.kg,
 			you: s.you ?? false,
 			coach: s.coach ?? false,
+			cameraOn: s.cameraOn ?? false,
+			muted: s.muted ?? false,
+			speaking: false,
+			hue: s.hue,
 			watts: 0,
 			cadence: 0,
 			hr: 0,
@@ -111,7 +180,9 @@ export function createRoom() {
 			}),
 	);
 	const banded = SEEDS.map(() => ({ inside: 0, ridden: 0 }));
-	let timer: ReturnType<typeof setInterval> | undefined;
+	let ticker: ReturnType<typeof setInterval> | undefined;
+	let voice: ReturnType<typeof setInterval> | undefined;
+	let turn = 0;
 
 	async function start() {
 		await Promise.all(trainers.map((t) => t.connect()));
@@ -120,37 +191,69 @@ export function createRoom() {
 				const rider = riders[i];
 				rider.watts = sample.watts;
 				rider.cadence = sample.cadence;
-				// HR trails effort; enough to make the tile honest, not a physiology model.
-				const effort = sample.watts / rider.ftp;
-				rider.hr = Math.round(Math.min(190, 96 + effort * 78));
+				rider.hr =
+					sample.watts < 20
+						? 0
+						: Math.round(Math.min(190, 96 + (sample.watts / rider.ftp) * 78));
 				if (rider.target > 0) {
 					banded[i].ridden++;
-					if (inBand(sample.watts, rider.target)) banded[i].inside++;
+					if (Math.abs(sample.watts - rider.target) <= bandWatts(rider.target))
+						banded[i].inside++;
 					rider.execution = banded[i].inside / banded[i].ridden;
 				}
-				rider.trace = [...rider.trace, { t: elapsed, w: sample.watts }].slice(
-					-120,
-				);
+				if (phase === 'live')
+					rider.trace = [...rider.trace, { t: elapsed, w: sample.watts }].slice(
+						-120,
+					);
 			});
 		});
 
-		timer = setInterval(() => {
+		// Someone is always talking in a lounge; VAD gating means one at a time.
+		voice = setInterval(() => {
+			turn = (turn + 1) % riders.length;
+			riders.forEach((r, i) => (r.speaking = i === turn && !r.muted));
+		}, 2600);
+
+		ticker = setInterval(() => {
+			if (phase === 'countdown') {
+				countdown -= 1;
+				if (countdown <= 0) phase = 'live';
+			}
+			if (phase !== 'live') {
+				// Nobody is holding a target in the lounge; power decays to zero on its own.
+				for (const trainer of trainers) void trainer.setTargetPower(0);
+				return;
+			}
 			const next = elapsed + SPEED;
-			// Looping back to the warmup would smear stale samples across the whole graph.
+			// Looping back to the warmup would smear stale samples across the graph.
 			if (next >= total) for (const rider of riders) rider.trace = [];
 			elapsed = next % total;
 			SEEDS.forEach((seed, i) => {
 				const { targetWatts } = targetAt(segments, seed.ftp, elapsed);
-				const target = Math.round((targetWatts ?? 0) * seed.discipline);
 				riders[i].target = targetWatts ?? 0;
-				void trainers[i].setTargetPower(target);
+				void trainers[i].setTargetPower(
+					Math.round((targetWatts ?? 0) * seed.discipline),
+				);
 			});
 		}, 1000);
 	}
 
 	function stop() {
-		clearInterval(timer);
+		clearInterval(ticker);
+		clearInterval(voice);
 		void Promise.all(trainers.map((t) => t.disconnect()));
+	}
+
+	function setPhase(next: Phase) {
+		if (next === 'countdown') countdown = COUNTDOWN;
+		if (next === 'lounge') {
+			elapsed = 0;
+			for (const rider of riders) {
+				rider.target = 0;
+				rider.trace = [];
+			}
+		}
+		phase = next;
 	}
 
 	return {
@@ -159,8 +262,15 @@ export function createRoom() {
 		riders,
 		start,
 		stop,
+		setPhase,
 		get elapsed() {
 			return elapsed;
+		},
+		get phase() {
+			return phase;
+		},
+		get countdown() {
+			return countdown;
 		},
 	};
 }
