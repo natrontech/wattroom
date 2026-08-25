@@ -1,7 +1,9 @@
 <script lang="ts">
+	import PlayerTile from './PlayerTile.svelte';
 	import { chatLater, chatSeed, queue } from './mockRoom.svelte';
 
-	let { live }: { live: boolean } = $props();
+	// In media-focus the player lives in the main area, so the panel must not render a second one.
+	let { live, showPlayer }: { live: boolean; showPlayer: boolean } = $props();
 
 	// The room keeps talking while you ride; enough to judge whether chat survives mid-effort.
 	let messages = $state([...chatSeed]);
@@ -16,23 +18,11 @@
 </script>
 
 <aside class="flex w-80 shrink-0 flex-col border-l border-white/5">
-	<!--
-		YouTube RMF: ≥200×200, always visible while media plays, nothing drawn over it.
-		A rider-sized grid cell is only ~130 px tall at this width, so the player takes the
-		panel's full width instead — compliant by construction, not by remembering.
-	-->
-	<div class="border-b border-white/5 p-3">
-		<div
-			class="relative min-h-[200px] overflow-hidden rounded ring-1 ring-white/10"
-			style="background: linear-gradient(150deg, #1a0736, #05010f)"
-		>
-			<div
-				class="text-muted absolute inset-0 grid place-items-center text-center text-[11px]"
-			>
-				YouTube player tile<br />≥200×200, never overlaid
-			</div>
+	{#if showPlayer}
+		<div class="border-b border-white/5 p-3">
+			<PlayerTile />
 		</div>
-	</div>
+	{/if}
 
 	<div class="border-b border-white/5 px-4 py-3">
 		<div

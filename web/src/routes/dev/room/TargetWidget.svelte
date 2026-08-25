@@ -5,7 +5,11 @@
 <script lang="ts">
 	import { targetState, type MockRider } from './mockRoom.svelte';
 
-	let { you, variant }: { you: MockRider; variant: TargetVariant } = $props();
+	let {
+		you,
+		variant,
+		compact = false,
+	}: { you: MockRider; variant: TargetVariant; compact?: boolean } = $props();
 
 	const state = $derived(targetState(you));
 	/** The bar spans 0 → 150 % FTP, matching the interval graph's ceiling. */
@@ -46,12 +50,21 @@
 					></div>
 				{/if}
 			</div>
-			<div class="text-muted mt-1.5 flex justify-between font-mono text-[10px]">
-				<span>0</span>
-				<span>{state.has ? `target ${you.target} W` : 'no target'}</span>
-				<span>{Math.round(you.ftp * 1.5)}</span>
-			</div>
+			{#if !compact}
+				<div
+					class="text-muted mt-1.5 flex justify-between font-mono text-[10px]"
+				>
+					<span>0</span>
+					<span>{state.has ? `target ${you.target} W` : 'no target'}</span>
+					<span>{Math.round(you.ftp * 1.5)}</span>
+				</div>
+			{/if}
 		</div>
+		{#if compact}
+			<span class="text-muted shrink-0 font-mono text-[11px] tabular-nums"
+				>{state.has ? `${you.target} W` : '—'}</span
+			>
+		{/if}
 	</div>
 {:else}
 	<div class="flex items-baseline gap-[2vw]">

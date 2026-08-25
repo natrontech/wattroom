@@ -7,7 +7,11 @@
 		zoneOf,
 	} from './mockRoom.svelte';
 
-	let { rider, phase }: { rider: MockRider; phase: Phase } = $props();
+	let {
+		rider,
+		phase,
+		stretch = false,
+	}: { rider: MockRider; phase: Phase; stretch?: boolean } = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
@@ -16,7 +20,9 @@
 </script>
 
 <div
-	class="bg-surface-raised relative aspect-video overflow-hidden rounded-lg ring-1 transition-shadow duration-200 {rider.speaking
+	class="bg-surface-raised relative overflow-hidden rounded-lg ring-1 {stretch
+		? 'h-full'
+		: 'aspect-video'} transition-shadow duration-200 {rider.speaking
 		? 'ring-neon shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-neon)_35%,transparent)]'
 		: 'ring-white/10'}"
 >

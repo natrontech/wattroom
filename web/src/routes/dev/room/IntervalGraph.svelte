@@ -8,12 +8,14 @@
 		elapsed,
 		ftp,
 		trace,
+		compact = false,
 	}: {
 		segments: Segment[];
 		total: number;
 		elapsed: number;
 		ftp: number;
 		trace: { t: number; w: number }[];
+		compact?: boolean;
 	} = $props();
 
 	const W = 1000;
@@ -44,7 +46,11 @@
 	);
 </script>
 
-<svg viewBox="0 0 {W} {H}" class="h-28 w-full" preserveAspectRatio="none">
+<svg
+	viewBox="0 0 {W} {H}"
+	class="w-full {compact ? 'h-14' : 'h-28'}"
+	preserveAspectRatio="none"
+>
 	{#each blocks as block, i (i)}
 		<polygon
 			points={block.points}

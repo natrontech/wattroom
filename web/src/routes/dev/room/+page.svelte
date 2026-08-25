@@ -1,5 +1,6 @@
 <script lang="ts">
 	import IntervalGraph from './IntervalGraph.svelte';
+	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';
 	import RoomRail from './RoomRail.svelte';
 	import SidePanel from './SidePanel.svelte';
@@ -25,6 +26,24 @@
 	const live = $derived(room.phase === 'live');
 
 	let tv = $state(false);
+
+	/** WATTROOM.md: user-switchable layouts. One grid, three weightings. */
+	type Layout = 'metrics' | 'video' | 'media';
+	const layouts: { id: Layout; label: string }[] = [
+		{ id: 'metrics', label: 'Metrics' },
+		{ id: 'video', label: 'Video' },
+		{ id: 'media', label: 'Media' },
+	];
+	let layout = $state<Layout>('metrics');
+
+	// Video-first trades columns for tile size; media-focus demotes riders to a strip.
+	const riderGrid = $derived(
+		layout === 'media'
+			? 'shrink-0 grid-cols-3 sm:grid-cols-6'
+			: layout === 'video'
+				? 'min-h-0 flex-1 grid-rows-3 sm:grid-cols-2 sm:grid-rows-3 xl:grid-cols-3 xl:grid-rows-2'
+				: 'shrink-0 sm:grid-cols-2 xl:grid-cols-3',
+	);
 
 	const phases: { id: Phase; label: string }[] = [
 		{ id: 'lounge', label: 'Lounge' },
@@ -63,7 +82,7 @@
 	<div class="flex h-full">
 		<RoomRail {you} {live} />
 
-		<main class="flex min-w-0 flex-1 flex-col overflow-y-auto px-5 py-4">
+		<main class="flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4">
 			<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 				<div>
 					<h1 class="font-display text-lg leading-tight font-bold">
@@ -90,6 +109,16 @@
 						>
 					{/each}
 				</div>
+				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+					{#each layouts as option (option.id)}
+						<button
+							onclick={() => (layout = option.id)}
+							class="rounded px-2.5 py-1 text-xs {layout === option.id
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}">{option.label}</button
+						>
+					{/each}
+				</div>
 				<button
 					onclick={() => (tv = true)}
 					class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
@@ -110,10 +139,17 @@
 				{/if}
 			</header>
 
+			{#if layout === 'media'}
+				<!-- Media-focus: the player takes the main area, riders drop to a strip beneath it. -->
+				<div class="flex min-h-0 flex-1 justify-center">
+					<PlayerTile tall />
+				</div>
+			{/if}
+
 			<!-- Rider tiles: camera and power fused, so there is one grid rather than three. -->
-			<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
 				{#each room.riders as rider (rider.name)}
-					<RiderTile {rider} phase={room.phase} />
+					<RiderTile {rider} phase={room.phase} stretch={layout === 'video'} />
 				{/each}
 			</div>
 
@@ -158,7 +194,7 @@
 				</div>
 
 				<div class="mt-2">
-					<TargetWidget {you} variant="notch" />
+					<TargetWidget {you} variant="notch" compact={layout !== 'metrics'} />
 				</div>
 				<div class="mt-2 overflow-hidden rounded-lg">
 					<IntervalGraph
@@ -167,6 +203,7 @@
 						elapsed={room.elapsed}
 						ftp={you.ftp}
 						trace={you.trace}
+						compact={layout !== 'metrics'}
 					/>
 				</div>
 			{:else}
@@ -183,6 +220,6 @@
 			{/if}
 		</main>
 
-		<SidePanel {live} />
+		<SidePanel {live} showPlayer={layout !== 'media'} />
 	</div>
 {/if}
