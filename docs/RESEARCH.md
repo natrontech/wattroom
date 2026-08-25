@@ -144,6 +144,68 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 - **Licensing**: protocol constants (UUIDs, op codes, scaling) are facts and fine to use; the WCPS driver is written fresh, no Auuki code copied.
 - **Zwift Cog / virtual shifting**: irrelevant in ERG (trainer holds watts regardless of gear — the Cog works fine, as with TrainerRoad/MyWhoosh). In **slope mode** a Cog'd trainer is one fixed gear: virtual shifting is Zwift-proprietary (Click/Play pair only with the Zwift app; patented — US11986700/US12465816), no third-party API shipped yet despite announcements. Consequence: sprint moments get a per-rider sprint-grade setting instead of shifting (#31); don't implement app-side virtual shifting unless the official API lands. ([DC Rainmaker](https://www.dcrainmaker.com/2024/02/wahoo-kickr-review.html), [Makinolo protocol analysis](https://www.makinolo.com/blog/2023/11/06/virtual-gear-shifting-in-indoor-training/), [Zwift Cog third-party guide](https://www.gatebreakendurance.com/cycling/zwift-cog-with-other-cycling-apps/))
 
+## 10. Implementation depth: media & realtime (verified 3–0 unless noted; run of 2026-08-25)
+
+**YouTube IFrame API for the jukebox:**
+- `setPlaybackRate` **rounds unsupported rates toward 1** — a 1.03× nudge may silently become 1.0×. Gate on `getAvailablePlaybackRates()`; only `onPlaybackRateChange` confirms. → SPEC revised to a seek-first design.
+- `seekTo` needs `allowSeekAhead=true` for unbuffered regions and may land on an earlier keyframe — always **re-measure drift after a seek**.
+- Blocked entries surface at play time via `onError`: **100** removed/private, **101/150** embed-disallowed (150 also fires for some region/age cases), **153** missing referrer (new July 2025 — serve the embed with a proper referrer policy).
+- Reference implementation: [OpenTogetherTube](https://github.com/dyc3/opentogethertube) ships single-tier hard-seek at >1 s drift with 250 ms local dead-reckoning and **no clock-offset estimation at all** — the field gets away with much simpler than our spec assumed.
+
+**LiveKit JS SDK (v2.22.0, Aug 2026 — stable 2.x line, no migration risk):**
+- Ducking: `RoomEvent.ActiveSpeakersChanged` (loudest-first, includes local participant) drives it; `RemoteParticipant.setVolume(v, source)` ducks specific sources; `RoomOptions.webAudioMix` (default **false**) routes all LiveKit audio through a caller-supplied AudioContext for one unified mixing graph with jukebox + SFX.
+- **`adaptiveStream` and `dynacast` are both OFF by default** — must be explicitly enabled; they're the core scaling levers for 12-rider rooms.
+- `publishDefaults` are a sound baseline (simulcast on, VP8+backup, music audio preset with DTX+RED, screenshare 1080p15).
+- Reconnect UX: distinct `Reconnecting` (media interrupted → persistent dashboard status) vs `SignalReconnecting` (transparent) events; `ConnectionQualityChanged` covers per-rider badges.
+- Tokens: the server proactively refreshes tokens for *connected* clients — Go only mints short-TTL join tokens (page reload still needs a fresh mint).
+
+**Web platform for the feel layer:**
+- One user gesture (the "join room" click) resumes a suspended AudioContext for **all** future SFX — hang the unlock there. The YouTube iframe additionally needs `allow="autoplay"` delegation + prior domain interaction for unmuted starts.
+- Screen Wake Lock is **Baseline since March 2025** — rely on it, but handle rejection (battery saver) and re-acquire on `visibilitychange`.
+
+**Still open (no surviving claims — settle by doing):** exact muktihari/fit message sequence Strava accepts for a synthetic VirtualRide (→ hands-on encode-and-upload spike in #5); Go-side clock-sync/tick-layout patterns (→ decide in M2 implementation; note OTT ships fine with zero clock sync); empirical fine-grained playbackRate support on current embeds.
+
+## 11. Implementation depth: BLE/trainer layer (verified 3–0 unless noted; run of 2026-08-25)
+
+**FTMS Indoor Bike Data (0x2AD2) parsing — the driver's core loop:**
+- **Bit-0 is inverted**: More Data = 0 means Instantaneous Speed IS present. And the spec's Table 4.10 prints bit-2 (cadence) inverted too — that's a **known spec typo**: real trainers set bit 2 = 1 with cadence included. Parse bit 0 inverted, bit 2 normal (qdomyos-zwift's battle-tested reading).
+- Conditional fields in ascending bit order: speed (bit0), avg speed, **cadence (bit2, half-rpm resolution)**, avg cadence, distance, resistance, **power (bit6, SINT16)**, avg power, energy trio (bit8, sentinels 0xFFFF/0xFF = not available), HR (bit9), MET, elapsed, remaining. Notifications ~1 Hz, server-fixed.
+- Control-point contract: completion indication is `[0x80, request-op, result]` with results 0x01 Success … 0x05 Control Not Permitted; concurrent writes rejected at ATT level ("Procedure Already In Progress") — confirms the serialize-behind-indication design. **Subscribe to Fitness Machine Status (0x2ADA)** and re-Request-Control on its 0xFF (Control Permission Lost).
+- Spindown exists in-band (op 0x13 start/ignore; progress via 0x2ADA op 0x14 incl. "Stop Pedaling") but requires the 0x2ADA subscription — M1 defers calibration to the Wahoo app as planned; the flow is documented for later.
+
+**Kickr specifics:**
+- **Kickr cadence is firmware-estimated** (no sensor; added Sept 2019 to Kickr 2018/Core, initially FTMS-stream-only) and demonstrably drops out on sprint→easy transitions. Treat trainer cadence as low-trust; prefer a paired cadence/power-meter source — which matters for the spiral guard and Watt Golf.
+- JetBlack Victory (a friend-of-friend likely target) is verified FTMS-conformant across apps — but has **non-defeatable ERG power smoothing** (reported power is smoothed): flag smoothed-power trainers in execution-score contexts.
+
+**Multi-source arbitration (TrainerRoad's mature pattern, adopt as-is):** a paired power meter **always wins** display/record over the trainer; PowerMatch closes the loop by offsetting the ERG command by the measured meter↔trainer delta (default sensitivity 0.5). Cadence: dedicated sensor > power-meter crank data > trainer estimate.
+
+**Zwift accessories (reverse-engineered state):**
+- Play/Ride controllers expose proprietary service `00000001-19ca-4651-86e5-fa29dcdd09d1` speaking protobuf "ZAP" messages; Ride-family button presses are message 0x23 with an **active-low** 32-bit bitmap. But the **handshake/encryption story is unresolved** (all three competing accounts refuted each other) — reading Click/Play buttons from Web Bluetooth is NOT currently viable to plan on. Sprint-grade-instead-of-shifting stands validated: virtual shifting runs on Zwift's closed per-agreement trainer protocol (Elite/JetBlack/Van Rysel firmware deals; SHIFTR/BikeControl exist precisely to bridge it).
+- **Tacx NEO generation** needs FE-C tunneled over BLE: service `6e40fec1-b5a3-f393-e0a9-e50e24dcca9e`, FEC_TX `…fec2` notify / FEC_RX `…fec3` write (Nordic-UART framing of ANT+ FE-C pages; pycycling has a clean reference module). A future `FecTrainer` driver slots behind the same `Trainer` interface if a NEO owner joins.
+- Pre-2020 proprietary-BLE trainers: shipping apps simply declare them unsupported (ANT+-dongle advice doesn't transfer to Web Bluetooth). **M1 support line = FTMS + WCPS is validated.**
+
+**HR strap parsing (0x2A37):** flags bit 0 selects UINT8 vs UINT16 heart rate; bit 4 signals RR intervals — a **variable count** of UINT16s fills the rest of the packet (loop, don't assume one; overflow continues next notification).
+
+**Research debt (no surviving claims — resolve during driver work):** 0x2A63 crank-revolution rollover math + stale-data thresholds, CSC 0x2A5B parsing, Supported Power/Resistance Range (0x2AD8) reads for clamping, WCPS status/notification codes beyond the op table (capture real notifications during the #10 hardware session), Kickr ERG-smoothing specifics.
+
+## 12. Concurrency & coherence: everything at once (verified 3–0 unless noted; run of 2026-08-25)
+
+**Music-over-voice acoustics — the room-audio defaults change:**
+- Chrome historically cancelled only WebRTC far-end audio from the mic (local tab audio was rebroadcast!); chrome-wide AEC (fixed Oct 2023) now cancels Chrome-played audio incl. cross-origin iframes — but never system audio, the present-tense behavior rests on bug-tracker comments not docs, and the explicit `echoCancellationMode: 'all'` constraint is Chromium-141+ only (WebKit: no position). **Treat AEC as a quality improver, never a correctness guarantee.**
+- Discord — the closest precedent — solves music+open-mic with **transmit gating, not AEC**: push-to-talk or tightened voice-activity sensitivity is their official guidance; Watch Together plays YouTube per-user in local iframes with local volume, music never entering the voice path — exactly WattRoom's architecture, validated.
+- → SPEC: mic default = voice-activity gating; when the jukebox plays, tighten VAD and offer one-tap PTT; nudge headphones on join when music is active.
+
+**Noise suppression (fan noise):**
+- **Krisp is LiveKit-Cloud-only** — the self-hosted feature request was closed "not planned", and the npm filter package is commercially licensed. Self-hosted gets browser-native `noiseSuppression` (leave on, per LiveKit's own recommendation) plus optionally an OSS RNNoise/DTLN **track processor** on the local mic — the integration point (livekit-client processor interface) is identical to Krisp's, so an upgrade path exists.
+
+**Tab throttling vs the ERG loop:**
+- Chrome's intensive throttling can delay hidden-tab timer chains up to **~60 s per tick** — but **an active WebRTC connection exempts the tab** (1-second alignment instead). Riders in a room are protected by the call itself; solo riders with a hidden tab are NOT. → Ride-critical timing runs in a **Web Worker** with Wake Lock held; never trust main-thread setInterval for the target loop.
+- Degradation ladder is nearly free: LiveKit `adaptiveStream` pauses server-side flow for invisible tracks, `pauseVideoInBackground` (default true) stops remote video decode when backgrounded — audio and data unaffected.
+
+**Still open (no surviving claims):**
+- **Bluetooth coexistence** (BLE trainer/HR + BT-Classic headphone audio on one adapter; A2DP→HFP quality collapse when the headset mic activates) — settle empirically in the #10 hardware session; expect "wired headphones or phone-for-audio" as rider guidance.
+- **Temporal coherence** (klaxon↔sprint-UI alignment thresholds; server-clock-scheduled cue playback as the pattern) — design-time question for M4 sprint moments; working hypothesis stands: schedule cues on the synced server clock, accept that coach voice can never align (~100–300 ms WebRTC latency).
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

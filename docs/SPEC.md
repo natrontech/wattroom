@@ -106,5 +106,12 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 ## Sync tolerances
 
 - Metrics latency budget: pedal → every screen **< 500 ms**.
-- Jukebox drift: nudge `playbackRate` (±5 %) when 0.3–2 s off; hard `seekTo` beyond 2 s.
+- Jukebox drift (revised per RESEARCH.md §10): **seek-first design** — hard `seekTo(t, allowSeekAhead=true)` when drift > 1.5 s **(default — tune in alpha)**, then **re-measure** (unbuffered seeks land on an earlier keyframe). Rate-nudging is an *optional* enhancement: YouTube rounds unsupported rates toward 1 and only `onPlaybackRateChange` confirms a change, so nudge only at rates listed by `getAvailablePlaybackRates()`, else skip the tier entirely. Between corrections, dead-reckon position locally every 250 ms (OpenTogetherTube's proven design).
 - Shared timeline: server-authoritative; clients render from tick timestamps, never local clocks.
+
+## Room audio defaults (defaults — tune in alpha; rationale RESEARCH.md §12)
+
+- Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation on). While the jukebox plays: tightened VAD threshold + a one-tap push-to-talk toggle offered in the dashboard.
+- Joining a room with music playing and mic open → one-line **headphone nudge** (dismissible, never blocking). Echo cancellation is treated as best-effort — the defaults must work without it.
+- Jukebox audio is always local per rider (own iframe, own volume) and never enters the voice path.
+- Ride-critical timers (ERG targets, tick handling) run in a **Web Worker** with Wake Lock held — main-thread timers throttle in hidden tabs (an active call exempts the tab, solo rides are not exempt).
