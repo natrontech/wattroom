@@ -1,26 +1,47 @@
 <script module lang="ts">
-	export type MarkKind = 'sun' | 'sunset' | 'horizon' | 'tube' | 'chrome';
+	export type MarkKind = 'bars' | 'reflect' | 'sundisc' | 'ring' | 'framed';
 </script>
 
 <script lang="ts">
-	let { kind, size = 64 }: { kind: MarkKind; size?: number } = $props();
+	let {
+		kind,
+		size = 64,
+		live = false,
+	}: { kind: MarkKind; size?: number; live?: boolean } = $props();
 
 	// Gradient/mask ids must be unique — the page renders every mark several times over.
 	const uid = $props.id();
 
-	// Sun slices widen toward the bottom: the retro-sun cue, in four rects.
-	const slices = [
-		{ y: 34, h: 2 },
-		{ y: 40, h: 3 },
-		{ y: 47, h: 4 },
-		{ y: 55, h: 5.5 },
-	];
+	// The equalizer W: bar heights trace a W valley, so the interval graph is the letter.
+	const eq = [46, 20, 34, 20, 46].map((h, i) => ({
+		x: 2 + i * 13,
+		y: 58 - h,
+		h,
+	}));
 
-	// Grid converging on a vanishing point just below the horizon.
-	const rails = [-44, -22, -2, 14, 32, 50, 66, 86, 108];
-	const rungs = [36, 39.5, 44.5, 51.5, 61];
+	// Same equalizer, scaled down to sit in front of a setting sun.
+	const eqSmall = [32, 14, 24, 14, 32].map((h, i) => ({
+		x: 9 + i * 10,
+		y: 56 - h,
+		h,
+	}));
 
-	const wTrace = 'M6 17 L20 47 L32 28 L44 47 L58 17';
+	// Radial equalizer: a room of riders seen from above, one of them live.
+	const spokes = [14, 8, 11, 6, 13, 7, 12, 9].map((len, i) => {
+		const a = -Math.PI / 2 + (i * Math.PI) / 4;
+		return {
+			x1: 32 + 14 * Math.cos(a),
+			y1: 32 + 14 * Math.sin(a),
+			x2: 32 + (14 + len) * Math.cos(a),
+			y2: 32 + (14 + len) * Math.sin(a),
+		};
+	});
+
+	const framed = [22, 12, 18, 28].map((h, i) => ({
+		x: 14 + i * 10,
+		y: 46 - h,
+		h,
+	}));
 </script>
 
 <svg
@@ -29,118 +50,159 @@
 	height={size}
 	fill="none"
 	aria-hidden="true"
+	class={live ? 'live' : ''}
 >
 	<defs>
-		<linearGradient id="{uid}-sun" x1="0" y1="0" x2="0" y2="1">
-			<stop offset="0%" stop-color="var(--color-watt)" />
-			<stop offset="58%" stop-color="var(--color-neon)" />
-			<stop offset="100%" stop-color="var(--color-neon)" stop-opacity="0.35" />
-		</linearGradient>
-		<linearGradient id="{uid}-chrome" x1="0" y1="0" x2="0" y2="1">
+		<linearGradient id="{uid}-sunset" x1="0" y1="0" x2="0" y2="1">
 			<stop offset="0%" stop-color="var(--color-watt)" />
 			<stop offset="100%" stop-color="var(--color-neon)" />
 		</linearGradient>
+		<linearGradient id="{uid}-fade" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0%" stop-color="var(--color-neon)" stop-opacity="0.55" />
+			<stop offset="100%" stop-color="var(--color-neon)" stop-opacity="0" />
+		</linearGradient>
 		<mask id="{uid}-slices">
 			<rect x="0" y="0" width="64" height="64" fill="white" />
-			{#each slices as slice (slice.y)}
-				<rect x="0" y={slice.y} width="64" height={slice.h} fill="black" />
-			{/each}
+			<rect x="0" y="44" width="64" height="3" fill="black" />
+			<rect x="0" y="52" width="64" height="4" fill="black" />
 		</mask>
-		<clipPath id="{uid}-below">
-			<rect x="0" y="33" width="64" height="31" />
-		</clipPath>
 	</defs>
 
-	{#if kind === 'sun'}
-		<circle
-			cx="32"
-			cy="32"
-			r="26"
-			fill="url(#{uid}-sun)"
-			mask="url(#{uid}-slices)"
-			class="text-watt glow-stroke"
-		/>
-	{:else if kind === 'sunset'}
-		<circle
-			cx="32"
-			cy="30"
-			r="22"
-			fill="url(#{uid}-sun)"
-			mask="url(#{uid}-slices)"
-		/>
-		<path
-			d={wTrace}
-			stroke="currentColor"
-			stroke-width="6"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class="text-watt glow-stroke"
-		/>
-	{:else if kind === 'horizon'}
-		<g clip-path="url(#{uid}-below)" class="text-neon" opacity="0.7">
-			{#each rails as x (x)}
-				<line
-					x1={x}
-					y1="64"
-					x2="32"
-					y2="33"
-					stroke="currentColor"
-					stroke-width="1.2"
-				/>
-			{/each}
-			{#each rungs as y (y)}
-				<line
-					x1="0"
-					y1={y}
-					x2="64"
-					y2={y}
-					stroke="currentColor"
-					stroke-width="1.2"
+	{#if kind === 'bars'}
+		<g class="text-watt glow-stroke">
+			{#each eq as bar, i (bar.x)}
+				<rect
+					x={bar.x}
+					y={bar.y}
+					width="8"
+					height={bar.h}
+					rx="4"
+					fill="url(#{uid}-sunset)"
+					style="--i: {i}"
 				/>
 			{/each}
 		</g>
-		<path
-			d="M6 12 L20 40 L32 22 L44 40 L58 12"
-			stroke="currentColor"
-			stroke-width="6"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class="text-watt glow-stroke"
-		/>
-	{:else if kind === 'tube'}
-		<path
-			d={wTrace}
-			stroke="var(--color-neon)"
-			stroke-width="11"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			opacity="0.45"
-		/>
-		<path
-			d={wTrace}
-			stroke="currentColor"
-			stroke-width="5"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class="text-watt glow-stroke"
-		/>
-	{:else if kind === 'chrome'}
+	{:else if kind === 'reflect'}
+		<g class="text-watt glow-stroke">
+			{#each eq as bar, i (bar.x)}
+				<rect
+					x={bar.x}
+					y={bar.y * 0.62 + 4}
+					width="8"
+					height={bar.h * 0.62}
+					rx="4"
+					fill="url(#{uid}-sunset)"
+					style="--i: {i}"
+				/>
+			{/each}
+		</g>
 		<line
-			x1="2"
-			y1="38"
-			x2="62"
-			y2="38"
+			x1="0"
+			y1="42"
+			x2="64"
+			y2="42"
 			stroke="var(--color-neon)"
 			stroke-width="2"
-			opacity="0.6"
 		/>
-		<path
-			d={wTrace}
-			stroke="url(#{uid}-chrome)"
-			stroke-width="9"
-			stroke-linecap="square"
-			stroke-linejoin="miter"
-			class="text-watt glow-stroke"
+		{#each eq as bar (bar.x)}
+			<rect
+				x={bar.x}
+				y="45"
+				width="8"
+				height={bar.h * 0.3}
+				rx="4"
+				fill="url(#{uid}-fade)"
+			/>
+		{/each}
+	{:else if kind === 'sundisc'}
+		<circle
+			cx="32"
+			cy="28"
+			r="24"
+			fill="url(#{uid}-sunset)"
+			mask="url(#{uid}-slices)"
+			opacity="0.55"
 		/>
+		<g class="text-watt glow-stroke">
+			{#each eqSmall as bar, i (bar.x)}
+				<rect
+					x={bar.x}
+					y={bar.y}
+					width="6"
+					height={bar.h}
+					rx="3"
+					fill="currentColor"
+					style="--i: {i}"
+				/>
+			{/each}
+		</g>
+	{:else if kind === 'ring'}
+		<circle
+			cx="32"
+			cy="32"
+			r="9"
+			stroke="var(--color-neon)"
+			stroke-width="3"
+			opacity="0.7"
+		/>
+		{#each spokes as spoke, i (i)}
+			<line
+				x1={spoke.x1}
+				y1={spoke.y1}
+				x2={spoke.x2}
+				y2={spoke.y2}
+				stroke="currentColor"
+				stroke-width="6"
+				stroke-linecap="round"
+				class={i === 0 ? 'text-watt glow-stroke' : 'text-neon opacity-55'}
+			/>
+		{/each}
+	{:else if kind === 'framed'}
+		<rect
+			x="6"
+			y="6"
+			width="52"
+			height="52"
+			rx="15"
+			stroke="var(--color-neon)"
+			stroke-width="4"
+		/>
+		<g class="text-watt glow-stroke">
+			{#each framed as bar, i (bar.x)}
+				<rect
+					x={bar.x}
+					y={bar.y}
+					width="6"
+					height={bar.h}
+					rx="3"
+					fill="url(#{uid}-sunset)"
+					style="--i: {i}"
+				/>
+			{/each}
+		</g>
 	{/if}
 </svg>
+
+<style>
+	/* The mark as a power meter: bars breathe while a ride is running. */
+	.live rect {
+		transform-box: fill-box;
+		transform-origin: bottom;
+		animation: eq 1.1s ease-in-out infinite;
+		animation-delay: calc(var(--i, 0) * -0.19s);
+	}
+	@keyframes eq {
+		0%,
+		100% {
+			transform: scaleY(0.5);
+		}
+		50% {
+			transform: scaleY(1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.live rect {
+			animation: none;
+		}
+	}
+</style>

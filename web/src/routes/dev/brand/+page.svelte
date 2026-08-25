@@ -3,29 +3,29 @@
 
 	const marks: { kind: MarkKind; name: string; idea: string }[] = [
 		{
-			kind: 'sun',
-			name: 'Sun',
-			idea: 'The retro sun, sliced. Pure vibe, says nothing about cycling.',
+			kind: 'bars',
+			name: 'Equalizer W',
+			idea: 'Bar heights trace a W. The interval graph is the letter.',
 		},
 		{
-			kind: 'sunset',
-			name: 'Sunset W',
-			idea: 'The W is the horizon the sun sets behind.',
+			kind: 'reflect',
+			name: 'Equalizer horizon',
+			idea: 'Same bars standing on the horizon, neon puddle beneath.',
 		},
 		{
-			kind: 'horizon',
-			name: 'Grid W',
-			idea: 'Outrun grid receding under a glowing power trace.',
+			kind: 'sundisc',
+			name: 'Sunset equalizer',
+			idea: 'Bars in the foreground, sun setting behind them.',
 		},
 		{
-			kind: 'tube',
-			name: 'Neon tube W',
-			idea: 'Bent neon tubing — bar sign for a pain cave.',
+			kind: 'ring',
+			name: 'Room ring',
+			idea: 'A room seen from above — every spoke a rider, one of them you.',
 		},
 		{
-			kind: 'chrome',
-			name: 'Chrome W',
-			idea: 'Hard-edged gradient letterform cutting a horizon.',
+			kind: 'framed',
+			name: 'Framed bars',
+			idea: 'Watts inside a room. Chunkiest, best app-icon silhouette.',
 		},
 	];
 
@@ -63,7 +63,7 @@
 		{ label: 'elapsed', value: '24:07' },
 	];
 
-	let chosen = $state<MarkKind>('sunset');
+	let chosen = $state<MarkKind>('bars');
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
@@ -99,6 +99,62 @@
 				<p class="text-muted mt-0.5 text-xs">{mark.idea}</p>
 			</button>
 		{/each}
+	</div>
+
+	<!-- The mark as a live instrument -->
+	<h2 class="text-muted mt-14 text-xs tracking-[0.2em] uppercase">
+		The mark, alive
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-sm">
+		An equalizer is the one mark shape that can be driven by data. Idle it sits
+		still; while a session is running the bars move — in the nav, in the tab, on
+		the TV. The logo becomes the quietest possible “you are riding” indicator,
+		and no other brand in this space has one.
+	</p>
+	<div class="mt-4 grid gap-3 sm:grid-cols-2">
+		<div
+			class="border-muted/15 bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
+		>
+			<Mark kind={chosen} size={56} />
+			<div>
+				<p class="text-sm font-medium">Idle</p>
+				<p class="text-muted mt-0.5 text-xs">No session running.</p>
+			</div>
+		</div>
+		<div
+			class="border-muted/15 bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
+		>
+			<Mark kind={chosen} size={56} live />
+			<div>
+				<p class="text-sm font-medium">Riding</p>
+				<p class="text-muted mt-0.5 text-xs">
+					Placeholder loop here; the real one is driven by the 1 Hz tick.
+				</p>
+			</div>
+		</div>
+	</div>
+
+	<!-- Favicon reality check -->
+	<h2 class="text-muted mt-14 text-xs tracking-[0.2em] uppercase">
+		Favicon check
+	</h2>
+	<div class="mt-4 grid gap-3 sm:grid-cols-2">
+		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<div class="flex items-center gap-2 rounded-t-md bg-[#2b2b31] px-3 py-2">
+				<Mark kind={chosen} size={16} />
+				<span class="text-xs text-white/80">WattRoom — Sweet Spot 2×20</span>
+			</div>
+			<p class="text-muted mt-3 text-xs">Dark browser chrome.</p>
+		</div>
+		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<div class="flex items-center gap-2 rounded-t-md bg-[#dedee3] px-3 py-2">
+				<Mark kind={chosen} size={16} />
+				<span class="text-xs text-black/80">WattRoom — Sweet Spot 2×20</span>
+			</div>
+			<p class="text-muted mt-3 text-xs">
+				Light chrome — where thin strokes disappear.
+			</p>
+		</div>
 	</div>
 
 	<!-- Type directions, each carrying the selected mark -->
