@@ -55,10 +55,10 @@
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
-	<h1 class="text-3xl font-semibold tracking-tight">Styleguide</h1>
+	<h1 class="font-display text-3xl font-bold tracking-tight">Styleguide</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
-		Tokens live in <code class="text-white/80">src/app.css</code>. Type scale
-		renders in the chosen brand font once that's picked.
+		Tokens live in <code class="text-white/80">src/app.css</code>; the identity
+		that fixes their values is ADR-0004.
 	</p>
 
 	<!-- Surfaces -->

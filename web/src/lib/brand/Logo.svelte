@@ -26,7 +26,7 @@
 		fill="none"
 		role="img"
 		aria-label="WattRoom"
-		class="text-watt glow-stroke {live ? 'live' : ''}"
+		class="text-watt glow-stroke shrink-0 {live ? 'live' : ''}"
 	>
 		<defs>
 			<linearGradient id="{uid}-sunset" x1="0" y1="0" x2="0" y2="1">

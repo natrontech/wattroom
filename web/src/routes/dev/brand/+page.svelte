@@ -20,21 +20,24 @@
 	</p>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Lockups</h2>
-	<div class="mt-4 grid gap-3 sm:grid-cols-3">
+	<!-- The full lockup needs a whole row: at size 72 it is ~410px wide. -->
+	<div class="mt-4 grid gap-3">
 		<div
 			class="border-muted/15 bg-surface-raised flex items-center justify-center rounded-lg border p-8"
 		>
 			<Logo size={72} wordmark />
 		</div>
-		<div
-			class="border-muted/15 bg-surface-raised flex items-center justify-center rounded-lg border p-8"
-		>
-			<Logo size={72} />
-		</div>
-		<div
-			class="border-muted/15 flex items-center justify-center rounded-lg border bg-white p-8"
-		>
-			<span class="text-black"><Logo size={72} /></span>
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div
+				class="border-muted/15 bg-surface-raised flex items-center justify-center rounded-lg border p-8"
+			>
+				<Logo size={72} />
+			</div>
+			<div
+				class="border-muted/15 flex items-center justify-center rounded-lg border bg-white p-8"
+			>
+				<Logo size={72} />
+			</div>
 		</div>
 	</div>
 
