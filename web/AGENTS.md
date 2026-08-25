@@ -8,4 +8,5 @@ Rules an agent would otherwise get wrong; cross-cutting rules live in the root A
 - Tailwind v4 utilities, theme tokens in `src/app.css` (`@theme`). No component library. `--color-watt` (magenta) marks live data only — never buttons, borders, or chrome; `--color-neon` (violet) is the structural accent and never glows. Display type and every numeral use `font-display`.
 - SPA constraints: `ssr = false` everywhere; no server-only SvelteKit features (form actions, +page.server.ts) — the Go server is the only backend.
 - YouTube player tile: ≥200×200, always visible while media plays, nothing overlaid on it — TOS requirement (WATTROOM.md), not a style choice.
+- **Restart `pnpm dev` after adding a new route directory** — Tailwind v4 does not rescan for directories created after the server started, so your classes silently resolve to nothing (the class lands on the element, the CSS rule never exists). Symptom: layout looks unstyled while everything type-checks.
 - Formatting: prettier (svelte + tailwind plugins) — hook runs it on edit; `pnpm run format` for bulk.

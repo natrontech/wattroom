@@ -7,6 +7,8 @@
 		{ href: '/dev/brand', label: 'Brand' },
 		{ href: '/dev/styleguide', label: 'Styleguide' },
 		{ href: '/dev/room', label: 'Room' },
+		{ href: '/dev/spectator', label: 'Spectator' },
+		{ href: '/dev/medal', label: 'Medals' },
 	];
 </script>
 
