@@ -31,6 +31,14 @@ export function bandWatts(target: number): number {
 	return Math.max(target * 0.05, 10);
 }
 
+/** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
+export function targetState(rider: MockRider) {
+	const has = rider.target > 0;
+	const band = has ? bandWatts(rider.target) : 0;
+	const delta = rider.watts - rider.target;
+	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
+}
+
 /** Coggan 7-zone, boundaries per docs/SPEC.md. */
 export function zoneOf(watts: number, ftp: number): number {
 	const pct = (watts / ftp) * 100;
