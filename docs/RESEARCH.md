@@ -188,6 +188,24 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 
 **Research debt (no surviving claims — resolve during driver work):** 0x2A63 crank-revolution rollover math + stale-data thresholds, CSC 0x2A5B parsing, Supported Power/Resistance Range (0x2AD8) reads for clamping, WCPS status/notification codes beyond the op table (capture real notifications during the #10 hardware session), Kickr ERG-smoothing specifics.
 
+## 12. Concurrency & coherence: everything at once (verified 3–0 unless noted; run of 2026-08-25)
+
+**Music-over-voice acoustics — the room-audio defaults change:**
+- Chrome historically cancelled only WebRTC far-end audio from the mic (local tab audio was rebroadcast!); chrome-wide AEC (fixed Oct 2023) now cancels Chrome-played audio incl. cross-origin iframes — but never system audio, the present-tense behavior rests on bug-tracker comments not docs, and the explicit `echoCancellationMode: 'all'` constraint is Chromium-141+ only (WebKit: no position). **Treat AEC as a quality improver, never a correctness guarantee.**
+- Discord — the closest precedent — solves music+open-mic with **transmit gating, not AEC**: push-to-talk or tightened voice-activity sensitivity is their official guidance; Watch Together plays YouTube per-user in local iframes with local volume, music never entering the voice path — exactly WattRoom's architecture, validated.
+- → SPEC: mic default = voice-activity gating; when the jukebox plays, tighten VAD and offer one-tap PTT; nudge headphones on join when music is active.
+
+**Noise suppression (fan noise):**
+- **Krisp is LiveKit-Cloud-only** — the self-hosted feature request was closed "not planned", and the npm filter package is commercially licensed. Self-hosted gets browser-native `noiseSuppression` (leave on, per LiveKit's own recommendation) plus optionally an OSS RNNoise/DTLN **track processor** on the local mic — the integration point (livekit-client processor interface) is identical to Krisp's, so an upgrade path exists.
+
+**Tab throttling vs the ERG loop:**
+- Chrome's intensive throttling can delay hidden-tab timer chains up to **~60 s per tick** — but **an active WebRTC connection exempts the tab** (1-second alignment instead). Riders in a room are protected by the call itself; solo riders with a hidden tab are NOT. → Ride-critical timing runs in a **Web Worker** with Wake Lock held; never trust main-thread setInterval for the target loop.
+- Degradation ladder is nearly free: LiveKit `adaptiveStream` pauses server-side flow for invisible tracks, `pauseVideoInBackground` (default true) stops remote video decode when backgrounded — audio and data unaffected.
+
+**Still open (no surviving claims):**
+- **Bluetooth coexistence** (BLE trainer/HR + BT-Classic headphone audio on one adapter; A2DP→HFP quality collapse when the headset mic activates) — settle empirically in the #10 hardware session; expect "wired headphones or phone-for-audio" as rider guidance.
+- **Temporal coherence** (klaxon↔sprint-UI alignment thresholds; server-clock-scheduled cue playback as the pattern) — design-time question for M4 sprint moments; working hypothesis stands: schedule cues on the synced server clock, accept that coach voice can never align (~100–300 ms WebRTC latency).
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.
