@@ -2,6 +2,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import {
 		fillPct,
+		type TileMetric,
 		ZONE_BG,
 		type MockRider,
 		type Phase,
@@ -12,11 +13,41 @@
 		rider,
 		phase,
 		stretch = false,
-	}: { rider: MockRider; phase: Phase; stretch?: boolean } = $props();
+		metrics = [],
+	}: {
+		rider: MockRider;
+		phase: Phase;
+		stretch?: boolean;
+		/** Rider-chosen extras; watts is never optional. */
+		metrics?: TileMetric[];
+	} = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
 	const fill = $derived(fillPct(rider.watts, rider.ftp));
+
+	// value drives the zero-filter; text keeps the decimal so the column stays aligned.
+	const extras = $derived(
+		metrics
+			.map((metric) =>
+				metric === 'hr'
+					? { key: metric, value: rider.hr, text: `${rider.hr}`, unit: 'bpm' }
+					: metric === 'cadence'
+						? {
+								key: metric,
+								value: rider.cadence,
+								text: `${rider.cadence}`,
+								unit: 'rpm',
+							}
+						: {
+								key: metric,
+								value: rider.watts,
+								text: (rider.watts / rider.kg).toFixed(1),
+								unit: 'w/kg',
+							},
+			)
+			.filter((extra) => extra.value > 0),
+	);
 </script>
 
 <div
@@ -65,6 +96,17 @@
 					: 'text-white'}">{rider.watts}</span
 			>
 			<span class="text-[10px] text-white/60">W</span>
+		</div>
+	{/if}
+
+	{#if live && extras.length}
+		<div
+			class="absolute right-2.5 bottom-3 flex gap-2.5 font-mono text-[11px] text-white/85 tabular-nums drop-shadow"
+		>
+			{#each extras as extra (extra.key)}
+				<span>{extra.text}<span class="text-white/50"> {extra.unit}</span></span
+				>
+			{/each}
 		</div>
 	{/if}
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import IntervalGraph from './IntervalGraph.svelte';
+	import IntervalStrip from './IntervalStrip.svelte';
 	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';
 	import RoomRail from './RoomRail.svelte';
@@ -10,6 +11,8 @@
 		createRoom,
 		formatClock,
 		ROOM_NAME,
+		TILE_METRICS,
+		type TileMetric,
 		workout,
 		ZONE_TEXT,
 		zoneOf,
@@ -37,6 +40,14 @@
 		{ id: 'media', label: 'Media' },
 	];
 	let layout = $state<Layout>('metrics');
+
+	// Zwift shows everyone's HR; whether you want it on every tile is taste, so it's a toggle.
+	let tileMetrics = $state<TileMetric[]>(['hr']);
+	function toggleMetric(id: TileMetric) {
+		tileMetrics = tileMetrics.includes(id)
+			? tileMetrics.filter((m) => m !== id)
+			: [...tileMetrics, id];
+	}
 
 	// Video-first trades columns for tile size; media-focus demotes riders to a strip.
 	const riderGrid = $derived(
@@ -73,6 +84,7 @@
 			segments={room.segments}
 			total={room.total}
 			elapsed={room.elapsed}
+			block={room.block}
 		/>
 	</div>
 {:else}
@@ -116,6 +128,16 @@
 						>
 					{/each}
 				</div>
+				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+					{#each TILE_METRICS as metric (metric.id)}
+						<button
+							onclick={() => toggleMetric(metric.id)}
+							class="rounded px-2 py-1 text-xs {tileMetrics.includes(metric.id)
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}">{metric.label}</button
+						>
+					{/each}
+				</div>
 				<button
 					onclick={() => (tv = true)}
 					class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
@@ -146,7 +168,12 @@
 			<!-- Rider tiles: camera and power fused, so there is one grid rather than three. -->
 			<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
 				{#each room.riders as rider (rider.name)}
-					<RiderTile {rider} phase={room.phase} stretch={layout === 'video'} />
+					<RiderTile
+						{rider}
+						phase={room.phase}
+						stretch={layout === 'video'}
+						metrics={tileMetrics}
+					/>
 				{/each}
 			</div>
 
@@ -190,6 +217,13 @@
 					</div>
 				</div>
 
+				<div class="mt-2">
+					<IntervalStrip
+						block={room.block}
+						bias={room.bias}
+						onBias={(step) => room.nudgeBias(step)}
+					/>
+				</div>
 				<div class="mt-2">
 					<TargetWidget {you} variant="notch" compact={layout !== 'metrics'} />
 				</div>

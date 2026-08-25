@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IntervalStrip from './IntervalStrip.svelte';
 	import TargetWidget from './TargetWidget.svelte';
 	import IntervalGraph from './IntervalGraph.svelte';
 	import {
@@ -17,11 +18,13 @@
 		segments,
 		total,
 		elapsed,
+		block,
 	}: {
 		riders: MockRider[];
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;
+		block: import('./mockRoom.svelte').Block | null;
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you)!);
@@ -50,6 +53,9 @@
 		<!-- Yours: the number you read from across the room, plus how far off you are. -->
 		<section class="flex flex-1 flex-col justify-center">
 			<TargetWidget {you} variant="delta" />
+			<div class="mt-[2.5vh]">
+				<IntervalStrip {block} bias={1} big />
+			</div>
 			<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[2.4vh]">
 				<span class="text-muted"
 					>target <span class="text-white">{you.target} W</span></span

@@ -28,6 +28,14 @@ export type Phase = 'lounge' | 'countdown' | 'live';
 
 export const ROOM_NAME = 'Thursday Sufferfest';
 
+/** Optional per-tile metrics. Zwift shows everyone's HR; whether you want it is taste. */
+export type TileMetric = 'hr' | 'cadence' | 'wkg';
+export const TILE_METRICS: { id: TileMetric; label: string }[] = [
+	{ id: 'hr', label: 'HR' },
+	{ id: 'cadence', label: 'Cadence' },
+	{ id: 'wkg', label: 'w/kg' },
+];
+
 /** Power bars and the interval graph all top out at 150 % FTP — one ceiling, one constant. */
 export const CEILING = 1.5;
 
@@ -52,6 +60,18 @@ export function targetState(rider: MockRider) {
 	const delta = rider.watts - rider.target;
 	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
 }
+
+/** Names from docs/SPEC.md's zone table — indexed by zone number. */
+export const ZONE_NAMES = [
+	'',
+	'Active recovery',
+	'Endurance',
+	'Tempo',
+	'Threshold',
+	'VO₂ max',
+	'Anaerobic',
+	'Neuromuscular',
+];
 
 /** Coggan 7-zone, boundaries per docs/SPEC.md. */
 export function zoneOf(watts: number, ftp: number): number {
@@ -95,6 +115,8 @@ interface RiderSeed {
 	muted?: boolean;
 	/** how faithfully they hold the target — 1.0 nails it, 1.06 always overcooks */
 	discipline: number;
+	/** resting-HR spread: two riders at the same %FTP are nowhere near the same bpm */
+	hrOffset: number;
 }
 
 const SEEDS: RiderSeed[] = [
@@ -106,6 +128,7 @@ const SEEDS: RiderSeed[] = [
 		coach: true,
 		cameraOn: true,
 		discipline: 1.01,
+		hrOffset: -12,
 	},
 	{
 		name: 'Ruben',
@@ -114,6 +137,7 @@ const SEEDS: RiderSeed[] = [
 		hue: 198,
 		cameraOn: true,
 		discipline: 1.06,
+		hrOffset: 7,
 	},
 	{
 		name: 'Milo',
@@ -123,6 +147,7 @@ const SEEDS: RiderSeed[] = [
 		cameraOn: false,
 		muted: true,
 		discipline: 0.94,
+		hrOffset: 14,
 	},
 	{
 		name: 'Sara',
@@ -131,6 +156,7 @@ const SEEDS: RiderSeed[] = [
 		hue: 330,
 		cameraOn: true,
 		discipline: 0.99,
+		hrOffset: -6,
 	},
 	{
 		name: 'Tobi',
@@ -139,6 +165,7 @@ const SEEDS: RiderSeed[] = [
 		hue: 150,
 		cameraOn: false,
 		discipline: 1.03,
+		hrOffset: 18,
 	},
 	{
 		name: 'You',
@@ -148,6 +175,7 @@ const SEEDS: RiderSeed[] = [
 		you: true,
 		cameraOn: true,
 		discipline: 1.0,
+		hrOffset: 0,
 	},
 ];
 
@@ -181,6 +209,58 @@ export const queue = [
 	{ title: 'Perturbator — Sentient', length: '5:29', by: 'Sara' },
 ];
 
+export interface Block {
+	/** 1-based position in the flattened timeline, for "block 3 of 6" */
+	index: number;
+	count: number;
+	label: string;
+	watts: number;
+	secondsLeft: number;
+	next: { label: string; watts: number; seconds: number } | null;
+}
+
+/** What a rider reads mid-interval: what this block is, how long is left, what's next. */
+function describeBlock(
+	info: ReturnType<typeof targetAt>,
+	segments: Segment[],
+	ftp: number,
+	bias: number,
+): Block {
+	const label = (seg: Segment | undefined): string => {
+		if (!seg) return '';
+		if (seg.kind === 'sprint') return 'Sprint';
+		const step = workout.steps[seg.stepIndex];
+		if (step?.type === 'warmup') return 'Warm-up';
+		if (step?.type === 'cooldown') return 'Cool-down';
+		const mid =
+			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
+		return ZONE_NAMES[zoneOf(mid * ftp, ftp)];
+	};
+	const wattsOf = (seg: Segment | undefined): number => {
+		if (!seg || seg.kind === 'sprint') return 0;
+		if (seg.watts !== undefined) return Math.round(seg.watts * bias);
+		const mid =
+			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
+		return Math.round(mid * ftp * bias);
+	};
+
+	const upcoming = segments[info.segmentIndex + 1];
+	return {
+		index: info.segmentIndex + 1,
+		count: segments.length,
+		label: label(info.segment),
+		watts: info.targetWatts ?? 0,
+		secondsLeft: Math.round(info.secondsRemainingInSegment),
+		next: upcoming
+			? {
+					label: label(upcoming),
+					watts: wattsOf(upcoming),
+					seconds: upcoming.seconds,
+				}
+			: null,
+	};
+}
+
 /**
  * A room of simulated riders on one workout, across the phases a real room moves
  * through. Every tile is a real SimulatedTrainer holding a real ERG target.
@@ -194,6 +274,9 @@ export function createRoom() {
 
 	let elapsed = $state(0);
 	let phase = $state<Phase>('lounge');
+	/** Rider-facing intensity trim, the one control riders reach for mid-interval. */
+	let bias = $state(1);
+	let block = $state<Block | null>(null);
 	let countdown = $state(COUNTDOWN);
 
 	const riders = $state<MockRider[]>(
@@ -239,7 +322,12 @@ export function createRoom() {
 				rider.hr =
 					sample.watts < 20
 						? 0
-						: Math.round(Math.min(190, 96 + (sample.watts / rider.ftp) * 78));
+						: Math.round(
+								Math.min(
+									195,
+									96 + SEEDS[i].hrOffset + (sample.watts / rider.ftp) * 78,
+								),
+							);
 				if (rider.target > 0) {
 					banded[i].ridden++;
 					if (Math.abs(sample.watts - rider.target) <= bandWatts(rider.target))
@@ -274,11 +362,14 @@ export function createRoom() {
 			if (next >= total) for (const rider of riders) rider.trace = [];
 			elapsed = next % total;
 			SEEDS.forEach((seed, i) => {
-				const { targetWatts } = targetAt(segments, seed.ftp, elapsed);
-				riders[i].target = targetWatts ?? 0;
+				const info = targetAt(segments, seed.ftp, elapsed, {
+					bias: seed.you ? bias : 1,
+				});
+				riders[i].target = info.targetWatts ?? 0;
 				void trainers[i].setTargetPower(
-					Math.round((targetWatts ?? 0) * seed.discipline),
+					Math.round((info.targetWatts ?? 0) * seed.discipline),
 				);
+				if (seed.you) block = describeBlock(info, segments, seed.ftp, bias);
 			});
 		}, 1000);
 	}
@@ -308,6 +399,19 @@ export function createRoom() {
 		start,
 		stop,
 		setPhase,
+		nudgeBias(step: number) {
+			// ±1 % steps, clamped: a trim, not a way to rewrite the workout.
+			bias = Math.min(
+				1.2,
+				Math.max(0.8, Math.round((bias + step) * 100) / 100),
+			);
+		},
+		get bias() {
+			return bias;
+		},
+		get block() {
+			return block;
+		},
 		get elapsed() {
 			return elapsed;
 		},
