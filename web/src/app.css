@@ -6,4 +6,31 @@
 	--color-surface-raised: #14141c;
 	--color-watt: #f5d90a; /* electric watt-yellow: live data only, never chrome */
 	--color-muted: #8b8b99;
+
+	/* Coggan 7-zone ramp. Deliberately skips yellow — that hue belongs to live wattage alone. */
+	--color-z1: #46506b;
+	--color-z2: #2f6fd0;
+	--color-z3: #12a8a0;
+	--color-z4: #46c26a;
+	--color-z5: #f2842b;
+	--color-z6: #ef4444;
+	--color-z7: #d946ef;
+}
+
+/*
+ * Glow scale. Driven by currentColor so a zone-coloured element glows in its own hue.
+ * Restraint rule (WATTROOM.md §7): glow marks live data — never chrome.
+ */
+@utility glow-text {
+	text-shadow: 0 0 0.35em color-mix(in oklab, currentColor 45%, transparent);
+}
+@utility glow-text-strong {
+	text-shadow:
+		0 0 0.22em color-mix(in oklab, currentColor 75%, transparent),
+		0 0 0.7em color-mix(in oklab, currentColor 40%, transparent);
+}
+@utility glow-stroke {
+	filter: drop-shadow(
+		0 0 6px color-mix(in oklab, currentColor 55%, transparent)
+	);
 }
