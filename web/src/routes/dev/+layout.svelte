@@ -8,6 +8,7 @@
 		{ href: '/dev/styleguide', label: 'Styleguide' },
 		{ href: '/dev/rooms', label: 'Rooms' },
 		{ href: '/dev/pairing', label: 'Pairing' },
+		{ href: '/dev/editor', label: 'Editor' },
 		{ href: '/dev/room', label: 'Room' },
 		{ href: '/dev/spectator', label: 'Spectator' },
 		{ href: '/dev/summary', label: 'Summary' },
