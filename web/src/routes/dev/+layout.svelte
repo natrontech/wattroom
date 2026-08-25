@@ -6,6 +6,7 @@
 	const screens = [
 		{ href: '/dev/brand', label: 'Brand' },
 		{ href: '/dev/styleguide', label: 'Styleguide' },
+		{ href: '/dev/rooms', label: 'Rooms' },
 		{ href: '/dev/pairing', label: 'Pairing' },
 		{ href: '/dev/room', label: 'Room' },
 		{ href: '/dev/spectator', label: 'Spectator' },
