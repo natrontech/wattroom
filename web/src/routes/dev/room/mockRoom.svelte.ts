@@ -129,6 +129,29 @@ const SEEDS: RiderSeed[] = [
 	},
 ];
 
+export const rooms = [
+	{ name: 'Thursday Sufferfest', members: 6, live: true },
+	{ name: 'Sunday Long Ride', members: 2, live: false },
+	{ name: 'Natron Lunch Crew', members: 0, live: false },
+	{ name: 'Winter Base Camp', members: 4, live: false },
+];
+
+/** Scripted so the panel feels inhabited. Text chat is a fast-follow (WATTROOM.md), mocked here to prove the layout. */
+export const chatSeed = [
+	{ who: 'Nina', text: 'ftp test next week or are we all cowards' },
+	{ who: 'Ruben', text: 'cowards' },
+	{ who: 'Milo', text: 'my trainer is making a noise again' },
+	{ who: 'Sara', text: 'thats just your knees milo' },
+];
+
+export const chatLater = [
+	{ who: 'Tobi', text: 'sorry late, kid meltdown' },
+	{ who: 'Nina', text: 'ur fine were still in warmup' },
+	{ who: 'Ruben', text: 'this is not sweet spot this is threshold' },
+	{ who: 'Milo', text: 'speak for yourself' },
+	{ who: 'Sara', text: '🔥' },
+];
+
 export const queue = [
 	{ title: 'Kavinsky — Nightcall', length: '4:18', by: 'Nina' },
 	{ title: 'The Midnight — Los Angeles', length: '6:02', by: 'Ruben' },
