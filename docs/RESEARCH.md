@@ -144,6 +144,27 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 - **Licensing**: protocol constants (UUIDs, op codes, scaling) are facts and fine to use; the WCPS driver is written fresh, no Auuki code copied.
 - **Zwift Cog / virtual shifting**: irrelevant in ERG (trainer holds watts regardless of gear — the Cog works fine, as with TrainerRoad/MyWhoosh). In **slope mode** a Cog'd trainer is one fixed gear: virtual shifting is Zwift-proprietary (Click/Play pair only with the Zwift app; patented — US11986700/US12465816), no third-party API shipped yet despite announcements. Consequence: sprint moments get a per-rider sprint-grade setting instead of shifting (#31); don't implement app-side virtual shifting unless the official API lands. ([DC Rainmaker](https://www.dcrainmaker.com/2024/02/wahoo-kickr-review.html), [Makinolo protocol analysis](https://www.makinolo.com/blog/2023/11/06/virtual-gear-shifting-in-indoor-training/), [Zwift Cog third-party guide](https://www.gatebreakendurance.com/cycling/zwift-cog-with-other-cycling-apps/))
 
+## 10. Implementation depth: media & realtime (verified 3–0 unless noted; run of 2026-08-25)
+
+**YouTube IFrame API for the jukebox:**
+- `setPlaybackRate` **rounds unsupported rates toward 1** — a 1.03× nudge may silently become 1.0×. Gate on `getAvailablePlaybackRates()`; only `onPlaybackRateChange` confirms. → SPEC revised to a seek-first design.
+- `seekTo` needs `allowSeekAhead=true` for unbuffered regions and may land on an earlier keyframe — always **re-measure drift after a seek**.
+- Blocked entries surface at play time via `onError`: **100** removed/private, **101/150** embed-disallowed (150 also fires for some region/age cases), **153** missing referrer (new July 2025 — serve the embed with a proper referrer policy).
+- Reference implementation: [OpenTogetherTube](https://github.com/dyc3/opentogethertube) ships single-tier hard-seek at >1 s drift with 250 ms local dead-reckoning and **no clock-offset estimation at all** — the field gets away with much simpler than our spec assumed.
+
+**LiveKit JS SDK (v2.22.0, Aug 2026 — stable 2.x line, no migration risk):**
+- Ducking: `RoomEvent.ActiveSpeakersChanged` (loudest-first, includes local participant) drives it; `RemoteParticipant.setVolume(v, source)` ducks specific sources; `RoomOptions.webAudioMix` (default **false**) routes all LiveKit audio through a caller-supplied AudioContext for one unified mixing graph with jukebox + SFX.
+- **`adaptiveStream` and `dynacast` are both OFF by default** — must be explicitly enabled; they're the core scaling levers for 12-rider rooms.
+- `publishDefaults` are a sound baseline (simulcast on, VP8+backup, music audio preset with DTX+RED, screenshare 1080p15).
+- Reconnect UX: distinct `Reconnecting` (media interrupted → persistent dashboard status) vs `SignalReconnecting` (transparent) events; `ConnectionQualityChanged` covers per-rider badges.
+- Tokens: the server proactively refreshes tokens for *connected* clients — Go only mints short-TTL join tokens (page reload still needs a fresh mint).
+
+**Web platform for the feel layer:**
+- One user gesture (the "join room" click) resumes a suspended AudioContext for **all** future SFX — hang the unlock there. The YouTube iframe additionally needs `allow="autoplay"` delegation + prior domain interaction for unmuted starts.
+- Screen Wake Lock is **Baseline since March 2025** — rely on it, but handle rejection (battery saver) and re-acquire on `visibilitychange`.
+
+**Still open (no surviving claims — settle by doing):** exact muktihari/fit message sequence Strava accepts for a synthetic VirtualRide (→ hands-on encode-and-upload spike in #5); Go-side clock-sync/tick-layout patterns (→ decide in M2 implementation; note OTT ships fine with zero clock sync); empirical fine-grained playbackRate support on current embeds.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

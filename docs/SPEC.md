@@ -91,5 +91,5 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 ## Sync tolerances
 
 - Metrics latency budget: pedal → every screen **< 500 ms**.
-- Jukebox drift: nudge `playbackRate` (±5 %) when 0.3–2 s off; hard `seekTo` beyond 2 s.
+- Jukebox drift (revised per RESEARCH.md §10): **seek-first design** — hard `seekTo(t, allowSeekAhead=true)` when drift > 1.5 s **(default — tune in alpha)**, then **re-measure** (unbuffered seeks land on an earlier keyframe). Rate-nudging is an *optional* enhancement: YouTube rounds unsupported rates toward 1 and only `onPlaybackRateChange` confirms a change, so nudge only at rates listed by `getAvailablePlaybackRates()`, else skip the tier entirely. Between corrections, dead-reckon position locally every 250 ms (OpenTogetherTube's proven design).
 - Shared timeline: server-authoritative; clients render from tick timestamps, never local clocks.
