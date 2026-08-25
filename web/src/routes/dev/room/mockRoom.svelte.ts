@@ -26,8 +26,22 @@ const COUNTDOWN = 10;
 /** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
 export type Phase = 'lounge' | 'countdown' | 'live';
 
+export const ROOM_NAME = 'Thursday Sufferfest';
+
+/** Power bars and the interval graph all top out at 150 % FTP — one ceiling, one constant. */
+export const CEILING = 1.5;
+
+export function fillPct(watts: number, ftp: number): number {
+	return Math.min(100, Math.max(0, (watts / ftp / CEILING) * 100));
+}
+
+export function formatClock(seconds: number): string {
+	const minutes = Math.floor(seconds / 60);
+	return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
 /** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
-export function bandWatts(target: number): number {
+function bandWatts(target: number): number {
 	return Math.max(target * 0.05, 10);
 }
 

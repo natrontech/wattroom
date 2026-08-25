@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import {
+		fillPct,
 		ZONE_BG,
 		type MockRider,
 		type Phase,
@@ -15,8 +16,7 @@
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
-	/** Bar fills at 150 % FTP, matching the interval graph's ceiling. */
-	const fill = $derived(Math.min(100, (rider.watts / rider.ftp / 1.5) * 100));
+	const fill = $derived(fillPct(rider.watts, rider.ftp));
 </script>
 
 <div

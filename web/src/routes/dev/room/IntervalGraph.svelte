@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Segment } from '$lib/workout/types';
-	import { ZONE_TEXT, zoneOf } from './mockRoom.svelte';
+	import { CEILING, ZONE_TEXT, zoneOf } from './mockRoom.svelte';
 
 	let {
 		segments,
@@ -21,16 +21,16 @@
 	const W = 1000;
 	const H = 120;
 	const BASE = 112;
-	/** 150 % FTP fills the graph; anything above clips, which is honest for sprints. */
-	const SCALE = (BASE - 8) / 1.5;
+	/** Anything above the shared ceiling clips, which is honest for sprints. */
+	const SCALE = (BASE - 8) / CEILING;
 
 	const x = (seconds: number) => (seconds / total) * W;
-	const y = (fraction: number) => BASE - Math.min(fraction, 1.5) * SCALE;
+	const y = (fraction: number) => BASE - Math.min(fraction, CEILING) * SCALE;
 
 	const blocks = $derived(
 		segments.map((seg) => {
-			const from = seg.kind === 'sprint' ? 1.5 : (seg.fromFraction ?? 0);
-			const to = seg.kind === 'sprint' ? 1.5 : (seg.toFraction ?? from);
+			const from = seg.kind === 'sprint' ? CEILING : (seg.fromFraction ?? 0);
+			const to = seg.kind === 'sprint' ? CEILING : (seg.toFraction ?? from);
 			const x0 = x(seg.startSeconds);
 			const x1 = x(seg.startSeconds + seg.seconds);
 			return {

@@ -8,6 +8,8 @@
 	import TvMode from './TvMode.svelte';
 	import {
 		createRoom,
+		formatClock,
+		ROOM_NAME,
 		workout,
 		ZONE_TEXT,
 		zoneOf,
@@ -51,11 +53,6 @@
 		{ id: 'live', label: 'Live' },
 	];
 
-	function clock(seconds: number): string {
-		const m = Math.floor(seconds / 60);
-		return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-	}
-
 	const readouts = $derived([
 		{ label: 'rpm', value: String(you.cadence) },
 		{ label: 'bpm', value: String(you.hr) },
@@ -86,7 +83,7 @@
 			<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 				<div>
 					<h1 class="font-display text-lg leading-tight font-bold">
-						Thursday Sufferfest
+						{ROOM_NAME}
 					</h1>
 					<p class="text-muted text-xs">
 						{room.riders.length} riders ·
@@ -130,7 +127,7 @@
 						<div
 							class="font-display text-2xl leading-none font-bold tabular-nums"
 						>
-							{clock(room.elapsed)}
+							{formatClock(room.elapsed)}
 						</div>
 						<div class="text-muted text-[10px] tracking-wider uppercase">
 							elapsed

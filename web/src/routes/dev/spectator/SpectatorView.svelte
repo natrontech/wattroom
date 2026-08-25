@@ -5,6 +5,9 @@
 		ZONE_BG,
 		type MockRider,
 		type Phase,
+		fillPct,
+		formatClock,
+		ROOM_NAME,
 		workout,
 		zoneOf,
 	} from '../room/mockRoom.svelte';
@@ -37,18 +40,13 @@
 		sent = emoji;
 		setTimeout(() => (sent = null), 1200);
 	}
-
-	function clock(seconds: number): string {
-		const m = Math.floor(seconds / 60);
-		return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-	}
 </script>
 
 <div class="bg-surface flex h-full flex-col text-white">
 	<header class="flex items-center gap-2.5 border-b border-white/5 px-4 py-3">
 		<Logo size={22} {live} />
 		<div class="min-w-0">
-			<p class="truncate text-sm font-medium">Thursday Sufferfest</p>
+			<p class="truncate text-sm font-medium">{ROOM_NAME}</p>
 			<p class="text-muted truncate text-[11px]">
 				{live ? workout.name : 'in the lounge'}
 			</p>
@@ -56,7 +54,7 @@
 		{#if live}
 			<span
 				class="font-display ml-auto text-lg leading-none font-bold tabular-nums"
-				>{clock(elapsed)}</span
+				>{formatClock(elapsed)}</span
 			>
 		{/if}
 	</header>
@@ -85,10 +83,7 @@
 						>
 							<div
 								class="h-full transition-[width] duration-500 {ZONE_BG[zone]}"
-								style="width: {Math.min(
-									100,
-									(rider.watts / rider.ftp / 1.5) * 100,
-								)}%"
+								style="width: {fillPct(rider.watts, rider.ftp)}%"
 							></div>
 						</div>
 						<span

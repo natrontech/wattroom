@@ -5,6 +5,9 @@
 		ZONE_BG,
 		ZONE_TEXT,
 		type MockRider,
+		fillPct,
+		formatClock,
+		ROOM_NAME,
 		workout,
 		zoneOf,
 	} from './mockRoom.svelte';
@@ -24,11 +27,6 @@
 	const you = $derived(riders.find((r) => r.you)!);
 	const others = $derived(riders.filter((r) => !r.you));
 	const zone = $derived(zoneOf(you.watts, you.ftp));
-
-	function clock(seconds: number): string {
-		const m = Math.floor(seconds / 60);
-		return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-	}
 </script>
 
 <!--
@@ -39,12 +37,12 @@
 <div class="bg-surface flex h-full flex-col px-[3vw] py-[3vh]">
 	<header class="flex items-baseline gap-[2vw]">
 		<h1 class="font-display text-[3.4vh] leading-none font-bold">
-			Thursday Sufferfest
+			{ROOM_NAME}
 		</h1>
 		<span class="text-muted text-[2.2vh]">{workout.name}</span>
 		<span
 			class="font-display ml-auto text-[4.5vh] leading-none font-bold tabular-nums"
-			>{clock(elapsed)}</span
+			>{formatClock(elapsed)}</span
 		>
 	</header>
 
@@ -79,10 +77,7 @@
 							class="h-full transition-[width] duration-500 ease-out {ZONE_BG[
 								riderZone
 							]}"
-							style="width: {Math.min(
-								100,
-								(rider.watts / rider.ftp / 1.5) * 100,
-							)}%"
+							style="width: {fillPct(rider.watts, rider.ftp)}%"
 						></div>
 					</div>
 					<span

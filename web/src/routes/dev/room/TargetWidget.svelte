@@ -3,7 +3,12 @@
 </script>
 
 <script lang="ts">
-	import { targetState, type MockRider } from './mockRoom.svelte';
+	import {
+		CEILING,
+		fillPct,
+		targetState,
+		type MockRider,
+	} from './mockRoom.svelte';
 
 	let {
 		you,
@@ -12,9 +17,7 @@
 	}: { you: MockRider; variant: TargetVariant; compact?: boolean } = $props();
 
 	const state = $derived(targetState(you));
-	/** The bar spans 0 → 150 % FTP, matching the interval graph's ceiling. */
-	const pct = (watts: number) =>
-		Math.min(100, Math.max(0, (watts / you.ftp / 1.5) * 100));
+	const pct = (watts: number) => fillPct(watts, you.ftp);
 </script>
 
 {#if variant === 'notch'}
@@ -56,7 +59,7 @@
 				>
 					<span>0</span>
 					<span>{state.has ? `target ${you.target} W` : 'no target'}</span>
-					<span>{Math.round(you.ftp * 1.5)}</span>
+					<span>{Math.round(you.ftp * CEILING)}</span>
 				</div>
 			{/if}
 		</div>
