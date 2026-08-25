@@ -1,4 +1,4 @@
-# 0004 — Commit to a full synthwave identity, not near-black with one accent
+# 0005 — Commit to a full synthwave identity, not near-black with one accent
 
 - Status: accepted
 - Date: 2026-08-25

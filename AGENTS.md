@@ -36,4 +36,4 @@ Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked â
 - Go: stdlib-first, no frameworks/ORM, `log/slog`, table tests. Web: Svelte 5 runes, Tailwind v4 utilities, no component library.
 - Privacy is architecture: metrics room-scoped, AV never recorded, rides private by default. Never loosen.
 - Never copy code from Auuki (AGPL reference-reading only).
-- Two accents, distinct jobs ([ADR-0004](docs/decisions/0004-synthwave-visual-identity.md)): `--color-watt` (magenta) marks live data and is the only thing that glows; `--color-neon` (violet) is structural chrome and never glows.
+- Two accents, distinct jobs ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): `--color-watt` (magenta) marks live data and is the only thing that glows; `--color-neon` (violet) is structural chrome and never glows.

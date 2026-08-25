@@ -14,7 +14,7 @@
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Locked in <a
 			href="https://github.com/natrontech/wattroom/blob/main/docs/decisions"
-			class="underline">ADR-0004</a
+			class="underline">ADR-0005</a
 		>: equalizer W, Outrun palette, Chakra Petch over Barlow, wordmark stays
 		white.
 	</p>
