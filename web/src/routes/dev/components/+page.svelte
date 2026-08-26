@@ -172,6 +172,80 @@
 	</div>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Form controls
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		Native elements styled in place, not wrapped — they keep label association,
+		keyboard behaviour and form semantics, and every call site gets them for
+		free. They take
+		<span class="text-white">--color-neon</span>, because a checked box is
+		chrome, not live data.
+	</p>
+	<div
+		class="border-muted/15 bg-surface-raised mt-4 grid gap-6 rounded-lg border p-6 sm:grid-cols-2"
+	>
+		<div class="space-y-3">
+			<label class="flex items-center gap-3 text-sm"
+				><input type="checkbox" checked /> Checked</label
+			>
+			<label class="flex items-center gap-3 text-sm"
+				><input type="checkbox" /> Unchecked</label
+			>
+			<label class="text-muted flex items-center gap-3 text-sm"
+				><input type="checkbox" disabled /> Disabled</label
+			>
+		</div>
+		<div class="space-y-3">
+			<label class="flex items-center gap-3 text-sm"
+				><input type="radio" name="demo" checked /> Base pack</label
+			>
+			<label class="flex items-center gap-3 text-sm"
+				><input type="radio" name="demo" /> Silent pack</label
+			>
+			<label class="text-muted flex items-center gap-3 text-sm"
+				><input type="radio" name="demo2" disabled /> Disabled</label
+			>
+		</div>
+		<label class="block">
+			<span class="text-muted text-[10px] tracking-wider uppercase">range</span>
+			<input type="range" class="mt-1 w-full" value="70" />
+		</label>
+		<label class="block">
+			<span class="text-muted text-[10px] tracking-wider uppercase"
+				>number, spinners removed</span
+			>
+			<input
+				type="number"
+				value="265"
+				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums"
+			/>
+		</label>
+		<label class="block sm:col-span-2">
+			<span class="text-muted text-[10px] tracking-wider uppercase"
+				>text — select it to see ::selection</span
+			>
+			<input
+				value="Thursday Sufferfest"
+				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
+			/>
+		</label>
+		<div class="sm:col-span-2">
+			<span class="text-muted text-[10px] tracking-wider uppercase"
+				>scrollbar</span
+			>
+			<div
+				class="border-muted/15 mt-1 h-24 overflow-y-auto rounded border p-3 text-xs"
+			>
+				{#each { length: 14 } as _, i (i)}
+					<p class="text-muted py-0.5">
+						Scroll me — the default is a grey stripe on near-black.
+					</p>
+				{/each}
+			</div>
+		</div>
+	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
 		Keyboard focus
 	</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">

@@ -100,3 +100,140 @@
 		animation: none;
 	}
 }
+
+/*
+ * Native form controls, styled in place rather than wrapped in components: the
+ * native elements keep label association, keyboard behaviour and form semantics,
+ * and one block covers every call site. Unlayered for the same reason as focus —
+ * it has to beat Tailwind's utilities.
+ *
+ * These are chrome, so they take --color-neon. A checked box is not live data.
+ */
+:where(input[type='checkbox'], input[type='radio']) {
+	appearance: none;
+	flex-shrink: 0;
+	display: inline-grid;
+	place-content: center;
+	width: 1rem;
+	height: 1rem;
+	cursor: pointer;
+	background: var(--color-surface);
+	border: 1px solid color-mix(in oklab, var(--color-muted) 55%, transparent);
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease;
+}
+input[type='checkbox'] {
+	border-radius: 4px;
+}
+input[type='radio'] {
+	border-radius: 50%;
+}
+input[type='checkbox']:hover:not(:disabled),
+input[type='radio']:hover:not(:disabled) {
+	border-color: color-mix(in oklab, var(--color-neon) 80%, transparent);
+}
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+	background: var(--color-neon);
+	border-color: var(--color-neon);
+}
+input[type='checkbox']:checked::after {
+	content: '';
+	width: 0.5rem;
+	height: 0.28rem;
+	border-left: 2px solid #fff;
+	border-bottom: 2px solid #fff;
+	transform: rotate(-45deg) translateY(-1px);
+}
+input[type='radio']:checked::after {
+	content: '';
+	width: 0.375rem;
+	height: 0.375rem;
+	border-radius: 50%;
+	background: #fff;
+}
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+input[type='range'] {
+	appearance: none;
+	height: 1.25rem;
+	background: transparent;
+	cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+	height: 4px;
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--color-muted) 30%, transparent);
+}
+input[type='range']::-webkit-slider-thumb {
+	appearance: none;
+	width: 14px;
+	height: 14px;
+	margin-top: -5px;
+	border-radius: 50%;
+	background: var(--color-neon);
+	border: 2px solid var(--color-surface);
+}
+input[type='range']::-moz-range-track {
+	height: 4px;
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--color-muted) 30%, transparent);
+}
+input[type='range']::-moz-range-thumb {
+	width: 14px;
+	height: 14px;
+	border: 2px solid var(--color-surface);
+	border-radius: 50%;
+	background: var(--color-neon);
+}
+
+/* Spinners are unusable at the sizes these inputs run at, and they fight tabular-nums. */
+input[type='number'] {
+	-moz-appearance: textfield;
+}
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+:where(input, textarea) {
+	caret-color: var(--color-neon);
+}
+:where(input, textarea)::placeholder {
+	color: color-mix(in oklab, var(--color-muted) 70%, transparent);
+}
+
+::selection {
+	background: color-mix(in oklab, var(--color-neon) 45%, transparent);
+	color: #fff;
+}
+
+/* Default scrollbars are a bright grey stripe down the side of a near-black app. */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--color-neon) 45%, transparent)
+		transparent;
+}
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--color-neon) 45%, transparent);
+	border: 3px solid transparent;
+	background-clip: content-box;
+	border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in oklab, var(--color-neon) 70%, transparent);
+	background-clip: content-box;
+}
