@@ -123,6 +123,10 @@ export interface MockRider {
 	hr: number;
 	/** their trainer stopped reporting — their numbers are last-known, not live */
 	stale: boolean;
+	/** they stopped pedalling: their own targets pause, the shared timeline does not wait */
+	paused: boolean;
+	/** joined after the timeline started and was synced to the current position */
+	lateJoined: boolean;
 	target: number;
 	execution: number;
 	trace: { t: number; w: number }[];
@@ -314,6 +318,12 @@ export function createRoom() {
 	let podium = $state<SprintResult[]>([]);
 	let peaks = SEEDS.map(() => 0);
 	let sprintTimer: ReturnType<typeof setInterval> | undefined;
+	/** Coach paused the shared timeline for everyone (roles matrix). */
+	let sessionPaused = $state(false);
+	/** Spiral guard: cadence collapsed under an ERG target, so the target is released. */
+	let spiralGuard = $state(false);
+	/** SPEC room audio: nudge when you arrive with music playing and your mic open. */
+	let headphoneNudge = $state(false);
 	/** Spectator cheers land on the rider's dashboard (WATTROOM.md feel layer). */
 	let cheers = $state<{ id: number; emoji: string; from: string }[]>([]);
 	let cheerId = 0;
@@ -338,6 +348,8 @@ export function createRoom() {
 			cadence: 0,
 			hr: 0,
 			stale: false,
+			paused: false,
+			lateJoined: false,
 			target: 0,
 			execution: 1,
 			trace: [],
@@ -412,12 +424,12 @@ export function createRoom() {
 			// Looping back to the warmup would smear stale samples across the graph.
 			if (next >= total) for (const rider of riders) rider.trace = [];
 			elapsed = next % total;
-			if (sprint === 'armed' || sprint === 'active') return;
+			if (sprint === 'armed' || sprint === 'active' || sessionPaused) return;
 			SEEDS.forEach((seed, i) => {
 				const info = targetAt(segments, seed.ftp, elapsed, {
 					bias: seed.you ? bias : 1,
 				});
-				riders[i].target = info.targetWatts ?? 0;
+				riders[i].target = riders[i].paused ? 0 : (info.targetWatts ?? 0);
 				void trainers[i].setTargetPower(
 					Math.round((info.targetWatts ?? 0) * seed.discipline),
 				);
@@ -453,6 +465,47 @@ export function createRoom() {
 		start,
 		stop,
 		setPhase,
+		/** Coach controls from the roles matrix — pause and end are theirs, not a member's. */
+		pauseSession() {
+			sessionPaused = !sessionPaused;
+		},
+		get sessionPaused() {
+			return sessionPaused;
+		},
+		endSession() {
+			sessionPaused = false;
+			setPhase('lounge');
+		},
+		/** They stopped pedalling. Their targets pause; everyone else's timeline carries on. */
+		toggleAutoPause() {
+			const you = SEEDS.findIndex((seed) => seed.you);
+			riders[you].paused = !riders[you].paused;
+		},
+		triggerSpiral() {
+			spiralGuard = true;
+			setTimeout(() => (spiralGuard = false), 8000);
+		},
+		get spiralGuard() {
+			return spiralGuard;
+		},
+		lateJoin() {
+			const arriving = riders.find(
+				(rider) => rider.lateJoined === false && !rider.you,
+			);
+			if (arriving) {
+				arriving.lateJoined = true;
+				setTimeout(() => (arriving.lateJoined = false), 6000);
+			}
+		},
+		nudgeHeadphones() {
+			headphoneNudge = true;
+		},
+		dismissNudge() {
+			headphoneNudge = false;
+		},
+		get headphoneNudge() {
+			return headphoneNudge;
+		},
 		cheer(emoji: string, from: string) {
 			const id = ++cheerId;
 			cheers = [...cheers, { id, emoji, from }];

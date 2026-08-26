@@ -9,6 +9,7 @@
 		{ href: '/dev/components', label: 'Components' },
 		{ href: '/dev/account', label: 'Account' },
 		{ href: '/dev/rooms', label: 'Rooms' },
+		{ href: '/dev/settings', label: 'Settings' },
 		{ href: '/dev/pairing', label: 'Pairing' },
 		{ href: '/dev/editor', label: 'Editor' },
 		{ href: '/dev/ramp', label: 'Ramp' },

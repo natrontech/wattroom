@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
 	import MedalCard, { type Medal } from '../medal/MedalCard.svelte';
 	import {
@@ -33,6 +34,9 @@
 	];
 
 	const totalXp = ride.xp.base + ride.xp.execution + ride.xp.streak;
+
+	// A medal and a category promotion both announce themselves (SPEC: demotions do not).
+	$effect(() => play('fanfare'));
 
 	const medal: Medal = {
 		name: 'Metronome',

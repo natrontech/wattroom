@@ -183,6 +183,26 @@
 						>Drop trainer</button
 					>
 					<button
+						onclick={() => room.toggleAutoPause()}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Auto-pause</button
+					>
+					<button
+						onclick={() => room.triggerSpiral()}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Spiral</button
+					>
+					<button
+						onclick={() => room.lateJoin()}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Late join</button
+					>
+					<button
+						onclick={() => room.nudgeHeadphones()}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Nudge</button
+					>
+					<button
 						onclick={() => (
 							play('cheer'),
 							room.cheer('🔥', 'Ana (spectating)')
@@ -213,6 +233,19 @@
 				>
 
 				{#if live}
+					<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+						<button
+							onclick={() => room.pauseSession()}
+							class="rounded px-2.5 py-1 text-xs {room.sessionPaused
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}"
+							>{room.sessionPaused ? 'Resume' : 'Pause'}</button
+						>
+						<button
+							onclick={() => room.endSession()}
+							class="text-z6 rounded px-2.5 py-1 text-xs">End</button
+						>
+					</div>
 					<div class="text-right">
 						<div
 							class="font-display text-2xl leading-none font-bold tabular-nums"
@@ -225,6 +258,52 @@
 					</div>
 				{/if}
 			</header>
+
+			{#if room.headphoneNudge}
+				<div
+					class="border-muted/20 bg-surface-raised mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
+				>
+					<p class="text-xs">
+						Music is playing and your mic is open — headphones will stop the
+						room hearing it back.
+					</p>
+					<button
+						onclick={() => room.dismissNudge()}
+						class="text-muted ml-auto shrink-0 text-xs hover:text-white"
+						>Got it</button
+					>
+				</div>
+			{/if}
+
+			{#if room.sessionPaused}
+				<div
+					class="border-z5/40 bg-z5/10 mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
+				>
+					<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"
+					></span>
+					<p class="text-xs">
+						<span class="font-medium">Nina paused the session.</span>
+						<span class="text-muted"
+							>Targets are released — spin easy until she resumes.</span
+						>
+					</p>
+				</div>
+			{/if}
+
+			{#if room.spiralGuard}
+				<!-- Spiral guard has to announce itself, or it reads as the trainer breaking. -->
+				<div
+					class="border-neon/40 bg-surface-raised mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
+				>
+					<p class="text-xs">
+						<span class="font-medium">Spiral guard.</span>
+						<span class="text-muted"
+							>Your cadence collapsed under the target, so it's released until
+							you spin back up — this is deliberate, not a dropout.</span
+						>
+					</p>
+				</div>
+			{/if}
 
 			{#if room.fault}
 				<div class="mb-3">

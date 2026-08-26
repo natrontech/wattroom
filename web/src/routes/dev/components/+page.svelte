@@ -26,6 +26,8 @@
 			cadence: 91,
 			hr: 158,
 			stale: false,
+			paused: false,
+			lateJoined: false,
 			target: 257,
 			execution: 0.94,
 			trace: [],

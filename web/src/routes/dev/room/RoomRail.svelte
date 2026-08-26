@@ -6,6 +6,8 @@
 
 	let micOn = $state(true);
 	let camOn = $state(true);
+	// SPEC room audio: while the jukebox plays, VAD tightens and push-to-talk is offered.
+	let pushToTalk = $state(false);
 </script>
 
 <nav class="bg-surface flex w-56 shrink-0 flex-col border-r border-white/5">
@@ -49,6 +51,15 @@
 			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
 			>
 		</div>
+		{#if live}
+			<button
+				onclick={() => (pushToTalk = !pushToTalk)}
+				class="mt-2 w-full rounded border px-2 py-1.5 text-[11px] {pushToTalk
+					? 'border-neon/50 text-white'
+					: 'border-muted/25 text-muted hover:text-white'}"
+				>{pushToTalk ? 'push to talk · hold space' : 'push to talk'}</button
+			>
+		{/if}
 		<div class="mt-2 flex gap-1.5">
 			<button
 				onclick={() => (micOn = !micOn)}

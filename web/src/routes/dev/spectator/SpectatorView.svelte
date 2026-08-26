@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '../room/IntervalGraph.svelte';
 	import {
@@ -37,6 +38,7 @@
 	let sent = $state<string | null>(null);
 
 	function cheer(emoji: string) {
+		play('cheer');
 		sent = emoji;
 		setTimeout(() => (sent = null), 1200);
 	}

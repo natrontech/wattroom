@@ -94,7 +94,39 @@
 			{/each}
 		</div>
 
-		<div class="mt-8 grid gap-3 sm:grid-cols-2">
+		<section class="border-muted/15 mt-8 rounded-lg border p-5">
+			<div class="flex items-baseline gap-3">
+				<h2 class="font-display font-bold">
+					Thursday Sufferfest · medal history
+				</h2>
+				<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
+					>14 sessions</span
+				>
+			</div>
+			<ul class="mt-4 space-y-2">
+				{#each [{ date: '21 Aug', medals: [{ n: 'Metronome', who: 'Sara' }, { n: 'Hammer', who: 'Ruben' }, { n: 'Diesel', who: 'Nina' }] }, { date: '19 Aug', medals: [{ n: 'Metronome', who: 'You' }, { n: 'Hammer', who: 'Ruben' }, { n: 'Lanterne Rouge', who: 'Milo' }] }, { date: '14 Aug', medals: [{ n: 'Diesel', who: 'Tobi' }, { n: 'Metronome', who: 'Nina' }, { n: 'Hammer', who: 'Sara' }] }] as session (session.date)}
+					<li class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+						<span class="text-muted w-14 shrink-0 font-mono tabular-nums"
+							>{session.date}</span
+						>
+						{#each session.medals as medal (medal.n)}
+							<span class="text-muted">
+								{medal.n}
+								<span class={medal.who === 'You' ? 'text-watt' : 'text-white'}
+									>{medal.who}</span
+								>
+							</span>
+						{/each}
+					</li>
+				{/each}
+			</ul>
+			<p class="text-muted mt-4 text-xs">
+				Room streak: <span class="text-white">4 weeks</span> — everyone rode at least
+				once each week.
+			</p>
+		</section>
+
+		<div class="mt-3 grid gap-3 sm:grid-cols-2">
 			<div class="border-muted/15 rounded-lg border p-5">
 				<h2 class="font-display font-bold">Open a room</h2>
 				<p class="text-muted mt-1 text-xs">

@@ -103,6 +103,28 @@
 		</div>
 	{/if}
 
+	{#if rider.paused}
+		<div class="absolute inset-0 grid place-items-center bg-black/55">
+			<div class="text-center">
+				<span
+					class="text-muted text-[11px] font-medium tracking-wider uppercase"
+					>paused</span
+				>
+				<span class="text-muted/70 mt-0.5 block text-[10px]"
+					>stopped pedalling</span
+				>
+			</div>
+		</div>
+	{/if}
+
+	{#if rider.lateJoined}
+		<div class="absolute inset-x-0 bottom-1.5 flex justify-center">
+			<span class="bg-neon/80 rounded-full px-2 py-0.5 text-[10px] text-white"
+				>joined · synced to 24:07</span
+			>
+		</div>
+	{/if}
+
 	{#if rider.stale}
 		<div class="absolute inset-0 grid place-items-center bg-black/55">
 			<span class="text-z5 text-[11px] font-medium tracking-wider uppercase"
