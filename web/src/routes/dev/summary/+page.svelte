@@ -200,6 +200,19 @@
 			<div class="mt-3">
 				<MedalCard {medal} />
 			</div>
+			<div class="border-muted/15 mt-3 rounded-lg border p-4">
+				<label class="flex items-start gap-3">
+					<input type="checkbox" class="mt-0.5" />
+					<span>
+						<span class="block text-sm">Share this ride with the room</span>
+						<span class="text-muted block text-xs">
+							Rides are private by default. Sharing puts your numbers and this
+							card on the room's history — it never shares your heart rate.
+						</span>
+					</span>
+				</label>
+			</div>
+
 			<div class="mt-3 flex gap-2">
 				<button
 					class="flex-1 rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
