@@ -60,3 +60,43 @@
 		);
 	mask-image: linear-gradient(to bottom, transparent, black 85%);
 }
+
+/*
+ * Keyboard focus. Deliberately unlayered: Tailwind's utilities live in @layer, and
+ * unlayered rules beat layered ones, so this survives the `outline-none` utilities
+ * sitting on inputs without having to hunt them down one by one.
+ * White rather than an accent — a focus ring is chrome, and it has to win on any surface.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's
+   loading / error / empty / content contract. */
+@utility skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--color-surface-raised) 0%,
+		color-mix(in oklab, var(--color-neon) 12%, var(--color-surface-raised)) 50%,
+		var(--color-surface-raised) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.skeleton {
+		animation: none;
+	}
+}

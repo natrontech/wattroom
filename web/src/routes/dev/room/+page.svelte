@@ -5,6 +5,7 @@
 	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';
 	import RoomRail from './RoomRail.svelte';
+	import Skeleton from '../Skeleton.svelte';
 	import SprintMoment from './SprintMoment.svelte';
 	import SidePanel from './SidePanel.svelte';
 	import TargetWidget from './TargetWidget.svelte';
@@ -33,6 +34,8 @@
 	const live = $derived(room.phase === 'live');
 
 	let tv = $state(false);
+	// Joining a real room waits on the WS handshake and LiveKit tracks; show that.
+	let joining = $state(false);
 
 	/** WATTROOM.md: user-switchable layouts. One grid, three weightings. */
 	type Layout = 'metrics' | 'video' | 'media';
@@ -147,6 +150,11 @@
 						>Drop trainer</button
 					>
 					<button
+						onclick={() => (joining = !joining)}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Joining</button
+					>
+					<button
 						onclick={() => room.armSprint()}
 						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
 						>Arm sprint</button
@@ -196,14 +204,20 @@
 
 			<!-- Rider tiles: camera and power fused, so there is one grid rather than three. -->
 			<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
-				{#each room.riders as rider (rider.name)}
-					<RiderTile
-						{rider}
-						phase={room.phase}
-						stretch={layout === 'video'}
-						metrics={tileMetrics}
-					/>
-				{/each}
+				{#if joining}
+					{#each { length: 6 } as _, i (i)}
+						<Skeleton class="aspect-video w-full" />
+					{/each}
+				{:else}
+					{#each room.riders as rider (rider.name)}
+						<RiderTile
+							{rider}
+							phase={room.phase}
+							stretch={layout === 'video'}
+							metrics={tileMetrics}
+						/>
+					{/each}
+				{/if}
 			</div>
 
 			{#if room.phase === 'countdown'}

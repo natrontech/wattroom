@@ -1,9 +1,12 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import Skeleton from '../Skeleton.svelte';
 	import { rooms } from '../room/mockRoom.svelte';
 
 	// The two states that decide whether anyone comes back: your first visit, and every visit after.
 	let firstRun = $state(false);
+	// errors.md: every page owes four states. This is the one that was missing.
+	let loading = $state(false);
 	let joinCode = $state('');
 
 	const invalidCode = $derived(
@@ -14,12 +17,26 @@
 <main class="mx-auto max-w-3xl px-6 py-10">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
-		<label class="text-muted flex items-center gap-2 text-xs">
-			<input type="checkbox" bind:checked={firstRun} /> first visit
-		</label>
+		<div class="text-muted flex items-center gap-4 text-xs">
+			<label class="flex items-center gap-2">
+				<input type="checkbox" bind:checked={loading} /> loading
+			</label>
+			<label class="flex items-center gap-2">
+				<input type="checkbox" bind:checked={firstRun} /> first visit
+			</label>
+		</div>
 	</div>
 
-	{#if firstRun}
+	{#if loading}
+		<div class="mt-8 grid gap-3">
+			{#each { length: 4 } as _, i (i)}
+				<div class="border-muted/15 rounded-lg border px-5 py-4">
+					<Skeleton class="h-4 w-48" />
+					<Skeleton class="mt-2 h-3 w-28" />
+				</div>
+			{/each}
+		</div>
+	{:else if firstRun}
 		<!--
 			.claude/rules/ux.md: empty states teach, never apologise. One line on what the
 			thing is, then the CTA that creates the first one. It is the only onboarding
