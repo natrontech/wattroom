@@ -20,12 +20,18 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 - [x] Monorepo scaffold: Go server (hub stub, healthz, /metrics, embedded SPA), SvelteKit SPA (Svelte 5, Tailwind v4, adapter-static), compose, Makefile
 - [x] WS protocol codegen pipeline (Go structs → tygo → protocol.ts)
 - [x] Docs pack: README, CONTRIBUTING, ARCHITECTURE, CLAUDE.md, ADRs, RESEARCH
-- [ ] CI green on GitHub Actions
-- [ ] **SimulatedTrainer**: `Trainer` interface + simulated implementation (power lag, cadence, noise, dropout injection), dev-flag selectable
-- [ ] Workout engine skeleton: step sequencer producing ERG targets from a workout JSON
+- [x] CI green on GitHub Actions
+- [x] **SimulatedTrainer** (#1): `Trainer` interface + simulated implementation (power lag, cadence, noise, dropout injection), dev-flag selectable
+- [x] Workout engine skeleton (#2): step sequencer producing ERG targets from a workout JSON
 - [ ] Real hardware session: Kickr Core over FTMS (pair, read power, hold ERG target, ride hardcoded intervals)
 - [ ] Kickr v2 GATT enumeration — confirm WCPS protocol map (RESEARCH.md §9) against the real unit
 - [ ] Seeded dev data pattern (once first schema exists)
+
+## Design (done — #38, merged in #39)
+
+- [x] Visual identity locked ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): equalizer mark, Outrun palette, Chakra Petch over Barlow
+- [x] 15 screens mocked under `/dev`, fed by SimulatedTrainer — every M1–M5 feature has a mock to build against
+- Parked with reason: 30 s disconnect grace (M5), Strava upload status (M6)
 
 ## M1 — Solo workout player
 
