@@ -27,10 +27,6 @@ const COUNTDOWN = 10;
 export type Phase = 'lounge' | 'countdown' | 'live';
 
 /**
- * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
- * status, never a toast — the rider is on a bike three metres from the screen.
- */
-/**
  * A 15 s all-out window (WATTROOM.md). The trainer leaves ERG for slope mode, the
  * room bursts to 4 Hz, and a w/kg battle renders — the one sanctioned outlet for
  * racing instinct inside a structured session.
@@ -44,6 +40,10 @@ export interface SprintResult {
 	you: boolean;
 }
 
+/**
+ * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
+ * status, never a toast — the rider is on a bike three metres from the screen.
+ */
 export type Fault =
 	| { kind: 'trainer'; state: 'reconnecting' | 'lost' }
 	| { kind: 'room'; state: 'reconnecting' | 'lost' };
@@ -314,6 +314,9 @@ export function createRoom() {
 	let podium = $state<SprintResult[]>([]);
 	let peaks = SEEDS.map(() => 0);
 	let sprintTimer: ReturnType<typeof setInterval> | undefined;
+	/** Spectator cheers land on the rider's dashboard (WATTROOM.md feel layer). */
+	let cheers = $state<{ id: number; emoji: string; from: string }[]>([]);
+	let cheerId = 0;
 	/** Buffered locally while the room link is down (#19 IndexedDB ride buffer). */
 	let bufferedSeconds = $state(0);
 	let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -450,6 +453,14 @@ export function createRoom() {
 		start,
 		stop,
 		setPhase,
+		cheer(emoji: string, from: string) {
+			const id = ++cheerId;
+			cheers = [...cheers, { id, emoji, from }];
+			setTimeout(() => (cheers = cheers.filter((c) => c.id !== id)), 2600);
+		},
+		get cheers() {
+			return cheers;
+		},
 		/** Coach arms the window; the workout file can arm it too (WATTROOM.md). */
 		armSprint() {
 			if (sprint !== 'idle' || phase !== 'live') return;

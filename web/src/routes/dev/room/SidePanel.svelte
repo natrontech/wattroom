@@ -5,6 +5,14 @@
 	// In media-focus the player lives in the main area, so the panel must not render a second one.
 	let { live, showPlayer }: { live: boolean; showPlayer: boolean } = $props();
 
+	// The queue existed with no way to put anything in it. Any member can add (SPEC roles).
+	let adding = $state(false);
+	const results = [
+		{ title: 'Gunship — Tech Noir', length: '5:26' },
+		{ title: 'FM-84 — Running in the Night', length: '4:53' },
+		{ title: 'Dance With the Dead — Riot', length: '3:58' },
+	];
+
 	// The room keeps talking while you ride; enough to judge whether chat survives mid-effort.
 	let messages = $state([...chatSeed]);
 	$effect(() => {
@@ -29,8 +37,35 @@
 			class="text-muted flex items-center justify-between text-[10px] tracking-[0.2em] uppercase"
 		>
 			<span>queue</span>
-			<span>{queue.length}</span>
+			<button
+				onclick={() => (adding = !adding)}
+				class="text-muted hover:text-white"
+				aria-label="Add to queue">{adding ? 'close' : '+ add'}</button
+			>
 		</div>
+
+		{#if adding}
+			<div class="mt-2">
+				<input
+					class="border-muted/25 placeholder:text-muted/60 w-full rounded border bg-transparent px-3 py-2 text-xs"
+					placeholder="Paste a YouTube link or search"
+				/>
+				<ul class="mt-1.5 space-y-0.5">
+					{#each results as track (track.title)}
+						<li>
+							<button
+								class="hover:bg-surface-raised flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-xs"
+							>
+								<span class="truncate">{track.title}</span>
+								<span class="text-muted ml-auto shrink-0 font-mono text-[10px]"
+									>{track.length}</span
+								>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 		<ul class="mt-2 space-y-1">
 			{#each queue.slice(0, 3) as track, i (track.title)}
 				<li class="flex items-baseline gap-2 text-xs">

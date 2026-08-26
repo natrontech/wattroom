@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CheerLayer from './CheerLayer.svelte';
+	import ExecutionMeter from './ExecutionMeter.svelte';
 	import FaultBanner from './FaultBanner.svelte';
 	import IntervalGraph from './IntervalGraph.svelte';
 	import IntervalStrip from './IntervalStrip.svelte';
@@ -96,7 +98,10 @@
 	<div class="flex h-full">
 		<RoomRail {you} {live} />
 
-		<main class="flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4">
+		<main
+			class="relative flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4"
+		>
+			<CheerLayer cheers={room.cheers} />
 			<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 				<div>
 					<h1 class="font-display text-lg leading-tight font-bold">
@@ -148,6 +153,11 @@
 						onclick={() => room.breakTrainer(true)}
 						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
 						>Drop trainer</button
+					>
+					<button
+						onclick={() => room.cheer('🔥', 'Ana (spectating)')}
+						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						>Cheer</button
 					>
 					<button
 						onclick={() => (joining = !joining)}
@@ -285,15 +295,18 @@
 						/>
 					</div>
 				{/if}
-				<div class="mt-2 overflow-hidden rounded-lg">
-					<IntervalGraph
-						segments={room.segments}
-						total={room.total}
-						elapsed={room.elapsed}
-						ftp={you.ftp}
-						trace={you.trace}
-						compact={layout !== 'metrics'}
-					/>
+				<div class="mt-2 grid gap-2 lg:grid-cols-[1fr_260px]">
+					<div class="overflow-hidden rounded-lg">
+						<IntervalGraph
+							segments={room.segments}
+							total={room.total}
+							elapsed={room.elapsed}
+							ftp={you.ftp}
+							trace={you.trace}
+							compact={layout !== 'metrics'}
+						/>
+					</div>
+					<ExecutionMeter riders={room.riders} />
 				</div>
 			{:else}
 				<div class="mt-3 flex flex-wrap items-center gap-3">
