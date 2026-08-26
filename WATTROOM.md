@@ -267,7 +267,8 @@ Ships with M0, because retrofitting it is how projects stay solo forever:
 
 - **Name: WattRoom.** You enter a room and push watts together. Vocabulary: rooms, "open a room", room codes, coach role.
 - Domain: **wattroom.cc** — grab domain + handles (GitHub, Strava, Instagram) early; check trademark landscape (Wattbike exists).
-- **Visual direction: neon glow / synthwave pain cave.** Near-black (#0a0a0f-ish) surfaces; one hot accent — electric watt-yellow — reserved for live data; interval graphs glow like a night ride, live numbers get subtle bloom; sprint moments are the one place the UI is allowed to go loud. Chrome (buttons, forms, editor, settings) stays flat, quiet, high-contrast — the glow means "this is live wattage", never decoration. Medal cards are dark, screenshot-first, built to look good in a group chat.
+- **Visual direction: full synthwave pain cave** ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md) supersedes the original near-black/watt-yellow palette). Violet-black surfaces (#0a0118 / #1a0736); **two accent hues with distinct jobs** — `--color-neon` (violet #8b2bff) is structural chrome and never glows, `--color-watt` (magenta #ff3d8b) is live data and is the only thing that does. Interval graphs glow like a night ride, live numbers get subtle bloom; sprint moments are the one place the UI is allowed to go loud. Chrome (buttons, forms, editor, settings) stays flat and quiet — the glow means "this is live wattage", never decoration. Medal cards are dark, screenshot-first, built to look good in a group chat.
+- **Mark: the equalizer W** — five bars whose heights trace the letter, so the logo is an interval graph. It animates while a session runs. Wordmark flat white. Type: Chakra Petch (display + all numerals) over Barlow (running text).
 
 ## 8. Repo metadata
 

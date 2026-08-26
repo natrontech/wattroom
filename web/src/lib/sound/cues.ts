@@ -1,0 +1,338 @@
+/**
+ * Session sound design (WATTROOM.md feel layer, #33).
+ *
+ * Synthesised rather than sampled: synthwave *is* oscillators, filters and
+ * envelopes, so there is nothing to license, nothing to download, and a
+ * per-room pack becomes a parameter set rather than an asset bundle when that
+ * fast-follow arrives.
+ */
+
+export interface Voice {
+	type: OscillatorType;
+	/** start frequency in Hz */
+	freq: number;
+	/** sweep to this frequency across the voice's life */
+	to?: number;
+	/** offset from cue start, seconds */
+	at: number;
+	dur: number;
+	/** peak gain before the master mix, 0–1 */
+	gain?: number;
+	/** cents; a little detune is what stops a square wave sounding like a phone */
+	detune?: number;
+	/** lowpass sweep — the single most synthwave-sounding thing available */
+	filter?: { from: number; to?: number; q?: number };
+	/** pitch wobble, for klaxons */
+	wobble?: { rate: number; depth: number };
+}
+
+export interface Cue {
+	id: CueId;
+	label: string;
+	hint: string;
+	voices: Voice[];
+}
+
+export type CueId =
+	| 'countdown'
+	| 'go'
+	| 'klaxon'
+	| 'elimination'
+	| 'fanfare'
+	| 'cheer'
+	| 'reaction'
+	| 'block';
+
+/** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
+const A4 = 440;
+const note = (semitonesFromA4: number) =>
+	A4 * Math.pow(2, semitonesFromA4 / 12);
+
+export const CUES: Record<CueId, Cue> = {
+	countdown: {
+		id: 'countdown',
+		label: 'Countdown tick',
+		hint: 'Each of the last three seconds before a session starts.',
+		voices: [
+			{
+				type: 'square',
+				freq: note(4),
+				at: 0,
+				dur: 0.09,
+				gain: 0.5,
+				detune: 6,
+				filter: { from: 2600, to: 1400 },
+			},
+		],
+	},
+
+	go: {
+		id: 'go',
+		label: 'Go',
+		hint: 'Zero. Higher and longer than the ticks, so it is unmistakably the last one.',
+		voices: [
+			{
+				type: 'square',
+				freq: note(11),
+				at: 0,
+				dur: 0.28,
+				gain: 0.55,
+				detune: 8,
+				filter: { from: 3800, to: 1600 },
+			},
+			{
+				type: 'sawtooth',
+				freq: note(-1),
+				at: 0,
+				dur: 0.34,
+				gain: 0.24,
+				filter: { from: 900 },
+			},
+		],
+	},
+
+	klaxon: {
+		id: 'klaxon',
+		label: 'Sprint klaxon',
+		hint: 'Three seconds before a sprint window opens. The one cue allowed to be rude.',
+		voices: [
+			{
+				type: 'sawtooth',
+				freq: 196,
+				at: 0,
+				dur: 0.85,
+				gain: 0.42,
+				detune: -9,
+				wobble: { rate: 7, depth: 14 },
+				filter: { from: 700, to: 2600, q: 6 },
+			},
+			{
+				type: 'sawtooth',
+				freq: 262,
+				at: 0.04,
+				dur: 0.8,
+				gain: 0.34,
+				detune: 11,
+				wobble: { rate: 7, depth: 14 },
+				filter: { from: 800, to: 2400, q: 6 },
+			},
+		],
+	},
+
+	elimination: {
+		id: 'elimination',
+		label: 'Elimination sting',
+		hint: "You're out of a Backyard round, or you burned your last life.",
+		voices: [
+			{
+				type: 'sawtooth',
+				freq: note(3),
+				to: note(-9),
+				at: 0,
+				dur: 0.55,
+				gain: 0.4,
+				filter: { from: 2200, to: 380, q: 3 },
+			},
+			{
+				type: 'square',
+				freq: note(-9),
+				to: note(-21),
+				at: 0.1,
+				dur: 0.5,
+				gain: 0.2,
+				filter: { from: 1200, to: 260 },
+			},
+		],
+	},
+
+	fanfare: {
+		id: 'fanfare',
+		label: 'Medal fanfare',
+		hint: 'A medal, or a category promotion. SPEC: promotions announce, demotions stay silent.',
+		voices: [
+			{
+				type: 'square',
+				freq: note(0),
+				at: 0,
+				dur: 0.16,
+				gain: 0.34,
+				detune: 5,
+			},
+			{
+				type: 'square',
+				freq: note(4),
+				at: 0.11,
+				dur: 0.16,
+				gain: 0.34,
+				detune: 5,
+			},
+			{
+				type: 'square',
+				freq: note(7),
+				at: 0.22,
+				dur: 0.16,
+				gain: 0.34,
+				detune: 5,
+			},
+			{
+				type: 'square',
+				freq: note(12),
+				at: 0.33,
+				dur: 0.5,
+				gain: 0.4,
+				detune: 5,
+				filter: { from: 4200, to: 1800 },
+			},
+			{
+				type: 'sawtooth',
+				freq: note(-12),
+				at: 0.33,
+				dur: 0.55,
+				gain: 0.2,
+				filter: { from: 800 },
+			},
+		],
+	},
+
+	cheer: {
+		id: 'cheer',
+		label: 'Cheer',
+		hint: 'A spectator emoji landing on your dashboard. Deliberately tiny — these arrive in bursts.',
+		voices: [
+			{
+				type: 'sine',
+				freq: note(7),
+				to: note(16),
+				at: 0,
+				dur: 0.14,
+				gain: 0.3,
+			},
+		],
+	},
+
+	reaction: {
+		id: 'reaction',
+		label: 'Rider reaction',
+		hint: 'A 🔥 or 💀 from someone too gassed to talk. Softer than a cheer — it comes from inside the room.',
+		voices: [
+			{
+				type: 'triangle',
+				freq: note(12),
+				to: note(16),
+				at: 0,
+				dur: 0.1,
+				gain: 0.22,
+			},
+		],
+	},
+
+	block: {
+		id: 'block',
+		label: 'Block change',
+		hint: 'Not in WATTROOM.md — proposed. The target just changed and you are not looking at the screen.',
+		voices: [
+			{ type: 'triangle', freq: note(0), at: 0, dur: 0.11, gain: 0.26 },
+			{ type: 'triangle', freq: note(7), at: 0.1, dur: 0.18, gain: 0.26 },
+		],
+	},
+};
+
+let ctx: AudioContext | undefined;
+let master: GainNode | undefined;
+
+/** Volume the cues sit at. They are mixed *under* voice — this is not the headroom. */
+let volume = 0.7;
+let muted = false;
+/** Multiplier applied while someone is speaking, so cues never talk over a person. */
+let duck = 1;
+
+function ensure(): { ctx: AudioContext; master: GainNode } | null {
+	if (typeof window === 'undefined') return null;
+	if (!ctx) {
+		ctx = new AudioContext();
+		master = ctx.createGain();
+		master.connect(ctx.destination);
+	}
+	// Browsers start the context suspended until a user gesture; every play attempt retries.
+	if (ctx.state === 'suspended') void ctx.resume();
+	master!.gain.value = muted ? 0 : volume * duck;
+	return { ctx, master: master! };
+}
+
+export function setVolume(next: number): void {
+	volume = Math.min(1, Math.max(0, next));
+	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+}
+
+export function setMuted(next: boolean): void {
+	muted = next;
+	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+}
+
+/** Ride-critical cues still get through; this only pulls them down under a voice. */
+export function setDucked(next: boolean): void {
+	duck = next ? 0.35 : 1;
+	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+}
+
+export function play(id: CueId): void {
+	const audio = ensure();
+	if (!audio) return;
+	const { ctx: context, master: out } = audio;
+	const now = context.currentTime + 0.01;
+
+	for (const voice of CUES[id].voices) {
+		const osc = context.createOscillator();
+		osc.type = voice.type;
+		osc.detune.value = voice.detune ?? 0;
+
+		const start = now + voice.at;
+		const end = start + voice.dur;
+		osc.frequency.setValueAtTime(voice.freq, start);
+		if (voice.to) osc.frequency.exponentialRampToValueAtTime(voice.to, end);
+
+		let node: AudioNode = osc;
+
+		if (voice.filter) {
+			const filter = context.createBiquadFilter();
+			filter.type = 'lowpass';
+			filter.Q.value = voice.filter.q ?? 1;
+			filter.frequency.setValueAtTime(voice.filter.from, start);
+			if (voice.filter.to)
+				filter.frequency.exponentialRampToValueAtTime(voice.filter.to, end);
+			node.connect(filter);
+			node = filter;
+		}
+
+		const env = context.createGain();
+		const peak = voice.gain ?? 0.3;
+		// Short attack keeps it percussive; exponential release never reaches 0, so floor it.
+		env.gain.setValueAtTime(0.0001, start);
+		env.gain.exponentialRampToValueAtTime(peak, start + 0.008);
+		env.gain.exponentialRampToValueAtTime(0.0001, end);
+		node.connect(env);
+		env.connect(out);
+
+		if (voice.wobble) {
+			const lfo = context.createOscillator();
+			const depth = context.createGain();
+			lfo.frequency.value = voice.wobble.rate;
+			depth.gain.value = voice.wobble.depth;
+			lfo.connect(depth);
+			depth.connect(osc.detune);
+			lfo.start(start);
+			lfo.stop(end);
+		}
+
+		osc.start(start);
+		osc.stop(end + 0.02);
+	}
+}
+
+/** The full 3-2-1-go sequence, at real cadence. */
+export function playCountdown(): void {
+	play('countdown');
+	setTimeout(() => play('countdown'), 1000);
+	setTimeout(() => play('countdown'), 2000);
+	setTimeout(() => play('go'), 3000);
+}

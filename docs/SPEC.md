@@ -56,6 +56,21 @@ Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout →
 
 Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. `freeride` step type for slope-mode segments comes with game modes.
 
+## Power zones (Coggan 7-zone, % of FTP)
+
+Used by Floor is Lava's called zones, time-in-zone scoring, and the interval-graph colour ramp.
+Token names are the styleguide's (`--color-z1`…`z7`) — see `/dev/styleguide`.
+
+| Zone | Name              | % FTP     |
+| ---- | ----------------- | --------- |
+| Z1   | Active recovery   | ≤ 55 %    |
+| Z2   | Endurance         | 56–75 %   |
+| Z3   | Tempo             | 76–90 %   |
+| Z4   | Threshold         | 91–105 %  |
+| Z5   | VO₂ max           | 106–120 % |
+| Z6   | Anaerobic         | 121–150 % |
+| Z7   | Neuromuscular     | > 150 %   |
+
 ## Stats formulas (defaults — tune in alpha)
 
 - **Tolerance band**: within ±5 % of target power, floor ±10 W (beginners at 100 W targets need the floor).
