@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { play, playCountdown } from '$lib/sound/cues';
 	import CheerLayer from './CheerLayer.svelte';
 	import ExecutionMeter from './ExecutionMeter.svelte';
 	import FaultBanner from './FaultBanner.svelte';
@@ -38,6 +39,33 @@
 	let tv = $state(false);
 	// Joining a real room waits on the WS handshake and LiveKit tracks; show that.
 	let joining = $state(false);
+
+	// Cues follow state rather than clicks, which is the point: you are not watching.
+	let heard = $state({
+		phase: room.phase,
+		sprint: room.sprint,
+		block: room.block?.index,
+	});
+	$effect(() => {
+		if (room.phase !== heard.phase) {
+			if (room.phase === 'countdown') playCountdown();
+			heard.phase = room.phase;
+		}
+		if (room.sprint !== heard.sprint) {
+			if (room.sprint === 'armed') play('klaxon');
+			if (room.sprint === 'podium') play('fanfare');
+			heard.sprint = room.sprint;
+		}
+		const index = room.block?.index;
+		if (
+			index !== undefined &&
+			heard.block !== undefined &&
+			index !== heard.block
+		) {
+			play('block');
+		}
+		heard.block = index;
+	});
 
 	/** WATTROOM.md: user-switchable layouts. One grid, three weightings. */
 	type Layout = 'metrics' | 'video' | 'media';
@@ -155,7 +183,10 @@
 						>Drop trainer</button
 					>
 					<button
-						onclick={() => room.cheer('🔥', 'Ana (spectating)')}
+						onclick={() => (
+							play('cheer'),
+							room.cheer('🔥', 'Ana (spectating)')
+						)}
 						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
 						>Cheer</button
 					>

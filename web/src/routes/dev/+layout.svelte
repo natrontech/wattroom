@@ -13,6 +13,7 @@
 		{ href: '/dev/editor', label: 'Editor' },
 		{ href: '/dev/ramp', label: 'Ramp' },
 		{ href: '/dev/modes', label: 'Modes' },
+		{ href: '/dev/sound', label: 'Sound' },
 		{ href: '/dev/room', label: 'Room' },
 		{ href: '/dev/spectator', label: 'Spectator' },
 		{ href: '/dev/summary', label: 'Summary' },
