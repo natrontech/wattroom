@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
 )
 
@@ -30,6 +31,9 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.Handle("GET /metrics", promhttp.Handler())
+	// The client owns the ride until there is somewhere to persist it (#15); this
+	// takes the recorded samples and hands back a file.
+	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
 	mux.HandleFunc("GET /ws/rooms/{code}", h.HandleWS)
 	mux.Handle("/", spaHandler())
 

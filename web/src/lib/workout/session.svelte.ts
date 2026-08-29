@@ -65,6 +65,7 @@ export function createRideSession({
 		0,
 	);
 
+	const startedAt = new Date(now());
 	let elapsed = $state(0);
 	let state = $state<RideState>('idle');
 	let bias = $state(1);
@@ -76,6 +77,18 @@ export function createRideSession({
 	/** The ride's own power history, for the interval graph. Owned here rather than
 	 *  rebuilt in the screen — a component effect that reads and writes it loops. */
 	let trace = $state<{ t: number; w: number }[]>([]);
+	/**
+	 * What actually happened, in real time. Distinct from `trace`, which is keyed on
+	 * the workout clock so it lines up with the interval graph — skip and extend make
+	 * that clock jump, and a .fit needs strictly increasing seconds.
+	 */
+	const recording: {
+		second: number;
+		watts: number;
+		cadence: number;
+		heartRate: number;
+	}[] = [];
+	let recordedSeconds = 0;
 
 	let insideBand = 0;
 	let ridden = 0;
@@ -106,6 +119,12 @@ export function createRideSession({
 
 	function onSample(next: TrainerSample) {
 		sample = next;
+		recording.push({
+			second: recordedSeconds++,
+			watts: Math.max(0, Math.round(next.watts)),
+			cadence: Math.max(0, Math.round(next.cadence)),
+			heartRate: 0,
+		});
 		trace.push({ t: clockSeconds, w: next.watts });
 		if (trace.length > 900) trace.shift();
 
@@ -191,6 +210,13 @@ export function createRideSession({
 		},
 		get trace() {
 			return trace;
+		},
+		/** The ride as recorded, for .fit export. */
+		get recording() {
+			return recording;
+		},
+		get startedAt() {
+			return startedAt;
 		},
 		get target() {
 			return target;
