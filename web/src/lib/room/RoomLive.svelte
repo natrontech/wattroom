@@ -13,6 +13,7 @@
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { wireMetrics } from '$lib/room/wire';
 	import { createRoomAv } from '$lib/room/av.svelte';
+	import Jukebox from '$lib/room/Jukebox.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -234,6 +235,11 @@
 			>
 		{/if}
 	</div>
+
+	<Jukebox
+		jukebox={live.tick?.jukebox}
+		send={(action, videoId, title) => live.jukebox(action, videoId, title)}
+	/>
 
 	<!-- Rider tiles: live data glows, chrome stays quiet. -->
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

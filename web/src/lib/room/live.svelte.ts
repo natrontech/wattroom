@@ -108,6 +108,9 @@ export function createRoomLive(slug: string) {
 		finish() {
 			buffer?.end();
 		},
+		jukebox(action: string, videoId?: string, title?: string) {
+			send({ jukebox: { action, videoId, title } });
+		},
 		control(
 			action: string,
 			workout?: { name: string; json: string; totalSeconds: number },
