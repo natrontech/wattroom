@@ -3,7 +3,7 @@
 	import CheerLayer from './CheerLayer.svelte';
 	import ExecutionMeter from './ExecutionMeter.svelte';
 	import FaultBanner from './FaultBanner.svelte';
-	import IntervalGraph from './IntervalGraph.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import IntervalStrip from './IntervalStrip.svelte';
 	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';

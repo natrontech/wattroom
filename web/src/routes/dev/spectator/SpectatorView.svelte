@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
-	import IntervalGraph from '../room/IntervalGraph.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import {
 		ZONE_BG,
 		type MockRider,

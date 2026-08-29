@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Segment } from '$lib/workout/types';
-	import { CEILING, ZONE_TEXT, zoneOf } from './mockRoom.svelte';
+	import { CEILING, ZONE_TEXT, zoneOf } from './zones';
 
 	let {
 		segments,
