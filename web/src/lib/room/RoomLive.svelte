@@ -11,6 +11,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { flatten, targetAt } from '$lib/workout/engine';
 	import { parseSharedSegments } from '$lib/room/workout';
+	import { wireMetrics } from '$lib/room/wire';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -54,6 +55,8 @@
 	// not the solo RideSession — the server owns this clock, not the client.
 	let trainer = $state<Trainer | null>(null);
 	let rideError = $state<string | null>(null);
+	/** Where my heart rate comes from right now — named on my tile (#62). */
+	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
 	let seq = 0;
 	let unsubscribe: (() => void) | undefined;
 
@@ -81,12 +84,15 @@
 					{ trainer: sample, sensors: sensors.readings },
 					sample.at,
 				);
-				live.sendMetrics({
-					watts: Math.max(0, Math.round(metrics.watts)),
-					cadence: Math.max(0, Math.round(metrics.cadence)),
-					hr: Math.max(0, Math.round(metrics.heartRate ?? 0)),
-					seq: ++seq,
-				});
+				hrSource =
+					metrics.from.heartRate === 'heart-rate' ||
+					metrics.from.heartRate === 'trainer'
+						? metrics.from.heartRate
+						: null;
+				// ADR-0008 (#62): heart rate leaves this browser only while shared —
+				// wireMetrics drops it at the door, per sample, so a mid-ride toggle
+				// applies within a second and the rider's own .fit is untouched.
+				live.sendMetrics(wireMetrics(metrics, profile.current.shareHr, ++seq));
 			});
 			trainer = next;
 		} catch (cause) {
@@ -210,6 +216,27 @@
 						>
 					{/if}
 				</div>
+				{#if rider.id === account.me?.id && trainer && hrSource}
+					<!-- Health data being broadcast is never something a rider should
+					     have to discover (#62, ADR-0008): named source, one-tap stop. -->
+					<p class="text-muted mt-1 text-[10px]">
+						{#if profile.current.shareHr}
+							Sharing heart rate from your {hrSource === 'heart-rate'
+								? 'strap'
+								: 'trainer'} ·
+							<button
+								onclick={() => profile.update({ shareHr: false })}
+								class="underline hover:text-white">stop sharing</button
+							>
+						{:else}
+							Heart rate not shared with this room ·
+							<button
+								onclick={() => profile.update({ shareHr: true })}
+								class="underline hover:text-white">share</button
+							>
+						{/if}
+					</p>
+				{/if}
 				{#if metrics}
 					<div class="mt-2 flex items-baseline gap-2">
 						<span
