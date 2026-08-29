@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/rooms"
@@ -30,7 +31,10 @@ import (
 var webdist embed.FS
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	// The log ring tees every record into a bounded buffer so a feedback
+	// report can staple the server's recent log onto itself (#53).
+	logRing := feedback.NewLogRing(slog.NewJSONHandler(os.Stdout, nil))
+	log := slog.New(logRing)
 	slog.SetDefault(log)
 
 	// The database is optional: unset WATTROOM_DB runs the server as before —
@@ -65,6 +69,7 @@ func main() {
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
 		authService.Register(mux)
 		account.New(st, authService, log).Register(mux)
+		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
 		// Live rooms exist only with the durable side present: the WS needs
@@ -94,6 +99,15 @@ func main() {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
 	}
+}
+
+// issuerOrNil keeps the nil-interface trap out of main: a nil *GitHubIssuer
+// wrapped in the interface would not be nil.
+func issuerOrNil() feedback.Issuer {
+	if g := feedback.GitHubFromEnv(); g != nil {
+		return g
+	}
+	return nil
 }
 
 // spaHandler serves the embedded SvelteKit build with index.html fallback.
