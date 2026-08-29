@@ -10,10 +10,13 @@
 		jukebox,
 		send,
 		large = false,
+		ducked = false,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (action: string, videoId?: string, title?: string) => void;
 		large?: boolean;
+		/** Someone is talking: dip the music, Discord-style (#24). */
+		ducked?: boolean;
 	} = $props();
 
 	let url = $state('');
@@ -67,6 +70,27 @@
 				},
 			});
 		});
+	});
+
+	// ── Ducking (#24): client-side mix only. The rider's own volume is the
+	// baseline — read when unducked, so their slider is respected, dipped to a
+	// quarter while anyone speaks, restored after a short hold that stops the
+	// level pumping on the gaps between words.
+	let baseVolume = 100;
+	let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		if (!playerReady) return;
+		if (ducked) {
+			clearTimeout(releaseTimer);
+			const current = player.getVolume?.();
+			// Only capture a baseline from an undicked state.
+			if (typeof current === 'number' && current > baseVolume * 0.3)
+				baseVolume = current;
+			player.setVolume?.(Math.round(baseVolume * 0.25));
+		} else {
+			releaseTimer = setTimeout(() => player.setVolume?.(baseVolume), 600);
+		}
+		return () => clearTimeout(releaseTimer);
 	});
 
 	// ── Chase the server's playhead ───────────────────────────────────────────
