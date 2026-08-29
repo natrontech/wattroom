@@ -1,0 +1,72 @@
+# The production synthetic ride (#55, ADR-0006): the #6 Playwright ride runs
+# against production on a timer and pushes pass/fail + duration to the homelab
+# pushgateway. One artifact, three jobs: CI check, pre-deploy gate, synthetic.
+#
+# Engages when two repository secrets exist (#36 provides them):
+#   PROD_URL         — https://wattroom.ch
+#   PUSHGATEWAY_URL  — the laub-metrics-001 pushgateway endpoint
+# Until then every run skips cleanly rather than failing red on a service
+# that does not exist yet.
+name: synthetic-ride
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ride:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "${{ secrets.PROD_URL }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "PROD_URL not set — synthetic skipped (activates with #36)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.config.outputs.configured == 'true'
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Ride
+        id: ride
+        if: steps.config.outputs.configured == 'true'
+        working-directory: web
+        continue-on-error: true
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          START=$(date +%s)
+          # The same ride as CI, pointed at production; reuse skips the local server.
+          PLAYWRIGHT_BASE_URL="${{ secrets.PROD_URL }}" \
+            pnpm exec playwright test e2e/replay.spec.ts --reporter=line
+          echo "duration=$(( $(date +%s) - START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Push metrics
+        if: steps.config.outputs.configured == 'true' && always()
+        run: |
+          OUTCOME=0
+          [ "${{ steps.ride.outcome }}" = "success" ] && OUTCOME=1
+          DURATION="${{ steps.ride.outputs.duration }}"
+          cat <<METRICS | curl -s --data-binary @- "${{ secrets.PUSHGATEWAY_URL }}/metrics/job/wattroom_synthetic"
+          # TYPE wattroom_synthetic_ride_success gauge
+          wattroom_synthetic_ride_success $OUTCOME
+          # TYPE wattroom_synthetic_ride_duration_seconds gauge
+          wattroom_synthetic_ride_duration_seconds ${DURATION:-0}
+          # TYPE wattroom_synthetic_ride_timestamp_seconds gauge
+          wattroom_synthetic_ride_timestamp_seconds $(date +%s)
+          METRICS
