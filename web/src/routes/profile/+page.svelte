@@ -32,12 +32,16 @@
 			ftpWatts: ftp,
 			weightKg: kg,
 		});
-		status = err ? err.message : (profile.update({ ftp, kg }) ?? 'Saved.');
+		status = err
+			? err.message
+			: (profile.update({ ftp, kg, sprintGrade, singleSpeed }) ?? 'Saved.');
 	}
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
 	let status = $state<string | null>(null);
 	let suggestionDismissed = $state(false);
+	let sprintGrade = $state(profile.current.sprintGrade);
+	let singleSpeed = $state(profile.current.singleSpeed);
 
 	const measured = $derived(profile.current.ftpMeasuredAt);
 
@@ -46,7 +50,7 @@
 			void saveAccount();
 			return;
 		}
-		status = profile.update({ ftp, kg }) ?? 'Saved.';
+		status = profile.update({ ftp, kg, sprintGrade, singleSpeed }) ?? 'Saved.';
 	}
 </script>
 
@@ -135,6 +139,34 @@
 				Only used for w/kg — the number every contest here is scored on.
 			</span>
 		</label>
+
+		<!-- Sprint setup (#30/#41). 95% rule: two values, one checkbox — the
+		     single-speed case genuinely changes the mechanism, not just a taste. -->
+		<div class="border-muted/15 grid gap-3 border-t pt-4">
+			<span class="text-muted text-[10px] tracking-wider uppercase"
+				>sprint moments</span
+			>
+			<label class="block">
+				<span class="text-muted text-[10px] tracking-wider uppercase"
+					>sprint grade (%)</span
+				>
+				<input
+					type="number"
+					bind:value={sprintGrade}
+					min="1"
+					max="15"
+					class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+				/>
+				<span class="text-muted mt-1 block text-[11px]">
+					The slope a sprint throws you onto. Steeper = heavier gear feel.
+				</span>
+			</label>
+			<label class="text-muted flex items-center gap-2 text-xs">
+				<input type="checkbox" bind:checked={singleSpeed} />
+				Single-speed setup (Zwift Cog) — sprints use a high ERG target instead of
+				slope
+			</label>
+		</div>
 
 		<div class="flex items-center gap-3">
 			<button

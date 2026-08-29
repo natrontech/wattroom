@@ -16,6 +16,7 @@
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -34,6 +35,7 @@
 	});
 
 	const canControl = $derived(role === 'owner' || role === 'coach');
+	const watts = $derived(live.tick?.riders?.[account.me?.id ?? '']?.watts ?? 0);
 
 	// Layouts (#22): a per-rider convenience, so localStorage, not the profile.
 	type Layout = 'metrics' | 'video' | 'media';
@@ -97,9 +99,39 @@
 		);
 	});
 
-	// Target follows the shared timeline; released while paused or counting down.
+	// Sprint window (#30): the sprint owns the trainer while live. Slope for
+	// shiftable setups (your watts, your gear); a single-speed setup (#41,
+	// Zwift Cog) has no usable slope range, so it gets a high ERG target —
+	// less free-feel, same contest. ponytail: 2.0×FTP ERG sprint, tune in alpha.
+	const sprintLive = $derived.by(() => {
+		const sprint = live.tick?.sprint;
+		if (!sprint) return false;
+		const at = live.tick?.at ?? Date.now();
+		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
+	});
+
+	let sprintMode = false;
 	$effect(() => {
-		if (trainer) void trainer.setTargetPower(myTarget);
+		if (!trainer) return;
+		if (sprintLive) {
+			if (!sprintMode) {
+				sprintMode = true;
+				if (profile.current.singleSpeed) {
+					void trainer.setTargetPower(profile.current.ftp * 2);
+				} else {
+					// Defensive ramp into slope (RESEARCH.md §8: ERG↔SIM is the
+					// historically spiky transition): flat first, grade after.
+					const grade = profile.current.sprintGrade;
+					void trainer.setSimulation(0);
+					setTimeout(() => {
+						if (sprintMode) void trainer?.setSimulation(grade);
+					}, 500);
+				}
+			}
+			return;
+		}
+		sprintMode = false;
+		void trainer.setTargetPower(myTarget);
 	});
 
 	async function ride(next: Trainer) {
@@ -193,6 +225,11 @@
 					>
 				{:else if shared.phase === 'running'}
 					<button
+						onclick={() => live.control('sprint')}
+						class="border-watt/50 text-watt hover:bg-watt/10 rounded border px-3 py-1.5 text-sm"
+						>⚡ Sprint</button
+					>
+					<button
 						onclick={() => live.control('pause')}
 						class="border-muted/30 hover:border-muted/60 rounded border px-3 py-1.5 text-sm"
 						>Pause</button
@@ -257,6 +294,10 @@
 			>
 		{/if}
 	</div>
+
+	{#if live.tick?.sprint}
+		<SprintMoment sprint={live.tick.sprint} myWatts={watts} />
+	{/if}
 
 	<div class="text-muted mt-3 flex items-center gap-1 text-xs">
 		{#each [{ id: 'metrics', label: 'Metrics' }, { id: 'video', label: 'Video' }, { id: 'media', label: 'Media' }] as option (option.id)}

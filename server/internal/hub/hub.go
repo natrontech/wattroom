@@ -65,7 +65,8 @@ type room struct {
 	music   *jukebox
 	// riders ever seen this session, so someone who left before the end still
 	// gets their ride; saved guards against persisting one session twice.
-	seen map[string]protocol.Rider
+	sprint *sprint
+	seen   map[string]protocol.Rider
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
@@ -162,6 +163,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(ctx, c, "forbidden", "Only the owner or a coach controls the session.")
 				continue
 			}
+			if msg.Control.Action == "sprint" {
+				// Arm sprint moments: owner/coach (matrix), only mid-session.
+				if rm.armIfRunning(h.now()) {
+					continue
+				}
+				h.writeError(ctx, c, "invalid_request", "Sprints arm during a running session.")
+				continue
+			}
 			if !rm.control(*msg.Control, h.now()) {
 				h.writeError(ctx, c, "invalid_request", "That does not work right now — the session is in another phase.")
 			}
@@ -195,10 +204,20 @@ func (h *Hub) room(slug string) *room {
 // ponytail: the ticker runs while the room is empty; rooms are cheap and few,
 // stop-on-empty can land with room GC if it ever shows up in a profile.
 func (rm *room) run(now func() time.Time, saver SessionSaver) {
-	ticker := time.NewTicker(tickInterval)
-	defer ticker.Stop()
-	for range ticker.C {
+	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
+	// is live (SPEC) and returns to 1 Hz after.
+	timer := time.NewTimer(tickInterval)
+	defer timer.Stop()
+	for range timer.C {
 		rm.mu.Lock()
+		interval := tickInterval
+		if sp := rm.sprint; sp != nil {
+			t := now()
+			if t.After(sp.startsAt.Add(-time.Second)) && t.Before(sp.endsAt.Add(time.Second)) {
+				interval = burstTick
+			}
+		}
+		timer.Reset(interval)
 		if len(rm.clients) == 0 {
 			rm.mu.Unlock()
 			continue
@@ -208,6 +227,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			State:   rm.session.state(now()),
 			Jukebox: rm.music.snapshot(),
 			Cheers:  rm.cheers,
+			Sprint:  rm.sprint.state(now(), rm.seen),
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
@@ -303,6 +323,7 @@ func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 	if rm.session.phase == "running" {
 		state := rm.session.state(time.Now())
 		rm.record.add(rider.ID, m, rm.session.segments, float64(rider.FtpWatts), state.Elapsed)
+		rm.sprint.collect(rider.ID, m.Watts, time.Now())
 	}
 }
 
@@ -340,6 +361,16 @@ func (rm *room) jukebox(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.music.apply(cmd, addedBy, now)
+}
+
+func (rm *room) armIfRunning(now time.Time) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if rm.session.phase != "running" {
+		return false
+	}
+	rm.armSprint(now)
+	return true
 }
 
 func (rm *room) control(c protocol.Control, now time.Time) bool {

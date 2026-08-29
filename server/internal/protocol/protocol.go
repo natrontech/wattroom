@@ -11,6 +11,24 @@ type RiderMetrics struct {
 	Seq     int `json:"seq"` // monotonic per ride, for reconnect dedup
 }
 
+// SprintScore is one rider's place on the mini-podium.
+type SprintScore struct {
+	RiderID string  `json:"riderId"`
+	Name    string  `json:"name"`
+	Wkg     float64 `json:"wkg"`
+	Watts   int     `json:"watts"`
+}
+
+// SprintState rides the tick while a sprint moment is armed, live, or just
+// scored. Times are server-clock millis, the same clock as ServerTick.At —
+// clients render the klaxon countdown and the window from these anchors.
+type SprintState struct {
+	StartsAtMs int64 `json:"startsAtMs"`
+	EndsAtMs   int64 `json:"endsAtMs"`
+	// Filled once the window closes; podium order.
+	Results []SprintScore `json:"results,omitempty"`
+}
+
 // Control is a coach/owner command over the shared session (SPEC roles matrix:
 // pick workout, start countdown, pause/end). The server enforces the role.
 type Control struct {
@@ -107,6 +125,8 @@ type ServerTick struct {
 	Jukebox JukeboxState `json:"jukebox"`
 	// This second's cheers, drained each tick like metrics.
 	Cheers []Cheer `json:"cheers,omitempty"`
+	// Sprint moment (#30): armed/live window and, after it closes, the podium.
+	Sprint *SprintState `json:"sprint,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64      `json:"execution,omitempty"`
 	Roster    []Rider                 `json:"roster"`
