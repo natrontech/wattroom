@@ -30,6 +30,7 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 
 - [x] Visual identity locked ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): equalizer mark, Outrun palette, Chakra Petch over Barlow
 - [x] 15 screens mocked under `/dev`, fed by SimulatedTrainer — every M1–M5 feature has a mock to build against
+- [x] Design port pass (#100–#108): every mock screen rebuilt 1:1 in the real app — room shell, rooms list, ramp, profile, summary + medal, game-mode heroes, editor library column, room settings (sound pack + delete room), home shell
 - Parked with reason: 30 s disconnect grace (M5), Strava upload status (M6)
 
 ## M1 — Solo workout player
