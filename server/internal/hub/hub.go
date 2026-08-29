@@ -45,6 +45,7 @@ type room struct {
 	mu      sync.Mutex
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
+	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
 	session *session
 	record  *accumulator
 	music   *jukebox
@@ -64,6 +65,14 @@ func newRoom(slug string) *room {
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
+	// lastCheer rate-limits reactions: a cheer is a tap, not a firehose.
+	lastCheer time.Time
+}
+
+// cheerEmoji is the allowlist — reactions, not chat. Free text is a different
+// feature with different moderation questions.
+var cheerEmoji = map[string]struct{}{
+	"🔥": {}, "💪": {}, "👏": {}, "💀": {}, "🚀": {}, "🧊": {},
 }
 
 // canControl is the SPEC roles matrix row "pick workout / start / pause / end".
@@ -104,6 +113,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Metrics != nil {
 			if m := *msg.Metrics; validMetrics(m) {
 				rm.setMetrics(rider.ID, m)
+			}
+		}
+		if msg.Cheer != nil {
+			if _, ok := cheerEmoji[msg.Cheer.Emoji]; ok && h.now().Sub(c.lastCheer) >= time.Second {
+				c.lastCheer = h.now()
+				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}
 		if msg.Jukebox != nil {
@@ -171,10 +186,12 @@ func (rm *room) run(now func() time.Time) {
 			At:      now().UnixMilli(),
 			State:   rm.session.state(now()),
 			Jukebox: rm.music.snapshot(),
+			Cheers:  rm.cheers,
 			Riders:  rm.metrics,
 			Roster:  make([]protocol.Rider, 0, len(rm.clients)),
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
+		rm.cheers = nil
 		clients := make([]*client, 0, len(rm.clients))
 		// One roster entry per rider, however many sockets they hold — the same
 		// person on a dashboard and a phone is one presence, and duplicate ids
@@ -243,6 +260,16 @@ func (rm *room) backfill(riderID string, samples []protocol.RiderMetrics) {
 		if validMetrics(m) {
 			rm.record.add(riderID, m)
 		}
+	}
+}
+
+// cheer queues one reaction for the next tick; bounded so a hostile burst
+// cannot grow the payload (the per-client rate limit already makes this rare).
+func (rm *room) cheer(c protocol.Cheer) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.cheers) < 32 {
+		rm.cheers = append(rm.cheers, c)
 	}
 }
 

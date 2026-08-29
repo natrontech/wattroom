@@ -55,9 +55,20 @@ export interface JukeboxCommand {
   title?: string;
 }
 /**
+ * Cheer is the room's reaction layer (#74) — and the spectator's one verb.
+ */
+export interface Cheer {
+  emoji: string;
+  /**
+   * Sender name, filled by the server: cheering is presence.
+   */
+  from?: string;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
+  cheer?: Cheer;
   metrics?: RiderMetrics;
   control?: Control;
   backfill?: Backfill;
@@ -123,6 +134,10 @@ export interface ServerTick {
   at: number /* int64 */; // unix millis
   state: SessionState;
   jukebox: JukeboxState;
+  /**
+   * This second's cheers, drained each tick like metrics.
+   */
+  cheers?: Cheer[];
   roster: Rider[];
   riders: { [key: string]: RiderMetrics};
 }

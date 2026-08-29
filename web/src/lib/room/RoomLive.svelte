@@ -15,6 +15,7 @@
 	import { createRoomAv } from '$lib/room/av.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
+	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -380,6 +381,19 @@
 			{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
 		</div>
 	{/if}
+	<!-- Huge tap targets — used mid-ride, sweating. -->
+	<div class="mt-4 flex gap-2">
+		{#each ['🔥', '💪', '👏', '💀', '🚀', '🧊'] as emoji (emoji)}
+			<button
+				onclick={() => live.cheer(emoji)}
+				class="border-muted/20 active:bg-surface-raised flex-1 rounded-lg border py-3 text-2xl sm:flex-none sm:px-5"
+				>{emoji}</button
+			>
+		{/each}
+	</div>
+
+	<CheerLayer cheers={live.tick?.cheers} />
+
 	{#if tv}
 		<TvMode
 			roster={live.tick?.roster ?? []}

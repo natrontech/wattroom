@@ -39,8 +39,16 @@ type JukeboxCommand struct {
 	Title   string `json:"title,omitempty"`
 }
 
+// Cheer is the room's reaction layer (#74) — and the spectator's one verb.
+type Cheer struct {
+	Emoji string `json:"emoji"`
+	// Sender name, filled by the server: cheering is presence.
+	From string `json:"from,omitempty"`
+}
+
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
+	Cheer    *Cheer          `json:"cheer,omitempty"`
 	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
 	Control  *Control        `json:"control,omitempty"`
 	Backfill *Backfill       `json:"backfill,omitempty"`
@@ -94,11 +102,13 @@ type JukeboxState struct {
 // ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
 // sample, the roster, and the shared session state.
 type ServerTick struct {
-	At      int64                   `json:"at"` // unix millis
-	State   SessionState            `json:"state"`
-	Jukebox JukeboxState            `json:"jukebox"`
-	Roster  []Rider                 `json:"roster"`
-	Riders  map[string]RiderMetrics `json:"riders"`
+	At      int64        `json:"at"` // unix millis
+	State   SessionState `json:"state"`
+	Jukebox JukeboxState `json:"jukebox"`
+	// This second's cheers, drained each tick like metrics.
+	Cheers []Cheer                 `json:"cheers,omitempty"`
+	Roster []Rider                 `json:"roster"`
+	Riders map[string]RiderMetrics `json:"riders"`
 }
 
 // Error tells a client why its connection or command was refused.
