@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type MockRider, targetState } from './mockRoom.svelte';
+	import { type MockRider, targetState } from '$lib/room/mockcompat';
 
 	let { riders }: { riders: MockRider[] } = $props();
 

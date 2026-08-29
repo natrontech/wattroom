@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { queue } from './mockRoom.svelte';
-
-	let { tall = false }: { tall?: boolean } = $props();
+	let { tall = false, title = '' }: { tall?: boolean; title?: string } =
+		$props();
 </script>
 
 <!--
@@ -17,8 +16,8 @@
 >
 	<div class="text-muted text-center text-[11px]">
 		YouTube player tile<br />≥200×200, never overlaid
-		{#if tall}
-			<div class="mt-2 text-sm text-white">{queue[0].title}</div>
+		{#if tall && title}
+			<div class="mt-2 text-sm text-white">{title}</div>
 		{/if}
 	</div>
 </div>

@@ -56,9 +56,8 @@ export interface SprintResult {
  * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
  * status, never a toast — the rider is on a bike three metres from the screen.
  */
-export type Fault =
-	| { kind: 'trainer'; state: 'reconnecting' | 'lost' }
-	| { kind: 'room'; state: 'reconnecting' | 'lost' };
+export type { Fault } from '$lib/room/mockcompat';
+import type { Fault } from '$lib/room/mockcompat';
 
 export const ROOM_NAME = 'Thursday Sufferfest';
 
@@ -76,14 +75,13 @@ function bandWatts(target: number): number {
 }
 
 /** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
-export function targetState(rider: MockRider) {
-	const has = rider.target > 0;
-	const band = has ? bandWatts(rider.target) : 0;
-	const delta = rider.watts - rider.target;
-	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
-}
 
-export interface MockRider {
+export type { RoomRider as MockRider } from '$lib/room/view';
+export { targetState } from '$lib/room/view';
+import type { RoomRider } from '$lib/room/view';
+
+// Legacy shape retained for reference only.
+interface LegacyMockRider {
 	name: string;
 	ftp: number;
 	kg: number;
@@ -109,6 +107,7 @@ export interface MockRider {
 }
 
 interface RiderSeed {
+	id: string;
 	name: string;
 	ftp: number;
 	kg: number;
@@ -127,6 +126,7 @@ interface RiderSeed {
 
 const SEEDS: RiderSeed[] = [
 	{
+		id: 'nina',
 		name: 'Nina',
 		ftp: 240,
 		kg: 62,
@@ -138,6 +138,7 @@ const SEEDS: RiderSeed[] = [
 		sprintFactor: 2.6,
 	},
 	{
+		id: 'ruben',
 		name: 'Ruben',
 		ftp: 310,
 		kg: 78,
@@ -148,6 +149,7 @@ const SEEDS: RiderSeed[] = [
 		sprintFactor: 3.6,
 	},
 	{
+		id: 'milo',
 		name: 'Milo',
 		ftp: 195,
 		kg: 71,
@@ -159,6 +161,7 @@ const SEEDS: RiderSeed[] = [
 		sprintFactor: 2.4,
 	},
 	{
+		id: 'sara',
 		name: 'Sara',
 		ftp: 285,
 		kg: 66,
@@ -169,6 +172,7 @@ const SEEDS: RiderSeed[] = [
 		sprintFactor: 2.9,
 	},
 	{
+		id: 'tobi',
 		name: 'Tobi',
 		ftp: 225,
 		kg: 83,
@@ -179,6 +183,7 @@ const SEEDS: RiderSeed[] = [
 		sprintFactor: 3.4,
 	},
 	{
+		id: 'you',
 		name: 'You',
 		ftp: 265,
 		kg: 74,
@@ -309,8 +314,9 @@ export function createRoom() {
 	let block = $state<Block | null>(null);
 	let countdown = $state(COUNTDOWN);
 
-	const riders = $state<MockRider[]>(
+	const riders = $state<RoomRider[]>(
 		SEEDS.map((s) => ({
+			id: s.id,
 			name: s.name,
 			ftp: s.ftp,
 			kg: s.kg,

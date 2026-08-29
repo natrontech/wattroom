@@ -1,11 +1,27 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
-	import { rooms, type MockRider } from './mockRoom.svelte';
+	import type { MockRider, RailRoom } from '$lib/room/mockcompat';
 
-	let { you, live }: { you: MockRider; live: boolean } = $props();
+	let {
+		you,
+		live,
+		rooms = [],
+		activeSlug = '',
+		micOn = $bindable(true),
+		camOn = $bindable(true),
+		onMic,
+		onCam,
+	}: {
+		you: MockRider;
+		live: boolean;
+		rooms?: RailRoom[];
+		activeSlug?: string;
+		micOn?: boolean;
+		camOn?: boolean;
+		onMic?: () => void;
+		onCam?: () => void;
+	} = $props();
 
-	let micOn = $state(true);
-	let camOn = $state(true);
 	// SPEC room audio: while the jukebox plays, VAD tightens and push-to-talk is offered.
 	let pushToTalk = $state(false);
 </script>
@@ -20,11 +36,12 @@
 		your rooms
 	</div>
 	<ul class="flex-1 px-2">
-		{#each rooms as room, i (room.name)}
+		{#each rooms as room (room.slug)}
 			<li>
-				<button
-					class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {i ===
-					0
+				<a
+					href="/r/{room.slug}"
+					class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {room.slug ===
+					activeSlug
 						? 'bg-surface-raised text-white'
 						: 'text-muted hover:text-white'}"
 				>
@@ -38,7 +55,7 @@
 							>{room.members}</span
 						>
 					{/if}
-				</button>
+				</a>
 			</li>
 		{/each}
 	</ul>
@@ -62,13 +79,13 @@
 		{/if}
 		<div class="mt-2 flex gap-1.5">
 			<button
-				onclick={() => (micOn = !micOn)}
+				onclick={() => (onMic ? onMic() : (micOn = !micOn))}
 				class="flex-1 rounded border px-2 py-1.5 text-[11px] {micOn
 					? 'border-muted/30 text-white'
 					: 'border-z6/40 text-z6'}">{micOn ? 'mic on' : 'muted'}</button
 			>
 			<button
-				onclick={() => (camOn = !camOn)}
+				onclick={() => (onCam ? onCam() : (camOn = !camOn))}
 				class="flex-1 rounded border px-2 py-1.5 text-[11px] {camOn
 					? 'border-muted/30 text-white'
 					: 'border-muted/20 text-muted'}"
