@@ -122,3 +122,55 @@ describe('createRideSession', () => {
 		session.stop();
 	});
 });
+
+describe('a throttled tick', () => {
+	/**
+	 * Chrome throttles a hidden tab's timers to about once a minute (#51). The ride
+	 * has to absorb that: the clock advances by the seconds that really passed, so a
+	 * rider who switched tabs comes back to the right place in the workout rather
+	 * than a minute behind it.
+	 */
+	it('advances the ride by the seconds it covers, not by one', async () => {
+		const session = ride();
+		await session.start();
+
+		session.tick(45);
+
+		expect(session.elapsed).toBe(45);
+		session.stop();
+	});
+
+	it('crosses a block boundary and lands on the new target', async () => {
+		const session = ride();
+		await session.start();
+		expect(session.target).toBe(200);
+
+		// One fire covering the whole first block plus a second of the next.
+		session.tick(61);
+
+		expect(session.target).toBe(100); // 50 % of a 200 W FTP
+		session.stop();
+	});
+
+	it('finishes a workout that ended inside the gap', async () => {
+		const session = ride();
+		await session.start();
+
+		session.tick(600);
+
+		expect(session.state).toBe('done');
+		session.stop();
+	});
+
+	it('does not leave the spiral guard held open past its release', async () => {
+		const session = ride();
+		await session.start();
+		pedal(session, 40, 40, DEFAULTS.spiralAfterSeconds);
+		expect(session.spiralActive).toBe(true);
+
+		session.tick(DEFAULTS.spiralReleaseSeconds + 30);
+
+		expect(session.spiralActive).toBe(false);
+		session.stop();
+	});
+});

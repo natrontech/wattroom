@@ -1,5 +1,6 @@
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
+import { createTicker, type Ticker } from './ticker';
 import type { Segment, Workout } from './types';
 
 /**
@@ -94,7 +95,7 @@ export function createRideSession({
 	let ridden = 0;
 	let idleSeconds = 0;
 	let lowCadenceSeconds = 0;
-	let ticker: ReturnType<typeof setInterval> | undefined;
+	let ticker: Ticker | undefined;
 	let unsubscribe: (() => void) | undefined;
 
 	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
@@ -171,9 +172,14 @@ export function createRideSession({
 		}
 	}
 
-	function tick() {
+	/**
+	 * Advance the ride by `seconds`. Normally one, but a throttled or delayed tick
+	 * reports the seconds it actually covers (#51) — the ride catches up in a jump
+	 * rather than running slow for as long as the tab stays hidden.
+	 */
+	function tick(seconds = 1) {
 		if (state === 'resuming') {
-			resumeIn -= 1;
+			resumeIn -= seconds;
 			if (resumeIn <= 0) {
 				state = 'running';
 				applyTarget();
@@ -183,11 +189,11 @@ export function createRideSession({
 		if (state !== 'running') return;
 
 		if (spiralUntil > 0) {
-			spiralUntil -= 1;
+			spiralUntil = Math.max(0, spiralUntil - seconds);
 			if (spiralUntil === 0) applyTarget();
 		}
 
-		elapsed += 1;
+		elapsed += seconds;
 		if (clockSeconds >= total) {
 			state = 'done';
 			void trainer.setTargetPower(0);
@@ -245,10 +251,10 @@ export function createRideSession({
 			unsubscribe = trainer.onSample(onSample);
 			state = 'running';
 			applyTarget();
-			ticker = setInterval(tick, 1000);
+			ticker = createTicker(tick, { now });
 		},
 		stop() {
-			clearInterval(ticker);
+			ticker?.stop();
 			unsubscribe?.();
 			void trainer.setTargetPower(0);
 			state = 'done';
