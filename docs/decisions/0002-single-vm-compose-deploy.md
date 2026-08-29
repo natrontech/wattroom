@@ -10,7 +10,7 @@ The founding decision was Kubernetes-native deployment on existing Natron infras
 
 ## Decision
 
-Production runs on **one VM with a docker compose stack**: the wattroom-server image (SPA embedded), Postgres, LiveKit (host network mode — trivial on a VM), and a reverse proxy (Caddy) for TLS on wattroom.cc. Deploys are `git pull && docker compose up -d` (or a small deploy script/action). Backups are a `pg_dump` cron to off-VM storage. The k8s manifests/Helm work is dropped, not deferred as an artifact — nothing k8s-shaped gets built or maintained.
+Production runs on **one VM with a docker compose stack**: the wattroom-server image (SPA embedded), Postgres, LiveKit (host network mode — trivial on a VM), and a reverse proxy (Caddy) for TLS on wattroom.ch. Deploys are `git pull && docker compose up -d` (or a small deploy script/action). Backups are a `pg_dump` cron to off-VM storage. The k8s manifests/Helm work is dropped, not deferred as an artifact — nothing k8s-shaped gets built or maintained.
 
 ## Consequences
 

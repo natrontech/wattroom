@@ -5,7 +5,7 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 
 ## Not code (owner: Jan)
 
-- [ ] Register **wattroom.cc** + handles (GitHub org social preview, Strava, Instagram)
+- [x] Register **wattroom.ch** (bought 2026-08-29); handles still open (GitHub org social preview, Strava, Instagram)
 - [ ] OAuth apps when M2 nears: Google, GitHub, Strava (starts single-athlete; Standard Tier ≤10 users needs no review)
 - [ ] YouTube Data API key (M3)
 
@@ -77,6 +77,6 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 ## M6 — Alpha polish
 
 - [ ] Strava auto-upload; account export-all + delete
-- [ ] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups, Grafana; wattroom.cc live
+- [ ] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups, Grafana; wattroom.ch live
 - [ ] Calibration guidance, sensor dropout handling, UX polish
 - [ ] Alpha: weekly rides with the crew — success = they keep choosing it

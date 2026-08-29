@@ -18,7 +18,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 - Persistent rooms where people train together in real time, with live metrics for every rider
 - Always-on voice and camera between room members (LiveKit, built in from day one)
 - A synced jukebox: shared YouTube queue playing in sync for everyone
-- A hosted service at **wattroom.cc**, open source under **AGPL-3.0**
+- A hosted service at **wattroom.ch**, open source under **AGPL-3.0**
 
 ### What WattRoom is NOT
 
@@ -33,7 +33,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 | Area | Decision |
 |---|---|
-| Distribution | **Hosted service first** (wattroom.cc). Self-hosting possible (it's AGPL + a compose stack, [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)) but not the optimization target. |
+| Distribution | **Hosted service first** (wattroom.ch). Self-hosting possible (it's AGPL + a compose stack, [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)) but not the optimization target. |
 | License | **AGPL-3.0** — protects the hosted model. Auuki (also AGPL) is **architectural reference only, never copy code**: copying is license-compatible but would add an external copyright holder and forfeit any future relicensing flexibility. Write the FTMS layer from the Bluetooth SIG spec. |
 | Stack | **Go** server (API + WebSocket + embedded frontend) + **SvelteKit** SPA + **PostgreSQL** + **LiveKit** (self-hosted). |
 | Repo | Monorepo at **github.com/natrontech/wattroom**: `/web` + `/server`. Protected main, PRs with CI green, squash merge, conventional commits. |
@@ -65,7 +65,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 | Fan-out | **Server tick @1 Hz**: all riders coalesced into one message per room per second (n in, 1 out — never n²). Sprint moments burst to 4 Hz for 15 s. Latency budget: pedal → everyone's screen < 500 ms. |
 | Validation | **Own training circle is the alpha.** Success signal: the group keeps *choosing* WattRoom over Zwift+Discord for weekly sessions, unprompted. Widen only after that. |
 | Visual identity | **Neon glow / synthwave.** Near-black surfaces, one hot accent (electric watt-yellow), glowing interval graphs like a night ride, subtle bloom on live numbers. Restraint rule: glow belongs to *data* (graphs, live watts, sprint moments) — chrome UI (buttons, forms, settings) stays flat and quiet, or it tips into kitsch. |
-| Join flow | **Share link is the golden path** (`wattroom.cc/r/velvet-hammer`) + **6-char room code** for cross-device joins, both MVP. **In-app invites** and an **opt-in public room directory** are fast-follows. Rooms are private/unlisted by default; a directory listing is a per-room owner choice, and metrics stay visible only to people who actually join. |
+| Join flow | **Share link is the golden path** (`wattroom.ch/r/velvet-hammer`) + **6-char room code** for cross-device joins, both MVP. **In-app invites** and an **opt-in public room directory** are fast-follows. Rooms are private/unlisted by default; a directory listing is a per-room owner choice, and metrics stay visible only to people who actually join. |
 | iOS | **Web-only, forever.** Chrome/Edge on desktop + Android is the product; no native app, no bridge app planned. iOS users bring a laptop (the spectator view works in iOS Safari). Honest positioning over platform sprawl. |
 | Replay | **Out.** The ride summary (curve, score, medals, graphs) is the record; AV is never recorded regardless. Question closed. |
 | FTP | **All three sources.** Manual entry (the fallback, MVP), **built-in ramp test** (special workout on the existing engine, FTP = 75% of best 1-min), **auto-detect** (server *prompts* when the 90-day curve outgrows the setting — never silently changes it, FTP moves every workout's difficulty). |
@@ -244,7 +244,7 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 **M6 — Alpha polish**
 - Strava auto-upload
 - Account export-all + delete (full purge)
-- Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.cc deployment, Grafana dashboards
+- Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.ch deployment, Grafana dashboards
 - Calibration/spindown, sensor dropout handling, UX polish
 - Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
 
@@ -266,7 +266,7 @@ Ships with M0, because retrofitting it is how projects stay solo forever:
 ## 7. Naming & branding
 
 - **Name: WattRoom.** You enter a room and push watts together. Vocabulary: rooms, "open a room", room codes, coach role.
-- Domain: **wattroom.cc** — grab domain + handles (GitHub, Strava, Instagram) early; check trademark landscape (Wattbike exists).
+- Domain: **wattroom.ch** — grab domain + handles (GitHub, Strava, Instagram) early; check trademark landscape (Wattbike exists).
 - **Visual direction: full synthwave pain cave** ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md) supersedes the original near-black/watt-yellow palette). Violet-black surfaces (#0a0118 / #1a0736); **two accent hues with distinct jobs** — `--color-neon` (violet #8b2bff) is structural chrome and never glows, `--color-watt` (magenta #ff3d8b) is live data and is the only thing that does. Interval graphs glow like a night ride, live numbers get subtle bloom; sprint moments are the one place the UI is allowed to go loud. Chrome (buttons, forms, editor, settings) stays flat and quiet — the glow means "this is live wattage", never decoration. Medal cards are dark, screenshot-first, built to look good in a group chat.
 - **Mark: the equalizer W** — five bars whose heights trace the letter, so the logo is an interval graph. It animates while a session runs. Wordmark flat white. Type: Chakra Petch (display + all numerals) over Barlow (running text).
 
