@@ -14,12 +14,24 @@
 	import type { Workout } from '$lib/workout/types';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
+	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { page } from '$app/state';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
+	const custom = createCustomStore();
+	const requested = page.url.searchParams.get('w') ?? '';
+	const saved = custom.byId(requested);
 	const selected = $derived(
-		byId(page.url.searchParams.get('w') ?? '') ?? byId('sweet-spot-2x20')!,
+		byId(requested) ??
+			(saved
+				? {
+						id: saved.id,
+						focus: 'Custom' as const,
+						summary: 'Your own workout.',
+						workout: saved.workout,
+					}
+				: byId('sweet-spot-2x20')!),
 	);
 	const workout = $derived(selected.workout);
 
