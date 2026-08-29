@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
-	import MedalCard, { type Medal } from '../medal/MedalCard.svelte';
+	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
 	import {
 		formatClock,
 		ROOM_NAME,
@@ -198,7 +198,7 @@
 				your medal
 			</h2>
 			<div class="mt-3">
-				<MedalCard {medal} />
+				<MedalCard {medal} roomName={ROOM_NAME} />
 			</div>
 			<div class="border-muted/15 mt-3 rounded-lg border p-4">
 				<label class="flex items-start gap-3">

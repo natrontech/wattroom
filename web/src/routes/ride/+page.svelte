@@ -27,6 +27,7 @@
 		type RideBuffer,
 	} from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
+	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -601,55 +602,67 @@
 		</div>
 
 		{#if session.state === 'done'}
-			<div
-				class="border-muted/15 bg-surface-raised mt-3 rounded-lg border px-5 py-4"
-			>
-				<p class="font-display font-bold">Session complete</p>
-				<p class="text-muted mt-1 text-xs">
-					Execution {Math.round(session.execution * 100)}% · {session.recording
-						.length} seconds recorded.
-				</p>
-				<button
-					onclick={downloadFit}
-					disabled={downloading}
-					data-testid="download-fit"
-					class="mt-3 rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
-					>{downloading ? 'Preparing…' : 'Download .fit'}</button
+			<div class="mt-6">
+				<SessionSummary
+					subtitle="{workout.name} · {new Date().toLocaleDateString()}"
+					samples={session.recording}
+					ftp={profile.current.ftp}
+					execution={session.execution}
 				>
-				{#if error}
-					<p class="text-z6 mt-2 text-xs">{error}</p>
-				{/if}
-
-				{#if recorder.flags.length > sentFlags}
-					<!-- The post-ride card (#52): each flag, one optional line, send. -->
-					<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
-						<span class="text-muted text-[10px] tracking-wider uppercase"
-							>your flags</span
+					{#snippet actions()}
+						<div
+							class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
 						>
-						{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
-							<div class="flex items-center gap-2">
-								<span class="text-muted font-mono text-xs"
-									>{new Date(flag.clientMs).toLocaleTimeString()}</span
+							<div class="flex flex-wrap items-center gap-2">
+								<button
+									onclick={downloadFit}
+									disabled={downloading}
+									data-testid="download-fit"
+									class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+									>{downloading ? 'Preparing…' : 'Export .fit'}</button
 								>
-								<input
-									bind:value={flag.note}
-									placeholder="what went wrong? (optional)"
-									class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
-								/>
+								<a
+									href="/workouts"
+									class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+									>Pick another workout</a
+								>
 							</div>
-						{/each}
-						<button
-							onclick={sendFlags}
-							disabled={sending}
-							class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
-							>{sending ? 'Sending…' : 'Send to the developers'}</button
-						>
-					</div>
-				{:else if sentFlags > 0}
-					<p class="text-z4 mt-3 text-xs">
-						Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
-					</p>
-				{/if}
+							{#if error}
+								<p class="text-z6 mt-2 text-xs">{error}</p>
+							{/if}
+
+							{#if recorder.flags.length > sentFlags}
+								<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
+									<span class="text-muted text-[10px] tracking-wider uppercase"
+										>your flags</span
+									>
+									{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
+										<div class="flex items-center gap-2">
+											<span class="text-muted font-mono text-xs"
+												>{new Date(flag.clientMs).toLocaleTimeString()}</span
+											>
+											<input
+												bind:value={flag.note}
+												placeholder="what went wrong? (optional)"
+												class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+											/>
+										</div>
+									{/each}
+									<button
+										onclick={sendFlags}
+										disabled={sending}
+										class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
+										>{sending ? 'Sending…' : 'Send to the developers'}</button
+									>
+								</div>
+							{:else if sentFlags > 0}
+								<p class="text-z4 mt-3 text-xs">
+									Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
+								</p>
+							{/if}
+						</div>
+					{/snippet}
+				</SessionSummary>
 			</div>
 		{/if}
 	{/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import MedalCard, { type Medal } from './MedalCard.svelte';
+	import { ROOM_NAME } from '../room/mockRoom.svelte';
+	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
 
 	// Criteria are docs/SPEC.md's, verbatim — medals are a fixed set, not a design choice.
 	const medals: Medal[] = [
@@ -52,7 +53,7 @@
 
 	<div class="mt-8 grid gap-6 sm:grid-cols-2">
 		{#each medals as medal (medal.name)}
-			<MedalCard {medal} />
+			<MedalCard {medal} roomName={ROOM_NAME} />
 		{/each}
 	</div>
 </main>
