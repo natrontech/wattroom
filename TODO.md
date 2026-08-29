@@ -38,12 +38,12 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 - [ ] Kickr v2 GATT enumeration (#43) — needs an alpha rider's v2; see docs/HARDWARE-SESSIONS.md
 - [ ] WcpsTrainer driver (Kickr v2: unlock, 0x42 ERG, 0x43/0x46 sim/grade)
 - [ ] HR / cadence / power sensor pairing (BLE HRS, CPS, CSC)
-- [ ] Workout JSON format + editor + curated library (~25 workouts)
+- [x] Workout JSON format + editor + curated library (#12) — 26 workouts, editor saves to localStorage until #15
 - [x] Interval graph UI, FTP scaling, player controls (#13) — spiral-guard thresholds still need proving (#46)
 - [ ] Built-in ramp test; manual FTP in profile
 - [x] .fit export (#5) — verified against Strava, classified as Virtual Ride
 - [ ] Local ride history
-- [ ] Playwright smoke: simulated trainer → 2-min workout → .fit produced
+- [x] Playwright smoke (#6) — runs on every PR as its own CI job
 
 ## M2 — Accounts & rooms
 
