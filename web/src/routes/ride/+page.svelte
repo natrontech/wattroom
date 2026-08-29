@@ -13,26 +13,39 @@
 	import type { Workout } from '$lib/workout/types';
 	import { play } from '$lib/sound/cues';
 
-	// ponytail: one built-in workout until the library lands (#12).
-	const workout: Workout = {
-		name: 'Sweet Spot 2×20',
-		steps: [
-			{ type: 'warmup', seconds: 600, from: 0.45, to: 0.7 },
-			{
-				type: 'repeat',
-				times: 2,
-				steps: [
-					{ type: 'steady', seconds: 1200, target: 0.9 },
-					{ type: 'steady', seconds: 300, target: 0.55 },
-				],
-			},
-			{ type: 'cooldown', seconds: 300, from: 0.6, to: 0.4 },
-		],
-	};
+	// ponytail: two built-ins until the library lands (#12). "Openers" is short on
+	// purpose — a real pre-ride activation, and what the e2e smoke rides.
+	const workouts: Workout[] = [
+		{
+			name: 'Openers',
+			steps: [
+				{ type: 'warmup', seconds: 60, from: 0.4, to: 0.65 },
+				{ type: 'steady', seconds: 60, target: 0.75 },
+			],
+		},
+		{
+			name: 'Sweet Spot 2×20',
+			steps: [
+				{ type: 'warmup', seconds: 600, from: 0.45, to: 0.7 },
+				{
+					type: 'repeat',
+					times: 2,
+					steps: [
+						{ type: 'steady', seconds: 1200, target: 0.9 },
+						{ type: 'steady', seconds: 300, target: 0.55 },
+					],
+				},
+				{ type: 'cooldown', seconds: 300, from: 0.6, to: 0.4 },
+			],
+		},
+	];
+
+	let workout = $state<Workout>(workouts[1]);
 
 	// FTP lives in the profile once accounts exist (#16); manual entry is the MVP fallback.
 	let ftp = $state(265);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
+	let downloading = $state(false);
 	let error = $state<string | null>(null);
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
@@ -66,6 +79,41 @@
 	const pct = (value: number) =>
 		Math.min(100, Math.max(0, (value / ftp / 1.5) * 100));
 	const remaining = $derived(session ? session.total - session.elapsed : 0);
+
+	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
+	async function downloadFit() {
+		if (!session) return;
+		downloading = true;
+		error = null;
+		try {
+			const response = await fetch('/api/rides/export', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					startedAt: session.startedAt.toISOString(),
+					samples: session.recording,
+				}),
+			});
+			if (!response.ok) {
+				const payload = await response.json().catch(() => null);
+				throw new Error(payload?.message ?? 'The ride could not be exported.');
+			}
+			const blob = await response.blob();
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download =
+				response.headers
+					.get('content-disposition')
+					?.match(/filename="(.+)"/)?.[1] ?? 'ride.fit';
+			link.click();
+			URL.revokeObjectURL(url);
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : String(cause);
+		} finally {
+			downloading = false;
+		}
+	}
 </script>
 
 <main class="bg-surface flex min-h-screen flex-col px-6 py-5 text-white">
@@ -87,7 +135,20 @@
 				)} · targets scale to your FTP
 			</p>
 
-			<label class="mt-8 block text-left">
+			<div class="mt-8 flex gap-2">
+				{#each workouts as option (option.name)}
+					<button
+						onclick={() => (workout = option)}
+						class="flex-1 rounded border px-3 py-2 text-xs {workout.name ===
+						option.name
+							? 'bg-surface-raised border-white/40 text-white'
+							: 'border-muted/20 text-muted hover:text-white'}"
+						>{option.name}</button
+					>
+				{/each}
+			</div>
+
+			<label class="mt-4 block text-left">
 				<span class="text-muted text-[10px] tracking-wider uppercase"
 					>your FTP (watts)</span
 				>
@@ -289,9 +350,19 @@
 			>
 				<p class="font-display font-bold">Session complete</p>
 				<p class="text-muted mt-1 text-xs">
-					Execution {Math.round(session.execution * 100)}%. Ride summary and
-					.fit export land with #5 and #25.
+					Execution {Math.round(session.execution * 100)}% · {session.recording
+						.length} seconds recorded.
 				</p>
+				<button
+					onclick={downloadFit}
+					disabled={downloading}
+					data-testid="download-fit"
+					class="mt-3 rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+					>{downloading ? 'Preparing…' : 'Download .fit'}</button
+				>
+				{#if error}
+					<p class="text-z6 mt-2 text-xs">{error}</p>
+				{/if}
 			</div>
 		{/if}
 	{/if}
