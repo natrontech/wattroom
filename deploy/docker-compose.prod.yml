@@ -1,0 +1,92 @@
+# Production: one VM, one compose stack (ADR-0002). Copy deploy/.env.example
+# to .env beside this file, fill it, then: docker compose up -d
+services:
+  wattroom:
+    image: ghcr.io/natrontech/wattroom:main
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WATTROOM_DB: postgres://wattroom:${POSTGRES_PASSWORD}@postgres:5432/wattroom
+      WATTROOM_BASE_URL: https://${DOMAIN}
+      WATTROOM_LIVEKIT_URL: wss://${DOMAIN}/livekit
+      WATTROOM_FEEDBACK_DIR: /data/feedback
+    volumes:
+      - feedback:/data/feedback
+    depends_on:
+      - postgres
+    expose:
+      - '8080'
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wattroom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: wattroom
+    volumes:
+      - pgdata:/var/lib/postgresql
+    expose:
+      - '5432'
+
+  # LiveKit on host network: WebRTC needs real UDP on the node IP
+  # (ADR-0002 accepted this; the API keys are real, not --dev).
+  livekit:
+    image: livekit/livekit-server:v1.13
+    restart: unless-stopped
+    network_mode: host
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  # pg_dump every night at 03:17, kept 14 days; sync the dump dir off-VM with
+  # whatever the homelab already uses (restic/rclone) — the cron only produces.
+  backup:
+    image: postgres:18
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        while true; do
+          sleep $$(( ($$(date -d '03:17 tomorrow' +%s 2>/dev/null || date +%s) - $$(date +%s)) % 86400 + 1 ))
+          pg_dump postgres://wattroom:$${POSTGRES_PASSWORD}@postgres:5432/wattroom \
+            | gzip > /backups/wattroom-$$(date +%F).sql.gz
+          find /backups -name 'wattroom-*.sql.gz' -mtime +14 -delete
+        done
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      - postgres
+
+  prometheus:
+    image: prom/prometheus:v3.7.4
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    expose:
+      - '9090'
+
+volumes:
+  pgdata:
+  feedback:
+  caddy-data:
+  caddy-config:
+  prom-data:

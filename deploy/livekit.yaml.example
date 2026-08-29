@@ -1,0 +1,7 @@
+# Copy to livekit.yaml. Real keys — --dev never reaches production.
+port: 7880
+rtc:
+  use_external_ip: true
+keys:
+  # livekit-server generate-keys; mirror into .env WATTROOM_LIVEKIT_KEY/SECRET.
+  REPLACE_KEY: REPLACE_SECRET
