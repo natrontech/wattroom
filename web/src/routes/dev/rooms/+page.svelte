@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
-	import Skeleton from '../Skeleton.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { rooms } from '../room/mockRoom.svelte';
 
 	// The two states that decide whether anyone comes back: your first visit, and every visit after.

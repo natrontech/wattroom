@@ -190,6 +190,20 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Presence answers "is anything happening in there" for the rooms list (#39
+// design: the nav shows where the action is). Lock, read two numbers, unlock.
+func (h *Hub) Presence(slug string) (connected int, phase string) {
+	h.mu.Lock()
+	rm, ok := h.rooms[slug]
+	h.mu.Unlock()
+	if !ok {
+		return 0, "idle"
+	}
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return len(rm.clients), rm.session.phase
+}
+
 func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {
 	writeCtx, cancel := context.WithTimeout(ctx, tickInterval)
 	defer cancel()
