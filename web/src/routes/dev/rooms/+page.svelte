@@ -136,7 +136,7 @@
 					class="border-muted/25 mt-3 flex items-center gap-2 rounded border px-3 py-2"
 				>
 					<span class="truncate font-mono text-xs"
-						>wattroom.cc/r/velvet-hammer</span
+						>wattroom.ch/r/velvet-hammer</span
 					>
 					<button class="text-muted ml-auto shrink-0 text-xs hover:text-white"
 						>Copy</button
