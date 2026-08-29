@@ -1,12 +1,14 @@
 // Package hub owns all live room state in memory: one goroutine per room,
 // clients join/leave over WebSocket, and rider metrics are coalesced into one
-// tick message per room per second (see WATTROOM.md §3).
+// tick message per room per second (see WATTROOM.md §3). Everything here dies
+// with the process — durable data is the store's problem.
 package hub
 
 import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -18,43 +20,66 @@ import (
 
 const tickInterval = time.Second
 
-type Hub struct {
-	log   *slog.Logger
-	mu    sync.Mutex
-	rooms map[string]*room
+// Access is what the hub needs from the durable side: who is this request,
+// and are they in this room. Defined here, where it is consumed; implemented
+// by rooms.Service. The hub itself never touches the database — membership is
+// checked once at connect, not per message.
+type Access interface {
+	Authorize(r *http.Request, slug string) (protocol.Rider, error)
 }
 
-func New(log *slog.Logger) *Hub {
-	return &Hub{log: log, rooms: make(map[string]*room)}
+type Hub struct {
+	log    *slog.Logger
+	access Access
+	now    func() time.Time
+	mu     sync.Mutex
+	rooms  map[string]*room
+}
+
+func New(log *slog.Logger, access Access) *Hub {
+	return &Hub{log: log, access: access, now: time.Now, rooms: make(map[string]*room)}
 }
 
 type room struct {
-	code    string
+	slug    string
 	mu      sync.Mutex
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
+	session *session
 }
 
 type client struct {
-	riderID string
-	conn    *websocket.Conn
+	rider protocol.Rider
+	conn  *websocket.Conn
 }
 
+// canControl is the SPEC roles matrix row "pick workout / start / pause / end".
+func canControl(role string) bool { return role == "owner" || role == "coach" }
+
 // HandleWS upgrades the connection and pumps messages until the client leaves.
+// Membership is the price of entry: metrics are room-scoped (privacy is
+// architecture), so an unauthorized socket never reaches a room at all.
 func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
-	code := r.PathValue("code")
+	slug := r.PathValue("slug")
+	rider, err := h.access.Authorize(r, slug)
+	if err != nil {
+		// Before the upgrade: a plain 403 is clearer to debug than a WS close code.
+		http.Error(w, "not a member of this room", http.StatusForbidden)
+		return
+	}
+
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
-	rm := h.room(code)
-	c := &client{riderID: r.URL.Query().Get("rider"), conn: conn}
+	rm := h.room(slug)
+	c := &client{rider: rider, conn: conn}
 	rm.join(c)
-	h.log.Info("rider joined", "room", code, "rider", c.riderID)
+	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
-		h.log.Info("rider left", "room", code, "rider", c.riderID)
+		h.log.Info("rider left", "room", slug, "rider", rider.ID)
 	}()
 
 	ctx := r.Context()
@@ -64,51 +89,92 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if msg.Metrics != nil {
-			rm.setMetrics(c.riderID, *msg.Metrics)
+			// WS input is untrusted: bound before it touches room state.
+			m := *msg.Metrics
+			if m.Watts < 0 || m.Watts > 3000 || m.HR < 0 || m.HR > 250 || m.Cadence < 0 || m.Cadence > 250 {
+				continue
+			}
+			rm.setMetrics(rider.ID, m)
+		}
+		if msg.Control != nil {
+			if !canControl(rider.Role) {
+				h.writeError(ctx, c, "forbidden", "Only the owner or a coach controls the session.")
+				continue
+			}
+			if !rm.control(*msg.Control, h.now()) {
+				h.writeError(ctx, c, "invalid_request", "That does not work right now — the session is in another phase.")
+			}
 		}
 	}
 }
 
-func (h *Hub) room(code string) *room {
+func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {
+	writeCtx, cancel := context.WithTimeout(ctx, tickInterval)
+	defer cancel()
+	_ = wsjson.Write(writeCtx, c.conn, protocol.ServerMessage{
+		Error: &protocol.Error{Code: code, Message: message},
+	})
+}
+
+func (h *Hub) room(slug string) *room {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	rm, ok := h.rooms[code]
+	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = &room{
-			code:    code,
+			slug:    slug,
 			clients: make(map[*client]struct{}),
 			metrics: make(map[string]protocol.RiderMetrics),
+			session: newSession(),
 		}
-		h.rooms[code] = rm
-		go rm.run()
+		h.rooms[slug] = rm
+		go rm.run(h.now)
 	}
 	return rm
 }
 
-// run coalesces all riders' latest metrics into one tick per interval.
+// run broadcasts one tick per interval while anyone is connected. The tick
+// always carries the session state and roster — the timer must advance on
+// screens even when nobody is pedalling yet.
 // ponytail: the ticker runs while the room is empty; rooms are cheap and few,
-// stop-on-empty lands with room persistence in M2.
-func (rm *room) run() {
+// stop-on-empty can land with room GC if it ever shows up in a profile.
+func (rm *room) run(now func() time.Time) {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 	for range ticker.C {
 		rm.mu.Lock()
-		if len(rm.metrics) == 0 {
+		if len(rm.clients) == 0 {
 			rm.mu.Unlock()
 			continue
 		}
-		tick := protocol.ServerTick{At: time.Now().UnixMilli(), Riders: rm.metrics}
+		tick := protocol.ServerTick{
+			At:     now().UnixMilli(),
+			State:  rm.session.state(now()),
+			Riders: rm.metrics,
+			Roster: make([]protocol.Rider, 0, len(rm.clients)),
+		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		clients := make([]*client, 0, len(rm.clients))
+		// One roster entry per rider, however many sockets they hold — the same
+		// person on a dashboard and a phone is one presence, and duplicate ids
+		// are poison to keyed rendering downstream.
+		seen := make(map[string]struct{}, len(rm.clients))
 		for c := range rm.clients {
 			clients = append(clients, c)
+			if _, dup := seen[c.rider.ID]; !dup {
+				seen[c.rider.ID] = struct{}{}
+				tick.Roster = append(tick.Roster, c.rider)
+			}
 		}
 		rm.mu.Unlock()
+		// Stable roster order, so tiles do not shuffle every second.
+		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
 
+		message := protocol.ServerMessage{Tick: &tick}
 		for _, c := range clients {
 			ctx, cancel := context.WithTimeout(context.Background(), tickInterval)
 			// ponytail: slow consumers just miss ticks; per-client send queues when it matters
-			_ = wsjson.Write(ctx, c.conn, tick)
+			_ = wsjson.Write(ctx, c.conn, message)
 			cancel()
 		}
 	}
@@ -124,11 +190,17 @@ func (rm *room) leave(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
-	delete(rm.metrics, c.riderID)
+	delete(rm.metrics, c.rider.ID)
 }
 
 func (rm *room) setMetrics(riderID string, m protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.metrics[riderID] = m
+}
+
+func (rm *room) control(c protocol.Control, now time.Time) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return rm.session.apply(c, now)
 }

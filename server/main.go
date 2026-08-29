@@ -45,8 +45,6 @@ func main() {
 		log.Info("store ready, migrations applied")
 	}
 
-	h := hub.New(log)
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
@@ -55,7 +53,6 @@ func main() {
 	// The client owns the ride until there is somewhere to persist it (#15); this
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
-	mux.HandleFunc("GET /ws/rooms/{code}", h.HandleWS)
 	if st != nil {
 		// Public origin for OAuth callbacks; in dev the Vite proxy forwards /api.
 		baseURL := os.Getenv("WATTROOM_BASE_URL")
@@ -64,7 +61,12 @@ func main() {
 		}
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
 		authService.Register(mux)
-		rooms.New(st, authService, log).Register(mux)
+		roomsService := rooms.New(st, authService, log)
+		roomsService.Register(mux)
+		// Live rooms exist only with the durable side present: the WS needs
+		// membership, and membership needs the database.
+		h := hub.New(log, roomsService)
+		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 	}
 	mux.Handle("/", spaHandler())
 

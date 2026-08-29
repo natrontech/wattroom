@@ -14,7 +14,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"fmt"
+
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -422,3 +425,31 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
+
+// Authorize implements hub.Access: resolve the request's session to a user,
+// then require membership in the slug's room. Checked once at connect — the
+// hub never touches the database after that.
+func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error) {
+	user, ok := s.users.User(r)
+	if !ok {
+		return protocol.Rider{}, errNotMember
+	}
+	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(slug))
+	if err != nil {
+		return protocol.Rider{}, fmt.Errorf("rooms: authorize: %w", err)
+	}
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
+	if err != nil {
+		return protocol.Rider{}, errNotMember
+	}
+	return protocol.Rider{
+		ID:       store.UUIDString(user.ID),
+		Name:     user.DisplayName,
+		Role:     m.Role,
+		FtpWatts: int(user.FtpWatts),
+	}, nil
+}
+
+var errNotMember = errors.New("rooms: not a member")
