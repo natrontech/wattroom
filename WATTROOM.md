@@ -208,11 +208,11 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Built-in ramp test (FTP = 75% of best 1-min power); manual FTP entry in profile
 - ✅ .fit export (verified against Strava), ride history (private by default)
 
-**M2 — Accounts & rooms**
-- OAuth (Google, GitHub, Strava), profiles (name, FTP, weight, avatar)
-- Persistent rooms: create, join via code/link, roles (owner/coach/member)
-- Shared dashboard: live watts/HR/cadence/%FTP per rider, synchronized interval timer, countdown start, late join
-- Phone spectator view (read-only, any mobile browser)
+**M2 — Accounts & rooms** ✅ *(closed 2026-08-29 — plus the Postgres schema, IndexedDB crash safety, and the ADR-0008 HR-sharing control; OAuth provider apps still need registering to go beyond dev login)*
+- ✅ OAuth (Google, GitHub, Strava), profiles (name, FTP, weight, avatar)
+- ✅ Persistent rooms: create, join via code/link, roles (owner/coach/member)
+- ✅ Shared dashboard: live watts/HR/cadence/%FTP per rider, synchronized interval timer, countdown start, late join
+- ✅ Phone spectator view (read-only, any mobile browser)
 
 **M3 — Presence & jukebox**
 - LiveKit: voice + camera + screenshare in rooms
