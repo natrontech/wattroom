@@ -2,7 +2,8 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { appendFileSync, mkdirSync } from 'node:fs';
-import { defineConfig, type Plugin } from 'vite';
+import type { Plugin } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 /**
  * Dev-only sink for hardware-session telemetry (#10). The GATT log used to live in
@@ -51,6 +52,12 @@ export default defineConfig({
 			adapter: adapter({ fallback: 'index.html' })
 		})
 	],
+	test: {
+		// e2e/ belongs to Playwright. Vitest's default **/*.spec.ts glob picks it up
+		// otherwise and fails with "Playwright Test did not expect test() to be
+		// called here" — which reads like a Playwright problem and is not one.
+		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**']
+	},
 	server: {
 		proxy: {
 			// Go backend during development (make dev). WS needs ws: true.
