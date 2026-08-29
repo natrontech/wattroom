@@ -11,6 +11,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"strings"
+
+	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -26,11 +29,13 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(log)
 
-	// The database is optional until accounts land (#16): unset WATTROOM_DB runs
-	// the server exactly as before — solo rides, .fit export, dev — with nothing
-	// dark-failing later. Set, it connects and migrates itself before listening.
+	// The database is optional: unset WATTROOM_DB runs the server as before —
+	// solo rides, .fit export, dev — and every DB-backed route stays unmounted,
+	// so nothing dark-fails later. Set, it connects and migrates before listening.
+	var st *store.Store
 	if dsn := os.Getenv("WATTROOM_DB"); dsn != "" {
-		st, err := store.Open(context.Background(), dsn)
+		var err error
+		st, err = store.Open(context.Background(), dsn)
 		if err != nil {
 			log.Error("store open", "err", err)
 			os.Exit(1)
@@ -50,6 +55,14 @@ func main() {
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
 	mux.HandleFunc("GET /ws/rooms/{code}", h.HandleWS)
+	if st != nil {
+		// Public origin for OAuth callbacks; in dev the Vite proxy forwards /api.
+		baseURL := os.Getenv("WATTROOM_BASE_URL")
+		if baseURL == "" {
+			baseURL = "http://localhost:8080"
+		}
+		auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://")).Register(mux)
+	}
 	mux.Handle("/", spaHandler())
 
 	addr := ":8080"
