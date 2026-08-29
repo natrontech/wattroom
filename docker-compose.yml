@@ -16,7 +16,17 @@ services:
 
   livekit:
     image: livekit/livekit-server:v1.13
-    command: --dev --bind 0.0.0.0
+    # --node-ip: in Docker on macOS the container would otherwise advertise its
+    # internal 172.x address as the ICE candidate, which the host cannot reach —
+    # signaling connects, the peer connection never does. The config pins the
+    # media ports to the narrow mapped range for the same reason.
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    environment:
+      LIVEKIT_CONFIG: |
+        rtc:
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: false
     ports:
       - '7880:7880' # WS signaling
       - '7881:7881' # WebRTC/TCP

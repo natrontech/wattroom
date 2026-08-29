@@ -36,5 +36,8 @@
 		"vite": "^8.0.16",
 		"vitest": "^4.1.10"
 	},
-	"packageManager": "pnpm@10.32.1"
+	"packageManager": "pnpm@10.32.1",
+	"dependencies": {
+		"livekit-client": "^2.22.1"
+	}
 }

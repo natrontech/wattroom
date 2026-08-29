@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/natrontech/wattroom/server/internal/auth"
+	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/rooms"
@@ -67,6 +68,10 @@ func main() {
 		// membership, and membership needs the database.
 		h := hub.New(log, roomsService)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+		// AV mounts only when LiveKit is configured — no call button that 503s.
+		if cfg, ok := av.FromEnv(); ok {
+			av.New(cfg, roomsService, log).Register(mux)
+		}
 	}
 	mux.Handle("/", spaHandler())
 
