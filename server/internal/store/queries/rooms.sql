@@ -27,3 +27,18 @@ from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1
 order by m.joined_at desc;
+
+-- name: GetMembership :one
+select * from memberships where room_id = $1 and user_id = $2;
+
+-- name: UpdateRoom :one
+update rooms set name = $2, listed = $3 where id = $1 returning *;
+
+-- name: UpdateMembershipRole :exec
+update memberships set role = $3 where room_id = $1 and user_id = $2;
+
+-- name: DeleteMembership :exec
+delete from memberships where room_id = $1 and user_id = $2;
+
+-- name: CountRoomMembers :one
+select count(*) from memberships where room_id = $1;

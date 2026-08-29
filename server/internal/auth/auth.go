@@ -312,7 +312,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 
 func toMe(u db.User) meResponse {
 	return meResponse{
-		ID:          uuidString(u.ID),
+		ID:          store.UUIDString(u.ID),
 		DisplayName: u.DisplayName,
 		AvatarURL:   u.AvatarUrl,
 		FtpWatts:    u.FtpWatts,
@@ -368,8 +368,3 @@ func hash(token string) []byte {
 	return sum[:]
 }
 
-func uuidString(id pgtype.UUID) string {
-	v, _ := id.Value()
-	str, _ := v.(string)
-	return str
-}

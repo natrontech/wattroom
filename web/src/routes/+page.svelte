@@ -24,6 +24,11 @@
 			>Pick a workout</a
 		>
 		<a
+			href="/rooms"
+			class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
+			>Rooms</a
+		>
+		<a
 			href="/ramp"
 			class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
 			>Ramp test</a
