@@ -31,11 +31,20 @@ type Backfill struct {
 	Samples []RiderMetrics `json:"samples"`
 }
 
+// JukeboxCommand is any member's jukebox action — the matrix defaults
+// play/pause/skip to members, and adding is everyone's.
+type JukeboxCommand struct {
+	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "ended"
+	VideoID string `json:"videoId,omitempty"`
+	Title   string `json:"title,omitempty"`
+}
+
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
-	Metrics  *RiderMetrics `json:"metrics,omitempty"`
-	Control  *Control      `json:"control,omitempty"`
-	Backfill *Backfill     `json:"backfill,omitempty"`
+	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
+	Control  *Control        `json:"control,omitempty"`
+	Backfill *Backfill       `json:"backfill,omitempty"`
+	Jukebox  *JukeboxCommand `json:"jukebox,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard
@@ -64,13 +73,32 @@ type SessionState struct {
 	TotalSeconds       int    `json:"totalSeconds,omitempty"`
 }
 
+type JukeboxEntry struct {
+	VideoID string `json:"videoId"`
+	Title   string `json:"title"`
+	AddedBy string `json:"addedBy"`
+}
+
+// JukeboxState is the server's truth about what plays where. Clients chase the
+// anchor: position = PositionSec, plus wall time since AnchorMs while playing.
+// The audio itself is local per rider — their iframe, their volume — and never
+// enters the voice path (SPEC room audio defaults).
+type JukeboxState struct {
+	Queue       []JukeboxEntry `json:"queue"`
+	Current     *JukeboxEntry  `json:"current,omitempty"`
+	Playing     bool           `json:"playing"`
+	PositionSec float64        `json:"positionSec"`
+	AnchorMs    int64          `json:"anchorMs"`
+}
+
 // ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
 // sample, the roster, and the shared session state.
 type ServerTick struct {
-	At     int64                   `json:"at"` // unix millis
-	State  SessionState            `json:"state"`
-	Roster []Rider                 `json:"roster"`
-	Riders map[string]RiderMetrics `json:"riders"`
+	At      int64                   `json:"at"` // unix millis
+	State   SessionState            `json:"state"`
+	Jukebox JukeboxState            `json:"jukebox"`
+	Roster  []Rider                 `json:"roster"`
+	Riders  map[string]RiderMetrics `json:"riders"`
 }
 
 // Error tells a client why its connection or command was refused.

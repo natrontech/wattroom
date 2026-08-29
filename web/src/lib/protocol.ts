@@ -46,12 +46,22 @@ export interface Backfill {
   samples: RiderMetrics[];
 }
 /**
+ * JukeboxCommand is any member's jukebox action — the matrix defaults
+ * play/pause/skip to members, and adding is everyone's.
+ */
+export interface JukeboxCommand {
+  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "ended"
+  videoId?: string;
+  title?: string;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
   metrics?: RiderMetrics;
   control?: Control;
   backfill?: Backfill;
+  jukebox?: JukeboxCommand;
 }
 /**
  * Rider is presence: who is in the room right now, with what the dashboard
@@ -87,6 +97,24 @@ export interface SessionState {
   workoutJson?: string;
   totalSeconds?: number /* int */;
 }
+export interface JukeboxEntry {
+  videoId: string;
+  title: string;
+  addedBy: string;
+}
+/**
+ * JukeboxState is the server's truth about what plays where. Clients chase the
+ * anchor: position = PositionSec, plus wall time since AnchorMs while playing.
+ * The audio itself is local per rider — their iframe, their volume — and never
+ * enters the voice path (SPEC room audio defaults).
+ */
+export interface JukeboxState {
+  queue: JukeboxEntry[];
+  current?: JukeboxEntry;
+  playing: boolean;
+  positionSec: number /* float64 */;
+  anchorMs: number /* int64 */;
+}
 /**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
  * sample, the roster, and the shared session state.
@@ -94,6 +122,7 @@ export interface SessionState {
 export interface ServerTick {
   at: number /* int64 */; // unix millis
   state: SessionState;
+  jukebox: JukeboxState;
   roster: Rider[];
   riders: { [key: string]: RiderMetrics};
 }

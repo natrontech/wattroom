@@ -47,6 +47,7 @@ type room struct {
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	session *session
 	record  *accumulator
+	music   *jukebox
 }
 
 func newRoom(slug string) *room {
@@ -56,6 +57,7 @@ func newRoom(slug string) *room {
 		metrics: make(map[string]protocol.RiderMetrics),
 		session: newSession(),
 		record:  newAccumulator(),
+		music:   newJukebox(),
 	}
 }
 
@@ -103,6 +105,10 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if m := *msg.Metrics; validMetrics(m) {
 				rm.setMetrics(rider.ID, m)
 			}
+		}
+		if msg.Jukebox != nil {
+			// Any member; the jukebox validates its own input.
+			rm.jukebox(*msg.Jukebox, rider.Name, h.now())
 		}
 		if msg.Backfill != nil {
 			// A reconnect's replay: into the ride record only — stale samples
@@ -162,10 +168,11 @@ func (rm *room) run(now func() time.Time) {
 			continue
 		}
 		tick := protocol.ServerTick{
-			At:     now().UnixMilli(),
-			State:  rm.session.state(now()),
-			Riders: rm.metrics,
-			Roster: make([]protocol.Rider, 0, len(rm.clients)),
+			At:      now().UnixMilli(),
+			State:   rm.session.state(now()),
+			Jukebox: rm.music.snapshot(),
+			Riders:  rm.metrics,
+			Roster:  make([]protocol.Rider, 0, len(rm.clients)),
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		clients := make([]*client, 0, len(rm.clients))
@@ -237,6 +244,12 @@ func (rm *room) backfill(riderID string, samples []protocol.RiderMetrics) {
 			rm.record.add(riderID, m)
 		}
 	}
+}
+
+func (rm *room) jukebox(cmd protocol.JukeboxCommand, addedBy string, now time.Time) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return rm.music.apply(cmd, addedBy, now)
 }
 
 func (rm *room) control(c protocol.Control, now time.Time) bool {
