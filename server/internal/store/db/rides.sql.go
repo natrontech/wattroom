@@ -14,9 +14,9 @@ import (
 const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples
+    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 returning id
 `
 
@@ -31,6 +31,8 @@ type CreateRideParams struct {
 	Execution   float32
 	FtpWatts    int16
 	Samples     []byte
+	Curve       []byte
+	Xp          int32
 }
 
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
@@ -45,6 +47,8 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.Execution,
 		arg.FtpWatts,
 		arg.Samples,
+		arg.Curve,
+		arg.Xp,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -52,7 +56,7 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 }
 
 const getRide = `-- name: GetRide :one
-select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at from rides where id = $1 and user_id = $2
+select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp from rides where id = $1 and user_id = $2
 `
 
 type GetRideParams struct {
@@ -77,6 +81,8 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) 
 		&i.Samples,
 		&i.SharedAt,
 		&i.CreatedAt,
+		&i.Curve,
+		&i.Xp,
 	)
 	return i, err
 }

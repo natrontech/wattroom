@@ -39,6 +39,8 @@ type Ride struct {
 	Samples     []byte
 	SharedAt    pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
+	Curve       []byte
+	Xp          int32
 }
 
 type Room struct {

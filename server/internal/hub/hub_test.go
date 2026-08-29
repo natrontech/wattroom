@@ -37,7 +37,7 @@ func TestRoomMetricsCoalescing(t *testing.T) {
 			rm.metrics = make(map[string]protocol.RiderMetrics)
 			for rider, samples := range tt.samples {
 				for _, s := range samples {
-					rm.setMetrics(rider, s)
+					rm.setMetrics(protocol.Rider{ID: rider}, s)
 				}
 			}
 			for rider, watts := range tt.want {
@@ -53,7 +53,7 @@ func TestLeaveRemovesMetrics(t *testing.T) {
 	rm := newRoom("test")
 	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
-	rm.setMetrics("jan", protocol.RiderMetrics{Watts: 200})
+	rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200})
 	rm.leave(c)
 	if _, ok := rm.metrics["jan"]; ok {
 		t.Error("metrics for departed rider should be removed")
@@ -81,10 +81,10 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	rm.session.state(time.Unix(20, 0)) // roll countdown into running
 
 	for seq := 1; seq <= 3; seq++ {
-		rm.setMetrics("jan", protocol.RiderMetrics{Watts: 200, Seq: seq})
+		rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200, Seq: seq})
 	}
 	// The socket dropped after seq 3; the client replays 2..6 from its buffer.
-	rm.backfill("jan", []protocol.RiderMetrics{
+	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{
 		{Watts: 200, Seq: 2}, {Watts: 201, Seq: 3}, {Watts: 202, Seq: 4},
 		{Watts: 203, Seq: 5}, {Watts: 204, Seq: 6},
 	})
@@ -93,7 +93,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 
 	// A hostile batch cannot grow memory: junk is dropped at the bound.
-	rm.backfill("jan", []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
+	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
 	if got := rm.record.count("jan"); got != 6 {
 		t.Fatalf("out-of-bounds sample was recorded: %d", got)
 	}
@@ -109,7 +109,7 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 	// After a server restart the room comes back idle; the reconnect replay
 	// must still land — dropping it there is exactly the loss #19 prevents.
 	rm := newRoom("test")
-	rm.backfill("jan", []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
+	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
 	if got := rm.record.count("jan"); got != 2 {
 		t.Fatalf("idle-room backfill dropped: %d", got)
 	}

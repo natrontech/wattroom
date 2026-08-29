@@ -1,9 +1,9 @@
 -- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples
+    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 returning id;
 
 -- name: ListUserRides :many

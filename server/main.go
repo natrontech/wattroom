@@ -18,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/rooms"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 )
 
@@ -66,7 +67,7 @@ func main() {
 		roomsService.Register(mux)
 		// Live rooms exist only with the durable side present: the WS needs
 		// membership, and membership needs the database.
-		h := hub.New(log, roomsService)
+		h := hub.New(log, roomsService, stats.NewSaver(st, log))
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
