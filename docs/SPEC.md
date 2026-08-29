@@ -85,6 +85,35 @@ Token names are the styleguide's (`--color-z1`…`z7`) — see `/dev/styleguide`
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
 
+## Ride guards
+
+Numbers moved here from code after being ridden (#46). The cadence path was validated on a
+Kickr Core on 2026-08-29: deliberate grind tripped the guard at 37 rpm under a held target,
+the target released for 9.6 s (one tick under the 10 s window), and re-engaged at 158 W
+once cadence recovered to 82 rpm. No false trips across any prior hardware session.
+
+**Auto-pause** — the rider stopped, so their targets stop (clock does not rewind):
+
+| Parameter | Value |
+| --- | --- |
+| Stopped = cadence below | 5 rpm |
+| …AND power below | 20 W (cadence alone unsafe — some trainers report none) |
+| Pause after | 3 s stopped |
+| Resume countdown | 3 s (resuming must not be a jump-scare) |
+
+**Spiral-of-death guard** — ERG piles on resistance as cadence dies; the guard breaks the loop:
+
+| Parameter | Value |
+| --- | --- |
+| Trip: cadence below | 50 rpm while an ERG target is held |
+| …for | 5 consecutive seconds |
+| Fallback (no cadence source) | power below 50 % of target, same 5 s |
+| Release duration | 10 s of no target, then re-engage automatically |
+
+The power-collapse fallback is unit-tested but has never run on hardware: every trainer on
+the team reports cadence (ADR-0007), so the cadence branch always wins. It stays for any
+future trainer that reports none.
+
 ## Medals (per group session)
 
 - **Diesel** — lowest power variability (coefficient of variation) across steady steps

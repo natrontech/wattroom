@@ -7,8 +7,8 @@ import { acquireWakeLock, type WakeLock } from './wakelock';
 import type { Segment, Workout } from './types';
 
 /**
- * Defaults — tune in alpha, the way docs/SPEC.md marks its own. None of these are
- * specced yet; #13 proposes adding them once they have been ridden.
+ * Every number here is docs/SPEC.md's ("Ride guards") — ridden and promoted in #46.
+ * Tune them there, not here.
  */
 export const DEFAULTS = {
 	/** Below this cadence AND below pedallingWatts, the rider has stopped. */
