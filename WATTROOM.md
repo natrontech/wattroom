@@ -219,13 +219,13 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Switchable layouts (metrics-first / video-first / media-focus) + TV mode
 - ✅ Synced YouTube jukebox with shared queue and audio ducking
 
-**M4 — Stats & game layer**
-- Ride completion pipeline: power curve, execution score, kJ/XP, level + category, all in one transaction
-- FTP auto-detect prompts from the 90-day curve
-- Live execution meter on the group dashboard
-- Post-ride medals + room medal history
-- Sprint moments (coach/workout-armed, ERG→slope switch, 4 Hz burst, mini-podium)
-- Room streaks & collective challenges
+**M4 — Stats & game layer** ✅ *(closed 2026-08-29 — pipeline, live meter, medals, streaks, FTP prompts and sprint moments all verified against live multi-rider sessions; #41's single-cog answer is a profile setting)*
+- ✅ Ride completion pipeline: power curve, execution score, kJ/XP, level + category, all in one transaction
+- ✅ FTP auto-detect prompts from the 90-day curve
+- ✅ Live execution meter on the group dashboard
+- ✅ Post-ride medals + room medal history
+- ✅ Sprint moments (coach/workout-armed, ERG→slope switch, 4 Hz burst, mini-podium)
+- ✅ Room streaks & collective challenges
 
 **M5 — Game modes**
 - Rule-module hook on the room hub (per-tick evaluation, mode UI states, end condition/podium)
