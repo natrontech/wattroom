@@ -227,9 +227,9 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Sprint moments (coach/workout-armed, ERG→slope switch, 4 Hz burst, mini-podium)
 - ✅ Room streaks & collective challenges
 
-**M5 — Game modes**
-- Rule-module hook on the room hub (per-tick evaluation, mode UI states, end condition/podium)
-- Ship in this order — each mode proves a new primitive, the rest reuse them:
+**M5 — Game modes** ✅ *(closed 2026-08-29 — all seven rule modules table-tested per SPEC parameters; Backyard verified live with an elimination; a crew evening is the real playtest)*
+- ✅ Rule-module hook on the room hub (per-tick evaluation, mode UI states, end condition/podium)
+- ✅ Ship in this order — each mode proves a new primitive, the rest reuse them:
   1. **Backyard Ramp** (elimination + eliminated-spectator state)
   2. **Sprint Roulette** (surprise events + 4 Hz burst reuse)
   3. **Watt Golf** (hidden-meter UI + precision scoring)
@@ -237,8 +237,8 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
   5. **Points Race** (composite scoring over 2+3)
   6. **Team Relay** (turn rotation)
   7. **Collective Ramp** (room-aggregate rules over 1)
-- Disconnect grace window (30 s) for elimination modes
-- Base sound set (countdowns, klaxon, elimination sting, medal fanfare), spectator cheers, rider quick-reactions
+- ✅ Disconnect grace window (30 s) for elimination modes
+- ✅ Base sound set (countdowns, klaxon, elimination sting, medal fanfare), spectator cheers, rider quick-reactions
 
 **M6 — Alpha polish**
 - Strava auto-upload
