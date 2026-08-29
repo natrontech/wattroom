@@ -50,3 +50,31 @@ describe('parseHeartRate', () => {
 		expect(parseHeartRate(view).rrIntervals).toEqual([1000]);
 	});
 });
+
+/**
+ * Real packets from a Polar H10, captured over Web Bluetooth (2026-08-29). Pinned
+ * because §11's variable-count RR warning is not hypothetical: six of the fifty-five
+ * packets in that session carried *two* intervals, and a parser reading only the
+ * first would have dropped those beats while still displaying a correct bpm — the
+ * failure would never have shown on screen.
+ *
+ * The strap alternates: flags 0x10 when a beat fell in the notification window,
+ * 0x00 when none did.
+ */
+describe('Polar H10, captured', () => {
+	const captured: Array<
+		[string, { heartRate: number; rrIntervals?: number[] }]
+	> = [
+		['00 3f', { heartRate: 63 }],
+		['10 3f 69 04', { heartRate: 63, rrIntervals: [1103] }],
+		['10 3e 5a 04', { heartRate: 62, rrIntervals: [1088] }],
+		// Two intervals in one packet — the case that matters.
+		['10 3e 8d 03 be 03', { heartRate: 62, rrIntervals: [888, 936] }],
+		['10 3d 37 04 23 04', { heartRate: 61, rrIntervals: [1054, 1034] }],
+	];
+
+	it.each(captured)('parses %s', (hex, expected) => {
+		const bytes = hex.split(' ').map((b) => parseInt(b, 16));
+		expect(parseHeartRate(packet(...bytes))).toEqual(expected);
+	});
+});

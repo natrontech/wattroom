@@ -11,6 +11,8 @@
  * may or may not be the best source for a given metric. Arbitration lives in
  * `arbitrate.ts`, not here.
  */
+import { hwlog } from './hwlog';
+
 export type SensorStatus = 'disconnected' | 'connecting' | 'connected';
 
 export type SensorKind = 'heart-rate' | 'power-meter' | 'cadence';
@@ -119,11 +121,24 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 						let fields: ReadingFields | null;
 						try {
 							fields = parse(view);
-						} catch {
+						} catch (cause) {
+							hwlog('error', {
+								text: `sensor parse failed: ${String(cause)}`,
+								sensor: spec.kind,
+							});
 							return;
 						}
 						if (!fields) return;
 						const reading = { ...fields, at: Date.now() };
+						// Raw bytes alongside the parse, so a hardware session can prove the
+						// parser rather than just showing a plausible number (dev only).
+						hwlog('sensor-packet', {
+							sensor: spec.kind,
+							hex: [...new Uint8Array(view.buffer)]
+								.map((b) => b.toString(16).padStart(2, '0'))
+								.join(' '),
+							parsed: fields,
+						});
 						for (const cb of readingCbs) cb(reading);
 					},
 				);
