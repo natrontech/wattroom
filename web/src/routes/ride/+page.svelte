@@ -17,6 +17,7 @@
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
+	import { hwlog } from '$lib/ble/hwlog';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { page } from '$app/state';
 
@@ -76,6 +77,29 @@
 		if (index === undefined) return;
 		if (heardBlock !== null && index !== heardBlock) play('block');
 		heardBlock = index;
+	});
+
+	// Guard telemetry for #46: the hardware session has to produce evidence, not
+	// an anecdote. Dev-only via hwlog; plain lets, same reasoning as heardBlock.
+	let sawSpiral = false;
+	let sawState: string | null = null;
+	$effect(() => {
+		const current = session;
+		if (!current) return;
+		if (current.spiralActive !== sawSpiral) {
+			sawSpiral = current.spiralActive;
+			hwlog('spiral-guard', {
+				active: sawSpiral,
+				watts: current.sample?.watts,
+				cadence: current.sample?.cadence,
+				target: current.target,
+				elapsed: current.elapsed,
+			});
+		}
+		if (current.state !== sawState) {
+			sawState = current.state;
+			hwlog('ride-state', { state: sawState, elapsed: current.elapsed });
+		}
 	});
 
 	// A finished ride is worth keeping even if the rider never exports it.
