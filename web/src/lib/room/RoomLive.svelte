@@ -277,6 +277,9 @@
 		jukebox={live.tick?.jukebox}
 		send={(action, videoId, title) => live.jukebox(action, videoId, title)}
 		large={layout === 'media'}
+		ducked={Object.entries(av.speaking).some(
+			([id, active]) => active && id !== account.me?.id,
+		)}
 	/>
 
 	<!-- Rider tiles: live data glows, chrome stays quiet. Layouts change the
