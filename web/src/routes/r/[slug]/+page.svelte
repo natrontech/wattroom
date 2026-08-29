@@ -3,6 +3,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import RoomLive from '$lib/room/RoomLive.svelte';
 
 	interface Member {
 		id: string;
@@ -126,6 +127,11 @@
 					</p>
 				</div>
 			</div>
+
+			<!-- Keyed: a different room is a different socket, not a prop change. -->
+			{#key room.slug}
+				<RoomLive slug={room.slug} role={room.role ?? 'member'} />
+			{/key}
 
 			<h2 class="text-muted mt-8 text-[10px] tracking-wider uppercase">
 				Members

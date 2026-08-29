@@ -8,7 +8,7 @@ import (
 
 func TestRoomMetricsCoalescing(t *testing.T) {
 	rm := &room{
-		code:    "test",
+		slug:    "test",
 		clients: make(map[*client]struct{}),
 		metrics: make(map[string]protocol.RiderMetrics),
 	}
@@ -54,15 +54,26 @@ func TestRoomMetricsCoalescing(t *testing.T) {
 
 func TestLeaveRemovesMetrics(t *testing.T) {
 	rm := &room{
-		code:    "test",
+		slug:    "test",
 		clients: make(map[*client]struct{}),
 		metrics: make(map[string]protocol.RiderMetrics),
 	}
-	c := &client{riderID: "jan"}
+	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
 	rm.setMetrics("jan", protocol.RiderMetrics{Watts: 200})
 	rm.leave(c)
 	if _, ok := rm.metrics["jan"]; ok {
 		t.Error("metrics for departed rider should be removed")
+	}
+}
+
+func TestControlNeedsRole(t *testing.T) {
+	// The role check lives in HandleWS; what the room guarantees is that a
+	// control only lands through control(), which the handler role-gates. This
+	// pins the helper the gate depends on.
+	for role, want := range map[string]bool{"owner": true, "coach": true, "member": false, "": false} {
+		if got := canControl(role); got != want {
+			t.Errorf("canControl(%q) = %v", role, got)
+		}
 	}
 }

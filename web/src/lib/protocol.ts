@@ -20,15 +20,80 @@ export interface RiderMetrics {
   seq: number /* int */; // monotonic per ride, for reconnect dedup
 }
 /**
+ * Control is a coach/owner command over the shared session (SPEC roles matrix:
+ * pick workout, start countdown, pause/end). The server enforces the role.
+ */
+export interface Control {
+  action: string; // "pick" | "start" | "pause" | "resume" | "end"
+  /**
+   * Workout definition, opaque to the server: the docs/SPEC.md JSON as a
+   * string. The server owns the clock, the clients own the targets.
+   */
+  workoutName?: string;
+  workoutJson?: string;
+  /**
+   * Total length in seconds, so the server can end the session on time
+   * without parsing the workout.
+   */
+  totalSeconds?: number /* int */;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
   metrics?: RiderMetrics;
+  control?: Control;
 }
 /**
- * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest sample.
+ * Rider is presence: who is in the room right now, with what the dashboard
+ * needs to render them. FTP crosses the wire so every screen can show %FTP —
+ * room-scoped by design, the same visibility WATTROOM.md grants live watts.
+ */
+export interface Rider {
+  id: string;
+  name: string;
+  role: string;
+  ftpWatts: number /* int */;
+}
+/**
+ * SessionState is the shared timeline, server-owned. Late joiners need no
+ * catch-up protocol: every tick carries the whole truth.
+ */
+export interface SessionState {
+  phase: string; // "idle" | "countdown" | "running" | "paused" | "done"
+  /**
+   * Seconds into the workout timeline. Advances only while running.
+   */
+  elapsed: number /* int */;
+  /**
+   * Seconds until the timeline starts, while in countdown.
+   */
+  countdownRemaining?: number /* int */;
+  workoutName?: string;
+  workoutJson?: string;
+  totalSeconds?: number /* int */;
+}
+/**
+ * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
+ * sample, the roster, and the shared session state.
  */
 export interface ServerTick {
   at: number /* int64 */; // unix millis
+  state: SessionState;
+  roster: Rider[];
   riders: { [key: string]: RiderMetrics};
+}
+/**
+ * Error tells a client why its connection or command was refused.
+ */
+export interface Error {
+  code: string;
+  message: string;
+}
+/**
+ * ServerMessage is the envelope for everything the server sends.
+ */
+export interface ServerMessage {
+  tick?: ServerTick;
+  error?: Error;
 }
