@@ -71,7 +71,9 @@
 			</p>
 		{/if}
 
-		<div class="mt-14 grid w-full gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
+		<div
+			class="mt-14 grid w-full gap-3 text-left sm:grid-cols-2 lg:grid-cols-3"
+		>
 			<a
 				href="/rooms"
 				class="border-neon/40 bg-surface-raised hover:border-neon/70 rounded-lg border p-5"

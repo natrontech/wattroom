@@ -144,7 +144,9 @@
 			</p>
 		{/if}
 
-		<section class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6">
+		<section
+			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6"
+		>
 			<label class="block">
 				<span class="text-muted text-[10px] tracking-wider uppercase"
 					>room name</span
@@ -175,7 +177,9 @@
 			</label>
 		</section>
 
-		<section class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+		<section
+			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
+		>
 			<h2 class="font-display font-bold">Sound pack</h2>
 			<div class="mt-3 grid gap-2">
 				{#each packs as option (option.id)}
@@ -211,7 +215,9 @@
 			</p>
 		</section>
 
-		<section class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+		<section
+			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
+		>
 			<h2 class="font-display font-bold">Who's in here</h2>
 			<ul class="mt-3 divide-y divide-white/5">
 				{#each room.members ?? [] as member (member.id)}
@@ -229,7 +235,9 @@
 									)}
 								disabled={busy}
 								class="border-muted/25 hover:border-muted/60 ml-auto rounded border px-3 py-1.5 text-xs disabled:opacity-40"
-								>{member.role === 'coach' ? 'Remove coach' : 'Make coach'}</button
+								>{member.role === 'coach'
+									? 'Remove coach'
+									: 'Make coach'}</button
 							>
 						{/if}
 					</li>
@@ -250,8 +258,8 @@
 			{#if confirmDelete}
 				<div class="border-z6/50 bg-z6/10 mt-4 rounded-lg border p-4">
 					<p class="text-xs">
-						Delete “{room.name}” for all {room.members?.length ?? 0} members?
-						This can't be undone.
+						Delete “{room.name}” for all {room.members?.length ?? 0} members? This
+						can't be undone.
 					</p>
 					<div class="mt-3 flex gap-2">
 						<button
