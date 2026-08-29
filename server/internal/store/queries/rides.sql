@@ -51,3 +51,11 @@ where room_id = $1 and started_at >= date_trunc('month', now());
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days';
+
+-- name: ListUserRidesFull :many
+-- Export-all (#35): everything, blobs included — this is the one query
+-- allowed to read every blob, because the rider is taking their data home.
+select * from rides where user_id = $1 order by started_at;
+
+-- name: DeleteUser :exec
+delete from users where id = $1;

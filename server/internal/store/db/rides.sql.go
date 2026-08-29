@@ -90,6 +90,15 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 	return id, err
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+delete from users where id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const getRide = `-- name: GetRide :one
 select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp from rides where id = $1 and user_id = $2
 `
@@ -262,6 +271,48 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.Execution,
 			&i.FtpWatts,
 			&i.SharedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserRidesFull = `-- name: ListUserRidesFull :many
+select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp from rides where user_id = $1 order by started_at
+`
+
+// Export-all (#35): everything, blobs included — this is the one query
+// allowed to read every blob, because the rider is taking their data home.
+func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]Ride, error) {
+	rows, err := q.db.Query(ctx, listUserRidesFull, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Ride
+	for rows.Next() {
+		var i Ride
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RoomID,
+			&i.WorkoutName,
+			&i.StartedAt,
+			&i.Seconds,
+			&i.AvgWatts,
+			&i.Kj,
+			&i.Execution,
+			&i.FtpWatts,
+			&i.Samples,
+			&i.SharedAt,
+			&i.CreatedAt,
+			&i.Curve,
+			&i.Xp,
 		); err != nil {
 			return nil, err
 		}
