@@ -163,7 +163,9 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 - One user gesture (the "join room" click) resumes a suspended AudioContext for **all** future SFX — hang the unlock there. The YouTube iframe additionally needs `allow="autoplay"` delegation + prior domain interaction for unmuted starts.
 - Screen Wake Lock is **Baseline since March 2025** — rely on it, but handle rejection (battery saver) and re-acquire on `visibilitychange`.
 
-**Still open (no surviving claims — settle by doing):** exact muktihari/fit message sequence Strava accepts for a synthetic VirtualRide (→ hands-on encode-and-upload spike in #5); Go-side clock-sync/tick-layout patterns (→ decide in M2 implementation; note OTT ships fine with zero clock sync); empirical fine-grained playbackRate support on current embeds.
+**Settled by doing (2026-08-29, #5/#47):** the muktihari/fit message sequence Strava accepts for a synthetic VirtualRide. `FileId → Record… → Lap → Session → Activity`, `sport=cycling`, `sub_sport=virtual_activity`. Uploaded a synthetic 120-sample ride to Strava: accepted, classified as **Virtual Ride**, power/cadence/HR all parsed. Two conventions found: Strava derives elapsed time from record timestamps (N one-second samples read as N−1 s) and recomputes averages from records rather than trusting Session fields, so our summaries round the same way. `filedef.Activity.ToFIT` emits Session *before* Lap, which is why the encoder builds the sequence by hand. Distance/speed are not encoded and show as 0 km — fine for a VirtualRide, revisit with #34.
+
+**Still open (no surviving claims — settle by doing):** Go-side clock-sync/tick-layout patterns (→ decide in M2 implementation; note OTT ships fine with zero clock sync); empirical fine-grained playbackRate support on current embeds.
 
 ## 11. Implementation depth: BLE/trainer layer (verified 3–0 unless noted; run of 2026-08-25)
 

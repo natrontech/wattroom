@@ -3,7 +3,17 @@
 // The message sequence follows what Garmin's Activity file profile requires and
 // what Strava's uploader accepts: FileId, then Records in time order, then Lap,
 // Session and Activity. Strava rejects files missing Session or Activity, and
-// orders matter — Records must precede the Lap/Session that summarise them.
+// order matters — Records must precede the Lap/Session that summarise them.
+//
+// Verified end to end by uploading the golden file to Strava (2026-08-29): the
+// activity is classified as a Virtual Ride from SubSportVirtualActivity, and power,
+// cadence and heart rate all parse. Two conventions worth knowing:
+//
+//   - Strava derives elapsed time from record timestamps, so N one-second samples
+//     read as N-1 seconds. Our Session says N. A one-second difference we accept
+//     rather than dropping a sample to paper over.
+//   - Strava recomputes averages from records rather than trusting the Session
+//     fields, so ours round the same way to avoid disagreeing by a watt.
 package fitexport
 
 import (
@@ -150,7 +160,11 @@ func Encode(ride Ride) ([]byte, error) {
 
 	elapsed := time.Duration(len(ride.Samples)) * time.Second
 	elapsedMillis := narrowU32(elapsed.Milliseconds())
-	avgWatts := narrowU16(totalWatts / uint64(len(ride.Samples)))
+	// Round rather than truncate: importers recompute averages from the records and
+	// round, so truncating here makes our summary disagree with theirs by a watt.
+	// Verified against Strava — 25140 W·s over 120 samples is 210 W, not 209.
+	count := uint64(len(ride.Samples))
+	avgWatts := narrowU16((totalWatts + count/2) / count)
 	// 1 kJ = 1 kcal closely enough for cycling at ~24 % efficiency; this is the
 	// convention every head unit uses.
 	kilojoules := narrowU16(totalWatts / 1000)
@@ -184,12 +198,12 @@ func Encode(ride Ride) ([]byte, error) {
 		SetEventType(typedef.EventTypeStop)
 
 	if cadCount > 0 {
-		avg := narrowU8(cadSum / cadCount)
+		avg := narrowU8((cadSum + cadCount/2) / cadCount)
 		lap.SetAvgCadence(avg).SetMaxCadence(maxCadence)
 		session.SetAvgCadence(avg).SetMaxCadence(maxCadence)
 	}
 	if hrCount > 0 {
-		avg := narrowU8(hrSum / hrCount)
+		avg := narrowU8((hrSum + hrCount/2) / hrCount)
 		lap.SetAvgHeartRate(avg).SetMaxHeartRate(maxHR)
 		session.SetAvgHeartRate(avg).SetMaxHeartRate(maxHR)
 	}

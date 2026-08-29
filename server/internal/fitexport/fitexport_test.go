@@ -142,8 +142,9 @@ func TestEncodeSummariesMatchSamples(t *testing.T) {
 		t.Errorf("sport = %v, want Cycling", got)
 	}
 
-	// 150..269 inclusive averages to 209.
-	if got, want := session.AvgPower, uint16(209); got != want {
+	// 150..269 inclusive sums to 25140 over 120 samples = 209.5, which rounds to 210.
+	// Strava computes 210 from the records; a truncating average would report 209.
+	if got, want := session.AvgPower, uint16(210); got != want {
 		t.Errorf("avg power = %d, want %d", got, want)
 	}
 	if got, want := session.MaxPower, uint16(269); got != want {
