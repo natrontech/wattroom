@@ -1,7 +1,7 @@
 # WattRoom — common tasks. Dev loop: `make infra` once, then `make dev-server`
 # and `make dev-web` in two terminals (Vite proxies /api and /ws to :8080).
 
-.PHONY: infra dev-server dev-web web protocol build test lint check ci
+.PHONY: infra dev-server dev-web web protocol sqlc seed build test lint check ci
 
 infra: ## start Postgres + LiveKit containers
 	docker compose up -d
@@ -18,6 +18,12 @@ web: ## build frontend and embed it into the server
 
 protocol: ## regenerate web/src/lib/protocol.ts from Go structs
 	cd server && go tool tygo generate
+
+sqlc: ## regenerate internal/store/db from queries + migrations (commit the result)
+	cd server && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 generate
+
+seed: ## seed the compose dev database (idempotent)
+	cd server && go run ./cmd/seed
 
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/store"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -23,6 +25,19 @@ var webdist embed.FS
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(log)
+
+	// The database is optional until accounts land (#16): unset WATTROOM_DB runs
+	// the server exactly as before — solo rides, .fit export, dev — with nothing
+	// dark-failing later. Set, it connects and migrates itself before listening.
+	if dsn := os.Getenv("WATTROOM_DB"); dsn != "" {
+		st, err := store.Open(context.Background(), dsn)
+		if err != nil {
+			log.Error("store open", "err", err)
+			os.Exit(1)
+		}
+		defer st.Close()
+		log.Info("store ready, migrations applied")
+	}
 
 	h := hub.New(log)
 
