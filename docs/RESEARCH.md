@@ -202,6 +202,7 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 
 **Tab throttling vs the ERG loop:**
 - Chrome's intensive throttling can delay hidden-tab timer chains up to **~60 s per tick** — but **an active WebRTC connection exempts the tab** (1-second alignment instead). Riders in a room are protected by the call itself; solo riders with a hidden tab are NOT. → Ride-critical timing runs in a **Web Worker** with Wake Lock held; never trust main-thread setInterval for the target loop.
+- **Measured (#51, Chrome 141/macOS, same page, two timers, 439 s hidden):** main-thread `setInterval` fired **159** times — 280 s lost; a worker `setInterval` fired **438** times — 1 s lost. Confirms the claim and the fix. Note an attached debugger (CDP/DevTools) suppresses throttling entirely, so this only reproduces in a genuinely backgrounded tab — a foreground-tab test will show no problem and prove nothing.
 - Degradation ladder is nearly free: LiveKit `adaptiveStream` pauses server-side flow for invisible tracks, `pauseVideoInBackground` (default true) stops remote video decode when backgrounded — audio and data unaffected.
 
 **Still open (no surviving claims):**
