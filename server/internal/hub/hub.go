@@ -46,6 +46,17 @@ type room struct {
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	session *session
+	record  *accumulator
+}
+
+func newRoom(slug string) *room {
+	return &room{
+		slug:    slug,
+		clients: make(map[*client]struct{}),
+		metrics: make(map[string]protocol.RiderMetrics),
+		session: newSession(),
+		record:  newAccumulator(),
+	}
 }
 
 type client struct {
@@ -89,12 +100,20 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if msg.Metrics != nil {
-			// WS input is untrusted: bound before it touches room state.
-			m := *msg.Metrics
-			if m.Watts < 0 || m.Watts > 3000 || m.HR < 0 || m.HR > 250 || m.Cadence < 0 || m.Cadence > 250 {
-				continue
+			if m := *msg.Metrics; validMetrics(m) {
+				rm.setMetrics(rider.ID, m)
 			}
-			rm.setMetrics(rider.ID, m)
+		}
+		if msg.Backfill != nil {
+			// A reconnect's replay: into the ride record only — stale samples
+			// must never repaint anyone's live tile. Batch size is bounded like
+			// every other client input.
+			samples := msg.Backfill.Samples
+			if len(samples) > maxBackfillBatch {
+				samples = samples[:maxBackfillBatch]
+			}
+			rm.backfill(rider.ID, samples)
+			h.log.Info("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
 			if !canControl(rider.Role) {
@@ -121,12 +140,7 @@ func (h *Hub) room(slug string) *room {
 	defer h.mu.Unlock()
 	rm, ok := h.rooms[slug]
 	if !ok {
-		rm = &room{
-			slug:    slug,
-			clients: make(map[*client]struct{}),
-			metrics: make(map[string]protocol.RiderMetrics),
-			session: newSession(),
-		}
+		rm = newRoom(slug)
 		h.rooms[slug] = rm
 		go rm.run(h.now)
 	}
@@ -193,14 +207,44 @@ func (rm *room) leave(c *client) {
 	delete(rm.metrics, c.rider.ID)
 }
 
+// validMetrics bounds WS input before it touches room state.
+func validMetrics(m protocol.RiderMetrics) bool {
+	return m.Watts >= 0 && m.Watts <= 3000 &&
+		m.HR >= 0 && m.HR <= 250 &&
+		m.Cadence >= 0 && m.Cadence <= 250
+}
+
 func (rm *room) setMetrics(riderID string, m protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.metrics[riderID] = m
+	// The live sample is also part of the ride record; a later resend of the
+	// same seq dedupes against it.
+	if rm.session.phase == "running" {
+		rm.record.add(riderID, m)
+	}
+}
+
+// backfill lands in the record whatever the phase: after a server restart the
+// room comes back idle, and dropping the replay then is exactly the data loss
+// this exists to prevent. The record is bounded per rider and reset on the
+// next start, so out-of-session samples cost nothing and hurt nobody.
+func (rm *room) backfill(riderID string, samples []protocol.RiderMetrics) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	for _, m := range samples {
+		if validMetrics(m) {
+			rm.record.add(riderID, m)
+		}
+	}
 }
 
 func (rm *room) control(c protocol.Control, now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// A new start is a new ride: the record must not blend two sessions.
+	if c.Action == "start" {
+		rm.record.reset()
+	}
 	return rm.session.apply(c, now)
 }

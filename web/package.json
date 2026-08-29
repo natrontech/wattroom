@@ -25,6 +25,7 @@
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^26.4.0",
 		"@types/web-bluetooth": "^0.0.21",
+		"fake-indexeddb": "^6.2.5",
 		"prettier": "^3.9.5",
 		"prettier-plugin-svelte": "^4.1.1",
 		"prettier-plugin-tailwindcss": "^0.8.1",

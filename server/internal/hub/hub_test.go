@@ -2,16 +2,13 @@ package hub
 
 import (
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 func TestRoomMetricsCoalescing(t *testing.T) {
-	rm := &room{
-		slug:    "test",
-		clients: make(map[*client]struct{}),
-		metrics: make(map[string]protocol.RiderMetrics),
-	}
+	rm := newRoom("test")
 
 	tests := []struct {
 		name    string
@@ -53,11 +50,7 @@ func TestRoomMetricsCoalescing(t *testing.T) {
 }
 
 func TestLeaveRemovesMetrics(t *testing.T) {
-	rm := &room{
-		slug:    "test",
-		clients: make(map[*client]struct{}),
-		metrics: make(map[string]protocol.RiderMetrics),
-	}
+	rm := newRoom("test")
 	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
 	rm.setMetrics("jan", protocol.RiderMetrics{Watts: 200})
@@ -75,5 +68,49 @@ func TestControlNeedsRole(t *testing.T) {
 		if got := canControl(role); got != want {
 			t.Errorf("canControl(%q) = %v", role, got)
 		}
+	}
+}
+
+func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
+	// The crash-safety property (#19): live samples and a reconnect's replay
+	// arrive through different doors but land in one record, deduped by seq —
+	// resending is always safe and never double-counts.
+	rm := newRoom("test")
+	rm.session.pick("Openers", "{}", 600)
+	rm.session.start(time.Unix(0, 0))
+	rm.session.state(time.Unix(20, 0)) // roll countdown into running
+
+	for seq := 1; seq <= 3; seq++ {
+		rm.setMetrics("jan", protocol.RiderMetrics{Watts: 200, Seq: seq})
+	}
+	// The socket dropped after seq 3; the client replays 2..6 from its buffer.
+	rm.backfill("jan", []protocol.RiderMetrics{
+		{Watts: 200, Seq: 2}, {Watts: 201, Seq: 3}, {Watts: 202, Seq: 4},
+		{Watts: 203, Seq: 5}, {Watts: 204, Seq: 6},
+	})
+	if got := rm.record.count("jan"); got != 6 {
+		t.Fatalf("expected exactly 6 samples after dedupe, got %d", got)
+	}
+
+	// A hostile batch cannot grow memory: junk is dropped at the bound.
+	rm.backfill("jan", []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
+	if got := rm.record.count("jan"); got != 6 {
+		t.Fatalf("out-of-bounds sample was recorded: %d", got)
+	}
+
+	// A new session is a new ride.
+	rm.control(protocol.Control{Action: "start"}, time.Unix(100, 0))
+	if got := rm.record.count("jan"); got != 0 {
+		t.Fatalf("record survived a session restart: %d", got)
+	}
+}
+
+func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
+	// After a server restart the room comes back idle; the reconnect replay
+	// must still land — dropping it there is exactly the loss #19 prevents.
+	rm := newRoom("test")
+	rm.backfill("jan", []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
+	if got := rm.record.count("jan"); got != 2 {
+		t.Fatalf("idle-room backfill dropped: %d", got)
 	}
 }

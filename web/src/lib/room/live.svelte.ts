@@ -4,6 +4,7 @@ import type {
 	ServerMessage,
 	ServerTick,
 } from '$lib/protocol';
+import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 
 /**
  * The live side of one room (#18): a WebSocket to the hub, the latest tick,
@@ -20,12 +21,41 @@ export function createRoomLive(slug: string) {
 	let closed = false;
 	let attempts = 0;
 
+	// Crash safety (#19): metrics buffer locally as well as streaming. When the
+	// socket comes back, everything since the drop replays as a backfill — the
+	// server dedupes by seq, so the overlap costs nothing.
+	let buffer: RideBuffer | null = null;
+	let lastSeq = 0;
+	let gapSeq: number | null = null;
+	void openRideBuffer({
+		rideId: `room-${slug}-${Date.now()}`,
+		startedAt: Date.now(),
+		workoutName: `room ${slug}`,
+	}).then((opened) => (buffer = opened));
+
 	function connect() {
 		const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
 		socket = new WebSocket(`${scheme}://${location.host}/ws/rooms/${slug}`);
 		socket.onopen = () => {
 			status = 'live';
 			attempts = 0;
+			if (gapSeq !== null) {
+				const since = gapSeq;
+				gapSeq = null;
+				void buffer?.since(since).then((samples) => {
+					if (samples.length > 0)
+						send({
+							backfill: {
+								samples: samples.map((sample) => ({
+									watts: sample.watts,
+									cadence: sample.cadence,
+									hr: sample.heartRate,
+									seq: sample.seq,
+								})),
+							},
+						});
+				});
+			}
 		};
 		socket.onmessage = (event) => {
 			const msg = JSON.parse(event.data) as ServerMessage;
@@ -37,6 +67,8 @@ export function createRoomLive(slug: string) {
 		};
 		socket.onclose = () => {
 			if (closed) return;
+			// Remember where the stream broke; the replay starts there.
+			if (gapSeq === null) gapSeq = lastSeq;
 			// Ride-critical errors are persistent status, never toasts
 			// (.claude/rules/errors.md) — and recovery is automatic.
 			status = 'reconnecting';
@@ -62,7 +94,19 @@ export function createRoomLive(slug: string) {
 			return refusal;
 		},
 		sendMetrics(metrics: RiderMetrics) {
+			lastSeq = metrics.seq;
+			buffer?.append({
+				seq: metrics.seq,
+				watts: metrics.watts,
+				cadence: metrics.cadence ?? 0,
+				heartRate: metrics.hr ?? 0,
+				at: Date.now(),
+			});
 			send({ metrics });
+		},
+		/** The room ride ended cleanly; its buffer is not a crash to recover. */
+		finish() {
+			buffer?.end();
 		},
 		control(
 			action: string,

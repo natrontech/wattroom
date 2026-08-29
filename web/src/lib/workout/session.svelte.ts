@@ -56,6 +56,13 @@ export interface RideOptions {
 	 * *right now* — and a sensor that has gone quiet has to lose on staleness.
 	 */
 	readings?: () => Partial<Record<SensorKind, SensorReading>>;
+	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
+	onRecord?: (sample: {
+		second: number;
+		watts: number;
+		cadence: number;
+		heartRate: number;
+	}) => void;
 }
 
 /**
@@ -69,6 +76,7 @@ export function createRideSession({
 	ftp,
 	now = Date.now,
 	readings = () => ({}),
+	onRecord,
 }: RideOptions) {
 	const segments: Segment[] = flatten(workout);
 	const total = segments.reduce(
@@ -141,13 +149,15 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
-		recording.push({
+		const recorded = {
 			second: recordedSeconds++,
 			watts: Math.max(0, Math.round(next.watts)),
 			cadence: Math.max(0, Math.round(next.cadence)),
 			// Reaches the .fit export now that a strap can be paired (#11, #44).
 			heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
-		});
+		};
+		recording.push(recorded);
+		onRecord?.(recorded);
 		trace.push({ t: clockSeconds, w: next.watts });
 		if (trace.length > 900) trace.shift();
 
