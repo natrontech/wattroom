@@ -26,6 +26,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -270,6 +271,10 @@ type meResponse struct {
 	AvatarURL   *string `json:"avatarUrl,omitempty"`
 	FtpWatts    int16   `json:"ftpWatts"`
 	WeightKg    int16   `json:"weightKg"`
+	// The FTP auto-detect prompt (#26): filled when the 90-day curve outgrows
+	// the setting. A suggestion, never an application — FTP moves every
+	// workout's difficulty (docs/SPEC.md).
+	SuggestedFtp int `json:"suggestedFtp,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +283,13 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toMe(user))
+	response := toMe(user)
+	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
+		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+			response.SuggestedFtp = suggested
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {

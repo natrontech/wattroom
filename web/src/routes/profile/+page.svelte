@@ -37,6 +37,7 @@
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
 	let status = $state<string | null>(null);
+	let suggestionDismissed = $state(false);
 
 	const measured = $derived(profile.current.ftpMeasuredAt);
 
@@ -59,6 +60,35 @@
 			Signed in as {account.me.displayName}. Your profile is stored with your
 			account.
 		</p>
+		{#if account.me.suggestedFtp && !suggestionDismissed}
+			<!-- Prompted, never auto-applied: FTP moves every workout (SPEC). -->
+			<div
+				class="border-z4/40 bg-z4/10 mt-4 rounded-lg border px-4 py-3 text-sm"
+			>
+				<p>
+					Your last 90 days suggest an FTP around
+					<span class="font-display font-bold">{account.me.suggestedFtp} W</span
+					>
+					— above your current {account.me.ftpWatts} W.
+				</p>
+				<div class="mt-2 flex gap-2">
+					<button
+						onclick={() => {
+							ftp = account.me?.suggestedFtp ?? ftp;
+							void saveAccount();
+							suggestionDismissed = true;
+						}}
+						class="rounded bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-white/90"
+						>Update to {account.me.suggestedFtp} W</button
+					>
+					<button
+						onclick={() => (suggestionDismissed = true)}
+						class="border-muted/30 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
+						>Keep {account.me.ftpWatts} W</button
+					>
+				</div>
+			</div>
+		{/if}
 	{:else}
 		<p class="text-muted mt-2 text-xs">
 			Stored on this device. Nothing here leaves your browser.
