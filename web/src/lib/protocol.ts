@@ -63,6 +63,11 @@ export interface Rider {
   name: string;
   role: string;
   ftpWatts: number /* int */;
+  /**
+   * For w/kg on room screens — room-scoped like FTP, and for the same reason:
+   * every contest in docs/SPEC.md is scored on it.
+   */
+  weightKg: number /* int */;
 }
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no
