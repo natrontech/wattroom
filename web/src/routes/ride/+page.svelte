@@ -59,6 +59,22 @@
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
+	// ?replay=<fixture> rides a committed capture instead of the generator
+	// (#54): deterministic reproduction, the agent's screenshot instead of the
+	// rider's.
+	const replayName = $derived(page.url.searchParams.get('replay'));
+	async function beginReplay() {
+		error = null;
+		try {
+			const res = await fetch(`/fixtures/${replayName}.json`);
+			if (!res.ok) throw new Error(`No fixture named ${replayName}.`);
+			const fixture = await res.json();
+			await begin(new SimulatedTrainer({ replay: fixture.samples }));
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : String(cause);
+		}
+	}
+
 	let buffer: RideBuffer | undefined;
 	const recorder = createFlightRecorder();
 	let flagNotice = $state(false);
@@ -379,6 +395,14 @@
 					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
 					>Pair trainer and start</button
 				>
+				{#if replayName}
+					<button
+						onclick={beginReplay}
+						data-testid="ride-replay"
+						class="border-watt/40 text-watt hover:bg-watt/10 rounded border px-5 py-3 text-sm"
+						>Replay {replayName}</button
+					>
+				{/if}
 				<button
 					onclick={() => begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
 					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"

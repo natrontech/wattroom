@@ -17,6 +17,13 @@ export interface SimulatedTrainerOptions {
 	/** injectable randomness for deterministic tests, [0,1) */
 	rng?: () => number;
 	now?: () => number;
+	/**
+	 * Replay a captured series instead of generating (#54): deterministic, so
+	 * an accepted feedback report converts into a regression test. The series
+	 * plays once at tick rate; past its end the trainer reports nothing, like
+	 * a rider who stopped.
+	 */
+	replay?: { watts: number; cadence: number; hr?: number }[];
 }
 
 /**
@@ -44,6 +51,8 @@ export class SimulatedTrainer implements Trainer {
 	#tickMs: number;
 	#rng: () => number;
 	#now: () => number;
+	#replay?: { watts: number; cadence: number; hr?: number }[];
+	#replayAt = 0;
 
 	constructor(opts: SimulatedTrainerOptions = {}) {
 		this.#baseWatts = opts.baseWatts ?? 180;
@@ -52,6 +61,7 @@ export class SimulatedTrainer implements Trainer {
 		this.#tickMs = opts.tickMs ?? 1000;
 		this.#rng = opts.rng ?? Math.random;
 		this.#now = opts.now ?? Date.now;
+		this.#replay = opts.replay;
 	}
 
 	get status() {
@@ -111,6 +121,20 @@ export class SimulatedTrainer implements Trainer {
 
 	#tick(): void {
 		if (this.#dropped) return;
+		if (this.#replay) {
+			const sample = this.#replay[this.#replayAt++];
+			if (!sample) return; // series over: silence, like a stopped rider
+			const heartRate = sample.hr && sample.hr > 0 ? sample.hr : undefined;
+			for (const cb of this.#sampleCbs) {
+				cb({
+					watts: sample.watts,
+					cadence: sample.cadence,
+					heartRate,
+					at: this.#now(),
+				});
+			}
+			return;
+		}
 		const target =
 			this.#mode === 'erg'
 				? this.#targetWatts
