@@ -75,6 +75,7 @@ func main() {
 		// Live rooms exist only with the durable side present: the WS needs
 		// membership, and membership needs the database.
 		h := hub.New(log, roomsService, stats.NewSaver(st, log))
+		roomsService.SetPresence(h)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {

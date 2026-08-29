@@ -30,11 +30,22 @@ type UserSource interface {
 	User(r *http.Request) (db.User, bool)
 }
 
-type Service struct {
-	store *store.Store
-	users UserSource
-	log   *slog.Logger
+// Presence is what the rooms list borrows from the hub — defined here, where
+// it is consumed. Optional: without it every room reads as quiet.
+type Presence interface {
+	Presence(slug string) (connected int, phase string)
 }
+
+type Service struct {
+	store    *store.Store
+	users    UserSource
+	log      *slog.Logger
+	presence Presence
+}
+
+// SetPresence wires the hub in after construction (the hub needs this service
+// first, as its Access).
+func (s *Service) SetPresence(p Presence) { s.presence = p }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 	return &Service{store: st, users: users, log: log}
@@ -80,6 +91,11 @@ type roomJSON struct {
 	// no individual numbers anywhere in it.
 	StreakWeeks int   `json:"streakWeeks"`
 	MonthKj     int64 `json:"monthKj"`
+	// List-view presence: how many members exist, how many are connected right
+	// now, and the session phase — the nav shows where the action is.
+	MemberCount int    `json:"memberCount,omitempty"`
+	Connected   int    `json:"connected,omitempty"`
+	Phase       string `json:"phase,omitempty"`
 }
 
 // --- handlers ---
@@ -156,7 +172,14 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]roomJSON, 0, len(roomsList))
 	for _, room := range roomsList {
-		out = append(out, roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed})
+		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed}
+		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
+			entry.MemberCount = int(count)
+		}
+		if s.presence != nil {
+			entry.Connected, entry.Phase = s.presence.Presence(room.Slug)
+		}
+		out = append(out, entry)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out})
 }

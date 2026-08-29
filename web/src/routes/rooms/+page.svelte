@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Logo from '$lib/brand/Logo.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 
@@ -8,25 +9,54 @@
 		slug: string;
 		name: string;
 		listed: boolean;
+		memberCount?: number;
+		connected?: number;
+		phase?: string;
+	}
+	interface Medal {
+		kind: string;
+		rider: string;
+		awardedAt: string;
+	}
+	interface RoomDetail {
+		slug: string;
+		name: string;
+		code?: string;
+		medals?: Medal[];
+		streakWeeks?: number;
 	}
 
 	void account.load();
 
+	// errors.md: every page owes four states — loading, error, empty, content.
 	let rooms = $state<RoomSummary[] | null>(null);
 	let error = $state<string | null>(null);
+	let detail = $state<RoomDetail | null>(null);
 	let name = $state('');
-	let code = $state('');
+	let joinCode = $state('');
 	let busy = $state(false);
+	let copied = $state(false);
 
-	// Signed-in state arrives async; rooms load once it does.
+	const invalidCode = $derived(
+		joinCode.length > 0 && !/^[A-Z0-9]{0,6}$/i.test(joinCode),
+	);
+
 	$effect(() => {
 		if (account.loaded && account.me && rooms === null) void load();
 	});
 
 	async function load() {
 		const res = await api<{ rooms: RoomSummary[] }>('/api/rooms');
-		if (res.ok) rooms = res.data.rooms;
-		else error = res.error.message;
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
+		rooms = res.data.rooms;
+		// The first room's paperwork feeds the invite card and medal history.
+		if (rooms.length > 0) {
+			const first = await api<RoomDetail>(`/api/rooms/${rooms[0].slug}`);
+			if (first.ok) detail = first.data;
+		}
 	}
 
 	async function create() {
@@ -44,129 +74,270 @@
 		busy = true;
 		const res = await api<{ slug: string }>('/api/rooms/join', {
 			method: 'POST',
-			json: { code },
+			json: { code: joinCode },
 		});
 		busy = false;
 		if (res.ok) void goto(`/r/${res.data.slug}`);
 		else error = res.error.message;
 	}
+
+	function copyLink() {
+		void navigator.clipboard
+			?.writeText(`${location.origin}/r/${detail?.slug}`)
+			.then(() => {
+				copied = true;
+				setTimeout(() => (copied = false), 1500);
+			});
+	}
+
+	const MEDAL_NAME: Record<string, string> = {
+		diesel: 'Diesel',
+		metronome: 'Metronome',
+		hammer: 'Hammer',
+		lanterne_rouge: 'Lanterne Rouge',
+	};
+
+	/** Medal history grouped by day, newest first — the mock's session rows. */
+	const medalDays = $derived.by(() => {
+		const byDay = new Map<string, Medal[]>();
+		for (const medal of detail?.medals ?? []) {
+			const list = byDay.get(medal.awardedAt) ?? [];
+			list.push(medal);
+			byDay.set(medal.awardedAt, list);
+		}
+		return [...byDay.entries()].slice(0, 5);
+	});
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<div class="flex items-center gap-3">
-		<Logo size={30} />
-		<div>
-			<h1 class="font-display text-2xl leading-tight font-bold">Rooms</h1>
-			<p class="text-muted text-xs">
-				Train together — a room is your crew's place, private by default.
-			</p>
-		</div>
+	<div class="flex items-center justify-between gap-4">
+		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
+		<a href="/" class="text-muted text-xs hover:text-white">← home</a>
 	</div>
 
-	{#if !account.loaded}
-		<p class="text-muted mt-8 text-sm">Loading…</p>
-	{:else if !account.me}
-		<!-- Empty states teach (.claude/rules/ux.md). -->
+	{#if error}
 		<div
-			class="border-muted/15 mt-8 rounded-lg border border-dashed px-6 py-8 text-center"
+			class="border-z6/40 bg-z6/10 mt-6 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"
 		>
-			<p class="text-sm">Rooms need an account.</p>
-			<p class="text-muted mx-auto mt-2 max-w-sm text-xs leading-relaxed">
+			<span>{error}</span>
+			<button
+				onclick={() => {
+					error = null;
+					rooms = null;
+				}}
+				class="text-muted ml-auto text-xs underline hover:text-white"
+				>Retry</button
+			>
+		</div>
+	{/if}
+
+	{#if !account.loaded || (account.me && rooms === null && !error)}
+		<div class="mt-8 grid gap-3">
+			{#each { length: 3 } as _, i (i)}
+				<div class="border-muted/15 rounded-lg border px-5 py-4">
+					<Skeleton class="h-4 w-48" />
+					<Skeleton class="mt-2 h-3 w-28" />
+				</div>
+			{/each}
+		</div>
+	{:else if !account.me}
+		<div
+			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-10 text-center"
+		>
+			<Logo size={56} />
+			<h2 class="font-display mt-6 text-2xl font-bold">
+				Rooms need an account.
+			</h2>
+			<p class="text-muted mx-auto mt-3 max-w-md text-sm leading-relaxed">
 				Your crew, your rides and your roles live on the server — sign in once
 				and every device knows them.
 			</p>
 			<a
 				href="/profile"
-				class="mt-5 inline-block rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+				class="mt-7 inline-block rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
 				>Sign in</a
 			>
 		</div>
-	{:else}
-		{#if error}
-			<p class="border-z6/40 bg-z6/10 mt-6 rounded-lg border px-4 py-3 text-sm">
-				{error}
+	{:else if rooms !== null && rooms.length === 0}
+		<!-- Empty states teach, never apologise: the only onboarding most read. -->
+		<div
+			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-10 text-center"
+		>
+			<Logo size={56} />
+			<h2 class="font-display mt-6 text-2xl font-bold">
+				A room is a place, not a session.
+			</h2>
+			<p class="text-muted mx-auto mt-3 max-w-md text-sm leading-relaxed">
+				You open one once and it stays. Your crew drops in, voices connect,
+				someone queues music, and when a coach picks a workout everyone rides it
+				at their own FTP.
 			</p>
-		{/if}
-
-		{#if rooms !== null && rooms.length === 0}
-			<div
-				class="border-muted/15 mt-8 rounded-lg border border-dashed px-6 py-8 text-center"
-			>
-				<p class="text-sm">No rooms yet.</p>
-				<p class="text-muted mx-auto mt-2 max-w-sm text-xs leading-relaxed">
-					Open your first room and share the link — that is the whole invite
-					flow.
-				</p>
+			<div class="mt-7 flex justify-center gap-3">
+				<button
+					onclick={() => document.getElementById('open-room-name')?.focus()}
+					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+					>Open your first room</button
+				>
+				<button
+					onclick={() => document.getElementById('join-code')?.focus()}
+					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
+					>I have a code</button
+				>
 			</div>
-		{:else if rooms !== null}
-			<ul class="mt-8 grid gap-2">
-				{#each rooms as room (room.slug)}
-					<li>
-						<a
-							href="/r/{room.slug}"
-							class="border-muted/15 bg-surface-raised hover:border-muted/40 flex items-baseline gap-3 rounded-lg border px-5 py-4"
-						>
-							<span class="font-display font-bold">{room.name}</span>
-							<span class="text-muted font-mono text-xs">/r/{room.slug}</span>
-							{#if room.listed}
-								<span class="text-muted ml-auto text-[10px] uppercase"
-									>listed</span
-								>
+		</div>
+	{:else if rooms !== null}
+		<div class="mt-8 grid gap-3">
+			{#each rooms as room (room.slug)}
+				<a
+					href="/r/{room.slug}"
+					class="border-muted/15 bg-surface-raised hover:border-muted/40 flex items-center gap-4 rounded-lg border px-5 py-4 transition-colors"
+				>
+					<div class="min-w-0">
+						<p class="font-display font-bold">{room.name}</p>
+						<p class="text-muted mt-0.5 text-xs">
+							{#if room.phase === 'running' || room.phase === 'countdown'}
+								riding now · {room.connected} in the room
+							{:else if (room.connected ?? 0) > 0}
+								{room.connected} in the lounge
+							{:else if (room.memberCount ?? 0) > 1}
+								{room.memberCount} members — open it and your crew gets a ping
+							{:else}
+								<!-- Quiet room: say what to do, not just that it's empty. -->
+								empty — share the link and your crew appears
 							{/if}
-						</a>
-					</li>
-				{/each}
-			</ul>
+						</p>
+					</div>
+					{#if room.phase === 'running' || room.phase === 'countdown'}
+						<span
+							class="bg-watt glow-stroke ml-auto h-2 w-2 shrink-0 rounded-full"
+						></span>
+					{/if}
+				</a>
+			{/each}
+		</div>
+
+		{#if detail && medalDays.length > 0}
+			<section class="border-muted/15 mt-8 rounded-lg border p-5">
+				<div class="flex items-baseline gap-3">
+					<h2 class="font-display font-bold">{detail.name} · medal history</h2>
+					{#if (detail.streakWeeks ?? 0) > 0}
+						<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
+							>{detail.streakWeeks} wk streak</span
+						>
+					{/if}
+				</div>
+				<ul class="mt-4 space-y-2">
+					{#each medalDays as [day, dayMedals] (day)}
+						<li class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+							<span class="text-muted w-20 shrink-0 font-mono tabular-nums"
+								>{day.slice(5)}</span
+							>
+							{#each dayMedals as medal, i (i)}
+								<span class="text-muted">
+									{MEDAL_NAME[medal.kind] ?? medal.kind}
+									<span
+										class={medal.rider === account.me?.displayName
+											? 'text-watt'
+											: 'text-white'}>{medal.rider}</span
+									>
+								</span>
+							{/each}
+						</li>
+					{/each}
+				</ul>
+			</section>
 		{/if}
 
-		<div class="mt-8 grid gap-6 sm:grid-cols-2">
-			<form
-				class="border-muted/15 bg-surface-raised grid gap-3 rounded-lg border p-5"
-				onsubmit={(e) => {
-					e.preventDefault();
-					void create();
-				}}
-			>
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>open a room</span
-				>
-				<input
-					bind:value={name}
-					placeholder="Tuesday Pain Cave"
-					maxlength="60"
-					required
-					class="border-muted/25 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none"
-				/>
-				<button
-					disabled={busy || !name.trim()}
-					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
-					>Open room</button
-				>
-			</form>
+		<div class="mt-3 grid gap-3 sm:grid-cols-2">
+			{#if detail?.code}
+				<div class="border-muted/15 rounded-lg border p-5">
+					<h2 class="font-display font-bold">Invite to {detail.name}</h2>
+					<p class="text-muted mt-1 text-xs">
+						The link is the golden path — it works on any device without typing.
+					</p>
+					<div
+						class="border-muted/25 mt-3 flex items-center gap-2 rounded border px-3 py-2"
+					>
+						<span class="truncate font-mono text-xs"
+							>{location.host}/r/{detail.slug}</span
+						>
+						<button
+							onclick={copyLink}
+							class="text-muted ml-auto shrink-0 text-xs hover:text-white"
+							>{copied ? 'Copied' : 'Copy'}</button
+						>
+					</div>
+					<div class="mt-2 flex items-center gap-3">
+						<span class="font-mono text-lg tracking-[0.3em] tabular-nums"
+							>{detail.code}</span
+						>
+						<span class="text-muted text-[11px]"
+							>for TVs and phones that can't open a link</span
+						>
+					</div>
+				</div>
+			{/if}
 
-			<form
-				class="border-muted/15 bg-surface-raised grid gap-3 rounded-lg border p-5"
-				onsubmit={(e) => {
-					e.preventDefault();
-					void joinByCode();
-				}}
-			>
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>join with a code</span
+			<div class="border-muted/15 rounded-lg border p-5">
+				<h2 class="font-display font-bold">Open a room</h2>
+				<p class="text-muted mt-1 text-xs">
+					Private by default. Share the link or the code with whoever you ride
+					with.
+				</p>
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						void create();
+					}}
 				>
-				<input
-					bind:value={code}
-					placeholder="VELVET"
-					maxlength="6"
-					required
-					class="border-muted/25 focus:border-muted/60 rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none"
-				/>
-				<button
-					disabled={busy || code.trim().length !== 6}
-					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm disabled:opacity-40"
-					>Join</button
+					<input
+						id="open-room-name"
+						bind:value={name}
+						maxlength="60"
+						class="border-muted/25 placeholder:text-muted/60 focus:border-muted/60 mt-3 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+						placeholder="Room name"
+					/>
+					<button
+						disabled={busy || !name.trim()}
+						class="mt-3 w-full rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+						>Open room</button
+					>
+				</form>
+			</div>
+
+			<div class="border-muted/15 rounded-lg border p-5">
+				<h2 class="font-display font-bold">Join with a code</h2>
+				<p class="text-muted mt-1 text-xs">
+					Six characters, from whoever invited you.
+				</p>
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						void joinByCode();
+					}}
 				>
-			</form>
+					<input
+						id="join-code"
+						bind:value={joinCode}
+						maxlength="6"
+						class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
+							? 'border-z6/60'
+							: 'border-muted/25 focus:border-muted/60'}"
+						placeholder="Room code"
+					/>
+					{#if invalidCode}
+						<!-- Field-level validation lands under the field (errors.md). -->
+						<p class="text-z6 mt-1.5 text-xs">
+							Codes are letters and numbers only.
+						</p>
+					{/if}
+					<button
+						disabled={busy || joinCode.length !== 6 || invalidCode}
+						class="border-muted/30 hover:border-muted/60 mt-3 w-full rounded border px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+						>Join room</button
+					>
+				</form>
+			</div>
 		</div>
 	{/if}
 </main>

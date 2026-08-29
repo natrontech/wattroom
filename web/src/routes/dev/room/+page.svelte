@@ -8,7 +8,7 @@
 	import PlayerTile from '$lib/room/PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
-	import Skeleton from '../Skeleton.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import SprintMoment from './SprintMoment.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';

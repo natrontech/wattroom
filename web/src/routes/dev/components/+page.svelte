@@ -7,7 +7,7 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SprintMoment from '../room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
-	import Skeleton from '../Skeleton.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
 
 	// Frozen sample riders: a gallery should not move while you read it.
