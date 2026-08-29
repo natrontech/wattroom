@@ -21,6 +21,7 @@
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.3",
+		"@types/node": "^26.4.0",
 		"@types/web-bluetooth": "^0.0.21",
 		"prettier": "^3.9.5",
 		"prettier-plugin-svelte": "^4.1.1",
