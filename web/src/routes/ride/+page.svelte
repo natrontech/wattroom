@@ -26,6 +26,7 @@
 		unfinishedRides,
 		type RideBuffer,
 	} from '$lib/ride/buffer';
+	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -59,6 +60,28 @@
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
 	let buffer: RideBuffer | undefined;
+	const recorder = createFlightRecorder();
+	let flagNotice = $state(false);
+	let sentFlags = $state(0);
+	let sending = $state(false);
+
+	async function sendFlags() {
+		if (!session) return;
+		sending = true;
+		for (const flag of recorder.flags.slice(sentFlags)) {
+			const res = await recorder.submit(flag, {
+				route: '/ride',
+				trainer: trainerName,
+			});
+			if (res.ok) sentFlags++;
+			else {
+				error = res.error.message;
+				break;
+			}
+		}
+		sending = false;
+	}
+	let trainerName = $state('simulated');
 
 	async function begin(trainer: Trainer) {
 		error = null;
@@ -71,13 +94,21 @@
 				startedAt,
 				workoutName: workout.name,
 			});
+			trainerName = trainer.name;
+			recorder.event('ride', `starting ${workout.name}`);
 			const next = createRideSession({
 				trainer,
 				workout,
 				ftp,
 				readings: () => sensors.readings,
-				onRecord: (sample) =>
-					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() }),
+				onRecord: (sample) => {
+					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
+					recorder.tick({
+						...sample,
+						target: session?.target ?? 0,
+						state: session?.state ?? '',
+					});
+				},
 			});
 			await next.start();
 			session = next;
@@ -491,7 +522,24 @@
 					class="border-muted/25 hover:border-muted/60 h-11 rounded border px-4 text-sm"
 					>Skip block</button
 				>
+				<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
+				<button
+					onclick={() => {
+						recorder.flag();
+						flagNotice = true;
+						setTimeout(() => (flagNotice = false), 4000);
+					}}
+					class="border-watt/40 text-watt hover:bg-watt/10 h-11 rounded border px-5 text-lg"
+					aria-label="Flag a problem">⚑</button
+				>
 			</div>
+			{#if flagNotice}
+				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
+				<p class="text-muted mt-2 text-xs">
+					Flagged — after the ride this sends your last two minutes of ride data
+					and logs to the developers. Only yours, nobody else's.
+				</p>
+			{/if}
 		</div>
 
 		<div
@@ -524,6 +572,37 @@
 				>
 				{#if error}
 					<p class="text-z6 mt-2 text-xs">{error}</p>
+				{/if}
+
+				{#if recorder.flags.length > sentFlags}
+					<!-- The post-ride card (#52): each flag, one optional line, send. -->
+					<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
+						<span class="text-muted text-[10px] tracking-wider uppercase"
+							>your flags</span
+						>
+						{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
+							<div class="flex items-center gap-2">
+								<span class="text-muted font-mono text-xs"
+									>{new Date(flag.clientMs).toLocaleTimeString()}</span
+								>
+								<input
+									bind:value={flag.note}
+									placeholder="what went wrong? (optional)"
+									class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+								/>
+							</div>
+						{/each}
+						<button
+							onclick={sendFlags}
+							disabled={sending}
+							class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
+							>{sending ? 'Sending…' : 'Send to the developers'}</button
+						>
+					</div>
+				{:else if sentFlags > 0}
+					<p class="text-z4 mt-3 text-xs">
+						Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
+					</p>
 				{/if}
 			</div>
 		{/if}
