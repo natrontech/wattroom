@@ -42,7 +42,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 const createRoom = `-- name: CreateRoom :one
 insert into rooms (code, slug, name, owner_id)
 values ($1, $2, $3, $4)
-returning id, code, slug, name, owner_id, listed, created_at
+returning id, code, slug, name, owner_id, listed, created_at, sound_pack
 `
 
 type CreateRoomParams struct {
@@ -68,6 +68,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 		&i.OwnerID,
 		&i.Listed,
 		&i.CreatedAt,
+		&i.SoundPack,
 	)
 	return i, err
 }
@@ -83,6 +84,16 @@ type DeleteMembershipParams struct {
 
 func (q *Queries) DeleteMembership(ctx context.Context, arg DeleteMembershipParams) error {
 	_, err := q.db.Exec(ctx, deleteMembership, arg.RoomID, arg.UserID)
+	return err
+}
+
+const deleteRoom = `-- name: DeleteRoom :exec
+delete from rooms where id = $1
+`
+
+// Memberships and medals cascade; rides keep their history (room_id set null).
+func (q *Queries) DeleteRoom(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRoom, id)
 	return err
 }
 
@@ -108,7 +119,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at from rooms where code = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack from rooms where code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
@@ -122,12 +133,13 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) 
 		&i.OwnerID,
 		&i.Listed,
 		&i.CreatedAt,
+		&i.SoundPack,
 	)
 	return i, err
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at from rooms where slug = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -141,6 +153,7 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 		&i.OwnerID,
 		&i.Listed,
 		&i.CreatedAt,
+		&i.SoundPack,
 	)
 	return i, err
 }
@@ -192,7 +205,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack
 from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1
@@ -216,6 +229,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]Room
 			&i.OwnerID,
 			&i.Listed,
 			&i.CreatedAt,
+			&i.SoundPack,
 		); err != nil {
 			return nil, err
 		}
@@ -243,17 +257,23 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 }
 
 const updateRoom = `-- name: UpdateRoom :one
-update rooms set name = $2, listed = $3 where id = $1 returning id, code, slug, name, owner_id, listed, created_at
+update rooms set name = $2, listed = $3, sound_pack = $4 where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack
 `
 
 type UpdateRoomParams struct {
-	ID     pgtype.UUID
-	Name   string
-	Listed bool
+	ID        pgtype.UUID
+	Name      string
+	Listed    bool
+	SoundPack string
 }
 
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
-	row := q.db.QueryRow(ctx, updateRoom, arg.ID, arg.Name, arg.Listed)
+	row := q.db.QueryRow(ctx, updateRoom,
+		arg.ID,
+		arg.Name,
+		arg.Listed,
+		arg.SoundPack,
+	)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -263,6 +283,7 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		&i.OwnerID,
 		&i.Listed,
 		&i.CreatedAt,
+		&i.SoundPack,
 	)
 	return i, err
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { play, setDucked } from '$lib/sound/cues';
+	import { play, setDucked, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { arbitrate } from '$lib/ble/arbitrate';
@@ -58,6 +58,7 @@
 		roomName,
 		code = '',
 		listed = false,
+		soundPack = 'base',
 		members = [],
 		medals = [],
 		streakWeeks = 0,
@@ -72,6 +73,7 @@
 		roomName: string;
 		code?: string;
 		listed?: boolean;
+		soundPack?: string;
 		members?: AdminMember[];
 		medals?: AdminMedal[];
 		streakWeeks?: number;
@@ -91,6 +93,15 @@
 		live.close();
 		av.leave();
 		stopRiding();
+	});
+
+	// The room's pack governs the cue mixer while you are here ('silent' =
+	// visual cues only); leaving restores sound for the rest of the app.
+	$effect(() => {
+		if (soundPack === 'silent') {
+			setMuted(true);
+			return () => setMuted(false);
+		}
 	});
 
 	const canControl = $derived(role === 'owner' || role === 'coach');

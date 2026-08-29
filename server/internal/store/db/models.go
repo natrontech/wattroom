@@ -60,6 +60,7 @@ type Room struct {
 	OwnerID   pgtype.UUID
 	Listed    bool
 	CreatedAt pgtype.Timestamptz
+	SoundPack string
 }
 
 type Session struct {
