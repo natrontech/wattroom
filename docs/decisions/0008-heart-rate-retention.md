@@ -2,6 +2,9 @@
 
 - Status: accepted
 - Date: 2026-08-29
+- Amended: 2026-08-29 — the retention bullet was headed in a way that read as
+  forbidding what the bullet below it permits. Reworded, and the per-rider analytics
+  intent made explicit rather than merely allowed.
 
 ## Context
 
@@ -28,17 +31,33 @@ lands in M2.
 stream and renders on other riders' tiles. This is the presence feature and is what
 line 13 promises.
 
-**Server-side it is live state, not durable data.** HR lives in the hub's in-memory
-room state and is dropped when the ride ends, the same as every other live metric.
-It is never written to Postgres as part of room, session or leaderboard data. This
-follows the architecture's existing seam rather than inventing a rule for it: the
-server owns live state in memory, Postgres owns durable data.
+**What is ephemeral is HR *as room state*.** The copy of your heart rate that other
+riders can see lives in the hub's memory and is dropped when the ride ends, like
+every other live metric. It is never written to Postgres as room, session or
+leaderboard data, and no other rider's view of it outlives the ride.
 
-**Durable only in the rider's own ride, never in a cross-rider artifact.** A rider's
-own history and their `.fit` may carry HR — it is their training data and every head
-unit stores it. Nothing that another person can see may: not medal cards, not shared
-ride summaries, not room history, not leaderboards, not aggregates. The summary
-screen's existing promise becomes a rule rather than a sentence someone wrote.
+**What is durable is the rider's own ride.** The rider's full 1 Hz sample stream —
+watts, cadence, **and heart rate** — is stored server-side against their own account
+and kept, exactly as [#15](https://github.com/natrontech/wattroom/issues/15) already
+plans (summary columns plus a compressed 1 Hz sample blob). This is deliberate and
+is the point: heart rate is what makes the interesting analysis possible, and a
+rider's training history is theirs to keep. Every head unit on the market stores it.
+
+**Analysis is per-rider.** Their own stored data, shown back to them: HR drift within
+a ride, aerobic decoupling, zone distribution, fitness trend across months, power
+curve. That is where the value is and it needs nobody else's data.
+
+**Never in a cross-rider artifact.** Not medal cards, not shared ride summaries, not
+room history, not leaderboards, not population aggregates. The summary screen's
+existing promise becomes a rule rather than a sentence someone wrote.
+
+**Cross-user analysis is out of scope and needs its own decision.** Comparing a
+rider's HR against a population baseline, or training anything on the pooled corpus,
+is a materially different posture: heart rate is special-category health data under
+GDPR and sensitive personal data under the Swiss revDSG, so it would need explicit,
+separate, revocable consent, and storage that can actually honour a withdrawal. Not
+forbidden — it is a legitimate future product — but it does not happen as a side
+effect of having the data lying around.
 
 **No HR-derived competition.** No medal, score or ranking may be computed from heart
 rate. Today's medals are already power-based (docs/SPEC.md), so this costs nothing
@@ -58,11 +77,15 @@ interesting.
   shared and stop it in one action. That affordance is a requirement of this ADR, not
   a nice-to-have, and it belongs wherever the room tile or pairing screen shows what
   is being transmitted. Filed as a follow-up.
-- Export-all and delete-account purge cover the rider's own stored HR, unchanged —
-  there is simply less of it elsewhere to purge.
-- The hub keeps no HR history, so any future feature wanting HR trends (a fatigue
-  view, HR-vs-power drift) has to source it from the rider's own rides rather than
-  from room state. That is the intended shape, not an obstacle.
+- Export-all and delete-account purge now carry real weight: the rider's own stored
+  HR is the bulk of what a purge has to remove, and the 1 Hz sample blob is where it
+  lives. Deleting an account has to take the blobs, not just the summary rows.
+- [#25](https://github.com/natrontech/wattroom/issues/25) (ride completion stats) can
+  build HR-based metrics freely, as long as every one of them is the rider's own
+  number shown to that rider.
+- The hub keeps no HR history, so a fatigue view or an HR-vs-power drift chart reads
+  the rider's own stored rides rather than room state. That is the intended shape:
+  analytics are a query over your own history, not a tap on the live stream.
 - RR intervals are parsed off real straps (#11) and currently discarded. They are
   more sensitive than bpm, not less — HRV is closer to a medical signal. Nothing may
   persist or transmit them without revisiting this ADR.
