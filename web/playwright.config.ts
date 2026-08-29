@@ -23,10 +23,15 @@ export default defineConfig({
 	},
 	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 	// Serves the built SPA and proxies /api to the Go server, matching production.
+	//
+	// Always builds, never reuses: the server only ever serves build/, so a reused
+	// process happily serves a stale bundle and the run passes against code that is
+	// not the code under test. A route added since the last build 404s — which is
+	// exactly how this was found. The build costs seconds against a two-minute ride.
 	webServer: {
-		command: 'node e2e/server.js',
+		command: 'pnpm build && node e2e/server.js',
 		url: 'http://localhost:4173/ride',
-		reuseExistingServer: !process.env.CI,
-		timeout: 60_000
+		reuseExistingServer: false,
+		timeout: 120_000
 	}
 });
