@@ -15,6 +15,8 @@
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { createProfileStore } from '$lib/profile.svelte';
+	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { page } from '$app/state';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
@@ -35,8 +37,13 @@
 	);
 	const workout = $derived(selected.workout);
 
-	// FTP lives in the profile once accounts exist (#16); manual entry is the MVP fallback.
-	let ftp = $state(265);
+	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
+	const profile = createProfileStore();
+	const history = createHistoryStore();
+	// The profile is FTP's only home — the field below writes through to it, so a
+	// rider who corrects the number here does not find the old one on /profile.
+	const ftp = $derived(profile.current.ftp);
+	let recorded = false;
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
@@ -63,6 +70,23 @@
 		if (index === undefined) return;
 		if (heardBlock !== null && index !== heardBlock) play('block');
 		heardBlock = index;
+	});
+
+	// A finished ride is worth keeping even if the rider never exports it.
+	$effect(() => {
+		const current = session;
+		if (!current || current.state !== 'done' || recorded) return;
+		recorded = true;
+		const summary = summarise(current.recording);
+		if (summary.seconds === 0) return;
+		error = history.add({
+			id: `${current.startedAt.getTime()}`,
+			workoutName: workout.name,
+			startedAt: current.startedAt.toISOString(),
+			execution: current.execution,
+			ftp,
+			...summary,
+		});
 	});
 
 	const watts = $derived(session?.sample?.watts ?? 0);
@@ -132,12 +156,22 @@
 				>
 				<input
 					type="number"
-					bind:value={ftp}
+					value={ftp}
+					onchange={(event) => {
+						error = profile.update({
+							ftp: Number(event.currentTarget.value),
+						});
+					}}
 					min="80"
 					max="500"
 					class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
 				/>
 			</label>
+			<a
+				href="/ramp"
+				class="text-muted mt-2 inline-block text-xs underline hover:text-white"
+				>Measure it with a ramp test</a
+			>
 
 			{#if error}
 				<p class="text-z6 mt-4 text-sm">{error}</p>
