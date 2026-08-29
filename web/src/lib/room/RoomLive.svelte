@@ -65,6 +65,11 @@
 	const GAMES = [
 		{ id: 'backyard-ramp', label: 'Backyard Ramp' },
 		{ id: 'collective-ramp', label: 'Collective Ramp' },
+		{ id: 'floor-is-lava', label: 'Floor is Lava' },
+		{ id: 'watt-golf', label: 'Watt Golf' },
+		{ id: 'sprint-roulette', label: 'Sprint Roulette' },
+		{ id: 'points-race', label: 'Points Race' },
+		{ id: 'team-relay', label: 'Team Relay' },
 	];
 	let pickedGame = $state(GAMES[0].id);
 
@@ -419,7 +424,11 @@
 						{/if}
 					</p>
 				{/if}
-				{#if metrics}
+				{#if live.tick?.game?.meterHidden}
+					<!-- Watt Golf hides the meter from hole call to hole end (SPEC):
+					     the swing is blind, the score is the reveal. -->
+					<p class="text-muted mt-3 font-mono text-xs">meter hidden 🙈</p>
+				{:else if metrics}
 					{@const exec = live.tick?.execution?.[rider.id]}
 					<div class="mt-2 flex items-baseline gap-2">
 						<span

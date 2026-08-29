@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -54,11 +55,22 @@ func (g *graceTracker) inGrace(riderID string, now time.Time) bool {
 
 // newGameMode is the registry (#31/#32). Unknown mode: nil, refused upstream.
 func newGameMode(mode string, now time.Time) gameMode {
+	rng := rand.New(rand.NewSource(now.UnixNano())) //nolint:gosec // game variety, not security
 	switch mode {
 	case "backyard-ramp":
 		return newBackyard(now, false)
 	case "collective-ramp":
 		return newBackyard(now, true)
+	case "floor-is-lava":
+		return newLava(now, rng)
+	case "watt-golf":
+		return newGolf(now, rng)
+	case "sprint-roulette":
+		return newRoulette(now, rng)
+	case "points-race":
+		return newPointsRace(now, rng)
+	case "team-relay":
+		return newRelay(now, rng)
 	default:
 		return nil
 	}
