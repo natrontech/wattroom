@@ -3,3 +3,6 @@ bin/
 node_modules/
 web/build/
 web/.svelte-kit/
+
+# macOS
+.DS_Store
