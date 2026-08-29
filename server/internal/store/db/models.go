@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Identity struct {
+	Provider       string
+	ProviderUserID string
+	UserID         pgtype.UUID
+	AccessToken    *string
+	RefreshToken   *string
+	TokenExpiresAt pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
 type Membership struct {
 	RoomID   pgtype.UUID
 	UserID   pgtype.UUID
@@ -39,6 +49,13 @@ type Room struct {
 	OwnerID   pgtype.UUID
 	Listed    bool
 	CreatedAt pgtype.Timestamptz
+}
+
+type Session struct {
+	TokenHash []byte
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
 }
 
 type User struct {

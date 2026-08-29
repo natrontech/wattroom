@@ -7,6 +7,8 @@ import (
 	"math"
 	"net/http"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/httpx"
 )
 
 // Bounds on untrusted input. A ride is client-recorded, so the request is
@@ -67,7 +69,7 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_request",
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
 				"That ride could not be read. This is a bug in the app, not something you did.")
 			log.Warn("fit export: bad body", "err", err)
 			return
@@ -75,7 +77,7 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 
 		ride, err := toRide(req)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 			return
 		}
 
@@ -83,7 +85,7 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 		if err != nil {
 			// The ride passed validation, so a failure here is ours, not the rider's.
 			log.Error("fit export: encode failed", "err", err, "samples", len(ride.Samples))
-			writeError(w, http.StatusInternalServerError, "internal_error",
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 				"Your ride could not be turned into a file. It is still on this device — try again.")
 			return
 		}
@@ -138,11 +140,4 @@ func toRide(req exportRequest) (Ride, error) {
 		})
 	}
 	return Ride{StartedAt: req.StartedAt, Samples: samples}, nil
-}
-
-// writeError matches the one API error shape in .claude/rules/errors.md.
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message})
 }
