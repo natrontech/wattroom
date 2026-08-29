@@ -214,10 +214,10 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Shared dashboard: live watts/HR/cadence/%FTP per rider, synchronized interval timer, countdown start, late join
 - ✅ Phone spectator view (read-only, any mobile browser)
 
-**M3 — Presence & jukebox**
-- LiveKit: voice + camera + screenshare in rooms
-- Switchable layouts (metrics-first / video-first / media-focus) + TV mode
-- Synced YouTube jukebox with shared queue and audio ducking
+**M3 — Presence & jukebox** ✅ *(closed 2026-08-29 — two-browser AV and audible jukebox sync await the first crew ride; both fixed compose bugs: LiveKit could never carry media on macOS)*
+- ✅ LiveKit: voice + camera + screenshare in rooms
+- ✅ Switchable layouts (metrics-first / video-first / media-focus) + TV mode
+- ✅ Synced YouTube jukebox with shared queue and audio ducking
 
 **M4 — Stats & game layer**
 - Ride completion pipeline: power curve, execution score, kJ/XP, level + category, all in one transaction
