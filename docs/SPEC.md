@@ -36,6 +36,8 @@ Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout →
 
 ## Workout JSON (draft — M1 finalizes)
 
+Planned, additive, not yet in the format: optional per-step `cadence` targets (#66) and HR bands (#67) — steps without them behave exactly as today.
+
 ```jsonc
 {
   "name": "2x20 Sweet Spot",
