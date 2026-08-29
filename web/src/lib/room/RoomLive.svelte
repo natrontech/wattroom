@@ -38,6 +38,8 @@
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import RoomAdmin from '$lib/room/RoomAdmin.svelte';
+	import SessionSummary from '$lib/ride/SessionSummary.svelte';
+	import type { Medal } from '$lib/components/MedalCard.svelte';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 
 	interface AdminMember {
@@ -290,6 +292,8 @@
 	function pickAndStart() {
 		const entry = library.find((w) => w.id === pickedId);
 		if (!entry) return;
+		mySamples = [];
+		myTrace = [];
 		const flat = flatten(entry.workout);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -372,11 +376,13 @@
 						? metrics.from.heartRate
 						: null;
 				live.sendMetrics(wireMetrics(metrics, profile.current.shareHr, ++seq));
-				if (running)
+				if (running) {
 					myTrace = [
 						...myTrace.slice(-898),
 						{ t: shared?.elapsed ?? 0, w: metrics.watts },
 					];
+					mySamples.push({ watts: Math.max(0, Math.round(metrics.watts)) });
+				}
 			});
 			trainer = next;
 		} catch (cause) {
@@ -417,6 +423,62 @@
 	]);
 	const myZone = $derived(zoneOf(you.watts, you.ftp));
 	let admin = $state(false);
+
+	// Session close (#39's summary design): my own samples this session become
+	// the summary, and my medal — if the room awarded one — comes back with the
+	// refreshed room payload a moment after the pipeline commits.
+	let mySamples = $state<{ watts: number }[]>([]);
+	let summaryDismissed = $state(false);
+	let myMedal = $state<Medal | undefined>(undefined);
+	let medalFetched = false;
+	const MEDAL_META: Record<string, { name: string; criterion: string }> = {
+		diesel: { name: 'Diesel', criterion: 'lowest power variability' },
+		metronome: { name: 'Metronome', criterion: 'best execution score' },
+		hammer: { name: 'Hammer', criterion: 'best 5 s w/kg' },
+		lanterne_rouge: {
+			name: 'Lanterne Rouge',
+			criterion: 'last on the podium metric, but finished',
+		},
+	};
+	$effect(() => {
+		if (shared?.phase === 'running') {
+			summaryDismissed = false;
+			medalFetched = false;
+			myMedal = undefined;
+		}
+		if (shared?.phase !== 'done' || medalFetched || mySamples.length < 60)
+			return;
+		medalFetched = true;
+		// The pipeline commits within a tick or two of the close.
+		setTimeout(() => {
+			void api<{
+				medals?: { kind: string; rider: string; awardedAt: string }[];
+			}>(`/api/rooms/${slug}`).then((res) => {
+				if (!res.ok) return;
+				const today = new Date().toISOString().slice(0, 10);
+				const mine = (res.data.medals ?? []).find(
+					(medal) =>
+						medal.rider === account.me?.displayName &&
+						medal.awardedAt === today,
+				);
+				if (mine) {
+					const meta = MEDAL_META[mine.kind];
+					const kjTotal = Math.round(
+						mySamples.reduce((sum, sample) => sum + sample.watts, 0) / 1000,
+					);
+					myMedal = {
+						name: meta?.name ?? mine.kind,
+						criterion: meta?.criterion ?? '',
+						rider: account.me?.displayName ?? 'You',
+						value: String(Math.round(you.execution * 100)),
+						unit: '%',
+						kj: kjTotal,
+						xp: 0,
+					};
+				}
+			});
+		}, 2500);
+	});
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
@@ -685,6 +747,27 @@
 					end={() => live.control('game-end')}
 					{canControl}
 				/>
+			</div>
+		{/if}
+
+		{#if shared?.phase === 'done' && mySamples.length >= 60 && !summaryDismissed}
+			<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+				<SessionSummary
+					subtitle="{roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
+					samples={mySamples}
+					ftp={you.ftp}
+					execution={you.execution}
+					medal={myMedal}
+					{roomName}
+				>
+					{#snippet actions()}
+						<button
+							onclick={() => (summaryDismissed = true)}
+							class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+							>Back to the lounge</button
+						>
+					{/snippet}
+				</SessionSummary>
 			</div>
 		{/if}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import MedalCard from '../medal/MedalCard.svelte';
+	import MedalCard from '$lib/components/MedalCard.svelte';
 	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
