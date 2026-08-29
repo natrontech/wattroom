@@ -142,6 +142,21 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 - **Data**: Core streams power+cadence via FTMS Indoor Bike Data; v2 streams power via standard Cycling Power Measurement (0x2A63). **The 2016 v2 does not reliably provide cadence** — v2 riders pair a BLE cadence sensor (CSC profile, already in scope). The spiral-of-death guard must degrade gracefully when cadence is absent (fall back to power-collapse detection).
 - **Spindown/calibration**: proprietary on the v2 — defer to the Wahoo app for both trainers in MVP (standard practice among third-party apps).
 - **Licensing**: protocol constants (UUIDs, op codes, scaling) are facts and fine to use; the WCPS driver is written fresh, no Auuki code copied.
+
+**Confirmed on hardware** (2026-08-29, GATT dump on a second Kickr Core, fw 3.0.23, [#43](https://github.com/natrontech/wattroom/issues/43)) — two identical dumps four minutes apart:
+
+- **FTMS and WCPS coexist on the same unit.** `0x1826` with Control Point (0x2AD9, write+indicate) and Indoor Bike Data (0x2AD2), *and* `a026e005-…` on `0x1818`. "The Kickr Core exposes both — prefer FTMS" was inference; it is now read off the device.
+- **Supported Power Range (0x2AD8) = 0–2000 W, 1 W increment**; Supported Resistance Range (0x2AD6) = 0–100, 1. Resolves the clamping debt below.
+- **Cadence is supported**, asserted twice over: the FTMS Feature cadence bit (`0x2ACC` machine `0x00004003`) and the CPS crank-revolution bit (`0x2A65` → `0x120e`). A *capability* read — the sprint-to-soft-pedal dropout in §11 is still unobserved.
+- FTMS Feature targets `0x0000600c`: Resistance, **Power (ERG)**, **Indoor Bike Simulation**, Wheel Circumference.
+- The **Zwift ZAP service is present** on a Core (three characteristics: notify / writeNoResp / indicate). Says nothing about third-party usability — see §11 on virtual shifting.
+
+**Two quirks that will break a naive parser:**
+
+- **`0x2A65` (CPS Feature) returned 2 bytes, not the spec's uint32.** The bits we want sit in the low half so nothing is lost, but a parser reading a fixed 4 bytes throws on this trainer. Read defensively.
+- **`0x2AD3` (Training Status) reads `fb ff`**, which does not decode — `0xfb` is not a defined flags value and `0xff` not a defined status. We do not parse it; do not start without checking a second unit.
+
+**Still unanswered:** none of this touches the **Kickr v2 (2016)**, which is a different model — the dumped unit enumerates as `KICKR CORE ####`, a v2 as `KICKR ####`. §9's WCPS-only claim still rests on firmware release notes, and #43 stays open until a real v2 is enumerated.
 - **Zwift Cog / virtual shifting**: irrelevant in ERG (trainer holds watts regardless of gear — the Cog works fine, as with TrainerRoad/MyWhoosh). In **slope mode** a Cog'd trainer is one fixed gear: virtual shifting is Zwift-proprietary (Click/Play pair only with the Zwift app; patented — US11986700/US12465816), no third-party API shipped yet despite announcements. Consequence: sprint moments get a per-rider sprint-grade setting instead of shifting (#31); don't implement app-side virtual shifting unless the official API lands. ([DC Rainmaker](https://www.dcrainmaker.com/2024/02/wahoo-kickr-review.html), [Makinolo protocol analysis](https://www.makinolo.com/blog/2023/11/06/virtual-gear-shifting-in-indoor-training/), [Zwift Cog third-party guide](https://www.gatebreakendurance.com/cycling/zwift-cog-with-other-cycling-apps/))
 
 ## 10. Implementation depth: media & realtime (verified 3–0 unless noted; run of 2026-08-25)
@@ -188,7 +203,7 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 
 **HR strap parsing (0x2A37):** flags bit 0 selects UINT8 vs UINT16 heart rate; bit 4 signals RR intervals — a **variable count** of UINT16s fills the rest of the packet (loop, don't assume one; overflow continues next notification).
 
-**Research debt (no surviving claims — resolve during driver work):** 0x2A63 crank-revolution rollover math + stale-data thresholds, CSC 0x2A5B parsing, Supported Power/Resistance Range (0x2AD8) reads for clamping, WCPS status/notification codes beyond the op table (capture real notifications during the #10 hardware session), Kickr ERG-smoothing specifics.
+**Research debt (no surviving claims — resolve during driver work):** 0x2A63 crank-revolution rollover math + stale-data thresholds, CSC 0x2A5B parsing, WCPS status/notification codes beyond the op table (capture real notifications during the #10 hardware session), Kickr ERG-smoothing specifics. ~~Supported Power/Resistance Range (0x2AD8) reads for clamping~~ — **resolved**, numbers in §9.
 
 ## 12. Concurrency & coherence: everything at once (verified 3–0 unless noted; run of 2026-08-25)
 
