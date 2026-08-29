@@ -200,13 +200,13 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - Trainer simulator (fake FTMS device)
 - Real hardware: connect the Kickr Core via Web Bluetooth (FTMS), read power, set ERG target, ride a hardcoded interval workout; enumerate GATT services on the team's trainers (done — [ADR-0007](docs/decisions/0007-alpha-hardware-is-all-ftms.md))
 
-**M1 — Solo workout player**
-- Workout JSON format, built-in editor (warmup/steady/intervals/repeats/ramps/cooldown, %FTP or watts)
-- Curated library (~25 workouts)
-- Interval graph UI, FTP scaling, HR/power/cadence pairing, reconnect handling
-- Player controls: intensity bias ±%, skip/extend interval, spiral-of-death guard, auto-pause
-- Built-in ramp test (FTP = 75% of best 1-min power); manual FTP entry in profile
-- .fit export, ride history (private by default)
+**M1 — Solo workout player** ✅ *(closed 2026-08-29 — every item ridden on real hardware; guard thresholds promoted to docs/SPEC.md)*
+- ✅ Workout JSON format, built-in editor (warmup/steady/intervals/repeats/ramps/cooldown, %FTP or watts)
+- ✅ Curated library (26 workouts)
+- ✅ Interval graph UI, FTP scaling, HR/power/cadence pairing, reconnect handling
+- ✅ Player controls: intensity bias ±%, skip/extend interval, spiral-of-death guard, auto-pause
+- ✅ Built-in ramp test (FTP = 75% of best 1-min power); manual FTP entry in profile
+- ✅ .fit export (verified against Strava), ride history (private by default)
 
 **M2 — Accounts & rooms**
 - OAuth (Google, GitHub, Strava), profiles (name, FTP, weight, avatar)
