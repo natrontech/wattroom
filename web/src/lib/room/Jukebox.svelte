@@ -9,9 +9,11 @@
 	let {
 		jukebox,
 		send,
+		large = false,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (action: string, videoId?: string, title?: string) => void;
+		large?: boolean;
 	} = $props();
 
 	let url = $state('');
@@ -146,7 +148,9 @@
 			class="overflow-hidden rounded-lg bg-black {jukebox?.current
 				? ''
 				: 'hidden'}"
-			style="width: 356px; height: 200px"
+			style={large
+				? 'width: min(100%, 712px); aspect-ratio: 16/9'
+				: 'width: 356px; height: 200px'}
 		>
 			<div bind:this={container} class="h-full w-full"></div>
 		</div>

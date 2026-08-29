@@ -14,6 +14,7 @@
 	import { wireMetrics } from '$lib/room/wire';
 	import { createRoomAv } from '$lib/room/av.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
+	import TvMode from '$lib/room/TvMode.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -32,6 +33,26 @@
 	});
 
 	const canControl = $derived(role === 'owner' || role === 'coach');
+
+	// Layouts (#22): a per-rider convenience, so localStorage, not the profile.
+	type Layout = 'metrics' | 'video' | 'media';
+	const LAYOUT_KEY = 'wattroom.layout.v1';
+	let layout = $state<Layout>('metrics');
+	let tv = $state(false);
+	try {
+		const stored = localStorage.getItem(LAYOUT_KEY);
+		if (stored === 'video' || stored === 'media') layout = stored;
+	} catch {
+		/* default stands */
+	}
+	function setLayout(next: Layout) {
+		layout = next;
+		try {
+			localStorage.setItem(LAYOUT_KEY, next);
+		} catch {
+			/* convenience only */
+		}
+	}
 	const shared = $derived(live.tick?.state);
 	const roster = $derived(live.tick?.roster ?? []);
 
@@ -236,13 +257,36 @@
 		{/if}
 	</div>
 
+	<div class="text-muted mt-3 flex items-center gap-1 text-xs">
+		{#each [{ id: 'metrics', label: 'Metrics' }, { id: 'video', label: 'Video' }, { id: 'media', label: 'Media' }] as option (option.id)}
+			<button
+				onclick={() => setLayout(option.id as Layout)}
+				class="rounded px-2.5 py-1 {layout === option.id
+					? 'bg-surface-raised text-white'
+					: 'hover:text-white'}">{option.label}</button
+			>
+		{/each}
+		<button
+			onclick={() => (tv = true)}
+			class="ml-auto underline hover:text-white">TV mode</button
+		>
+	</div>
+
 	<Jukebox
 		jukebox={live.tick?.jukebox}
 		send={(action, videoId, title) => live.jukebox(action, videoId, title)}
+		large={layout === 'media'}
 	/>
 
-	<!-- Rider tiles: live data glows, chrome stays quiet. -->
-	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+	<!-- Rider tiles: live data glows, chrome stays quiet. Layouts change the
+	     grid, never the content — one tile markup, three densities. -->
+	<div
+		class="mt-4 grid gap-3 {layout === 'video'
+			? 'sm:grid-cols-2'
+			: layout === 'media'
+				? 'sm:grid-cols-3 lg:grid-cols-4'
+				: 'sm:grid-cols-2 lg:grid-cols-3'}"
+	>
 		{#each roster as rider (rider.id)}
 			{@const metrics = live.tick?.riders?.[rider.id]}
 			{@const zone = metrics ? zoneOf(metrics.watts, rider.ftpWatts) : 0}
@@ -335,5 +379,13 @@
 			>
 			{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
 		</div>
+	{/if}
+	{#if tv}
+		<TvMode
+			roster={live.tick?.roster ?? []}
+			riders={live.tick?.riders ?? {}}
+			{shared}
+			exit={() => (tv = false)}
+		/>
 	{/if}
 </section>
