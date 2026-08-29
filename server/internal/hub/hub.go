@@ -303,6 +303,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			}(closingMeta, closing)
 		}
 
+		metricTicks.Inc()
 		message := protocol.ServerMessage{Tick: &tick}
 		for _, c := range clients {
 			ctx, cancel := context.WithTimeout(context.Background(), tickInterval)
@@ -317,6 +318,7 @@ func (rm *room) join(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.clients[c] = struct{}{}
+	metricRiders.Inc()
 }
 
 func (rm *room) leave(c *client) {
@@ -324,6 +326,7 @@ func (rm *room) leave(c *client) {
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
 	delete(rm.metrics, c.rider.ID)
+	metricRiders.Dec()
 }
 
 // validMetrics bounds WS input before it touches room state.
