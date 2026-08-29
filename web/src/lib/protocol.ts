@@ -138,6 +138,10 @@ export interface ServerTick {
    * This second's cheers, drained each tick like metrics.
    */
   cheers?: Cheer[];
+  /**
+   * Live execution per rider (#27) — the SPEC score so far this session.
+   */
+  execution?: { [key: string]: number /* float64 */};
   roster: Rider[];
   riders: { [key: string]: RiderMetrics};
 }
