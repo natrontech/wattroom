@@ -18,6 +18,15 @@ type Identity struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type Medal struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	RideID    pgtype.UUID
+	Kind      string
+	AwardedAt pgtype.Timestamptz
+}
+
 type Membership struct {
 	RoomID   pgtype.UUID
 	UserID   pgtype.UUID

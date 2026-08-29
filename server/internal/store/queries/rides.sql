@@ -16,3 +16,15 @@ limit $2;
 
 -- name: GetRide :one
 select * from rides where id = $1 and user_id = $2;
+
+-- name: CreateMedal :exec
+insert into medals (room_id, user_id, ride_id, kind)
+values ($1, $2, $3, $4);
+
+-- name: ListRoomMedals :many
+select m.kind, m.awarded_at, u.display_name
+from medals m
+join users u on u.id = m.user_id
+where m.room_id = $1
+order by m.awarded_at desc
+limit $2;

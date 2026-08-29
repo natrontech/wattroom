@@ -11,6 +11,11 @@
 		avatarUrl?: string;
 		role: string;
 	}
+	interface Medal {
+		kind: string;
+		rider: string;
+		awardedAt: string;
+	}
 	interface Room {
 		slug: string;
 		name: string;
@@ -18,6 +23,7 @@
 		code?: string;
 		role?: string;
 		members?: Member[];
+		medals?: Medal[];
 	}
 
 	void account.load();
@@ -51,6 +57,12 @@
 	}
 
 	const isOwner = $derived(room?.role === 'owner');
+	const MEDAL_BADGE: Record<string, string> = {
+		diesel: '🛢️ Diesel',
+		metronome: '🎯 Metronome',
+		hammer: '🔨 Hammer',
+		lanterne_rouge: '🏮 Lanterne Rouge',
+	};
 	const isMember = $derived(!!room?.role);
 </script>
 
@@ -138,6 +150,22 @@
 				class="text-muted mt-4 inline-block text-xs underline hover:text-white"
 				>Watch on a phone (read-only)</a
 			>
+
+			{#if room.medals && room.medals.length > 0}
+				<h2 class="text-muted mt-8 text-[10px] tracking-wider uppercase">
+					Medals
+				</h2>
+				<ul class="mt-2 flex flex-wrap gap-2">
+					{#each room.medals as medal, i (i)}
+						<li
+							class="border-muted/15 bg-surface-raised rounded-full border px-3 py-1.5 text-xs"
+						>
+							{MEDAL_BADGE[medal.kind] ?? medal.kind} · {medal.rider}
+							<span class="text-muted">· {medal.awardedAt}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 
 			<h2 class="text-muted mt-8 text-[10px] tracking-wider uppercase">
 				Members

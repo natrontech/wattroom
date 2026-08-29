@@ -65,8 +65,10 @@ type room struct {
 	music   *jukebox
 	// riders ever seen this session, so someone who left before the end still
 	// gets their ride; saved guards against persisting one session twice.
-	seen  map[string]protocol.Rider
-	saved bool
+	seen map[string]protocol.Rider
+	// First-seen order this session — the SPEC medal tie-break.
+	seenOrder []string
+	saved     bool
 }
 
 func newRoom(slug string) *room {
@@ -226,9 +228,9 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		if saver != nil && tick.State.Phase == "done" && !rm.saved {
 			rm.saved = true
 			closingMeta = tick.State
-			for id, rider := range rm.seen {
+			for _, id := range rm.seenOrder {
 				if record, ok := rm.record.byRider[id]; ok {
-					closing = append(closing, RiderRecord{Rider: rider, Samples: record.samples})
+					closing = append(closing, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
 				}
 			}
 		}
@@ -291,6 +293,9 @@ func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.metrics[rider.ID] = m
+	if _, known := rm.seen[rider.ID]; !known {
+		rm.seenOrder = append(rm.seenOrder, rider.ID)
+	}
 	rm.seen[rider.ID] = rider
 	// The live sample is also part of the ride record; a later resend of the
 	// same seq dedupes against it, and it scores live at the timeline second
@@ -308,6 +313,9 @@ func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 func (rm *room) backfill(rider protocol.Rider, samples []protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	if _, known := rm.seen[rider.ID]; !known {
+		rm.seenOrder = append(rm.seenOrder, rider.ID)
+	}
 	rm.seen[rider.ID] = rider
 	for _, m := range samples {
 		if validMetrics(m) {
@@ -341,6 +349,7 @@ func (rm *room) control(c protocol.Control, now time.Time) bool {
 	if c.Action == "start" {
 		rm.record.reset()
 		rm.seen = make(map[string]protocol.Rider)
+		rm.seenOrder = nil
 		rm.saved = false
 	}
 	return rm.session.apply(c, now)
