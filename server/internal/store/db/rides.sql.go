@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createMedal = `-- name: CreateMedal :exec
+insert into medals (room_id, user_id, ride_id, kind)
+values ($1, $2, $3, $4)
+`
+
+type CreateMedalParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	RideID pgtype.UUID
+	Kind   string
+}
+
+func (q *Queries) CreateMedal(ctx context.Context, arg CreateMedalParams) error {
+	_, err := q.db.Exec(ctx, createMedal,
+		arg.RoomID,
+		arg.UserID,
+		arg.RideID,
+		arg.Kind,
+	)
+	return err
+}
+
 const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
@@ -85,6 +107,46 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) 
 		&i.Xp,
 	)
 	return i, err
+}
+
+const listRoomMedals = `-- name: ListRoomMedals :many
+select m.kind, m.awarded_at, u.display_name
+from medals m
+join users u on u.id = m.user_id
+where m.room_id = $1
+order by m.awarded_at desc
+limit $2
+`
+
+type ListRoomMedalsParams struct {
+	RoomID pgtype.UUID
+	Limit  int32
+}
+
+type ListRoomMedalsRow struct {
+	Kind        string
+	AwardedAt   pgtype.Timestamptz
+	DisplayName string
+}
+
+func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) ([]ListRoomMedalsRow, error) {
+	rows, err := q.db.Query(ctx, listRoomMedals, arg.RoomID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomMedalsRow
+	for rows.Next() {
+		var i ListRoomMedalsRow
+		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUserRides = `-- name: ListUserRides :many

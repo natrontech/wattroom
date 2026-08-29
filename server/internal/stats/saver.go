@@ -15,6 +15,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 type Saver struct {
@@ -48,8 +49,11 @@ func (s *Saver) save(
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.store.Queries.WithTx(tx)
 
+	segments, _ := workout.Parse(workoutJSON)
 	saved := 0
-	for _, rider := range riders {
+	results := make([]RiderResult, 0, len(riders))
+	rideIDs := make(map[string]pgtype.UUID)
+	for join, rider := range riders {
 		if len(rider.Samples) < 60 {
 			continue
 		}
@@ -59,10 +63,44 @@ func (s *Saver) save(
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
 			continue
 		}
-		if _, err := q.CreateRide(ctx, row); err != nil {
+		rideID, err := q.CreateRide(ctx, row)
+		if err != nil {
 			return fmt.Errorf("stats: insert ride: %w", err)
 		}
 		saved++
+		rideIDs[rider.Rider.ID] = rideID
+
+		watts := make([]int, len(rider.Samples))
+		for i, sample := range rider.Samples {
+			watts[i] = sample.Watts
+		}
+		curve := PowerCurve(watts)
+		wkg := 0.0
+		if rider.Rider.WeightKg > 0 {
+			wkg = float64(curve.Best5s) / float64(rider.Rider.WeightKg)
+		}
+		results = append(results, RiderResult{
+			UserID: rider.Rider.ID, JoinOrder: join,
+			Execution: float64(row.Execution),
+			CoV:       SteadyCoV(segments, watts),
+			Best5sWkg: wkg,
+			Completed: true,
+		})
+	}
+
+	// Medals in the same transaction (#28): the session either closes with its
+	// medals or without its rides — never half.
+	for kind, userID := range Medals(results) {
+		uid, err := store.ParseUUID(userID)
+		if err != nil {
+			continue
+		}
+		err = q.CreateMedal(ctx, db.CreateMedalParams{
+			RoomID: room.ID, UserID: uid, RideID: rideIDs[userID], Kind: kind,
+		})
+		if err != nil {
+			return fmt.Errorf("stats: medal: %w", err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("stats: commit: %w", err)

@@ -58,6 +58,12 @@ type memberJSON struct {
 	Role        string  `json:"role"`
 }
 
+type medalJSON struct {
+	Kind      string `json:"kind"`
+	Rider     string `json:"rider"`
+	AwardedAt string `json:"awardedAt"`
+}
+
 type roomJSON struct {
 	Slug   string `json:"slug"`
 	Code   string `json:"code,omitempty"` // members only — the code IS the invite
@@ -66,6 +72,8 @@ type roomJSON struct {
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
+	// Recent medal history (#28) — members only, room-scoped like everything.
+	Medals []medalJSON `json:"medals,omitempty"`
 }
 
 // --- handlers ---
@@ -175,6 +183,17 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
 					AvatarURL: member.AvatarUrl, Role: member.Role,
 				})
+			}
+			medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
+				RoomID: room.ID, Limit: 24,
+			})
+			if err == nil {
+				for _, medal := range medals {
+					response.Medals = append(response.Medals, medalJSON{
+						Kind: medal.Kind, Rider: medal.DisplayName,
+						AwardedAt: medal.AwardedAt.Time.Format("2006-01-02"),
+					})
+				}
 			}
 		}
 	}
