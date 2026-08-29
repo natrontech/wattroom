@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { hwlog } from '$lib/ble/hwlog';
 	import type { TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 	import { formatClock } from '../room/mockRoom.svelte';
 
@@ -22,7 +23,12 @@
 	function note(text: string, bad = false) {
 		const at = started ? formatClock((Date.now() - started) / 1000) : '0:00';
 		log = [{ at, text, bad }, ...log].slice(0, 40);
+		// The on-screen list is for the rider; the file is the evidence.
+		hwlog(bad ? 'error' : 'event', { text, elapsed: at });
 	}
+
+	// A reload no longer hides that a reload happened.
+	$effect(() => hwlog('page-loaded', { ua: navigator.userAgent }));
 
 	async function pair() {
 		started = Date.now();
@@ -36,10 +42,19 @@
 			sample = next;
 			speed = trainer?.lastFrame.speedKph ?? null;
 			samples += 1;
+			hwlog('sample', {
+				watts: next.watts,
+				cadence: next.cadence,
+				speedKph: trainer?.lastFrame.speedKph,
+				heartRate: trainer?.lastFrame.heartRate,
+				target,
+				mode: trainer?.mode,
+			});
 		});
 		trainer.onLog((text, ms) => {
 			if (ms !== undefined) lastAck = ms;
 			note(ms === undefined ? text : `${text} in ${ms} ms`);
+			if (ms !== undefined) hwlog('control-ack', { ms });
 		});
 		try {
 			note('requesting device — pick your trainer in the browser dialog');
