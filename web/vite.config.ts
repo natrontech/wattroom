@@ -1,10 +1,44 @@
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { defineConfig, type Plugin } from 'vite';
+
+/**
+ * Dev-only sink for hardware-session telemetry (#10). The GATT log used to live in
+ * page memory, so every HMR reload threw away the evidence from the ride that just
+ * happened. Writing it to a file survives reloads, browser restarts and the rider
+ * closing the laptop, and it can be read without touching the browser at all.
+ */
+function hardwareLog(): Plugin {
+	return {
+		name: 'wattroom-hardware-log',
+		configureServer(server) {
+			server.middlewares.use('/__hwlog', (req, res) => {
+				if (req.method !== 'POST') {
+					res.statusCode = 405;
+					return res.end();
+				}
+				let body = '';
+				req.on('data', (chunk) => (body += chunk));
+				req.on('end', () => {
+					try {
+						mkdirSync('.hwlog', { recursive: true });
+						appendFileSync('.hwlog/session.jsonl', `${body.trim()}\n`);
+					} catch {
+						// Logging must never take the dev server down mid-ride.
+					}
+					res.statusCode = 204;
+					res.end();
+				});
+			});
+		}
+	};
+}
 
 export default defineConfig({
 	plugins: [
+		hardwareLog(),
 		tailwindcss(),
 		sveltekit({
 			compilerOptions: {

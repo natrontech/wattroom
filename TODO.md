@@ -23,8 +23,7 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 - [x] CI green on GitHub Actions
 - [x] **SimulatedTrainer** (#1): `Trainer` interface + simulated implementation (power lag, cadence, noise, dropout injection), dev-flag selectable
 - [x] Workout engine skeleton (#2): step sequencer producing ERG targets from a workout JSON
-- [ ] Real hardware session: Kickr Core over FTMS (pair, read power, hold ERG target, ride hardcoded intervals)
-- [ ] Kickr v2 GATT enumeration — confirm WCPS protocol map (RESEARCH.md §9) against the real unit
+- [x] Real hardware session: Kickr Core over FTMS (#10) — validated, driver in #42
 - [ ] Seeded dev data pattern (once first schema exists)
 
 ## Design (done — #38, merged in #39)
@@ -35,7 +34,8 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 
 ## M1 — Solo workout player
 
-- [ ] FtmsTrainer driver (serialized control-point write queue!)
+- [x] FtmsTrainer driver (#3) — serialized control-point queue, parsing confirmed on hardware
+- [ ] Kickr v2 GATT enumeration (#43) — needs an alpha rider's v2; see docs/HARDWARE-SESSIONS.md
 - [ ] WcpsTrainer driver (Kickr v2: unlock, 0x42 ERG, 0x43/0x46 sim/grade)
 - [ ] HR / cadence / power sensor pairing (BLE HRS, CPS, CSC)
 - [ ] Workout JSON format + editor + curated library (~25 workouts)

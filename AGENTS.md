@@ -7,6 +7,7 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 - [WATTROOM.md](WATTROOM.md) — every product/architecture decision, **locked**. Don't re-decide (stack, privacy rules, YouTube RMF constraints, license). New decisions → ADR in `docs/decisions/`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the three seams: client owns trainer, server owns live state in memory, Postgres owns durable data only.
 - [docs/SPEC.md](docs/SPEC.md) — glossary, roles matrix, workout JSON, stats formulas, game-mode parameters. **Never invent product numbers** — they're specced there.
+- [docs/HARDWARE-SESSIONS.md](docs/HARDWARE-SESSIONS.md) — how to run a trainer session and what to send back. Read it before asking anyone to plug in hardware.
 - The rule files in `.claude/rules/` are **vendor-neutral canon despite the directory name** — read `git.md` before your first commit, `errors.md` before API/frontend work, `code-quality.md` and `ux.md` before any feature work.
 
 ## Commands
