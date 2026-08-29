@@ -63,6 +63,16 @@ func (s *Saver) save(
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
 			continue
 		}
+		// The SPEC XP streak term, deferred from #25 to here: the rider's own
+		// consecutive-week streak, read before this ride lands so this week
+		// only counts if already ridden — then this ride extends it next time.
+		if weeks, err := q.ListUserRideWeeks(ctx, row.UserID); err == nil {
+			times := make([]time.Time, len(weeks))
+			for i, w := range weeks {
+				times[i] = w.Time
+			}
+			row.Xp += int32(StreakBonus(WeekStreak(times, startedAt))) //nolint:gosec // capped at 250
+		}
 		rideID, err := q.CreateRide(ctx, row)
 		if err != nil {
 			return fmt.Errorf("stats: insert ride: %w", err)

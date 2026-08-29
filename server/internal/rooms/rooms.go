@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -74,6 +76,10 @@ type roomJSON struct {
 	Members []memberJSON `json:"members,omitempty"`
 	// Recent medal history (#28) — members only, room-scoped like everything.
 	Medals []medalJSON `json:"medals,omitempty"`
+	// Crew streak and this month's collective kJ (#29) — cooperative pressure,
+	// no individual numbers anywhere in it.
+	StreakWeeks int   `json:"streakWeeks"`
+	MonthKj     int64 `json:"monthKj"`
 }
 
 // --- handlers ---
@@ -183,6 +189,16 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
 					AvatarURL: member.AvatarUrl, Role: member.Role,
 				})
+			}
+			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
+				times := make([]time.Time, len(weeks))
+				for i, w := range weeks {
+					times[i] = w.Time
+				}
+				response.StreakWeeks = stats.WeekStreak(times, time.Now())
+			}
+			if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
+				response.MonthKj = kj
 			}
 			medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
 				RoomID: room.ID, Limit: 24,

@@ -149,6 +149,61 @@ func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) 
 	return items, nil
 }
 
+const listRoomRideWeeks = `-- name: ListRoomRideWeeks :many
+select distinct date_trunc('week', started_at)::date as week
+from rides where room_id = $1
+order by week desc
+limit 60
+`
+
+func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listRoomRideWeeks, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Date
+	for rows.Next() {
+		var week pgtype.Date
+		if err := rows.Scan(&week); err != nil {
+			return nil, err
+		}
+		items = append(items, week)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserRideWeeks = `-- name: ListUserRideWeeks :many
+select distinct date_trunc('week', started_at)::date as week
+from rides where user_id = $1
+order by week desc
+limit 60
+`
+
+// Distinct ISO weeks with at least one ride, newest first — the streak input.
+func (q *Queries) ListUserRideWeeks(ctx context.Context, userID pgtype.UUID) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listUserRideWeeks, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Date
+	for rows.Next() {
+		var week pgtype.Date
+		if err := rows.Scan(&week); err != nil {
+			return nil, err
+		}
+		items = append(items, week)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserRides = `-- name: ListUserRides :many
 select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, shared_at
 from rides
@@ -203,4 +258,17 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const roomMonthKj = `-- name: RoomMonthKj :one
+select coalesce(sum(kj), 0)::bigint from rides
+where room_id = $1 and started_at >= date_trunc('month', now())
+`
+
+// The collective challenge number: this month's kJ, together.
+func (q *Queries) RoomMonthKj(ctx context.Context, roomID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, roomMonthKj, roomID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
