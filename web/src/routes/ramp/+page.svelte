@@ -4,7 +4,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock } from '$lib/components/zones';
+	import { formatClock, ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createRideSession } from '$lib/workout/session.svelte';
 	import {
@@ -65,6 +65,17 @@
 	);
 	const wkg = $derived((result.ftp / profile.current.kg).toFixed(2));
 	const usable = $derived(rampUsable(session?.elapsed ?? 0));
+	const stepsDone = $derived(
+		Math.max(
+			0,
+			Math.floor(
+				((session?.elapsed ?? 0) - RAMP.warmupSeconds) / RAMP.stepSeconds,
+			),
+		),
+	);
+	const secondsToStep = $derived(
+		session ? session.info.secondsRemainingInSegment : 0,
+	);
 
 	function saveFtp() {
 		const message = profile.update({
@@ -76,32 +87,36 @@
 	}
 </script>
 
-<main class="mx-auto flex min-h-screen max-w-3xl flex-col px-6 py-10">
+<main class="mx-auto max-w-3xl px-6 py-10">
+	<h1 class="font-display text-3xl font-bold tracking-tight">Ramp test</h1>
+	<p class="text-muted mt-2 max-w-xl text-sm">
+		The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds
+		{RAMP.stepWatts} W every minute, and stops when you can't hold the step. Your
+		FTP is {Math.round(RAMP.ftpFraction * 100)} % of your best minute.
+	</p>
+
 	{#if !session}
-		<div class="m-auto w-full text-center">
-			<Logo size={56} />
-			<h1 class="font-display mt-6 text-2xl font-bold">Ramp test</h1>
-			<p class="text-muted mx-auto mt-3 max-w-md text-sm leading-relaxed">
-				Starts at {RAMP.startWatts} W and adds {RAMP.stepWatts} W every minute until
-				you cannot hold it. Your FTP is {Math.round(RAMP.ftpFraction * 100)}% of
-				your best minute.
+		<div
+			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8 text-center"
+		>
+			<p class="text-sm">
+				About 12–18 minutes, and the last two are unpleasant.
 			</p>
-			<p class="text-muted mx-auto mt-3 max-w-md text-xs leading-relaxed">
-				About 12–18 minutes, and the last two are unpleasant. When you cannot
-				hold the number any more, stop pedalling — stopping is the measurement,
-				not a failure.
+			<p class="text-muted mx-auto mt-2 max-w-md text-xs leading-relaxed">
+				Ride each minute at the number shown. When you can't hold it any more,
+				stop pedalling — stopping is the measurement, not a failure.
 			</p>
 
 			{#if error}
 				<p class="text-z6 mt-4 text-sm">{error}</p>
 			{/if}
 
-			<div class="mx-auto mt-8 grid max-w-xs gap-2">
+			<div class="mt-6 flex justify-center gap-2">
 				<button
 					onclick={() => begin(new FtmsTrainer())}
 					disabled={!supported}
 					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-					>Pair trainer and start</button
+					>Start ramp test</button
 				>
 				<button
 					onclick={() => begin(new SimulatedTrainer({ baseWatts: 150 }))}
@@ -117,7 +132,7 @@
 			{/if}
 		</div>
 	{:else if !done}
-		<div class="m-auto w-full">
+		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
 			<div class="flex items-end justify-between gap-6">
 				<div>
 					<div class="flex items-baseline gap-2">
@@ -143,112 +158,130 @@
 				</div>
 			</div>
 
-			<div class="text-muted mt-8 flex items-center justify-between text-sm">
-				<span>{formatClock(session.elapsed)} elapsed</span>
+			<div class="mt-8 flex items-center justify-between text-sm">
+				<span class="text-muted">
+					{#if session.elapsed < RAMP.warmupSeconds}
+						Warm-up
+					{:else}
+						Step {stepsDone + 1}
+					{/if}
+				</span>
 				<span class="font-mono tabular-nums"
-					>{formatClock(session.info.secondsRemainingInSegment)} left on this step</span
+					>{formatClock(session.elapsed)}</span
 				>
+				<span class="text-muted">
+					{#if session.elapsed < RAMP.warmupSeconds}
+						first step in {formatClock(Math.round(secondsToStep))}
+					{:else}
+						+{RAMP.stepWatts} W in {Math.round(secondsToStep)}s
+					{/if}
+				</span>
 			</div>
-			<div class="bg-surface-raised mt-2 h-1.5 overflow-hidden rounded-full">
+			<div class="bg-surface mt-2 h-1.5 overflow-hidden rounded-full">
 				<div
-					class="bg-neon h-full transition-[width] duration-500"
+					class="bg-neon h-full transition-[width] duration-300"
 					style="width: {(1 -
-						session.info.secondsRemainingInSegment / RAMP.stepSeconds) *
+						secondsToStep /
+							(session.elapsed < RAMP.warmupSeconds
+								? RAMP.warmupSeconds
+								: RAMP.stepSeconds)) *
 						100}%"
 				></div>
 			</div>
 
-			<div
-				class="border-muted/15 bg-surface-raised mt-6 overflow-hidden rounded-lg border"
-			>
-				<IntervalGraph
-					segments={session.segments}
-					total={session.total}
-					elapsed={session.elapsed}
-					ftp={profile.current.ftp}
-					trace={session.trace}
-				/>
+			<div class="mt-6 text-center">
+				<button
+					onclick={() => {
+						session?.stop();
+						done = true;
+					}}
+					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-2.5 text-sm"
+					>I'm done</button
+				>
 			</div>
-
-			<button
-				onclick={() => {
-					session?.stop();
-					done = true;
-				}}
-				class="border-muted/30 hover:border-muted/60 mt-4 w-full rounded border px-5 py-3 text-sm"
-				>I'm done</button
-			>
+		</div>
+	{:else if !usable}
+		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+			<h2 class="font-display text-2xl font-bold">Not enough to measure</h2>
+			<p class="text-muted mt-3 max-w-md text-sm leading-relaxed">
+				You stopped after {formatClock(session.elapsed)}. The test needs the
+				{formatClock(RAMP.warmupSeconds)} warm-up plus at least {RAMP.minSteps}
+				steps before the number means anything.
+			</p>
+			<div class="mt-6 flex gap-2">
+				<a
+					href="/ramp"
+					class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+					>Test again</a
+				>
+				<a
+					href="/workouts"
+					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+					>Ride something else</a
+				>
+			</div>
 		</div>
 	{:else}
-		<div class="m-auto w-full max-w-md text-center">
-			{#if !usable}
-				<!-- No headline number: a figure this size reads as the answer whatever
-				     the caption says, and this one is derived from a warmup. -->
-				<h1 class="font-display text-2xl font-bold">Not enough to measure</h1>
-				<p class="text-muted mt-3 text-sm leading-relaxed">
-					You stopped after {formatClock(session.elapsed)}. The test needs the
-					{formatClock(RAMP.warmupSeconds)} warmup plus at least {RAMP.minSteps} steps
-					before the number means anything.
-				</p>
-			{:else}
-				<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					your new FTP
-				</p>
-				<div class="mt-2 flex items-baseline justify-center gap-2">
-					<span
-						class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
-						>{result.ftp}</span
-					>
-					<span class="text-muted text-xl">W</span>
-				</div>
-				<p class="text-muted mt-4 text-sm leading-relaxed">
-					Best minute was {result.best} W, and FTP is {Math.round(
-						RAMP.ftpFraction * 100,
-					)}% of that. You lasted {formatClock(session.elapsed)}.
-				</p>
-				<p class="mt-2 text-sm">{wkg} w/kg at {profile.current.kg} kg</p>
-			{/if}
+		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+			<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
+				your new FTP
+			</p>
+			<div class="mt-2 flex items-baseline gap-2">
+				<span
+					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
+					>{result.ftp}</span
+				>
+				<span class="text-muted text-xl">W</span>
+			</div>
+			<p class="text-muted mt-4 text-xs leading-relaxed">
+				Best minute was {result.best} W, and FTP is {Math.round(
+					RAMP.ftpFraction * 100,
+				)} % of that. You lasted {formatClock(session.elapsed)} — {stepsDone}
+				steps. Every workout you ride from here scales to this number.
+			</p>
+			<p class="mt-3 text-sm">
+				That's <span class={ZONE_TEXT[zoneOf(result.ftp, result.ftp)]}
+					>{wkg} w/kg</span
+				>
+				at {profile.current.kg} kg.
+			</p>
 
 			{#if error}
 				<p class="text-z6 mt-4 text-sm">{error}</p>
 			{/if}
 
-			<div class="mt-8 grid gap-2">
-				{#if !usable}
-					<a
-						href="/ramp"
-						class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
-						>Try again</a
-					>
-					<a
-						href="/workouts"
-						class="text-muted py-2 text-xs underline hover:text-white"
-						>Ride something else instead</a
-					>
-				{:else if saved}
-					<p class="border-z4/40 bg-z4/10 rounded-lg border px-4 py-3 text-sm">
-						Saved. Every workout now scales to {result.ftp} W.
-					</p>
-					<a
-						href="/workouts"
-						class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-						>Pick a workout</a
-					>
-				{:else}
+			{#if saved}
+				<p
+					class="border-z4/40 bg-z4/10 mt-6 rounded-lg border px-4 py-3 text-sm"
+				>
+					Saved. Every workout now scales to {result.ftp} W.
+				</p>
+				<a
+					href="/workouts"
+					class="border-muted/30 hover:border-muted/60 mt-3 inline-block rounded border px-4 py-2.5 text-sm"
+					>Pick a workout</a
+				>
+			{:else}
+				<div class="mt-6 flex gap-2">
 					<button
 						onclick={saveFtp}
 						disabled={result.ftp === 0}
-						class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
-						>Save {result.ftp} W as my FTP</button
+						class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+						>Save {result.ftp} W</button
+					>
+					<a
+						href="/ramp"
+						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+						>Test again</a
 					>
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
 						href="/profile"
-						class="text-muted py-2 text-xs underline hover:text-white"
+						class="text-muted self-center py-2 text-xs underline hover:text-white"
 						>Keep my current {profile.current.ftp} W</a
 					>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </main>
