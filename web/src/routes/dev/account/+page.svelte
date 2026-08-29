@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
-	import FtpPrompt from './FtpPrompt.svelte';
+	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 
 	let signedIn = $state(true);
 	let confirmDelete = $state(false);

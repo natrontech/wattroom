@@ -17,6 +17,8 @@ export interface Me {
 	weightKg: number;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
 	suggestedFtp?: number;
+	best20m?: number;
+	providers?: string[];
 }
 
 function createAccountStore() {

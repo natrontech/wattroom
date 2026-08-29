@@ -116,6 +116,30 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 	return i, err
 }
 
+const listUserProviders = `-- name: ListUserProviders :many
+select provider from identities where user_id = $1 order by created_at
+`
+
+func (q *Queries) ListUserProviders(ctx context.Context, userID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUserProviders, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var provider string
+		if err := rows.Scan(&provider); err != nil {
+			return nil, err
+		}
+		items = append(items, provider)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateIdentityTokens = `-- name: UpdateIdentityTokens :exec
 update identities
 set access_token = $3, refresh_token = $4, token_expires_at = $5
