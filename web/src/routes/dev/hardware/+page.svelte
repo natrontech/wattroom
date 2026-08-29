@@ -14,6 +14,8 @@
 	let sample = $state<TrainerSample | null>(null);
 	let target = $state(150);
 	let samples = $state(0);
+	let speed = $state<number | null>(null);
+	let lastAck = $state<number | null>(null);
 	let log = $state<{ at: string; text: string; bad?: boolean }[]>([]);
 	let started = 0;
 
@@ -32,7 +34,12 @@
 		});
 		trainer.onSample((next) => {
 			sample = next;
+			speed = trainer?.lastFrame.speedKph ?? null;
 			samples += 1;
+		});
+		trainer.onLog((text, ms) => {
+			if (ms !== undefined) lastAck = ms;
+			note(ms === undefined ? text : `${text} in ${ms} ms`);
 		});
 		try {
 			note('requesting device — pick your trainer in the browser dialog');

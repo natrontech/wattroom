@@ -81,6 +81,9 @@ export class FtmsTrainer implements Trainer {
 	#control?: BluetoothRemoteGATTCharacteristic;
 
 	#sampleCbs = new Set<(s: TrainerSample) => void>();
+	#logCbs = new Set<(text: string, ms?: number) => void>();
+	/** Latest full frame, including fields the Trainer interface does not carry. */
+	lastFrame: IndoorBikeData = {};
 	#statusCbs = new Set<(s: TrainerStatus) => void>();
 
 	/**
@@ -122,6 +125,7 @@ export class FtmsTrainer implements Trainer {
 			const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
 			if (!view) return;
 			const data = parseIndoorBikeData(view);
+			this.lastFrame = data;
 			if (data.watts === undefined) return;
 			for (const cb of this.#sampleCbs) {
 				cb({
@@ -197,6 +201,12 @@ export class FtmsTrainer implements Trainer {
 		return () => this.#sampleCbs.delete(cb);
 	}
 
+	/** Instrumentation for the hardware session: every control-point round trip. */
+	onLog(cb: (text: string, ms?: number) => void): () => void {
+		this.#logCbs.add(cb);
+		return () => this.#logCbs.delete(cb);
+	}
+
 	onStatus(cb: (s: TrainerStatus) => void): () => void {
 		this.#statusCbs.add(cb);
 		return () => this.#statusCbs.delete(cb);
@@ -206,6 +216,7 @@ export class FtmsTrainer implements Trainer {
 	#write(bytes: ArrayBuffer): Promise<void> {
 		this.#queue = this.#queue.then(async () => {
 			if (!this.#control) throw new Error('not connected');
+			const sentAt = performance.now();
 			const done = new Promise<void>((resolve, reject) => {
 				// A trainer that never indicates would otherwise wedge the queue forever.
 				const timer = setTimeout(() => {
@@ -216,6 +227,8 @@ export class FtmsTrainer implements Trainer {
 			});
 			await this.#control.writeValueWithResponse(bytes);
 			await done;
+			const ms = Math.round(performance.now() - sentAt);
+			for (const cb of this.#logCbs) cb('control point acknowledged', ms);
 		});
 		return this.#queue;
 	}
