@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countRoomMembers = `-- name: CountRoomMembers :one
+select count(*) from memberships where room_id = $1
+`
+
+func (q *Queries) CountRoomMembers(ctx context.Context, roomID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoomMembers, roomID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createMembership = `-- name: CreateMembership :exec
 insert into memberships (room_id, user_id, role)
 values ($1, $2, $3)
@@ -57,6 +68,41 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 		&i.OwnerID,
 		&i.Listed,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteMembership = `-- name: DeleteMembership :exec
+delete from memberships where room_id = $1 and user_id = $2
+`
+
+type DeleteMembershipParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) DeleteMembership(ctx context.Context, arg DeleteMembershipParams) error {
+	_, err := q.db.Exec(ctx, deleteMembership, arg.RoomID, arg.UserID)
+	return err
+}
+
+const getMembership = `-- name: GetMembership :one
+select room_id, user_id, role, joined_at from memberships where room_id = $1 and user_id = $2
+`
+
+type GetMembershipParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (Membership, error) {
+	row := q.db.QueryRow(ctx, getMembership, arg.RoomID, arg.UserID)
+	var i Membership
+	err := row.Scan(
+		&i.RoomID,
+		&i.UserID,
+		&i.Role,
+		&i.JoinedAt,
 	)
 	return i, err
 }
@@ -179,4 +225,44 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]Room
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateMembershipRole = `-- name: UpdateMembershipRole :exec
+update memberships set role = $3 where room_id = $1 and user_id = $2
+`
+
+type UpdateMembershipRoleParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	Role   string
+}
+
+func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembershipRoleParams) error {
+	_, err := q.db.Exec(ctx, updateMembershipRole, arg.RoomID, arg.UserID, arg.Role)
+	return err
+}
+
+const updateRoom = `-- name: UpdateRoom :one
+update rooms set name = $2, listed = $3 where id = $1 returning id, code, slug, name, owner_id, listed, created_at
+`
+
+type UpdateRoomParams struct {
+	ID     pgtype.UUID
+	Name   string
+	Listed bool
+}
+
+func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
+	row := q.db.QueryRow(ctx, updateRoom, arg.ID, arg.Name, arg.Listed)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+	)
+	return i, err
 }

@@ -7,6 +7,8 @@
  * read; signing in syncs the server copy into it, so nothing ride-side needs to
  * know accounts exist.
  */
+import { api } from '$lib/api';
+
 export interface Me {
 	id: string;
 	displayName: string;
@@ -54,20 +56,12 @@ function createAccountStore() {
 			ftpWatts: number;
 			weightKg: number;
 		}): Promise<{ message: string; field?: string } | null> {
-			const res = await fetch('/api/me', {
-				method: 'PATCH',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(next),
-			});
+			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
 			if (res.ok) {
-				me = await res.json();
+				me = res.data;
 				return null;
 			}
-			const body = await res.json().catch(() => null);
-			return {
-				message: body?.message ?? 'Your profile could not be saved.',
-				field: body?.field,
-			};
+			return res.error;
 		},
 		async signOut(): Promise<void> {
 			await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});

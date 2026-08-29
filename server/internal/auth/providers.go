@@ -55,6 +55,12 @@ func providersFromEnv(baseURL string) map[string]provider {
 		}
 	}
 
+	// Not OAuth: a local-only session for machines with no registered apps.
+	// Never set WATTROOM_DEV_LOGIN in production — it is an unauthenticated door.
+	if os.Getenv("WATTROOM_DEV_LOGIN") == "1" {
+		out["dev"] = provider{id: "dev"}
+	}
+
 	add("google", endpoints.Google, []string{"openid", "profile"}, fetchGoogle, false)
 	add("github", endpoints.GitHub, []string{"read:user"}, fetchGitHub, false)
 	// activity:write is the M6 upload scope; asking now means no re-consent later.

@@ -12,6 +12,7 @@
 		google: 'Continue with Google',
 		github: 'Continue with GitHub',
 		strava: 'Continue with Strava',
+		dev: 'Dev sign-in (local only)',
 	};
 
 	// Signed in, the server copy wins: it syncs into localStorage so /ride and

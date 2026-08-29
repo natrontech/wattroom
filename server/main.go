@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
 )
 
@@ -61,7 +62,9 @@ func main() {
 		if baseURL == "" {
 			baseURL = "http://localhost:8080"
 		}
-		auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://")).Register(mux)
+		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
+		authService.Register(mux)
+		rooms.New(st, authService, log).Register(mux)
 	}
 	mux.Handle("/", spaHandler())
 
