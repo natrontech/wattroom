@@ -57,6 +57,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms/join", s.handleJoinByCode)
 	mux.HandleFunc("GET /api/rooms/{slug}", s.handleGet)
 	mux.HandleFunc("PATCH /api/rooms/{slug}", s.handleUpdate)
+	mux.HandleFunc("DELETE /api/rooms/{slug}", s.handleDelete)
 	mux.HandleFunc("POST /api/rooms/{slug}/join", s.handleJoin)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
@@ -82,6 +83,8 @@ type roomJSON struct {
 	Code   string `json:"code,omitempty"` // members only — the code IS the invite
 	Name   string `json:"name"`
 	Listed bool   `json:"listed"`
+	// Owner-set cue set ('base' | 'silent') — members only, like the code.
+	SoundPack string `json:"soundPack,omitempty"`
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
@@ -201,6 +204,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		}); err == nil {
 			response.Role = m.Role
 			response.Code = room.Code
+			response.SoundPack = room.SoundPack
 			members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
 			if err != nil {
 				s.log.Error("list members failed", "err", err, "room", room.Slug)
@@ -305,8 +309,9 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = user
 	var req struct {
-		Name   string `json:"name"`
-		Listed bool   `json:"listed"`
+		Name      string `json:"name"`
+		Listed    bool   `json:"listed"`
+		SoundPack string `json:"soundPack"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -318,8 +323,16 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 			"A room name has to be 1-60 characters.", "name")
 		return
 	}
+	if req.SoundPack == "" {
+		req.SoundPack = room.SoundPack // absent field keeps the current pack
+	}
+	if req.SoundPack != "base" && req.SoundPack != "silent" {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A sound pack is base or silent.", "soundPack")
+		return
+	}
 	updated, err := s.store.Queries.UpdateRoom(r.Context(), db.UpdateRoomParams{
-		ID: room.ID, Name: req.Name, Listed: req.Listed,
+		ID: room.ID, Name: req.Name, Listed: req.Listed, SoundPack: req.SoundPack,
 	})
 	if err != nil {
 		s.log.Error("room update failed", "err", err, "room", room.Slug)
@@ -327,8 +340,27 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, roomJSON{
-		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Listed: updated.Listed, Role: "owner",
+		Slug: updated.Slug, Code: updated.Code, Name: updated.Name,
+		Listed: updated.Listed, SoundPack: updated.SoundPack, Role: "owner",
 	})
+}
+
+// handleDelete: owner-only. Memberships and medals cascade with the room;
+// rides survive with room_id set null — history stays each rider's own.
+// ponytail: a live hub room drifts until its sockets close; nobody new can
+// join a deleted room, so it dies of natural causes.
+func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
+	room, _, ok := s.requireRole(w, r, "owner")
+	if !ok {
+		return
+	}
+	if err := s.store.Queries.DeleteRoom(r.Context(), room.ID); err != nil {
+		s.log.Error("room delete failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be deleted. Try again.")
+		return
+	}
+	s.log.Info("room deleted", "room", room.Slug)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleSetRole: owner assigns or removes coach (matrix: owner-only).

@@ -218,3 +218,48 @@ func TestSlugAndCodeHelpers(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateSoundPackAndDelete(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Deletable")
+	_ = code
+
+	if status, body := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob join: %d %v", status, body)
+	}
+
+	// Owner sets the pack; bad values bounce with the field named.
+	status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Deletable","listed":false,"soundPack":"silent"}`)
+	if status != http.StatusOK || body["soundPack"] != "silent" {
+		t.Fatalf("set pack: %d %v", status, body)
+	}
+	status, body = h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Deletable","listed":false,"soundPack":"airhorn"}`)
+	if status != http.StatusBadRequest || body["field"] != "soundPack" {
+		t.Fatalf("bad pack: %d %v", status, body)
+	}
+	// A PATCH without the field (the drawer's listed toggle) keeps the pack.
+	status, body = h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Deletable","listed":true}`)
+	if status != http.StatusOK || body["soundPack"] != "silent" {
+		t.Fatalf("patch keeps pack: %d %v", status, body)
+	}
+	// Members see it on GET.
+	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	if status != http.StatusOK || body["soundPack"] != "silent" {
+		t.Fatalf("member sees pack: %d %v", status, body)
+	}
+
+	// Delete is owner-only.
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusForbidden {
+		t.Fatalf("member delete: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
+		t.Fatalf("owner delete: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, ""); status != http.StatusNotFound {
+		t.Fatalf("room gone: %d", status)
+	}
+}

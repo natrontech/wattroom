@@ -20,6 +20,7 @@
 		slug: string;
 		name: string;
 		listed: boolean;
+		soundPack?: string;
 		code?: string;
 		role?: string;
 		members?: Member[];
@@ -113,6 +114,7 @@
 			roomName={room.name}
 			code={room.code ?? ''}
 			listed={room.listed}
+			soundPack={room.soundPack ?? 'base'}
 			members={room.members ?? []}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}

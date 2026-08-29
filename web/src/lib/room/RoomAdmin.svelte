@@ -171,6 +171,11 @@
 					/>
 					List this room in the public directory
 				</label>
+				<a
+					href="/r/{slug}/settings"
+					class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+					>Room settings</a
+				>
 			{:else if myId}
 				<button
 					onclick={() => onRemove(myId)}

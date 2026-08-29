@@ -32,7 +32,11 @@ order by m.joined_at desc;
 select * from memberships where room_id = $1 and user_id = $2;
 
 -- name: UpdateRoom :one
-update rooms set name = $2, listed = $3 where id = $1 returning *;
+update rooms set name = $2, listed = $3, sound_pack = $4 where id = $1 returning *;
+
+-- name: DeleteRoom :exec
+-- Memberships and medals cascade; rides keep their history (room_id set null).
+delete from rooms where id = $1;
 
 -- name: UpdateMembershipRole :exec
 update memberships set role = $3 where room_id = $1 and user_id = $2;
