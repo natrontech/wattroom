@@ -40,6 +40,21 @@
 	let kg = $state(profile.current.kg);
 	let status = $state<string | null>(null);
 	let suggestionDismissed = $state(false);
+	let confirmingDelete = $state(false);
+	let deletePhrase = $state('');
+	let deleting = $state(false);
+
+	async function deleteAccount() {
+		deleting = true;
+		const res = await fetch('/api/me', { method: 'DELETE' });
+		deleting = false;
+		if (res.ok) {
+			await account.signOut();
+			location.href = '/';
+		} else {
+			status = 'The deletion did not complete. Nothing was removed.';
+		}
+	}
 	let sprintGrade = $state(profile.current.sprintGrade);
 	let singleSpeed = $state(profile.current.singleSpeed);
 
@@ -177,6 +192,45 @@
 			{#if status}<span class="text-muted text-xs">{status}</span>{/if}
 		</div>
 	</div>
+
+	{#if account.me}
+		<!-- Export-all + delete (#35): the two ends of the privacy promise. -->
+		<div
+			class="border-muted/15 bg-surface-raised mt-4 grid gap-3 rounded-lg border p-6"
+		>
+			<span class="text-muted text-[10px] tracking-wider uppercase"
+				>your data</span
+			>
+			<a
+				href="/api/me/export"
+				class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-center text-sm"
+				>Export everything (.zip)</a
+			>
+			{#if !confirmingDelete}
+				<button
+					onclick={() => (confirmingDelete = true)}
+					class="text-z6 text-xs underline hover:text-white"
+					>Delete my account…</button
+				>
+			{:else}
+				<p class="text-muted text-xs">
+					This purges your profile, every ride and its samples, your medals and
+					memberships. There is no undo. Type
+					<span class="font-mono text-white">delete my rides</span> to confirm.
+				</p>
+				<input
+					bind:value={deletePhrase}
+					class="border-z6/40 rounded border bg-transparent px-3 py-2 font-mono text-sm outline-none"
+				/>
+				<button
+					onclick={deleteAccount}
+					disabled={deletePhrase !== 'delete my rides' || deleting}
+					class="border-z6/60 text-z6 hover:bg-z6/10 rounded border px-4 py-2.5 text-sm disabled:opacity-40"
+					>Delete everything</button
+				>
+			{/if}
+		</div>
+	{/if}
 
 	{#if account.loaded && !account.me && account.providers.length > 0}
 		<div

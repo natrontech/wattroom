@@ -13,6 +13,7 @@ import (
 
 	"strings"
 
+	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
@@ -63,6 +64,7 @@ func main() {
 		}
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
 		authService.Register(mux)
+		account.New(st, authService, log).Register(mux)
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
 		// Live rooms exist only with the durable side present: the WS needs
