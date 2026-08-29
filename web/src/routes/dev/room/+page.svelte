@@ -3,7 +3,7 @@
 	import CheerLayer from './CheerLayer.svelte';
 	import ExecutionMeter from './ExecutionMeter.svelte';
 	import FaultBanner from './FaultBanner.svelte';
-	import IntervalGraph from './IntervalGraph.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import IntervalStrip from './IntervalStrip.svelte';
 	import PlayerTile from './PlayerTile.svelte';
 	import RiderTile from './RiderTile.svelte';
@@ -41,11 +41,17 @@
 	let joining = $state(false);
 
 	// Cues follow state rather than clicks, which is the point: you are not watching.
-	let heard = $state({
+	// Plain object, not $state: this is only read inside the effect that writes it,
+	// and $state there makes the effect invalidate itself.
+	let heard: {
+		phase: typeof room.phase;
+		sprint: typeof room.sprint;
+		block?: number;
+	} = {
 		phase: room.phase,
 		sprint: room.sprint,
 		block: room.block?.index,
-	});
+	};
 	$effect(() => {
 		if (room.phase !== heard.phase) {
 			if (room.phase === 'countdown') playCountdown();

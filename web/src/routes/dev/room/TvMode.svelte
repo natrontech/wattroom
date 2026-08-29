@@ -1,7 +1,7 @@
 <script lang="ts">
 	import IntervalStrip from './IntervalStrip.svelte';
 	import TargetWidget from './TargetWidget.svelte';
-	import IntervalGraph from './IntervalGraph.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import {
 		ZONE_BG,
 		ZONE_TEXT,

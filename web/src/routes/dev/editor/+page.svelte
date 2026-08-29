@@ -6,7 +6,7 @@
 		Workout,
 		WorkoutStep,
 	} from '$lib/workout/types';
-	import IntervalGraph from '../room/IntervalGraph.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import {
 		formatClock,
 		ZONE_BG,

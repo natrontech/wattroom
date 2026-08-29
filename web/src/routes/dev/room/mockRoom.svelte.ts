@@ -1,6 +1,18 @@
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
+// Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
+// existing mocks keep their single import.
+export {
+	CEILING,
+	fillPct,
+	formatClock,
+	ZONE_BG,
+	ZONE_NAMES,
+	ZONE_TEXT,
+	zoneOf,
+} from '$lib/components/zones';
+import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
 
 export const workout: Workout = {
 	name: 'Sweet Spot 2×20',
@@ -58,18 +70,6 @@ export const TILE_METRICS: { id: TileMetric; label: string }[] = [
 	{ id: 'wkg', label: 'w/kg' },
 ];
 
-/** Power bars and the interval graph all top out at 150 % FTP — one ceiling, one constant. */
-export const CEILING = 1.5;
-
-export function fillPct(watts: number, ftp: number): number {
-	return Math.min(100, Math.max(0, (watts / ftp / CEILING) * 100));
-}
-
-export function formatClock(seconds: number): string {
-	const minutes = Math.floor(seconds / 60);
-	return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-}
-
 /** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
 function bandWatts(target: number): number {
 	return Math.max(target * 0.05, 10);
@@ -81,30 +81,6 @@ export function targetState(rider: MockRider) {
 	const band = has ? bandWatts(rider.target) : 0;
 	const delta = rider.watts - rider.target;
 	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
-}
-
-/** Names from docs/SPEC.md's zone table — indexed by zone number. */
-export const ZONE_NAMES = [
-	'',
-	'Active recovery',
-	'Endurance',
-	'Tempo',
-	'Threshold',
-	'VO₂ max',
-	'Anaerobic',
-	'Neuromuscular',
-];
-
-/** Coggan 7-zone, boundaries per docs/SPEC.md. */
-export function zoneOf(watts: number, ftp: number): number {
-	const pct = (watts / ftp) * 100;
-	if (pct <= 55) return 1;
-	if (pct <= 75) return 2;
-	if (pct <= 90) return 3;
-	if (pct <= 105) return 4;
-	if (pct <= 120) return 5;
-	if (pct <= 150) return 6;
-	return 7;
 }
 
 export interface MockRider {
@@ -625,23 +601,3 @@ export function createRoom() {
 }
 
 /** Literal class names: Tailwind scans source text, so `text-z${n}` would never be generated. */
-export const ZONE_TEXT = [
-	'',
-	'text-z1',
-	'text-z2',
-	'text-z3',
-	'text-z4',
-	'text-z5',
-	'text-z6',
-	'text-z7',
-];
-export const ZONE_BG = [
-	'',
-	'bg-z1',
-	'bg-z2',
-	'bg-z3',
-	'bg-z4',
-	'bg-z5',
-	'bg-z6',
-	'bg-z7',
-];
