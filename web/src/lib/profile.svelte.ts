@@ -19,9 +19,15 @@ export interface Profile {
 	kg: number;
 	/** ms epoch of the ramp test that set this FTP, if one did. */
 	ftpMeasuredAt?: number;
+	/**
+	 * Whether live heart rate leaves this browser into a room (#62, ADR-0008).
+	 * Default true — visible-in-room is the product promise — but stopping it
+	 * is one action, and the rider's own .fit is unaffected either way.
+	 */
+	shareHr: boolean;
 }
 
-export const DEFAULT_PROFILE: Profile = { ftp: 200, kg: 75 };
+export const DEFAULT_PROFILE: Profile = { ftp: 200, kg: 75, shareHr: true };
 
 function inRange(value: unknown, min: number, max: number): value is number {
 	return (
@@ -35,7 +41,7 @@ function inRange(value: unknown, min: number, max: number): value is number {
 export function parseProfile(value: unknown): Profile {
 	if (typeof value !== 'object' || value === null)
 		return { ...DEFAULT_PROFILE };
-	const { ftp, kg, ftpMeasuredAt } = value as Record<string, unknown>;
+	const { ftp, kg, ftpMeasuredAt, shareHr } = value as Record<string, unknown>;
 	return {
 		ftp: inRange(ftp, PROFILE_LIMITS.minFtp, PROFILE_LIMITS.maxFtp)
 			? ftp
@@ -45,6 +51,7 @@ export function parseProfile(value: unknown): Profile {
 			: DEFAULT_PROFILE.kg,
 		ftpMeasuredAt:
 			typeof ftpMeasuredAt === 'number' ? ftpMeasuredAt : undefined,
+		shareHr: typeof shareHr === 'boolean' ? shareHr : true,
 	};
 }
 

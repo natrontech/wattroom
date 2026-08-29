@@ -23,6 +23,7 @@ describe('parseProfile', () => {
 			ftp: 265,
 			kg: 74,
 			ftpMeasuredAt: undefined,
+			shareHr: true,
 		});
 	});
 
@@ -82,5 +83,19 @@ describe('update rejects rather than coerces', () => {
 		const store = createProfileStore();
 		expect(store.update({ ftp: 265 })).toBeNull();
 		expect(store.current.ftp).toBe(265);
+	});
+});
+
+describe('shareHr', () => {
+	it('defaults to sharing — visible-in-room is the product promise', () => {
+		expect(parseProfile({}).shareHr).toBe(true);
+	});
+
+	it('keeps a stored opt-out', () => {
+		expect(parseProfile({ shareHr: false }).shareHr).toBe(false);
+	});
+
+	it('discards junk rather than guessing', () => {
+		expect(parseProfile({ shareHr: 'no' }).shareHr).toBe(true);
 	});
 });
