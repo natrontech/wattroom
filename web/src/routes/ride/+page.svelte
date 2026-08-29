@@ -49,7 +49,9 @@
 	}
 
 	// Sound announces block changes because the rider is not watching the screen.
-	let heardBlock = $state<number | null>(null);
+	// Plain let, not $state: an effect that reads and writes its own state invalidates
+	// itself. Nothing renders this, so it does not need to be reactive.
+	let heardBlock: number | null = null;
 	$effect(() => {
 		const index = session?.info.segmentIndex;
 		if (index === undefined) return;

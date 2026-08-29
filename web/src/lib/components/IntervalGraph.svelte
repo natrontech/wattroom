@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Segment } from '$lib/workout/types';
+	import { splitTrace, type TracePoint } from './trace';
 	import { CEILING, ZONE_TEXT, zoneOf } from './zones';
 
 	let {
@@ -14,7 +15,7 @@
 		total: number;
 		elapsed: number;
 		ftp: number;
-		trace: { t: number; w: number }[];
+		trace: TracePoint[];
 		compact?: boolean;
 	} = $props();
 
@@ -41,8 +42,12 @@
 		}),
 	);
 
-	const tracePoints = $derived(
-		trace.map((sample) => `${x(sample.t)},${y(sample.w / ftp)}`).join(' '),
+	// One polyline per continuously-ridden run: skip and extend make the clock jump,
+	// and a single line across those jumps draws work that never happened.
+	const runs = $derived(
+		splitTrace(trace).map((run) =>
+			run.map((sample) => `${x(sample.t)},${y(sample.w / ftp)}`).join(' '),
+		),
 	);
 </script>
 
@@ -60,16 +65,16 @@
 		/>
 	{/each}
 
-	{#if trace.length > 1}
+	{#each runs as points, i (i)}
 		<polyline
-			points={tracePoints}
+			{points}
 			fill="none"
 			stroke="white"
 			stroke-width="2"
 			opacity="0.7"
 			vector-effect="non-scaling-stroke"
 		/>
-	{/if}
+	{/each}
 
 	<line
 		x1={x(elapsed)}
