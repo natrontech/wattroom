@@ -146,7 +146,7 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 **Confirmed on hardware** (2026-08-29, GATT dump on a second Kickr Core, fw 3.0.23, [#43](https://github.com/natrontech/wattroom/issues/43)) — two identical dumps four minutes apart:
 
 - **FTMS and WCPS coexist on the same unit.** `0x1826` with Control Point (0x2AD9, write+indicate) and Indoor Bike Data (0x2AD2), *and* `a026e005-…` on `0x1818`. "The Kickr Core exposes both — prefer FTMS" was inference; it is now read off the device.
-- **Supported Power Range (0x2AD8) = 0–2000 W, 1 W increment**; Supported Resistance Range (0x2AD6) = 0–100, 1. Resolves the clamping debt below.
+- **Supported Power Range (0x2AD8) = 0–2000 W, 1 W increment**; Supported Resistance Range (0x2AD6) = 0–100, 1. Resolves the clamping debt below — and the driver now reads 0x2AD8 on connect and clamps every ERG target to it (#59), width-defensively per the 0x2A65 quirk. 0x2A65 itself is never read: the CPS driver decodes per-packet flags from 0x2A63, so the short read cannot bite unless someone adds a capability read later.
 - **Cadence is supported**, asserted twice over: the FTMS Feature cadence bit (`0x2ACC` machine `0x00004003`) and the CPS crank-revolution bit (`0x2A65` → `0x120e`). A *capability* read — the sprint-to-soft-pedal dropout in §11 is still unobserved.
 - FTMS Feature targets `0x0000600c`: Resistance, **Power (ERG)**, **Indoor Bike Simulation**, Wheel Circumference.
 - The **Zwift ZAP service is present** on a Core (three characteristics: notify / writeNoResp / indicate). Says nothing about third-party usability — see §11 on virtual shifting.

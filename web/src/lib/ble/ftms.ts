@@ -14,6 +14,7 @@ import type {
 const FTMS_SERVICE = 0x1826;
 const INDOOR_BIKE_DATA = 0x2ad2;
 const CONTROL_POINT = 0x2ad9;
+const SUPPORTED_POWER_RANGE = 0x2ad8;
 const MACHINE_STATUS = 0x2ada;
 /** Cycling Power Service — declared so a WCPS-only unit can be detected later. */
 const CPS_SERVICE = 0x1818;
@@ -25,6 +26,54 @@ const OP_RESPONSE = 0x80;
 const RESULT_SUCCESS = 0x01;
 /** Fitness Machine Status: control permission lost — we have to ask again. */
 const STATUS_CONTROL_LOST = 0xff;
+
+export interface PowerRange {
+	minWatts: number;
+	maxWatts: number;
+	incrementWatts: number;
+}
+
+/**
+ * When the range characteristic is missing or malformed. 3000 W matches the
+ * bound the server already puts on rider metrics — effectively no clamp, while
+ * still refusing numbers no trainer on earth accepts.
+ */
+export const DEFAULT_POWER_RANGE: PowerRange = {
+	minWatts: 0,
+	maxWatts: 3000,
+	incrementWatts: 1,
+};
+
+/**
+ * Parse Supported Power Range (0x2AD8): sint16 min, sint16 max, uint16 increment.
+ *
+ * Defensive about width because the Kickr Core taught us to be (#59): its CPS
+ * Feature characteristic returns 2 bytes where the spec says 4, so no capability
+ * read gets to assume its advertised length. A short or nonsensical value falls
+ * back to the default rather than clamping every target to garbage.
+ */
+export function parsePowerRange(view: DataView): PowerRange {
+	if (view.byteLength < 6) return DEFAULT_POWER_RANGE;
+	const range: PowerRange = {
+		minWatts: view.getInt16(0, true),
+		maxWatts: view.getInt16(2, true),
+		incrementWatts: view.getUint16(4, true) || 1,
+	};
+	if (range.maxWatts <= range.minWatts) return DEFAULT_POWER_RANGE;
+	return range;
+}
+
+/**
+ * Clamp an ERG target to what the trainer advertises. A target outside the range
+ * is rejected at the control point, and our writes serialize behind the 0x80
+ * indication — so an unclamped target is not a wrong number, it is a stall on a
+ * ride-critical path. Also rounds onto the trainer's increment grid.
+ */
+export function clampTarget(watts: number, range: PowerRange): number {
+	const stepped =
+		Math.round(watts / range.incrementWatts) * range.incrementWatts;
+	return Math.min(range.maxWatts, Math.max(range.minWatts, stepped));
+}
 
 export interface IndoorBikeData {
 	watts?: number;
@@ -93,6 +142,7 @@ export class FtmsTrainer implements Trainer {
 	 */
 	#queue: Promise<void> = Promise.resolve();
 	#pending?: { resolve: () => void; reject: (e: Error) => void; timer: number };
+	#range: PowerRange = DEFAULT_POWER_RANGE;
 
 	get status() {
 		return this.#status;
@@ -169,6 +219,14 @@ export class FtmsTrainer implements Trainer {
 			// Optional characteristic; a unit without it just cannot report lost control.
 		}
 
+		// Optional read; a unit without it just gets the permissive default.
+		try {
+			const rangeChar = await service.getCharacteristic(SUPPORTED_POWER_RANGE);
+			this.#range = parsePowerRange(await rangeChar.readValue());
+		} catch {
+			this.#range = DEFAULT_POWER_RANGE;
+		}
+
 		// One grant covers every procedure until disconnect.
 		await this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
 		this.#setStatus('connected');
@@ -182,7 +240,7 @@ export class FtmsTrainer implements Trainer {
 	async setTargetPower(watts: number): Promise<void> {
 		const payload = new DataView(new ArrayBuffer(3));
 		payload.setUint8(0, OP_SET_TARGET_POWER);
-		payload.setInt16(1, Math.max(0, Math.round(watts)), true);
+		payload.setInt16(1, clampTarget(Math.max(0, watts), this.#range), true);
 		this.#mode = 'erg';
 		await this.#write(payload.buffer);
 	}
