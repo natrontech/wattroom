@@ -24,10 +24,18 @@ type Control struct {
 	TotalSeconds int `json:"totalSeconds,omitempty"`
 }
 
+// Backfill is a reconnect's replay: samples the client buffered while the
+// socket was down (WATTROOM.md crash safety). The server dedupes by Seq, so
+// resending is always safe and never double-counts.
+type Backfill struct {
+	Samples []RiderMetrics `json:"samples"`
+}
+
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
-	Metrics *RiderMetrics `json:"metrics,omitempty"`
-	Control *Control      `json:"control,omitempty"`
+	Metrics  *RiderMetrics `json:"metrics,omitempty"`
+	Control  *Control      `json:"control,omitempty"`
+	Backfill *Backfill     `json:"backfill,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard

@@ -20,6 +20,12 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { page } from '$app/state';
+	import {
+		discardRide,
+		openRideBuffer,
+		unfinishedRides,
+		type RideBuffer,
+	} from '$lib/ride/buffer';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -52,14 +58,26 @@
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
+	let buffer: RideBuffer | undefined;
+
 	async function begin(trainer: Trainer) {
 		error = null;
 		try {
+			// Crash safety (#19): every recorded sample also lands in IndexedDB,
+			// so a browser crash at minute 55 still has a ride to export.
+			const startedAt = Date.now();
+			buffer = await openRideBuffer({
+				rideId: String(startedAt),
+				startedAt,
+				workoutName: workout.name,
+			});
 			const next = createRideSession({
 				trainer,
 				workout,
 				ftp,
 				readings: () => sensors.readings,
+				onRecord: (sample) =>
+					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() }),
 			});
 			await next.start();
 			session = next;
@@ -107,6 +125,7 @@
 		const current = session;
 		if (!current || current.state !== 'done' || recorded) return;
 		recorded = true;
+		buffer?.end();
 		const summary = summarise(current.recording);
 		if (summary.seconds === 0) return;
 		error = history.add({
@@ -118,6 +137,53 @@
 			...summary,
 		});
 	});
+
+	// A ride that never ended is a crash to offer back, not to silently keep.
+	let recoverable = $state<Awaited<ReturnType<typeof unfinishedRides>>>([]);
+	let recovering = $state(false);
+	void unfinishedRides().then((rides) => (recoverable = rides));
+
+	async function downloadRecovered(ride: (typeof recoverable)[number]) {
+		recovering = true;
+		error = null;
+		try {
+			const response = await fetch('/api/rides/export', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					startedAt: new Date(ride.startedAt).toISOString(),
+					samples: ride.samples.map((sample, index) => ({
+						second: index,
+						watts: sample.watts,
+						cadence: sample.cadence,
+						heartRate: sample.heartRate,
+					})),
+				}),
+			});
+			if (!response.ok) {
+				const payload = await response.json().catch(() => null);
+				throw new Error(payload?.message ?? 'The ride could not be exported.');
+			}
+			const blob = await response.blob();
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `wattroom-recovered-${new Date(ride.startedAt).toISOString().slice(0, 10)}.fit`;
+			a.click();
+			URL.revokeObjectURL(url);
+			await discardRide(ride.rideId);
+			recoverable = recoverable.filter((r) => r.rideId !== ride.rideId);
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : String(cause);
+		} finally {
+			recovering = false;
+		}
+	}
+
+	async function discardRecovered(rideId: string) {
+		await discardRide(rideId);
+		recoverable = recoverable.filter((r) => r.rideId !== rideId);
+	}
 
 	const pairedCount = $derived(
 		sensors.all.filter((s) => s.status === 'connected').length,
@@ -229,6 +295,33 @@
 					? `${pairedCount} sensor${pairedCount > 1 ? 's' : ''} paired`
 					: 'Pair a heart rate strap or power meter'}</a
 			>
+
+			{#if recoverable.length > 0}
+				{#each recoverable as ride (ride.rideId)}
+					<div
+						class="border-z4/40 bg-z4/10 mt-6 rounded-lg border px-4 py-3 text-left text-sm"
+					>
+						<p>
+							Recovered an unfinished ride — {ride.workoutName},
+							{new Date(ride.startedAt).toLocaleString()},
+							{Math.round(ride.samples.length / 60)} min recorded.
+						</p>
+						<div class="mt-2 flex gap-2">
+							<button
+								onclick={() => downloadRecovered(ride)}
+								disabled={recovering}
+								class="rounded bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-white/90 disabled:opacity-40"
+								>Download .fit</button
+							>
+							<button
+								onclick={() => discardRecovered(ride.rideId)}
+								class="border-muted/30 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
+								>Discard</button
+							>
+						</div>
+					</div>
+				{/each}
+			{/if}
 
 			{#if error}
 				<p class="text-z6 mt-4 text-sm">{error}</p>

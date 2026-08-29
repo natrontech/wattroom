@@ -106,6 +106,7 @@
 	}
 
 	function stopRiding() {
+		live.finish();
 		unsubscribe?.();
 		void trainer?.setTargetPower(0);
 		void trainer?.disconnect();
