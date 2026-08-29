@@ -39,9 +39,10 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 - [ ] WcpsTrainer driver (Kickr v2: unlock, 0x42 ERG, 0x43/0x46 sim/grade)
 - [ ] HR / cadence / power sensor pairing (BLE HRS, CPS, CSC)
 - [ ] Workout JSON format + editor + curated library (~25 workouts)
-- [ ] Interval graph UI, FTP scaling, player controls (bias ±%, skip/extend, spiral guard, auto-pause)
+- [x] Interval graph UI, FTP scaling, player controls (#13) — spiral-guard thresholds still need proving (#46)
 - [ ] Built-in ramp test; manual FTP in profile
-- [ ] .fit export (muktihari/fit), local ride history
+- [x] .fit export (#5) — verified against Strava, classified as Virtual Ride
+- [ ] Local ride history
 - [ ] Playwright smoke: simulated trainer → 2-min workout → .fit produced
 
 ## M2 — Accounts & rooms
