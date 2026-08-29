@@ -150,7 +150,7 @@ func (s *Service) append(v any) error {
 		return err
 	}
 	f, err := os.OpenFile(filepath.Join(s.dir, "reports.jsonl"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o640)
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
