@@ -20,6 +20,28 @@ export interface RiderMetrics {
   seq: number /* int */; // monotonic per ride, for reconnect dedup
 }
 /**
+ * SprintScore is one rider's place on the mini-podium.
+ */
+export interface SprintScore {
+  riderId: string;
+  name: string;
+  wkg: number /* float64 */;
+  watts: number /* int */;
+}
+/**
+ * SprintState rides the tick while a sprint moment is armed, live, or just
+ * scored. Times are server-clock millis, the same clock as ServerTick.At —
+ * clients render the klaxon countdown and the window from these anchors.
+ */
+export interface SprintState {
+  startsAtMs: number /* int64 */;
+  endsAtMs: number /* int64 */;
+  /**
+   * Filled once the window closes; podium order.
+   */
+  results?: SprintScore[];
+}
+/**
  * Control is a coach/owner command over the shared session (SPEC roles matrix:
  * pick workout, start countdown, pause/end). The server enforces the role.
  */
@@ -138,6 +160,10 @@ export interface ServerTick {
    * This second's cheers, drained each tick like metrics.
    */
   cheers?: Cheer[];
+  /**
+   * Sprint moment (#30): armed/live window and, after it closes, the podium.
+   */
+  sprint?: SprintState;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */

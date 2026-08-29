@@ -20,6 +20,13 @@ export interface Profile {
 	/** ms epoch of the ramp test that set this FTP, if one did. */
 	ftpMeasuredAt?: number;
 	/**
+	 * Sprint setup (#30/#41): the slope a sprint moment throws you onto, and
+	 * whether this is a single-speed setup (Zwift Cog) — where slope mode has
+	 * no usable range, so sprints run as a high ERG target instead.
+	 */
+	sprintGrade: number;
+	singleSpeed: boolean;
+	/**
 	 * Whether live heart rate leaves this browser into a room (#62, ADR-0008).
 	 * Default true — visible-in-room is the product promise — but stopping it
 	 * is one action, and the rider's own .fit is unaffected either way.
@@ -27,7 +34,13 @@ export interface Profile {
 	shareHr: boolean;
 }
 
-export const DEFAULT_PROFILE: Profile = { ftp: 200, kg: 75, shareHr: true };
+export const DEFAULT_PROFILE: Profile = {
+	ftp: 200,
+	kg: 75,
+	shareHr: true,
+	sprintGrade: 5,
+	singleSpeed: false,
+};
 
 function inRange(value: unknown, min: number, max: number): value is number {
 	return (
@@ -41,7 +54,8 @@ function inRange(value: unknown, min: number, max: number): value is number {
 export function parseProfile(value: unknown): Profile {
 	if (typeof value !== 'object' || value === null)
 		return { ...DEFAULT_PROFILE };
-	const { ftp, kg, ftpMeasuredAt, shareHr } = value as Record<string, unknown>;
+	const { ftp, kg, ftpMeasuredAt, shareHr, sprintGrade, singleSpeed } =
+		value as Record<string, unknown>;
 	return {
 		ftp: inRange(ftp, PROFILE_LIMITS.minFtp, PROFILE_LIMITS.maxFtp)
 			? ftp
@@ -52,6 +66,10 @@ export function parseProfile(value: unknown): Profile {
 		ftpMeasuredAt:
 			typeof ftpMeasuredAt === 'number' ? ftpMeasuredAt : undefined,
 		shareHr: typeof shareHr === 'boolean' ? shareHr : true,
+		sprintGrade: inRange(sprintGrade, 1, 15)
+			? sprintGrade
+			: DEFAULT_PROFILE.sprintGrade,
+		singleSpeed: typeof singleSpeed === 'boolean' ? singleSpeed : false,
 	};
 }
 

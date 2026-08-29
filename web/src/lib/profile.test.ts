@@ -24,6 +24,8 @@ describe('parseProfile', () => {
 			kg: 74,
 			ftpMeasuredAt: undefined,
 			shareHr: true,
+			sprintGrade: 5,
+			singleSpeed: false,
 		});
 	});
 

@@ -130,3 +130,43 @@ func TestCheerAllowlistAndBound(t *testing.T) {
 		t.Fatal("allowlist is not a list")
 	}
 }
+
+func TestSprintLifecycle(t *testing.T) {
+	rm := newRoom("test")
+	rm.session.pick("W", `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.9}]}`, 600)
+	rm.session.start(time.Unix(0, 0))
+	rm.session.state(time.Unix(20, 0)) // countdown -> running
+
+	if rm.armIfRunning(time.Unix(30, 0)) != true {
+		t.Fatal("arm refused mid-session")
+	}
+	rider := protocol.Rider{ID: "jan", Name: "Jan", FtpWatts: 250, WeightKg: 80}
+	rm.seen["jan"] = rider
+
+	// Samples before the window are ignored; inside they collect.
+	rm.sprint.collect("jan", 900, time.Unix(31, 0)) // klaxon: not started
+	for i := 0; i < 10; i++ {
+		rm.sprint.collect("jan", 600+i*10, time.Unix(34+int64(i), 0))
+	}
+	// Mid-window state has no results.
+	if st := rm.sprint.state(time.Unix(40, 0), rm.seen); st == nil || st.Results != nil {
+		t.Fatalf("mid-window: %+v", st)
+	}
+	// Past the end: scored exactly once, podium in w/kg.
+	st := rm.sprint.state(time.Unix(50, 0), rm.seen)
+	if st == nil || len(st.Results) != 1 || st.Results[0].Name != "Jan" {
+		t.Fatalf("podium: %+v", st)
+	}
+	if st.Results[0].Watts < 600 || st.Results[0].Wkg <= 0 {
+		t.Fatalf("score: %+v", st.Results[0])
+	}
+	// Long after: gone.
+	if rm.sprint.state(time.Unix(120, 0), rm.seen) != nil {
+		t.Fatal("sprint lingered forever")
+	}
+	// Arming while idle refuses.
+	rm.session.phase = "done"
+	if rm.armIfRunning(time.Unix(130, 0)) {
+		t.Fatal("armed outside a session")
+	}
+}
