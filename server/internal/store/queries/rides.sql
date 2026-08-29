@@ -46,3 +46,8 @@ limit 60;
 -- The collective challenge number: this month's kJ, together.
 select coalesce(sum(kj), 0)::bigint from rides
 where room_id = $1 and started_at >= date_trunc('month', now());
+
+-- name: Best20mIn90Days :one
+-- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
+select coalesce(max((curve->>'best20m')::int), 0)::int from rides
+where user_id = $1 and started_at >= now() - interval '90 days';

@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const best20mIn90Days = `-- name: Best20mIn90Days :one
+select coalesce(max((curve->>'best20m')::int), 0)::int from rides
+where user_id = $1 and started_at >= now() - interval '90 days'
+`
+
+// The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
+func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, best20mIn90Days, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createMedal = `-- name: CreateMedal :exec
 insert into medals (room_id, user_id, ride_id, kind)
 values ($1, $2, $3, $4)

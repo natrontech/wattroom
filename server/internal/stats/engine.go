@@ -95,3 +95,14 @@ func Category(best20mWatts int, kg float64) string {
 		return "D"
 	}
 }
+
+// SuggestFTP is docs/SPEC.md's auto-detect rule: when 0.95 × the 90-day best
+// 20-min exceeds the set FTP by more than 2 %, suggest — never auto-apply,
+// because FTP moves every workout's difficulty.
+func SuggestFTP(best20m, currentFtp int) (int, bool) {
+	suggested := int(math.Round(0.95 * float64(best20m)))
+	if currentFtp <= 0 || float64(suggested) <= float64(currentFtp)*1.02 {
+		return 0, false
+	}
+	return suggested, true
+}
