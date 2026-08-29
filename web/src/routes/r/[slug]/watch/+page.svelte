@@ -4,6 +4,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { parseSharedSegments } from '$lib/room/workout';
 
@@ -135,7 +136,20 @@
 		</div>
 	{/if}
 
-	<p class="text-muted border-t border-white/5 p-3 text-center text-[10px]">
-		Spectating — read-only. Bring a laptop to ride.
-	</p>
+	<!-- The spectator's one verb (roles matrix). One-handed, often standing. -->
+	<div class="border-t border-white/5 p-3">
+		<div class="flex gap-2">
+			{#each ['🔥', '💪', '👏', '💀'] as emoji (emoji)}
+				<button
+					onclick={() => live.cheer(emoji)}
+					class="border-muted/20 active:bg-surface-raised flex-1 rounded-lg border py-4 text-2xl"
+					>{emoji}</button
+				>
+			{/each}
+		</div>
+		<p class="text-muted mt-2 text-center text-[10px]">
+			Spectating — cheers land in the room. Bring a laptop to ride.
+		</p>
+	</div>
+	<CheerLayer cheers={live.tick?.cheers} />
 </div>

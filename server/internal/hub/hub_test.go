@@ -114,3 +114,19 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 		t.Fatalf("idle-room backfill dropped: %d", got)
 	}
 }
+
+func TestCheerAllowlistAndBound(t *testing.T) {
+	rm := newRoom("test")
+	for i := 0; i < 50; i++ {
+		rm.cheer(protocol.Cheer{Emoji: "🔥", From: "jan"})
+	}
+	if len(rm.cheers) != 32 {
+		t.Fatalf("cheer buffer unbounded: %d", len(rm.cheers))
+	}
+	if _, ok := cheerEmoji["🔥"]; !ok {
+		t.Fatal("allowlist missing the obvious one")
+	}
+	if _, ok := cheerEmoji["<script>"]; ok {
+		t.Fatal("allowlist is not a list")
+	}
+}
