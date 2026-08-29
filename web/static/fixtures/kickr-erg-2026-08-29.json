@@ -1,0 +1,805 @@
+{
+ "name": "kickr-erg-2026-08-29",
+ "samples": [
+  {
+   "watts": 78,
+   "cadence": 40,
+   "hr": 0
+  },
+  {
+   "watts": 90,
+   "cadence": 41,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 41,
+   "hr": 0
+  },
+  {
+   "watts": 104,
+   "cadence": 41,
+   "hr": 0
+  },
+  {
+   "watts": 104,
+   "cadence": 42,
+   "hr": 0
+  },
+  {
+   "watts": 103,
+   "cadence": 44,
+   "hr": 0
+  },
+  {
+   "watts": 125,
+   "cadence": 47,
+   "hr": 0
+  },
+  {
+   "watts": 148,
+   "cadence": 48,
+   "hr": 0
+  },
+  {
+   "watts": 148,
+   "cadence": 48,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 48,
+   "hr": 0
+  },
+  {
+   "watts": 115,
+   "cadence": 47,
+   "hr": 0
+  },
+  {
+   "watts": 103,
+   "cadence": 48,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 51,
+   "hr": 0
+  },
+  {
+   "watts": 102,
+   "cadence": 51,
+   "hr": 0
+  },
+  {
+   "watts": 102,
+   "cadence": 55,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 58,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 61,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 63,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 66,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 66,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 98,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 66,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 64,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 66,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 70,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 70,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 70,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 70,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 125,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 147,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 66,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 156,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 153,
+   "cadence": 72,
+   "hr": 0
+  },
+  {
+   "watts": 151,
+   "cadence": 79,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 82,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 84,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 83,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 83,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 82,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 82,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 83,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 150,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 151,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 152,
+   "cadence": 83,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 151,
+   "cadence": 86,
+   "hr": 0
+  },
+  {
+   "watts": 187,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 200,
+   "cadence": 87,
+   "hr": 0
+  },
+  {
+   "watts": 200,
+   "cadence": 88,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 90,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 91,
+   "hr": 0
+  },
+  {
+   "watts": 198,
+   "cadence": 88,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 86,
+   "hr": 0
+  },
+  {
+   "watts": 198,
+   "cadence": 84,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 84,
+   "hr": 0
+  },
+  {
+   "watts": 201,
+   "cadence": 84,
+   "hr": 0
+  },
+  {
+   "watts": 200,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 200,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 85,
+   "hr": 0
+  },
+  {
+   "watts": 198,
+   "cadence": 84,
+   "hr": 0
+  },
+  {
+   "watts": 199,
+   "cadence": 82,
+   "hr": 0
+  },
+  {
+   "watts": 198,
+   "cadence": 82,
+   "hr": 0
+  },
+  {
+   "watts": 197,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 102,
+   "cadence": 78,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 77,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 79,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 81,
+   "hr": 0
+  },
+  {
+   "watts": 98,
+   "cadence": 80,
+   "hr": 0
+  },
+  {
+   "watts": 98,
+   "cadence": 79,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 77,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 77,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 75,
+   "hr": 0
+  },
+  {
+   "watts": 75,
+   "cadence": 75,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 75,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 75,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 39,
+   "hr": 0
+  },
+  {
+   "watts": 104,
+   "cadence": 39,
+   "hr": 0
+  },
+  {
+   "watts": 103,
+   "cadence": 41,
+   "hr": 0
+  },
+  {
+   "watts": 104,
+   "cadence": 44,
+   "hr": 0
+  },
+  {
+   "watts": 103,
+   "cadence": 47,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 51,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 53,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 53,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 53,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 53,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 54,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 53,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 54,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 55,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 55,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 57,
+   "hr": 0
+  },
+  {
+   "watts": 102,
+   "cadence": 58,
+   "hr": 0
+  },
+  {
+   "watts": 103,
+   "cadence": 62,
+   "hr": 0
+  },
+  {
+   "watts": 114,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 70,
+   "hr": 0
+  },
+  {
+   "watts": 148,
+   "cadence": 71,
+   "hr": 0
+  },
+  {
+   "watts": 148,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 149,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 124,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 65,
+   "hr": 0
+  },
+  {
+   "watts": 101,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 100,
+   "cadence": 67,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 99,
+   "cadence": 68,
+   "hr": 0
+  },
+  {
+   "watts": 25,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 69,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  },
+  {
+   "watts": 0,
+   "cadence": 0,
+   "hr": 0
+  }
+ ]
+}
