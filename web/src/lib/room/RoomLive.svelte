@@ -12,6 +12,7 @@
 	import { flatten, targetAt } from '$lib/workout/engine';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { wireMetrics } from '$lib/room/wire';
+	import { createRoomAv } from '$lib/room/av.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -20,9 +21,12 @@
 	// different room mounts a fresh instance and a fresh socket.
 	// svelte-ignore state_referenced_locally
 	const live = createRoomLive(slug);
+	// svelte-ignore state_referenced_locally
+	const av = createRoomAv(slug);
 	const profile = createProfileStore();
 	onDestroy(() => {
 		live.close();
+		av.leave();
 		stopRiding();
 	});
 
@@ -195,12 +199,60 @@
 		<p class="text-muted mt-2 text-xs">{live.refusal}</p>
 	{/if}
 
+	<!-- The call. AV is transit-only, never recorded; chrome stays quiet. -->
+	<div class="mt-3 flex flex-wrap items-center gap-2">
+		{#if av.status === 'off' || av.status === 'failed'}
+			<button
+				onclick={() => av.join()}
+				class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+				>Join voice</button
+			>
+			{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
+		{:else if av.status === 'connecting'}
+			<span class="text-muted text-sm">Joining the call…</span>
+		{:else}
+			<button
+				onclick={() => av.toggleMic()}
+				class="rounded border px-4 py-2 text-sm {av.micOn
+					? 'border-muted/60'
+					: 'border-z6/40 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
+			>
+			<button
+				onclick={() => av.toggleCam()}
+				class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+				>{av.camOn ? 'Camera off' : 'Camera on'}</button
+			>
+			<button
+				onclick={() => av.toggleShare()}
+				class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+				>{av.sharing ? 'Stop sharing' : 'Share screen'}</button
+			>
+			<button
+				onclick={() => av.leave()}
+				class="text-muted text-xs underline hover:text-white"
+				>leave voice</button
+			>
+		{/if}
+	</div>
+
 	<!-- Rider tiles: live data glows, chrome stays quiet. -->
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each roster as rider (rider.id)}
 			{@const metrics = live.tick?.riders?.[rider.id]}
 			{@const zone = metrics ? zoneOf(metrics.watts, rider.ftpWatts) : 0}
-			<div class="border-muted/15 bg-surface-raised rounded-lg border p-4">
+			<div
+				class="bg-surface-raised rounded-lg border p-4 {av.speaking[rider.id]
+					? 'border-z4/60'
+					: 'border-muted/15'}"
+			>
+				{#if av.videoOf[rider.id]}
+					{#key av.videoOf[rider.id]}
+						<div
+							class="mb-3 aspect-video overflow-hidden rounded bg-black/40"
+							{@attach (node) => av.attach(rider.id, node)}
+						></div>
+					{/key}
+				{/if}
 				<div class="flex items-baseline gap-2">
 					<span class="font-display font-bold">{rider.name}</span>
 					{#if rider.role !== 'member'}
