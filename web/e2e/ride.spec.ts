@@ -42,4 +42,11 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	const bytes = await readFile(path!);
 	expect(bytes.length).toBeGreaterThan(100);
 	expect(bytes.subarray(8, 12).toString('ascii')).toBe('.FIT');
+
+	// The same finished ride is kept locally (#14). Asserting it here rather than in
+	// its own test reuses the two minutes already spent riding.
+	await page.goto('/history');
+	const ride = page.getByText('Openers').first();
+	await expect(ride).toBeVisible();
+	await expect(page.getByText('No rides yet')).toHaveCount(0);
 });
