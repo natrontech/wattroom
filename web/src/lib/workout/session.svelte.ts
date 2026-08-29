@@ -3,6 +3,7 @@ import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
 import { createTicker, type Ticker } from './ticker';
+import { acquireWakeLock, type WakeLock } from './wakelock';
 import type { Segment, Workout } from './types';
 
 /**
@@ -105,6 +106,7 @@ export function createRideSession({
 	let idleSeconds = 0;
 	let lowCadenceSeconds = 0;
 	let ticker: Ticker | undefined;
+	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
 
 	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
@@ -272,8 +274,12 @@ export function createRideSession({
 			state = 'running';
 			applyTarget();
 			ticker = createTicker(tick, { now });
+			// The screen staying on is part of "a ride is running" — owned here so
+			// /ride and /ramp cannot each forget it separately (#58).
+			wakeLock = acquireWakeLock();
 		},
 		stop() {
+			wakeLock?.release();
 			ticker?.stop();
 			unsubscribe?.();
 			void trainer.setTargetPower(0);
