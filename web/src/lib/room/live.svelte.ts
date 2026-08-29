@@ -117,6 +117,7 @@ export function createRoomLive(slug: string) {
 		control(
 			action: string,
 			workout?: { name: string; json: string; totalSeconds: number },
+			gameMode?: string,
 		) {
 			send({
 				control: {
@@ -124,6 +125,7 @@ export function createRoomLive(slug: string) {
 					workoutName: workout?.name,
 					workoutJson: workout?.json,
 					totalSeconds: workout?.totalSeconds,
+					gameMode,
 				},
 			});
 		},

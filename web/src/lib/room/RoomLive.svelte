@@ -17,6 +17,7 @@
 	import TvMode from '$lib/room/TvMode.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import GamePanel from '$lib/room/GamePanel.svelte';
 	import { library } from '$lib/workout/library';
 
 	let { slug, role }: { slug: string; role: string } = $props();
@@ -61,6 +62,11 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	let pickedId = $state(library[0].id);
+	const GAMES = [
+		{ id: 'backyard-ramp', label: 'Backyard Ramp' },
+		{ id: 'collective-ramp', label: 'Collective Ramp' },
+	];
+	let pickedGame = $state(GAMES[0].id);
 
 	function pickAndStart() {
 		const entry = library.find((w) => w.id === pickedId);
@@ -92,6 +98,13 @@
 	const segments = $derived(parseSharedSegments(shared?.workoutJson));
 
 	const myTarget = $derived.by(() => {
+		// A running game owns the target (#31): the mode's per-rider %FTP wins
+		// over the workout timeline while it runs.
+		const game = live.tick?.game;
+		const mine = game?.riders?.[account.me?.id ?? ''];
+		if (game?.phase === 'running' && mine && mine.targetPct) {
+			return Math.round(mine.targetPct * profile.current.ftp);
+		}
 		if (!shared || shared.phase !== 'running' || segments.length === 0)
 			return 0;
 		return (
@@ -299,6 +312,15 @@
 		<SprintMoment sprint={live.tick.sprint} myWatts={watts} />
 	{/if}
 
+	{#if live.tick?.game}
+		<GamePanel
+			game={live.tick.game}
+			roster={live.tick?.roster ?? []}
+			end={() => live.control('game-end')}
+			{canControl}
+		/>
+	{/if}
+
 	<div class="text-muted mt-3 flex items-center gap-1 text-xs">
 		{#each [{ id: 'metrics', label: 'Metrics' }, { id: 'video', label: 'Video' }, { id: 'media', label: 'Media' }] as option (option.id)}
 			<button
@@ -308,6 +330,19 @@
 					: 'hover:text-white'}">{option.label}</button
 			>
 		{/each}
+		{#if canControl && !live.tick?.game}
+			<select
+				bind:value={pickedGame}
+				class="border-muted/25 bg-surface ml-2 rounded border px-2 py-1"
+			>
+				{#each GAMES as g (g.id)}<option value={g.id}>{g.label}</option>{/each}
+			</select>
+			<button
+				onclick={() => live.control('game', undefined, pickedGame)}
+				class="border-neon/50 hover:bg-neon/10 rounded border px-2.5 py-1"
+				>Start game</button
+			>
+		{/if}
 		<button
 			onclick={() => (tv = true)}
 			class="ml-auto underline hover:text-white">TV mode</button

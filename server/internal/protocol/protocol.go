@@ -29,6 +29,34 @@ type SprintState struct {
 	Results []SprintScore `json:"results,omitempty"`
 }
 
+// GameRider is one rider's standing inside a game mode.
+type GameRider struct {
+	Eliminated bool    `json:"eliminated,omitempty"`
+	Lives      int     `json:"lives,omitempty"`
+	Score      float64 `json:"score,omitempty"`
+	OnFront    bool    `json:"onFront,omitempty"`
+	// The rider's personal target as a fraction of their FTP; 0 = ride free.
+	TargetPct float64 `json:"targetPct,omitempty"`
+}
+
+// GameState is a running game mode on the tick (#31). One generic shape for
+// all seven modes: the client renders labels per mode, the server owns every
+// rule. Riders execute their own %FTP targets, so mixed groups stay fair.
+type GameState struct {
+	Mode  string `json:"mode"`
+	Phase string `json:"phase"` // "running" | "done"
+	Round int    `json:"round,omitempty"`
+	// The shared line as a fraction of FTP (ramp modes), the called zone
+	// (lava), or the hole target pct (golf) — mode-dependent, one at a time.
+	LinePct       float64              `json:"linePct,omitempty"`
+	CalledZone    int                  `json:"calledZone,omitempty"`
+	RoundEndsAtMs int64                `json:"roundEndsAtMs,omitempty"`
+	MeterHidden   bool                 `json:"meterHidden,omitempty"`
+	RoomDistance  float64              `json:"roomDistance,omitempty"`
+	Riders        map[string]GameRider `json:"riders"`
+	Podium        []SprintScore        `json:"podium,omitempty"`
+}
+
 // Control is a coach/owner command over the shared session (SPEC roles matrix:
 // pick workout, start countdown, pause/end). The server enforces the role.
 type Control struct {
@@ -40,6 +68,8 @@ type Control struct {
 	// Total length in seconds, so the server can end the session on time
 	// without parsing the workout.
 	TotalSeconds int `json:"totalSeconds,omitempty"`
+	// For action "game": which mode to start.
+	GameMode string `json:"gameMode,omitempty"`
 }
 
 // Backfill is a reconnect's replay: samples the client buffered while the
@@ -127,6 +157,8 @@ type ServerTick struct {
 	Cheers []Cheer `json:"cheers,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
+	// Running game mode (#31/#32), replacing the workout timeline while on.
+	Game *GameState `json:"game,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64      `json:"execution,omitempty"`
 	Roster    []Rider                 `json:"roster"`
