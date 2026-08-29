@@ -37,12 +37,48 @@
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
+	import RoomAdmin from '$lib/room/RoomAdmin.svelte';
+	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 
+	interface AdminMember {
+		id: string;
+		displayName: string;
+		role: string;
+	}
+	interface AdminMedal {
+		kind: string;
+		rider: string;
+		awardedAt: string;
+	}
 	let {
 		slug,
 		role,
 		roomName,
-	}: { slug: string; role: string; roomName: string } = $props();
+		code = '',
+		listed = false,
+		members = [],
+		medals = [],
+		streakWeeks = 0,
+		monthKj = 0,
+		adminBusy = false,
+		onRole,
+		onRemove,
+		onListed,
+	}: {
+		slug: string;
+		role: string;
+		roomName: string;
+		code?: string;
+		listed?: boolean;
+		members?: AdminMember[];
+		medals?: AdminMedal[];
+		streakWeeks?: number;
+		monthKj?: number;
+		adminBusy?: boolean;
+		onRole: (userId: string, role: string) => void;
+		onRemove: (userId: string) => void;
+		onListed: (listed: boolean) => void;
+	} = $props();
 
 	// svelte-ignore state_referenced_locally
 	const live = createRoomLive(slug);
@@ -109,8 +145,9 @@
 			const known = lastKnown.get(rider.id);
 			const stale = !metrics && !!known && now - known.at < 30_000;
 			const you = rider.id === account.me?.id;
-			const target =
-				running && segments.length > 0 && rider.ftpWatts > 0
+			const target = you
+				? myTarget
+				: running && segments.length > 0 && rider.ftpWatts > 0
 					? (targetAt(segments, rider.ftpWatts, shared?.elapsed ?? 0)
 							.targetWatts ?? 0)
 					: 0;
@@ -273,6 +310,12 @@
 	let seq = 0;
 	let unsubscribe: (() => void) | undefined;
 
+	// Bias is personal: ±% on my own targets, the shared timeline untouched.
+	let bias = $state(1);
+	function nudgeBias(step: number) {
+		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
+	}
+
 	const myTarget = $derived.by(() => {
 		const game = live.tick?.game;
 		const mine = game?.riders?.[account.me?.id ?? ''];
@@ -281,9 +324,9 @@
 		}
 		if (!shared || shared.phase !== 'running' || segments.length === 0)
 			return 0;
-		return (
-			targetAt(segments, profile.current.ftp, shared.elapsed).targetWatts ?? 0
-		);
+		const raw =
+			targetAt(segments, profile.current.ftp, shared.elapsed).targetWatts ?? 0;
+		return Math.round(raw * bias);
 	});
 
 	const sprintLive = $derived.by(() => {
@@ -372,6 +415,8 @@
 		},
 		{ label: 'exec', value: `${Math.round(you.execution * 100)}%` },
 	]);
+	const myZone = $derived(zoneOf(you.watts, you.ftp));
+	let admin = $state(false);
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
@@ -395,8 +440,26 @@
 	</div>
 {/if}
 
-<div class="border-muted/15 mt-6 flex overflow-hidden rounded-lg border">
-	<div class="hidden lg:block">
+<RoomAdmin
+	bind:open={admin}
+	{slug}
+	{code}
+	{listed}
+	{members}
+	{medals}
+	isOwner={role === 'owner'}
+	myId={account.me?.id}
+	{streakWeeks}
+	{monthKj}
+	busy={adminBusy}
+	{onRole}
+	{onRemove}
+	{onListed}
+/>
+
+<!-- The room IS the app: full viewport, rail | main | panel (#39's design). -->
+<div class="bg-surface flex h-dvh overflow-hidden text-white">
+	<div class="hidden shrink-0 md:block">
 		<RoomRail
 			{you}
 			live={phase === 'live'}
@@ -409,16 +472,20 @@
 		/>
 	</div>
 
-	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4">
+	<main
+		class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 py-4"
+	>
 		<CheerLayer cheers={live.tick?.cheers} />
 
-		<header class="flex flex-wrap items-center gap-x-4 gap-y-2 pb-4">
+		<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 			<div>
 				<h1 class="font-display text-lg leading-tight font-bold">{roomName}</h1>
 				<p class="text-muted text-xs">
 					{riders.length} rider{riders.length === 1 ? '' : 's'} ·
 					{#if phase === 'lounge'}
-						{shared?.workoutName ? `${shared.workoutName} loaded` : 'lounge'}
+						{shared?.workoutName
+							? `${shared.workoutName} loaded`
+							: 'in the lounge'}
 					{:else}
 						{shared?.workoutName}
 					{/if}
@@ -449,6 +516,11 @@
 				onclick={() => (tv = true)}
 				class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
 				>TV mode</button
+			>
+			<button
+				onclick={() => (admin = true)}
+				class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
+				>Room ···</button
 			>
 
 			{#if canControl && shared}
@@ -507,29 +579,23 @@
 					</div>
 				{/if}
 			{/if}
-
-			{#if phase === 'live' && shared}
-				<div class="text-right">
-					<div
-						class="font-display text-2xl leading-none font-bold tabular-nums"
-					>
-						{formatClock(shared.elapsed)}
-					</div>
-					<div class="text-muted text-[10px] tracking-wider uppercase">
-						elapsed
-					</div>
-				</div>
-			{/if}
 		</header>
+
+		{#if phase === 'live' && shared}
+			<div class="pb-3">
+				<div class="font-display text-4xl leading-none font-bold tabular-nums">
+					{formatClock(shared.elapsed)}
+				</div>
+				<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
+					elapsed
+				</div>
+			</div>
+		{/if}
 
 		{#if live.status !== 'live'}
 			<div class="mb-3">
 				<FaultBanner
-					fault={{
-						kind: 'room',
-						state:
-							live.status === 'connecting' ? 'reconnecting' : 'reconnecting',
-					}}
+					fault={{ kind: 'room', state: 'reconnecting' }}
 					bufferedSeconds={droppedAt
 						? Math.round((Date.now() - droppedAt) / 1000)
 						: 0}
@@ -553,7 +619,8 @@
 		{/if}
 
 		{#if layout === 'media'}
-			<div class="flex min-h-0 justify-center">
+			<!-- Media-focus: the player takes the main area, riders drop to a strip. -->
+			<div class="flex min-h-0 flex-1 justify-center">
 				<Jukebox
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title) =>
@@ -566,6 +633,7 @@
 			</div>
 		{/if}
 
+		<!-- Rider tiles: camera and power fused — one grid, not three. -->
 		<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
 			{#each riders as rider (rider.id)}
 				<RiderTile
@@ -597,6 +665,14 @@
 					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
 					>Ride simulated</button
 				>
+				{#if av.status === 'off' || av.status === 'failed'}
+					<button
+						onclick={() => av.join()}
+						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+						>Join voice</button
+					>
+					{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
+				{/if}
 				{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
 			</div>
 		{/if}
@@ -640,6 +716,16 @@
 						>
 					</div>
 				{/each}
+				<div class="text-right">
+					<span
+						class="font-display text-lg leading-none font-semibold {ZONE_TEXT[
+							myZone
+						]}">Z{myZone}</span
+					>
+					<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
+						>zone</span
+					>
+				</div>
 			</div>
 			{#if trainer && hrSource}
 				<p class="text-muted mt-1 text-right text-[10px]">
@@ -667,7 +753,11 @@
 				</div>
 			{:else if block}
 				<div class="mt-2">
-					<IntervalStrip {block} bias={1} />
+					<IntervalStrip
+						{block}
+						{bias}
+						onBias={trainer ? nudgeBias : undefined}
+					/>
 				</div>
 				<div class="mt-2">
 					<TargetWidget {you} variant="notch" compact={layout !== 'metrics'} />
@@ -686,10 +776,18 @@
 				</div>
 				<ExecutionMeter {riders} />
 			</div>
+		{:else if canControl && shared?.phase === 'idle' && !live.tick?.game}
+			<div class="mt-3 flex flex-wrap items-center gap-3">
+				<button
+					onclick={pickAndStart}
+					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+					>Start {library.find((w) => w.id === pickedId)?.workout.name}</button
+				>
+			</div>
 		{/if}
 	</main>
 
-	<div class="hidden xl:block">
+	<div class="hidden shrink-0 xl:block">
 		<SidePanel
 			live={phase === 'live'}
 			showPlayer={layout !== 'media'}
@@ -710,6 +808,3 @@
 		</SidePanel>
 	</div>
 </div>
-{#if currentTitle && layout === 'media'}<span class="hidden"
-		>{currentTitle}</span
-	>{/if}
