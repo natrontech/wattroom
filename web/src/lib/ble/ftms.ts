@@ -151,10 +151,15 @@ export class FtmsTrainer implements Trainer {
 		return this.#mode;
 	}
 
+	/** Set on rider-initiated disconnect, so the retry loop stands down. */
+	#closed = false;
+	#retryDelayMs = 1000;
+
 	async connect(): Promise<void> {
 		if (!navigator.bluetooth)
 			throw new Error('This browser has no Web Bluetooth');
 		this.#setStatus('connecting');
+		this.#closed = false;
 
 		// Web Bluetooth only exposes services declared up front.
 		this.#device = await navigator.bluetooth.requestDevice({
@@ -162,11 +167,34 @@ export class FtmsTrainer implements Trainer {
 			optionalServices: [FTMS_SERVICE, CPS_SERVICE],
 		});
 		this.name = this.#device.name ?? 'FTMS trainer';
-		this.#device.addEventListener('gattserverdisconnected', () =>
-			this.#setStatus('disconnected'),
-		);
+		// Recovery is automatic (#37): the granted device persists in-page, so a
+		// dropout re-attaches with backoff — the rider is three meters away and
+		// mid-interval, not at the keyboard.
+		this.#device.addEventListener('gattserverdisconnected', () => {
+			this.#pending?.reject(new Error('trainer disconnected'));
+			this.#pending = undefined;
+			if (this.#closed) {
+				this.#setStatus('disconnected');
+				return;
+			}
+			this.#setStatus('connecting');
+			this.#scheduleReattach();
+		});
 
-		const server = await this.#device.gatt!.connect();
+		await this.#attach();
+	}
+
+	#scheduleReattach(): void {
+		const delay = this.#retryDelayMs;
+		this.#retryDelayMs = Math.min(delay * 2, 30_000);
+		setTimeout(() => {
+			if (this.#closed || this.#status === 'connected') return;
+			void this.#attach().catch(() => this.#scheduleReattach());
+		}, delay);
+	}
+
+	async #attach(): Promise<void> {
+		const server = await this.#device!.gatt!.connect();
 		const service = await server.getPrimaryService(FTMS_SERVICE);
 
 		const bikeData = await service.getCharacteristic(INDOOR_BIKE_DATA);
@@ -229,10 +257,12 @@ export class FtmsTrainer implements Trainer {
 
 		// One grant covers every procedure until disconnect.
 		await this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
+		this.#retryDelayMs = 1000;
 		this.#setStatus('connected');
 	}
 
 	async disconnect(): Promise<void> {
+		this.#closed = true;
 		this.#device?.gatt?.disconnect();
 		this.#setStatus('disconnected');
 	}

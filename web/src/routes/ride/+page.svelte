@@ -236,6 +236,20 @@
 			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
 		},
 	]);
+	// A frozen number is worse than a warning: past 3 s without a sample the
+	// dashboard says so, persistently, while the driver reconnects (#37).
+	let nowMs = $state(Date.now());
+	$effect(() => {
+		const id = setInterval(() => (nowMs = Date.now()), 1000);
+		return () => clearInterval(id);
+	});
+	const signalLost = $derived(
+		!!session &&
+			session.state !== 'done' &&
+			!!session.sample &&
+			nowMs - session.sample.at > 3000,
+	);
+
 	const watts = $derived(session?.sample?.watts ?? 0);
 	const target = $derived(session?.target ?? 0);
 	const zone = $derived(zoneOf(watts, ftp));
@@ -533,6 +547,14 @@
 					aria-label="Flag a problem">⚑</button
 				>
 			</div>
+			{#if signalLost}
+				<p
+					class="border-z6/40 bg-z6/10 mt-2 rounded-lg border px-4 py-2.5 text-sm"
+				>
+					Trainer signal lost — reconnecting. Keep pedalling; your targets
+					resume the moment it is back.
+				</p>
+			{/if}
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
 				<p class="text-muted mt-2 text-xs">
