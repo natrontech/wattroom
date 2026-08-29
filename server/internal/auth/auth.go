@@ -275,6 +275,10 @@ type meResponse struct {
 	// the setting. A suggestion, never an application — FTP moves every
 	// workout's difficulty (docs/SPEC.md).
 	SuggestedFtp int `json:"suggestedFtp,omitempty"`
+	// The evidence behind the suggestion, for the prompt's copy.
+	Best20m int `json:"best20m,omitempty"`
+	// Which providers this account signs in with — profile-screen copy only.
+	Providers []string `json:"providers,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +291,11 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
 		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 			response.SuggestedFtp = suggested
+			response.Best20m = int(best)
 		}
+	}
+	if providers, err := s.store.Queries.ListUserProviders(r.Context(), user.ID); err == nil {
+		response.Providers = providers
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
 }

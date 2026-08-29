@@ -3,7 +3,15 @@
 		current,
 		suggested,
 		best20,
-	}: { current: number; suggested: number; best20: number } = $props();
+		onApply,
+		onKeep,
+	}: {
+		current: number;
+		suggested: number;
+		best20: number;
+		onApply?: () => void;
+		onKeep?: () => void;
+	} = $props();
 
 	const gain = $derived(Math.round(((suggested - current) / current) * 100));
 </script>
@@ -21,10 +29,12 @@
 	</p>
 	<div class="mt-4 flex gap-2">
 		<button
+			onclick={onApply}
 			class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
 			>Set FTP to {suggested} W</button
 		>
 		<button
+			onclick={onKeep}
 			class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
 			>Keep {current} W</button
 		>

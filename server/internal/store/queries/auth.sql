@@ -25,3 +25,6 @@ delete from sessions where token_hash = $1;
 
 -- name: DeleteExpiredSessions :exec
 delete from sessions where expires_at <= now();
+
+-- name: ListUserProviders :many
+select provider from identities where user_id = $1 order by created_at;
