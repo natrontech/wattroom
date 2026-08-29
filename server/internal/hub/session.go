@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // countdownSeconds is docs/SPEC.md's session-lifecycle default.
@@ -23,6 +24,8 @@ type session struct {
 	// from before the last pause.
 	startedAt time.Time
 	banked    time.Duration
+	// Parsed once at start for the live meter; nil when the JSON is junk.
+	segments []workout.Segment
 }
 
 func newSession() *session {
@@ -46,6 +49,7 @@ func (s *session) start(now time.Time) bool {
 	s.phase = "countdown"
 	s.startedAt = now
 	s.banked = 0
+	s.segments, _ = workout.Parse(s.workoutJSON)
 	return true
 }
 

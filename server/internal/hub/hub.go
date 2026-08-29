@@ -206,8 +206,15 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			State:   rm.session.state(now()),
 			Jukebox: rm.music.snapshot(),
 			Cheers:  rm.cheers,
-			Riders:  rm.metrics,
-			Roster:  make([]protocol.Rider, 0, len(rm.clients)),
+			Execution: func() map[string]float64 {
+				out := make(map[string]float64, len(rm.seen))
+				for id := range rm.seen {
+					out[id] = rm.record.execution(id)
+				}
+				return out
+			}(),
+			Riders: rm.metrics,
+			Roster: make([]protocol.Rider, 0, len(rm.clients)),
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
@@ -286,9 +293,11 @@ func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 	rm.metrics[rider.ID] = m
 	rm.seen[rider.ID] = rider
 	// The live sample is also part of the ride record; a later resend of the
-	// same seq dedupes against it.
+	// same seq dedupes against it, and it scores live at the timeline second
+	// it arrived on (#27).
 	if rm.session.phase == "running" {
-		rm.record.add(rider.ID, m)
+		state := rm.session.state(time.Now())
+		rm.record.add(rider.ID, m, rm.session.segments, float64(rider.FtpWatts), state.Elapsed)
 	}
 }
 
@@ -302,7 +311,9 @@ func (rm *room) backfill(rider protocol.Rider, samples []protocol.RiderMetrics) 
 	rm.seen[rider.ID] = rider
 	for _, m := range samples {
 		if validMetrics(m) {
-			rm.record.add(rider.ID, m)
+			// Backfilled samples have no known timeline second — recorded, not
+			// live-scored; the save-time score is the authoritative one.
+			rm.record.add(rider.ID, m, nil, 0, 0)
 		}
 	}
 }

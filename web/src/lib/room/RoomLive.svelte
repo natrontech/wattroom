@@ -344,6 +344,7 @@
 					</p>
 				{/if}
 				{#if metrics}
+					{@const exec = live.tick?.execution?.[rider.id]}
 					<div class="mt-2 flex items-baseline gap-2">
 						<span
 							class="text-watt glow-text font-display text-4xl leading-none font-bold tabular-nums"
@@ -359,6 +360,9 @@
 						Z{zone}
 						{#if metrics.cadence}· {metrics.cadence} rpm{/if}
 						{#if metrics.hr}· {metrics.hr} bpm{/if}
+						{#if exec !== undefined && shared?.phase !== 'idle'}
+							· {Math.round(exec * 100)}% exec
+						{/if}
 					</p>
 				{:else}
 					<p class="text-muted mt-3 text-xs">here, not riding</p>

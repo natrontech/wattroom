@@ -106,9 +106,11 @@ type ServerTick struct {
 	State   SessionState `json:"state"`
 	Jukebox JukeboxState `json:"jukebox"`
 	// This second's cheers, drained each tick like metrics.
-	Cheers []Cheer                 `json:"cheers,omitempty"`
-	Roster []Rider                 `json:"roster"`
-	Riders map[string]RiderMetrics `json:"riders"`
+	Cheers []Cheer `json:"cheers,omitempty"`
+	// Live execution per rider (#27) — the SPEC score so far this session.
+	Execution map[string]float64      `json:"execution,omitempty"`
+	Roster    []Rider                 `json:"roster"`
+	Riders    map[string]RiderMetrics `json:"riders"`
 }
 
 // Error tells a client why its connection or command was refused.
