@@ -240,12 +240,12 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Disconnect grace window (30 s) for elimination modes
 - ✅ Base sound set (countdowns, klaxon, elimination sting, medal fanfare), spectator cheers, rider quick-reactions
 
-**M6 — Alpha polish**
-- Strava auto-upload
-- Account export-all + delete (full purge)
-- Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.ch deployment, Grafana dashboards
-- Calibration/spindown, sensor dropout handling, UX polish
-- Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
+**M6 — Alpha polish** *(2026-08-29: everything codeable is done — feedback loop, replay fixtures, synthetic + alerts, export/purge, trainer polish, the full deploy stack (30 MB image, compose, TLS, backups). Open: #36 needs the VM and DNS, #34 needs the Strava app registered — both are user actions, not code.)*
+- ⏳ Strava auto-upload
+- ✅ Account export-all + delete (full purge)
+- ⏳ Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.ch deployment, Grafana dashboards
+- ✅ Calibration/spindown, sensor dropout handling, UX polish
+- ✅ Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
 
 **Fast-follows (explicitly not MVP):** .zwo/.erg import, intervals.icu sync, scheduling + RSVP + iCal, text chat, in-app invites, opt-in public room directory, custom sound/reaction packs per room (base set is MVP; upload-your-own comes after).
 
