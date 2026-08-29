@@ -174,3 +174,65 @@ describe('a throttled tick', () => {
 		session.stop();
 	});
 });
+
+describe('sensor arbitration inside a ride', () => {
+	/**
+	 * The ranking itself is tested in ble/arbitrate.test.ts. What matters here is
+	 * that the ride actually goes through it — targets, auto-pause, execution and
+	 * the .fit must all read the same agreed numbers rather than the raw trainer.
+	 */
+	function rideWith(
+		readings: () => Record<
+			string,
+			{ at: number; watts?: number; cadence?: number; heartRate?: number }
+		>,
+	) {
+		const trainer = new SimulatedTrainer();
+		return createRideSession({ trainer, workout, ftp: 200, readings });
+	}
+
+	it('shows the power meter rather than the trainer', async () => {
+		const session = rideWith(() => ({
+			'power-meter': { watts: 213, at: 0 },
+		}));
+		await session.start();
+		session.onSample({ watts: 200, cadence: 85, at: 0 });
+
+		expect(session.sample?.watts).toBe(213);
+		session.stop();
+	});
+
+	it('records heart rate so it reaches the .fit export', async () => {
+		const session = rideWith(() => ({
+			'heart-rate': { heartRate: 148, at: 0 },
+		}));
+		await session.start();
+		session.onSample({ watts: 200, cadence: 85, at: 0 });
+
+		expect(session.recording.at(-1)?.heartRate).toBe(148);
+		session.stop();
+	});
+
+	it('records zero heart rate when nothing reports it, which the encoder omits', async () => {
+		const session = ride();
+		await session.start();
+		session.onSample({ watts: 200, cadence: 85, at: 0 });
+
+		expect(session.recording.at(-1)?.heartRate).toBe(0);
+		session.stop();
+	});
+
+	it('auto-pauses on the cadence sensor, not the trainer estimate', async () => {
+		// Kickr cadence is firmware-estimated and drops out on sprint-to-easy
+		// transitions (RESEARCH.md §11); a real sensor saying 0 is the truth.
+		const session = rideWith(() => ({ cadence: { cadence: 0, at: 0 } }));
+		await session.start();
+		for (let i = 0; i < DEFAULTS.pauseAfterSeconds; i++) {
+			session.onSample({ watts: 0, cadence: 80, at: i * 1000 });
+			session.tick();
+		}
+
+		expect(session.state).toBe('autopaused');
+		session.stop();
+	});
+});

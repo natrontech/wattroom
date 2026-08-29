@@ -6,6 +6,13 @@ export interface TrainerSample {
 	watts: number;
 	/** rpm; 0 while coasting/stopped (drives auto-pause) */
 	cadence: number;
+	/**
+	 * bpm, when a strap is bonded to the trainer and it relays HR in its data
+	 * stream (#44). Absent is the normal case and is not an error: most riders
+	 * have no strap, and those who do may have paired it to us directly instead —
+	 * a directly-paired strap wins, see arbitrate.ts.
+	 */
+	heartRate?: number;
 	/** ms epoch */
 	at: number;
 }

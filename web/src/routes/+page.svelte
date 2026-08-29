@@ -29,6 +29,11 @@
 			>Ramp test</a
 		>
 		<a
+			href="/pair"
+			class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
+			>Sensors</a
+		>
+		<a
 			href="/history"
 			class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
 			>Rides</a

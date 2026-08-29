@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
-	import DeviceSlot, { type Slot, type SlotState } from './DeviceSlot.svelte';
+	import DeviceSlot, {
+		type Slot,
+		type SlotState,
+	} from '$lib/components/DeviceSlot.svelte';
 
 	// docs/SPEC.md / #11: trainer over FTMS or WCPS, plus BLE HRS, CPS and CSC sensors.
 	const slots: Slot[] = [
