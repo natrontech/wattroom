@@ -20,6 +20,19 @@ import (
 
 const tickInterval = time.Second
 
+// RiderRecord is one rider's finished session, handed to the saver.
+type RiderRecord struct {
+	Rider   protocol.Rider
+	Samples []protocol.RiderMetrics
+}
+
+// SessionSaver persists a closed session's rides. Defined here, where it is
+// consumed; stats.Saver implements it. Nil means "no database" and sessions
+// simply stay in memory, as before.
+type SessionSaver interface {
+	SaveSession(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
+}
+
 // Access is what the hub needs from the durable side: who is this request,
 // and are they in this room. Defined here, where it is consumed; implemented
 // by rooms.Service. The hub itself never touches the database — membership is
@@ -31,13 +44,14 @@ type Access interface {
 type Hub struct {
 	log    *slog.Logger
 	access Access
+	saver  SessionSaver
 	now    func() time.Time
 	mu     sync.Mutex
 	rooms  map[string]*room
 }
 
-func New(log *slog.Logger, access Access) *Hub {
-	return &Hub{log: log, access: access, now: time.Now, rooms: make(map[string]*room)}
+func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
+	return &Hub{log: log, access: access, saver: saver, now: time.Now, rooms: make(map[string]*room)}
 }
 
 type room struct {
@@ -49,6 +63,10 @@ type room struct {
 	session *session
 	record  *accumulator
 	music   *jukebox
+	// riders ever seen this session, so someone who left before the end still
+	// gets their ride; saved guards against persisting one session twice.
+	seen  map[string]protocol.Rider
+	saved bool
 }
 
 func newRoom(slug string) *room {
@@ -59,6 +77,7 @@ func newRoom(slug string) *room {
 		session: newSession(),
 		record:  newAccumulator(),
 		music:   newJukebox(),
+		seen:    make(map[string]protocol.Rider),
 	}
 }
 
@@ -112,7 +131,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if msg.Metrics != nil {
 			if m := *msg.Metrics; validMetrics(m) {
-				rm.setMetrics(rider.ID, m)
+				rm.setMetrics(rider, m)
 			}
 		}
 		if msg.Cheer != nil {
@@ -133,7 +152,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if len(samples) > maxBackfillBatch {
 				samples = samples[:maxBackfillBatch]
 			}
-			rm.backfill(rider.ID, samples)
+			rm.backfill(rider, samples)
 			h.log.Info("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
@@ -163,7 +182,7 @@ func (h *Hub) room(slug string) *room {
 	if !ok {
 		rm = newRoom(slug)
 		h.rooms[slug] = rm
-		go rm.run(h.now)
+		go rm.run(h.now, h.saver)
 	}
 	return rm
 }
@@ -173,7 +192,7 @@ func (h *Hub) room(slug string) *room {
 // screens even when nobody is pedalling yet.
 // ponytail: the ticker runs while the room is empty; rooms are cheap and few,
 // stop-on-empty can land with room GC if it ever shows up in a profile.
-func (rm *room) run(now func() time.Time) {
+func (rm *room) run(now func() time.Time, saver SessionSaver) {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -192,6 +211,20 @@ func (rm *room) run(now func() time.Time) {
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
+		// The session just closed: hand the ride record to the saver exactly
+		// once. Snapshot under the lock, persist outside it (hub discipline:
+		// no I/O while holding a room mutex).
+		var closing []RiderRecord
+		var closingMeta protocol.SessionState
+		if saver != nil && tick.State.Phase == "done" && !rm.saved {
+			rm.saved = true
+			closingMeta = tick.State
+			for id, rider := range rm.seen {
+				if record, ok := rm.record.byRider[id]; ok {
+					closing = append(closing, RiderRecord{Rider: rider, Samples: record.samples})
+				}
+			}
+		}
 		clients := make([]*client, 0, len(rm.clients))
 		// One roster entry per rider, however many sockets they hold — the same
 		// person on a dashboard and a phone is one presence, and duplicate ids
@@ -207,6 +240,15 @@ func (rm *room) run(now func() time.Time) {
 		rm.mu.Unlock()
 		// Stable roster order, so tiles do not shuffle every second.
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
+
+		if closing != nil {
+			// Fire and log: the tick loop never blocks on the database.
+			go func(meta protocol.SessionState, riders []RiderRecord) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				saver.SaveSession(ctx, rm.slug, meta.WorkoutName, meta.WorkoutJSON, time.UnixMilli(now().UnixMilli()-int64(meta.Elapsed)*1000), riders)
+			}(closingMeta, closing)
+		}
 
 		message := protocol.ServerMessage{Tick: &tick}
 		for _, c := range clients {
@@ -238,14 +280,15 @@ func validMetrics(m protocol.RiderMetrics) bool {
 		m.Cadence >= 0 && m.Cadence <= 250
 }
 
-func (rm *room) setMetrics(riderID string, m protocol.RiderMetrics) {
+func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	rm.metrics[riderID] = m
+	rm.metrics[rider.ID] = m
+	rm.seen[rider.ID] = rider
 	// The live sample is also part of the ride record; a later resend of the
 	// same seq dedupes against it.
 	if rm.session.phase == "running" {
-		rm.record.add(riderID, m)
+		rm.record.add(rider.ID, m)
 	}
 }
 
@@ -253,12 +296,13 @@ func (rm *room) setMetrics(riderID string, m protocol.RiderMetrics) {
 // room comes back idle, and dropping the replay then is exactly the data loss
 // this exists to prevent. The record is bounded per rider and reset on the
 // next start, so out-of-session samples cost nothing and hurt nobody.
-func (rm *room) backfill(riderID string, samples []protocol.RiderMetrics) {
+func (rm *room) backfill(rider protocol.Rider, samples []protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	rm.seen[rider.ID] = rider
 	for _, m := range samples {
 		if validMetrics(m) {
-			rm.record.add(riderID, m)
+			rm.record.add(rider.ID, m)
 		}
 	}
 }
@@ -285,6 +329,8 @@ func (rm *room) control(c protocol.Control, now time.Time) bool {
 	// A new start is a new ride: the record must not blend two sessions.
 	if c.Action == "start" {
 		rm.record.reset()
+		rm.seen = make(map[string]protocol.Rider)
+		rm.saved = false
 	}
 	return rm.session.apply(c, now)
 }

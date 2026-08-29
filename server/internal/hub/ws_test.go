@@ -67,7 +67,7 @@ func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 }
 
 func TestWebSocketRoom(t *testing.T) {
-	h := New(slog.New(slog.DiscardHandler), fakeAccess{})
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 	srv := httptest.NewServer(mux)
@@ -158,7 +158,7 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	// The same rider on two devices is one presence: duplicate roster ids are
 	// poison to keyed rendering, and this crashed the dashboard before it was
 	// deduped (found live, then pinned here).
-	h := New(slog.New(slog.DiscardHandler), fakeAccess{})
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 	srv := httptest.NewServer(mux)
