@@ -11,6 +11,7 @@
 		{ href: '/dev/rooms', label: 'Rooms' },
 		{ href: '/dev/settings', label: 'Settings' },
 		{ href: '/dev/pairing', label: 'Pairing' },
+		{ href: '/dev/hardware', label: 'Hardware' },
 		{ href: '/dev/editor', label: 'Editor' },
 		{ href: '/dev/ramp', label: 'Ramp' },
 		{ href: '/dev/modes', label: 'Modes' },
