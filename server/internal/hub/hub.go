@@ -65,8 +65,10 @@ type room struct {
 	music   *jukebox
 	// riders ever seen this session, so someone who left before the end still
 	// gets their ride; saved guards against persisting one session twice.
-	sprint *sprint
-	seen   map[string]protocol.Rider
+	sprint   *sprint
+	game     gameMode
+	lastGame *protocol.GameState
+	seen     map[string]protocol.Rider
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
@@ -163,6 +165,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(ctx, c, "forbidden", "Only the owner or a coach controls the session.")
 				continue
 			}
+			if msg.Control.Action == "game" {
+				if !rm.startGame(msg.Control.GameMode, h.now()) {
+					h.writeError(ctx, c, "invalid_request", "That game mode does not exist, or one is already running.")
+				}
+				continue
+			}
+			if msg.Control.Action == "game-end" {
+				rm.endGame()
+				continue
+			}
 			if msg.Control.Action == "sprint" {
 				// Arm sprint moments: owner/coach (matrix), only mid-session.
 				if rm.armIfRunning(h.now()) {
@@ -222,12 +234,24 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			rm.mu.Unlock()
 			continue
 		}
+		if rm.game != nil {
+			samples := make(map[string]int, len(rm.metrics))
+			for id, m := range rm.metrics {
+				samples[id] = m.Watts
+			}
+			rm.game.advance(now(), samples, rm.seen)
+			gs := rm.game.state(now())
+			rm.lastGame = &gs
+		} else {
+			rm.lastGame = nil
+		}
 		tick := protocol.ServerTick{
 			At:      now().UnixMilli(),
 			State:   rm.session.state(now()),
 			Jukebox: rm.music.snapshot(),
 			Cheers:  rm.cheers,
 			Sprint:  rm.sprint.state(now(), rm.seen),
+			Game:    rm.lastGame,
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
@@ -361,6 +385,27 @@ func (rm *room) jukebox(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.music.apply(cmd, addedBy, now)
+}
+
+// startGame begins a mode; refused while another runs (end it first).
+func (rm *room) startGame(mode string, now time.Time) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if rm.game != nil && !rm.game.done() {
+		return false
+	}
+	next := newGameMode(mode, now)
+	if next == nil {
+		return false
+	}
+	rm.game = next
+	return true
+}
+
+func (rm *room) endGame() {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	rm.game = nil
 }
 
 func (rm *room) armIfRunning(now time.Time) bool {

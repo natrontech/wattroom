@@ -42,6 +42,40 @@ export interface SprintState {
   results?: SprintScore[];
 }
 /**
+ * GameRider is one rider's standing inside a game mode.
+ */
+export interface GameRider {
+  eliminated?: boolean;
+  lives?: number /* int */;
+  score?: number /* float64 */;
+  onFront?: boolean;
+  /**
+   * The rider's personal target as a fraction of their FTP; 0 = ride free.
+   */
+  targetPct?: number /* float64 */;
+}
+/**
+ * GameState is a running game mode on the tick (#31). One generic shape for
+ * all seven modes: the client renders labels per mode, the server owns every
+ * rule. Riders execute their own %FTP targets, so mixed groups stay fair.
+ */
+export interface GameState {
+  mode: string;
+  phase: string; // "running" | "done"
+  round?: number /* int */;
+  /**
+   * The shared line as a fraction of FTP (ramp modes), the called zone
+   * (lava), or the hole target pct (golf) — mode-dependent, one at a time.
+   */
+  linePct?: number /* float64 */;
+  calledZone?: number /* int */;
+  roundEndsAtMs?: number /* int64 */;
+  meterHidden?: boolean;
+  roomDistance?: number /* float64 */;
+  riders: { [key: string]: GameRider};
+  podium?: SprintScore[];
+}
+/**
  * Control is a coach/owner command over the shared session (SPEC roles matrix:
  * pick workout, start countdown, pause/end). The server enforces the role.
  */
@@ -58,6 +92,10 @@ export interface Control {
    * without parsing the workout.
    */
   totalSeconds?: number /* int */;
+  /**
+   * For action "game": which mode to start.
+   */
+  gameMode?: string;
 }
 /**
  * Backfill is a reconnect's replay: samples the client buffered while the
@@ -164,6 +202,10 @@ export interface ServerTick {
    * Sprint moment (#30): armed/live window and, after it closes, the podium.
    */
   sprint?: SprintState;
+  /**
+   * Running game mode (#31/#32), replacing the workout timeline while on.
+   */
+  game?: GameState;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
