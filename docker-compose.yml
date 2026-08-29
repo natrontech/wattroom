@@ -9,7 +9,10 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18+ images store data under /var/lib/postgresql (major-version
+      # subdirs); mounting the pre-18 /var/lib/postgresql/data path makes the
+      # container refuse to start at all.
+      - pgdata:/var/lib/postgresql
 
   livekit:
     image: livekit/livekit-server:v1.13
