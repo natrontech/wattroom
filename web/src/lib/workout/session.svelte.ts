@@ -1,3 +1,5 @@
+import { arbitrate } from '$lib/ble/arbitrate';
+import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
 import { createTicker, type Ticker } from './ticker';
@@ -47,6 +49,12 @@ export interface RideOptions {
 	ftp: number;
 	/** Injected so tests can drive the clock; defaults to wall time. */
 	now?: () => number;
+	/**
+	 * Latest reading from each paired sensor (#11). Read per sample rather than
+	 * subscribed to, because arbitration is a snapshot question — which source wins
+	 * *right now* — and a sensor that has gone quiet has to lose on staleness.
+	 */
+	readings?: () => Partial<Record<SensorKind, SensorReading>>;
 }
 
 /**
@@ -59,6 +67,7 @@ export function createRideSession({
 	workout,
 	ftp,
 	now = Date.now,
+	readings = () => ({}),
 }: RideOptions) {
 	const segments: Segment[] = flatten(workout);
 	const total = segments.reduce(
@@ -118,13 +127,24 @@ export function createRideSession({
 		void trainer.setTargetPower(target);
 	}
 
-	function onSample(next: TrainerSample) {
+	function onSample(raw: TrainerSample) {
+		// A paired power meter outranks the trainer, and a dedicated cadence sensor
+		// outranks both (RESEARCH.md §11). Resolved here so the whole ride — targets,
+		// auto-pause, execution, the .fit — reads one agreed set of numbers.
+		const metrics = arbitrate({ trainer: raw, sensors: readings() }, raw.at);
+		const next: TrainerSample = {
+			watts: metrics.watts,
+			cadence: metrics.cadence,
+			heartRate: metrics.heartRate,
+			at: raw.at,
+		};
 		sample = next;
 		recording.push({
 			second: recordedSeconds++,
 			watts: Math.max(0, Math.round(next.watts)),
 			cadence: Math.max(0, Math.round(next.cadence)),
-			heartRate: 0,
+			// Reaches the .fit export now that a strap can be paired (#11, #44).
+			heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
 		});
 		trace.push({ t: clockSeconds, w: next.watts });
 		if (trace.length > 900) trace.shift();

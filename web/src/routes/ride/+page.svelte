@@ -16,6 +16,7 @@
 	import { byId } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
+	import { sensors } from '$lib/sensors.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { page } from '$app/state';
 
@@ -53,7 +54,12 @@
 	async function begin(trainer: Trainer) {
 		error = null;
 		try {
-			const next = createRideSession({ trainer, workout, ftp });
+			const next = createRideSession({
+				trainer,
+				workout,
+				ftp,
+				readings: () => sensors.readings,
+			});
 			await next.start();
 			session = next;
 		} catch (cause) {
@@ -89,6 +95,26 @@
 		});
 	});
 
+	const pairedCount = $derived(
+		sensors.all.filter((s) => s.status === 'connected').length,
+	);
+
+	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
+	// cell is worse than no cell: it reads as a broken strap rather than no strap.
+	const readouts = $derived([
+		{ label: 'rpm', value: String(session?.sample?.cadence ?? 0) },
+		...(session?.sample?.heartRate !== undefined
+			? [{ label: 'bpm', value: String(session.sample.heartRate) }]
+			: []),
+		{
+			label: 'block left',
+			value: formatClock(session?.info.secondsRemainingInSegment ?? 0),
+		},
+		{
+			label: 'execution',
+			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
+		},
+	]);
 	const watts = $derived(session?.sample?.watts ?? 0);
 	const target = $derived(session?.target ?? 0);
 	const zone = $derived(zoneOf(watts, ftp));
@@ -171,6 +197,13 @@
 				href="/ramp"
 				class="text-muted mt-2 inline-block text-xs underline hover:text-white"
 				>Measure it with a ramp test</a
+			>
+			<a
+				href="/pair"
+				class="text-muted mt-2 block text-xs underline hover:text-white"
+				>{pairedCount > 0
+					? `${pairedCount} sensor${pairedCount > 1 ? 's' : ''} paired`
+					: 'Pair a heart rate strap or power meter'}</a
 			>
 
 			{#if error}
@@ -301,7 +334,7 @@
 		</section>
 
 		<div class="mt-3 flex flex-wrap items-center gap-x-8 gap-y-3">
-			{#each [{ label: 'rpm', value: session.sample?.cadence ?? 0 }, { label: 'block left', value: formatClock(session.info.secondsRemainingInSegment) }, { label: 'execution', value: `${Math.round(session.execution * 100)}%` }] as readout (readout.label)}
+			{#each readouts as readout (readout.label)}
 				<div>
 					<span
 						class="font-display text-xl leading-none font-semibold tabular-nums"

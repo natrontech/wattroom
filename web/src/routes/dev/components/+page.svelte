@@ -1,6 +1,6 @@
 <script lang="ts">
 	import MedalCard from '../medal/MedalCard.svelte';
-	import DeviceSlot from '../pairing/DeviceSlot.svelte';
+	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
 	import FaultBanner from '../room/FaultBanner.svelte';
 	import IntervalStrip from '../room/IntervalStrip.svelte';
 	import PlayerTile from '../room/PlayerTile.svelte';

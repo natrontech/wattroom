@@ -131,6 +131,8 @@ export class FtmsTrainer implements Trainer {
 				cb({
 					watts: data.watts,
 					cadence: Math.round(data.cadence ?? 0),
+					// Already parsed out of Indoor Bike Data; it used to stop here (#44).
+					heartRate: data.heartRate,
 					at: Date.now(),
 				});
 			}
