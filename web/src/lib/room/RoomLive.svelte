@@ -14,6 +14,7 @@
 	import { wireMetrics } from '$lib/room/wire';
 	import { createRoomAv } from '$lib/room/av.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
+	import { play, setDucked } from '$lib/sound/cues';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
@@ -59,6 +60,34 @@
 	}
 	const shared = $derived(live.tick?.state);
 	const roster = $derived(live.tick?.roster ?? []);
+
+	// Sounds mix under voice (#33): the same active-speaker signal that ducks
+	// the jukebox pulls the cue bus down too.
+	$effect(() => {
+		setDucked(
+			Object.entries(av.speaking).some(
+				([id, active]) => active && id !== account.me?.id,
+			),
+		);
+	});
+
+	// The shared countdown announces its last three seconds and the gun —
+	// riders are clipping in, not watching (#33).
+	let heardCount = -1;
+	$effect(() => {
+		if (shared?.phase !== 'countdown') {
+			if (shared?.phase === 'running' && heardCount > 0) {
+				heardCount = -1;
+				play('go');
+			}
+			return;
+		}
+		const left = shared.countdownRemaining ?? 0;
+		if (left <= 3 && left > 0 && left !== heardCount) {
+			heardCount = left;
+			play('countdown');
+		}
+	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	let pickedId = $state(library[0].id);
