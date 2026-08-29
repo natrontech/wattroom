@@ -179,3 +179,53 @@ func TestProvidersFromEnv(t *testing.T) {
 		t.Fatalf("wrong callback: %s", got["github"].config.RedirectURL)
 	}
 }
+
+func TestDevLoginGated(t *testing.T) {
+	// Absent by default — the door only exists when explicitly opened.
+	if _, ok := providersFromEnv("http://localhost:8080")["dev"]; ok {
+		t.Fatalf("dev provider present without WATTROOM_DEV_LOGIN")
+	}
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	if _, ok := providersFromEnv("http://localhost:8080")["dev"]; !ok {
+		t.Fatalf("dev provider missing with WATTROOM_DEV_LOGIN=1")
+	}
+}
+
+func TestDevLoginCreatesSession(t *testing.T) {
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	s := testService(t)
+	s.providers = providersFromEnv("http://localhost:8080")
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(),
+			"delete from users where id = (select user_id from identities where provider = 'dev')")
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start", nil)
+	req.SetPathValue("provider", "dev")
+	w := httptest.NewRecorder()
+	s.handleStart(w, req)
+	if w.Code != http.StatusFound {
+		t.Fatalf("dev login: %d %s", w.Code, w.Body.String())
+	}
+	cookie := w.Result().Cookies()
+	if len(cookie) != 1 || cookie[0].Name != sessionCookie {
+		t.Fatalf("no session cookie from dev login")
+	}
+	authed := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+	authed.AddCookie(cookie[0])
+	user, ok := s.User(authed)
+	if !ok || user.DisplayName != "Dev Rider" {
+		t.Fatalf("dev session did not resolve (ok=%v)", ok)
+	}
+	// Second login reuses the same user — no rider multiplication.
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start", nil)
+	req2.SetPathValue("provider", "dev")
+	s.handleStart(w2, req2)
+	var count int
+	_ = s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from identities where provider = 'dev'").Scan(&count)
+	if count != 1 {
+		t.Fatalf("dev login multiplied identities: %d", count)
+	}
+}

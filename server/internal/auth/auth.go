@@ -48,12 +48,16 @@ type Service struct {
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
 func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Service {
-	return &Service{
+	svc := &Service{
 		store:     st,
 		log:       log,
 		providers: providersFromEnv(baseURL),
 		secure:    secure,
 	}
+	if _, ok := svc.providers["dev"]; ok {
+		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
+	}
+	return svc
 }
 
 // Register mounts every auth route on mux.
@@ -70,7 +74,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 // buttons only for what will actually work (capability gating).
 func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 	ids := make([]string, 0, len(s.providers))
-	for _, id := range []string{"google", "github", "strava"} {
+	for _, id := range []string{"google", "github", "strava", "dev"} {
 		if _, ok := s.providers[id]; ok {
 			ids = append(ids, id)
 		}
@@ -85,6 +89,21 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			"That sign-in provider is not configured on this server.")
 		return
 	}
+	// The dev provider skips OAuth entirely; same identity + session machinery.
+	if p.id == "dev" {
+		user, err := s.upsert(r, p, identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}, &oauth2.Token{})
+		if err == nil {
+			err = s.startSession(w, r, user.ID)
+		}
+		if err != nil {
+			s.log.Error("dev login failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Dev login failed. Check the server log.")
+			return
+		}
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
 	state := randomToken()
 	s.setCookie(w, stateCookie, state, stateTTL)
 	http.Redirect(w, r, p.config.AuthCodeURL(state), http.StatusFound)
@@ -367,4 +386,3 @@ func hash(token string) []byte {
 	sum := sha256.Sum256([]byte(token))
 	return sum[:]
 }
-
