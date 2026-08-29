@@ -24,6 +24,8 @@
 		role?: string;
 		members?: Member[];
 		medals?: Medal[];
+		streakWeeks?: number;
+		monthKj?: number;
 	}
 
 	void account.load();
@@ -122,6 +124,17 @@
 			<div
 				class="border-muted/15 bg-surface-raised mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border px-5 py-4"
 			>
+				{#if (room.streakWeeks ?? 0) > 0 || (room.monthKj ?? 0) > 0}
+					<div>
+						<span class="text-muted text-[10px] tracking-wider uppercase"
+							>crew streak</span
+						>
+						<p class="font-display text-sm font-bold">
+							{room.streakWeeks} wk · {((room.monthKj ?? 0) / 1000).toFixed(1)} MJ
+							this month
+						</p>
+					</div>
+				{/if}
 				<div>
 					<span class="text-muted text-[10px] tracking-wider uppercase"
 						>invite link</span

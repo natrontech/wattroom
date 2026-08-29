@@ -28,3 +28,21 @@ join users u on u.id = m.user_id
 where m.room_id = $1
 order by m.awarded_at desc
 limit $2;
+
+-- name: ListUserRideWeeks :many
+-- Distinct ISO weeks with at least one ride, newest first — the streak input.
+select distinct date_trunc('week', started_at)::date as week
+from rides where user_id = $1
+order by week desc
+limit 60;
+
+-- name: ListRoomRideWeeks :many
+select distinct date_trunc('week', started_at)::date as week
+from rides where room_id = $1
+order by week desc
+limit 60;
+
+-- name: RoomMonthKj :one
+-- The collective challenge number: this month's kJ, together.
+select coalesce(sum(kj), 0)::bigint from rides
+where room_id = $1 and started_at >= date_trunc('month', now());
