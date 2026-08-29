@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock, type Fault } from './mockRoom.svelte';
+	import { formatClock, type Fault } from '$lib/room/mockcompat';
 
 	let {
 		fault,

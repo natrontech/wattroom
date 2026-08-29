@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { JukeboxState } from '$lib/protocol';
+	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 
 	// The synced YouTube jukebox (#23). Hard TOS constraints (WATTROOM.md,
 	// YouTube RMF): the player tile is ≥200×200, always visible while media
@@ -128,39 +129,12 @@
 	});
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
-	function videoIdFrom(input: string): string | null {
-		const trimmed = input.trim();
-		if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
-		try {
-			const u = new URL(trimmed);
-			const v = u.searchParams.get('v');
-			if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
-			const last = u.pathname.split('/').filter(Boolean).pop() ?? '';
-			if (/^[A-Za-z0-9_-]{11}$/.test(last)) return last;
-		} catch {
-			/* not a URL */
-		}
-		return null;
-	}
-
 	async function addFromUrl() {
 		addError = null;
-		const videoId = videoIdFrom(url);
-		if (!videoId) {
+		if (!(await addYouTubeUrl(url, send))) {
 			addError = 'That does not look like a YouTube link or video id.';
 			return;
 		}
-		// oEmbed is keyless and gives the title; failing it costs only the label.
-		let title = videoId;
-		try {
-			const res = await fetch(
-				`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
-			);
-			if (res.ok) title = (await res.json()).title ?? videoId;
-		} catch {
-			/* title stays the id */
-		}
-		send('add', videoId, title);
 		url = '';
 	}
 </script>

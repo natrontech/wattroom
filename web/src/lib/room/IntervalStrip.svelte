@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock, type Block } from './mockRoom.svelte';
+	import { formatClock, type Block } from '$lib/room/mockcompat';
 
 	let {
 		block,

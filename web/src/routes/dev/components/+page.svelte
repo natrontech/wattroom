@@ -1,18 +1,19 @@
 <script lang="ts">
 	import MedalCard from '../medal/MedalCard.svelte';
 	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
-	import FaultBanner from '../room/FaultBanner.svelte';
-	import IntervalStrip from '../room/IntervalStrip.svelte';
-	import PlayerTile from '../room/PlayerTile.svelte';
-	import RiderTile from '../room/RiderTile.svelte';
+	import FaultBanner from '$lib/room/FaultBanner.svelte';
+	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
+	import PlayerTile from '$lib/room/PlayerTile.svelte';
+	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SprintMoment from '../room/SprintMoment.svelte';
-	import TargetWidget from '../room/TargetWidget.svelte';
+	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '../Skeleton.svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
 
 	// Frozen sample riders: a gallery should not move while you read it.
 	function rider(over: Partial<MockRider> = {}): MockRider {
 		return {
+			id: 'sara',
 			name: 'Sara',
 			ftp: 285,
 			kg: 66,
@@ -36,6 +37,7 @@
 	}
 
 	const you = rider({
+		id: 'demo',
 		name: 'You',
 		you: true,
 		ftp: 265,

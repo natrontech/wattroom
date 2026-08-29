@@ -8,7 +8,7 @@
 		fillPct,
 		targetState,
 		type MockRider,
-	} from './mockRoom.svelte';
+	} from '$lib/room/mockcompat';
 
 	let {
 		you,

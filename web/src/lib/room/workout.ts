@@ -1,5 +1,5 @@
 import { flatten } from '$lib/workout/engine';
-import type { Segment } from '$lib/workout/types';
+import type { Segment, Workout } from '$lib/workout/types';
 import { validateWorkout } from '$lib/workout/validate';
 
 /**
@@ -11,11 +11,21 @@ import { validateWorkout } from '$lib/workout/validate';
 export function parseSharedSegments(
 	workoutJson: string | undefined,
 ): Segment[] {
-	if (!workoutJson) return [];
+	return parseSharedWorkout(workoutJson).segments;
+}
+
+/** Workout and segments together — the block strip needs step types for labels. */
+export function parseSharedWorkout(workoutJson: string | undefined): {
+	workout: Workout | null;
+	segments: Segment[];
+} {
+	if (!workoutJson) return { workout: null, segments: [] };
 	try {
 		const checked = validateWorkout(JSON.parse(workoutJson));
-		return checked.ok ? flatten(checked.workout) : [];
+		return checked.ok
+			? { workout: checked.workout, segments: flatten(checked.workout) }
+			: { workout: null, segments: [] };
 	} catch {
-		return [];
+		return { workout: null, segments: [] };
 	}
 }

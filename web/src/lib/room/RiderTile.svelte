@@ -7,19 +7,25 @@
 		type MockRider,
 		type Phase,
 		zoneOf,
-	} from './mockRoom.svelte';
+	} from '$lib/room/mockcompat';
 
 	let {
 		rider,
 		phase,
 		stretch = false,
 		metrics = [],
+		videoKey = 0,
+		videoAttach,
 	}: {
 		rider: MockRider;
 		phase: Phase;
 		stretch?: boolean;
 		/** Rider-chosen extras; watts is never optional. */
 		metrics?: TileMetric[];
+		/** Bumped when the rider's live video track changes (LiveKit). */
+		videoKey?: number;
+		/** Attaches the live track into the tile; the mock gradient stands in without it. */
+		videoAttach?: (node: HTMLElement) => void;
 	} = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
@@ -57,7 +63,11 @@
 		? 'ring-neon shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-neon)_35%,transparent)]'
 		: 'ring-white/10'}"
 >
-	{#if rider.cameraOn}
+	{#if rider.cameraOn && videoAttach}
+		{#key videoKey}
+			<div class="absolute inset-0" {@attach (node) => videoAttach(node)}></div>
+		{/key}
+	{:else if rider.cameraOn}
 		<!-- Stand-in for a LiveKit track: real feeds are brighter and busier than a flat fill. -->
 		<div
 			class="absolute inset-0"

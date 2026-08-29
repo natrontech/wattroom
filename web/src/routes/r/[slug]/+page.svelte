@@ -155,7 +155,11 @@
 
 			<!-- Keyed: a different room is a different socket, not a prop change. -->
 			{#key room.slug}
-				<RoomLive slug={room.slug} role={room.role ?? 'member'} />
+				<RoomLive
+					slug={room.slug}
+					role={room.role ?? 'member'}
+					roomName={room.name}
+				/>
 			{/key}
 
 			<a
