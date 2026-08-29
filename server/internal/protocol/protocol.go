@@ -46,6 +46,9 @@ type Rider struct {
 	Name     string `json:"name"`
 	Role     string `json:"role"`
 	FtpWatts int    `json:"ftpWatts"`
+	// For w/kg on room screens — room-scoped like FTP, and for the same reason:
+	// every contest in docs/SPEC.md is scored on it.
+	WeightKg int `json:"weightKg"`
 }
 
 // SessionState is the shared timeline, server-owned. Late joiners need no

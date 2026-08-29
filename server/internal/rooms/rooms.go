@@ -449,6 +449,7 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error
 		Name:     user.DisplayName,
 		Role:     m.Role,
 		FtpWatts: int(user.FtpWatts),
+		WeightKg: int(user.WeightKg),
 	}, nil
 }
 

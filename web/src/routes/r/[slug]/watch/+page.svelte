@@ -1,0 +1,141 @@
+<script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { page } from '$app/state';
+	import Logo from '$lib/brand/Logo.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { createRoomLive } from '$lib/room/live.svelte';
+	import { parseSharedSegments } from '$lib/room/workout';
+
+	// The phone spectator (#20): read-only, any mobile browser — iOS Safari is
+	// the whole point, since Web Bluetooth will never exist there. No BLE, no
+	// publishing, and per the roles matrix nothing to press yet (cheers land
+	// with their own issue).
+
+	// Keyed remount per slug is unnecessary here — the page is a leaf.
+	// svelte-ignore state_referenced_locally
+	const live = createRoomLive(page.params.slug ?? '');
+	onDestroy(() => live.close());
+
+	const shared = $derived(live.tick?.state);
+	const running = $derived(
+		shared?.phase === 'running' ||
+			shared?.phase === 'paused' ||
+			shared?.phase === 'countdown',
+	);
+	const segments = $derived(parseSharedSegments(shared?.workoutJson));
+
+	// Ranked by %FTP, the fair ordering for mixed groups — same rule as every
+	// contest in docs/SPEC.md.
+	const ranked = $derived(
+		(live.tick?.roster ?? [])
+			.map((rider) => ({
+				...rider,
+				metrics: live.tick?.riders?.[rider.id],
+			}))
+			.sort(
+				(a, b) =>
+					(b.metrics?.watts ?? 0) / Math.max(1, b.ftpWatts) -
+					(a.metrics?.watts ?? 0) / Math.max(1, a.ftpWatts),
+			),
+	);
+</script>
+
+<div class="bg-surface flex min-h-dvh flex-col text-white">
+	<header class="flex items-center gap-2.5 border-b border-white/5 px-4 py-3">
+		<Logo size={22} live={shared?.phase === 'running'} />
+		<div class="min-w-0">
+			<p class="truncate text-sm font-medium">/r/{page.params.slug}</p>
+			<p class="text-muted truncate text-[11px]">
+				{#if live.status !== 'live'}
+					{live.status === 'connecting'
+						? 'connecting…'
+						: 'connection lost — reconnecting…'}
+				{:else if shared?.phase === 'countdown'}
+					{shared.workoutName} starts in {shared.countdownRemaining}…
+				{:else if running}
+					{shared?.workoutName}{shared?.phase === 'paused' ? ' · paused' : ''}
+				{:else}
+					in the lounge
+				{/if}
+			</p>
+		</div>
+		{#if running && shared}
+			<span
+				class="font-display ml-auto text-lg leading-none font-bold tabular-nums"
+				>{formatClock(shared.elapsed)}</span
+			>
+		{/if}
+	</header>
+
+	{#if running}
+		<ul class="flex-1 overflow-y-auto">
+			{#each ranked as rider (rider.id)}
+				{@const watts = rider.metrics?.watts ?? 0}
+				{@const zone = zoneOf(watts, rider.ftpWatts)}
+				<li class="border-b border-white/5 px-4 py-2.5">
+					<div class="flex items-baseline gap-2">
+						<span class="truncate text-sm">{rider.name}</span>
+						{#if rider.role !== 'member'}
+							<span class="text-muted text-[9px] tracking-wider uppercase"
+								>{rider.role}</span
+							>
+						{/if}
+						<span
+							class="font-display ml-auto text-2xl leading-none font-bold tabular-nums"
+							>{watts}</span
+						>
+						<span class="text-muted text-[10px]">W</span>
+					</div>
+					<div class="mt-1.5 flex items-center gap-2">
+						<div
+							class="bg-surface-raised h-1.5 flex-1 overflow-hidden rounded-full"
+						>
+							<div
+								class="h-full transition-[width] duration-500 {ZONE_BG[zone]}"
+								style="width: {fillPct(watts, rider.ftpWatts)}%"
+							></div>
+						</div>
+						<span
+							class="text-muted w-16 text-right font-mono text-[10px] tabular-nums"
+							>{rider.weightKg > 0 ? (watts / rider.weightKg).toFixed(1) : '–'} w/kg</span
+						>
+					</div>
+				</li>
+			{:else}
+				<li class="text-muted px-4 py-6 text-center text-xs">
+					Nobody is connected right now.
+				</li>
+			{/each}
+		</ul>
+
+		{#if segments.length > 0 && shared}
+			<div class="border-t border-white/5">
+				<IntervalGraph
+					{segments}
+					total={shared.totalSeconds ?? 0}
+					elapsed={shared.elapsed}
+					ftp={ranked[0]?.ftpWatts ?? 200}
+					trace={[]}
+					compact
+				/>
+			</div>
+		{/if}
+	{:else}
+		<!-- Empty states teach, never apologise (.claude/rules/ux.md). -->
+		<div
+			class="flex flex-1 flex-col items-center justify-center px-8 text-center"
+		>
+			<Logo size={48} />
+			<p class="mt-5 text-sm">Nobody's riding yet.</p>
+			<p class="text-muted mt-2 text-xs leading-relaxed">
+				You'll see everyone's live power here the moment the coach starts the
+				session.
+			</p>
+		</div>
+	{/if}
+
+	<p class="text-muted border-t border-white/5 p-3 text-center text-[10px]">
+		Spectating — read-only. Bring a laptop to ride.
+	</p>
+</div>

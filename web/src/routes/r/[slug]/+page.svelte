@@ -133,6 +133,12 @@
 				<RoomLive slug={room.slug} role={room.role ?? 'member'} />
 			{/key}
 
+			<a
+				href="/r/{room.slug}/watch"
+				class="text-muted mt-4 inline-block text-xs underline hover:text-white"
+				>Watch on a phone (read-only)</a
+			>
+
 			<h2 class="text-muted mt-8 text-[10px] tracking-wider uppercase">
 				Members
 			</h2>

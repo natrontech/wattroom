@@ -10,9 +10,8 @@
 	import { formatClock, zoneOf } from '$lib/components/zones';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { flatten, targetAt } from '$lib/workout/engine';
+	import { parseSharedSegments } from '$lib/room/workout';
 	import { library } from '$lib/workout/library';
-	import { validateWorkout } from '$lib/workout/validate';
-	import type { Segment } from '$lib/workout/types';
 
 	let { slug, role }: { slug: string; role: string } = $props();
 
@@ -58,17 +57,7 @@
 	let seq = 0;
 	let unsubscribe: (() => void) | undefined;
 
-	// The workout arrives opaquely over the wire — validated like any other
-	// untrusted input before flatten() recurses into it.
-	const segments = $derived.by((): Segment[] => {
-		if (!shared?.workoutJson) return [];
-		try {
-			const checked = validateWorkout(JSON.parse(shared.workoutJson));
-			return checked.ok ? flatten(checked.workout) : [];
-		} catch {
-			return [];
-		}
-	});
+	const segments = $derived(parseSharedSegments(shared?.workoutJson));
 
 	const myTarget = $derived.by(() => {
 		if (!shared || shared.phase !== 'running' || segments.length === 0)
