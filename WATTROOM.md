@@ -99,12 +99,12 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 ### Trainer & sensor layer
 
-- **BLE FTMS** via Web Bluetooth (Chrome/Edge desktop + Android; iOS is a known, accepted gap). Test hardware: Wahoo Kickr Core, Kickr v2.
+- **BLE FTMS** via Web Bluetooth (Chrome/Edge desktop + Android; iOS is a known, accepted gap). Test hardware: Wahoo **Kickr Core** and **Kickr Core v2** — both FTMS ([ADR-0007](docs/decisions/0007-alpha-hardware-is-all-ftms.md)). Write the model out in full: "v2" alone is ambiguous and has already caused one wrong scoping decision.
 - ERG mode via FTMS Control Point (Set Target Power, op 0x05); slope via Set Indoor Bike Simulation (op 0x11, grade as signed % at 0.01 resolution) — plus **live ERG↔slope switching** for sprint moments (spec-legal under one Request Control grant; verified against FTMS v1.0).
 - **Control-point writes must be strictly serialized**: every procedure completes via an indicated Response Code (0x80), and a write while one is in progress errors out un-queued. The FTMS layer needs a write queue that waits for each indication — no fire-and-forget.
-- **Two trainer drivers in MVP** behind one `Trainer` interface (setTargetPower / setSim / data streams): **FtmsTrainer** (Kickr Core, fw ≥1.4.8 — fixes a 2 kW spike on exactly the ERG↔SIM switch sprint moments use) and **WcpsTrainer** for the **Kickr v2 (2016)**, which never received FTMS and speaks Wahoo's proprietary characteristic (`A026E005-…` on the Cycling Power Service): unlock `[0x20 0xEE 0xFC]`, ERG op 0x42, sim/grade ops 0x43/0x46 — full protocol map in [docs/RESEARCH.md §9](docs/RESEARCH.md). Alpha hardware = one Core + several v2s, so WCPS is M1 scope, not a fallback.
+- **One trainer driver in MVP** behind the `Trainer` interface (setTargetPower / setSim / data streams): **FtmsTrainer** (Kickr Core, fw ≥1.4.8 — fixes a 2 kW spike on exactly the ERG↔SIM switch sprint moments use). **WcpsTrainer** — for the **Kickr v2 (2016)**, which never received FTMS and speaks Wahoo's proprietary characteristic (`A026E005-…` on the Cycling Power Service): unlock `[0x20 0xEE 0xFC]`, ERG op 0x42, sim/grade ops 0x43/0x46 — is **backlog, not M1** ([ADR-0007](docs/decisions/0007-alpha-hardware-is-all-ftms.md) supersedes the original scoping): the alpha fleet is one Kickr Core plus several **Kickr Core v2**, all FTMS, so no trainer on this team needs it. Full protocol map stays in [docs/RESEARCH.md §9](docs/RESEARCH.md) for whoever eventually brings a pre-FTMS unit.
 - Detection: request both services (FTMS 0x1826 + CPS 0x1818) in `optionalServices`; FTMS wins when present. Sprint moments work on both drivers (0x05↔0x11 vs 0x42↔0x46).
-- **Kickr v2 provides no reliable cadence** — v2 riders pair a BLE cadence sensor (CSC, already in scope); the spiral-of-death guard falls back to power-collapse detection when cadence is absent. Spindown/calibration defers to the Wahoo app for MVP (standard third-party practice).
+- **Some trainers report no reliable cadence** — those riders pair a BLE cadence sensor (CSC, already in scope); the spiral-of-death guard falls back to power-collapse detection when cadence is absent. That fallback is built and tested and stays regardless of which trainers are in the fleet — it is broader than any one model. Spindown/calibration defers to the Wahoo app for MVP (standard third-party practice).
 - Standard BLE profiles for HR straps, power meters, cadence/speed sensors.
 - **Trainer reconnect mid-interval is MVP scope, not polish** — a dropped ERG target at minute 18 of 20 kills trust permanently.
 - **Player controls (MVP)**: intensity bias ±% mid-ride, skip/extend interval, spiral-of-death guard (cadence collapse in ERG → temporarily release target), auto-pause (stop pedaling → pause after a few seconds, resume → countdown and continue). In group rides the **coach owns the shared timeline**; skip/extend/pause apply to solo riders only — a group member who stops just falls behind on their own targets while the room timer runs.
@@ -198,10 +198,9 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - Monorepo scaffold: `/server` (Go), `/web` (SvelteKit + Tailwind), docker-compose dev env (Postgres + LiveKit + server + Vite) with seeded data
 - CI from commit one: lint, test, build for Go and web on every PR
 - Trainer simulator (fake FTMS device)
-- Real hardware: connect the Kickr Core via Web Bluetooth (FTMS), read power, set ERG target, ride a hardcoded interval workout; enumerate GATT services on a Kickr v2 to confirm the WCPS protocol map before M1
+- Real hardware: connect the Kickr Core via Web Bluetooth (FTMS), read power, set ERG target, ride a hardcoded interval workout; enumerate GATT services on the team's trainers (done — [ADR-0007](docs/decisions/0007-alpha-hardware-is-all-ftms.md))
 
 **M1 — Solo workout player**
-- WcpsTrainer driver (Kickr v2 support) — verify protocol against the real unit first
 - Workout JSON format, built-in editor (warmup/steady/intervals/repeats/ramps/cooldown, %FTP or watts)
 - Curated library (~25 workouts)
 - Interval graph UI, FTP scaling, HR/power/cadence pairing, reconnect handling
