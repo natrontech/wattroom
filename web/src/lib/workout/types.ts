@@ -17,7 +17,12 @@ export interface SteadyStep {
 export interface RepeatStep {
 	type: 'repeat';
 	times: number;
-	steps: (RampStep | SteadyStep | SprintStep)[];
+	/**
+	 * Repeats nest. `flatten()` has always recursed, but this type used to forbid it,
+	 * which made over-unders — sets of alternating efforts — impossible to express
+	 * without writing every rep out by hand.
+	 */
+	steps: WorkoutStep[];
 }
 
 /** Armed sprint moment: no ERG target — trainer flips to slope mode for the window. */

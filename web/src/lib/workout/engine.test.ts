@@ -80,3 +80,41 @@ describe('targetAt', () => {
 		expect(empty.targetWatts).toBeNull();
 	});
 });
+
+describe('nested repeats', () => {
+	it('expands a set of sets in order', () => {
+		// Over-unders: 2 sets of (3 × [10s over, 20s under]) with a 30s float between.
+		const segments = flatten({
+			name: 'nested',
+			steps: [
+				{
+					type: 'repeat',
+					times: 2,
+					steps: [
+						{
+							type: 'repeat',
+							times: 3,
+							steps: [
+								{ type: 'steady', seconds: 10, target: 1.05 },
+								{ type: 'steady', seconds: 20, target: 0.9 },
+							],
+						},
+						{ type: 'steady', seconds: 30, target: 0.5 },
+					],
+				},
+			],
+		});
+
+		// 2 × (3 × 2 + 1) = 14 segments, laid out end to end with no gaps.
+		expect(segments).toHaveLength(14);
+		expect(segments[0].startSeconds).toBe(0);
+		for (let i = 1; i < segments.length; i++) {
+			expect(segments[i].startSeconds).toBe(
+				segments[i - 1].startSeconds + segments[i - 1].seconds,
+			);
+		}
+		// 2 × (3 × 30 + 30) = 240s total.
+		const last = segments.at(-1)!;
+		expect(last.startSeconds + last.seconds).toBe(240);
+	});
+});

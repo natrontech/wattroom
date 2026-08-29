@@ -5,6 +5,7 @@
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock, ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { durationSeconds } from '$lib/workout/engine';
 	import {
 		createRideSession,
 		DEFAULTS,
@@ -12,35 +13,27 @@
 	} from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
 	import { play } from '$lib/sound/cues';
+	import { byId } from '$lib/workout/library';
+	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { page } from '$app/state';
 
-	// ponytail: two built-ins until the library lands (#12). "Openers" is short on
-	// purpose — a real pre-ride activation, and what the e2e smoke rides.
-	const workouts: Workout[] = [
-		{
-			name: 'Openers',
-			steps: [
-				{ type: 'warmup', seconds: 60, from: 0.4, to: 0.65 },
-				{ type: 'steady', seconds: 60, target: 0.75 },
-			],
-		},
-		{
-			name: 'Sweet Spot 2×20',
-			steps: [
-				{ type: 'warmup', seconds: 600, from: 0.45, to: 0.7 },
-				{
-					type: 'repeat',
-					times: 2,
-					steps: [
-						{ type: 'steady', seconds: 1200, target: 0.9 },
-						{ type: 'steady', seconds: 300, target: 0.55 },
-					],
-				},
-				{ type: 'cooldown', seconds: 300, from: 0.6, to: 0.4 },
-			],
-		},
-	];
-
-	let workout = $state<Workout>(workouts[1]);
+	// The library is the source of workouts now; ?w=<id> selects one, and the default
+	// is the session most people ride.
+	const custom = createCustomStore();
+	const requested = page.url.searchParams.get('w') ?? '';
+	const saved = custom.byId(requested);
+	const selected = $derived(
+		byId(requested) ??
+			(saved
+				? {
+						id: saved.id,
+						focus: 'Custom' as const,
+						summary: 'Your own workout.',
+						workout: saved.workout,
+					}
+				: byId('sweet-spot-2x20')!),
+	);
+	const workout = $derived(selected.workout);
 
 	// FTP lives in the profile once accounts exist (#16); manual entry is the MVP fallback.
 	let ftp = $state(265);
@@ -123,32 +116,17 @@
 			<Logo size={56} />
 			<h1 class="font-display mt-6 text-2xl font-bold">{workout.name}</h1>
 			<p class="text-muted mt-2 text-sm">
-				{formatClock(
-					workout.steps.reduce(
-						(t, s) =>
-							t +
-							('times' in s
-								? s.times * s.steps.reduce((n, i) => n + i.seconds, 0)
-								: s.seconds),
-						0,
-					),
-				)} · targets scale to your FTP
+				{formatClock(durationSeconds(workout))} · targets scale to your FTP
 			</p>
 
-			<div class="mt-8 flex gap-2">
-				{#each workouts as option (option.name)}
-					<button
-						onclick={() => (workout = option)}
-						class="flex-1 rounded border px-3 py-2 text-xs {workout.name ===
-						option.name
-							? 'bg-surface-raised border-white/40 text-white'
-							: 'border-muted/20 text-muted hover:text-white'}"
-						>{option.name}</button
-					>
-				{/each}
-			</div>
+			<p class="text-muted mt-4 text-xs">{selected.summary}</p>
+			<a
+				href="/workouts"
+				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+				>Choose a different workout</a
+			>
 
-			<label class="mt-4 block text-left">
+			<label class="mt-6 block text-left">
 				<span class="text-muted text-[10px] tracking-wider uppercase"
 					>your FTP (watts)</span
 				>

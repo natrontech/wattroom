@@ -56,6 +56,8 @@ Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout →
 
 Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. `freeride` step type for slope-mode segments comes with game modes.
 
+`repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
+
 ## Power zones (Coggan 7-zone, % of FTP)
 
 Used by Floor is Lava's called zones, time-in-zone scoring, and the interval-graph colour ramp.

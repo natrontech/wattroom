@@ -10,10 +10,9 @@ import { expect, test } from '@playwright/test';
  * purpose: compressing the clock would stop testing the thing that broke before.
  */
 test('a simulated ride produces a .fit file', async ({ page }) => {
-	await page.goto('/ride');
-
-	// "Openers" is two minutes; the other built-in is an hour.
-	await page.getByRole('button', { name: 'Openers' }).click();
+	// ?w= selects from the curated library; "openers" is the two-minute one.
+	await page.goto('/ride?w=openers');
+	await expect(page.getByRole('heading', { name: 'Openers' })).toBeVisible();
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
 
 	// The ride is live once power is arriving.
