@@ -10,7 +10,7 @@
 	} from '$lib/components/zones';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import { byId } from '$lib/workout/library';
+	import { byId, library } from '$lib/workout/library';
 	import type {
 		RampStep,
 		SteadyStep,
@@ -111,6 +111,14 @@
 		selected = null;
 	}
 
+	// Loading replaces the sheet with a copy — the library stays pristine and a
+	// saved custom never edits in place from here (that is ?w=).
+	function load(next: Workout, asCopy: boolean) {
+		workout = structuredClone(next);
+		if (asCopy) workout.name = `${next.name} (copy)`;
+		selected = null;
+	}
+
 	function save() {
 		const result = custom.save(
 			$state.snapshot(workout) as Workout,
@@ -164,7 +172,47 @@
 		<IntervalGraph {segments} {total} elapsed={0} ftp={FTP} trace={[]} />
 	</div>
 
-	<div class="mt-4 grid gap-4 lg:grid-cols-[1fr_300px]">
+	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
+		<aside>
+			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">library</h2>
+			<ul class="mt-3 space-y-1">
+				{#each custom.all as entry (entry.id)}
+					<li>
+						<button
+							onclick={() => load(entry.workout, entry.id !== editingId)}
+							class="w-full rounded px-2.5 py-2 text-left text-sm {workout.name ===
+							entry.workout.name
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}"
+						>
+							{entry.workout.name}
+							<span
+								class="text-muted/60 block font-mono text-[10px] tabular-nums"
+								>{formatClock(durationSeconds(entry.workout))} · yours</span
+							>
+						</button>
+					</li>
+				{/each}
+				{#each library as entry (entry.id)}
+					<li>
+						<button
+							onclick={() => load(entry.workout, true)}
+							class="w-full rounded px-2.5 py-2 text-left text-sm {workout.name ===
+							entry.workout.name
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}"
+						>
+							{entry.workout.name}
+							<span
+								class="text-muted/60 block font-mono text-[10px] tabular-nums"
+								>{formatClock(durationSeconds(entry.workout))}</span
+							>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</aside>
+
 		<section>
 			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">steps</h2>
 			<ul class="mt-3 space-y-1.5">
