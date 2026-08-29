@@ -62,6 +62,17 @@
 }
 
 /*
+ * Base surface and text, set once on body rather than per route. Every screen was
+ * repeating `bg-surface text-white` on its own wrapper, and the two that forgot
+ * rendered black headings on a dark card — invisible, and only on those routes.
+ */
+body {
+	background: var(--color-surface);
+	color: #fff;
+	min-height: 100vh;
+}
+
+/*
  * Keyboard focus. Deliberately unlayered: Tailwind's utilities live in @layer, and
  * unlayered rules beat layered ones, so this survives the `outline-none` utilities
  * sitting on inputs without having to hunt them down one by one.
