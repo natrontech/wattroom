@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+bin
+docs
+deploy
+web/node_modules
+web/build
+server/webdist
+*.md
