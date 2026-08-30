@@ -281,7 +281,10 @@
 	let tv = $state(false);
 	try {
 		const stored = localStorage.getItem(LAYOUT_KEY);
-		if (stored === 'video' || stored === 'media') layout = stored;
+		// 'media' is deliberately not restored: landing in a player layout
+		// with an empty deck is a void (#170) — it is a mode you enter when
+		// music plays, not a preference.
+		if (stored === 'video') layout = stored;
 	} catch {
 		/* default stands */
 	}
@@ -396,22 +399,12 @@
 	);
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
-	let planWorkoutId = $state(library[0].id);
 	let planAt = $state(defaultPlanAt());
 	function defaultPlanAt(): string {
 		const t = new Date(Date.now() + 60 * 60 * 1000);
 		t.setMinutes(0, 0, 0);
 		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
 		return t.toISOString().slice(0, 16); // datetime-local format
-	}
-	function plan() {
-		const entry = library.find((w) => w.id === planWorkoutId);
-		if (!entry || !planAt) return;
-		onSchedule(
-			entry.workout.name,
-			JSON.stringify(entry.workout),
-			new Date(planAt).toISOString(),
-		);
 	}
 	function formatWhen(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
@@ -707,11 +700,32 @@
 							trace={[]}
 						/>
 					</div>
-					<button
-						onclick={() => startWorkout(setupPicked.workout)}
-						class="mt-4 self-start rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
-						>Start {setupPicked.workout.name}</button
-					>
+					<div class="mt-4 flex flex-wrap items-center gap-2">
+						<button
+							onclick={() => startWorkout(setupPicked.workout)}
+							class="rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+							>Start {setupPicked.workout.name}</button
+						>
+						<span class="text-muted text-xs">or plan it:</span>
+						<input
+							type="datetime-local"
+							bind:value={planAt}
+							class="border-muted/25 bg-surface rounded border px-2 py-2 text-xs"
+						/>
+						<button
+							onclick={() => {
+								onSchedule(
+									setupPicked.workout.name,
+									JSON.stringify(setupPicked.workout),
+									new Date(planAt).toISOString(),
+								);
+								setup = false;
+							}}
+							disabled={adminBusy || !planAt}
+							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-2 text-xs disabled:opacity-40"
+							>Plan</button
+						>
+					</div>
 				{/if}
 
 				<div class="mt-auto border-t border-white/5 pt-3">
@@ -905,82 +919,22 @@
 			</div>
 		{/if}
 
-		{#if phase === 'lounge' && (upcoming.length > 0 || canControl)}
-			<div class="border-muted/15 bg-surface-raised mb-3 rounded-lg border p-4">
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					upcoming
-				</h2>
-				{#if upcoming.length === 0}
-					<p class="text-muted mt-2 text-xs">
-						Nothing planned — the room rides when someone presses Start.
-					</p>
-				{/if}
-				<ul class="mt-2 space-y-1.5">
-					{#each upcoming as entry (entry.id)}
-						<li class="flex flex-wrap items-center gap-x-3 gap-y-1">
-							<span class="text-sm font-medium">{entry.workoutName}</span>
-							<span class="text-muted font-mono text-xs tabular-nums"
-								>{formatWhen(entry.startsAt)}</span
-							>
-							<span class="text-muted text-xs">by {entry.createdBy}</span>
-							{#if canControl}
-								<span class="ml-auto flex gap-1.5">
-									{#if due(entry.startsAt)}
-										<button
-											onclick={() => startScheduled(entry)}
-											class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
-											>Start now</button
-										>
-									{/if}
-									<button
-										onclick={() => onUnschedule(entry.id)}
-										class="border-muted/25 text-muted hover:border-muted/60 rounded border px-2.5 py-1 text-xs hover:text-white"
-										>Remove</button
-									>
-								</span>
-							{:else if due(entry.startsAt)}
-								<span class="text-watt glow-text text-xs">starting soon</span>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-				{#if canControl}
-					<div class="mt-3 flex flex-wrap items-center gap-1.5">
-						<Select
-							bind:value={planWorkoutId}
-							label="Workout to plan"
-							options={library.map((entry) => ({
-								value: entry.id,
-								label: entry.workout.name,
-							}))}
-						/>
-						<input
-							type="datetime-local"
-							bind:value={planAt}
-							class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
-						/>
-						<button
-							onclick={plan}
-							disabled={adminBusy}
-							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1 text-xs disabled:opacity-40"
-							>Plan</button
-						>
-					</div>
-				{/if}
-			</div>
-		{/if}
-
 		{#if layout === 'media'}
 			<!-- Media-focus: the player takes the main area, riders drop to a strip. -->
-			{#if !live.tick?.jukebox?.current && !live.tick?.jukebox?.queue?.length}
-				<p
-					class="text-muted border-muted/10 mb-3 rounded-lg border border-dashed px-5 py-4 text-center text-xs"
-				>
-					Nothing queued yet — paste a YouTube link below and the whole room
-					hears it in sync, ducked under voice.
-				</p>
-			{/if}
-			<div class="flex min-h-0 flex-1 justify-center">
+			<div
+				class="flex min-h-0 flex-col items-center justify-center gap-3 {live
+					.tick?.jukebox?.current
+					? 'flex-1'
+					: ''}"
+			>
+				{#if !live.tick?.jukebox?.current && !live.tick?.jukebox?.queue?.length}
+					<p
+						class="text-muted border-muted/10 max-w-md rounded-lg border border-dashed px-5 py-3 text-center text-xs"
+					>
+						Nothing queued yet — paste a YouTube link and the whole room hears
+						it in sync, ducked under voice.
+					</p>
+				{/if}
 				<Jukebox
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title, jamUrl) =>
@@ -1040,15 +994,62 @@
 						>Ride simulated</button
 					>
 				{/if}
+
 				{#if av.status === 'off' || av.status === 'failed'}
 					<button
 						onclick={() => av.join()}
 						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
 						>Join voice</button
 					>
+				{/if}
+				{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
+					<button
+						onclick={() => startWorkout(setupPicked.workout)}
+						class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+						>Start {setupPicked.workout.name}</button
+					>
 					{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
 				{/if}
 				{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
+			</div>
+		{/if}
+
+		{#if phase === 'lounge' && upcoming.length > 0}
+			<!-- Plans are a footnote to the people (#170): a quiet strip, only
+			     when something IS planned. Planning lives in the setup panel. -->
+			<div class="mt-4 border-t border-white/5 pt-3">
+				<ul class="space-y-1.5">
+					{#each upcoming as entry (entry.id)}
+						<li class="flex flex-wrap items-center gap-x-3 gap-y-1">
+							<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
+								>next</span
+							>
+							<span class="text-sm font-medium">{entry.workoutName}</span>
+							<span class="text-muted font-mono text-xs tabular-nums"
+								>{formatWhen(entry.startsAt)}</span
+							>
+							<span class="text-muted text-xs">by {entry.createdBy}</span>
+							{#if canControl}
+								<span class="ml-auto flex gap-1.5">
+									{#if due(entry.startsAt)}
+										<button
+											onclick={() => startScheduled(entry)}
+											class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+											>Start now</button
+										>
+									{/if}
+									<button
+										onclick={() => onUnschedule(entry.id)}
+										class="border-muted/25 text-muted hover:border-muted/60 rounded border px-2.5 py-1 text-xs hover:text-white"
+										>Remove</button
+									>
+								</span>
+							{:else if due(entry.startsAt)}
+								<span class="text-watt glow-text text-xs">starting soon</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
 			</div>
 		{/if}
 
@@ -1171,15 +1172,6 @@
 					/>
 				</div>
 				<ExecutionMeter {riders} />
-			</div>
-		{:else if canControl && shared?.phase === 'idle' && !live.tick?.game}
-			<div class="mt-3 flex flex-wrap items-center gap-3">
-				<button
-					onclick={() =>
-						setupPicked ? startWorkout(setupPicked.workout) : (setup = true)}
-					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
-					>Start {setupPicked?.workout.name ?? 'a session'}</button
-				>
 			</div>
 		{/if}
 	</main>
