@@ -41,7 +41,9 @@ export type CueId =
 	| 'fanfare'
 	| 'cheer'
 	| 'reaction'
-	| 'block';
+	| 'block'
+	| 'join'
+	| 'leave';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -235,6 +237,28 @@ export const CUES: Record<CueId, Cue> = {
 			{ type: 'triangle', freq: note(7), at: 0.1, dur: 0.18, gain: 0.26 },
 		],
 	},
+
+	// Presence pair (#148): quiet chrome, not a klaxon. Rising = someone
+	// arrived, falling = someone left — distinguishable without looking.
+	join: {
+		id: 'join',
+		label: 'Rider joined',
+		hint: 'Someone arrived in the room. Two soft rising notes.',
+		voices: [
+			{ type: 'triangle', freq: note(-5), at: 0, dur: 0.09, gain: 0.18 },
+			{ type: 'triangle', freq: note(2), at: 0.09, dur: 0.16, gain: 0.2 },
+		],
+	},
+
+	leave: {
+		id: 'leave',
+		label: 'Rider left',
+		hint: 'Someone left the room. The join pair, reversed and softer.',
+		voices: [
+			{ type: 'triangle', freq: note(2), at: 0, dur: 0.09, gain: 0.16 },
+			{ type: 'triangle', freq: note(-5), at: 0.09, dur: 0.16, gain: 0.16 },
+		],
+	},
 };
 
 let ctx: AudioContext | undefined;
@@ -276,6 +300,8 @@ export function setDucked(next: boolean): void {
 }
 
 export function play(id: CueId): void {
+	// debug-level so sound issues are diagnosable without ears on the machine
+	console.debug('[cue]', id);
 	const audio = ensure();
 	if (!audio) return;
 	const { ctx: context, master: out } = audio;
