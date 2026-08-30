@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -227,5 +228,53 @@ func TestDevLoginCreatesSession(t *testing.T) {
 		"select count(*) from identities where provider = 'dev'").Scan(&count)
 	if count != 1 {
 		t.Fatalf("dev login multiplied identities: %d", count)
+	}
+}
+
+func TestParallelDevLoginsShareOneUser(t *testing.T) {
+	// The identity-create race (found by parallel e2e workers, same shape as a
+	// double-clicked OAuth redirect): every concurrent first sign-in must
+	// succeed, and they must all land on ONE user with no orphan rows.
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	s := testService(t)
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(),
+			"delete from users where id in (select user_id from identities where provider = 'dev')")
+	})
+	mux := http.NewServeMux()
+	s.Register(mux)
+
+	const parallel = 8
+	codes := make(chan int, parallel)
+	var wg sync.WaitGroup
+	for range parallel {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start", nil)
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, req)
+			codes <- w.Code
+		}()
+	}
+	wg.Wait()
+	close(codes)
+	for code := range codes {
+		if code != http.StatusFound {
+			t.Fatalf("a racing sign-in failed: %d", code)
+		}
+	}
+
+	var users int
+	err := s.store.Pool.QueryRow(context.Background(),
+		"select count(distinct user_id) from identities where provider = 'dev'").Scan(&users)
+	if err != nil || users != 1 {
+		t.Fatalf("dev identities map to %d users (err %v), want 1", users, err)
+	}
+	var orphans int
+	err = s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from users where display_name = 'Dev Rider' and id not in (select user_id from identities)").Scan(&orphans)
+	if err != nil || orphans != 0 {
+		t.Fatalf("%d orphan users left behind (err %v)", orphans, err)
 	}
 }
