@@ -227,7 +227,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const listUserRides = `-- name: ListUserRides :many
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, shared_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
 order by started_at desc
@@ -248,6 +248,8 @@ type ListUserRidesRow struct {
 	Kj          int32
 	Execution   float32
 	FtpWatts    int16
+	Xp          int32
+	RoomID      pgtype.UUID
 	SharedAt    pgtype.Timestamptz
 }
 
@@ -270,6 +272,8 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.Kj,
 			&i.Execution,
 			&i.FtpWatts,
+			&i.Xp,
+			&i.RoomID,
 			&i.SharedAt,
 		); err != nil {
 			return nil, err

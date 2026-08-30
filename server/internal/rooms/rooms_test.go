@@ -36,7 +36,7 @@ func setup(t *testing.T) *harness {
 	t.Helper()
 	dsn := os.Getenv("WATTROOM_TEST_DB")
 	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom" //nolint:gosec // compose dev credentials, same literal as docker-compose.yml
+		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

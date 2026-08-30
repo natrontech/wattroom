@@ -36,6 +36,8 @@ jobs:
           working-directory: server
       - run: go build ./...
       - run: go test -race ./...
+        env:
+          WATTROOM_TEST_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
       - name: protocol types are up to date
         run: |
           go tool tygo generate

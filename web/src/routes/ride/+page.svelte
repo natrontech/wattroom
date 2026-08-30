@@ -19,6 +19,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
+	import { api } from '$lib/api';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { page } from '$app/state';
 	import {
@@ -169,7 +170,9 @@
 		}
 	});
 
-	// A finished ride is worth keeping even if the rider never exports it.
+	// A finished ride is worth keeping even if the rider never exports it —
+	// on the account (#110, one history feeding streaks and XP), with the
+	// device store as the fallback when the server is unreachable.
 	$effect(() => {
 		const current = session;
 		if (!current || current.state !== 'done' || recorded) return;
@@ -177,13 +180,28 @@
 		buffer?.end();
 		const summary = summarise(current.recording);
 		if (summary.seconds === 0) return;
-		error = history.add({
-			id: `${current.startedAt.getTime()}`,
-			workoutName: workout.name,
-			startedAt: current.startedAt.toISOString(),
-			execution: current.execution,
-			ftp,
-			...summary,
+		void api('/api/rides', {
+			method: 'POST',
+			json: {
+				workoutName: workout.name,
+				workoutJson: JSON.stringify(workout),
+				startedAt: current.startedAt.toISOString(),
+				samples: current.recording.map((sample) => ({
+					watts: sample.watts,
+					cadence: sample.cadence,
+					hr: sample.heartRate,
+				})),
+			},
+		}).then((res) => {
+			if (res.ok) return;
+			error = history.add({
+				id: `${current.startedAt.getTime()}`,
+				workoutName: workout.name,
+				startedAt: current.startedAt.toISOString(),
+				execution: current.execution,
+				ftp,
+				...summary,
+			});
 		});
 	});
 

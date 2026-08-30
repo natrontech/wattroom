@@ -29,6 +29,9 @@ build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .
 
 test:
+	@# Tests get their own database — a suite that deletes users must never
+	@# point at the dev data (it did once; the seed world paid for it).
+	@docker exec wattroom-postgres-1 psql -U wattroom -tc "select 1 from pg_database where datname='wattroom_test'" 2>/dev/null | grep -q 1 || docker exec wattroom-postgres-1 createdb -U wattroom wattroom_test 2>/dev/null || true
 	cd server && go test -race ./...
 
 lint:
