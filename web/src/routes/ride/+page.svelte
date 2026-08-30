@@ -5,7 +5,7 @@
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock, ZONE_TEXT, zoneOf } from '$lib/components/zones';
-	import { durationSeconds } from '$lib/workout/engine';
+	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import {
 		createRideSession,
 		DEFAULTS,
@@ -22,6 +22,7 @@
 	import { api } from '$lib/api';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { dev } from '$app/environment';
+	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		discardRide,
@@ -88,6 +89,7 @@
 	let buffer: RideBuffer | undefined;
 	const recorder = createFlightRecorder();
 	let flagNotice = $state(false);
+	let tv = $state(false);
 	let sentFlags = $state(0);
 	let sending = $state(false);
 
@@ -335,7 +337,30 @@
 			downloading = false;
 		}
 	}
+	// A stray tap on the rail mid-ride must not eat the ride (#126): one
+	// confirm, only while the session is actually alive. The browser-level
+	// unload guard rides along for tab closes.
+	const riding = () =>
+		!!session && session.state !== 'done' && session.state !== 'idle';
+	beforeNavigate((navigation) => {
+		if (
+			riding() &&
+			navigation.type !== 'leave' &&
+			!confirm('End the ride and leave? The summary and .fit are lost.')
+		) {
+			navigation.cancel();
+		}
+	});
+	$effect(() => {
+		const handler = (event: BeforeUnloadEvent) => {
+			if (riding()) event.preventDefault();
+		};
+		window.addEventListener('beforeunload', handler);
+		return () => window.removeEventListener('beforeunload', handler);
+	});
 </script>
+
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
 <main class="bg-surface flex min-h-screen flex-col px-6 py-5 text-white">
 	{#if !session}
@@ -348,6 +373,19 @@
 			</p>
 
 			<p class="text-muted mt-4 text-xs">{selected.summary}</p>
+
+			<!-- What the session looks like — the one thing to see before Start. -->
+			<div
+				class="border-muted/15 bg-surface-raised mt-4 overflow-hidden rounded-lg border"
+			>
+				<IntervalGraph
+					segments={flatten(workout)}
+					total={durationSeconds(workout)}
+					elapsed={0}
+					{ftp}
+					trace={[]}
+				/>
+			</div>
 			<a
 				href="/workouts"
 				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
@@ -444,7 +482,7 @@
 				</p>
 			{/if}
 		</div>
-	{:else}
+	{:else if session.state !== 'done'}
 		<header class="flex items-center gap-4">
 			<Logo size={26} live={session.state === 'running'} />
 			<div>
@@ -588,6 +626,16 @@
 					class="border-muted/25 hover:border-muted/60 h-11 rounded border px-4 text-sm"
 					>Skip block</button
 				>
+				<button
+					onclick={() => (tv = true)}
+					class="border-muted/25 text-muted hover:border-muted/60 h-11 rounded border px-4 text-sm hover:text-white"
+					>TV</button
+				>
+				<button
+					onclick={() => session?.stop()}
+					class="border-muted/25 text-muted hover:border-muted/60 h-11 rounded border px-4 text-sm hover:text-white"
+					>End ride</button
+				>
 				<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
 				<button
 					onclick={() => {
@@ -627,70 +675,117 @@
 				trace={session.trace}
 			/>
 		</div>
+	{/if}
 
-		{#if session.state === 'done'}
-			<div class="mt-6">
-				<SessionSummary
-					subtitle="{workout.name} · {new Date().toLocaleDateString()}"
-					samples={session.recording}
-					ftp={profile.current.ftp}
-					execution={session.execution}
+	{#if session && session.state !== 'done' && tv}
+		<!-- Solo TV (#126): the same truth at 3-metre size, vh-scaled like the
+		     room's TV mode. -->
+		<div class="bg-surface fixed inset-0 z-50 flex flex-col px-[3vw] py-[3vh]">
+			<button
+				onclick={() => (tv = false)}
+				class="border-muted/30 text-muted absolute bottom-4 left-4 rounded border px-3 py-1.5 text-xs hover:text-white"
+				>Exit TV (esc)</button
+			>
+			<header class="flex items-baseline gap-[2vw]">
+				<h2 class="font-display text-[3.2vh] leading-none font-bold">
+					{workout.name}
+				</h2>
+				<span
+					class="font-display ml-auto text-[6vh] leading-none font-bold tabular-nums"
+					>{formatClock(remaining)}</span
 				>
-					{#snippet actions()}
-						<div
-							class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
-						>
-							<div class="flex flex-wrap items-center gap-2">
-								<button
-									onclick={downloadFit}
-									disabled={downloading}
-									data-testid="download-fit"
-									class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
-									>{downloading ? 'Preparing…' : 'Export .fit'}</button
+			</header>
+			<div class="flex flex-1 flex-col items-center justify-center">
+				<div>
+					<span
+						class="text-watt glow-text-strong font-display text-[18vh] leading-none font-bold tabular-nums"
+						>{watts}</span
+					>
+					<span class="text-muted ml-2 text-[3vh]">W</span>
+				</div>
+				<div
+					class="text-muted mt-[2vh] flex items-baseline gap-[2vw] text-[3vh]"
+				>
+					<span>{target > 0 ? `target ${target} W` : 'no target'}</span>
+					<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span>
+				</div>
+			</div>
+			<div class="overflow-hidden rounded-lg">
+				<IntervalGraph
+					segments={session.segments}
+					total={session.total}
+					elapsed={session.elapsed}
+					{ftp}
+					trace={session.trace}
+				/>
+			</div>
+		</div>
+	{/if}
+
+	{#if session && session.state === 'done'}
+		<!-- The ride is over: the summary IS the screen — no dead HUD glowing
+		     zeros behind it (#126). -->
+		<div class="mx-auto mt-4 w-full max-w-3xl">
+			<SessionSummary
+				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
+				samples={session.recording}
+				ftp={profile.current.ftp}
+				execution={session.execution}
+			>
+				{#snippet actions()}
+					<div
+						class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<button
+								onclick={downloadFit}
+								disabled={downloading}
+								data-testid="download-fit"
+								class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+								>{downloading ? 'Preparing…' : 'Export .fit'}</button
+							>
+							<a
+								href="/workouts"
+								class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+								>Pick another workout</a
+							>
+						</div>
+						{#if error}
+							<p class="text-z6 mt-2 text-xs">{error}</p>
+						{/if}
+
+						{#if recorder.flags.length > sentFlags}
+							<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>your flags</span
 								>
-								<a
-									href="/workouts"
-									class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
-									>Pick another workout</a
+								{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
+									<div class="flex items-center gap-2">
+										<span class="text-muted font-mono text-xs"
+											>{new Date(flag.clientMs).toLocaleTimeString()}</span
+										>
+										<input
+											bind:value={flag.note}
+											placeholder="what went wrong? (optional)"
+											class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+										/>
+									</div>
+								{/each}
+								<button
+									onclick={sendFlags}
+									disabled={sending}
+									class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
+									>{sending ? 'Sending…' : 'Send to the developers'}</button
 								>
 							</div>
-							{#if error}
-								<p class="text-z6 mt-2 text-xs">{error}</p>
-							{/if}
-
-							{#if recorder.flags.length > sentFlags}
-								<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
-									<span class="text-muted text-[10px] tracking-wider uppercase"
-										>your flags</span
-									>
-									{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
-										<div class="flex items-center gap-2">
-											<span class="text-muted font-mono text-xs"
-												>{new Date(flag.clientMs).toLocaleTimeString()}</span
-											>
-											<input
-												bind:value={flag.note}
-												placeholder="what went wrong? (optional)"
-												class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
-											/>
-										</div>
-									{/each}
-									<button
-										onclick={sendFlags}
-										disabled={sending}
-										class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
-										>{sending ? 'Sending…' : 'Send to the developers'}</button
-									>
-								</div>
-							{:else if sentFlags > 0}
-								<p class="text-z4 mt-3 text-xs">
-									Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
-								</p>
-							{/if}
-						</div>
-					{/snippet}
-				</SessionSummary>
-			</div>
-		{/if}
+						{:else if sentFlags > 0}
+							<p class="text-z4 mt-3 text-xs">
+								Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
+							</p>
+						{/if}
+					</div>
+				{/snippet}
+			</SessionSummary>
+		</div>
 	{/if}
 </main>
