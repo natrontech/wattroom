@@ -18,14 +18,24 @@
 
 	let open = $state(false);
 	let active = $state(0);
+	let query = $state('');
 	let trigger = $state<HTMLButtonElement | null>(null);
 	let list = $state<HTMLUListElement | null>(null);
 
 	const selected = $derived(
 		options.find((option) => option.value === value) ?? options[0],
 	);
+	// Type-to-filter (#175): long lists (workouts) narrow as you type.
+	const shown = $derived(
+		query
+			? options.filter((option) =>
+					option.label.toLowerCase().includes(query.toLowerCase()),
+				)
+			: options,
+	);
 
 	function openList() {
+		query = '';
 		active = Math.max(
 			0,
 			options.findIndex((option) => option.value === value),
@@ -51,16 +61,15 @@
 		switch (event.key) {
 			case 'ArrowDown':
 				event.preventDefault();
-				active = Math.min(options.length - 1, active + 1);
+				active = Math.min(shown.length - 1, active + 1);
 				break;
 			case 'ArrowUp':
 				event.preventDefault();
 				active = Math.max(0, active - 1);
 				break;
 			case 'Enter':
-			case ' ':
 				event.preventDefault();
-				choose(options[active].value);
+				if (shown[active]) choose(shown[active].value);
 				break;
 			case 'Escape':
 				event.preventDefault();
@@ -103,29 +112,51 @@
 	</button>
 
 	{#if open}
-		<ul
-			bind:this={list}
-			role="listbox"
-			aria-label={label}
-			class="border-muted/25 bg-surface-raised absolute z-50 mt-1 max-h-64 w-full min-w-max overflow-y-auto rounded border py-1 shadow-lg shadow-black/40"
+		<div
+			class="border-muted/25 bg-surface-raised absolute z-50 mt-1 w-full min-w-max rounded border shadow-lg shadow-black/40"
 		>
-			{#each options as option, i (option.value)}
-				<li role="option" aria-selected={option.value === value}>
-					<button
-						type="button"
-						tabindex="-1"
-						onclick={() => choose(option.value)}
-						onmouseenter={() => (active = i)}
-						class="w-full px-3 py-2.5 text-left text-sm {i === active
-							? 'bg-surface text-white'
-							: option.value === value
-								? 'text-white'
-								: 'text-muted'}"
-					>
-						{option.label}
-					</button>
-				</li>
-			{/each}
-		</ul>
+			{#if options.length > 6}
+				<input
+					value={query}
+					oninput={(e) => {
+						query = e.currentTarget.value;
+						active = 0;
+					}}
+					onkeydown={(e) => {
+						if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key))
+							onkeydown(e);
+					}}
+					placeholder="Filter…"
+					class="placeholder:text-muted/60 w-full border-b border-white/5 bg-transparent px-3 py-2 text-xs outline-none"
+					{@attach (node) => node.focus()}
+				/>
+			{/if}
+			<ul
+				bind:this={list}
+				role="listbox"
+				aria-label={label}
+				class="max-h-64 overflow-y-auto py-1"
+			>
+				{#each shown as option, i (option.value)}
+					<li role="option" aria-selected={option.value === value}>
+						<button
+							type="button"
+							tabindex="-1"
+							onclick={() => choose(option.value)}
+							onmouseenter={() => (active = i)}
+							class="w-full px-3 py-2.5 text-left text-sm {i === active
+								? 'bg-surface text-white'
+								: option.value === value
+									? 'text-white'
+									: 'text-muted'}"
+						>
+							{option.label}
+						</button>
+					</li>
+				{:else}
+					<li class="text-muted px-3 py-2 text-xs">Nothing matches.</li>
+				{/each}
+			</ul>
+		</div>
 	{/if}
 </div>

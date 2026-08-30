@@ -37,6 +37,7 @@
 	import { fetchRailRooms } from '$lib/nav/rooms';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Select from '$lib/components/Select.svelte';
+	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -707,11 +708,7 @@
 							>Start {setupPicked.workout.name}</button
 						>
 						<span class="text-muted text-xs">or plan it:</span>
-						<input
-							type="datetime-local"
-							bind:value={planAt}
-							class="border-muted/25 bg-surface rounded border px-2 py-2 text-xs"
-						/>
+						<WhenPicker bind:value={planAt} />
 						<button
 							onclick={() => {
 								onSchedule(
@@ -1028,6 +1025,14 @@
 								>next</span
 							>
 							<span class="text-sm font-medium">{entry.workoutName}</span>
+							<span class="text-muted font-mono text-xs tabular-nums"
+								>{formatClock(
+									parseSharedSegments(entry.workoutJson).reduce(
+										(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
+										0,
+									),
+								)}</span
+							>
 							<span class="text-muted font-mono text-xs tabular-nums"
 								>{formatWhen(entry.startsAt)}</span
 							>
