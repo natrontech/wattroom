@@ -124,6 +124,25 @@
 		else if ([...before].some((id) => !ids.has(id))) play('leave');
 	});
 
+	// SPEC room audio: the gate threshold doubles while the jukebox plays.
+	$effect(() => {
+		av.setMusicPlaying(!!live.tick?.jukebox?.playing);
+	});
+
+	// Space is push-to-talk while that mode is on — never while typing.
+	function pttKey(event: KeyboardEvent, held: boolean) {
+		if (av.mode !== 'ptt' || event.code !== 'Space') return;
+		const target = event.target as HTMLElement;
+		if (
+			target instanceof HTMLInputElement ||
+			target instanceof HTMLTextAreaElement ||
+			target.isContentEditable
+		)
+			return;
+		event.preventDefault();
+		av.setPtt(held);
+	}
+
 	// The room's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
 	$effect(() => {
@@ -599,7 +618,13 @@
 	});
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape') tv = false;
+		if (!e.repeat) pttKey(e, true);
+	}}
+	onkeyup={(e) => pttKey(e, false)}
+/>
 
 {#if tv}
 	<div class="bg-surface fixed inset-0 z-50">
@@ -745,6 +770,13 @@
 			micOn={av.micOn}
 			camOn={av.camOn}
 			micLevel={av.micLevel}
+			transmitting={av.transmitting}
+			voiceMode={av.mode}
+			gateThreshold={av.gateThreshold}
+			pttHeld={av.pttHeld}
+			onVoiceMode={(m) => av.setMode(m)}
+			onGateThreshold={(t) => av.setGateThreshold(t)}
+			onPtt={(held) => av.setPtt(held)}
 			onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
 			onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
 		/>

@@ -13,6 +13,13 @@
 		onMic,
 		onCam,
 		micLevel = 0,
+		transmitting = false,
+		voiceMode = 'gate',
+		gateThreshold = 0.02,
+		pttHeld = false,
+		onVoiceMode,
+		onGateThreshold,
+		onPtt,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -25,6 +32,14 @@
 		onCam?: () => void;
 		/** Own transmit level 0..1 — the is-my-mic-dead meter (#151). */
 		micLevel?: number;
+		/** The gate's verdict: is audio leaving this machine right now? */
+		transmitting?: boolean;
+		voiceMode?: 'gate' | 'ptt';
+		gateThreshold?: number;
+		pttHeld?: boolean;
+		onVoiceMode?: (mode: 'gate' | 'ptt') => void;
+		onGateThreshold?: (threshold: number) => void;
+		onPtt?: (held: boolean) => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -40,8 +55,7 @@
 	];
 	const activePath = $derived(page.url.pathname);
 
-	// SPEC room audio: while the jukebox plays, VAD tightens and push-to-talk is offered.
-	let pushToTalk = $state(false);
+	let voiceAdvanced = $state(false);
 </script>
 
 <nav
@@ -115,25 +129,79 @@
 			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
 			>
 		</div>
-		{#if live && showAv}
+		{#if showAv && voiceMode === 'ptt' && micOn}
+			<!-- Hold to transmit — the desk spectator's mode (SPEC). -->
 			<button
-				onclick={() => (pushToTalk = !pushToTalk)}
-				class="mt-2 w-full rounded border px-2 py-1.5 text-[11px] {pushToTalk
+				onpointerdown={() => onPtt?.(true)}
+				onpointerup={() => onPtt?.(false)}
+				onpointerleave={() => pttHeld && onPtt?.(false)}
+				class="mt-2 w-full rounded border px-2 py-2 text-[11px] {pttHeld
 					? 'border-neon/50 text-white'
 					: 'border-muted/25 text-muted hover:text-white'}"
-				>{pushToTalk ? 'push to talk · hold space' : 'push to talk'}</button
+				>{pttHeld
+					? 'transmitting · release to stop'
+					: 'hold to talk (or space)'}</button
 			>
 		{/if}
-		{#if showAv && micOn && micLevel >= 0}
+		{#if showAv && micOn}
 			<div
 				class="bg-surface-raised mt-2 h-1 overflow-hidden rounded-full"
-				title="your mic level"
+				title={transmitting ? 'transmitting' : 'gated — below the threshold'}
 			>
 				<div
-					class="bg-z4 h-full transition-[width] duration-100"
+					class="h-full transition-[width] duration-100 {transmitting
+						? 'bg-z4'
+						: 'bg-muted/40'}"
 					style="width: {Math.min(100, Math.round(micLevel * 140))}%"
 				></div>
 			</div>
+		{/if}
+		{#if showAv}
+			<button
+				onclick={() => (voiceAdvanced = !voiceAdvanced)}
+				class="text-muted mt-2 text-[10px] underline hover:text-white"
+				>voice settings</button
+			>
+			{#if voiceAdvanced}
+				<div class="border-muted/15 mt-2 rounded border p-2">
+					<label class="flex items-center gap-2 text-[11px]">
+						<input
+							type="radio"
+							checked={voiceMode === 'gate'}
+							onchange={() => onVoiceMode?.('gate')}
+						/>
+						Voice activation
+					</label>
+					<label class="mt-1 flex items-start gap-2 text-[11px]">
+						<input
+							type="radio"
+							checked={voiceMode === 'ptt'}
+							onchange={() => onVoiceMode?.('ptt')}
+						/>
+						<span
+							>Push to talk
+							<span class="text-muted block text-[10px]"
+								>for spectating from a desk</span
+							></span
+						>
+					</label>
+					{#if voiceMode === 'gate'}
+						<label class="mt-2 block text-[10px]">
+							<span class="text-muted">gate threshold</span>
+							<input
+								type="range"
+								min="0.005"
+								max="0.08"
+								step="0.005"
+								value={gateThreshold}
+								oninput={(e) =>
+									onGateThreshold?.(Number(e.currentTarget.value))}
+								class="mt-1 w-full"
+							/>
+						</label>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 		{#if showAv}
 			<div class="mt-2 flex gap-1.5">
