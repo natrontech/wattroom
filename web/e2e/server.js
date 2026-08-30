@@ -20,7 +20,16 @@ const types = {
 
 const go = spawn('go', ['run', '.'], {
 	cwd: new URL('../../server/', import.meta.url).pathname,
-	env: { ...process.env, WATTROOM_ADDR: `:${API_PORT}` },
+	env: {
+		...process.env,
+		WATTROOM_ADDR: `:${API_PORT}`,
+		// The login gate (ADR-0009) means even the e2e ride signs in — the dev
+		// provider against a real Postgres, same doors production uses.
+		WATTROOM_DB:
+			process.env.WATTROOM_DB ??
+			'postgres://wattroom:wattroom@localhost:5432/wattroom',
+		WATTROOM_DEV_LOGIN: '1'
+	},
 	stdio: 'inherit'
 });
 process.on('exit', () => go.kill());

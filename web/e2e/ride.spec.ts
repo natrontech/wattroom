@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { signInTo } from './signin';
 
 /**
  * WATTROOM.md's single end-to-end flow: simulated trainer → ride a 2-minute
@@ -11,7 +12,7 @@ import { expect, test } from '@playwright/test';
  */
 test('a simulated ride produces a .fit file', async ({ page }) => {
 	// ?w= selects from the curated library; "openers" is the two-minute one.
-	await page.goto('/ride?w=openers');
+	await signInTo(page, '/ride?w=openers');
 	await expect(page.getByRole('heading', { name: 'Openers' })).toBeVisible();
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
 
