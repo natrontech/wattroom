@@ -12,7 +12,7 @@
 	import { formatClock } from '$lib/components/zones';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { flatten, targetAt } from '$lib/workout/engine';
+	import { durationSeconds, flatten, targetAt } from '$lib/workout/engine';
 	import { library } from '$lib/workout/library';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { createRoomAv } from '$lib/room/av.svelte';
@@ -35,6 +35,7 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import { fetchRailRooms } from '$lib/nav/rooms';
+	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -305,23 +306,56 @@
 	];
 	let pickedGame = $state(GAMES[0].id);
 
-	function pickAndStart() {
-		const entry = library.find((w) => w.id === pickedId);
-		if (!entry) return;
+	function startWorkout(picked: import('$lib/workout/types').Workout) {
 		mySamples = [];
 		myTrace = [];
-		const flat = flatten(entry.workout);
+		const flat = flatten(picked);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
 		live.control('pick', {
-			name: entry.workout.name,
-			json: JSON.stringify(entry.workout),
+			name: picked.name,
+			json: JSON.stringify(picked),
 			totalSeconds: total,
 		});
 		live.control('start');
+		setup = false;
 	}
+
+	// ── Session setup (#115): training-first, games one step away ─────────────
+	let setup = $state(false);
+	let setupGames = $state(false);
+	const custom = createCustomStore();
+	// Recently ridden first: the rider's history ranks the shelf.
+	let recency = $state<Map<string, number>>(new Map());
+	$effect(() => {
+		if (!setup || recency.size) return;
+		void api<{ rides: { workoutName: string }[] }>('/api/rides').then((res) => {
+			if (!res.ok) return;
+			const ranked = new Map<string, number>();
+			res.data.rides.forEach((ride, i) => {
+				if (!ranked.has(ride.workoutName)) ranked.set(ride.workoutName, i);
+			});
+			recency = ranked;
+		});
+	});
+	const shelf = $derived(
+		[
+			...custom.all.map((entry) => ({ ...entry, yours: true })),
+			...library.map((entry) => ({ ...entry, yours: false })),
+		].sort(
+			(a, b) =>
+				(recency.get(a.workout.name) ?? 999) -
+				(recency.get(b.workout.name) ?? 999),
+		),
+	);
+	const setupPicked = $derived(
+		shelf.find((entry) => entry.id === pickedId) ?? shelf[0],
+	);
+	const setupSegments = $derived(
+		setupPicked ? flatten(setupPicked.workout) : [],
+	);
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
 	let planWorkoutId = $state(library[0].id);
@@ -569,6 +603,105 @@
 	</div>
 {/if}
 
+{#if setup}
+	<!-- Session setup (#115): the room's "what are we doing tonight" moment.
+	     Training is the whole default flow; games are one step away. -->
+	<button
+		class="fixed inset-0 z-40 bg-black/50"
+		aria-label="Close session setup"
+		onclick={() => (setup = false)}
+	></button>
+	<div
+		class="border-muted/15 bg-surface fixed inset-x-4 top-[8dvh] bottom-[8dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[44rem] md:-translate-x-1/2"
+	>
+		<header class="flex items-center gap-3 border-b border-white/5 px-5 py-4">
+			<h2 class="font-display text-lg font-bold">Tonight's session</h2>
+			<button
+				onclick={() => (setup = false)}
+				class="text-muted ml-auto text-sm hover:text-white">Close</button
+			>
+		</header>
+
+		<div class="flex min-h-0 flex-1">
+			<ul class="w-56 shrink-0 overflow-y-auto border-r border-white/5 p-2">
+				{#each shelf as entry (entry.id)}
+					<li>
+						<button
+							onclick={() => (pickedId = entry.id)}
+							class="w-full rounded px-3 py-2.5 text-left {setupPicked?.id ===
+							entry.id
+								? 'bg-surface-raised text-white'
+								: 'text-muted hover:text-white'}"
+						>
+							<span class="block truncate text-sm font-medium"
+								>{entry.workout.name}</span
+							>
+							<span class="block font-mono text-[11px] tabular-nums"
+								>{formatClock(durationSeconds(entry.workout))}{entry.yours
+									? ' · yours'
+									: ''}</span
+							>
+						</button>
+					</li>
+				{/each}
+			</ul>
+
+			<div class="flex min-w-0 flex-1 flex-col p-4">
+				{#if setupPicked}
+					<p class="font-display font-bold">{setupPicked.workout.name}</p>
+					<p class="text-muted mt-1 text-xs">
+						{'summary' in setupPicked ? setupPicked.summary : ''}
+					</p>
+					<div
+						class="border-muted/15 bg-surface-raised mt-3 overflow-hidden rounded-lg border"
+					>
+						<IntervalGraph
+							segments={setupSegments}
+							total={durationSeconds(setupPicked.workout)}
+							elapsed={0}
+							ftp={profile.current.ftp}
+							trace={[]}
+						/>
+					</div>
+					<button
+						onclick={() => startWorkout(setupPicked.workout)}
+						class="mt-4 self-start rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+						>Start {setupPicked.workout.name}</button
+					>
+				{/if}
+
+				<div class="mt-auto border-t border-white/5 pt-3">
+					{#if !setupGames}
+						<button
+							onclick={() => (setupGames = true)}
+							class="text-muted text-sm underline hover:text-white"
+							>Play a game instead</button
+						>
+					{:else if !live.tick?.game}
+						<div class="flex flex-wrap items-center gap-2">
+							<select
+								bind:value={pickedGame}
+								class="border-muted/25 bg-surface rounded border px-3 py-2 text-sm"
+							>
+								{#each GAMES as g (g.id)}<option value={g.id}>{g.label}</option
+									>{/each}
+							</select>
+							<button
+								onclick={() => {
+									live.control('game', undefined, pickedGame);
+									setup = false;
+								}}
+								class="border-neon/50 hover:bg-neon/10 rounded border px-4 py-2 text-sm"
+								>Start game</button
+							>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <RoomAdmin
 	bind:open={admin}
 	{slug}
@@ -652,35 +785,12 @@
 
 			{#if canControl && shared}
 				{#if shared.phase === 'idle' || shared.phase === 'done'}
-					<div class="flex gap-1.5">
-						<select
-							bind:value={pickedId}
-							class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
-						>
-							{#each library as entry (entry.id)}
-								<option value={entry.id}>{entry.workout.name}</option>
-							{/each}
-						</select>
-						<button
-							onclick={pickAndStart}
-							class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
-							>Start</button
-						>
-						{#if !live.tick?.game}
-							<select
-								bind:value={pickedGame}
-								class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
-							>
-								{#each GAMES as g (g.id)}<option value={g.id}>{g.label}</option
-									>{/each}
-							</select>
-							<button
-								onclick={() => live.control('game', undefined, pickedGame)}
-								class="border-neon/50 hover:bg-neon/10 rounded border px-2.5 py-1 text-xs"
-								>Game</button
-							>
-						{/if}
-					</div>
+					<!-- Training-first (#115): one affordance; games live inside. -->
+					<button
+						onclick={() => (setup = true)}
+						class="rounded bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
+						>Pick a workout</button
+					>
 				{:else}
 					<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 						{#if shared.phase === 'running'}
@@ -1015,9 +1125,10 @@
 		{:else if canControl && shared?.phase === 'idle' && !live.tick?.game}
 			<div class="mt-3 flex flex-wrap items-center gap-3">
 				<button
-					onclick={pickAndStart}
+					onclick={() =>
+						setupPicked ? startWorkout(setupPicked.workout) : (setup = true)}
 					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
-					>Start {library.find((w) => w.id === pickedId)?.workout.name}</button
+					>Start {setupPicked?.workout.name ?? 'a session'}</button
 				>
 			</div>
 		{/if}
