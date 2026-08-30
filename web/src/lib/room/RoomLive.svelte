@@ -36,6 +36,7 @@
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import { fetchRailRooms } from '$lib/nav/rooms';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import Select from '$lib/components/Select.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -696,13 +697,11 @@
 						>
 					{:else if !live.tick?.game}
 						<div class="flex flex-wrap items-center gap-2">
-							<select
+							<Select
 								bind:value={pickedGame}
-								class="border-muted/25 bg-surface rounded border px-3 py-2 text-sm"
-							>
-								{#each GAMES as g (g.id)}<option value={g.id}>{g.label}</option
-									>{/each}
-							</select>
+								label="Game mode"
+								options={GAMES.map((g) => ({ value: g.id, label: g.label }))}
+							/>
 							<button
 								onclick={() => {
 									live.control('game', undefined, pickedGame);
@@ -913,14 +912,14 @@
 				</ul>
 				{#if canControl}
 					<div class="mt-3 flex flex-wrap items-center gap-1.5">
-						<select
+						<Select
 							bind:value={planWorkoutId}
-							class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
-						>
-							{#each library as entry (entry.id)}
-								<option value={entry.id}>{entry.workout.name}</option>
-							{/each}
-						</select>
+							label="Workout to plan"
+							options={library.map((entry) => ({
+								value: entry.id,
+								label: entry.workout.name,
+							}))}
+						/>
 						<input
 							type="datetime-local"
 							bind:value={planAt}
