@@ -23,7 +23,7 @@
 	let adding = $state(false);
 	let url = $state('');
 
-	// Chat is a fast-follow, not MVP — the panel says so itself.
+	// No text chat yet — the panel says what IS the chat, in product voice.
 	const messages: { who: string; text: string }[] = [];
 </script>
 
@@ -86,7 +86,7 @@
 	</div>
 
 	<div class="text-muted px-4 pt-3 pb-1 text-[10px] tracking-[0.2em] uppercase">
-		chat <span class="text-muted/50 normal-case">· fast-follow, not MVP</span>
+		chat
 	</div>
 	<ul
 		class="flex flex-1 flex-col justify-end space-y-2 overflow-y-auto px-4 py-2"

@@ -16,7 +16,6 @@
 		open = $bindable(false),
 		slug,
 		code = '',
-		listed = false,
 		members = [],
 		medals = [],
 		isOwner,
@@ -26,12 +25,10 @@
 		busy = false,
 		onRole,
 		onRemove,
-		onListed,
 	}: {
 		open?: boolean;
 		slug: string;
 		code?: string;
-		listed?: boolean;
 		members?: Member[];
 		medals?: Medal[];
 		isOwner: boolean;
@@ -41,7 +38,6 @@
 		busy?: boolean;
 		onRole: (userId: string, role: string) => void;
 		onRemove: (userId: string) => void;
-		onListed: (listed: boolean) => void;
 	} = $props();
 
 	const MEDAL_BADGE: Record<string, string> = {
@@ -163,17 +159,9 @@
 
 		<div class="mt-6">
 			{#if isOwner}
-				<label class="text-muted flex items-center gap-2 text-xs">
-					<input
-						type="checkbox"
-						checked={listed}
-						onchange={(e) => onListed(e.currentTarget.checked)}
-					/>
-					List this room in the public directory
-				</label>
 				<a
 					href="/r/{slug}/settings"
-					class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+					class="text-muted inline-block text-xs underline hover:text-white"
 					>Room settings</a
 				>
 			{:else if myId}

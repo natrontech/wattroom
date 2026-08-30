@@ -55,6 +55,21 @@
 	const check = $derived(validateWorkout(workout));
 	const current = $derived(selected === null ? null : workout.steps[selected]);
 
+	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
+	// seconds were a dev unit that leaked into the UI.
+	function parseDuration(raw: string): number | null {
+		const text = raw.trim();
+		const clock = /^(\d+):([0-5]\d)$/.exec(text);
+		const seconds = clock
+			? Number(clock[1]) * 60 + Number(clock[2])
+			: /^\d+$/.test(text)
+				? Number(text) * 60
+				: null;
+		return seconds !== null && seconds >= 5 && seconds <= 24 * 60 * 60
+			? seconds
+			: null;
+	}
+
 	function stepSeconds(step: WorkoutStep): number {
 		if (step.type === 'repeat') {
 			return (
@@ -272,15 +287,20 @@
 					{#if current.type !== 'repeat'}
 						<label class="block">
 							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>duration (s)</span
+								>duration</span
 							>
 							<input
-								type="number"
-								min="5"
-								step="5"
-								bind:value={current.seconds}
+								value={formatClock(current.seconds)}
+								onchange={(event) => {
+									const parsed = parseDuration(event.currentTarget.value);
+									if (parsed !== null) current.seconds = parsed;
+									event.currentTarget.value = formatClock(current.seconds);
+								}}
 								class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
 							/>
+							<span class="text-muted mt-1 block text-[10px]"
+								>m:ss — a bare number is minutes</span
+							>
 						</label>
 					{/if}
 

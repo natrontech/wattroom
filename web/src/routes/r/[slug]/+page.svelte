@@ -107,7 +107,6 @@
 			role={room.role ?? 'member'}
 			roomName={room.name}
 			code={room.code ?? ''}
-			listed={room.listed}
 			soundPack={room.soundPack ?? 'base'}
 			members={room.members ?? []}
 			medals={room.medals ?? []}
@@ -127,11 +126,6 @@
 				})}
 			onRemove={(userId) =>
 				act(`/api/rooms/${room?.slug}/members/${userId}`, { method: 'DELETE' })}
-			onListed={(listed) =>
-				act(`/api/rooms/${room?.slug}`, {
-					method: 'PATCH',
-					json: { name: room?.name ?? '', listed },
-				})}
 		/>
 	{/key}
 {/if}

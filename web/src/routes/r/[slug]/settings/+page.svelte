@@ -159,22 +159,10 @@
 				/>
 			</label>
 
-			<label class="mt-5 flex items-start gap-3">
-				<input
-					type="checkbox"
-					bind:checked={listed}
-					onchange={save}
-					disabled={busy}
-					class="mt-0.5"
-				/>
-				<span>
-					<span class="block text-sm">List this room publicly</span>
-					<span class="text-muted block text-xs">
-						Off by default. Listing shows the name and rider count — metrics
-						stay visible only to people who actually join.
-					</span>
-				</span>
-			</label>
+			<!-- The public-directory listing toggle returns with the directory
+			     itself — a checkbox for a shelf that doesn't exist yet teaches a
+			     promise the app can't keep (#126). The flag still round-trips in
+			     save() so nothing stored is lost. -->
 		</section>
 
 		<section
@@ -211,7 +199,7 @@
 				{/each}
 			</div>
 			<p class="text-muted mt-3 text-xs">
-				Custom packs — insider memes, your own klaxon — are a fast-follow.
+				Custom packs — insider memes, your own klaxon — aren't here yet.
 			</p>
 		</section>
 
