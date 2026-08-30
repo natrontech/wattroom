@@ -48,10 +48,13 @@ type Hub struct {
 	now    func() time.Time
 	mu     sync.Mutex
 	rooms  map[string]*room
+	// slug → identity → display name; fed by LiveKit webhooks (#149).
+	voice map[string]map[string]string
 }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
-	return &Hub{log: log, access: access, saver: saver, now: time.Now, rooms: make(map[string]*room)}
+	return &Hub{log: log, access: access, saver: saver, now: time.Now,
+		rooms: make(map[string]*room), voice: make(map[string]map[string]string)}
 }
 
 type room struct {
@@ -194,12 +197,17 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 // the rail (#39 design: the nav shows where the action is) — and now who,
 // so a rider can see their crew from any page. Riders, not sockets: a phone
 // spectator next to a desktop is one person. Lock, copy, unlock.
-func (h *Hub) Presence(slug string) (connected int, phase string, riders []string) {
+func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice []string) {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
+	inVoice := make([]string, 0, 4)
+	for _, name := range h.voice[slug] {
+		inVoice = append(inVoice, name)
+	}
 	h.mu.Unlock()
+	sort.Strings(inVoice)
 	if !ok {
-		return 0, "idle", nil
+		return 0, "idle", nil, inVoice
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -212,7 +220,36 @@ func (h *Hub) Presence(slug string) (connected int, phase string, riders []strin
 		riders = append(riders, c.rider.Name)
 	}
 	sort.Strings(riders)
-	return len(seen), rm.session.phase, riders
+	return len(seen), rm.session.phase, riders, inVoice
+}
+
+// VoiceJoined/VoiceLeft feed the sidebar radar (#149) from LiveKit's
+// webhooks — who is in the voice channel, before you enter the room. Keyed
+// by identity so a double event cannot duplicate a name; the map is
+// hub-owned like every other piece of live state.
+func (h *Hub) VoiceJoined(slug, identity, name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.voice[slug] == nil {
+		h.voice[slug] = make(map[string]string, 4)
+	}
+	h.voice[slug][identity] = name
+}
+
+func (h *Hub) VoiceLeft(slug, identity string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.voice[slug], identity)
+	if len(h.voice[slug]) == 0 {
+		delete(h.voice, slug)
+	}
+}
+
+// VoiceRoomClosed clears a whole room's voice state (room_finished).
+func (h *Hub) VoiceRoomClosed(slug string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.voice, slug)
 }
 
 func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {

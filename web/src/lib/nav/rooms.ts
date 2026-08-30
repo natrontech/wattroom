@@ -8,6 +8,8 @@ interface RoomEntry {
 	connected?: number;
 	phase?: string;
 	riders?: string[];
+	voice?: string[];
+	nextSession?: { workoutName: string; startsAt: string };
 }
 
 /**
@@ -24,5 +26,7 @@ export async function fetchRailRooms(): Promise<RailRoom[]> {
 		members: room.memberCount ?? 0,
 		connected: room.connected ?? 0,
 		riders: room.riders ?? [],
+		voice: room.voice ?? [],
+		next: room.nextSession,
 	}));
 }

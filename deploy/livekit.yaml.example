@@ -5,3 +5,8 @@ rtc:
 keys:
   # livekit-server generate-keys; mirror into .env WATTROOM_LIVEKIT_KEY/SECRET.
   REPLACE_KEY: REPLACE_SECRET
+webhook:
+  # The sidebar radar (#149): participant events feed the app's voice map.
+  api_key: REPLACE_KEY
+  urls:
+    - http://wattroom:8080/api/livekit/webhook

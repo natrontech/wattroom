@@ -73,8 +73,10 @@
 		{#each rooms as room (room.slug)}
 			<li>
 				<a
-					href="/r/{room.slug}"
-					class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {room.slug ===
+					href={room.voice?.length
+						? `/r/${room.slug}?voice=1`
+						: `/r/${room.slug}`}
+					class="flex w-full flex-wrap items-center gap-x-2 rounded px-2 py-1.5 text-left text-sm {room.slug ===
 					activeSlug
 						? 'bg-surface-raised text-white'
 						: 'text-muted hover:text-white'}"
@@ -98,6 +100,22 @@
 					{:else if room.members > 0}
 						<span class="text-muted/70 ml-auto shrink-0 font-mono text-[10px]"
 							>{room.members}</span
+						>
+					{/if}
+					{#if room.voice?.length}
+						<!-- The radar (#149): who is in voice, before you enter — the
+						     link joins voice in one click. -->
+						<span class="text-z4 w-full truncate text-[10px]"
+							>🎙 {room.voice.join(', ')}</span
+						>
+					{:else if room.next}
+						<span class="text-muted/70 w-full truncate text-[10px]"
+							>next: {room.next.workoutName} ·
+							{new Date(room.next.startsAt).toLocaleString(undefined, {
+								weekday: 'short',
+								hour: '2-digit',
+								minute: '2-digit',
+							})}</span
 						>
 					{/if}
 				</a>

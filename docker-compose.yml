@@ -27,6 +27,10 @@ services:
           port_range_start: 50000
           port_range_end: 50100
           use_external_ip: false
+        webhook:
+          api_key: devkey
+          urls:
+            - http://host.docker.internal:8080/api/livekit/webhook
     ports:
       - '7880:7880' # WS signaling
       - '7881:7881' # WebRTC/TCP
