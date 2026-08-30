@@ -12,6 +12,7 @@
 		camOn = $bindable(true),
 		onMic,
 		onCam,
+		micLevel = 0,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -22,6 +23,8 @@
 		camOn?: boolean;
 		onMic?: () => void;
 		onCam?: () => void;
+		/** Own transmit level 0..1 — the is-my-mic-dead meter (#151). */
+		micLevel?: number;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -120,6 +123,17 @@
 					: 'border-muted/25 text-muted hover:text-white'}"
 				>{pushToTalk ? 'push to talk · hold space' : 'push to talk'}</button
 			>
+		{/if}
+		{#if showAv && micOn && micLevel >= 0}
+			<div
+				class="bg-surface-raised mt-2 h-1 overflow-hidden rounded-full"
+				title="your mic level"
+			>
+				<div
+					class="bg-z4 h-full transition-[width] duration-100"
+					style="width: {Math.min(100, Math.round(micLevel * 140))}%"
+				></div>
+			</div>
 		{/if}
 		{#if showAv}
 			<div class="mt-2 flex gap-1.5">

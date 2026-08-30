@@ -196,7 +196,8 @@
 				you,
 				coach: rider.role !== 'member',
 				cameraOn: !!av.videoOf[rider.id],
-				muted: false,
+				inVoice: rider.id in av.voice,
+				muted: av.voice[rider.id] === 'muted',
 				speaking: !!av.speaking[rider.id],
 				hue: [...rider.id].reduce(
 					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
@@ -743,6 +744,7 @@
 			activeSlug={slug}
 			micOn={av.micOn}
 			camOn={av.camOn}
+			micLevel={av.micLevel}
 			onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
 			onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
 		/>

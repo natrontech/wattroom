@@ -14,6 +14,8 @@ export interface RoomRider {
 	you: boolean;
 	coach: boolean;
 	cameraOn: boolean;
+	/** In the voice channel at all — absent mic ≠ muted mic (#151). */
+	inVoice?: boolean;
 	muted: boolean;
 	speaking: boolean;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
