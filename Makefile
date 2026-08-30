@@ -33,9 +33,11 @@ test:
 	@# point at the dev data (it did once; the seed world paid for it).
 	@docker exec wattroom-postgres-1 psql -U wattroom -tc "select 1 from pg_database where datname='wattroom_test'" 2>/dev/null | grep -q 1 || docker exec wattroom-postgres-1 createdb -U wattroom wattroom_test 2>/dev/null || true
 	cd server && go test -race ./...
+	cd web && pnpm run test
 
 lint:
 	cd server && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 	cd web && pnpm run check
+	cd web && pnpm run format:check
 
 ci: test lint ## what CI runs
