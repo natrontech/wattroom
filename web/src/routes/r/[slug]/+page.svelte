@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
@@ -67,6 +68,18 @@
 	}
 
 	const isMember = $derived(!!room?.role);
+
+	// WATTROOM.md scopes phones as read-only spectators, and the cockpit's
+	// core (pair + ride) needs Web Bluetooth a phone browser doesn't have —
+	// so a member opening the share link on a phone lands on the watch view
+	// (#124). ?full=1 is the escape hatch, linked from the watch footer.
+	$effect(() => {
+		if (!room || !isMember) return;
+		if (page.url.searchParams.has('full')) return;
+		if (matchMedia('(max-width: 767px)').matches) {
+			void goto(`/r/${room.slug}/watch`, { replaceState: true });
+		}
+	});
 </script>
 
 {#if error && !room}
