@@ -38,6 +38,7 @@ const hold = (seconds: number, target: number) =>
 	({ type: 'steady', seconds, target }) as const;
 const repeat = (times: number, steps: Workout['steps']) =>
 	({ type: 'repeat', times, steps }) as const;
+const sprint = (seconds: number) => ({ type: 'sprint', seconds }) as const;
 
 export const library: LibraryWorkout[] = [
 	// ── Recovery: ≤ 55 % FTP ────────────────────────────────────────────────────
@@ -56,11 +57,18 @@ export const library: LibraryWorkout[] = [
 		id: 'openers',
 		focus: 'Recovery',
 		summary:
-			'Short pre-event activation: wake the legs up without spending anything.',
+			'Pre-event activation: short raises to wake the legs without spending anything.',
 		workout: {
 			name: 'Openers',
 			author: 'wattroom',
-			steps: [warm(60, 0.4, 0.65), hold(60, 0.75)],
+			// The raises are sprints on purpose: openers are "wind it up", not a
+			// prescribed ERG number — slope mode, the watts are yours.
+			steps: [
+				warm(600, 0.4, 0.65),
+				repeat(3, [sprint(60), hold(180, 0.55)]),
+				repeat(2, [sprint(15), hold(165, 0.5)]),
+				cool(420, 0.55, 0.35),
+			],
 		},
 	},
 	{
@@ -422,8 +430,25 @@ export const library: LibraryWorkout[] = [
 	},
 ];
 
+// Test fixtures: resolvable by id (CI rides in real time and needs a short
+// one), never listed — a two-minute 'workout' with a product name was how a
+// smoke fixture ended up in the curated library once.
+const fixtures: LibraryWorkout[] = [
+	{
+		id: 'smoke-test',
+		focus: 'Recovery',
+		summary: 'CI fixture — two minutes, end to end.',
+		workout: {
+			name: 'Smoke Test',
+			author: 'wattroom',
+			steps: [warm(60, 0.4, 0.65), hold(60, 0.75)],
+		},
+	},
+];
+
 export const byId = (id: string): LibraryWorkout | undefined =>
-	library.find((entry) => entry.id === id);
+	library.find((entry) => entry.id === id) ??
+	fixtures.find((entry) => entry.id === id);
 
 export const focuses: Focus[] = [
 	'Recovery',

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -118,11 +119,13 @@
 					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
 					>Start ramp test</button
 				>
-				<button
-					onclick={() => begin(new SimulatedTrainer({ baseWatts: 150 }))}
-					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-					>Run simulated</button
-				>
+				{#if dev}
+					<button
+						onclick={() => begin(new SimulatedTrainer({ baseWatts: 150 }))}
+						class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
+						>Run simulated</button
+					>
+				{/if}
 			</div>
 			{#if !supported}
 				<p class="text-muted mt-3 text-xs">

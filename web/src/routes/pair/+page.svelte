@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
 	import DeviceSlot, { type Slot } from '$lib/components/DeviceSlot.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
@@ -109,12 +110,14 @@
 			class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
 			>Pick a workout</a
 		>
-		<!-- Same reason SimulatedTrainer exists: the dashboard has to be buildable
-		     without a strap on your chest, and CI has no chest at all. -->
-		<button
-			onclick={() => pair('heart-rate', true)}
-			class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-			>Simulate a strap</button
-		>
+		{#if dev}
+			<!-- Same reason SimulatedTrainer exists: the dashboard has to be
+			     buildable without a strap on your chest. Dev-only (#123). -->
+			<button
+				onclick={() => pair('heart-rate', true)}
+				class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
+				>Simulate a strap</button
+			>
+		{/if}
 	</div>
 </main>

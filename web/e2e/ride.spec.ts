@@ -11,9 +11,12 @@ import { signInTo } from './signin';
  * purpose: compressing the clock would stop testing the thing that broke before.
  */
 test('a simulated ride produces a .fit file', async ({ page }) => {
-	// ?w= selects from the curated library; "openers" is the two-minute one.
-	await signInTo(page, '/ride?w=openers');
-	await expect(page.getByRole('heading', { name: 'Openers' })).toBeVisible();
+	// ?w= resolves the hidden two-minute CI fixture; ?sim unlocks the
+	// simulator in this production build (#123).
+	await signInTo(page, '/ride?w=smoke-test&sim=1');
+	await expect(
+		page.getByRole('heading', { name: 'Smoke Test' }),
+	).toBeVisible();
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
 
 	// The ride is live once power is arriving.
@@ -47,7 +50,7 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// The same finished ride is kept locally (#14). Asserting it here rather than in
 	// its own test reuses the two minutes already spent riding.
 	await page.goto('/history');
-	const ride = page.getByText('Openers').first();
+	const ride = page.getByText('Smoke Test').first();
 	await expect(ride).toBeVisible();
 	await expect(page.getByText('No rides yet')).toHaveCount(0);
 });
