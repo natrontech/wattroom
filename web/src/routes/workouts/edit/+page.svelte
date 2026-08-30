@@ -22,24 +22,30 @@
 	const FTP = 265;
 	const custom = createCustomStore();
 
-	// ?from= copies a library workout as a starting point; ?w= edits a saved one.
+	// ?from= copies a library workout as a starting point; ?w= edits a saved
+	// one — the shelf lives on the account now, so ?w= hydrates when it lands.
 	const editingId = page.url.searchParams.get('w');
 	const source = editingId
-		? custom.byId(editingId)?.workout
+		? undefined
 		: byId(page.url.searchParams.get('from') ?? '')?.workout;
 
 	let workout = $state<Workout>(
 		source
-			? {
-					...structuredClone(source),
-					name: editingId ? source.name : `${source.name} (copy)`,
-				}
+			? { ...structuredClone(source), name: `${source.name} (copy)` }
 			: {
 					name: 'New workout',
 					author: 'you',
 					steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
 				},
 	);
+	let hydrated = $state(!editingId);
+	$effect(() => {
+		if (hydrated || !custom.loaded) return;
+		const saved = editingId ? custom.byId(editingId)?.workout : undefined;
+		if (saved) workout = $state.snapshot(saved) as Workout;
+		else status = 'That saved workout was not found — this starts fresh.';
+		hydrated = true;
+	});
 	let selected = $state<number | null>(0);
 	let status = $state<string | null>(null);
 
@@ -114,13 +120,13 @@
 	// Loading replaces the sheet with a copy — the library stays pristine and a
 	// saved custom never edits in place from here (that is ?w=).
 	function load(next: Workout, asCopy: boolean) {
-		workout = structuredClone(next);
+		workout = structuredClone($state.snapshot(next) as Workout);
 		if (asCopy) workout.name = `${next.name} (copy)`;
 		selected = null;
 	}
 
-	function save() {
-		const result = custom.save(
+	async function save() {
+		const result = await custom.save(
 			$state.snapshot(workout) as Workout,
 			editingId ?? undefined,
 		);
