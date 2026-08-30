@@ -1,6 +1,6 @@
 # ADR-0010: Room-first — WattRoom replaces the voice app, not just the trainer app
 
-Date: 2026-08-30 · Status: **proposed** (Jan decides — #150)
+Date: 2026-08-30 · Status: accepted (#150)
 
 ## Context
 
@@ -18,7 +18,7 @@ state, presence matters when nobody is pedalling, and the social surface
 Every issue in the wave argues from one of these premises. Without deciding,
 each gets litigated separately.
 
-## Decision (proposed)
+## Decision
 
 **Room-first, ride-night-scoped.** WattRoom aims to be the only app open on
 ride night — before, during, and after the session — but does not chase
