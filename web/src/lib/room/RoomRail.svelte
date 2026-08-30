@@ -20,6 +20,7 @@
 		onVoiceMode,
 		onGateThreshold,
 		onPtt,
+		activeSpeaking = [],
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -40,6 +41,9 @@
 		onVoiceMode?: (mode: 'gate' | 'ptt') => void;
 		onGateThreshold?: (threshold: number) => void;
 		onPtt?: (held: boolean) => void;
+		/** Names speaking right now in the ACTIVE room (the only one you can
+		 * hear) — the rail highlights them Discord-style (#174). */
+		activeSpeaking?: string[];
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -102,13 +106,7 @@
 							>{room.members}</span
 						>
 					{/if}
-					{#if room.voice?.length}
-						<!-- The radar (#149): who is in voice, before you enter — the
-						     link joins voice in one click. -->
-						<span class="text-z4 w-full truncate text-[10px]"
-							>🎙 {room.voice.join(', ')}</span
-						>
-					{:else if room.next}
+					{#if room.next && !room.riders?.length}
 						<span class="text-muted/70 w-full truncate text-[10px]"
 							>next: {room.next.workoutName} ·
 							{new Date(room.next.startsAt).toLocaleString(undefined, {
@@ -119,6 +117,41 @@
 						>
 					{/if}
 				</a>
+				{#if room.riders?.length}
+					<!-- The member tree (#174): who is here, in voice, talking —
+					     the mental model the crew already has. -->
+					<ul class="mt-0.5 mb-1 ml-4 space-y-0.5">
+						{#each room.riders.slice(0, 8) as name (name)}
+							{@const inVoice = room.voice?.includes(name)}
+							{@const talking =
+								room.slug === activeSlug && activeSpeaking.includes(name)}
+							<li
+								class="flex items-center gap-1.5 text-[11px] {talking
+									? 'text-white'
+									: inVoice
+										? 'text-white/80'
+										: 'text-muted'}"
+							>
+								<span
+									class="h-1.5 w-1.5 rounded-full {talking
+										? 'bg-z4 animate-pulse'
+										: inVoice
+											? 'bg-z4'
+											: 'bg-muted/30'}"
+								></span>
+								<span class="truncate">{name}</span>
+								{#if talking}
+									<span class="text-z4 text-[9px]">speaking</span>
+								{/if}
+							</li>
+						{/each}
+						{#if room.riders.length > 8}
+							<li class="text-muted/60 text-[10px]">
+								+{room.riders.length - 8} more
+							</li>
+						{/if}
+					</ul>
+				{/if}
 			</li>
 		{/each}
 	</ul>

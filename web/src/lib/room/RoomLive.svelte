@@ -784,6 +784,9 @@
 			micOn={av.micOn}
 			camOn={av.camOn}
 			micLevel={av.micLevel}
+			activeSpeaking={(live.tick?.roster ?? [])
+				.filter((r) => av.speaking[r.id])
+				.map((r) => r.name)}
 			transmitting={av.transmitting}
 			voiceMode={av.mode}
 			gateThreshold={av.gateThreshold}
