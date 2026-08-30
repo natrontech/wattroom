@@ -1179,9 +1179,12 @@
 	<div class="hidden shrink-0 xl:block">
 		<SidePanel
 			live={phase === 'live'}
-			showPlayer={layout !== 'media'}
+			showPlayer={layout !== 'media' &&
+				(!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl)}
 			queue={queueView}
 			onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
+			onJam={(url) => live.jukebox('jam', undefined, undefined, url)}
+			jamUrl={live.tick?.jukebox?.jamUrl}
 			messages={live.chatLog}
 			onCheer={(emoji) => live.cheer(emoji)}
 			onChat={(text) => live.chat(text)}
