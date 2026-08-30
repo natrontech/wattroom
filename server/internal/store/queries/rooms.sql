@@ -46,3 +46,25 @@ delete from memberships where room_id = $1 and user_id = $2;
 
 -- name: CountRoomMembers :one
 select count(*) from memberships where room_id = $1;
+
+-- name: CreateScheduledSession :one
+insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
+values ($1, $2, $3, $4, $5) returning *;
+
+-- name: ListRoomUpcoming :many
+-- Grace of 30 min: a plan stays visible (and startable) a little past its
+-- time, then falls off — no cron, the read is the cleanup.
+select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
+from scheduled_sessions s
+join users u on u.id = s.created_by
+where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
+order by s.starts_at
+limit 10;
+
+-- name: NextRoomSession :one
+select workout_name, starts_at from scheduled_sessions
+where room_id = $1 and starts_at > now() - interval '30 minutes'
+order by starts_at limit 1;
+
+-- name: DeleteScheduledSession :execrows
+delete from scheduled_sessions where id = $1 and room_id = $2;

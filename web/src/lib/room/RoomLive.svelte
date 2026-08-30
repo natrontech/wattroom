@@ -68,6 +68,9 @@
 		onRole,
 		onRemove,
 		onListed,
+		upcoming = [],
+		onSchedule,
+		onUnschedule,
 	}: {
 		slug: string;
 		role: string;
@@ -83,6 +86,15 @@
 		onRole: (userId: string, role: string) => void;
 		onRemove: (userId: string) => void;
 		onListed: (listed: boolean) => void;
+		upcoming?: {
+			id: string;
+			workoutName: string;
+			workoutJson: string;
+			startsAt: string;
+			createdBy: string;
+		}[];
+		onSchedule: (name: string, json: string, startsAt: string) => void;
+		onUnschedule: (id: string) => void;
 	} = $props();
 
 	// svelte-ignore state_referenced_locally
@@ -309,6 +321,55 @@
 		live.control('pick', {
 			name: entry.workout.name,
 			json: JSON.stringify(entry.workout),
+			totalSeconds: total,
+		});
+		live.control('start');
+	}
+
+	// ── Planned rides (#116) ──────────────────────────────────────────────────
+	let planWorkoutId = $state(library[0].id);
+	let planAt = $state(defaultPlanAt());
+	function defaultPlanAt(): string {
+		const t = new Date(Date.now() + 60 * 60 * 1000);
+		t.setMinutes(0, 0, 0);
+		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
+		return t.toISOString().slice(0, 16); // datetime-local format
+	}
+	function plan() {
+		const entry = library.find((w) => w.id === planWorkoutId);
+		if (!entry || !planAt) return;
+		onSchedule(
+			entry.workout.name,
+			JSON.stringify(entry.workout),
+			new Date(planAt).toISOString(),
+		);
+	}
+	function formatWhen(iso: string): string {
+		return new Date(iso).toLocaleString(undefined, {
+			weekday: 'short',
+			day: '2-digit',
+			month: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+		});
+	}
+	/** Startable a little early and through the grace the server keeps it visible. */
+	function due(iso: string): boolean {
+		const diff = new Date(iso).getTime() - Date.now();
+		return diff < 10 * 60 * 1000 && diff > -30 * 60 * 1000;
+	}
+	function startScheduled(entry: (typeof upcoming)[number]) {
+		const segments = parseSharedSegments(entry.workoutJson);
+		const total = segments.reduce(
+			(t, s) => Math.max(t, s.startSeconds + s.seconds),
+			0,
+		);
+		if (total === 0) return;
+		mySamples = [];
+		myTrace = [];
+		live.control('pick', {
+			name: entry.workoutName,
+			json: entry.workoutJson,
 			totalSeconds: total,
 		});
 		live.control('start');
@@ -684,6 +745,71 @@
 						>Targets are released — spin easy until the coach resumes.</span
 					>
 				</p>
+			</div>
+		{/if}
+
+		{#if phase === 'lounge' && (upcoming.length > 0 || canControl)}
+			<div class="border-muted/15 bg-surface-raised mb-3 rounded-lg border p-4">
+				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
+					upcoming
+				</h2>
+				{#if upcoming.length === 0}
+					<p class="text-muted mt-2 text-xs">
+						Nothing planned — the room rides when someone presses Start.
+					</p>
+				{/if}
+				<ul class="mt-2 space-y-1.5">
+					{#each upcoming as entry (entry.id)}
+						<li class="flex flex-wrap items-center gap-x-3 gap-y-1">
+							<span class="text-sm font-medium">{entry.workoutName}</span>
+							<span class="text-muted font-mono text-xs tabular-nums"
+								>{formatWhen(entry.startsAt)}</span
+							>
+							<span class="text-muted text-xs">by {entry.createdBy}</span>
+							{#if canControl}
+								<span class="ml-auto flex gap-1.5">
+									{#if due(entry.startsAt)}
+										<button
+											onclick={() => startScheduled(entry)}
+											class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+											>Start now</button
+										>
+									{/if}
+									<button
+										onclick={() => onUnschedule(entry.id)}
+										class="border-muted/25 text-muted hover:border-muted/60 rounded border px-2.5 py-1 text-xs hover:text-white"
+										>Remove</button
+									>
+								</span>
+							{:else if due(entry.startsAt)}
+								<span class="text-watt glow-text text-xs">starting soon</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				{#if canControl}
+					<div class="mt-3 flex flex-wrap items-center gap-1.5">
+						<select
+							bind:value={planWorkoutId}
+							class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
+						>
+							{#each library as entry (entry.id)}
+								<option value={entry.id}>{entry.workout.name}</option>
+							{/each}
+						</select>
+						<input
+							type="datetime-local"
+							bind:value={planAt}
+							class="border-muted/25 bg-surface rounded border px-2 py-1 text-xs"
+						/>
+						<button
+							onclick={plan}
+							disabled={adminBusy}
+							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1 text-xs disabled:opacity-40"
+							>Plan</button
+						>
+					</div>
+				{/if}
 			</div>
 		{/if}
 

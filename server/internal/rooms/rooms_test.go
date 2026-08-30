@@ -263,3 +263,70 @@ func TestUpdateSoundPackAndDelete(t *testing.T) {
 		t.Fatalf("room gone: %d", status)
 	}
 }
+
+func TestScheduleLifecycle(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Planners")
+	if status, body := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob join: %d %v", status, body)
+	}
+
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	starts := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts)
+
+	// A plain member cannot plan; the owner can.
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusForbidden {
+		t.Fatalf("member schedule: %d", status)
+	}
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan)
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	planID, _ := body["id"].(string)
+
+	// The past bounces with the field named.
+	past := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`,
+		workout, time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339))
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", past); status != http.StatusBadRequest || body["field"] != "startsAt" {
+		t.Fatalf("past plan: %d %v", status, body)
+	}
+
+	// Members see it on the room; a coach (promoted bob) can remove it.
+	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	upcoming, _ := body["upcoming"].([]any)
+	if status != http.StatusOK || len(upcoming) != 1 {
+		t.Fatalf("upcoming: %d %v", status, body)
+	}
+	// The rooms list shows the next session.
+	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms", "")
+	roomsList, _ := body["rooms"].([]any)
+	found := false
+	for _, entry := range roomsList {
+		m, _ := entry.(map[string]any)
+		if m["slug"] == slug {
+			next, _ := m["nextSession"].(map[string]any)
+			found = next["workoutName"] == "Openers"
+		}
+	}
+	if status != http.StatusOK || !found {
+		t.Fatalf("nextSession missing: %d %v", status, body)
+	}
+
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role",
+		fmt.Sprintf(`{"userId":%q,"role":"coach"}`, h.userID(t, "bob"))); status != http.StatusNoContent {
+		t.Fatalf("promote bob: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/schedule/"+planID, ""); status != http.StatusNoContent {
+		t.Fatalf("coach unschedule: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/schedule/"+planID, ""); status != http.StatusNotFound {
+		t.Fatalf("double unschedule: %d", status)
+	}
+}
+
+func (h *harness) userID(t *testing.T, name string) string {
+	t.Helper()
+	return store.UUIDString(h.users.byToken[name].ID)
+}

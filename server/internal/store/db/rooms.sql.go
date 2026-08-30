@@ -73,6 +73,40 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 	return i, err
 }
 
+const createScheduledSession = `-- name: CreateScheduledSession :one
+insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
+values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at
+`
+
+type CreateScheduledSessionParams struct {
+	RoomID      pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedBy   pgtype.UUID
+}
+
+func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateScheduledSessionParams) (ScheduledSession, error) {
+	row := q.db.QueryRow(ctx, createScheduledSession,
+		arg.RoomID,
+		arg.WorkoutName,
+		arg.WorkoutJson,
+		arg.StartsAt,
+		arg.CreatedBy,
+	)
+	var i ScheduledSession
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.WorkoutName,
+		&i.WorkoutJson,
+		&i.StartsAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const deleteMembership = `-- name: DeleteMembership :exec
 delete from memberships where room_id = $1 and user_id = $2
 `
@@ -95,6 +129,23 @@ delete from rooms where id = $1
 func (q *Queries) DeleteRoom(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRoom, id)
 	return err
+}
+
+const deleteScheduledSession = `-- name: DeleteScheduledSession :execrows
+delete from scheduled_sessions where id = $1 and room_id = $2
+`
+
+type DeleteScheduledSessionParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+func (q *Queries) DeleteScheduledSession(ctx context.Context, arg DeleteScheduledSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteScheduledSession, arg.ID, arg.RoomID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getMembership = `-- name: GetMembership :one
@@ -204,6 +255,51 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 	return items, nil
 }
 
+const listRoomUpcoming = `-- name: ListRoomUpcoming :many
+select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
+from scheduled_sessions s
+join users u on u.id = s.created_by
+where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
+order by s.starts_at
+limit 10
+`
+
+type ListRoomUpcomingRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedBy   string
+}
+
+// Grace of 30 min: a plan stays visible (and startable) a little past its
+// time, then falls off — no cron, the read is the cleanup.
+func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]ListRoomUpcomingRow, error) {
+	rows, err := q.db.Query(ctx, listRoomUpcoming, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomUpcomingRow
+	for rows.Next() {
+		var i ListRoomUpcomingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.CreatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserRooms = `-- name: ListUserRooms :many
 select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack
 from memberships m
@@ -239,6 +335,24 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]Room
 		return nil, err
 	}
 	return items, nil
+}
+
+const nextRoomSession = `-- name: NextRoomSession :one
+select workout_name, starts_at from scheduled_sessions
+where room_id = $1 and starts_at > now() - interval '30 minutes'
+order by starts_at limit 1
+`
+
+type NextRoomSessionRow struct {
+	WorkoutName string
+	StartsAt    pgtype.Timestamptz
+}
+
+func (q *Queries) NextRoomSession(ctx context.Context, roomID pgtype.UUID) (NextRoomSessionRow, error) {
+	row := q.db.QueryRow(ctx, nextRoomSession, roomID)
+	var i NextRoomSessionRow
+	err := row.Scan(&i.WorkoutName, &i.StartsAt)
+	return i, err
 }
 
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec

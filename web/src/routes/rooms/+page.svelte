@@ -13,6 +13,7 @@
 		connected?: number;
 		phase?: string;
 		riders?: string[];
+		nextSession?: { workoutName: string; startsAt: string };
 	}
 	interface Medal {
 		kind: string;
@@ -190,6 +191,16 @@
 								empty — share the link and your crew appears
 							{/if}
 						</p>
+						{#if room.nextSession}
+							<p class="text-muted mt-0.5 text-xs">
+								next: {room.nextSession.workoutName} ·
+								{new Date(room.nextSession.startsAt).toLocaleString(undefined, {
+									weekday: 'short',
+									hour: '2-digit',
+									minute: '2-digit',
+								})}
+							</p>
+						{/if}
 					</div>
 					{#if room.phase === 'running' || room.phase === 'countdown'}
 						<span

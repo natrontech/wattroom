@@ -27,6 +27,13 @@
 		medals?: Medal[];
 		streakWeeks?: number;
 		monthKj?: number;
+		upcoming?: {
+			id: string;
+			workoutName: string;
+			workoutJson: string;
+			startsAt: string;
+			createdBy: string;
+		}[];
 	}
 
 	void account.load();
@@ -106,6 +113,13 @@
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
 			monthKj={room.monthKj ?? 0}
+			upcoming={room.upcoming ?? []}
+			onSchedule={(workoutName, workoutJson, startsAt) =>
+				act(`/api/rooms/${room?.slug}/schedule`, {
+					json: { workoutName, workoutJson, startsAt },
+				})}
+			onUnschedule={(id) =>
+				act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
 			adminBusy={busy}
 			onRole={(userId, nextRole) =>
 				act(`/api/rooms/${room?.slug}/role`, {
