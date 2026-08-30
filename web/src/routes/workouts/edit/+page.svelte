@@ -118,6 +118,24 @@
 		selected = workout.steps.length - 1;
 	}
 
+	// Drag to reorder (#170's intuitiveness bar): native HTML5 drag, no
+	// dependency. The arrow buttons stay — drag is mouse-only and the
+	// keyboard path is part of the editor, not a fallback.
+	let dragIndex = $state<number | null>(null);
+	let dropIndex = $state<number | null>(null);
+	function dropStep() {
+		if (dragIndex === null || dropIndex === null || dragIndex === dropIndex) {
+			dragIndex = dropIndex = null;
+			return;
+		}
+		const next = [...workout.steps];
+		const [moved] = next.splice(dragIndex, 1);
+		next.splice(dropIndex > dragIndex ? dropIndex - 1 : dropIndex, 0, moved);
+		workout.steps = next;
+		selected = dropIndex > dragIndex ? dropIndex - 1 : dropIndex;
+		dragIndex = dropIndex = null;
+	}
+
 	function move(index: number, by: number) {
 		const to = index + by;
 		if (to < 0 || to >= workout.steps.length) return;
@@ -238,7 +256,29 @@
 			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">steps</h2>
 			<ul class="mt-3 space-y-1.5">
 				{#each workout.steps as step, i (i)}
-					<li>
+					<li
+						draggable="true"
+						ondragstart={(e) => {
+							dragIndex = i;
+							e.dataTransfer?.setData('text/plain', String(i));
+							if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+						}}
+						ondragover={(e) => {
+							e.preventDefault();
+							const rect = e.currentTarget.getBoundingClientRect();
+							dropIndex = e.clientY < rect.top + rect.height / 2 ? i : i + 1;
+						}}
+						ondrop={(e) => {
+							e.preventDefault();
+							dropStep();
+						}}
+						ondragend={() => (dragIndex = dropIndex = null)}
+						class="{dragIndex === i ? 'opacity-40' : ''} {dropIndex === i
+							? 'border-t-neon/70 border-t-2'
+							: dropIndex === i + 1 && i === workout.steps.length - 1
+								? 'border-b-neon/70 border-b-2'
+								: ''} cursor-grab rounded-lg active:cursor-grabbing"
+					>
 						<button
 							onclick={() => (selected = i)}
 							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {selected ===
