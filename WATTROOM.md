@@ -8,7 +8,7 @@ This document is the north star for the project. Every major platform, UX, featu
 
 ## 1. Vision
 
-WattRoom is "Discord for indoor cycling". A Zwift alternative that deliberately drops the virtual world (no roads, no avatars, no 3D) and focuses on what matters for structured training: executing workouts precisely, and doing it **together**.
+WattRoom is "Discord for indoor cycling" — the only app open on ride night (ADR-0010: room-first, ride-night-scoped). A Zwift alternative that deliberately drops the virtual world (no roads, no avatars, no 3D) and focuses on what matters for structured training: executing workouts precisely, and doing it **together**.
 
 The core insight: indoor training is boring alone. Zwift solves this with a game world. WattRoom solves it with **presence** — you hop into a room with your training buddies, everyone's live watts and heart rate are visible, you talk over voice, see each other on camera, and share music or videos through a synced jukebox.
 
