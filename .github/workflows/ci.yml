@@ -95,6 +95,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+      # Warm the Go build: the e2e web server spawns `go run .`, and a cold
+      # module download used to still be running while the specs already were.
+      - run: go build ./...
+        working-directory: server
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: web/package.json
