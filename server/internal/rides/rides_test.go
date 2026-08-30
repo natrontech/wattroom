@@ -93,7 +93,9 @@ func TestSoloRideSaveAndList(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, body)
 	}
-	if body["kj"].(float64) != 24 || body["execution"].(float64) < 0.99 {
+	kj, _ := body["kj"].(float64)
+	execution, _ := body["execution"].(float64)
+	if kj != 24 || execution < 0.99 {
 		t.Fatalf("scoring: %v", body)
 	}
 	if body["room"] != nil && body["room"] != false {
