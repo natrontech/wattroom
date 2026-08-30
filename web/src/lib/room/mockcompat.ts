@@ -37,4 +37,8 @@ export interface RailRoom {
 	slug: string;
 	live: boolean;
 	members: number;
+	/** Riders connected right now (server presence). */
+	connected?: number;
+	/** Their names, for the hover and the rooms page. */
+	riders?: string[];
 }

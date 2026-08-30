@@ -33,6 +33,7 @@
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
+	import { fetchRailRooms } from '$lib/nav/rooms';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -120,17 +121,12 @@
 	// ── The rail: your rooms, your mic ────────────────────────────────────────
 	let railRooms = $state<RailRoom[]>([]);
 	$effect(() => {
-		void api<{ rooms: { slug: string; name: string }[] }>('/api/rooms').then(
-			(res) => {
-				if (res.ok)
-					railRooms = res.data.rooms.map((room) => ({
-						name: room.name,
-						slug: room.slug,
-						live: room.slug === slug && phase === 'live',
-						members: 0,
-					}));
-			},
-		);
+		void fetchRailRooms().then((fetched) => {
+			// This room's live flag comes from the local tick, not the lagging list.
+			railRooms = fetched.map((room) =>
+				room.slug === slug ? { ...room, live: phase === 'live' } : room,
+			);
+		});
 	});
 
 	// ── Riders: the one grid, fed by ticks ────────────────────────────────────

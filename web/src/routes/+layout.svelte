@@ -10,6 +10,9 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
 	import { takeNext } from '$lib/auth/next';
+	import { fetchRailRooms } from '$lib/nav/rooms';
+	import RoomRail from '$lib/room/RoomRail.svelte';
+	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let { children } = $props();
 
@@ -22,6 +25,28 @@
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
+
+	// The rail is the app's frame on every page except the ones that ARE their
+	// own frame: the room (it mounts the same rail itself, with AV wired), the
+	// phone spectator, login and the dev mocks.
+	const framed = $derived(
+		!!account.me &&
+			!publicPath &&
+			!page.url.pathname.startsWith('/r/') &&
+			page.url.pathname !== '/login',
+	);
+
+	let railRooms = $state<RailRoom[]>([]);
+	$effect(() => {
+		if (!framed) return;
+		page.url.pathname; // re-fetch presence on every navigation
+		void fetchRailRooms().then((rooms) => (railRooms = rooms));
+	});
+
+	const railYou = $derived({
+		name: account.me?.displayName ?? '',
+		ftp: account.me?.ftpWatts ?? 0,
+	});
 
 	$effect(() => {
 		if (gated) {
@@ -48,6 +73,17 @@
 {#if !account.loaded && !publicPath}
 	<!-- Hold the frame while /api/me answers — no gated flash, no login flash. -->
 	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
-{:else if !gated}
+{:else if gated}
+	<!-- redirecting -->
+{:else if framed}
+	<div class="flex h-dvh overflow-hidden">
+		<div class="hidden shrink-0 md:block">
+			<RoomRail you={railYou} live={false} rooms={railRooms} showAv={false} />
+		</div>
+		<div class="min-w-0 flex-1 overflow-y-auto">
+			{@render children()}
+		</div>
+	</div>
+{:else}
 	{@render children()}
 {/if}

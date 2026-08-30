@@ -190,18 +190,29 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Presence answers "is anything happening in there" for the rooms list (#39
-// design: the nav shows where the action is). Lock, read two numbers, unlock.
-func (h *Hub) Presence(slug string) (connected int, phase string) {
+// Presence answers "is anything happening in there" for the rooms list and
+// the rail (#39 design: the nav shows where the action is) — and now who,
+// so a rider can see their crew from any page. Riders, not sockets: a phone
+// spectator next to a desktop is one person. Lock, copy, unlock.
+func (h *Hub) Presence(slug string) (connected int, phase string, riders []string) {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
 	h.mu.Unlock()
 	if !ok {
-		return 0, "idle"
+		return 0, "idle", nil
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return len(rm.clients), rm.session.phase
+	seen := make(map[string]struct{}, len(rm.clients))
+	for c := range rm.clients {
+		if _, dup := seen[c.rider.ID]; dup {
+			continue
+		}
+		seen[c.rider.ID] = struct{}{}
+		riders = append(riders, c.rider.Name)
+	}
+	sort.Strings(riders)
+	return len(seen), rm.session.phase, riders
 }
 
 func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {
