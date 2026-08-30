@@ -22,7 +22,7 @@ where m.room_id = $1
 order by m.joined_at;
 
 -- name: ListUserRooms :many
-select r.*
+select r.*, m.role
 from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1
@@ -68,3 +68,6 @@ order by starts_at limit 1;
 
 -- name: DeleteScheduledSession :execrows
 delete from scheduled_sessions where id = $1 and room_id = $2;
+
+-- name: CountOwnedRooms :one
+select count(*) from rooms where owner_id = $1;

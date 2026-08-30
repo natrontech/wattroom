@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOwnedRooms = `-- name: CountOwnedRooms :one
+select count(*) from rooms where owner_id = $1
+`
+
+func (q *Queries) CountOwnedRooms(ctx context.Context, ownerID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOwnedRooms, ownerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countRoomMembers = `-- name: CountRoomMembers :one
 select count(*) from memberships where room_id = $1
 `
@@ -301,22 +312,34 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, m.role
 from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1
 order by m.joined_at desc
 `
 
-func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]Room, error) {
+type ListUserRoomsRow struct {
+	ID        pgtype.UUID
+	Code      string
+	Slug      string
+	Name      string
+	OwnerID   pgtype.UUID
+	Listed    bool
+	CreatedAt pgtype.Timestamptz
+	SoundPack string
+	Role      string
+}
+
+func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]ListUserRoomsRow, error) {
 	rows, err := q.db.Query(ctx, listUserRooms, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Room
+	var items []ListUserRoomsRow
 	for rows.Next() {
-		var i Room
+		var i ListUserRoomsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Code,
@@ -326,6 +349,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]Room
 			&i.Listed,
 			&i.CreatedAt,
 			&i.SoundPack,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}

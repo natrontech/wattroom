@@ -330,3 +330,32 @@ func (h *harness) userID(t *testing.T, name string) string {
 	t.Helper()
 	return store.UUIDString(h.users.byToken[name].ID)
 }
+
+func TestOwnedRoomsCap(t *testing.T) {
+	h := setup(t)
+	for i := range 3 {
+		h.createRoom(t, "alice", fmt.Sprintf("Cap Room %d", i))
+	}
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms", `{"name":"One Too Many"}`)
+	if status != http.StatusConflict || body["error"] != "conflict" {
+		t.Fatalf("fourth room: %d %v", status, body)
+	}
+	// Deleting frees the slot (docs/SPEC.md), and the list carries the role
+	// the frontend gates on.
+	status, body = h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+	roomsList, _ := body["rooms"].([]any)
+	if status != http.StatusOK || len(roomsList) != 3 {
+		t.Fatalf("list: %d %v", status, body)
+	}
+	first, _ := roomsList[0].(map[string]any)
+	if first["role"] != "owner" {
+		t.Fatalf("list entry missing role: %v", first)
+	}
+	slug, _ := first["slug"].(string)
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
+		t.Fatalf("delete: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms", `{"name":"Slot Freed"}`); status != http.StatusCreated {
+		t.Fatalf("after delete: %d", status)
+	}
+}

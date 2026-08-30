@@ -13,6 +13,7 @@
 		connected?: number;
 		phase?: string;
 		riders?: string[];
+		role?: string;
 		nextSession?: { workoutName: string; startsAt: string };
 	}
 	interface Medal {
@@ -60,6 +61,12 @@
 			if (first.ok) detail = first.data;
 		}
 	}
+
+	// docs/SPEC.md ownership cap: at 3 owned rooms the affordance disables
+	// with the reason, instead of a 409 on click (ux.md capability gating).
+	const ownedOut = $derived(
+		(rooms ?? []).filter((room) => room.role === 'owner').length >= 3,
+	);
 
 	async function create() {
 		busy = true;
@@ -294,10 +301,15 @@
 						placeholder="Room name"
 					/>
 					<button
-						disabled={busy || !name.trim()}
+						disabled={busy || !name.trim() || ownedOut}
 						class="mt-3 w-full rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
 						>Open room</button
 					>
+					{#if ownedOut}
+						<p class="text-muted mt-2 text-xs">
+							You own 3 rooms — the cap. Delete one to open another.
+						</p>
+					{/if}
 				</form>
 			</div>
 
