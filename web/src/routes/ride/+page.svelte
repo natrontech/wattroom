@@ -675,7 +675,6 @@
 				trace={session.trace}
 			/>
 		</div>
-
 	{/if}
 
 	{#if session && session.state !== 'done' && tv}
@@ -704,7 +703,9 @@
 					>
 					<span class="text-muted ml-2 text-[3vh]">W</span>
 				</div>
-				<div class="text-muted mt-[2vh] flex items-baseline gap-[2vw] text-[3vh]">
+				<div
+					class="text-muted mt-[2vh] flex items-baseline gap-[2vw] text-[3vh]"
+				>
 					<span>{target > 0 ? `target ${target} W` : 'no target'}</span>
 					<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span>
 				</div>
@@ -726,65 +727,65 @@
 		     zeros behind it (#126). -->
 		<div class="mx-auto mt-4 w-full max-w-3xl">
 			<SessionSummary
-					subtitle="{workout.name} · {new Date().toLocaleDateString()}"
-					samples={session.recording}
-					ftp={profile.current.ftp}
-					execution={session.execution}
-				>
-					{#snippet actions()}
-						<div
-							class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
-						>
-							<div class="flex flex-wrap items-center gap-2">
-								<button
-									onclick={downloadFit}
-									disabled={downloading}
-									data-testid="download-fit"
-									class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
-									>{downloading ? 'Preparing…' : 'Export .fit'}</button
+				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
+				samples={session.recording}
+				ftp={profile.current.ftp}
+				execution={session.execution}
+			>
+				{#snippet actions()}
+					<div
+						class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<button
+								onclick={downloadFit}
+								disabled={downloading}
+								data-testid="download-fit"
+								class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+								>{downloading ? 'Preparing…' : 'Export .fit'}</button
+							>
+							<a
+								href="/workouts"
+								class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+								>Pick another workout</a
+							>
+						</div>
+						{#if error}
+							<p class="text-z6 mt-2 text-xs">{error}</p>
+						{/if}
+
+						{#if recorder.flags.length > sentFlags}
+							<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>your flags</span
 								>
-								<a
-									href="/workouts"
-									class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
-									>Pick another workout</a
+								{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
+									<div class="flex items-center gap-2">
+										<span class="text-muted font-mono text-xs"
+											>{new Date(flag.clientMs).toLocaleTimeString()}</span
+										>
+										<input
+											bind:value={flag.note}
+											placeholder="what went wrong? (optional)"
+											class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+										/>
+									</div>
+								{/each}
+								<button
+									onclick={sendFlags}
+									disabled={sending}
+									class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
+									>{sending ? 'Sending…' : 'Send to the developers'}</button
 								>
 							</div>
-							{#if error}
-								<p class="text-z6 mt-2 text-xs">{error}</p>
-							{/if}
-
-							{#if recorder.flags.length > sentFlags}
-								<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
-									<span class="text-muted text-[10px] tracking-wider uppercase"
-										>your flags</span
-									>
-									{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
-										<div class="flex items-center gap-2">
-											<span class="text-muted font-mono text-xs"
-												>{new Date(flag.clientMs).toLocaleTimeString()}</span
-											>
-											<input
-												bind:value={flag.note}
-												placeholder="what went wrong? (optional)"
-												class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
-											/>
-										</div>
-									{/each}
-									<button
-										onclick={sendFlags}
-										disabled={sending}
-										class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
-										>{sending ? 'Sending…' : 'Send to the developers'}</button
-									>
-								</div>
-							{:else if sentFlags > 0}
-								<p class="text-z4 mt-3 text-xs">
-									Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
-								</p>
-							{/if}
-						</div>
-					{/snippet}
-				</SessionSummary>
+						{:else if sentFlags > 0}
+							<p class="text-z4 mt-3 text-xs">
+								Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
+							</p>
+						{/if}
+					</div>
+				{/snippet}
+			</SessionSummary>
 		</div>
 	{/if}
 </main>
