@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 
@@ -207,6 +208,21 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 			tp.AccessToken, tp.RefreshToken, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
+		// Two callbacks for the same identity can race past the earlier lookup
+		// (parallel e2e workers found this; a double-clicked OAuth redirect
+		// does the same). The loser adopts the winner's user; its own orphan
+		// user row is removed so the race leaves no residue.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			winner, lookupErr := q.GetIdentity(ctx, db.GetIdentityParams{
+				Provider: p.id, ProviderUserID: ident.ProviderUserID,
+			})
+			if lookupErr != nil {
+				return db.User{}, lookupErr
+			}
+			_ = q.DeleteUser(ctx, user.ID)
+			return q.GetUser(ctx, winner.UserID)
+		}
 		return db.User{}, err
 	}
 	return user, nil
