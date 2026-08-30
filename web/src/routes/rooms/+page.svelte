@@ -12,6 +12,7 @@
 		memberCount?: number;
 		connected?: number;
 		phase?: string;
+		riders?: string[];
 	}
 	interface Medal {
 		kind: string;
@@ -178,9 +179,10 @@
 						<p class="font-display font-bold">{room.name}</p>
 						<p class="text-muted mt-0.5 text-xs">
 							{#if room.phase === 'running' || room.phase === 'countdown'}
-								riding now · {room.connected} in the room
+								riding now · {(room.riders ?? []).join(', ') ||
+									`${room.connected} in the room`}
 							{:else if (room.connected ?? 0) > 0}
-								{room.connected} in the lounge
+								{(room.riders ?? []).join(', ') || room.connected} in the lounge
 							{:else if (room.memberCount ?? 0) > 1}
 								{room.memberCount} members — open it and your crew gets a ping
 							{:else}

@@ -33,7 +33,7 @@ type UserSource interface {
 // Presence is what the rooms list borrows from the hub — defined here, where
 // it is consumed. Optional: without it every room reads as quiet.
 type Presence interface {
-	Presence(slug string) (connected int, phase string)
+	Presence(slug string) (connected int, phase string, riders []string)
 }
 
 type Service struct {
@@ -99,6 +99,9 @@ type roomJSON struct {
 	MemberCount int    `json:"memberCount,omitempty"`
 	Connected   int    `json:"connected,omitempty"`
 	Phase       string `json:"phase,omitempty"`
+	// Display names of riders connected right now — members-only, room-scoped
+	// like every live signal.
+	Riders []string `json:"riders,omitempty"`
 }
 
 // --- handlers ---
@@ -180,7 +183,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.MemberCount = int(count)
 		}
 		if s.presence != nil {
-			entry.Connected, entry.Phase = s.presence.Presence(room.Slug)
+			entry.Connected, entry.Phase, entry.Riders = s.presence.Presence(room.Slug)
 		}
 		out = append(out, entry)
 	}

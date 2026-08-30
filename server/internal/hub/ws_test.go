@@ -172,4 +172,10 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	if len(tick.Roster) != 1 {
 		t.Fatalf("expected one roster entry for one rider on two sockets, got %d", len(tick.Roster))
 	}
+
+	// Presence counts the same way: riders, not sockets — and names them.
+	connected, phase, riders := h.Presence("dupes")
+	if connected != 1 || phase != "idle" || len(riders) != 1 || riders[0] != "jan" {
+		t.Fatalf("presence: connected=%d phase=%q riders=%v", connected, phase, riders)
+	}
 }
