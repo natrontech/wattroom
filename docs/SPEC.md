@@ -32,6 +32,9 @@
 | Voice/camera | ✓ | ✓ | ✓ | – |
 | Emoji cheers | ✓ | ✓ | ✓ | ✓ |
 
+Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
+Membership is uncapped; deleting a room frees a slot.
+
 Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout → 10 s countdown **(default)** → shared timeline runs → riders execute their own %FTP targets → session closes when the timeline ends (or coach ends it) → server computes stats + medals in one transaction. Late joiners sync to the current timeline position. A member stopping mid-session pauses *their own* targets (auto-pause) — the shared timeline never waits.
 
 ## Workout JSON (draft — M1 finalizes)

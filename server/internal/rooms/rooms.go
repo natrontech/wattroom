@@ -30,6 +30,9 @@ type UserSource interface {
 	User(r *http.Request) (db.User, bool)
 }
 
+// maxOwnedRooms is docs/SPEC.md's ownership cap (membership is uncapped).
+const maxOwnedRooms = 3
+
 // Presence is what the rooms list borrows from the hub — defined here, where
 // it is consumed. Optional: without it every room reads as quiet.
 type Presence interface {
@@ -131,6 +134,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A room name has to be 1-60 characters.", "name")
 		return
 	}
+	// docs/SPEC.md ownership cap: 3 owned rooms; membership is uncapped and
+	// deleting a room frees the slot. 409 — the state, not the request, refuses.
+	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), user.ID); err == nil && owned >= maxOwnedRooms {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			"You already own 3 rooms — delete one to open another.")
+		return
+	}
 
 	// Slug and code both need uniqueness; retry on collision rather than
 	// checking first — the constraint is the check.
@@ -184,7 +194,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]roomJSON, 0, len(roomsList))
 	for _, room := range roomsList {
-		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed}
+		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Role: room.Role}
 		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
 			entry.MemberCount = int(count)
 		}
