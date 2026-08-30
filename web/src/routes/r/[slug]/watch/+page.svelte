@@ -150,6 +150,9 @@
 		</div>
 		<p class="text-muted mt-2 text-center text-[10px]">
 			Spectating — cheers land in the room. Bring a laptop to ride.
+			<a href="/r/{page.params.slug}?full=1" class="underline hover:text-white"
+				>Riding on this device anyway?</a
+			>
 		</p>
 		{#if live.tick?.jukebox?.jamUrl}
 			<div class="mt-3">
