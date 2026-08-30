@@ -14,8 +14,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { durationSeconds, flatten, targetAt } from '$lib/workout/engine';
 	import { library } from '$lib/workout/library';
-	import { createRoomLive } from '$lib/room/live.svelte';
-	import { createRoomAv } from '$lib/room/av.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
@@ -97,32 +96,15 @@
 		onUnschedule: (id: string) => void;
 	} = $props();
 
+	// #173: the connection outlives this page — you stay in the room while
+	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
-	const live = createRoomLive(slug);
-	// svelte-ignore state_referenced_locally
-	const av = createRoomAv(slug);
+	const connection = roomConnection.join(slug);
+	const live = connection.live;
+	const av = connection.av;
 	const profile = createProfileStore();
 	onDestroy(() => {
-		live.close();
-		av.leave();
 		stopRiding();
-	});
-
-	// Presence announces itself (#148, ux.md): riders are mid-interval, head
-	// down — someone arriving should be audible. Diffed on rider ids so a
-	// reconnecting socket is silent; the first tick seeds without a chorus.
-	let knownRiders: Set<string> | null = null;
-	$effect(() => {
-		const ids = new Set((live.tick?.roster ?? []).map((rider) => rider.id));
-		if (live.status !== 'live') return;
-		if (knownRiders === null) {
-			knownRiders = ids;
-			return;
-		}
-		const before = knownRiders;
-		knownRiders = ids;
-		if ([...ids].some((id) => !before.has(id))) play('join');
-		else if ([...before].some((id) => !ids.has(id))) play('leave');
 	});
 
 	// SPEC room audio: the gate threshold doubles while the jukebox plays.

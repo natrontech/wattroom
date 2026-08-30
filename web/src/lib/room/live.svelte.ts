@@ -23,6 +23,7 @@ export function createRoomLive(slug: string) {
 	let socket: WebSocket | null = null;
 	let closed = false;
 	let attempts = 0;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Crash safety (#19): metrics buffer locally as well as streaming. When the
 	// socket comes back, everything since the drop replays as a backfill — the
@@ -37,9 +38,16 @@ export function createRoomLive(slug: string) {
 	}).then((opened) => (buffer = opened));
 
 	function connect() {
+		// Never dial while a socket is already in flight or open — an extra dial
+		// is a second presence the server counts and leave() can't reach.
+		if (closed || (socket && socket.readyState <= WebSocket.OPEN)) return;
 		const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
 		socket = new WebSocket(`${scheme}://${location.host}/ws/rooms/${slug}`);
 		socket.onopen = () => {
+			if (closed) {
+				socket?.close();
+				return;
+			}
 			status = 'live';
 			attempts = 0;
 			if (gapSeq !== null) {
@@ -81,7 +89,10 @@ export function createRoomLive(slug: string) {
 			// (.claude/rules/errors.md) — and recovery is automatic.
 			status = 'reconnecting';
 			attempts += 1;
-			setTimeout(connect, Math.min(1000 * 2 ** attempts, 10_000));
+			reconnectTimer = setTimeout(
+				connect,
+				Math.min(1000 * 2 ** attempts, 10_000),
+			);
 		};
 	}
 	connect();
@@ -145,6 +156,7 @@ export function createRoomLive(slug: string) {
 		},
 		close() {
 			closed = true;
+			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
 			socket?.close();
 		},
 	};
