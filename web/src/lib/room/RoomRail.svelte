@@ -24,6 +24,8 @@
 		activeSpeaking = [],
 		mixRiders = [],
 		onRiderGain,
+		micTesting = false,
+		onMicTest,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -50,6 +52,8 @@
 		/** Riders currently audible, for the per-rider faders (#179). */
 		mixRiders?: { id: string; name: string }[];
 		onRiderGain?: (id: string, gain: number) => void;
+		micTesting?: boolean;
+		onMicTest?: () => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -200,7 +204,7 @@
 					: 'hold to talk (or space)'}</button
 			>
 		{/if}
-		{#if showAv && micOn}
+		{#if showAv && (micOn || micTesting)}
 			<div
 				class="bg-surface-raised mt-2 h-1 overflow-hidden rounded-full"
 				title={transmitting ? 'transmitting' : 'gated — below the threshold'}
@@ -242,6 +246,24 @@
 							></span
 						>
 					</label>
+					{#if onMicTest && !micOn}
+						<button
+							onclick={onMicTest}
+							class="mt-2 w-full rounded border px-2 py-1.5 text-[11px] {micTesting
+								? 'border-z4/60 text-white'
+								: 'border-muted/25 text-muted hover:text-white'}"
+							>{micTesting
+								? 'testing — you hear yourself · stop'
+								: 'test my mic'}</button
+						>
+						{#if micTesting}
+							<p class="text-muted mt-1 text-[10px]">
+								{transmitting
+									? 'gate open — this would transmit'
+									: 'gate closed — speak up or lower the threshold'}
+							</p>
+						{/if}
+					{/if}
 					{#if voiceMode === 'gate'}
 						<label class="mt-2 block text-[10px]">
 							<span class="text-muted">gate threshold</span>

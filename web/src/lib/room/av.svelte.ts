@@ -126,7 +126,7 @@ export function createRoomAv(slug: string) {
 	}
 
 	function runGate() {
-		if (!mic || !micOn) return;
+		if (!mic || (!micOn && !testing)) return;
 		if (mode === 'ptt') {
 			setGate(pttHeld);
 			return;
@@ -141,6 +141,52 @@ export function createRoomAv(slug: string) {
 		}
 	}
 
+	/** Mic test (#178): hear yourself through the gate before anyone else
+	 * does. Same chain as transmission, output to the local speakers; the
+	 * meter and the transmitting verdict run identically. Only outside a
+	 * live mic — in voice, the meter is already the truth. */
+	let testing = $state(false);
+	async function startMicTest() {
+		if (mic || testing) return;
+		const raw = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				noiseSuppression: true,
+				echoCancellation: true,
+				autoGainControl: true,
+			},
+		});
+		const ctx = new AudioContext();
+		const source = ctx.createMediaStreamSource(raw);
+		const analyser = ctx.createAnalyser();
+		analyser.fftSize = 512;
+		const gain = ctx.createGain();
+		gain.gain.value = 0;
+		source.connect(analyser);
+		source.connect(gain);
+		gain.connect(ctx.destination); // your own ears, not the room
+		const dest = ctx.createMediaStreamDestination();
+		mic = { ctx, raw, gain, analyser, track: dest.stream.getAudioTracks()[0] };
+		testing = true;
+		const bins = new Uint8Array(analyser.frequencyBinCount);
+		meterTimer = setInterval(() => {
+			if (!mic) return;
+			mic.analyser.getByteTimeDomainData(bins);
+			let sum = 0;
+			for (const v of bins) {
+				const centred = (v - 128) / 128;
+				sum += centred * centred;
+			}
+			micLevel = Math.sqrt(sum / bins.length);
+			runGate();
+		}, 120);
+	}
+
+	function stopMicTest() {
+		if (!testing) return;
+		testing = false;
+		closeMic();
+	}
+
 	function closeMic() {
 		clearInterval(meterTimer);
 		if (mic) {
@@ -152,6 +198,7 @@ export function createRoomAv(slug: string) {
 		mic = null;
 		micLevel = 0;
 		transmitting = false;
+		testing = false;
 	}
 
 	function setVoice(id: string, state: 'live' | 'muted' | null) {
@@ -336,6 +383,16 @@ export function createRoomAv(slug: string) {
 			gateThreshold = Math.min(0.1, Math.max(0.005, next));
 			persistVoice();
 		},
+		get micTesting() {
+			return testing;
+		},
+		async toggleMicTest() {
+			if (testing) stopMicTest();
+			else
+				await startMicTest().catch(() => {
+					testing = false;
+				});
+		},
 		setPtt(held: boolean) {
 			pttHeld = held;
 			runGate();
@@ -353,6 +410,7 @@ export function createRoomAv(slug: string) {
 		join,
 		async toggleMic() {
 			if (!room) return;
+			if (testing) stopMicTest();
 			if (micOn) {
 				closeMic();
 				micOn = false;
