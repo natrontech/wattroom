@@ -113,6 +113,13 @@
 						href="/workouts/edit?from={entry.id}"
 						class="text-muted text-xs hover:text-white">Save a copy</a
 					>
+					<!-- The primary action, visible (#126): the title-only link read
+					     as a label, and the rest of the card was dead surface. -->
+					<a
+						href="/ride?w={entry.id}"
+						class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+						>Ride</a
+					>
 				</div>
 				<p class="text-muted px-5 pt-1 pb-3 text-xs">{entry.summary}</p>
 				<IntervalGraph
