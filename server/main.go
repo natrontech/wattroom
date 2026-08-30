@@ -155,6 +155,16 @@ func versionHandler() http.HandlerFunc {
 			commit += "+dirty"
 		}
 	}
+	// Docker images build from a gitless context, so no vcs stamp lands in
+	// the binary; the publish workflow hands the sha in as WATTROOM_BUILD_SHA.
+	if commit == "dev" {
+		if sha := os.Getenv("WATTROOM_BUILD_SHA"); sha != "" && sha != "dev" {
+			commit = sha
+			if len(commit) > 7 {
+				commit = commit[:7]
+			}
+		}
+	}
 	body, _ := json.Marshal(map[string]string{"commit": commit, "builtAt": builtAt})
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

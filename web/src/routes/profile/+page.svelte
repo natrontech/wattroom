@@ -302,9 +302,32 @@
 		</section>
 	{/if}
 
-	{#if version}
-		<p class="text-muted/60 mt-10 text-center font-mono text-[11px]">
-			wattroom {version}
+	<footer class="text-muted/60 mt-10 text-center font-mono text-[11px]">
+		<p>
+			wattroom
+			{#if version && version !== 'dev'}
+				<!-- +dirty is display-only; the commit link needs the bare sha. -->
+				<a
+					href="https://github.com/natrontech/wattroom/commit/{version.replace(
+						'+dirty',
+						'',
+					)}"
+					class="underline hover:text-white">{version}</a
+				>
+			{:else if version}
+				{version}
+			{/if}
 		</p>
-	{/if}
+		<p class="mt-1">
+			free &amp; open source (AGPL) —
+			<a
+				href="https://github.com/natrontech/wattroom"
+				class="underline hover:text-white">GitHub</a
+			>
+			· by
+			<a href="https://natron.io" class="underline hover:text-white"
+				>Natron Tech</a
+			>
+		</p>
+	</footer>
 </main>
