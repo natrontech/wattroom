@@ -8,7 +8,9 @@
 		player,
 		queue = [],
 		messages = [],
+		jamUrl = undefined,
 		onAdd,
+		onJam,
 		onCheer,
 		onChat,
 	}: {
@@ -20,6 +22,9 @@
 		/** Ephemeral room chat (#146) — dies with the page, by decision. */
 		messages?: { from: string; text: string; at: number }[];
 		onAdd?: (url: string) => void;
+		/** Spotify Jam link-out (#96) — set/clear from the add expander. */
+		jamUrl?: string;
+		onJam?: (url: string) => void;
 		onCheer?: (emoji: string) => void;
 		onChat?: (text: string) => void;
 	} = $props();
@@ -37,7 +42,7 @@
 	}
 </script>
 
-<aside class="flex w-80 shrink-0 flex-col border-l border-white/5">
+<aside class="flex h-full w-80 shrink-0 flex-col border-l border-white/5">
 	{#if showPlayer && player}
 		<div class="border-b border-white/5 p-3">
 			{@render player()}
@@ -61,7 +66,12 @@
 				class="mt-2"
 				onsubmit={(e) => {
 					e.preventDefault();
-					if (url.trim()) onAdd?.(url.trim());
+					const raw = url.trim();
+					if (!raw) return;
+					// One field, two services: a Spotify link becomes the Jam card,
+					// anything else goes to the YouTube queue.
+					if (/spotify\.link|spotify\.com/.test(raw)) onJam?.(raw);
+					else onAdd?.(raw);
 					url = '';
 					adding = false;
 				}}
@@ -69,7 +79,7 @@
 				<input
 					bind:value={url}
 					class="border-muted/25 placeholder:text-muted/60 w-full rounded border bg-transparent px-3 py-2 text-xs outline-none"
-					placeholder="Paste a YouTube link"
+					placeholder="Paste a YouTube or Spotify Jam link"
 				/>
 			</form>
 		{/if}
