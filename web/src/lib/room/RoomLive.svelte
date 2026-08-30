@@ -791,6 +791,8 @@
 			onVoiceMode={(m) => av.setMode(m)}
 			onGateThreshold={(t) => av.setGateThreshold(t)}
 			onPtt={(held) => av.setPtt(held)}
+			micTesting={av.micTesting}
+			onMicTest={() => void av.toggleMicTest()}
 			onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
 			onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
 		/>
