@@ -36,7 +36,7 @@ const maxOwnedRooms = 3
 // Presence is what the rooms list borrows from the hub — defined here, where
 // it is consumed. Optional: without it every room reads as quiet.
 type Presence interface {
-	Presence(slug string) (connected int, phase string, riders []string)
+	Presence(slug string) (connected int, phase string, riders, voice []string)
 }
 
 type Service struct {
@@ -111,6 +111,8 @@ type roomJSON struct {
 	// Display names of riders connected right now — members-only, room-scoped
 	// like every live signal.
 	Riders []string `json:"riders,omitempty"`
+	// Who is in the voice channel (#149) — the sidebar radar's core signal.
+	Voice []string `json:"voice,omitempty"`
 }
 
 // --- handlers ---
@@ -199,7 +201,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.MemberCount = int(count)
 		}
 		if s.presence != nil {
-			entry.Connected, entry.Phase, entry.Riders = s.presence.Presence(room.Slug)
+			entry.Connected, entry.Phase, entry.Riders, entry.Voice = s.presence.Presence(room.Slug)
 		}
 		if next, err := s.store.Queries.NextRoomSession(r.Context(), room.ID); err == nil {
 			entry.NextSession = &nextJSON{

@@ -174,7 +174,7 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	}
 
 	// Presence counts the same way: riders, not sockets — and names them.
-	connected, phase, riders := h.Presence("dupes")
+	connected, phase, riders, _ := h.Presence("dupes")
 	if connected != 1 || phase != "idle" || len(riders) != 1 || riders[0] != "jan" {
 		t.Fatalf("presence: connected=%d phase=%q riders=%v", connected, phase, riders)
 	}

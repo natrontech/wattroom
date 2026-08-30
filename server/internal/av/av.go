@@ -47,6 +47,7 @@ type Service struct {
 	access Access
 	log    *slog.Logger
 	now    func() time.Time
+	voice  VoiceSink
 }
 
 func New(cfg Config, access Access, log *slog.Logger) *Service {

@@ -41,4 +41,8 @@ export interface RailRoom {
 	connected?: number;
 	/** Their names, for the hover and the rooms page. */
 	riders?: string[];
+	/** Who is in the voice channel (#149) — the radar's core signal. */
+	voice?: string[];
+	/** The next planned session, when one exists. */
+	next?: { workoutName: string; startsAt: string };
 }
