@@ -1,6 +1,6 @@
 # ADR-0009: Everything behind sign-in
 
-Date: 2026-08-30 · Status: accepted
+Date: 2026-08-30 · Status: accepted (amended 2026-08-30: `/` public)
 
 ## Context
 
@@ -15,9 +15,14 @@ MyWhoosh) gates everything.
 
 The whole app sits behind sign-in. A designed `/login` screen (OAuth
 providers from `/api/auth/providers`, no passwords — WATTROOM.md auth
-decision unchanged) is the only route a signed-out visitor sees; deep links
-survive via `?next=` (same-origin paths only). `/dev` mocks stay open in dev
-builds — they are 404 in production already.
+decision unchanged) is the only app route a signed-out visitor sees; deep
+links survive via `?next=` (same-origin paths only). `/dev` mocks stay open
+in dev builds — they are 404 in production already.
+
+**Amendment (#111):** `/` is public. Signed out it renders the marketing
+landing — the public face of wattroom.ch — and signed in it stays the app
+shell; the page branches, the gate covers everything else. Room share
+links (`/r/<slug>`) still route through /login with the deep link kept.
 
 Consequences accepted:
 

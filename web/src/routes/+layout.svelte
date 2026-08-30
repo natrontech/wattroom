@@ -28,8 +28,11 @@
 
 	// ADR-0009: everything behind sign-in. /login is the only public route;
 	// /dev mocks stay open in dev builds (they 404 in production anyway).
+	// '/' is public since #111: signed out it is the marketing landing, the
+	// page branches itself (ADR-0009, amended).
 	const publicPath = $derived(
 		page.url.pathname === '/login' ||
+			page.url.pathname === '/' ||
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
