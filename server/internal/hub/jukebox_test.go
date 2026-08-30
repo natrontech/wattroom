@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -88,5 +89,41 @@ func TestRemoveFromQueue(t *testing.T) {
 	}
 	if len(j.snapshot().Queue) != 0 {
 		t.Fatal("remove did not remove")
+	}
+}
+
+func TestJamLink(t *testing.T) {
+	j := newJukebox()
+	now := time.Now()
+
+	for _, bad := range []string{
+		"http://open.spotify.com/jam/abc",                  // not https
+		"https://evil.example/jam/abc",                     // wrong host
+		"https://open.spotify.com.evil.io/",                // host suffix trick
+		"https://spotify.link/" + strings.Repeat("a", 300), // over the cap
+	} {
+		if j.apply(protocol.JukeboxCommand{Action: "jam", JamURL: bad}, "jan", now) {
+			t.Fatalf("accepted %q", bad)
+		}
+	}
+
+	for _, good := range []string{
+		"https://open.spotify.com/jam/abc123",
+		"https://spotify.link/xYz",
+	} {
+		if !j.apply(protocol.JukeboxCommand{Action: "jam", JamURL: good}, "jan", now) {
+			t.Fatalf("rejected %q", good)
+		}
+		if j.snapshot().JamURL != good {
+			t.Fatalf("not stored: %q", good)
+		}
+	}
+
+	// Empty clears — the host taking the card down.
+	if !j.apply(protocol.JukeboxCommand{Action: "jam"}, "jan", now) {
+		t.Fatal("clear rejected")
+	}
+	if j.snapshot().JamURL != "" {
+		t.Fatal("not cleared")
 	}
 }

@@ -5,6 +5,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
+	import JamCard from '$lib/room/JamCard.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { parseSharedSegments } from '$lib/room/workout';
 
@@ -150,6 +151,11 @@
 		<p class="text-muted mt-2 text-center text-[10px]">
 			Spectating — cheers land in the room. Bring a laptop to ride.
 		</p>
+		{#if live.tick?.jukebox?.jamUrl}
+			<div class="mt-3">
+				<JamCard jamUrl={live.tick.jukebox.jamUrl} />
+			</div>
+		{/if}
 	</div>
 	<CheerLayer cheers={live.tick?.cheers} />
 </div>

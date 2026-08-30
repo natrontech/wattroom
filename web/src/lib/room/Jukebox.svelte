@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { JukeboxState } from '$lib/protocol';
+	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 
 	// The synced YouTube jukebox (#23). Hard TOS constraints (WATTROOM.md,
@@ -14,7 +15,12 @@
 		ducked = false,
 	}: {
 		jukebox: JukeboxState | undefined;
-		send: (action: string, videoId?: string, title?: string) => void;
+		send: (
+			action: string,
+			videoId?: string,
+			title?: string,
+			jamUrl?: string,
+		) => void;
 		large?: boolean;
 		/** Someone is talking: dip the music, Discord-style (#24). */
 		ducked?: boolean;
@@ -192,6 +198,14 @@
 				>
 			</form>
 			{#if addError}<p class="text-z6 mt-1 text-xs">{addError}</p>{/if}
+
+			<div class="mt-2">
+				<JamCard
+					jamUrl={jukebox?.jamUrl}
+					onSet={(jam) => send('jam', undefined, undefined, jam)}
+					onClear={() => send('jam')}
+				/>
+			</div>
 
 			{#if jukebox && jukebox.queue.length > 0}
 				<ul class="mt-2 grid gap-1">
