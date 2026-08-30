@@ -8,7 +8,7 @@ returning id;
 
 -- name: ListUserRides :many
 -- Summary only: the blob stays on disk unless a single ride is opened.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, shared_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
 order by started_at desc

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -63,16 +64,7 @@ func (s *Saver) save(
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
 			continue
 		}
-		// The SPEC XP streak term, deferred from #25 to here: the rider's own
-		// consecutive-week streak, read before this ride lands so this week
-		// only counts if already ridden — then this ride extends it next time.
-		if weeks, err := q.ListUserRideWeeks(ctx, row.UserID); err == nil {
-			times := make([]time.Time, len(weeks))
-			for i, w := range weeks {
-				times[i] = w.Time
-			}
-			row.Xp += int32(StreakBonus(WeekStreak(times, startedAt))) //nolint:gosec // capped at 250
-		}
+		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
 		rideID, err := q.CreateRide(ctx, row)
 		if err != nil {
 			return fmt.Errorf("stats: insert ride: %w", err)
@@ -129,14 +121,27 @@ func (s *Saver) rideRow(
 	if err != nil {
 		return db.CreateRideParams{}, err
 	}
+	return BuildRideRow(userID, roomID, workoutName, workoutJSON, startedAt,
+		rider.Rider.FtpWatts, rider.Samples)
+}
 
-	watts := make([]int, len(rider.Samples))
+// BuildRideRow turns a finished sample series into the rides row — one
+// implementation for room sessions (the hub's saver) and solo rides (the
+// POST /api/rides endpoint). An invalid roomID stores NULL: a solo ride.
+func BuildRideRow(
+	userID, roomID pgtype.UUID,
+	workoutName, workoutJSON string,
+	startedAt time.Time,
+	ftpWatts int,
+	samples []protocol.RiderMetrics,
+) (db.CreateRideParams, error) {
+	watts := make([]int, len(samples))
 	total := 0
-	for i, sample := range rider.Samples {
+	for i, sample := range samples {
 		watts[i] = sample.Watts
 		total += sample.Watts
 	}
-	execution, err := Execution(workoutJSON, float64(rider.Rider.FtpWatts), watts)
+	execution, err := Execution(workoutJSON, float64(ftpWatts), watts)
 	if err != nil {
 		return db.CreateRideParams{}, err
 	}
@@ -151,7 +156,7 @@ func (s *Saver) rideRow(
 	// readable back without a bespoke format.
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	if err := json.NewEncoder(zw).Encode(rider.Samples); err != nil {
+	if err := json.NewEncoder(zw).Encode(samples); err != nil {
 		return db.CreateRideParams{}, err
 	}
 	if err := zw.Close(); err != nil {
@@ -163,15 +168,31 @@ func (s *Saver) rideRow(
 		RoomID:      roomID,
 		WorkoutName: workoutName,
 		StartedAt:   pgtype.Timestamptz{Time: startedAt, Valid: true},
-		Seconds:     int32(len(rider.Samples)),                  //nolint:gosec // bounded by maxAccumulated
+		Seconds:     int32(len(samples)),                        //nolint:gosec // bounded by maxAccumulated
 		AvgWatts:    int16((total + len(watts)/2) / len(watts)), //nolint:gosec // samples bounded 0-3000
 		Kj:          int32(kj),                                  //nolint:gosec // bounded by seconds*3000/1000
 		Execution:   float32(execution),
-		FtpWatts:    int16(rider.Rider.FtpWatts), //nolint:gosec // schema-bounded 50-600
+		FtpWatts:    int16(ftpWatts), //nolint:gosec // schema-bounded 50-600
 		Samples:     buf.Bytes(),
 		Curve:       curveJSON,
 		Xp:          int32(XP(kj, execution)), //nolint:gosec // bounded by kj
 	}, nil
+}
+
+// StreakXP is the SPEC XP streak term, deferred from #25: the rider's own
+// consecutive-week streak, read before this ride lands so this week only
+// counts if already ridden — then this ride extends it next time. A read
+// failure is zero bonus, never a failed save.
+func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time) int32 {
+	weeks, err := q.ListUserRideWeeks(ctx, userID)
+	if err != nil {
+		return 0
+	}
+	times := make([]time.Time, len(weeks))
+	for i, w := range weeks {
+		times[i] = w.Time
+	}
+	return int32(StreakBonus(WeekStreak(times, at))) //nolint:gosec // capped at 250
 }
 
 // SaveSession implements hub.SessionSaver. The hub cannot act on a failure,
