@@ -1158,7 +1158,9 @@
 			showPlayer={layout !== 'media'}
 			queue={queueView}
 			onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
+			messages={live.chatLog}
 			onCheer={(emoji) => live.cheer(emoji)}
+			onChat={(text) => live.chat(text)}
 		>
 			{#snippet player()}
 				<Jukebox

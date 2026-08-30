@@ -17,6 +17,13 @@
 	// Keyed remount per slug is unnecessary here — the page is a leaf.
 	// svelte-ignore state_referenced_locally
 	const live = createRoomLive(page.params.slug ?? '');
+	let draft = $state('');
+	function sendChat() {
+		const text = draft.trim();
+		if (!text) return;
+		draft = '';
+		live.chat(text);
+	}
 	onDestroy(() => live.close());
 
 	const shared = $derived(live.tick?.state);
@@ -154,6 +161,35 @@
 				>Riding on this device anyway?</a
 			>
 		</p>
+		{#if live.chatLog.length > 0}
+			<ul class="mt-3 max-h-28 space-y-1 overflow-y-auto">
+				{#each live.chatLog.slice(-8) as message (message.at + message.from)}
+					<li class="text-xs leading-snug">
+						<span class="text-muted font-medium">{message.from}</span>
+						<span class="ml-1.5 text-white/85">{message.text}</span>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+		<form
+			class="mt-2 flex gap-1.5"
+			onsubmit={(e) => {
+				e.preventDefault();
+				sendChat();
+			}}
+		>
+			<input
+				bind:value={draft}
+				maxlength="500"
+				placeholder="Say something…"
+				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-2 text-sm outline-none"
+			/>
+			<button
+				disabled={!draft.trim()}
+				class="border-muted/25 hover:border-muted/60 rounded border px-4 py-2 text-sm disabled:opacity-40"
+				>Send</button
+			>
+		</form>
 		{#if live.tick?.jukebox?.jamUrl}
 			<div class="mt-3">
 				<JamCard jamUrl={live.tick.jukebox.jamUrl} />

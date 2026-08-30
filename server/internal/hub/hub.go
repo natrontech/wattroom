@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,6 +61,7 @@ type room struct {
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
+	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
 	session *session
 	record  *accumulator
 	music   *jukebox
@@ -91,6 +93,9 @@ type client struct {
 	conn  *websocket.Conn
 	// lastCheer rate-limits reactions: a cheer is a tap, not a firehose.
 	lastCheer time.Time
+	// lastChat rate-limits lines the same way — typing on a bike is rare,
+	// a hostile client is not.
+	lastChat time.Time
 }
 
 // cheerEmoji is the allowlist — reactions, not chat. Free text is a different
@@ -137,6 +142,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Metrics != nil {
 			if m := *msg.Metrics; validMetrics(m) {
 				rm.setMetrics(rider, m)
+			}
+		}
+		if msg.Chat != nil {
+			// Untrusted input: bounded text, 1/s per rider, sender is presence.
+			text := strings.TrimSpace(msg.Chat.Text)
+			if text != "" && len(text) <= 500 && h.now().Sub(c.lastChat) >= time.Second {
+				c.lastChat = h.now()
+				rm.chatLine(protocol.ChatLine{From: rider.Name, Text: text, At: h.now().UnixMilli()})
 			}
 		}
 		if msg.Cheer != nil {
@@ -275,6 +288,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			State:   rm.session.state(now()),
 			Jukebox: rm.music.snapshot(),
 			Cheers:  rm.cheers,
+			Chat:    rm.chat,
 			Sprint:  rm.sprint.state(now(), rm.seen),
 			Game:    rm.lastGame,
 			Execution: func() map[string]float64 {
@@ -289,6 +303,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
+		rm.chat = nil
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
@@ -406,6 +421,14 @@ func (rm *room) cheer(c protocol.Cheer) {
 	defer rm.mu.Unlock()
 	if len(rm.cheers) < 32 {
 		rm.cheers = append(rm.cheers, c)
+	}
+}
+
+func (rm *room) chatLine(line protocol.ChatLine) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.chat) < 32 {
+		rm.chat = append(rm.chat, line)
 	}
 }
 

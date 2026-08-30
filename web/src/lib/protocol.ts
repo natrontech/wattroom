@@ -120,6 +120,16 @@ export interface JukeboxCommand {
   jamUrl?: string;
 }
 /**
+ * ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
+ * never persisted — it rides the tick like cheers and dies with the page.
+ * Warm-up and phone talk; mid-effort stays the cheers' job.
+ */
+export interface ChatLine {
+  from: string; // filled by the server, like cheers
+  text: string;
+  at: number /* int64 */; // server millis, for ordering only
+}
+/**
  * Cheer is the room's reaction layer (#74) — and the spectator's one verb.
  */
 export interface Cheer {
@@ -133,6 +143,7 @@ export interface Cheer {
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
+  chat?: ChatLine;
   cheer?: Cheer;
   metrics?: RiderMetrics;
   control?: Control;
@@ -208,6 +219,11 @@ export interface ServerTick {
    * This second's cheers, drained each tick like metrics.
    */
   cheers?: Cheer[];
+  /**
+   * This second's chat lines, drained the same way. No backlog on join —
+   * ephemeral means ephemeral.
+   */
+  chat?: ChatLine[];
   /**
    * Sprint moment (#30): armed/live window and, after it closes, the podium.
    */
