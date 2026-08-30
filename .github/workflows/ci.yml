@@ -10,6 +10,19 @@ on:
 jobs:
   server:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: wattroom
+          POSTGRES_PASSWORD: wattroom
+          POSTGRES_DB: wattroom
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wattroom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: server
@@ -60,14 +73,32 @@ jobs:
 
   e2e:
     # The one end-to-end flow (WATTROOM.md): simulated trainer rides a workout and
-    # produces a .fit. Separate job because it needs Go and Node together and rides
-    # in real time, so it should not slow the fast checks down.
+    # produces a .fit — entering through the login gate like every rider.
+    # Separate job because it needs Go and Node together and rides in real
+    # time, so it should not slow the fast checks down.
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: wattroom
+          POSTGRES_PASSWORD: wattroom
+          POSTGRES_DB: wattroom
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wattroom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+      # Warm the Go build: the e2e web server spawns `go run .`, and a cold
+      # module download used to still be running while the specs already were.
+      - run: go build ./...
+        working-directory: server
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: web/package.json

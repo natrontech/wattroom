@@ -20,7 +20,16 @@ const types = {
 
 const go = spawn('go', ['run', '.'], {
 	cwd: new URL('../../server/', import.meta.url).pathname,
-	env: { ...process.env, WATTROOM_ADDR: `:${API_PORT}` },
+	env: {
+		...process.env,
+		WATTROOM_ADDR: `:${API_PORT}`,
+		// The login gate (ADR-0009) means even the e2e ride signs in — the dev
+		// provider against a real Postgres, same doors production uses.
+		WATTROOM_DB:
+			process.env.WATTROOM_DB ??
+			'postgres://wattroom:wattroom@localhost:5432/wattroom',
+		WATTROOM_DEV_LOGIN: '1'
+	},
 	stdio: 'inherit'
 });
 process.on('exit', () => go.kill());
@@ -31,7 +40,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 	});
 }
 
-createServer((req, res) => {
+const web = createServer((req, res) => {
 	if (req.url.startsWith('/api/')) {
 		const upstreamReq = httpRequest(
 			{
@@ -58,4 +67,26 @@ createServer((req, res) => {
 	if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
 	res.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
 	createReadStream(file).pipe(res);
-}).listen(WEB_PORT, () => console.log(`e2e web on :${WEB_PORT}, api on :${API_PORT}`));
+});
+
+// Playwright's readiness probe hits :4173 — only answer once the Go API is
+// actually up, so the probe covers both processes and no spec ever races a
+// cold `go run` compile.
+async function apiReady() {
+	for (let attempt = 0; attempt < 240; attempt++) {
+		const ok = await new Promise((resolve) => {
+			const probe = httpRequest(
+				{ host: '127.0.0.1', port: API_PORT, path: '/api/healthz' },
+				(res) => resolve(res.statusCode === 200)
+			);
+			probe.on('error', () => resolve(false));
+			probe.end();
+		});
+		if (ok) return;
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	}
+	throw new Error('go api never became ready');
+}
+
+await apiReady();
+web.listen(WEB_PORT, () => console.log(`e2e web on :${WEB_PORT}, api on :${API_PORT}`));

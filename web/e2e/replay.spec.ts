@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { signInTo } from './signin';
 
 /**
  * The regression harness (#54, ADR-0006): ride a committed fixture — a real
@@ -11,7 +12,7 @@ test('a captured trace replays through the ride', async ({ page }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (err) => errors.push(String(err)));
 
-	await page.goto('/ride?w=openers&replay=kickr-erg-2026-08-29');
+	await signInTo(page, '/ride?w=openers&replay=kickr-erg-2026-08-29');
 	await page.getByTestId('ride-replay').click();
 
 	// Real captured watts arrive — not the generator's.
