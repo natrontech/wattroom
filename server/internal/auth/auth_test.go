@@ -278,3 +278,78 @@ func TestParallelDevLoginsShareOneUser(t *testing.T) {
 		t.Fatalf("%d orphan users left behind (err %v)", orphans, err)
 	}
 }
+
+// The synthetic monitor's sign-in (#153): the one credential that is not OAuth,
+// so the cases that matter are "absent config means absent route" and "a wrong
+// token gets nothing".
+func TestSyntheticSignIn(t *testing.T) {
+	token := "test-synthetic-token-not-a-real-secret"
+
+	post := func(t *testing.T, s *Service, header string) *httptest.ResponseRecorder {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/synthetic", nil)
+		if header != "" {
+			req.Header.Set("Authorization", header)
+		}
+		s.handleSynthetic(rec, req)
+		return rec
+	}
+
+	t.Run("unconfigured is 404, not 401", func(t *testing.T) {
+		s := testService(t) // no WATTROOM_SYNTHETIC_TOKEN set
+		if got := post(t, s, "Bearer "+token).Code; got != http.StatusNotFound {
+			t.Fatalf("want 404 when unconfigured, got %d", got)
+		}
+	})
+
+	t.Setenv("WATTROOM_SYNTHETIC_TOKEN", token)
+
+	t.Run("valid token starts a session", func(t *testing.T) {
+		s := testService(t)
+		rec := post(t, s, "Bearer "+token)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("want 204, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		cookies := rec.Result().Cookies()
+		if len(cookies) != 1 || cookies[0].Name != sessionCookie || cookies[0].Value == "" {
+			t.Fatalf("expected a session cookie, got %v", cookies)
+		}
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+		req.AddCookie(cookies[0])
+		user, ok := s.User(req)
+		if !ok || user.DisplayName != "Synthetic Monitor" {
+			t.Fatalf("session did not resolve to the monitor: ok=%v user=%+v", ok, user)
+		}
+		t.Cleanup(func() {
+			_, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID)
+		})
+	})
+
+	for _, tc := range []struct{ name, header string }{
+		{"wrong token", "Bearer " + token + "-wrong"},
+		{"empty bearer", "Bearer "},
+		{"no header at all", ""},
+		{"raw token without the scheme", token + "x"},
+	} {
+		t.Run(tc.name+" is rejected", func(t *testing.T) {
+			s := testService(t)
+			rec := post(t, s, tc.header)
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("want 401, got %d", rec.Code)
+			}
+			if len(rec.Result().Cookies()) != 0 {
+				t.Fatal("a rejected sign-in must not set a cookie")
+			}
+		})
+	}
+
+	t.Run("synthetic is never offered as a sign-in button", func(t *testing.T) {
+		s := testService(t)
+		rec := httptest.NewRecorder()
+		s.handleProviders(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/providers", nil))
+		if strings.Contains(rec.Body.String(), "synthetic") {
+			t.Fatalf("synthetic must not appear in the provider list: %s", rec.Body.String())
+		}
+	})
+}

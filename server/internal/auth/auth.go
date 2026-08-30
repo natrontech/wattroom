@@ -15,10 +15,13 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -67,6 +70,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/providers", s.handleProviders)
 	mux.HandleFunc("GET /api/auth/{provider}/start", s.handleStart)
 	mux.HandleFunc("GET /api/auth/{provider}/callback", s.handleCallback)
+	mux.HandleFunc("POST /api/auth/synthetic", s.handleSynthetic)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
@@ -109,6 +113,46 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 	state := randomToken()
 	s.setCookie(w, stateCookie, state, stateTTL)
 	http.Redirect(w, r, p.config.AuthCodeURL(state), http.StatusFound)
+}
+
+// handleSynthetic trades WATTROOM_SYNTHETIC_TOKEN for a session, so the
+// production ride monitor can enter like a rider without a browser doing OAuth
+// (#153). It is POST-only and bearer-authenticated: a GET would let a link log
+// something in, and cookie-CSRF does not apply to a request that must carry a
+// secret the attacker cannot read.
+//
+// Deliberately absent from /api/auth/providers — this is not a button, and no
+// human should ever see it offered.
+func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.providers["synthetic"]
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not_found",
+			"Synthetic sign-in is not configured on this server.")
+		return
+	}
+	want := os.Getenv("WATTROOM_SYNTHETIC_TOKEN")
+	got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	// Constant time: a timing oracle on a long-lived credential is worth closing.
+	if len(got) == 0 || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
+		s.log.Warn("synthetic sign-in rejected", "remote", r.RemoteAddr)
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized",
+			"That token is not valid for synthetic sign-in.")
+		return
+	}
+	user, err := s.upsert(r, p, identity{
+		ProviderUserID: "synthetic-monitor",
+		DisplayName:    "Synthetic Monitor",
+	}, &oauth2.Token{})
+	if err == nil {
+		err = s.startSession(w, r, user.ID)
+	}
+	if err != nil {
+		s.log.Error("synthetic sign-in failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"Synthetic sign-in failed. Check the server log.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {

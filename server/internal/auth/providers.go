@@ -61,6 +61,12 @@ func providersFromEnv(baseURL string) map[string]provider {
 		out["dev"] = provider{id: "dev"}
 	}
 
+	// The production ride monitor (#153): not OAuth, but a real provider row so
+	// it shares the identity + session path. Absent token, absent route.
+	if os.Getenv("WATTROOM_SYNTHETIC_TOKEN") != "" {
+		out["synthetic"] = provider{id: "synthetic"}
+	}
+
 	add("google", endpoints.Google, []string{"openid", "profile"}, fetchGoogle, false)
 	add("github", endpoints.GitHub, []string{"read:user"}, fetchGitHub, false)
 	// activity:write is the M6 upload scope; asking now means no re-consent later.
