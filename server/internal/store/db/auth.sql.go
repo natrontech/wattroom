@@ -96,7 +96,7 @@ func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Ident
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token
 from sessions s
 join users u on u.id = s.user_id
 where s.token_hash = $1 and s.expires_at > now()
@@ -113,6 +113,9 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 		&i.WeightKg,
 		&i.CreatedAt,
 		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
 	)
 	return i, err
 }

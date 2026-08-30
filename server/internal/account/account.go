@@ -75,10 +75,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	profile := map[string]any{
-		"displayName": user.DisplayName,
-		"ftpWatts":    user.FtpWatts,
-		"weightKg":    user.WeightKg,
-		"createdAt":   user.CreatedAt.Time,
+		"displayName":   user.DisplayName,
+		"ftpWatts":      user.FtpWatts,
+		"weightKg":      user.WeightKg,
+		"createdAt":     user.CreatedAt.Time,
+		"email":         user.Email,
+		"notifyPlanned": user.NotifyPlanned,
 	}
 	if !writeJSON("profile.json", profile) {
 		return

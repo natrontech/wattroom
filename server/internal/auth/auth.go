@@ -20,6 +20,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/mail"
 	"os"
 	"strings"
 	"time"
@@ -48,7 +49,13 @@ type Service struct {
 	providers map[string]provider
 	// secure=false only for plain-http localhost; cookies are Secure otherwise.
 	secure bool
+	// Whether the server can send email (#117) — the profile hides the whole
+	// notifications section when it cannot.
+	mailAvailable bool
 }
+
+// SetMailAvailable wires the notify capability in after construction.
+func (s *Service) SetMailAvailable(v bool) { s.mailAvailable = v }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
@@ -341,6 +348,12 @@ type meResponse struct {
 	Providers []string `json:"providers,omitempty"`
 	// Auto-upload rides to the rider's own Strava (#34, default true).
 	StravaUpload bool `json:"stravaUpload"`
+	// Email notifications for planned sessions (#117): the address is typed
+	// in on the profile, the opt-in defaults off, and MailAvailable hides the
+	// section entirely on servers that cannot send.
+	Email         *string `json:"email,omitempty"`
+	NotifyPlanned bool    `json:"notifyPlanned"`
+	MailAvailable bool    `json:"mailAvailable,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -349,7 +362,7 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
-	response := toMe(user)
+	response := s.toMe(user)
 	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
 		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 			response.SuggestedFtp = suggested
@@ -379,7 +392,9 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		WeightKg    int16  `json:"weightKg"`
 		// Pointer: absent keeps the current value — a client that predates
 		// the field must not silently switch uploads off.
-		StravaUpload *bool `json:"stravaUpload"`
+		StravaUpload  *bool   `json:"stravaUpload"`
+		Email         *string `json:"email"`
+		NotifyPlanned *bool   `json:"notifyPlanned"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -405,9 +420,30 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if req.StravaUpload != nil {
 		stravaUpload = *req.StravaUpload
 	}
+	email := user.Email
+	if req.Email != nil {
+		switch e := strings.TrimSpace(*req.Email); {
+		case e == "":
+			email = nil
+		case len(e) > 254 || !validEmail(e):
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"That does not look like an email address.", "email")
+			return
+		default:
+			email = &e
+		}
+	}
+	notify := user.NotifyPlanned
+	if req.NotifyPlanned != nil {
+		notify = *req.NotifyPlanned
+	}
+	if email == nil {
+		notify = false // no address, nothing to send to
+	}
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
+		Email: email, NotifyPlanned: notify,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)
@@ -415,18 +451,27 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			"Your profile could not be saved. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toMe(updated))
+	httpx.WriteJSON(w, http.StatusOK, s.toMe(updated))
 }
 
-func toMe(u db.User) meResponse {
+func (s *Service) toMe(u db.User) meResponse {
 	return meResponse{
-		StravaUpload: u.StravaUpload,
-		ID:           store.UUIDString(u.ID),
-		DisplayName:  u.DisplayName,
-		AvatarURL:    u.AvatarUrl,
-		FtpWatts:     u.FtpWatts,
-		WeightKg:     u.WeightKg,
+		StravaUpload:  u.StravaUpload,
+		ID:            store.UUIDString(u.ID),
+		DisplayName:   u.DisplayName,
+		AvatarURL:     u.AvatarUrl,
+		FtpWatts:      u.FtpWatts,
+		WeightKg:      u.WeightKg,
+		Email:         u.Email,
+		NotifyPlanned: u.NotifyPlanned,
+		MailAvailable: s.mailAvailable,
 	}
+}
+
+// validEmail accepts only a bare RFC 5322 address — no display-name forms.
+func validEmail(e string) bool {
+	a, err := mail.ParseAddress(e)
+	return err == nil && a.Address == e
 }
 
 // --- plumbing ---

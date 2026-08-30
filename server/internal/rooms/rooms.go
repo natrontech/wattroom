@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"fmt"
 
@@ -39,16 +40,26 @@ type Presence interface {
 	Presence(slug string) (connected int, phase string, riders, voice []string)
 }
 
+// Notifier is what scheduling needs from notify (#117) — defined here, where
+// it is consumed. Optional: without it planning a session emails nobody.
+type Notifier interface {
+	SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
+}
+
 type Service struct {
 	store    *store.Store
 	users    UserSource
 	log      *slog.Logger
 	presence Presence
+	notifier Notifier
 }
 
 // SetPresence wires the hub in after construction (the hub needs this service
 // first, as its Access).
 func (s *Service) SetPresence(p Presence) { s.presence = p }
+
+// SetNotifier wires session-planned email in when the server can send.
+func (s *Service) SetNotifier(n Notifier) { s.notifier = n }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 	return &Service{store: st, users: users, log: log}

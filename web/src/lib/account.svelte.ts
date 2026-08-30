@@ -20,6 +20,11 @@ export interface Me {
 	best20m?: number;
 	providers?: string[];
 	stravaUpload?: boolean;
+	/** Email notifications for planned sessions (#117); the section hides
+	 * entirely when the server cannot send (mailAvailable absent). */
+	email?: string | null;
+	notifyPlanned?: boolean;
+	mailAvailable?: boolean;
 }
 
 function createAccountStore() {
@@ -61,6 +66,8 @@ function createAccountStore() {
 			ftpWatts: number;
 			weightKg: number;
 			stravaUpload?: boolean;
+			email?: string;
+			notifyPlanned?: boolean;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
 			if (res.ok) {

@@ -33,6 +33,8 @@
 	};
 
 	let name = $state('');
+	let email = $state('');
+	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
 	let sprintGrade = $state(profile.current.sprintGrade);
@@ -51,6 +53,8 @@
 		ftp = me.ftpWatts;
 		kg = me.weightKg;
 		name = me.displayName;
+		email = me.email ?? '';
+		notifyPlanned = me.notifyPlanned ?? false;
 	});
 
 	async function save(nextFtp = ftp) {
@@ -60,6 +64,11 @@
 				displayName: name || account.me.displayName,
 				ftpWatts: nextFtp,
 				weightKg: kg,
+				// Only where the section renders — an omitted field keeps the
+				// server's current value.
+				...(account.me.mailAvailable
+					? { email: email.trim(), notifyPlanned }
+					: {}),
 			});
 			status = err
 				? err.message
@@ -202,6 +211,40 @@
 					<input type="checkbox" bind:checked={singleSpeed} />
 					Single-speed setup (Zwift Cog)
 				</label>
+				{#if account.me?.mailAvailable}
+					<label class="block">
+						<span class="text-muted text-[10px] tracking-wider uppercase"
+							>email</span
+						>
+						<input
+							type="email"
+							bind:value={email}
+							maxlength="254"
+							class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+						/>
+						<span class="text-muted mt-1 block text-[11px]"
+							>Only for the emails you ask for here — never shown to anyone.</span
+						>
+					</label>
+					<div class="self-end pb-2">
+						<label class="text-muted flex items-start gap-2 text-xs">
+							<input
+								type="checkbox"
+								bind:checked={notifyPlanned}
+								disabled={!email.trim()}
+								class="mt-0.5"
+							/>
+							<span>
+								Email me when a session is planned
+								{#if !email.trim()}
+									<span class="text-muted block text-[11px]"
+										>Needs an email address first.</span
+									>
+								{/if}
+							</span>
+						</label>
+					</div>
+				{/if}
 			</div>
 			<div class="mt-5 flex items-center gap-3">
 				<button
