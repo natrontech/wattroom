@@ -19,6 +19,7 @@ export interface Me {
 	suggestedFtp?: number;
 	best20m?: number;
 	providers?: string[];
+	stravaUpload?: boolean;
 }
 
 function createAccountStore() {
@@ -59,6 +60,7 @@ function createAccountStore() {
 			displayName: string;
 			ftpWatts: number;
 			weightKg: number;
+			stravaUpload?: boolean;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
 			if (res.ok) {

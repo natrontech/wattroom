@@ -96,7 +96,7 @@ func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Ident
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload
 from sessions s
 join users u on u.id = s.user_id
 where s.token_hash = $1 and s.expires_at > now()
@@ -111,6 +111,31 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 		&i.AvatarUrl,
 		&i.FtpWatts,
 		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+	)
+	return i, err
+}
+
+const getUserIdentity = `-- name: GetUserIdentity :one
+select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at from identities where user_id = $1 and provider = $2
+`
+
+type GetUserIdentityParams struct {
+	UserID   pgtype.UUID
+	Provider string
+}
+
+func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams) (Identity, error) {
+	row := q.db.QueryRow(ctx, getUserIdentity, arg.UserID, arg.Provider)
+	var i Identity
+	err := row.Scan(
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.UserID,
+		&i.AccessToken,
+		&i.RefreshToken,
+		&i.TokenExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err

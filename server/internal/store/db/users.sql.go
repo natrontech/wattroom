@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 insert into users (display_name, avatar_url, ftp_watts, weight_kg)
 values ($1, $2, $3, $4)
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload
 `
 
 type CreateUserParams struct {
@@ -39,12 +39,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.FtpWatts,
 		&i.WeightKg,
 		&i.CreatedAt,
+		&i.StravaUpload,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -57,22 +58,24 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.FtpWatts,
 		&i.WeightKg,
 		&i.CreatedAt,
+		&i.StravaUpload,
 	)
 	return i, err
 }
 
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users
-set display_name = $2, ftp_watts = $3, weight_kg = $4
+set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload
 `
 
 type UpdateUserProfileParams struct {
-	ID          pgtype.UUID
-	DisplayName string
-	FtpWatts    int16
-	WeightKg    int16
+	ID           pgtype.UUID
+	DisplayName  string
+	FtpWatts     int16
+	WeightKg     int16
+	StravaUpload bool
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
@@ -81,6 +84,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		arg.DisplayName,
 		arg.FtpWatts,
 		arg.WeightKg,
+		arg.StravaUpload,
 	)
 	var i User
 	err := row.Scan(
@@ -90,6 +94,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.FtpWatts,
 		&i.WeightKg,
 		&i.CreatedAt,
+		&i.StravaUpload,
 	)
 	return i, err
 }

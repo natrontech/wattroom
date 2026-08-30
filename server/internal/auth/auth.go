@@ -339,6 +339,8 @@ type meResponse struct {
 	Best20m int `json:"best20m,omitempty"`
 	// Which providers this account signs in with — profile-screen copy only.
 	Providers []string `json:"providers,omitempty"`
+	// Auto-upload rides to the rider's own Strava (#34, default true).
+	StravaUpload bool `json:"stravaUpload"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -375,6 +377,9 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		DisplayName string `json:"displayName"`
 		FtpWatts    int16  `json:"ftpWatts"`
 		WeightKg    int16  `json:"weightKg"`
+		// Pointer: absent keeps the current value — a client that predates
+		// the field must not silently switch uploads off.
+		StravaUpload *bool `json:"stravaUpload"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -396,8 +401,13 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	stravaUpload := user.StravaUpload
+	if req.StravaUpload != nil {
+		stravaUpload = *req.StravaUpload
+	}
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
-		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts, WeightKg: req.WeightKg,
+		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
+		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)
@@ -410,11 +420,12 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 
 func toMe(u db.User) meResponse {
 	return meResponse{
-		ID:          store.UUIDString(u.ID),
-		DisplayName: u.DisplayName,
-		AvatarURL:   u.AvatarUrl,
-		FtpWatts:    u.FtpWatts,
-		WeightKg:    u.WeightKg,
+		StravaUpload: u.StravaUpload,
+		ID:           store.UUIDString(u.ID),
+		DisplayName:  u.DisplayName,
+		AvatarURL:    u.AvatarUrl,
+		FtpWatts:     u.FtpWatts,
+		WeightKg:     u.WeightKg,
 	}
 }
 

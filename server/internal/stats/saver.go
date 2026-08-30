@@ -19,14 +19,25 @@ import (
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
+// RideUploader pushes a saved ride to an external service (#34's Strava
+// worker) — defined here, where it is consumed; nil means "feature absent".
+type RideUploader interface {
+	RideSaved(rideID pgtype.UUID)
+}
+
 type Saver struct {
-	store *store.Store
-	log   *slog.Logger
+	store    *store.Store
+	log      *slog.Logger
+	uploader RideUploader
 }
 
 func NewSaver(st *store.Store, log *slog.Logger) *Saver {
 	return &Saver{store: st, log: log}
 }
+
+// SetUploader wires the worker in after construction (nil-safe: never store
+// a typed-nil in the interface).
+func (s *Saver) SetUploader(u RideUploader) { s.uploader = u }
 
 // save persists every rider's ride in one transaction (docs/SPEC.md:
 // stats compute on completion, in-process, <100 ms of math). Riders with
@@ -106,6 +117,11 @@ func (s *Saver) save(
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("stats: commit: %w", err)
+	}
+	if s.uploader != nil {
+		for _, id := range rideIDs {
+			s.uploader.RideSaved(id)
+		}
 	}
 	s.log.Info("session saved", "room", roomSlug, "rides", saved)
 	return nil

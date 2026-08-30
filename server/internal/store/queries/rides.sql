@@ -59,3 +59,9 @@ select * from rides where user_id = $1 order by started_at;
 
 -- name: DeleteUser :exec
 delete from users where id = $1;
+
+-- name: GetRideForUpload :one
+-- The uploader's one read: the ride plus the owner's consent flag.
+select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload
+from rides r join users u on u.id = r.user_id
+where r.id = $1;

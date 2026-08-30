@@ -221,7 +221,7 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, m.role
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, m.role
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -229,13 +229,14 @@ order by m.joined_at
 `
 
 type ListRoomMembersRow struct {
-	ID          pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	FtpWatts    int16
-	WeightKg    int16
-	CreatedAt   pgtype.Timestamptz
-	Role        string
+	ID           pgtype.UUID
+	DisplayName  string
+	AvatarUrl    *string
+	FtpWatts     int16
+	WeightKg     int16
+	CreatedAt    pgtype.Timestamptz
+	StravaUpload bool
+	Role         string
 }
 
 func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]ListRoomMembersRow, error) {
@@ -254,6 +255,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.FtpWatts,
 			&i.WeightKg,
 			&i.CreatedAt,
+			&i.StravaUpload,
 			&i.Role,
 		); err != nil {
 			return nil, err
