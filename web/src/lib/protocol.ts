@@ -110,9 +110,14 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "ended"
+  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "ended" | "jam"
   videoId?: string;
   title?: string;
+  /**
+   * For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
+   * shows as a join card. Empty clears it. Link-out only — no API, ever.
+   */
+  jamUrl?: string;
 }
 /**
  * Cheer is the room's reaction layer (#74) — and the spectator's one verb.
@@ -185,6 +190,11 @@ export interface JukeboxState {
   playing: boolean;
   positionSec: number /* float64 */;
   anchorMs: number /* int64 */;
+  /**
+   * The room's Spotify Jam invite link (#96) — audio per rider in their own
+   * app, never ducked, never synced. Set and cleared like any jukebox action.
+   */
+  jamUrl?: string;
 }
 /**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest

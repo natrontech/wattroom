@@ -1,7 +1,9 @@
 package hub
 
 import (
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -22,6 +24,17 @@ var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 // Not goroutine-safe on its own — the owning room's mutex guards it.
 type jukebox struct {
 	state protocol.JukeboxState
+}
+
+// jamURLOk accepts only https links on Spotify's own hosts.
+func jamURLOk(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "open.spotify.com" || host == "spotify.link" ||
+		strings.HasSuffix(host, ".spotify.com")
 }
 
 func newJukebox() *jukebox {
@@ -60,6 +73,19 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 			return true
 		}
 		j.state.Queue = append(j.state.Queue, entry)
+		return true
+
+	case "jam":
+		// ADR-0003: a link-out card, never an integration. Untrusted input —
+		// only a real Jam link on the two Spotify hosts, bounded.
+		if cmd.JamURL == "" {
+			j.state.JamURL = ""
+			return true
+		}
+		if len(cmd.JamURL) > 300 || !jamURLOk(cmd.JamURL) {
+			return false
+		}
+		j.state.JamURL = cmd.JamURL
 		return true
 
 	case "remove":

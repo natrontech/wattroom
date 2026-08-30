@@ -82,9 +82,12 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "ended"
+	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "ended" | "jam"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
+	// For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
+	// shows as a join card. Empty clears it. Link-out only — no API, ever.
+	JamURL string `json:"jamUrl,omitempty"`
 }
 
 // Cheer is the room's reaction layer (#74) — and the spectator's one verb.
@@ -145,6 +148,9 @@ type JukeboxState struct {
 	Playing     bool           `json:"playing"`
 	PositionSec float64        `json:"positionSec"`
 	AnchorMs    int64          `json:"anchorMs"`
+	// The room's Spotify Jam invite link (#96) — audio per rider in their own
+	// app, never ducked, never synced. Set and cleared like any jukebox action.
+	JamURL string `json:"jamUrl,omitempty"`
 }
 
 // ServerTick is the coalesced 1 Hz room broadcast: every rider's latest

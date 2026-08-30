@@ -818,8 +818,8 @@
 			<div class="flex min-h-0 flex-1 justify-center">
 				<Jukebox
 					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title) =>
-						live.jukebox(action, videoId, title)}
+					send={(action, videoId, title, jamUrl) =>
+						live.jukebox(action, videoId, title, jamUrl)}
 					large
 					ducked={Object.entries(av.speaking).some(
 						([id, active]) => active && id !== account.me?.id,
@@ -1014,8 +1014,8 @@
 			{#snippet player()}
 				<Jukebox
 					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title) =>
-						live.jukebox(action, videoId, title)}
+					send={(action, videoId, title, jamUrl) =>
+						live.jukebox(action, videoId, title, jamUrl)}
 					ducked={Object.entries(av.speaking).some(
 						([id, active]) => active && id !== account.me?.id,
 					)}

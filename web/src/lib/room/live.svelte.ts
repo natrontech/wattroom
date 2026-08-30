@@ -111,8 +111,8 @@ export function createRoomLive(slug: string) {
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
 		},
-		jukebox(action: string, videoId?: string, title?: string) {
-			send({ jukebox: { action, videoId, title } });
+		jukebox(action: string, videoId?: string, title?: string, jamUrl?: string) {
+			send({ jukebox: { action, videoId, title, jamUrl } });
 		},
 		control(
 			action: string,
