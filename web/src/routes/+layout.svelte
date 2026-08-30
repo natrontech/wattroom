@@ -11,6 +11,7 @@
 	import { account } from '$lib/account.svelte';
 	import { takeNext } from '$lib/auth/next';
 	import { fetchRailRooms } from '$lib/nav/rooms';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
@@ -100,7 +101,32 @@
 {:else if framed}
 	<div class="flex h-dvh overflow-hidden">
 		<div class="hidden shrink-0 md:block">
-			<RoomRail you={railYou} live={false} rooms={railRooms} showAv={false} />
+			{#if roomConnection.current}
+				{@const av = roomConnection.current.av}
+				<RoomRail
+					you={railYou}
+					live={roomConnection.current.live.tick?.state.phase === 'running'}
+					rooms={railRooms}
+					connectedSlug={roomConnection.current.slug}
+					onLeave={() => roomConnection.leave()}
+					micOn={av.micOn}
+					camOn={av.camOn}
+					micLevel={av.micLevel}
+					transmitting={av.transmitting}
+					voiceMode={av.mode}
+					gateThreshold={av.gateThreshold}
+					pttHeld={av.pttHeld}
+					onVoiceMode={(m) => av.setMode(m)}
+					onGateThreshold={(t) => av.setGateThreshold(t)}
+					onPtt={(held) => av.setPtt(held)}
+					micTesting={av.micTesting}
+					onMicTest={() => void av.toggleMicTest()}
+					onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
+					onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
+				/>
+			{:else}
+				<RoomRail you={railYou} live={false} rooms={railRooms} showAv={false} />
+			{/if}
 		</div>
 		<div class="min-w-0 flex-1 overflow-y-auto">
 			{@render children()}

@@ -26,6 +26,8 @@
 		onRiderGain,
 		micTesting = false,
 		onMicTest,
+		connectedSlug = '',
+		onLeave,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -54,6 +56,9 @@
 		onRiderGain?: (id: string, gain: number) => void;
 		micTesting?: boolean;
 		onMicTest?: () => void;
+		/** The room you are IN (#173) — shown and leavable from anywhere. */
+		connectedSlug?: string;
+		onLeave?: () => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -184,6 +189,24 @@
 
 	<!-- Your own presence, pinned to the bottom the way a voice app does it. -->
 	<div class="border-t border-white/5 px-3 py-3">
+		{#if connectedSlug}
+			<div class="mb-2 flex items-center gap-2">
+				<span class="bg-z4 h-1.5 w-1.5 animate-pulse rounded-full"></span>
+				<a
+					href="/r/{connectedSlug}"
+					class="min-w-0 flex-1 truncate text-[11px] text-white hover:underline"
+					>in {rooms.find((room) => room.slug === connectedSlug)?.name ??
+						connectedSlug}</a
+				>
+				{#if onLeave}
+					<button
+						onclick={onLeave}
+						class="text-muted shrink-0 text-[10px] underline hover:text-white"
+						>leave</button
+					>
+				{/if}
+			</div>
+		{/if}
 		<div class="flex items-center gap-2">
 			<span class="bg-z4 h-2 w-2 rounded-full"></span>
 			<span class="truncate text-xs font-medium">{you.name}</span>
