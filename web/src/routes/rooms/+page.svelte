@@ -114,7 +114,6 @@
 <main class="mx-auto max-w-3xl px-6 py-10">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
-		<a href="/" class="text-muted text-xs hover:text-white">← home</a>
 	</div>
 
 	{#if error}
