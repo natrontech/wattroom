@@ -131,6 +131,36 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) 
 	return i, err
 }
 
+const getRideForUpload = `-- name: GetRideForUpload :one
+select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload
+from rides r join users u on u.id = r.user_id
+where r.id = $1
+`
+
+type GetRideForUploadRow struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	WorkoutName  string
+	StartedAt    pgtype.Timestamptz
+	Samples      []byte
+	StravaUpload bool
+}
+
+// The uploader's one read: the ride plus the owner's consent flag.
+func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRideForUploadRow, error) {
+	row := q.db.QueryRow(ctx, getRideForUpload, id)
+	var i GetRideForUploadRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WorkoutName,
+		&i.StartedAt,
+		&i.Samples,
+		&i.StravaUpload,
+	)
+	return i, err
+}
+
 const listRoomMedals = `-- name: ListRoomMedals :many
 select m.kind, m.awarded_at, u.display_name
 from medals m

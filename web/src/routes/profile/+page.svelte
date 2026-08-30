@@ -120,6 +120,29 @@
 							.map((p) => providerName[p] ?? p)
 							.join(', ') || '—'}
 					</p>
+					{#if account.me?.providers?.includes('strava')}
+						<label class="mt-3 flex items-start gap-2">
+							<input
+								type="checkbox"
+								checked={account.me?.stravaUpload ?? true}
+								onchange={(e) =>
+									void account.save({
+										displayName: name || (account.me?.displayName ?? ''),
+										ftpWatts: ftp,
+										weightKg: kg,
+										stravaUpload: e.currentTarget.checked,
+									})}
+								class="mt-0.5"
+							/>
+							<span class="text-xs">
+								Auto-upload rides to Strava
+								<span class="text-muted block text-[11px]">
+									Your rides, your Strava, as Virtual Rides. Upload only —
+									nothing is ever pulled back.
+								</span>
+							</span>
+						</label>
+					{/if}
 				</div>
 				<label class="block">
 					<span class="text-muted text-[10px] tracking-wider uppercase"

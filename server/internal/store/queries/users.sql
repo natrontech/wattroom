@@ -8,6 +8,6 @@ select * from users where id = $1;
 
 -- name: UpdateUserProfile :one
 update users
-set display_name = $2, ftp_watts = $3, weight_kg = $4
+set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5
 where id = $1
 returning *;

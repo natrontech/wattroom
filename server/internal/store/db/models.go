@@ -81,12 +81,13 @@ type Session struct {
 }
 
 type User struct {
-	ID          pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	FtpWatts    int16
-	WeightKg    int16
-	CreatedAt   pgtype.Timestamptz
+	ID           pgtype.UUID
+	DisplayName  string
+	AvatarUrl    *string
+	FtpWatts     int16
+	WeightKg     int16
+	CreatedAt    pgtype.Timestamptz
+	StravaUpload bool
 }
 
 type Workout struct {

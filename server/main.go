@@ -26,6 +26,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/strava"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -75,13 +76,22 @@ func main() {
 		authService.Register(mux)
 		account.New(st, authService, log).Register(mux)
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
+		uploader := strava.New(st, log)
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
 		customworkouts.New(st, authService, log).Register(mux)
-		rides.New(st, authService, log).Register(mux)
+		ridesService := rides.New(st, authService, log)
+		if uploader != nil {
+			ridesService.SetUploader(uploader)
+		}
+		ridesService.Register(mux)
 		// Live rooms exist only with the durable side present: the WS needs
 		// membership, and membership needs the database.
-		h := hub.New(log, roomsService, stats.NewSaver(st, log))
+		saver := stats.NewSaver(st, log)
+		if uploader != nil {
+			saver.SetUploader(uploader)
+		}
+		h := hub.New(log, roomsService, saver)
 		roomsService.SetPresence(h)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.

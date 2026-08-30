@@ -28,3 +28,6 @@ delete from sessions where expires_at <= now();
 
 -- name: ListUserProviders :many
 select provider from identities where user_id = $1 order by created_at;
+
+-- name: GetUserIdentity :one
+select * from identities where user_id = $1 and provider = $2;

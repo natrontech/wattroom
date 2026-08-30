@@ -36,15 +36,24 @@ type UserSource interface {
 	User(r *http.Request) (db.User, bool)
 }
 
+// RideUploader mirrors stats.RideUploader — a saved solo ride goes to the
+// same external worker; nil means the feature is absent.
+type RideUploader interface {
+	RideSaved(rideID pgtype.UUID)
+}
+
 type Service struct {
-	store *store.Store
-	users UserSource
-	log   *slog.Logger
+	store    *store.Store
+	users    UserSource
+	log      *slog.Logger
+	uploader RideUploader
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 	return &Service{store: st, users: users, log: log}
 }
+
+func (s *Service) SetUploader(u RideUploader) { s.uploader = u }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides", s.handleList)
@@ -174,6 +183,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("solo ride save failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
 		return
+	}
+	if s.uploader != nil {
+		s.uploader.RideSaved(id)
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)
 	httpx.WriteJSON(w, http.StatusCreated, rideJSON{
