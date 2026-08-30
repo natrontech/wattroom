@@ -565,6 +565,8 @@
 			elapsed={shared?.elapsed ?? 0}
 			{block}
 			{roomName}
+			{code}
+			live={phase === 'live'}
 			workoutName={shared?.workoutName ?? ''}
 		/>
 	</div>
