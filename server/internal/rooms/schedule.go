@@ -86,6 +86,9 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The session could not be planned. Try again.")
 		return
 	}
+	if s.notifier != nil {
+		s.notifier.SessionPlanned(room, req.WorkoutName, req.StartsAt, user.ID)
+	}
 	httpx.WriteJSON(w, http.StatusCreated, scheduledJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 		WorkoutJSON: string(row.WorkoutJson),

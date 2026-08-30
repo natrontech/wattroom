@@ -22,6 +22,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -79,6 +80,13 @@ func main() {
 		uploader := strava.New(st, log)
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
+		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
+		// without it the profile hides the whole notifications section.
+		if notifier := notify.New(st, log, baseURL); notifier != nil {
+			notifier.Register(mux)
+			roomsService.SetNotifier(notifier)
+			authService.SetMailAvailable(true)
+		}
 		customworkouts.New(st, authService, log).Register(mux)
 		ridesService := rides.New(st, authService, log)
 		if uploader != nil {

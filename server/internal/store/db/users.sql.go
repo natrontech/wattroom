@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 insert into users (display_name, avatar_url, ftp_watts, weight_kg)
 values ($1, $2, $3, $4)
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token
 `
 
 type CreateUserParams struct {
@@ -40,12 +40,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.WeightKg,
 		&i.CreatedAt,
 		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -59,23 +62,85 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.WeightKg,
 		&i.CreatedAt,
 		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
 	)
 	return i, err
 }
 
+const listRoomNotifyTargets = `-- name: ListRoomNotifyTargets :many
+select u.id, u.email, u.unsub_token
+from memberships m
+join users u on u.id = m.user_id
+where m.room_id = $1 and u.notify_planned and u.email is not null and u.id <> $2
+`
+
+type ListRoomNotifyTargetsParams struct {
+	RoomID pgtype.UUID
+	ID     pgtype.UUID
+}
+
+type ListRoomNotifyTargetsRow struct {
+	ID         pgtype.UUID
+	Email      *string
+	UnsubToken pgtype.UUID
+}
+
+// Members who asked for planned-session email — minus the planner, who knows.
+func (q *Queries) ListRoomNotifyTargets(ctx context.Context, arg ListRoomNotifyTargetsParams) ([]ListRoomNotifyTargetsRow, error) {
+	rows, err := q.db.Query(ctx, listRoomNotifyTargets, arg.RoomID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomNotifyTargetsRow
+	for rows.Next() {
+		var i ListRoomNotifyTargetsRow
+		if err := rows.Scan(&i.ID, &i.Email, &i.UnsubToken); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unsubscribePlanned = `-- name: UnsubscribePlanned :execrows
+update users set notify_planned = false where id = $1 and unsub_token = $2
+`
+
+type UnsubscribePlannedParams struct {
+	ID         pgtype.UUID
+	UnsubToken pgtype.UUID
+}
+
+func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlannedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unsubscribePlanned, arg.ID, arg.UnsubToken)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users
-set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5
+set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
+    email = $6, notify_planned = $7
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token
 `
 
 type UpdateUserProfileParams struct {
-	ID           pgtype.UUID
-	DisplayName  string
-	FtpWatts     int16
-	WeightKg     int16
-	StravaUpload bool
+	ID            pgtype.UUID
+	DisplayName   string
+	FtpWatts      int16
+	WeightKg      int16
+	StravaUpload  bool
+	Email         *string
+	NotifyPlanned bool
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
@@ -85,6 +150,8 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		arg.FtpWatts,
 		arg.WeightKg,
 		arg.StravaUpload,
+		arg.Email,
+		arg.NotifyPlanned,
 	)
 	var i User
 	err := row.Scan(
@@ -95,6 +162,9 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.WeightKg,
 		&i.CreatedAt,
 		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
 	)
 	return i, err
 }
