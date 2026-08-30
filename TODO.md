@@ -36,44 +36,41 @@ The living work list, ordered by milestone (definitions in [WATTROOM.md §5](WAT
 ## M1 — Solo workout player
 
 - [x] FtmsTrainer driver (#3) — serialized control-point queue, parsing confirmed on hardware
-- [ ] Kickr v2 GATT enumeration (#43) — needs an alpha rider's v2; see docs/HARDWARE-SESSIONS.md
-- [ ] WcpsTrainer driver (Kickr v2: unlock, 0x42 ERG, 0x43/0x46 sim/grade)
-- [ ] HR / cadence / power sensor pairing (BLE HRS, CPS, CSC)
-- [x] Workout JSON format + editor + curated library (#12) — 26 workouts, editor saves to localStorage until #15
+- Parked per ADR-0007 (alpha fleet is all-FTMS): Kickr v2 GATT enumeration, WcpsTrainer (#4)
+- [x] HR / cadence / power sensor pairing (BLE HRS, CPS, CSC) — Polar H10 verified on hardware
+- [x] Workout JSON format + editor + curated library (#12) — 26 workouts; custom workouts live on the account since #121
 - [x] Interval graph UI, FTP scaling, player controls (#13) — spiral-guard thresholds still need proving (#46)
-- [ ] Built-in ramp test; manual FTP in profile
+- [x] Built-in ramp test; manual FTP in profile — FTP pushes to the account (#119)
 - [x] .fit export (#5) — verified against Strava, classified as Virtual Ride
-- [ ] Local ride history
+- [x] Ride history — server-side on the account since #110; device store is the offline fallback
 - [x] Playwright smoke (#6) — runs on every PR as its own CI job
 
-## M2 — Accounts & rooms
+## M2 — Accounts & rooms (closed 2026-08-29)
 
-- [ ] OAuth (Google/GitHub/Strava), profiles (name, FTP, weight, avatar)
-- [ ] Postgres schema + sqlc + goose migrations
-- [ ] Persistent rooms, join via link/code, roles
-- [ ] Live dashboard: 1 Hz ticks, shared timer, countdown start, late join
-- [ ] IndexedDB ride buffer + reconnect resend (seq dedup)
-- [ ] Phone spectator view
+All shipped: OAuth + profiles, schema/sqlc/goose, persistent rooms with
+roles, the 1 Hz dashboard, IndexedDB crash buffer + reconnect resend, the
+phone spectator. Since then: full login gating (ADR-0009) and the phone
+share link landing on the spectator view (#124).
 
-## M3 — Presence & jukebox
+## M3 — Presence & jukebox (closed 2026-08-29)
 
-- [ ] LiveKit: tokens from Go, voice/camera/screenshare in rooms
-- [ ] Layouts (metrics-first / video-first / media-focus) + TV mode
-- [ ] Synced YouTube jukebox (RMF-compliant player tile, tiered drift correction, videos.list resolve)
-- [ ] Audio ducking on active speakers
+All shipped: LiveKit tokens/voice/camera, the three layouts + TV mode
+(idle TV is a lounge screen since #125), the synced RMF-compliant jukebox
+with ducking, and the Spotify Jam link-out card (#96, ADR-0003).
+Still unverified by human ears: two-browser voice/camera and audible
+jukebox sync — see the pre-launch list in docs/LAUNCH.md.
 
-## M4 — Stats & game layer
+## M4 — Stats & game layer (closed 2026-08-29)
 
-- [ ] Ride completion pipeline (curve, execution score, kJ/XP, level+category) in one transaction
-- [ ] FTP auto-detect prompts
-- [ ] Live execution meter; post-ride medals; room streaks & challenges
-- [ ] Sprint moments (ERG→slope switch, 4 Hz burst, podium)
+All shipped: the one-transaction completion pipeline, FTP auto-detect
+prompts, live execution meter, medals, room streaks/challenges, sprint
+moments. Solo rides feed the same pipeline since #110.
 
-## M5 — Game modes
+## M5 — Game modes (closed 2026-08-29)
 
-- [ ] Rule-module hook on the hub, then in order: Backyard Ramp → Sprint Roulette → Watt Golf → Floor is Lava → Points Race → Team Relay → Collective Ramp
-- [ ] 30 s disconnect grace for elimination modes
-- [ ] Base sound set + spectator cheers + rider quick-reactions
+All seven modes shipped with their designed heroes (#105), the base sound
+set (room-level pack setting since #107), cheers and quick-reactions.
+Parked with reason: 30 s disconnect grace for elimination modes.
 
 ## M6 — Alpha polish
 
