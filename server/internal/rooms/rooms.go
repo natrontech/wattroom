@@ -58,6 +58,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rooms/{slug}", s.handleGet)
 	mux.HandleFunc("PATCH /api/rooms/{slug}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/rooms/{slug}", s.handleDelete)
+	mux.HandleFunc("POST /api/rooms/{slug}/schedule", s.handleSchedule)
+	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}", s.handleUnschedule)
 	mux.HandleFunc("POST /api/rooms/{slug}/join", s.handleJoin)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
@@ -94,6 +96,10 @@ type roomJSON struct {
 	// no individual numbers anywhere in it.
 	StreakWeeks int   `json:"streakWeeks"`
 	MonthKj     int64 `json:"monthKj"`
+	// Planned rides (#116): the full upcoming list for members, and just the
+	// next one for the list view — the nav shows where the action will be.
+	Upcoming    []scheduledJSON `json:"upcoming,omitempty"`
+	NextSession *nextJSON       `json:"nextSession,omitempty"`
 	// List-view presence: how many members exist, how many are connected right
 	// now, and the session phase — the nav shows where the action is.
 	MemberCount int    `json:"memberCount,omitempty"`
@@ -185,6 +191,12 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		if s.presence != nil {
 			entry.Connected, entry.Phase, entry.Riders = s.presence.Presence(room.Slug)
 		}
+		if next, err := s.store.Queries.NextRoomSession(r.Context(), room.ID); err == nil {
+			entry.NextSession = &nextJSON{
+				WorkoutName: next.WorkoutName,
+				StartsAt:    next.StartsAt.Time.Format(time.RFC3339),
+			}
+		}
 		out = append(out, entry)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out})
@@ -208,6 +220,15 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			response.Role = m.Role
 			response.Code = room.Code
 			response.SoundPack = room.SoundPack
+			if rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID); err == nil {
+				for _, row := range rows {
+					response.Upcoming = append(response.Upcoming, scheduledJSON{
+						ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+						WorkoutJSON: string(row.WorkoutJson),
+						StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+					})
+				}
+			}
 			members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
 			if err != nil {
 				s.log.Error("list members failed", "err", err, "room", room.Slug)

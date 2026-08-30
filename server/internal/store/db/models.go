@@ -63,6 +63,16 @@ type Room struct {
 	SoundPack string
 }
 
+type ScheduledSession struct {
+	ID          pgtype.UUID
+	RoomID      pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Session struct {
 	TokenHash []byte
 	UserID    pgtype.UUID
