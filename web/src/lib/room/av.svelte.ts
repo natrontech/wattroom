@@ -1,4 +1,6 @@
 import {
+	createAudioAnalyser,
+	LocalAudioTrack,
 	LocalVideoTrack,
 	RemoteTrack,
 	Room,
@@ -29,6 +31,40 @@ export function createRoomAv(slug: string) {
 	/** Rider ids with a live camera/screen track — bumped to retrigger attach. */
 	let videoOf = $state<Record<string, number>>({});
 	let speaking = $state<Record<string, boolean>>({});
+	/**
+	 * Who is in voice and whether their mic is open (#151): absent = not in
+	 * voice at all — three states a tile can tell apart at a glance.
+	 */
+	let voice = $state<Record<string, 'live' | 'muted'>>({});
+	/** Own-mic level 0..1 while transmitting — the "is my mic dead" meter. */
+	let micLevel = $state(0);
+
+	let meterCleanup: (() => Promise<void>) | null = null;
+	let meterTimer: ReturnType<typeof setInterval> | undefined;
+
+	function startMeter() {
+		const track = room?.localParticipant.getTrackPublication(
+			Track.Source.Microphone,
+		)?.audioTrack;
+		if (!(track instanceof LocalAudioTrack)) return;
+		const { calculateVolume, cleanup } = createAudioAnalyser(track);
+		meterCleanup = cleanup;
+		meterTimer = setInterval(() => (micLevel = calculateVolume()), 120);
+	}
+
+	function stopMeter() {
+		clearInterval(meterTimer);
+		void meterCleanup?.();
+		meterCleanup = null;
+		micLevel = 0;
+	}
+
+	function setVoice(id: string, state: 'live' | 'muted' | null) {
+		const next = { ...voice };
+		if (state === null) delete next[id];
+		else next[id] = state;
+		voice = next;
+	}
 
 	let room: Room | null = null;
 	const videoTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
@@ -61,11 +97,18 @@ export function createRoomAv(slug: string) {
 			status = 'live';
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
+			for (const p of room.remoteParticipants.values()) {
+				const pub = p.getTrackPublication(Track.Source.Microphone);
+				setVoice(p.identity, pub && !pub.isMuted ? 'live' : 'muted');
+			}
 			try {
 				await room.localParticipant.setMicrophoneEnabled(true);
 				micOn = true;
+				setVoice(room.localParticipant.identity, 'live');
+				startMeter();
 			} catch {
 				micOn = false;
+				setVoice(room.localParticipant.identity, 'muted');
 			}
 		} catch (cause) {
 			status = 'failed';
@@ -95,6 +138,22 @@ export function createRoomAv(slug: string) {
 				audioElements.delete(participant.identity);
 			}
 		});
+		const audioState = (p: {
+			identity: string;
+			getTrackPublication: (source: Track.Source) => unknown;
+		}) => {
+			const pub = p.getTrackPublication(Track.Source.Microphone) as
+				{ isMuted: boolean } | undefined;
+			setVoice(p.identity, pub && !pub.isMuted ? 'live' : 'muted');
+		};
+		r.on(RoomEvent.ParticipantConnected, (p) => audioState(p));
+		r.on(RoomEvent.ParticipantDisconnected, (p) => setVoice(p.identity, null));
+		r.on(RoomEvent.TrackMuted, (pub, p) => {
+			if (pub.kind === Track.Kind.Audio) setVoice(p.identity, 'muted');
+		});
+		r.on(RoomEvent.TrackUnmuted, (pub, p) => {
+			if (pub.kind === Track.Kind.Audio) setVoice(p.identity, 'live');
+		});
 		r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
 			const next: Record<string, boolean> = {};
 			for (const p of speakers) next[p.identity] = true;
@@ -105,6 +164,8 @@ export function createRoomAv(slug: string) {
 			audioElements.clear();
 			videoTracks.clear();
 			videoOf = {};
+			voice = {};
+			stopMeter();
 			if (status === 'live') status = 'off';
 		});
 	}
@@ -131,6 +192,12 @@ export function createRoomAv(slug: string) {
 		get speaking() {
 			return speaking;
 		},
+		get voice() {
+			return voice;
+		},
+		get micLevel() {
+			return micLevel;
+		},
 		join,
 		async toggleMic() {
 			if (!room) return;
@@ -138,6 +205,9 @@ export function createRoomAv(slug: string) {
 			await room.localParticipant.setMicrophoneEnabled(micOn).catch(() => {
 				micOn = false;
 			});
+			setVoice(room.localParticipant.identity, micOn ? 'live' : 'muted');
+			if (micOn) startMeter();
+			else stopMeter();
 		},
 		async toggleCam() {
 			if (!room) return;
@@ -183,10 +253,12 @@ export function createRoomAv(slug: string) {
 			container.appendChild(el);
 		},
 		leave() {
+			stopMeter();
 			void room?.disconnect();
 			room = null;
 			status = 'off';
 			micOn = camOn = sharing = false;
+			voice = {};
 		},
 	};
 }

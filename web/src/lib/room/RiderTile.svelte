@@ -92,8 +92,17 @@
 				>coach</span
 			>
 		{/if}
-		{#if rider.muted}
-			<span class="text-[10px] text-white/50" title="muted">✕</span>
+		{#if rider.inVoice && !rider.muted}
+			<span
+				class="bg-z4 h-1.5 w-1.5 rounded-full"
+				title="in voice"
+				aria-label="in voice"
+			></span>
+		{:else if rider.muted}
+			<span
+				class="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] text-white/70"
+				title="muted">mic off</span
+			>
 		{/if}
 	</div>
 
