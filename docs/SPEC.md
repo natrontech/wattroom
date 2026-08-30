@@ -149,7 +149,7 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 
 ## Room audio defaults (defaults — tune in alpha; rationale RESEARCH.md §12)
 
-- Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation on). While the jukebox plays: tightened VAD threshold + a one-tap push-to-talk toggle offered in the dashboard.
+- Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation + autoGainControl on). Gate numbers: open at level **≥ 0.02** (analyser RMS, 0–1), hold open **800 ms** after dropping below, **5 ms** gain ramps (no clicks); while the jukebox plays the threshold **doubles** (defaults — tune in alpha). The gate rides a local gain stage, never the track's mute — mute state shown to others is only ever the rider's own toggle. Push-to-talk is the alternative, not the default: it suits the desk spectator, and says so where offered.
 - Joining a room with music playing and mic open → one-line **headphone nudge** (dismissible, never blocking). Echo cancellation is treated as best-effort — the defaults must work without it.
 - Jukebox audio is always local per rider (own iframe, own volume) and never enters the voice path.
 - Ride-critical timers (ERG targets, tick handling) run in a **Web Worker** with Wake Lock held — main-thread timers throttle in hidden tabs (an active call exempts the tab, solo rides are not exempt).

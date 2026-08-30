@@ -1,6 +1,4 @@
 import {
-	createAudioAnalyser,
-	LocalAudioTrack,
 	LocalVideoTrack,
 	RemoteTrack,
 	Room,
@@ -38,25 +36,121 @@ export function createRoomAv(slug: string) {
 	let voice = $state<Record<string, 'live' | 'muted'>>({});
 	/** Own-mic level 0..1 while transmitting — the "is my mic dead" meter. */
 	let micLevel = $state(0);
+	/** The gate's verdict this instant: is anything leaving this machine? */
+	let transmitting = $state(false);
+	/** SPEC room-audio defaults; threshold persisted per device. */
+	let mode = $state<'gate' | 'ptt'>('gate');
+	let gateThreshold = $state(0.02);
+	let pttHeld = $state(false);
+	let musicPlaying = false;
 
-	let meterCleanup: (() => Promise<void>) | null = null;
-	let meterTimer: ReturnType<typeof setInterval> | undefined;
-
-	function startMeter() {
-		const track = room?.localParticipant.getTrackPublication(
-			Track.Source.Microphone,
-		)?.audioTrack;
-		if (!(track instanceof LocalAudioTrack)) return;
-		const { calculateVolume, cleanup } = createAudioAnalyser(track);
-		meterCleanup = cleanup;
-		meterTimer = setInterval(() => (micLevel = calculateVolume()), 120);
+	const VOICE_KEY = 'wattroom.voice.v1';
+	try {
+		const saved = JSON.parse(localStorage.getItem(VOICE_KEY) ?? '{}');
+		if (saved.mode === 'ptt') mode = 'ptt';
+		if (typeof saved.threshold === 'number' && saved.threshold > 0)
+			gateThreshold = Math.min(0.1, saved.threshold);
+	} catch {
+		// storage blocked: SPEC defaults stand
+	}
+	function persistVoice() {
+		try {
+			localStorage.setItem(
+				VOICE_KEY,
+				JSON.stringify({ mode, threshold: gateThreshold }),
+			);
+		} catch {
+			// per-device convenience only
+		}
 	}
 
-	function stopMeter() {
+	/**
+	 * The mic path (#151, SPEC room audio): capture (browser DSP on) → gain →
+	 * published track. The gate drives the GAIN, never the track's mute — a
+	 * muted track broadcasts state, and a gate that flaps everyone's muted
+	 * chip per pause in speech is worse than no gate.
+	 */
+	let mic: {
+		ctx: AudioContext;
+		raw: MediaStream;
+		gain: GainNode;
+		analyser: AnalyserNode;
+		track: MediaStreamTrack;
+	} | null = null;
+	let meterTimer: ReturnType<typeof setInterval> | undefined;
+	let lastLoud = 0;
+
+	async function openMic() {
+		const raw = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				noiseSuppression: true,
+				echoCancellation: true,
+				autoGainControl: true,
+			},
+		});
+		const ctx = new AudioContext();
+		const source = ctx.createMediaStreamSource(raw);
+		const analyser = ctx.createAnalyser();
+		analyser.fftSize = 512;
+		const gain = ctx.createGain();
+		gain.gain.value = 0; // closed until the gate opens
+		const dest = ctx.createMediaStreamDestination();
+		source.connect(analyser);
+		source.connect(gain);
+		gain.connect(dest);
+		const track = dest.stream.getAudioTracks()[0];
+		mic = { ctx, raw, gain, analyser, track };
+		await room?.localParticipant.publishTrack(track, {
+			source: Track.Source.Microphone,
+		});
+		const bins = new Uint8Array(analyser.frequencyBinCount);
+		meterTimer = setInterval(() => {
+			if (!mic) return;
+			mic.analyser.getByteTimeDomainData(bins);
+			let sum = 0;
+			for (const v of bins) {
+				const centred = (v - 128) / 128;
+				sum += centred * centred;
+			}
+			micLevel = Math.sqrt(sum / bins.length);
+			runGate();
+		}, 120);
+	}
+
+	function setGate(openNow: boolean) {
+		if (!mic) return;
+		transmitting = openNow;
+		// 5 ms ramps (SPEC): no clicks, no zipper noise.
+		mic.gain.gain.setTargetAtTime(openNow ? 1 : 0, mic.ctx.currentTime, 0.005);
+	}
+
+	function runGate() {
+		if (!mic || !micOn) return;
+		if (mode === 'ptt') {
+			setGate(pttHeld);
+			return;
+		}
+		const threshold = musicPlaying ? gateThreshold * 2 : gateThreshold;
+		const now = performance.now();
+		if (micLevel >= threshold) {
+			lastLoud = now;
+			if (!transmitting) setGate(true);
+		} else if (transmitting && now - lastLoud > 800) {
+			setGate(false);
+		}
+	}
+
+	function closeMic() {
 		clearInterval(meterTimer);
-		void meterCleanup?.();
-		meterCleanup = null;
+		if (mic) {
+			const { ctx, raw, track } = mic;
+			room?.localParticipant.unpublishTrack(track);
+			for (const t of raw.getTracks()) t.stop();
+			void ctx.close();
+		}
+		mic = null;
 		micLevel = 0;
+		transmitting = false;
 	}
 
 	function setVoice(id: string, state: 'live' | 'muted' | null) {
@@ -102,10 +196,9 @@ export function createRoomAv(slug: string) {
 				setVoice(p.identity, pub && !pub.isMuted ? 'live' : 'muted');
 			}
 			try {
-				await room.localParticipant.setMicrophoneEnabled(true);
+				await openMic();
 				micOn = true;
 				setVoice(room.localParticipant.identity, 'live');
-				startMeter();
 			} catch {
 				micOn = false;
 				setVoice(room.localParticipant.identity, 'muted');
@@ -165,7 +258,7 @@ export function createRoomAv(slug: string) {
 			videoTracks.clear();
 			videoOf = {};
 			voice = {};
-			stopMeter();
+			closeMic();
 			if (status === 'live') status = 'off';
 		});
 	}
@@ -198,16 +291,51 @@ export function createRoomAv(slug: string) {
 		get micLevel() {
 			return micLevel;
 		},
+		get transmitting() {
+			return transmitting;
+		},
+		get mode() {
+			return mode;
+		},
+		get gateThreshold() {
+			return gateThreshold;
+		},
+		get pttHeld() {
+			return pttHeld;
+		},
+		setMode(next: 'gate' | 'ptt') {
+			mode = next;
+			persistVoice();
+			if (next === 'gate') lastLoud = 0;
+			runGate();
+		},
+		setGateThreshold(next: number) {
+			gateThreshold = Math.min(0.1, Math.max(0.005, next));
+			persistVoice();
+		},
+		setPtt(held: boolean) {
+			pttHeld = held;
+			runGate();
+		},
+		/** SPEC: while the jukebox plays the gate threshold doubles. */
+		setMusicPlaying(playing: boolean) {
+			musicPlaying = playing;
+		},
 		join,
 		async toggleMic() {
 			if (!room) return;
-			micOn = !micOn;
-			await room.localParticipant.setMicrophoneEnabled(micOn).catch(() => {
+			if (micOn) {
+				closeMic();
 				micOn = false;
-			});
+			} else {
+				try {
+					await openMic();
+					micOn = true;
+				} catch {
+					micOn = false;
+				}
+			}
 			setVoice(room.localParticipant.identity, micOn ? 'live' : 'muted');
-			if (micOn) startMeter();
-			else stopMeter();
 		},
 		async toggleCam() {
 			if (!room) return;
@@ -253,7 +381,7 @@ export function createRoomAv(slug: string) {
 			container.appendChild(el);
 		},
 		leave() {
-			stopMeter();
+			closeMic();
 			void room?.disconnect();
 			room = null;
 			status = 'off';
