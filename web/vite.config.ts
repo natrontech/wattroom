@@ -61,8 +61,11 @@ export default defineConfig({
 	server: {
 		proxy: {
 			// Go backend during development (make dev). WS needs ws: true.
-			'/api': 'http://localhost:8080',
-			'/ws': { target: 'ws://localhost:8080', ws: true }
+			// changeOrigin must stay OFF: the string shorthand turns it on, which
+			// rewrites Host to :8080 while Origin stays :5174 — and the server's
+			// same-origin check then 403s every PATCH /api/me and logout in dev.
+			'/api': { target: 'http://localhost:8080', changeOrigin: false },
+			'/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: false }
 		}
 	}
 });

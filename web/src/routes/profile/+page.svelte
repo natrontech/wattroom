@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
@@ -36,14 +35,11 @@
 	let deleteConfirmation = $state('');
 	let deleting = $state(false);
 
-	// Signed in, the server copy wins: synced into localStorage so /ride and
-	// /ramp keep reading the local profile and never learn accounts exist.
+	// The root layout owns the server → localStorage pull; this only fills
+	// the form fields.
 	$effect(() => {
 		const me = account.me;
 		if (!me) return;
-		// untrack: update() spreads the profile state internally, and an effect
-		// must not subscribe to what it writes.
-		untrack(() => profile.update({ ftp: me.ftpWatts, kg: me.weightKg }));
 		ftp = me.ftpWatts;
 		kg = me.weightKg;
 		name = me.displayName;

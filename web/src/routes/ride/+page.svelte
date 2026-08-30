@@ -15,6 +15,7 @@
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
@@ -335,10 +336,11 @@
 				<input
 					type="number"
 					value={ftp}
-					onchange={(event) => {
-						error = profile.update({
-							ftp: Number(event.currentTarget.value),
-						});
+					onchange={async (event) => {
+						const next = Number(event.currentTarget.value);
+						error =
+							profile.update({ ftp: next }) ??
+							(await pushProfile({ ftpWatts: next }));
 					}}
 					min="80"
 					max="500"
