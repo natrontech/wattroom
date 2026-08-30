@@ -27,6 +27,7 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 	var uploads, polls atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /oauth/token", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		if r.FormValue("grant_type") != "refresh_token" || r.FormValue("refresh_token") != "refresh-1" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -41,7 +42,8 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if err := r.ParseMultipartForm(8 << 20); err != nil ||
+		r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
+		if err := r.ParseMultipartForm(8 << 20); err != nil || //nolint:gosec // test fake; body capped by MaxBytesReader above
 			r.FormValue("data_type") != "fit" || r.FormValue("name") == "" ||
 			r.FormValue("external_id") == "" {
 			w.WriteHeader(http.StatusBadRequest)

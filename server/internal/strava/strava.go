@@ -48,10 +48,10 @@ func New(st *store.Store, log *slog.Logger) *Service {
 	if id == "" || secret == "" {
 		return nil
 	}
-	return &Service{
+	return &Service{ //nolint:gosec // the values come from env, nothing is hardcoded
 		store: st, log: log, clientID: id, clientSecret: secret,
 		apiBase:  "https://www.strava.com/api/v3",
-		tokenURL: "https://www.strava.com/oauth/token",
+		tokenURL: "https://www.strava.com/oauth/token", //nolint:gosec // a public endpoint URL, not a credential
 		httpc:    &http.Client{Timeout: 30 * time.Second},
 		now:      time.Now, pollEvery: 2 * time.Second,
 	}
@@ -127,7 +127,7 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 	if err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("refresh: status %d", res.StatusCode)
 	}
@@ -228,7 +228,7 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 	if err != nil {
 		return 0, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(res.Body, 200))
 		return 0, fmt.Errorf("upload: status %d: %s", res.StatusCode, snippet)
@@ -269,7 +269,7 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) error
 			Error      string `json:"error"`
 		}
 		decodeErr := json.NewDecoder(res.Body).Decode(&status)
-		res.Body.Close()
+		_ = res.Body.Close()
 		if decodeErr != nil {
 			return decodeErr
 		}
