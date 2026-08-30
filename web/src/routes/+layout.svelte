@@ -68,11 +68,22 @@
 		}
 	});
 
-	// The OAuth round-trip lands on "/" — pick up the stashed deep link there.
+	// The OAuth round-trip lands on "/" — pick up the stashed deep link, and
+	// with no stash, a signed-in "/" is the rooms hub (#126). One effect owns
+	// both so the redirect can never race the deep link (it did, twice).
+	// Exactly once per page load: goto() is async, the effect can re-run
+	// before the URL changes, and a second run with the stash already consumed
+	// used to fire the fallback over the in-flight deep link.
+	let routed = false;
 	$effect(() => {
-		if (account.me) {
-			const next = takeNext();
-			if (next) void goto(next, { replaceState: true });
+		if (!account.me || routed) return;
+		const next = takeNext();
+		if (next) {
+			routed = true;
+			void goto(next, { replaceState: true });
+		} else if (page.url.pathname === '/') {
+			routed = true;
+			void goto('/rooms', { replaceState: true });
 		}
 	});
 </script>

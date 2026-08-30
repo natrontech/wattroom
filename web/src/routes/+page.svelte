@@ -1,17 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import LandingHero from '$lib/brand/LandingHero.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
 
 	void account.load();
-
-	// Signed in, home IS your rooms (#126): the rail, the card grid and the
-	// CTA were three copies of the same six links — Discord's answer is
-	// right, land where the crew is.
-	$effect(() => {
-		if (account.me) void goto('/rooms', { replaceState: true });
-	});
 </script>
 
 {#if !account.loaded}
