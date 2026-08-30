@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -59,6 +61,7 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.Handle("GET /metrics", promhttp.Handler())
+	mux.HandleFunc("GET /api/version", versionHandler())
 	// The client owns the ride until there is somewhere to persist it (#15); this
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
@@ -116,6 +119,37 @@ func issuerOrNil() feedback.Issuer {
 		return g
 	}
 	return nil
+}
+
+// versionHandler reports which build is running. The Go toolchain stamps
+// vcs.* into any `go build` from a git checkout, so there are no ldflags to
+// maintain; `go run` (dev) carries no stamp and reports "dev".
+func versionHandler() http.HandlerFunc {
+	commit, builtAt := "dev", ""
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		var dirty bool
+		for _, s := range bi.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				commit = s.Value
+				if len(commit) > 7 {
+					commit = commit[:7]
+				}
+			case "vcs.time":
+				builtAt = s.Value
+			case "vcs.modified":
+				dirty = s.Value == "true"
+			}
+		}
+		if dirty && commit != "dev" {
+			commit += "+dirty"
+		}
+	}
+	body, _ := json.Marshal(map[string]string{"commit": commit, "builtAt": builtAt})
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(body)
+	}
 }
 
 // spaHandler serves the embedded SvelteKit build with index.html fallback.

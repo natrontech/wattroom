@@ -2,10 +2,18 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 
 	const profile = createProfileStore();
 	void account.load();
+
+	// Decorative footer, not ride data: on failure it simply doesn't render.
+	let version = $state<string | null>(null);
+	void api<{ commit: string }>('/api/version').then((r) => {
+		// ?. guards an old server answering with the SPA fallback (data: null).
+		if (r.ok) version = r.data?.commit ?? null;
+	});
 
 	// WATTROOM.md: social OAuth only — no passwords, ever.
 	const providerLabels: Record<string, { label: string; note?: string }> = {
@@ -269,5 +277,11 @@
 				</div>
 			{/if}
 		</section>
+	{/if}
+
+	{#if version}
+		<p class="text-muted/60 mt-10 text-center font-mono text-[11px]">
+			wattroom {version}
+		</p>
 	{/if}
 </main>
