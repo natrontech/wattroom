@@ -5,6 +5,7 @@
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock, ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createRideSession } from '$lib/workout/session.svelte';
 	import {
@@ -77,11 +78,10 @@
 		session ? session.info.secondsRemainingInSegment : 0,
 	);
 
-	function saveFtp() {
-		const message = profile.update({
-			ftp: result.ftp,
-			ftpMeasuredAt: Date.now(),
-		});
+	async function saveFtp() {
+		const message =
+			profile.update({ ftp: result.ftp, ftpMeasuredAt: Date.now() }) ??
+			(await pushProfile({ ftpWatts: result.ftp }));
 		if (message) error = message;
 		else saved = true;
 	}

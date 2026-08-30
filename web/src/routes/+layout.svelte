@@ -11,12 +11,20 @@
 	import { account } from '$lib/account.svelte';
 	import { takeNext } from '$lib/auth/next';
 	import { fetchRailRooms } from '$lib/nav/rooms';
+	import { createProfileStore } from '$lib/profile.svelte';
+	import { pullProfile } from '$lib/profile-sync.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let { children } = $props();
 
 	void account.load();
+
+	// Account → local profile cache, once me arrives (ADR-0009: server truth).
+	const profile = createProfileStore();
+	$effect(() => {
+		if (account.me) pullProfile(profile);
+	});
 
 	// ADR-0009: everything behind sign-in. /login is the only public route;
 	// /dev mocks stay open in dev builds (they 404 in production anyway).
