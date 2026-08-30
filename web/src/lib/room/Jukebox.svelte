@@ -2,6 +2,7 @@
 	import type { JukeboxState } from '$lib/protocol';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
+	import { mixer } from '$lib/sound/mixer.svelte';
 
 	// The synced YouTube jukebox (#23). Hard TOS constraints (WATTROOM.md,
 	// YouTube RMF): the player tile is ≥200×200, always visible while media
@@ -84,7 +85,7 @@
 	// respected. SPEC numbers: dip to 25 % over 150 ms, release after a 600 ms
 	// hold over 400 ms — an abrupt drop is worse than no ducking, and the hold
 	// stops the level pumping on the gaps between words.
-	let baseVolume = 100;
+	let baseVolume = mixer.music;
 	let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 	let rampTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -104,12 +105,9 @@
 
 	$effect(() => {
 		if (!playerReady) return;
+		baseVolume = mixer.music; // the mixer owns the ceiling (#179)
 		if (ducked) {
 			clearTimeout(releaseTimer);
-			const current = player.getVolume?.();
-			// Only capture a baseline from an unducked state.
-			if (typeof current === 'number' && current > baseVolume * 0.3)
-				baseVolume = current;
 			rampTo(Math.round(baseVolume * 0.25), 150);
 		} else {
 			releaseTimer = setTimeout(() => rampTo(baseVolume, 400), 600);

@@ -6,6 +6,7 @@ import {
 	Track,
 } from 'livekit-client';
 import { api } from '$lib/api';
+import { mixer } from '$lib/sound/mixer.svelte';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -163,6 +164,25 @@ export function createRoomAv(slug: string) {
 	let room: Room | null = null;
 	const videoTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
 	const audioElements = new Map<string, HTMLAudioElement>();
+	// Per-rider output gain (#179): media-element → gain → speakers, so a
+	// quiet teammate can go ABOVE unity — element.volume caps at 1, WebAudio
+	// doesn't.
+	let outCtx: AudioContext | null = null;
+	const riderGains = new Map<string, GainNode>();
+
+	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
+		try {
+			outCtx ??= new AudioContext();
+			const source = outCtx.createMediaElementSource(el);
+			const gain = outCtx.createGain();
+			gain.gain.value = mixer.riderGain(identity);
+			source.connect(gain);
+			gain.connect(outCtx.destination);
+			riderGains.set(identity, gain);
+		} catch {
+			// routing failed: the element still plays at unity — degraded, not broken
+		}
+	}
 
 	function bumpVideo(id: string) {
 		videoOf = { ...videoOf, [id]: (videoOf[id] ?? 0) + 1 };
@@ -219,6 +239,7 @@ export function createRoomAv(slug: string) {
 				const el = track.attach() as HTMLAudioElement;
 				audioElements.set(participant.identity, el);
 				document.body.appendChild(el);
+				routeRiderAudio(participant.identity, el);
 			}
 		});
 		r.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant) => {
@@ -229,6 +250,8 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Audio) {
 				track.detach().forEach((el) => el.remove());
 				audioElements.delete(participant.identity);
+				riderGains.get(participant.identity)?.disconnect();
+				riderGains.delete(participant.identity);
 			}
 		});
 		const audioState = (p: {
@@ -320,6 +343,12 @@ export function createRoomAv(slug: string) {
 		/** SPEC: while the jukebox plays the gate threshold doubles. */
 		setMusicPlaying(playing: boolean) {
 			musicPlaying = playing;
+		},
+		/** Applies the mixer's per-rider gain live (#179). */
+		setRiderGain(id: string, v: number) {
+			mixer.setRiderGain(id, v);
+			const gain = riderGains.get(id);
+			if (gain) gain.gain.value = mixer.riderGain(id);
 		},
 		join,
 		async toggleMic() {
