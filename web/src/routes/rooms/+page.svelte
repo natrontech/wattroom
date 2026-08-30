@@ -242,7 +242,9 @@
 				</ul>
 			</section>
 		{/if}
+	{/if}
 
+	{#if account.loaded && account.me && rooms !== null}
 		<div class="mt-3 grid gap-3 sm:grid-cols-2">
 			{#if detail?.code}
 				<div class="border-muted/15 rounded-lg border p-5">
