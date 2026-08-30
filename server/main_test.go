@@ -8,7 +8,7 @@ import (
 
 func TestVersionHandler(t *testing.T) {
 	rec := httptest.NewRecorder()
-	versionHandler()(rec, httptest.NewRequest("GET", "/api/version", nil))
+	versionHandler()(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/api/version", nil))
 
 	if rec.Code != 200 {
 		t.Fatalf("status = %d, want 200", rec.Code)
