@@ -240,7 +240,7 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Disconnect grace window (30 s) for elimination modes
 - ✅ Base sound set (countdowns, klaxon, elimination sting, medal fanfare), spectator cheers, rider quick-reactions
 
-**M6 — Alpha polish** *(2026-08-29: everything codeable is done — feedback loop, replay fixtures, synthetic + alerts, export/purge, trainer polish, the full deploy stack (30 MB image, compose, TLS, backups). Open: #36 needs the VM and DNS, #34 needs the Strava app registered — both are user actions, not code.)*
+**M6 — Alpha polish** *(2026-08-30 review: core is code-complete; a pre-launch polish sprint remains — #96 Spotify Jam card, #109 login gate + designed sign-in, #110 server-side solo rides, #111 public landing page. Launch order: polish first, then deploy. #36 (VM + DNS on wattroom.ch — domain registered, Cloudflare NS live) and #34 (Strava app) stay user-action gates.)*
 - ⏳ Strava auto-upload
 - ✅ Account export-all + delete (full purge)
 - ⏳ Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)), wattroom.ch deployment, Grafana dashboards
