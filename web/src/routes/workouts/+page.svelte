@@ -46,7 +46,7 @@
 				class="text-muted border-muted/10 mt-2 rounded-lg border border-dashed px-5 py-4 text-xs"
 			>
 				Nothing yet. Build one from scratch, or open any workout below and save
-				a copy — they stay on this device until accounts land.
+				a copy — it lands on your account and follows you to any device.
 			</p>
 		{:else}
 			<ul class="mt-2 grid gap-2">

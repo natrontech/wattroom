@@ -218,14 +218,18 @@
 					>Export everything</a
 				>
 				<button
-					onclick={() => (confirmDelete = true)}
-					class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
-					>Delete account</button
-				>
-				<button
 					onclick={() => account.signOut()}
 					class="text-muted self-center text-xs underline hover:text-white"
 					>Sign out</button
+				>
+			</div>
+
+			<!-- The destructive action lives apart from the routine ones (#126). -->
+			<div class="mt-6 border-t border-white/5 pt-4">
+				<button
+					onclick={() => (confirmDelete = true)}
+					class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
+					>Delete account</button
 				>
 			</div>
 

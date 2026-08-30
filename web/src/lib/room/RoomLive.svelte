@@ -58,7 +58,6 @@
 		role,
 		roomName,
 		code = '',
-		listed = false,
 		soundPack = 'base',
 		members = [],
 		medals = [],
@@ -67,7 +66,6 @@
 		adminBusy = false,
 		onRole,
 		onRemove,
-		onListed,
 		upcoming = [],
 		onSchedule,
 		onUnschedule,
@@ -76,7 +74,6 @@
 		role: string;
 		roomName: string;
 		code?: string;
-		listed?: boolean;
 		soundPack?: string;
 		members?: AdminMember[];
 		medals?: AdminMedal[];
@@ -85,7 +82,6 @@
 		adminBusy?: boolean;
 		onRole: (userId: string, role: string) => void;
 		onRemove: (userId: string) => void;
-		onListed: (listed: boolean) => void;
 		upcoming?: {
 			id: string;
 			workoutName: string;
@@ -576,7 +572,6 @@
 	bind:open={admin}
 	{slug}
 	{code}
-	{listed}
 	{members}
 	{medals}
 	isOwner={role === 'owner'}
@@ -586,7 +581,6 @@
 	busy={adminBusy}
 	{onRole}
 	{onRemove}
-	{onListed}
 />
 
 <!-- The room IS the app: full viewport, rail | main | panel (#39's design). -->
