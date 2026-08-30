@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
+	import { mixer } from '$lib/sound/mixer.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let {
@@ -21,6 +22,8 @@
 		onGateThreshold,
 		onPtt,
 		activeSpeaking = [],
+		mixRiders = [],
+		onRiderGain,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -44,6 +47,9 @@
 		/** Names speaking right now in the ACTIVE room (the only one you can
 		 * hear) — the rail highlights them Discord-style (#174). */
 		activeSpeaking?: string[];
+		/** Riders currently audible, for the per-rider faders (#179). */
+		mixRiders?: { id: string; name: string }[];
+		onRiderGain?: (id: string, gain: number) => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -251,6 +257,53 @@
 							/>
 						</label>
 					{/if}
+
+					<!-- The mixer (#179): every level in one place. Ducking dips
+					     under the music ceiling; it never fights these faders. -->
+					<div class="mt-3 border-t border-white/5 pt-2">
+						<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
+							>mixer</span
+						>
+						<label class="mt-1.5 block text-[10px]">
+							<span class="text-muted">music</span>
+							<input
+								type="range"
+								min="0"
+								max="100"
+								step="5"
+								value={mixer.music}
+								oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
+								class="mt-0.5 w-full"
+							/>
+						</label>
+						<label class="mt-1.5 block text-[10px]">
+							<span class="text-muted">cues</span>
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								value={mixer.cues}
+								oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
+								class="mt-0.5 w-full"
+							/>
+						</label>
+						{#each mixRiders as rider (rider.id)}
+							<label class="mt-1.5 block text-[10px]">
+								<span class="text-muted">{rider.name}</span>
+								<input
+									type="range"
+									min="0"
+									max="2"
+									step="0.1"
+									value={mixer.riderGain(rider.id)}
+									oninput={(e) =>
+										onRiderGain?.(rider.id, Number(e.currentTarget.value))}
+									class="mt-0.5 w-full"
+								/>
+							</label>
+						{/each}
+					</div>
 				</div>
 			{/if}
 		{/if}
