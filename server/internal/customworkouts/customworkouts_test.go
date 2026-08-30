@@ -110,7 +110,9 @@ func TestWorkoutCRUD(t *testing.T) {
 	if status, _ = call(t, mux, "alice", http.MethodDelete, "/api/workouts/"+id, ""); status != http.StatusNoContent {
 		t.Fatalf("delete: %d", status)
 	}
-	if status, body = call(t, mux, "alice", http.MethodGet, "/api/workouts", ""); len(body["workouts"].([]any)) != 0 {
+	status, body = call(t, mux, "alice", http.MethodGet, "/api/workouts", "")
+	remaining, _ := body["workouts"].([]any)
+	if status != http.StatusOK || len(remaining) != 0 {
 		t.Fatalf("list after delete: %d %v", status, body)
 	}
 }
