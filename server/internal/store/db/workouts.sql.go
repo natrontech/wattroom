@@ -43,6 +43,23 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (W
 	return i, err
 }
 
+const deleteWorkout = `-- name: DeleteWorkout :execrows
+delete from workouts where id = $1 and owner_id = $2
+`
+
+type DeleteWorkoutParams struct {
+	ID      pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkout, arg.ID, arg.OwnerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listLibraryWorkouts = `-- name: ListLibraryWorkouts :many
 select id, owner_id, name, author, definition, created_at from workouts where owner_id is null order by name
 `
@@ -103,4 +120,37 @@ func (q *Queries) ListUserWorkouts(ctx context.Context, ownerID pgtype.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateWorkout = `-- name: UpdateWorkout :one
+update workouts set name = $3, author = $4, definition = $5
+where id = $1 and owner_id = $2 returning id, owner_id, name, author, definition, created_at
+`
+
+type UpdateWorkoutParams struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Name       string
+	Author     string
+	Definition []byte
+}
+
+func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (Workout, error) {
+	row := q.db.QueryRow(ctx, updateWorkout,
+		arg.ID,
+		arg.OwnerID,
+		arg.Name,
+		arg.Author,
+		arg.Definition,
+	)
+	var i Workout
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Author,
+		&i.Definition,
+		&i.CreatedAt,
+	)
+	return i, err
 }

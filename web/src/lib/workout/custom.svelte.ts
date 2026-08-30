@@ -1,17 +1,18 @@
+import { api } from '$lib/api';
 import type { Workout } from './types';
 import { validateWorkout } from './validate';
 
 /**
- * Rider-authored workouts, stored locally until there is a database (#15).
+ * Rider-authored workouts, on the account since the login gate (ADR-0009):
+ * the editor talks to /api/workouts, so a workout built on the desktop
+ * exists on the laptop. localStorage remains only as the pre-account
+ * shelf, imported once and then cleared.
  *
- * The stored shape is deliberately the SPEC `Workout` plus an id, so migrating to
- * Postgres is an insert rather than a translation.
- *
- * Every read is validated. localStorage is hand-editable, survives across app
- * versions, and can come back empty or throw outright (private windows, blocked
- * site data) — so this never assumes a read succeeds and never trusts what it gets.
+ * Every read is validated — the server bounds-checks, but the definition is
+ * still data crossing a boundary, and one corrupt workout must not cost the
+ * rest of the shelf.
  */
-const KEY = 'wattroom.workouts.v1';
+const LEGACY_KEY = 'wattroom.workouts.v1';
 
 export interface CustomWorkout {
 	id: string;
@@ -20,96 +21,104 @@ export interface CustomWorkout {
 	savedAt: number;
 }
 
-function read(): CustomWorkout[] {
-	if (typeof localStorage === 'undefined') return [];
-	let raw: string | null = null;
-	try {
-		raw = localStorage.getItem(KEY);
-	} catch {
-		return []; // blocked site data — the app works, custom workouts just do not persist
-	}
-	if (!raw) return [];
+function parseEntry(value: unknown): CustomWorkout | null {
+	if (typeof value !== 'object' || value === null) return null;
+	const { id, workout, savedAt } = value as Record<string, unknown>;
+	if (typeof id !== 'string' || !id) return null;
+	const result = validateWorkout(workout);
+	if (!result.ok) return null;
+	return {
+		id,
+		workout: result.workout,
+		savedAt: typeof savedAt === 'number' ? savedAt : 0,
+	};
+}
 
-	let parsed: unknown;
+/** The pre-account localStorage shelf, validated; junk entries dropped. */
+function readLegacy(): CustomWorkout[] {
+	if (typeof localStorage === 'undefined') return [];
 	try {
-		parsed = JSON.parse(raw);
+		const raw = localStorage.getItem(LEGACY_KEY);
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.flatMap((entry) => parseEntry(entry) ?? []);
 	} catch {
 		return [];
 	}
-	if (!Array.isArray(parsed)) return [];
-
-	// Drop entries that no longer validate rather than failing the whole read: one
-	// corrupt workout should not cost a rider the rest of their library.
-	return parsed.flatMap((entry) => {
-		if (typeof entry !== 'object' || entry === null) return [];
-		const { id, workout, savedAt } = entry as Record<string, unknown>;
-		if (typeof id !== 'string' || !id) return [];
-		const result = validateWorkout(workout);
-		if (!result.ok) return [];
-		return [
-			{
-				id,
-				workout: result.workout,
-				savedAt: typeof savedAt === 'number' ? savedAt : 0,
-			},
-		];
-	});
-}
-
-function write(entries: CustomWorkout[]): string | null {
-	try {
-		localStorage.setItem(KEY, JSON.stringify(entries));
-		return null;
-	} catch {
-		// Quota, or a browser refusing storage. Say so rather than pretending it saved.
-		return 'Could not save — this browser is not allowing local storage.';
-	}
-}
-
-/** Stable, readable, and collision-free enough for a per-device list. */
-function makeId(name: string): string {
-	const slug = name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '')
-		.slice(0, 40);
-	return `${slug || 'workout'}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export function createCustomStore() {
-	let entries = $state<CustomWorkout[]>(read());
+	let entries = $state<CustomWorkout[]>([]);
+	let loaded = $state(false);
+
+	async function refresh(): Promise<void> {
+		const res = await api<{ workouts: unknown[] }>('/api/workouts');
+		if (res.ok) {
+			// data can be null on a malformed body — the shelf shows empty, not a crash
+			entries = (res.data?.workouts ?? []).flatMap(
+				(entry) => parseEntry(entry) ?? [],
+			);
+		}
+		loaded = true;
+	}
+
+	// One-time import: everything that was on this device moves to the
+	// account; only what actually landed is removed, so a failed upload
+	// retries on the next visit instead of vanishing.
+	async function migrate(): Promise<void> {
+		const legacy = readLegacy();
+		if (legacy.length === 0) return;
+		const stranded: CustomWorkout[] = [];
+		for (const entry of legacy) {
+			const res = await api<{ id: string }>('/api/workouts', {
+				method: 'POST',
+				json: { workout: entry.workout },
+			});
+			if (!res.ok) stranded.push(entry);
+		}
+		try {
+			if (stranded.length === 0) localStorage.removeItem(LEGACY_KEY);
+			else localStorage.setItem(LEGACY_KEY, JSON.stringify(stranded));
+		} catch {
+			// storage refusing writes cannot strand data that already uploaded
+		}
+	}
+
+	void migrate().then(refresh);
 
 	return {
+		/** False until the first fetch answers — screens hold their skeletons on it. */
+		get loaded(): boolean {
+			return loaded;
+		},
 		get all(): CustomWorkout[] {
 			return [...entries].sort((a, b) => b.savedAt - a.savedAt);
 		},
 		byId(id: string): CustomWorkout | undefined {
 			return entries.find((entry) => entry.id === id);
 		},
-		/** Returns an error message, or null on success. */
-		save(workout: Workout, id?: string): { id: string; error: string | null } {
+		/** Returns the new id, or an error message the caller shows. */
+		async save(
+			workout: Workout,
+			id?: string,
+		): Promise<{ id: string; error: string | null }> {
 			const result = validateWorkout(workout);
 			if (!result.ok) return { id: id ?? '', error: result.error };
-
-			const savedAt = Date.now();
-			const nextId = id ?? makeId(workout.name);
-			const next = entries.some((entry) => entry.id === nextId)
-				? entries.map((entry) =>
-						entry.id === nextId
-							? { id: nextId, workout: result.workout, savedAt }
-							: entry,
-					)
-				: [...entries, { id: nextId, workout: result.workout, savedAt }];
-
-			const error = write(next);
-			if (!error) entries = next;
-			return { id: nextId, error };
+			const res = await api<{ id: string }>(
+				id ? `/api/workouts/${id}` : '/api/workouts',
+				{ method: id ? 'PUT' : 'POST', json: { workout: result.workout } },
+			);
+			if (!res.ok) return { id: id ?? '', error: res.error.message };
+			await refresh();
+			return { id: res.data.id, error: null };
 		},
-		remove(id: string): string | null {
-			const next = entries.filter((entry) => entry.id !== id);
-			const error = write(next);
-			if (!error) entries = next;
-			return error;
+		/** Returns an error message, or null. */
+		async remove(id: string): Promise<string | null> {
+			const res = await api(`/api/workouts/${id}`, { method: 'DELETE' });
+			if (!res.ok) return res.error.message;
+			await refresh();
+			return null;
 		},
 	};
 }

@@ -67,7 +67,7 @@
 							class="text-muted ml-auto text-xs hover:text-white">Edit</a
 						>
 						<button
-							onclick={() => custom.remove(entry.id)}
+							onclick={() => void custom.remove(entry.id)}
 							class="text-muted text-xs hover:text-white">Delete</button
 						>
 					</li>

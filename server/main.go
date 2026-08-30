@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/hub"
@@ -72,6 +73,7 @@ func main() {
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
+		customworkouts.New(st, authService, log).Register(mux)
 		// Live rooms exist only with the durable side present: the WS needs
 		// membership, and membership needs the database.
 		h := hub.New(log, roomsService, stats.NewSaver(st, log))
