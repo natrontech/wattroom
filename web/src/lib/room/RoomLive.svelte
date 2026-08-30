@@ -106,6 +106,23 @@
 		stopRiding();
 	});
 
+	// Presence announces itself (#148, ux.md): riders are mid-interval, head
+	// down — someone arriving should be audible. Diffed on rider ids so a
+	// reconnecting socket is silent; the first tick seeds without a chorus.
+	let knownRiders: Set<string> | null = null;
+	$effect(() => {
+		const ids = new Set((live.tick?.roster ?? []).map((rider) => rider.id));
+		if (live.status !== 'live') return;
+		if (knownRiders === null) {
+			knownRiders = ids;
+			return;
+		}
+		const before = knownRiders;
+		knownRiders = ids;
+		if ([...ids].some((id) => !before.has(id))) play('join');
+		else if ([...before].some((id) => !ids.has(id))) play('leave');
+	});
+
 	// The room's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
 	$effect(() => {
