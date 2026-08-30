@@ -140,24 +140,6 @@
 				</div>
 			{/each}
 		</div>
-	{:else if !account.me}
-		<div
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-10 text-center"
-		>
-			<Logo size={56} />
-			<h2 class="font-display mt-6 text-2xl font-bold">
-				Rooms need an account.
-			</h2>
-			<p class="text-muted mx-auto mt-3 max-w-md text-sm leading-relaxed">
-				Your crew, your rides and your roles live on the server — sign in once
-				and every device knows them.
-			</p>
-			<a
-				href="/profile"
-				class="mt-7 inline-block rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
-				>Sign in</a
-			>
-		</div>
 	{:else if rooms !== null && rooms.length === 0}
 		<!-- Empty states teach, never apologise: the only onboarding most read. -->
 		<div

@@ -82,26 +82,13 @@
 		>
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
-			{#if !account.loaded}
-				<p class="text-muted mt-4 text-sm">Loading…</p>
-			{:else if account.me}
-				<p class="text-muted mt-2 text-sm">
-					You have been invited to ride here.
-				</p>
-				<button
-					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
-					disabled={busy}
-					class="mt-6 rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
-					>Join {room.name}</button
-				>
-			{:else}
-				<p class="text-muted mt-2 text-sm">Sign in to join {room.name}.</p>
-				<a
-					href="/profile"
-					class="mt-6 inline-block rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
-					>Sign in</a
-				>
-			{/if}
+			<p class="text-muted mt-2 text-sm">You have been invited to ride here.</p>
+			<button
+				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
+				disabled={busy}
+				class="mt-6 rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
+				>Join {room.name}</button
+			>
 			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}
 		</div>
 	</main>
