@@ -79,25 +79,45 @@
 		});
 	});
 
-	// ── Ducking (#24): client-side mix only. The rider's own volume is the
-	// baseline — read when unducked, so their slider is respected, dipped to a
-	// quarter while anyone speaks, restored after a short hold that stops the
-	// level pumping on the gaps between words.
+	// ── Ducking (#24, ramps per #152): client-side mix only. The rider's own
+	// volume is the baseline — read when unducked, so their slider is
+	// respected. SPEC numbers: dip to 25 % over 150 ms, release after a 600 ms
+	// hold over 400 ms — an abrupt drop is worse than no ducking, and the hold
+	// stops the level pumping on the gaps between words.
 	let baseVolume = 100;
 	let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+	let rampTimer: ReturnType<typeof setInterval> | undefined;
+
+	// The iframe API only takes integer volumes — a ramp is a stepped one.
+	function rampTo(target: number, ms: number) {
+		clearInterval(rampTimer);
+		const from = player.getVolume?.() ?? target;
+		const steps = Math.max(1, Math.round(ms / 30));
+		let step = 0;
+		rampTimer = setInterval(() => {
+			step += 1;
+			const v = from + ((target - from) * step) / steps;
+			player.setVolume?.(Math.round(v));
+			if (step >= steps) clearInterval(rampTimer);
+		}, 30);
+	}
+
 	$effect(() => {
 		if (!playerReady) return;
 		if (ducked) {
 			clearTimeout(releaseTimer);
 			const current = player.getVolume?.();
-			// Only capture a baseline from an undicked state.
+			// Only capture a baseline from an unducked state.
 			if (typeof current === 'number' && current > baseVolume * 0.3)
 				baseVolume = current;
-			player.setVolume?.(Math.round(baseVolume * 0.25));
+			rampTo(Math.round(baseVolume * 0.25), 150);
 		} else {
-			releaseTimer = setTimeout(() => player.setVolume?.(baseVolume), 600);
+			releaseTimer = setTimeout(() => rampTo(baseVolume, 400), 600);
 		}
-		return () => clearTimeout(releaseTimer);
+		return () => {
+			clearTimeout(releaseTimer);
+			clearInterval(rampTimer);
+		};
 	});
 
 	// ── Chase the server's playhead ───────────────────────────────────────────
