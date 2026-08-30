@@ -179,3 +179,44 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 		t.Fatalf("presence: connected=%d phase=%q riders=%v", connected, phase, riders)
 	}
 }
+
+func TestChatRidesTheTick(t *testing.T) {
+	// #146, ADR-0010: ephemeral, room-scoped, drained per tick like cheers.
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/chatty"
+
+	a := dial(t, url, "jan:owner")
+	b := dial(t, url, "sven:member")
+	readTick(t, a)
+
+	if err := wsjson.Write(t.Context(), b, protocol.ClientMessage{
+		Chat: &protocol.ChatLine{Text: "  warm-up in five  "},
+	}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	// Oversized and rapid-fire lines are dropped silently.
+	_ = wsjson.Write(t.Context(), b, protocol.ClientMessage{
+		Chat: &protocol.ChatLine{Text: strings.Repeat("x", 600)},
+	})
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		tick := readTick(t, a)
+		if len(tick.Chat) > 0 {
+			if tick.Chat[0].From != "sven" || tick.Chat[0].Text != "warm-up in five" {
+				t.Fatalf("line: %+v", tick.Chat[0])
+			}
+			if len(tick.Chat) != 1 {
+				t.Fatalf("oversized line leaked: %d lines", len(tick.Chat))
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("chat line never arrived on the tick")
+		}
+	}
+}

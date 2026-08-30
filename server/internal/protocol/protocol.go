@@ -90,6 +90,15 @@ type JukeboxCommand struct {
 	JamURL string `json:"jamUrl,omitempty"`
 }
 
+// ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
+// never persisted — it rides the tick like cheers and dies with the page.
+// Warm-up and phone talk; mid-effort stays the cheers' job.
+type ChatLine struct {
+	From string `json:"from"` // filled by the server, like cheers
+	Text string `json:"text"`
+	At   int64  `json:"at"` // server millis, for ordering only
+}
+
 // Cheer is the room's reaction layer (#74) — and the spectator's one verb.
 type Cheer struct {
 	Emoji string `json:"emoji"`
@@ -99,6 +108,7 @@ type Cheer struct {
 
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
+	Chat     *ChatLine       `json:"chat,omitempty"`
 	Cheer    *Cheer          `json:"cheer,omitempty"`
 	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
 	Control  *Control        `json:"control,omitempty"`
@@ -161,6 +171,9 @@ type ServerTick struct {
 	Jukebox JukeboxState `json:"jukebox"`
 	// This second's cheers, drained each tick like metrics.
 	Cheers []Cheer `json:"cheers,omitempty"`
+	// This second's chat lines, drained the same way. No backlog on join —
+	// ephemeral means ephemeral.
+	Chat []ChatLine `json:"chat,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.

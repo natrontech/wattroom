@@ -16,6 +16,9 @@ export type LiveStatus = 'connecting' | 'live' | 'reconnecting';
 export function createRoomLive(slug: string) {
 	let status = $state<LiveStatus>('connecting');
 	let tick = $state<ServerTick | null>(null);
+	// Ephemeral chat (#146): lines accumulate for THIS page's lifetime only —
+	// no backlog on join, nothing survives a reload. Ephemeral means ephemeral.
+	let chatLog = $state<import('$lib/protocol').ChatLine[]>([]);
 	let refusal = $state<string | null>(null);
 	let socket: WebSocket | null = null;
 	let closed = false;
@@ -59,7 +62,12 @@ export function createRoomLive(slug: string) {
 		};
 		socket.onmessage = (event) => {
 			const msg = JSON.parse(event.data) as ServerMessage;
-			if (msg.tick) tick = msg.tick;
+			if (msg.tick) {
+				tick = msg.tick;
+				if (msg.tick.chat?.length) {
+					chatLog = [...chatLog, ...msg.tick.chat].slice(-100);
+				}
+			}
 			// A refused command is feedback, not a fault — shown, then cleared on
 			// the next successful tick.
 			if (msg.error) refusal = msg.error.message;
@@ -110,6 +118,12 @@ export function createRoomLive(slug: string) {
 		},
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
+		},
+		get chatLog() {
+			return chatLog;
+		},
+		chat(text: string) {
+			send({ chat: { from: '', text, at: 0 } });
 		},
 		jukebox(action: string, videoId?: string, title?: string, jamUrl?: string) {
 			send({ jukebox: { action, videoId, title, jamUrl } });

@@ -7,24 +7,34 @@
 		showPlayer,
 		player,
 		queue = [],
+		messages = [],
 		onAdd,
 		onCheer,
+		onChat,
 	}: {
 		live: boolean;
 		showPlayer: boolean;
 		/** The real player (the jukebox) renders into the panel's top slot. */
 		player?: Snippet;
 		queue?: { title: string; by?: string }[];
+		/** Ephemeral room chat (#146) — dies with the page, by decision. */
+		messages?: { from: string; text: string; at: number }[];
 		onAdd?: (url: string) => void;
 		onCheer?: (emoji: string) => void;
+		onChat?: (text: string) => void;
 	} = $props();
 
 	// Any member can add (SPEC roles): paste is the golden path.
 	let adding = $state(false);
 	let url = $state('');
 
-	// No text chat yet — the panel says what IS the chat, in product voice.
-	const messages: { who: string; text: string }[] = [];
+	let draft = $state('');
+	function sendChat() {
+		const text = draft.trim();
+		if (!text) return;
+		draft = '';
+		onChat?.(text);
+	}
 </script>
 
 <aside class="flex w-80 shrink-0 flex-col border-l border-white/5">
@@ -91,17 +101,42 @@
 	<ul
 		class="flex flex-1 flex-col justify-end space-y-2 overflow-y-auto px-4 py-2"
 	>
-		{#each messages as message, i (i)}
+		{#each messages as message (message.at + message.from)}
 			<li class="text-xs leading-snug">
-				<span class="text-muted font-medium">{message.who}</span>
+				<span class="text-muted font-medium">{message.from}</span>
 				<span class="ml-1.5 text-white/85">{message.text}</span>
 			</li>
 		{:else}
-			<li class="text-muted/60 text-xs">Voice is the room's chat for now.</li>
+			<li class="text-muted/60 text-xs">
+				Warm-up talk lands here and vanishes with the session. Voice stays the
+				main channel.
+			</li>
 		{/each}
 	</ul>
 
 	<div class="border-t border-white/5 p-3">
+		{#if !live}
+			<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
+			<form
+				class="mb-2 flex gap-1.5"
+				onsubmit={(e) => {
+					e.preventDefault();
+					sendChat();
+				}}
+			>
+				<input
+					bind:value={draft}
+					maxlength="500"
+					placeholder="Say something…"
+					class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+				/>
+				<button
+					disabled={!draft.trim()}
+					class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+					>Send</button
+				>
+			</form>
+		{/if}
 		{#if live}
 			<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
 			<div class="flex gap-1.5">
