@@ -112,7 +112,16 @@
 			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}
 		</div>
 	</main>
-{:else if room}
+{:else if !room}
+	<!-- Loading: a page never renders blank (.claude/rules/errors.md) — a cold
+	     server takes seconds and the void read as broken. -->
+	<main class="grid min-h-dvh place-items-center px-6">
+		<div class="text-center" aria-busy="true">
+			<Logo size={40} />
+			<p class="text-muted mt-4 text-sm">Opening the room…</p>
+		</div>
+	</main>
+{:else}
 	<!-- A member's room IS the app: full viewport, rail | main | panel (#39). -->
 	{#key room.slug}
 		<RoomLive

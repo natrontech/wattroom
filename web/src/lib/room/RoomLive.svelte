@@ -812,6 +812,14 @@
 
 		{#if layout === 'media'}
 			<!-- Media-focus: the player takes the main area, riders drop to a strip. -->
+			{#if !live.tick?.jukebox?.current && !live.tick?.jukebox?.queue?.length}
+				<p
+					class="text-muted border-muted/10 mb-3 rounded-lg border border-dashed px-5 py-4 text-center text-xs"
+				>
+					Nothing queued yet — paste a YouTube link below and the whole room
+					hears it in sync, ducked under voice.
+				</p>
+			{/if}
 			<div class="flex min-h-0 flex-1 justify-center">
 				<Jukebox
 					jukebox={live.tick?.jukebox}
@@ -823,6 +831,15 @@
 					)}
 				/>
 			</div>
+		{/if}
+
+		{#if layout === 'video' && !Object.values(av.videoOf).some(Boolean)}
+			<p
+				class="text-muted border-muted/10 mb-3 rounded-lg border border-dashed px-5 py-4 text-center text-xs"
+			>
+				Nobody's on camera — join voice and yours turns on. Tiles show video the
+				moment it arrives.
+			</p>
 		{/if}
 
 		<!-- Rider tiles: camera and power fused — one grid, not three. -->
