@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import { onDestroy } from 'svelte';
 	import { play, setDucked, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
@@ -848,14 +849,20 @@
 					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
 					>Pair trainer and ride</button
 				>
-				<button
-					onclick={() =>
-						ride(
-							new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
-						)}
-					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-					>Ride simulated</button
-				>
+				{#if dev}
+					<!-- Dev-only (#123): simulated watts in a live room would count for
+					     medals, XP and streaks — the fairness layer takes no fakes. -->
+					<button
+						onclick={() =>
+							ride(
+								new SimulatedTrainer({
+									baseWatts: profile.current.ftp * 0.75,
+								}),
+							)}
+						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+						>Ride simulated</button
+					>
+				{/if}
 				{#if av.status === 'off' || av.status === 'failed'}
 					<button
 						onclick={() => av.join()}

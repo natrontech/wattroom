@@ -12,7 +12,7 @@ test('a captured trace replays through the ride', async ({ page }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (err) => errors.push(String(err)));
 
-	await signInTo(page, '/ride?w=openers&replay=kickr-erg-2026-08-29');
+	await signInTo(page, '/ride?w=smoke-test&sim=1&replay=kickr-erg-2026-08-29');
 	await page.getByTestId('ride-replay').click();
 
 	// Real captured watts arrive — not the generator's.

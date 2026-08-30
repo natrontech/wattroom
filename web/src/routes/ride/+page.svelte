@@ -21,6 +21,7 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { api } from '$lib/api';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
+	import { dev } from '$app/environment';
 	import { page } from '$app/state';
 	import {
 		discardRide,
@@ -65,7 +66,13 @@
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
 	// rider's.
-	const replayName = $derived(page.url.searchParams.get('replay'));
+	// WATTROOM.md: simulators are dev-flag equipment. ?sim=1 is the escape the
+	// e2e needs — it rides the production build (fake watts in a ROOM stay
+	// dev-only; solo they only ever reach your own history).
+	const simAllowed = $derived(dev || page.url.searchParams.has('sim'));
+	const replayName = $derived(
+		simAllowed ? page.url.searchParams.get('replay') : null,
+	);
 	async function beginReplay() {
 		error = null;
 		try {
