@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,18 @@ func TestAddPlaysAnEmptyDeck(t *testing.T) {
 	add(j, "abcdefghijk", jat(1))
 	if len(j.snapshot().Queue) != 1 {
 		t.Fatalf("second add did not queue")
+	}
+}
+
+func TestSnapshotQueueMarshalsAsArrayNotNull(t *testing.T) {
+	// Regression: the race-fix clone (append to nil) returned a nil slice for
+	// an empty queue, marshaling "queue":null and crashing every client.
+	b, err := json.Marshal(newJukebox().snapshot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"queue":[]`) {
+		t.Fatalf("empty queue must marshal as []: %s", b)
 	}
 }
 
