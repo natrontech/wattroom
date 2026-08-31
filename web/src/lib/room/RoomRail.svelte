@@ -232,13 +232,41 @@
 		{/each}
 	</ul>
 
-	<!-- Your own presence, pinned to the bottom the way a voice app does it. -->
+	<!-- Your own presence, pinned to the bottom the way a voice app does it.
+	     ONE row whatever the connection state — the nav above never jumps
+	     (rider report: the height flicker read as broken). -->
 	<div class="border-ink/5 border-t px-3 py-3">
-		<div class="flex items-center gap-2">
-			<span class="bg-z4 h-2 w-2 rounded-full"></span>
+		<div class="flex h-7 items-center gap-2">
+			<span class="bg-z4 h-2 w-2 shrink-0 rounded-full"></span>
 			<span class="truncate text-xs font-medium">{you.name}</span>
 			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
 			>
+			{#if showAv}
+				<button
+					onclick={() => (onMic ? onMic() : (micOn = !micOn))}
+					class="rounded p-1 {micOn ? 'text-ink' : 'text-z6'}"
+					title={micOn ? 'mute' : 'unmute'}
+					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
+				>
+					{#if micOn}<Mic size={14} />{:else}<MicOff size={14} />{/if}
+				</button>
+				<button
+					onclick={() => (onCam ? onCam() : (camOn = !camOn))}
+					class="rounded p-1 {camOn ? 'text-ink' : 'text-muted'}"
+					title={camOn ? 'camera off' : 'camera on'}
+					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
+				>
+					{#if camOn}<Video size={14} />{:else}<VideoOff size={14} />{/if}
+				</button>
+				<button
+					onclick={() => (voiceAdvanced = !voiceAdvanced)}
+					class="rounded p-1 {voiceAdvanced ? 'text-ink' : 'text-muted'}"
+					title="voice settings"
+					aria-label="voice settings"
+				>
+					<SlidersHorizontal size={14} />
+				</button>
+			{/if}
 		</div>
 		{#if showAv && voiceMode === 'ptt' && micOn}
 			<!-- Hold to transmit — the desk spectator's mode (SPEC). -->
@@ -291,11 +319,6 @@
 			>
 		{/if}
 		{#if showAv}
-			<button
-				onclick={() => (voiceAdvanced = !voiceAdvanced)}
-				class="text-muted hover:text-ink mt-2 inline-flex items-center gap-1 text-[10px] underline"
-				><SlidersHorizontal size={11} /> voice settings</button
-			>
 			{#if voiceAdvanced}
 				<div class="border-muted/15 mt-2 rounded border p-2">
 					<label class="flex items-center gap-2 text-[11px]">
@@ -401,31 +424,6 @@
 					</div>
 				</div>
 			{/if}
-		{/if}
-		{#if showAv}
-			<!-- Icon chrome (#181): the voice-app bottom bar reads at a glance. -->
-			<div class="mt-2 flex gap-1.5">
-				<button
-					onclick={() => (onMic ? onMic() : (micOn = !micOn))}
-					class="flex flex-1 items-center justify-center rounded border py-2 {micOn
-						? 'border-muted/30 text-ink'
-						: 'border-z6/40 text-z6'}"
-					title={micOn ? 'mute' : 'unmute'}
-					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
-				>
-					{#if micOn}<Mic size={15} />{:else}<MicOff size={15} />{/if}
-				</button>
-				<button
-					onclick={() => (onCam ? onCam() : (camOn = !camOn))}
-					class="flex flex-1 items-center justify-center rounded border py-2 {camOn
-						? 'border-muted/30 text-ink'
-						: 'border-muted/20 text-muted'}"
-					title={camOn ? 'camera off' : 'camera on'}
-					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
-				>
-					{#if camOn}<Video size={15} />{:else}<VideoOff size={15} />{/if}
-				</button>
-			</div>
 		{/if}
 	</div>
 </nav>
