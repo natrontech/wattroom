@@ -2,7 +2,7 @@
 	import { formatClock } from '$lib/format';
 	import type { Segment } from '$lib/workout/types';
 	import { splitTrace, type TracePoint } from './trace';
-	import { CEILING, ZONE_NAMES, ZONE_TEXT, ZONE_TOPS, zoneOf } from './zones';
+	import { CEILING, ZONE_NAMES, ZONE_TEXT, zoneOf } from './zones';
 
 	let {
 		segments,
@@ -82,22 +82,6 @@
 		class="w-full {compact ? 'h-14' : 'h-28'}"
 		preserveAspectRatio="none"
 	>
-		{#if !compact}
-			<!-- Zone-boundary gridlines: the y-axis is zones, kept recessive. -->
-			{#each ZONE_TOPS.slice(0, 5) as top (top)}
-				<line
-					x1="0"
-					y1={y(top)}
-					x2={W}
-					y2={y(top)}
-					class="text-muted opacity-15"
-					stroke="currentColor"
-					stroke-width="1"
-					vector-effect="non-scaling-stroke"
-				/>
-			{/each}
-		{/if}
-
 		{#each blocks as block, i (i)}
 			<polygon
 				points={block.points}
