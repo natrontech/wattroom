@@ -227,6 +227,7 @@
 					transmitting={av.transmitting}
 					voiceMode={av.mode}
 					gateThreshold={av.gateThreshold}
+					effectiveThreshold={av.effectiveGateThreshold}
 					pttHeld={av.pttHeld}
 					onVoiceMode={(m) => av.setMode(m)}
 					onGateThreshold={(t) => av.setGateThreshold(t)}

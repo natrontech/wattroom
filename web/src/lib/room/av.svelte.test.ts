@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
+import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 
 vi.mock('$lib/api', () => ({
 	api: async () => ({ ok: true, data: { url: 'ws://livekit', token: 't' } }),
@@ -58,5 +59,36 @@ describe('createRoomAv', () => {
 		await av.toggleShare();
 		expect(av.stage?.key).toBe('screen:me');
 		expect(av.stageSources.map((s) => s.key)).toEqual(['screen:me']);
+	});
+
+	// #289: the rail draws the threshold as a mark on the mic meter. While
+	// music plays the gate SPEC-doubles, so a mark drawn from the stored
+	// value would sit below the level actually holding the rider closed —
+	// the display would lie exactly when the rider is wondering why.
+	it('reports the threshold the gate is actually holding', () => {
+		const dispose = $effect.root(() => {
+			const av = createRoomAv('mfw');
+			av.setGateThreshold(0.02);
+			expect(av.effectiveGateThreshold).toBe(0.02);
+
+			av.setMusicPlaying(true);
+			expect(av.gateThreshold).toBe(0.02);
+			expect(av.effectiveGateThreshold).toBe(0.04);
+
+			av.setMusicPlaying(false);
+			expect(av.effectiveGateThreshold).toBe(0.02);
+		});
+		dispose();
+	});
+
+	it('clamps a threshold to somewhere the meter can draw it', () => {
+		const dispose = $effect.root(() => {
+			const av = createRoomAv('mfw');
+			av.setGateThreshold(0);
+			expect(av.gateThreshold).toBe(GATE_FLOOR);
+			av.setGateThreshold(1);
+			expect(av.gateThreshold).toBe(GATE_CEIL);
+		});
+		dispose();
 	});
 });
