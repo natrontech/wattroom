@@ -229,11 +229,89 @@ Not re-decided here — it changes a locked doc, so it needs an ADR. The WCPS pr
 - **Bluetooth coexistence** (BLE trainer/HR + BT-Classic headphone audio on one adapter; A2DP→HFP quality collapse when the headset mic activates) — settle empirically in the #10 hardware session; expect "wired headphones or phone-for-audio" as rider guidance.
 - **Temporal coherence** (klaxon↔sprint-UI alignment thresholds; server-clock-scheduled cue playback as the pattern) — design-time question for M4 sprint moments; working hypothesis stands: schedule cues on the synced server clock, accept that coach voice can never align (~100–300 ms WebRTC latency).
 
+## 13. Progression & training load (research for #222; run of 2026-08-31)
+
+Three parallel research passes (models/formulas, product-UX teardowns, athlete needs & heuristics), synthesized. Feeds the SPEC addition + ADR that gate #222's load/recommendation slices. Per-rider analysis is already blessed by [ADR-0008](decisions/0008-heart-rate-retention.md) ("fitness trend across months, power curve… that is where the value is"); cross-rider aggregation stays out.
+
+### 13.1 The model: Coggan math, trademark-safe names
+
+**TSS®, NP®, IF®, CTL/ATL/TSB are Peaksware (TrainingPeaks) trademarks.** The math is published and freely implementable; the names are not usable — GoldenCheetah was made to rename (TSS→BikeStress, NP→IsoPower, [GC FAQ](https://github.com/GoldenCheetah/GoldenCheetah/wiki/FAQ-METRICS)). Adopt intervals.icu's naming, which every novice-friendly product converged on: **Load, Intensity, Fitness, Fatigue, Form**.
+
+Spec-ready formulas ([TrainingPeaks NP/IF/TSS](https://www.trainingpeaks.com/learn/articles/normalized-power-intensity-factor-training-stress/), [Coggan PMC](https://www.trainingpeaks.com/learn/articles/the-science-of-the-performance-manager/)):
+
+```
+NormPower = ( mean( (rollavg_30s(watts))⁴ ) )^0.25        # per ride, 1 Hz input
+Intensity = NormPower / FTP
+Load      = Intensity² × hours × 100                       # 1 h at FTP = 100 by construction
+Fitness_d = Fitness_d-1 + (Load_d − Fitness_d-1) / 42      # daily EWMA, rest day Load = 0
+Fatigue_d = Fatigue_d-1 + (Load_d − Fatigue_d-1) / 7
+Form_d    = Fitness_d-1 − Fatigue_d-1                      # yesterday's values, deliberately
+```
+
+- **Form is displayed as % of Fitness** (intervals.icu's fix — absolute Friel bands assume a ~100 Load/day athlete; [forum](https://forum.intervals.icu/t/form-as-a-percentage-of-fitness/869)). Zones (Friel-derived): **> +20 Transition / +5…+20 Fresh / −10…+5 Grey / −30…−10 Optimal / < −30 High Risk**.
+- **Cold start**: EWMA from 0 makes every new rider look dangerously ramping. Suppress load-based warnings for the first ~4–6 weeks and label the chart "building history", or seed Fitness ≈ weekly hours × 60 ÷ 7 (Coggan's 50–75 Load/h heuristic).
+- **Ramp guidance**: +5–8 Fitness/week is the Friel band ([CTL ramp rate](https://joefrieltraining.com/the-ctl-ramp-rate/)); Couzens argues 3–5 for working-age athletes. Fatigue/Fitness ratio 0.8–1.3 "sweet spot", warn > ~1.4 — but **ACWR science is contested** (mathematical coupling, retraction requests); word it as "load rising fast", never as injury-risk claims.
+- **Monotony** (Foster, rolling 7 d, zeros included): `mean(daily Load) / stdev(daily Load)` — > 2.0 flags "same ride every day"; cheap and catches what the EWMA misses.
+- **eFTP**: fit the 2-param critical-power model to the rider's 90-day curve bests (two points: `W′ = (P1−P2)·t1·t2/(t2−t1)`, `CP = P1 − W′/t1`; 3+ points: least squares) and surface CP as "estimated FTP" with one-tap accept. This is intervals.icu's continuous-estimation pattern ([eFTP thread](https://forum.intervals.icu/t/what-goes-in-to-calculating-the-eftp/3812)) and it kills the **stale-FTP problem — the single biggest corruption vector**, since Load, zones and execution all key off FTP.
+- **HR (already stored per ADR-0008)**: Efficiency Factor `EF = NormPower / HRavg` and aerobic decoupling `(EF_1st_half − EF_2nd_half) / EF_1st_half` — meaningful only on steady rides ≥ ~60 min; < 5 % = solid base (Friel). No TRIMP/HRSS needed — power is always present on a trainer app.
+
+**Data seams**: `rides` already has seconds, avg_watts, kj, execution, **ftp_watts at ride time** (FTP history is free) and curve bests {5s, 1m, 5m, 20m}. Missing: per-ride NormPower/Load and time-in-zones (compute at save time going forward; one-pass backfill over existing blobs — consistent with "samples read per-ride only"), and more curve windows (add ~3m/8m/12m/30m for CP fitting and overlay resolution). Weight is not historical — accept that w/kg trends use current weight.
+
+### 13.2 UX patterns (teardown of intervals.icu, TP, Strava, Garmin, Whoop/Oura, Xert, TrainerRoad, Zwift)
+
+What recurs across the products athletes actually like:
+
+1. **Banded form line** — one line through named, colored horizontal zones; the bands do the interpreting. The classic acronym PMC (TrainingPeaks) is the thing everyone else fixes: words beat acronyms, interpretation lives in the UI, not the user.
+2. **Status words describe the day or the workout, never the athlete.** Garmin's "Unproductive" is the cautionary tale (users report months of feeling "like a failure" off a misconfigured max-HR); TrainerRoad's per-workout tags (**Recovery / Achievable / Productive / Stretch / Breakthrough**) are the same mechanism aimed at the pick, and they're loved. That tag vocabulary is the proven pattern for #222's picker badge.
+3. **Single number + color embed, "why" one tap away** (Whoop/Oura/Garmin readiness). Best at-a-glance pattern ever shipped *and* the anxiety pattern — Oura's named contributors are the accepted mitigation. Any WattRoom embed needs its one-clause reason inline.
+4. **Progressive disclosure** — Strava shows the Fitness line only by default, everything else opt-in; one question per surface ("how hard today?" / "is it working?" / "what should I ride?"). Opacity = several questions on one chart (raw PMC, Xert). Xert's other lesson: invented jargon is a moat *and* an adoption ceiling — don't coin vocabulary beyond the SPEC glossary.
+5. **Zwift ships none of this layer** — the social-indoor incumbent leaves it entirely to intervals.icu. A progression layer inside the social product is differentiation, not table stakes.
+
+Synthwave mapping: the form/fitness line is data → it gets the `--color-watt` glow; zone bands are quiet chrome. The mid-ride rules don't bite (this is all off-bike UI), but arm's-length legibility still argues for band-position-readable-in-a-second over dense multi-series charts.
+
+### 13.3 What to show, ranked by athlete value (recreational 2–6×/week social riders)
+
+1. **Weekly consistency/streak** — strongest motivational evidence for this audience ("time in saddle + consistency" wins rider surveys by 5–8×; Strava's streaks are deliberately weekly, with forgiveness). Immune to partial-data corruption.
+2. **One-line form status** in plain words ("fresh", "carrying fatigue — recovery is where the gains land"), always scoped "**from your WattRoom rides**".
+3. **Suggested for today** with a one-clause why + visible override — TrainerRoad forums prove the why and the override are what preserve trust (honest "that was hard" answers spiraling into forced easy weeks is the #1 resentment).
+4. **Power-curve bests / PRs** — monotonic, unambiguous, always good news; safest fitness signal we own.
+5. **FTP freshness + retest prompt** (no test or maximal 8–20 min effort in ~6–8 weeks, or eFTP ≥ ~3–5 % above set FTP).
+6. **Fitness chart** — last, for those who want it.
+
+Candidate rules with thresholds (confidence): ramp brake > ~8 Fitness/week sustained (high); big day yesterday > ~1.5× median ride Load → suggest easy (high); Form < −30 %, never suggest intensity (high on the band, medium on the number); no ride ≥ 10–14 d → gentle restart, scaled by layoff (high — detraining is real but < 2 weeks is nearly free); recovery week after 3 loading weeks (high as practice); monotony > 2.0 → "vary it" (medium); collapsed week → "20 min with hard efforts keeps fitness" (high — maintenance needs intensity, not volume). All nudges: **never gate a workout a rider wants to ride**.
+
+### 13.4 Traps (design these out)
+
+- **Partial-data "fake detraining"** — WattRoom only sees its own rides; an outdoor season reads as decay. Mitigation ladder: honest scoping label (always) → one-tap "I trained elsewhere" (duration × easy/moderate/hard) → Strava activity read (§13.5). Absolute fitness claims are indefensible; "your WattRoom riding" claims are fine.
+- **Stale FTP corrupts everything** → continuous eFTP + staleness notice, not silent drift.
+- **Judgment words** ("unproductive", "failed") → describe the load, never grade the rider.
+- **Small-N cold start** → suppress warnings ~4–6 weeks or seed from self-reported hours.
+- **Execution ≠ difficulty** — 100 % in-band on a recovery spin and on 5×5 VO2 are different achievements; don't let execution double as a fitness or difficulty metric.
+- **Daily unforgiving streaks** curdle into anxiety (Duolingo pathology) → weekly cadence + repair mechanic + "new week, fresh start" reframe on a break.
+- **ACWR as settled science / strict 80-20 policing** — both indefensible at this audience's volume; soft language only.
+
+### 13.5 Strava as a load source — viable, but the terms moved under us
+
+**The Nov-2024 agreement WATTROOM.md cites is no longer current.** A new [API Agreement](https://www.strava.com/legal/api) + [API Policy](https://www.strava.com/legal/api_policy) took effect **June 1, 2026**. What changed and what it means:
+
+- **Standard Tier now requires the developer to hold a paid Strava subscription (~$12/mo)** — and Standard is what any >1-athlete app needs, so **the existing auto-upload for the alpha fleet already sits under this requirement** (grace ended June 30, 2026). Two Standard levels exist: 10 users and 9,999 users; Extended review only beyond that. ([policy §3.3](https://www.strava.com/legal/api_policy), [fee-change thread](https://forum.intervals.icu/t/strava-api-update-new-terms-subs-required-for-api-access/130240))
+- **Display restriction unchanged in spirit** (§2.3): Strava data — *and anything derived from it* (§5.4) — may be shown **only to that athlete**. Exactly the shape of #222; the one hard rule is that Strava-derived numbers never leak into room-visible state.
+- **AI prohibition got much broader** (§5.3): not just model training — "**ingestion into a context window**" is now explicitly banned. A deterministic rule-based load calc is fine (no model involved; Strava's own press blessed "tools that help users understand their data"). Consequence for this repo: **an architectural firewall — Strava-sourced data must never reach any LLM/agent feature** (feedback agents, future "ask about my training" ideas). The no-aggregation clause (§5.4) additionally means: compute per-user, store per-user, display per-user, never tune the product on it.
+- **Scopes**: want `activity:read_all`, not `activity:read` — "Only You" rides otherwise vanish from the calc, and privacy flips even arrive as *delete* webhook events. Adding a scope = full re-auth flow; the token response echoes what was actually granted, so track granted scopes per user and gate the feature on them.
+- **Summary data suffices — no streams needed**: `GET /athlete/activities` (≤200/page) carries `moving_time`, `kilojoules`, `average_watts`, **`weighted_average_watts`** (NP-like; trust when `device_watts=true`), plus undocumented-but-returned `average_heartrate`/`suffer_score` (the latter subscriber-only). Load fallback chain: power → HR → duration-only. Backfill is a handful of requests per athlete against 1,000–2,000 reads/day — trivial at alpha scale.
+- **Obligations**: raw Strava payloads are a **≤7-day cache** (§6.2); derived values inherit the rules — everything wiped **≤30 days after deauthorization** (webhook `athlete`/`authorized:false`; new `/oauth/revoke`); on-Strava activity deletions reflected ≤48 h. Clean fit with our seams: durable per-day load numbers in Postgres, raw payloads treated as re-fetchable cache.
+- **Dedup of our own rides is already wired**: uploads set `external_id: "wattroom-<ride uuid>"` (strava.go), so the pull side skips that prefix (or excludes by the `activity_id` the upload poller already reads back). WattRoom rides count from our own DB, never from their Strava copies.
+- **Alternatives**, one line each: intervals.icu API (free, computes fitness/fatigue/form *for* us, OAuth creds on request — power-user option, small audience); Wahoo Cloud API (light approval, overlaps our KICKR audience, Wahoo-recorded only); Garmin (weeks-long partner review — not for a tiny app); manual .fit import (zero legal exposure, `fitexport` competence already in repo, but sweaty riders don't do chores — fallback only).
+
+**Bottom line**: the read integration is compliant and cheap in the exact shape #222 already has (per-user, private, rule-based), costs the developer a Strava subscription, and needs its own ADR covering scope re-consent, the 7-day/30-day retention duties, and the AI firewall.
+
+---
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.
 2. **YouTube jukebox TOS** (high, confirmed) — RMF constraints reshape the room UI (always-visible ≥200×200 player, no overlays, no audio-only). Coordinated sync itself appears tolerated in practice (Watch2Gether-class apps); embed-disabled music content is the practical annoyance.
 3. **ERG↔SIM switching is firmware-sensitive** (medium, evidenced) — Wahoo fixed a 2 kW power spike on exactly this transition in 2024. Sprint-moment code should ramp into slope mode and treat the transition defensively.
 4. **LiveKit on shared Natron cluster** (medium, confirmed constraint) — hostNetwork + public UDP on node IPs on a company cluster; revisit before widening.
-5. **Strava API terms drift** (medium) — upload-only within the ≤10-athlete Standard Tier is clean today; Strava has shown willingness to break third parties on short notice (Nov 2024). Extended Access review is a gate before any public widening.
+5. **Strava API terms drift** (medium, **materialized June 2026** — see §13.5) — the predicted drift happened: Standard Tier (any >1-athlete app, including our existing auto-upload) now requires the developer to hold a paid Strava subscription, and the AI clause broadened to ban LLM context-window ingestion of Strava data. Upload math otherwise unchanged; Extended review still gates public widening. WATTROOM.md's Nov-2024 framing is stale.
 6. **Web Bluetooth = Chromium forever** (low, accepted) — Safari's explicit refusal caps the platform; already a locked decision.
