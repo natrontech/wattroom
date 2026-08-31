@@ -23,6 +23,11 @@ export default defineConfig({
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
+	// Two workers, not one: the ride spec is two real minutes and the other three
+	// specs together are under one, so they finish alongside it instead of after
+	// it. More workers buys nothing — the ride is the floor — and would only put
+	// browsers in contention with the Go server on a 4-core runner.
+	workers: process.env.CI ? 2 : undefined,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
 	reporter: process.env.CI ? 'github' : 'list',

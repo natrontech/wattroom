@@ -9,6 +9,13 @@ on:
     branches: [main]
     tags: ['v*']
 
+# :main is a rolling tag — the next merge overwrites it, so a build overtaken
+# mid-flight is two minutes of multi-arch work nobody will ever pull. Tags are
+# immutable releases and get their own group, never cancelled.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
 jobs:
   image:
     runs-on: ubuntu-latest
