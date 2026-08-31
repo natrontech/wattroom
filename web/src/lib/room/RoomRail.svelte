@@ -588,6 +588,22 @@
 								class="mt-0.5 w-full"
 							/>
 						</label>
+						<label class="mt-1.5 block text-[10px]">
+							<span class="text-muted"
+								>ducking · {mixer.duck === 1
+									? 'off'
+									: `${Math.round((1 - mixer.duck) * 100)}% under a voice`}</span
+							>
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								value={mixer.duck}
+								oninput={(e) => mixer.setDuck(Number(e.currentTarget.value))}
+								class="mt-0.5 w-full"
+							/>
+						</label>
 						{#each mixRiders as rider (rider.id)}
 							<label class="mt-1.5 block text-[10px]">
 								<span class="text-muted">{rider.name}</span>

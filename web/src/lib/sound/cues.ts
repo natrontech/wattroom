@@ -287,6 +287,8 @@ let volume = 0.7;
 let muted = false;
 /** Multiplier applied while someone is speaking, so cues never talk over a person. */
 let duck = 1;
+/** The level ducking dips TO — the mixer owns it (#280); this is the default. */
+let duckLevel = 0.3;
 
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	if (typeof window === 'undefined') return null;
@@ -322,9 +324,16 @@ export function setMuted(next: boolean): void {
 	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
 }
 
+/** How far a voice pulls the room down, 0 (silent) – 1 (no ducking at all). */
+export function setDuckLevel(next: number): void {
+	duckLevel = Math.min(1, Math.max(0, next));
+	if (duck !== 1) duck = duckLevel; // mid-duck: the knob acts now, not next time
+	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+}
+
 /** Ride-critical cues still get through; this only pulls them down under a voice. */
 export function setDucked(next: boolean): void {
-	duck = next ? 0.35 : 1;
+	duck = next ? duckLevel : 1;
 	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
 }
 

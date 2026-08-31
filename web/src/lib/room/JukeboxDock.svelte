@@ -272,7 +272,7 @@
 		if (ducked) {
 			wasDucked = true;
 			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * 0.25), 150);
+			rampTo(Math.round(baseVolume * mixer.duck), 150);
 		} else if (wasDucked) {
 			// The SPEC release: hold, then ramp back up.
 			wasDucked = false;
