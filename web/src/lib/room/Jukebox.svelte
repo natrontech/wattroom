@@ -21,6 +21,7 @@
 			videoId?: string,
 			title?: string,
 			jamUrl?: string,
+			positionSec?: number,
 		) => void;
 		large?: boolean;
 		/** Someone is talking: dip the music, Discord-style (#24). */
@@ -152,6 +153,46 @@
 		else player.setPlaybackRate(1);
 	});
 
+	// ── The transport row (#114): shared playhead, chunky jumps, a bar for
+	// desk fingers. All of it outside the iframe — RMF forbids overlays.
+	let nowMs = $state(Date.now());
+	let duration = $state(0);
+	$effect(() => {
+		if (!playerReady || !jukebox?.current) return;
+		const timer = setInterval(() => {
+			nowMs = Date.now();
+			duration = player?.getDuration?.() || 0;
+		}, 500);
+		return () => clearInterval(timer);
+	});
+	const elapsed = $derived.by(() => {
+		if (!jukebox?.current) return 0;
+		const pos =
+			jukebox.positionSec +
+			(jukebox.playing ? (nowMs - jukebox.anchorMs) / 1000 : 0);
+		return duration > 0
+			? Math.min(Math.max(pos, 0), duration)
+			: Math.max(pos, 0);
+	});
+	function fmt(sec: number): string {
+		const s = Math.max(0, Math.floor(sec));
+		const m = Math.floor(s / 60) % 60;
+		const h = Math.floor(s / 3600);
+		const two = (n: number) => String(n).padStart(2, '0');
+		return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
+	}
+	function seekTo(pos: number) {
+		const max = duration > 0 ? duration - 1 : maxSeekable;
+		send(
+			'seek',
+			undefined,
+			undefined,
+			undefined,
+			Math.min(Math.max(pos, 0), max),
+		);
+	}
+	const maxSeekable = 6 * 3600; // mirrors the server clamp
+
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
 	async function addFromUrl() {
 		addError = null;
@@ -196,6 +237,52 @@
 					>
 				{/if}
 			</div>
+
+			{#if jukebox?.current}
+				<div class="mt-2 flex items-center gap-2">
+					<button
+						onclick={() => seekTo(elapsed - 30)}
+						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						aria-label="back 30 seconds">−30s</button
+					>
+					<div class="min-w-0 flex-1">
+						<button
+							onclick={(e) => {
+								if (duration <= 0) return;
+								const box = e.currentTarget.getBoundingClientRect();
+								seekTo(((e.clientX - box.left) / box.width) * duration);
+							}}
+							class="group block h-4 w-full cursor-pointer"
+							aria-label="seek"
+						>
+							<span
+								class="bg-muted/20 mt-1.5 block h-1 overflow-hidden rounded"
+							>
+								<span
+									class="bg-neon block h-full rounded transition-[width] duration-500"
+									style="width: {duration > 0
+										? Math.min(100, (elapsed / duration) * 100)
+										: 0}%"
+								></span>
+							</span>
+						</button>
+						<div
+							class="text-muted flex justify-between font-mono text-[10px] tabular-nums"
+						>
+							<span>{fmt(elapsed)}</span>
+							<span>{duration > 0 ? fmt(duration) : '–:––'}</span>
+						</div>
+					</div>
+					<button
+						onclick={() => seekTo(elapsed + 30)}
+						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						aria-label="forward 30 seconds">+30s</button
+					>
+				</div>
+				<p class="text-muted mt-1 text-[10px]">
+					added by {jukebox.current.addedBy}
+				</p>
+			{/if}
 
 			<form
 				class="mt-2 flex gap-2"

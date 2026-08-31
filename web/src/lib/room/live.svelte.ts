@@ -136,8 +136,14 @@ export function createRoomLive(slug: string) {
 		chat(text: string) {
 			send({ chat: { from: '', text, at: 0 } });
 		},
-		jukebox(action: string, videoId?: string, title?: string, jamUrl?: string) {
-			send({ jukebox: { action, videoId, title, jamUrl } });
+		jukebox(
+			action: string,
+			videoId?: string,
+			title?: string,
+			jamUrl?: string,
+			positionSec?: number,
+		) {
+			send({ jukebox: { action, videoId, title, jamUrl, positionSec } });
 		},
 		control(
 			action: string,
