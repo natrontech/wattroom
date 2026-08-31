@@ -50,3 +50,16 @@ pending no more.
 - A removed friend can re-request (they still share a room with you, or
   they can't). Annoyance ceiling accepted for the alpha; blocking is the
   named upgrade path.
+
+## Amendment — direct messages, friends only (2026-08-31, #208)
+
+DMs exist exactly where friendship exists: only an **accepted friend** can
+message you — the gate is the friendship row, enforced in SQL on every
+insert. Remove the friend and the channel closes with it.
+
+- Same bounded-log shape as room chat: the last **500 messages per pair**,
+  pruned on write; a deleted account takes its messages along (cascade).
+- No read receipts, no typing indicators — "seen" is the reader's own
+  business (client-side), never data about you held by the server.
+- Transport is plain REST + polling; a DM is a note between rides, not a
+  live wire. If DMs ever grow real-time needs, that is a new decision.

@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import Select from '$lib/components/Select.svelte';
+	import { dm } from '$lib/dm/dm.svelte';
+	import { notify } from '$lib/notify.svelte';
+	import { play } from '$lib/sound/cues';
 
 	interface Friend {
 		id: string;
@@ -19,6 +23,43 @@
 	let candidates = $state<Candidate[]>([]);
 	let error = $state<string | null>(null);
 	let picked = $state('');
+	// peerId → newest inbound message time — the unread badge's raw material.
+	let inbound = $state<Record<string, number>>({});
+	let seenBump = $state(0);
+
+	async function loadHeads(first: boolean) {
+		const res = await api<{
+			conversations: {
+				peerId: string;
+				peerName: string;
+				text: string;
+				mine: boolean;
+				at: number;
+			}[];
+		}>('/api/dms');
+		if (!res.ok) return;
+		const next: Record<string, number> = {};
+		for (const head of res.data.conversations) {
+			if (head.mine) continue;
+			next[head.peerId] = head.at;
+			// A NEW inbound line (not on first load): blip + hidden-tab alert,
+			// unless that thread is open right now.
+			if (
+				!first &&
+				head.at > (inbound[head.peerId] ?? 0) &&
+				dm.open?.id !== head.peerId
+			) {
+				play('chat');
+				notify.push(head.peerName, head.text, `dm-${head.peerId}`);
+			}
+		}
+		inbound = next;
+	}
+
+	function unread(peerId: string): boolean {
+		void seenBump; // re-check after opening a thread stamps it seen
+		return (inbound[peerId] ?? 0) > dm.seenAt(peerId);
+	}
 
 	async function load() {
 		const res = await api<{ friends: Friend[]; candidates: Candidate[] }>(
@@ -35,8 +76,12 @@
 
 	$effect(() => {
 		void load();
+		void loadHeads(true);
 		// Presence freshness matches the rail's poll cadence.
-		const timer = setInterval(() => void load(), 10_000);
+		const timer = setInterval(() => {
+			void load();
+			void loadHeads(false);
+		}, 10_000);
 		return () => clearInterval(timer);
 	});
 
@@ -91,6 +136,22 @@
 							{/if}
 						</span>
 						<span class="ml-auto flex shrink-0 items-center gap-3">
+							<button
+								onclick={() => {
+									dm.show(friend.id, friend.name);
+									seenBump += 1;
+								}}
+								class="text-muted hover:text-ink relative"
+								title="message {friend.name}"
+								aria-label="message {friend.name}"
+							>
+								<MessageCircle size={15} />
+								{#if unread(friend.id)}
+									<span
+										class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
+									></span>
+								{/if}
+							</button>
 							{#if friend.room}
 								<a
 									href="/r/{friend.room}"

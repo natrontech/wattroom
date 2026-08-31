@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { UserPlus, X } from '@lucide/svelte';
+	import { MessageCircle, UserPlus, X } from '@lucide/svelte';
+	import { dm } from '$lib/dm/dm.svelte';
 	import { api } from '$lib/api';
 	import { account } from '$lib/account.svelte';
 
@@ -157,7 +158,14 @@
 		{:else if friendState === 'pending'}
 			<p class="text-muted mt-4 text-center text-xs">friend request pending</p>
 		{:else if friendState === 'friends'}
-			<p class="text-muted mt-4 text-center text-xs">you are friends</p>
+			<button
+				onclick={() => {
+					dm.show(member.id, member.displayName);
+					onClose();
+				}}
+				class="bg-ink text-paper hover:bg-ink/90 mt-4 inline-flex w-full items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-semibold"
+				><MessageCircle size={15} /> Message</button
+			>
 		{/if}
 	</div>
 </div>

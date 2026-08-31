@@ -22,6 +22,14 @@ type ChatReaction struct {
 	Emoji     string
 }
 
+type DmMessage struct {
+	ID          pgtype.UUID
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+	Text        string
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Friendship struct {
 	RequesterID pgtype.UUID
 	AddresseeID pgtype.UUID
