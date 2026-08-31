@@ -5,8 +5,13 @@
 	// room to it: how long, which zones, any cadence/HR bands.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { ZONE_BG, timeInZones } from '$lib/components/zones';
+	import { ZONE_BG, plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
+	import {
+		fetchProgression,
+		suggestedFocuses,
+		type Suggestion,
+	} from '$lib/progression';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
 
@@ -39,6 +44,14 @@
 	} = $props();
 
 	let tab = $state<'workouts' | 'games'>('workouts');
+
+	// SPEC's "suggested for today" marks matching shelf entries (#222) —
+	// a hint with its why; the recency ordering and every pick stay the rider's.
+	let suggestion = $state<Suggestion | null>(null);
+	void fetchProgression().then((r) => {
+		if (r.ok) suggestion = r.data?.load?.suggestion ?? null;
+	});
+	const suggested = $derived<string[]>(suggestedFocuses(suggestion));
 	// Initial selection only — picked falls back to shelf[0] if the shelf
 	// re-sorts under it (recency loads async).
 	// svelte-ignore state_referenced_locally
@@ -51,7 +64,7 @@
 
 	// Zone breakdown: where the time actually goes, in the graph's colours.
 	const zoneChips = $derived(
-		timeInZones(segments, ftp)
+		plannedZoneSeconds(segments, ftp)
 			.map((seconds, zone) => ({ zone, seconds }))
 			.filter((entry) => entry.zone > 0 && entry.seconds > 0)
 			.map((entry) => ({
@@ -179,7 +192,10 @@
 							<span class="block font-mono text-[11px] tabular-nums"
 								>{formatClock(durationSeconds(entry.workout))}
 								<span class="text-muted/70 font-sans"
-									>· {entry.yours ? 'yours' : entry.focus}</span
+									>· {entry.yours ? 'yours' : entry.focus}{entry.focus &&
+									suggested.includes(entry.focus)
+										? ' · suggested today'
+										: ''}</span
 								></span
 							>
 						</button>

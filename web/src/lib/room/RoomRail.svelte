@@ -136,6 +136,7 @@
 		{ href: '/ramp', label: 'Ramp test' },
 		{ href: '/pair', label: 'Sensors' },
 		{ href: '/history', label: 'Rides' },
+		{ href: '/progression', label: 'Progression' },
 		{ href: '/profile', label: 'Profile' },
 	];
 	const activePath = $derived(page.url.pathname);
@@ -210,7 +211,15 @@
 							>{room.members}</span
 						>
 					{/if}
-					{#if room.next && !room.riders?.length}
+					{#if room.session}
+						<!-- The late-join radar (#251): what is on and how far in. -->
+						<span class="text-watt/90 w-full truncate text-[10px]"
+							>{room.session.workoutName} · {room.session.elapsedSec < 60
+								? 'starting'
+								: `${Math.round(room.session.elapsedSec / 60)} min in`}</span
+						>
+					{/if}
+					{#if room.next}
 						<span class="text-muted/70 w-full truncate text-[10px]"
 							>next: {room.next.workoutName} · {formatWhen(
 								room.next.startsAt,
@@ -224,10 +233,14 @@
 					<ul class="mt-0.5 mb-1 ml-4 space-y-0.5">
 						{#each room.riders.slice(0, 8) as name (name)}
 							{@const inVoice = room.voice?.includes(name)}
+							<!-- Speaking follows the CONNECTED room — the room you can
+							     hear — not the page you happen to stand on (#251). -->
 							{@const talking =
-								room.slug === activeSlug && activeSpeaking.includes(name)}
-							<!-- Listed = connected, so the dot is green full stop;
-							     voice brightens the name, talking pulses it (#174). -->
+								room.slug === connectedSlug && activeSpeaking.includes(name)}
+							{@const riding = room.riding?.includes(name)}
+							<!-- Listed = connected, so the dot is green full stop — and
+							     watt-glowing when their trainer streams (#251); voice
+							     brightens the name, talking pulses it (#174). -->
 							<li
 								class="flex items-center gap-1.5 text-[11px] {talking
 									? 'text-ink'
@@ -236,14 +249,18 @@
 										: 'text-ink/60'}"
 							>
 								<span
-									class="bg-z4 h-1.5 w-1.5 rounded-full {talking
-										? 'animate-pulse'
-										: ''}"
+									class="h-1.5 w-1.5 shrink-0 rounded-full {riding
+										? 'bg-watt glow-stroke'
+										: 'bg-z4'} {talking ? 'animate-pulse' : ''}"
+									title={riding ? 'riding now' : undefined}
 								></span>
 								<button
 									onclick={() => onMember?.(room.slug, name)}
 									class="hover:text-ink truncate hover:underline">{name}</button
 								>
+								{#if room.cameras?.includes(name)}
+									<Video size={10} class="text-muted shrink-0" />
+								{/if}
 								{#if talking}
 									<span class="text-z4 text-[9px]">speaking</span>
 								{/if}

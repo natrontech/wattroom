@@ -10,9 +10,61 @@
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
+	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import { fetchProgression, type TrendRide } from '$lib/progression';
 
 	const profile = createProfileStore();
 	void account.load();
+
+	// The FTP number's story (#222) — decorative context under the field, so
+	// on failure it simply doesn't render.
+	let trend = $state<TrendRide[]>([]);
+	void fetchProgression().then((r) => {
+		if (r.ok) trend = r.data?.rides ?? [];
+	});
+
+	// Coach access tokens (ADR-0017). The secret exists client-side only in
+	// freshToken, until the rider hides it.
+	interface ApiToken {
+		id: string;
+		name: string;
+		createdAt: string;
+		lastUsedAt?: string;
+	}
+	let apiTokens = $state<ApiToken[]>([]);
+	let tokenName = $state('');
+	let freshToken = $state<string | null>(null);
+	let tokenError = $state<string | null>(null);
+	async function loadTokens() {
+		const res = await api<{ tokens: ApiToken[] }>('/api/tokens');
+		if (res.ok) apiTokens = res.data?.tokens ?? [];
+	}
+	void loadTokens();
+	async function createToken() {
+		const res = await api<ApiToken & { token: string }>('/api/tokens', {
+			method: 'POST',
+			json: { name: tokenName.trim() },
+		});
+		if (!res.ok) {
+			tokenError = res.error.message;
+			return;
+		}
+		tokenError = null;
+		tokenName = '';
+		freshToken = res.data.token;
+		await loadTokens();
+	}
+	async function revokeToken(id: string) {
+		const res = await api<undefined>(`/api/tokens/${id}`, {
+			method: 'DELETE',
+		});
+		if (!res.ok) {
+			tokenError = res.error.message;
+			return;
+		}
+		tokenError = null;
+		apiTokens = apiTokens.filter((entry) => entry.id !== id);
+	}
 
 	// Decorative footer, not ride data: on failure it simply doesn't render.
 	let version = $state<string | null>(null);
@@ -270,6 +322,11 @@
 							>
 						{/if}
 					</span>
+					{#if trend.length >= 2}
+						<span class="mt-3 block">
+							<FtpTrendChart rides={trend} height={150} />
+						</span>
+					{/if}
 				</label>
 				<label class="block">
 					<span class="eyebrow">weight (kg)</span>
@@ -402,6 +459,77 @@
 				/>
 			</div>
 		{/if}
+
+		<!-- Coach access (ADR-0017): read-only tokens for your own AI/tools. -->
+		<section class="border-muted/15 mt-3 rounded-lg border p-6">
+			<h2 class="font-display font-bold">Coach access</h2>
+			<p class="text-muted mt-1 text-xs">
+				Read-only tokens for your own tools — a personal coach AI can read your
+				progression and rides over the API or MCP (<code
+					class="font-mono text-[11px]">{location.origin}/mcp</code
+				>). Your data only, never anyone else's.
+			</p>
+			{#if freshToken}
+				<div class="border-muted/30 mt-4 rounded-lg border border-dashed p-4">
+					<p class="text-xs font-semibold">
+						Copy it now — it is never shown again.
+					</p>
+					<code class="mt-2 block font-mono text-xs break-all select-all"
+						>{freshToken}</code
+					>
+					<p class="text-muted mt-3 text-[11px]">Hook it up to Claude Code:</p>
+					<code class="mt-1 block font-mono text-[11px] break-all select-all"
+						>claude mcp add --transport http wattroom {location.origin}/mcp
+						--header "Authorization: Bearer {freshToken}"</code
+					>
+					<button
+						onclick={() => (freshToken = null)}
+						class="text-muted hover:text-ink mt-3 text-xs underline"
+						>Done, hide it</button
+					>
+				</div>
+			{/if}
+			{#if apiTokens.length > 0}
+				<ul class="mt-4 grid gap-2">
+					{#each apiTokens as entry (entry.id)}
+						<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+							<span class="text-ink font-semibold">{entry.name}</span>
+							<span class="text-muted">
+								created {new Date(entry.createdAt).toLocaleDateString()}
+								{entry.lastUsedAt
+									? `· last used ${new Date(entry.lastUsedAt).toLocaleDateString()}`
+									: '· never used'}
+							</span>
+							<button
+								onclick={() => void revokeToken(entry.id)}
+								class="text-muted hover:text-ink ml-auto underline"
+								>Revoke</button
+							>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<form
+				class="mt-4 flex flex-wrap gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void createToken();
+				}}
+			>
+				<input
+					bind:value={tokenName}
+					maxlength="60"
+					placeholder="Token name — e.g. claude coach"
+					class="input w-64"
+				/>
+				<button class="btn btn-secondary" disabled={!tokenName.trim()}
+					>Create token</button
+				>
+			</form>
+			{#if tokenError}
+				<p class="text-muted mt-2 text-xs">{tokenError}</p>
+			{/if}
+		</section>
 
 		<!-- Privacy is architecture: say what is true, not what sounds good. -->
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">

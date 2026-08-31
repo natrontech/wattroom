@@ -53,7 +53,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 const createRoom = `-- name: CreateRoom :one
 insert into rooms (code, slug, name, owner_id)
 values ($1, $2, $3, $4)
-returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers
+returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token
 `
 
 type CreateRoomParams struct {
@@ -82,6 +82,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 		&i.SoundPack,
 		&i.Icon,
 		&i.Cheers,
+		&i.IcsToken,
 	)
 	return i, err
 }
@@ -183,7 +184,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers from rooms where code = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token from rooms where code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
@@ -200,12 +201,13 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) 
 		&i.SoundPack,
 		&i.Icon,
 		&i.Cheers,
+		&i.IcsToken,
 	)
 	return i, err
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers from rooms where slug = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -222,8 +224,56 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 		&i.SoundPack,
 		&i.Icon,
 		&i.Cheers,
+		&i.IcsToken,
 	)
 	return i, err
+}
+
+const listRoomCalendar = `-- name: ListRoomCalendar :many
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by
+from scheduled_sessions s
+join users u on u.id = s.created_by
+where s.room_id = $1 and s.starts_at > now() - interval '30 days'
+order by s.starts_at
+`
+
+type ListRoomCalendarRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	CreatedBy   string
+}
+
+// The iCal feed (#245): unlike the in-room list, it keeps a month of history
+// and has no cap — a calendar that self-erases reads as broken.
+func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]ListRoomCalendarRow, error) {
+	rows, err := q.db.Query(ctx, listRoomCalendar, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomCalendarRow
+	for rows.Next() {
+		var i ListRoomCalendarRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.CreatedAt,
+			&i.CreatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
@@ -335,7 +385,7 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, m.role
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, m.role
 from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1 and m.role != 'banned'
@@ -353,6 +403,7 @@ type ListUserRoomsRow struct {
 	SoundPack string
 	Icon      string
 	Cheers    string
+	IcsToken  string
 	Role      string
 }
 
@@ -378,6 +429,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.SoundPack,
 			&i.Icon,
 			&i.Cheers,
+			&i.IcsToken,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -434,6 +486,18 @@ func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionPa
 	return i, err
 }
 
+const rotateRoomIcsToken = `-- name: RotateRoomIcsToken :one
+update rooms set ics_token = replace(gen_random_uuid()::text, '-', '')
+where id = $1 returning ics_token
+`
+
+func (q *Queries) RotateRoomIcsToken(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, rotateRoomIcsToken, id)
+	var ics_token string
+	err := row.Scan(&ics_token)
+	return ics_token, err
+}
+
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec
 update memberships set role = $3 where room_id = $1 and user_id = $2
 `
@@ -451,7 +515,7 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 
 const updateRoom = `-- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
-where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers
+where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token
 `
 
 type UpdateRoomParams struct {
@@ -484,6 +548,7 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		&i.SoundPack,
 		&i.Icon,
 		&i.Cheers,
+		&i.IcsToken,
 	)
 	return i, err
 }

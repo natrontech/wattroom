@@ -3,7 +3,7 @@
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
 	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
-	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
+	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
 	import {
 		curvePoints,
@@ -88,31 +88,9 @@
 			<section class="panel p-5">
 				<h2 class="eyebrow">time in zone</h2>
 				{#if totalZoneSeconds > 0}
-					<div class="mt-4 flex h-3 overflow-hidden rounded-full">
-						{#each zones as zsec, zone (zone)}
-							{#if zsec > 0}
-								<div
-									class={ZONE_BG[zone]}
-									style="width: {(zsec / totalZoneSeconds) * 100}%"
-									title="{ZONE_NAMES[zone]}: {formatClock(zsec)}"
-								></div>
-							{/if}
-						{/each}
+					<div class="mt-4">
+						<ZoneBar seconds={zones} legend />
 					</div>
-					<ul class="mt-4 grid gap-1.5 sm:grid-cols-2">
-						{#each zones as zsec, zone (zone)}
-							{#if zsec > 0}
-								<li class="flex items-center gap-2 text-xs">
-									<span class="h-2 w-2 shrink-0 rounded-full {ZONE_BG[zone]}"
-									></span>
-									<span class="text-muted">Z{zone} {ZONE_NAMES[zone]}</span>
-									<span class="ml-auto font-mono tabular-nums"
-										>{formatClock(zsec)}</span
-									>
-								</li>
-							{/if}
-						{/each}
-					</ul>
 				{:else}
 					<p class="text-muted mt-3 text-xs">No riding recorded.</p>
 				{/if}

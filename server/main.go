@@ -25,13 +25,16 @@ import (
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
+	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -94,7 +97,16 @@ func main() {
 			authService.SetMailAvailable(true)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
-		ridesService := rides.New(st, authService, log)
+		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
+		// and the MCP coach endpoint. Cookie auth stays the write path.
+		tokenService := tokens.New(st, authService, log)
+		tokenService.Register(mux)
+		readAuth := tokenService.ReadSource(authService)
+		mcp.New(st, tokenService, log).Register(mux)
+		progression.New(st, readAuth, log).Register(mux)
+		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
+		go stats.BackfillNormWatts(context.Background(), st, log)
+		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
 		}
@@ -113,6 +125,13 @@ func main() {
 		friends.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+		// The lobby socket (#251): held by every signed-in client — online for
+		// friends, and the push channel that keeps the rail live.
+		h.SetLobbyAuth(func(r *http.Request) (string, bool) {
+			user, ok := authService.User(r)
+			return store.UUIDString(user.ID), ok
+		})
+		mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)

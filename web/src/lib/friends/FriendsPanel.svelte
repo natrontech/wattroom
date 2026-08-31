@@ -4,6 +4,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
 	interface Friend {
@@ -14,6 +15,7 @@
 		totalXp?: number;
 		status: 'accepted' | 'pending_in' | 'pending_out';
 		online?: boolean;
+		inRoom?: boolean;
 		room?: string;
 		roomName?: string;
 	}
@@ -50,11 +52,11 @@
 	}
 
 	$effect(() => {
-		void load();
-		// Presence freshness matches the rail's poll cadence; DM heads are
+		// Push-driven (#251): any presence change — a friend coming online, a
+		// join, a leave — bumps the version and this re-fetches. DM heads are
 		// polled globally (heads.svelte.ts), not by this panel.
-		const timer = setInterval(() => void load(), 10_000);
-		return () => clearInterval(timer);
+		presence.version;
+		void load();
 	});
 
 	async function act(path: string, method: 'POST' | 'DELETE') {
@@ -93,6 +95,8 @@
 					<div
 						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
 					>
+						<!-- Slack's green dot (#251): online = app open (the lobby
+						     socket), with the room named only for shared members. -->
 						<span class="relative shrink-0">
 							<Avatar
 								name={friend.name}
@@ -105,15 +109,17 @@
 								class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
 									? 'bg-z4'
 									: 'bg-muted/40'}"
-								title={friend.online ? 'in a room' : 'offline'}
+								title={friend.online ? 'online' : 'offline'}
 							></span>
 						</span>
 						<span class="text-sm font-medium">{friend.name}</span>
 						<span class="text-muted min-w-0 truncate text-xs">
 							{#if friend.roomName}
 								in {friend.roomName}
+							{:else if friend.inRoom}
+								in a room
 							{:else if friend.online}
-								riding elsewhere
+								online
 							{/if}
 						</span>
 						<span class="ml-auto flex shrink-0 items-center gap-3">

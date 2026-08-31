@@ -56,9 +56,11 @@ type friendJSON struct {
 	TotalXp      int64   `json:"totalXp"`
 	// accepted | pending_in (they asked me) | pending_out (I asked them)
 	Status string `json:"status"`
-	// Presence — accepted friends only (ADR-0012): a boolean, plus the room
-	// ONLY when the viewer is a member of it.
+	// Presence — accepted friends only (ADR-0012). Online means "app open"
+	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
+	// some room, and the room is named ONLY when the viewer is a member of it.
 	Online   bool   `json:"online,omitempty"`
+	InRoom   bool   `json:"inRoom,omitempty"`
 	Room     string `json:"room,omitempty"` // slug
 	RoomName string `json:"roomName,omitempty"`
 }
@@ -95,8 +97,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case row.Status == "accepted":
 			entry.Status = "accepted"
-			slug := where[entry.ID]
-			entry.Online = slug != ""
+			// Present in the map = online (lobby socket); a value names the room.
+			slug, online := where[entry.ID]
+			entry.Online = online
+			entry.InRoom = slug != ""
 			if slug != "" {
 				// The room is named only for its own members — the boundary holds.
 				if room, err := s.store.Queries.GetRoomBySlug(r.Context(), slug); err == nil {
