@@ -57,3 +57,18 @@ only.
   if riders ask for it unprompted.
 - **Training-app-only** (voice as accessory): contradicts how the crew
   already behaves — the wave exists because voice IS the draw.
+
+## Amendment — chat keeps a bounded history (2026-08-31, #201)
+
+"Ephemeral means ephemeral" lasted one day of real use: a rider who steps
+away mid-evening comes back to an empty panel, and a reaction has nothing
+to attach to. Chat becomes a **bounded room log**:
+
+- The last **500 messages per room** persist; older ones are pruned on
+  write. The room's deletion takes its chat with it, and a deleted account
+  takes its messages (both cascade).
+- Joining a room loads the backlog; the live path still rides the tick.
+- Messages gain identity, which is what reactions attach to — the room's
+  six-emoji vocabulary, one toggle per rider per emoji per message.
+- Still room-scoped, still never leaves the room, still no cross-room
+  surface. What changed is duration, not visibility.

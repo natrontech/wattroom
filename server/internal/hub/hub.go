@@ -34,6 +34,14 @@ type SessionSaver interface {
 	SaveSession(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
 }
 
+// ChatKeeper persists chat and reactions (ADR-0010 amended, #201). Defined
+// here, where it is consumed; the chat service implements it. Nil means "no
+// database" — chat stays ephemeral, lines carry no id, reactions no-op.
+type ChatKeeper interface {
+	SaveChat(ctx context.Context, slug, userID, text string) (id string, ok bool)
+	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, ok bool)
+}
+
 // Access is what the hub needs from the durable side: who is this request,
 // and are they in this room. Defined here, where it is consumed; implemented
 // by rooms.Service. The hub itself never touches the database — membership is
@@ -51,7 +59,12 @@ type Hub struct {
 	rooms  map[string]*room
 	// slug → identity → display name; fed by LiveKit webhooks (#149).
 	voice map[string]map[string]string
+	chat  ChatKeeper
 }
+
+// SetChatKeeper wires persistence in after construction, like SetPresence's
+// mirror on the rooms side — nil stays valid (ephemeral chat).
+func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	return &Hub{log: log, access: access, saver: saver, now: time.Now,
@@ -65,6 +78,7 @@ type room struct {
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
 	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
+	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
 	session *session
 	record  *accumulator
 	music   *jukebox
@@ -99,6 +113,8 @@ type client struct {
 	// lastChat rate-limits lines the same way — typing on a bike is rare,
 	// a hostile client is not.
 	lastChat time.Time
+	// lastReact allows quick toggling but not a firehose.
+	lastReact time.Time
 }
 
 // cheerEmoji is the allowlist — reactions, not chat. Free text is a different
@@ -152,7 +168,26 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			text := strings.TrimSpace(msg.Chat.Text)
 			if text != "" && len(text) <= 500 && h.now().Sub(c.lastChat) >= time.Second {
 				c.lastChat = h.now()
-				rm.chatLine(protocol.ChatLine{From: rider.Name, Text: text, At: h.now().UnixMilli()})
+				line := protocol.ChatLine{From: rider.Name, Text: text, At: h.now().UnixMilli()}
+				// Persist OUTSIDE any room lock (hub discipline) — the request
+				// goroutine may block on the database, the tick never does.
+				if h.chat != nil {
+					if id, ok := h.chat.SaveChat(ctx, slug, rider.ID, text); ok {
+						line.ID = id
+					}
+				}
+				rm.chatLine(line)
+			}
+		}
+		if msg.ChatReact != nil && h.chat != nil {
+			_, allowed := cheerEmoji[msg.ChatReact.Emoji]
+			if allowed && h.now().Sub(c.lastReact) >= 300*time.Millisecond {
+				c.lastReact = h.now()
+				if count, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
+					rm.reactionChanged(protocol.ChatReactionCount{
+						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji, Count: count,
+					})
+				}
 			}
 		}
 		if msg.Cheer != nil {
@@ -349,13 +384,14 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			rm.lastGame = nil
 		}
 		tick := protocol.ServerTick{
-			At:      now().UnixMilli(),
-			State:   rm.session.state(now()),
-			Jukebox: rm.music.snapshot(),
-			Cheers:  rm.cheers,
-			Chat:    rm.chat,
-			Sprint:  rm.sprint.state(now(), rm.seen),
-			Game:    rm.lastGame,
+			At:            now().UnixMilli(),
+			State:         rm.session.state(now()),
+			Jukebox:       rm.music.snapshot(),
+			Cheers:        rm.cheers,
+			Chat:          rm.chat,
+			ChatReactions: rm.reacts,
+			Sprint:        rm.sprint.state(now(), rm.seen),
+			Game:          rm.lastGame,
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
@@ -369,6 +405,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
 		rm.chat = nil
+		rm.reacts = nil
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
@@ -494,6 +531,14 @@ func (rm *room) chatLine(line protocol.ChatLine) {
 	defer rm.mu.Unlock()
 	if len(rm.chat) < 32 {
 		rm.chat = append(rm.chat, line)
+	}
+}
+
+func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.reacts) < 64 {
+		rm.reacts = append(rm.reacts, count)
 	}
 }
 

@@ -24,6 +24,16 @@ let current = $state<Connection | null>(null);
 function connect(slug: string): Connection {
 	const live = createRoomLive(slug);
 	const av = createRoomAv(slug);
+	// The chat backlog (#201): loaded once per join — the log follows the
+	// connection, not the page, like everything else here.
+	void fetch(`/api/rooms/${slug}/chat`)
+		.then((res) => (res.ok ? res.json() : null))
+		.then((body) => {
+			if (body?.messages) live.seedChat(body.messages);
+		})
+		.catch(() => {
+			/* backlog is a nicety — live chat still works without it */
+		});
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts.
 	let known: Set<string> | null = null;

@@ -18,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/chat"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
@@ -102,6 +103,9 @@ func main() {
 		}
 		h := hub.New(log, roomsService, saver)
 		roomsService.SetPresence(h)
+		chatService := chat.New(st, authService, log)
+		chatService.Register(mux)
+		h.SetChatKeeper(chatService)
 		friends.New(st, authService, h, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.

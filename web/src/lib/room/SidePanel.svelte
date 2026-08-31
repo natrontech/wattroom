@@ -13,14 +13,22 @@
 		onJam,
 		onCheer,
 		onChat,
+		reactions = {},
+		myReacts = {},
+		onReact,
 	}: {
 		live: boolean;
 		showPlayer: boolean;
 		/** The real player (the jukebox) renders into the panel's top slot. */
 		player?: Snippet;
 		queue?: { title: string; by?: string }[];
-		/** Ephemeral room chat (#146) — dies with the page, by decision. */
-		messages?: { from: string; text: string; at: number }[];
+		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
+		messages?: { id?: string; from: string; text: string; at: number }[];
+		/** messageId → emoji → count (shared truth). */
+		reactions?: Record<string, Record<string, number>>;
+		/** "id:emoji" → I pressed it. */
+		myReacts?: Record<string, boolean>;
+		onReact?: (messageId: string, emoji: string) => void;
 		onAdd?: (url: string) => void;
 		/** Spotify Jam link-out (#96) — set/clear from the add expander. */
 		jamUrl?: string;
@@ -32,6 +40,10 @@
 	// Any member can add (SPEC roles): paste is the golden path.
 	let adding = $state(false);
 	let url = $state('');
+
+	// The room's one emoji vocabulary — cheers thrown, reactions attached.
+	const reactEmoji = ['🔥', '💪', '👏', '💀', '🚀', '🧊'];
+	let reactingTo = $state<string | null>(null);
 
 	let draft = $state('');
 	function sendChat() {
@@ -111,15 +123,55 @@
 	<ul
 		class="flex flex-1 flex-col justify-end space-y-2 overflow-y-auto px-4 py-2"
 	>
-		{#each messages as message (message.at + message.from)}
-			<li class="text-xs leading-snug">
+		{#each messages as message (message.id ?? message.at + message.from)}
+			<li class="group text-xs leading-snug">
 				<span class="text-muted font-medium">{message.from}</span>
 				<span class="text-ink/85 ml-1.5">{message.text}</span>
+				{#if message.id && onReact}
+					{@const id = message.id}
+					<button
+						onclick={() => (reactingTo = reactingTo === id ? null : id)}
+						class="text-muted/60 hover:text-ink ml-1.5 opacity-0 transition-opacity group-hover:opacity-100 {reactingTo ===
+						id
+							? 'opacity-100'
+							: ''}"
+						aria-label="react">＋</button
+					>
+					{#if reactingTo === id}
+						<span
+							class="bg-surface-raised ring-ink/10 ml-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
+						>
+							{#each reactEmoji as emoji (emoji)}
+								<button
+									onclick={() => {
+										onReact(id, emoji);
+										reactingTo = null;
+									}}
+									class="px-0.5 hover:scale-125">{emoji}</button
+								>
+							{/each}
+						</span>
+					{/if}
+					{#if reactions[id]}
+						<span class="mt-0.5 flex flex-wrap gap-1">
+							{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [emoji, count] (emoji)}
+								<button
+									onclick={() => onReact(id, emoji)}
+									class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
+										`${id}:${emoji}`
+									]
+										? 'ring-neon bg-neon/15'
+										: 'ring-ink/10 bg-surface-raised'}">{emoji} {count}</button
+								>
+							{/each}
+						</span>
+					{/if}
+				{/if}
 			</li>
 		{:else}
 			<li class="text-muted/60 text-xs">
-				Warm-up talk lands here and vanishes with the session. Voice stays the
-				main channel.
+				Warm-up talk lands here — the room keeps the recent history. Voice stays
+				the main channel.
 			</li>
 		{/each}
 	</ul>

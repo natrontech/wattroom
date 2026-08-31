@@ -8,6 +8,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ChatMessage struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	Text      string
+	CreatedAt pgtype.Timestamptz
+}
+
+type ChatReaction struct {
+	MessageID pgtype.UUID
+	UserID    pgtype.UUID
+	Emoji     string
+}
+
 type Friendship struct {
 	RequesterID pgtype.UUID
 	AddresseeID pgtype.UUID
