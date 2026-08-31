@@ -184,6 +184,7 @@ export function createRoomLive(slug: string) {
 			messages: {
 				id: string;
 				from: string;
+				fromId?: string;
 				text: string;
 				at: number;
 				reactions?: Record<string, number>;
@@ -197,7 +198,13 @@ export function createRoomLive(slug: string) {
 			chatLog = [
 				...messages
 					.filter((m) => !liveIds.has(m.id))
-					.map((m) => ({ id: m.id, from: m.from, text: m.text, at: m.at })),
+					.map((m) => ({
+						id: m.id,
+						from: m.from,
+						fromId: m.fromId,
+						text: m.text,
+						at: m.at,
+					})),
 				...chatLog,
 			]
 				.sort((a, b) => a.at - b.at)
