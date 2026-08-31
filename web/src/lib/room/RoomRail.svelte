@@ -49,6 +49,8 @@
 		mixRiders = [],
 		onRiderGain,
 		micTesting = false,
+		handedOff = false,
+		onTakeOver,
 		onMicTest,
 		connectedSlug = '',
 		onLeave,
@@ -89,6 +91,9 @@
 		onRiderGain?: (id: string, gain: number) => void;
 		micTesting?: boolean;
 		onMicTest?: () => void;
+		/** Mic and camera are in another tab of yours (#293). */
+		handedOff?: boolean;
+		onTakeOver?: () => void;
 		/** The room you are IN (#173) — shown and leavable from anywhere. */
 		connectedSlug?: string;
 		onLeave?: () => void;
@@ -402,6 +407,20 @@
 					not in voice — tap the mic to join
 				{/if}
 			</p>
+		{/if}
+		{#if showAv && handedOff}
+			<!-- Not a toast: the rider went quiet and needs to still be able to
+			     read why a minute later, mid-interval (errors.md). -->
+			<div class="border-z5/40 mt-2 rounded border px-2 py-1.5">
+				<p class="text-muted text-[10px] leading-snug">
+					Your mic and camera moved to the room open in another tab.
+				</p>
+				<button
+					onclick={onTakeOver}
+					class="border-muted/25 text-muted hover:text-ink mt-1.5 w-full rounded border px-2 py-1.5 text-[11px]"
+					>use this tab instead</button
+				>
+			</div>
 		{/if}
 		{#if showAv && voiceMode === 'ptt' && micOn}
 			<!-- Hold to transmit — the desk spectator's mode (SPEC). -->

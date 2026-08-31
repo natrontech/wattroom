@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,8 +66,13 @@ func TestTokenShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Iss != "devkey" || got.Sub != "jan-id" || got.Video.Room != "velvet" || !got.Video.RoomJoin {
+	// The identity is per connection, not per rider (#293) — but the rider is
+	// still readable out of it, because everything server-side keys on that.
+	if got.Iss != "devkey" || got.Video.Room != "velvet" || !got.Video.RoomJoin {
 		t.Fatalf("claims: %+v", got)
+	}
+	if RiderID(got.Sub) != "jan-id" || got.Sub == "jan-id" {
+		t.Fatalf("identity %q is not jan-id plus a nonce", got.Sub)
 	}
 	if got.Exp-got.Nbf != int64((6 * time.Hour).Seconds()) {
 		t.Fatalf("lifetime: %d", got.Exp-got.Nbf)
@@ -98,10 +104,18 @@ func TestFromEnvGates(t *testing.T) {
 func TestEject(t *testing.T) {
 	var gotPath, gotAuth string
 	var gotBody map[string]string
+	var removed []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "ListParticipants") {
+			// Bob is in from two tabs; Kim is somebody else entirely.
+			_, _ = w.Write([]byte(`{"participants":[{"identity":"bob-id#aaa","name":"Bob"},` +
+				`{"identity":"bob-id#bbb","name":"Bob"},{"identity":"kim-id#ccc","name":"Kim"}]}`))
+			return
+		}
 		gotPath = r.URL.Path
 		gotAuth = r.Header.Get("Authorization")
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		removed = append(removed, gotBody["identity"])
 	}))
 	defer srv.Close()
 
@@ -112,10 +126,17 @@ func TestEject(t *testing.T) {
 	s.now = func() time.Time { return time.Unix(1_000_000, 0) }
 	s.Eject("velvet", "bob-id")
 
+	// Every one of the banned rider's tabs goes (#293) — leaving one behind
+	// leaves them on camera — and nobody else's. Order is LiveKit's map, so
+	// sort before comparing.
+	slices.Sort(removed)
+	if !slices.Equal(removed, []string{"bob-id#aaa", "bob-id#bbb"}) {
+		t.Fatalf("removed %v, want both of bob's connections and only those", removed)
+	}
 	if gotPath != "/twirp/livekit.RoomService/RemoveParticipant" {
 		t.Fatalf("path: %q", gotPath)
 	}
-	if gotBody["room"] != "velvet" || gotBody["identity"] != "bob-id" {
+	if gotBody["room"] != "velvet" {
 		t.Fatalf("body: %v", gotBody)
 	}
 	token, ok := strings.CutPrefix(gotAuth, "Bearer ")

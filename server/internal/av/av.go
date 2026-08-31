@@ -105,9 +105,14 @@ type claims struct {
 // (stdlib-first is the locked rule; the claim shape is pinned by test).
 func (s *Service) mint(slug string, rider protocol.Rider) (string, error) {
 	now := s.now()
+	// Per connection, not per rider (#293) — two tabs must be two participants.
+	identity, err := newIdentity(rider.ID)
+	if err != nil {
+		return "", err
+	}
 	return s.sign(claims{
 		Iss:  s.cfg.Key,
-		Sub:  rider.ID,
+		Sub:  identity,
 		Name: rider.Name,
 		Nbf:  now.Unix(),
 		// Long enough for any session; the membership check happens at mint.
@@ -177,12 +182,33 @@ func (s *Service) roomAPI(ctx context.Context, method, slug string, payload any)
 // ban or removal (#223). Best-effort by design: a failure only means the
 // rider lingers on camera until they disconnect — Authorize already refuses
 // their next token.
+//
+// One rider can hold several participant identities at once, one per tab
+// (#293), and a ban that removed only one of them would leave the banned
+// rider on camera from the other. Ask LiveKit who is actually in the room
+// and remove every connection that is theirs.
 func (s *Service) Eject(slug, userID string) {
 	// Detached from the request context on purpose: a kick must complete even
 	// if the banning owner's request is canceled. The client's 3s timeout is
 	// the bound.
-	resp, err := s.roomAPI(context.Background(), "RemoveParticipant", slug,
-		map[string]string{"room": slug, "identity": userID})
+	ctx := context.Background()
+	present, ok := s.listParticipants(ctx, slug)
+	if !ok {
+		// LiveKit would not say. The bare rider id is still the identity of
+		// any pre-#293 connection, so try it rather than doing nothing.
+		s.removeParticipant(ctx, slug, userID, userID)
+		return
+	}
+	for identity := range present {
+		if RiderID(identity) == userID {
+			s.removeParticipant(ctx, slug, identity, userID)
+		}
+	}
+}
+
+func (s *Service) removeParticipant(ctx context.Context, slug, identity, userID string) {
+	resp, err := s.roomAPI(ctx, "RemoveParticipant", slug,
+		map[string]string{"room": slug, "identity": identity})
 	if err != nil {
 		s.log.Warn("eject call failed", "err", err, "room", slug, "rider", userID)
 		return
@@ -195,5 +221,5 @@ func (s *Service) Eject(slug, userID string) {
 		}
 		return
 	}
-	s.log.Info("rider ejected from voice", "room", slug, "rider", userID)
+	s.log.Info("rider ejected from voice", "room", slug, "rider", userID, "identity", identity)
 }
