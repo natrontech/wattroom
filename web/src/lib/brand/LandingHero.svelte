@@ -5,7 +5,10 @@
 	// of describing it. Pure SVG + CSS, no dependencies. Watts tick with one
 	// tiny interval; reduced motion gets the finished picture, steady numbers.
 
+	import ClayRider from '$lib/brand/ClayRider.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
+
+	const uid = $props.id();
 
 	// Only "you" glow — same rule as the real room's tiles.
 	const riders = [
@@ -110,13 +113,15 @@
 					: 'ring-ink/10'}"
 			>
 				{#if r.cam}
-					<!-- Stand-in for a camera feed, same gradient as the real tile. -->
+					<!-- Stand-in for a camera feed, same gradient as the real tile —
+					     with a clay cyclist grinding away in front of it. -->
 					<div
 						class="absolute inset-0"
 						style="background:
 							radial-gradient(120% 90% at 50% 15%, hsl({r.hue} 45% 42%), transparent 70%),
 							linear-gradient(160deg, hsl({r.hue} 40% 22%), hsl({r.hue + 30} 35% 10%))"
 					></div>
+					<ClayRider hue={r.hue} speed={r.base / 240} flip={i > 0} />
 				{:else}
 					<div
 						class="absolute inset-0"
@@ -163,6 +168,14 @@
 			class="h-full w-full"
 			aria-hidden="true"
 		>
+			<defs>
+				<!-- The trace reveals left-to-right at constant x-speed, so its tip
+				     always sits exactly on the sweeping now-line (a dash-offset draw
+				     moves at path-length speed and drifts off it). -->
+				<clipPath id="{uid}-reveal">
+					<rect class="reveal" x="0" y="-2" width="100" height="108" />
+				</clipPath>
+			</defs>
 			{#each rects as r (r.x)}
 				<rect
 					x={r.x + 0.4}
@@ -181,6 +194,7 @@
 				stroke-width="1.1"
 				stroke-linejoin="round"
 				vector-effect="non-scaling-stroke"
+				clip-path="url(#{uid}-reveal)"
 				class="trace"
 			/>
 			<line
@@ -200,9 +214,10 @@
 <style>
 	.trace {
 		filter: drop-shadow(0 0 4px var(--color-watt));
-		stroke-dasharray: 400;
-		stroke-dashoffset: 400;
-		animation: draw 7s linear infinite;
+	}
+	.reveal {
+		transform-origin: 0 0;
+		animation: reveal 7s linear infinite;
 	}
 	.now {
 		animation: sweep 7s linear infinite;
@@ -210,9 +225,12 @@
 	.live-dot {
 		animation: blink 1.4s ease-in-out infinite;
 	}
-	@keyframes draw {
+	@keyframes reveal {
+		from {
+			transform: scaleX(0);
+		}
 		to {
-			stroke-dashoffset: 0;
+			transform: scaleX(1);
 		}
 	}
 	@keyframes sweep {
@@ -233,9 +251,8 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.trace {
+		.reveal {
 			animation: none;
-			stroke-dashoffset: 0;
 		}
 		.now {
 			display: none;
