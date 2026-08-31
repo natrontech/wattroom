@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import { api } from '$lib/api';
-	import { formatClock } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable

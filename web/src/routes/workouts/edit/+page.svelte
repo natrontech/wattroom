@@ -2,12 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import {
-		formatClock,
-		ZONE_BG,
-		ZONE_NAMES,
-		zoneOf,
-	} from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byId, library } from '$lib/workout/library';

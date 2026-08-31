@@ -3,7 +3,8 @@
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { formatClock, wkg } from '$lib/format';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
@@ -107,7 +108,7 @@
 						</div>
 						<span
 							class="text-muted w-16 text-right font-mono text-[10px] tabular-nums"
-							>{rider.weightKg > 0 ? (watts / rider.weightKg).toFixed(1) : '–'} w/kg</span
+							>{wkg(watts, rider.weightKg)} w/kg</span
 						>
 					</div>
 				</li>

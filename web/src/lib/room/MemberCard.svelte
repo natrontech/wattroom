@@ -2,6 +2,7 @@
 	import { MessageCircle, UserPlus, X } from '@lucide/svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { api } from '$lib/api';
+	import { wkg } from '$lib/format';
 	import { account } from '$lib/account.svelte';
 
 	// The member popout (#207): who this rider is, in room-visible terms.
@@ -121,9 +122,9 @@
 			</div>
 			<div class="border-muted/15 rounded border px-3 py-2">
 				<p class="font-display text-lg font-bold tabular-nums">
-					{member.weightKg > 0
-						? (member.ftpWatts / member.weightKg).toFixed(1)
-						: '–'}<span class="text-muted ml-1 text-xs">w/kg</span>
+					{wkg(member.ftpWatts, member.weightKg)}<span
+						class="text-muted ml-1 text-xs">w/kg</span
+					>
 				</p>
 				<p class="text-muted text-[10px] tracking-wider uppercase">
 					at threshold

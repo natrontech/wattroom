@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Pause, Play, SkipForward } from '@lucide/svelte';
+	import { formatClockLong } from '$lib/format';
 	import type { JukeboxState } from '$lib/protocol';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
@@ -43,13 +44,6 @@
 			? Math.min(Math.max(pos, 0), duration)
 			: Math.max(pos, 0);
 	});
-	function fmt(sec: number): string {
-		const s = Math.max(0, Math.floor(sec));
-		const m = Math.floor(s / 60) % 60;
-		const h = Math.floor(s / 3600);
-		const two = (n: number) => String(n).padStart(2, '0');
-		return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
-	}
 	const maxSeekable = 6 * 3600; // mirrors the server clamp
 	function seekTo(pos: number) {
 		const max = duration > 0 ? duration - 1 : maxSeekable;
@@ -130,8 +124,8 @@
 						<div
 							class="text-muted flex justify-between font-mono text-[10px] tabular-nums"
 						>
-							<span>{fmt(elapsed)}</span>
-							<span>{duration > 0 ? fmt(duration) : '–:––'}</span>
+							<span>{formatClockLong(elapsed)}</span>
+							<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
 						</div>
 					</div>
 					<button

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';

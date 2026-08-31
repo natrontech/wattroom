@@ -3,7 +3,8 @@
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
 	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
-	import { formatClock, ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import {
 		curvePoints,
 		normalizedPower,

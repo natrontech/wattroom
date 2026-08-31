@@ -4,6 +4,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { formatWhen } from '$lib/format';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 
 	interface RoomSummary {
@@ -200,12 +201,9 @@
 						</p>
 						{#if room.nextSession}
 							<p class="text-muted mt-0.5 text-xs">
-								next: {room.nextSession.workoutName} ·
-								{new Date(room.nextSession.startsAt).toLocaleString(undefined, {
-									weekday: 'short',
-									hour: '2-digit',
-									minute: '2-digit',
-								})}
+								next: {room.nextSession.workoutName} · {formatWhen(
+									room.nextSession.startsAt,
+								)}
 							</p>
 						{/if}
 					</div>

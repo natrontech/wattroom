@@ -21,7 +21,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { sensors } from '$lib/sensors.svelte';
-	import { formatClock } from '$lib/components/zones';
+	import { formatClock, formatWhen, wkg } from '$lib/format';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { durationSeconds, flatten, targetAt } from '$lib/workout/engine';
@@ -365,15 +365,6 @@
 		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
 		return t.toISOString().slice(0, 16); // datetime-local format
 	}
-	function formatWhen(iso: string): string {
-		return new Date(iso).toLocaleString(undefined, {
-			weekday: 'short',
-			day: '2-digit',
-			month: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
-	}
 	/** Startable a little early and through the grace the server keeps it visible. */
 	function due(iso: string): boolean {
 		const diff = new Date(iso).getTime() - Date.now();
@@ -506,7 +497,7 @@
 		...(you.hr > 0 ? [{ label: 'bpm', value: String(you.hr) }] : []),
 		{
 			label: 'w/kg',
-			value: you.kg > 0 ? (you.watts / you.kg).toFixed(1) : '–',
+			value: wkg(you.watts, you.kg),
 		},
 		{ label: 'exec', value: `${Math.round(you.execution * 100)}%` },
 	]);
@@ -1010,7 +1001,7 @@
 								{entry.workoutName}
 							</p>
 							<p class="text-muted mt-0.5 text-xs">
-								{formatWhen(entry.startsAt)} ·
+								{formatWhen(entry.startsAt, true)} ·
 								{Math.round(
 									parseSharedSegments(entry.workoutJson).reduce(
 										(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),

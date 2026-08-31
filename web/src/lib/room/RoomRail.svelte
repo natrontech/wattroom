@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
+	import { formatWhen } from '$lib/format';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { notify } from '$lib/notify.svelte';
 	import { theme } from '$lib/theme.svelte';
@@ -165,12 +166,9 @@
 					{/if}
 					{#if room.next && !room.riders?.length}
 						<span class="text-muted/70 w-full truncate text-[10px]"
-							>next: {room.next.workoutName} ·
-							{new Date(room.next.startsAt).toLocaleString(undefined, {
-								weekday: 'short',
-								hour: '2-digit',
-								minute: '2-digit',
-							})}</span
+							>next: {room.next.workoutName} · {formatWhen(
+								room.next.startsAt,
+							)}</span
 						>
 					{/if}
 				</a>

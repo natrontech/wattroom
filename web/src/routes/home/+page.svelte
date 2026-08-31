@@ -2,6 +2,7 @@
 	import { ArrowRight, CalendarClock, Flame } from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { formatWhen } from '$lib/format';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -75,13 +76,6 @@
 			kj: Math.round(recent.reduce((sum, ride) => sum + ride.kj, 0)),
 		};
 	});
-
-	const when = (iso: string) =>
-		new Date(iso).toLocaleString(undefined, {
-			weekday: 'short',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
 </script>
 
 <main class="mx-auto max-w-4xl px-6 py-10">
@@ -173,7 +167,7 @@
 									{room.nextSession?.workoutName}
 								</p>
 								<p class="text-muted text-xs">
-									{when(room.nextSession?.startsAt ?? '')} · {room.name}
+									{formatWhen(room.nextSession?.startsAt ?? '')} · {room.name}
 								</p>
 							</div>
 						</a>

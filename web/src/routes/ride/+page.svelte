@@ -4,7 +4,8 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock, ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import {
 		createRideSession,

@@ -1,12 +1,8 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import {
-		formatClock,
-		ZONE_BG,
-		ZONE_NAMES,
-		ZONE_TEXT,
-	} from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import type { GameState, Rider } from '$lib/protocol';
 
