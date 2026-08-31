@@ -112,6 +112,15 @@ type ChatLine struct {
 	At     int64  `json:"at"` // server millis, for ordering only
 }
 
+// ChatID attaches the persisted identity to a line broadcast on an earlier
+// tick (#219): the save runs off the read loop, so the id follows the line.
+// FromID+At name the line — the 1/s per-rider chat limit makes the pair unique.
+type ChatID struct {
+	FromID string `json:"fromId"`
+	At     int64  `json:"at"`
+	ID     string `json:"id"`
+}
+
 // ChatReact toggles one rider's emoji on one message (#201) — the cheer
 // vocabulary, attached instead of thrown.
 type ChatReact struct {
@@ -209,6 +218,9 @@ type ServerTick struct {
 	// ephemeral means ephemeral.
 	Chat          []ChatLine          `json:"chat,omitempty"`
 	ChatReactions []ChatReactionCount `json:"chatReactions,omitempty"`
+	// Persisted ids for lines already broadcast (#219) — the async save's
+	// follow-up, unlocking reactions on them.
+	ChatIDs []ChatID `json:"chatIds,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.

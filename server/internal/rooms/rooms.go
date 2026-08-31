@@ -68,6 +68,7 @@ type VoiceEjector interface {
 // it is consumed. Optional: without it planning a session emails nobody.
 type Notifier interface {
 	SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
+	SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
 }
 
 type Service struct {
@@ -112,6 +113,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/rooms/{slug}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/rooms/{slug}", s.handleDelete)
 	mux.HandleFunc("POST /api/rooms/{slug}/schedule", s.handleSchedule)
+	mux.HandleFunc("PATCH /api/rooms/{slug}/schedule/{id}", s.handleReschedule)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}", s.handleUnschedule)
 	mux.HandleFunc("POST /api/rooms/{slug}/join", s.handleJoin)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)

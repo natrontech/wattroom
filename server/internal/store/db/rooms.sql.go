@@ -403,6 +403,32 @@ func (q *Queries) NextRoomSession(ctx context.Context, roomID pgtype.UUID) (Next
 	return i, err
 }
 
+const rescheduleSession = `-- name: RescheduleSession :one
+update scheduled_sessions set starts_at = $3
+where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at
+`
+
+type RescheduleSessionParams struct {
+	ID       pgtype.UUID
+	RoomID   pgtype.UUID
+	StartsAt pgtype.Timestamptz
+}
+
+func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionParams) (ScheduledSession, error) {
+	row := q.db.QueryRow(ctx, rescheduleSession, arg.ID, arg.RoomID, arg.StartsAt)
+	var i ScheduledSession
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.WorkoutName,
+		&i.WorkoutJson,
+		&i.StartsAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec
 update memberships set role = $3 where room_id = $1 and user_id = $2
 `

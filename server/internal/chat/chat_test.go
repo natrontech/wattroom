@@ -125,6 +125,10 @@ func TestChatRoundTrip(t *testing.T) {
 	if messages[0]["from"] != "alice" || messages[1]["from"] != "bob" {
 		t.Fatalf("order/authors: %v", messages)
 	}
+	// Author ids ride along (#219) — namesake-proof, same as live tick lines.
+	if messages[0]["fromId"] != store.UUIDString(alice.ID) || messages[1]["fromId"] != store.UUIDString(bob.ID) {
+		t.Fatalf("author ids: %v", messages)
+	}
 
 	// Reactions toggle: on → 1, mirrored on → 2, off → 1; junk id refused.
 	// The added flag reports which way it went (#219).
