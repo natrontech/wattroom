@@ -174,9 +174,14 @@
 				{#each live.chatLog.slice(-8) as message (message.at + message.from)}
 					<li class="text-xs leading-snug wrap-anywhere">
 						<span class="text-muted font-medium">{message.from}</span>
-						<span class="text-ink/85 ml-1.5"
-							><MessageText text={message.text} preview={false} /></span
-						>
+						{#if message.text}
+							<span class="text-ink/85 ml-1.5"
+								><MessageText text={message.text} preview={false} /></span
+							>
+						{:else if message.imageId}
+							<!-- Images are members-only (#279); spectators get the fact, not the pixels. -->
+							<span class="text-muted/70 ml-1.5 italic">sent an image</span>
+						{/if}
 					</li>
 				{/each}
 			</ul>
