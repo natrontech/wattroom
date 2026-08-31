@@ -148,6 +148,12 @@ export interface ChatLine {
    */
   fromId?: string;
   text: string;
+  /**
+   * A pasted image (#279): id of a room-scoped blob the client uploaded via
+   * POST /api/rooms/{slug}/chat/images before sending; rendered from the
+   * matching GET. A line may be image-only (empty text).
+   */
+  imageId?: string;
   at: number /* int64 */; // server millis, for ordering only
 }
 /**

@@ -1,6 +1,27 @@
 -- name: SaveChatMessage :one
-insert into chat_messages (room_id, user_id, text)
-values ($1, $2, $3) returning id;
+insert into chat_messages (room_id, user_id, text, image_id)
+values ($1, $2, $3, $4) returning id;
+
+-- name: SaveChatImage :one
+insert into chat_images (room_id, user_id, mime, bytes)
+values ($1, $2, $3, $4) returning id;
+
+-- name: GetChatImage :one
+-- Room-scoped like reactions: the room is the privacy boundary, an id from
+-- another room's chat must 404 here.
+select mime, bytes from chat_images
+where id = $1 and room_id = $2;
+
+-- name: PruneChatImages :exec
+-- Swept alongside PruneChat: an image outlives neither its message (dropped
+-- off the 500-line log) nor a 15-minute grace for uploads still awaiting
+-- their send.
+delete from chat_images i
+where i.room_id = $1
+  and i.created_at < now() - interval '15 minutes'
+  and not exists (
+      select 1 from chat_messages m where m.image_id = i.id
+  );
 
 -- name: PruneChat :exec
 -- The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
@@ -17,7 +38,7 @@ where cm.room_id = $1 and cm.id not in (
 -- name: ListRoomChat :many
 -- Newest $2, oldest-first for rendering; a deleted author's rows are gone
 -- (cascade), so the join never dangles.
-select m.id, m.user_id, u.display_name, m.text, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
 from (
     select * from chat_messages
     where room_id = $1

@@ -56,6 +56,30 @@ func (q *Queries) CountChatReaction(ctx context.Context, arg CountChatReactionPa
 	return count, err
 }
 
+const getChatImage = `-- name: GetChatImage :one
+select mime, bytes from chat_images
+where id = $1 and room_id = $2
+`
+
+type GetChatImageParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+type GetChatImageRow struct {
+	Mime  string
+	Bytes []byte
+}
+
+// Room-scoped like reactions: the room is the privacy boundary, an id from
+// another room's chat must 404 here.
+func (q *Queries) GetChatImage(ctx context.Context, arg GetChatImageParams) (GetChatImageRow, error) {
+	row := q.db.QueryRow(ctx, getChatImage, arg.ID, arg.RoomID)
+	var i GetChatImageRow
+	err := row.Scan(&i.Mime, &i.Bytes)
+	return i, err
+}
+
 const listChatReactions = `-- name: ListChatReactions :many
 select r.message_id, r.emoji,
        count(*) as total,
@@ -105,9 +129,9 @@ func (q *Queries) ListChatReactions(ctx context.Context, arg ListChatReactionsPa
 }
 
 const listRoomChat = `-- name: ListRoomChat :many
-select m.id, m.user_id, u.display_name, m.text, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
 from (
-    select id, room_id, user_id, text, created_at from chat_messages
+    select id, room_id, user_id, text, created_at, image_id from chat_messages
     where room_id = $1
     order by created_at desc
     limit $2
@@ -126,6 +150,7 @@ type ListRoomChatRow struct {
 	UserID      pgtype.UUID
 	DisplayName string
 	Text        string
+	ImageID     pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 }
 
@@ -145,6 +170,7 @@ func (q *Queries) ListRoomChat(ctx context.Context, arg ListRoomChatParams) ([]L
 			&i.UserID,
 			&i.DisplayName,
 			&i.Text,
+			&i.ImageID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -172,6 +198,23 @@ where cm.room_id = $1 and cm.id not in (
 // The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
 func (q *Queries) PruneChat(ctx context.Context, roomID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, pruneChat, roomID)
+	return err
+}
+
+const pruneChatImages = `-- name: PruneChatImages :exec
+delete from chat_images i
+where i.room_id = $1
+  and i.created_at < now() - interval '15 minutes'
+  and not exists (
+      select 1 from chat_messages m where m.image_id = i.id
+  )
+`
+
+// Swept alongside PruneChat: an image outlives neither its message (dropped
+// off the 500-line log) nor a 15-minute grace for uploads still awaiting
+// their send.
+func (q *Queries) PruneChatImages(ctx context.Context, roomID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, pruneChatImages, roomID)
 	return err
 }
 
@@ -204,19 +247,49 @@ func (q *Queries) RemoveChatReaction(ctx context.Context, arg RemoveChatReaction
 	return result.RowsAffected(), nil
 }
 
+const saveChatImage = `-- name: SaveChatImage :one
+insert into chat_images (room_id, user_id, mime, bytes)
+values ($1, $2, $3, $4) returning id
+`
+
+type SaveChatImageParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	Mime   string
+	Bytes  []byte
+}
+
+func (q *Queries) SaveChatImage(ctx context.Context, arg SaveChatImageParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, saveChatImage,
+		arg.RoomID,
+		arg.UserID,
+		arg.Mime,
+		arg.Bytes,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const saveChatMessage = `-- name: SaveChatMessage :one
-insert into chat_messages (room_id, user_id, text)
-values ($1, $2, $3) returning id
+insert into chat_messages (room_id, user_id, text, image_id)
+values ($1, $2, $3, $4) returning id
 `
 
 type SaveChatMessageParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-	Text   string
+	RoomID  pgtype.UUID
+	UserID  pgtype.UUID
+	Text    string
+	ImageID pgtype.UUID
 }
 
 func (q *Queries) SaveChatMessage(ctx context.Context, arg SaveChatMessageParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, saveChatMessage, arg.RoomID, arg.UserID, arg.Text)
+	row := q.db.QueryRow(ctx, saveChatMessage,
+		arg.RoomID,
+		arg.UserID,
+		arg.Text,
+		arg.ImageID,
+	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err

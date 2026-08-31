@@ -109,7 +109,11 @@ type ChatLine struct {
 	// client's own-message suppression must not mute a namesake.
 	FromID string `json:"fromId,omitempty"`
 	Text   string `json:"text"`
-	At     int64  `json:"at"` // server millis, for ordering only
+	// A pasted image (#279): id of a room-scoped blob the client uploaded via
+	// POST /api/rooms/{slug}/chat/images before sending; rendered from the
+	// matching GET. A line may be image-only (empty text).
+	ImageID string `json:"imageId,omitempty"`
+	At      int64  `json:"at"` // server millis, for ordering only
 }
 
 // ChatID attaches the persisted identity to a line broadcast on an earlier

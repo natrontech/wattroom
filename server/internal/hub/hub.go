@@ -40,7 +40,7 @@ type SessionSaver interface {
 // here, where it is consumed; the chat service implements it. Nil means "no
 // database" — chat stays ephemeral, lines carry no id, reactions no-op.
 type ChatKeeper interface {
-	SaveChat(ctx context.Context, slug, userID, text string) (id string, ok bool)
+	SaveChat(ctx context.Context, slug, userID, text, imageID string) (id string, ok bool)
 	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
@@ -78,6 +78,7 @@ type chatSave struct {
 	slug    string
 	riderID string
 	text    string
+	imageID string
 	at      int64
 }
 
@@ -110,7 +111,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 // ever lets one loud room starve the rest.
 func (h *Hub) saveWorker() {
 	for job := range h.saves {
-		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text); ok {
+		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text, job.imageID); ok {
 			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
 		}
 	}
@@ -254,14 +255,21 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(ctx, c, "validation_error", "That message is too long — 500 characters is the cap.")
 				continue
 			}
-			if text != "" && rm.allow("chat", rider.ID, h.now(), time.Second) {
-				line := protocol.ChatLine{From: rider.Name, FromID: rider.ID, Text: text, At: h.now().UnixMilli()}
+			// Untrusted like the text: an image id is a 36-char UUID the room's
+			// serve endpoint scopes anyway — anything else is dropped, not the
+			// line's problem (#279).
+			imageID := msg.Chat.ImageID
+			if len(imageID) != 36 {
+				imageID = ""
+			}
+			if (text != "" || imageID != "") && rm.allow("chat", rider.ID, h.now(), time.Second) {
+				line := protocol.ChatLine{From: rider.Name, FromID: rider.ID, Text: text, ImageID: imageID, At: h.now().UnixMilli()}
 				// The save runs on the hub's worker, never in this read loop
 				// (#219): the line broadcasts now, id-less; its persisted id
 				// follows on a later tick as a ChatID.
 				if h.chat != nil {
 					select {
-					case h.saves <- chatSave{rm: rm, slug: slug, riderID: rider.ID, text: text, at: line.At}:
+					case h.saves <- chatSave{rm: rm, slug: slug, riderID: rider.ID, text: text, imageID: imageID, at: line.At}:
 					default:
 						// Full queue: the line stays ephemeral — blocking the
 						// sender's reads would be the worse failure.

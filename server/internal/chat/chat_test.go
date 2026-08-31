@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log/slog"
@@ -110,11 +111,11 @@ func TestChatRoundTrip(t *testing.T) {
 	}
 
 	// Save two lines; the backlog returns them oldest-first with authors.
-	id1, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warm-up at 7?")
+	id1, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warm-up at 7?", "")
 	if !ok || id1 == "" {
 		t.Fatal("save 1 failed")
 	}
-	id2, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(bob.ID), "in")
+	id2, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(bob.ID), "in", "")
 	if !ok || id2 == "" {
 		t.Fatal("save 2 failed")
 	}
@@ -171,7 +172,7 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = svc.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", other.ID)
 	})
-	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "here")
+	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "here", "")
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -179,5 +180,126 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	// the privacy boundary even for a reaction.
 	if _, _, ok := svc.ToggleReaction(t.Context(), "other-cave", id, store.UUIDString(alice.ID), "🔥"); ok {
 		t.Fatal("cross-room reaction accepted")
+	}
+}
+
+// tinyPNG is just the signature — enough for http.DetectContentType.
+var tinyPNG = []byte("\x89PNG\r\n\x1a\nrest-of-a-picture")
+
+func postImage(t *testing.T, mux *http.ServeMux, user, slug string, body []byte) (int, string) {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rooms/"+slug+"/chat/images", bytes.NewReader(body))
+	if user != "" {
+		req.Header.Set("X-Test-User", user)
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	var out struct {
+		ID string `json:"id"`
+	}
+	_ = json.NewDecoder(w.Body).Decode(&out)
+	return w.Code, out.ID
+}
+
+func getImage(t *testing.T, mux *http.ServeMux, user, slug, id string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/"+slug+"/chat/images/"+id, nil)
+	if user != "" {
+		req.Header.Set("X-Test-User", user)
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	return w
+}
+
+func TestChatImages(t *testing.T) {
+	svc, mux, users, _ := setup(t)
+	alice := users.byToken["alice"]
+
+	// Boundary: no auth 401, non-member 403, junk bytes 400.
+	if code, _ := postImage(t, mux, "", "chat-cave", tinyPNG); code != http.StatusUnauthorized {
+		t.Fatalf("unauthed upload: %d", code)
+	}
+	if code, _ := postImage(t, mux, "cara", "chat-cave", tinyPNG); code != http.StatusForbidden {
+		t.Fatalf("non-member upload: %d", code)
+	}
+	if code, _ := postImage(t, mux, "alice", "chat-cave", []byte("not an image")); code != http.StatusBadRequest {
+		t.Fatalf("junk upload: %d", code)
+	}
+
+	code, imgID := postImage(t, mux, "alice", "chat-cave", tinyPNG)
+	if code != http.StatusOK || imgID == "" {
+		t.Fatalf("upload: %d %q", code, imgID)
+	}
+
+	// Members read it back byte-for-byte; outsiders and junk ids do not.
+	res := getImage(t, mux, "bob", "chat-cave", imgID)
+	if res.Code != http.StatusOK || res.Header().Get("Content-Type") != "image/png" || !bytes.Equal(res.Body.Bytes(), tinyPNG) {
+		t.Fatalf("serve: %d %q", res.Code, res.Header().Get("Content-Type"))
+	}
+	// Member bytes on our own origin: the browser must not re-sniff them.
+	if res.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("blob served without nosniff")
+	}
+	if res := getImage(t, mux, "cara", "chat-cave", imgID); res.Code != http.StatusForbidden {
+		t.Fatalf("non-member serve: %d", res.Code)
+	}
+	if res := getImage(t, mux, "alice", "chat-cave", "not-a-uuid"); res.Code != http.StatusNotFound {
+		t.Fatalf("junk id: %d", res.Code)
+	}
+
+	// The room is the privacy boundary: the same id through another room's
+	// slug must 404 even for a member of that room.
+	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
+		Code: "CHAT03", Slug: "img-cave", Name: "Img", OwnerID: alice.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = svc.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", other.ID)
+	})
+	if err := svc.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+		RoomID: other.ID, UserID: alice.ID, Role: "member",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if res := getImage(t, mux, "alice", "img-cave", imgID); res.Code != http.StatusNotFound {
+		t.Fatalf("cross-room serve: %d", res.Code)
+	}
+
+	// A line carrying the id surfaces it in the backlog.
+	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "", imgID); !ok {
+		t.Fatal("save with image failed")
+	}
+	_, messages := backlog(t, mux, "alice", "chat-cave")
+	last := messages[len(messages)-1]
+	if last["imageId"] != imgID {
+		t.Fatalf("backlog imageId: %v", last)
+	}
+}
+
+func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
+	svc, mux, users, room := setup(t)
+	alice := users.byToken["alice"]
+
+	_, sent := postImage(t, mux, "alice", "chat-cave", tinyPNG)
+	_, orphan := postImage(t, mux, "alice", "chat-cave", tinyPNG)
+	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "", sent); !ok {
+		t.Fatal("save failed")
+	}
+	// Age both past the 15-minute grace; only the never-sent one may go.
+	if _, err := svc.store.Pool.Exec(t.Context(),
+		"update chat_images set created_at = now() - interval '1 hour' where room_id = $1", room.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.store.Queries.PruneChatImages(t.Context(), room.ID); err != nil {
+		t.Fatal(err)
+	}
+	if res := getImage(t, mux, "alice", "chat-cave", sent); res.Code != http.StatusOK {
+		t.Fatalf("referenced image swept: %d", res.Code)
+	}
+	if res := getImage(t, mux, "alice", "chat-cave", orphan); res.Code != http.StatusNotFound {
+		t.Fatalf("orphan survived: %d", res.Code)
 	}
 }

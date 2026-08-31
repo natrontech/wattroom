@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Copy, Plus, SmilePlus } from '@lucide/svelte';
+	import { Copy, Plus, SmilePlus, X } from '@lucide/svelte';
+	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import { compressImage } from '$lib/chat/media';
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
 
@@ -12,6 +14,7 @@
 		player,
 		queue = [],
 		messages = [],
+		slug = undefined,
 		jamUrl = undefined,
 		onAdd,
 		onJam,
@@ -28,7 +31,15 @@
 		player?: Snippet;
 		queue?: { title: string; by?: string }[];
 		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
-		messages?: { id?: string; from: string; text: string; at: number }[];
+		messages?: {
+			id?: string;
+			from: string;
+			text: string;
+			imageId?: string;
+			at: number;
+		}[];
+		/** Needed to address pasted images (#279); absent = text-only chat. */
+		slug?: string;
 		/** messageId → emoji → count (shared truth). */
 		reactions?: Record<string, Record<string, number>>;
 		/** "id:emoji" → I pressed it. */
@@ -39,7 +50,8 @@
 		jamUrl?: string;
 		onJam?: (url: string) => void;
 		onCheer?: (emoji: string) => void;
-		onChat?: (text: string) => void;
+		/** A pasted image rides along as a blob; the parent owns the upload. */
+		onChat?: (text: string, image?: Blob) => void;
 		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
 		cheers?: string[];
 	} = $props();
@@ -70,11 +82,38 @@
 	}
 
 	let draft = $state('');
+	// A pasted image waiting on the send button (#279) — Discord's flow:
+	// Ctrl+V, see the chip, hit Enter.
+	let pendingImage = $state<{ blob: Blob; preview: string } | null>(null);
+
+	function clearPending() {
+		if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
+		pendingImage = null;
+	}
+
+	async function pasteImage(e: ClipboardEvent) {
+		const file = Array.from(e.clipboardData?.items ?? [])
+			.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+			?.getAsFile();
+		if (!file) return; // text pastes stay the input's business
+		e.preventDefault();
+		const blob = await compressImage(file);
+		if (!blob) {
+			toasts.push('That image cannot be sent — GIFs are capped at 2 MB.', {
+				tone: 'error',
+			});
+			return;
+		}
+		clearPending();
+		pendingImage = { blob, preview: URL.createObjectURL(blob) };
+	}
+
 	function sendChat() {
 		const text = draft.trim();
-		if (!text) return;
+		if (!text && !pendingImage) return;
+		onChat?.(text, pendingImage?.blob);
 		draft = '';
-		onChat?.(text);
+		clearPending();
 	}
 </script>
 
@@ -170,11 +209,13 @@
 						<span
 							class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
 						>
-							<button
-								onclick={() => copy(message.text)}
-								class="text-muted/60 hover:text-ink"
-								aria-label="copy message"><Copy size={12} /></button
-							>
+							{#if message.text}
+								<button
+									onclick={() => copy(message.text)}
+									class="text-muted/60 hover:text-ink"
+									aria-label="copy message"><Copy size={12} /></button
+								>
+							{/if}
 							{#if message.id && onReact}
 								{@const id = message.id}
 								<button
@@ -185,9 +226,19 @@
 							{/if}
 						</span>
 					</div>
-					<div class="text-ink/85 wrap-anywhere">
-						<MessageText text={message.text} />
-					</div>
+					<!-- An image-only line has no text to render; MessageText turns a
+				     lone GIF link into the GIF itself. -->
+					{#if message.text}
+						<div class="text-ink/85 wrap-anywhere">
+							<MessageText text={message.text} />
+						</div>
+					{/if}
+					{#if message.imageId && slug}
+						<ChatImage
+							src="/api/rooms/{slug}/chat/images/{message.imageId}"
+							alt="Sent by {message.from}"
+						/>
+					{/if}
 					{#if message.id && onReact}
 						{@const id = message.id}
 						{#if reactingTo === id}
@@ -233,6 +284,20 @@
 		<div class="border-ink/5 border-t p-3">
 			{#if !live}
 				<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
+				{#if pendingImage}
+					<div class="relative mb-2 inline-block">
+						<img
+							src={pendingImage.preview}
+							alt="Ready to send"
+							class="ring-ink/10 max-h-24 rounded ring-1"
+						/>
+						<button
+							onclick={clearPending}
+							class="bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-1.5 -right-1.5 rounded-full p-0.5 ring-1"
+							aria-label="Remove image"><X size={12} /></button
+						>
+					</div>
+				{/if}
 				<form
 					class="mb-2 flex gap-1.5"
 					onsubmit={(e) => {
@@ -242,12 +307,14 @@
 				>
 					<input
 						bind:value={draft}
+						onpaste={pasteImage}
 						maxlength="500"
 						placeholder="Say something…"
 						class="input input-xs min-w-0 flex-1"
 					/>
-					<button disabled={!draft.trim()} class="btn btn-secondary btn-xs"
-						>Send</button
+					<button
+						disabled={!draft.trim() && !pendingImage}
+						class="btn btn-secondary btn-xs">Send</button
 					>
 				</form>
 			{/if}
