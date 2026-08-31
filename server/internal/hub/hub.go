@@ -131,6 +131,7 @@ type room struct {
 	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
 	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
 	chatIDs []protocol.ChatID                // ids the async save assigned (#219)
+	events  eventLog                         // what the room did, drained each tick (#321)
 	session *session
 	record  *accumulator
 	music   *jukebox
@@ -677,6 +678,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		}
 		idsNow := rm.chatIDs
 		rm.chatIDs = nil
+		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
 			At:            now().UnixMilli(),
 			State:         rm.session.state(now()),
@@ -685,6 +687,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			Chat:          chatNow,
 			ChatReactions: reactsNow,
 			ChatIDs:       idsNow,
+			Events:        eventsNow,
 			Sprint:        rm.sprint.state(now(), rm.seen),
 			Game:          rm.lastGame,
 			Execution: func() map[string]float64 {
@@ -867,7 +870,11 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return rm.music.apply(cmd, riderID, addedBy, now)
+	events, ok := rm.music.apply(cmd, riderID, addedBy, now)
+	for _, ev := range events {
+		rm.events.add(ev, now)
+	}
+	return ok
 }
 
 // startGame begins a mode; refused while another runs (end it first).

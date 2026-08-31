@@ -31,6 +31,28 @@ func clampSec(v float64) float64 {
 	return v
 }
 
+// eventKind labels every timeline line the deck produces (#321).
+const eventKind = "jukebox"
+
+// deckLine is one rider-attributed thing that happened to the queue.
+func deckLine(verb, actor, track string, now time.Time) protocol.RoomEvent {
+	return protocol.RoomEvent{
+		Kind: eventKind, Verb: verb, Actor: actor, Track: track,
+		Count: 1, At: now.UnixMilli(),
+	}
+}
+
+// nowPlaying is the line a track earns by reaching the deck, however it got
+// there: skipped into, ended into, or queued onto an empty deck. Nobody's
+// name is on it — the deck did this, and QueuedBy credits whoever put the
+// track there, however long ago.
+func nowPlaying(entry protocol.JukeboxEntry, now time.Time) protocol.RoomEvent {
+	return protocol.RoomEvent{
+		Kind: eventKind, Verb: "playing", Track: entry.Title,
+		QueuedBy: entry.AddedBy, Count: 1, At: now.UnixMilli(),
+	}
+}
+
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
 // jukebox is the server's half of the synced player (#23): it owns the queue
@@ -74,14 +96,16 @@ func (j *jukebox) positionAt(now time.Time) float64 {
 	return j.state.PositionSec + float64(now.UnixMilli()-j.state.AnchorMs)/1000
 }
 
-// apply runs one member command; returns false for junk. Every member may do
-// all of this (docs/SPEC.md matrix: jukebox controls default to members).
-// riderID identifies the voter; addedBy is the display name entries carry.
-func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) bool {
+// apply runs one member command; returns false for junk, plus the room-timeline
+// lines the command earned (#321) — the deck knows what happened, the room
+// decides who hears about it. Every member may do all of this (docs/SPEC.md
+// matrix: jukebox controls default to members). riderID identifies the voter;
+// addedBy is the display name entries carry.
+func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool) {
 	switch cmd.Action {
 	case "add":
 		if !videoIDPattern.MatchString(cmd.VideoID) || len(j.state.Queue) >= maxQueue {
-			return false
+			return nil, false
 		}
 		title := cmd.Title
 		if len(title) > 200 {
@@ -93,20 +117,23 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			AddedBy: addedBy, StartSec: clampSec(cmd.PositionSec),
 		}
 		if j.state.Current == nil {
-			// An empty deck plays immediately — adding the first song IS pressing play.
+			// An empty deck plays immediately — adding the first song IS
+			// pressing play, and one action gets one line: the now-playing
+			// one, which names who queued it anyway.
 			j.play(entry, now)
-			return true
+			return []protocol.RoomEvent{nowPlaying(entry, now)}, true
 		}
 		j.state.Queue = append(j.state.Queue, entry)
-		return true
+		return []protocol.RoomEvent{deckLine("queued", addedBy, entry.Title, now)}, true
 
 	case "remove":
 		i := j.indexOf(cmd.EntryID)
 		if i < 0 {
-			return false
+			return nil, false
 		}
+		removed := j.state.Queue[i]
 		j.state.Queue = append(j.state.Queue[:i], j.state.Queue[i+1:]...)
-		return true
+		return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true
 
 	case "vote":
 		// One vote per rider, toggled — and a vote that lands FLOATS the
@@ -114,7 +141,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// point of upvoting a party queue.
 		i := j.indexOf(cmd.EntryID)
 		if i < 0 || riderID == "" {
-			return false
+			return nil, false
 		}
 		// Rebuilt, never mutated in place: the snapshot clone shares these
 		// backing arrays with a marshal running outside the room lock (#219).
@@ -135,18 +162,18 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		if !voted {
 			j.float(i)
 		}
-		return true
+		return nil, true
 
 	case "move":
 		// Hand-reordering wins over vote order until the next vote — the
 		// queue slice IS the order, so there is nothing to re-sort.
 		from := j.indexOf(cmd.EntryID)
 		if from < 0 {
-			return false
+			return nil, false
 		}
 		to := min(max(cmd.Index, 0), len(j.state.Queue)-1)
 		if to == from {
-			return false
+			return nil, false
 		}
 		next := make([]protocol.JukeboxEntry, 0, len(j.state.Queue))
 		for i, entry := range j.state.Queue {
@@ -159,41 +186,46 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		copy(next[to+1:], next[to:])
 		next[to] = j.state.Queue[from]
 		j.state.Queue = next
-		return true
+		return nil, true
 
 	case "play":
 		if j.state.Current == nil || j.state.Playing {
-			return false
+			return nil, false
 		}
 		j.state.Playing = true
 		j.state.AnchorMs = now.UnixMilli()
-		return true
+		return nil, true
 
 	case "pause":
 		if j.state.Current == nil || !j.state.Playing {
-			return false
+			return nil, false
 		}
 		j.state.PositionSec = j.positionAt(now)
 		j.state.Playing = false
-		return true
+		return nil, true
 
 	case "seek":
 		// Moving the anchor IS the whole feature (#114): clients converge
 		// through the same drift-chase play/pause already use. Works paused
 		// too — the playhead moves, the deck stays stopped.
 		if j.state.Current == nil {
-			return false
+			return nil, false
 		}
 		j.state.PositionSec = clampSec(cmd.PositionSec)
 		j.state.AnchorMs = now.UnixMilli()
-		return true
+		return nil, true
 
 	case "skip":
 		if j.state.Current == nil {
-			return false
+			return nil, false
 		}
+		skipped := *j.state.Current
 		j.advance(now)
-		return true
+		events := []protocol.RoomEvent{deckLine("skipped", addedBy, skipped.Title, now)}
+		if j.state.Current != nil {
+			events = append(events, nowPlaying(*j.state.Current, now))
+		}
+		return events, true
 
 	case "ended":
 		// Every client reports the end; the (video, epoch) pair makes the
@@ -201,13 +233,16 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// used to be eaten by its own echoes (audit #219).
 		if j.state.Current == nil || j.state.Current.VideoID != cmd.VideoID ||
 			cmd.AnchorMs != j.state.AnchorMs {
-			return false
+			return nil, false
 		}
 		j.advance(now)
-		return true
+		if j.state.Current == nil {
+			return nil, true // the queue ran dry; silence says that already
+		}
+		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
 
 	default:
-		return false
+		return nil, false
 	}
 }
 
