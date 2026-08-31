@@ -56,6 +56,9 @@ func cheerSet(stored string) []string {
 type Presence interface {
 	Presence(slug string) protocol.RoomPresence
 	Kick(slug, userID string)
+	// A role change has to reach the sockets that are already open, or the
+	// new coach stays refused until they reconnect.
+	SetRole(slug, userID, role string)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
@@ -564,6 +567,8 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 	if req.Role == "banned" {
 		s.evict(room.Slug, req.UserID)
 		s.log.Info("member banned", "room", room.Slug, "rider", req.UserID)
+	} else if s.presence != nil {
+		s.presence.SetRole(room.Slug, req.UserID, req.Role)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -274,3 +274,49 @@ func TestChatRidesTheTick(t *testing.T) {
 		}
 	}
 }
+
+func TestSetRoleReachesOpenSockets(t *testing.T) {
+	// Promoting a coach used to change nothing until they reconnected: the
+	// rider struct is captured when the socket opens, so their control stayed
+	// refused and every roster still called them a member (rider report).
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/promote"
+
+	owner := dial(t, url, "jan:owner")
+	member := dial(t, url, "sven:member")
+	readTick(t, member) // the socket is registered by the time a tick arrives
+
+	h.SetRole("promote", "sven", "coach")
+
+	// The roster tells everyone, so the tiles re-badge without a reload.
+	deadline := time.Now().Add(5 * time.Second)
+	var promoted bool
+	for !promoted && time.Now().Before(deadline) {
+		for _, rider := range readTick(t, owner).Roster {
+			if rider.ID == "sven" && rider.Role == "coach" {
+				promoted = true
+			}
+		}
+	}
+	if !promoted {
+		t.Fatal("roster never carried the new role")
+	}
+
+	// And the control check honours it on the socket that is already open.
+	if err := wsjson.Write(t.Context(), member, protocol.ClientMessage{
+		Control: &protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 120},
+	}); err != nil {
+		t.Fatalf("send control: %v", err)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if readTick(t, member).State.WorkoutName == "Openers" {
+			return
+		}
+	}
+	t.Fatal("the promoted rider's control was still refused")
+}
