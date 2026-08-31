@@ -1,4 +1,4 @@
-// Package mcp is ADR-0015's coach endpoint: a minimal streamable-HTTP MCP
+// Package mcp is ADR-0017's coach endpoint: a minimal streamable-HTTP MCP
 // server (JSON-RPC over single POST round-trips) exposing read-only tools
 // that mirror the HTTP API. Bearer-token auth only; no sessions, no SSE.
 // ponytail: hand-rolled at ~200 lines — swap for the official Go SDK if the

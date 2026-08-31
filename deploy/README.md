@@ -17,6 +17,10 @@ The image is published to ghcr.io/natrontech/wattroom:main on every push to
 main (.github/workflows/publish.yml). The server migrates its own schema at
 boot, so pull + up -d is the entire deploy path.
 
+Planned maintenance is `docker compose -f docker-compose.prod.yml stop wattroom`
+— Caddy then serves maintenance.html (which polls /api/healthz and reloads
+itself) until `up -d wattroom` brings the binary back. No flag, no mode.
+
 DNS: wattroom.ch A/AAAA to the VM. Caddy takes TLS from there. Open 80, 443
 (tcp+udp), 7880-7881, and LiveKit's RTC UDP range on the VM firewall.
 

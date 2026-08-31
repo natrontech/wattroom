@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Training-load math per docs/SPEC.md (Training load) and ADR-0014: Coggan's
+// Training-load math per docs/SPEC.md (Training load) and ADR-0016: Coggan's
 // published formulas under trademark-safe names. Nothing here invents a number.
 
 // normPowerMinSeconds: below 20 min the rolling-4th-power estimate is not
@@ -113,7 +113,7 @@ func SuggestToday(
 }
 
 // FormZone maps percentage form (form / fitness × 100) onto SPEC's five
-// zones. Zone words describe the day, never the rider (ADR-0014).
+// zones. Zone words describe the day, never the rider (ADR-0016).
 func FormZone(formPct float64) string {
 	switch {
 	case formPct > 20:

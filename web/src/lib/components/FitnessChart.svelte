@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Fitness/Fatigue over the load series (#222, ADR-0014). Drawn 1:1 in
+	// Fitness/Fatigue over the load series (#222, ADR-0016). Drawn 1:1 in
 	// container pixels (bind:clientWidth) so type never scales down — the
 	// grid is the synthwave horizon (neon = grids, ADR-0005). Identity is
 	// carried by weight and shape, never color alone. Hover for a day's

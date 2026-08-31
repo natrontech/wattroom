@@ -12,7 +12,7 @@ order by created_at desc;
 delete from api_tokens where id = $1 and user_id = $2;
 
 -- name: GetUserByTokenHash :one
--- The bearer-auth lookup (ADR-0015): hash in, owner out.
+-- The bearer-auth lookup (ADR-0017): hash in, owner out.
 select u.* from users u
 join api_tokens t on t.user_id = u.id
 where t.token_hash = $1;

@@ -1,7 +1,7 @@
 /**
  * The progression API's shapes and copy, shared by /history, profile and home
  * (#222). One fetch, one vocabulary — zone sentences describe the day, never
- * the rider (ADR-0014's tone rule), and every claim is WattRoom-rides-only.
+ * the rider (ADR-0016's tone rule), and every claim is WattRoom-rides-only.
  */
 import { api } from './api';
 import type { Focus } from './workout/library';

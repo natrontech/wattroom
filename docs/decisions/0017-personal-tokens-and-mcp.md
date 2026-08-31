@@ -1,4 +1,4 @@
-# 0015 — Coach access: personal read tokens + a hand-rolled MCP endpoint
+# 0017 — Coach access: personal read tokens + a hand-rolled MCP endpoint
 
 - Status: accepted
 - Date: 2026-08-31

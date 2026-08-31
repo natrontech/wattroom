@@ -67,7 +67,7 @@ type loadJSON struct {
 }
 
 // Response is the whole progression payload — one assembly (Summary) shared
-// by GET /api/progression and the MCP tools (ADR-0015).
+// by GET /api/progression and the MCP tools (ADR-0017).
 type Response struct {
 	Curve curveJSON       `json:"curve"`
 	Rides []rideTrendJSON `json:"rides"`

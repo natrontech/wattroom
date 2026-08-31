@@ -19,7 +19,8 @@
 		{
 			"name": "web",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": ["--dir", "web", "dev", "--port", "5174", "--strictPort"],
+			"runtimeArgs": ["--dir", "web", "dev"],
+			"autoPort": true,
 			"port": 5174
 		}
 	]

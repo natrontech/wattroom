@@ -26,6 +26,14 @@ func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
 	return u, ok
 }
 
+func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	u, ok := f.User(r)
+	if !ok {
+		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
+	}
+	return u, ok
+}
+
 type harness struct {
 	mux   *http.ServeMux
 	store *store.Store
@@ -312,6 +320,33 @@ func TestScheduleLifecycle(t *testing.T) {
 	}
 	if status != http.StatusOK || !found {
 		t.Fatalf("nextSession missing: %d %v", status, body)
+	}
+
+	// Moving the plan (#258): members cannot, the owner can, the past and
+	// unknown ids bounce, and the room shows the new time.
+	newStart := time.Now().Add(4 * time.Hour).UTC().Format(time.RFC3339)
+	move := fmt.Sprintf(`{"startsAt":%q}`, newStart)
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+planID, move); status != http.StatusForbidden {
+		t.Fatalf("member reschedule: %d", status)
+	}
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+planID,
+		fmt.Sprintf(`{"startsAt":%q}`, time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339))); status != http.StatusBadRequest || body["field"] != "startsAt" {
+		t.Fatalf("past reschedule: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch,
+		"/api/rooms/"+slug+"/schedule/00000000-0000-0000-0000-000000000000", move); status != http.StatusNotFound {
+		t.Fatalf("unknown plan reschedule: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+planID, move); status != http.StatusNoContent {
+		t.Fatalf("reschedule: %d", status)
+	}
+	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	upcoming, _ = body["upcoming"].([]any)
+	moved, _ := upcoming[0].(map[string]any)
+	got, _ := time.Parse(time.RFC3339, fmt.Sprint(moved["startsAt"]))
+	want, _ := time.Parse(time.RFC3339, newStart)
+	if status != http.StatusOK || !got.Equal(want) {
+		t.Fatalf("moved time not visible: %d got %v want %v", status, got, want)
 	}
 
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role",

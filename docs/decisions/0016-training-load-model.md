@@ -1,4 +1,4 @@
-# 0014 — Training load: Coggan math, trademark-safe names, nudges never gates
+# 0016 — Training load: Coggan math, trademark-safe names, nudges never gates
 
 - Status: accepted
 - Date: 2026-08-31

@@ -27,6 +27,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
+	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
@@ -64,6 +65,13 @@ func main() {
 		log.Info("store ready, migrations applied")
 	}
 
+	// Public origin for OAuth callbacks and absolute og:image URLs; in dev the
+	// Vite proxy forwards /api.
+	baseURL := os.Getenv("WATTROOM_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
@@ -74,11 +82,6 @@ func main() {
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
 	if st != nil {
-		// Public origin for OAuth callbacks; in dev the Vite proxy forwards /api.
-		baseURL := os.Getenv("WATTROOM_BASE_URL")
-		if baseURL == "" {
-			baseURL = "http://localhost:8080"
-		}
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
 		authService.Register(mux)
 		account.New(st, authService, log).Register(mux)
@@ -94,14 +97,14 @@ func main() {
 			authService.SetMailAvailable(true)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
-		// Personal read tokens (ADR-0015): bearer auth for GETs of own data
+		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
 		// and the MCP coach endpoint. Cookie auth stays the write path.
 		tokenService := tokens.New(st, authService, log)
 		tokenService.Register(mux)
 		readAuth := tokenService.ReadSource(authService)
 		mcp.New(st, tokenService, log).Register(mux)
 		progression.New(st, readAuth, log).Register(mux)
-		// One-pass norm_watts fill for pre-ADR-0014 rides; exits when done.
+		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
 		go stats.BackfillNormWatts(context.Background(), st, log)
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
@@ -135,7 +138,20 @@ func main() {
 			roomsService.SetVoiceEjector(avService)
 		}
 	}
-	mux.Handle("/", spaHandler())
+	// Link previews: crawlers don't run JS, so og meta + images come from Go (#240).
+	var lookup og.LookupRoom
+	if st != nil {
+		lookup = func(ctx context.Context, slug string) (string, string, bool) {
+			room, err := st.Queries.GetRoomBySlug(ctx, slug)
+			if err != nil {
+				return "", "", false
+			}
+			return room.Name, room.Icon, true
+		}
+	}
+	social := og.New(baseURL, lookup, log)
+	social.Register(mux)
+	mux.Handle("/", spaHandler(social))
 
 	addr := ":8080"
 	if v := os.Getenv("WATTROOM_ADDR"); v != "" {
@@ -205,17 +221,29 @@ func versionHandler() http.HandlerFunc {
 	}
 }
 
-// spaHandler serves the embedded SvelteKit build with index.html fallback.
-func spaHandler() http.Handler {
+// spaHandler serves the embedded SvelteKit build; SPA-route fallbacks get
+// index.html with og meta spliced in at request time (the embedded FS is
+// read-only, and only the server knows what a /r/{slug} link points at).
+func spaHandler(social *og.Service) http.Handler {
 	dist, err := fs.Sub(webdist, "webdist")
 	if err != nil {
 		panic(err)
 	}
 	fileServer := http.FileServerFS(dist)
+	index, _ := fs.ReadFile(dist, "index.html") // nil before `make web` (dev placeholder)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := fs.Stat(dist, r.URL.Path[1:]); err != nil && r.URL.Path != "/" {
-			r.URL.Path = "/" // SPA fallback: unknown paths get index.html
+		if p := strings.TrimPrefix(r.URL.Path, "/"); p != "" && p != "index.html" {
+			if _, err := fs.Stat(dist, p); err == nil {
+				fileServer.ServeHTTP(w, r)
+				return
+			}
 		}
-		fileServer.ServeHTTP(w, r)
+		if index == nil {
+			r.URL.Path = "/" // no frontend build embedded; keep the old 404-ish behavior
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(social.Inject(index, r))
 	})
 }

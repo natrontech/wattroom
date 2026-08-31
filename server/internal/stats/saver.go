@@ -213,15 +213,57 @@ func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Ti
 	return int32(StreakBonus(WeekStreak(times, at))) //nolint:gosec // capped at 250
 }
 
+// Retry policy for session saves (#235): a Postgres blip at session close
+// must not eat the room's rides. save is one transaction, so a failed attempt
+// leaves nothing behind and retrying is safe. Doubling backoff sums to ~2 min
+// of waits — enough for a restart or failover; a longer outage loses the
+// rides, logged loudly below.
+const (
+	saveAttempts   = 8
+	retryBase      = time.Second
+	attemptTimeout = 10 * time.Second
+)
+
 // SaveSession implements hub.SessionSaver. The hub cannot act on a failure,
-// so it is logged here and the tick loop never learns.
+// so the retry policy lives here and the tick loop never learns.
 func (s *Saver) SaveSession(
 	ctx context.Context,
 	slug, workoutName, workoutJSON string,
 	startedAt time.Time,
 	riders []hub.RiderRecord,
 ) {
-	if err := s.save(ctx, slug, workoutName, workoutJSON, startedAt, riders); err != nil {
-		s.log.Error("session save failed", "err", err, "room", slug)
+	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
+		return s.save(ctx, slug, workoutName, workoutJSON, startedAt, riders)
+	})
+	if err != nil {
+		s.log.Error("session save failed, rides lost", "err", err, "room", slug)
+	}
+}
+
+// retrySave runs save with a per-attempt timeout and doubling backoff until
+// it succeeds, attempts run out, or ctx is cancelled — returning the last
+// attempt's error.
+func retrySave(
+	ctx context.Context,
+	log *slog.Logger,
+	room string,
+	save func(context.Context) error,
+) error {
+	wait := retryBase
+	for attempt := 1; ; attempt++ {
+		attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
+		err := save(attemptCtx)
+		cancel()
+		if err == nil || attempt == saveAttempts {
+			return err
+		}
+		log.Warn("session save failed, retrying",
+			"err", err, "room", room, "attempt", attempt, "wait", wait)
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return err
+		}
+		wait *= 2
 	}
 }

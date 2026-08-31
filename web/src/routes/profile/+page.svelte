@@ -4,6 +4,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import { fetchProgression, type TrendRide } from '$lib/progression';
@@ -18,7 +19,7 @@
 		if (r.ok) trend = r.data?.rides ?? [];
 	});
 
-	// Coach access tokens (ADR-0015). The secret exists client-side only in
+	// Coach access tokens (ADR-0017). The secret exists client-side only in
 	// freshToken, until the rider hides it.
 	interface ApiToken {
 		id: string;
@@ -90,6 +91,8 @@
 	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
+	// null = no anchor set; saving null clears it (ADR-0014, device-local).
+	let lthr = $state<number | null>(profile.current.lthr ?? null);
 	let sprintGrade = $state(profile.current.sprintGrade);
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
@@ -125,13 +128,23 @@
 			});
 			status = err
 				? err.message
-				: (profile.update({ ftp: nextFtp, kg, sprintGrade, singleSpeed }) ??
-					'Saved.');
+				: (profile.update({
+						ftp: nextFtp,
+						kg,
+						sprintGrade,
+						singleSpeed,
+						lthr: lthr ?? undefined,
+					}) ?? 'Saved.');
 			return;
 		}
 		status =
-			profile.update({ ftp: nextFtp, kg, sprintGrade, singleSpeed }) ??
-			'Saved.';
+			profile.update({
+				ftp: nextFtp,
+				kg,
+				sprintGrade,
+				singleSpeed,
+				lthr: lthr ?? undefined,
+			}) ?? 'Saved.';
 	}
 
 	async function deleteAccount() {
@@ -240,6 +253,54 @@
 					>
 				</label>
 				<label class="block">
+					<span class="eyebrow">LTHR (bpm)</span>
+					<input
+						type="number"
+						bind:value={lthr}
+						min={PROFILE_LIMITS.minLthr}
+						max={PROFILE_LIMITS.maxLthr}
+						placeholder="—"
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[11px]">
+						Threshold heart rate — anchors your HR zones the way FTP anchors
+						power zones.
+						{#if !lthr}
+							<a href="/ramp" class="hover:text-ink underline"
+								>A ramp test with a strap suggests one.</a
+							>
+						{/if}
+					</span>
+				</label>
+				{#if lthr && lthr >= PROFILE_LIMITS.minLthr && lthr <= PROFILE_LIMITS.maxLthr}
+					<div class="sm:col-span-2">
+						<span class="eyebrow">your heart-rate zones</span>
+						<div class="mt-2 flex flex-wrap gap-1.5">
+							{#each hrZoneRanges(lthr) as range (range.zone)}
+								<span
+									class="border-muted/15 bg-surface-raised rounded-full border px-3 py-1.5 text-[11px]"
+								>
+									<span class="{ZONE_TEXT[range.zone]} font-semibold"
+										>Z{range.zone}</span
+									>
+									<span class="text-muted ml-1">{range.name}</span>
+									<span class="ml-1 font-mono tabular-nums"
+										>{range.zone === 1
+											? `≤ ${range.high}`
+											: range.high !== undefined
+												? `${range.low}–${range.high}`
+												: `${range.low}+`}</span
+									>
+								</span>
+							{/each}
+						</div>
+						<p class="text-muted mt-1.5 text-[11px]">
+							Derived from your LTHR (Coggan levels) — they colour your own bpm
+							only, and are never scored.
+						</p>
+					</div>
+				{/if}
+				<label class="block">
 					<span class="eyebrow">sprint grade (%)</span>
 					<input
 						type="number"
@@ -310,7 +371,7 @@
 			</div>
 		{/if}
 
-		<!-- Coach access (ADR-0015): read-only tokens for your own AI/tools. -->
+		<!-- Coach access (ADR-0017): read-only tokens for your own AI/tools. -->
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Coach access</h2>
 			<p class="text-muted mt-1 text-xs">

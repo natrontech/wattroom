@@ -228,7 +228,7 @@ type ListRidesMissingNormRow struct {
 	Samples []byte
 }
 
-// The ADR-0014 backfill's read: each blob is read exactly once, then goes
+// The ADR-0016 backfill's read: each blob is read exactly once, then goes
 // cold again — the per-ride-read storage rule holds.
 func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]ListRidesMissingNormRow, error) {
 	rows, err := q.db.Query(ctx, listRidesMissingNorm, limit)

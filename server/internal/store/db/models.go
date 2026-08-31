@@ -132,6 +132,7 @@ type User struct {
 	Email         *string
 	NotifyPlanned bool
 	UnsubToken    pgtype.UUID
+	FriendCode    string
 }
 
 type Workout struct {

@@ -84,7 +84,7 @@ order by started_at
 limit 1000;
 
 -- name: ListRidesMissingNorm :many
--- The ADR-0014 backfill's read: each blob is read exactly once, then goes
+-- The ADR-0016 backfill's read: each blob is read exactly once, then goes
 -- cold again — the per-ride-read storage rule holds.
 select id, samples from rides where norm_watts is null limit $1;
 

@@ -1,4 +1,4 @@
-// Package tokens is ADR-0015's personal read tokens: created and revoked on
+// Package tokens is ADR-0017's personal read tokens: created and revoked on
 // the profile, stored as SHA-256 only, accepted as bearer auth solely for
 // reads of the owner's own data.
 package tokens
@@ -58,14 +58,21 @@ func (s *Service) FromRequest(r *http.Request) (db.User, bool) {
 	return user, true
 }
 
+// ReadUserSource is what ReadSource hands back: optional auth (User) plus
+// mandatory auth (RequireUser) so it can stand in for the cookie service.
+type ReadUserSource interface {
+	UserSource
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+}
+
 // ReadSource wraps a cookie source so bearer tokens also authenticate — GET
-// only, so a token can never write (ADR-0015).
-func (s *Service) ReadSource(cookie UserSource) UserSource {
+// only, so a token can never write (ADR-0017).
+func (s *Service) ReadSource(cookie ReadUserSource) ReadUserSource {
 	return readSource{cookie: cookie, tokens: s}
 }
 
 type readSource struct {
-	cookie UserSource
+	cookie ReadUserSource
 	tokens *Service
 }
 
@@ -77,6 +84,14 @@ func (rs readSource) User(r *http.Request) (db.User, bool) {
 		return db.User{}, false
 	}
 	return rs.tokens.FromRequest(r)
+}
+
+func (rs readSource) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	if user, ok := rs.User(r); ok {
+		return user, true
+	}
+	// No cookie and no bearer: the cookie source writes the 401-vs-500 refusal.
+	return rs.cookie.RequireUser(w, r, signInMessage)
 }
 
 type tokenJSON struct {

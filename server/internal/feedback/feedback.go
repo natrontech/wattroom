@@ -43,7 +43,7 @@ type Report struct {
 }
 
 type Sessions interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 // Issuer files the report upstream; nil means disk-only (dev without a token).
@@ -83,9 +83,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.sessions.User(r)
+	user, ok := s.sessions.RequireUser(w, r, "Sign in to send feedback.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in to send feedback.")
 		return
 	}
 	// One report per rider per 10 s: a stuck retry loop must not flood.

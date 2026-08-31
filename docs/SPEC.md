@@ -99,6 +99,24 @@ Token names are the styleguide's (`--color-z1`…`z7`) — see `/dev/styleguide`
 | Z6   | Anaerobic         | 121–150 % |
 | Z7   | Neuromuscular     | > 150 %   |
 
+## Heart-rate zones (Coggan 5-zone, % of LTHR — ADR-0014)
+
+Anchored on the rider's **LTHR** (profile, bpm, bounds 100–210). Display-only:
+colours the rider's **own** bpm readout, never anyone else's, never scored
+(ADR-0008). Z6/Z7 have no HR analog — heart rate lags too hard for them.
+
+| Zone | Name            | % LTHR   |
+| ---- | --------------- | -------- |
+| Z1   | Active recovery | ≤ 68 %   |
+| Z2   | Endurance       | 69–83 %  |
+| Z3   | Tempo           | 84–94 %  |
+| Z4   | Threshold       | 95–105 % |
+| Z5   | VO₂ max         | > 105 %  |
+
+- **LTHR suggestion**: a scoreable ramp test with HR recorded suggests
+  `0.90 × max test HR` **(default — tune in alpha)** — one tap to apply, never
+  auto-applied (same posture as FTP suggestions).
+
 ## Stats formulas (defaults — tune in alpha)
 
 - **Tolerance band**: within ±5 % of target power, floor ±10 W (beginners at 100 W targets need the floor).
@@ -111,7 +129,7 @@ Token names are the styleguide's (`--color-z1`…`z7`) — see `/dev/styleguide`
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
 
-## Training load (defaults — tune in alpha; model rationale ADR-0014, research RESEARCH.md §13)
+## Training load (defaults — tune in alpha; model rationale ADR-0016, research RESEARCH.md §13)
 
 Naming is deliberate: TSS/NP/IF/CTL/ATL/TSB are Peaksware trademarks — WattRoom ships the
 published math under the names **Load, Intensity, Fitness, Fatigue, Form** (the

@@ -12,7 +12,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// BackfillNormWatts fills norm_watts on rides saved before ADR-0014, reading
+// BackfillNormWatts fills norm_watts on rides saved before ADR-0016, reading
 // each blob exactly once. Idempotent (null-guarded), so running it on every
 // start is free once done. Exits when no rows remain, an error repeats, or
 // ctx ends. ponytail: serial batches of 100 — at alpha ride counts this is

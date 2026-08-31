@@ -1,6 +1,6 @@
 -- +goose Up
 
--- ADR-0015: personal read tokens for coach access (API + MCP). Only the
+-- ADR-0017: personal read tokens for coach access (API + MCP). Only the
 -- SHA-256 of a token is stored; the cascade is the delete-account purge.
 create table api_tokens (
     id           uuid primary key default gen_random_uuid(),

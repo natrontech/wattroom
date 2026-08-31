@@ -53,12 +53,12 @@ func (q *Queries) DeleteToken(ctx context.Context, arg DeleteTokenParams) (int64
 }
 
 const getUserByTokenHash = `-- name: GetUserByTokenHash :one
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token from users u
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code from users u
 join api_tokens t on t.user_id = u.id
 where t.token_hash = $1
 `
 
-// The bearer-auth lookup (ADR-0015): hash in, owner out.
+// The bearer-auth lookup (ADR-0017): hash in, owner out.
 func (q *Queries) GetUserByTokenHash(ctx context.Context, tokenHash []byte) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByTokenHash, tokenHash)
 	var i User
@@ -73,6 +73,7 @@ func (q *Queries) GetUserByTokenHash(ctx context.Context, tokenHash []byte) (Use
 		&i.Email,
 		&i.NotifyPlanned,
 		&i.UnsubToken,
+		&i.FriendCode,
 	)
 	return i, err
 }
