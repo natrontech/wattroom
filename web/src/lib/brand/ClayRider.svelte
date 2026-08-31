@@ -8,12 +8,12 @@
 		flip = false,
 	}: { hue?: number; speed?: number; flip?: boolean } = $props();
 
-	const jersey = `hsl(${hue} 62% 56%)`;
-	const jerseyDark = `hsl(${hue} 48% 36%)`;
+	const jersey = $derived(`hsl(${hue} 62% 56%)`);
+	const jerseyDark = $derived(`hsl(${hue} 48% 36%)`);
 	const skin = 'hsl(28 55% 66%)';
-	const helmet = `hsl(${hue + 150} 70% 60%)`;
-	const frame = `hsl(${hue + 40} 28% 24%)`;
-	const cycle = 0.9 / speed;
+	const helmet = $derived(`hsl(${hue + 150} 70% 60%)`);
+	const frame = $derived(`hsl(${hue + 40} 28% 24%)`);
+	const cycle = $derived(0.9 / speed);
 </script>
 
 <svg
