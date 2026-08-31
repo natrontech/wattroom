@@ -16,6 +16,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Added
+
+- What's new: the app shows the changelog of the version it is running, and
+  says so once when a new version has landed — on the home screen, never
+  during a ride.
+
 ## [2026.09.1] - 2026-09-01
 
 ### Added

@@ -8,6 +8,8 @@ WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
+# Served at /changelog.md so the app can show what this build changed (#345).
+COPY CHANGELOG.md ./static/changelog.md
 RUN pnpm build
 
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS server

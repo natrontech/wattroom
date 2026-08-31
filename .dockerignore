@@ -8,3 +8,5 @@ web/node_modules
 web/build
 server/webdist
 *.md
+# except the changelog: the SPA build stages it as a static asset (#345).
+!CHANGELOG.md

@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 .hwlog/
 test-results/
 playwright-report/
+
+# staged from the repo root by `make changelog`
+static/changelog.md

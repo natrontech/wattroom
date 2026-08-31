@@ -11,6 +11,8 @@
 		type LoadSummary,
 	} from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
+	import { changelog } from '$lib/changelog.svelte';
+	import { summarize } from '$lib/changelog';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -35,6 +37,9 @@
 	}
 
 	void account.load();
+	// What's new (#345). Home is the between-rides surface, which is the only
+	// place this belongs — ux.md: never interrupt a rider mid-interval.
+	void changelog.load();
 
 	let rooms = $state<RoomEntry[] | null>(null);
 	let rides = $state<Ride[] | null>(null);
@@ -109,6 +114,22 @@
 					<button
 						onclick={() => void load()}
 						class="text-muted hover:text-ink text-xs underline">Retry</button
+					>
+				{/snippet}
+			</Banner>
+		</div>
+	{/if}
+
+	{#if changelog.unseen}
+		<div class="mt-6">
+			<Banner tone="ok">
+				<span class="font-display font-bold">{changelog.unseen.version}</span>
+				is running — {summarize(changelog.unseen)}.
+				<a href="/whats-new" class="underline">See what changed</a>
+				{#snippet action()}
+					<button
+						onclick={() => changelog.dismiss()}
+						class="text-muted hover:text-ink text-xs underline">Dismiss</button
 					>
 				{/snippet}
 			</Banner>

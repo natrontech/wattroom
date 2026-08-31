@@ -1,7 +1,7 @@
 # WattRoom — common tasks. Dev loop: `make infra` once, then `make dev-server`
 # and `make dev-web` in two terminals (Vite proxies /api and /ws to :8080).
 
-.PHONY: infra dev-server dev-web web protocol sqlc seed build test lint check ci release
+.PHONY: infra dev-server dev-web web changelog protocol sqlc seed build test lint check ci release
 
 infra: ## start Postgres + LiveKit containers
 	docker compose up -d
@@ -9,10 +9,15 @@ infra: ## start Postgres + LiveKit containers
 dev-server: ## run Go server with hot reload (installs air on first use)
 	cd server && WATTROOM_DB="postgres://wattroom:wattroom@localhost:5432/wattroom" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@latest
 
-dev-web: ## run Vite dev server
+dev-web: changelog ## run Vite dev server
 	cd web && pnpm dev
 
-web: ## build frontend and embed it into the server
+changelog: ## stage CHANGELOG.md as a static asset (#345)
+	@# The SPA serves it at /changelog.md, so what a rider reads is the file
+	@# the running build shipped with. Gitignored — it is a build artifact.
+	cp CHANGELOG.md web/static/changelog.md
+
+web: changelog ## build frontend and embed it into the server
 	cd web && pnpm install --frozen-lockfile && pnpm build
 	rm -rf server/webdist/* && cp -R web/build/* server/webdist/
 
