@@ -302,6 +302,37 @@ export interface ServerTick {
   riders: { [key: string]: RiderMetrics};
 }
 /**
+ * RoomPresence is the hub's live answer for one room (#251): the rooms list,
+ * the rail, and the /rooms page all render this shape. It rides GET /api/rooms
+ * rather than the room WS, but it is shared vocabulary like Rider — one
+ * canonical home, generated for the client like everything here.
+ */
+export interface RoomPresence {
+  /**
+   * Riders connected to the room WS, counted as people, not sockets.
+   */
+  connected?: number /* int */;
+  phase?: string;
+  /**
+   * Display names — members-only server-side, room-scoped like all live data.
+   */
+  riders?: string[];
+  /**
+   * Who is in the voice channel, and who has a camera live (LiveKit webhooks).
+   */
+  voice?: string[];
+  cameras?: string[];
+  /**
+   * Names with live metrics in the last few seconds — the watt dot.
+   */
+  riding?: string[];
+  /**
+   * The late-join radar: what is on and how far in, while a session runs.
+   */
+  workoutName?: string;
+  elapsedSec?: number /* int */;
+}
+/**
  * Error tells a client why its connection or command was refused.
  */
 export interface Error {

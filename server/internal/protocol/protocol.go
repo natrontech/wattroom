@@ -231,6 +231,26 @@ type ServerTick struct {
 	Riders    map[string]RiderMetrics `json:"riders"`
 }
 
+// RoomPresence is the hub's live answer for one room (#251): the rooms list,
+// the rail, and the /rooms page all render this shape. It rides GET /api/rooms
+// rather than the room WS, but it is shared vocabulary like Rider — one
+// canonical home, generated for the client like everything here.
+type RoomPresence struct {
+	// Riders connected to the room WS, counted as people, not sockets.
+	Connected int    `json:"connected,omitempty"`
+	Phase     string `json:"phase,omitempty"`
+	// Display names — members-only server-side, room-scoped like all live data.
+	Riders []string `json:"riders,omitempty"`
+	// Who is in the voice channel, and who has a camera live (LiveKit webhooks).
+	Voice   []string `json:"voice,omitempty"`
+	Cameras []string `json:"cameras,omitempty"`
+	// Names with live metrics in the last few seconds — the watt dot.
+	Riding []string `json:"riding,omitempty"`
+	// The late-join radar: what is on and how far in, while a session runs.
+	WorkoutName string `json:"workoutName,omitempty"`
+	ElapsedSec  int    `json:"elapsedSec,omitempty"`
+}
+
 // Error tells a client why its connection or command was refused.
 type Error struct {
 	Code    string `json:"code"`

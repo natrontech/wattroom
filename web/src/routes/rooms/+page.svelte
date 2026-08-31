@@ -6,6 +6,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
+	import { presence } from '$lib/presence.svelte';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 
 	interface RoomSummary {
@@ -49,7 +50,10 @@
 	);
 
 	$effect(() => {
-		if (account.loaded && account.me && rooms === null) void load();
+		// Loaded once, then re-fetched on every presence ping (#251) — this
+		// page used to freeze the moment it rendered.
+		presence.version;
+		if (account.loaded && account.me) void load();
 	});
 
 	async function load() {
