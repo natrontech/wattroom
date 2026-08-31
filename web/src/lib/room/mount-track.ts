@@ -5,32 +5,41 @@
  * room that is every tick, once a second. The old attach created a brand-new
  * <video> element per run and LiveKit kept a reference to every orphan:
  * visible flicker, then decoder exhaustion, then a dead tab. This mounts a
- * track exactly once per (container, track) pair; re-runs are no-ops, and a
- * genuine track change first detaches every stale element the track still
- * holds.
+ * track exactly once per (container, track) pair; re-runs are no-ops.
+ *
+ * One track can be on screen in several places at once — a rider's camera
+ * lives in their tile AND on the stage the moment someone picks it. So a
+ * container only ever detaches the element IT put up: a bare `detach()`
+ * rips the track out of every other container too, which is how picking a
+ * source blanked the tiles underneath (#335).
  */
 interface Mountable {
 	attach(): HTMLMediaElement;
-	detach(): HTMLMediaElement[];
+	detach(element: HTMLMediaElement): HTMLMediaElement;
+	attachedElements: HTMLMediaElement[];
 	mediaStreamTrack: MediaStreamTrack;
 }
+
+/** Which track put an element up, so we hand it back to the right owner. */
+const mountedBy = new WeakMap<HTMLMediaElement, Mountable>();
 
 export function mountTrack(
 	container: HTMLElement,
 	track: Mountable | undefined,
 	fit: 'cover' | 'contain',
 ): void {
-	if (!track) {
-		container.replaceChildren();
-		return;
-	}
-	const id = track.mediaStreamTrack.id;
-	const existing = container.firstElementChild as HTMLElement | null;
-	if (existing?.dataset.trackId === id) return; // already showing this track
-	track.detach(); // drop every stale element the track still references
+	const existing = container.firstElementChild as HTMLMediaElement | null;
+	if (existing?.dataset.trackId === track?.mediaStreamTrack.id) return;
+	if (existing) mountedBy.get(existing)?.detach(existing);
 	container.replaceChildren();
+	if (!track) return;
+	// A {#key} block throws its container away without telling LiveKit; sweep
+	// what it left behind before adding one more (#214).
+	for (const stale of track.attachedElements)
+		if (!stale.isConnected) track.detach(stale);
 	const el = track.attach();
-	el.dataset.trackId = id;
+	mountedBy.set(el, track);
+	el.dataset.trackId = track.mediaStreamTrack.id;
 	el.style.width = '100%';
 	el.style.height = '100%';
 	el.style.objectFit = fit;
