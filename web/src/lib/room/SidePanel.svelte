@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Plus, SmilePlus } from '@lucide/svelte';
+	import { keepSize } from '$lib/room/keep-size';
 
 	// In media-focus the player lives in the main area, so the panel must not render a second one.
 	let {
@@ -45,6 +46,10 @@
 	let adding = $state(false);
 	let url = $state('');
 
+	// Hoisted for the same reason as the stage's: an inline `keepSize(...)`
+	// is a new attachment every render, which re-applies the stored width.
+	const rememberWidth = keepSize('wattroom.pane.side', 'horizontal');
+
 	let reactingTo = $state<string | null>(null);
 
 	let draft = $state('');
@@ -56,7 +61,14 @@
 	}
 </script>
 
-<aside class="border-ink/5 flex h-full w-80 shrink-0 flex-col border-l">
+<!-- Resizable like a Discord pane (#280). `direction: rtl` puts the browser's
+     own grip on the LEFT border, which is the edge that faces the room; the
+     content inside reads left-to-right as normal. -->
+<aside
+	{@attach rememberWidth}
+	class="border-ink/5 flex h-full w-80 shrink-0 [resize:horizontal] flex-col border-l [direction:rtl] [&>*]:[direction:ltr]"
+	style="min-width: 260px; max-width: 40vw; overflow: hidden"
+>
 	{#if showPlayer && player}
 		<div class="border-ink/5 border-b p-3">
 			{@render player()}
