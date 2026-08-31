@@ -1,176 +1,231 @@
 /**
- * Accent palettes (#292). ADR-0005 gives the two accents different jobs:
- * `--color-watt` marks live data and is the only thing that glows, and
- * `--color-neon` is structural chrome that never does. A palette therefore
- * picks a *pair*, never a single colour, and every path here keeps the two
- * hues far enough apart that a glowing number cannot read as chrome.
+ * Themes (#331). A theme owns every colour token, not just the accents, and is
+ * derived rather than hand-picked: lightness and chroma are pinned per family
+ * and hue is the only free variable. That is what makes an unfamiliar theme
+ * safe — it inherits the legibility of the one that shipped instead of
+ * re-rolling it.
  *
- * Pure on purpose — the DOM and the rider's choice live in palette.svelte.ts,
- * so the colour rules stay testable without a browser.
+ * ADR-0005's restraint rule is unchanged and is expressed here: `watt` marks
+ * live data and is the only token that glows, `neon` is chrome. The zone ramp
+ * sweeps from neon to watt, so intensity climbs from the room's own hue to the
+ * live-data hue — which is exactly what the shipped Outrun ramp already did.
+ *
+ * Pure: the DOM lives in palette.svelte.ts, so every rule here is testable.
  */
+import { fitContrast, normalizeHue, oklchToHex, type Oklch } from './color';
 
-/** Both sides of a light-dark() token — the shape app.css already uses. */
-export interface AccentPair {
-	light: string;
-	dark: string;
-}
+export const TOKENS = [
+	'surface',
+	'surface-raised',
+	'muted',
+	'watt',
+	'neon',
+	'ink',
+	'paper',
+	'z1',
+	'z2',
+	'z3',
+	'z4',
+	'z5',
+	'z6',
+	'z7',
+] as const;
 
-export interface Palette {
+export type TokenName = (typeof TOKENS)[number];
+export type Tokens = Record<TokenName, string>;
+
+/** Dark themes are offered under the dark scheme, white ones under light. */
+export type ThemeFamily = 'dark' | 'white';
+
+export interface Theme {
 	id: string;
+	/**
+	 * What the rider actually chose. Each identity exists in both families, so
+	 * the scheme setting can flip between them without losing the choice — and
+	 * `.cave`, which is always dark (ADR-0005, amended in #113), can render the
+	 * dark half of the same identity rather than something unrelated.
+	 */
+	identity: string;
 	name: string;
-	/** One line under the name: what this palette is for. */
 	note: string;
-	watt: AccentPair;
-	neon: AccentPair;
+	family: ThemeFamily;
+	tokens: Tokens;
 }
 
-export const DEFAULT_ID = 'outrun';
-export const CUSTOM_ID = 'custom';
+export interface ThemeSpec {
+	id: string;
+	identity: string;
+	name: string;
+	note: string;
+	family: ThemeFamily;
+	/** Live data. */
+	wattHue: number;
+	/** Chrome. Also the cold end of the zone ramp. */
+	neonHue: number;
+	/** Surfaces, muted text and ink. */
+	surfaceHue: number;
+	/**
+	 * Lightness/chroma escape hatch for the watt token. Yellow and green cannot
+	 * reach the family's default chroma at its default lightness, so a theme
+	 * built on them says so explicitly rather than silently gamut-clipping to
+	 * mud. Still gate-checked like everything else.
+	 */
+	wattLc?: { l: number; c: number };
+	/** Exact values that win over derivation — Outrun pins the shipped hexes. */
+	exact?: Partial<Tokens>;
+}
 
 /**
- * Degrees the neon hue sits behind the watt hue. Measured off the shipped
- * tokens in app.css, where the pair is 65° apart — that gap is what keeps
- * chrome reading as chrome, so a custom palette inherits it instead of
- * letting a rider collapse both accents onto one hue.
+ * Lightness and chroma per family. Surfaces, text, and accents are anchored to
+ * the shipped tokens; zone lightness is the monotonic, contrast-gated ramp
+ * adopted in #331. Changing a number here restyles every theme at once, which
+ * is the point: the relationships live in one place.
  */
-export const HUE_SEPARATION = 65;
-
-/** The narrowest separation any palette may ship with. */
-export const MIN_HUE_SEPARATION = 40;
-
-/**
- * Lightness and chroma measured off the shipped Outrun pair, so a custom
- * palette lands with its legibility profile rather than a guessed one: hue is
- * the only variable a rider moves.
- */
-const CUSTOM_LCH = {
-	wattLight: [0.611, 0.23],
-	wattDark: [0.673, 0.233],
-	neonLight: [0.475, 0.243],
-	neonDark: [0.56, 0.277],
-} as const;
-
-/**
- * ADR-0005 records that Outrun won over Tron Ice, Miami Nights and Laser
- * Yellow by rendering all four against the same mocks — it did not record the
- * losing values. Outrun below is the shipped token set, unchanged. The other
- * three are reconstructions: hues picked to match their names, lightness and
- * chroma solved so each accent stays inside sRGB and clears 3.5:1 against its
- * own surface. They deserve a design pass against real mocks before anyone
- * calls them final.
- */
-export const PRESETS: Palette[] = [
+const FAMILY: Record<
+	ThemeFamily,
 	{
-		id: DEFAULT_ID,
-		name: 'Outrun',
-		note: 'The shipped identity — magenta data on violet chrome.',
-		watt: { light: '#e6247d', dark: '#ff3d8b' },
-		neon: { light: '#6f1ad1', dark: '#8b2bff' },
-	},
-	{
-		id: 'tron-ice',
-		name: 'Tron Ice',
-		note: 'The colder fallback ADR-0005 names, for long sessions.',
-		watt: { light: '#00858d', dark: '#00bcc5' },
-		neon: { light: '#224dca', dark: '#3968e8' },
-	},
-	{
-		id: 'miami-nights',
-		name: 'Miami Nights',
-		note: 'Coral over teal — the furthest thing here from Outrun.',
-		watt: { light: '#e63651', dark: '#fc4e63' },
-		neon: { light: '#007475', dark: '#009494' },
-	},
-	{
-		id: 'laser-yellow',
-		name: 'Laser Yellow',
-		note: 'The original watt-yellow, kept over violet chrome.',
-		watt: { light: '#a07a00', dark: '#ebcf00' },
-		neon: { light: '#6f1ad1', dark: '#8b2bff' },
-	},
-];
-
-/** Wrap any angle into [0, 360). */
-export function normalizeHue(hue: number): number {
-	return ((hue % 360) + 360) % 360;
-}
-
-/** Shortest angular distance between two hues, 0–180. */
-export function hueDistance(a: number, b: number): number {
-	const d = Math.abs(normalizeHue(a) - normalizeHue(b));
-	return d > 180 ? 360 - d : d;
-}
-
-function oklch(lc: readonly [number, number], hue: number): string {
-	return `oklch(${lc[0]} ${lc[1]} ${normalizeHue(hue).toFixed(1)})`;
-}
-
-/**
- * One hue in, a legal pair out: neon trails watt by HUE_SEPARATION and both
- * keep Outrun's lightness and chroma, so the glow rules and TV-mode
- * legibility survive whatever hue a rider lands on.
- */
-export function customPalette(hue: number): Palette {
-	const watt = normalizeHue(hue);
-	const neon = normalizeHue(hue - HUE_SEPARATION);
-	return {
-		id: CUSTOM_ID,
-		name: 'Custom',
-		note: `watt ${Math.round(watt)}° · neon ${Math.round(neon)}°`,
-		watt: {
-			light: oklch(CUSTOM_LCH.wattLight, watt),
-			dark: oklch(CUSTOM_LCH.wattDark, watt),
-		},
-		neon: {
-			light: oklch(CUSTOM_LCH.neonLight, neon),
-			dark: oklch(CUSTOM_LCH.neonDark, neon),
-		},
-	};
-}
-
-/** The css value for one token: both sides, resolved by the active scheme. */
-export function tokenValue(pair: AccentPair): string {
-	return `light-dark(${pair.light}, ${pair.dark})`;
-}
-
-export type PaletteChoice =
-	{ kind: 'preset'; id: string } | { kind: 'custom'; hue: number };
-
-export const DEFAULT_CHOICE: PaletteChoice = { kind: 'preset', id: DEFAULT_ID };
-
-/**
- * Stored choices are untrusted input like any other: a hand-edited or stale
- * localStorage entry falls back to the shipped palette instead of painting
- * the app with whatever it found.
- */
-export function parseChoice(raw: string | null): PaletteChoice {
-	if (!raw) return DEFAULT_CHOICE;
-	try {
-		const parsed: unknown = JSON.parse(raw);
-		if (typeof parsed !== 'object' || parsed === null) return DEFAULT_CHOICE;
-		const value = parsed as { kind?: unknown; id?: unknown; hue?: unknown };
-		if (
-			value.kind === 'custom' &&
-			typeof value.hue === 'number' &&
-			Number.isFinite(value.hue)
-		) {
-			return { kind: 'custom', hue: normalizeHue(value.hue) };
-		}
-		if (
-			value.kind === 'preset' &&
-			typeof value.id === 'string' &&
-			PRESETS.some((p) => p.id === value.id)
-		) {
-			return { kind: 'preset', id: value.id };
-		}
-	} catch {
-		/* malformed json: the shipped palette */
+		surface: Oklch;
+		raised: Oklch;
+		muted: Oklch;
+		ink: Oklch;
+		paper: Oklch;
+		watt: Oklch;
+		neon: Oklch;
+		zones: [number, number][];
 	}
-	return DEFAULT_CHOICE;
+> = {
+	dark: {
+		surface: { l: 0.122, c: 0.057, h: 0 },
+		raised: { l: 0.196, c: 0.085, h: 0 },
+		muted: { l: 0.64, c: 0.081, h: 0 },
+		ink: { l: 1, c: 0, h: 0 },
+		paper: { l: 0, c: 0, h: 0 },
+		watt: { l: 0.673, c: 0.233, h: 0 },
+		neon: { l: 0.56, c: 0.277, h: 0 },
+		zones: [
+			[0.58, 0.102],
+			[0.63, 0.214],
+			[0.68, 0.129],
+			[0.73, 0.16],
+			[0.78, 0.162],
+			[0.83, 0.213],
+			[0.88, 0.244],
+		],
+	},
+	white: {
+		surface: { l: 0.967, c: 0.011, h: 0 },
+		raised: { l: 1, c: 0, h: 0 },
+		muted: { l: 0.481, c: 0.086, h: 0 },
+		ink: { l: 0.19, c: 0.069, h: 0 },
+		paper: { l: 1, c: 0, h: 0 },
+		watt: { l: 0.611, c: 0.23, h: 0 },
+		neon: { l: 0.475, c: 0.243, h: 0 },
+		zones: [
+			[0.6, 0.12],
+			[0.55, 0.196],
+			[0.5, 0.109],
+			[0.45, 0.128],
+			[0.4, 0.155],
+			[0.35, 0.205],
+			[0.3, 0.223],
+		],
+	},
+};
+
+/**
+ * Where each zone sits along the neon→watt arc, measured off the shipped ramp.
+ * The spacing is not even because the ramp is perceptual, not arithmetic: the
+ * long stretch between Z4 and Z5 is the green-to-amber crossing where a rider
+ * most needs to tell two zones apart.
+ */
+const ZONE_T = [0.011, 0.092, 0.262, 0.437, 0.784, 0.955, 1];
+
+/** Absolute WCAG contrast floors for text and meaning-carrying graphics. */
+export const CONTRAST = { text: 4.5, accent: 3 } as const;
+
+/** A dark theme's surface must actually be dark; a white one's actually light. */
+export const DARK_SURFACE_MAX_L = 0.3;
+export const WHITE_SURFACE_MIN_L = 0.9;
+
+/**
+ * Zone bars are graphical objects, so WCAG 2.2 gives both families the same
+ * 3:1 floor. A generated hue is nudged away from its surfaces until it clears.
+ */
+const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
+	dark: CONTRAST.accent,
+	white: CONTRAST.accent,
+};
+
+/** Keep rounding and gamut reduction from flattening adjacent ramp steps. */
+const ZONE_LIGHTNESS_STEP = 0.05;
+
+/**
+ * How far the ramp travels around the hue circle. Measured off the shipped
+ * ramp, which runs 294° from Z1 to Z7 — enough room for violet, blue, cyan,
+ * green, amber, red and magenta to stay seven distinct things.
+ */
+const RAMP_ARC = 294;
+
+/**
+ * The ramp is anchored at its *hot* end: Z7 is maximum effort and lands on the
+ * live-data hue, and the rest of the ramp runs back from there.
+ *
+ * It is tempting to anchor the cold end to neon as well — Outrun's Z1 does sit
+ * on its chrome hue — but that is a coincidence of Outrun's accents being 66°
+ * apart. Anchoring both ends makes the arc as short as the accents are close,
+ * and a theme with near-complementary accents (Miami's coral and teal are 177°
+ * apart) ends up with seven zones crammed into half a circle, where Z6 and Z7
+ * are the same colour. Fixing the travel keeps every theme's ramp as legible
+ * as the one that shipped.
+ */
+function zoneHue(spec: ThemeSpec, t: number): number {
+	return normalizeHue(spec.wattHue + RAMP_ARC * (1 - t));
 }
 
-/** The palette a choice names; an unknown preset id resolves to Outrun. */
-export function resolve(choice: PaletteChoice): Palette {
-	if (choice.kind === 'custom') return customPalette(choice.hue);
-	return PRESETS.find((p) => p.id === choice.id) ?? PRESETS[0];
+export function deriveTheme(spec: ThemeSpec): Theme {
+	const f = FAMILY[spec.family];
+	const at = (base: Oklch, h: number) => oklchToHex({ ...base, h });
+	const tokens: Tokens = {
+		surface: at(f.surface, spec.surfaceHue),
+		'surface-raised': at(f.raised, spec.surfaceHue),
+		muted: at(f.muted, spec.surfaceHue),
+		watt: at(spec.wattLc ? { ...spec.wattLc, h: 0 } : f.watt, spec.wattHue),
+		neon: at(f.neon, spec.neonHue),
+		ink: at(f.ink, spec.surfaceHue),
+		paper: at(f.paper, spec.surfaceHue),
+		z1: '',
+		z2: '',
+		z3: '',
+		z4: '',
+		z5: '',
+		z6: '',
+		z7: '',
+	};
+	const backgrounds = [tokens.surface, tokens['surface-raised']];
+	let previousZoneLightness: number | undefined;
+	f.zones.forEach(([baseLightness, c], i) => {
+		let l = baseLightness;
+		if (previousZoneLightness !== undefined) {
+			l =
+				spec.family === 'dark'
+					? Math.max(l, previousZoneLightness + ZONE_LIGHTNESS_STEP)
+					: Math.min(l, previousZoneLightness - ZONE_LIGHTNESS_STEP);
+		}
+		const fitted = fitContrast(
+			{ l, c, h: zoneHue(spec, ZONE_T[i]) },
+			backgrounds,
+			ZONE_MIN_CONTRAST[spec.family],
+			spec.family === 'dark' ? 'lighter' : 'darker',
+		);
+		previousZoneLightness = fitted.l;
+		tokens[`z${i + 1}` as TokenName] = oklchToHex(fitted);
+	});
+	return {
+		id: spec.id,
+		identity: spec.identity,
+		name: spec.name,
+		note: spec.note,
+		family: spec.family,
+		tokens: { ...tokens, ...spec.exact },
+	};
 }

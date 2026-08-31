@@ -1,150 +1,268 @@
 import { describe, expect, it } from 'vitest';
 import {
+	contrast,
+	hexToOklch,
+	hueDistance,
+	inGamut,
+	oklchToHex,
+} from './color';
+import {
+	CONTRAST,
+	DARK_SURFACE_MAX_L,
+	TOKENS,
+	WHITE_SURFACE_MIN_L,
+	type Theme,
+	type TokenName,
+} from './palette';
+import {
 	CUSTOM_ID,
 	DEFAULT_CHOICE,
-	DEFAULT_ID,
+	DEFAULT_DARK_ID,
 	HUE_SEPARATION,
-	MIN_HUE_SEPARATION,
-	PRESETS,
-	customPalette,
-	hueDistance,
-	normalizeHue,
+	THEMES,
+	customTheme,
 	parseChoice,
-	resolve,
-	tokenValue,
-} from './palette';
+	resolveTheme,
+	themeById,
+	themesFor,
+} from './themes';
 
-/** Hue of an oklch() string, for asserting on generated custom palettes. */
-function hueOf(color: string): number {
-	const match = /oklch\([\d.]+ [\d.]+ ([\d.]+)\)/.exec(color);
-	if (!match) throw new Error(`not an oklch colour: ${color}`);
-	return Number(match[1]);
+const ZONES: TokenName[] = ['z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7'];
+const each = THEMES.map((t) => [t.name, t] as const);
+
+/** Viénot/Brettel/Mollon deuteranopia projection for an accessibility gate. */
+function deuteranopia(hex: string): [number, number, number] {
+	const n = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [
+		((n >> 16) & 255) / 255,
+		((n >> 8) & 255) / 255,
+		(n & 255) / 255,
+	];
+	return [0.625 * r + 0.375 * g, 0.7 * r + 0.3 * g, 0.3 * g + 0.7 * b];
 }
 
-describe('normalizeHue', () => {
-	it.each([
-		[0, 0],
-		[360, 0],
-		[-65, 295],
-		[420, 60],
-		[-400, 320],
-	])('wraps %i into %i', (input, expected) => {
-		expect(normalizeHue(input)).toBe(expected);
-	});
-});
+function rgbDistance(a: string, b: string): number {
+	const left = deuteranopia(a);
+	const right = deuteranopia(b);
+	return Math.hypot(...left.map((value, i) => value - right[i]));
+}
 
-describe('hueDistance', () => {
-	it.each([
-		[0, 65, 65],
-		[350, 30, 40],
-		[0, 180, 180],
-		[0, 190, 170],
-	])('measures %i to %i as %i', (a, b, expected) => {
-		expect(hueDistance(a, b)).toBe(expected);
-	});
-});
-
-describe('presets', () => {
-	it('starts with Outrun, the palette app.css already defines', () => {
-		expect(PRESETS[0].id).toBe(DEFAULT_ID);
-		expect(PRESETS[0].watt).toEqual({ light: '#e6247d', dark: '#ff3d8b' });
-		expect(PRESETS[0].neon).toEqual({ light: '#6f1ad1', dark: '#8b2bff' });
-	});
-
-	it('has unique ids', () => {
-		const ids = PRESETS.map((p) => p.id);
-		expect(new Set(ids).size).toBe(ids.length);
-	});
-
-	// The rule ADR-0005 exists to protect: if a future preset lets the two
-	// accents converge, a glowing number starts reading as chrome.
-	it.each(PRESETS.map((p) => [p.name, p] as const))(
-		'%s keeps its two accents distinguishable',
-		(_name, preset) => {
-			expect(preset.watt.light).not.toBe(preset.neon.light);
-			expect(preset.watt.dark).not.toBe(preset.neon.dark);
-		},
+/** Worst contrast this token scores against the theme's own two surfaces. */
+function worst(theme: Theme, token: TokenName): number {
+	return Math.min(
+		contrast(theme.tokens[token], theme.tokens.surface),
+		contrast(theme.tokens[token], theme.tokens['surface-raised']),
 	);
-});
+}
 
-describe('customPalette', () => {
-	it('trails neon behind watt by the shipped separation', () => {
-		const p = customPalette(320);
-		expect(hueOf(p.watt.dark)).toBe(320);
-		expect(hueOf(p.neon.dark)).toBe(normalizeHue(320 - HUE_SEPARATION));
-		expect(hueDistance(hueOf(p.watt.dark), hueOf(p.neon.dark))).toBe(
-			HUE_SEPARATION,
+/** The issue gate, applied to catalogue entries and the full custom hue wheel. */
+function expectLegible(theme: Theme, label: string) {
+	for (const token of ['ink', 'muted'] as TokenName[]) {
+		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
+			CONTRAST.text,
 		);
-	});
+	}
+	for (const token of ['watt', 'neon', ...ZONES] as TokenName[]) {
+		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
+			CONTRAST.accent,
+		);
+	}
+	expect(
+		contrast(theme.tokens.paper, theme.tokens.ink),
+		`${label} paper on ink`,
+	).toBeGreaterThanOrEqual(CONTRAST.text);
+}
 
-	it('stays legal at every hue, including the wrap', () => {
-		for (let hue = 0; hue < 360; hue += 15) {
-			const p = customPalette(hue);
-			const gap = hueDistance(hueOf(p.watt.dark), hueOf(p.neon.dark));
-			expect(gap).toBeGreaterThanOrEqual(MIN_HUE_SEPARATION);
+describe('colour maths', () => {
+	it('round-trips the shipped accents', () => {
+		for (const hex of ['#ff3d8b', '#8b2bff', '#e6247d', '#6f1ad1']) {
+			expect(oklchToHex(hexToOklch(hex))).toBe(hex);
 		}
 	});
 
-	it('normalises out-of-range hues instead of emitting them', () => {
-		expect(hueOf(customPalette(-40).watt.dark)).toBe(320);
-		expect(hueOf(customPalette(400).watt.dark)).toBe(40);
+	it('reduces chroma rather than clipping out of gamut', () => {
+		// Yellow cannot hold this much chroma; the result must still be yellow.
+		const hex = oklchToHex({ l: 0.85, c: 0.4, h: 100 });
+		expect(inGamut(hexToOklch(hex))).toBe(true);
+		expect(hueDistance(hexToOklch(hex).h, 100)).toBeLessThan(12);
 	});
 
-	it('keeps Outrun lightness and chroma so legibility is inherited', () => {
-		const p = customPalette(200);
-		expect(p.watt.dark).toBe('oklch(0.673 0.233 200.0)');
-		expect(p.neon.dark).toBe('oklch(0.56 0.277 135.0)');
+	it('matches known WCAG ratios', () => {
+		expect(contrast('#ffffff', '#000000')).toBeCloseTo(21, 1);
+		expect(contrast('#0a0118', '#0a0118')).toBeCloseTo(1, 5);
 	});
 });
 
-describe('parseChoice', () => {
+describe('the catalogue', () => {
+	it('offers both families', () => {
+		expect(themesFor('dark').length).toBeGreaterThan(1);
+		expect(themesFor('white').length).toBeGreaterThan(1);
+	});
+
+	it('keeps Outrun accents and surfaces at the values app.css ships', () => {
+		const k = themeById(DEFAULT_DARK_ID)!.tokens;
+		expect(k.surface).toBe('#0a0118');
+		expect(k['surface-raised']).toBe('#1a0736');
+		expect(k.watt).toBe('#ff3d8b');
+		expect(k.neon).toBe('#8b2bff');
+	});
+
+	it('gives every identity one theme in each family', () => {
+		// The ride surface is always dark (ADR-0005) — a white theme still
+		// resolves the dark half of the same identity inside .cave.
+		for (const t of themesFor('white')) {
+			expect(
+				THEMES.some(
+					(other) => other.identity === t.identity && other.family === 'dark',
+				),
+			).toBe(true);
+		}
+	});
+
+	it('has unique ids and a complete token set', () => {
+		expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
+		for (const t of THEMES) {
+			for (const token of TOKENS)
+				expect(t.tokens[token]).toMatch(/^#[0-9a-f]{6}$/);
+		}
+	});
+});
+
+/** The gate: a theme that fails these is not shippable, whoever likes it. */
+describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
+	it('clears every text and graphics contrast gate', () => {
+		expectLegible(theme, theme.name);
+	});
+
+	it('is as dark or as light as its family claims', () => {
+		const l = hexToOklch(theme.tokens.surface).l;
+		if (theme.family === 'dark')
+			expect(l).toBeLessThanOrEqual(DARK_SURFACE_MAX_L);
+		else expect(l).toBeGreaterThanOrEqual(WHITE_SURFACE_MIN_L);
+	});
+
+	it('keeps its two accents separable', () => {
+		// ADR-0005: a glowing number must never read as chrome.
+		expect(
+			hueDistance(
+				hexToOklch(theme.tokens.watt).h,
+				hexToOklch(theme.tokens.neon).h,
+			),
+		).toBeGreaterThanOrEqual(30);
+	});
+
+	it('keeps adjacent zones tellable apart and monotonic in lightness', () => {
+		for (let i = 0; i < ZONES.length - 1; i++) {
+			const a = hexToOklch(theme.tokens[ZONES[i]]);
+			const b = hexToOklch(theme.tokens[ZONES[i + 1]]);
+			const apart = hueDistance(a.h, b.h) >= 10 || Math.abs(a.l - b.l) >= 0.06;
+			expect(apart, `${ZONES[i]} vs ${ZONES[i + 1]}`).toBe(true);
+			if (theme.family === 'dark') expect(b.l - a.l).toBeGreaterThan(0.015);
+			else expect(a.l - b.l).toBeGreaterThan(0.015);
+		}
+	});
+
+	it('keeps adjacent zones distinct under deuteranopia simulation', () => {
+		for (let i = 0; i < ZONES.length - 1; i++) {
+			expect(
+				rgbDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
+				`${ZONES[i]} vs ${ZONES[i + 1]}`,
+			).toBeGreaterThanOrEqual(0.02);
+		}
+	});
+
+	it('ends its ramp on the live-data hue', () => {
+		// Z7 is maximum effort, so the ramp arrives at the colour that means
+		// "live" — the property the shipped Outrun ramp already had.
+		expect(
+			hueDistance(
+				hexToOklch(theme.tokens.z7).h,
+				hexToOklch(theme.tokens.watt).h,
+			),
+		).toBeLessThan(15);
+	});
+});
+
+describe('custom themes', () => {
+	const hues = Array.from({ length: 24 }, (_, i) => i * 15);
+
+	it.each(hues)('hue %i stays legible in both families', (hue) => {
+		for (const family of ['dark', 'white'] as const) {
+			const theme = customTheme(hue, family);
+			expectLegible(theme, `custom ${family} ${hue}°`);
+			expect(
+				hueDistance(
+					hexToOklch(theme.tokens.watt).h,
+					hexToOklch(theme.tokens.neon).h,
+				),
+			).toBeGreaterThanOrEqual(30);
+			for (let i = 0; i < ZONES.length - 1; i++) {
+				const current = hexToOklch(theme.tokens[ZONES[i]]);
+				const next = hexToOklch(theme.tokens[ZONES[i + 1]]);
+				if (family === 'dark')
+					expect(next.l - current.l).toBeGreaterThan(0.015);
+				else expect(current.l - next.l).toBeGreaterThan(0.015);
+				expect(
+					rgbDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
+				).toBeGreaterThanOrEqual(0.02);
+			}
+		}
+	});
+
+	it('trails chrome behind the data hue', () => {
+		const k = customTheme(320, 'dark').tokens;
+		expect(hueDistance(hexToOklch(k.watt).h, hexToOklch(k.neon).h)).toBeCloseTo(
+			HUE_SEPARATION,
+			0,
+		);
+	});
+
+	it('derives a dark cave from the same custom hue', () => {
+		const light = customTheme(200, 'white');
+		const cave = customTheme(200, 'dark');
+		expect(light.identity).toBe(cave.identity);
+		expect(hexToOklch(cave.tokens.surface).l).toBeLessThanOrEqual(
+			DARK_SURFACE_MAX_L,
+		);
+	});
+});
+
+describe('choice parsing', () => {
 	it.each([
-		['null storage', null],
-		['empty string', ''],
+		['null', null],
+		['empty', ''],
 		['not json', '{oh no'],
-		['not an object', '42'],
-		['unknown preset', '{"kind":"preset","id":"chartreuse"}'],
-		['custom without a hue', '{"kind":"custom"}'],
-		['custom with a non-finite hue', '{"kind":"custom","hue":null}'],
-	])('falls back to the shipped palette for %s', (_case, raw) => {
+		['not an object', '7'],
+		['unknown preset', '{"kind":"preset","identity":"chartreuse"}'],
+		['custom without hue', '{"kind":"custom"}'],
+	])('falls back to the default for %s', (_case, raw) => {
 		expect(parseChoice(raw)).toEqual(DEFAULT_CHOICE);
 	});
 
-	it('accepts a known preset', () => {
-		expect(parseChoice('{"kind":"preset","id":"tron-ice"}')).toEqual({
+	it('accepts a known identity and a normalised custom hue', () => {
+		expect(parseChoice('{"kind":"preset","identity":"tron"}')).toEqual({
 			kind: 'preset',
-			id: 'tron-ice',
+			identity: 'tron',
 		});
-	});
-
-	it('accepts and normalises a custom hue', () => {
 		expect(parseChoice('{"kind":"custom","hue":-40}')).toEqual({
 			kind: 'custom',
 			hue: 320,
 		});
 	});
-});
 
-describe('resolve', () => {
-	it('returns the named preset', () => {
-		expect(resolve({ kind: 'preset', id: 'miami-nights' }).name).toBe(
-			'Miami Nights',
+	it('migrates the accent-only preset schema', () => {
+		expect(parseChoice('{"kind":"preset","id":"miami-nights"}')).toEqual({
+			kind: 'preset',
+			identity: 'miami',
+		});
+	});
+
+	it('resolves unknown identities back to Outrun in the requested family', () => {
+		expect(resolveTheme({ kind: 'preset', identity: 'gone' }, 'dark').id).toBe(
+			DEFAULT_DARK_ID,
 		);
-	});
-
-	it('falls back to Outrun for an id that no longer exists', () => {
-		expect(resolve({ kind: 'preset', id: 'gone' }).id).toBe(DEFAULT_ID);
-	});
-
-	it('builds a custom palette from a hue', () => {
-		expect(resolve({ kind: 'custom', hue: 90 }).id).toBe(CUSTOM_ID);
-	});
-});
-
-describe('tokenValue', () => {
-	it('emits the light-dark() pair app.css expects', () => {
-		expect(tokenValue({ light: '#aaa', dark: '#bbb' })).toBe(
-			'light-dark(#aaa, #bbb)',
+		expect(resolveTheme({ kind: 'custom', hue: 90 }, 'white').id).toBe(
+			CUSTOM_ID,
 		);
 	});
 });
