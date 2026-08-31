@@ -134,8 +134,7 @@ export function tokenValue(pair: AccentPair): string {
 }
 
 export type PaletteChoice =
-	| { kind: 'preset'; id: string }
-	| { kind: 'custom'; hue: number };
+	{ kind: 'preset'; id: string } | { kind: 'custom'; hue: number };
 
 export const DEFAULT_CHOICE: PaletteChoice = { kind: 'preset', id: DEFAULT_ID };
 
