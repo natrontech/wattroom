@@ -9,7 +9,9 @@ vi.mock('$lib/api', () => ({
 
 vi.mock('livekit-client', () => {
 	let shared = false;
+	let joined: FakeRoom | null = null;
 	class Room {
+		handlers = new Map<string, (...args: unknown[]) => void>();
 		remoteParticipants = new Map();
 		localParticipant = {
 			identity: 'me',
@@ -19,14 +21,25 @@ vi.mock('livekit-client', () => {
 			getTrackPublication: () => (shared ? { videoTrack: {} } : undefined),
 			unpublishTrack() {},
 		};
-		on() {
+		on(event: string, handler: (...args: unknown[]) => void) {
+			this.handlers.set(event, handler);
 			return this;
 		}
-		async connect() {}
+		async connect() {
+			joined = this as FakeRoom;
+		}
 		disconnect() {}
 	}
 	return {
 		Room,
+		// The rider hitting Chrome's own "Stop sharing" bar: LiveKit ends the
+		// track, unpublishes it itself, and the event is the only word we get.
+		stopSharingNatively() {
+			shared = false;
+			joined?.handlers.get('LocalTrackUnpublished')?.({
+				source: 'screen_share',
+			});
+		},
 		// Every RoomEvent.X is just its own name to the wiring under test.
 		RoomEvent: new Proxy({}, { get: (_, key) => key }),
 		Track: {
@@ -40,7 +53,14 @@ vi.mock('livekit-client', () => {
 	};
 });
 
+interface FakeRoom {
+	handlers: Map<string, (...args: unknown[]) => void>;
+}
+
 const { createRoomAv } = await import('./av.svelte');
+const { stopSharingNatively } = (await import('livekit-client')) as unknown as {
+	stopSharingNatively: () => void;
+};
 
 describe('createRoomAv', () => {
 	// #173: the connection outlives the page that opened it. A $derived built
@@ -62,6 +82,26 @@ describe('createRoomAv', () => {
 		await av.toggleShare();
 		expect(onStage()?.key).toBe('screen:me');
 		expect(av.stageSources.map((s) => s.key)).toEqual(['screen:me']);
+	});
+
+	// #354: the browser's own bar ends the share without asking us. LiveKit
+	// unpublishes the track and says so only through LocalTrackUnpublished —
+	// unheard, the button went on offering to stop a share already over, and
+	// the sharer's stage sat on its last frame.
+	it('follows the browser when it ends a share behind our back', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.toggleShare();
+		expect(av.sharing).toBe(true);
+
+		stopSharingNatively();
+
+		expect(av.sharing).toBe(false);
+		expect(av.stageSources).toEqual([]);
+		dispose();
 	});
 
 	// #289: the rail draws the threshold as a mark on the mic meter. While

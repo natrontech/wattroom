@@ -673,6 +673,15 @@ export function createRoomAv(slug: string) {
 					setVoice(rider, 'muted');
 			}
 		});
+		// The browser's own "Stop sharing" bar ends the track behind our back:
+		// LiveKit unpublishes it for us (handleTrackEnded) and says so here. Without
+		// this the button still offers to stop a share that is already over, and
+		// the local stage sits on its last frame while the room sees nothing.
+		r.on(RoomEvent.LocalTrackUnpublished, (pub) => {
+			if (pub.source !== Track.Source.ScreenShare) return;
+			sharing = false;
+			if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
+		});
 		const audioState = (p: {
 			identity: string;
 			getTrackPublication: (source: Track.Source) => unknown;
@@ -732,9 +741,10 @@ export function createRoomAv(slug: string) {
 			voice = {};
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
-			// camOn/sharing lied about dead tracks (audit #219).
+			// camOn, sharing and micOn all lied about dead tracks (#219, #354).
 			speaking = {};
 			camOn = false;
+			micOn = false;
 			sharing = false;
 			handedOff = false;
 			myClaim = null;
