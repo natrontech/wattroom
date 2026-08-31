@@ -28,6 +28,11 @@
 	import { library } from '$lib/workout/library';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
+	import {
+		fetchProgression,
+		suggestedFocuses,
+		type Suggestion,
+	} from '$lib/progression';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
 	import {
@@ -302,6 +307,14 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	let pickedId = $state(library[0].id);
+	// SPEC's "suggested for today" marks matching shelf entries (#222) —
+	// a hint with its why; the recency ordering and every pick stay the
+	// rider's.
+	let suggestion = $state<Suggestion | null>(null);
+	void fetchProgression().then((r) => {
+		if (r.ok) suggestion = r.data?.load?.suggestion ?? null;
+	});
+	const suggested = $derived(suggestedFocuses(suggestion));
 	const GAMES = [
 		{ id: 'backyard-ramp', label: 'Backyard Ramp' },
 		{ id: 'collective-ramp', label: 'Collective Ramp' },
@@ -637,6 +650,10 @@
 							<span class="block font-mono text-[11px] tabular-nums"
 								>{formatClock(durationSeconds(entry.workout))}{entry.yours
 									? ' · yours'
+									: ''}{suggestion &&
+								'focus' in entry &&
+								suggested.includes(entry.focus)
+									? ' · suggested today'
 									: ''}</span
 							>
 						</button>

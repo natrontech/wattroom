@@ -6,6 +6,7 @@ package progression
 import (
 	"log/slog"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -57,6 +58,9 @@ type loadJSON struct {
 	FormPct  float64           `json:"formPct"`
 	Zone     string            `json:"zone"`
 	Series   []stats.FormPoint `json:"series"`
+	// SPEC's "Suggested for today" — a hint with its why, absent during the
+	// cold start and on days with nothing to say.
+	Suggestion *stats.Suggestion `json:"suggestion,omitempty"`
 }
 
 type response struct {
@@ -96,7 +100,7 @@ func buildLoad(rows []db.ListUserProgressionRow, now time.Time) *loadJSON {
 	if last.Fitness > 0 {
 		formPct = last.Form / last.Fitness * 100
 	}
-	return &loadJSON{
+	out := &loadJSON{
 		Building: now.Sub(rows[0].StartedAt.Time) < coldStartDays*24*time.Hour,
 		Fitness:  last.Fitness,
 		Fatigue:  last.Fatigue,
@@ -104,6 +108,32 @@ func buildLoad(rows []db.ListUserProgressionRow, now time.Time) *loadJSON {
 		Zone:     stats.FormZone(formPct),
 		Series:   series,
 	}
+	if !out.Building {
+		fitness7dAgo := 0.0
+		if len(series) >= 8 {
+			fitness7dAgo = series[len(series)-8].Fitness
+		}
+		yesterday := daily[now.UTC().AddDate(0, 0, -1).Format(time.DateOnly)]
+		daysSinceLast := int(now.Sub(rows[len(rows)-1].StartedAt.Time).Hours() / 24)
+		out.Suggestion = stats.SuggestToday(
+			formPct, last.Fitness, fitness7dAgo, yesterday,
+			medianRideLoad(rows), daysSinceLast)
+	}
+	return out
+}
+
+func medianRideLoad(rows []db.ListUserProgressionRow) float64 {
+	loads := make([]float64, 0, len(rows))
+	for _, row := range rows {
+		if l := stats.Load(int(row.NormWatts), int(row.FtpWatts), int(row.Seconds)); l > 0 {
+			loads = append(loads, l)
+		}
+	}
+	if len(loads) == 0 {
+		return 0
+	}
+	sort.Float64s(loads)
+	return loads[len(loads)/2]
 }
 
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {

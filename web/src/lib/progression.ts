@@ -4,6 +4,7 @@
  * the rider (ADR-0014's tone rule), and every claim is WattRoom-rides-only.
  */
 import { api } from './api';
+import type { Focus } from './workout/library';
 
 export interface Curve {
 	best5s: number;
@@ -28,6 +29,11 @@ export interface FormPoint {
 	form: number;
 }
 
+export interface Suggestion {
+	intent: string;
+	why: string;
+}
+
 export interface LoadSummary {
 	building: boolean;
 	fitness: number;
@@ -35,6 +41,7 @@ export interface LoadSummary {
 	formPct: number;
 	zone: string;
 	series: FormPoint[];
+	suggestion?: Suggestion;
 }
 
 export interface Progression {
@@ -52,5 +59,16 @@ export const FORM_SENTENCES: Record<string, string> = {
 	optimal: 'building nicely',
 	high_risk: 'big load — recovery is where the gains land',
 };
+
+// SPEC's suggestion → workout-focus mapping. A badge, never a gate.
+const INTENT_FOCUSES: Record<string, Focus[]> = {
+	recover: ['Recovery'],
+	restart: ['Recovery', 'Endurance'],
+	endurance: ['Endurance'],
+	intensity: ['Sweet spot', 'Threshold', 'VO₂ max'],
+};
+
+export const suggestedFocuses = (s: Suggestion | undefined | null): Focus[] =>
+	s ? (INTENT_FOCUSES[s.intent] ?? []) : [];
 
 export const fetchProgression = () => api<Progression>('/api/progression');

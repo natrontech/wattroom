@@ -141,6 +141,22 @@ only, and every surface says so ("based on your WattRoom rides").
   the rider — no "unproductive", no "failed". Load-derived suggestions are hints with a
   one-clause why and never gate picking any workout.
 
+**Suggested for today** (one suggestion, first matching rule wins; nothing before the
+28-day cold start; thresholds from RESEARCH.md §13.3, worded per the tone rule):
+
+| # | Rule | Suggests | Why-clause |
+| --- | --- | --- | --- |
+| 1 | form < −30 % | recover | "carrying serious load" |
+| 2 | no ride in ≥ 14 days | restart | "first ride back after a break" |
+| 3 | yesterday's Load > 1.5 × median ride Load | endurance | "yesterday was big" |
+| 4 | Fitness rose > 8 in the last 7 days | endurance | "load is climbing fast" |
+| 5 | form ≥ +5 % | intensity | "you're fresh" |
+| — | otherwise | no suggestion | |
+
+Suggestion → workout focus: **recover** = Recovery · **restart** = Recovery, Endurance ·
+**endurance** = Endurance · **intensity** = Sweet spot, Threshold, VO₂ max. The badge
+marks matching workouts in the picker; every workout stays rideable.
+
 ## Ride guards
 
 Numbers moved here from code after being ridden (#46). The cadence path was validated on a

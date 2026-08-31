@@ -83,6 +83,35 @@ func FitnessSeries(dailyLoad map[string]float64, first, today time.Time) []FormP
 	return out
 }
 
+// Suggestion is SPEC's "Suggested for today": a hint with a one-clause why,
+// never a gate. Intent maps to workout focuses client-side.
+type Suggestion struct {
+	Intent string `json:"intent"` // recover | restart | endurance | intensity
+	Why    string `json:"why"`
+}
+
+// SuggestToday runs SPEC's rule table — first match wins, nil means no
+// suggestion. Callers enforce the 28-day cold start.
+func SuggestToday(
+	formPct, fitnessNow, fitness7dAgo, yesterdayLoad, medianRideLoad float64,
+	daysSinceLast int,
+) *Suggestion {
+	switch {
+	case formPct < -30:
+		return &Suggestion{Intent: "recover", Why: "carrying serious load"}
+	case daysSinceLast >= 14:
+		return &Suggestion{Intent: "restart", Why: "first ride back after a break"}
+	case medianRideLoad > 0 && yesterdayLoad > 1.5*medianRideLoad:
+		return &Suggestion{Intent: "endurance", Why: "yesterday was big"}
+	case fitnessNow-fitness7dAgo > 8:
+		return &Suggestion{Intent: "endurance", Why: "load is climbing fast"}
+	case formPct >= 5:
+		return &Suggestion{Intent: "intensity", Why: "you're fresh"}
+	default:
+		return nil
+	}
+}
+
 // FormZone maps percentage form (form / fitness × 100) onto SPEC's five
 // zones. Zone words describe the day, never the rider (ADR-0014).
 func FormZone(formPct float64) string {

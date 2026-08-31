@@ -93,6 +93,38 @@ func TestFitnessSeries(t *testing.T) {
 	}
 }
 
+func TestSuggestToday(t *testing.T) {
+	tests := []struct {
+		name                                 string
+		formPct, fitNow, fit7d, yday, median float64
+		daysSince                            int
+		want                                 string // intent, "" = nil
+	}{
+		{"deep fatigue wins first", -35, 30, 20, 100, 40, 0, "recover"},
+		{"long break", 0, 10, 10, 0, 40, 14, "restart"},
+		{"big day yesterday", 0, 30, 28, 70, 40, 1, "endurance"},
+		{"steep ramp", 0, 30, 20, 0, 40, 1, "endurance"},
+		{"fresh", 10, 30, 28, 0, 40, 1, "intensity"},
+		{"grey day, nothing to say", 0, 30, 28, 0, 40, 1, ""},
+		{"no rides yet means no median rule", 0, 30, 28, 70, 0, 1, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SuggestToday(tt.formPct, tt.fitNow, tt.fit7d, tt.yday, tt.median, tt.daysSince)
+			intent := ""
+			if got != nil {
+				intent = got.Intent
+				if got.Why == "" {
+					t.Fatal("a suggestion always carries its why")
+				}
+			}
+			if intent != tt.want {
+				t.Fatalf("got %q, want %q", intent, tt.want)
+			}
+		})
+	}
+}
+
 func TestFormZone(t *testing.T) {
 	tests := []struct {
 		pct  float64
