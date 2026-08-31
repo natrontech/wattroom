@@ -178,6 +178,10 @@ func (s *Service) roomAPI(ctx context.Context, method, slug string, payload any)
 	return (&http.Client{Timeout: 3 * time.Second}).Do(req)
 }
 
+// ejectBudget bounds one whole ejection — the participant list plus a removal
+// for every connection the rider holds.
+const ejectBudget = 5 * time.Second
+
 // Eject removes a rider from the room's LiveKit session — the voice arm of a
 // ban or removal (#223). Best-effort by design: a failure only means the
 // rider lingers on camera until they disconnect — Authorize already refuses
@@ -189,9 +193,13 @@ func (s *Service) roomAPI(ctx context.Context, method, slug string, payload any)
 // and remove every connection that is theirs.
 func (s *Service) Eject(slug, userID string) {
 	// Detached from the request context on purpose: a kick must complete even
-	// if the banning owner's request is canceled. The client's 3s timeout is
-	// the bound.
-	ctx := context.Background()
+	// if the banning owner's request is canceled. It does run inside the ban
+	// handler though, and it is now a list plus one call per connection — so
+	// the whole sweep shares one deadline rather than letting a slow LiveKit
+	// hold the owner's request for 3s per tab. Best-effort either way: what
+	// this misses, Authorize refuses at their next token.
+	ctx, cancel := context.WithTimeout(context.Background(), ejectBudget)
+	defer cancel()
 	present, ok := s.listParticipants(ctx, slug)
 	if !ok {
 		// LiveKit would not say. The bare rider id is still the identity of

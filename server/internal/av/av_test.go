@@ -79,6 +79,42 @@ func TestTokenShape(t *testing.T) {
 	}
 }
 
+// The bug itself (#293): one rider asking twice — two tabs — must come back
+// with two identities, or LiveKit evicts whichever session is already in the
+// room and the two tabs trade the slot forever.
+func TestTwoTabsGetTwoIdentities(t *testing.T) {
+	s := service(allowAll{})
+	identity := func() string {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
+		req.SetPathValue("slug", "velvet")
+		w := httptest.NewRecorder()
+		s.handleToken(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("token refused: %d", w.Code)
+		}
+		var body struct{ Token string }
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := base64.RawURLEncoding.DecodeString(strings.Split(body.Token, ".")[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got claims
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.Sub
+	}
+	first, second := identity(), identity()
+	if first == second {
+		t.Fatalf("both tabs got identity %q — they will evict each other", first)
+	}
+	if RiderID(first) != RiderID(second) {
+		t.Fatalf("same rider read as %q and %q", RiderID(first), RiderID(second))
+	}
+}
+
 func TestNonMemberRefused(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
 	req.SetPathValue("slug", "velvet")
