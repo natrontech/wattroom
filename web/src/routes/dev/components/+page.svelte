@@ -1,5 +1,10 @@
 <script lang="ts">
+	import Banner from '$lib/components/Banner.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import MedalCard from '$lib/components/MedalCard.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
@@ -13,6 +18,7 @@
 	// The sprint demos anchor to mount time so the first one runs its real
 	// klaxon → window → podium lifecycle in front of you.
 	const mountedAt = Date.now();
+	let demoModal = $state(false);
 	const podium = [
 		{ riderId: 'ruben', name: 'Ruben', wkg: 14.3, watts: 1112 },
 		{ riderId: 'sara', name: 'Sara', wkg: 12.6, watts: 830 },
@@ -138,6 +144,68 @@
 			}}
 		/>
 	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Banners, empty state, progress, modal, toasts
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		The behavior half of the kit. Banners for inline status (Retry goes in the
+		action slot); EmptyState teaches; ProgressBar clamps; Modal traps focus and
+		closes on Escape; toasts carry undo (errors.md: undo over confirm).
+	</p>
+	<div class="mt-4 grid gap-3">
+		<Banner tone="error">
+			The server did not answer properly.
+			{#snippet action()}
+				<button class="text-muted hover:text-ink text-xs underline"
+					>Retry</button
+				>
+			{/snippet}
+		</Banner>
+		<Banner tone="warn">That saved workout was not found.</Banner>
+		<Banner tone="ok">FTP saved — every workout now scales to 251 W.</Banner>
+		<EmptyState>
+			No rides yet — finish a workout and it lands here.
+			{#snippet cta()}
+				<span class="btn btn-primary">Pick a workout</span>
+			{/snippet}
+		</EmptyState>
+		<div class="panel flex items-center gap-4 p-4">
+			<ProgressBar pct={64} class="flex-1" />
+			<ProgressBar pct={140} fill="bg-z4" class="flex-1" />
+			<span class="text-muted text-[10px]">140% clamps to full</span>
+		</div>
+		<div class="flex gap-3">
+			<button onclick={() => (demoModal = true)} class="btn btn-secondary"
+				>Open modal</button
+			>
+			<button
+				onclick={() => toasts.push('Ride exported.')}
+				class="btn btn-secondary">Toast</button
+			>
+			<button
+				onclick={() =>
+					toasts.push('Deleted “Sweet Spot 2×20”.', { undo: () => {} })}
+				class="btn btn-secondary">Undo toast</button
+			>
+		</div>
+	</div>
+	{#if demoModal}
+		<Modal label="Demo modal" onclose={() => (demoModal = false)}>
+			<p class="font-display font-bold">One modal, everywhere</p>
+			<p class="text-muted mt-2 text-sm">
+				Backdrop click and Escape close it; Tab stays inside.
+			</p>
+			<div class="mt-4 flex justify-end gap-2">
+				<button onclick={() => (demoModal = false)} class="btn btn-secondary"
+					>Close</button
+				>
+				<button onclick={() => (demoModal = false)} class="btn btn-primary"
+					>Confirm</button
+				>
+			</div>
+		</Modal>
+	{/if}
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
 		Ride-critical faults

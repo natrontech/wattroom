@@ -5,6 +5,8 @@
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import type { Workout } from '$lib/workout/types';
+	import { toasts } from '$lib/toast.svelte';
 
 	// FTP only scales the preview here; the ride screen owns the real value (#16).
 	const previewFtp = 265;
@@ -65,7 +67,17 @@
 							class="text-muted hover:text-ink ml-auto text-xs">Edit</a
 						>
 						<button
-							onclick={() => void custom.remove(entry.id)}
+							onclick={() => {
+								// Undo over confirm (errors.md): delete now, offer the way back.
+								const workout = $state.snapshot(entry.workout) as Workout;
+								void custom.remove(entry.id).then((err) => {
+									if (err) toasts.push(err, { tone: 'error' });
+									else
+										toasts.push(`Deleted “${workout.name}”.`, {
+											undo: () => void custom.save(workout),
+										});
+								});
+							}}
 							class="text-muted hover:text-ink text-xs">Delete</button
 						>
 					</li>

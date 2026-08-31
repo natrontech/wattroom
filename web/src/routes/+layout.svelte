@@ -247,7 +247,6 @@
 		     room connection does. -->
 		<JukeboxDock />
 		<DmDrawer />
-		<Toasts />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
 			<MemberCard
@@ -263,3 +262,6 @@
 {:else}
 	{@render children()}
 {/if}
+
+<!-- App-wide, framed or not — a toast must be able to land anywhere. -->
+<Toasts />
