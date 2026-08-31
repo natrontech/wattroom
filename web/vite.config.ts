@@ -33,7 +33,7 @@ function hardwareLog(): Plugin {
 					res.end();
 				});
 			});
-		}
+		},
 	};
 }
 
@@ -45,18 +45,18 @@ export default defineConfig({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 			},
 
 			// SPA mode: the Go server serves index.html as fallback for all routes.
-			adapter: adapter({ fallback: 'index.html' })
-		})
+			adapter: adapter({ fallback: 'index.html' }),
+		}),
 	],
 	test: {
 		// e2e/ belongs to Playwright. Vitest's default **/*.spec.ts glob picks it up
 		// otherwise and fails with "Playwright Test did not expect test() to be
 		// called here" — which reads like a Playwright problem and is not one.
-		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**']
+		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**'],
 	},
 	server: {
 		proxy: {
@@ -64,8 +64,20 @@ export default defineConfig({
 			// changeOrigin must stay OFF: the string shorthand turns it on, which
 			// rewrites Host to :8080 while Origin stays :5174 — and the server's
 			// same-origin check then 403s every PATCH /api/me and logout in dev.
-			'/api': { target: 'http://localhost:8080', changeOrigin: false },
-			'/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: false }
-		}
-	}
+			// WATTROOM_API points a worktree's Vite at its own server instance —
+			// parallel agents can't all sit on :8080.
+			'/api': {
+				target: process.env.WATTROOM_API ?? 'http://localhost:8080',
+				changeOrigin: false,
+			},
+			'/ws': {
+				target: (process.env.WATTROOM_API ?? 'http://localhost:8080').replace(
+					'http',
+					'ws',
+				),
+				ws: true,
+				changeOrigin: false,
+			},
+		},
+	},
 });
