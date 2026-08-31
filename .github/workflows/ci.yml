@@ -7,6 +7,13 @@ on:
   schedule:
     - cron: '0 6 * * 1' # weekly vuln scan — new CVEs appear after code ships
 
+# A push to a PR makes the run already in flight worthless. Agents push in
+# bursts, so those obsolete runs were most of the queue. main is never
+# cancelled: each merge commit keeps its own record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   server:
     runs-on: ubuntu-latest
@@ -113,8 +120,9 @@ jobs:
         working-directory: web
       - run: pnpm exec playwright install --with-deps chromium
         working-directory: web
-      - run: pnpm run build
-        working-directory: web
+      # No `pnpm run build` here: playwright.config.ts's webServer always builds
+      # (deliberately — a reused build serves stale code), so a step here is a
+      # second full build of the same bundle.
       - run: pnpm run test:e2e
         working-directory: web
       - uses: actions/upload-artifact@v4
