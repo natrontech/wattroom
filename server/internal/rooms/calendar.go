@@ -14,16 +14,33 @@ import (
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
-// iCal feed for planned sessions (#245). Calendar apps can't sign in, so the
-// URL carries a per-room secret token — the same "private address" pattern
-// Google Calendar uses; the owner rotates it when it leaks.
+// iCal feeds for planned sessions (#245, #325). Calendar apps can't sign in,
+// so the URL carries a secret token — the same "private address" pattern
+// Google Calendar uses; the holder rotates it when it leaks.
+//
+// Two feeds, two subjects. The room feed is a room's schedule, shareable with
+// people who aren't members. The rider feed is every room you ride in, and is
+// the one the UI offers first: four rooms used to mean four subscriptions.
+
+// icsEvent is what both feeds agree on — the row types differ, the calendar
+// entry doesn't.
+type icsEvent struct {
+	id       string
+	stamp    time.Time
+	start    time.Time
+	length   time.Duration
+	summary  string
+	planner  string
+	roomName string
+	roomSlug string
+}
 
 func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 	room, ok := s.roomBySlug(w, r)
 	if !ok {
 		return
 	}
-	token := strings.TrimSuffix(r.PathValue("token"), ".ics")
+	token := icsPathToken(r)
 	if subtle.ConstantTimeCompare([]byte(token), []byte(room.IcsToken)) != 1 {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
 			"That calendar link is not valid — ask in the room for the current one.")
@@ -36,8 +53,44 @@ func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 			"The calendar could not be loaded. Try again.")
 		return
 	}
-	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
-	_, _ = io.WriteString(w, buildICS(room, r.Host, rows))
+	events := make([]icsEvent, 0, len(rows))
+	for _, row := range rows {
+		events = append(events, icsEvent{
+			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
+			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
+			planner: row.CreatedBy, roomName: room.Name, roomSlug: room.Slug,
+		})
+	}
+	writeICS(w, room.Name+" · WattRoom", r.Host, events)
+}
+
+// handleUserCalendar is the rider-addressed feed (#325): one subscription
+// that follows your membership list instead of a single room.
+func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
+	user, err := s.store.Queries.GetUserByIcsToken(r.Context(), icsPathToken(r))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found",
+			"That calendar link is not valid — copy the current one from your sessions page.")
+		return
+	}
+	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
+		UserID: user.ID, StartsAt: pgTime(time.Now().AddDate(0, 0, -30)),
+	})
+	if err != nil {
+		s.log.Error("rider calendar feed failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The calendar could not be loaded. Try again.")
+		return
+	}
+	events := make([]icsEvent, 0, len(rows))
+	for _, row := range rows {
+		events = append(events, icsEvent{
+			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
+			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
+			planner: row.CreatedBy, roomName: row.RoomName, roomSlug: row.RoomSlug,
+		})
+	}
+	writeICS(w, "WattRoom sessions", r.Host, events)
 }
 
 // handleRotateIcs is the leak escape hatch: owner-only, old feed URLs die on
@@ -57,21 +110,46 @@ func (s *Service) handleRotateIcs(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"icsToken": token})
 }
 
-func buildICS(room db.Room, host string, rows []db.ListRoomCalendarRow) string {
+// handleRotateUserIcs is the same escape hatch for your own feed.
+func (s *Service) handleRotateUserIcs(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	token, err := s.store.Queries.RotateUserIcsToken(r.Context(), user.ID)
+	if err != nil {
+		s.log.Error("rider ics rotate failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The calendar link could not be reset. Try again.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"icsToken": token})
+}
+
+// icsPathToken reads the token out of the URL. The .ics suffix is what makes
+// calendar apps accept the link at all.
+func icsPathToken(r *http.Request) string {
+	return strings.TrimSuffix(r.PathValue("token"), ".ics")
+}
+
+func writeICS(w http.ResponseWriter, calName, host string, events []icsEvent) {
+	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	_, _ = io.WriteString(w, buildICS(calName, host, events))
+}
+
+func buildICS(calName, host string, events []icsEvent) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n"+
 		"PRODID:-//WattRoom//planned sessions//EN\r\nCALSCALE:GREGORIAN\r\n"+
-		"METHOD:PUBLISH\r\nX-WR-CALNAME:%s\r\n", icsEscape(room.Name+" · WattRoom"))
-	for _, row := range rows {
-		start := row.StartsAt.Time
+		"METHOD:PUBLISH\r\nX-WR-CALNAME:%s\r\n", icsEscape(calName))
+	for _, e := range events {
 		fmt.Fprintf(&b, "BEGIN:VEVENT\r\nUID:%s@wattroom\r\nDTSTAMP:%s\r\n"+
 			"DTSTART:%s\r\nDTEND:%s\r\nSUMMARY:%s\r\nDESCRIPTION:%s\r\n"+
-			"URL:https://%s/r/%s\r\nEND:VEVENT\r\n",
-			store.UUIDString(row.ID), icsTime(row.CreatedAt.Time),
-			icsTime(start), icsTime(start.Add(workoutLength(string(row.WorkoutJson)))),
-			icsEscape(row.WorkoutName),
-			icsEscape("Planned by "+row.CreatedBy+" in "+room.Name+"."),
-			host, room.Slug)
+			"LOCATION:%s\r\nURL:https://%s/r/%s\r\nEND:VEVENT\r\n",
+			e.id, icsTime(e.stamp), icsTime(e.start), icsTime(e.start.Add(e.length)),
+			icsEscape(e.summary),
+			icsEscape("Planned by "+e.planner+" in "+e.roomName+"."),
+			icsEscape(e.roomName), host, e.roomSlug)
 	}
 	b.WriteString("END:VCALENDAR\r\n")
 	return b.String()

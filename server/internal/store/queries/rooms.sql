@@ -93,3 +93,18 @@ where id = $1 returning ics_token;
 
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;
+
+-- name: ListUserCalendar :many
+-- Every room the rider is in, one list (#325). $2 is the horizon and is the
+-- only difference between the two callers: the iCal feed keeps a month of
+-- history, the sessions page starts at the same 30-minute grace the in-room
+-- list uses. Uncapped — a calendar that self-erases reads as broken.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
+       m.role as your_role
+from scheduled_sessions s
+join rooms r on r.id = s.room_id
+join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
+join users u on u.id = s.created_by
+where s.starts_at > $2
+order by s.starts_at;

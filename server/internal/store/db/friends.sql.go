@@ -89,7 +89,7 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 }
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset from users where friend_code = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token from users where friend_code = $1
 `
 
 // The formation gate (ADR-0012 amendment): knowing the code IS the permission
@@ -110,6 +110,7 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 		&i.UnsubToken,
 		&i.FriendCode,
 		&i.AvatarPreset,
+		&i.IcsToken,
 	)
 	return i, err
 }

@@ -277,7 +277,7 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, m.role, m.joined_at,
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, m.role, m.joined_at,
     (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
 from memberships m
 join users u on u.id = m.user_id
@@ -298,6 +298,7 @@ type ListRoomMembersRow struct {
 	UnsubToken    pgtype.UUID
 	FriendCode    string
 	AvatarPreset  *string
+	IcsToken      string
 	Role          string
 	JoinedAt      pgtype.Timestamptz
 	TotalXp       int64
@@ -325,6 +326,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.UnsubToken,
 			&i.FriendCode,
 			&i.AvatarPreset,
+			&i.IcsToken,
 			&i.Role,
 			&i.JoinedAt,
 			&i.TotalXp,
@@ -373,6 +375,69 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 			&i.WorkoutJson,
 			&i.StartsAt,
 			&i.CreatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserCalendar = `-- name: ListUserCalendar :many
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
+       m.role as your_role
+from scheduled_sessions s
+join rooms r on r.id = s.room_id
+join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
+join users u on u.id = s.created_by
+where s.starts_at > $2
+order by s.starts_at
+`
+
+type ListUserCalendarParams struct {
+	UserID   pgtype.UUID
+	StartsAt pgtype.Timestamptz
+}
+
+type ListUserCalendarRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	CreatedBy   string
+	RoomName    string
+	RoomSlug    string
+	YourRole    string
+}
+
+// Every room the rider is in, one list (#325). $2 is the horizon and is the
+// only difference between the two callers: the iCal feed keeps a month of
+// history, the sessions page starts at the same 30-minute grace the in-room
+// list uses. Uncapped — a calendar that self-erases reads as broken.
+func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarParams) ([]ListUserCalendarRow, error) {
+	rows, err := q.db.Query(ctx, listUserCalendar, arg.UserID, arg.StartsAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserCalendarRow
+	for rows.Next() {
+		var i ListUserCalendarRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.RoomName,
+			&i.RoomSlug,
+			&i.YourRole,
 		); err != nil {
 			return nil, err
 		}

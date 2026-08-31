@@ -26,6 +26,50 @@ type scheduledJSON struct {
 	CreatedBy   string `json:"createdBy"`
 }
 
+// plannedJSON is a scheduled session seen from outside its room — the
+// /sessions page lists every room at once, so each row carries its own.
+type plannedJSON struct {
+	scheduledJSON
+	RoomSlug   string `json:"roomSlug"`
+	RoomName   string `json:"roomName"`
+	CanControl bool   `json:"canControl"`
+}
+
+// handleMySchedule is the cross-room planning surface (#325): everything you
+// can ride, plus the feed token that subscribes to exactly this list.
+func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
+		// The same 30-minute grace the in-room list keeps: a session stays
+		// startable a little past its time.
+		UserID: user.ID, StartsAt: pgTime(time.Now().Add(-30 * time.Minute)),
+	})
+	if err != nil {
+		s.log.Error("schedule list failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"Your planned sessions could not be loaded. Try again.")
+		return
+	}
+	sessions := make([]plannedJSON, 0, len(rows))
+	for _, row := range rows {
+		sessions = append(sessions, plannedJSON{
+			scheduledJSON: scheduledJSON{
+				ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+				WorkoutJSON: string(row.WorkoutJson),
+				StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+			},
+			RoomSlug: row.RoomSlug, RoomName: row.RoomName,
+			CanControl: row.YourRole == "owner" || row.YourRole == "coach",
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"sessions": sessions, "icsToken": user.IcsToken,
+	})
+}
+
 // requireControl is requireRole for "coach or owner" — the pair the matrix
 // hands the shared timeline to.
 func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
