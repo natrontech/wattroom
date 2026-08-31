@@ -119,6 +119,12 @@ export interface JukeboxCommand {
    */
   positionSec?: number /* float64 */;
   /**
+   * For "ended": the anchor the client was playing against. Every client
+   * (and tab) reports the end — the epoch match makes N echoes advance
+   * the queue exactly once even when the same video is queued twice.
+   */
+  anchorMs?: number /* int64 */;
+  /**
    * For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
    * shows as a join card. Empty clears it. Link-out only — no API, ever.
    */

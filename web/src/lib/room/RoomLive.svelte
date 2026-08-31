@@ -116,18 +116,6 @@
 	});
 
 	// Space is push-to-talk while that mode is on — never while typing.
-	function pttKey(event: KeyboardEvent, held: boolean) {
-		if (av.mode !== 'ptt' || event.code !== 'Space') return;
-		const target = event.target as HTMLElement;
-		if (
-			target instanceof HTMLInputElement ||
-			target instanceof HTMLTextAreaElement ||
-			target.isContentEditable
-		)
-			return;
-		event.preventDefault();
-		av.setPtt(held);
-	}
 
 	// The room's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
@@ -584,9 +572,7 @@
 <svelte:window
 	onkeydown={(e) => {
 		if (e.key === 'Escape') tv = false;
-		if (!e.repeat) pttKey(e, true);
 	}}
-	onkeyup={(e) => pttKey(e, false)}
 />
 
 {#if tv}

@@ -40,7 +40,10 @@ function connect(slug: string): Connection {
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
 	let known: Set<string> | null = null;
-	let seenChat = 0;
+	// Blip only for lines newer than the connection itself — the backlog can
+	// never replay, and the log's length cap can never freeze the notifier
+	// the way index-tracking did (audit #219).
+	let lastChatAt = Date.now();
 	let lastPhase: string | null = null;
 	const dispose = $effect.root(() => {
 		$effect(() => {
@@ -67,20 +70,13 @@ function connect(slug: string): Connection {
 		});
 
 		// Chat lands audibly (#202) — a soft blip, never for your own lines.
-		// The backlog seed replaces the log wholesale; the timestamp guard
-		// keeps history from replaying as a drumroll.
 		$effect(() => {
-			const log = live.chatLog;
-			if (log.length < seenChat) {
-				// The backlog seed replaced the log — resync, no replay.
-				seenChat = log.length;
-				return;
-			}
-			const fresh = log.slice(seenChat);
-			seenChat = log.length;
+			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
+			if (fresh.length === 0) return;
+			lastChatAt = fresh[fresh.length - 1].at;
 			const me = account.me?.displayName;
 			for (const line of fresh) {
-				if (line.from === me || Date.now() - line.at > 10_000) continue;
+				if (line.from === me) continue;
 				play('chat');
 				notify.push(`${line.from} · ${slug}`, line.text, `chat-${slug}`);
 			}
@@ -98,6 +94,58 @@ function connect(slug: string): Connection {
 					([id, active]) => active && id !== account.me?.id,
 				),
 			);
+			// Leaving mid-sentence must not park every cue at 35% forever.
+			return () => setDucked(false);
+		});
+
+		// A reconnect leaves a chat gap the tick stream never backfills —
+		// re-fetch the log when the socket comes back; the id-merge in
+		// seedChat makes this idempotent (audit #219).
+		let wasReconnecting = false;
+		$effect(() => {
+			const status = live.status;
+			if (status === 'reconnecting') wasReconnecting = true;
+			else if (status === 'live' && wasReconnecting) {
+				wasReconnecting = false;
+				void fetch(`/api/rooms/${slug}/chat`)
+					.then((res) => (res.ok ? res.json() : null))
+					.then((body) => {
+						if (body?.messages) live.seedChat(body.messages);
+					})
+					.catch(() => {});
+			}
+		});
+
+		// PTT keys work on EVERY page while in voice — and a keyup lost to
+		// navigation or focus loss must never leave the mic hot (audit #219).
+		$effect(() => {
+			if (typeof window === 'undefined') return;
+			const key = (event: KeyboardEvent, held: boolean) => {
+				if (av.mode !== 'ptt' || event.code !== 'Space') return;
+				const target = event.target as HTMLElement;
+				if (
+					target instanceof HTMLInputElement ||
+					target instanceof HTMLTextAreaElement ||
+					target.isContentEditable
+				)
+					return;
+				event.preventDefault();
+				if (!held || !event.repeat) av.setPtt(held);
+			};
+			const down = (e: KeyboardEvent) => key(e, true);
+			const up = (e: KeyboardEvent) => key(e, false);
+			const release = () => av.pttHeld && av.setPtt(false);
+			window.addEventListener('keydown', down);
+			window.addEventListener('keyup', up);
+			window.addEventListener('blur', release);
+			document.addEventListener('visibilitychange', release);
+			return () => {
+				release();
+				window.removeEventListener('keydown', down);
+				window.removeEventListener('keyup', up);
+				window.removeEventListener('blur', release);
+				document.removeEventListener('visibilitychange', release);
+			};
 		});
 
 		// A session starting is the one event nobody wants to miss (#202).

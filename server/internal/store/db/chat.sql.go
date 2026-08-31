@@ -174,17 +174,28 @@ func (q *Queries) PruneChat(ctx context.Context, roomID pgtype.UUID) error {
 }
 
 const removeChatReaction = `-- name: RemoveChatReaction :execrows
-delete from chat_reactions where message_id = $1 and user_id = $2 and emoji = $3
+delete from chat_reactions r
+using chat_messages m
+where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
+  and m.id = r.message_id and m.room_id = $4
 `
 
 type RemoveChatReactionParams struct {
 	MessageID pgtype.UUID
 	UserID    pgtype.UUID
 	Emoji     string
+	RoomID    pgtype.UUID
 }
 
+// Room-scoped like the insert — a socket in room A must not toggle
+// reactions on room B's messages (audit #219).
 func (q *Queries) RemoveChatReaction(ctx context.Context, arg RemoveChatReactionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removeChatReaction, arg.MessageID, arg.UserID, arg.Emoji)
+	result, err := q.db.Exec(ctx, removeChatReaction,
+		arg.MessageID,
+		arg.UserID,
+		arg.Emoji,
+		arg.RoomID,
+	)
 	if err != nil {
 		return 0, err
 	}

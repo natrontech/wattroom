@@ -47,20 +47,30 @@ func TestAnchorSurvivesPause(t *testing.T) {
 }
 
 func TestEndedAdvancesExactlyOnce(t *testing.T) {
-	// Every client in the room reports the end; only the first report for the
-	// current video advances — the rest are the same event echoing back.
+	// Every client reports the end with the anchor it was playing against;
+	// the (video, epoch) pair makes the first advance and every echo a no-op
+	// — even when the SAME video is queued twice (audit #219).
 	j := newJukebox()
 	add(j, "dQw4w9WgXcQ", jat(0))
-	add(j, "abcdefghijk", jat(1))
+	add(j, "dQw4w9WgXcQ", jat(1)) // the duplicate the old dedupe ate
+	add(j, "abcdefghijk", jat(2))
+	epoch := j.snapshot().AnchorMs
 	for i := 0; i < 5; i++ {
-		j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ"}, "jan", jat(200))
+		j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "jan", jat(200))
 	}
 	s := j.snapshot()
-	if s.Current == nil || s.Current.VideoID != "abcdefghijk" || len(s.Queue) != 0 {
-		t.Fatalf("echoed ended double-advanced: %+v", s)
+	if s.Current == nil || s.Current.VideoID != "dQw4w9WgXcQ" || len(s.Queue) != 1 {
+		t.Fatalf("echoed ended double-advanced past the duplicate: %+v", s)
 	}
-	// Deck runs dry cleanly.
-	j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "abcdefghijk"}, "jan", jat(400))
+	// A report without the current epoch is an echo from a past life — no-op.
+	if j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "jan", jat(300)) {
+		t.Fatal("stale-epoch ended accepted")
+	}
+	// The real second play ends with ITS epoch, then the deck runs dry.
+	epoch2 := j.snapshot().AnchorMs
+	j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch2}, "jan", jat(400))
+	epoch3 := j.snapshot().AnchorMs
+	j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "abcdefghijk", AnchorMs: epoch3}, "jan", jat(500))
 	if s := j.snapshot(); s.Current != nil || s.Playing {
 		t.Fatalf("dry deck still playing: %+v", s)
 	}

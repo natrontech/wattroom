@@ -3,8 +3,7 @@
 	import { api } from '$lib/api';
 	import Select from '$lib/components/Select.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
-	import { notify } from '$lib/notify.svelte';
-	import { play } from '$lib/sound/cues';
+	import { dmHeads } from '$lib/dm/heads.svelte';
 
 	interface Friend {
 		id: string;
@@ -23,53 +22,6 @@
 	let candidates = $state<Candidate[]>([]);
 	let error = $state<string | null>(null);
 	let picked = $state('');
-	interface Head {
-		peerId: string;
-		peerName: string;
-		text: string;
-		mine: boolean;
-		at: number;
-	}
-	// peerId → newest inbound message time — the unread badge's raw material.
-	let inbound = $state<Record<string, number>>({});
-	let heads = $state<Head[]>([]);
-	let seenBump = $state(0);
-
-	async function loadHeads(first: boolean) {
-		const res = await api<{
-			conversations: {
-				peerId: string;
-				peerName: string;
-				text: string;
-				mine: boolean;
-				at: number;
-			}[];
-		}>('/api/dms');
-		if (!res.ok) return;
-		heads = [...res.data.conversations].sort((a, b) => b.at - a.at);
-		const next: Record<string, number> = {};
-		for (const head of res.data.conversations) {
-			if (head.mine) continue;
-			next[head.peerId] = head.at;
-			// A NEW inbound line (not on first load): blip + hidden-tab alert,
-			// unless that thread is open right now.
-			if (
-				!first &&
-				head.at > (inbound[head.peerId] ?? 0) &&
-				dm.open?.id !== head.peerId
-			) {
-				play('chat');
-				notify.push(head.peerName, head.text, `dm-${head.peerId}`);
-			}
-		}
-		inbound = next;
-	}
-
-	function unread(peerId: string): boolean {
-		void seenBump; // re-check after opening a thread stamps it seen
-		return (inbound[peerId] ?? 0) > dm.seenAt(peerId);
-	}
-
 	async function load() {
 		const res = await api<{ friends: Friend[]; candidates: Candidate[] }>(
 			'/api/friends',
@@ -85,12 +37,9 @@
 
 	$effect(() => {
 		void load();
-		void loadHeads(true);
-		// Presence freshness matches the rail's poll cadence.
-		const timer = setInterval(() => {
-			void load();
-			void loadHeads(false);
-		}, 10_000);
+		// Presence freshness matches the rail's poll cadence; DM heads are
+		// polled globally (heads.svelte.ts), not by this panel.
+		const timer = setInterval(() => void load(), 10_000);
 		return () => clearInterval(timer);
 	});
 
@@ -148,14 +97,14 @@
 							<button
 								onclick={() => {
 									dm.show(friend.id, friend.name);
-									seenBump += 1;
+									dmHeads.bump();
 								}}
 								class="text-muted hover:text-ink relative"
 								title="message {friend.name}"
 								aria-label="message {friend.name}"
 							>
 								<MessageCircle size={15} />
-								{#if unread(friend.id)}
+								{#if dmHeads.unread(friend.id)}
 									<span
 										class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
 									></span>
@@ -206,23 +155,23 @@
 			</div>
 		{/if}
 
-		{#if heads.length > 0}
+		{#if dmHeads.heads.length > 0}
 			<!-- Your conversations (#208): the DM history's front door. -->
 			<h3 class="text-muted mt-6 text-[10px] tracking-[0.2em] uppercase">
 				messages
 			</h3>
 			<div class="border-muted/15 bg-surface-raised mt-2 rounded-lg border">
-				{#each heads as head (head.peerId)}
+				{#each dmHeads.heads as head (head.peerId)}
 					<button
 						onclick={() => {
 							dm.show(head.peerId, head.peerName);
-							seenBump += 1;
+							dmHeads.bump();
 						}}
 						class="border-ink/5 hover:bg-surface flex w-full items-center gap-3 border-b px-4 py-2.5 text-left transition-colors last:border-b-0"
 					>
 						<span class="relative shrink-0">
 							<MessageCircle size={15} class="text-muted" />
-							{#if unread(head.peerId)}
+							{#if dmHeads.unread(head.peerId)}
 								<span
 									class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
 								></span>
