@@ -7,7 +7,7 @@ infra: ## start Postgres + LiveKit containers
 	docker compose up -d
 
 dev-server: ## run Go server with hot reload (installs air on first use)
-	cd server && WATTROOM_DB="postgres://wattroom:wattroom@localhost:5432/wattroom" WATTROOM_DEV_LOGIN=1 go run github.com/air-verse/air@latest
+	cd server && WATTROOM_DB="postgres://wattroom:wattroom@localhost:5432/wattroom" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@latest
 
 dev-web: ## run Vite dev server
 	cd web && pnpm dev
