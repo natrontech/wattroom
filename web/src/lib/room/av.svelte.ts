@@ -20,7 +20,8 @@ import { mountTrack } from '$lib/room/mount-track';
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
  */
-export type AvStatus = 'off' | 'connecting' | 'live' | 'failed';
+export type AvStatus =
+	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
 export function createRoomAv(slug: string) {
 	let status = $state<AvStatus>('off');
@@ -285,8 +286,14 @@ export function createRoomAv(slug: string) {
 
 	async function join() {
 		// Double-click or an impatient rail tap must not build a second
-		// participant with the same identity (audit #219).
-		if (status === 'connecting' || status === 'live') return;
+		// participant with the same identity (audit #219) — nor race the
+		// SDK's own retry while it is reconnecting (#234).
+		if (
+			status === 'connecting' ||
+			status === 'live' ||
+			status === 'reconnecting'
+		)
+			return;
 		void room?.disconnect();
 		status = 'connecting';
 		error = null;
@@ -396,8 +403,18 @@ export function createRoomAv(slug: string) {
 			for (const p of speakers) next[p.identity] = true;
 			speaking = next;
 		});
+		// Media-interrupted retry window (#234, errors.md): audio is gapped
+		// while the SDK rebuilds the connection — say so on the dashboard.
+		// SignalReconnecting stays transparent by design (RESEARCH.md): media
+		// keeps flowing while only the signal socket rebuilds.
+		r.on(RoomEvent.Reconnecting, () => {
+			if (status === 'live') status = 'reconnecting';
+		});
+		r.on(RoomEvent.Reconnected, () => {
+			if (status === 'reconnecting') status = 'live';
+		});
 		r.on(RoomEvent.Disconnected, () => {
-			const unexpected = status === 'live';
+			const unexpected = status === 'live' || status === 'reconnecting';
 			for (const el of audioElements.values()) el.remove();
 			audioElements.clear();
 			videoTracks.clear();
@@ -413,8 +430,10 @@ export function createRoomAv(slug: string) {
 			sharing = false;
 			room = null;
 			closeMic();
-			if (status === 'live') status = 'off';
-			if (unexpected) dropped += 1;
+			if (unexpected) {
+				status = 'off';
+				dropped += 1;
+			}
 		});
 	}
 
