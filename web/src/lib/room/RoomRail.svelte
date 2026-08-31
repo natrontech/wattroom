@@ -3,6 +3,17 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { theme } from '$lib/theme.svelte';
+	import {
+		LogOut,
+		Mic,
+		MicOff,
+		Monitor,
+		Moon,
+		SlidersHorizontal,
+		Sun,
+		Video,
+		VideoOff,
+	} from '@lucide/svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let {
@@ -114,8 +125,9 @@
 								e.preventDefault();
 								onLeave();
 							}}
-							class="text-muted hover:text-ink ml-auto shrink-0 text-[10px] underline"
-							title="leave the room">leave</button
+							class="text-muted hover:text-ink ml-auto shrink-0"
+							title="leave the room"
+							aria-label="leave the room"><LogOut size={12} /></button
 						>
 					{/if}
 					{#if room.live}
@@ -247,15 +259,21 @@
 		{/if}
 		<button
 			onclick={() => theme.cycle()}
-			class="text-muted hover:text-ink mt-2 mr-3 text-[10px] underline"
+			class="text-muted hover:text-ink mt-2 mr-3 inline-flex items-center gap-1 text-[10px] underline"
 			title="auto follows your OS; the room is always dark"
-			>theme · {theme.current}</button
+		>
+			{#if theme.current === 'auto'}<Monitor
+					size={11}
+				/>{:else if theme.current === 'dark'}<Moon size={11} />{:else}<Sun
+					size={11}
+				/>{/if}
+			theme · {theme.current}</button
 		>
 		{#if showAv}
 			<button
 				onclick={() => (voiceAdvanced = !voiceAdvanced)}
-				class="text-muted hover:text-ink mt-2 text-[10px] underline"
-				>voice settings</button
+				class="text-muted hover:text-ink mt-2 inline-flex items-center gap-1 text-[10px] underline"
+				><SlidersHorizontal size={11} /> voice settings</button
 			>
 			{#if voiceAdvanced}
 				<div class="border-muted/15 mt-2 rounded border p-2">
@@ -364,20 +382,28 @@
 			{/if}
 		{/if}
 		{#if showAv}
+			<!-- Icon chrome (#181): the voice-app bottom bar reads at a glance. -->
 			<div class="mt-2 flex gap-1.5">
 				<button
 					onclick={() => (onMic ? onMic() : (micOn = !micOn))}
-					class="flex-1 rounded border px-2 py-1.5 text-[11px] {micOn
+					class="flex flex-1 items-center justify-center rounded border py-2 {micOn
 						? 'border-muted/30 text-ink'
-						: 'border-z6/40 text-z6'}">{micOn ? 'mic on' : 'muted'}</button
+						: 'border-z6/40 text-z6'}"
+					title={micOn ? 'mute' : 'unmute'}
+					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
 				>
+					{#if micOn}<Mic size={15} />{:else}<MicOff size={15} />{/if}
+				</button>
 				<button
 					onclick={() => (onCam ? onCam() : (camOn = !camOn))}
-					class="flex-1 rounded border px-2 py-1.5 text-[11px] {camOn
+					class="flex flex-1 items-center justify-center rounded border py-2 {camOn
 						? 'border-muted/30 text-ink'
 						: 'border-muted/20 text-muted'}"
-					>{camOn ? 'cam on' : 'cam off'}</button
+					title={camOn ? 'camera off' : 'camera on'}
+					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
 				>
+					{#if camOn}<Video size={15} />{:else}<VideoOff size={15} />{/if}
+				</button>
 			</div>
 		{/if}
 	</div>

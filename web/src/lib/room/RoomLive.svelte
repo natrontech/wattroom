@@ -1,5 +1,14 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
+	import {
+		LogOut as LeaveIcon,
+		Mic,
+		MicOff,
+		Settings,
+		Tv,
+		Video as VideoIcon,
+		VideoOff,
+	} from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
 	import { play, setDucked, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
@@ -783,13 +792,13 @@
 			</div>
 			<button
 				onclick={() => (tv = true)}
-				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
-				>TV mode</button
+				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
+				><Tv size={13} /> TV</button
 			>
 			<button
 				onclick={() => (admin = true)}
-				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
-				>Room ···</button
+				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
+				aria-label="room settings"><Settings size={13} /> Room</button
 			>
 
 			{#if canControl && shared}

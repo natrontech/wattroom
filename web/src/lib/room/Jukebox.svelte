@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Pause, Play, SkipForward } from '@lucide/svelte';
 	import type { JukeboxState } from '$lib/protocol';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
@@ -227,13 +228,17 @@
 					<span class="truncate text-xs">{jukebox.current.title}</span>
 					<button
 						onclick={() => send(jukebox?.playing ? 'pause' : 'play')}
-						class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-2.5 py-1 text-xs"
-						>{jukebox.playing ? 'Pause' : 'Play'}</button
+						class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-2.5 py-1.5"
+						aria-label={jukebox.playing ? 'pause' : 'play'}
 					>
+						{#if jukebox.playing}<Pause size={13} />{:else}<Play
+								size={13}
+							/>{/if}
+					</button>
 					<button
 						onclick={() => send('skip')}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1 text-xs"
-						>Skip</button
+						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5"
+						aria-label="skip"><SkipForward size={13} /></button
 					>
 				{/if}
 			</div>
