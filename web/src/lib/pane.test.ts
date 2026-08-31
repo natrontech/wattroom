@@ -79,6 +79,22 @@ describe('keepSize (#280)', () => {
 		expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ w: 700, h: 320 });
 	});
 
+	it('keeps a dragged position when the size changes', () => {
+		// save() merges; a resize that dropped x/y would send a floating pane
+		// back to its corner the next time it was opened.
+		localStorage.setItem(KEY, JSON.stringify({ x: 120, y: 64 }));
+		const node = pane(500, 300);
+		keepSize(node, 'test');
+		node.style.width = '500px';
+		fire();
+		expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+			x: 120,
+			y: 64,
+			w: 500,
+			h: 0,
+		});
+	});
+
 	it('ignores a resize that did not come from a drag', () => {
 		// A column reflow resizes the pane without touching its inline size:
 		// storing then would freeze today's default and outlive tomorrow's.
