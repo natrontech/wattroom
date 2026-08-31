@@ -38,13 +38,13 @@
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
 
-	// The rail is the app's frame on every page except the ones that ARE their
-	// own frame: the room (it mounts the same rail itself, with AV wired), the
-	// phone spectator, login and the dev mocks.
+	// ONE rail, owned here, on every page — the room included (#191): navigating
+	// out of a room must not swap rail instances. Only the spectator view and
+	// login are their own frame.
 	const framed = $derived(
 		!!account.me &&
 			!publicPath &&
-			!page.url.pathname.startsWith('/r/') &&
+			!page.url.pathname.endsWith('/watch') &&
 			page.url.pathname !== '/login',
 	);
 
@@ -52,8 +52,29 @@
 	$effect(() => {
 		if (!framed) return;
 		page.url.pathname; // re-fetch presence on every navigation
-		void fetchRailRooms().then((rooms) => (railRooms = rooms));
+		const refresh = () =>
+			void fetchRailRooms().then((rooms) => (railRooms = rooms));
+		refresh();
+		// ponytail: 10 s poll for other rooms' presence; push it over the WS
+		// if the fleet ever makes polling expensive.
+		const timer = setInterval(refresh, 10_000);
+		return () => clearInterval(timer);
 	});
+
+	// The room you are IN is tick-fresh: names change the second someone joins,
+	// not on the next poll (#191 rider report).
+	const shownRooms = $derived(
+		railRooms.map((room) => {
+			const conn = roomConnection.current;
+			const roster = conn?.live.tick?.roster;
+			if (!conn || room.slug !== conn.slug || !roster) return room;
+			return {
+				...room,
+				connected: roster.length,
+				riders: roster.map((r) => r.name),
+			};
+		}),
+	);
 
 	const railYou = $derived({
 		name: account.me?.displayName ?? '',
@@ -103,15 +124,24 @@
 		<div class="hidden shrink-0 md:block">
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}
+				{@const roster = roomConnection.current.live.tick?.roster ?? []}
 				<RoomRail
 					you={railYou}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
-					rooms={railRooms}
+					rooms={shownRooms}
+					activeSlug={page.params?.slug ?? ''}
 					connectedSlug={roomConnection.current.slug}
 					onLeave={() => roomConnection.leave()}
 					micOn={av.micOn}
 					camOn={av.camOn}
 					micLevel={av.micLevel}
+					activeSpeaking={roster
+						.filter((r) => av.speaking[r.id])
+						.map((r) => r.name)}
+					mixRiders={roster
+						.filter((r) => r.id !== account.me?.id)
+						.map((r) => ({ id: r.id, name: r.name }))}
+					onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
 					transmitting={av.transmitting}
 					voiceMode={av.mode}
 					gateThreshold={av.gateThreshold}
@@ -125,7 +155,13 @@
 					onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
 				/>
 			{:else}
-				<RoomRail you={railYou} live={false} rooms={railRooms} showAv={false} />
+				<RoomRail
+					you={railYou}
+					live={false}
+					rooms={shownRooms}
+					activeSlug={page.params?.slug ?? ''}
+					showAv={false}
+				/>
 			{/if}
 		</div>
 		<div class="min-w-0 flex-1 overflow-y-auto">

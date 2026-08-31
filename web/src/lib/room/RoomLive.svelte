@@ -24,7 +24,6 @@
 		type RoomRider,
 		type TileMetric,
 	} from '$lib/room/view';
-	import type { RailRoom } from '$lib/room/mockcompat';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -32,8 +31,6 @@
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import RoomRail from '$lib/room/RoomRail.svelte';
-	import { fetchRailRooms } from '$lib/nav/rooms';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
@@ -147,17 +144,6 @@
 	);
 	const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
 	const segments = $derived(parsed.segments);
-
-	// ── The rail: your rooms, your mic ────────────────────────────────────────
-	let railRooms = $state<RailRoom[]>([]);
-	$effect(() => {
-		void fetchRailRooms().then((fetched) => {
-			// This room's live flag comes from the local tick, not the lagging list.
-			railRooms = fetched.map((room) =>
-				room.slug === slug ? { ...room, live: phase === 'live' } : room,
-			);
-		});
-	});
 
 	// ── Riders: the one grid, fed by ticks ────────────────────────────────────
 	// Last-known metrics survive a missed tick so a blip shows a stale tile,
@@ -752,34 +738,9 @@
 	{onRemove}
 />
 
-<!-- The room IS the app: full viewport, rail | main | panel (#39's design). -->
-<div class="bg-surface flex h-dvh overflow-hidden text-white">
-	<div class="hidden shrink-0 md:block">
-		<RoomRail
-			{you}
-			live={phase === 'live'}
-			rooms={railRooms}
-			activeSlug={slug}
-			micOn={av.micOn}
-			camOn={av.camOn}
-			micLevel={av.micLevel}
-			activeSpeaking={(live.tick?.roster ?? [])
-				.filter((r) => av.speaking[r.id])
-				.map((r) => r.name)}
-			transmitting={av.transmitting}
-			voiceMode={av.mode}
-			gateThreshold={av.gateThreshold}
-			pttHeld={av.pttHeld}
-			onVoiceMode={(m) => av.setMode(m)}
-			onGateThreshold={(t) => av.setGateThreshold(t)}
-			onPtt={(held) => av.setPtt(held)}
-			micTesting={av.micTesting}
-			onMicTest={() => void av.toggleMicTest()}
-			onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
-			onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
-		/>
-	</div>
-
+<!-- The rail is the layout's (#191 — one instance across navigation);
+     this page is main | panel inside that frame. -->
+<div class="bg-surface flex h-full overflow-hidden text-white">
 	<main
 		class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 py-4"
 	>
