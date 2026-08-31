@@ -29,6 +29,7 @@
 	import { library } from '$lib/workout/library';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { pickStage } from '$lib/room/stage';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
@@ -271,15 +272,30 @@
 	let focusId = $state<string | null>(null);
 	// The stage's menu, named (#280): av knows the tracks, only this page
 	// knows whose they are.
-	const stageSources = $derived(
-		av.stageSources.map((source) => ({
+	// The jukebox video is a stage source, and it leads (#316): what the room
+	// is watching together belongs in the room, never in a window pasted over
+	// the cam grid. A rider who wants a share instead picks it.
+	const stageSources = $derived([
+		...(live.tick?.jukebox?.current
+			? [
+					{
+						key: 'jukebox',
+						kind: 'jukebox' as const,
+						gen: live.tick.jukebox.current.videoId,
+						label: live.tick.jukebox.current.title || 'the jukebox',
+					},
+				]
+			: []),
+		...av.stageSources.map((source) => ({
 			key: source.key,
 			kind: source.kind,
+			gen: String(source.gen),
 			label:
 				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
 				(source.kind === 'screen' ? "'s screen" : ''),
 		})),
-	);
+	]);
+	const onStage = $derived(pickStage(stageSources, av.stagePick));
 	const focused = $derived(riders.find((rider) => rider.id === focusId));
 	const others = $derived(riders.filter((rider) => rider.id !== focusId));
 
@@ -778,15 +794,15 @@
 			</div>
 		{/if}
 
-		{#if av.stage}
+		{#if onStage}
 			<!-- The stage (#280): many people may share at once, so the picker
 			     below chooses; the frame zooms, pans, resizes and pops out. -->
 			<Stage
 				sources={stageSources}
-				activeKey={av.stage.key}
-				trackKey={`${av.stage.key}:${av.stage.gen}`}
+				activeKey={onStage.key}
+				trackKey={`${onStage.key}:${onStage.gen}`}
 				onPick={(key) => av.setStage(key)}
-				attach={(node) => av.attachStage(node)}
+				attach={(node) => av.attachStage(node, onStage.key)}
 			/>
 		{/if}
 

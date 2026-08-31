@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { centrePane, dragPane, keepSize } from '$lib/pane';
+import { centrePane, dragPane, keepSize, restorePane } from '$lib/pane';
 
 // Ported from the duplicate stage PR (#294), adapted to this pane module:
 // sizes are read from the inline style the browser's resize handle writes,
@@ -172,5 +172,40 @@ describe('dragPane (#280)', () => {
 		centrePane(node, 'test');
 		expect([node.style.left, node.style.top]).toEqual(['310px', '270px']);
 		expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ x: 310, y: 270 });
+	});
+});
+
+// #316: the stage borrows the dock's rect so the player can seat inline. The
+// borrowed size is the stage's, and giving the dock back means giving back
+// exactly what the rider had — not whatever the stage happened to be.
+describe('a borrowed pane (#316)', () => {
+	const FLOATING = { w: 380, h: 308 };
+	beforeEach(() => localStorage.clear());
+
+	it('does not store the size something else is driving', () => {
+		const node = pane(380, 308);
+		keepSize(node, 'test');
+		node.dataset.seated = '';
+		node.style.width = '900px';
+		node.style.height = '506px';
+		fire();
+		expect(localStorage.getItem(KEY)).toBe(null);
+	});
+
+	it('gives an undragged dock back its authored size and corner', () => {
+		const node = pane(380, 308);
+		node.style.left = '100px';
+		node.style.width = '900px';
+		restorePane(node, 'test', FLOATING);
+		expect([node.style.width, node.style.height]).toEqual(['380px', '308px']);
+		expect([node.style.left, node.style.right]).toEqual(['', '']);
+	});
+
+	it('gives a dragged and resized dock back what the rider chose', () => {
+		localStorage.setItem(KEY, JSON.stringify({ w: 520, h: 400, x: 40, y: 60 }));
+		const node = pane(520, 400);
+		restorePane(node, 'test', FLOATING);
+		expect([node.style.width, node.style.height]).toEqual(['520px', '400px']);
+		expect([node.style.left, node.style.top]).toEqual(['40px', '60px']);
 	});
 });

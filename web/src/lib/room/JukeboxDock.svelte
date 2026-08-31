@@ -8,7 +8,14 @@
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { centrePane, dragPane, keepSize } from '$lib/pane';
+	import {
+		centrePane,
+		dragPane,
+		keepSize,
+		resizePane,
+		restorePane,
+	} from '$lib/pane';
+	import { stageSlot } from '$lib/room/stage-slot.svelte';
 	import {
 		FastForward,
 		GripHorizontal,
@@ -27,8 +34,8 @@
 	// plays, nothing overlaid — a dock satisfies that on every page.
 	//
 	// The dock is placed by the rider (rider report: "stuck bottom right, can
-	// never be centred"): drag the handle, drag the corner to resize, and both
-	// survive navigation and reload.
+	// never be centred"): drag the handle, drag any edge or corner to resize,
+	// and both survive navigation and reload.
 
 	const conn = $derived(roomConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
@@ -49,6 +56,33 @@
 	// never be dragged below 200×200.
 	const PANE = 'jukebox-dock';
 	const CHROME = 56;
+	const FLOATING = { w: 380, h: 252 + CHROME };
+
+	// ── Seated in the room's stage (#316) ─────────────────────────────────────
+	// The iframe never moves — reparenting it reloads it, and playback, the
+	// player object and the room's `ended` reporting die with it. The stage
+	// publishes the rect of the hole it left and the dock flies there, chrome
+	// off: the room page has the transport in its side panel, and a seat with
+	// nothing over or beside the player is what keeps RMF satisfied. Lose the
+	// seat (leave the room, scroll it away) and it floats again.
+	const seat = $derived(stageSlot.seat);
+	$effect(() => {
+		const to = seat;
+		const node = shell;
+		if (!node) return;
+		if (to) {
+			node.style.left = `${to.x}px`;
+			node.style.top = `${to.y}px`;
+			node.style.right = node.style.bottom = 'auto';
+			node.style.width = `${to.w}px`;
+			node.style.height = `${to.h}px`;
+			node.style.minWidth = node.style.minHeight = '0';
+		} else {
+			node.style.minWidth = '260px';
+			node.style.minHeight = `${200 + CHROME}px`;
+			restorePane(node, PANE, FLOATING);
+		}
+	});
 
 	// ── YouTube IFrame API ────────────────────────────────────────────────────
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -412,44 +446,49 @@
 	<div
 		bind:this={shell}
 		data-pane={PANE}
+		data-seated={seat ? '' : undefined}
 		{@attach (node) => keepSize(node, PANE)}
-		class="bg-surface ring-ink/15 fixed z-[60] flex flex-col overflow-hidden rounded-lg shadow-2xl ring-1 {showPlayer ||
-		speaker
+		{@attach (node) => (seat ? undefined : resizePane(node, PANE))}
+		class="bg-surface fixed z-[60] flex flex-col overflow-hidden rounded-lg {seat
+			? ''
+			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer || speaker
 			? ''
 			: 'hidden'} {page.url.pathname.startsWith('/r/')
 			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
-		style="width: 380px; height: {252 + CHROME}px; min-width: 260px;
-			min-height: {200 + CHROME}px; max-width: 96vw; max-height: 90vh;
-			resize: both"
+		style="width: {FLOATING.w}px; height: {FLOATING.h}px; min-width: 260px;
+			min-height: {200 + CHROME}px; max-width: 96vw; max-height: 90vh"
 	>
-		<!-- Drag handle. Chrome only — never over the player (RMF). -->
-		<div
-			{@attach dragPane}
-			class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
-		>
-			<GripHorizontal size={12} class="shrink-0" />
-			{#if showPlayer && jukebox?.playing && !playerInfo.live}
-				<span
-					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted animate-pulse'}"
-					title={inSync
-						? 'in sync with the room'
-						: "catching up to the room's playhead"}
-				></span>
-			{/if}
-			<span class="truncate text-[10px]">{title}</span>
-			<button
-				onclick={() => shell && centrePane(shell, PANE)}
-				class="hover:text-ink ml-auto shrink-0"
-				title="centre the dock"
-				aria-label="centre the dock"><Minimize2 size={12} /></button
+		<!-- Drag handle. Chrome only — never over the player (RMF), and gone
+		     entirely once the stage is holding the seat. -->
+		{#if !seat}
+			<div
+				{@attach dragPane}
+				class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
 			>
-		</div>
+				<GripHorizontal size={12} class="shrink-0" />
+				{#if showPlayer && jukebox?.playing && !playerInfo.live}
+					<span
+						class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
+							? 'bg-watt glow-stroke'
+							: 'bg-muted animate-pulse'}"
+						title={inSync
+							? 'in sync with the room'
+							: "catching up to the room's playhead"}
+					></span>
+				{/if}
+				<span class="truncate text-[10px]">{title}</span>
+				<button
+					onclick={() => shell && centrePane(shell, PANE)}
+					class="hover:text-ink ml-auto shrink-0"
+					title="centre the dock"
+					aria-label="centre the dock"><Minimize2 size={12} /></button
+				>
+			</div>
+		{/if}
 
 		<div class="flex min-h-0 flex-1 bg-black">
-			{#if speaker}
+			{#if speaker && !seat}
 				{@const id = speaker.id}
 				<div class="border-ink/10 relative w-24 shrink-0 border-r">
 					{#if speakerVideo}
@@ -495,10 +534,12 @@
 			>
 		{/if}
 
-		{#if showPlayer}
+		{#if showPlayer && !seat}
 			<!-- Transport for the room, then your own ears (#179): the same fader
 			     as the rail's mixer, where the music actually is. Below the tile —
-			     RMF forbids overlays. -->
+			     RMF forbids overlays. Seated in the stage this goes away: the room
+			     page has the same transport in its side panel, and a seat with
+			     nothing beside the player is a seat the picture fits exactly. -->
 			<div
 				class="border-ink/10 text-muted flex h-8 shrink-0 items-center gap-1 border-t px-1.5"
 			>

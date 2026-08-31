@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
+import { pickStage } from '$lib/room/stage';
 
 vi.mock('$lib/api', () => ({
 	api: async () => ({ ok: true, data: { url: 'ws://livekit', token: 't' } }),
@@ -51,13 +52,15 @@ describe('createRoomAv', () => {
 		const dispose = $effect.root(() => {
 			av = createRoomAv('mfw');
 		});
-		expect(av.stage).toBe(null);
+		// The room page resolves the pick; av only has to keep offering it.
+		const onStage = () => pickStage(av.stageSources, av.stagePick);
+		expect(onStage()).toBe(null);
 		await av.join();
 
 		dispose();
 
 		await av.toggleShare();
-		expect(av.stage?.key).toBe('screen:me');
+		expect(onStage()?.key).toBe('screen:me');
 		expect(av.stageSources.map((s) => s.key)).toEqual(['screen:me']);
 	});
 
