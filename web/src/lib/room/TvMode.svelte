@@ -89,7 +89,7 @@
 			<section class="flex flex-1 flex-col justify-center">
 				<TargetWidget {you} variant="delta" />
 				<div class="mt-[2.5vh]">
-					<IntervalStrip {block} bias={1} big />
+					<IntervalStrip {block} bias={1} cadence={you.cadence} big />
 				</div>
 				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[2.4vh]">
 					<span class="text-muted"

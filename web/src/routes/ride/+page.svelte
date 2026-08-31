@@ -37,7 +37,9 @@
 	// is the session most people ride.
 	const custom = createCustomStore();
 	const requested = page.url.searchParams.get('w') ?? '';
-	const saved = custom.byId(requested);
+	// Derived, not once: the shelf loads async — read at init it is always
+	// empty, and every custom ride silently fell back to the default.
+	const saved = $derived(custom.byId(requested));
 	const selected = $derived(
 		byId(requested) ??
 			(saved
@@ -281,6 +283,26 @@
 			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
 		},
 	]);
+	// Cadence band of the current block (#66) — display-only, steady steps.
+	const bandText = $derived.by(() => {
+		const seg = session?.info.segment;
+		if (!seg) return null;
+		const { cadenceLow: low, cadenceHigh: high } = seg;
+		if (low !== undefined && high !== undefined) return `${low}–${high} rpm`;
+		if (high !== undefined) return `under ${high} rpm`;
+		if (low !== undefined) return `over ${low} rpm`;
+		return null;
+	});
+	const inCadenceBand = $derived.by(() => {
+		const seg = session?.info.segment;
+		const rpm = session?.sample?.cadence ?? 0;
+		if (!seg || rpm <= 0) return false;
+		return (
+			(seg.cadenceLow === undefined || rpm >= seg.cadenceLow) &&
+			(seg.cadenceHigh === undefined || rpm <= seg.cadenceHigh)
+		);
+	});
+
 	// A frozen number is worse than a warning: past 3 s without a sample the
 	// dashboard says so, persistently, while the driver reconnects (#37).
 	let nowMs = $state(Date.now());
@@ -567,7 +589,19 @@
 					class="text-muted mt-1.5 flex justify-between font-mono text-[10px] tabular-nums"
 				>
 					<span>0</span>
-					<span>{target > 0 ? `target ${target} W` : 'no target'}</span>
+					<span>
+						{target > 0 ? `target ${target} W` : 'no target'}
+						{#if bandText}
+							<!-- Cadence is this block's point; colour answers "am I doing it" (#66). -->
+							<span
+								class="{inCadenceBand
+									? 'text-z4'
+									: 'text-z5'} font-semibold uppercase"
+							>
+								· at {bandText}</span
+							>
+						{/if}
+					</span>
 					<span>{Math.round(ftp * 1.5)}</span>
 				</div>
 			</div>

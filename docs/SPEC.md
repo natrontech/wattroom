@@ -39,7 +39,14 @@ Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout →
 
 ## Workout JSON (draft — M1 finalizes)
 
-Planned, additive, not yet in the format: optional per-step `cadence` targets (#66) and HR bands (#67) — steps without them behave exactly as today.
+Planned, additive, not yet in the format: optional per-step HR bands (#67) — steps without them behave exactly as today.
+
+**Cadence bands (#66, shipped)**: `steady` steps may carry `cadenceLow` and/or
+`cadenceHigh` (rpm) — "under 60" is `{ "cadenceHigh": 60 }`, "over 100" is
+`{ "cadenceLow": 100 }`. Display-only: the player shows the band next to the
+power target, coloured in/out of band; the execution score stays power-based.
+Bounds 30–150 rpm; a `cadenceLow` at or under the spiral guard's 50 rpm trip
+is refused at validation — a workout must not fight a safety feature.
 
 ```jsonc
 {
@@ -48,6 +55,7 @@ Planned, additive, not yet in the format: optional per-step `cadence` targets (#
   "steps": [
     { "type": "warmup",   "seconds": 600, "from": 0.4, "to": 0.7 },          // ramp, fractions of FTP
     { "type": "steady",   "seconds": 1200, "target": 0.9 },
+    { "type": "steady",   "seconds": 360,  "target": 0.85, "cadenceLow": 55, "cadenceHigh": 65 }, // torque block
     { "type": "steady",   "seconds": 300,  "target": 0.5 },
     { "type": "repeat",   "times": 4, "steps": [
       { "type": "steady", "seconds": 30, "target": 1.2 },

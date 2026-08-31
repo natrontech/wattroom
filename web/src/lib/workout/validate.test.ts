@@ -111,4 +111,39 @@ describe('validateWorkout', () => {
 			validateWorkout(ok([{ type: 'repeat', times: 3, steps: [] }])).ok,
 		).toBe(false);
 	});
+
+	it('accepts a sane cadence band and refuses junk (#66)', () => {
+		const step = (extra: object) => ({
+			type: 'steady',
+			seconds: 300,
+			target: 0.85,
+			...extra,
+		});
+		expect(
+			validateWorkout(ok([step({ cadenceLow: 55, cadenceHigh: 65 })])).ok,
+		).toBe(true);
+		expect(validateWorkout(ok([step({ cadenceHigh: 60 })])).ok).toBe(true);
+		expect(validateWorkout(ok([step({ cadenceLow: 100 })])).ok).toBe(true);
+		// Upside down, out of range, or not a number → refused.
+		expect(
+			validateWorkout(ok([step({ cadenceLow: 90, cadenceHigh: 60 })])).ok,
+		).toBe(false);
+		expect(validateWorkout(ok([step({ cadenceLow: 200 })])).ok).toBe(false);
+		expect(validateWorkout(ok([step({ cadenceHigh: 'fast' })])).ok).toBe(false);
+	});
+
+	it('refuses a band whose floor would fight the spiral guard', () => {
+		const result = validateWorkout(
+			ok([
+				{
+					type: 'steady',
+					seconds: 300,
+					target: 0.85,
+					cadenceLow: LIMITS.guardTripCadence,
+				},
+			]),
+		);
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.error).toContain('spiral guard');
+	});
 });

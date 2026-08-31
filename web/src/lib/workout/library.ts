@@ -36,6 +36,15 @@ const cool = (seconds: number, from: number, to: number) =>
 	({ type: 'cooldown', seconds, from, to }) as const;
 const hold = (seconds: number, target: number) =>
 	({ type: 'steady', seconds, target }) as const;
+// Cadence-band blocks (#66): ERG holds the watts, the rpm is the workout.
+const grind = (seconds: number, target: number, low: number, high: number) =>
+	({
+		type: 'steady',
+		seconds,
+		target,
+		cadenceLow: low,
+		cadenceHigh: high,
+	}) as const;
 const repeat = (times: number, steps: Workout['steps']) =>
 	({ type: 'repeat', times, steps }) as const;
 const sprint = (seconds: number) => ({ type: 'sprint', seconds }) as const;
@@ -127,15 +136,40 @@ export const library: LibraryWorkout[] = [
 		workout: {
 			name: 'Cadence Pyramid',
 			author: 'wattroom',
+			// The prose always said "hold the cadence you are told" — the steps
+			// finally say it too (#66): up the pyramid and back down.
 			steps: [
 				warm(600, 0.45, 0.6),
-				repeat(5, [hold(300, 0.68), hold(120, 0.6)]),
+				grind(300, 0.68, 85, 95),
+				hold(120, 0.6),
+				grind(300, 0.68, 95, 105),
+				hold(120, 0.6),
+				grind(300, 0.68, 105, 115),
+				hold(120, 0.6),
+				grind(300, 0.68, 95, 105),
+				hold(120, 0.6),
+				grind(300, 0.68, 85, 95),
 				cool(300, 0.55, 0.4),
 			],
 		},
 	},
 
 	// ── Tempo: 76–90 % FTP ──────────────────────────────────────────────────────
+	{
+		id: 'torque-blocks',
+		focus: 'Tempo',
+		summary:
+			'Low-cadence strength work: ERG holds the watts, you hold 55–65 rpm. Stay seated.',
+		workout: {
+			name: 'Torque Blocks',
+			author: 'wattroom',
+			steps: [
+				warm(600, 0.4, 0.65),
+				repeat(4, [grind(360, 0.85, 55, 65), hold(240, 0.5)]),
+				cool(300, 0.5, 0.35),
+			],
+		},
+	},
 	{
 		id: 'tempo-3x10',
 		focus: 'Tempo',

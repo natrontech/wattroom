@@ -364,6 +364,46 @@
 								{ZONE_NAMES[zoneOfStep(current)]}
 							</span>
 						</label>
+						<!-- Cadence band (#66): display-only, and optional — most steps
+						     leave it blank. Empty input = no bound on that side. -->
+						<div class="grid grid-cols-2 gap-3">
+							<label class="block">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>rpm from</span
+								>
+								<input
+									type="number"
+									min="51"
+									max="150"
+									placeholder="–"
+									value={current.cadenceLow ?? ''}
+									oninput={(event) =>
+										((current as SteadyStep).cadenceLow =
+											event.currentTarget.value === ''
+												? undefined
+												: Number(event.currentTarget.value))}
+									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								/>
+							</label>
+							<label class="block">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>rpm to</span
+								>
+								<input
+									type="number"
+									min="30"
+									max="150"
+									placeholder="–"
+									value={current.cadenceHigh ?? ''}
+									oninput={(event) =>
+										((current as SteadyStep).cadenceHigh =
+											event.currentTarget.value === ''
+												? undefined
+												: Number(event.currentTarget.value))}
+									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								/>
+							</label>
+						</div>
 					{:else if current.type === 'repeat'}
 						<label class="block">
 							<span class="text-muted text-[10px] tracking-wider uppercase"

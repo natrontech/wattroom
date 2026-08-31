@@ -6,13 +6,31 @@
 		bias,
 		onBias,
 		big = false,
+		cadence = 0,
 	}: {
 		block: Block | null;
 		bias: number;
 		/** Omitted in TV mode — nothing there is clickable from across the room. */
 		onBias?: (step: number) => void;
 		big?: boolean;
+		/** Your live rpm — colours the cadence band in or out (#66). */
+		cadence?: number;
 	} = $props();
+
+	const bandText = $derived.by(() => {
+		if (!block) return null;
+		const { cadenceLow: low, cadenceHigh: high } = block;
+		if (low !== undefined && high !== undefined) return `${low}–${high} rpm`;
+		if (high !== undefined) return `under ${high} rpm`;
+		if (low !== undefined) return `over ${low} rpm`;
+		return null;
+	});
+	const inBand = $derived(
+		!!block &&
+			cadence > 0 &&
+			(block.cadenceLow === undefined || cadence >= block.cadenceLow) &&
+			(block.cadenceHigh === undefined || cadence <= block.cadenceHigh),
+	);
 </script>
 
 <!--
@@ -39,6 +57,16 @@
 			>
 				{block.label}
 			</p>
+			{#if bandText}
+				<!-- Cadence is the point of this block; colour answers "am I doing it". -->
+				<p
+					class="font-display font-semibold tabular-nums {big
+						? 'text-[2.2vh]'
+						: 'text-sm'} {inBand ? 'text-z4' : 'text-z5'}"
+				>
+					at {bandText}
+				</p>
+			{/if}
 		</div>
 
 		<div class="ml-auto text-right">

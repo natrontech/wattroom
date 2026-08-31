@@ -1106,6 +1106,7 @@
 					<IntervalStrip
 						{block}
 						{bias}
+						cadence={you.cadence}
 						onBias={trainer ? nudgeBias : undefined}
 					/>
 				</div>
