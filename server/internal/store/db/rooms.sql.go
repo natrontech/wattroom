@@ -227,7 +227,7 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, m.role, m.joined_at
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, m.role, m.joined_at
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -245,6 +245,7 @@ type ListRoomMembersRow struct {
 	Email         *string
 	NotifyPlanned bool
 	UnsubToken    pgtype.UUID
+	FriendCode    string
 	Role          string
 	JoinedAt      pgtype.Timestamptz
 }
@@ -269,6 +270,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.Email,
 			&i.NotifyPlanned,
 			&i.UnsubToken,
+			&i.FriendCode,
 			&i.Role,
 			&i.JoinedAt,
 		); err != nil {
