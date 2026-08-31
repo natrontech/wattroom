@@ -79,3 +79,22 @@ func (el *eventLog) drain() []protocol.RoomEvent {
 	el.pending = nil
 	return out
 }
+
+// sessionKind labels the lines a room's plan and timeline produce (#359).
+// The jukebox changing under everyone was only half of "what happened here":
+// a session being planned, moved, started or finished is the other half, and
+// riders were reading it nowhere.
+const sessionKind = "session"
+
+// sessionLine is one thing that happened to this room's plan or timeline.
+// `startsAt` is the zero time on the lines that are about right now.
+func sessionLine(verb, actor, workout string, startsAt, now time.Time) protocol.RoomEvent {
+	ev := protocol.RoomEvent{
+		Kind: sessionKind, Verb: verb, Actor: actor, Subject: workout,
+		Count: 1, At: now.UnixMilli(),
+	}
+	if !startsAt.IsZero() {
+		ev.When = startsAt.UnixMilli()
+	}
+	return ev
+}

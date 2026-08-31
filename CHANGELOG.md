@@ -16,17 +16,31 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Added
+
+- The room's chat now carries what the room did with its plan: a session
+  planned, moved or cancelled, one starting and one finishing, and a reminder
+  ten minutes before a planned session is due.
+
+### Changed
+
+- The room is two tabs instead of one long scroll: Room holds the shared
+  screen and the rider tiles, Training holds the clock, the interval, your
+  target and the graph — and a session starting takes you straight to it.
+- A finished session now opens its summary over the room instead of drawing it
+  below the fold, where riders watching the shared screen never saw it.
+- Planning a session from the Sessions page opens the room's own picker, so
+  you see the graph, the zones and the cadence bands before you commit a room
+  to a workout.
+- Appearance themes now recolour the whole app — surfaces, text, accents, and
+  power zones — with matching dark and daylight variants instead of changing
+  only two accent colours.
+
 ### Security
 
 - Corrected the 2026.09.1 note about the `/metrics` exposure: it claimed
   nothing was exposed in practice, which was wrong. wattroom.ch was already
   live, so the endpoint was public for as long as the site had been running.
-
-### Changed
-
-- Appearance themes now recolour the whole app — surfaces, text, accents, and
-  power zones — with matching dark and daylight variants instead of changing
-  only two accent colours.
 
 ## [2026.09.2] - 2026-09-01
 

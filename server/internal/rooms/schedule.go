@@ -91,6 +91,16 @@ func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Roo
 	return room, user, true
 }
 
+// announce puts one plan line on the room's live timeline (#359). Silent
+// without a hub — planning still works, the room just hears about it when
+// someone reloads.
+func (s *Service) announce(room db.Room, verb, actor, workout string, startsAt time.Time) {
+	if s.presence == nil {
+		return
+	}
+	s.presence.SessionAnnounce(room.Slug, verb, actor, workout, startsAt)
+}
+
 func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	room, user, ok := s.requireControl(w, r)
 	if !ok {
@@ -133,6 +143,7 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil {
 		s.notifier.SessionPlanned(room, req.WorkoutName, req.StartsAt, user.ID)
 	}
+	s.announce(room, "planned", user.DisplayName, req.WorkoutName, req.StartsAt)
 	httpx.WriteJSON(w, http.StatusCreated, scheduledJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 		WorkoutJSON: string(row.WorkoutJson),
@@ -183,11 +194,12 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil {
 		s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
 	}
+	s.announce(room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
-	room, _, ok := s.requireControl(w, r)
+	room, user, ok := s.requireControl(w, r)
 	if !ok {
 		return
 	}
@@ -196,18 +208,19 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
 	}
-	rows, err := s.store.Queries.DeleteScheduledSession(r.Context(), db.DeleteScheduledSessionParams{
+	name, err := s.store.Queries.DeleteScheduledSession(r.Context(), db.DeleteScheduledSessionParams{
 		ID: id, RoomID: room.ID,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	}
 	if err != nil {
 		s.log.Error("unschedule failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be removed. Try again.")
 		return
 	}
-	if rows == 0 {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
-		return
-	}
+	s.announce(room, "cancelled", user.DisplayName, name, time.Time{})
 	w.WriteHeader(http.StatusNoContent)
 }
 

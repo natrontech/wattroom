@@ -3,17 +3,17 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Select from '$lib/components/Select.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { nextHourInput, toLocalInput } from '$lib/components/when';
+	import { toLocalInput } from '$lib/components/when';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
-	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
-	import { library } from '$lib/workout/library';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { buildShelf } from '$lib/workout/shelf';
 	import { durationSeconds } from '$lib/workout/engine';
+	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import { parseSharedWorkout } from '$lib/room/workout';
 
 	// The planning surface (#325). Planning used to live inside the room's
@@ -39,6 +39,7 @@
 
 	void account.load();
 	const custom = createCustomStore();
+	const profile = createProfileStore();
 
 	let sessions = $state<Planned[] | null>(null);
 	let icsToken = $state('');
@@ -71,64 +72,34 @@
 	const roomOptions = $derived(
 		plannable.map((room) => ({ value: room.slug, label: room.name })),
 	);
-	const shelf = $derived([
-		...custom.all.map((entry) => ({
-			key: `custom:${entry.id}`,
-			workout: entry.workout,
-		})),
-		...library.map((entry) => ({
-			key: `library:${entry.id}`,
-			workout: entry.workout,
-		})),
-	]);
+	const shelf = $derived(buildShelf(custom.all));
 
-	// The kit's Select filters as you type past six options — the shelf is
-	// twenty-seven deep, so a native dropdown means scrolling for a name you
-	// already know.
-	const workoutOptions = $derived(
-		shelf.map((entry) => ({
-			value: entry.key,
-			label: `${entry.workout.name} · ${formatClock(durationSeconds(entry.workout))}`,
-		})),
-	);
-
-	// ── The plan form ─────────────────────────────────────────────────────────
-	let roomSlug = $state('');
-	let workoutKey = $state('');
-	let planAt = $state(nextHourInput());
+	// ── Planning ──────────────────────────────────────────────────────────────
+	// The room's picker, opened from here (#359): two bare dropdowns and a
+	// time was the only place you could plan a session without seeing the
+	// graph, the zones or the cadence bands you were committing a room to.
+	let planning = $state(false);
 	let busy = $state(false);
-	let formError = $state<string | null>(null);
-	// Defaults, not settings (ux.md's 95 % rule): one plannable room needs no
-	// choosing, and the shelf's first entry is a fine starting pick.
-	$effect(() => {
-		if (!roomSlug && plannable.length > 0) roomSlug = plannable[0].slug;
-	});
-	$effect(() => {
-		if (!workoutKey && shelf.length > 0) workoutKey = shelf[0].key;
-	});
-	const pickedWorkout = $derived(
-		shelf.find((entry) => entry.key === workoutKey)?.workout,
-	);
 
-	async function plan() {
-		if (!pickedWorkout || !roomSlug || !planAt) return;
+	async function plan(
+		name: string,
+		json: string,
+		startsAt: string,
+		roomSlug: string,
+	) {
+		if (!roomSlug) return;
 		busy = true;
 		const res = await api(`/api/rooms/${roomSlug}/schedule`, {
 			method: 'POST',
-			json: {
-				workoutName: pickedWorkout.name,
-				workoutJson: JSON.stringify(pickedWorkout),
-				startsAt: new Date(planAt).toISOString(),
-			},
+			json: { workoutName: name, workoutJson: json, startsAt },
 		});
 		busy = false;
 		if (!res.ok) {
-			formError = res.error.message;
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
-		formError = null;
-		planAt = nextHourInput();
-		toasts.push(`${pickedWorkout.name} is on the calendar.`);
+		planning = false;
+		toasts.push(`${name} is on the calendar.`);
 		await load();
 	}
 
@@ -249,14 +220,21 @@
 				Everything planned across your rooms, in one place.
 			</p>
 		</div>
-		{#if icsToken}
-			<button
-				onclick={() => (showFeed = !showFeed)}
-				class="btn btn-secondary btn-xs ml-auto"
-			>
-				<CalendarClock size={14} /> Subscribe
-			</button>
-		{/if}
+		<div class="ml-auto flex items-center gap-2">
+			{#if icsToken}
+				<button
+					onclick={() => (showFeed = !showFeed)}
+					class="btn btn-secondary btn-xs"
+				>
+					<CalendarClock size={14} /> Subscribe
+				</button>
+			{/if}
+			{#if plannable.length > 0}
+				<button onclick={() => (planning = true)} class="btn btn-primary btn-xs"
+					>Plan a session</button
+				>
+			{/if}
+		</div>
 	</div>
 
 	{#if showFeed}
@@ -302,36 +280,16 @@
 		</div>
 	{/if}
 
-	{#if plannable.length > 0}
-		<section class="mt-8">
-			<h2 class="eyebrow">plan a session</h2>
-			<div class="panel mt-2 px-4 py-4">
-				<div class="flex flex-wrap items-center gap-2">
-					<div class="min-w-48 flex-1">
-						<Select
-							options={workoutOptions}
-							bind:value={workoutKey}
-							label="Workout"
-						/>
-					</div>
-					<span class="text-muted text-xs">in</span>
-					<div class="min-w-40 flex-1">
-						<Select options={roomOptions} bind:value={roomSlug} label="Room" />
-					</div>
-				</div>
-				<div class="mt-3 flex flex-wrap items-center gap-2">
-					<WhenPicker bind:value={planAt} />
-					<button
-						onclick={() => void plan()}
-						disabled={busy || !planAt || !pickedWorkout}
-						class="btn btn-primary btn-xs ml-auto">Plan session</button
-					>
-				</div>
-				{#if formError}
-					<p class="text-z6 mt-2 text-xs">{formError}</p>
-				{/if}
-			</div>
-		</section>
+	{#if planning}
+		<SessionPicker
+			title="Plan a session"
+			{shelf}
+			ftp={profile.current.ftp}
+			rooms={roomOptions}
+			{busy}
+			onPlan={(name, json, at, slug) => void plan(name, json, at, slug)}
+			onClose={() => (planning = false)}
+		/>
 	{/if}
 
 	<section class="mt-8">
@@ -350,6 +308,11 @@
 						{#if plannable.length === 0}
 							<a href="/rooms" class="btn btn-secondary btn-xs"
 								>Open a room to plan in</a
+							>
+						{:else}
+							<button
+								onclick={() => (planning = true)}
+								class="btn btn-primary btn-xs">Plan a session</button
 							>
 						{/if}
 					{/snippet}

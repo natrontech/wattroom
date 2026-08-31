@@ -59,6 +59,9 @@ type Presence interface {
 	// A role change has to reach the sockets that are already open, or the
 	// new coach stays refused until they reconnect.
 	SetRole(slug, userID, role string)
+	// The plan is something the room did (#359): planning over HTTP has to
+	// reach the timeline of the people standing in the room right now.
+	SessionAnnounce(slug, verb, actor, workout string, startsAt time.Time)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.

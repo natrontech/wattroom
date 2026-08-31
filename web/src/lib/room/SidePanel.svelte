@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Copy, Music, SmilePlus, X } from '@lucide/svelte';
+	import { CalendarClock, Copy, Music, SmilePlus, X } from '@lucide/svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import {
 		eventText,
@@ -143,10 +143,12 @@
 						<!-- An event, not a message: no avatar, no reactions, nothing to
 					     copy. The room talking about itself stays quieter than the
 					     people in it. -->
+						{@const Mark =
+							entry.event.kind === 'session' ? CalendarClock : Music}
 						<li
 							class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
 						>
-							<Music size={11} class="shrink-0 translate-y-0.5 opacity-70" />
+							<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
 							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
 							>
 							<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"

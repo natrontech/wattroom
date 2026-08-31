@@ -145,8 +145,9 @@ func (q *Queries) DeleteRoom(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
-const deleteScheduledSession = `-- name: DeleteScheduledSession :execrows
+const deleteScheduledSession = `-- name: DeleteScheduledSession :one
 delete from scheduled_sessions where id = $1 and room_id = $2
+returning workout_name
 `
 
 type DeleteScheduledSessionParams struct {
@@ -154,12 +155,12 @@ type DeleteScheduledSessionParams struct {
 	RoomID pgtype.UUID
 }
 
-func (q *Queries) DeleteScheduledSession(ctx context.Context, arg DeleteScheduledSessionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteScheduledSession, arg.ID, arg.RoomID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// Returns the name so the room's timeline can say which plan went (#359).
+func (q *Queries) DeleteScheduledSession(ctx context.Context, arg DeleteScheduledSessionParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteScheduledSession, arg.ID, arg.RoomID)
+	var workout_name string
+	err := row.Scan(&workout_name)
+	return workout_name, err
 }
 
 const getMembership = `-- name: GetMembership :one
