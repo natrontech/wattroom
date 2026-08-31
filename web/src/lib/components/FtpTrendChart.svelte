@@ -1,16 +1,10 @@
-<script lang="ts" module>
-	export interface TrendRide {
-		date: string;
-		ftp: number;
-		best20m: number;
-	}
-</script>
-
 <script lang="ts">
 	// FTP over time as a step line (it was captured at ride time, so this is
 	// history, not reconstruction), with each ride's best 20-min effort as a
 	// dot (#222). Identity is carried by shape (line vs dot) plus the legend,
 	// never by color alone.
+	import type { TrendRide } from '$lib/progression';
+
 	let { rides }: { rides: TrendRide[] } = $props();
 
 	const W = 600;

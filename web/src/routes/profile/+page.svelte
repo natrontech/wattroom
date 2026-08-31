@@ -5,9 +5,8 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
-	import FtpTrendChart, {
-		type TrendRide,
-	} from '$lib/components/FtpTrendChart.svelte';
+	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import { fetchProgression, type TrendRide } from '$lib/progression';
 
 	const profile = createProfileStore();
 	void account.load();
@@ -15,7 +14,7 @@
 	// The FTP number's story (#222) — decorative context under the field, so
 	// on failure it simply doesn't render.
 	let trend = $state<TrendRide[]>([]);
-	void api<{ rides: TrendRide[] }>('/api/progression').then((r) => {
+	void fetchProgression().then((r) => {
 		if (r.ok) trend = r.data?.rides ?? [];
 	});
 

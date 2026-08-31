@@ -7,9 +7,13 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
-	import FtpTrendChart, {
-		type TrendRide,
-	} from '$lib/components/FtpTrendChart.svelte';
+	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import FitnessChart from '$lib/components/FitnessChart.svelte';
+	import {
+		fetchProgression,
+		FORM_SENTENCES,
+		type Progression,
+	} from '$lib/progression';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
@@ -23,18 +27,6 @@
 	let rides = $state<ServerRide[] | null>(null);
 	let error = $state<string | null>(null);
 
-	interface Curve {
-		best5s: number;
-		best1m: number;
-		best5m: number;
-		best20m: number;
-	}
-	interface Progression {
-		curve: { d30: Curve; d90: Curve; all: Curve };
-		rides: (TrendRide & { seconds: number; kj: number; execution: number })[];
-		category: string;
-		wkg: number;
-	}
 	let progression = $state<Progression | null>(null);
 	let progressionError = $state<string | null>(null);
 
@@ -48,7 +40,7 @@
 		}
 	}
 	async function loadProgression() {
-		const res = await api<Progression>('/api/progression');
+		const res = await fetchProgression();
 		if (res.ok) {
 			progression = res.data;
 			progressionError = null;
@@ -164,6 +156,32 @@
 						<h3 class="text-muted mb-3 text-xs">FTP over the last year</h3>
 						<FtpTrendChart rides={progression.rides} />
 					</div>
+					{#if progression.load && progression.load.series.length > 1}
+						{@const load = progression.load}
+						<div class="panel px-5 py-4 sm:col-span-2">
+							<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+								<h3 class="text-muted text-xs">Training load</h3>
+								{#if load.building}
+									<span class="text-muted text-xs italic"
+										>building history — form shows after your first month</span
+									>
+								{:else}
+									<span class="text-ink font-display text-sm font-semibold">
+										form {load.formPct > 0 ? '+' : ''}{Math.round(
+											load.formPct,
+										)}%
+									</span>
+									<span class="text-muted text-xs"
+										>{FORM_SENTENCES[load.zone] ?? load.zone}</span
+									>
+								{/if}
+								<span class="text-muted ml-auto text-[11px]"
+									>based on your WattRoom rides</span
+								>
+							</div>
+							<FitnessChart series={load.series} />
+						</div>
+					{/if}
 				</div>
 			</section>
 		{/if}
