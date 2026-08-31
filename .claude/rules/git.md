@@ -31,7 +31,7 @@ docs: ADR-0003 …
 
 Work lives in issues on milestones M0–M6; nobody (human or agent) works untracked.
 
-1. `gh issue view <n> --comments` AND `gh pr list` — if it's assigned, claimed, or already has an open PR, coordinate there instead of duplicating. The draft PR is the claim, and it often exists with the issue thread still empty (#280 → #284 and #294).
+1. `gh issue view <n> --comments`, `gh pr list`, `git worktree list` — if it's assigned, claimed, has an open PR, or matches a branch name someone has a worktree on, coordinate there instead of duplicating. The draft PR is the claim and often exists with the issue thread still empty (#280 → #284 and #294); a worktree branch with no commits yet has no ref and no PR for either command to find, which is how one test got written three times (#297, #302, #304, #305).
 2. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment.
 3. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
 4. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
