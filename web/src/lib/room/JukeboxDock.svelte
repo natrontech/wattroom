@@ -5,7 +5,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
-	import { serverNow } from '$lib/room/server-clock';
+	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { centrePane, dragPane, keepSize } from '$lib/pane';
@@ -275,6 +275,21 @@
 		}
 		playerInfo.duration = streaming ? 0 : player.getDuration?.() || 0;
 
+		// Only clients know how long a track is — the server holds an anchor,
+		// not a timeline. A deck left playing to an empty room runs its
+		// playhead off the end, and the next rider to arrive inherits a
+		// position no player can reach: it lands past the end, restarts, gets
+		// seeked past the end again, forever. Whoever notices says the track
+		// is over, exactly as if it had ended in front of them.
+		if (
+			deck.playing &&
+			playerInfo.duration > 0 &&
+			target >= playerInfo.duration
+		) {
+			reportEnded();
+			return;
+		}
+
 		const state = player.getPlayerState?.() ?? UNSTARTED;
 		if (!deck.playing) {
 			if (state === PLAYING || state === BUFFERING) player.pauseVideo?.();
@@ -323,9 +338,14 @@
 		if (!playerReady) return;
 		const timer = setInterval(tickChase, 250);
 		// A hidden tab throttles timers while the media element keeps playing,
-		// so the first thing to do on returning is re-measure.
+		// and every tick it received arrived late — so a tab coming back is
+		// holding a stale playhead AND a clock estimate biased by whatever
+		// its delivery was batched by. Drop the estimate so it re-learns from
+		// prompt ticks, then re-measure against it.
 		const onVisible = () => {
-			if (document.visibilityState === 'visible') tickChase();
+			if (document.visibilityState !== 'visible') return;
+			resetServerClock();
+			tickChase();
 		};
 		document.addEventListener('visibilitychange', onVisible);
 		return () => {
