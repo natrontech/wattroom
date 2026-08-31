@@ -77,7 +77,14 @@
 				30} 35% 10%))"
 		></div>
 	{:else}
-		<!-- Camera off: the mark stands in for the person, and moves when they ride. -->
+		<!-- Camera off: the rider's hue keeps the seat warm (#181) — quieter than
+		     a feed so cam-on still reads at a glance — and the mark stands in
+		     for the person, moving when they ride. -->
+		<div
+			class="absolute inset-0"
+			style="background: linear-gradient(160deg, hsl({rider.hue} 30% 15%), hsl({rider.hue +
+				30} 25% 7%))"
+		></div>
 		<div class="absolute inset-0 grid place-items-center">
 			<Logo size={44} {live} />
 		</div>
