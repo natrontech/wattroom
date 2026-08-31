@@ -275,6 +275,54 @@ func TestChatRidesTheTick(t *testing.T) {
 	}
 }
 
+func TestJukeboxActionsRideTheTick(t *testing.T) {
+	// #321, ADR-0019: the music changing under everyone is half of what
+	// happened in the room, and it reaches the others the same way chat does.
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/loud"
+
+	a := dial(t, url, "jan:owner")
+	b := dial(t, url, "sven:member")
+	readTick(t, a)
+
+	if err := wsjson.Write(t.Context(), b, protocol.ClientMessage{
+		Jukebox: &protocol.JukeboxCommand{
+			Action: "add", VideoID: "dQw4w9WgXcQ", Title: "Midnight City",
+		},
+	}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		tick := readTick(t, a)
+		if len(tick.Events) > 0 {
+			got := tick.Events[0]
+			// An empty deck plays what it is handed, so the line the others
+			// see is the now-playing one — and it names who queued it.
+			if got.Kind != "jukebox" || got.Verb != "playing" ||
+				got.Track != "Midnight City" || got.QueuedBy != "sven" {
+				t.Fatalf("event: %+v", got)
+			}
+			if got.ID == "" {
+				t.Fatal("event without an id: a grown burst could not replace it")
+			}
+			// Drained like cheers — the next tick must not repeat it.
+			if next := readTick(t, a); len(next.Events) != 0 {
+				t.Fatalf("event repeated on the next tick: %+v", next.Events)
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("jukebox event never arrived on the tick")
+		}
+	}
+}
+
 func TestSetRoleReachesOpenSockets(t *testing.T) {
 	// Promoting a coach used to change nothing until they reconnected: the
 	// rider struct is captured when the socket opens, so their control stayed

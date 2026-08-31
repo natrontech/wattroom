@@ -2,6 +2,7 @@ import { account } from '$lib/account.svelte';
 import type {
 	ClientMessage,
 	RiderMetrics,
+	RoomEvent,
 	ServerMessage,
 	ServerTick,
 } from '$lib/protocol';
@@ -21,6 +22,10 @@ export function createRoomLive(slug: string) {
 	// Chat is a bounded room log since ADR-0010's amendment (#201): the
 	// backlog seeds it on join, live lines ride the tick on top.
 	let chatLog = $state<import('$lib/protocol').ChatLine[]>([]);
+	// What the room did (#321), interleaved with the talking by the chat pane.
+	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
+	// reload forgets them — "now playing" is worthless tomorrow.
+	let roomEvents = $state<RoomEvent[]>([]);
 	// messageId → emoji → count, shared truth from the tick + backlog.
 	let chatReactions = $state<Record<string, Record<string, number>>>({});
 	// "did I press it" — the client's own knowledge, keyed id:emoji.
@@ -99,6 +104,17 @@ export function createRoomLive(slug: string) {
 					for (const assigned of msg.tick.chatIds) {
 						pendingIds[`${assigned.fromId}:${assigned.at}`] = assigned.id;
 					}
+				}
+				if (msg.tick.events?.length) {
+					const next = [...roomEvents];
+					for (const event of msg.tick.events) {
+						// A growing burst re-sends its own id ("queued 3 tracks"):
+						// replace the line in place, never stack a second one.
+						const at = next.findIndex((have) => have.id === event.id);
+						if (at >= 0) next[at] = event;
+						else next.push(event);
+					}
+					roomEvents = next.slice(-100);
 				}
 				if (msg.tick.chat?.length) {
 					chatLog = [...chatLog, ...msg.tick.chat].slice(-200);
@@ -204,6 +220,9 @@ export function createRoomLive(slug: string) {
 		},
 		get chatLog() {
 			return chatLog;
+		},
+		get roomEvents() {
+			return roomEvents;
 		},
 		get chatReactions() {
 			return chatReactions;

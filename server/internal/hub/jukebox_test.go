@@ -11,8 +11,15 @@ import (
 
 func jat(sec int) time.Time { return time.Unix(2_000_000+int64(sec), 0) }
 
+// accepted runs one command and keeps only the verdict — the timeline lines
+// it also produces (#321) have their own tests below.
+func accepted(j *jukebox, cmd protocol.JukeboxCommand, riderID, name string, at time.Time) bool {
+	_, ok := j.apply(cmd, riderID, name, at)
+	return ok
+}
+
 func add(j *jukebox, id string, at time.Time) bool {
-	return j.apply(protocol.JukeboxCommand{Action: "add", VideoID: id, Title: "t-" + id}, "r-jan", "jan", at)
+	return accepted(j, protocol.JukeboxCommand{Action: "add", VideoID: id, Title: "t-" + id}, "r-jan", "jan", at)
 }
 
 func TestAddPlaysAnEmptyDeck(t *testing.T) {
@@ -51,11 +58,11 @@ func TestAnchorSurvivesPause(t *testing.T) {
 	if got := j.positionAt(jat(30)); got != 30 {
 		t.Fatalf("playhead: %v", got)
 	}
-	j.apply(protocol.JukeboxCommand{Action: "pause"}, "r-jan", "jan", jat(30))
+	accepted(j, protocol.JukeboxCommand{Action: "pause"}, "r-jan", "jan", jat(30))
 	if got := j.positionAt(jat(90)); got != 30 {
 		t.Fatalf("paused playhead moved: %v", got)
 	}
-	j.apply(protocol.JukeboxCommand{Action: "play"}, "r-jan", "jan", jat(90))
+	accepted(j, protocol.JukeboxCommand{Action: "play"}, "r-jan", "jan", jat(90))
 	if got := j.positionAt(jat(100)); got != 40 {
 		t.Fatalf("resumed playhead: %v", got)
 	}
@@ -71,21 +78,21 @@ func TestEndedAdvancesExactlyOnce(t *testing.T) {
 	add(j, "abcdefghijk", jat(2))
 	epoch := j.snapshot().AnchorMs
 	for i := 0; i < 5; i++ {
-		j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "r-jan", "jan", jat(200))
+		accepted(j, protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "r-jan", "jan", jat(200))
 	}
 	s := j.snapshot()
 	if s.Current == nil || s.Current.VideoID != "dQw4w9WgXcQ" || len(s.Queue) != 1 {
 		t.Fatalf("echoed ended double-advanced past the duplicate: %+v", s)
 	}
 	// A report without the current epoch is an echo from a past life — no-op.
-	if j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "r-jan", "jan", jat(300)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch}, "r-jan", "jan", jat(300)) {
 		t.Fatal("stale-epoch ended accepted")
 	}
 	// The real second play ends with ITS epoch, then the deck runs dry.
 	epoch2 := j.snapshot().AnchorMs
-	j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch2}, "r-jan", "jan", jat(400))
+	accepted(j, protocol.JukeboxCommand{Action: "ended", VideoID: "dQw4w9WgXcQ", AnchorMs: epoch2}, "r-jan", "jan", jat(400))
 	epoch3 := j.snapshot().AnchorMs
-	j.apply(protocol.JukeboxCommand{Action: "ended", VideoID: "abcdefghijk", AnchorMs: epoch3}, "r-jan", "jan", jat(500))
+	accepted(j, protocol.JukeboxCommand{Action: "ended", VideoID: "abcdefghijk", AnchorMs: epoch3}, "r-jan", "jan", jat(500))
 	if s := j.snapshot(); s.Current != nil || s.Playing {
 		t.Fatalf("dry deck still playing: %+v", s)
 	}
@@ -93,7 +100,7 @@ func TestEndedAdvancesExactlyOnce(t *testing.T) {
 
 func TestJunkRefused(t *testing.T) {
 	j := newJukebox()
-	if j.apply(protocol.JukeboxCommand{Action: "add", VideoID: "'; drop--"}, "r-x", "x", jat(0)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "add", VideoID: "'; drop--"}, "r-x", "x", jat(0)) {
 		t.Fatal("junk video id accepted")
 	}
 	add(j, "dQw4w9WgXcQ", jat(0))
@@ -113,14 +120,14 @@ func TestRemoveTakesTheEntryNotTheVideo(t *testing.T) {
 	add(j, "abcdefghijk", jat(1))
 	add(j, "abcdefghijk", jat(2))
 	second := j.snapshot().Queue[1].ID
-	if !j.apply(protocol.JukeboxCommand{Action: "remove", EntryID: second}, "r-jan", "jan", jat(3)) {
+	if !accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: second}, "r-jan", "jan", jat(3)) {
 		t.Fatal("remove refused")
 	}
 	q := j.snapshot().Queue
 	if len(q) != 1 || q[0].ID == second {
 		t.Fatalf("removed the wrong entry: %+v", q)
 	}
-	if j.apply(protocol.JukeboxCommand{Action: "remove", EntryID: "nope"}, "r-jan", "jan", jat(4)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: "nope"}, "r-jan", "jan", jat(4)) {
 		t.Fatal("remove of an unknown entry accepted")
 	}
 }
@@ -133,20 +140,20 @@ func TestVotesFloatAndToggle(t *testing.T) {
 	}
 	third := j.snapshot().Queue[2].ID
 	// One vote floats it past both unvoted entries ahead of it.
-	if !j.apply(protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-jan", "jan", jat(2)) {
+	if !accepted(j, protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-jan", "jan", jat(2)) {
 		t.Fatal("vote refused")
 	}
 	if got := j.snapshot().Queue[0]; got.ID != third || len(got.Voters) != 1 {
 		t.Fatalf("vote did not float the entry: %+v", j.snapshot().Queue)
 	}
 	// A second rider adds to it; the same rider twice is a toggle, not a stack.
-	j.apply(protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-ada", "ada", jat(3))
-	j.apply(protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-ada", "ada", jat(4))
+	accepted(j, protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-ada", "ada", jat(3))
+	accepted(j, protocol.JukeboxCommand{Action: "vote", EntryID: third}, "r-ada", "ada", jat(4))
 	if got := len(j.snapshot().Queue[0].Voters); got != 1 {
 		t.Fatalf("toggle left %d voters", got)
 	}
 	// Anonymous votes (no rider id) have nothing to toggle — refused.
-	if j.apply(protocol.JukeboxCommand{Action: "vote", EntryID: third}, "", "", jat(5)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "vote", EntryID: third}, "", "", jat(5)) {
 		t.Fatal("vote without a rider id accepted")
 	}
 }
@@ -158,7 +165,7 @@ func TestMoveReordersAndClamps(t *testing.T) {
 		add(j, id, jat(1))
 	}
 	last := j.snapshot().Queue[2].ID
-	if !j.apply(protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 0}, "r-jan", "jan", jat(2)) {
+	if !accepted(j, protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 0}, "r-jan", "jan", jat(2)) {
 		t.Fatal("move refused")
 	}
 	q := j.snapshot().Queue
@@ -166,17 +173,17 @@ func TestMoveReordersAndClamps(t *testing.T) {
 		t.Fatalf("move mangled the queue: %+v", q)
 	}
 	// An index past the end lands last, not out of bounds.
-	if !j.apply(protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 99}, "r-jan", "jan", jat(3)) {
+	if !accepted(j, protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 99}, "r-jan", "jan", jat(3)) {
 		t.Fatal("clamped move refused")
 	}
 	if q := j.snapshot().Queue; q[2].ID != last {
 		t.Fatalf("clamp: %+v", q)
 	}
 	// A no-op move and an unknown entry are both refused.
-	if j.apply(protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 2}, "r-jan", "jan", jat(4)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "move", EntryID: last, Index: 2}, "r-jan", "jan", jat(4)) {
 		t.Fatal("no-op move accepted")
 	}
-	if j.apply(protocol.JukeboxCommand{Action: "move", EntryID: "nope", Index: 0}, "r-jan", "jan", jat(5)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "move", EntryID: "nope", Index: 0}, "r-jan", "jan", jat(5)) {
 		t.Fatal("move of an unknown entry accepted")
 	}
 }
@@ -188,7 +195,7 @@ func TestHistoryRemembersTheLastFive(t *testing.T) {
 		add(j, id, jat(i))
 	}
 	for i := range ids {
-		j.apply(protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(100+i))
+		accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(100+i))
 	}
 	h := j.snapshot().History
 	if len(h) != maxHistory {
@@ -206,28 +213,28 @@ func TestHistoryRemembersTheLastFive(t *testing.T) {
 func TestSeekMovesTheSharedPlayhead(t *testing.T) {
 	j := newJukebox()
 	// No deck → refuse.
-	if j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 10}, "r-jan", "jan", jat(0)) {
+	if accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: 10}, "r-jan", "jan", jat(0)) {
 		t.Fatal("seek with empty deck accepted")
 	}
 	add(j, "dQw4w9WgXcQ", jat(0))
-	if !j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 94}, "r-jan", "jan", jat(10)) {
+	if !accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: 94}, "r-jan", "jan", jat(10)) {
 		t.Fatal("seek refused")
 	}
 	if got := j.positionAt(jat(15)); got != 99 {
 		t.Fatalf("playhead after seek: %v", got)
 	}
 	// Untrusted input clamps: negatives to zero, silly hours to the cap.
-	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: -5}, "r-jan", "jan", jat(20))
+	accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: -5}, "r-jan", "jan", jat(20))
 	if got := j.positionAt(jat(20)); got != 0 {
 		t.Fatalf("negative seek: %v", got)
 	}
-	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 1e9}, "r-jan", "jan", jat(20))
+	accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: 1e9}, "r-jan", "jan", jat(20))
 	if got := j.positionAt(jat(20)); got != maxSeekSec {
 		t.Fatalf("huge seek: %v", got)
 	}
 	// Seeking while paused moves the playhead and stays paused.
-	j.apply(protocol.JukeboxCommand{Action: "pause"}, "r-jan", "jan", jat(30))
-	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 60}, "r-jan", "jan", jat(31))
+	accepted(j, protocol.JukeboxCommand{Action: "pause"}, "r-jan", "jan", jat(30))
+	accepted(j, protocol.JukeboxCommand{Action: "seek", PositionSec: 60}, "r-jan", "jan", jat(31))
 	s := j.snapshot()
 	if s.Playing || j.positionAt(jat(99)) != 60 {
 		t.Fatalf("paused seek: playing=%v pos=%v", s.Playing, j.positionAt(jat(99)))
@@ -237,13 +244,13 @@ func TestSeekMovesTheSharedPlayhead(t *testing.T) {
 func TestPastedTimestampStartsTheEntryThere(t *testing.T) {
 	j := newJukebox()
 	// Empty deck: plays immediately from the timestamp.
-	j.apply(protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", PositionSec: 94}, "r-jan", "jan", jat(0))
+	accepted(j, protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", PositionSec: 94}, "r-jan", "jan", jat(0))
 	if got := j.positionAt(jat(6)); got != 100 {
 		t.Fatalf("start-at on immediate play: %v", got)
 	}
 	// Queued: the timestamp waits with the entry until it reaches the deck.
-	j.apply(protocol.JukeboxCommand{Action: "add", VideoID: "abcdefghijk", PositionSec: 30}, "r-jan", "jan", jat(1))
-	j.apply(protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(10))
+	accepted(j, protocol.JukeboxCommand{Action: "add", VideoID: "abcdefghijk", PositionSec: 30}, "r-jan", "jan", jat(1))
+	accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(10))
 	if got := j.positionAt(jat(12)); got != 32 {
 		t.Fatalf("start-at from queue: %v", got)
 	}

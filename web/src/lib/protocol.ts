@@ -192,6 +192,44 @@ export interface ChatReactionCount {
   added: boolean;
 }
 /**
+ * RoomEvent is something the ROOM did, next to what riders said (#321): the
+ * jukebox changing under everyone is half of what happened here, and thirty
+ * seconds later "who put this on?" has no other answer. Structured, not a
+ * sentence — the client owns the wording, so the chat pane and the dock name
+ * a track identically.
+ * Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
+ * written to the chat table. A month of "now playing" in the backlog is noise.
+ */
+export interface RoomEvent {
+  /**
+   * Room-unique and stable across re-broadcasts: a growing burst re-sends
+   * the SAME id with a higher Count, and clients replace the line in place.
+   */
+  id: string;
+  kind: string; // "jukebox"
+  verb: string; // "queued" | "removed" | "skipped" | "playing"
+  /**
+   * Who did it. Empty when nobody did — the deck advancing on its own.
+   */
+  actor?: string;
+  /**
+   * The title the dock shows, so both surfaces name the same track. Empty
+   * on a coalesced burst, which has no single title left to show.
+   */
+  track?: string;
+  /**
+   * For "playing": who put this track in the queue.
+   */
+  queuedBy?: string;
+  /**
+   * How many tracks this one line covers — 1 normally, more when a burst
+   * of adds coalesced ("queued 8 tracks"). Eight lines would push the
+   * actual conversation off the screen.
+   */
+  count: number /* int */;
+  at: number /* int64 */; // server millis, for ordering only
+}
+/**
  * Cheer is the room's reaction layer (#74) — and the spectator's one verb.
  */
 export interface Cheer {
@@ -311,6 +349,11 @@ export interface ServerTick {
    * follow-up, unlocking reactions on them.
    */
   chatIds?: ChatID[];
+  /**
+   * What the room did this second (#321) — jukebox actions the chat pane
+   * interleaves with the talking. Ephemeral, like the cheers above.
+   */
+  events?: RoomEvent[];
   /**
    * Sprint moment (#30): armed/live window and, after it closes, the podium.
    */
