@@ -16,6 +16,8 @@ import (
 type fakeSink struct {
 	joined, left map[string][]string
 	closed       []string
+	rooms        []string
+	synced       map[string]map[string]string
 }
 
 func (f *fakeSink) VoiceJoined(slug, identity, name string) {
@@ -25,6 +27,13 @@ func (f *fakeSink) VoiceLeft(slug, identity string) {
 	f.left[slug] = append(f.left[slug], identity)
 }
 func (f *fakeSink) VoiceRoomClosed(slug string) { f.closed = append(f.closed, slug) }
+func (f *fakeSink) VoiceRooms() []string        { return f.rooms }
+func (f *fakeSink) VoiceSync(slug string, present map[string]string, _ time.Time) {
+	if f.synced == nil {
+		f.synced = map[string]map[string]string{}
+	}
+	f.synced[slug] = present
+}
 
 func signWebhook(t *testing.T, secret string, iss string, body []byte) string {
 	t.Helper()

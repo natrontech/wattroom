@@ -17,6 +17,10 @@ type VoiceSink interface {
 	VoiceJoined(slug, identity, name string)
 	VoiceLeft(slug, identity string)
 	VoiceRoomClosed(slug string)
+	// The reconciler's two ends (#234): which rooms to ask LiveKit about,
+	// and its authoritative participant list applied back.
+	VoiceRooms() []string
+	VoiceSync(slug string, present map[string]string, since time.Time)
 }
 
 // SetVoiceSink wires the hub in after construction (same late-binding shape
