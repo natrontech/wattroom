@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Part } from './linkify';
+	import type { Part } from './inline';
 
 	// Keyless oEmbed for the two services the room speaks — same trick the
 	// jukebox uses for titles. A generic unfurl would need a server-side OG
