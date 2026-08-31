@@ -9,7 +9,6 @@ import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { GATE_DEFAULT, clampThreshold } from '$lib/room/gate-scale';
 import { mountTrack } from '$lib/room/mount-track';
-import { pickStage } from '$lib/room/stage';
 import {
 	type Claim,
 	micLiveElsewhere,
@@ -434,7 +433,6 @@ export function createRoomAv(slug: string) {
 			gen,
 		})),
 	];
-	const stage = () => pickStage(stageSources(), stagePick);
 
 	async function join() {
 		// Double-click or an impatient rail tap must not build a second
@@ -959,11 +957,7 @@ export function createRoomAv(slug: string) {
 		get stageSources() {
 			return stageSources();
 		},
-		/** What the stage is showing right now, `gen` bumping per fresh track. */
-		get stage() {
-			return stage();
-		},
-		/** The rider's pick. The room page resolves it — its source list is
+		/** The rider's pick. The room page resolves it against the full list —
 		 *  longer than ours, the jukebox video is on it too (#316). */
 		get stagePick() {
 			return stagePick;
