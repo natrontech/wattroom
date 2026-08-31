@@ -125,7 +125,9 @@
 							title="you are in this room"
 						></span>
 					{/if}
-					<span class="truncate">{room.name}</span>
+					<span class="truncate"
+						>{room.icon ? `${room.icon} ` : ''}{room.name}</span
+					>
 					{#if room.slug === connectedSlug && onLeave}
 						<button
 							onclick={(e) => {

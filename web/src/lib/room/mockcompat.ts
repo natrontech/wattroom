@@ -34,6 +34,8 @@ export interface Fault {
 /** RoomRail's room list entry. */
 export interface RailRoom {
 	name: string;
+	/** Owner-set emoji identity mark (#223); '' = none. */
+	icon?: string;
 	slug: string;
 	live: boolean;
 	members: number;

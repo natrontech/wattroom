@@ -118,7 +118,14 @@
 					<li class="panel flex items-center gap-2 px-4 py-2.5">
 						<span class="text-sm font-medium">{member.displayName}</span>
 						<span class="eyebrow">{member.role}</span>
-						{#if isOwner && member.role !== 'owner'}
+						{#if isOwner && member.role === 'banned'}
+							<!-- Only the owner ever receives banned rows (#223). -->
+							<button
+								onclick={() => onRole(member.id, 'member')}
+								disabled={busy}
+								class="btn btn-secondary btn-xs ml-auto">Unban</button
+							>
+						{:else if isOwner && member.role !== 'owner'}
 							<div class="ml-auto flex gap-1.5">
 								<button
 									onclick={() =>
@@ -134,6 +141,11 @@
 									onclick={() => onRemove(member.id)}
 									disabled={busy}
 									class="btn btn-danger btn-xs">Remove</button
+								>
+								<button
+									onclick={() => onRole(member.id, 'banned')}
+									disabled={busy}
+									class="btn btn-danger btn-xs">Ban</button
 								>
 							</div>
 						{/if}

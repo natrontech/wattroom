@@ -22,17 +22,20 @@ where m.room_id = $1
 order by m.joined_at;
 
 -- name: ListUserRooms :many
+-- Banned members keep their row (the ban IS the row) but the room vanishes
+-- from their nav.
 select r.*, m.role
 from memberships m
 join rooms r on r.id = m.room_id
-where m.user_id = $1
+where m.user_id = $1 and m.role != 'banned'
 order by m.joined_at desc;
 
 -- name: GetMembership :one
 select * from memberships where room_id = $1 and user_id = $2;
 
 -- name: UpdateRoom :one
-update rooms set name = $2, listed = $3, sound_pack = $4 where id = $1 returning *;
+update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
+where id = $1 returning *;
 
 -- name: DeleteRoom :exec
 -- Memberships and medals cascade; rides keep their history (room_id set null).
@@ -45,7 +48,7 @@ update memberships set role = $3 where room_id = $1 and user_id = $2;
 delete from memberships where room_id = $1 and user_id = $2;
 
 -- name: CountRoomMembers :one
-select count(*) from memberships where room_id = $1;
+select count(*) from memberships where room_id = $1 and role != 'banned';
 
 -- name: CreateScheduledSession :one
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)

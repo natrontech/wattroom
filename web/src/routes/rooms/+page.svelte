@@ -11,6 +11,7 @@
 	interface RoomSummary {
 		slug: string;
 		name: string;
+		icon?: string;
 		listed: boolean;
 		memberCount?: number;
 		connected?: number;
@@ -183,7 +184,9 @@
 					class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
 				>
 					<div class="min-w-0">
-						<p class="font-display font-bold">{room.name}</p>
+						<p class="font-display font-bold">
+							{room.icon ? `${room.icon} ` : ''}{room.name}
+						</p>
 						<p class="text-muted mt-0.5 text-xs">
 							{#if room.phase === 'running' || room.phase === 'countdown'}
 								riding now · {(room.riders ?? []).join(', ') ||

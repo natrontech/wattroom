@@ -359,3 +359,125 @@ func TestOwnedRoomsCap(t *testing.T) {
 		t.Fatalf("after delete: %d", status)
 	}
 }
+
+func TestBanFlow(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Ban Cave")
+	for _, member := range []string{"bob", "carol"} {
+		if status, _ := h.call(t, member, http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+			t.Fatalf("%s join: %d", member, status)
+		}
+	}
+	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	ban := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bobID)
+
+	// Only the owner bans.
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+slug+"/role", ban); status != http.StatusForbidden {
+		t.Errorf("member banned someone: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", ban); status != http.StatusNoContent {
+		t.Fatalf("ban: %d", status)
+	}
+
+	// The ban holds every door: rejoin by link, by code, and the WS/AV gate.
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("banned rejoined by link: %d", status)
+	}
+	joinBody := fmt.Sprintf(`{"code":%q}`, code)
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join", joinBody); status != http.StatusForbidden {
+		t.Errorf("banned rejoined by code: %d", status)
+	}
+	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
+	wsReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
+	wsReq.Header.Set("X-Test-User", "bob")
+	if _, err := svc.Authorize(wsReq, slug); err == nil {
+		t.Error("banned rider authorized for the room socket")
+	}
+
+	// The room vanishes from bob's nav, and bob gets the outsider view.
+	if _, body := h.call(t, "bob", http.MethodGet, "/api/rooms", ""); body != nil {
+		if roomsAny, _ := body["rooms"].([]any); len(roomsAny) != 0 {
+			t.Errorf("banned rider still lists the room: %v", roomsAny)
+		}
+	}
+	if _, body := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, ""); body["role"] != nil || body["code"] != nil {
+		t.Errorf("banned rider got the member view: %v", body)
+	}
+
+	// Members don't see the ban list; the owner does.
+	countMembers := func(user string) (total, banned int) {
+		_, body := h.call(t, user, http.MethodGet, "/api/rooms/"+slug, "")
+		members, _ := body["members"].([]any)
+		for _, m := range members {
+			total++
+			if row, ok := m.(map[string]any); ok && row["role"] == "banned" {
+				banned++
+			}
+		}
+		return total, banned
+	}
+	if total, banned := countMembers("carol"); total != 2 || banned != 0 {
+		t.Errorf("member view of the roster: %d members, %d banned", total, banned)
+	}
+	if total, banned := countMembers("alice"); total != 3 || banned != 1 {
+		t.Errorf("owner view of the roster: %d members, %d banned", total, banned)
+	}
+
+	// Unban restores a plain membership.
+	unban := fmt.Sprintf(`{"userId":%q,"role":"member"}`, bobID)
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", unban); status != http.StatusNoContent {
+		t.Fatalf("unban: %d", status)
+	}
+	if _, err := svc.Authorize(wsReq, slug); err != nil {
+		t.Errorf("unbanned rider still refused: %v", err)
+	}
+}
+
+func TestIconAndCheers(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Icon Cave")
+
+	patch := func(body string) (int, map[string]any) {
+		return h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug, body)
+	}
+	// Fresh room: no icon, base palette.
+	if _, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, ""); body["icon"] != nil {
+		t.Errorf("fresh room has an icon: %v", body["icon"])
+	} else if cheers, _ := body["cheers"].([]any); len(cheers) != 6 {
+		t.Errorf("fresh room palette: %v", body["cheers"])
+	}
+
+	// Icon: one emoji or none; text refused.
+	if status, body := patch(`{"name":"Icon Cave","icon":"not-an-emoji"}`); status != http.StatusBadRequest {
+		t.Errorf("text icon accepted: %d %v", status, body)
+	}
+	if status, body := patch(`{"name":"Icon Cave","icon":"🦖"}`); status != http.StatusOK || body["icon"] != "🦖" {
+		t.Errorf("icon: %d %v", status, body)
+	}
+	// Absent field keeps it; empty clears it.
+	if status, body := patch(`{"name":"Icon Cave"}`); status != http.StatusOK || body["icon"] != "🦖" {
+		t.Errorf("absent icon did not keep: %d %v", status, body)
+	}
+	if status, body := patch(`{"name":"Icon Cave","icon":""}`); status != http.StatusOK || body["icon"] != nil {
+		t.Errorf("empty icon did not clear: %d %v", status, body)
+	}
+
+	// Cheers: owner curates, dupes collapse, text refused, cap enforced.
+	if status, body := patch(`{"name":"Icon Cave","cheers":["🦖","🌵","🦖"]}`); status != http.StatusOK {
+		t.Fatalf("cheers: %d %v", status, body)
+	} else if cheers, _ := body["cheers"].([]any); len(cheers) != 2 || cheers[0] != "🦖" {
+		t.Errorf("palette: %v", body["cheers"])
+	}
+	if status, _ := patch(`{"name":"Icon Cave","cheers":["gg"]}`); status != http.StatusBadRequest {
+		t.Errorf("text reaction accepted: %d", status)
+	}
+	if status, _ := patch(`{"name":"Icon Cave","cheers":["🔥","💪","👏","💀","🚀","🧊","🦖","🌵","😤"]}`); status != http.StatusBadRequest {
+		t.Errorf("nine reactions accepted: %d", status)
+	}
+	// Empty resets to the base set.
+	if _, body := patch(`{"name":"Icon Cave","cheers":[]}`); true {
+		if cheers, _ := body["cheers"].([]any); len(cheers) != 6 {
+			t.Errorf("reset palette: %v", body["cheers"])
+		}
+	}
+}

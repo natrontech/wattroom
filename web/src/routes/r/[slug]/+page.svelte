@@ -21,6 +21,8 @@
 		slug: string;
 		name: string;
 		listed: boolean;
+		icon?: string;
+		cheers?: string[];
 		soundPack?: string;
 		code?: string;
 		role?: string;
@@ -131,6 +133,8 @@
 				slug={room.slug}
 				role={room.role ?? 'member'}
 				roomName={room.name}
+				icon={room.icon ?? ''}
+				cheers={room.cheers}
 				code={room.code ?? ''}
 				soundPack={room.soundPack ?? 'base'}
 				members={room.members ?? []}

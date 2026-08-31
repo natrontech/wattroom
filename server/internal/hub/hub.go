@@ -128,11 +128,10 @@ type client struct {
 	conn  *websocket.Conn
 }
 
-// cheerEmoji is the allowlist — reactions, not chat. Free text is a different
-// feature with different moderation questions.
-var cheerEmoji = map[string]struct{}{
-	"🔥": {}, "💪": {}, "👏": {}, "💀": {}, "🚀": {}, "🧊": {},
-}
+// Cheers and chat reactions are shape-checked (protocol.IsEmoji — one emoji,
+// never text), not allowlisted: which emoji a room speaks is its owner's
+// palette now (#223), enforced client-side. The wire only guarantees a
+// reaction can't smuggle chat.
 
 // canControl is the SPEC roles matrix row "pick workout / start / pause / end".
 func canControl(role string) bool { return role == "owner" || role == "coach" }
@@ -197,8 +196,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.ChatReact != nil && h.chat != nil {
-			_, allowed := cheerEmoji[msg.ChatReact.Emoji]
-			if allowed && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
+			if protocol.IsEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
 				if count, added, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
 						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
@@ -208,7 +206,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Cheer != nil {
-			if _, ok := cheerEmoji[msg.Cheer.Emoji]; ok && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			if protocol.IsEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}
@@ -257,6 +255,32 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(ctx, c, "invalid_request", "That does not work right now — the session is in another phase.")
 			}
 		}
+	}
+}
+
+// Kick severs every socket a rider holds in slug — the live arm of a ban or
+// removal (#223), which must eject, not drift. Lock, copy, unlock, then
+// close: CloseNow unblocks the read loop, whose defer runs the leave.
+func (h *Hub) Kick(slug, userID string) {
+	h.mu.Lock()
+	rm := h.rooms[slug]
+	h.mu.Unlock()
+	if rm == nil {
+		return
+	}
+	rm.mu.Lock()
+	var conns []*websocket.Conn
+	for c := range rm.clients {
+		if c.rider.ID == userID {
+			conns = append(conns, c.conn)
+		}
+	}
+	rm.mu.Unlock()
+	for _, conn := range conns {
+		_ = conn.CloseNow()
+	}
+	if len(conns) > 0 {
+		h.log.Info("rider kicked", "room", slug, "rider", userID, "sockets", len(conns))
 	}
 }
 

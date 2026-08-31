@@ -34,10 +34,33 @@ type UserSource interface {
 // maxOwnedRooms is docs/SPEC.md's ownership cap (membership is uncapped).
 const maxOwnedRooms = 3
 
-// Presence is what the rooms list borrows from the hub — defined here, where
-// it is consumed. Optional: without it every room reads as quiet.
+// maxCheers caps the owner-curated reaction palette (#223).
+const maxCheers = 8
+
+// baseCheers is the stock reaction set (WATTROOM.md feel layer) — what a
+// room speaks until its owner curates their own.
+var baseCheers = []string{"🔥", "💪", "👏", "💀", "🚀", "🧊"}
+
+// cheerSet parses the stored space-joined palette; ” means the base set.
+func cheerSet(stored string) []string {
+	if stored == "" {
+		return baseCheers
+	}
+	return strings.Fields(stored)
+}
+
+// Presence is what rooms borrows from the hub — defined here, where it is
+// consumed. Optional: without it every room reads as quiet and a ban can't
+// sever a live socket.
 type Presence interface {
 	Presence(slug string) (connected int, phase string, riders, voice []string)
+	Kick(slug, userID string)
+}
+
+// VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
+// Optional: without AV there is no voice to eject anyone from.
+type VoiceEjector interface {
+	Eject(slug, userID string)
 }
 
 // Notifier is what scheduling needs from notify (#117) — defined here, where
@@ -52,11 +75,26 @@ type Service struct {
 	log      *slog.Logger
 	presence Presence
 	notifier Notifier
+	voice    VoiceEjector
 }
 
 // SetPresence wires the hub in after construction (the hub needs this service
 // first, as its Access).
 func (s *Service) SetPresence(p Presence) { s.presence = p }
+
+// SetVoiceEjector wires LiveKit ejection in when AV is configured.
+func (s *Service) SetVoiceEjector(v VoiceEjector) { s.voice = v }
+
+// evict severs the target's live presence — metrics socket and voice. A ban
+// or removal must eject, not drift until the rider happens to disconnect.
+func (s *Service) evict(slug, userID string) {
+	if s.presence != nil {
+		s.presence.Kick(slug, userID)
+	}
+	if s.voice != nil {
+		s.voice.Eject(slug, userID)
+	}
+}
 
 // SetNotifier wires session-planned email in when the server can send.
 func (s *Service) SetNotifier(n Notifier) { s.notifier = n }
@@ -104,8 +142,12 @@ type roomJSON struct {
 	Code   string `json:"code,omitempty"` // members only — the code IS the invite
 	Name   string `json:"name"`
 	Listed bool   `json:"listed"`
+	// Emoji identity mark (#223) — public like the name.
+	Icon string `json:"icon,omitempty"`
 	// Owner-set cue set ('base' | 'silent') — members only, like the code.
 	SoundPack string `json:"soundPack,omitempty"`
+	// The room's reaction palette (#223) — members only, like the sound pack.
+	Cheers []string `json:"cheers,omitempty"`
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
@@ -212,7 +254,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]roomJSON, 0, len(roomsList))
 	for _, room := range roomsList {
-		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Role: room.Role}
+		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role}
 		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
 			entry.MemberCount = int(count)
 		}
@@ -239,15 +281,17 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	response := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed}
+	response := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon}
 
 	if user, signedIn := s.users.User(r); signedIn {
+		// A banned viewer gets the outsider view — the join button tells them.
 		if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 			RoomID: room.ID, UserID: user.ID,
-		}); err == nil {
+		}); err == nil && m.Role != "banned" {
 			response.Role = m.Role
 			response.Code = room.Code
 			response.SoundPack = room.SoundPack
+			response.Cheers = cheerSet(room.Cheers)
 			if rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID); err == nil {
 				for _, row := range rows {
 					response.Upcoming = append(response.Upcoming, scheduledJSON{
@@ -264,6 +308,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, member := range members {
+				// The ban list is a moderation surface, not roster gossip —
+				// only the owner sees who is out.
+				if member.Role == "banned" && m.Role != "owner" {
+					continue
+				}
 				response.Members = append(response.Members, memberJSON{
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
 					AvatarURL: member.AvatarUrl, Role: member.Role,
@@ -307,6 +356,10 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if s.isBanned(r, room, user) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "The owner removed you from this room.")
+		return
+	}
 	// Idempotent by design (ON CONFLICT DO NOTHING): joining twice is a no-op,
 	// and an existing role is never downgraded to member by a re-join.
 	err := s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
@@ -318,6 +371,15 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// isBanned is the join-time gate: a ban survives every re-join path because
+// the membership row itself carries it.
+func (s *Service) isBanned(r *http.Request, room db.Room, user db.User) bool {
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
+	return err == nil && m.Role == "banned"
 }
 
 // handleJoinByCode resolves a 6-char code to its room and joins — the
@@ -344,6 +406,10 @@ func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
 			"No room has that code. Check it with whoever shared it.", "code")
 		return
 	}
+	if s.isBanned(r, room, user) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "The owner removed you from this room.")
+		return
+	}
 	err = s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
 		RoomID: room.ID, UserID: user.ID, Role: "member",
 	})
@@ -363,9 +429,11 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = user
 	var req struct {
-		Name      string `json:"name"`
-		Listed    bool   `json:"listed"`
-		SoundPack string `json:"soundPack"`
+		Name      string    `json:"name"`
+		Listed    bool      `json:"listed"`
+		SoundPack string    `json:"soundPack"`
+		Icon      *string   `json:"icon"`   // nil keeps, "" clears
+		Cheers    *[]string `json:"cheers"` // nil keeps, [] resets to base
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -385,8 +453,41 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 			"A sound pack is base or silent.", "soundPack")
 		return
 	}
+	icon := room.Icon
+	if req.Icon != nil {
+		icon = strings.TrimSpace(*req.Icon)
+		if icon != "" && !protocol.IsEmoji(icon) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"A room icon is one emoji, or none.", "icon")
+			return
+		}
+	}
+	cheers := room.Cheers
+	if req.Cheers != nil {
+		if len(*req.Cheers) > maxCheers {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				fmt.Sprintf("A room speaks at most %d reactions.", maxCheers), "cheers")
+			return
+		}
+		deduped := make([]string, 0, len(*req.Cheers))
+		seen := map[string]struct{}{}
+		for _, emoji := range *req.Cheers {
+			if !protocol.IsEmoji(emoji) {
+				httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+					"Reactions are single emoji.", "cheers")
+				return
+			}
+			if _, dup := seen[emoji]; dup {
+				continue
+			}
+			seen[emoji] = struct{}{}
+			deduped = append(deduped, emoji)
+		}
+		cheers = strings.Join(deduped, " ") // "" = back to the base set
+	}
 	updated, err := s.store.Queries.UpdateRoom(r.Context(), db.UpdateRoomParams{
 		ID: room.ID, Name: req.Name, Listed: req.Listed, SoundPack: req.SoundPack,
+		Icon: icon, Cheers: cheers,
 	})
 	if err != nil {
 		s.log.Error("room update failed", "err", err, "room", room.Slug)
@@ -394,8 +495,9 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, roomJSON{
-		Slug: updated.Slug, Code: updated.Code, Name: updated.Name,
-		Listed: updated.Listed, SoundPack: updated.SoundPack, Role: "owner",
+		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Icon: updated.Icon,
+		Listed: updated.Listed, SoundPack: updated.SoundPack,
+		Cheers: cheerSet(updated.Cheers), Role: "owner",
 	})
 }
 
@@ -417,7 +519,8 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handleSetRole: owner assigns or removes coach (matrix: owner-only).
+// handleSetRole: owner assigns or removes coach, bans, unbans (matrix:
+// owner-only). A ban also severs the target's live sockets and voice.
 func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 	room, owner, ok := s.requireRole(w, r, "owner")
 	if !ok {
@@ -431,9 +534,9 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	if req.Role != "coach" && req.Role != "member" {
+	if req.Role != "coach" && req.Role != "member" && req.Role != "banned" {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A role is coach or member — ownership does not transfer here.", "role")
+			"A role is coach, member or banned — ownership does not transfer here.", "role")
 		return
 	}
 	target, err := store.ParseUUID(req.UserID)
@@ -453,6 +556,10 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("role update failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
 		return
+	}
+	if req.Role == "banned" {
+		s.evict(room.Slug, req.UserID)
+		s.log.Info("member banned", "room", room.Slug, "rider", req.UserID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -496,6 +603,9 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
 		return
 	}
+	// Leaving or being removed ends the live connection too — a socket whose
+	// membership is gone must not keep streaming until it happens to close.
+	s.evict(room.Slug, store.UUIDString(target))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -585,7 +695,7 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	if err != nil {
+	if err != nil || m.Role == "banned" {
 		return protocol.Rider{}, errNotMember
 	}
 	return protocol.Rider{

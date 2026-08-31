@@ -14,6 +14,8 @@
 		slug: string;
 		name: string;
 		listed: boolean;
+		icon?: string;
+		cheers?: string[];
 		soundPack?: string;
 		role?: string;
 		members?: Member[];
@@ -29,6 +31,9 @@
 	let name = $state('');
 	let listed = $state(false);
 	let pack = $state('base');
+	let icon = $state('');
+	let cheers = $state<string[]>([]);
+	let newCheer = $state('');
 
 	$effect(() => {
 		if (slug) void load(slug);
@@ -41,6 +46,8 @@
 			name = res.data.name;
 			listed = res.data.listed;
 			pack = res.data.soundPack ?? 'base';
+			icon = res.data.icon ?? '';
+			cheers = res.data.cheers ?? [];
 			error = null;
 		} else {
 			room = null;
@@ -52,7 +59,13 @@
 		busy = true;
 		const res = await api(`/api/rooms/${slug}`, {
 			method: 'PATCH',
-			json: { name: name.trim(), listed, soundPack: pack },
+			json: {
+				name: name.trim(),
+				listed,
+				soundPack: pack,
+				icon: icon.trim(),
+				cheers,
+			},
 		});
 		busy = false;
 		if (!res.ok) {
@@ -62,6 +75,23 @@
 		error = null;
 		if (slug) void load(slug);
 	}
+
+	function addCheer() {
+		const emoji = newCheer.trim();
+		if (!emoji || cheers.includes(emoji)) return;
+		cheers = [...cheers, emoji];
+		newCheer = '';
+		void save();
+	}
+
+	function removeCheer(emoji: string) {
+		cheers = cheers.filter((c) => c !== emoji);
+		void save();
+	}
+
+	// The palette caps at 8 (docs/SPEC.md); [] tells the server "base set".
+	const MAX_CHEERS = 8;
+	const ICON_IDEAS = ['🚴', '⚡', '🔥', '🏔️', '🌀', '🦖', '💀', '🏁'];
 
 	async function remove() {
 		busy = true;
@@ -153,6 +183,30 @@
 				/>
 			</label>
 
+			<label class="mt-4 block">
+				<span class="eyebrow">room icon</span>
+				<span class="mt-1 flex items-center gap-2">
+					<input
+						bind:value={icon}
+						onchange={save}
+						disabled={busy}
+						maxlength="8"
+						placeholder="🚴"
+						class="input w-16 text-center"
+					/>
+					{#each ICON_IDEAS as idea (idea)}
+						<button
+							onclick={() => ((icon = idea), void save())}
+							disabled={busy}
+							class="btn btn-secondary btn-xs">{idea}</button
+						>
+					{/each}
+				</span>
+				<span class="text-muted mt-1.5 block text-xs"
+					>One emoji, next to the name everywhere. Clear it for none.</span
+				>
+			</label>
+
 			<!-- The public-directory listing toggle returns with the directory
 			     itself — a checkbox for a shelf that doesn't exist yet teaches a
 			     promise the app can't keep (#126). The flag still round-trips in
@@ -196,32 +250,93 @@
 		</section>
 
 		<section class="panel mt-3 p-6">
+			<h2 class="font-display font-bold">Reactions</h2>
+			<p class="text-muted mt-1.5 text-xs">
+				The room's emoji vocabulary — cheers mid-ride, reactions on chat. Up to
+				{MAX_CHEERS}.
+			</p>
+			<div class="mt-3 flex flex-wrap items-center gap-1.5">
+				{#each cheers as emoji (emoji)}
+					<button
+						onclick={() => removeCheer(emoji)}
+						disabled={busy}
+						title="remove {emoji}"
+						class="border-muted/25 hover:border-z6/60 rounded-full border px-3 py-1.5 text-base"
+						>{emoji}</button
+					>
+				{/each}
+				{#if cheers.length < MAX_CHEERS}
+					<form
+						class="flex gap-1.5"
+						onsubmit={(e) => {
+							e.preventDefault();
+							addCheer();
+						}}
+					>
+						<input
+							bind:value={newCheer}
+							maxlength="8"
+							placeholder="＋ emoji"
+							class="input input-xs w-24 rounded-full text-center"
+						/>
+						<button
+							disabled={busy || !newCheer.trim()}
+							class="btn btn-secondary btn-xs">Add</button
+						>
+					</form>
+				{/if}
+			</div>
+			<button
+				onclick={() => ((cheers = []), void save())}
+				disabled={busy}
+				class="text-muted hover:text-ink mt-3 text-xs underline disabled:opacity-40"
+				>Reset to the base set</button
+			>
+		</section>
+
+		<section class="panel mt-3 p-6">
 			<h2 class="font-display font-bold">Who's in here</h2>
 			<ul class="divide-ink/5 mt-3 divide-y">
 				{#each room.members ?? [] as member (member.id)}
 					<li class="flex items-center gap-3 py-2.5">
-						<span class="text-sm">{member.displayName}</span>
+						<span class="text-sm {member.role === 'banned' ? 'text-muted' : ''}"
+							>{member.displayName}</span
+						>
 						<span class="eyebrow">{member.role}</span>
-						{#if member.role !== 'owner'}
+						{#if member.role === 'banned'}
 							<button
-								onclick={() =>
-									setRole(
-										member.id,
-										member.role === 'coach' ? 'member' : 'coach',
-									)}
+								onclick={() => setRole(member.id, 'member')}
 								disabled={busy}
-								class="btn btn-secondary btn-xs ml-auto"
-								>{member.role === 'coach'
-									? 'Remove coach'
-									: 'Make coach'}</button
+								class="btn btn-secondary btn-xs ml-auto">Unban</button
 							>
+						{:else if member.role !== 'owner'}
+							<span class="ml-auto flex gap-1.5">
+								<button
+									onclick={() =>
+										setRole(
+											member.id,
+											member.role === 'coach' ? 'member' : 'coach',
+										)}
+									disabled={busy}
+									class="btn btn-secondary btn-xs"
+									>{member.role === 'coach'
+										? 'Remove coach'
+										: 'Make coach'}</button
+								>
+								<button
+									onclick={() => setRole(member.id, 'banned')}
+									disabled={busy}
+									class="btn btn-danger btn-xs">Ban</button
+								>
+							</span>
 						{/if}
 					</li>
 				{/each}
 			</ul>
 			<p class="text-muted mt-3 text-xs">
 				Coaches pick the workout, start the countdown, and can pause or end a
-				session.
+				session. Banning kicks a rider out on the spot — the invite link stops
+				working for them until you unban.
 			</p>
 		</section>
 

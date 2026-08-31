@@ -17,6 +17,7 @@
 		reactions = {},
 		myReacts = {},
 		onReact,
+		cheers = ['🔥', '💪', '👏', '💀', '🚀', '🧊'],
 	}: {
 		live: boolean;
 		showPlayer: boolean;
@@ -36,14 +37,14 @@
 		onJam?: (url: string) => void;
 		onCheer?: (emoji: string) => void;
 		onChat?: (text: string) => void;
+		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
+		cheers?: string[];
 	} = $props();
 
 	// Any member can add (SPEC roles): paste is the golden path.
 	let adding = $state(false);
 	let url = $state('');
 
-	// The room's one emoji vocabulary — cheers thrown, reactions attached.
-	const reactEmoji = ['🔥', '💪', '👏', '💀', '🚀', '🧊'];
 	let reactingTo = $state<string | null>(null);
 
 	let draft = $state('');
@@ -139,7 +140,7 @@
 						<span
 							class="bg-surface-raised ring-ink/10 ml-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
 						>
-							{#each reactEmoji as emoji (emoji)}
+							{#each cheers as emoji (emoji)}
 								<button
 									onclick={() => {
 										onReact(id, emoji);
@@ -195,27 +196,15 @@
 				>
 			</form>
 		{/if}
-		{#if live}
-			<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
-			<div class="flex gap-1.5">
-				{#each ['🔥', '💀', '💪', '👏'] as emoji (emoji)}
-					<button
-						onclick={() => onCheer?.(emoji)}
-						class="border-muted/20 hover:border-muted/50 flex-1 rounded border py-2 text-base"
-						>{emoji}</button
-					>
-				{/each}
-			</div>
-		{:else}
-			<div class="flex gap-1.5">
-				{#each ['🔥', '💪', '👏', '🚀'] as emoji (emoji)}
-					<button
-						onclick={() => onCheer?.(emoji)}
-						class="border-muted/20 hover:border-muted/50 flex-1 rounded border py-2 text-base"
-						>{emoji}</button
-					>
-				{/each}
-			</div>
-		{/if}
+		<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
+		<div class="flex gap-1.5">
+			{#each cheers.slice(0, 4) as emoji (emoji)}
+				<button
+					onclick={() => onCheer?.(emoji)}
+					class="border-muted/20 hover:border-muted/50 flex-1 rounded border py-2 text-base"
+					>{emoji}</button
+				>
+			{/each}
+		</div>
 	</div>
 </aside>

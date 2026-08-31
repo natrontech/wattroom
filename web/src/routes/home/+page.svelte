@@ -12,6 +12,7 @@
 	interface RoomEntry {
 		slug: string;
 		name: string;
+		icon?: string;
 		connected?: number;
 		riders?: string[];
 		voice?: string[];
@@ -126,7 +127,9 @@
 									: 'bg-z4'} h-2.5 w-2.5 shrink-0 rounded-full"
 							></span>
 							<div class="min-w-0">
-								<p class="font-display font-bold">{room.name}</p>
+								<p class="font-display font-bold">
+									{room.icon ? `${room.icon} ` : ''}{room.name}
+								</p>
 								<p class="text-muted mt-0.5 text-xs">
 									{(room.riders ?? []).join(', ')}
 									{#if room.phase === 'running' || room.phase === 'countdown'}

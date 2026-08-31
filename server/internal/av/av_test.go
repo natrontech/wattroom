@@ -94,3 +94,47 @@ func TestFromEnvGates(t *testing.T) {
 		t.Fatalf("AV not configured with all three set")
 	}
 }
+
+func TestEject(t *testing.T) {
+	var gotPath, gotAuth string
+	var gotBody map[string]string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+	}))
+	defer srv.Close()
+
+	// The config carries the ws:// signalling URL; Eject must find the twirp
+	// API on the same host over http.
+	s := New(Config{URL: "ws" + strings.TrimPrefix(srv.URL, "http"), Key: "devkey", Secret: "secret"},
+		denyAll{}, slog.New(slog.DiscardHandler))
+	s.now = func() time.Time { return time.Unix(1_000_000, 0) }
+	s.Eject("velvet", "bob-id")
+
+	if gotPath != "/twirp/livekit.RoomService/RemoveParticipant" {
+		t.Fatalf("path: %q", gotPath)
+	}
+	if gotBody["room"] != "velvet" || gotBody["identity"] != "bob-id" {
+		t.Fatalf("body: %v", gotBody)
+	}
+	token, ok := strings.CutPrefix(gotAuth, "Bearer ")
+	if !ok {
+		t.Fatalf("auth header: %q", gotAuth)
+	}
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		t.Fatalf("not a JWT: %q", token)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got claims
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.Video.RoomAdmin || got.Video.Room != "velvet" || got.Video.RoomJoin {
+		t.Fatalf("admin grant: %+v", got.Video)
+	}
+}

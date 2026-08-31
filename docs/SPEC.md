@@ -22,8 +22,9 @@
 
 | Capability | Owner | Coach | Member | Spectator (phone) |
 |---|---|---|---|---|
-| Edit room (name, listing, sound pack) | ✓ | – | – | – |
+| Edit room (name, icon, listing, sound pack, reaction set) | ✓ | – | – | – |
 | Assign/remove coach role | ✓ | – | – | – |
+| Remove / ban / unban member (#223) | ✓ | – | – | – |
 | Pick workout / mode, start countdown, pause/end session | ✓ | ✓ | – | – |
 | Arm sprint moments | ✓ | ✓ | – | – |
 | Add to jukebox queue | ✓ | ✓ | ✓ | – |
@@ -34,6 +35,12 @@
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
 Membership is uncapped; deleting a room frees a slot.
+
+Room identity & vocabulary (#223): the icon is **one emoji or none**; the
+reaction set is **up to 8 emoji** (base set: 🔥 💪 👏 💀 🚀 🧊) and is the
+palette for cheers and chat reactions alike. A **ban** is a membership state:
+it survives rejoin via link or code, severs the live socket and voice on the
+spot, and only the owner sees the ban list. Unban restores plain membership.
 
 Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout → 10 s countdown **(default)** → shared timeline runs → riders execute their own %FTP targets → session closes when the timeline ends (or coach ends it) → server computes stats + medals in one transaction. Late joiners sync to the current timeline position. A member stopping mid-session pauses *their own* targets (auto-pause) — the shared timeline never waits.
 
