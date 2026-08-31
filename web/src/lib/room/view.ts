@@ -63,6 +63,9 @@ export interface Block {
 	/** Optional cadence band for this block (#66) — display-only. */
 	cadenceLow?: number;
 	cadenceHigh?: number;
+	/** Optional HR band, bpm (#67) — display-only, never scored (ADR-0008). */
+	hrLow?: number;
+	hrHigh?: number;
 	next: { label: string; watts: number; seconds: number } | null;
 }
 
@@ -100,6 +103,8 @@ export function describeBlock(
 		secondsLeft: Math.round(info.secondsRemainingInSegment),
 		cadenceLow: info.segment.cadenceLow,
 		cadenceHigh: info.segment.cadenceHigh,
+		hrLow: info.segment.hrLow,
+		hrHigh: info.segment.hrHigh,
 		next: upcoming
 			? {
 					label: label(upcoming),

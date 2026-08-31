@@ -404,6 +404,44 @@
 								/>
 							</label>
 						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<label class="block">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>bpm from</span
+								>
+								<input
+									type="number"
+									min="60"
+									max="220"
+									placeholder="–"
+									value={current.hrLow ?? ''}
+									oninput={(event) =>
+										((current as SteadyStep).hrLow =
+											event.currentTarget.value === ''
+												? undefined
+												: Number(event.currentTarget.value))}
+									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								/>
+							</label>
+							<label class="block">
+								<span class="text-muted text-[10px] tracking-wider uppercase"
+									>bpm to</span
+								>
+								<input
+									type="number"
+									min="60"
+									max="220"
+									placeholder="–"
+									value={current.hrHigh ?? ''}
+									oninput={(event) =>
+										((current as SteadyStep).hrHigh =
+											event.currentTarget.value === ''
+												? undefined
+												: Number(event.currentTarget.value))}
+									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								/>
+							</label>
+						</div>
 					{:else if current.type === 'repeat'}
 						<label class="block">
 							<span class="text-muted text-[10px] tracking-wider uppercase"

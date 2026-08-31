@@ -19,6 +19,14 @@ export interface SteadyStep {
 	 */
 	cadenceLow?: number;
 	cadenceHigh?: number;
+	/**
+	 * Optional HR band, raw bpm (#67 flavour 1) — display-only and never
+	 * scored (ADR-0008: no HR-derived competition). Raw bpm on purpose:
+	 * these are personal workouts; %LTHR is the upgrade path if sharing
+	 * ever wants it.
+	 */
+	hrLow?: number;
+	hrHigh?: number;
 }
 
 export interface RepeatStep {
@@ -59,6 +67,9 @@ export interface Segment {
 	/** cadence band carried from the step (steady only, display-only) */
 	cadenceLow?: number;
 	cadenceHigh?: number;
+	/** HR band carried from the step (steady only, display-only, bpm) */
+	hrLow?: number;
+	hrHigh?: number;
 	/** index into the original (unexpanded) step list, for UI highlighting */
 	stepIndex: number;
 }
