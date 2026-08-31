@@ -9,6 +9,7 @@
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { api } from '$lib/api';
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { parseSharedSegments } from '$lib/room/workout';
 
@@ -171,9 +172,11 @@
 		{#if live.chatLog.length > 0}
 			<ul class="mt-3 max-h-28 space-y-1 overflow-y-auto">
 				{#each live.chatLog.slice(-8) as message (message.at + message.from)}
-					<li class="text-xs leading-snug">
+					<li class="text-xs leading-snug wrap-anywhere">
 						<span class="text-muted font-medium">{message.from}</span>
-						<span class="text-ink/85 ml-1.5">{message.text}</span>
+						<span class="text-ink/85 ml-1.5"
+							><MessageText text={message.text} preview={false} /></span
+						>
 					</li>
 				{/each}
 			</ul>

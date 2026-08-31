@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
 	import { api } from '$lib/api';
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
@@ -93,24 +94,16 @@
 		</div>
 		<div
 			bind:this={list}
-			class="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3"
+			class="min-h-0 flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto p-3"
 		>
 			{#each messages as message (message.id)}
 				<div class="flex {message.mine ? 'justify-end' : ''}">
 					<span
-						class="max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-snug {message.mine
+						class="max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-snug wrap-anywhere {message.mine
 							? 'bg-neon/20'
 							: 'bg-surface'}"
 					>
-						<!-- Only same-origin links become anchors (room invites);
-						     everything else stays inert text. -->
-						{#each message.text.split(/(https?:\/\/\S+)/) as part, i (i)}
-							{#if part.startsWith(location.origin + '/')}
-								<a href={part.slice(location.origin.length)} class="underline"
-									>{part}</a
-								>
-							{:else}{part}{/if}
-						{/each}
+						<MessageText text={message.text} />
 					</span>
 				</div>
 			{:else}
