@@ -30,6 +30,9 @@ func TestRender(t *testing.T) {
 		{"room", "Tuesday Crew", roomSub},
 		{"emoji-only title falls back", "🚴🔥", roomSub},
 		{"long title truncates", strings.Repeat("Zurich Winter Base Camp ", 6), roomSub},
+		{"widest glyphs", strings.Repeat("W", 40), roomSub},
+		{"unbroken word", strings.Repeat("Hammerzeit", 12), roomSub},
+		{"long subtitle", "Tuesday Crew", strings.Repeat("ride together ", 12)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,6 +60,16 @@ func TestRender(t *testing.T) {
 			}
 			if !found {
 				t.Fatal("no logo pixels drawn")
+			}
+			// Nothing may bleed into the side margins (4px slack for glyph
+			// side bearings) — text is measured, but measuring bugs show here.
+			for y := 0; y < 630; y++ {
+				for _, x := range []int{2, 1198, margin - 8, 1200 - margin + 8} {
+					pr, pg, pb, _ := img.At(x, y).RGBA()
+					if pr != wr || pg != wg || pb != wb {
+						t.Fatalf("pixel outside content area at (%d,%d): %v", x, y, img.At(x, y))
+					}
+				}
 			}
 			if dir := os.Getenv("OG_DUMP"); dir != "" { // eyeball cards while tuning layout
 				_ = os.WriteFile(filepath.Join(dir, strings.Fields(tc.name)[0]+".png"), buf, 0o600) //nolint:gosec // dev-only dump, path comes from the developer's own env
