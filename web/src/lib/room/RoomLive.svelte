@@ -1,5 +1,14 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
+	import {
+		LogOut as LeaveIcon,
+		Mic,
+		MicOff,
+		Settings,
+		Tv,
+		Video as VideoIcon,
+		VideoOff,
+	} from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
 	import { play, setDucked, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
@@ -783,13 +792,13 @@
 			</div>
 			<button
 				onclick={() => (tv = true)}
-				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
-				>TV mode</button
+				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
+				><Tv size={13} /> TV</button
 			>
 			<button
 				onclick={() => (admin = true)}
-				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
-				>Room ···</button
+				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
+				aria-label="room settings"><Settings size={13} /> Room</button
 			>
 
 			{#if canControl && shared}
@@ -946,6 +955,25 @@
 						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
 						>Join voice</button
 					>
+				{:else}
+					<!-- In voice: the controls live where you are (#181 feedback),
+					     not only off in the side navigation. -->
+					<button
+						onclick={() => av.toggleMic()}
+						class="rounded border px-4 py-2 text-sm {av.micOn
+							? 'border-z4/50 text-ink'
+							: 'border-z6/50 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
+					>
+					<button
+						onclick={() => av.toggleCam()}
+						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+						>{av.camOn ? 'Cam off' : 'Cam on'}</button
+					>
+					<button
+						onclick={() => av.leave()}
+						class="border-muted/30 text-muted hover:border-muted/60 hover:text-ink rounded border px-4 py-2 text-sm"
+						>Leave voice</button
+					>
 				{/if}
 				{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
 					<button
@@ -960,49 +988,54 @@
 		{/if}
 
 		{#if phase === 'lounge' && upcoming.length > 0}
-			<!-- Plans are a footnote to the people (#170): a quiet strip, only
-			     when something IS planned. Planning lives in the setup panel. -->
-			<div class="border-ink/5 mt-4 border-t pt-3">
-				<ul class="space-y-1.5">
-					{#each upcoming as entry (entry.id)}
-						<li class="flex flex-wrap items-center gap-x-3 gap-y-1">
-							<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-								>next</span
-							>
-							<span class="text-sm font-medium">{entry.workoutName}</span>
-							<span class="text-muted font-mono text-xs tabular-nums"
-								>{formatClock(
+			<!-- The plan, phrased like a plan (#181 feedback): what, when, how
+			     long, whose idea — a card, not a floating row of monospace. -->
+			<div
+				class="border-neon/30 bg-surface-raised mt-4 max-w-2xl rounded-lg border"
+			>
+				{#each upcoming as entry, i (entry.id)}
+					<div
+						class="border-ink/5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0"
+					>
+						<div class="min-w-0 flex-1">
+							<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
+								{i === 0 ? 'next session in this room' : 'after that'}
+							</p>
+							<p class="font-display truncate text-base font-bold">
+								{entry.workoutName}
+							</p>
+							<p class="text-muted mt-0.5 text-xs">
+								{formatWhen(entry.startsAt)} ·
+								{Math.round(
 									parseSharedSegments(entry.workoutJson).reduce(
 										(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
 										0,
-									),
-								)}</span
-							>
-							<span class="text-muted font-mono text-xs tabular-nums"
-								>{formatWhen(entry.startsAt)}</span
-							>
-							<span class="text-muted text-xs">by {entry.createdBy}</span>
-							{#if canControl}
-								<span class="ml-auto flex gap-1.5">
-									{#if due(entry.startsAt)}
-										<button
-											onclick={() => startScheduled(entry)}
-											class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1 text-xs font-semibold"
-											>Start now</button
-										>
-									{/if}
+									) / 60,
+								)} min · planned by {entry.createdBy}
+							</p>
+						</div>
+						<span class="flex shrink-0 items-center gap-3">
+							{#if due(entry.startsAt)}
+								{#if canControl}
 									<button
-										onclick={() => onUnschedule(entry.id)}
-										class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink rounded border px-2.5 py-1 text-xs"
-										>Remove</button
+										onclick={() => startScheduled(entry)}
+										class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-xs font-semibold"
+										>Start now</button
 									>
-								</span>
-							{:else if due(entry.startsAt)}
-								<span class="text-watt glow-text text-xs">starting soon</span>
+								{:else}
+									<span class="text-watt glow-text text-xs">starting soon</span>
+								{/if}
 							{/if}
-						</li>
-					{/each}
-				</ul>
+							{#if canControl}
+								<button
+									onclick={() => onUnschedule(entry.id)}
+									class="text-muted hover:text-ink text-[11px] underline"
+									>remove</button
+								>
+							{/if}
+						</span>
+					</div>
+				{/each}
 			</div>
 		{/if}
 

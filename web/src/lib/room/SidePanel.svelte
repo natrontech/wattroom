@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { Plus, SmilePlus } from '@lucide/svelte';
 
 	// In media-focus the player lives in the main area, so the panel must not render a second one.
 	let {
@@ -69,7 +70,8 @@
 			<button
 				onclick={() => (adding = !adding)}
 				class="text-muted hover:text-ink"
-				aria-label="Add to queue">{adding ? 'close' : '+ add'}</button
+				aria-label="Add to queue"
+				>{#if adding}close{:else}<Plus size={13} />{/if}</button
 			>
 		</div>
 
@@ -135,7 +137,7 @@
 						id
 							? 'opacity-100'
 							: ''}"
-						aria-label="react">＋</button
+						aria-label="react"><SmilePlus size={13} /></button
 					>
 					{#if reactingTo === id}
 						<span
