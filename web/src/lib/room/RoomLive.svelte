@@ -272,19 +272,10 @@
 	let focusId = $state<string | null>(null);
 	// The stage's menu, named (#280): av knows the tracks, only this page
 	// knows whose they are.
-	// The jukebox video is a stage source like any share (#316): what the room
-	// is watching together belongs in the room, not in a window pasted over the
-	// cam grid. It sits below shares in the pick order — someone sharing a
-	// chart is saying "look at this"; the music video is not.
+	// The jukebox video is a stage source, and it leads (#316): what the room
+	// is watching together belongs in the room, never in a window pasted over
+	// the cam grid. A rider who wants a share instead picks it.
 	const stageSources = $derived([
-		...av.stageSources.map((source) => ({
-			key: source.key,
-			kind: source.kind,
-			gen: String(source.gen),
-			label:
-				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
-				(source.kind === 'screen' ? "'s screen" : ''),
-		})),
 		...(live.tick?.jukebox?.current
 			? [
 					{
@@ -295,6 +286,14 @@
 					},
 				]
 			: []),
+		...av.stageSources.map((source) => ({
+			key: source.key,
+			kind: source.kind,
+			gen: String(source.gen),
+			label:
+				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
+				(source.kind === 'screen' ? "'s screen" : ''),
+		})),
 	]);
 	const onStage = $derived(pickStage(stageSources, av.stagePick));
 	const focused = $derived(riders.find((rider) => rider.id === focusId));

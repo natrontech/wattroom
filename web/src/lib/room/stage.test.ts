@@ -21,12 +21,13 @@ describe('pickStage (#280)', () => {
 		expect(pickStage([cam], null)).toBe(null);
 	});
 
-	// #316: the room's video seats on the stage, but behind a share — someone
-	// sharing a chart is saying "look at this", the music video is not.
-	it('gives the jukebox the stage below a share, above a camera', () => {
+	// #316: the room's video leads — it is what everyone is watching together,
+	// and it must never be a window pasted over the cam grid.
+	it('gives the jukebox the stage over a share', () => {
 		expect(pickStage([cam, jukebox], null)?.key).toBe('jukebox');
-		expect(pickStage([...screens, cam, jukebox], null)?.key).toBe('screen:b');
-		expect(pickStage([...screens, jukebox], 'jukebox')?.key).toBe('jukebox');
+		expect(pickStage([...screens, cam, jukebox], null)?.key).toBe('jukebox');
+		// Someone sharing a chart still gets it by asking for it.
+		expect(pickStage([...screens, jukebox], 'screen:a')?.key).toBe('screen:a');
 		// The track ended mid-pick: the stage falls back rather than blanking.
 		expect(pickStage([...screens], 'jukebox')?.key).toBe('screen:b');
 	});
