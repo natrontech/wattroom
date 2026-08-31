@@ -6,6 +6,7 @@ import type {
 	ServerTick,
 } from '$lib/protocol';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 
 /**
  * The live side of one room (#18): a WebSocket to the hub, the latest tick,
@@ -58,6 +59,9 @@ export function createRoomLive(slug: string) {
 				socket?.close();
 				return;
 			}
+			// A fresh socket may have reached a restarted server; the old
+			// clock window would hold a stale offset for eight seconds.
+			resetServerClock();
 			status = 'live';
 			attempts = 0;
 			const queued = pending;
@@ -84,6 +88,9 @@ export function createRoomLive(slug: string) {
 		socket.onmessage = (event) => {
 			const msg = JSON.parse(event.data) as ServerMessage;
 			if (msg.tick) {
+				// Before anything reads it: the tick's own timestamp is what
+				// keeps the jukebox playhead on server time (#286).
+				observeServerTime(msg.tick.at);
 				tick = msg.tick;
 				if (msg.tick.chatIds?.length) {
 					// The save happens off the server's read loop (#219): lines
@@ -258,17 +265,11 @@ export function createRoomLive(slug: string) {
 			};
 			send({ chatReact: { messageId, emoji } });
 		},
-		jukebox(
-			action: string,
-			videoId?: string,
-			title?: string,
-			jamUrl?: string,
-			positionSec?: number,
-			anchorMs?: number,
-		) {
-			send({
-				jukebox: { action, videoId, title, jamUrl, positionSec, anchorMs },
-			});
+		/** One jukebox command. The wire shape IS the argument (#286) — six
+		 * positional optionals were a bug waiting to be passed in the wrong
+		 * order, and two of them already had been. */
+		jukebox(command: import('$lib/protocol').JukeboxCommand) {
+			send({ jukebox: command });
 		},
 		control(
 			action: string,

@@ -298,7 +298,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// Any member; the jukebox validates its own input. Throttled like
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
-				rm.jukebox(*msg.Jukebox, rider.Name, h.now())
+				rm.jukebox(*msg.Jukebox, rider.ID, rider.Name, h.now())
 			}
 		}
 		if msg.Backfill != nil {
@@ -850,10 +850,10 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 	}
 }
 
-func (rm *room) jukebox(cmd protocol.JukeboxCommand, addedBy string, now time.Time) bool {
+func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return rm.music.apply(cmd, addedBy, now)
+	return rm.music.apply(cmd, riderID, addedBy, now)
 }
 
 // startGame begins a mode; refused while another runs (end it first).

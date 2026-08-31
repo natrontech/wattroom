@@ -1,9 +1,8 @@
 package hub
 
 import (
-	"net/url"
 	"regexp"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -12,6 +11,11 @@ import (
 // The queue is a party playlist, not storage — a cap keeps a hostile client
 // from growing room memory, and nobody queues fifty songs in good faith.
 const maxQueue = 50
+
+// What the room remembers having played (#286). Five is a glance, not a log:
+// long enough to put the last good track on again, short enough to stay in
+// the tick without paying for a history nobody scrolls.
+const maxHistory = 5
 
 // A video longer than six hours is not a party track; the clamp bounds the
 // untrusted playhead the same way metrics are bounded.
@@ -38,24 +42,19 @@ var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 // Not goroutine-safe on its own — the owning room's mutex guards it.
 type jukebox struct {
 	state protocol.JukeboxState
-}
-
-// jamURLOk accepts only https links on Spotify's own hosts.
-func jamURLOk(raw string) bool {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" {
-		return false
-	}
-	host := strings.ToLower(u.Hostname())
-	return host == "open.spotify.com" || host == "spotify.link" ||
-		strings.HasSuffix(host, ".spotify.com")
+	// Entry ids are per-room and monotonic: unique is all they must be, and
+	// a counter is unique without a random source (which tests would fight).
+	nextID int
 }
 
 func newJukebox() *jukebox {
-	return &jukebox{state: protocol.JukeboxState{Queue: []protocol.JukeboxEntry{}}}
+	return &jukebox{state: protocol.JukeboxState{
+		Queue:   []protocol.JukeboxEntry{},
+		History: []protocol.JukeboxEntry{},
+	}}
 }
 
-// snapshot renders the state at now. The queue is CLONED: the caller
+// snapshot renders the state at now. The slices are CLONED: the caller
 // marshals outside the room lock, and remove() shifts the backing array in
 // place — sharing it was a data race (audit #219).
 func (j *jukebox) snapshot() protocol.JukeboxState {
@@ -63,6 +62,7 @@ func (j *jukebox) snapshot() protocol.JukeboxState {
 	// Non-nil even when empty — nil marshals as null and the wire type
 	// promises an array (crashed clients on room open).
 	out.Queue = append(make([]protocol.JukeboxEntry, 0, len(j.state.Queue)), j.state.Queue...)
+	out.History = append(make([]protocol.JukeboxEntry, 0, len(j.state.History)), j.state.History...)
 	return out
 }
 
@@ -76,7 +76,8 @@ func (j *jukebox) positionAt(now time.Time) float64 {
 
 // apply runs one member command; returns false for junk. Every member may do
 // all of this (docs/SPEC.md matrix: jukebox controls default to members).
-func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Time) bool {
+// riderID identifies the voter; addedBy is the display name entries carry.
+func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) bool {
 	switch cmd.Action {
 	case "add":
 		if !videoIDPattern.MatchString(cmd.VideoID) || len(j.state.Queue) >= maxQueue {
@@ -86,9 +87,10 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 		if len(title) > 200 {
 			title = title[:200]
 		}
+		j.nextID++
 		entry := protocol.JukeboxEntry{
-			VideoID: cmd.VideoID, Title: title, AddedBy: addedBy,
-			StartSec: clampSec(cmd.PositionSec),
+			ID: strconv.Itoa(j.nextID), VideoID: cmd.VideoID, Title: title,
+			AddedBy: addedBy, StartSec: clampSec(cmd.PositionSec),
 		}
 		if j.state.Current == nil {
 			// An empty deck plays immediately — adding the first song IS pressing play.
@@ -98,27 +100,66 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 		j.state.Queue = append(j.state.Queue, entry)
 		return true
 
-	case "jam":
-		// ADR-0003: a link-out card, never an integration. Untrusted input —
-		// only a real Jam link on the two Spotify hosts, bounded.
-		if cmd.JamURL == "" {
-			j.state.JamURL = ""
-			return true
-		}
-		if len(cmd.JamURL) > 300 || !jamURLOk(cmd.JamURL) {
+	case "remove":
+		i := j.indexOf(cmd.EntryID)
+		if i < 0 {
 			return false
 		}
-		j.state.JamURL = cmd.JamURL
+		j.state.Queue = append(j.state.Queue[:i], j.state.Queue[i+1:]...)
 		return true
 
-	case "remove":
-		for i, entry := range j.state.Queue {
-			if entry.VideoID == cmd.VideoID {
-				j.state.Queue = append(j.state.Queue[:i], j.state.Queue[i+1:]...)
-				return true
-			}
+	case "vote":
+		// One vote per rider, toggled — and a vote that lands FLOATS the
+		// entry past every lower-voted one ahead of it, which is the whole
+		// point of upvoting a party queue.
+		i := j.indexOf(cmd.EntryID)
+		if i < 0 || riderID == "" {
+			return false
 		}
-		return false
+		// Rebuilt, never mutated in place: the snapshot clone shares these
+		// backing arrays with a marshal running outside the room lock (#219).
+		entry := &j.state.Queue[i]
+		next := make([]string, 0, len(entry.Voters)+1)
+		voted := false
+		for _, voter := range entry.Voters {
+			if voter == riderID {
+				voted = true
+				continue
+			}
+			next = append(next, voter)
+		}
+		if !voted {
+			next = append(next, riderID)
+		}
+		entry.Voters = next
+		if !voted {
+			j.float(i)
+		}
+		return true
+
+	case "move":
+		// Hand-reordering wins over vote order until the next vote — the
+		// queue slice IS the order, so there is nothing to re-sort.
+		from := j.indexOf(cmd.EntryID)
+		if from < 0 {
+			return false
+		}
+		to := min(max(cmd.Index, 0), len(j.state.Queue)-1)
+		if to == from {
+			return false
+		}
+		next := make([]protocol.JukeboxEntry, 0, len(j.state.Queue))
+		for i, entry := range j.state.Queue {
+			if i == from {
+				continue
+			}
+			next = append(next, entry)
+		}
+		next = append(next, protocol.JukeboxEntry{})
+		copy(next[to+1:], next[to:])
+		next[to] = j.state.Queue[from]
+		j.state.Queue = next
+		return true
 
 	case "play":
 		if j.state.Current == nil || j.state.Playing {
@@ -170,6 +211,26 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 	}
 }
 
+func (j *jukebox) indexOf(entryID string) int {
+	if entryID == "" {
+		return -1
+	}
+	for i, entry := range j.state.Queue {
+		if entry.ID == entryID {
+			return i
+		}
+	}
+	return -1
+}
+
+// float bubbles a freshly-voted entry up past every entry with fewer votes.
+func (j *jukebox) float(i int) {
+	for i > 0 && len(j.state.Queue[i-1].Voters) < len(j.state.Queue[i].Voters) {
+		j.state.Queue[i-1], j.state.Queue[i] = j.state.Queue[i], j.state.Queue[i-1]
+		i--
+	}
+}
+
 func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
 	j.state.Current = &entry
 	j.state.Playing = true
@@ -178,6 +239,13 @@ func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
 }
 
 func (j *jukebox) advance(now time.Time) {
+	if j.state.Current != nil {
+		// Newest first, capped: the deck's memory, not a play log.
+		j.state.History = append([]protocol.JukeboxEntry{*j.state.Current}, j.state.History...)
+		if len(j.state.History) > maxHistory {
+			j.state.History = j.state.History[:maxHistory]
+		}
+	}
 	if len(j.state.Queue) == 0 {
 		j.state.Current = nil
 		j.state.Playing = false

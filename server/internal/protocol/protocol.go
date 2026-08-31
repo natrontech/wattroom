@@ -82,9 +82,15 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "seek" | "ended" | "jam"
+	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "seek" | "ended"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
+	// For "remove" | "vote" | "move": which queue entry (#286). Video ids
+	// are not unique — the same track queued twice is two entries, and
+	// addressing by video used to hit the wrong one.
+	EntryID string `json:"entryId,omitempty"`
+	// For "move": the entry's new index in the queue, clamped to it.
+	Index int `json:"index,omitempty"`
 	// For "seek": the new shared playhead. For "add": start the entry here
 	// (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
 	PositionSec float64 `json:"positionSec,omitempty"`
@@ -92,9 +98,6 @@ type JukeboxCommand struct {
 	// (and tab) reports the end — the epoch match makes N echoes advance
 	// the queue exactly once even when the same video is queued twice.
 	AnchorMs int64 `json:"anchorMs,omitempty"`
-	// For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
-	// shows as a join card. Empty clears it. Link-out only — no API, ever.
-	JamURL string `json:"jamUrl,omitempty"`
 }
 
 // ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
@@ -188,15 +191,25 @@ type SessionState struct {
 }
 
 type JukeboxEntry struct {
+	// Room-unique, server-assigned: what remove/vote/move address (#286).
+	ID      string `json:"id"`
 	VideoID string `json:"videoId"`
 	Title   string `json:"title"`
 	AddedBy string `json:"addedBy"`
 	// Where playback begins when this entry reaches the deck (?t= paste).
 	StartSec float64 `json:"startSec,omitempty"`
+	// Upvotes float an entry above lower-voted ones (#286). The voters are
+	// rider ids, not a count — room-scoped like every other live field, and
+	// the only way a client renders "you voted" from truth, not from its
+	// own click. The count is len(voters); nothing to keep in sync.
+	Voters []string `json:"voters,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the
-// anchor: position = PositionSec, plus wall time since AnchorMs while playing.
+// anchor: position = PositionSec, plus SERVER time since AnchorMs while
+// playing — a client's own wall clock is skewed by seconds and applying it
+// here is what made the jukebox "not synced" (#286). Clients estimate the
+// offset from ServerTick.At and translate.
 // The audio itself is local per rider — their iframe, their volume — and never
 // enters the voice path (SPEC room audio defaults).
 type JukeboxState struct {
@@ -205,9 +218,9 @@ type JukeboxState struct {
 	Playing     bool           `json:"playing"`
 	PositionSec float64        `json:"positionSec"`
 	AnchorMs    int64          `json:"anchorMs"`
-	// The room's Spotify Jam invite link (#96) — audio per rider in their own
-	// app, never ducked, never synced. Set and cleared like any jukebox action.
-	JamURL string `json:"jamUrl,omitempty"`
+	// What the room just played, newest first (#286) — the deck's short
+	// memory, so "put that on again" is one tap and nobody retypes a link.
+	History []JukeboxEntry `json:"history"`
 }
 
 // ServerTick is the coalesced 1 Hz room broadcast: every rider's latest

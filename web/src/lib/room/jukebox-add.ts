@@ -1,3 +1,5 @@
+import type { JukeboxCommand } from '$lib/protocol';
+
 /** "94", "94s", "1m34s", "1h2m3s" — the forms YouTube puts in ?t=. */
 function startSecFrom(u: URL): number {
 	const raw = u.searchParams.get('t') ?? u.searchParams.get('start') ?? '';
@@ -22,16 +24,15 @@ export function videoIdFrom(input: string): string | null {
 	return null;
 }
 
+/** The still-frame YouTube serves from its cookieless CDN — the queue's art. */
+export function thumbnailFor(videoId: string): string {
+	return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+}
+
 /** Resolve a title via keyless oEmbed and send the add; failure costs only the label. */
 export async function addYouTubeUrl(
 	url: string,
-	send: (
-		action: string,
-		videoId?: string,
-		title?: string,
-		jamUrl?: string,
-		positionSec?: number,
-	) => void,
+	send: (command: JukeboxCommand) => void,
 ): Promise<boolean> {
 	const videoId = videoIdFrom(url);
 	if (!videoId) return false;
@@ -51,6 +52,11 @@ export async function addYouTubeUrl(
 	} catch {
 		/* title stays the id */
 	}
-	send('add', videoId, title, undefined, startSec || undefined);
+	send({
+		action: 'add',
+		videoId,
+		title,
+		positionSec: startSec || undefined,
+	});
 	return true;
 }

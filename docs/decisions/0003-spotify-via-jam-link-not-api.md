@@ -1,7 +1,11 @@
 # 0003 — Spotify listening via Jam link-out, never via API integration
 
-- Status: accepted
+- Status: partially superseded by [ADR-0018](0018-one-music-surface-drop-the-jam-card.md)
 - Date: 2026-07-16
+
+> **ADR-0018 (2026-08-31)** removed the Jam link-out card: one room, one music
+> surface. The decision below that WattRoom never integrates Spotify playback
+> is untouched and still binding.
 
 ## Context
 

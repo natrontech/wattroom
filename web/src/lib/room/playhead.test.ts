@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
 
 describe('chase', () => {
-	it('seeks a big gap and nudges a small one', () => {
+	it('seeks a real gap, in either direction', () => {
 		expect(chase(120, 100, false)).toEqual({ do: 'seek', to: 120 });
-		expect(chase(101, 100, false)).toEqual({ do: 'rate', rate: 1.25 });
-		expect(chase(99, 100, false)).toEqual({ do: 'rate', rate: 0.75 });
+		expect(chase(100, 120, false)).toEqual({ do: 'seek', to: 100 });
+	});
+
+	it('closes a sub-second gap on the rate, where nobody can hear it', () => {
+		expect(chase(101, 100, false)).toEqual({ do: 'rate', rate: 1.05 });
+		expect(chase(99, 100, false)).toEqual({ do: 'rate', rate: 0.95 });
 	});
 
 	it('plays straight inside the deadband', () => {
+		// Chasing 0.2 s costs more than it buys, and the rate would round
+		// away to 1 anyway.
 		expect(chase(100.2, 100, false)).toEqual({ do: 'rate', rate: 1 });
 	});
 
