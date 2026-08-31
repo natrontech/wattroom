@@ -46,5 +46,5 @@ lint:
 
 ci: test lint ## what CI runs
 
-release: ## cut a release: promote the changelog, tag, push (make release VERSION=v0.4.0)
-	@scripts/release.sh $(VERSION)
+release: ## cut a release: promote the changelog, tag, push (version is CalVer, computed)
+	@scripts/release.sh

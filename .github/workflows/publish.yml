@@ -1,5 +1,5 @@
 # Multi-arch image publish to GHCR (#36). Every push to main builds :main, for
-# testing. A v* tag builds the immutable :vX.Y.Z the VM actually pins and cuts
+# testing. A CalVer tag builds the immutable :YYYY.0M.MICRO the VM pins and cuts
 # the GitHub Release whose generated notes are the changelog (ADR-0019) —
 # "built" and "blessed" are deliberately not the same event.
 name: publish
@@ -7,7 +7,7 @@ name: publish
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['20*'] # CalVer: 2026.09.1 — scripts/release.sh is the real validator
 
 jobs:
   image:

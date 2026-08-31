@@ -2,9 +2,11 @@
 
 All notable changes to WattRoom are recorded here.
 
-The format is [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
-and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-— pre-1.0, so `0.x` minor bumps are where breaking changes live.
+The format is [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
+Versions are [CalVer](https://calver.org/) `YYYY.0M.MICRO` — `2026.09.1`, then
+`2026.09.2`, and MICRO back to 1 next month. The number tells you *when* a
+release is from; whether it breaks anything for you is what the headings below
+are for, so read Changed and Removed rather than counting digits.
 
 Entries are written by whoever did the work, in the PR that did it, under
 `## [Unreleased]`. `make release VERSION=vX.Y.Z` promotes that section into a

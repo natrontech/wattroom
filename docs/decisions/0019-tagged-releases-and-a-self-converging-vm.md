@@ -31,7 +31,9 @@ ADR-0006 named the homelab's conventions — repo-is-truth, `make sync-<stack>`,
 
 ## Decision
 
-**A release is a tag, cut by hand.** `make release VERSION=v0.4.0` promotes the changelog, commits, tags and pushes; `publish.yml` has a tag trigger that builds `:v0.4.0` from the existing Dockerfile and cuts the GitHub Release from that changelog section. `:main` keeps building on every push, for testing; only tags are deployable.
+**A release is a tag, cut by hand.** `make release` promotes the changelog, commits, tags and pushes; `publish.yml` has a tag trigger that builds `:2026.09.1` from the existing Dockerfile and cuts the GitHub Release from that changelog section. `:main` keeps building on every push, for testing; only tags are deployable.
+
+**Versions are CalVer, `YYYY.0M.MICRO`** (amended 2026-09-01). MICRO is computed from the tags already in this month, so `make release` takes no argument. SemVer would be answering a question WattRoom does not have: there is no public API with downstream consumers to promise compatibility to, one VM runs one release, and the compatibility that actually matters — can I roll back — is guaranteed structurally by expand/contract migrations rather than by a version digit. What a CalVer number cannot say is "this one breaks something"; the changelog's Changed and Removed headings carry that, which is the other half of why they are written by hand.
 
 **The changelog is written, not generated** (amended 2026-09-01, see the note above). `CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/): every PR adds one line to `## [Unreleased]` under the heading that fits, and `make release` promotes that section into a dated release and opens a fresh one, refusing outright when it is empty. The release body is that same section, so the file and the GitHub Release cannot disagree. Promotion happens *before* the tag, so a tag always points at a tree whose changelog already describes it.
 

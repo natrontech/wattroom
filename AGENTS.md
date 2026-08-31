@@ -37,7 +37,7 @@ Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked �
 
 You will not run a deploy, but your change moves through this, so know the shape ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)):
 
-- **Releases are git tags.** `make release VERSION=v0.4.0` promotes the changelog, tags and pushes; the tag builds `ghcr.io/natrontech/wattroom:v0.4.0` and cuts the GitHub Release. Never tag by hand — a tag without a changelog section fails the release job.
+- **Releases are git tags, and versions are CalVer** — `YYYY.0M.MICRO`, e.g. `2026.09.1` then `2026.09.2`, MICRO back to 1 each month. `make release` computes the number from existing tags, promotes the changelog, tags and pushes; the tag builds `ghcr.io/natrontech/wattroom:2026.09.1` and cuts the GitHub Release. Never tag by hand — a tag without a changelog section fails the release job. The version says *when*; what changed is the changelog's job.
 - **`:main` is built on every merge and never deployed.** Only tagged releases are.
 - **The VM converges on a pin.** A systemd timer reads the tag pinned in the homelab repo, refuses to deploy while riders are on the bike, `pg_dump`s, rolls forward, and retags to the previous release if the new one does not report its own tag and answer `/api/healthz`.
 - **Rollback is an image tag, never the database.** Nothing automated ever restores a dump — that would discard every ride recorded since it. Do not add anything that does.

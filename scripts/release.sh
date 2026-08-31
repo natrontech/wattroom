@@ -1,21 +1,17 @@
 #!/bin/bash
-# Cut a release: promote the changelog, tag, push. Run it as `make release
-# VERSION=v0.4.0` (ADR-0019).
+# Cut a release: promote the changelog, tag, push. Run it as `make release`
+# (ADR-0019).
+#
+# Versions are CalVer, YYYY.0M.MICRO — 2026.09.1, then 2026.09.2, and MICRO
+# back to 1 next month. The number is computed from the tags that already
+# exist, so there is nothing to pass and nothing to get wrong; WattRoom ships
+# continuously to one VM, and "which month is this from" is the question a
+# version can actually answer here. What changed is the changelog's job.
 #
 # The changelog is promoted *before* the tag so the tag points at a tree whose
 # CHANGELOG.md already describes that release — publish.yml then reads the
 # section back out for the GitHub Release body, and the two cannot disagree.
 set -euo pipefail
-
-version=${1:-}
-[ -n "$version" ] || {
-	echo "usage: make release VERSION=vX.Y.Z" >&2
-	exit 1
-}
-printf '%s' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
-	echo "'$version' is not a release tag (want vX.Y.Z)" >&2
-	exit 1
-}
 
 cd "$(git rev-parse --show-toplevel)"
 [ "$(git branch --show-current)" = main ] || {
@@ -26,11 +22,6 @@ cd "$(git rev-parse --show-toplevel)"
 	echo "working tree is dirty — commit or stash first" >&2
 	exit 1
 }
-if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
-	echo "$version already exists" >&2
-	exit 1
-fi
-
 # An empty Unreleased means nobody wrote down what changed, which is the whole
 # thing this is meant to prevent. Better to stop than to ship a blank release.
 if ! awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f && NF' CHANGELOG.md | grep -q .; then
@@ -38,8 +29,20 @@ if ! awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f && NF' CHANGELOG.md | g
 	exit 1
 fi
 
+# This month's tags decide the next number. `git describe` gives the previous
+# release in commit order, which is what the compare link wants — sorting tag
+# names would pick the wrong one the first time a month rolls over.
+month=$(date +%Y.%m)
+last=$(git tag --list "$month.*" | awk -F. '{print $3}' | sort -n | tail -1)
+version="$month.$((${last:-0} + 1))"
 prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
 today=$(date +%F)
+
+if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+	echo "$version already exists" >&2
+	exit 1
+fi
+echo "cutting $version (previous: ${prev:-none})"
 repo_url=https://github.com/natrontech/wattroom
 
 # Promote: the new heading slots in directly under [Unreleased], so everything
