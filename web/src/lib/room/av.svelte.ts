@@ -7,6 +7,7 @@ import {
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { GATE_DEFAULT, clampThreshold } from '$lib/room/gate-scale';
 import { mountTrack } from '$lib/room/mount-track';
 import { pickStage } from '$lib/room/stage';
 import {
@@ -71,16 +72,17 @@ export function createRoomAv(slug: string) {
 	let transmitting = $state(false);
 	/** SPEC room-audio defaults; threshold persisted per device. */
 	let mode = $state<'gate' | 'ptt'>('gate');
-	let gateThreshold = $state(0.02);
+	let gateThreshold = $state(GATE_DEFAULT);
 	let pttHeld = $state(false);
-	let musicPlaying = false;
+	/** Reactive: the rail draws the EFFECTIVE threshold, and music moves it. */
+	let musicPlaying = $state(false);
 
 	const VOICE_KEY = 'wattroom.voice.v1';
 	try {
 		const saved = JSON.parse(localStorage.getItem(VOICE_KEY) ?? '{}');
 		if (saved.mode === 'ptt') mode = 'ptt';
 		if (typeof saved.threshold === 'number' && saved.threshold > 0)
-			gateThreshold = Math.min(0.1, saved.threshold);
+			gateThreshold = clampThreshold(saved.threshold);
 	} catch {
 		// storage blocked: SPEC defaults stand
 	}
@@ -226,6 +228,15 @@ export function createRoomAv(slug: string) {
 		mic.gain.gain.setTargetAtTime(openNow ? 1 : 0, mic.ctx.currentTime, 0.005);
 	}
 
+	/**
+	 * SPEC: while the jukebox plays the threshold doubles. The gate reads it
+	 * here and the meter's marker reads the same function, so the mark can
+	 * never claim a gate the rider is not actually being held to (#289).
+	 */
+	function effectiveThreshold() {
+		return musicPlaying ? gateThreshold * 2 : gateThreshold;
+	}
+
 	let lastTick = 0;
 	function runGate() {
 		if (!mic || (!micOn && !testing)) return;
@@ -233,7 +244,7 @@ export function createRoomAv(slug: string) {
 			setGate(pttHeld);
 			return;
 		}
-		const threshold = musicPlaying ? gateThreshold * 2 : gateThreshold;
+		const threshold = effectiveThreshold();
 		const now = performance.now();
 		// Hidden tabs clamp timers to ~1 s (#214): with a fixed 800 ms hold the
 		// gate chopped speech at 1 Hz in the background. Hold at least two real
@@ -778,6 +789,10 @@ export function createRoomAv(slug: string) {
 		get gateThreshold() {
 			return gateThreshold;
 		},
+		/** What is gating you right now — the stored value, doubled by music. */
+		get effectiveGateThreshold() {
+			return effectiveThreshold();
+		},
 		get pttHeld() {
 			return pttHeld;
 		},
@@ -788,8 +803,10 @@ export function createRoomAv(slug: string) {
 			runGate();
 		},
 		setGateThreshold(next: number) {
-			gateThreshold = Math.min(0.1, Math.max(0.005, next));
+			gateThreshold = clampThreshold(next);
 			persistVoice();
+			// Tuning mid-sentence must land on this breath, not the next tick.
+			runGate();
 		},
 		get micTesting() {
 			return testing;

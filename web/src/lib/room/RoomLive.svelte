@@ -1150,6 +1150,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		messages={live.chatLog}
+		events={live.roomEvents}
 		reactions={live.chatReactions}
 		myReacts={live.myReacts}
 		onReact={(id, emoji) => live.react(id, emoji)}

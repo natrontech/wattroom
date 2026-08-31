@@ -27,11 +27,11 @@ All work is tracked as GitHub issues on milestones M0–M6; nobody works untrack
    The draft PR is the claim (step 3), and agents routinely open one without commenting on the issue — so a quiet issue is not an idle one. Two agents shipped the same feature twice for want of this one command (#280 → #284 and #294).
    Then `git worktree list`. A worktree whose branch has no commits yet is an agent that has *just* started: no ref, no PR, nothing for the two checks above to find. Named branches there (`test/pane-helpers`, `test/pane-size-position-merge`) are the work in progress — read the name and stay off it. This is how the same test got written three times (#297, #302, #304, #305).
 2. **Claim it**: assign yourself (`gh issue edit <n> --add-assignee @me`) AND comment a one-line approach.
-3. **Branch + PR for all feature work**: branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — the draft is how others see what's in flight. Conventional-commit PR title (it becomes the squash commit). Only trivial doc fixes and ADR text may go direct to main. Note: `main` has **no platform-level protection** (private repo, free plan) — the PR rule is convention; follow it anyway, nothing will stop a bad push except you.
+3. **Branch + PR for all feature work**: branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — the draft is how others see what's in flight. Conventional-commit PR title (it becomes the squash commit). **Everything** goes through a PR, including trivial doc fixes and ADR text: a repository ruleset now rejects direct pushes to `main` (`GH013: Changes must be made through a pull request`). The rule stopped being convention-only — don't plan a direct push and discover it at the remote.
 4. **Progress lives in the issue/PR**, not in chat apps: blockers, decisions, findings → comments. A decision made in a thread still gets an ADR.
 5. **Done** = CI green, self-review of the diff, PR marked ready. Out-of-scope discoveries become new issues (right milestone + label), never PR scope-creep.
 
-Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
+Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
 
 ## Releasing & deploying
 

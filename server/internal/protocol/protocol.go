@@ -146,6 +146,34 @@ type ChatReactionCount struct {
 	Added     bool   `json:"added"`
 }
 
+// RoomEvent is something the ROOM did, next to what riders said (#321): the
+// jukebox changing under everyone is half of what happened here, and thirty
+// seconds later "who put this on?" has no other answer. Structured, not a
+// sentence — the client owns the wording, so the chat pane and the dock name
+// a track identically.
+//
+// Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
+// written to the chat table. A month of "now playing" in the backlog is noise.
+type RoomEvent struct {
+	// Room-unique and stable across re-broadcasts: a growing burst re-sends
+	// the SAME id with a higher Count, and clients replace the line in place.
+	ID   string `json:"id"`
+	Kind string `json:"kind"` // "jukebox"
+	Verb string `json:"verb"` // "queued" | "removed" | "skipped" | "playing"
+	// Who did it. Empty when nobody did — the deck advancing on its own.
+	Actor string `json:"actor,omitempty"`
+	// The title the dock shows, so both surfaces name the same track. Empty
+	// on a coalesced burst, which has no single title left to show.
+	Track string `json:"track,omitempty"`
+	// For "playing": who put this track in the queue.
+	QueuedBy string `json:"queuedBy,omitempty"`
+	// How many tracks this one line covers — 1 normally, more when a burst
+	// of adds coalesced ("queued 8 tracks"). Eight lines would push the
+	// actual conversation off the screen.
+	Count int   `json:"count"`
+	At    int64 `json:"at"` // server millis, for ordering only
+}
+
 // Cheer is the room's reaction layer (#74) — and the spectator's one verb.
 type Cheer struct {
 	Emoji string `json:"emoji"`
@@ -238,6 +266,9 @@ type ServerTick struct {
 	// Persisted ids for lines already broadcast (#219) — the async save's
 	// follow-up, unlocking reactions on them.
 	ChatIDs []ChatID `json:"chatIds,omitempty"`
+	// What the room did this second (#321) — jukebox actions the chat pane
+	// interleaves with the talking. Ephemeral, like the cheers above.
+	Events []RoomEvent `json:"events,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.

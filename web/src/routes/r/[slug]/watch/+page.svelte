@@ -11,6 +11,7 @@
 	import { api } from '$lib/api';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
+	import { eventText, roomTimeline } from '$lib/room/timeline';
 	import { parseSharedSegments } from '$lib/room/workout';
 
 	// The phone spectator (#20): read-only, any mobile browser — iOS Safari is
@@ -38,6 +39,10 @@
 		live.chat(text);
 	}
 	onDestroy(() => live.close());
+
+	// The last of the room's timeline — talking and jukebox lines both (#321).
+	// A phone screen holds a glance, not a history.
+	const tail = $derived(roomTimeline(live.chatLog, live.roomEvents).slice(-8));
 
 	const shared = $derived(live.tick?.state);
 	const running = $derived(
@@ -169,20 +174,29 @@
 				>Riding on this device anyway?</a
 			>
 		</p>
-		{#if live.chatLog.length > 0}
+		{#if tail.length > 0}
 			<ul class="mt-3 max-h-28 space-y-1 overflow-y-auto">
-				{#each live.chatLog.slice(-8) as message (message.at + message.from)}
-					<li class="text-xs leading-snug wrap-anywhere">
-						<span class="text-muted font-medium">{message.from}</span>
-						{#if message.text}
-							<span class="text-ink/85 ml-1.5"
-								><MessageText text={message.text} preview={false} /></span
-							>
-						{:else if message.imageId}
-							<!-- Images are members-only (#279); spectators get the fact, not the pixels. -->
-							<span class="text-muted/70 ml-1.5 italic">sent an image</span>
-						{/if}
-					</li>
+				{#each tail as entry (entry.key)}
+					{#if entry.kind === 'event'}
+						<!-- The music changes for spectators too, and "who put this
+						     on?" is their question as much as anyone's (#321). -->
+						<li class="text-muted/60 text-[11px] leading-snug wrap-anywhere">
+							{eventText(entry.event)}
+						</li>
+					{:else}
+						{@const message = entry.message}
+						<li class="text-xs leading-snug wrap-anywhere">
+							<span class="text-muted font-medium">{message.from}</span>
+							{#if message.text}
+								<span class="text-ink/85 ml-1.5"
+									><MessageText text={message.text} preview={false} /></span
+								>
+							{:else if message.imageId}
+								<!-- Images are members-only (#279); spectators get the fact, not the pixels. -->
+								<span class="text-muted/70 ml-1.5 italic">sent an image</span>
+							{/if}
+						</li>
+					{/if}
 				{/each}
 			</ul>
 		{/if}
