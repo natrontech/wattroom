@@ -184,7 +184,9 @@ Not re-decided here — it changes a locked doc, so it needs an ADR. The WCPS pr
 
 **Settled by doing (2026-08-29, #5/#47):** the muktihari/fit message sequence Strava accepts for a synthetic VirtualRide. `FileId → Record… → Lap → Session → Activity`, `sport=cycling`, `sub_sport=virtual_activity`. Uploaded a synthetic 120-sample ride to Strava: accepted, classified as **Virtual Ride**, power/cadence/HR all parsed. Two conventions found: Strava derives elapsed time from record timestamps (N one-second samples read as N−1 s) and recomputes averages from records rather than trusting Session fields, so our summaries round the same way. `filedef.Activity.ToFIT` emits Session *before* Lap, which is why the encoder builds the sequence by hand. Distance/speed are not encoded and show as 0 km — fine for a VirtualRide, revisit with #34.
 
-**Still open (no surviving claims — settle by doing):** Go-side clock-sync/tick-layout patterns (→ decide in M2 implementation; note OTT ships fine with zero clock sync); empirical fine-grained playbackRate support on current embeds.
+**Settled by doing (2026-08-31, #286):** *fine-grained playbackRate on current embeds* — a `setPlaybackRate(1.05)` on a live youtube-nocookie embed reads back as **1.05**; `setPlaybackRate(1.02)` rounds to **1**. So the documented "rounds unsupported rates toward 1" is real, but the floor sits near 0.05, not at the 0.25 steps `getAvailablePlaybackRates()` lists — fine enough for an inaudible drift-closing tier, which docs/SPEC.md now specifies. Also settled: *clock sync is NOT optional for us*. OTT gets away with none because it seeks on >1 s drift and never claims tighter; WattRoom's anchor is server millis added to the client's own `Date.now()`, so a skewed rider clock became a permanently wrong target no drift chase could recover. The tick's `at` is enough — max of the last 8 samples, no ping/pong.
+
+**Still open (no surviving claims — settle by doing):** Go-side tick-layout patterns (→ decide in M2 implementation).
 
 ## 11. Implementation depth: BLE/trainer layer (verified 3–0 unless noted; run of 2026-08-25)
 

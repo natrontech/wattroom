@@ -241,7 +241,12 @@
 		if (!player || !playerReady) return;
 		const live = conn?.live;
 		const deck = live?.tick?.jukebox;
-		if (live?.status !== 'live' || !deck) return;
+		if (live?.status !== 'live' || !deck) {
+			// No ticks, nothing to chase: a nudge left running through a
+			// reconnect walks the player away from the room it will rejoin.
+			player.setPlaybackRate?.(1);
+			return;
+		}
 
 		if (!deck.current) {
 			if (loadedVideo) unload();
@@ -292,7 +297,9 @@
 			playerInfo.blocked = true;
 
 		// A seek lands asynchronously and reads back stale while it buffers —
-		// measuring through it is what turned one correction into a storm.
+		// measuring through it is what turned one correction into a storm. The
+		// rate is left alone through the settle: a nudge is harmless, and
+		// resetting it here would undo the correction mid-flight.
 		if (streaming || performance.now() < settleUntil || state === BUFFERING)
 			return;
 
@@ -301,8 +308,14 @@
 		const next = chase(target, at, false);
 		if (next.do === 'seek') {
 			// allowSeekAhead: the target is usually outside the buffer.
+			player.setPlaybackRate?.(1);
 			player.seekTo(next.to, true);
 			settleUntil = performance.now() + SETTLE_MS;
+		} else if (player.getPlaybackRate?.() !== next.rate) {
+			// Sub-second drift closes on the rate instead of a stutter. An
+			// embed that rounds the request away just drifts on until the
+			// seek tier catches it — no worse than not asking.
+			player.setPlaybackRate?.(next.rate);
 		}
 	}
 

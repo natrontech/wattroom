@@ -7,17 +7,21 @@ describe('chase', () => {
 		expect(chase(100, 120, false)).toEqual({ do: 'seek', to: 100 });
 	});
 
-	it('plays straight inside the threshold rather than nudging the rate', () => {
-		// A 25 % tempo step (the smallest YouTube honours) is a worse
-		// artefact on music than a second of drift — #286.
-		expect(chase(101, 100, false)).toEqual({ do: 'hold' });
-		expect(chase(100.2, 100, false)).toEqual({ do: 'hold' });
+	it('closes a sub-second gap on the rate, where nobody can hear it', () => {
+		expect(chase(101, 100, false)).toEqual({ do: 'rate', rate: 1.05 });
+		expect(chase(99, 100, false)).toEqual({ do: 'rate', rate: 0.95 });
+	});
+
+	it('plays straight inside the deadband', () => {
+		// Chasing 0.2 s costs more than it buys, and the rate would round
+		// away to 1 anyway.
+		expect(chase(100.2, 100, false)).toEqual({ do: 'rate', rate: 1 });
 	});
 
 	it('never seeks a livestream, however far the anchor has walked', () => {
 		// The room anchor counts from the moment the stream was queued; the
 		// player's clock is the stream's own. Chasing that seeks every tick.
-		expect(chase(30, 7200, true)).toEqual({ do: 'hold' });
+		expect(chase(30, 7200, true)).toEqual({ do: 'rate', rate: 1 });
 	});
 });
 
