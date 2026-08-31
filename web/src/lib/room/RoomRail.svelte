@@ -83,6 +83,7 @@
 
 	// Glossary vocabulary only — no per-screen synonyms.
 	const pages = [
+		{ href: '/home', label: 'Home' },
 		{ href: '/rooms', label: 'Rooms' },
 		{ href: '/workouts', label: 'Workouts' },
 		{ href: '/ramp', label: 'Ramp test' },
