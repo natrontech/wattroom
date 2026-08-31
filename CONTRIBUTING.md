@@ -37,7 +37,7 @@ docs/                   ARCHITECTURE, RESEARCH, decisions/ (ADRs)
 
 - **Protocol changes**: edit the Go structs in `server/internal/protocol/`, run `make protocol`, commit both files together.
 - **Go style**: stdlib-first. No frameworks, no ORM. Raw SQL via sqlc, `log/slog` for logging, table tests, `go test -race` must pass.
-- **Web style**: Svelte 5 runes, TypeScript, Tailwind utility classes (no component library — this app is bespoke visualization). The watt-yellow accent (`--color-watt`) is reserved for **live data**, never for chrome.
+- **Web style**: Svelte 5 runes, TypeScript, Tailwind utility classes (no component library — this app is bespoke visualization). Two accents, distinct jobs ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): the magenta `--color-watt` is reserved for **live data** and is the only thing that glows; the violet `--color-neon` is structural chrome and never glows.
 - **Design decisions**: anything that changes architecture, protocol semantics, dependencies, or product behavior gets a short ADR in `docs/decisions/` (copy `0000-template.md`) in the same PR.
 - **Commits**: [conventional commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`, `chore:`…). Squash-merged PRs, so the PR title follows the same convention.
 - **Privacy is architecture**: live metrics never leave the room, AV is never recorded, rides are private by default. PRs that would loosen this are rejected regardless of feature value.
