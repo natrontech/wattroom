@@ -305,7 +305,9 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			h.log.Info("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
-			if !canControl(rider.Role) {
+			// The role on THIS socket, not the copy captured when it opened:
+			// a promotion mid-session has to land without a reconnect.
+			if !canControl(rm.roleOf(c)) {
 				h.writeError(ctx, c, "forbidden", "Only the owner or a coach controls the session.")
 				continue
 			}
@@ -358,6 +360,38 @@ func (h *Hub) Kick(slug, userID string) {
 	if len(conns) > 0 {
 		h.log.Info("rider kicked", "room", slug, "rider", userID, "sockets", len(conns))
 	}
+}
+
+// roleOf reads a client's current role under the room lock — SetRole can
+// change it while that client's read loop is blocked on the next message.
+func (rm *room) roleOf(c *client) string {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return c.rider.Role
+}
+
+// SetRole re-roles a rider's live sockets in place (#278 rider report): the
+// rider struct is captured when the socket opens, so a promotion to coach
+// reached neither the control check nor anyone's roster until the promoted
+// rider happened to reconnect.
+func (h *Hub) SetRole(slug, userID, role string) {
+	h.mu.Lock()
+	rm := h.rooms[slug]
+	h.mu.Unlock()
+	if rm == nil {
+		return
+	}
+	rm.mu.Lock()
+	for c := range rm.clients {
+		if c.rider.ID == userID {
+			c.rider.Role = role
+		}
+	}
+	if seen, ok := rm.seen[userID]; ok {
+		seen.Role = role
+		rm.seen[userID] = seen
+	}
+	rm.mu.Unlock()
 }
 
 // Presence answers "is anything happening in there" for the rooms list and

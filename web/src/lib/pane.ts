@@ -45,14 +45,20 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	// restore above) authored — otherwise today's default freezes into storage
 	// and tomorrow's never reaches anyone who once opened a room.
 	const authored = `${node.style.width}|${node.style.height}`;
-	const observer = new ResizeObserver(() => {
-		// Published so fixed-position neighbours can get out of the way — the
-		// jukebox dock has to sit left of however wide the panel now is.
+	// Published so fixed-position neighbours can get out of the way — the
+	// jukebox dock has to sit left of however wide the panel now is. Set here
+	// too, not only from the observer: a neighbour laid out in the same frame
+	// must not fall back to the default width for a tick.
+	const publish = () => {
 		if (node.offsetWidth > 0)
 			document.documentElement.style.setProperty(
 				`--pane-${key}-w`,
 				`${node.offsetWidth}px`,
 			);
+	};
+	publish();
+	const observer = new ResizeObserver(() => {
+		publish();
 		if (`${node.style.width}|${node.style.height}` === authored) return;
 		save(key, {
 			w: parseInt(node.style.width, 10) || 0,
@@ -81,6 +87,19 @@ function place(pane: HTMLElement, x: number, y: number) {
 	// The pane's CSS docks it to a corner; a dragged one is placed instead.
 	pane.style.right = 'auto';
 	pane.style.bottom = 'auto';
+}
+
+/** Put a floating pane in the middle of the viewport, and remember it. */
+export function centrePane(node: HTMLElement, key: string): void {
+	place(
+		node,
+		(window.innerWidth - node.offsetWidth) / 2,
+		(window.innerHeight - node.offsetHeight) / 2,
+	);
+	save(key, {
+		x: parseInt(node.style.left, 10) || 0,
+		y: parseInt(node.style.top, 10) || 0,
+	});
 }
 
 /**

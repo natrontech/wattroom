@@ -5,6 +5,7 @@
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { clampSeek, playheadAt } from '$lib/room/playhead';
 
 	// The jukebox CONTROLS (#23, #216): transport, queue, adding. The player
 	// itself is JukeboxDock, docked on the app frame so music follows the
@@ -35,25 +36,13 @@
 		return () => clearInterval(timer);
 	});
 	const duration = $derived(playerInfo.duration);
-	const elapsed = $derived.by(() => {
-		if (!jukebox?.current) return 0;
-		const pos =
-			jukebox.positionSec +
-			(jukebox.playing ? (nowMs - jukebox.anchorMs) / 1000 : 0);
-		return duration > 0
-			? Math.min(Math.max(pos, 0), duration)
-			: Math.max(pos, 0);
-	});
-	const maxSeekable = 6 * 3600; // mirrors the server clamp
+	/** A livestream has no timeline to scrub — the room rides the edge. */
+	const streaming = $derived(playerInfo.live);
+	const elapsed = $derived(
+		jukebox?.current ? playheadAt(jukebox, nowMs, duration) : 0,
+	);
 	function seekTo(pos: number) {
-		const max = duration > 0 ? duration - 1 : maxSeekable;
-		send(
-			'seek',
-			undefined,
-			undefined,
-			undefined,
-			Math.min(Math.max(pos, 0), max),
-		);
+		send('seek', undefined, undefined, undefined, clampSeek(pos, duration));
 	}
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
@@ -91,7 +80,14 @@
 				{/if}
 			</div>
 
-			{#if jukebox?.current}
+			{#if jukebox?.current && streaming}
+				<p class="text-watt mt-2 text-[10px] tracking-wider uppercase">
+					live · playing at the stream edge
+				</p>
+				<p class="text-muted mt-1 text-[10px]">
+					added by {jukebox.current.addedBy}
+				</p>
+			{:else if jukebox?.current}
 				<div class="mt-2 flex items-center gap-2">
 					<button
 						onclick={() => seekTo(elapsed - 30)}
