@@ -155,6 +155,38 @@ func TestUpdateMeEmailNotify(t *testing.T) {
 	}
 }
 
+// The web store replaces its whole `me` with the PATCH response, so it must
+// carry everything GET /api/me does — providers vanishing on save was #261.
+func TestUpdateMeResponseCarriesProviders(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	if err := s.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
+		Provider: "github", ProviderUserID: "update-me-test", UserID: user.ID,
+	}); err != nil {
+		t.Fatalf("create identity: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me",
+		strings.NewReader(`{"displayName":"x","ftpWatts":250,"weightKg":80}`))
+	req.AddCookie(rec.Result().Cookies()[0])
+	w := httptest.NewRecorder()
+	s.handleUpdateMe(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("patch = %d: %s", w.Code, w.Body.String())
+	}
+	var got meResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(got.Providers) != 1 || got.Providers[0] != "github" {
+		t.Fatalf("PATCH response lost providers: %+v", got.Providers)
+	}
+}
+
 // The paths below never touch the database, so they run everywhere.
 
 func bareService() *Service {
