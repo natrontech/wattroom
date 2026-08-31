@@ -45,6 +45,12 @@ export interface RailRoom {
 	riders?: string[];
 	/** Who is in the voice channel (#149) — the radar's core signal. */
 	voice?: string[];
+	/** Camera-on names (#251), from LiveKit's track webhook. */
+	cameras?: string[];
+	/** Names with live watts right now — the watt dot (#251). */
+	riding?: string[];
+	/** The running session — the late-join radar line (#251). */
+	session?: { workoutName: string; elapsedSec: number };
 	/** The next planned session, when one exists. */
 	next?: { workoutName: string; startsAt: string };
 }

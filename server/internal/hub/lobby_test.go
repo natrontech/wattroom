@@ -1,0 +1,90 @@
+package hub
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+)
+
+// The lobby socket (#251): holding it is being online, every presence change
+// pings it, and closing it is going offline — the Slack green dot, derived
+// from connection state instead of heartbeats.
+func TestLobbyPresence(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	h.SetLobbyAuth(func(r *http.Request) (string, bool) {
+		v := r.Header.Get("X-Rider")
+		if v == "" {
+			return "", false
+		}
+		name, _, _ := strings.Cut(v, ":")
+		return name, true
+	})
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	// No session, no socket.
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	_, res, err := websocket.Dial(ctx, base+"/ws/presence", nil)
+	if res != nil && res.Body != nil {
+		defer func() { _ = res.Body.Close() }()
+	}
+	if err == nil || res == nil || res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("stranger was not refused with 401 (err %v)", err)
+	}
+
+	lobby := dial(t, base+"/ws/presence", "jan:member")
+
+	// Holding the lobby socket IS being online — no room involved. Present in
+	// the map with "" = online; absent = offline.
+	where := h.WhereIs([]string{"jan", "sven"})
+	if slug, online := where["jan"]; !online || slug != "" {
+		t.Fatalf("lobby-online jan: %q %v", slug, online)
+	}
+	if _, online := where["sven"]; online {
+		t.Fatalf("sven reads online without any socket")
+	}
+
+	// A room join elsewhere pings the lobby — the client's cue to re-fetch.
+	// Two messages guaranteed: jan's own coming-online, then sven's join.
+	dial(t, base+"/ws/rooms/velvet", "sven:member")
+	for range 2 {
+		readCtx, readCancel := context.WithTimeout(t.Context(), 5*time.Second)
+		_, _, err := lobby.Read(readCtx)
+		readCancel()
+		if err != nil {
+			t.Fatalf("lobby ping never arrived: %v", err)
+		}
+	}
+
+	where = h.WhereIs([]string{"jan", "sven"})
+	if where["sven"] != "velvet" {
+		t.Fatalf("sven's room: %q", where["sven"])
+	}
+	if slug, online := where["jan"]; !online || slug != "" {
+		t.Fatalf("jan after sven joined: %q %v", slug, online)
+	}
+
+	// Closing the socket is going offline — no timeout window to wait out.
+	_ = lobby.CloseNow()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, online := h.WhereIs([]string{"jan"})["jan"]; !online {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("jan still online after the lobby socket closed")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}

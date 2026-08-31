@@ -15,6 +15,7 @@ import (
 
 type fakeSink struct {
 	joined, left map[string][]string
+	cameras      map[string][]string
 	closed       []string
 	rooms        []string
 	synced       map[string]map[string]string
@@ -25,6 +26,12 @@ func (f *fakeSink) VoiceJoined(slug, identity, name string) {
 }
 func (f *fakeSink) VoiceLeft(slug, identity string) {
 	f.left[slug] = append(f.left[slug], identity)
+}
+func (f *fakeSink) VoiceCamera(slug, identity, _ string, on bool) {
+	if f.cameras == nil {
+		f.cameras = map[string][]string{}
+	}
+	f.cameras[slug] = append(f.cameras[slug], identity+"/"+map[bool]string{true: "on", false: "off"}[on])
 }
 func (f *fakeSink) VoiceRoomClosed(slug string) { f.closed = append(f.closed, slug) }
 func (f *fakeSink) VoiceRooms() []string        { return f.rooms }
@@ -78,6 +85,19 @@ func TestWebhookFeedsTheRadar(t *testing.T) {
 	if code := post(signWebhook(t, "secret", "devkey", leave), leave); code != http.StatusOK {
 		t.Fatalf("leave event: %d", code)
 	}
+	// Camera on, camera off; a screen share must not read as a camera (#251).
+	camOn := []byte(`{"event":"track_published","room":{"name":"velvet-hammer"},"participant":{"identity":"u1","name":"Jan"},"track":{"source":"CAMERA"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", camOn), camOn); code != http.StatusOK {
+		t.Fatalf("camera on event: %d", code)
+	}
+	camOff := []byte(`{"event":"track_unpublished","room":{"name":"velvet-hammer"},"participant":{"identity":"u1","name":"Jan"},"track":{"source":"CAMERA"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", camOff), camOff); code != http.StatusOK {
+		t.Fatalf("camera off event: %d", code)
+	}
+	screen := []byte(`{"event":"track_published","room":{"name":"velvet-hammer"},"participant":{"identity":"u1","name":"Jan"},"track":{"source":"SCREEN_SHARE"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", screen), screen); code != http.StatusOK {
+		t.Fatalf("screen share event: %d", code)
+	}
 	done := []byte(`{"event":"room_finished","room":{"name":"velvet-hammer"}}`)
 	if code := post(signWebhook(t, "secret", "devkey", done), done); code != http.StatusOK {
 		t.Fatalf("finish event: %d", code)
@@ -87,6 +107,9 @@ func TestWebhookFeedsTheRadar(t *testing.T) {
 	}
 	if got := sink.left["velvet-hammer"]; len(got) != 1 || got[0] != "u1" {
 		t.Fatalf("left: %v", got)
+	}
+	if got := sink.cameras["velvet-hammer"]; len(got) != 2 || got[0] != "u1/on" || got[1] != "u1/off" {
+		t.Fatalf("cameras: %v", got)
 	}
 	if len(sink.closed) != 1 || sink.closed[0] != "velvet-hammer" {
 		t.Fatalf("closed: %v", sink.closed)

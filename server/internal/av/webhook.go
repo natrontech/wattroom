@@ -17,6 +17,8 @@ type VoiceSink interface {
 	VoiceJoined(slug, identity, name string)
 	VoiceLeft(slug, identity string)
 	VoiceRoomClosed(slug string)
+	// Camera on/off (#251) — track_published/track_unpublished, CAMERA source.
+	VoiceCamera(slug, identity, name string, on bool)
 	// The reconciler's two ends (#234): which rooms to ask LiveKit about,
 	// and its authoritative participant list applied back.
 	VoiceRooms() []string
@@ -43,6 +45,9 @@ type webhookEvent struct {
 		Identity string `json:"identity"`
 		Name     string `json:"name"`
 	} `json:"participant"`
+	Track struct {
+		Source string `json:"source"` // "CAMERA" | "MICROPHONE" | "SCREEN_SHARE"
+	} `json:"track"`
 }
 
 // handleWebhook verifies LiveKit's signature and updates the voice map.
@@ -72,6 +77,11 @@ func (s *Service) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			s.voice.VoiceJoined(event.Room.Name, event.Participant.Identity, event.Participant.Name)
 		case "participant_left":
 			s.voice.VoiceLeft(event.Room.Name, event.Participant.Identity)
+		case "track_published", "track_unpublished":
+			if event.Track.Source == "CAMERA" {
+				s.voice.VoiceCamera(event.Room.Name, event.Participant.Identity,
+					event.Participant.Name, event.Event == "track_published")
+			}
 		case "room_finished":
 			s.voice.VoiceRoomClosed(event.Room.Name)
 		}

@@ -26,6 +26,10 @@ export function createRoomLive(slug: string) {
 	let myReacts = $state<Record<string, boolean>>({});
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
+	// Ids the async save assigned (#219), keyed fromId:at, waiting for their
+	// line — usually applied the moment they arrive, kept only when a flood
+	// carries the line to a later tick than its id.
+	let pendingIds: Record<string, string> = {};
 	let socket: WebSocket | null = null;
 	let closed = false;
 	let attempts = 0;
@@ -81,8 +85,29 @@ export function createRoomLive(slug: string) {
 			const msg = JSON.parse(event.data) as ServerMessage;
 			if (msg.tick) {
 				tick = msg.tick;
+				if (msg.tick.chatIds?.length) {
+					// The save happens off the server's read loop (#219): lines
+					// arrive id-less, their persisted id follows here and turns
+					// reactions on for them.
+					for (const assigned of msg.tick.chatIds) {
+						pendingIds[`${assigned.fromId}:${assigned.at}`] = assigned.id;
+					}
+				}
 				if (msg.tick.chat?.length) {
 					chatLog = [...chatLog, ...msg.tick.chat].slice(-200);
+				}
+				if (Object.keys(pendingIds).length > 0) {
+					chatLog = chatLog.map((line) => {
+						const id = line.id
+							? undefined
+							: pendingIds[`${line.fromId}:${line.at}`];
+						if (!id) return line;
+						delete pendingIds[`${line.fromId}:${line.at}`];
+						return { ...line, id };
+					});
+					// An id whose line never surfaced (pruned by the 200-line cap)
+					// would pool forever — reset the stragglers.
+					if (Object.keys(pendingIds).length > 64) pendingIds = {};
 				}
 				if (msg.tick.chatReactions?.length) {
 					const next = { ...chatReactions };
@@ -184,6 +209,7 @@ export function createRoomLive(slug: string) {
 			messages: {
 				id: string;
 				from: string;
+				fromId?: string;
 				text: string;
 				at: number;
 				reactions?: Record<string, number>;
@@ -197,7 +223,13 @@ export function createRoomLive(slug: string) {
 			chatLog = [
 				...messages
 					.filter((m) => !liveIds.has(m.id))
-					.map((m) => ({ id: m.id, from: m.from, text: m.text, at: m.at })),
+					.map((m) => ({
+						id: m.id,
+						from: m.from,
+						fromId: m.fromId,
+						text: m.text,
+						at: m.at,
+					})),
 				...chatLog,
 			]
 				.sort((a, b) => a.at - b.at)
