@@ -4,6 +4,8 @@
 package progression
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -40,6 +42,7 @@ type curveJSON struct {
 }
 
 type rideTrendJSON struct {
+	ID        string  `json:"id"`
 	Date      string  `json:"date"`
 	Seconds   int     `json:"seconds"`
 	Kj        int     `json:"kj"`
@@ -63,7 +66,9 @@ type loadJSON struct {
 	Suggestion *stats.Suggestion `json:"suggestion,omitempty"`
 }
 
-type response struct {
+// Response is the whole progression payload — one assembly (Summary) shared
+// by GET /api/progression and the MCP tools (ADR-0015).
+type Response struct {
 	Curve curveJSON       `json:"curve"`
 	Rides []rideTrendJSON `json:"rides"`
 	// Current standing per SPEC: Category from the 90-day best 20-min w/kg.
@@ -142,20 +147,28 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
-	bests, err := s.store.Queries.CurveBests(r.Context(), user.ID)
+	out, err := Summary(r.Context(), s.store.Queries, user)
 	if err != nil {
-		s.log.Error("progression curve bests failed", "err", err)
+		s.log.Error("progression summary failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your progression could not be loaded.")
 		return
 	}
-	rows, err := s.store.Queries.ListUserProgression(r.Context(), user.ID)
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// Summary assembles the rider's whole progression payload from summary
+// columns — the one data path behind the HTTP endpoint and the MCP tools.
+func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error) {
+	bests, err := q.CurveBests(ctx, user.ID)
 	if err != nil {
-		s.log.Error("progression rides failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your progression could not be loaded.")
-		return
+		return Response{}, fmt.Errorf("progression: curve bests: %w", err)
+	}
+	rows, err := q.ListUserProgression(ctx, user.ID)
+	if err != nil {
+		return Response{}, fmt.Errorf("progression: rides: %w", err)
 	}
 
-	out := response{
+	out := Response{
 		Curve: curveJSON{
 			D30: stats.Curve{Best5s: int(bests.D30Best5s), Best1m: int(bests.D30Best1m), Best5m: int(bests.D30Best5m), Best20m: int(bests.D30Best20m)},
 			D90: stats.Curve{Best5s: int(bests.D90Best5s), Best1m: int(bests.D90Best1m), Best5m: int(bests.D90Best5m), Best20m: int(bests.D90Best20m)},
@@ -170,6 +183,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, row := range rows {
 		out.Rides = append(out.Rides, rideTrendJSON{
+			ID:        store.UUIDString(row.ID),
 			Date:      row.StartedAt.Time.Format(time.RFC3339),
 			Seconds:   int(row.Seconds),
 			Kj:        int(row.Kj),
@@ -178,5 +192,5 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			Best20m:   int(row.Best20m),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, out)
+	return out, nil
 }

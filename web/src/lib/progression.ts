@@ -14,6 +14,7 @@ export interface Curve {
 }
 
 export interface TrendRide {
+	id: string;
 	date: string;
 	seconds: number;
 	kj: number;

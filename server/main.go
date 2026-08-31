@@ -25,6 +25,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/rides"
@@ -32,6 +33,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -92,10 +94,16 @@ func main() {
 			authService.SetMailAvailable(true)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
-		progression.New(st, authService, log).Register(mux)
+		// Personal read tokens (ADR-0015): bearer auth for GETs of own data
+		// and the MCP coach endpoint. Cookie auth stays the write path.
+		tokenService := tokens.New(st, authService, log)
+		tokenService.Register(mux)
+		readAuth := tokenService.ReadSource(authService)
+		mcp.New(st, tokenService, log).Register(mux)
+		progression.New(st, readAuth, log).Register(mux)
 		// One-pass norm_watts fill for pre-ADR-0014 rides; exits when done.
 		go stats.BackfillNormWatts(context.Background(), st, log)
-		ridesService := rides.New(st, authService, log)
+		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
 		}

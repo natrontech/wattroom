@@ -318,7 +318,7 @@ func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]
 }
 
 const listUserProgression = `-- name: ListUserProgression :many
-select started_at, seconds, kj, execution, ftp_watts,
+select id, started_at, seconds, kj, execution, ftp_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
@@ -328,6 +328,7 @@ limit 1000
 `
 
 type ListUserProgressionRow struct {
+	ID        pgtype.UUID
 	StartedAt pgtype.Timestamptz
 	Seconds   int32
 	Kj        int32
@@ -350,6 +351,7 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 	for rows.Next() {
 		var i ListUserProgressionRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.StartedAt,
 			&i.Seconds,
 			&i.Kj,

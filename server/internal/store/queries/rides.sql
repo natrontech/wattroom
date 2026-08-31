@@ -75,7 +75,7 @@ where user_id = $1;
 -- Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
 -- time, so FTP history is free; best20m feeds the Category/w-kg trend.
 -- norm_watts falls back to avg_watts for rides the backfill has not reached.
-select started_at, seconds, kj, execution, ftp_watts,
+select id, started_at, seconds, kj, execution, ftp_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides

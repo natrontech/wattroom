@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ApiToken struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Name       string
+	TokenHash  []byte
+	CreatedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
 type ChatMessage struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID
