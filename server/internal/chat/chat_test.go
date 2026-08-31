@@ -237,6 +237,10 @@ func TestChatImages(t *testing.T) {
 	if res.Code != http.StatusOK || res.Header().Get("Content-Type") != "image/png" || !bytes.Equal(res.Body.Bytes(), tinyPNG) {
 		t.Fatalf("serve: %d %q", res.Code, res.Header().Get("Content-Type"))
 	}
+	// Member bytes on our own origin: the browser must not re-sniff them.
+	if res.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("blob served without nosniff")
+	}
 	if res := getImage(t, mux, "cara", "chat-cave", imgID); res.Code != http.StatusForbidden {
 		t.Fatalf("non-member serve: %d", res.Code)
 	}

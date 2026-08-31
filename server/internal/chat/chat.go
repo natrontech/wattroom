@@ -59,23 +59,30 @@ func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID stri
 		s.log.Warn("save chat", "err", err, "room", slug)
 		return "", false
 	}
-	// Prune sampled and off the hot path: every save paid a delete-with-
-	// subquery that stalled the sender's own read loop (audit #219).
-	if time.Now().UnixNano()%16 == 0 {
-		go func() { //nolint:gosec // the prune must outlive the request — deliberate detachment, bounded below
-			pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			if err := s.store.Queries.PruneChat(pctx, room.ID); err != nil {
-				s.log.Warn("prune chat", "err", err, "room", slug)
-			}
-			// Blobs ride the same bound (#279): unreferenced after the prune
-			// above (or never sent) → swept after a 15-minute grace.
-			if err := s.store.Queries.PruneChatImages(pctx, room.ID); err != nil {
-				s.log.Warn("prune chat images", "err", err, "room", slug)
-			}
-		}()
-	}
+	s.pruneSampled(room.ID, slug)
 	return store.UUIDString(id), true
+}
+
+// pruneSampled runs the room's bounds off the hot path, one write in sixteen:
+// every save used to pay a delete-with-subquery that stalled the sender's own
+// read loop (audit #219). Called from both writes that can grow a room —
+// a chat line and an image upload.
+func (s *Service) pruneSampled(roomID pgtype.UUID, slug string) {
+	if time.Now().UnixNano()%16 != 0 {
+		return
+	}
+	go func() { //nolint:gosec // the prune must outlive the request — deliberate detachment, bounded below
+		pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.store.Queries.PruneChat(pctx, roomID); err != nil {
+			s.log.Warn("prune chat", "err", err, "room", slug)
+		}
+		// Blobs ride the same bound (#279): unreferenced after the prune
+		// above (or never sent) → swept after a 15-minute grace.
+		if err := s.store.Queries.PruneChatImages(pctx, roomID); err != nil {
+			s.log.Warn("prune chat images", "err", err, "room", slug)
+		}
+	}()
 }
 
 // ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
@@ -171,9 +178,9 @@ const maxImageBytes = 2 << 20
 
 // handleImageUpload stores one pasted image: raw bytes in, blob id out. The
 // sender then puts that id on a chat line; never-sent uploads are swept by
-// PruneChatImages. ponytail: no per-user rate limit — members only, lines
-// throttle at 1/s in the hub, the sweep bounds orphans; add a limiter if a
-// member ever floods this.
+// PruneChatImages. ponytail: no per-user rate limit — members only, and the
+// sampled sweep below bounds a flood at roughly one grace window of orphans
+// (~15 min of uploads) rather than forever; add a limiter if that shows up.
 func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 	room, me, ok := s.member(w, r)
 	if !ok {
@@ -201,6 +208,9 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The image could not be saved.")
 		return
 	}
+	// Uploads sweep too: a member who uploads but never sends would otherwise
+	// never trigger the bound, since only chat lines used to run it.
+	s.pruneSampled(room.ID, room.Slug)
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"id": store.UUIDString(id)})
 }
 
@@ -222,6 +232,10 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", img.Mime)
+	// These are member-supplied bytes served from the app's own origin: a
+	// polyglot that passes the upload sniff as an image must never be
+	// re-interpreted as HTML by the browser.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	_, _ = w.Write(img.Bytes)
 }
