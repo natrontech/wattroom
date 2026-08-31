@@ -3,11 +3,20 @@
 	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { chase } from '$lib/room/chase';
+	import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { GripHorizontal, Minimize2, Volume2 } from '@lucide/svelte';
+	import {
+		FastForward,
+		GripHorizontal,
+		Minimize2,
+		Pause,
+		Play,
+		Rewind,
+		SkipForward,
+		Volume2,
+	} from '@lucide/svelte';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the
@@ -34,8 +43,8 @@
 	// ── Placement ─────────────────────────────────────────────────────────────
 	// Min size is the RMF floor plus the two chrome strips, so the player
 	// itself can never be dragged below 200×200.
-	const CHROME = 52;
-	const MIN_W = 224;
+	const CHROME = 56;
+	const MIN_W = 260;
 	const MIN_H = 200 + CHROME;
 	const DOCK_KEY = 'wattroom.dock.v1';
 	interface Box {
@@ -361,6 +370,26 @@
 		speaker ? conn?.av.videoOf[speaker.id] : undefined,
 	);
 
+	// The transport belongs on the frame too (rider report): off the room page
+	// the side panel is gone, and the dock was the only thing left playing with
+	// nothing to press. Every button commands the ROOM — the deck is shared.
+	function transport(action: string) {
+		conn?.live.jukebox(action);
+	}
+	function nudge(seconds: number) {
+		if (!jukebox?.current) return;
+		conn?.live.jukebox(
+			'seek',
+			undefined,
+			undefined,
+			undefined,
+			clampSeek(
+				playheadAt(jukebox, Date.now(), playerInfo.duration) + seconds,
+				playerInfo.duration,
+			),
+		);
+	}
+
 	const showPlayer = $derived(!!jukebox?.current);
 	const title = $derived(jukebox?.current?.title ?? speaker?.name ?? '');
 </script>
@@ -430,10 +459,47 @@
 		</div>
 
 		{#if showPlayer}
-			<!-- Your ears only (#179): the same fader as the rail's mixer, where
-			     the music actually is. Below the tile — RMF forbids overlays. -->
-			<div class="flex h-7 shrink-0 items-center gap-2 px-2">
-				<Volume2 size={12} class="text-muted shrink-0" />
+			<!-- Transport for the room, then your own ears (#179): the same fader
+			     as the rail's mixer, where the music actually is. Below the tile —
+			     RMF forbids overlays. -->
+			<div
+				class="border-ink/10 text-muted flex h-8 shrink-0 items-center gap-1 border-t px-1.5"
+			>
+				<button
+					onclick={() => transport(jukebox?.playing ? 'pause' : 'play')}
+					class="hover:text-ink shrink-0 rounded p-1"
+					aria-label={jukebox?.playing
+						? 'pause for the room'
+						: 'play for the room'}
+					title={jukebox?.playing ? 'pause for the room' : 'play for the room'}
+				>
+					{#if jukebox?.playing}<Pause size={13} />{:else}<Play
+							size={13}
+						/>{/if}
+				</button>
+				{#if !playerInfo.live}
+					<!-- A livestream has no timeline to jump around in. -->
+					<button
+						onclick={() => nudge(-30)}
+						class="hover:text-ink shrink-0 rounded p-1"
+						aria-label="back 30 seconds"
+						title="back 30 seconds"><Rewind size={13} /></button
+					>
+					<button
+						onclick={() => nudge(30)}
+						class="hover:text-ink shrink-0 rounded p-1"
+						aria-label="forward 30 seconds"
+						title="forward 30 seconds"><FastForward size={13} /></button
+					>
+				{/if}
+				<button
+					onclick={() => transport('skip')}
+					class="hover:text-ink shrink-0 rounded p-1"
+					aria-label="skip for the room"
+					title="skip for the room"><SkipForward size={13} /></button
+				>
+				<span class="bg-ink/10 mx-1 h-4 w-px shrink-0"></span>
+				<Volume2 size={12} class="shrink-0" />
 				<input
 					type="range"
 					min="0"
@@ -441,7 +507,7 @@
 					step="5"
 					value={mixer.music}
 					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
-					class="w-full"
+					class="min-w-0 flex-1"
 					aria-label="music volume"
 				/>
 			</div>

@@ -5,6 +5,7 @@
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { clampSeek, playheadAt } from '$lib/room/playhead';
 
 	// The jukebox CONTROLS (#23, #216): transport, queue, adding. The player
 	// itself is JukeboxDock, docked on the app frame so music follows the
@@ -37,25 +38,11 @@
 	const duration = $derived(playerInfo.duration);
 	/** A livestream has no timeline to scrub — the room rides the edge. */
 	const streaming = $derived(playerInfo.live);
-	const elapsed = $derived.by(() => {
-		if (!jukebox?.current) return 0;
-		const pos =
-			jukebox.positionSec +
-			(jukebox.playing ? (nowMs - jukebox.anchorMs) / 1000 : 0);
-		return duration > 0
-			? Math.min(Math.max(pos, 0), duration)
-			: Math.max(pos, 0);
-	});
-	const maxSeekable = 6 * 3600; // mirrors the server clamp
+	const elapsed = $derived(
+		jukebox?.current ? playheadAt(jukebox, nowMs, duration) : 0,
+	);
 	function seekTo(pos: number) {
-		const max = duration > 0 ? duration - 1 : maxSeekable;
-		send(
-			'seek',
-			undefined,
-			undefined,
-			undefined,
-			Math.min(Math.max(pos, 0), max),
-		);
+		send('seek', undefined, undefined, undefined, clampSeek(pos, duration));
 	}
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
