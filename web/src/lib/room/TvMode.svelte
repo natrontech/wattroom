@@ -102,11 +102,12 @@
 					<span class="text-muted"
 						>target <span class="text-ink">{you.target} W</span></span
 					>
-					<span class="text-muted"
-						>{you.cadence} <span class="text-[1.6vh]">rpm</span></span
+					<span class="text-ink"
+						>{you.cadence}
+						<span class="text-muted text-[1.6vh]">rpm</span></span
 					>
-					<span class="text-muted"
-						>{you.hr} <span class="text-[1.6vh]">bpm</span></span
+					<span class="text-ink"
+						>{you.hr} <span class="text-muted text-[1.6vh]">bpm</span></span
 					>
 					<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span>
 				</div>

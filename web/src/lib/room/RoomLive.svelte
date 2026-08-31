@@ -1052,7 +1052,7 @@
 				{#each readouts as readout (readout.label)}
 					<div class="text-right">
 						<span
-							class="font-display text-lg leading-none font-semibold tabular-nums {readout.tone}"
+							class="font-display text-2xl leading-none font-semibold tabular-nums {readout.tone}"
 							>{readout.value}</span
 						>
 						<span class="eyebrow ml-1">{readout.label}</span>
@@ -1060,7 +1060,7 @@
 				{/each}
 				<div class="text-right">
 					<span
-						class="font-display text-lg leading-none font-semibold {ZONE_TEXT[
+						class="font-display text-2xl leading-none font-semibold {ZONE_TEXT[
 							myZone
 						]}">Z{myZone}</span
 					>
