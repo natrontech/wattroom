@@ -136,6 +136,65 @@ body {
 	border-radius: 2px;
 }
 
+/*
+ * Chrome kit (#230). The styleguide's chrome patterns, defined once instead of
+ * retyped per call site. Pure styling only — layout (width, margin, flex) stays
+ * at the call site. Behavior-carrying pieces (Modal, SegmentedControl, Banner)
+ * are components in src/lib/components/.
+ */
+@utility btn {
+	@apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40;
+}
+@utility btn-primary {
+	@apply bg-ink text-paper hover:bg-ink/90 font-medium;
+}
+@utility btn-secondary {
+	@apply border-muted/30 hover:border-muted/60 border;
+}
+@utility btn-ghost {
+	@apply text-muted hover:text-ink;
+}
+@utility btn-danger {
+	@apply border-z6/40 text-z6 hover:bg-z6/10 border;
+}
+@utility btn-danger-solid {
+	@apply bg-z6 text-ink hover:bg-z6/90;
+}
+/* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
+ * that *creates* live data (start ride, go live). Border only, never a fill. */
+@utility btn-accent {
+	@apply border-watt/40 text-watt hover:bg-watt/10 border;
+}
+@utility btn-xs {
+	@apply px-3 py-1.5 text-xs;
+}
+@utility btn-lg {
+	@apply px-5 py-3 font-semibold;
+}
+
+/* Text field look. Width/margin at the call site. */
+@utility input {
+	@apply border-muted/25 placeholder:text-muted/60 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
+}
+@utility input-xs {
+	@apply px-3 py-1.5 text-xs;
+}
+
+/* Raised card. Padding and margin at the call site. */
+@utility panel {
+	@apply border-muted/15 bg-surface-raised rounded-lg border;
+}
+
+/* Section label. One tracking, one size — ends the tracking-wider/tracking-[0.2em] split. */
+@utility eyebrow {
+	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
+}
+
+/* Page rhythm: pair with a max-w-* at the call site. */
+@utility page {
+	@apply mx-auto px-6 py-10;
+}
+
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's
    loading / error / empty / content contract. */
 @utility skeleton {
