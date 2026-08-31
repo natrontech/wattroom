@@ -78,7 +78,7 @@
 </script>
 
 <nav
-	class="bg-surface flex h-full w-56 shrink-0 flex-col border-r border-white/5"
+	class="bg-surface border-ink/5 flex h-full w-56 shrink-0 flex-col border-r"
 >
 	<div class="flex items-center gap-2 px-4 py-4">
 		<Logo size={24} {live} />
@@ -97,8 +97,8 @@
 						: `/r/${room.slug}`}
 					class="flex w-full flex-wrap items-center gap-x-2 rounded px-2 py-1.5 text-left text-sm {room.slug ===
 					activeSlug
-						? 'bg-surface-raised text-white'
-						: 'text-muted hover:text-white'}"
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}"
 				>
 					<span class="truncate">{room.name}</span>
 					{#if room.live}
@@ -142,9 +142,9 @@
 								room.slug === activeSlug && activeSpeaking.includes(name)}
 							<li
 								class="flex items-center gap-1.5 text-[11px] {talking
-									? 'text-white'
+									? 'text-ink'
 									: inVoice
-										? 'text-white/80'
+										? 'text-ink/80'
 										: 'text-muted'}"
 							>
 								<span
@@ -180,28 +180,28 @@
 				<a
 					href={entry.href}
 					class="block rounded px-2 py-1.5 text-sm {activePath === entry.href
-						? 'bg-surface-raised text-white'
-						: 'text-muted hover:text-white'}">{entry.label}</a
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}">{entry.label}</a
 				>
 			</li>
 		{/each}
 	</ul>
 
 	<!-- Your own presence, pinned to the bottom the way a voice app does it. -->
-	<div class="border-t border-white/5 px-3 py-3">
+	<div class="border-ink/5 border-t px-3 py-3">
 		{#if connectedSlug}
 			<div class="mb-2 flex items-center gap-2">
 				<span class="bg-z4 h-1.5 w-1.5 animate-pulse rounded-full"></span>
 				<a
 					href="/r/{connectedSlug}"
-					class="min-w-0 flex-1 truncate text-[11px] text-white hover:underline"
+					class="text-ink min-w-0 flex-1 truncate text-[11px] hover:underline"
 					>in {rooms.find((room) => room.slug === connectedSlug)?.name ??
 						connectedSlug}</a
 				>
 				{#if onLeave}
 					<button
 						onclick={onLeave}
-						class="text-muted shrink-0 text-[10px] underline hover:text-white"
+						class="text-muted hover:text-ink shrink-0 text-[10px] underline"
 						>leave</button
 					>
 				{/if}
@@ -220,8 +220,8 @@
 				onpointerup={() => onPtt?.(false)}
 				onpointerleave={() => pttHeld && onPtt?.(false)}
 				class="mt-2 w-full rounded border px-2 py-2 text-[11px] {pttHeld
-					? 'border-neon/50 text-white'
-					: 'border-muted/25 text-muted hover:text-white'}"
+					? 'border-neon/50 text-ink'
+					: 'border-muted/25 text-muted hover:text-ink'}"
 				>{pttHeld
 					? 'transmitting · release to stop'
 					: 'hold to talk (or space)'}</button
@@ -243,7 +243,7 @@
 		{#if showAv}
 			<button
 				onclick={() => (voiceAdvanced = !voiceAdvanced)}
-				class="text-muted mt-2 text-[10px] underline hover:text-white"
+				class="text-muted hover:text-ink mt-2 text-[10px] underline"
 				>voice settings</button
 			>
 			{#if voiceAdvanced}
@@ -273,8 +273,8 @@
 						<button
 							onclick={onMicTest}
 							class="mt-2 w-full rounded border px-2 py-1.5 text-[11px] {micTesting
-								? 'border-z4/60 text-white'
-								: 'border-muted/25 text-muted hover:text-white'}"
+								? 'border-z4/60 text-ink'
+								: 'border-muted/25 text-muted hover:text-ink'}"
 							>{micTesting
 								? 'testing — you hear yourself · stop'
 								: 'test my mic'}</button
@@ -305,7 +305,7 @@
 
 					<!-- The mixer (#179): every level in one place. Ducking dips
 					     under the music ceiling; it never fights these faders. -->
-					<div class="mt-3 border-t border-white/5 pt-2">
+					<div class="border-ink/5 mt-3 border-t pt-2">
 						<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
 							>mixer</span
 						>
@@ -357,13 +357,13 @@
 				<button
 					onclick={() => (onMic ? onMic() : (micOn = !micOn))}
 					class="flex-1 rounded border px-2 py-1.5 text-[11px] {micOn
-						? 'border-muted/30 text-white'
+						? 'border-muted/30 text-ink'
 						: 'border-z6/40 text-z6'}">{micOn ? 'mic on' : 'muted'}</button
 				>
 				<button
 					onclick={() => (onCam ? onCam() : (camOn = !camOn))}
 					class="flex-1 rounded border px-2 py-1.5 text-[11px] {camOn
-						? 'border-muted/30 text-white'
+						? 'border-muted/30 text-ink'
 						: 'border-muted/20 text-muted'}"
 					>{camOn ? 'cam on' : 'cam off'}</button
 				>

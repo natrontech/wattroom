@@ -68,7 +68,7 @@
 				<label
 					class="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {pack ===
 					option.id
-						? 'border-white/40'
+						? 'border-ink/40'
 						: 'border-muted/15'}"
 				>
 					<input type="radio" bind:group={pack} value={option.id} />
@@ -93,7 +93,7 @@
 
 	<section class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">Who's in here</h2>
-		<ul class="mt-3 divide-y divide-white/5">
+		<ul class="divide-ink/5 mt-3 divide-y">
 			{#each members as member (member.name)}
 				<li class="flex items-center gap-3 py-2.5">
 					<span class="text-sm">{member.name}</span>
@@ -127,8 +127,7 @@
 					Delete “{name}” for all 6 members? This can't be undone.
 				</p>
 				<div class="mt-3 flex gap-2">
-					<button
-						class="bg-z6 rounded px-4 py-2 text-sm font-semibold text-white"
+					<button class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold"
 						>Delete room</button
 					>
 					<button

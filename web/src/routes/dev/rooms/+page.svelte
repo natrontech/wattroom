@@ -56,7 +56,7 @@
 			</p>
 			<div class="mt-7 flex justify-center gap-3">
 				<button
-					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold"
 					>Open your first room</button
 				>
 				<button
@@ -112,7 +112,7 @@
 						{#each session.medals as medal (medal.n)}
 							<span class="text-muted">
 								{medal.n}
-								<span class={medal.who === 'You' ? 'text-watt' : 'text-white'}
+								<span class={medal.who === 'You' ? 'text-watt' : 'text-ink'}
 									>{medal.who}</span
 								>
 							</span>
@@ -121,7 +121,7 @@
 				{/each}
 			</ul>
 			<p class="text-muted mt-4 text-xs">
-				Room streak: <span class="text-white">4 weeks</span> — everyone rode at least
+				Room streak: <span class="text-ink">4 weeks</span> — everyone rode at least
 				once each week.
 			</p>
 		</section>
@@ -138,7 +138,7 @@
 					<span class="truncate font-mono text-xs"
 						>wattroom.ch/r/velvet-hammer</span
 					>
-					<button class="text-muted ml-auto shrink-0 text-xs hover:text-white"
+					<button class="text-muted hover:text-ink ml-auto shrink-0 text-xs"
 						>Copy</button
 					>
 				</div>
@@ -149,8 +149,7 @@
 					<span class="text-muted text-[11px]"
 						>for TVs and phones that can't open a link</span
 					>
-					<button
-						class="text-muted ml-auto shrink-0 text-[11px] hover:text-white"
+					<button class="text-muted hover:text-ink ml-auto shrink-0 text-[11px]"
 						>Regenerate</button
 					>
 				</div>
@@ -167,7 +166,7 @@
 					placeholder="Room name"
 				/>
 				<button
-					class="mt-3 w-full rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 mt-3 w-full rounded px-4 py-2.5 text-sm font-medium"
 					>Open room</button
 				>
 			</div>

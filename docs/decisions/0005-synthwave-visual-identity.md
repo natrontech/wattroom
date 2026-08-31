@@ -42,3 +42,22 @@ This supersedes the palette half of WATTROOM.md §7. The restraint rule survives
   `/dev/styleguide` carries a right/wrong panel making that concrete.
 - Revisit trigger: if alpha riders report the palette is tiring across long sessions, Tron Ice is
   the drop-in fallback — same token names, colder values.
+
+## Amendment — daylight for the desk, never the cave (2026-08-31, #113)
+
+A light scheme exists, but the identity holds its ground:
+
+- **The cave never sees daylight.** The room (`/r/*`), TV mode, the login
+  and landing brand surfaces, and the /dev mocks always render the dark
+  set — a `.cave` scope re-asserts the tokens, so they are pixel-identical
+  whatever the OS says. Ride legibility was designed against black; that
+  design is not renegotiated by an OS setting.
+- **Desk surfaces follow `prefers-color-scheme`** — rooms list, workouts,
+  editor, history, profile, sensors. No toggle (the 95% rule): the OS
+  already asked.
+- **Glow exists only in the cave.** On light surfaces the restraint rule
+  translates to *saturation marks live data*: `--color-watt` becomes a
+  deeper magenta ink, blooms nothing; `--color-neon` stays structural.
+- Components never say white or black — the `--color-ink`/`--color-paper`
+  pair flips with the scheme, and the zone ramp gets darkened variants so
+  the dataviz survives white.

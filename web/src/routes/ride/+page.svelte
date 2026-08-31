@@ -362,7 +362,7 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
-<main class="bg-surface flex min-h-screen flex-col px-6 py-5 text-white">
+<main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
 	{#if !session}
 		<!-- Pre-ride: pick your effort level and how you are getting power in. -->
 		<div class="m-auto w-full max-w-md text-center">
@@ -388,7 +388,7 @@
 			</div>
 			<a
 				href="/workouts"
-				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
 				>Choose a different workout</a
 			>
 
@@ -412,12 +412,12 @@
 			</label>
 			<a
 				href="/ramp"
-				class="text-muted mt-2 inline-block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
 				>Measure it with a ramp test</a
 			>
 			<a
 				href="/pair"
-				class="text-muted mt-2 block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-2 block text-xs underline"
 				>{pairedCount > 0
 					? `${pairedCount} sensor${pairedCount > 1 ? 's' : ''} paired`
 					: 'Pair a heart rate strap or power meter'}</a
@@ -437,7 +437,7 @@
 							<button
 								onclick={() => downloadRecovered(ride)}
 								disabled={recovering}
-								class="rounded bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-white/90 disabled:opacity-40"
+								class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
 								>Download .fit</button
 							>
 							<button
@@ -458,7 +458,7 @@
 				<button
 					onclick={() => begin(new FtmsTrainer())}
 					disabled={!supported}
-					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 					>Pair trainer and start</button
 				>
 				{#if replayName}
@@ -628,12 +628,12 @@
 				>
 				<button
 					onclick={() => (tv = true)}
-					class="border-muted/25 text-muted hover:border-muted/60 h-11 rounded border px-4 text-sm hover:text-white"
+					class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink h-11 rounded border px-4 text-sm"
 					>TV</button
 				>
 				<button
 					onclick={() => session?.stop()}
-					class="border-muted/25 text-muted hover:border-muted/60 h-11 rounded border px-4 text-sm hover:text-white"
+					class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink h-11 rounded border px-4 text-sm"
 					>End ride</button
 				>
 				<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
@@ -683,7 +683,7 @@
 		<div class="bg-surface fixed inset-0 z-50 flex flex-col px-[3vw] py-[3vh]">
 			<button
 				onclick={() => (tv = false)}
-				class="border-muted/30 text-muted absolute bottom-4 left-4 rounded border px-3 py-1.5 text-xs hover:text-white"
+				class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 rounded border px-3 py-1.5 text-xs"
 				>Exit TV (esc)</button
 			>
 			<header class="flex items-baseline gap-[2vw]">
@@ -741,7 +741,7 @@
 								onclick={downloadFit}
 								disabled={downloading}
 								data-testid="download-fit"
-								class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+								class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
 							<a

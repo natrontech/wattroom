@@ -87,7 +87,7 @@
 					class="rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 {state ===
 					'failed'
 						? 'border-muted/30 hover:border-muted/60 border'
-						: 'bg-white text-black hover:bg-white/90'}"
+						: 'bg-ink text-paper hover:bg-ink/90'}"
 					>{busy
 						? 'Pairing…'
 						: state === 'failed'

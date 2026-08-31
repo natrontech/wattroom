@@ -156,7 +156,7 @@
 					<div class="mt-3 flex gap-2">
 						<button
 							disabled={deleteConfirmation !== 'DELETE'}
-							class="bg-z6 rounded px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 							>Delete my account</button
 						>
 						<button

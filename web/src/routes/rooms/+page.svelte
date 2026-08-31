@@ -134,7 +134,7 @@
 					error = null;
 					rooms = null;
 				}}
-				class="text-muted ml-auto text-xs underline hover:text-white"
+				class="text-muted hover:text-ink ml-auto text-xs underline"
 				>Retry</button
 			>
 		</div>
@@ -166,7 +166,7 @@
 			<div class="mt-7 flex justify-center gap-3">
 				<button
 					onclick={() => document.getElementById('open-room-name')?.focus()}
-					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold"
 					>Open your first room</button
 				>
 				<button
@@ -243,7 +243,7 @@
 									<span
 										class={medal.rider === account.me?.displayName
 											? 'text-watt'
-											: 'text-white'}>{medal.rider}</span
+											: 'text-ink'}>{medal.rider}</span
 									>
 								</span>
 							{/each}
@@ -270,7 +270,7 @@
 						>
 						<button
 							onclick={copyLink}
-							class="text-muted ml-auto shrink-0 text-xs hover:text-white"
+							class="text-muted hover:text-ink ml-auto shrink-0 text-xs"
 							>{copied ? 'Copied' : 'Copy'}</button
 						>
 					</div>
@@ -306,7 +306,7 @@
 					/>
 					<button
 						disabled={busy || !name.trim() || ownedOut}
-						class="mt-3 w-full rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+						class="bg-ink text-paper hover:bg-ink/90 mt-3 w-full rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
 						>Open room</button
 					>
 					{#if ownedOut}

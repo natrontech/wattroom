@@ -116,7 +116,7 @@
 				<button
 					onclick={() => begin(new FtmsTrainer())}
 					disabled={!supported}
-					class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 					>Start ramp test</button
 				>
 				{#if dev}
@@ -214,7 +214,7 @@
 			<div class="mt-6 flex gap-2">
 				<a
 					href="/ramp"
-					class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium"
 					>Test again</a
 				>
 				<a
@@ -269,7 +269,7 @@
 					<button
 						onclick={saveFtp}
 						disabled={result.ftp === 0}
-						class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-40"
+						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
 						>Save {result.ftp} W</button
 					>
 					<a
@@ -280,7 +280,7 @@
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
 						href="/profile"
-						class="text-muted self-center py-2 text-xs underline hover:text-white"
+						class="text-muted hover:text-ink self-center py-2 text-xs underline"
 						>Keep my current {profile.current.ftp} W</a
 					>
 				</div>

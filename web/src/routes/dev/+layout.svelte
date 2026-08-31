@@ -23,21 +23,21 @@
 	];
 </script>
 
-<div class="bg-surface flex h-screen flex-col text-white">
+<div class="cave bg-surface text-ink flex h-screen flex-col">
 	<nav
 		class="border-muted/15 bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
 	>
 		<a
 			href="/dev"
-			class="text-muted mr-3 text-xs tracking-[0.2em] uppercase hover:text-white"
+			class="text-muted hover:text-ink mr-3 text-xs tracking-[0.2em] uppercase"
 			>dev</a
 		>
 		{#each screens as screen (screen.href)}
 			<a
 				href={screen.href}
 				class="rounded px-3 py-1.5 text-sm {page.url.pathname === screen.href
-					? 'bg-surface-raised text-white'
-					: 'text-muted hover:text-white'}">{screen.label}</a
+					? 'bg-surface-raised text-ink'
+					: 'text-muted hover:text-ink'}">{screen.label}</a
 			>
 		{/each}
 	</nav>

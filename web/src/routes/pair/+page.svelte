@@ -107,7 +107,7 @@
 	<div class="mt-8 flex flex-wrap items-center gap-3">
 		<a
 			href="/workouts"
-			class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+			class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold"
 			>Pick a workout</a
 		>
 		{#if dev}

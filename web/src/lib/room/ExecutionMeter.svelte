@@ -20,14 +20,14 @@
 	);
 </script>
 
-<div class="bg-surface-raised rounded-lg p-4 ring-1 ring-white/10">
+<div class="bg-surface-raised ring-ink/10 rounded-lg p-4 ring-1">
 	<p class="text-muted text-[10px] tracking-[0.2em] uppercase">execution</p>
 	<ul class="mt-3 space-y-1.5">
 		{#each ranked as entry (entry.name)}
 			<li class="flex items-center gap-2.5">
 				<span
 					class="w-12 shrink-0 truncate text-[11px] {entry.you
-						? 'text-white'
+						? 'text-ink'
 						: 'text-muted'}">{entry.name}</span
 				>
 				<div class="bg-surface h-1.5 flex-1 overflow-hidden rounded-full">

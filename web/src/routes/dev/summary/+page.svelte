@@ -215,7 +215,7 @@
 
 			<div class="mt-3 flex gap-2">
 				<button
-					class="flex-1 rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 flex-1 rounded px-4 py-2.5 text-sm font-medium"
 					>Save card</button
 				>
 				<button

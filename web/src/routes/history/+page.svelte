@@ -82,7 +82,7 @@
 			</p>
 			<a
 				href="/workouts"
-				class="mt-5 inline-block rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+				class="bg-ink text-paper hover:bg-ink/90 mt-5 inline-block rounded px-4 py-2.5 text-sm font-medium"
 				>Pick a workout</a
 			>
 		</div>

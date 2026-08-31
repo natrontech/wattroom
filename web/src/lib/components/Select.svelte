@@ -127,7 +127,7 @@
 							onkeydown(e);
 					}}
 					placeholder="Filter…"
-					class="placeholder:text-muted/60 w-full border-b border-white/5 bg-transparent px-3 py-2 text-xs outline-none"
+					class="placeholder:text-muted/60 border-ink/5 w-full border-b bg-transparent px-3 py-2 text-xs outline-none"
 					{@attach (node) => node.focus()}
 				/>
 			{/if}
@@ -145,9 +145,9 @@
 							onclick={() => choose(option.value)}
 							onmouseenter={() => (active = i)}
 							class="w-full px-3 py-2.5 text-left text-sm {i === active
-								? 'bg-surface text-white'
+								? 'bg-surface text-ink'
 								: option.value === value
-									? 'text-white'
+									? 'text-ink'
 									: 'text-muted'}"
 						>
 							{option.label}

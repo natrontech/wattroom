@@ -24,13 +24,13 @@
 	<p class="font-display font-bold">Your FTP looks low</p>
 	<p class="text-muted mt-1.5 text-xs leading-relaxed">
 		Your best 20 minutes in the last 90 days is {best20} W, which puts your FTP around
-		<span class="text-white">{suggested} W</span> — {gain}% above the {current} W
-		you have set. Raising it makes every workout harder, so it's your call.
+		<span class="text-ink">{suggested} W</span> — {gain}% above the {current} W you
+		have set. Raising it makes every workout harder, so it's your call.
 	</p>
 	<div class="mt-4 flex gap-2">
 		<button
 			onclick={onApply}
-			class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+			class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
 			>Set FTP to {suggested} W</button
 		>
 		<button

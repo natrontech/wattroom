@@ -182,11 +182,11 @@
 			{formatClock(total)} · {segments.length} blocks
 		</span>
 		<div class="ml-auto flex items-center gap-3">
-			<a href="/workouts" class="text-muted text-sm hover:text-white">Cancel</a>
+			<a href="/workouts" class="text-muted hover:text-ink text-sm">Cancel</a>
 			<button
 				onclick={save}
 				disabled={!check.ok}
-				class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+				class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
 				>Save</button
 			>
 		</div>
@@ -221,8 +221,8 @@
 							onclick={() => load(entry.workout, entry.id !== editingId)}
 							class="w-full rounded px-2.5 py-2 text-left text-sm {workout.name ===
 							entry.workout.name
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}"
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}"
 						>
 							{entry.workout.name}
 							<span
@@ -238,8 +238,8 @@
 							onclick={() => load(entry.workout, true)}
 							class="w-full rounded px-2.5 py-2 text-left text-sm {workout.name ===
 							entry.workout.name
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}"
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}"
 						>
 							{entry.workout.name}
 							<span
@@ -283,7 +283,7 @@
 							onclick={() => (selected = i)}
 							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {selected ===
 							i
-								? 'bg-surface-raised border-white/40'
+								? 'bg-surface-raised border-ink/40'
 								: 'border-muted/15 hover:border-muted/40'}"
 						>
 							<span
@@ -418,7 +418,7 @@
 						</p>
 					{/if}
 
-					<div class="flex gap-2 border-t border-white/5 pt-3">
+					<div class="border-ink/5 flex gap-2 border-t pt-3">
 						<button
 							onclick={() => move(selected!, -1)}
 							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"

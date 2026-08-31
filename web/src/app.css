@@ -15,6 +15,10 @@
 	--color-muted: #9182b8;
 	--color-watt: #ff3d8b; /* live data only, never chrome */
 	--color-neon: #8b2bff; /* horizons, grids, mark accents — structural, doesn't glow */
+	/* Foreground pair: ink is the text color, paper its inverse (button faces,
+	 * scrims). Components never say white/black — these flip with the scheme. */
+	--color-ink: #ffffff;
+	--color-paper: #000000;
 
 	/* Coggan 7-zone ramp: violet recovery climbing to magenta sprint. */
 	--color-z1: #4a3a78;
@@ -68,8 +72,60 @@
  */
 body {
 	background: var(--color-surface);
-	color: #fff;
+	color: var(--color-ink);
 	min-height: 100vh;
+}
+
+/*
+ * Daylight (#113, ADR-0005 amended): desk surfaces follow the OS — no toggle
+ * (the 95% rule). The pain cave stays dark by construction: `.cave` re-asserts
+ * the dark set below, so the room, TV mode and the brand surfaces render
+ * pixel-identical whatever the OS says. On light, saturation marks live data —
+ * glow only exists in the cave.
+ */
+@media (prefers-color-scheme: light) {
+	:root {
+		--color-surface: #f4effa;
+		--color-surface-raised: #ffffff;
+		--color-muted: #6d5f96;
+		--color-watt: #e6247d;
+		--color-neon: #6f1ad1;
+		--color-ink: #180a2e;
+		--color-paper: #ffffff;
+		--color-z1: #5b4894;
+		--color-z2: #3a56d4;
+		--color-z3: #0090ad;
+		--color-z4: #04a37c;
+		--color-z5: #d97e00;
+		--color-z6: #e63c5b;
+		--color-z7: #d9186f;
+	}
+	.glow-text:not(.cave *),
+	.glow-text-strong:not(.cave *),
+	.glow-stroke:not(.cave *) {
+		text-shadow: none;
+		filter: none;
+	}
+}
+
+/* The dark set, verbatim — where the ride lives, daylight never reaches. */
+.cave {
+	/* Inherited text color restarts here — body's ink belongs to the daylight side. */
+	color: var(--color-ink);
+	--color-surface: #0a0118;
+	--color-surface-raised: #1a0736;
+	--color-muted: #9182b8;
+	--color-watt: #ff3d8b;
+	--color-neon: #8b2bff;
+	--color-ink: #ffffff;
+	--color-paper: #000000;
+	--color-z1: #4a3a78;
+	--color-z2: #4361ee;
+	--color-z3: #00b4d8;
+	--color-z4: #06d6a0;
+	--color-z5: #ffa62b;
+	--color-z6: #ff4d6d;
+	--color-z7: #ff2e88;
 }
 
 /*
@@ -79,7 +135,7 @@ body {
  * White rather than an accent — a focus ring is chrome, and it has to win on any surface.
  */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-	outline: 2px solid #fff;
+	outline: 2px solid var(--color-ink);
 	outline-offset: 2px;
 	border-radius: 2px;
 }

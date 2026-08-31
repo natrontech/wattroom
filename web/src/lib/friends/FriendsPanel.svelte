@@ -94,13 +94,13 @@
 							{#if friend.room}
 								<a
 									href="/r/{friend.room}"
-									class="rounded bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-white/90"
+									class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-semibold"
 									>Join them</a
 								>
 							{/if}
 							<button
 								onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-								class="text-muted text-xs hover:text-white">remove</button
+								class="text-muted hover:text-ink text-xs">remove</button
 							>
 						</span>
 					</div>
@@ -116,20 +116,19 @@
 								<button
 									onclick={() =>
 										act(`/api/friends/${friend.id}/accept`, 'POST')}
-									class="rounded bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-white/90"
+									class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-semibold"
 									>Accept</button
 								>
 								<button
 									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-									class="text-muted text-xs hover:text-white">dismiss</button
+									class="text-muted hover:text-ink text-xs">dismiss</button
 								>
 							</span>
 						{:else}
 							<span class="text-muted text-xs">asked — waiting on them</span>
 							<button
 								onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-								class="text-muted ml-auto text-xs hover:text-white"
-								>cancel</button
+								class="text-muted hover:text-ink ml-auto text-xs">cancel</button
 							>
 						{/if}
 					</div>

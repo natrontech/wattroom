@@ -42,21 +42,21 @@
 	}
 </script>
 
-<aside class="flex h-full w-80 shrink-0 flex-col border-l border-white/5">
+<aside class="border-ink/5 flex h-full w-80 shrink-0 flex-col border-l">
 	{#if showPlayer && player}
-		<div class="border-b border-white/5 p-3">
+		<div class="border-ink/5 border-b p-3">
 			{@render player()}
 		</div>
 	{/if}
 
-	<div class="border-b border-white/5 px-4 py-3">
+	<div class="border-ink/5 border-b px-4 py-3">
 		<div
 			class="text-muted flex items-center justify-between text-[10px] tracking-[0.2em] uppercase"
 		>
 			<span>queue</span>
 			<button
 				onclick={() => (adding = !adding)}
-				class="text-muted hover:text-white"
+				class="text-muted hover:text-ink"
 				aria-label="Add to queue">{adding ? 'close' : '+ add'}</button
 			>
 		</div>
@@ -92,7 +92,7 @@
 							: 'text-muted'} w-3 shrink-0 font-mono text-[10px]"
 						>{i === 0 ? '▶' : i + 1}</span
 					>
-					<span class="{i === 0 ? 'text-white' : 'text-muted'} truncate"
+					<span class="{i === 0 ? 'text-ink' : 'text-muted'} truncate"
 						>{track.title}</span
 					>
 					{#if track.by}
@@ -114,7 +114,7 @@
 		{#each messages as message (message.at + message.from)}
 			<li class="text-xs leading-snug">
 				<span class="text-muted font-medium">{message.from}</span>
-				<span class="ml-1.5 text-white/85">{message.text}</span>
+				<span class="text-ink/85 ml-1.5">{message.text}</span>
 			</li>
 		{:else}
 			<li class="text-muted/60 text-xs">
@@ -124,7 +124,7 @@
 		{/each}
 	</ul>
 
-	<div class="border-t border-white/5 p-3">
+	<div class="border-ink/5 border-t p-3">
 		{#if !live}
 			<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
 			<form

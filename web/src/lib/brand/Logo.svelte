@@ -48,7 +48,7 @@
 	</svg>
 	{#if wordmark}
 		<span
-			class="font-display font-bold tracking-tight text-white"
+			class="font-display text-ink font-bold tracking-tight"
 			style="font-size: {size * 0.62}px">WattRoom</span
 		>
 	{/if}

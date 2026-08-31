@@ -57,7 +57,7 @@
 <main class="mx-auto max-w-5xl px-6 py-12">
 	<h1 class="font-display text-3xl font-bold tracking-tight">Styleguide</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
-		Tokens live in <code class="text-white/80">src/app.css</code>; the identity
+		Tokens live in <code class="text-ink/80">src/app.css</code>; the identity
 		that fixes their values is ADR-0005.
 	</p>
 
@@ -87,7 +87,7 @@
 	<div class="border-muted/15 mt-4 overflow-hidden rounded-lg border">
 		{#each zones as zone (zone.n)}
 			<div
-				class="flex items-center gap-4 border-b border-white/5 px-4 py-2.5 last:border-0"
+				class="border-ink/5 flex items-center gap-4 border-b px-4 py-2.5 last:border-0"
 			>
 				<div class="h-6 w-10 rounded {zone.cls}"></div>
 				<div class="w-8 font-mono text-xs">Z{zone.n}</div>
@@ -165,13 +165,13 @@
 			</div>
 			<div class="mt-5 flex items-end gap-6">
 				<div>
-					<div class="text-5xl font-bold text-white tabular-nums">312</div>
+					<div class="text-ink text-5xl font-bold tabular-nums">312</div>
 					<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
 						watts
 					</div>
 				</div>
 				<button
-					class="bg-watt glow-text rounded px-4 py-2 text-sm font-semibold text-black"
+					class="bg-watt glow-text text-paper rounded px-4 py-2 text-sm font-semibold"
 					>Start session</button
 				>
 			</div>
@@ -187,14 +187,14 @@
 		class="border-muted/15 bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-6"
 	>
 		<button
-			class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+			class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
 			>Primary</button
 		>
 		<button
 			class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
 			>Secondary</button
 		>
-		<button class="text-muted rounded px-4 py-2 text-sm hover:text-white"
+		<button class="text-muted hover:text-ink rounded px-4 py-2 text-sm"
 			>Ghost</button
 		>
 		<button

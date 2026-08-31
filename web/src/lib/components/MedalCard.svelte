@@ -26,7 +26,7 @@
 	is decoration, which is exactly what it is good at.
 -->
 <figure
-	class="bg-surface relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-xl ring-1 ring-white/10"
+	class="bg-surface ring-ink/10 relative aspect-[4/5] w-full max-w-[400px] overflow-hidden rounded-xl ring-1"
 >
 	<svg
 		viewBox="0 0 400 500"

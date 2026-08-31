@@ -71,7 +71,7 @@
 					<li class="flex items-center gap-3">
 						<span
 							class="w-16 shrink-0 truncate text-xs {entry.you
-								? 'text-white'
+								? 'text-ink'
 								: 'text-muted'}">{entry.name}</span
 						>
 						<div class="bg-surface h-4 flex-1 overflow-hidden rounded">

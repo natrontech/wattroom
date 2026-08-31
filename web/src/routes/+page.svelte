@@ -11,7 +11,9 @@
 	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
 {:else if !account.me}
 	<!-- The public face of wattroom.ch (#111): one screen tells the story. -->
-	<main class="relative flex min-h-dvh flex-col overflow-hidden">
+	<main
+		class="cave bg-surface text-ink relative flex min-h-dvh flex-col overflow-hidden"
+	>
 		<div
 			class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[50dvh] opacity-40"
 			aria-hidden="true"
@@ -34,7 +36,7 @@
 
 			<a
 				href="/login"
-				class="mt-8 rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+				class="bg-ink text-paper hover:bg-ink/90 mt-8 rounded px-6 py-3 text-sm font-semibold"
 				>Sign in and open your first room</a
 			>
 
@@ -72,7 +74,7 @@
 				&amp; open source (AGPL) —
 				<a
 					href="https://github.com/natrontech/wattroom"
-					class="underline hover:text-white">GitHub</a
+					class="hover:text-ink underline">GitHub</a
 				>
 			</p>
 		</section>

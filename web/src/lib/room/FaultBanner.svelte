@@ -61,7 +61,7 @@
 	{#if !recovering}
 		<button
 			onclick={onRecover}
-			class="ml-auto shrink-0 rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+			class="bg-ink text-paper hover:bg-ink/90 ml-auto shrink-0 rounded px-6 py-3 text-sm font-semibold"
 			>Reconnect</button
 		>
 	{/if}

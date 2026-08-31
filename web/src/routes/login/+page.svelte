@@ -31,7 +31,9 @@
 	}
 </script>
 
-<main class="relative grid min-h-dvh place-items-center px-6">
+<main
+	class="cave bg-surface text-ink relative grid min-h-dvh place-items-center px-6"
+>
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[45dvh] opacity-40"
 		aria-hidden="true"

@@ -55,7 +55,7 @@
 		<div class="mt-2 flex items-start gap-3">
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -- uqr output, generated from a validated URL -->
 			<div
-				class="h-20 w-20 shrink-0 rounded bg-white p-1 [&_svg]:h-full [&_svg]:w-full"
+				class="bg-ink h-20 w-20 shrink-0 rounded p-1 [&_svg]:h-full [&_svg]:w-full"
 			>
 				{@html qr}
 			</div>
@@ -64,7 +64,7 @@
 					href={jamUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="block truncate text-xs underline hover:text-white">{jamUrl}</a
+					class="hover:text-ink block truncate text-xs underline">{jamUrl}</a
 				>
 				<p class="text-muted mt-1.5 text-[11px] leading-relaxed">
 					Jam audio plays outside the browser, so WattRoom can't duck it under
@@ -74,7 +74,7 @@
 				{#if onClear}
 					<button
 						onclick={onClear}
-						class="text-muted mt-1.5 text-[11px] underline hover:text-white"
+						class="text-muted hover:text-ink mt-1.5 text-[11px] underline"
 						>Clear the Jam</button
 					>
 				{/if}

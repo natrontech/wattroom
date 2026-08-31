@@ -69,7 +69,7 @@
 
 	<button
 		onclick={() => ((last = 'sequence'), playCountdown())}
-		class="mt-6 w-full rounded bg-white px-5 py-4 text-sm font-semibold text-black hover:bg-white/90"
+		class="bg-ink text-paper hover:bg-ink/90 mt-6 w-full rounded px-5 py-4 text-sm font-semibold"
 		>Play the full 3 · 2 · 1 · go</button
 	>
 
@@ -101,28 +101,28 @@
 		<h2 class="font-display font-bold">Rules these follow</h2>
 		<ul class="text-muted mt-3 space-y-1.5 text-xs leading-relaxed">
 			<li>
-				<span class="text-white">Mixed under voice.</span> Voice is the product; cues
+				<span class="text-ink">Mixed under voice.</span> Voice is the product; cues
 				are furniture. They duck rather than stop, because ride-critical cues still
 				have to land.
 			</li>
 			<li>
-				<span class="text-white">Nothing loops.</span> Every cue is under a second.
+				<span class="text-ink">Nothing loops.</span> Every cue is under a second.
 				A rider is in the room for an hour — anything repetitive becomes torture.
 			</li>
 			<li>
-				<span class="text-white">Reward is major, tension is minor.</span> The fanfare
+				<span class="text-ink">Reward is major, tension is minor.</span> The fanfare
 				walks up a major triad; the elimination sting falls and closes a filter. That's
 				the whole emotional vocabulary.
 			</li>
 			<li>
-				<span class="text-white">Sound announces, never informs.</span> ux.md: state
+				<span class="text-ink">Sound announces, never informs.</span> ux.md: state
 				changes announce themselves because riders don't watch the screen. Nothing
 				here is the only way to learn something.
 			</li>
 			<li>
-				<span class="text-white">Jukebox audio is never touched.</span> It's local
-				per rider and never enters the voice path (SPEC); these cues sit on their
-				own bus.
+				<span class="text-ink">Jukebox audio is never touched.</span> It's local per
+				rider and never enters the voice path (SPEC); these cues sit on their own
+				bus.
 			</li>
 		</ul>
 	</div>
