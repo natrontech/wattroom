@@ -88,6 +88,10 @@ type JukeboxCommand struct {
 	// For "seek": the new shared playhead. For "add": start the entry here
 	// (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
 	PositionSec float64 `json:"positionSec,omitempty"`
+	// For "ended": the anchor the client was playing against. Every client
+	// (and tab) reports the end — the epoch match makes N echoes advance
+	// the queue exactly once even when the same video is queued twice.
+	AnchorMs int64 `json:"anchorMs,omitempty"`
 	// For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
 	// shows as a join card. Empty clears it. Link-out only — no API, ever.
 	JamURL string `json:"jamUrl,omitempty"`

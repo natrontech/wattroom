@@ -52,8 +52,16 @@ func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (stri
 		s.log.Warn("save chat", "err", err, "room", slug)
 		return "", false
 	}
-	if err := s.store.Queries.PruneChat(ctx, room.ID); err != nil {
-		s.log.Warn("prune chat", "err", err, "room", slug)
+	// Prune sampled and off the hot path: every save paid a delete-with-
+	// subquery that stalled the sender's own read loop (audit #219).
+	if time.Now().UnixNano()%16 == 0 {
+		go func() { //nolint:gosec // the prune must outlive the request — deliberate detachment, bounded below
+			pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.store.Queries.PruneChat(pctx, room.ID); err != nil {
+				s.log.Warn("prune chat", "err", err, "room", slug)
+			}
+		}()
 	}
 	return store.UUIDString(id), true
 }
@@ -80,7 +88,7 @@ func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, e
 	}
 	if added == 0 {
 		removed, err := s.store.Queries.RemoveChatReaction(ctx, db.RemoveChatReactionParams{
-			MessageID: mid, UserID: uid, Emoji: emoji,
+			MessageID: mid, UserID: uid, Emoji: emoji, RoomID: room.ID,
 		})
 		if err != nil || removed == 0 {
 			// Neither added nor removed: the message is not in this room.

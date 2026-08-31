@@ -55,9 +55,13 @@ func newJukebox() *jukebox {
 	return &jukebox{state: protocol.JukeboxState{Queue: []protocol.JukeboxEntry{}}}
 }
 
-// snapshot renders the state at now.
+// snapshot renders the state at now. The queue is CLONED: the caller
+// marshals outside the room lock, and remove() shifts the backing array in
+// place — sharing it was a data race (audit #219).
 func (j *jukebox) snapshot() protocol.JukeboxState {
-	return j.state
+	out := j.state
+	out.Queue = append([]protocol.JukeboxEntry(nil), j.state.Queue...)
+	return out
 }
 
 // positionAt is the shared playhead at a given instant.
@@ -149,9 +153,11 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 		return true
 
 	case "ended":
-		// Every client reports the end; only the first report for the CURRENT
-		// video advances — the rest are the same event echoing back.
-		if j.state.Current == nil || j.state.Current.VideoID != cmd.VideoID {
+		// Every client reports the end; the (video, epoch) pair makes the
+		// first report advance and every echo a no-op — a video queued twice
+		// used to be eaten by its own echoes (audit #219).
+		if j.state.Current == nil || j.state.Current.VideoID != cmd.VideoID ||
+			cmd.AnchorMs != j.state.AnchorMs {
 			return false
 		}
 		j.advance(now)

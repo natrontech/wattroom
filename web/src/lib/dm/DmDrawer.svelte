@@ -37,7 +37,9 @@
 			messages = [...messages, ...fresh];
 		}
 		if (messages.length > 0 && (fresh.length > 0 || !after)) {
-			dm.stampSeen(peerId);
+			// "Seen" only when you could actually have seen it — a drawer left
+			// open in a hidden tab must keep the badge (audit #219).
+			if (!document.hidden) dm.stampSeen(peerId);
 			queueMicrotask(() => list?.scrollTo({ top: list.scrollHeight }));
 		}
 	}
@@ -65,6 +67,7 @@
 		});
 		if (!res.ok) {
 			error = res.error.message;
+			draft = text; // a refused message is not a deleted one
 			return;
 		}
 		await load(peer.id, messages.at(-1)?.at ?? 0);
@@ -116,6 +119,7 @@
 		>
 			<input
 				bind:value={draft}
+				maxlength="500"
 				placeholder="Message {dm.open.name}…"
 				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-2.5 py-1.5 text-xs outline-none"
 			/>

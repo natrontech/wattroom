@@ -52,18 +52,37 @@
 			player = new (window as any).YT.Player(node, {
 				width: '100%',
 				height: '100%',
-				playerVars: { playsinline: 1, rel: 0 },
+				playerVars: { playsinline: 1, rel: 0, controls: 0, disablekb: 1 },
 				events: {
-					onReady: () => (playerReady = true),
+					onReady: () => {
+						playerReady = true;
+						player.setVolume?.(Math.round(mixer.music));
+					},
 					onStateChange: (e: { data: number }) => {
-						// 0 = ended: report it; the server advances exactly once.
+						// 0 = ended: report it WITH the play epoch — the server
+						// advances exactly once per (video, epoch).
 						if (e.data === 0 && loadedVideo)
-							conn?.live.jukebox('ended', loadedVideo);
+							conn?.live.jukebox(
+								'ended',
+								loadedVideo,
+								undefined,
+								undefined,
+								undefined,
+								conn?.live.tick?.jukebox?.anchorMs,
+							);
 					},
 					onError: () => {
 						// Non-embeddable or broken: skip for everyone rather than
 						// leaving each rider staring at a different error.
-						if (loadedVideo) conn?.live.jukebox('ended', loadedVideo);
+						if (loadedVideo)
+							conn?.live.jukebox(
+								'ended',
+								loadedVideo,
+								undefined,
+								undefined,
+								undefined,
+								conn?.live.tick?.jukebox?.anchorMs,
+							);
 					},
 				},
 			});
@@ -97,14 +116,22 @@
 		}, 30);
 	}
 
+	let wasDucked = false;
 	$effect(() => {
 		if (!playerReady) return;
 		baseVolume = mixer.music; // the mixer owns the ceiling (#179)
 		if (ducked) {
+			wasDucked = true;
 			clearTimeout(releaseTimer);
 			rampTo(Math.round(baseVolume * 0.25), 150);
-		} else {
+		} else if (wasDucked) {
+			// The SPEC release: hold, then ramp back up.
+			wasDucked = false;
 			releaseTimer = setTimeout(() => rampTo(baseVolume, 400), 600);
+		} else {
+			// A fader move must act NOW — routing it through the release hold
+			// made the slider feel dead (audit #219).
+			player.setVolume?.(Math.round(baseVolume));
 		}
 		return () => {
 			clearTimeout(releaseTimer);
@@ -114,7 +141,13 @@
 
 	// ── Chase the server's playhead (tiered per the issue). ──────────────────
 	$effect(() => {
-		if (!playerReady || !jukebox) return;
+		if (!playerReady) return;
+		if (conn?.live.status !== 'live') {
+			// No ticks, no chase: a stuck 1.25× nudge is worse than drift.
+			player.setPlaybackRate?.(1);
+			return;
+		}
+		if (!jukebox) return;
 		const current = jukebox.current;
 		if (!current) {
 			if (loadedVideo) {
@@ -148,8 +181,8 @@
 	});
 </script>
 
-{#if conn && jukebox?.current}
-	<div class="fixed right-4 bottom-4 z-30">
+{#if conn}
+	<div class="fixed right-4 bottom-4 z-[60] {jukebox?.current ? '' : 'hidden'}">
 		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 		<div
 			class="ring-ink/15 overflow-hidden rounded-lg bg-black shadow-lg ring-1"
@@ -157,8 +190,10 @@
 		>
 			<div bind:this={container} class="h-full w-full"></div>
 		</div>
-		<p class="text-muted mt-1 max-w-[356px] truncate text-[10px]">
-			{jukebox.current.title} · playing for the room
-		</p>
+		{#if jukebox?.current}
+			<p class="text-muted mt-1 max-w-[356px] truncate text-[10px]">
+				{jukebox.current.title} · playing for the room
+			</p>
+		{/if}
 	</div>
 {/if}

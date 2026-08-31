@@ -46,7 +46,12 @@ where exists (select 1 from chat_messages where id = $1 and room_id = $4)
 on conflict do nothing;
 
 -- name: RemoveChatReaction :execrows
-delete from chat_reactions where message_id = $1 and user_id = $2 and emoji = $3;
+-- Room-scoped like the insert — a socket in room A must not toggle
+-- reactions on room B's messages (audit #218).
+delete from chat_reactions r
+using chat_messages m
+where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
+  and m.id = r.message_id and m.room_id = $4;
 
 -- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2;

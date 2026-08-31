@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -91,6 +92,23 @@ type room struct {
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
+	// kind+rider → last accepted time: limits are per RIDER, not per socket —
+	// a second tab must not double every allowance (audit #219).
+	lastInput map[string]time.Time
+}
+
+func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if rm.lastInput == nil {
+		rm.lastInput = make(map[string]time.Time)
+	}
+	key := kind + ":" + riderID
+	if now.Sub(rm.lastInput[key]) < min {
+		return false
+	}
+	rm.lastInput[key] = now
+	return true
 }
 
 func newRoom(slug string) *room {
@@ -108,13 +126,6 @@ func newRoom(slug string) *room {
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
-	// lastCheer rate-limits reactions: a cheer is a tap, not a firehose.
-	lastCheer time.Time
-	// lastChat rate-limits lines the same way — typing on a bike is rare,
-	// a hostile client is not.
-	lastChat time.Time
-	// lastReact allows quick toggling but not a firehose.
-	lastReact time.Time
 }
 
 // cheerEmoji is the allowlist — reactions, not chat. Free text is a different
@@ -166,8 +177,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Chat != nil {
 			// Untrusted input: bounded text, 1/s per rider, sender is presence.
 			text := strings.TrimSpace(msg.Chat.Text)
-			if text != "" && len(text) <= 500 && h.now().Sub(c.lastChat) >= time.Second {
-				c.lastChat = h.now()
+			if utf8.RuneCountInString(text) > 500 {
+				// The client caps at 500 CHARACTERS — counting bytes here cut
+				// non-Latin scripts off at half the advertised limit and then
+				// dropped the line silently (audit #219).
+				h.writeError(ctx, c, "validation_error", "That message is too long — 500 characters is the cap.")
+				continue
+			}
+			if text != "" && rm.allow("chat", rider.ID, h.now(), time.Second) {
 				line := protocol.ChatLine{From: rider.Name, Text: text, At: h.now().UnixMilli()}
 				// Persist OUTSIDE any room lock (hub discipline) — the request
 				// goroutine may block on the database, the tick never does.
@@ -181,8 +198,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if msg.ChatReact != nil && h.chat != nil {
 			_, allowed := cheerEmoji[msg.ChatReact.Emoji]
-			if allowed && h.now().Sub(c.lastReact) >= 300*time.Millisecond {
-				c.lastReact = h.now()
+			if allowed && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
 				if count, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
 						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji, Count: count,
@@ -191,14 +207,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Cheer != nil {
-			if _, ok := cheerEmoji[msg.Cheer.Emoji]; ok && h.now().Sub(c.lastCheer) >= time.Second {
-				c.lastCheer = h.now()
+			if _, ok := cheerEmoji[msg.Cheer.Emoji]; ok && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}
 		if msg.Jukebox != nil {
-			// Any member; the jukebox validates its own input.
-			rm.jukebox(*msg.Jukebox, rider.Name, h.now())
+			// Any member; the jukebox validates its own input. Throttled like
+			// every other input — it was the one unlimited channel (audit #219).
+			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
+				rm.jukebox(*msg.Jukebox, rider.Name, h.now())
+			}
 		}
 		if msg.Backfill != nil {
 			// A reconnect's replay: into the ride record only — stale samples
