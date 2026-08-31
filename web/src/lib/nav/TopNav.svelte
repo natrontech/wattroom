@@ -8,7 +8,7 @@
 </script>
 
 <nav
-	class="border-ink/5 bg-surface sticky top-0 z-30 hidden items-center gap-1 overflow-x-auto border-b px-3 py-2 md:flex"
+	class="border-ink/5 bg-surface z-30 hidden shrink-0 items-center gap-1 overflow-x-auto border-b px-3 py-2 md:flex"
 >
 	{#each pages as entry (entry.href)}
 		<a
