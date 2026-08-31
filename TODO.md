@@ -76,6 +76,7 @@ Parked with reason: 30 s disconnect grace for elimination modes.
 ## M6 — Alpha polish
 
 - [ ] Strava auto-upload; account export-all + delete
-- [ ] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups, Grafana; wattroom.ch live
+- [x] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups; **wattroom.ch is live** and serving
+- [ ] Release-driven deploy switched on: the systemd timer from ADR-0019 installed on the VM with a pin-repo checkout. Until then, deploys are manual — releases do not roll themselves out
 - [ ] Calibration guidance, sensor dropout handling, UX polish
 - [ ] Alpha: weekly rides with the crew — success = they keep choosing it
