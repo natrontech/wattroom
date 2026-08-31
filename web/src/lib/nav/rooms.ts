@@ -4,6 +4,7 @@ import type { RailRoom } from '$lib/room/mockcompat';
 interface RoomEntry {
 	slug: string;
 	name: string;
+	icon?: string;
 	memberCount?: number;
 	connected?: number;
 	phase?: string;
@@ -21,6 +22,7 @@ export async function fetchRailRooms(): Promise<RailRoom[]> {
 	if (!res.ok) return [];
 	return res.data.rooms.map((room) => ({
 		name: room.name,
+		icon: room.icon,
 		slug: room.slug,
 		live: room.phase === 'running' || room.phase === 'countdown',
 		members: room.memberCount ?? 0,

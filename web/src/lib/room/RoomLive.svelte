@@ -68,6 +68,8 @@
 		slug,
 		role,
 		roomName,
+		icon = '',
+		cheers = undefined,
 		code = '',
 		soundPack = 'base',
 		members = [],
@@ -84,6 +86,10 @@
 		slug: string;
 		role: string;
 		roomName: string;
+		/** Owner-set emoji identity mark (#223). */
+		icon?: string;
+		/** The room's reaction palette (#223); absent = SidePanel's base set. */
+		cheers?: string[];
 		code?: string;
 		soundPack?: string;
 		members?: AdminMember[];
@@ -750,7 +756,9 @@
 
 		<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 			<div>
-				<h1 class="font-display text-lg leading-tight font-bold">{roomName}</h1>
+				<h1 class="font-display text-lg leading-tight font-bold">
+					{icon ? `${icon} ` : ''}{roomName}
+				</h1>
 				<p class="text-muted text-xs">
 					{riders.length} rider{riders.length === 1 ? '' : 's'} ·
 					{#if phase === 'lounge'}
@@ -1197,6 +1205,7 @@
 			onReact={(id, emoji) => live.react(id, emoji)}
 			onCheer={(emoji) => live.cheer(emoji)}
 			onChat={(text) => live.chat(text)}
+			{cheers}
 		>
 			{#snippet player()}
 				<Jukebox

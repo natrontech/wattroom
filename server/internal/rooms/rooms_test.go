@@ -410,7 +410,7 @@ func TestBanFlow(t *testing.T) {
 		members, _ := body["members"].([]any)
 		for _, m := range members {
 			total++
-			if m.(map[string]any)["role"] == "banned" {
+			if row, ok := m.(map[string]any); ok && row["role"] == "banned" {
 				banned++
 			}
 		}

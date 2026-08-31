@@ -132,7 +132,15 @@
 						<span class="text-muted text-[10px] tracking-wider uppercase"
 							>{member.role}</span
 						>
-						{#if isOwner && member.role !== 'owner'}
+						{#if isOwner && member.role === 'banned'}
+							<!-- Only the owner ever receives banned rows (#223). -->
+							<button
+								onclick={() => onRole(member.id, 'member')}
+								disabled={busy}
+								class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-2.5 py-1 text-[11px] disabled:opacity-40"
+								>Unban</button
+							>
+						{:else if isOwner && member.role !== 'owner'}
 							<div class="ml-auto flex gap-1.5">
 								<button
 									onclick={() =>
@@ -149,6 +157,12 @@
 									disabled={busy}
 									class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-2.5 py-1 text-[11px] disabled:opacity-40"
 									>Remove</button
+								>
+								<button
+									onclick={() => onRole(member.id, 'banned')}
+									disabled={busy}
+									class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-2.5 py-1 text-[11px] disabled:opacity-40"
+									>Ban</button
 								>
 							</div>
 						{/if}

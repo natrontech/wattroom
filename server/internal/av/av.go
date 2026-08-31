@@ -6,6 +6,7 @@ package av
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -161,7 +162,7 @@ func (s *Service) Eject(slug, userID string) {
 		apiURL = "http" + rest
 	}
 	body, _ := json.Marshal(map[string]string{"room": slug, "identity": userID})
-	req, err := http.NewRequest(http.MethodPost,
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost,
 		strings.TrimSuffix(apiURL, "/")+"/twirp/livekit.RoomService/RemoveParticipant",
 		bytes.NewReader(body))
 	if err != nil {
@@ -175,7 +176,7 @@ func (s *Service) Eject(slug, userID string) {
 		s.log.Warn("eject call failed", "err", err, "room", slug, "rider", userID)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		// 404 = not in the call right now — that is the goal state, not an error.
 		if resp.StatusCode != http.StatusNotFound {

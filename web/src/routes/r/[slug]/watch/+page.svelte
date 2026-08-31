@@ -6,6 +6,7 @@
 	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import JamCard from '$lib/room/JamCard.svelte';
+	import { api } from '$lib/api';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { parseSharedSegments } from '$lib/room/workout';
 
@@ -17,6 +18,15 @@
 	// Keyed remount per slug is unnecessary here — the page is a leaf.
 	// svelte-ignore state_referenced_locally
 	const live = createRoomLive(page.params.slug ?? '');
+
+	// The room's reaction palette (#223) — the spectator speaks the room's
+	// vocabulary too. Base set until the fetch lands.
+	let cheers = $state(['🔥', '💪', '👏', '💀']);
+	void api<{ cheers?: string[] }>(`/api/rooms/${page.params.slug}`).then(
+		(res) => {
+			if (res.ok && res.data.cheers?.length) cheers = res.data.cheers;
+		},
+	);
 	let draft = $state('');
 	function sendChat() {
 		const text = draft.trim();
@@ -147,7 +157,7 @@
 	<!-- The spectator's one verb (roles matrix). One-handed, often standing. -->
 	<div class="border-ink/5 border-t p-3">
 		<div class="flex gap-2">
-			{#each ['🔥', '💪', '👏', '💀'] as emoji (emoji)}
+			{#each cheers.slice(0, 4) as emoji (emoji)}
 				<button
 					onclick={() => live.cheer(emoji)}
 					class="border-muted/20 active:bg-surface-raised flex-1 rounded-lg border py-4 text-2xl"
