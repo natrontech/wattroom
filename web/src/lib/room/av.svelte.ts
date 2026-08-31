@@ -27,8 +27,10 @@ export function createRoomAv(slug: string) {
 	let camOn = $state(false);
 	let sharing = $state(false);
 	let error = $state<string | null>(null);
-	/** Rider ids with a live camera/screen track — bumped to retrigger attach. */
+	/** Rider ids with a live camera track — bumped to retrigger attach. */
 	let videoOf = $state<Record<string, number>>({});
+	/** The one shared screen (#206): last share wins, like a projector. */
+	let screenOf = $state<{ id: string; key: number } | null>(null);
 	let speaking = $state<Record<string, boolean>>({});
 	/**
 	 * Who is in voice and whether their mic is open (#151): absent = not in
@@ -210,6 +212,7 @@ export function createRoomAv(slug: string) {
 
 	let room: Room | null = null;
 	const videoTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
+	const screenTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
 	const audioElements = new Map<string, HTMLAudioElement>();
 	// Per-rider output gain (#179): media-element → gain → speakers, so a
 	// quiet teammate can go ABOVE unity — element.volume caps at 1, WebAudio
@@ -289,10 +292,18 @@ export function createRoomAv(slug: string) {
 	}
 
 	function wire(r: Room) {
-		r.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+		r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
 			if (track.kind === Track.Kind.Video) {
-				videoTracks.set(participant.identity, track);
-				bumpVideo(participant.identity);
+				if (pub.source === Track.Source.ScreenShare) {
+					screenTracks.set(participant.identity, track);
+					screenOf = {
+						id: participant.identity,
+						key: (screenOf?.key ?? 0) + 1,
+					};
+				} else {
+					videoTracks.set(participant.identity, track);
+					bumpVideo(participant.identity);
+				}
 			}
 			if (track.kind === Track.Kind.Audio) {
 				const el = track.attach() as HTMLAudioElement;
@@ -301,10 +312,15 @@ export function createRoomAv(slug: string) {
 				routeRiderAudio(participant.identity, el);
 			}
 		});
-		r.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant) => {
+		r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
 			if (track.kind === Track.Kind.Video) {
-				videoTracks.delete(participant.identity);
-				bumpVideo(participant.identity);
+				if (pub.source === Track.Source.ScreenShare) {
+					screenTracks.delete(participant.identity);
+					if (screenOf?.id === participant.identity) screenOf = null;
+				} else {
+					videoTracks.delete(participant.identity);
+					bumpVideo(participant.identity);
+				}
 			}
 			if (track.kind === Track.Kind.Audio) {
 				track.detach().forEach((el) => el.remove());
@@ -339,6 +355,8 @@ export function createRoomAv(slug: string) {
 			audioElements.clear();
 			videoTracks.clear();
 			videoOf = {};
+			screenTracks.clear();
+			screenOf = null;
 			voice = {};
 			closeMic();
 			if (status === 'live') status = 'off';
@@ -456,19 +474,40 @@ export function createRoomAv(slug: string) {
 			if (!room) return;
 			sharing = !sharing;
 			try {
+				// The browser's picker can be cancelled — trust the publication,
+				// not our intent.
 				await room.localParticipant.setScreenShareEnabled(sharing);
 				const track = room.localParticipant.getTrackPublication(
 					Track.Source.ScreenShare,
 				)?.videoTrack;
 				const id = room.localParticipant.identity;
-				if (sharing && track) videoTracks.set(id, track);
-				else if (!camOn) videoTracks.delete(id);
-				bumpVideo(id);
+				if (sharing && track) {
+					screenTracks.set(id, track);
+					screenOf = { id, key: (screenOf?.key ?? 0) + 1 };
+				} else {
+					sharing = false;
+					screenTracks.delete(id);
+					if (screenOf?.id === id) screenOf = null;
+				}
 			} catch {
 				sharing = false;
 			}
 		},
 		/** Attach a rider's video into a container; called from the tile. */
+		get screenOf() {
+			return screenOf;
+		},
+		/** The projector surface — contain, not cover: a screen is a document. */
+		attachScreen(container: HTMLElement) {
+			const track = screenOf ? screenTracks.get(screenOf.id) : undefined;
+			container.replaceChildren();
+			if (!track) return;
+			const el = track.attach();
+			el.style.width = '100%';
+			el.style.height = '100%';
+			el.style.objectFit = 'contain';
+			container.appendChild(el);
+		},
 		attach(riderId: string, container: HTMLElement) {
 			const track = videoTracks.get(riderId);
 			container.replaceChildren();

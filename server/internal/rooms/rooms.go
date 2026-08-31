@@ -86,6 +86,11 @@ type memberJSON struct {
 	DisplayName string  `json:"displayName"`
 	AvatarURL   *string `json:"avatarUrl,omitempty"`
 	Role        string  `json:"role"`
+	// Room-visible rider facts (#207) — the same numbers the roster already
+	// shows on tiles; rides and history stay private.
+	FtpWatts int16  `json:"ftpWatts"`
+	WeightKg int16  `json:"weightKg"`
+	JoinedAt string `json:"joinedAt"`
 }
 
 type medalJSON struct {
@@ -262,6 +267,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				response.Members = append(response.Members, memberJSON{
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
 					AvatarURL: member.AvatarUrl, Role: member.Role,
+					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
+					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
 				})
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {

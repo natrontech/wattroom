@@ -4,6 +4,8 @@
 		LogOut as LeaveIcon,
 		Mic,
 		MicOff,
+		ScreenShare,
+		ScreenShareOff,
 		Settings,
 		Tv,
 		Video as VideoIcon,
@@ -908,6 +910,35 @@
 				Nobody's on camera — join voice and yours turns on. Tiles show video the
 				moment it arrives.
 			</p>
+		{/if}
+
+		{#if av.screenOf}
+			{@const sharer =
+				riders.find((r) => r.id === av.screenOf?.id)?.name ?? 'someone'}
+			<!-- The projector (#206): one shared screen, room-wide, above the
+			     people — a screen is a document, so contain, never crop. -->
+			<div class="mb-3">
+				<div
+					class="ring-neon/40 overflow-hidden rounded-lg bg-black ring-1"
+					style="width: min(100%, 880px); aspect-ratio: 16/9"
+				>
+					{#key av.screenOf.key}
+						<div
+							class="h-full w-full"
+							{@attach (node) => av.attachScreen(node)}
+						></div>
+					{/key}
+				</div>
+				<p class="text-muted mt-1 text-[11px]">
+					{sharer} is sharing their screen
+					{#if av.sharing}
+						· <button
+							onclick={() => void av.toggleShare()}
+							class="hover:text-ink underline">stop</button
+						>
+					{/if}
+				</p>
+			</div>
 		{/if}
 
 		<!-- Rider tiles: camera and power fused — one grid, not three. -->
