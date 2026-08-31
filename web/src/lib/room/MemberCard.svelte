@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { MessageCircle, X } from '@lucide/svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { api } from '$lib/api';
@@ -11,6 +12,9 @@
 	interface Member {
 		id: string;
 		displayName: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
 		role: string;
 		ftpWatts: number;
 		weightKg: number;
@@ -82,6 +86,13 @@
 	class="max-w-sm"
 >
 	<div class="flex items-start gap-3">
+		<Avatar
+			name={member.displayName}
+			avatarUrl={member.avatarUrl}
+			preset={member.avatarPreset}
+			xp={member.totalXp}
+			size={48}
+		/>
 		<div class="min-w-0 flex-1">
 			<p class="font-display truncate text-xl font-bold">
 				{member.displayName}

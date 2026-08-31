@@ -91,6 +91,9 @@
 	interface PopoutMember {
 		id: string;
 		displayName: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
 		role: string;
 		ftpWatts: number;
 		weightKg: number;

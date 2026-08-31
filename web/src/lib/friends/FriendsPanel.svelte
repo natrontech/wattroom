@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Copy, MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { presence } from '$lib/presence.svelte';
@@ -9,6 +10,9 @@
 	interface Friend {
 		id: string;
 		name: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
 		status: 'accepted' | 'pending_in' | 'pending_out';
 		online?: boolean;
 		inRoom?: boolean;
@@ -93,12 +97,21 @@
 					>
 						<!-- Slack's green dot (#251): online = app open (the lobby
 						     socket), with the room named only for shared members. -->
-						<span
-							class="h-2 w-2 shrink-0 rounded-full {friend.online
-								? 'bg-z4'
-								: 'bg-muted/40'}"
-							title={friend.online ? 'online' : 'offline'}
-						></span>
+						<span class="relative shrink-0">
+							<Avatar
+								name={friend.name}
+								avatarUrl={friend.avatarUrl}
+								preset={friend.avatarPreset}
+								xp={friend.totalXp}
+								size={30}
+							/>
+							<span
+								class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
+									? 'bg-z4'
+									: 'bg-muted/40'}"
+								title={friend.online ? 'online' : 'offline'}
+							></span>
+						</span>
 						<span class="text-sm font-medium">{friend.name}</span>
 						<span class="text-muted min-w-0 truncate text-xs">
 							{#if friend.roomName}
@@ -164,45 +177,6 @@
 							>
 						{/if}
 					</div>
-				{/each}
-			</div>
-		{/if}
-
-		{#if dmHeads.heads.length > 0}
-			<!-- Your conversations (#208): the DM history's front door. -->
-			<h3 class="eyebrow mt-6">messages</h3>
-			<div class="panel mt-2">
-				{#each dmHeads.heads as head (head.peerId)}
-					<button
-						onclick={() => {
-							dm.show(head.peerId, head.peerName);
-							dmHeads.bump();
-						}}
-						class="border-ink/5 hover:bg-surface flex w-full items-center gap-3 border-b px-4 py-2.5 text-left transition-colors last:border-b-0"
-					>
-						<span class="relative shrink-0">
-							<MessageCircle size={15} class="text-muted" />
-							{#if dmHeads.unread(head.peerId)}
-								<span
-									class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
-								></span>
-							{/if}
-						</span>
-						<span class="min-w-0">
-							<span class="block truncate text-xs font-medium"
-								>{head.peerName}</span
-							>
-							<span class="text-muted block truncate text-[11px]"
-								>{head.mine ? 'you: ' : ''}{head.text}</span
-							>
-						</span>
-						<span class="text-muted/60 ml-auto shrink-0 text-[10px]">
-							{new Date(head.at).toLocaleTimeString(undefined, {
-								hour: '2-digit',
-								minute: '2-digit',
-							})}
-						</span>
-					</button>
 				{/each}
 			</div>
 		{/if}

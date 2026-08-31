@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 insert into users (display_name, avatar_url, ftp_watts, weight_kg)
 values ($1, $2, $3, $4)
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset
 `
 
 type CreateUserParams struct {
@@ -44,12 +44,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.NotifyPlanned,
 		&i.UnsubToken,
 		&i.FriendCode,
+		&i.AvatarPreset,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -67,6 +68,7 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.NotifyPlanned,
 		&i.UnsubToken,
 		&i.FriendCode,
+		&i.AvatarPreset,
 	)
 	return i, err
 }
@@ -130,9 +132,9 @@ func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlanned
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    email = $6, notify_planned = $7
+    email = $6, notify_planned = $7, avatar_preset = $8
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset
 `
 
 type UpdateUserProfileParams struct {
@@ -143,6 +145,7 @@ type UpdateUserProfileParams struct {
 	StravaUpload  bool
 	Email         *string
 	NotifyPlanned bool
+	AvatarPreset  *string
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
@@ -154,6 +157,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		arg.StravaUpload,
 		arg.Email,
 		arg.NotifyPlanned,
+		arg.AvatarPreset,
 	)
 	var i User
 	err := row.Scan(
@@ -168,6 +172,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.NotifyPlanned,
 		&i.UnsubToken,
 		&i.FriendCode,
+		&i.AvatarPreset,
 	)
 	return i, err
 }

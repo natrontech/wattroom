@@ -22,6 +22,24 @@
 			"runtimeArgs": ["--dir", "web", "dev"],
 			"autoPort": true,
 			"port": 5174
+		},
+		{
+			"name": "server-worktree",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"cd server && WATTROOM_ADDR=:8199 WATTROOM_DB='postgres://wattroom:wattroom@localhost:5432/wattroom' WATTROOM_DEV_LOGIN=1 go run ."
+			],
+			"port": 8199
+		},
+		{
+			"name": "web-worktree",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"WATTROOM_API=http://localhost:8199 pnpm --dir web dev --port 5199 --strictPort"
+			],
+			"port": 5199
 		}
 	]
 }

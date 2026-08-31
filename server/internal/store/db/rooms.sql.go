@@ -277,7 +277,8 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, m.role, m.joined_at
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, m.role, m.joined_at,
+    (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -296,8 +297,10 @@ type ListRoomMembersRow struct {
 	NotifyPlanned bool
 	UnsubToken    pgtype.UUID
 	FriendCode    string
+	AvatarPreset  *string
 	Role          string
 	JoinedAt      pgtype.Timestamptz
+	TotalXp       int64
 }
 
 func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]ListRoomMembersRow, error) {
@@ -321,8 +324,10 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.NotifyPlanned,
 			&i.UnsubToken,
 			&i.FriendCode,
+			&i.AvatarPreset,
 			&i.Role,
 			&i.JoinedAt,
+			&i.TotalXp,
 		); err != nil {
 			return nil, err
 		}

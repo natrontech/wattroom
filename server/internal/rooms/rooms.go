@@ -125,12 +125,15 @@ func (s *Service) Register(mux *http.ServeMux) {
 // --- responses ---
 
 type memberJSON struct {
-	ID          string  `json:"id"`
-	DisplayName string  `json:"displayName"`
-	AvatarURL   *string `json:"avatarUrl,omitempty"`
-	Role        string  `json:"role"`
+	ID           string  `json:"id"`
+	DisplayName  string  `json:"displayName"`
+	AvatarURL    *string `json:"avatarUrl,omitempty"`
+	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	Role         string  `json:"role"`
 	// Room-visible rider facts (#207) — the same numbers the roster already
-	// shows on tiles; rides and history stay private.
+	// shows on tiles; rides and history stay private. Lifetime XP joined
+	// them in #253: the level is room-visible identity, the rides are not.
+	TotalXp  int64  `json:"totalXp"`
 	FtpWatts int16  `json:"ftpWatts"`
 	WeightKg int16  `json:"weightKg"`
 	JoinedAt string `json:"joinedAt"`
@@ -317,7 +320,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				}
 				response.Members = append(response.Members, memberJSON{
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
-					AvatarURL: member.AvatarUrl, Role: member.Role,
+					AvatarURL: member.AvatarUrl, AvatarPreset: member.AvatarPreset,
+					Role: member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
 				})

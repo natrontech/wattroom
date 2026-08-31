@@ -66,8 +66,20 @@ export default defineConfig({
 			// changeOrigin must stay OFF: the string shorthand turns it on, which
 			// rewrites Host to :8080 while Origin stays :5174 — and the server's
 			// same-origin check then 403s every PATCH /api/me and logout in dev.
-			'/api': { target: 'http://localhost:8080', changeOrigin: false },
-			'/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: false },
+			// WATTROOM_API points a worktree's Vite at its own server instance —
+			// parallel agents can't all sit on :8080.
+			'/api': {
+				target: process.env.WATTROOM_API ?? 'http://localhost:8080',
+				changeOrigin: false,
+			},
+			'/ws': {
+				target: (process.env.WATTROOM_API ?? 'http://localhost:8080').replace(
+					'http',
+					'ws',
+				),
+				ws: true,
+				changeOrigin: false,
+			},
 		},
 	},
 });

@@ -39,7 +39,9 @@ limit 200;
 -- name: ListDmHeads :many
 -- The conversation list: my peers with their latest line, newest first.
 select distinct on (peer.id)
-    peer.id as peer_id, peer.display_name, m.text, m.sender_id, m.created_at
+    peer.id as peer_id, peer.display_name, peer.avatar_url, peer.avatar_preset,
+    (select coalesce(sum(xp), 0) from rides r where r.user_id = peer.id)::bigint as total_xp,
+    m.text, m.sender_id, m.created_at
 from dm_messages m
 join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end

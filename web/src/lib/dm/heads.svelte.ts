@@ -13,6 +13,9 @@ import { shouldAnnounce } from '$lib/notify-once';
 export interface DmHead {
 	peerId: string;
 	peerName: string;
+	peerAvatarUrl?: string;
+	peerAvatarPreset?: string;
+	peerTotalXp?: number;
 	text: string;
 	mine: boolean;
 	at: number;
