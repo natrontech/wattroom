@@ -495,10 +495,13 @@
 						class="btn btn-accent btn-lg">Replay {replayName}</button
 					>
 				{/if}
-				<button
-					onclick={() => begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
-					class="btn btn-secondary btn-lg">Ride simulated</button
-				>
+				{#if simAllowed}
+					<button
+						onclick={() =>
+							begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
+						class="btn btn-secondary btn-lg">Ride simulated</button
+					>
+				{/if}
 			</div>
 			{#if !supported}
 				<p class="text-muted mt-3 text-xs">
