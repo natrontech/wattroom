@@ -27,6 +27,7 @@
 	import { durationSeconds, flatten, targetAt } from '$lib/workout/engine';
 	import { library } from '$lib/workout/library';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
@@ -84,6 +85,8 @@
 		upcoming = [],
 		onSchedule,
 		onUnschedule,
+		icsToken = '',
+		onRotateIcs,
 	}: {
 		slug: string;
 		role: string;
@@ -110,6 +113,9 @@
 		}[];
 		onSchedule: (name: string, json: string, startsAt: string) => void;
 		onUnschedule: (id: string) => void;
+		/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
+		icsToken?: string;
+		onRotateIcs: () => void;
 	} = $props();
 
 	// #173: the connection outlives this page — you stay in the room while
@@ -377,6 +383,15 @@
 		const diff = new Date(iso).getTime() - Date.now();
 		return diff < 10 * 60 * 1000 && diff > -30 * 60 * 1000;
 	}
+	function copyIcsUrl() {
+		void navigator.clipboard.writeText(
+			`${location.origin}/api/rooms/${slug}/calendar/${icsToken}.ics`,
+		);
+		toasts.push(
+			'Calendar link copied — subscribe "from URL" in your calendar app.',
+		);
+	}
+
 	function startScheduled(entry: (typeof upcoming)[number]) {
 		const segments = parseSharedSegments(entry.workoutJson);
 		const total = segments.reduce(
@@ -1044,6 +1059,27 @@
 						</span>
 					</div>
 				{/each}
+				{#if icsToken}
+					<div class="border-ink/5 flex items-center gap-4 border-t px-4 py-2">
+						<button
+							onclick={copyIcsUrl}
+							class="text-muted hover:text-ink text-[11px] underline"
+							>subscribe in your calendar</button
+						>
+						{#if role === 'owner'}
+							<button
+								onclick={() => {
+									onRotateIcs();
+									toasts.push(
+										'Calendar link reset — shared links stop working.',
+									);
+								}}
+								class="text-muted hover:text-ink text-[11px] underline"
+								>reset link</button
+							>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		{/if}
 

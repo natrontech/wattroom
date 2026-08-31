@@ -92,6 +92,7 @@ type Room struct {
 	SoundPack string
 	Icon      string
 	Cheers    string
+	IcsToken  string
 }
 
 type ScheduledSession struct {

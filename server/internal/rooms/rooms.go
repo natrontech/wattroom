@@ -112,6 +112,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}", s.handleDelete)
 	mux.HandleFunc("POST /api/rooms/{slug}/schedule", s.handleSchedule)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}", s.handleUnschedule)
+	mux.HandleFunc("GET /api/rooms/{slug}/calendar/{token}", s.handleCalendar)
+	mux.HandleFunc("POST /api/rooms/{slug}/calendar/rotate", s.handleRotateIcs)
 	mux.HandleFunc("POST /api/rooms/{slug}/join", s.handleJoin)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
@@ -148,6 +150,8 @@ type roomJSON struct {
 	SoundPack string `json:"soundPack,omitempty"`
 	// The room's reaction palette (#223) — members only, like the sound pack.
 	Cheers []string `json:"cheers,omitempty"`
+	// Secret calendar-feed token (#245) — members only, like the code.
+	IcsToken string `json:"icsToken,omitempty"`
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
@@ -292,6 +296,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			response.Code = room.Code
 			response.SoundPack = room.SoundPack
 			response.Cheers = cheerSet(room.Cheers)
+			response.IcsToken = room.IcsToken
 			if rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID); err == nil {
 				for _, row := range rows {
 					response.Upcoming = append(response.Upcoming, scheduledJSON{
