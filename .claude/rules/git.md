@@ -24,7 +24,7 @@ docs: ADR-0003 …
 ## When to push / branch / PR (multi-contributor phase — humans + Claude + Codex in parallel)
 
 - **Branch + PR is the default for all feature work.** Branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
-- **Direct to main** only for trivial doc fixes and ADR text. `main` has no platform protection (private repo, free plan — #7 closed as not-planned): the PR rule is convention-enforced, so double-check `make ci` locally before any direct push; nothing else will catch it.
+- **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works.
 - **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, or mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them).
 
 ## GitHub (gh CLI) — claim before you code
@@ -36,4 +36,4 @@ Work lives in issues on milestones M0–M6; nobody (human or agent) works untrac
 3. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
 4. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
 
-Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked — ask first).
+Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first).
