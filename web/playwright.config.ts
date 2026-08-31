@@ -19,7 +19,7 @@ const external = process.env.PLAYWRIGHT_BASE_URL;
  */
 export default defineConfig({
 	testDir: 'e2e',
-	// The smoke rides two real minutes; the default 30 s cap would kill it.
+	// The smoke rides a real minute; the default 30 s cap would kill it.
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,

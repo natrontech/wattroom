@@ -471,11 +471,15 @@ const fixtures: LibraryWorkout[] = [
 	{
 		id: 'smoke-test',
 		focus: 'Recovery',
-		summary: 'CI fixture — two minutes, end to end.',
+		summary: 'CI fixture — one minute, end to end.',
 		workout: {
+			// Half a minute of ramp and half of steady: the seam the e2e ride proves
+			// needs a step transition and a real-time clock, not a long ride. This is
+			// the dominant term in CI's slowest job, so the length is the minimum that
+			// still exercises both step kinds.
 			name: 'Smoke Test',
 			author: 'wattroom',
-			steps: [warm(60, 0.4, 0.65), hold(60, 0.75)],
+			steps: [warm(30, 0.4, 0.65), hold(30, 0.75)],
 		},
 	},
 ];
