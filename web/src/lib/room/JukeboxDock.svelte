@@ -61,6 +61,9 @@
 			player = new (window as any).YT.Player(node, {
 				width: '100%',
 				height: '100%',
+				// Privacy-enhanced mode (#232): the player iframe comes from the
+				// nocookie host, still through the official IFrame API.
+				host: 'https://www.youtube-nocookie.com',
 				playerVars: { playsinline: 1, rel: 0, controls: 0, disablekb: 1 },
 				events: {
 					onReady: () => {

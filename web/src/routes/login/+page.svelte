@@ -111,6 +111,10 @@
 			>
 			· by
 			<a href="https://natron.io" class="hover:text-ink underline">Natron</a>
+			·
+			<a href="/legal" class="hover:text-ink underline">legal</a>
+			·
+			<a href="/privacy" class="hover:text-ink underline">privacy</a>
 		</p>
 	</div>
 </main>
