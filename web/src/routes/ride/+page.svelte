@@ -497,7 +497,8 @@
 				{/if}
 				{#if simAllowed}
 					<button
-						onclick={() => begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
+						onclick={() =>
+							begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
 						class="btn btn-secondary btn-lg">Ride simulated</button
 					>
 				{/if}
