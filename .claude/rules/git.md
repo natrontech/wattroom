@@ -24,8 +24,9 @@ docs: ADR-0003 …
 ## When to push / branch / PR (multi-contributor phase — humans + Claude + Codex in parallel)
 
 - **Branch + PR is the default for all feature work.** Branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
-- **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works.
-- **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, or mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them).
+- **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works. `make release` goes through a PR for the same reason.
+- **Every PR adds its changelog line** to `## [Unreleased]` in `CHANGELOG.md`, under the Keep a Changelog heading that fits (Added / Changed / Deprecated / Removed / Fixed / Security). Part of done, same as CI green.
+- **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them), or cut a release by hand — `make release` is the only path (it computes the CalVer number itself), and it refuses when `## [Unreleased]` is empty.
 
 ## GitHub (gh CLI) — claim before you code
 

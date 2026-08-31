@@ -33,6 +33,17 @@ All work is tracked as GitHub issues on milestones M0–M6; nobody works untrack
 
 Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
 
+## Releasing & deploying
+
+You will not run a deploy, but your change moves through this, so know the shape ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)):
+
+- **Releases are git tags, and versions are CalVer** — `YYYY.0M.MICRO`, e.g. `2026.09.1` then `2026.09.2`, MICRO back to 1 each month. `make release` computes the number from existing tags, promotes the changelog through a release PR (main's ruleset rejects direct pushes), merges it, then tags the result; the tag builds `ghcr.io/natrontech/wattroom:2026.09.1` and cuts the GitHub Release. Never tag by hand — a tag without a changelog section fails the release job. The version says *when*; what changed is the changelog's job.
+- **`:main` is built on every merge and never deployed.** Only tagged releases are.
+- **The VM converges on a pin.** A systemd timer reads the tag pinned in the homelab repo, refuses to deploy while riders are on the bike, `pg_dump`s, rolls forward, and retags to the previous release if the new one does not report its own tag and answer `/api/healthz`.
+- **Rollback is an image tag, never the database.** Nothing automated ever restores a dump — that would discard every ride recorded since it. Do not add anything that does.
+- **Every PR writes its own changelog line** into `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), under Added / Changed / Deprecated / Removed / Fixed / Security. One line, aimed at a person deciding whether to upgrade — not a copy of your commit subject, and not generated. A PR with no line makes the next release notes lie.
+- The expand/contract migration rule below is what makes the rollback safe. It is a correctness rule, not a style preference.
+
 ## Hard rules
 
 - `web/src/lib/protocol.ts` is **generated** — edit the Go structs, never the TS.

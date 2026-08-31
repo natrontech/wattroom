@@ -10,7 +10,7 @@ First time, on the VM:
 
 Every deploy after that is a tag bump in `.env`:
 
-    WATTROOM_TAG=v0.4.0
+    WATTROOM_TAG=2026.09.1
     docker compose -f docker-compose.prod.yml pull wattroom
     docker compose -f docker-compose.prod.yml up -d wattroom
 
@@ -19,9 +19,11 @@ because migrations are expand/contract (ADR-0019): a release only adds, and
 drops land one release *after* the release whose code stopped using the thing.
 Break that rule and the old binary meets a schema it cannot serve.
 
-Releases are cut by hand — `git tag v0.4.0 && git push --tags` — which builds
-`ghcr.io/natrontech/wattroom:v0.4.0` and opens a GitHub Release whose notes are
-generated from the squashed conventional-commit titles. Pushes to main still
+Releases are cut with `make release`, which computes the next CalVer number
+(`YYYY.0M.MICRO`), opens and merges a release PR promoting the changelog, then
+tags the result — building
+`ghcr.io/natrontech/wattroom:2026.09.1` and opening a GitHub Release whose
+notes are that release's changelog section. Pushes to main still
 build `:main` for testing; never pin the VM to it, because a moving tag has no
 previous version to go back to. The server migrates its own schema at boot, so
 pull + up -d is still the whole path.
@@ -29,7 +31,7 @@ pull + up -d is still the whole path.
 Check what actually landed — the second one is a real database ping now, not a
 hardcoded "ok":
 
-    curl -s https://wattroom.ch/api/version    # {"version":"v0.4.0",...}
+    curl -s https://wattroom.ch/api/version    # {"version":"2026.09.1",...}
     curl -s https://wattroom.ch/api/healthz    # ok
 
 ## The VM deploys itself

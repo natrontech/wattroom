@@ -1,5 +1,5 @@
 # Multi-arch image publish to GHCR (#36). Every push to main builds :main, for
-# testing. A v* tag builds the immutable :vX.Y.Z the VM actually pins and cuts
+# testing. A CalVer tag builds the immutable :YYYY.0M.MICRO the VM pins and cuts
 # the GitHub Release whose generated notes are the changelog (ADR-0019) —
 # "built" and "blessed" are deliberately not the same event.
 name: publish
@@ -7,7 +7,7 @@ name: publish
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['20*'] # CalVer: 2026.09.1 — scripts/release.sh is the real validator
 
 jobs:
   image:
@@ -39,11 +39,25 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # Last, so a release never names an image that failed to push. PR titles
-      # are conventional commits and merges are squashes, so GitHub writes the
-      # notes off the commit range — there is no changelog tooling here.
+      # Last, so a release never names an image that failed to push. The notes
+      # are the CHANGELOG section this tag was cut with (`make release` writes
+      # it before tagging), so the Release and the file cannot disagree — and
+      # neither is a commit-log dump.
       - name: cut the release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        run: |
+          # Stop at the next heading *or* the link-reference block: the oldest
+          # section has no heading after it, and the first release ever is
+          # that section.
+          awk -v v="$GITHUB_REF_NAME" '
+            index($0, "## [" v "]") == 1 { f = 1; next }
+            /^## \[/ || /^\[[^]]+\]:/ { f = 0 }
+            f
+          ' CHANGELOG.md > notes.md
+          grep -q '[^[:space:]]' notes.md || {
+            echo "CHANGELOG.md has no section for $GITHUB_REF_NAME — was it tagged with make release?" >&2
+            exit 1
+          }
+          gh release create "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
