@@ -16,13 +16,20 @@
 		type Palette,
 	} from '$lib/palette';
 	import { palette } from '$lib/palette.svelte';
+	import { untrack } from 'svelte';
 
 	const choice = $derived(palette.choice);
 	const selectedId = $derived(choice.kind === 'custom' ? CUSTOM_ID : choice.id);
 
 	// The slider keeps its own hue so the custom card previews a colour before
-	// it is chosen, and remembers it across a hop to a preset and back.
-	let hue = $state(choice.kind === 'custom' ? choice.hue : 320);
+	// it is chosen, and remembers it across a hop to a preset and back. Seeded
+	// once and untracked on purpose: from here it is the slider's value, not a
+	// mirror of the stored choice.
+	let hue = $state(
+		untrack(() =>
+			palette.choice.kind === 'custom' ? palette.choice.hue : 320,
+		),
+	);
 	const custom = $derived(customPalette(hue));
 
 	/** Both accents as locals, so a swatch paints in the palette it advertises. */
@@ -41,9 +48,12 @@
 			class="absolute inset-x-2 top-2 h-1 rounded-full opacity-80"
 			style="background: var(--sw-neon)"
 		></span>
+		<!-- The data bar glows and the chrome bar does not: the swatch states the
+		     rule rather than relying on the caption to explain it. glow-stroke is
+		     driven by currentColor, and is transparent on light by design. -->
 		<span
-			class="absolute inset-x-2 bottom-2 h-1.5 rounded-full"
-			style="background: var(--sw-watt)"
+			class="glow-stroke absolute inset-x-2 bottom-2 h-1.5 rounded-full"
+			style="background: var(--sw-watt); color: var(--sw-watt)"
 		></span>
 	</span>
 {/snippet}

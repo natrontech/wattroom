@@ -4,6 +4,7 @@
 	import MedalCard from '$lib/components/MedalCard.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -110,6 +111,13 @@
 			<TargetWidget {you} variant="delta" />
 			<p class="text-muted mt-1.5 text-[11px]">delta — three metres, TV mode</p>
 		</div>
+	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Palette picker
+	</h2>
+	<div class="bg-surface-raised mt-4 rounded-lg p-5">
+		<PalettePicker />
 	</div>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
