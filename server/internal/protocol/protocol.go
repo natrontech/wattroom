@@ -97,9 +97,27 @@ type JukeboxCommand struct {
 // never persisted — it rides the tick like cheers and dies with the page.
 // Warm-up and phone talk; mid-effort stays the cheers' job.
 type ChatLine struct {
+	// Persisted identity (ADR-0010 amended, #201) — what reactions attach to.
+	// Empty when the server runs without a database.
+	ID   string `json:"id,omitempty"`
 	From string `json:"from"` // filled by the server, like cheers
 	Text string `json:"text"`
 	At   int64  `json:"at"` // server millis, for ordering only
+}
+
+// ChatReact toggles one rider's emoji on one message (#201) — the cheer
+// vocabulary, attached instead of thrown.
+type ChatReact struct {
+	MessageID string `json:"messageId"`
+	Emoji     string `json:"emoji"`
+}
+
+// ChatReactionCount is a changed total, broadcast on the tick. "Did I react"
+// is the client's own knowledge — the shared tick carries only the count.
+type ChatReactionCount struct {
+	MessageID string `json:"messageId"`
+	Emoji     string `json:"emoji"`
+	Count     int    `json:"count"`
 }
 
 // Cheer is the room's reaction layer (#74) — and the spectator's one verb.
@@ -111,12 +129,13 @@ type Cheer struct {
 
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
-	Chat     *ChatLine       `json:"chat,omitempty"`
-	Cheer    *Cheer          `json:"cheer,omitempty"`
-	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
-	Control  *Control        `json:"control,omitempty"`
-	Backfill *Backfill       `json:"backfill,omitempty"`
-	Jukebox  *JukeboxCommand `json:"jukebox,omitempty"`
+	Chat      *ChatLine       `json:"chat,omitempty"`
+	ChatReact *ChatReact      `json:"chatReact,omitempty"`
+	Cheer     *Cheer          `json:"cheer,omitempty"`
+	Metrics   *RiderMetrics   `json:"metrics,omitempty"`
+	Control   *Control        `json:"control,omitempty"`
+	Backfill  *Backfill       `json:"backfill,omitempty"`
+	Jukebox   *JukeboxCommand `json:"jukebox,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard
@@ -178,7 +197,8 @@ type ServerTick struct {
 	Cheers []Cheer `json:"cheers,omitempty"`
 	// This second's chat lines, drained the same way. No backlog on join —
 	// ephemeral means ephemeral.
-	Chat []ChatLine `json:"chat,omitempty"`
+	Chat          []ChatLine          `json:"chat,omitempty"`
+	ChatReactions []ChatReactionCount `json:"chatReactions,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.

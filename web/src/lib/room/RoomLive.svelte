@@ -1141,6 +1141,9 @@
 			onJam={(url) => live.jukebox('jam', undefined, undefined, url)}
 			jamUrl={live.tick?.jukebox?.jamUrl}
 			messages={live.chatLog}
+			reactions={live.chatReactions}
+			myReacts={live.myReacts}
+			onReact={(id, emoji) => live.react(id, emoji)}
 			onCheer={(emoji) => live.cheer(emoji)}
 			onChat={(text) => live.chat(text)}
 		>

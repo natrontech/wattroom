@@ -16,9 +16,13 @@ export type LiveStatus = 'connecting' | 'live' | 'reconnecting';
 export function createRoomLive(slug: string) {
 	let status = $state<LiveStatus>('connecting');
 	let tick = $state<ServerTick | null>(null);
-	// Ephemeral chat (#146): lines accumulate for THIS page's lifetime only —
-	// no backlog on join, nothing survives a reload. Ephemeral means ephemeral.
+	// Chat is a bounded room log since ADR-0010's amendment (#201): the
+	// backlog seeds it on join, live lines ride the tick on top.
 	let chatLog = $state<import('$lib/protocol').ChatLine[]>([]);
+	// messageId → emoji → count, shared truth from the tick + backlog.
+	let chatReactions = $state<Record<string, Record<string, number>>>({});
+	// "did I press it" — the client's own knowledge, keyed id:emoji.
+	let myReacts = $state<Record<string, boolean>>({});
 	let refusal = $state<string | null>(null);
 	let socket: WebSocket | null = null;
 	let closed = false;
@@ -73,7 +77,17 @@ export function createRoomLive(slug: string) {
 			if (msg.tick) {
 				tick = msg.tick;
 				if (msg.tick.chat?.length) {
-					chatLog = [...chatLog, ...msg.tick.chat].slice(-100);
+					chatLog = [...chatLog, ...msg.tick.chat].slice(-200);
+				}
+				if (msg.tick.chatReactions?.length) {
+					const next = { ...chatReactions };
+					for (const change of msg.tick.chatReactions) {
+						next[change.messageId] = {
+							...next[change.messageId],
+							[change.emoji]: change.count,
+						};
+					}
+					chatReactions = next;
 				}
 			}
 			// A refused command is feedback, not a fault — shown, then cleared on
@@ -133,8 +147,48 @@ export function createRoomLive(slug: string) {
 		get chatLog() {
 			return chatLog;
 		},
+		get chatReactions() {
+			return chatReactions;
+		},
+		get myReacts() {
+			return myReacts;
+		},
+		/** The join-time backlog (#201) — replaces the log, seeds reactions. */
+		seedChat(
+			messages: {
+				id: string;
+				from: string;
+				text: string;
+				at: number;
+				reactions?: Record<string, number>;
+				mine?: string[];
+			}[],
+		) {
+			chatLog = messages.map((m) => ({
+				id: m.id,
+				from: m.from,
+				text: m.text,
+				at: m.at,
+			}));
+			const counts: Record<string, Record<string, number>> = {};
+			const pressed: Record<string, boolean> = {};
+			for (const m of messages) {
+				if (m.reactions) counts[m.id] = m.reactions;
+				for (const emoji of m.mine ?? []) pressed[`${m.id}:${emoji}`] = true;
+			}
+			chatReactions = counts;
+			myReacts = pressed;
+		},
 		chat(text: string) {
 			send({ chat: { from: '', text, at: 0 } });
+		},
+		/** Toggle my emoji on a message — optimistic; the tick corrects counts. */
+		react(messageId: string, emoji: string) {
+			myReacts = {
+				...myReacts,
+				[`${messageId}:${emoji}`]: !myReacts[`${messageId}:${emoji}`],
+			};
+			send({ chatReact: { messageId, emoji } });
 		},
 		jukebox(
 			action: string,

@@ -130,9 +130,31 @@ export interface JukeboxCommand {
  * Warm-up and phone talk; mid-effort stays the cheers' job.
  */
 export interface ChatLine {
+  /**
+   * Persisted identity (ADR-0010 amended, #201) — what reactions attach to.
+   * Empty when the server runs without a database.
+   */
+  id?: string;
   from: string; // filled by the server, like cheers
   text: string;
   at: number /* int64 */; // server millis, for ordering only
+}
+/**
+ * ChatReact toggles one rider's emoji on one message (#201) — the cheer
+ * vocabulary, attached instead of thrown.
+ */
+export interface ChatReact {
+  messageId: string;
+  emoji: string;
+}
+/**
+ * ChatReactionCount is a changed total, broadcast on the tick. "Did I react"
+ * is the client's own knowledge — the shared tick carries only the count.
+ */
+export interface ChatReactionCount {
+  messageId: string;
+  emoji: string;
+  count: number /* int */;
 }
 /**
  * Cheer is the room's reaction layer (#74) — and the spectator's one verb.
@@ -149,6 +171,7 @@ export interface Cheer {
  */
 export interface ClientMessage {
   chat?: ChatLine;
+  chatReact?: ChatReact;
   cheer?: Cheer;
   metrics?: RiderMetrics;
   control?: Control;
@@ -233,6 +256,7 @@ export interface ServerTick {
    * ephemeral means ephemeral.
    */
   chat?: ChatLine[];
+  chatReactions?: ChatReactionCount[];
   /**
    * Sprint moment (#30): armed/live window and, after it closes, the podium.
    */

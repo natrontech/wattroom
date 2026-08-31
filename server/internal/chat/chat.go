@@ -1,0 +1,185 @@
+// Package chat is the durable half of room chat (ADR-0010 amended, #201):
+// a bounded room log — last 500 messages, pruned on write — plus reactions.
+// The live path still rides the hub's tick; this package only remembers.
+package chat
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
+)
+
+// UserSource resolves the signed-in user — same shape rooms consumes.
+type UserSource interface {
+	User(r *http.Request) (db.User, bool)
+}
+
+type Service struct {
+	store *store.Store
+	users UserSource
+	log   *slog.Logger
+}
+
+func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
+	return &Service{store: st, users: users, log: log}
+}
+
+func (s *Service) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/rooms/{slug}/chat", s.handleBacklog)
+}
+
+// SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
+// the tick line carries so reactions have something to attach to.
+func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (string, bool) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	room, uid, ok := s.resolve(ctx, slug, userID)
+	if !ok {
+		return "", false
+	}
+	id, err := s.store.Queries.SaveChatMessage(ctx, db.SaveChatMessageParams{
+		RoomID: room.ID, UserID: uid, Text: text,
+	})
+	if err != nil {
+		s.log.Warn("save chat", "err", err, "room", slug)
+		return "", false
+	}
+	if err := s.store.Queries.PruneChat(ctx, room.ID); err != nil {
+		s.log.Warn("prune chat", "err", err, "room", slug)
+	}
+	return store.UUIDString(id), true
+}
+
+// ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
+// return the new total. The insert refuses messages outside this room.
+func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (int, bool) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	room, uid, ok := s.resolve(ctx, slug, userID)
+	if !ok {
+		return 0, false
+	}
+	mid, err := store.ParseUUID(messageID)
+	if err != nil {
+		return 0, false
+	}
+	added, err := s.store.Queries.AddChatReaction(ctx, db.AddChatReactionParams{
+		MessageID: mid, UserID: uid, Emoji: emoji, RoomID: room.ID,
+	})
+	if err != nil {
+		s.log.Warn("add reaction", "err", err, "room", slug)
+		return 0, false
+	}
+	if added == 0 {
+		removed, err := s.store.Queries.RemoveChatReaction(ctx, db.RemoveChatReactionParams{
+			MessageID: mid, UserID: uid, Emoji: emoji,
+		})
+		if err != nil || removed == 0 {
+			// Neither added nor removed: the message is not in this room.
+			return 0, false
+		}
+	}
+	count, err := s.store.Queries.CountChatReaction(ctx, db.CountChatReactionParams{
+		MessageID: mid, Emoji: emoji,
+	})
+	if err != nil {
+		return 0, false
+	}
+	return int(count), true
+}
+
+func (s *Service) resolve(ctx context.Context, slug, userID string) (db.Room, pgtype.UUID, bool) {
+	uid, err := store.ParseUUID(userID)
+	if err != nil {
+		return db.Room{}, pgtype.UUID{}, false
+	}
+	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+	if err != nil {
+		return db.Room{}, pgtype.UUID{}, false
+	}
+	return room, uid, true
+}
+
+type messageJSON struct {
+	ID   string `json:"id"`
+	From string `json:"from"`
+	Text string `json:"text"`
+	At   int64  `json:"at"`
+	// emoji → count, plus which the viewer pressed — same shape the live
+	// path builds client-side, so the panel renders one way.
+	Reactions map[string]int `json:"reactions,omitempty"`
+	Mine      []string       `json:"mine,omitempty"`
+}
+
+// handleBacklog is the join-time load: the newest lines, oldest first,
+// members only — chat never leaves the room (ADR-0010).
+func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
+	me, ok := s.users.User(r)
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
+		return
+	}
+	room, err := s.store.Queries.GetRoomBySlug(r.Context(), r.PathValue("slug"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such room.")
+		return
+	}
+	if _, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: me.ID,
+	}); err != nil {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Chat is for the room's members.")
+		return
+	}
+	limit := 100
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+	rows, err := s.store.Queries.ListRoomChat(r.Context(), db.ListRoomChatParams{
+		RoomID: room.ID, Limit: int32(limit), //nolint:gosec // bounded 1–500 above
+	})
+	if err != nil {
+		s.log.Error("list chat", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The chat could not be loaded.")
+		return
+	}
+	reactions, err := s.store.Queries.ListChatReactions(r.Context(), db.ListChatReactionsParams{
+		RoomID: room.ID, UserID: me.ID,
+	})
+	if err != nil {
+		s.log.Error("list reactions", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The chat could not be loaded.")
+		return
+	}
+	counts := map[string]map[string]int{}
+	mine := map[string][]string{}
+	for _, row := range reactions {
+		id := store.UUIDString(row.MessageID)
+		if counts[id] == nil {
+			counts[id] = map[string]int{}
+		}
+		counts[id][row.Emoji] = int(row.Total)
+		if row.Mine {
+			mine[id] = append(mine[id], row.Emoji)
+		}
+	}
+	out := make([]messageJSON, 0, len(rows))
+	for _, row := range rows {
+		id := store.UUIDString(row.ID)
+		out = append(out, messageJSON{
+			ID: id, From: row.DisplayName, Text: row.Text,
+			At:        row.CreatedAt.Time.UnixMilli(),
+			Reactions: counts[id], Mine: mine[id],
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"messages": out})
+}
