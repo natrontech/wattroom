@@ -342,6 +342,24 @@
 		const diff = new Date(iso).getTime() - Date.now();
 		return diff < 10 * 60 * 1000 && diff > -30 * 60 * 1000;
 	}
+	// A pasted image uploads first (#279); the line then carries only its id.
+	async function sendChatLine(text: string, image?: Blob) {
+		if (!image) {
+			live.chat(text);
+			return;
+		}
+		const up = await api<{ id: string }>(`/api/rooms/${slug}/chat/images`, {
+			method: 'POST',
+			body: image,
+			headers: { 'content-type': image.type },
+		});
+		if (!up.ok) {
+			toasts.push(up.error.message, { tone: 'error' });
+			return;
+		}
+		live.chat(text, up.data.id);
+	}
+
 	function copyIcsUrl() {
 		void navigator.clipboard.writeText(
 			`${location.origin}/api/rooms/${slug}/calendar/${icsToken}.ics`,
@@ -1163,7 +1181,8 @@
 		myReacts={live.myReacts}
 		onReact={(id, emoji) => live.react(id, emoji)}
 		onCheer={(emoji) => live.cheer(emoji)}
-		onChat={(text) => live.chat(text)}
+		onChat={(text, image) => void sendChatLine(text, image)}
+		{slug}
 		{cheers}
 	>
 		{#snippet player()}

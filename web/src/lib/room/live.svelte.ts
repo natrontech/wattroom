@@ -211,6 +211,7 @@ export function createRoomLive(slug: string) {
 				from: string;
 				fromId?: string;
 				text: string;
+				imageId?: string;
 				at: number;
 				reactions?: Record<string, number>;
 				mine?: string[];
@@ -228,6 +229,7 @@ export function createRoomLive(slug: string) {
 						from: m.from,
 						fromId: m.fromId,
 						text: m.text,
+						imageId: m.imageId,
 						at: m.at,
 					})),
 				...chatLog,
@@ -245,8 +247,8 @@ export function createRoomLive(slug: string) {
 			chatReactions = counts;
 			myReacts = pressed;
 		},
-		chat(text: string) {
-			send({ chat: { from: '', text, at: 0 } });
+		chat(text: string, imageId?: string) {
+			send({ chat: { from: '', text, imageId, at: 0 } });
 		},
 		/** Toggle my emoji on a message — optimistic; the tick corrects counts. */
 		react(messageId: string, emoji: string) {

@@ -17,12 +17,22 @@ type ApiToken struct {
 	LastUsedAt pgtype.Timestamptz
 }
 
+type ChatImage struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	Mime      string
+	Bytes     []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type ChatMessage struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID
 	UserID    pgtype.UUID
 	Text      string
 	CreatedAt pgtype.Timestamptz
+	ImageID   pgtype.UUID
 }
 
 type ChatReaction struct {
