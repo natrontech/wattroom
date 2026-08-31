@@ -23,7 +23,8 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 
 All work is tracked as GitHub issues on milestones M0–M6; nobody works untracked.
 
-1. **Before starting**: check the issue is unassigned and unclaimed (`gh issue view <n> --comments`). If someone (or someone's agent) is on it, coordinate in comments instead of duplicating.
+1. **Before starting**: check the issue is unassigned and unclaimed (`gh issue view <n> --comments`) **and that no open PR already covers it** (`gh pr list`). If someone (or someone's agent) is on it, coordinate in comments instead of duplicating.
+   The draft PR is the claim (step 3), and agents routinely open one without commenting on the issue — so a quiet issue is not an idle one. Two agents shipped the same feature twice for want of this one command (#280 → #284 and #294).
 2. **Claim it**: assign yourself (`gh issue edit <n> --add-assignee @me`) AND comment a one-line approach.
 3. **Branch + PR for all feature work**: branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — the draft is how others see what's in flight. Conventional-commit PR title (it becomes the squash commit). Only trivial doc fixes and ADR text may go direct to main. Note: `main` has **no platform-level protection** (private repo, free plan) — the PR rule is convention; follow it anyway, nothing will stop a bad push except you.
 4. **Progress lives in the issue/PR**, not in chat apps: blockers, decisions, findings → comments. A decision made in a thread still gets an ADR.
