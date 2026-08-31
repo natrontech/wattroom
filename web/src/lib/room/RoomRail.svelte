@@ -146,7 +146,7 @@
 </script>
 
 <nav
-	class="bg-surface border-ink/5 flex h-full w-56 shrink-0 flex-col border-r"
+	class="bg-surface border-ink/5 relative flex h-full w-56 shrink-0 flex-col border-r"
 >
 	<div class="flex items-center gap-2 px-4 py-4">
 		<Logo size={24} {live} />
@@ -154,7 +154,7 @@
 	</div>
 
 	<div class="eyebrow px-4 pt-2 pb-1">your rooms</div>
-	<ul class="flex-1 px-2">
+	<ul class="min-h-0 flex-1 overflow-y-auto px-2">
 		{#each rooms as room (room.slug)}
 			<li>
 				<a
@@ -453,7 +453,12 @@
 		{/if}
 		{#if showAv}
 			{#if voiceAdvanced}
-				<div class="border-muted/15 mt-2 rounded border p-2">
+				<!-- A popover beside the rail, not a column stuffed into 224 px:
+				     devices + mixer used to run off the bottom of the screen with
+				     no way to reach them (rider report). -->
+				<div
+					class="border-muted/25 bg-surface absolute bottom-3 left-[calc(100%+0.5rem)] z-50 max-h-[80vh] w-72 overflow-y-auto rounded-lg border p-3 shadow-xl"
+				>
 					<!-- Which mic/cam/speakers this machine is actually using (#181
 					     feedback) — one picker each, default until chosen. -->
 					<span class="eyebrow">devices</span>

@@ -154,8 +154,11 @@
 	{/if}
 
 	{#if rider.stale}
-		<div class="bg-paper/55 absolute inset-0 grid place-items-center">
-			<span class="text-z5 text-[11px] font-medium tracking-wider uppercase"
+		<!-- A badge, not a curtain: a quiet trainer says nothing about their
+		     camera, and the dimmed watts above already read "last known". -->
+		<div class="absolute inset-x-0 bottom-2.5 flex justify-center">
+			<span
+				class="bg-paper/80 text-z5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
 				>no signal</span
 			>
 		</div>
