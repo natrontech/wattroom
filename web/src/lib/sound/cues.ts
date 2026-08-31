@@ -43,7 +43,8 @@ export type CueId =
 	| 'reaction'
 	| 'block'
 	| 'join'
-	| 'leave';
+	| 'leave'
+	| 'chat';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -247,6 +248,23 @@ export const CUES: Record<CueId, Cue> = {
 		voices: [
 			{ type: 'triangle', freq: note(-5), at: 0, dur: 0.09, gain: 0.18 },
 			{ type: 'triangle', freq: note(2), at: 0.09, dur: 0.16, gain: 0.2 },
+		],
+	},
+
+	chat: {
+		id: 'chat',
+		label: 'Chat message',
+		hint: 'A line landed in the room chat. Quieter than a cheer — words wait.',
+		voices: [
+			{
+				type: 'sine',
+				freq: note(9),
+				to: note(14),
+				at: 0,
+				dur: 0.07,
+				gain: 0.16,
+			},
+			{ type: 'sine', freq: note(14), at: 0.07, dur: 0.09, gain: 0.13 },
 		],
 	},
 
