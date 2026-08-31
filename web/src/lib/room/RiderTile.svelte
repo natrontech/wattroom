@@ -59,7 +59,7 @@
 </script>
 
 <div
-	class="bg-surface-raised relative overflow-hidden rounded-lg ring-1 {stretch
+	class="bg-surface-raised @container relative overflow-hidden rounded-lg ring-1 {stretch
 		? 'h-full'
 		: 'aspect-video'} transition-shadow duration-200 {rider.speaking
 		? 'ring-neon shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-neon)_35%,transparent)]'
@@ -104,8 +104,8 @@
 	></div>
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
-	<div class="absolute top-2 left-2.5 flex items-center gap-1.5">
-		<span class="text-ink text-sm font-semibold">{rider.name}</span>
+	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
+		<span class="text-ink truncate text-sm font-semibold">{rider.name}</span>
 		{#if rider.coach}
 			<span
 				class="bg-paper/40 text-ink/80 rounded-full px-1.5 py-0.5 text-[9px]"
@@ -180,7 +180,9 @@
 			class="text-ink absolute right-2.5 bottom-3 flex gap-3 font-mono text-xs font-medium tabular-nums"
 		>
 			{#each extras as extra (extra.key)}
-				<span>{extra.text}<span class="text-ink/70"> {extra.unit}</span></span>
+				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}
+					>{extra.text}<span class="text-ink/70"> {extra.unit}</span></span
+				>
 			{/each}
 		</div>
 	{/if}
