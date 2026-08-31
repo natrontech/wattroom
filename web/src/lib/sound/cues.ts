@@ -55,7 +55,7 @@ export const CUES: Record<CueId, Cue> = {
 	countdown: {
 		id: 'countdown',
 		label: 'Countdown tick',
-		hint: 'Each of the last three seconds before a session starts.',
+		hint: 'Each of the last three seconds before a session starts — rising as zero approaches.',
 		voices: [
 			{
 				type: 'square',
@@ -328,13 +328,14 @@ export function setDucked(next: boolean): void {
 	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
 }
 
-export function play(id: CueId): void {
+export function play(id: CueId, semitonesUp = 0): void {
 	// debug-level so sound issues are diagnosable without ears on the machine
-	console.debug('[cue]', id);
+	console.debug('[cue]', id, semitonesUp || '');
 	const audio = ensure();
 	if (!audio) return;
 	const { ctx: context, master: out } = audio;
 	const now = context.currentTime + 0.01;
+	const shift = Math.pow(2, semitonesUp / 12);
 
 	for (const voice of CUES[id].voices) {
 		const osc = context.createOscillator();
@@ -343,8 +344,9 @@ export function play(id: CueId): void {
 
 		const start = now + voice.at;
 		const end = start + voice.dur;
-		osc.frequency.setValueAtTime(voice.freq, start);
-		if (voice.to) osc.frequency.exponentialRampToValueAtTime(voice.to, end);
+		osc.frequency.setValueAtTime(voice.freq * shift, start);
+		if (voice.to)
+			osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
 
 		let node: AudioNode = osc;
 
@@ -384,10 +386,17 @@ export function play(id: CueId): void {
 	}
 }
 
+/** 3-2-1 rise up the minor triad so each tick tells you how many are left; 'go' resolves above them. */
+const TICK_STEPS: Record<number, number> = { 3: 0, 2: 3, 1: 7 };
+
+export function playCountdownTick(secondsLeft: number): void {
+	play('countdown', TICK_STEPS[secondsLeft] ?? 0);
+}
+
 /** The full 3-2-1-go sequence, at real cadence. */
 export function playCountdown(): void {
-	play('countdown');
-	setTimeout(() => play('countdown'), 1000);
-	setTimeout(() => play('countdown'), 2000);
+	playCountdownTick(3);
+	setTimeout(() => playCountdownTick(2), 1000);
+	setTimeout(() => playCountdownTick(1), 2000);
 	setTimeout(() => play('go'), 3000);
 }

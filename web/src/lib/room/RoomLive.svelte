@@ -13,7 +13,7 @@
 		VideoOff,
 	} from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
-	import { play, setMuted } from '$lib/sound/cues';
+	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { arbitrate } from '$lib/ble/arbitrate';
@@ -258,7 +258,7 @@
 		const left = shared.countdownRemaining ?? 0;
 		if (left <= 3 && left > 0 && left !== heardCount) {
 			heardCount = left;
-			play('countdown');
+			playCountdownTick(left);
 		}
 	});
 
