@@ -23,8 +23,16 @@
 	let candidates = $state<Candidate[]>([]);
 	let error = $state<string | null>(null);
 	let picked = $state('');
+	interface Head {
+		peerId: string;
+		peerName: string;
+		text: string;
+		mine: boolean;
+		at: number;
+	}
 	// peerId → newest inbound message time — the unread badge's raw material.
 	let inbound = $state<Record<string, number>>({});
+	let heads = $state<Head[]>([]);
 	let seenBump = $state(0);
 
 	async function loadHeads(first: boolean) {
@@ -38,6 +46,7 @@
 			}[];
 		}>('/api/dms');
 		if (!res.ok) return;
+		heads = [...res.data.conversations].sort((a, b) => b.at - a.at);
 		const next: Record<string, number> = {};
 		for (const head of res.data.conversations) {
 			if (head.mine) continue;
@@ -193,6 +202,47 @@
 							>
 						{/if}
 					</div>
+				{/each}
+			</div>
+		{/if}
+
+		{#if heads.length > 0}
+			<!-- Your conversations (#208): the DM history's front door. -->
+			<h3 class="text-muted mt-6 text-[10px] tracking-[0.2em] uppercase">
+				messages
+			</h3>
+			<div class="border-muted/15 bg-surface-raised mt-2 rounded-lg border">
+				{#each heads as head (head.peerId)}
+					<button
+						onclick={() => {
+							dm.show(head.peerId, head.peerName);
+							seenBump += 1;
+						}}
+						class="border-ink/5 hover:bg-surface flex w-full items-center gap-3 border-b px-4 py-2.5 text-left transition-colors last:border-b-0"
+					>
+						<span class="relative shrink-0">
+							<MessageCircle size={15} class="text-muted" />
+							{#if unread(head.peerId)}
+								<span
+									class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
+								></span>
+							{/if}
+						</span>
+						<span class="min-w-0">
+							<span class="block truncate text-xs font-medium"
+								>{head.peerName}</span
+							>
+							<span class="text-muted block truncate text-[11px]"
+								>{head.mine ? 'you: ' : ''}{head.text}</span
+							>
+						</span>
+						<span class="text-muted/60 ml-auto shrink-0 text-[10px]">
+							{new Date(head.at).toLocaleTimeString(undefined, {
+								hour: '2-digit',
+								minute: '2-digit',
+							})}
+						</span>
+					</button>
 				{/each}
 			</div>
 		{/if}
