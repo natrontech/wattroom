@@ -18,7 +18,9 @@
 
 <svg
 	viewBox="0 0 100 72"
-	class="absolute inset-0 m-auto h-[72%] w-auto {flip ? '-scale-x-100' : ''}"
+	class="absolute inset-x-0 bottom-[4%] mx-auto h-[62%] w-auto sm:h-[68%] {flip
+		? '-scale-x-100'
+		: ''}"
 	style="--cycle: {cycle}s"
 	aria-hidden="true"
 >

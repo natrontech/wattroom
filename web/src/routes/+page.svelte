@@ -70,12 +70,15 @@
 			<div class="flex items-center gap-2.5">
 				<a
 					href={repo}
-					class="border-muted/25 hover:border-neon/60 hidden items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium sm:flex"
+					class="border-muted/25 hover:border-neon/60 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium sm:px-3"
+					aria-label="Star WattRoom on GitHub"
 				>
-					<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-current"
+					<svg
+						viewBox="0 0 24 24"
+						class="h-4 w-4 fill-current sm:h-3.5 sm:w-3.5"
 						><path d={GITHUB_MARK} /></svg
 					>
-					Star on GitHub
+					<span class="hidden sm:inline">Star on GitHub</span>
 				</a>
 				<a
 					href="/login"
