@@ -24,7 +24,9 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=server /wattroom /wattroom
 # ARG lives here so a new SHA only rebuilds this free stage, not the Go compile.
 ARG BUILD_SHA=dev
+ARG BUILD_VERSION=dev
 ENV WATTROOM_BUILD_SHA=$BUILD_SHA
+ENV WATTROOM_VERSION=$BUILD_VERSION
 ENV WATTROOM_ADDR=:8080
 EXPOSE 8080
 ENTRYPOINT ["/wattroom"]

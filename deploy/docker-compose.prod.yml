@@ -2,7 +2,7 @@
 # to .env beside this file, fill it, then: docker compose up -d
 services:
   wattroom:
-    image: ghcr.io/natrontech/wattroom:main
+    image: ghcr.io/natrontech/wattroom:${WATTROOM_TAG:?set WATTROOM_TAG in .env — the release this VM is pinned to}
     restart: unless-stopped
     env_file: .env
     environment:

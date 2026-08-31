@@ -73,9 +73,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("ok"))
-	})
+	mux.HandleFunc("GET /api/healthz", healthzHandler(st, log))
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /api/version", versionHandler())
 	// The client owns the ride until there is somewhere to persist it (#15); this
@@ -187,6 +185,26 @@ func issuerOrNil() feedback.Issuer {
 	return nil
 }
 
+// healthzHandler answers the one question the maintenance page and the deploy
+// gate both ask: can this binary serve? It used to write "ok" unconditionally,
+// which made it useless for either (ADR-0019). No store configured is
+// solo-ride mode — genuinely healthy, not degraded — but a store that has been
+// configured and cannot be reached is not.
+func healthzHandler(st *store.Store, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if st != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			if err := st.Pool.Ping(ctx); err != nil {
+				log.Error("healthz: database unreachable", "err", err)
+				http.Error(w, "database unreachable", http.StatusServiceUnavailable)
+				return
+			}
+		}
+		_, _ = w.Write([]byte("ok"))
+	}
+}
+
 // versionHandler reports which build is running. The Go toolchain stamps
 // vcs.* into any `go build` from a git checkout, so there are no ldflags to
 // maintain; `go run` (dev) carries no stamp and reports "dev".
@@ -221,7 +239,15 @@ func versionHandler() http.HandlerFunc {
 			}
 		}
 	}
-	body, _ := json.Marshal(map[string]string{"commit": commit, "builtAt": builtAt})
+	// A tagged build carries its tag; :main and dev builds carry "dev" and must
+	// keep carrying it — the updater compares this against the tag it asked for
+	// (ADR-0019), so "some build of main" has to compare unequal to every
+	// release rather than accidentally matching one.
+	version := os.Getenv("WATTROOM_VERSION")
+	if version == "" {
+		version = "dev"
+	}
+	body, _ := json.Marshal(map[string]string{"version": version, "commit": commit, "builtAt": builtAt})
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(body)
