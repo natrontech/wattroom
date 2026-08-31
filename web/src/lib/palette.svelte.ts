@@ -1,53 +1,92 @@
 /**
- * The rider's accent choice (#292), applied by overriding the two @theme
- * tokens on :root. Mirrors theme.svelte.ts deliberately — module-level state,
- * localStorage, applied on import — because ssr is off everywhere, so the
- * document exists by the time this runs.
+ * The rider's theme (#331), applied to the document. Everything a theme owns
+ * is a custom property, so applying one is writing two rule blocks: `:root`
+ * for the app, and `.cave` for the ride — which stays dark whatever the rider
+ * picked, because ride legibility was designed against black (ADR-0005,
+ * amended in #113).
+ *
+ * The stored choice is an identity, never a family. Which family renders is
+ * whatever the scheme setting resolves to right now, so `auto` keeps meaning
+ * "follow the OS" and the choice survives the flip.
  */
+import { TOKENS, type Theme, type ThemeFamily } from './palette';
 import {
 	DEFAULT_CHOICE,
-	DEFAULT_ID,
 	parseChoice,
-	resolve,
-	tokenValue,
-	type PaletteChoice,
-} from './palette';
+	resolveTheme,
+	themeFor,
+	type ThemeChoice,
+} from './themes';
 
 const KEY = 'wattroom.palette.v1';
+const STYLE_ID = 'wattroom-theme';
 
-let choice = $state<PaletteChoice>(DEFAULT_CHOICE);
+let choice = $state<ThemeChoice>(DEFAULT_CHOICE);
 try {
 	choice = parseChoice(localStorage.getItem(KEY));
 } catch {
-	/* storage unavailable: the shipped palette */
+	/* storage unavailable: the default identity */
+}
+
+/** Light only when the rider asked for it, or the OS did and they did not. */
+function activeFamily(): ThemeFamily {
+	const forced = document.documentElement.dataset.theme;
+	if (forced === 'light') return 'white';
+	if (forced === 'dark') return 'dark';
+	return window.matchMedia?.('(prefers-color-scheme: light)').matches
+		? 'white'
+		: 'dark';
+}
+
+let family = $state<ThemeFamily>(activeFamily());
+
+function block(selector: string, theme: Theme): string {
+	const body = TOKENS.map((t) => `--color-${t}: ${theme.tokens[t]};`).join('');
+	return `${selector}{${body}}`;
 }
 
 function apply() {
-	const root = document.documentElement;
-	const active = resolve(choice);
-	// Outrun is what app.css already defines: drop the overrides rather than
-	// restate them, so the shipped palette can never drift from a copy here.
-	if (active.id === DEFAULT_ID) {
-		root.style.removeProperty('--color-watt');
-		root.style.removeProperty('--color-neon');
-		return;
+	family = activeFamily();
+	const active = resolveTheme(choice, family);
+	// The cave takes the dark half of whatever identity is showing. For a dark
+	// theme that is the same tokens, which costs nothing and keeps one path.
+	const cave =
+		active.identity === 'custom'
+			? resolveTheme(choice, 'dark')
+			: themeFor(active.identity, 'dark');
+
+	let style = document.getElementById(STYLE_ID);
+	if (!style) {
+		style = document.createElement('style');
+		style.id = STYLE_ID;
+		document.head.append(style);
 	}
-	root.style.setProperty('--color-watt', tokenValue(active.watt));
-	root.style.setProperty('--color-neon', tokenValue(active.neon));
+	style.textContent = `${block(':root', active)}${block('.cave', cave)}`;
 }
 apply();
+
+// The OS can flip while `auto` is in force, and that changes which family
+// renders — the stored identity does not change, the tokens under it do.
+window
+	.matchMedia?.('(prefers-color-scheme: light)')
+	.addEventListener?.('change', apply);
 
 export const palette = {
 	get choice() {
 		return choice;
 	},
-	get active() {
-		return resolve(choice);
+	get family() {
+		return family;
 	},
-	select(next: PaletteChoice) {
+	get active() {
+		return resolveTheme(choice, family);
+	},
+	/** Re-render under the current scheme — the toggle calls this after flipping. */
+	refresh: apply,
+	select(next: ThemeChoice) {
 		choice = next;
 		try {
-			if (next.kind === 'preset' && next.id === DEFAULT_ID) {
+			if (next.kind === 'preset' && next.identity === 'outrun') {
 				localStorage.removeItem(KEY);
 			} else {
 				localStorage.setItem(KEY, JSON.stringify(next));

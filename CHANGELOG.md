@@ -16,6 +16,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Changed
+
+- Appearance themes now recolour the whole app — surfaces, text, accents, and
+  power zones — with matching dark and daylight variants instead of changing
+  only two accent colours.
+
 ## [2026.09.2] - 2026-09-01
 
 ### Added

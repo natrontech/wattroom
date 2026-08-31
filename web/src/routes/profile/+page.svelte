@@ -467,7 +467,7 @@
 			</div>
 		{/if}
 
-		<!-- Accent palette (#292, ADR-0005 amended): a pair, never one colour. -->
+		<!-- Full theme (#331, ADR-0005 amended): every colour moves together. -->
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Appearance</h2>
 			<div class="mt-4">

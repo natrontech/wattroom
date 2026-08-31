@@ -100,3 +100,24 @@ palette *names* it compared, not their values. Their hues match the names and
 their lightness/chroma were solved so each accent stays inside sRGB and clears
 3.5:1 against its own surface, but they want a design pass against real mocks
 before anyone treats them as the ones that lost in 2026-08.
+
+## Amendment — palettes become full themes (2026-09-01, #331)
+
+The accent-only picker above is superseded. A theme now owns every colour
+token: both surfaces, muted and foreground colours, the watt/neon pair, and all
+seven power zones. Theme definitions provide their identity hues; the complete
+token set is derived in OKLCH from family-level lightness and chroma targets.
+The relationships are therefore shared rather than hand-tuned eight times.
+
+Each identity has a dark and a white family member. The existing scheme choice
+(auto, dark, light) selects the family without changing the chosen identity.
+`.cave` still resolves the dark member of that identity, so a ride never takes
+on a white surface. Dark surfaces must stay at or below OKLCH L 0.30 and white
+surfaces at or above L 0.90.
+
+The derivation is a build contract. Tests require body and muted text to clear
+4.5:1 against both surfaces; watt, neon, and every zone bar to clear 3:1; and
+adjacent zones to remain distinguishable while moving monotonically in
+lightness. Outrun remains the default identity, but its old low-contrast zone
+ramp is replaced by the generated, gated ramp. The restraint rule is unchanged:
+only live data uses `--color-watt` and glow; `--color-neon` remains flat chrome.

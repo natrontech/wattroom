@@ -1,4 +1,14 @@
 <script lang="ts">
+	import { TOKENS, type Theme } from '$lib/palette';
+	import { THEMES } from '$lib/themes';
+
+	function themeStyle(theme: Theme): string {
+		return [
+			`color-scheme: ${theme.family === 'dark' ? 'dark' : 'light'}`,
+			...TOKENS.map((token) => `--color-${token}: ${theme.tokens[token]}`),
+		].join(';');
+	}
+
 	const surfaces = [
 		{ name: 'surface', cls: 'bg-surface', use: 'page background' },
 		{
@@ -75,6 +85,66 @@
 						{resolved[i] ?? ''}
 					</div>
 					<div class="text-muted mt-2 text-xs">{token.use}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+
+	<!-- Every catalogue entry, rendered under its own complete token set. -->
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Full theme catalogue
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		Each card overrides all colour tokens. The live wattage is the right use of
+		glow; glowing structural chrome is deliberately shown as the wrong use.
+	</p>
+	<div class="mt-4 grid gap-3 md:grid-cols-2">
+		{#each THEMES as theme (theme.id)}
+			<div
+				class="border-muted/25 bg-surface text-ink overflow-hidden rounded-lg border"
+				style={themeStyle(theme)}
+			>
+				<div class="bg-surface-raised p-5">
+					<div class="flex items-start justify-between gap-4">
+						<div>
+							<div class="font-display font-bold">{theme.name}</div>
+							<div class="text-muted mt-1 text-xs">{theme.note}</div>
+						</div>
+						<span
+							class="border-muted/30 text-muted rounded border px-2 py-1 font-mono text-[10px] uppercase"
+						>
+							{theme.family}
+						</span>
+					</div>
+					<div class="mt-5 grid grid-cols-2 gap-3">
+						<div class="border-muted/20 rounded border p-3">
+							<div class="text-z4 text-[10px] font-semibold uppercase">
+								Right
+							</div>
+							<div
+								class="text-watt glow-text mt-2 text-4xl font-bold tabular-nums"
+							>
+								312
+							</div>
+							<div class="text-muted text-[10px] uppercase">live watts</div>
+						</div>
+						<div class="border-muted/20 rounded border p-3">
+							<div class="text-z6 text-[10px] font-semibold uppercase">
+								Wrong
+							</div>
+							<div class="text-neon glow-text mt-2 text-4xl font-bold">
+								Grid
+							</div>
+							<div class="text-muted text-[10px] uppercase">
+								chrome must stay flat
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="grid grid-cols-7">
+					{#each zones as zone (zone.n)}
+						<div class="{zone.cls} h-3" title="Z{zone.n}"></div>
+					{/each}
 				</div>
 			</div>
 		{/each}

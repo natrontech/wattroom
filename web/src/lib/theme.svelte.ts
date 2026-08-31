@@ -1,3 +1,5 @@
+import { palette } from './palette.svelte';
+
 /**
  * The scheme toggle (#113, rider-requested): auto follows the OS, dark and
  * light force it via data-theme + color-scheme — every light-dark() token
@@ -20,6 +22,7 @@ function apply() {
 	const root = document.documentElement;
 	if (current === 'auto') delete root.dataset.theme;
 	else root.dataset.theme = current;
+	palette.refresh();
 }
 apply();
 
