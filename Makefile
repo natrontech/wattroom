@@ -36,7 +36,11 @@ test:
 	cd web && pnpm run test
 
 lint:
-	cd server && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
+	@# Per-checkout lint cache. Agents run `make lint` from worktrees under
+	@# .claude/worktrees/, and a shared ~/.cache/golangci-lint served their
+	@# cached results back here — reporting a finding against a file path in
+	@# somebody else's tree, which no exclusion could correctly silence.
+	cd server && GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 	cd web && pnpm run check
 	cd web && pnpm run format:check
 
