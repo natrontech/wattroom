@@ -104,9 +104,14 @@ export function createRoomAv(slug: string) {
 			deviceList = [];
 		}
 	}
-	const mics = $derived(deviceList.filter((d) => d.kind === 'audioinput'));
-	const cams = $derived(deviceList.filter((d) => d.kind === 'videoinput'));
-	const outs = $derived(deviceList.filter((d) => d.kind === 'audiooutput'));
+	// Computed on read, never $derived: a derived created here belongs to
+	// whichever component happened to construct the store, and Svelte freezes
+	// it at its last value once that component unmounts (derived_inert). The
+	// connection outlives every page (#173), so it would freeze on the first
+	// navigation away from the room.
+	const mics = () => deviceList.filter((d) => d.kind === 'audioinput');
+	const cams = () => deviceList.filter((d) => d.kind === 'videoinput');
+	const outs = () => deviceList.filter((d) => d.kind === 'audiooutput');
 	// Voice output rides the WebAudio bus, so switching speakers needs
 	// AudioContext.setSinkId — Chrome has it, and Chrome is the platform
 	// (ADR-0004); elsewhere the picker simply doesn't render.
@@ -374,7 +379,7 @@ export function createRoomAv(slug: string) {
 	 * The stage's menu: every share, then every open camera. Screens lead
 	 * because a shared screen is why anyone looks at the stage at all.
 	 */
-	const stageSources = $derived([
+	const stageSources = () => [
 		...screens.map((s) => ({
 			key: `screen:${s.id}`,
 			id: s.id,
@@ -387,8 +392,8 @@ export function createRoomAv(slug: string) {
 			kind: 'cam' as const,
 			gen,
 		})),
-	]);
-	const stage = $derived(pickStage(stageSources, stagePick));
+	];
+	const stage = () => pickStage(stageSources(), stagePick);
 
 	async function join() {
 		// Double-click or an impatient rail tap must not build a second
@@ -602,13 +607,13 @@ export function createRoomAv(slug: string) {
 		},
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
 		get mics() {
-			return mics;
+			return mics();
 		},
 		get cams() {
-			return cams;
+			return cams();
 		},
 		get outs() {
-			return outs;
+			return outs();
 		},
 		get micId() {
 			return micId;
@@ -736,11 +741,11 @@ export function createRoomAv(slug: string) {
 		},
 		/** Everything the stage can show, screens first (#280). */
 		get stageSources() {
-			return stageSources;
+			return stageSources();
 		},
 		/** What the stage is showing right now, `gen` bumping per fresh track. */
 		get stage() {
-			return stage;
+			return stage();
 		},
 		/** Pick a source, or null to follow the newest share again. */
 		setStage(key: string | null) {
@@ -748,7 +753,7 @@ export function createRoomAv(slug: string) {
 		},
 		/** The stage surface: a screen is a document (contain), a face isn't. */
 		attachStage(container: HTMLElement) {
-			const source = stage;
+			const source = stage();
 			mountTrack(
 				container,
 				source
