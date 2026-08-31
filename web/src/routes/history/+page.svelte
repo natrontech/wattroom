@@ -29,14 +29,10 @@
 </script>
 
 {#snippet rideRow(ride: RideRecord, badge?: string)}
-	<li
-		class="border-muted/15 bg-surface-raised flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-lg border px-5 py-4"
-	>
+	<li class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
-			<span class="text-muted text-[10px] tracking-wider uppercase"
-				>{badge}</span
-			>
+			<span class="eyebrow">{badge}</span>
 		{/if}
 		<span class="text-muted text-xs"
 			>{new Date(ride.startedAt).toLocaleDateString()}</span
@@ -52,7 +48,7 @@
 	</li>
 {/snippet}
 
-<main class="mx-auto max-w-3xl px-6 py-10">
+<main class="page max-w-3xl">
 	<div class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
@@ -80,11 +76,7 @@
 				Finish a workout and it lands here with its execution score. You can
 				export any ride as a .fit for Strava or your head unit.
 			</p>
-			<a
-				href="/workouts"
-				class="bg-ink text-paper hover:bg-ink/90 mt-5 inline-block rounded px-4 py-2.5 text-sm font-medium"
-				>Pick a workout</a
-			>
+			<a href="/workouts" class="btn btn-primary mt-5">Pick a workout</a>
 		</div>
 	{:else}
 		<ul class="mt-8 grid gap-2">
@@ -95,9 +87,7 @@
 	{/if}
 
 	{#if device.all.length > 0}
-		<h2 class="text-muted mt-10 text-[10px] tracking-[0.2em] uppercase">
-			on this device only
-		</h2>
+		<h2 class="eyebrow mt-10">on this device only</h2>
 		<p class="text-muted mt-1 text-xs">
 			Saved while the server was unreachable — summaries only, so they can't
 			move to your account.
@@ -107,9 +97,7 @@
 				{@render rideRow(ride)}
 			{/each}
 		</ul>
-		<button
-			onclick={() => device.clear()}
-			class="border-z6/40 text-z6 hover:bg-z6/10 mt-4 rounded border px-4 py-2 text-xs"
+		<button onclick={() => device.clear()} class="btn btn-danger mt-4"
 			>Clear device rides</button
 		>
 	{/if}

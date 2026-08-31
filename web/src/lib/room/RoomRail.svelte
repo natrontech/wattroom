@@ -105,9 +105,7 @@
 		<span class="font-display text-sm font-bold">WattRoom</span>
 	</div>
 
-	<div class="text-muted px-4 pt-2 pb-1 text-[10px] tracking-[0.2em] uppercase">
-		your rooms
-	</div>
+	<div class="eyebrow px-4 pt-2 pb-1">your rooms</div>
 	<ul class="flex-1 px-2">
 		{#each rooms as room (room.slug)}
 			<li>
@@ -214,9 +212,7 @@
 		{/each}
 	</ul>
 
-	<div class="text-muted px-4 pt-3 pb-1 text-[10px] tracking-[0.2em] uppercase">
-		everywhere
-	</div>
+	<div class="eyebrow px-4 pt-3 pb-1">everywhere</div>
 	<ul class="px-2 pb-2">
 		{#each pages as entry (entry.href)}
 			<li>
@@ -377,9 +373,7 @@
 					<!-- The mixer (#179): every level in one place. Ducking dips
 					     under the music ceiling; it never fights these faders. -->
 					<div class="border-ink/5 mt-3 border-t pt-2">
-						<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-							>mixer</span
-						>
+						<span class="eyebrow">mixer</span>
 						<label class="mt-1.5 block text-[10px]">
 							<span class="text-muted">music</span>
 							<input

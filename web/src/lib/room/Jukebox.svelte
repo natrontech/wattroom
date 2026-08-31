@@ -71,14 +71,12 @@
 	<div class="flex flex-wrap items-start gap-4">
 		<div class="min-w-60 flex-1">
 			<div class="flex items-center gap-2">
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>jukebox</span
-				>
+				<span class="eyebrow">jukebox</span>
 				{#if jukebox?.current}
 					<span class="truncate text-xs">{jukebox.current.title}</span>
 					<button
 						onclick={() => send(jukebox?.playing ? 'pause' : 'play')}
-						class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-2.5 py-1.5"
+						class="btn btn-secondary btn-xs ml-auto"
 						aria-label={jukebox.playing ? 'pause' : 'play'}
 					>
 						{#if jukebox.playing}<Pause size={13} />{:else}<Play
@@ -87,7 +85,7 @@
 					</button>
 					<button
 						onclick={() => send('skip')}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5"
+						class="btn btn-secondary btn-xs"
 						aria-label="skip"><SkipForward size={13} /></button
 					>
 				{/if}
@@ -97,7 +95,7 @@
 				<div class="mt-2 flex items-center gap-2">
 					<button
 						onclick={() => seekTo(elapsed - 30)}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						class="btn btn-secondary btn-xs"
 						aria-label="back 30 seconds">−30s</button
 					>
 					<div class="min-w-0 flex-1">
@@ -130,7 +128,7 @@
 					</div>
 					<button
 						onclick={() => seekTo(elapsed + 30)}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						class="btn btn-secondary btn-xs"
 						aria-label="forward 30 seconds">+30s</button
 					>
 				</div>
@@ -149,11 +147,9 @@
 				<input
 					bind:value={url}
 					placeholder="Paste a YouTube link"
-					class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+					class="input input-xs min-w-0 flex-1"
 				/>
-				<button
-					disabled={!url.trim()}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+				<button disabled={!url.trim()} class="btn btn-primary btn-xs"
 					>Add</button
 				>
 			</form>

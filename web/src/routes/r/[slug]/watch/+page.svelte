@@ -87,9 +87,7 @@
 					<div class="flex items-baseline gap-2">
 						<span class="truncate text-sm">{rider.name}</span>
 						{#if rider.role !== 'member'}
-							<span class="text-muted text-[9px] tracking-wider uppercase"
-								>{rider.role}</span
-							>
+							<span class="eyebrow">{rider.role}</span>
 						{/if}
 						<span
 							class="font-display ml-auto text-2xl leading-none font-bold tabular-nums"
@@ -183,13 +181,9 @@
 				bind:value={draft}
 				maxlength="500"
 				placeholder="Say something…"
-				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-2 text-sm outline-none"
+				class="input min-w-0 flex-1"
 			/>
-			<button
-				disabled={!draft.trim()}
-				class="border-muted/25 hover:border-muted/60 rounded border px-4 py-2 text-sm disabled:opacity-40"
-				>Send</button
-			>
+			<button disabled={!draft.trim()} class="btn btn-secondary">Send</button>
 		</form>
 		{#if live.tick?.jukebox?.jamUrl}
 			<div class="mt-3">

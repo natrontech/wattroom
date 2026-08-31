@@ -48,10 +48,8 @@
 </script>
 
 {#if jamUrl}
-	<div class="border-muted/15 bg-surface-raised rounded-lg border p-3">
-		<h3 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-			join the jam
-		</h3>
+	<div class="panel p-3">
+		<h3 class="eyebrow">join the jam</h3>
 		<div class="mt-2 flex items-start gap-3">
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -- uqr output, generated from a validated URL -->
 			<div
@@ -92,11 +90,9 @@
 		<input
 			bind:value={draft}
 			placeholder="Paste a Spotify Jam link"
-			class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+			class="input input-xs min-w-0 flex-1"
 		/>
-		<button
-			disabled={!draft.trim()}
-			class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+		<button disabled={!draft.trim()} class="btn btn-secondary btn-xs"
 			>Jam</button
 		>
 	</form>

@@ -120,7 +120,7 @@
 	});
 </script>
 
-<main class="mx-auto max-w-3xl px-6 py-10">
+<main class="page max-w-3xl">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
 	</div>
@@ -152,9 +152,7 @@
 		</div>
 	{:else if rooms !== null && rooms.length === 0}
 		<!-- Empty states teach, never apologise: the only onboarding most read. -->
-		<div
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-10 text-center"
-		>
+		<div class="panel mt-8 p-10 text-center">
 			<Logo size={56} />
 			<h2 class="font-display mt-6 text-2xl font-bold">
 				A room is a place, not a session.
@@ -167,13 +165,11 @@
 			<div class="mt-7 flex justify-center gap-3">
 				<button
 					onclick={() => document.getElementById('open-room-name')?.focus()}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold"
-					>Open your first room</button
+					class="btn btn-primary btn-lg">Open your first room</button
 				>
 				<button
 					onclick={() => document.getElementById('join-code')?.focus()}
-					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-					>I have a code</button
+					class="btn btn-secondary btn-lg">I have a code</button
 				>
 			</div>
 		</div>
@@ -182,7 +178,7 @@
 			{#each rooms as room (room.slug)}
 				<a
 					href="/r/{room.slug}"
-					class="border-muted/15 bg-surface-raised hover:border-muted/40 flex items-center gap-4 rounded-lg border px-5 py-4 transition-colors"
+					class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
 				>
 					<div class="min-w-0">
 						<p class="font-display font-bold">{room.name}</p>
@@ -299,13 +295,12 @@
 						id="open-room-name"
 						bind:value={name}
 						maxlength="60"
-						class="border-muted/25 placeholder:text-muted/60 focus:border-muted/60 mt-3 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+						class="input mt-3 w-full"
 						placeholder="Room name"
 					/>
 					<button
 						disabled={busy || !name.trim() || ownedOut}
-						class="bg-ink text-paper hover:bg-ink/90 mt-3 w-full rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
-						>Open room</button
+						class="btn btn-primary mt-3 w-full">Open room</button
 					>
 					{#if ownedOut}
 						<p class="text-muted mt-2 text-xs">
@@ -343,8 +338,7 @@
 					{/if}
 					<button
 						disabled={busy || joinCode.length !== 6 || invalidCode}
-						class="border-muted/30 hover:border-muted/60 mt-3 w-full rounded border px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-						>Join room</button
+						class="btn btn-secondary mt-3 w-full">Join room</button
 					>
 				</form>
 			</div>

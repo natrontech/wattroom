@@ -69,9 +69,7 @@
 
 		{#if streakWeeks > 0 || monthKj > 0}
 			<div class="mt-4">
-				<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-					>crew streak</span
-				>
+				<span class="eyebrow">crew streak</span>
 				<p class="font-display text-sm font-bold">
 					{streakWeeks} wk · {(monthKj / 1000).toFixed(1)} MJ this month
 				</p>
@@ -79,18 +77,14 @@
 		{/if}
 
 		<div class="mt-4">
-			<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-				>invite link</span
-			>
+			<span class="eyebrow">invite link</span>
 			<p class="font-mono text-sm break-all select-all">
 				{location.origin}/r/{slug}
 			</p>
 		</div>
 		{#if code}
 			<div class="mt-3">
-				<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-					>code</span
-				>
+				<span class="eyebrow">code</span>
 				<p class="font-mono text-xl tracking-[0.3em] select-all">{code}</p>
 			</div>
 		{/if}
@@ -103,9 +97,7 @@
 
 		{#if medals.length > 0}
 			<div class="mt-6">
-				<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-					>medals</span
-				>
+				<span class="eyebrow">medals</span>
 				<ul class="mt-2 flex flex-wrap gap-2">
 					{#each medals as medal, i (i)}
 						<li
@@ -120,18 +112,12 @@
 		{/if}
 
 		<div class="mt-6">
-			<span class="text-muted text-[10px] tracking-[0.2em] uppercase"
-				>members</span
-			>
+			<span class="eyebrow">members</span>
 			<ul class="mt-2 grid gap-2">
 				{#each members as member (member.id)}
-					<li
-						class="border-muted/15 bg-surface-raised flex items-center gap-2 rounded-lg border px-4 py-2.5"
-					>
+					<li class="panel flex items-center gap-2 px-4 py-2.5">
 						<span class="text-sm font-medium">{member.displayName}</span>
-						<span class="text-muted text-[10px] tracking-wider uppercase"
-							>{member.role}</span
-						>
+						<span class="eyebrow">{member.role}</span>
 						{#if isOwner && member.role !== 'owner'}
 							<div class="ml-auto flex gap-1.5">
 								<button
@@ -141,14 +127,13 @@
 											member.role === 'coach' ? 'member' : 'coach',
 										)}
 									disabled={busy}
-									class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1 text-[11px] disabled:opacity-40"
+									class="btn btn-secondary btn-xs"
 									>{member.role === 'coach' ? 'Demote' : 'Make coach'}</button
 								>
 								<button
 									onclick={() => onRemove(member.id)}
 									disabled={busy}
-									class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-2.5 py-1 text-[11px] disabled:opacity-40"
-									>Remove</button
+									class="btn btn-danger btn-xs">Remove</button
 								>
 							</div>
 						{/if}

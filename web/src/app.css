@@ -141,6 +141,10 @@ body {
  * retyped per call site. Pure styling only — layout (width, margin, flex) stays
  * at the call site. Behavior-carrying pieces (Modal, SegmentedControl, Banner)
  * are components in src/lib/components/.
+ *
+ * Invariant: btn-xs/btn-lg/input-xs override base padding purely by emitting
+ * later in the utilities layer — if a size ever stops applying after a
+ * Tailwind upgrade, check the emission order in the built CSS first.
  */
 @utility btn {
 	@apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40;

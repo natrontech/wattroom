@@ -20,7 +20,7 @@
 	);
 </script>
 
-<main class="mx-auto max-w-4xl px-6 py-10">
+<main class="page max-w-4xl">
 	<div class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
@@ -34,9 +34,7 @@
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-6">
 		<div class="flex items-baseline gap-3">
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-				your workouts
-			</h2>
+			<h2 class="eyebrow">your workouts</h2>
 			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
 				>New workout</a
 			>
@@ -52,7 +50,7 @@
 			<ul class="mt-2 grid gap-2">
 				{#each custom.all as entry (entry.id)}
 					<li
-						class="border-muted/15 bg-surface-raised flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-5 py-3"
+						class="panel flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3"
 					>
 						<a
 							href="/ride?w={entry.id}"
@@ -76,9 +74,7 @@
 		{/if}
 	</section>
 
-	<h2 class="text-muted mt-8 text-[10px] tracking-[0.2em] uppercase">
-		curated
-	</h2>
+	<h2 class="eyebrow mt-8">curated</h2>
 	<div class="mt-6 flex flex-wrap gap-1">
 		{#each ['All', ...focuses] as option (option)}
 			<button
@@ -92,9 +88,7 @@
 
 	<ul class="mt-4 grid gap-3">
 		{#each shown as entry (entry.id)}
-			<li
-				class="border-muted/15 bg-surface-raised hover:border-muted/40 overflow-hidden rounded-lg border transition-colors"
-			>
+			<li class="panel hover:border-muted/40 overflow-hidden transition-colors">
 				<!-- Not one big anchor: the card carries two actions, and nesting them
 				     inside a link is invalid and unreachable by keyboard. -->
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pt-4">
@@ -103,9 +97,7 @@
 						class="font-display font-bold hover:underline"
 						>{entry.workout.name}</a
 					>
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>{entry.focus}</span
-					>
+					<span class="eyebrow">{entry.focus}</span>
 					<span class="text-muted ml-auto font-mono text-xs tabular-nums"
 						>{formatClock(durationSeconds(entry.workout))}</span
 					>

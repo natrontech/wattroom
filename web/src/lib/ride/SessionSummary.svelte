@@ -72,11 +72,11 @@
 	<!-- Headline numbers first: what you did, how well, what it earned. -->
 	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 		{#each [{ label: 'duration', value: formatClock(seconds) }, { label: 'work', value: `${kj} kJ` }, { label: 'execution', value: `${Math.round(execution * 100)}%` }, { label: 'normalised', value: `${np} W` }] as stat (stat.label)}
-			<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<div class="panel p-5">
 				<div class="font-display text-3xl leading-none font-bold tabular-nums">
 					{stat.value}
 				</div>
-				<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
+				<div class="eyebrow mt-2">
 					{stat.label}
 				</div>
 			</div>
@@ -85,10 +85,8 @@
 
 	<div class="mt-3 grid gap-3 {medal ? 'lg:grid-cols-[1fr_400px]' : ''}">
 		<div class="grid gap-3">
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					time in zone
-				</h2>
+			<section class="panel p-5">
+				<h2 class="eyebrow">time in zone</h2>
 				{#if totalZoneSeconds > 0}
 					<div class="mt-4 flex h-3 overflow-hidden rounded-full">
 						{#each zones as zsec, zone (zone)}
@@ -120,10 +118,8 @@
 				{/if}
 			</section>
 
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					power curve
-				</h2>
+			<section class="panel p-5">
+				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-4 gap-3">
 					{#each curve as point (point.label)}
 						<div>
@@ -132,7 +128,7 @@
 							>
 								{point.watts > 0 ? point.watts : '–'}
 							</div>
-							<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
+							<div class="eyebrow mt-1">
 								{point.label}
 							</div>
 						</div>
@@ -140,11 +136,9 @@
 				</div>
 			</section>
 
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<section class="panel p-5">
 				<div class="flex items-baseline gap-3">
-					<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-						progress
-					</h2>
+					<h2 class="eyebrow">progress</h2>
 					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
 						>+{xp} XP</span
 					>
@@ -169,9 +163,7 @@
 
 		{#if medal}
 			<div>
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					your medal
-				</h2>
+				<h2 class="eyebrow">your medal</h2>
 				<div class="mt-3">
 					<MedalCard {medal} {roomName} />
 				</div>

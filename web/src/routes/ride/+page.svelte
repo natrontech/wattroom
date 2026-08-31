@@ -421,9 +421,7 @@
 			<p class="text-muted mt-4 text-xs">{selected.summary}</p>
 
 			<!-- What the session looks like — the one thing to see before Start. -->
-			<div
-				class="border-muted/15 bg-surface-raised mt-4 overflow-hidden rounded-lg border"
-			>
+			<div class="panel mt-4 overflow-hidden">
 				<IntervalGraph
 					segments={flatten(workout)}
 					total={durationSeconds(workout)}
@@ -439,9 +437,7 @@
 			>
 
 			<label class="mt-6 block text-left">
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>your FTP (watts)</span
-				>
+				<span class="eyebrow">your FTP (watts)</span>
 				<input
 					type="number"
 					value={ftp}
@@ -453,7 +449,7 @@
 					}}
 					min="80"
 					max="500"
-					class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+					class="input mt-1 w-full font-mono tabular-nums"
 				/>
 			</label>
 			<a
@@ -483,13 +479,11 @@
 							<button
 								onclick={() => downloadRecovered(ride)}
 								disabled={recovering}
-								class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-								>Download .fit</button
+								class="btn btn-primary btn-xs">Download .fit</button
 							>
 							<button
 								onclick={() => discardRecovered(ride.rideId)}
-								class="border-muted/30 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
-								>Discard</button
+								class="btn btn-secondary btn-xs">Discard</button
 							>
 						</div>
 					</div>
@@ -504,21 +498,18 @@
 				<button
 					onclick={() => begin(new FtmsTrainer())}
 					disabled={!supported}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-					>Pair trainer and start</button
+					class="btn btn-primary btn-lg">Pair trainer and start</button
 				>
 				{#if replayName}
 					<button
 						onclick={beginReplay}
 						data-testid="ride-replay"
-						class="border-watt/40 text-watt hover:bg-watt/10 rounded border px-5 py-3 text-sm"
-						>Replay {replayName}</button
+						class="btn btn-accent btn-lg">Replay {replayName}</button
 					>
 				{/if}
 				<button
 					onclick={() => begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
-					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-					>Ride simulated</button
+					class="btn btn-secondary btn-lg">Ride simulated</button
 				>
 			</div>
 			{#if !supported}
@@ -541,9 +532,7 @@
 				<div class="font-display text-2xl leading-none font-bold tabular-nums">
 					{formatClock(remaining)}
 				</div>
-				<div class="text-muted text-[10px] tracking-wider uppercase">
-					remaining
-				</div>
+				<div class="eyebrow">remaining</div>
 			</div>
 		</header>
 
@@ -579,9 +568,7 @@
 		{/if}
 
 		<!-- The number, and where it sits against the target. -->
-		<section
-			class="border-muted/15 bg-surface-raised mt-4 flex items-center gap-8 rounded-lg border px-6 py-5"
-		>
+		<section class="panel mt-4 flex items-center gap-8 px-6 py-5">
 			<div class="shrink-0">
 				<span
 					class="text-watt glow-text-strong font-display text-6xl leading-none font-bold tabular-nums"
@@ -637,9 +624,7 @@
 				>
 					Z{zone}
 				</div>
-				<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
-					zone
-				</div>
+				<div class="eyebrow mt-1">zone</div>
 			</div>
 		</section>
 
@@ -650,9 +635,7 @@
 						class="font-display text-xl leading-none font-semibold tabular-nums"
 						>{readout.value}</span
 					>
-					<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
-						>{readout.label}</span
-					>
+					<span class="eyebrow ml-1">{readout.label}</span>
 				</div>
 			{/each}
 
@@ -667,7 +650,7 @@
 					<div class="font-display text-sm leading-none font-bold tabular-nums">
 						{Math.round(session.bias * 100)}%
 					</div>
-					<div class="text-muted text-[9px] tracking-wider uppercase">bias</div>
+					<div class="eyebrow">bias</div>
 				</div>
 				<button
 					onclick={() => session?.nudgeBias(DEFAULTS.biasStep)}
@@ -722,9 +705,7 @@
 			{/if}
 		</div>
 
-		<div
-			class="border-muted/15 bg-surface-raised mt-3 overflow-hidden rounded-lg border"
-		>
+		<div class="panel mt-3 overflow-hidden">
 			<IntervalGraph
 				segments={session.segments}
 				total={session.total}
@@ -791,20 +772,16 @@
 				execution={session.execution}
 			>
 				{#snippet actions()}
-					<div
-						class="border-muted/15 bg-surface-raised rounded-lg border px-5 py-4"
-					>
+					<div class="panel px-5 py-4">
 						<div class="flex flex-wrap items-center gap-2">
 							<button
 								onclick={downloadFit}
 								disabled={downloading}
 								data-testid="download-fit"
-								class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
+								class="btn btn-primary"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
-							<a
-								href="/workouts"
-								class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
+							<a href="/workouts" class="btn btn-secondary"
 								>Pick another workout</a
 							>
 						</div>
@@ -814,9 +791,7 @@
 
 						{#if recorder.flags.length > sentFlags}
 							<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
-								<span class="text-muted text-[10px] tracking-wider uppercase"
-									>your flags</span
-								>
+								<span class="eyebrow">your flags</span>
 								{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
 									<div class="flex items-center gap-2">
 										<span class="text-muted font-mono text-xs"
@@ -825,14 +800,14 @@
 										<input
 											bind:value={flag.note}
 											placeholder="what went wrong? (optional)"
-											class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+											class="input input-xs min-w-0 flex-1"
 										/>
 									</div>
 								{/each}
 								<button
 									onclick={sendFlags}
 									disabled={sending}
-									class="border-muted/30 hover:border-muted/60 justify-self-start rounded border px-4 py-2 text-xs disabled:opacity-40"
+									class="btn btn-secondary justify-self-start"
 									>{sending ? 'Sending…' : 'Send to the developers'}</button
 								>
 							</div>

@@ -59,9 +59,7 @@
 		<p class="text-muted text-xs">{copy.detail}</p>
 	</div>
 	{#if !recovering}
-		<button
-			onclick={onRecover}
-			class="bg-ink text-paper hover:bg-ink/90 ml-auto shrink-0 rounded px-6 py-3 text-sm font-semibold"
+		<button onclick={onRecover} class="btn btn-primary btn-lg ml-auto shrink-0"
 			>Reconnect</button
 		>
 	{/if}

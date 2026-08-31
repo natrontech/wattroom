@@ -44,6 +44,7 @@
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
@@ -564,7 +565,11 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === 'Escape') tv = false;
+		if (e.key === 'Escape') {
+			tv = false;
+			setup = false;
+			chatSheet = false;
+		}
 	}}
 />
 
@@ -639,9 +644,7 @@
 					<p class="text-muted mt-1 text-xs">
 						{'summary' in setupPicked ? setupPicked.summary : ''}
 					</p>
-					<div
-						class="border-muted/15 bg-surface-raised mt-3 overflow-hidden rounded-lg border"
-					>
+					<div class="panel mt-3 overflow-hidden">
 						<IntervalGraph
 							segments={setupSegments}
 							total={durationSeconds(setupPicked.workout)}
@@ -653,7 +656,7 @@
 					<div class="mt-4 flex flex-wrap items-center gap-2">
 						<button
 							onclick={() => startWorkout(setupPicked.workout)}
-							class="bg-ink text-paper hover:bg-ink/90 rounded px-6 py-3 text-sm font-semibold"
+							class="btn btn-primary btn-lg"
 							>Start {setupPicked.workout.name}</button
 						>
 						<span class="text-muted text-xs">or plan it:</span>
@@ -776,9 +779,7 @@
 			{#if canControl && shared}
 				{#if shared.phase === 'idle' || shared.phase === 'done'}
 					<!-- Training-first (#115): one affordance; games live inside. -->
-					<button
-						onclick={() => (setup = true)}
-						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-semibold"
+					<button onclick={() => (setup = true)} class="btn btn-primary"
 						>Pick a workout</button
 					>
 				{:else}
@@ -813,9 +814,7 @@
 				<div class="font-display text-4xl leading-none font-bold tabular-nums">
 					{formatClock(shared.elapsed)}
 				</div>
-				<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
-					elapsed
-				</div>
+				<div class="eyebrow mt-1">elapsed</div>
 			</div>
 		{/if}
 
@@ -832,16 +831,19 @@
 		{/if}
 
 		{#if shared?.phase === 'paused'}
-			<div
-				class="border-z5/40 bg-z5/10 mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
-			>
-				<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"></span>
-				<p class="text-xs">
-					<span class="font-medium">The session is paused.</span>
-					<span class="text-muted"
-						>Targets are released — spin easy until the coach resumes.</span
-					>
-				</p>
+			<div class="mb-3">
+				<Banner tone="warn">
+					<p class="flex items-center gap-3 text-xs">
+						<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"
+						></span>
+						<span>
+							<span class="font-medium">The session is paused.</span>
+							<span class="text-muted"
+								>Targets are released — spin easy until the coach resumes.</span
+							>
+						</span>
+					</p>
+				</Banner>
 			</div>
 		{/if}
 
@@ -924,8 +926,7 @@
 				<button
 					onclick={() => ride(new FtmsTrainer())}
 					disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
-					>Pair trainer and ride</button
+					class="btn btn-primary">Pair trainer and ride</button
 				>
 				{#if dev}
 					<!-- Dev-only (#123): simulated watts in a live room would count for
@@ -937,8 +938,7 @@
 									baseWatts: profile.current.ftp * 0.75,
 								}),
 							)}
-						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-						>Ride simulated</button
+						class="btn btn-secondary">Ride simulated</button
 					>
 				{/if}
 
@@ -946,9 +946,7 @@
 					<!-- No LiveKit configured: voice is not a thing here, so no
 					     button that would 404 (#219, capability gating). -->
 				{:else if av.status === 'off' || av.status === 'failed'}
-					<button
-						onclick={() => av.join()}
-						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+					<button onclick={() => av.join()} class="btn btn-secondary"
 						>Join voice</button
 					>
 				{:else}
@@ -960,9 +958,7 @@
 							? 'border-z4/50 text-ink'
 							: 'border-z6/50 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
 					>
-					<button
-						onclick={() => av.toggleCam()}
-						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
+					<button onclick={() => av.toggleCam()} class="btn btn-secondary"
 						>{av.camOn ? 'Cam off' : 'Cam on'}</button
 					>
 					<button
@@ -974,8 +970,7 @@
 				{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
 					<button
 						onclick={() => startWorkout(setupPicked.workout)}
-						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
-						>Start {setupPicked.workout.name}</button
+						class="btn btn-primary">Start {setupPicked.workout.name}</button
 					>
 					{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
 				{/if}
@@ -994,7 +989,7 @@
 						class="border-ink/5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0"
 					>
 						<div class="min-w-0 flex-1">
-							<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
+							<p class="eyebrow">
 								{i === 0 ? 'next session in this room' : 'after that'}
 							</p>
 							<p class="font-display truncate text-base font-bold">
@@ -1015,8 +1010,7 @@
 								{#if canControl}
 									<button
 										onclick={() => startScheduled(entry)}
-										class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-xs font-semibold"
-										>Start now</button
+										class="btn btn-primary">Start now</button
 									>
 								{:else}
 									<span class="text-watt glow-text text-xs">starting soon</span>
@@ -1047,7 +1041,7 @@
 		{/if}
 
 		{#if shared?.phase === 'done' && mySamples.length >= 60 && !summaryDismissed}
-			<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+			<div class="panel mt-3 p-6">
 				<SessionSummary
 					subtitle="{roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
 					samples={mySamples}
@@ -1059,8 +1053,7 @@
 					{#snippet actions()}
 						<button
 							onclick={() => (summaryDismissed = true)}
-							class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
-							>Back to the lounge</button
+							class="btn btn-secondary">Back to the lounge</button
 						>
 					{/snippet}
 				</SessionSummary>
@@ -1090,9 +1083,7 @@
 							class="font-display text-lg leading-none font-semibold tabular-nums"
 							>{readout.value}</span
 						>
-						<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
-							>{readout.label}</span
-						>
+						<span class="eyebrow ml-1">{readout.label}</span>
 					</div>
 				{/each}
 				<div class="text-right">
@@ -1101,9 +1092,7 @@
 							myZone
 						]}">Z{myZone}</span
 					>
-					<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
-						>zone</span
-					>
+					<span class="eyebrow ml-1">zone</span>
 				</div>
 			</div>
 			{#if trainer && hrSource}

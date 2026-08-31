@@ -96,7 +96,7 @@
 	const measured = $derived(profile.current.ftpMeasuredAt);
 </script>
 
-<main class="mx-auto max-w-2xl px-6 py-10">
+<main class="page max-w-2xl">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Profile</h1>
 	</div>
@@ -106,24 +106,14 @@
 	{/if}
 
 	{#if account.loaded}
-		<section
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6"
-		>
+		<section class="panel mt-8 p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>display name</span
-					>
-					<input
-						bind:value={name}
-						maxlength="60"
-						class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
-					/>
+					<span class="eyebrow">display name</span>
+					<input bind:value={name} maxlength="60" class="input mt-1 w-full" />
 				</label>
 				<div>
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>signed in with</span
-					>
+					<span class="eyebrow">signed in with</span>
 					<p class="mt-2 text-sm">
 						{(account.me?.providers ?? [])
 							.map((p) => providerName[p] ?? p)
@@ -154,15 +144,13 @@
 					{/if}
 				</div>
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>FTP (W)</span
-					>
+					<span class="eyebrow">FTP (W)</span>
 					<input
 						type="number"
 						bind:value={ftp}
 						min={PROFILE_LIMITS.minFtp}
 						max={PROFILE_LIMITS.maxFtp}
-						class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+						class="input mt-1 w-full font-mono tabular-nums"
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						Sets every workout's targets.
@@ -178,30 +166,26 @@
 					</span>
 				</label>
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>weight (kg)</span
-					>
+					<span class="eyebrow">weight (kg)</span>
 					<input
 						type="number"
 						bind:value={kg}
 						min={PROFILE_LIMITS.minKg}
 						max={PROFILE_LIMITS.maxKg}
-						class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+						class="input mt-1 w-full font-mono tabular-nums"
 					/>
 					<span class="text-muted mt-1 block text-[11px]"
 						>Only used for w/kg — the number every contest here is scored on.</span
 					>
 				</label>
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>sprint grade (%)</span
-					>
+					<span class="eyebrow">sprint grade (%)</span>
 					<input
 						type="number"
 						bind:value={sprintGrade}
 						min="1"
 						max="15"
-						class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+						class="input mt-1 w-full font-mono tabular-nums"
 					/>
 					<span class="text-muted mt-1 block text-[11px]"
 						>The slope a sprint moment throws you onto.</span
@@ -213,14 +197,12 @@
 				</label>
 				{#if account.me?.mailAvailable}
 					<label class="block">
-						<span class="text-muted text-[10px] tracking-wider uppercase"
-							>email</span
-						>
+						<span class="eyebrow">email</span>
 						<input
 							type="email"
 							bind:value={email}
 							maxlength="254"
-							class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+							class="input mt-1 w-full"
 						/>
 						<span class="text-muted mt-1 block text-[11px]"
 							>Only for the emails you ask for here — never shown to anyone.</span
@@ -247,11 +229,7 @@
 				{/if}
 			</div>
 			<div class="mt-5 flex items-center gap-3">
-				<button
-					onclick={() => save()}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
-					>Save</button
-				>
+				<button onclick={() => save()} class="btn btn-primary">Save</button>
 				{#if status}<span class="text-muted text-xs">{status}</span>{/if}
 			</div>
 		</section>
@@ -285,11 +263,7 @@
 				<li>Heart rate is health data and is treated as such.</li>
 			</ul>
 			<div class="mt-5 flex flex-wrap gap-2">
-				<a
-					href="/api/me/export"
-					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-					>Export everything</a
-				>
+				<a href="/api/me/export" class="btn btn-secondary">Export everything</a>
 				<button
 					onclick={() => account.signOut()}
 					class="text-muted hover:text-ink self-center text-xs underline"
@@ -299,9 +273,7 @@
 
 			<!-- The destructive action lives apart from the routine ones (#126). -->
 			<div class="border-ink/5 mt-6 border-t pt-4">
-				<button
-					onclick={() => (confirmDelete = true)}
-					class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
+				<button onclick={() => (confirmDelete = true)} class="btn btn-danger"
 					>Delete account</button
 				>
 			</div>
@@ -321,23 +293,21 @@
 						<span class="text-muted text-[11px]">Type DELETE to confirm</span>
 						<input
 							bind:value={deleteConfirmation}
-							class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm outline-none"
+							class="input mt-1 w-full font-mono"
 						/>
 					</label>
 					<div class="mt-3 flex gap-2">
 						<button
 							onclick={deleteAccount}
 							disabled={deleteConfirmation !== 'DELETE' || deleting}
-							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-							>Delete my account</button
+							class="btn btn-danger-solid">Delete my account</button
 						>
 						<button
 							onclick={() => {
 								confirmDelete = false;
 								deleteConfirmation = '';
 							}}
-							class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-							>Cancel</button
+							class="btn btn-secondary">Cancel</button
 						>
 					</div>
 				</div>

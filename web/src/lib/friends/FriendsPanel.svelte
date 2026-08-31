@@ -74,7 +74,7 @@
 				to see when they're around.
 			</p>
 		{:else}
-			<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border">
+			<div class="panel mt-3">
 				{#each accepted as friend (friend.id)}
 					<div
 						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
@@ -111,9 +111,7 @@
 								{/if}
 							</button>
 							{#if friend.room}
-								<a
-									href="/r/{friend.room}"
-									class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-semibold"
+								<a href="/r/{friend.room}" class="btn btn-primary btn-xs"
 									>Join them</a
 								>
 							{/if}
@@ -135,8 +133,7 @@
 								<button
 									onclick={() =>
 										act(`/api/friends/${friend.id}/accept`, 'POST')}
-									class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-semibold"
-									>Accept</button
+									class="btn btn-primary btn-xs">Accept</button
 								>
 								<button
 									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
@@ -157,10 +154,8 @@
 
 		{#if dmHeads.heads.length > 0}
 			<!-- Your conversations (#208): the DM history's front door. -->
-			<h3 class="text-muted mt-6 text-[10px] tracking-[0.2em] uppercase">
-				messages
-			</h3>
-			<div class="border-muted/15 bg-surface-raised mt-2 rounded-lg border">
+			<h3 class="eyebrow mt-6">messages</h3>
+			<div class="panel mt-2">
 				{#each dmHeads.heads as head (head.peerId)}
 					<button
 						onclick={() => {

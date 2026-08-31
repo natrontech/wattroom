@@ -21,7 +21,7 @@
 </script>
 
 <div class="bg-surface-raised ring-ink/10 rounded-lg p-4 ring-1">
-	<p class="text-muted text-[10px] tracking-[0.2em] uppercase">execution</p>
+	<p class="eyebrow">execution</p>
 	<ul class="mt-3 space-y-1.5">
 		{#each ranked as entry (entry.name)}
 			<li class="flex items-center gap-2.5">

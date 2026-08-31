@@ -63,9 +63,7 @@
 	{/if}
 
 	<div class="border-ink/5 border-b px-4 py-3">
-		<div
-			class="text-muted flex items-center justify-between text-[10px] tracking-[0.2em] uppercase"
-		>
+		<div class="eyebrow flex items-center justify-between">
 			<span>queue</span>
 			<button
 				onclick={() => (adding = !adding)}
@@ -119,9 +117,7 @@
 		</ul>
 	</div>
 
-	<div class="text-muted px-4 pt-3 pb-1 text-[10px] tracking-[0.2em] uppercase">
-		chat
-	</div>
+	<div class="eyebrow px-4 pt-3 pb-1">chat</div>
 	<ul
 		class="flex flex-1 flex-col justify-end space-y-2 overflow-y-auto px-4 py-2"
 	>
@@ -192,11 +188,9 @@
 					bind:value={draft}
 					maxlength="500"
 					placeholder="Say something…"
-					class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+					class="input input-xs min-w-0 flex-1"
 				/>
-				<button
-					disabled={!draft.trim()}
-					class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+				<button disabled={!draft.trim()} class="btn btn-secondary btn-xs"
 					>Send</button
 				>
 			</form>

@@ -32,15 +32,13 @@
 	const busy = $derived(state === 'requesting' || state === 'connecting');
 </script>
 
-<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+<div class="panel p-5">
 	<div class="flex items-start gap-4">
 		<div class="min-w-0 flex-1">
 			<div class="flex items-center gap-2">
 				<h3 class="font-display font-bold">{slot.label}</h3>
 				{#if !slot.required}
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>optional</span
-					>
+					<span class="eyebrow">optional</span>
 				{/if}
 			</div>
 
@@ -84,10 +82,7 @@
 				<button
 					onclick={onPair}
 					disabled={!supported || busy}
-					class="rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 {state ===
-					'failed'
-						? 'border-muted/30 hover:border-muted/60 border'
-						: 'bg-ink text-paper hover:bg-ink/90'}"
+					class="btn {state === 'failed' ? 'btn-secondary' : 'btn-primary'}"
 					>{busy
 						? 'Pairing…'
 						: state === 'failed'

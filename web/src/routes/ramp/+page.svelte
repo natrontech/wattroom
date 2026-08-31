@@ -89,7 +89,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-3xl px-6 py-10">
+<main class="page max-w-3xl">
 	<h1 class="font-display text-3xl font-bold tracking-tight">Ramp test</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds
@@ -98,9 +98,7 @@
 	</p>
 
 	{#if !session}
-		<div
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8 text-center"
-		>
+		<div class="panel mt-8 p-8 text-center">
 			<p class="text-sm">
 				About 12–18 minutes, and the last two are unpleasant.
 			</p>
@@ -117,14 +115,12 @@
 				<button
 					onclick={() => begin(new FtmsTrainer())}
 					disabled={!supported}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-					>Start ramp test</button
+					class="btn btn-primary btn-lg">Start ramp test</button
 				>
 				{#if dev}
 					<button
 						onclick={() => begin(new SimulatedTrainer({ baseWatts: 150 }))}
-						class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-						>Run simulated</button
+						class="btn btn-secondary btn-lg">Run simulated</button
 					>
 				{/if}
 			</div>
@@ -136,7 +132,7 @@
 			{/if}
 		</div>
 	{:else if !done}
-		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+		<div class="panel mt-8 p-8">
 			<div class="flex items-end justify-between gap-6">
 				<div>
 					<div class="flex items-baseline gap-2">
@@ -146,9 +142,7 @@
 						>
 						<span class="text-muted text-xl">W</span>
 					</div>
-					<p class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-						your power
-					</p>
+					<p class="eyebrow mt-2">your power</p>
 				</div>
 				<div class="text-right">
 					<div
@@ -156,9 +150,7 @@
 					>
 						{session.target}
 					</div>
-					<p class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-						hold this
-					</p>
+					<p class="eyebrow mt-2">hold this</p>
 				</div>
 			</div>
 
@@ -205,7 +197,7 @@
 			</div>
 		</div>
 	{:else if !usable}
-		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+		<div class="panel mt-8 p-8">
 			<h2 class="font-display text-2xl font-bold">Not enough to measure</h2>
 			<p class="text-muted mt-3 max-w-md text-sm leading-relaxed">
 				You stopped after {formatClock(session.elapsed)}. The test needs the
@@ -213,23 +205,13 @@
 				steps before the number means anything.
 			</p>
 			<div class="mt-6 flex gap-2">
-				<a
-					href="/ramp"
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium"
-					>Test again</a
-				>
-				<a
-					href="/workouts"
-					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
-					>Ride something else</a
-				>
+				<a href="/ramp" class="btn btn-primary">Test again</a>
+				<a href="/workouts" class="btn btn-secondary">Ride something else</a>
 			</div>
 		</div>
 	{:else}
-		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
-			<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
-				your new FTP
-			</p>
+		<div class="panel mt-8 p-8">
+			<p class="eyebrow">your new FTP</p>
 			<div class="mt-2 flex items-baseline gap-2">
 				<span
 					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
@@ -260,24 +242,15 @@
 				>
 					Saved. Every workout now scales to {result.ftp} W.
 				</p>
-				<a
-					href="/workouts"
-					class="border-muted/30 hover:border-muted/60 mt-3 inline-block rounded border px-4 py-2.5 text-sm"
-					>Pick a workout</a
-				>
+				<a href="/workouts" class="btn btn-secondary mt-3">Pick a workout</a>
 			{:else}
 				<div class="mt-6 flex gap-2">
 					<button
 						onclick={saveFtp}
 						disabled={result.ftp === 0}
-						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium disabled:opacity-40"
-						>Save {result.ftp} W</button
+						class="btn btn-primary">Save {result.ftp} W</button
 					>
-					<a
-						href="/ramp"
-						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2.5 text-sm"
-						>Test again</a
-					>
+					<a href="/ramp" class="btn btn-secondary">Test again</a>
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
 						href="/profile"

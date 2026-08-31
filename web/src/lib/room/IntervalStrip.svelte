@@ -142,7 +142,7 @@
 					<div class="font-display text-sm leading-none font-bold tabular-nums">
 						{Math.round(bias * 100)}%
 					</div>
-					<div class="text-muted text-[9px] tracking-wider uppercase">bias</div>
+					<div class="eyebrow">bias</div>
 				</div>
 				<button
 					onclick={() => onBias(0.01)}

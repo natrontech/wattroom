@@ -1,4 +1,5 @@
 import { account } from '$lib/account.svelte';
+import { api } from '$lib/api';
 import { notify } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { createRoomAv } from '$lib/room/av.svelte';
