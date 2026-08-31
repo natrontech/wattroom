@@ -3,6 +3,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import Select from '$lib/components/Select.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { nextHourInput, toLocalInput } from '$lib/components/when';
@@ -67,6 +68,9 @@
 	const plannable = $derived(
 		rooms.filter((room) => room.role === 'owner' || room.role === 'coach'),
 	);
+	const roomOptions = $derived(
+		plannable.map((room) => ({ value: room.slug, label: room.name })),
+	);
 	const shelf = $derived([
 		...custom.all.map((entry) => ({
 			key: `custom:${entry.id}`,
@@ -77,6 +81,16 @@
 			workout: entry.workout,
 		})),
 	]);
+
+	// The kit's Select filters as you type past six options — the shelf is
+	// twenty-seven deep, so a native dropdown means scrolling for a name you
+	// already know.
+	const workoutOptions = $derived(
+		shelf.map((entry) => ({
+			value: entry.key,
+			label: `${entry.workout.name} · ${formatClock(durationSeconds(entry.workout))}`,
+		})),
+	);
 
 	// ── The plan form ─────────────────────────────────────────────────────────
 	let roomSlug = $state('');
@@ -293,29 +307,17 @@
 			<h2 class="eyebrow">plan a session</h2>
 			<div class="panel mt-2 px-4 py-4">
 				<div class="flex flex-wrap items-center gap-2">
-					<select
-						bind:value={workoutKey}
-						aria-label="Workout"
-						class="input input-xs min-w-0 flex-1"
-					>
-						{#each shelf as entry (entry.key)}
-							<option value={entry.key}
-								>{entry.workout.name} · {formatClock(
-									durationSeconds(entry.workout),
-								)}</option
-							>
-						{/each}
-					</select>
+					<div class="min-w-48 flex-1">
+						<Select
+							options={workoutOptions}
+							bind:value={workoutKey}
+							label="Workout"
+						/>
+					</div>
 					<span class="text-muted text-xs">in</span>
-					<select
-						bind:value={roomSlug}
-						aria-label="Room"
-						class="input input-xs min-w-0 flex-1"
-					>
-						{#each plannable as room (room.slug)}
-							<option value={room.slug}>{room.name}</option>
-						{/each}
-					</select>
+					<div class="min-w-40 flex-1">
+						<Select options={roomOptions} bind:value={roomSlug} label="Room" />
+					</div>
 				</div>
 				<div class="mt-3 flex flex-wrap items-center gap-2">
 					<WhenPicker bind:value={planAt} />

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Select from '$lib/components/Select.svelte';
-	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { formatWhen } from '$lib/format';
 	import { play } from '$lib/sound/cues';
@@ -65,7 +64,7 @@
 		onDevice,
 		onDevicesOpen,
 	}: {
-		you: { name: string; ftp: number };
+		you: { name: string };
 		live: boolean;
 		rooms?: RailRoom[];
 		activeSlug?: string;
@@ -133,20 +132,6 @@
 				label: d.label || `${kind} ${i + 1}`,
 			})),
 	];
-
-	// Glossary vocabulary only — no per-screen synonyms.
-	const pages = [
-		{ href: '/home', label: 'Home' },
-		{ href: '/rooms', label: 'Rooms' },
-		{ href: '/sessions', label: 'Sessions' },
-		{ href: '/workouts', label: 'Workouts' },
-		{ href: '/ramp', label: 'Ramp test' },
-		{ href: '/pair', label: 'Sensors' },
-		{ href: '/history', label: 'Rides' },
-		{ href: '/progression', label: 'Progression' },
-		{ href: '/profile', label: 'Profile' },
-	];
-	const activePath = $derived(page.url.pathname);
 
 	let voiceAdvanced = $state(false);
 </script>
@@ -316,20 +301,6 @@
 		</ul>
 	{/if}
 
-	<div class="eyebrow px-4 pt-3 pb-1">everywhere</div>
-	<ul class="px-2 pb-2">
-		{#each pages as entry (entry.href)}
-			<li>
-				<a
-					href={entry.href}
-					class="block rounded px-2 py-1.5 text-sm {activePath === entry.href
-						? 'bg-surface-raised text-ink'
-						: 'text-muted hover:text-ink'}">{entry.label}</a
-				>
-			</li>
-		{/each}
-	</ul>
-
 	<!-- Your own presence, pinned to the bottom the way a voice app does it.
 	     ONE row whatever the connection state — the nav above never jumps
 	     (rider report: the height flicker read as broken). -->
@@ -342,9 +313,7 @@
 				xp={account.me?.totalXp}
 				size={24}
 			/>
-			<span class="truncate text-xs font-medium">{you.name}</span>
-			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
-			>
+			<span class="mr-auto truncate text-xs font-medium">{you.name}</span>
 			{#if showAv}
 				<!-- Joined-and-live is green, joined-but-muted is red, not joined is
 				     dim — the three states #181's feedback couldn't tell apart. -->

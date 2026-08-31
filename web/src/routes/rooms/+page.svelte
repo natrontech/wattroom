@@ -129,6 +129,10 @@
 <main class="page max-w-3xl">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
+		<a
+			href="/sessions"
+			class="text-muted hover:text-ink shrink-0 text-xs underline">Sessions →</a
+		>
 	</div>
 
 	{#if error}
