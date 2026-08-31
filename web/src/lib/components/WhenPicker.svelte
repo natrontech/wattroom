@@ -47,8 +47,8 @@
 			type="button"
 			onclick={() => setDay(day.date)}
 			class="rounded border px-2.5 py-1.5 text-xs {picked === day.date
-				? 'border-neon/60 text-white'
-				: 'border-muted/25 text-muted hover:text-white'}">{day.label}</button
+				? 'border-neon/60 text-ink'
+				: 'border-muted/25 text-muted hover:text-ink'}">{day.label}</button
 		>
 	{/each}
 	<input

@@ -167,7 +167,7 @@
 	<div class="flex flex-wrap items-start gap-4">
 		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 		<div
-			class="overflow-hidden rounded-lg bg-black {jukebox?.current
+			class="bg-paper overflow-hidden rounded-lg {jukebox?.current
 				? ''
 				: 'hidden'}"
 			style={large
@@ -211,7 +211,7 @@
 				/>
 				<button
 					disabled={!url.trim()}
-					class="rounded bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-white/90 disabled:opacity-40"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
 					>Add</button
 				>
 			</form>
@@ -233,7 +233,7 @@
 							<span class="text-[10px]">· {entry.addedBy}</span>
 							<button
 								onclick={() => send('remove', entry.videoId)}
-								class="ml-auto underline hover:text-white">remove</button
+								class="hover:text-ink ml-auto underline">remove</button
 							>
 						</li>
 					{/each}

@@ -44,8 +44,8 @@
 	}
 </script>
 
-<div class="bg-surface flex h-full flex-col text-white">
-	<header class="flex items-center gap-2.5 border-b border-white/5 px-4 py-3">
+<div class="bg-surface text-ink flex h-full flex-col">
+	<header class="border-ink/5 flex items-center gap-2.5 border-b px-4 py-3">
 		<Logo size={22} {live} />
 		<div class="min-w-0">
 			<p class="truncate text-sm font-medium">{ROOM_NAME}</p>
@@ -65,7 +65,7 @@
 		<ul class="flex-1 overflow-y-auto">
 			{#each ranked as rider (rider.name)}
 				{@const zone = zoneOf(rider.watts, rider.ftp)}
-				<li class="border-b border-white/5 px-4 py-2.5">
+				<li class="border-ink/5 border-b px-4 py-2.5">
 					<div class="flex items-baseline gap-2">
 						<span class="truncate text-sm">{rider.name}</span>
 						{#if rider.coach}
@@ -97,7 +97,7 @@
 			{/each}
 		</ul>
 
-		<div class="border-t border-white/5">
+		<div class="border-ink/5 border-t">
 			<IntervalGraph
 				{segments}
 				{total}
@@ -122,7 +122,7 @@
 	{/if}
 
 	<!-- Huge tap targets: this is used one-handed, often standing up. -->
-	<div class="relative border-t border-white/5 p-3">
+	<div class="border-ink/5 relative border-t p-3">
 		<div class="flex gap-2">
 			{#each cheers as emoji (emoji)}
 				<button

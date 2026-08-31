@@ -52,18 +52,18 @@
 
 {#if open}
 	<button
-		class="fixed inset-0 z-40 bg-black/50"
+		class="bg-paper/50 fixed inset-0 z-40"
 		aria-label="Close room settings"
 		onclick={() => (open = false)}
 	></button>
 	<aside
-		class="bg-surface fixed inset-y-0 right-0 z-50 flex w-96 max-w-full flex-col overflow-y-auto border-l border-white/10 p-5"
+		class="bg-surface border-ink/10 fixed inset-y-0 right-0 z-50 flex w-96 max-w-full flex-col overflow-y-auto border-l p-5"
 	>
 		<div class="flex items-center justify-between">
 			<h2 class="font-display text-lg font-bold">Room</h2>
 			<button
 				onclick={() => (open = false)}
-				class="text-muted text-sm hover:text-white">close (esc)</button
+				class="text-muted hover:text-ink text-sm">close (esc)</button
 			>
 		</div>
 
@@ -97,7 +97,7 @@
 
 		<a
 			href="/r/{slug}/watch"
-			class="text-muted mt-3 text-xs underline hover:text-white"
+			class="text-muted hover:text-ink mt-3 text-xs underline"
 			>Watch on a phone (read-only)</a
 		>
 
@@ -161,14 +161,14 @@
 			{#if isOwner}
 				<a
 					href="/r/{slug}/settings"
-					class="text-muted inline-block text-xs underline hover:text-white"
+					class="text-muted hover:text-ink inline-block text-xs underline"
 					>Room settings</a
 				>
 			{:else if myId}
 				<button
 					onclick={() => onRemove(myId)}
 					disabled={busy}
-					class="text-muted text-xs underline hover:text-white disabled:opacity-40"
+					class="text-muted hover:text-ink text-xs underline disabled:opacity-40"
 					>Leave this room</button
 				>
 			{/if}

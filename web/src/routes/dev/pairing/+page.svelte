@@ -71,7 +71,7 @@
 		</label>
 		<button
 			onclick={() => pair('trainer', 'failed')}
-			class="underline hover:text-white">simulate a failed pair</button
+			class="hover:text-ink underline">simulate a failed pair</button
 		>
 	</div>
 
@@ -120,7 +120,7 @@
 	<div class="mt-6 flex items-center gap-4">
 		<button
 			disabled={!ready}
-			class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+			class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 			>Enter the room</button
 		>
 		{#if !ready}

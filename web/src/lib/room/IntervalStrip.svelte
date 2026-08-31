@@ -22,7 +22,7 @@
 -->
 {#if block}
 	<div
-		class="bg-surface-raised flex items-center gap-[3%] rounded-lg ring-1 ring-white/10 {big
+		class="bg-surface-raised ring-ink/10 flex items-center gap-[3%] rounded-lg ring-1 {big
 			? 'px-[2vw] py-[1.6vh]'
 			: 'px-5 py-3'}"
 	>
@@ -59,7 +59,7 @@
 		</div>
 
 		{#if block.next}
-			<div class="border-l border-white/10 pl-[3%] text-right">
+			<div class="border-ink/10 border-l pl-[3%] text-right">
 				<p
 					class="text-muted text-[10px] tracking-[0.2em] uppercase {big
 						? 'text-[1.5vh]'
@@ -86,7 +86,7 @@
 
 		{#if onBias}
 			<!-- Intensity trim: the one control worth reaching for mid-interval. -->
-			<div class="flex items-center gap-1 border-l border-white/10 pl-4">
+			<div class="border-ink/10 flex items-center gap-1 border-l pl-4">
 				<button
 					onclick={() => onBias(-0.01)}
 					class="border-muted/25 hover:border-muted/60 h-9 w-9 rounded border text-sm"

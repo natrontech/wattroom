@@ -21,7 +21,7 @@
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		Read-only room dashboard for a phone — the only thing a spectator can do is
 		cheer (roles matrix, docs/SPEC.md). Shown at 375×812; open <code
-			class="text-white/70">/dev/spectator</code
+			class="text-ink/70">/dev/spectator</code
 		>
 		on a phone to check it in iOS Safari for real.
 	</p>
@@ -31,8 +31,8 @@
 			<button
 				onclick={() => room.setPhase(option.id)}
 				class="rounded px-3 py-1.5 text-xs {room.phase === option.id
-					? 'bg-surface-raised text-white'
-					: 'text-muted hover:text-white'}">{option.label}</button
+					? 'bg-surface-raised text-ink'
+					: 'text-muted hover:text-ink'}">{option.label}</button
 			>
 		{/each}
 	</div>

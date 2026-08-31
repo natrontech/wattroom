@@ -89,7 +89,7 @@
 			<p class="mt-6 text-sm">{error}</p>
 			<a
 				href="/rooms"
-				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
 				>Back to rooms</a
 			>
 		</div>
@@ -106,7 +106,7 @@
 			<button
 				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
 				disabled={busy}
-				class="mt-6 rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
+				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded px-5 py-3 text-sm font-semibold disabled:opacity-40"
 				>Join {room.name}</button
 			>
 			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}

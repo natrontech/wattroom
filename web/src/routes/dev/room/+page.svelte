@@ -117,7 +117,7 @@
 	<div class="relative h-full">
 		<button
 			onclick={() => (tv = false)}
-			class="border-muted/30 text-muted absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs hover:text-white"
+			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
 			>Exit TV mode</button
 		>
 		<TvMode
@@ -157,8 +157,8 @@
 						<button
 							onclick={() => room.setPhase(option.id)}
 							class="rounded px-2.5 py-1 text-xs {room.phase === option.id
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}">{option.label}</button
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}">{option.label}</button
 						>
 					{/each}
 				</div>
@@ -167,8 +167,8 @@
 						<button
 							onclick={() => (layout = option.id)}
 							class="rounded px-2.5 py-1 text-xs {layout === option.id
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}">{option.label}</button
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}">{option.label}</button
 						>
 					{/each}
 				</div>
@@ -177,35 +177,35 @@
 						<button
 							onclick={() => toggleMetric(metric.id)}
 							class="rounded px-2 py-1 text-xs {tileMetrics.includes(metric.id)
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}">{metric.label}</button
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}">{metric.label}</button
 						>
 					{/each}
 				</div>
 				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 					<button
 						onclick={() => room.breakTrainer(true)}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Drop trainer</button
 					>
 					<button
 						onclick={() => room.toggleAutoPause()}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Auto-pause</button
 					>
 					<button
 						onclick={() => room.triggerSpiral()}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Spiral</button
 					>
 					<button
 						onclick={() => room.lateJoin()}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Late join</button
 					>
 					<button
 						onclick={() => room.nudgeHeadphones()}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Nudge</button
 					>
 					<button
@@ -213,28 +213,28 @@
 							play('cheer'),
 							room.cheer('🔥', 'Ana (spectating)')
 						)}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Cheer</button
 					>
 					<button
 						onclick={() => (joining = !joining)}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Joining</button
 					>
 					<button
 						onclick={() => room.armSprint()}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Arm sprint</button
 					>
 					<button
 						onclick={() => room.breakRoom(false)}
-						class="text-muted rounded px-2 py-1 text-xs hover:text-white"
+						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Drop room</button
 					>
 				</div>
 				<button
 					onclick={() => (tv = true)}
-					class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
+					class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
 					>TV mode</button
 				>
 
@@ -243,8 +243,8 @@
 						<button
 							onclick={() => room.pauseSession()}
 							class="rounded px-2.5 py-1 text-xs {room.sessionPaused
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}"
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}"
 							>{room.sessionPaused ? 'Resume' : 'Pause'}</button
 						>
 						<button
@@ -275,7 +275,7 @@
 					</p>
 					<button
 						onclick={() => room.dismissNudge()}
-						class="text-muted ml-auto shrink-0 text-xs hover:text-white"
+						class="text-muted hover:text-ink ml-auto shrink-0 text-xs"
 						>Got it</button
 					>
 				</div>
@@ -427,7 +427,7 @@
 			{:else}
 				<div class="mt-3 flex flex-wrap items-center gap-3">
 					<button
-						class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
 						>Start {workout.name}</button
 					>
 					<button

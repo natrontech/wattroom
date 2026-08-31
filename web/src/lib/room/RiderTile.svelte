@@ -61,7 +61,7 @@
 		? 'h-full'
 		: 'aspect-video'} transition-shadow duration-200 {rider.speaking
 		? 'ring-neon shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-neon)_35%,transparent)]'
-		: 'ring-white/10'}"
+		: 'ring-ink/10'}"
 >
 	{#if rider.cameraOn && videoAttach}
 		{#key videoKey}
@@ -92,10 +92,10 @@
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
 	<div class="absolute top-2 left-2.5 flex items-center gap-1.5">
-		<span class="text-xs font-medium text-white drop-shadow">{rider.name}</span>
+		<span class="text-ink text-xs font-medium drop-shadow">{rider.name}</span>
 		{#if rider.coach}
 			<span
-				class="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] text-white/80"
+				class="bg-paper/40 text-ink/80 rounded-full px-1.5 py-0.5 text-[9px]"
 				>coach</span
 			>
 		{/if}
@@ -107,7 +107,7 @@
 			></span>
 		{:else if rider.muted}
 			<span
-				class="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] text-white/70"
+				class="bg-paper/40 text-ink/70 rounded-full px-1.5 py-0.5 text-[9px]"
 				title="muted">mic off</span
 			>
 		{/if}
@@ -123,14 +123,14 @@
 			<span
 				class="font-display text-2xl leading-none font-bold tabular-nums drop-shadow {rider.you
 					? 'text-watt glow-text'
-					: 'text-white'}">{rider.watts}</span
+					: 'text-ink'}">{rider.watts}</span
 			>
-			<span class="text-[10px] text-white/60">W</span>
+			<span class="text-ink/60 text-[10px]">W</span>
 		</div>
 	{/if}
 
 	{#if rider.paused}
-		<div class="absolute inset-0 grid place-items-center bg-black/55">
+		<div class="bg-paper/55 absolute inset-0 grid place-items-center">
 			<div class="text-center">
 				<span
 					class="text-muted text-[11px] font-medium tracking-wider uppercase"
@@ -145,14 +145,14 @@
 
 	{#if rider.lateJoined}
 		<div class="absolute inset-x-0 bottom-1.5 flex justify-center">
-			<span class="bg-neon/80 rounded-full px-2 py-0.5 text-[10px] text-white"
+			<span class="bg-neon/80 text-ink rounded-full px-2 py-0.5 text-[10px]"
 				>joined · synced to 24:07</span
 			>
 		</div>
 	{/if}
 
 	{#if rider.stale}
-		<div class="absolute inset-0 grid place-items-center bg-black/55">
+		<div class="bg-paper/55 absolute inset-0 grid place-items-center">
 			<span class="text-z5 text-[11px] font-medium tracking-wider uppercase"
 				>no signal</span
 			>
@@ -161,17 +161,16 @@
 
 	{#if live && extras.length && !rider.stale}
 		<div
-			class="absolute right-2.5 bottom-3 flex gap-2.5 font-mono text-[11px] text-white/85 tabular-nums drop-shadow"
+			class="text-ink/85 absolute right-2.5 bottom-3 flex gap-2.5 font-mono text-[11px] tabular-nums drop-shadow"
 		>
 			{#each extras as extra (extra.key)}
-				<span>{extra.text}<span class="text-white/50"> {extra.unit}</span></span
-				>
+				<span>{extra.text}<span class="text-ink/50"> {extra.unit}</span></span>
 			{/each}
 		</div>
 	{/if}
 
 	<!-- The power bar is fused to the tile's bottom edge, not floating in a card. -->
-	<div class="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
+	<div class="bg-paper/50 absolute inset-x-0 bottom-0 h-1.5">
 		{#if live}
 			<div
 				class="h-full transition-[width] duration-500 ease-out {ZONE_BG[zone]}"

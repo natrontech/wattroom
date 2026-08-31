@@ -34,7 +34,7 @@
 				<Logo size={72} />
 			</div>
 			<div
-				class="border-muted/15 flex items-center justify-center rounded-lg border bg-white p-8"
+				class="border-muted/15 bg-ink flex items-center justify-center rounded-lg border p-8"
 			>
 				<Logo size={72} />
 			</div>
@@ -77,14 +77,14 @@
 		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
 			<div class="flex items-center gap-2 rounded-t-md bg-[#2b2b31] px-3 py-2">
 				<Logo size={16} />
-				<span class="text-xs text-white/80">WattRoom — Sweet Spot 2×20</span>
+				<span class="text-ink/80 text-xs">WattRoom — Sweet Spot 2×20</span>
 			</div>
 			<p class="text-muted mt-3 text-xs">Dark browser chrome.</p>
 		</div>
 		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
 			<div class="flex items-center gap-2 rounded-t-md bg-[#dedee3] px-3 py-2">
 				<Logo size={16} />
-				<span class="text-xs text-black/80">WattRoom — Sweet Spot 2×20</span>
+				<span class="text-paper/80 text-xs">WattRoom — Sweet Spot 2×20</span>
 			</div>
 			<p class="text-muted mt-3 text-xs">Light chrome — magenta still holds.</p>
 		</div>

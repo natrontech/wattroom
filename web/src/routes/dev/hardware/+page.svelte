@@ -135,7 +135,7 @@
 		<button
 			onclick={pair}
 			disabled={!supported || status === 'connecting'}
-			class="rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
+			class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold disabled:opacity-40"
 			>{connected ? 'Re-pair' : 'Pair trainer'}</button
 		>
 		{#if connected}
@@ -180,8 +180,8 @@
 			<!-- The limit is worth stating on screen: absence here is not proof of absence. -->
 			<p class="text-muted mt-3 text-xs">
 				Web Bluetooth only exposes services declared up front, so anything
-				outside the probe list in <code class="text-white/70">enumerate.ts</code
-				> is invisible — a missing service means "not one we asked for", not necessarily
+				outside the probe list in <code class="text-ink/70">enumerate.ts</code> is
+				invisible — a missing service means "not one we asked for", not necessarily
 				"not there".
 			</p>
 
@@ -189,8 +189,7 @@
 				{#each dump.services as service (service.uuid)}
 					<div>
 						<p class="font-mono text-xs">
-							<span class="text-white">{service.name ?? 'unknown service'}</span
-							>
+							<span class="text-ink">{service.name ?? 'unknown service'}</span>
 							<span class="text-muted"> · {service.uuid}</span>
 						</p>
 						{#if service.error}
@@ -199,7 +198,7 @@
 						<ul class="mt-1.5 space-y-1">
 							{#each service.characteristics as char (char.uuid)}
 								<li class="text-muted font-mono text-[11px] leading-relaxed">
-									<span class="text-white/80">{char.name ?? char.uuid}</span>
+									<span class="text-ink/80">{char.name ?? char.uuid}</span>
 									<span class="text-muted/70">
 										[{char.properties.join(' ')}]</span
 									>
@@ -292,7 +291,7 @@
 			<button
 				onclick={sendTarget}
 				disabled={!connected}
-				class="rounded bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-40"
+				class="bg-ink text-paper rounded px-4 py-2 text-sm font-medium disabled:opacity-40"
 				>Set target</button
 			>
 			{#each [100, 150, 200, 250] as preset (preset)}

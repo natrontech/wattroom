@@ -120,7 +120,12 @@
 {:else if gated}
 	<!-- redirecting -->
 {:else if framed}
-	<div class="flex h-dvh overflow-hidden">
+	<!-- The room is the cave (#113): daylight stops at its door. -->
+	<div
+		class="flex h-dvh overflow-hidden {page.url.pathname.startsWith('/r/')
+			? 'cave bg-surface'
+			: ''}"
+	>
 		<div class="hidden shrink-0 md:block">
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}

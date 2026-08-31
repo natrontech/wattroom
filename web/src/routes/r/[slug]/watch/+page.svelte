@@ -50,8 +50,8 @@
 	);
 </script>
 
-<div class="bg-surface flex min-h-dvh flex-col text-white">
-	<header class="flex items-center gap-2.5 border-b border-white/5 px-4 py-3">
+<div class="cave bg-surface text-ink flex min-h-dvh flex-col">
+	<header class="border-ink/5 flex items-center gap-2.5 border-b px-4 py-3">
 		<Logo size={22} live={shared?.phase === 'running'} />
 		<div class="min-w-0">
 			<p class="truncate text-sm font-medium">/r/{page.params.slug}</p>
@@ -82,7 +82,7 @@
 			{#each ranked as rider (rider.id)}
 				{@const watts = rider.metrics?.watts ?? 0}
 				{@const zone = zoneOf(watts, rider.ftpWatts)}
-				<li class="border-b border-white/5 px-4 py-2.5">
+				<li class="border-ink/5 border-b px-4 py-2.5">
 					<div class="flex items-baseline gap-2">
 						<span class="truncate text-sm">{rider.name}</span>
 						{#if rider.role !== 'member'}
@@ -119,7 +119,7 @@
 		</ul>
 
 		{#if segments.length > 0 && shared}
-			<div class="border-t border-white/5">
+			<div class="border-ink/5 border-t">
 				<IntervalGraph
 					{segments}
 					total={shared.totalSeconds ?? 0}
@@ -145,7 +145,7 @@
 	{/if}
 
 	<!-- The spectator's one verb (roles matrix). One-handed, often standing. -->
-	<div class="border-t border-white/5 p-3">
+	<div class="border-ink/5 border-t p-3">
 		<div class="flex gap-2">
 			{#each ['🔥', '💪', '👏', '💀'] as emoji (emoji)}
 				<button
@@ -157,7 +157,7 @@
 		</div>
 		<p class="text-muted mt-2 text-center text-[10px]">
 			Spectating — cheers land in the room. Bring a laptop to ride.
-			<a href="/r/{page.params.slug}?full=1" class="underline hover:text-white"
+			<a href="/r/{page.params.slug}?full=1" class="hover:text-ink underline"
 				>Riding on this device anyway?</a
 			>
 		</p>
@@ -166,7 +166,7 @@
 				{#each live.chatLog.slice(-8) as message (message.at + message.from)}
 					<li class="text-xs leading-snug">
 						<span class="text-muted font-medium">{message.from}</span>
-						<span class="ml-1.5 text-white/85">{message.text}</span>
+						<span class="text-ink/85 ml-1.5">{message.text}</span>
 					</li>
 				{/each}
 			</ul>

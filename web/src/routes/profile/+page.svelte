@@ -171,7 +171,7 @@
 								measured,
 							).toLocaleDateString()}.
 						{:else}
-							<a href="/ramp" class="underline hover:text-white"
+							<a href="/ramp" class="hover:text-ink underline"
 								>A ramp test measures it for you.</a
 							>
 						{/if}
@@ -249,7 +249,7 @@
 			<div class="mt-5 flex items-center gap-3">
 				<button
 					onclick={() => save()}
-					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
 					>Save</button
 				>
 				{#if status}<span class="text-muted text-xs">{status}</span>{/if}
@@ -292,13 +292,13 @@
 				>
 				<button
 					onclick={() => account.signOut()}
-					class="text-muted self-center text-xs underline hover:text-white"
+					class="text-muted hover:text-ink self-center text-xs underline"
 					>Sign out</button
 				>
 			</div>
 
 			<!-- The destructive action lives apart from the routine ones (#126). -->
-			<div class="mt-6 border-t border-white/5 pt-4">
+			<div class="border-ink/5 mt-6 border-t pt-4">
 				<button
 					onclick={() => (confirmDelete = true)}
 					class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
@@ -328,7 +328,7 @@
 						<button
 							onclick={deleteAccount}
 							disabled={deleteConfirmation !== 'DELETE' || deleting}
-							class="bg-z6 rounded px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
 							>Delete my account</button
 						>
 						<button
@@ -355,7 +355,7 @@
 						'+dirty',
 						'',
 					)}"
-					class="underline hover:text-white">{version}</a
+					class="hover:text-ink underline">{version}</a
 				>
 			{:else if version}
 				{version}
@@ -365,10 +365,10 @@
 			free &amp; open source (AGPL) —
 			<a
 				href="https://github.com/natrontech/wattroom"
-				class="underline hover:text-white">GitHub</a
+				class="hover:text-ink underline">GitHub</a
 			>
 			· by
-			<a href="https://natron.io" class="underline hover:text-white"
+			<a href="https://natron.io" class="hover:text-ink underline"
 				>Natron Tech</a
 			>
 		</p>

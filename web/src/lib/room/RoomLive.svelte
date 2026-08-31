@@ -592,7 +592,7 @@
 	<div class="bg-surface fixed inset-0 z-50">
 		<button
 			onclick={() => (tv = false)}
-			class="border-muted/30 text-muted absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs hover:text-white"
+			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
 			>Exit TV mode (esc)</button
 		>
 		<TvMode
@@ -613,31 +613,31 @@
 	<!-- Session setup (#115): the room's "what are we doing tonight" moment.
 	     Training is the whole default flow; games are one step away. -->
 	<button
-		class="fixed inset-0 z-40 bg-black/50"
+		class="bg-paper/50 fixed inset-0 z-40"
 		aria-label="Close session setup"
 		onclick={() => (setup = false)}
 	></button>
 	<div
 		class="border-muted/15 bg-surface fixed inset-x-4 top-[8dvh] bottom-[8dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[44rem] md:-translate-x-1/2"
 	>
-		<header class="flex items-center gap-3 border-b border-white/5 px-5 py-4">
+		<header class="border-ink/5 flex items-center gap-3 border-b px-5 py-4">
 			<h2 class="font-display text-lg font-bold">Tonight's session</h2>
 			<button
 				onclick={() => (setup = false)}
-				class="text-muted ml-auto text-sm hover:text-white">Close</button
+				class="text-muted hover:text-ink ml-auto text-sm">Close</button
 			>
 		</header>
 
 		<div class="flex min-h-0 flex-1">
-			<ul class="w-56 shrink-0 overflow-y-auto border-r border-white/5 p-2">
+			<ul class="border-ink/5 w-56 shrink-0 overflow-y-auto border-r p-2">
 				{#each shelf as entry (entry.id)}
 					<li>
 						<button
 							onclick={() => (pickedId = entry.id)}
 							class="w-full rounded px-3 py-2.5 text-left {setupPicked?.id ===
 							entry.id
-								? 'bg-surface-raised text-white'
-								: 'text-muted hover:text-white'}"
+								? 'bg-surface-raised text-ink'
+								: 'text-muted hover:text-ink'}"
 						>
 							<span class="block truncate text-sm font-medium"
 								>{entry.workout.name}</span
@@ -672,7 +672,7 @@
 					<div class="mt-4 flex flex-wrap items-center gap-2">
 						<button
 							onclick={() => startWorkout(setupPicked.workout)}
-							class="rounded bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90"
+							class="bg-ink text-paper hover:bg-ink/90 rounded px-6 py-3 text-sm font-semibold"
 							>Start {setupPicked.workout.name}</button
 						>
 						<span class="text-muted text-xs">or plan it:</span>
@@ -693,11 +693,11 @@
 					</div>
 				{/if}
 
-				<div class="mt-auto border-t border-white/5 pt-3">
+				<div class="border-ink/5 mt-auto border-t pt-3">
 					{#if !setupGames}
 						<button
 							onclick={() => (setupGames = true)}
-							class="text-muted text-sm underline hover:text-white"
+							class="text-muted hover:text-ink text-sm underline"
 							>Play a game instead</button
 						>
 					{:else if !live.tick?.game}
@@ -740,7 +740,7 @@
 
 <!-- The rail is the layout's (#191 — one instance across navigation);
      this page is main | panel inside that frame. -->
-<div class="bg-surface flex h-full overflow-hidden text-white">
+<div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main
 		class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 py-4"
 	>
@@ -766,8 +766,8 @@
 					<button
 						onclick={() => setLayout(option.id)}
 						class="rounded px-2.5 py-1 text-xs {layout === option.id
-							? 'bg-surface-raised text-white'
-							: 'text-muted hover:text-white'}">{option.label}</button
+							? 'bg-surface-raised text-ink'
+							: 'text-muted hover:text-ink'}">{option.label}</button
 					>
 				{/each}
 			</div>
@@ -776,19 +776,19 @@
 					<button
 						onclick={() => toggleMetric(metric.id)}
 						class="rounded px-2 py-1 text-xs {tileMetrics.includes(metric.id)
-							? 'bg-surface-raised text-white'
-							: 'text-muted hover:text-white'}">{metric.label}</button
+							? 'bg-surface-raised text-ink'
+							: 'text-muted hover:text-ink'}">{metric.label}</button
 					>
 				{/each}
 			</div>
 			<button
 				onclick={() => (tv = true)}
-				class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
+				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
 				>TV mode</button
 			>
 			<button
 				onclick={() => (admin = true)}
-				class="border-muted/20 text-muted rounded border px-2.5 py-1 text-xs hover:text-white"
+				class="border-muted/20 text-muted hover:text-ink rounded border px-2.5 py-1 text-xs"
 				>Room ···</button
 			>
 
@@ -797,7 +797,7 @@
 					<!-- Training-first (#115): one affordance; games live inside. -->
 					<button
 						onclick={() => (setup = true)}
-						class="rounded bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
+						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-semibold"
 						>Pick a workout</button
 					>
 				{:else}
@@ -809,7 +809,7 @@
 							>
 							<button
 								onclick={() => live.control('pause')}
-								class="text-muted rounded px-2.5 py-1 text-xs hover:text-white"
+								class="text-muted hover:text-ink rounded px-2.5 py-1 text-xs"
 								>Pause</button
 							>
 						{:else if shared.phase === 'paused'}
@@ -922,7 +922,7 @@
 				<button
 					onclick={() => ride(new FtmsTrainer())}
 					disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
-					class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
 					>Pair trainer and ride</button
 				>
 				{#if dev}
@@ -950,7 +950,7 @@
 				{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
 					<button
 						onclick={() => startWorkout(setupPicked.workout)}
-						class="rounded bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90"
+						class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
 						>Start {setupPicked.workout.name}</button
 					>
 					{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
@@ -962,7 +962,7 @@
 		{#if phase === 'lounge' && upcoming.length > 0}
 			<!-- Plans are a footnote to the people (#170): a quiet strip, only
 			     when something IS planned. Planning lives in the setup panel. -->
-			<div class="mt-4 border-t border-white/5 pt-3">
+			<div class="border-ink/5 mt-4 border-t pt-3">
 				<ul class="space-y-1.5">
 					{#each upcoming as entry (entry.id)}
 						<li class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -987,13 +987,13 @@
 									{#if due(entry.startsAt)}
 										<button
 											onclick={() => startScheduled(entry)}
-											class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+											class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1 text-xs font-semibold"
 											>Start now</button
 										>
 									{/if}
 									<button
 										onclick={() => onUnschedule(entry.id)}
-										class="border-muted/25 text-muted hover:border-muted/60 rounded border px-2.5 py-1 text-xs hover:text-white"
+										class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink rounded border px-2.5 py-1 text-xs"
 										>Remove</button
 									>
 								</span>
@@ -1085,13 +1085,13 @@
 							: 'trainer'} ·
 						<button
 							onclick={() => profile.update({ shareHr: false })}
-							class="underline hover:text-white">stop sharing</button
+							class="hover:text-ink underline">stop sharing</button
 						>
 					{:else}
 						Heart rate not shared with this room ·
 						<button
 							onclick={() => profile.update({ shareHr: true })}
-							class="underline hover:text-white">share</button
+							class="hover:text-ink underline">share</button
 						>
 					{/if}
 				</p>

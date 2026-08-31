@@ -75,8 +75,8 @@
 			<button
 				onclick={() => (active = mode)}
 				class="rounded px-3 py-1.5 text-xs {active.id === mode.id
-					? 'bg-surface-raised text-white'
-					: 'text-muted hover:text-white'}">{mode.name}</button
+					? 'bg-surface-raised text-ink'
+					: 'text-muted hover:text-ink'}">{mode.name}</button
 			>
 		{/each}
 	</div>
@@ -278,7 +278,7 @@
 				{#each riders as rider (rider.name)}
 					<div
 						class="rounded px-3 py-2 text-xs {rider.front
-							? 'bg-watt/15 text-white'
+							? 'bg-watt/15 text-ink'
 							: 'bg-surface text-muted'}"
 					>
 						{rider.name}

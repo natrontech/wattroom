@@ -180,8 +180,8 @@
 		Native elements styled in place, not wrapped — they keep label association,
 		keyboard behaviour and form semantics, and every call site gets them for
 		free. They take
-		<span class="text-white">--color-neon</span>, because a checked box is
-		chrome, not live data.
+		<span class="text-ink">--color-neon</span>, because a checked box is chrome,
+		not live data.
 	</p>
 	<div
 		class="border-muted/15 bg-surface-raised mt-4 grid gap-6 rounded-lg border p-6 sm:grid-cols-2"
@@ -258,7 +258,7 @@
 	<div
 		class="border-muted/15 bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-6"
 	>
-		<button class="rounded bg-white px-4 py-2 text-sm font-medium text-black"
+		<button class="bg-ink text-paper rounded px-4 py-2 text-sm font-medium"
 			>Primary</button
 		>
 		<button class="border-muted/30 rounded border px-4 py-2 text-sm"

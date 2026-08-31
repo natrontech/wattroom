@@ -37,7 +37,7 @@
 			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
 				your workouts
 			</h2>
-			<a href="/workouts/edit" class="text-xs underline hover:text-white"
+			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
 				>New workout</a
 			>
 		</div>
@@ -64,11 +64,11 @@
 						>
 						<a
 							href="/workouts/edit?w={entry.id}"
-							class="text-muted ml-auto text-xs hover:text-white">Edit</a
+							class="text-muted hover:text-ink ml-auto text-xs">Edit</a
 						>
 						<button
 							onclick={() => void custom.remove(entry.id)}
-							class="text-muted text-xs hover:text-white">Delete</button
+							class="text-muted hover:text-ink text-xs">Delete</button
 						>
 					</li>
 				{/each}
@@ -84,8 +84,8 @@
 			<button
 				onclick={() => (active = option as Focus | 'All')}
 				class="rounded px-3 py-1.5 text-xs {active === option
-					? 'bg-surface-raised text-white'
-					: 'text-muted hover:text-white'}">{option}</button
+					? 'bg-surface-raised text-ink'
+					: 'text-muted hover:text-ink'}">{option}</button
 			>
 		{/each}
 	</div>
@@ -111,13 +111,13 @@
 					>
 					<a
 						href="/workouts/edit?from={entry.id}"
-						class="text-muted text-xs hover:text-white">Save a copy</a
+						class="text-muted hover:text-ink text-xs">Save a copy</a
 					>
 					<!-- The primary action, visible (#126): the title-only link read
 					     as a label, and the rest of the card was dead surface. -->
 					<a
 						href="/ride?w={entry.id}"
-						class="rounded bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+						class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1 text-xs font-semibold"
 						>Ride</a
 					>
 				</div>

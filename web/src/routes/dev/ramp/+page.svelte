@@ -65,7 +65,7 @@
 			</p>
 			<button
 				onclick={reset}
-				class="mt-6 rounded bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded px-5 py-3 text-sm font-semibold"
 				>Start ramp test</button
 			>
 		</div>
@@ -133,7 +133,7 @@
 			</p>
 			<div class="mt-6 flex gap-2">
 				<button
-					class="rounded bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+					class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2.5 text-sm font-medium"
 					>Save {estimatedFtp} W</button
 				>
 				<button

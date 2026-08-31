@@ -22,7 +22,7 @@
 
 {#if variant === 'notch'}
 	<div
-		class="bg-surface-raised flex h-24 items-center gap-6 rounded-lg px-5 ring-1 ring-white/10"
+		class="bg-surface-raised ring-ink/10 flex h-24 items-center gap-6 rounded-lg px-5 ring-1"
 	>
 		<div class="shrink-0">
 			<span

@@ -93,7 +93,7 @@
 				</div>
 				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[2.4vh]">
 					<span class="text-muted"
-						>target <span class="text-white">{you.target} W</span></span
+						>target <span class="text-ink">{you.target} W</span></span
 					>
 					<span class="text-muted"
 						>{you.cadence} <span class="text-[1.6vh]">rpm</span></span

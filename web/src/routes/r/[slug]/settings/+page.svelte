@@ -106,7 +106,7 @@
 			<p class="text-sm">{error}</p>
 			<a
 				href="/rooms"
-				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
 				>Back to rooms</a
 			>
 		</div>
@@ -118,16 +118,15 @@
 			<p class="text-sm">Only {room.name}'s owner can change its settings.</p>
 			<a
 				href="/r/{room.slug}"
-				class="text-muted mt-3 inline-block text-xs underline hover:text-white"
+				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
 				>Back to the room</a
 			>
 		</div>
 	</main>
 {:else if room}
 	<main class="mx-auto max-w-2xl px-6 py-10">
-		<a
-			href="/r/{room.slug}"
-			class="text-muted text-xs underline hover:text-white">← {room.name}</a
+		<a href="/r/{room.slug}" class="text-muted hover:text-ink text-xs underline"
+			>← {room.name}</a
 		>
 		<h1 class="font-display mt-3 text-3xl font-bold tracking-tight">
 			Room settings
@@ -174,7 +173,7 @@
 					<label
 						class="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {pack ===
 						option.id
-							? 'border-white/40'
+							? 'border-ink/40'
 							: 'border-muted/15'}"
 					>
 						<input
@@ -207,7 +206,7 @@
 			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
 		>
 			<h2 class="font-display font-bold">Who's in here</h2>
-			<ul class="mt-3 divide-y divide-white/5">
+			<ul class="divide-ink/5 mt-3 divide-y">
 				{#each room.members ?? [] as member (member.id)}
 					<li class="flex items-center gap-3 py-2.5">
 						<span class="text-sm">{member.displayName}</span>
@@ -253,7 +252,7 @@
 						<button
 							onclick={remove}
 							disabled={busy}
-							class="bg-z6 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:opacity-40"
 							>Delete room</button
 						>
 						<button
