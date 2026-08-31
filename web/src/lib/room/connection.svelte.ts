@@ -1,5 +1,6 @@
 import { account } from '$lib/account.svelte';
 import { notify } from '$lib/notify.svelte';
+import { shouldAnnounce } from '$lib/notify-once';
 import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
 import { play, setDucked } from '$lib/sound/cues';
@@ -74,9 +75,13 @@ function connect(slug: string): Connection {
 			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
 			if (fresh.length === 0) return;
 			lastChatAt = fresh[fresh.length - 1].at;
-			const me = account.me?.displayName;
 			for (const line of fresh) {
-				if (line.from === me) continue;
+				// Ids beat display names — a namesake must not be muted (#219);
+				// and only one TAB announces a given line.
+				const mine = line.fromId
+					? line.fromId === account.me?.id
+					: line.from === account.me?.displayName;
+				if (mine || !shouldAnnounce(`chat-${slug}`, line.at)) continue;
 				play('chat');
 				notify.push(`${line.from} · ${slug}`, line.text, `chat-${slug}`);
 			}
@@ -146,6 +151,19 @@ function connect(slug: string): Connection {
 				window.removeEventListener('blur', release);
 				document.removeEventListener('visibilitychange', release);
 			};
+		});
+
+		// LiveKit dropping us while live gets ONE automatic rejoin with a
+		// fresh token — covers the 6h expiry and transient drops (#219).
+		let seenDrops = 0;
+		$effect(() => {
+			const drops = av.dropped;
+			if (drops > seenDrops) {
+				seenDrops = drops;
+				setTimeout(() => {
+					if (roomConnection.current?.slug === slug) void av.join();
+				}, 2_000);
+			}
 		});
 
 		// A session starting is the one event nobody wants to miss (#202).

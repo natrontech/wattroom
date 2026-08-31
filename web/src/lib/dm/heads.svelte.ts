@@ -8,6 +8,7 @@ import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
 import { notify } from '$lib/notify.svelte';
 import { play } from '$lib/sound/cues';
+import { shouldAnnounce } from '$lib/notify-once';
 
 export interface DmHead {
 	peerId: string;
@@ -38,7 +39,7 @@ async function poll() {
 		// A NEW inbound line: blip + hidden-tab alert — unless that thread is
 		// open in a visible tab right now.
 		const reading = dm.open?.id === head.peerId && !document.hidden;
-		if (!first && !reading) {
+		if (!first && !reading && shouldAnnounce(`dm-${head.peerId}`, head.at)) {
 			play('chat');
 			notify.push(head.peerName, head.text, `dm-${head.peerId}`);
 		}

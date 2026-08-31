@@ -52,6 +52,7 @@ type Service struct {
 	// Whether the server can send email (#117) — the profile hides the whole
 	// notifications section when it cannot.
 	mailAvailable bool
+	avEnabled     bool
 }
 
 // SetMailAvailable wires the notify capability in after construction.
@@ -73,6 +74,10 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 }
 
 // Register mounts every auth route on mux.
+// SetAvEnabled marks LiveKit as configured; /api/me carries it so the
+// client can gate voice/camera affordances (#219).
+func (s *Service) SetAvEnabled(v bool) { s.avEnabled = v }
+
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/providers", s.handleProviders)
 	mux.HandleFunc("GET /api/auth/{provider}/start", s.handleStart)
@@ -342,6 +347,9 @@ type meResponse struct {
 	// the setting. A suggestion, never an application — FTP moves every
 	// workout's difficulty (docs/SPEC.md).
 	SuggestedFtp int `json:"suggestedFtp,omitempty"`
+	// Whether LiveKit is configured — the client hides voice/cam controls
+	// instead of serving 404s on click (#219, capability gating).
+	AvEnabled bool `json:"avEnabled"`
 	// The evidence behind the suggestion, for the prompt's copy.
 	Best20m int `json:"best20m,omitempty"`
 	// Which providers this account signs in with — profile-screen copy only.
@@ -363,6 +371,7 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := s.toMe(user)
+	response.AvEnabled = s.avEnabled
 	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
 		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 			response.SuggestedFtp = suggested

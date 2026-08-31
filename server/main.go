@@ -112,6 +112,7 @@ func main() {
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
+			authService.SetAvEnabled(true)
 			avService := av.New(cfg, roomsService, log)
 			avService.Register(mux)
 			avService.SetVoiceSink(h)

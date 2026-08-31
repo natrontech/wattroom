@@ -185,6 +185,7 @@
 				{@const roster = roomConnection.current.live.tick?.roster ?? []}
 				<RoomRail
 					you={railYou}
+					showAv={!!account.me?.avEnabled}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}

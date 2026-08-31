@@ -19,6 +19,8 @@ export interface Me {
 	suggestedFtp?: number;
 	best20m?: number;
 	providers?: string[];
+	/** LiveKit is configured — voice/camera affordances render at all (#219). */
+	avEnabled?: boolean;
 	stravaUpload?: boolean;
 	/** Email notifications for planned sessions (#117); the section hides
 	 * entirely when the server cannot send (mailAvailable absent). */

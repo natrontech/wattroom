@@ -119,16 +119,17 @@ func TestChatRoundTrip(t *testing.T) {
 	}
 
 	// Reactions toggle: on → 1, mirrored on → 2, off → 1; junk id refused.
-	if n, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 {
-		t.Fatalf("first toggle: %d %v", n, ok)
+	// The added flag reports which way it went (#219).
+	if n, added, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || !added {
+		t.Fatalf("first toggle: %d %v %v", n, added, ok)
 	}
-	if n, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(alice.ID), "🔥"); !ok || n != 2 {
-		t.Fatalf("second rider: %d %v", n, ok)
+	if n, added, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(alice.ID), "🔥"); !ok || n != 2 || !added {
+		t.Fatalf("second rider: %d %v %v", n, added, ok)
 	}
-	if n, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 {
-		t.Fatalf("toggle off: %d %v", n, ok)
+	if n, added, ok := svc.ToggleReaction(t.Context(), "chat-cave", id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || added {
+		t.Fatalf("toggle off: %d %v %v", n, added, ok)
 	}
-	if _, ok := svc.ToggleReaction(t.Context(), "chat-cave", "not-a-uuid", store.UUIDString(bob.ID), "🔥"); ok {
+	if _, _, ok := svc.ToggleReaction(t.Context(), "chat-cave", "not-a-uuid", store.UUIDString(bob.ID), "🔥"); ok {
 		t.Fatal("junk message id accepted")
 	}
 
@@ -164,7 +165,7 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	}
 	// Toggling it through the OTHER room's slug must refuse — the room is
 	// the privacy boundary even for a reaction.
-	if _, ok := svc.ToggleReaction(t.Context(), "other-cave", id, store.UUIDString(alice.ID), "🔥"); ok {
+	if _, _, ok := svc.ToggleReaction(t.Context(), "other-cave", id, store.UUIDString(alice.ID), "🔥"); ok {
 		t.Fatal("cross-room reaction accepted")
 	}
 }
