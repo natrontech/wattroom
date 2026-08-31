@@ -32,7 +32,41 @@ hardcoded "ok":
     curl -s https://wattroom.ch/api/version    # {"version":"v0.4.0",...}
     curl -s https://wattroom.ch/api/healthz    # ok
 
-#311 puts all of this on a timer that also refuses to interrupt a ride.
+## The VM deploys itself
+
+Rather than the three lines above, the VM converges on the tag pinned in the
+homelab repo (ADR-0019). Promotion is a one-line commit there; rollback is
+`git revert` of it. Install:
+
+    cp wattroom-update.sh /opt/wattroom/
+    cp wattroom-update.service wattroom-update.timer /etc/systemd/system/
+    cp wattroom-update.env.example /etc/wattroom-update.env   # then edit it
+    git clone <homelab-repo> /opt/wattroom-pin                # deploy key, read-only
+    systemctl enable --now wattroom-update.timer
+
+Every five minutes it reads the pin and, if it differs from `WATTROOM_TAG` in
+`.env`:
+
+1. **refuses to interrupt a ride** — a server that answers with riders on it
+   defers to the next tick. A count it cannot read from a *responding* server
+   also defers: a missed deploy costs five minutes, a deploy into a group ride
+   costs the ride.
+2. `pg_dump`s to `backups/`. No dump, no deploy.
+3. pulls and `up -d`s the new tag, then waits up to `GATE_TIMEOUT` for
+   `/api/version` to report *that* tag and `/api/healthz` to answer 200. It
+   asks over `127.0.0.1:8080`, which the stack publishes for exactly this —
+   loopback is not an exposure, and `/metrics` has no route through Caddy.
+4. on failure, retags to the previous release and brings it back — then checks
+   that too, because a failed rollback is the one thing that must page.
+5. only then writes the new tag into `.env`. A run killed before that leaves
+   `.env` naming the last release known to work.
+
+It never restores a dump. That would discard every ride recorded since the
+dump, which is worse than the bug being rolled back from — restoring is a
+break-glass path with a person present. Automated recovery stops at the image.
+
+Watch it with `journalctl -u wattroom-update -f`, or run it once by hand with
+`systemctl start wattroom-update`.
 
 Planned maintenance is `docker compose -f docker-compose.prod.yml stop wattroom`
 — Caddy then serves maintenance.html (which polls /api/healthz and reloads

@@ -21,6 +21,11 @@ services:
     networks:
       - default
       - monitoring
+    # Loopback only: Caddy fronts the public side, and this is how the updater
+    # on this host asks /api/version, /api/healthz and /metrics. Not an
+    # exposure — 127.0.0.1 is not reachable off the VM.
+    ports:
+      - '127.0.0.1:8080:8080'
 
   postgres:
     image: postgres:18
