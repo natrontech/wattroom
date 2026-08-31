@@ -11,7 +11,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { takeNext } from '$lib/auth/next';
-	import { fetchRailRooms } from '$lib/nav/rooms';
+	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
@@ -22,7 +22,7 @@
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
-	import type { RailRoom } from '$lib/room/mockcompat';
+	import { LogOut } from '@lucide/svelte';
 
 	let { children } = $props();
 
@@ -63,23 +63,18 @@
 			page.url.pathname !== '/login',
 	);
 
-	let railRooms = $state<RailRoom[]>([]);
+	// Presence is pushed, not polled (#251): the lobby socket pings, the store
+	// re-fetches — this replaced the shell's 10 s poll.
 	$effect(() => {
 		if (!framed) return;
-		page.url.pathname; // re-fetch presence on every navigation
-		const refresh = () =>
-			void fetchRailRooms().then((rooms) => (railRooms = rooms));
-		refresh();
-		// ponytail: 10 s poll for other rooms' presence; push it over the WS
-		// if the fleet ever makes polling expensive.
-		const timer = setInterval(refresh, 10_000);
-		return () => clearInterval(timer);
+		presence.start();
+		return () => presence.stop();
 	});
 
 	// The room you are IN is tick-fresh: names change the second someone joins,
 	// not on the next poll (#191 rider report).
 	const shownRooms = $derived(
-		railRooms.map((room) => {
+		presence.rooms.map((room) => {
 			const conn = roomConnection.current;
 			const roster = conn?.live.tick?.roster;
 			if (!conn || room.slug !== conn.slug || !roster) return room;
@@ -133,6 +128,15 @@
 		name: account.me?.displayName ?? '',
 		ftp: account.me?.ftpWatts ?? 0,
 	});
+
+	// Leaving while standing in the room: the page must leave too, or you
+	// stare at a room you are no longer in with no way back in (rider report).
+	// Shared by the rail's button and the mobile chip (#251).
+	function leaveRoom() {
+		roomConnection.leave();
+		if (page.url.pathname.startsWith('/r/'))
+			void goto('/home', { replaceState: true });
+	}
 
 	$effect(() => {
 		if (gated) {
@@ -194,14 +198,7 @@
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}
 					connectedSlug={roomConnection.current.slug}
-					onLeave={() => {
-						roomConnection.leave();
-						// Leaving while standing in the room: the page must leave
-						// too, or you stare at a room you are no longer in with no
-						// way back in (rider report).
-						if (page.url.pathname.startsWith('/r/'))
-							void goto('/home', { replaceState: true });
-					}}
+					onLeave={leaveRoom}
 					onMember={(slug, name) => void openMember(slug, name)}
 					micOn={av.micOn}
 					camOn={av.camOn}
@@ -249,13 +246,47 @@
 				/>
 			{/if}
 		</div>
-		<div class="min-w-0 flex-1 overflow-y-auto {caved ? '' : 'pb-16 md:pb-0'}">
+		<!-- Room chip adds a second bar on mobile — pad the content past both. -->
+		<div
+			class="min-w-0 flex-1 overflow-y-auto {caved
+				? ''
+				: roomConnection.current
+					? 'pb-28 md:pb-0'
+					: 'pb-16 md:pb-0'}"
+		>
 			{@render children()}
 		</div>
 		<!-- The ride owns the whole screen while caved; the tab bar returns
 		     with the lights. -->
 		{#if !caved}
 			<MobileNav />
+			{#if roomConnection.current}
+				<!-- The mobile "you are in this room" chip (#251): the desktop rail's
+				     dot + leave button, which phones never had. Sits on the tab bar. -->
+				{@const connected = roomConnection.current}
+				<div
+					class="border-ink/10 bg-surface fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 border-t px-4 py-2 md:hidden"
+				>
+					<a
+						href="/r/{connected.slug}"
+						class="flex min-w-0 flex-1 items-center gap-2 py-1"
+					>
+						<span class="bg-z4 h-2 w-2 shrink-0 animate-pulse rounded-full"
+						></span>
+						<span class="truncate text-xs font-medium"
+							>in {presence.rooms.find((r) => r.slug === connected.slug)
+								?.name ?? connected.slug}</span
+						>
+					</a>
+					<button
+						onclick={leaveRoom}
+						class="text-muted hover:text-ink flex shrink-0 items-center gap-1.5 rounded px-3 py-2 text-xs"
+						aria-label="leave the room"
+					>
+						<LogOut size={14} /> Leave
+					</button>
+				</div>
+			{/if}
 		{/if}
 		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
 		     frame: threads and music survive navigation the same way the

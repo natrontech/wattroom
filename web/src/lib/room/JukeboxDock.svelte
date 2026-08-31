@@ -196,13 +196,14 @@
 
 {#if conn}
 	<!-- In the room at xl+, slide left of the side panel — the dock must not
-	     sit on the chat composer (#219). -->
+	     sit on the chat composer; below xl, sit ABOVE the chat toggle at
+	     right-4 bottom-4, which this z-[60] dock would otherwise bury (#219). -->
 	<div
-		class="fixed bottom-4 z-[60] {jukebox?.current
+		class="fixed z-[60] {jukebox?.current
 			? ''
 			: 'hidden'} {page.url.pathname.startsWith('/r/')
-			? 'right-4 xl:right-[340px]'
-			: 'right-4'}"
+			? 'right-4 bottom-20 xl:right-[340px] xl:bottom-4'
+			: 'right-4 bottom-4'}"
 	>
 		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 		<div

@@ -37,6 +37,7 @@
 			startsAt: string;
 			createdBy: string;
 		}[];
+		icsToken?: string;
 	}
 
 	void account.load();
@@ -153,6 +154,8 @@
 					})}
 				onUnschedule={(id) =>
 					act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
+				icsToken={room.icsToken ?? ''}
+				onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
 				adminBusy={busy}
 				onRole={(userId, nextRole) =>
 					act(`/api/rooms/${room?.slug}/role`, {

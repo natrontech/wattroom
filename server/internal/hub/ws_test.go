@@ -174,9 +174,63 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	}
 
 	// Presence counts the same way: riders, not sockets — and names them.
-	connected, phase, riders, _ := h.Presence("dupes")
-	if connected != 1 || phase != "idle" || len(riders) != 1 || riders[0] != "jan" {
-		t.Fatalf("presence: connected=%d phase=%q riders=%v", connected, phase, riders)
+	p := h.Presence("dupes")
+	if p.Connected != 1 || p.Phase != "idle" || len(p.Riders) != 1 || p.Riders[0] != "jan" {
+		t.Fatalf("presence: %+v", p)
+	}
+}
+
+// fakeChat persists instantly with predictable ids — enough to prove the
+// async save's follow-up ChatID reaches the tick (#219).
+type fakeChat struct{}
+
+func (fakeChat) SaveChat(context.Context, string, string, string) (string, bool) {
+	return "msg-1", true
+}
+
+func (fakeChat) ToggleReaction(context.Context, string, string, string, string) (int, bool, bool) {
+	return 0, false, false
+}
+
+func TestChatIDFollowsTheLine(t *testing.T) {
+	// #219: the save runs off the read loop — the line broadcasts id-less,
+	// the persisted id follows on a tick as a ChatID naming fromId+at.
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	h.SetChatKeeper(fakeChat{})
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/durable"
+
+	a := dial(t, url, "jan:owner")
+	readTick(t, a)
+	if err := wsjson.Write(t.Context(), a, protocol.ClientMessage{
+		Chat: &protocol.ChatLine{Text: "on my way"},
+	}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	var line *protocol.ChatLine
+	var assigned *protocol.ChatID
+	deadline := time.Now().Add(5 * time.Second)
+	for (line == nil || assigned == nil) && time.Now().Before(deadline) {
+		tick := readTick(t, a)
+		if len(tick.Chat) > 0 {
+			line = &tick.Chat[0]
+			if line.ID != "" {
+				t.Fatalf("line waited for its save: %+v", line)
+			}
+		}
+		if len(tick.ChatIDs) > 0 {
+			assigned = &tick.ChatIDs[0]
+		}
+	}
+	if line == nil || assigned == nil {
+		t.Fatalf("line or id never arrived: line=%v assigned=%v", line, assigned)
+	}
+	if assigned.ID != "msg-1" || assigned.FromID != line.FromID || assigned.At != line.At {
+		t.Fatalf("follow-up does not name the line: line=%+v assigned=%+v", line, assigned)
 	}
 }
 

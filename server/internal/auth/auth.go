@@ -13,6 +13,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -402,18 +403,7 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	response := s.toMe(user)
-	response.AvEnabled = s.avEnabled
-	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
-		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
-			response.SuggestedFtp = suggested
-			response.Best20m = int(best)
-		}
-	}
-	if providers, err := s.store.Queries.ListUserProviders(r.Context(), user.ID); err == nil {
-		response.Providers = providers
-	}
-	httpx.WriteJSON(w, http.StatusOK, response)
+	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), user))
 }
 
 func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
@@ -491,7 +481,26 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			"Your profile could not be saved. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.toMe(updated))
+	// The client replaces its whole `me` with this response — it has to be as
+	// complete as GET /api/me, or providers/AV/FTP-suggestion vanish on save.
+	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+}
+
+// fullMe is the complete GET/PATCH /api/me body: toMe plus the fields that
+// need extra queries or service config.
+func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
+	response := s.toMe(user)
+	response.AvEnabled = s.avEnabled
+	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err == nil {
+		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+			response.SuggestedFtp = suggested
+			response.Best20m = int(best)
+		}
+	}
+	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err == nil {
+		response.Providers = providers
+	}
+	return response
 }
 
 func (s *Service) toMe(u db.User) meResponse {

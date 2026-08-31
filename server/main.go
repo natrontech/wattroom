@@ -125,6 +125,13 @@ func main() {
 		friends.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+		// The lobby socket (#251): held by every signed-in client — online for
+		// friends, and the push channel that keeps the rail live.
+		h.SetLobbyAuth(func(r *http.Request) (string, bool) {
+			user, ok := authService.User(r)
+			return store.UUIDString(user.ID), ok
+		})
+		mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)
