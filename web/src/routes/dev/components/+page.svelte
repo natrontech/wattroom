@@ -5,10 +5,19 @@
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import PlayerTile from '$lib/room/PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import SprintMoment from '../room/SprintMoment.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
+
+	// The sprint demos anchor to mount time so the first one runs its real
+	// klaxon → window → podium lifecycle in front of you.
+	const mountedAt = Date.now();
+	const podium = [
+		{ riderId: 'ruben', name: 'Ruben', wkg: 14.3, watts: 1112 },
+		{ riderId: 'sara', name: 'Sara', wkg: 12.6, watts: 830 },
+		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
+	];
 
 	// Frozen sample riders: a gallery should not move while you read it.
 	function rider(over: Partial<MockRider> = {}): MockRider {
@@ -108,16 +117,25 @@
 		Sprint moment
 	</h2>
 	<div class="mt-4 grid gap-3">
-		<SprintMoment state="armed" secondsLeft={3} riders={[]} podium={[]} />
+		<!-- Live lifecycle: counts down, runs the 15 s window, lands on the
+		     podium — the real component, silenced for the gallery. -->
 		<SprintMoment
-			state="podium"
-			secondsLeft={0}
-			riders={[]}
-			podium={[
-				{ name: 'Ruben', wkg: 14.3, watts: 1112, you: false },
-				{ name: 'Sara', wkg: 12.6, watts: 830, you: false },
-				{ name: 'You', wkg: 10.8, watts: 796, you: true },
-			]}
+			silent
+			myWatts={743}
+			sprint={{
+				startsAtMs: mountedAt + 5_000,
+				endsAtMs: mountedAt + 20_000,
+				results: podium,
+			}}
+		/>
+		<SprintMoment
+			silent
+			myWatts={0}
+			sprint={{
+				startsAtMs: mountedAt - 20_000,
+				endsAtMs: mountedAt - 5_000,
+				results: podium,
+			}}
 		/>
 	</div>
 

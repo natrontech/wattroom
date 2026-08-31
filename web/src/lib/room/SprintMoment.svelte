@@ -5,7 +5,16 @@
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
 	// mini-podium. Times come as server-clock anchors; local now is close
 	// enough for display (the scoring happens server-side).
-	let { sprint, myWatts }: { sprint: SprintState; myWatts: number } = $props();
+	let {
+		sprint,
+		myWatts,
+		silent = false,
+	}: {
+		sprint: SprintState;
+		myWatts: number;
+		/** The /dev gallery mounts this without a ride — no klaxon there. */
+		silent?: boolean;
+	} = $props();
 
 	let now = $state(Date.now());
 	$effect(() => {
@@ -26,6 +35,7 @@
 	// The klaxon sounds once when the sprint arms, go once at the gun.
 	let heard = $state<string | null>(null);
 	$effect(() => {
+		if (silent) return;
 		if (phase === 'klaxon' && heard === null) {
 			heard = 'klaxon';
 			play('klaxon');

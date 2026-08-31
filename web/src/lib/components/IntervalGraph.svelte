@@ -66,10 +66,12 @@
 	{/each}
 
 	{#each runs as points, i (i)}
+		<!-- ink, not white (ADR-0005): the trace has to survive daylight surfaces. -->
 		<polyline
 			{points}
+			class="text-ink"
 			fill="none"
-			stroke="white"
+			stroke="currentColor"
 			stroke-width="2"
 			opacity="0.7"
 			vector-effect="non-scaling-stroke"
