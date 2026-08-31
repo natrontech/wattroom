@@ -18,6 +18,7 @@
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import MobileNav from '$lib/nav/MobileNav.svelte';
+	import TopNav from '$lib/nav/TopNav.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
@@ -127,10 +128,7 @@
 			};
 	}
 
-	const railYou = $derived({
-		name: account.me?.displayName ?? '',
-		ftp: account.me?.ftpWatts ?? 0,
-	});
+	const railYou = $derived({ name: account.me?.displayName ?? '' });
 
 	// Leaving while standing in the room: the page must leave too, or you
 	// stare at a room you are no longer in with no way back in (rider report).
@@ -257,6 +255,9 @@
 					? 'pb-28 md:pb-0'
 					: 'pb-16 md:pb-0'}"
 		>
+			{#if !caved}
+				<TopNav />
+			{/if}
 			{@render children()}
 		</div>
 		<!-- The ride owns the whole screen while caved; the tab bar returns
