@@ -76,5 +76,19 @@ delete from scheduled_sessions where id = $1 and room_id = $2;
 update scheduled_sessions set starts_at = $3
 where id = $1 and room_id = $2 returning *;
 
+-- name: ListRoomCalendar :many
+-- The iCal feed (#245): unlike the in-room list, it keeps a month of history
+-- and has no cap — a calendar that self-erases reads as broken.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by
+from scheduled_sessions s
+join users u on u.id = s.created_by
+where s.room_id = $1 and s.starts_at > now() - interval '30 days'
+order by s.starts_at;
+
+-- name: RotateRoomIcsToken :one
+update rooms set ics_token = replace(gen_random_uuid()::text, '-', '')
+where id = $1 returning ics_token;
+
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;
