@@ -19,9 +19,9 @@ var update = os.Getenv("UPDATE_GOLDEN") == "1"
 func fixture() Ride {
 	samples := make([]Sample, 0, 120)
 	for i := range 120 {
-		s := Sample{Second: i, Watts: uint16(150 + i), Cadence: uint8(85 + i%5)}
+		s := Sample{Second: i, Watts: uint16(150 + i), Cadence: uint8(85 + i%5)} //nolint:gosec // i < 120, comfortably inside both types
 		if i >= 30 {
-			s.HeartRate = uint8(120 + i/10)
+			s.HeartRate = uint8(120 + i/10) //nolint:gosec // i < 120 → hr < 132
 		}
 		samples = append(samples, s)
 	}

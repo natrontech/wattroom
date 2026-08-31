@@ -85,6 +85,7 @@ export function createRoomAv(slug: string) {
 	let lastLoud = 0;
 
 	async function openMic() {
+		if (mic) closeMic(); // a mic test or stale chain must not orphan a stream
 		const raw = await navigator.mediaDevices.getUserMedia({
 			audio: {
 				noiseSuppression: true,
@@ -228,6 +229,7 @@ export function createRoomAv(slug: string) {
 	let outCtx: AudioContext | null = null;
 	let riderBus: DynamicsCompressorNode | null = null;
 	const riderGains = new Map<string, GainNode>();
+	const riderSources = new Map<string, MediaElementAudioSourceNode>();
 
 	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
 		try {
@@ -249,26 +251,40 @@ export function createRoomAv(slug: string) {
 			source.connect(gain);
 			gain.connect(riderBus);
 			riderGains.set(identity, gain);
+			riderSources.set(identity, source);
 		} catch {
 			// routing failed: the element still plays at unity — degraded, not broken
 		}
 	}
 
+	function onVisible() {
+		if (document.visibilityState !== 'visible') return;
+		// Browsers may suspend audio graphs in long-hidden tabs; coming
+		// back must not need a rejoin (#214).
+		if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
+		if (outCtx?.state === 'suspended') void outCtx.resume();
+	}
 	if (typeof document !== 'undefined') {
-		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState !== 'visible') return;
-			// Browsers may suspend audio graphs in long-hidden tabs; coming
-			// back must not need a rejoin (#214).
-			if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
-			if (outCtx?.state === 'suspended') void outCtx.resume();
-		});
+		document.addEventListener('visibilitychange', onVisible);
 	}
 
 	function bumpVideo(id: string) {
 		videoOf = { ...videoOf, [id]: (videoOf[id] ?? 0) + 1 };
 	}
 
+	// A camera turning OFF must clear the flag — bumping it left a blank
+	// tile claiming "camera on" for the rest of the session (audit #219).
+	function dropVideo(id: string) {
+		const next = { ...videoOf };
+		delete next[id];
+		videoOf = next;
+	}
+
 	async function join() {
+		// Double-click or an impatient rail tap must not build a second
+		// participant with the same identity (audit #219).
+		if (status === 'connecting' || status === 'live') return;
+		void room?.disconnect();
 		status = 'connecting';
 		error = null;
 		const res = await api<{ url: string; token: string }>(
@@ -334,10 +350,17 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
 					screenTracks.delete(participant.identity);
-					if (screenOf?.id === participant.identity) screenOf = null;
+					if (screenOf?.id === participant.identity) {
+						// Fall back to any remaining share — a teammate stopping
+						// theirs must not blank YOURS (audit #219).
+						const next = [...screenTracks.keys()][0];
+						screenOf = next
+							? { id: next, key: (screenOf?.key ?? 0) + 1 }
+							: null;
+					}
 				} else {
 					videoTracks.delete(participant.identity);
-					bumpVideo(participant.identity);
+					dropVideo(participant.identity);
 				}
 			}
 			if (track.kind === Track.Kind.Audio) {
@@ -345,6 +368,8 @@ export function createRoomAv(slug: string) {
 				audioElements.delete(participant.identity);
 				riderGains.get(participant.identity)?.disconnect();
 				riderGains.delete(participant.identity);
+				riderSources.get(participant.identity)?.disconnect();
+				riderSources.delete(participant.identity);
 			}
 		});
 		const audioState = (p: {
@@ -376,6 +401,13 @@ export function createRoomAv(slug: string) {
 			screenTracks.clear();
 			screenOf = null;
 			voice = {};
+			// Nobody is talking to a room you are no longer in — a stale
+			// speaking flag parked music and cues at duck level forever, and
+			// camOn/sharing lied about dead tracks (audit #219).
+			speaking = {};
+			camOn = false;
+			sharing = false;
+			room = null;
 			closeMic();
 			if (status === 'live') status = 'off';
 		});
@@ -481,9 +513,13 @@ export function createRoomAv(slug: string) {
 					Track.Source.Camera,
 				)?.videoTrack;
 				const id = room.localParticipant.identity;
-				if (camOn && track) videoTracks.set(id, track);
-				else videoTracks.delete(id);
-				bumpVideo(id);
+				if (camOn && track) {
+					videoTracks.set(id, track);
+					bumpVideo(id);
+				} else {
+					videoTracks.delete(id);
+					dropVideo(id);
+				}
 			} catch {
 				camOn = false;
 			}
@@ -533,6 +569,19 @@ export function createRoomAv(slug: string) {
 			status = 'off';
 			micOn = camOn = sharing = false;
 			voice = {};
+			speaking = {};
+			// This av instance dies with the connection: audio graph and
+			// listener go with it, or six room-hops exhaust the browser's
+			// AudioContext budget (audit #219).
+			if (typeof document !== 'undefined')
+				document.removeEventListener('visibilitychange', onVisible);
+			for (const gain of riderGains.values()) gain.disconnect();
+			for (const source of riderSources.values()) source.disconnect();
+			riderGains.clear();
+			riderSources.clear();
+			void outCtx?.close().catch(() => {});
+			outCtx = null;
+			riderBus = null;
 		},
 	};
 }

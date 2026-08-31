@@ -2,6 +2,7 @@
 	import { X } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { dm } from '$lib/dm/dm.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 
 	// The DM drawer (#208): one thread, bottom-right, polled — a note between
 	// rides, not a live wire (ADR-0012 amended).
@@ -36,7 +37,9 @@
 			messages = [...messages, ...fresh];
 		}
 		if (messages.length > 0 && (fresh.length > 0 || !after)) {
-			dm.stampSeen(peerId);
+			// "Seen" only when you could actually have seen it — a drawer left
+			// open in a hidden tab must keep the badge (audit #219).
+			if (!document.hidden) dm.stampSeen(peerId);
 			queueMicrotask(() => list?.scrollTo({ top: list.scrollHeight }));
 		}
 	}
@@ -64,6 +67,7 @@
 		});
 		if (!res.ok) {
 			error = res.error.message;
+			draft = text; // a refused message is not a deleted one
 			return;
 		}
 		await load(peer.id, messages.at(-1)?.at ?? 0);
@@ -72,7 +76,10 @@
 
 {#if dm.open}
 	<div
-		class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-50 flex h-96 w-80 flex-col rounded-lg shadow-lg ring-1"
+		class="bg-surface-raised ring-ink/15 fixed bottom-4 z-50 flex h-96 w-80 flex-col rounded-lg shadow-lg ring-1 {roomConnection
+			.current?.live.tick?.jukebox?.current
+			? 'right-[392px]'
+			: 'right-4'}"
 		role="dialog"
 		aria-label="messages with {dm.open.name}"
 	>
@@ -112,6 +119,7 @@
 		>
 			<input
 				bind:value={draft}
+				maxlength="500"
 				placeholder="Message {dm.open.name}…"
 				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-2.5 py-1.5 text-xs outline-none"
 			/>

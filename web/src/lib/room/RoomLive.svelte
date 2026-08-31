@@ -12,7 +12,7 @@
 		VideoOff,
 	} from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
-	import { play, setDucked, setMuted } from '$lib/sound/cues';
+	import { play, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { arbitrate } from '$lib/ble/arbitrate';
@@ -115,24 +115,7 @@
 		stopRiding();
 	});
 
-	// SPEC room audio: the gate threshold doubles while the jukebox plays.
-	$effect(() => {
-		av.setMusicPlaying(!!live.tick?.jukebox?.playing);
-	});
-
 	// Space is push-to-talk while that mode is on — never while typing.
-	function pttKey(event: KeyboardEvent, held: boolean) {
-		if (av.mode !== 'ptt' || event.code !== 'Space') return;
-		const target = event.target as HTMLElement;
-		if (
-			target instanceof HTMLInputElement ||
-			target instanceof HTMLTextAreaElement ||
-			target.isContentEditable
-		)
-			return;
-		event.preventDefault();
-		av.setPtt(held);
-	}
 
 	// The room's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
@@ -291,13 +274,8 @@
 	);
 
 	// ── Sounds follow state (riders are not watching) ─────────────────────────
-	$effect(() => {
-		setDucked(
-			Object.entries(av.speaking).some(
-				([id, active]) => active && id !== account.me?.id,
-			),
-		);
-	});
+	// Cue ducking + the music-aware gate threshold moved to the room
+	// connection (#216) — they must work on every page, not just this one.
 	let heardCount = -1;
 	$effect(() => {
 		if (shared?.phase !== 'countdown') {
@@ -594,9 +572,7 @@
 <svelte:window
 	onkeydown={(e) => {
 		if (e.key === 'Escape') tv = false;
-		if (!e.repeat) pttKey(e, true);
 	}}
-	onkeyup={(e) => pttKey(e, false)}
 />
 
 {#if tv}
@@ -896,10 +872,6 @@
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title, jamUrl, positionSec) =>
 						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-					large
-					ducked={Object.entries(av.speaking).some(
-						([id, active]) => active && id !== account.me?.id,
-					)}
 				/>
 			</div>
 		{/if}
@@ -1217,9 +1189,6 @@
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title, jamUrl, positionSec) =>
 						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-					ducked={Object.entries(av.speaking).some(
-						([id, active]) => active && id !== account.me?.id,
-					)}
 				/>
 			{/snippet}
 		</SidePanel>

@@ -15,7 +15,9 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
+	import { dmHeads } from '$lib/dm/heads.svelte';
 	import MobileNav from '$lib/nav/MobileNav.svelte';
+	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
@@ -23,6 +25,12 @@
 	let { children } = $props();
 
 	void account.load();
+
+	// DM arrivals blip and badge on every page, not just where the friends
+	// panel mounts (audit #219).
+	$effect(() => {
+		if (account.me) dmHeads.start();
+	});
 
 	// Account → local profile cache, once me arrives (ADR-0009: server truth).
 	const profile = createProfileStore();
@@ -231,8 +239,10 @@
 		{#if !caved}
 			<MobileNav />
 		{/if}
-		<!-- The DM drawer (#208) lives on the frame: a thread survives
-		     navigation the same way the room connection does. -->
+		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
+		     frame: threads and music survive navigation the same way the
+		     room connection does. -->
+		<JukeboxDock />
 		<DmDrawer />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
