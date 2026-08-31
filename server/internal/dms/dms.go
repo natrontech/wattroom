@@ -21,7 +21,7 @@ import (
 
 // UserSource resolves the signed-in user — same shape rooms consumes.
 type UserSource interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
@@ -41,9 +41,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) peer(w http.ResponseWriter, r *http.Request) (db.User, pgtype.UUID, bool) {
-	me, ok := s.users.User(r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return db.User{}, pgtype.UUID{}, false
 	}
 	peer, err := store.ParseUUID(r.PathValue("id"))
@@ -127,9 +126,8 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
-	me, ok := s.users.User(r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rows, err := s.store.Queries.ListDmHeads(r.Context(), me.ID)

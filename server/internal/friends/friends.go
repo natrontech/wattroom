@@ -19,7 +19,7 @@ import (
 
 // UserSource resolves the signed-in user — same shape rooms consumes.
 type UserSource interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 // PresenceSource answers "which room is this user connected to right now" —
@@ -66,9 +66,8 @@ type candidateJSON struct {
 // handleList is the whole panel in one GET: friends with presence, plus the
 // roommates you could still ask (the only formation path).
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	me, ok := s.users.User(r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rows, err := s.store.Queries.ListFriendships(r.Context(), me.ID)
@@ -200,9 +199,8 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 // pair does the boundary work every mutating handler shares: auth, a valid
 // target id, and target-is-not-me.
 func (s *Service) pair(w http.ResponseWriter, r *http.Request) (db.User, pgtype.UUID, bool) {
-	me, ok := s.users.User(r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return db.User{}, pgtype.UUID{}, false
 	}
 	target, err := store.ParseUUID(r.PathValue("id"))

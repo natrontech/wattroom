@@ -29,6 +29,7 @@ import (
 // consumed, and satisfied by *auth.Service.
 type UserSource interface {
 	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 // maxOwnedRooms is docs/SPEC.md's ownership cap (membership is uncapped).
@@ -176,9 +177,8 @@ type roomJSON struct {
 // --- handlers ---
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to create a room.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in to create a room.")
 		return
 	}
 	var req struct {
@@ -241,9 +241,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	roomsList, err := s.store.Queries.ListUserRooms(r.Context(), user.ID)
@@ -347,9 +346,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to join a room.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in to join a room.")
 		return
 	}
 	room, ok := s.roomBySlug(w, r)
@@ -385,9 +383,8 @@ func (s *Service) isBanned(r *http.Request, room db.Room, user db.User) bool {
 // handleJoinByCode resolves a 6-char code to its room and joins — the
 // cross-device fallback when the link is on another screen.
 func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to join a room.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in to join a room.")
 		return
 	}
 	var req struct {
@@ -569,9 +566,8 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 // can edit or delete it, so ownership transfer is a future feature, not an
 // accident of leaving.
 func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	room, ok := s.roomBySlug(w, r)
@@ -628,9 +624,8 @@ func (s *Service) roomBySlug(w http.ResponseWriter, r *http.Request) (db.Room, b
 // requireRole loads the room and refuses unless the caller holds the role.
 // 403, not 404: the link is shareable, so the room's existence is not a secret.
 func (s *Service) requireRole(w http.ResponseWriter, r *http.Request, role string) (db.Room, db.User, bool) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return db.Room{}, db.User{}, false
 	}
 	room, ok := s.roomBySlug(w, r)

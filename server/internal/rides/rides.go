@@ -33,7 +33,7 @@ const (
 )
 
 type UserSource interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 // RideUploader mirrors stats.RideUploader — a saved solo ride goes to the
@@ -88,9 +88,8 @@ type rideJSON struct {
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rows, err := s.store.Queries.ListUserRides(r.Context(), db.ListUserRidesParams{
@@ -115,9 +114,8 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	// A ride body outgrows DecodeStrict's 64 KB — an hour is ~100 KB of JSON.
