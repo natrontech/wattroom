@@ -9,6 +9,12 @@ import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { mountTrack } from '$lib/room/mount-track';
 import { pickStage } from '$lib/room/stage';
+import {
+	type Claim,
+	micLiveElsewhere,
+	riderOf,
+	yieldsTo,
+} from '$lib/room/tabs';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -52,6 +58,13 @@ export function createRoomAv(slug: string) {
 	 * voice at all — three states a tile can tell apart at a glance.
 	 */
 	let voice = $state<Record<string, 'live' | 'muted'>>({});
+	/**
+	 * This tab gave the mic and camera to another tab of yours (#293). Not an
+	 * error and not transient — a persistent status with one button back,
+	 * because a rider three metres away must be able to see why they went
+	 * quiet without reading a toast that has already gone.
+	 */
+	let handedOff = $state(false);
 	/** Own-mic level 0..1 while transmitting — the "is my mic dead" meter. */
 	let micLevel = $state(0);
 	/** The gate's verdict this instant: is anything leaving this machine? */
@@ -298,8 +311,18 @@ export function createRoomAv(slug: string) {
 	}
 
 	let room: Room | null = null;
-	const videoTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
-	const screenTracks = new Map<string, RemoteTrack | LocalVideoTrack>();
+	/** This connection's identity and the rider behind it (#293). */
+	let myIdentity = '';
+	let me = '';
+	/**
+	 * Video is keyed by RIDER — the tiles and the stage are — but tagged with
+	 * the connection that published it: when a rider's older tab drops its
+	 * camera, it must not delete the track their newer tab just put up.
+	 */
+	type Owned = { owner: string; track: RemoteTrack | LocalVideoTrack };
+	const videoTracks = new Map<string, Owned>();
+	const screenTracks = new Map<string, Owned>();
+	/** Audio plumbing is per CONNECTION: one element and one gain each. */
 	const audioElements = new Map<string, HTMLAudioElement>();
 	// Per-rider output gain (#179): media-element → gain → speakers, so a
 	// quiet teammate can go ABOVE unity — element.volume caps at 1, WebAudio
@@ -308,6 +331,13 @@ export function createRoomAv(slug: string) {
 	let riderBus: DynamicsCompressorNode | null = null;
 	const riderGains = new Map<string, GainNode>();
 	const riderSources = new Map<string, MediaElementAudioSourceNode>();
+
+	/** Forget a rider's track only if this connection is the one that owns it. */
+	function dropOwned(map: Map<string, Owned>, rider: string, owner: string) {
+		if (map.get(rider)?.owner !== owner) return false;
+		map.delete(rider);
+		return true;
+	}
 
 	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
 		try {
@@ -328,7 +358,7 @@ export function createRoomAv(slug: string) {
 			}
 			const source = outCtx.createMediaElementSource(el);
 			const gain = outCtx.createGain();
-			gain.gain.value = mixer.riderGain(identity);
+			gain.gain.value = mixer.riderGain(riderOf(identity));
 			source.connect(gain);
 			gain.connect(riderBus);
 			riderGains.set(identity, gain);
@@ -426,22 +456,28 @@ export function createRoomAv(slug: string) {
 			});
 			wire(room);
 			await room.connect(res.data.url, res.data.token);
+			myIdentity = room.localParticipant.identity;
+			me = riderOf(myIdentity);
 			status = 'live';
+			myClaim = claimOf(room.localParticipant);
+			// A tab already in the room could, in principle, hold a newer claim
+			// than this one — check rather than assume newest-connected wins.
+			for (const p of room.remoteParticipants.values()) considerClaim(p);
 			// Post-permission the labels are real — the pickers can name devices.
 			void refreshDevices();
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
 			for (const p of room.remoteParticipants.values()) {
 				const pub = p.getTrackPublication(Track.Source.Microphone);
-				setVoice(p.identity, pub && !pub.isMuted ? 'live' : 'muted');
+				setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 			}
 			try {
 				await openMic();
 				micOn = true;
-				setVoice(room.localParticipant.identity, 'live');
+				setVoice(me, 'live');
 			} catch {
 				micOn = false;
-				setVoice(room.localParticipant.identity, 'muted');
+				setVoice(me, 'muted');
 			}
 		} catch (cause) {
 			status = 'failed';
@@ -449,15 +485,148 @@ export function createRoomAv(slug: string) {
 		}
 	}
 
+	// ── One rider, several tabs (#293) ───────────────────────────────────────
+	// LiveKit gives each tab its own participant now, so nothing evicts
+	// anything; what is left is a product question — which tab holds the mic.
+	// Newest wins: opening a room moves the mic to the tab you are looking at.
+	//
+	// A tab joining needs no announcement — LiveKit tells everyone, with a
+	// server-assigned joinedAt that beats comparing browser clocks. Only an
+	// explicit "use this tab instead" has to be broadcast, and by then the
+	// sender is a participant the others already know. (Publishing a claim on
+	// join instead looked simpler and did not work: the packet outruns the
+	// join event, and the receiver gets it with no sender attached.)
+	let myClaim: Claim | null = null;
+	/** Whether the mic was open when this tab handed over, for taking it back. */
+	let micBeforeHandoff = false;
+
+	function claimOf(p: { identity: string; joinedAt?: Date }): Claim {
+		return { identity: p.identity, at: p.joinedAt?.getTime() ?? Date.now() };
+	}
+
+	/** Stand down if this participant is a newer tab of mine. */
+	function considerClaim(p: { identity: string; joinedAt?: Date }) {
+		if (myClaim && yieldsTo(myClaim, claimOf(p))) void standDown();
+	}
+
+	/** Announce that the mic and camera are moving here, now. */
+	function claimAv() {
+		if (!room) return;
+		myClaim = { identity: myIdentity, at: Date.now() };
+		handedOff = false;
+		void room.localParticipant
+			.publishData(
+				new TextEncoder().encode(
+					JSON.stringify({ t: 'av-claim', at: myClaim.at }),
+				),
+				{ reliable: true },
+			)
+			// A claim that never lands leaves both tabs publishing: doubled
+			// audio, which the rider can hear and fix. Better than a silent
+			// stand-down on a channel that failed.
+			.catch(() => {});
+	}
+
+	/**
+	 * Is any OTHER connection of this rider publishing an open mic?
+	 *
+	 * Muting here is unpublishing, and `voice` is keyed by rider while the
+	 * events that drive it are per connection — so a tab standing down
+	 * broadcasts an unpublish for a rider who is still live in the tab that
+	 * just took over, and everyone reads them as muted. Ask the room instead
+	 * of trusting the event.
+	 */
+	function micLive(rider: string, except: string) {
+		if (!room) return false;
+		const asConnection = (p: {
+			identity: string;
+			getTrackPublication: (
+				source: Track.Source,
+			) => { isMuted: boolean } | undefined;
+		}) => {
+			const pub = p.getTrackPublication(Track.Source.Microphone);
+			return { identity: p.identity, micOpen: !!pub && !pub.isMuted };
+		};
+		return micLiveElsewhere(
+			[room.localParticipant, ...room.remoteParticipants.values()].map(
+				asConnection,
+			),
+			rider,
+			except,
+		);
+	}
+
+	/** Is any other connection of this rider still in the room? */
+	function stillHere(rider: string, except: string) {
+		if (!room) return false;
+		for (const p of room.remoteParticipants.values())
+			if (p.identity !== except && riderOf(p.identity) === rider) return true;
+		return false;
+	}
+
+	/** Take the mic and camera back into this tab; the others stand down. */
+	async function takeOver({ reopenMic = true } = {}) {
+		if (!room) return;
+		claimAv();
+		if (reopenMic && !micOn) {
+			try {
+				await openMic();
+				micOn = true;
+			} catch {
+				micOn = false;
+			}
+			setVoice(me, micOn ? 'live' : 'muted');
+		}
+	}
+
+	/** Another tab of yours took over: drop the mic and camera, keep listening. */
+	async function standDown() {
+		if (handedOff) return;
+		handedOff = true;
+		micBeforeHandoff = micOn;
+		if (micOn) {
+			closeMic();
+			micOn = false;
+		}
+		if (camOn && room) {
+			camOn = false;
+			await room.localParticipant.setCameraEnabled(false).catch(() => {});
+			if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
+		}
+		// Screenshare deliberately stays. Sharing a laptop screen while riding
+		// from the tablet is a real thing to want, and unlike a mic two shares
+		// do not fight — they are silent. `screenTracks` keys by rider though,
+		// so the room shows one of them: the last to publish.
+	}
+
 	function wire(r: Room) {
+		// Only an explicit takeover arrives this way. The sender must be a
+		// participant we know — an unattributed packet is not something to
+		// mute a rider's microphone over.
+		r.on(RoomEvent.DataReceived, (payload, participant) => {
+			if (!participant || !myClaim) return;
+			let at: unknown;
+			try {
+				const msg = JSON.parse(new TextDecoder().decode(payload));
+				if (msg?.t !== 'av-claim') return;
+				at = msg.at;
+			} catch {
+				return; // not ours to read
+			}
+			if (typeof at !== 'number') return;
+			if (yieldsTo(myClaim, { identity: participant.identity, at }))
+				void standDown();
+		});
 		r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
+			const rider = riderOf(participant.identity);
 			if (track.kind === Track.Kind.Video) {
+				const owned = { owner: participant.identity, track };
 				if (pub.source === Track.Source.ScreenShare) {
-					screenTracks.set(participant.identity, track);
-					addScreen(participant.identity);
+					screenTracks.set(rider, owned);
+					addScreen(rider);
 				} else {
-					videoTracks.set(participant.identity, track);
-					bumpVideo(participant.identity);
+					videoTracks.set(rider, owned);
+					bumpVideo(rider);
 				}
 			}
 			if (track.kind === Track.Kind.Audio) {
@@ -468,18 +637,17 @@ export function createRoomAv(slug: string) {
 				// Mute here is unpublish, not track-mute (the gate owns the gain),
 				// so the mic chip must follow the publication itself — Muted/
 				// Unmuted never fire and ParticipantConnected ran pre-publish.
-				if (pub.source === Track.Source.Microphone)
-					setVoice(participant.identity, 'live');
+				if (pub.source === Track.Source.Microphone) setVoice(rider, 'live');
 			}
 		});
 		r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+			const rider = riderOf(participant.identity);
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
-					screenTracks.delete(participant.identity);
-					dropScreen(participant.identity);
-				} else {
-					videoTracks.delete(participant.identity);
-					dropVideo(participant.identity);
+					if (dropOwned(screenTracks, rider, participant.identity))
+						dropScreen(rider);
+				} else if (dropOwned(videoTracks, rider, participant.identity)) {
+					dropVideo(rider);
 				}
 			}
 			if (track.kind === Track.Kind.Audio) {
@@ -489,8 +657,11 @@ export function createRoomAv(slug: string) {
 				riderGains.delete(participant.identity);
 				riderSources.get(participant.identity)?.disconnect();
 				riderSources.delete(participant.identity);
-				if (pub.source === Track.Source.Microphone)
-					setVoice(participant.identity, 'muted');
+				if (
+					pub.source === Track.Source.Microphone &&
+					!micLive(rider, participant.identity)
+				)
+					setVoice(rider, 'muted');
 			}
 		});
 		const audioState = (p: {
@@ -499,19 +670,35 @@ export function createRoomAv(slug: string) {
 		}) => {
 			const pub = p.getTrackPublication(Track.Source.Microphone) as
 				{ isMuted: boolean } | undefined;
-			setVoice(p.identity, pub && !pub.isMuted ? 'live' : 'muted');
+			setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 		};
-		r.on(RoomEvent.ParticipantConnected, (p) => audioState(p));
-		r.on(RoomEvent.ParticipantDisconnected, (p) => setVoice(p.identity, null));
+		r.on(RoomEvent.ParticipantConnected, (p) => {
+			audioState(p);
+			// Another tab of yours just opened: it is the one you are looking at.
+			considerClaim(p);
+		});
+		r.on(RoomEvent.ParticipantDisconnected, (p) => {
+			const rider = riderOf(p.identity);
+			// Their other tab may still be in the room — one closed tab does not
+			// take a rider out of voice (#293).
+			if (!stillHere(rider, p.identity)) setVoice(rider, null);
+			// The tab that took the mic is gone: this one may have it back, and
+			// it goes back the way it left, without asking (ux.md: recovery is
+			// automatic where it can be).
+			if (handedOff && rider === me && !stillHere(me, myIdentity))
+				void takeOver({ reopenMic: micBeforeHandoff });
+		});
 		r.on(RoomEvent.TrackMuted, (pub, p) => {
-			if (pub.kind === Track.Kind.Audio) setVoice(p.identity, 'muted');
+			const rider = riderOf(p.identity);
+			if (pub.kind === Track.Kind.Audio && !micLive(rider, p.identity))
+				setVoice(rider, 'muted');
 		});
 		r.on(RoomEvent.TrackUnmuted, (pub, p) => {
-			if (pub.kind === Track.Kind.Audio) setVoice(p.identity, 'live');
+			if (pub.kind === Track.Kind.Audio) setVoice(riderOf(p.identity), 'live');
 		});
 		r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
 			const next: Record<string, boolean> = {};
-			for (const p of speakers) next[p.identity] = true;
+			for (const p of speakers) next[riderOf(p.identity)] = true;
 			speaking = next;
 		});
 		// Media-interrupted retry window (#234, errors.md): audio is gapped
@@ -540,6 +727,8 @@ export function createRoomAv(slug: string) {
 			speaking = {};
 			camOn = false;
 			sharing = false;
+			handedOff = false;
+			myClaim = null;
 			room = null;
 			closeMic();
 			if (unexpected) {
@@ -605,6 +794,12 @@ export function createRoomAv(slug: string) {
 		get micTesting() {
 			return testing;
 		},
+		/** Your mic and camera live in another of your tabs (#293). */
+		get handedOff() {
+			return handedOff;
+		},
+		/** Bring them back here. */
+		takeOver: () => takeOver(),
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
 		get mics() {
 			return mics();
@@ -642,7 +837,7 @@ export function createRoomAv(slug: string) {
 					await openMic();
 				} catch {
 					micOn = false;
-					if (room) setVoice(room.localParticipant.identity, 'muted');
+					setVoice(me, 'muted');
 				}
 			}
 		},
@@ -676,13 +871,21 @@ export function createRoomAv(slug: string) {
 		/** Applies the mixer's per-rider gain live (#179). */
 		setRiderGain(id: string, v: number) {
 			mixer.setRiderGain(id, v);
-			const gain = riderGains.get(id);
-			if (gain) gain.gain.value = mixer.riderGain(id);
+			// One fader per rider, however many tabs they are connected from.
+			for (const [identity, gain] of riderGains)
+				if (riderOf(identity) === id) gain.gain.value = mixer.riderGain(id);
 		},
 		join,
 		async toggleMic() {
 			if (!room) return;
 			if (testing) stopMicTest();
+			// Pressing the mic in a tab that stood down means "bring it here",
+			// not "publish a second one" — the rail says the mic lives in
+			// another tab, and the button must not quietly contradict it.
+			if (handedOff) {
+				await takeOver();
+				return;
+			}
 			if (micOn) {
 				closeMic();
 				micOn = false;
@@ -694,7 +897,7 @@ export function createRoomAv(slug: string) {
 					micOn = false;
 				}
 			}
-			setVoice(room.localParticipant.identity, micOn ? 'live' : 'muted');
+			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
 		},
 		async toggleCam() {
 			if (!room) return;
@@ -704,13 +907,11 @@ export function createRoomAv(slug: string) {
 				const track = room.localParticipant.getTrackPublication(
 					Track.Source.Camera,
 				)?.videoTrack;
-				const id = room.localParticipant.identity;
 				if (camOn && track) {
-					videoTracks.set(id, track);
-					bumpVideo(id);
-				} else {
-					videoTracks.delete(id);
-					dropVideo(id);
+					videoTracks.set(me, { owner: myIdentity, track });
+					bumpVideo(me);
+				} else if (dropOwned(videoTracks, me, myIdentity)) {
+					dropVideo(me);
 				}
 			} catch {
 				camOn = false;
@@ -726,14 +927,12 @@ export function createRoomAv(slug: string) {
 				const track = room.localParticipant.getTrackPublication(
 					Track.Source.ScreenShare,
 				)?.videoTrack;
-				const id = room.localParticipant.identity;
 				if (sharing && track) {
-					screenTracks.set(id, track);
-					addScreen(id);
+					screenTracks.set(me, { owner: myIdentity, track });
+					addScreen(me);
 				} else {
 					sharing = false;
-					screenTracks.delete(id);
-					dropScreen(id);
+					if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
 				}
 			} catch {
 				sharing = false;
@@ -759,13 +958,13 @@ export function createRoomAv(slug: string) {
 				source
 					? (source.kind === 'screen' ? screenTracks : videoTracks).get(
 							source.id,
-						)
+						)?.track
 					: undefined,
 				source?.kind === 'screen' ? 'contain' : 'cover',
 			);
 		},
 		attach(riderId: string, container: HTMLElement) {
-			mountTrack(container, videoTracks.get(riderId), 'cover');
+			mountTrack(container, videoTracks.get(riderId)?.track, 'cover');
 		},
 		leave() {
 			closeMic();

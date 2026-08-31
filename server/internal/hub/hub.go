@@ -17,6 +17,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -86,6 +87,10 @@ type chatSave struct {
 // cannot prune a rider who joined after its snapshot was taken — and whether
 // their camera is live (#251, track_published).
 type voiceEntry struct {
+	// One entry per LiveKit connection, keyed by identity — a rider with two
+	// tabs open holds two (#293), so a leave from one must not blank the
+	// other. `rider` is who they all belong to.
+	rider    string
 	name     string
 	joinedAt time.Time
 	camera   bool
@@ -410,10 +415,18 @@ func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
 	p := protocol.RoomPresence{Phase: "idle", Voice: make([]string, 0, 4)}
+	// Fold by rider, not by connection: two tabs are one person on the radar,
+	// and a camera live in either of them is that person on camera (#293).
+	names := make(map[string]string, len(h.voice[slug]))
+	cameras := make(map[string]bool, len(h.voice[slug]))
 	for _, entry := range h.voice[slug] {
-		p.Voice = append(p.Voice, entry.name)
-		if entry.camera {
-			p.Cameras = append(p.Cameras, entry.name)
+		names[entry.rider] = entry.name
+		cameras[entry.rider] = cameras[entry.rider] || entry.camera
+	}
+	for rider, name := range names {
+		p.Voice = append(p.Voice, name)
+		if cameras[rider] {
+			p.Cameras = append(p.Cameras, name)
 		}
 	}
 	h.mu.Unlock()
@@ -494,6 +507,7 @@ func (h *Hub) VoiceJoined(slug, identity, name string) {
 	// Merge, don't overwrite: a camera flag set by an early track_published
 	// must survive the participant_joined that follows it.
 	entry := h.voice[slug][identity]
+	entry.rider = av.RiderID(identity)
 	entry.name = name
 	if entry.joinedAt.IsZero() {
 		entry.joinedAt = h.now()
@@ -523,7 +537,7 @@ func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
 		return
 	}
 	if !ok {
-		entry = voiceEntry{name: name, joinedAt: h.now()}
+		entry = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
 	}
 	entry.camera = on
 	if h.voice[slug] == nil {
@@ -574,7 +588,7 @@ func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time)
 		if h.voice[slug] == nil {
 			h.voice[slug] = make(map[string]voiceEntry, len(present))
 		}
-		h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+		h.voice[slug][identity] = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
 		changed = true
 	}
 	if len(h.voice[slug]) == 0 {

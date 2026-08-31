@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,11 +66,52 @@ func TestTokenShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Iss != "devkey" || got.Sub != "jan-id" || got.Video.Room != "velvet" || !got.Video.RoomJoin {
+	// The identity is per connection, not per rider (#293) — but the rider is
+	// still readable out of it, because everything server-side keys on that.
+	if got.Iss != "devkey" || got.Video.Room != "velvet" || !got.Video.RoomJoin {
 		t.Fatalf("claims: %+v", got)
+	}
+	if RiderID(got.Sub) != "jan-id" || got.Sub == "jan-id" {
+		t.Fatalf("identity %q is not jan-id plus a nonce", got.Sub)
 	}
 	if got.Exp-got.Nbf != int64((6 * time.Hour).Seconds()) {
 		t.Fatalf("lifetime: %d", got.Exp-got.Nbf)
+	}
+}
+
+// The bug itself (#293): one rider asking twice — two tabs — must come back
+// with two identities, or LiveKit evicts whichever session is already in the
+// room and the two tabs trade the slot forever.
+func TestTwoTabsGetTwoIdentities(t *testing.T) {
+	s := service(allowAll{})
+	identity := func() string {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
+		req.SetPathValue("slug", "velvet")
+		w := httptest.NewRecorder()
+		s.handleToken(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("token refused: %d", w.Code)
+		}
+		var body struct{ Token string }
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := base64.RawURLEncoding.DecodeString(strings.Split(body.Token, ".")[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got claims
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.Sub
+	}
+	first, second := identity(), identity()
+	if first == second {
+		t.Fatalf("both tabs got identity %q — they will evict each other", first)
+	}
+	if RiderID(first) != RiderID(second) {
+		t.Fatalf("same rider read as %q and %q", RiderID(first), RiderID(second))
 	}
 }
 
@@ -98,10 +140,18 @@ func TestFromEnvGates(t *testing.T) {
 func TestEject(t *testing.T) {
 	var gotPath, gotAuth string
 	var gotBody map[string]string
+	var removed []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "ListParticipants") {
+			// Bob is in from two tabs; Kim is somebody else entirely.
+			_, _ = w.Write([]byte(`{"participants":[{"identity":"bob-id#aaa","name":"Bob"},` +
+				`{"identity":"bob-id#bbb","name":"Bob"},{"identity":"kim-id#ccc","name":"Kim"}]}`))
+			return
+		}
 		gotPath = r.URL.Path
 		gotAuth = r.Header.Get("Authorization")
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		removed = append(removed, gotBody["identity"])
 	}))
 	defer srv.Close()
 
@@ -112,10 +162,17 @@ func TestEject(t *testing.T) {
 	s.now = func() time.Time { return time.Unix(1_000_000, 0) }
 	s.Eject("velvet", "bob-id")
 
+	// Every one of the banned rider's tabs goes (#293) — leaving one behind
+	// leaves them on camera — and nobody else's. Order is LiveKit's map, so
+	// sort before comparing.
+	slices.Sort(removed)
+	if !slices.Equal(removed, []string{"bob-id#aaa", "bob-id#bbb"}) {
+		t.Fatalf("removed %v, want both of bob's connections and only those", removed)
+	}
 	if gotPath != "/twirp/livekit.RoomService/RemoveParticipant" {
 		t.Fatalf("path: %q", gotPath)
 	}
-	if gotBody["room"] != "velvet" || gotBody["identity"] != "bob-id" {
+	if gotBody["room"] != "velvet" {
 		t.Fatalf("body: %v", gotBody)
 	}
 	token, ok := strings.CutPrefix(gotAuth, "Bearer ")

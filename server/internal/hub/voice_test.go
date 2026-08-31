@@ -53,3 +53,39 @@ func TestVoiceSync(t *testing.T) {
 		t.Fatalf("rooms = %v, want none", rooms)
 	}
 }
+
+// Two tabs are one person on the radar (#293): LiveKit identities carry a
+// per-connection nonce, so the same rider holds several entries at once.
+func TestVoiceFoldsTabsPerRider(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), nil, nil)
+
+	h.VoiceJoined("velvet", "kim-id#aaa", "Kim")
+	h.VoiceJoined("velvet", "kim-id#bbb", "Kim")
+	h.VoiceJoined("velvet", "lena-id#ccc", "Lena")
+
+	if voice := h.Presence("velvet").Voice; !slices.Equal(voice, []string{"Kim", "Lena"}) {
+		t.Fatalf("voice = %v, want [Kim Lena] — a second tab is not a second rider", voice)
+	}
+
+	// A camera live in either tab is that rider on camera.
+	h.VoiceCamera("velvet", "kim-id#bbb", "Kim", true)
+	if cams := h.Presence("velvet").Cameras; !slices.Equal(cams, []string{"Kim"}) {
+		t.Fatalf("cameras = %v, want [Kim]", cams)
+	}
+
+	// Closing one tab must not take the rider out of voice, nor out of camera
+	// while the other tab still has one open.
+	h.VoiceLeft("velvet", "kim-id#aaa")
+	p := h.Presence("velvet")
+	if !slices.Equal(p.Voice, []string{"Kim", "Lena"}) {
+		t.Fatalf("voice after one tab closed = %v, want [Kim Lena]", p.Voice)
+	}
+	if !slices.Equal(p.Cameras, []string{"Kim"}) {
+		t.Fatalf("cameras after one tab closed = %v, want [Kim]", p.Cameras)
+	}
+
+	h.VoiceLeft("velvet", "kim-id#bbb")
+	if voice := h.Presence("velvet").Voice; !slices.Equal(voice, []string{"Lena"}) {
+		t.Fatalf("voice after last tab closed = %v, want [Lena]", voice)
+	}
+}
