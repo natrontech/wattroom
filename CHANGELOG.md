@@ -16,6 +16,8 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.2] - 2026-09-01
+
 ### Added
 
 - What's new: the app shows the changelog of the version it is running, and
@@ -60,5 +62,6 @@ not a second copy of `git log`.
   would have served rider counts and Go runtime internals to anyone; caught
   before wattroom.ch was ever deployed, so nothing was exposed in practice.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.1...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.2...HEAD
+[2026.09.2]: https://github.com/natrontech/wattroom/compare/2026.09.1...2026.09.2
 [2026.09.1]: https://github.com/natrontech/wattroom/releases/tag/2026.09.1
