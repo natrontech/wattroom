@@ -23,7 +23,7 @@ func (q *Queries) CountOwnedRooms(ctx context.Context, ownerID pgtype.UUID) (int
 }
 
 const countRoomMembers = `-- name: CountRoomMembers :one
-select count(*) from memberships where room_id = $1
+select count(*) from memberships where room_id = $1 and role != 'banned'
 `
 
 func (q *Queries) CountRoomMembers(ctx context.Context, roomID pgtype.UUID) (int64, error) {
@@ -53,7 +53,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 const createRoom = `-- name: CreateRoom :one
 insert into rooms (code, slug, name, owner_id)
 values ($1, $2, $3, $4)
-returning id, code, slug, name, owner_id, listed, created_at, sound_pack
+returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers
 `
 
 type CreateRoomParams struct {
@@ -80,6 +80,8 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 		&i.Listed,
 		&i.CreatedAt,
 		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
 	)
 	return i, err
 }
@@ -181,7 +183,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack from rooms where code = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers from rooms where code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
@@ -196,12 +198,14 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) 
 		&i.Listed,
 		&i.CreatedAt,
 		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
 	)
 	return i, err
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack from rooms where slug = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -216,6 +220,8 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 		&i.Listed,
 		&i.CreatedAt,
 		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
 	)
 	return i, err
 }
@@ -322,10 +328,10 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, m.role
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, m.role
 from memberships m
 join rooms r on r.id = m.room_id
-where m.user_id = $1
+where m.user_id = $1 and m.role != 'banned'
 order by m.joined_at desc
 `
 
@@ -338,9 +344,13 @@ type ListUserRoomsRow struct {
 	Listed    bool
 	CreatedAt pgtype.Timestamptz
 	SoundPack string
+	Icon      string
+	Cheers    string
 	Role      string
 }
 
+// Banned members keep their row (the ban IS the row) but the room vanishes
+// from their nav.
 func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]ListUserRoomsRow, error) {
 	rows, err := q.db.Query(ctx, listUserRooms, userID)
 	if err != nil {
@@ -359,6 +369,8 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.Listed,
 			&i.CreatedAt,
 			&i.SoundPack,
+			&i.Icon,
+			&i.Cheers,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -405,7 +417,8 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 }
 
 const updateRoom = `-- name: UpdateRoom :one
-update rooms set name = $2, listed = $3, sound_pack = $4 where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack
+update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
+where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers
 `
 
 type UpdateRoomParams struct {
@@ -413,6 +426,8 @@ type UpdateRoomParams struct {
 	Name      string
 	Listed    bool
 	SoundPack string
+	Icon      string
+	Cheers    string
 }
 
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
@@ -421,6 +436,8 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		arg.Name,
 		arg.Listed,
 		arg.SoundPack,
+		arg.Icon,
+		arg.Cheers,
 	)
 	var i Room
 	err := row.Scan(
@@ -432,6 +449,8 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		&i.Listed,
 		&i.CreatedAt,
 		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
 	)
 	return i, err
 }

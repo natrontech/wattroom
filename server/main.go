@@ -116,6 +116,8 @@ func main() {
 			avService.Register(mux)
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)
+			// Bans and removals eject from voice too, not just the metrics WS.
+			roomsService.SetVoiceEjector(avService)
 		}
 	}
 	mux.Handle("/", spaHandler())

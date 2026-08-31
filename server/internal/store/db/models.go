@@ -90,6 +90,8 @@ type Room struct {
 	Listed    bool
 	CreatedAt pgtype.Timestamptz
 	SoundPack string
+	Icon      string
+	Cheers    string
 }
 
 type ScheduledSession struct {
