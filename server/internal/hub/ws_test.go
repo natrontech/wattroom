@@ -47,6 +47,27 @@ func dial(t *testing.T, url, rider string) *websocket.Conn {
 	return conn
 }
 
+// eventually polls until want reports true, and fails the test if it never
+// does. A returned dial() proves only that the handshake completed:
+// websocket.Accept writes the 101 before the handler registers the client, so
+// hub state asserted straight after a dial is a race (#307).
+//
+// Polling rather than testing/synctest on purpose — a synctest bubble cannot
+// see goroutines parked on real network I/O, which is what these tests use.
+func eventually(t *testing.T, what string, want func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if want() {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s never became true", what)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
