@@ -44,3 +44,29 @@ export async function api<T>(
 		};
 	}
 }
+
+/** Same contract for binary responses (.fit exports) — api() assumes JSON. */
+export async function apiBlob(
+	path: string,
+	init?: RequestInit,
+): Promise<ApiResult<Blob>> {
+	try {
+		const res = await fetch(path, init);
+		if (res.ok) return { ok: true, data: await res.blob() };
+		const body = await res.json().catch(() => null);
+		return {
+			ok: false,
+			error: body?.message
+				? (body as ApiError)
+				: {
+						error: 'internal_error',
+						message: 'The server did not answer properly.',
+					},
+		};
+	} catch {
+		return {
+			ok: false,
+			error: { error: 'network', message: 'The server is not reachable.' },
+		};
+	}
+}

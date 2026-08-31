@@ -24,19 +24,21 @@ type Connection = {
 
 let current = $state<Connection | null>(null);
 
+/** The chat backlog (#201) — a nicety; live chat still works without it. */
+function loadBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
+	void api<{ messages?: Parameters<typeof live.seedChat>[0] }>(
+		`/api/rooms/${slug}/chat`,
+	).then((res) => {
+		if (res.ok && res.data?.messages) live.seedChat(res.data.messages);
+	});
+}
+
 function connect(slug: string): Connection {
 	const live = createRoomLive(slug);
 	const av = createRoomAv(slug);
 	// The chat backlog (#201): loaded once per join — the log follows the
 	// connection, not the page, like everything else here.
-	void fetch(`/api/rooms/${slug}/chat`)
-		.then((res) => (res.ok ? res.json() : null))
-		.then((body) => {
-			if (body?.messages) live.seedChat(body.messages);
-		})
-		.catch(() => {
-			/* backlog is a nicety — live chat still works without it */
-		});
+	loadBacklog(slug, live);
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
@@ -112,12 +114,7 @@ function connect(slug: string): Connection {
 			if (status === 'reconnecting') wasReconnecting = true;
 			else if (status === 'live' && wasReconnecting) {
 				wasReconnecting = false;
-				void fetch(`/api/rooms/${slug}/chat`)
-					.then((res) => (res.ok ? res.json() : null))
-					.then((body) => {
-						if (body?.messages) live.seedChat(body.messages);
-					})
-					.catch(() => {});
+				loadBacklog(slug, live);
 			}
 		});
 
