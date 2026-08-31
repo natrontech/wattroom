@@ -236,6 +236,34 @@ func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice 
 	return len(seen), rm.session.phase, riders, inVoice
 }
 
+// WhereIs answers the friends panel (ADR-0012): which room each of these
+// users is connected to right now — live state only, persisted nowhere.
+// Lock, copy the room refs, unlock; then per-room lock to scan clients.
+func (h *Hub) WhereIs(userIDs []string) map[string]string {
+	wanted := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		wanted[id] = struct{}{}
+	}
+	h.mu.Lock()
+	rooms := make(map[string]*room, len(h.rooms))
+	for slug, rm := range h.rooms {
+		rooms[slug] = rm
+	}
+	h.mu.Unlock()
+
+	out := make(map[string]string, len(userIDs))
+	for slug, rm := range rooms {
+		rm.mu.Lock()
+		for c := range rm.clients {
+			if _, ok := wanted[c.rider.ID]; ok {
+				out[c.rider.ID] = slug
+			}
+		}
+		rm.mu.Unlock()
+	}
+	return out
+}
+
 // VoiceJoined/VoiceLeft feed the sidebar radar (#149) from LiveKit's
 // webhooks — who is in the voice channel, before you enter the room. Keyed
 // by identity so a double event cannot duplicate a name; the map is

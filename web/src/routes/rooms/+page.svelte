@@ -4,6 +4,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 
 	interface RoomSummary {
 		slug: string;
@@ -216,6 +217,9 @@
 				</a>
 			{/each}
 		</div>
+
+		<!-- Who's around (ADR-0012) — a ride starts from people, not a slot. -->
+		<FriendsPanel />
 
 		{#if detail && medalDays.length > 0}
 			<section class="border-muted/15 mt-8 rounded-lg border p-5">

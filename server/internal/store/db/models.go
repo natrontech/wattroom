@@ -8,6 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Friendship struct {
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+	Status      string
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Identity struct {
 	Provider       string
 	ProviderUserID string
