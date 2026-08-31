@@ -46,12 +46,14 @@ func TestLobbyPresence(t *testing.T) {
 	lobby := dial(t, base+"/ws/presence", "jan:member")
 
 	// Holding the lobby socket IS being online — no room involved. Present in
-	// the map with "" = online; absent = offline.
-	where := h.WhereIs([]string{"jan", "sven"})
-	if slug, online := where["jan"]; !online || slug != "" {
-		t.Fatalf("lobby-online jan: %q %v", slug, online)
-	}
-	if _, online := where["sven"]; online {
+	// the map with "" = online; absent = offline. The handler registers the
+	// client just after the handshake it returned from, so this waits for that
+	// rather than assuming it has already happened (#307).
+	eventually(t, "jan reads lobby-online", func() bool {
+		slug, online := h.WhereIs([]string{"jan"})["jan"]
+		return online && slug == ""
+	})
+	if _, online := h.WhereIs([]string{"sven"})["sven"]; online {
 		t.Fatalf("sven reads online without any socket")
 	}
 
@@ -67,7 +69,7 @@ func TestLobbyPresence(t *testing.T) {
 		}
 	}
 
-	where = h.WhereIs([]string{"jan", "sven"})
+	where := h.WhereIs([]string{"jan", "sven"})
 	if where["sven"] != "velvet" {
 		t.Fatalf("sven's room: %q", where["sven"])
 	}
@@ -77,14 +79,8 @@ func TestLobbyPresence(t *testing.T) {
 
 	// Closing the socket is going offline — no timeout window to wait out.
 	_ = lobby.CloseNow()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, online := h.WhereIs([]string{"jan"})["jan"]; !online {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("jan still online after the lobby socket closed")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	eventually(t, "jan reads offline after closing the lobby socket", func() bool {
+		_, online := h.WhereIs([]string{"jan"})["jan"]
+		return !online
+	})
 }
