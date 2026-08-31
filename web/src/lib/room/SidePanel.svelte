@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Plus, SmilePlus } from '@lucide/svelte';
+	import { Copy, Plus, SmilePlus } from '@lucide/svelte';
+	import MessageText from '$lib/chat/MessageText.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
 
 	// In media-focus the player lives in the main area, so the panel must not render a second one.
@@ -47,6 +49,25 @@
 	let url = $state('');
 
 	let reactingTo = $state<string | null>(null);
+
+	// Consecutive lines from one rider read as one turn — the header repeats
+	// only after a gap, like every messenger.
+	const GROUP_GAP_MS = 5 * 60_000;
+
+	const clock = (at: number) =>
+		new Date(at).toLocaleTimeString(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+		});
+
+	async function copy(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			toasts.push('Message copied');
+		} catch {
+			toasts.push('Copy needs clipboard permission', { tone: 'error' });
+		}
+	}
 
 	let draft = $state('');
 	function sendChat() {
@@ -129,25 +150,49 @@
 
 		<div class="eyebrow px-4 pt-3 pb-1">chat</div>
 		<ul
-			class="flex flex-1 flex-col justify-end space-y-2 overflow-y-auto px-4 py-2"
+			class="flex flex-1 flex-col justify-end space-y-2 overflow-x-hidden overflow-y-auto px-4 py-2"
 		>
-			{#each messages as message (message.id ?? message.at + message.from)}
-				<li class="group text-xs leading-snug">
-					<span class="text-muted font-medium">{message.from}</span>
-					<span class="text-ink/85 ml-1.5">{message.text}</span>
+			{#each messages as message, i (message.id ?? message.at + message.from)}
+				{@const grouped =
+					i > 0 &&
+					messages[i - 1].from === message.from &&
+					message.at - messages[i - 1].at < GROUP_GAP_MS}
+				<li class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}">
+					<div class="flex items-baseline gap-1.5">
+						{#if !grouped}
+							<span class="text-muted min-w-0 truncate font-medium"
+								>{message.from}</span
+							>
+							<span class="text-muted/40 shrink-0 font-mono text-[10px]"
+								>{clock(message.at)}</span
+							>
+						{/if}
+						<span
+							class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+						>
+							<button
+								onclick={() => copy(message.text)}
+								class="text-muted/60 hover:text-ink"
+								aria-label="copy message"><Copy size={12} /></button
+							>
+							{#if message.id && onReact}
+								{@const id = message.id}
+								<button
+									onclick={() => (reactingTo = reactingTo === id ? null : id)}
+									class="text-muted/60 hover:text-ink"
+									aria-label="react"><SmilePlus size={13} /></button
+								>
+							{/if}
+						</span>
+					</div>
+					<div class="text-ink/85 wrap-anywhere">
+						<MessageText text={message.text} />
+					</div>
 					{#if message.id && onReact}
 						{@const id = message.id}
-						<button
-							onclick={() => (reactingTo = reactingTo === id ? null : id)}
-							class="text-muted/60 hover:text-ink ml-1.5 opacity-0 transition-opacity group-hover:opacity-100 {reactingTo ===
-							id
-								? 'opacity-100'
-								: ''}"
-							aria-label="react"><SmilePlus size={13} /></button
-						>
 						{#if reactingTo === id}
 							<span
-								class="bg-surface-raised ring-ink/10 ml-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
+								class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
 							>
 								{#each cheers as emoji (emoji)}
 									<button
