@@ -3,6 +3,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
+	import { presence } from '$lib/presence.svelte';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -45,14 +46,16 @@
 	}
 
 	$effect(() => {
+		// Presence stays honest while the page sits open: pushed (#251), not
+		// polled — every lobby ping re-fetches the room list.
+		presence.version;
+		if (account.loaded && account.me) void load();
+	});
+	$effect(() => {
 		if (!account.loaded || !account.me) return;
-		void load();
 		void api<{ rides: Ride[] }>('/api/rides').then((res) => {
 			if (res.ok) rides = res.data.rides;
 		});
-		// Presence stays honest while the page sits open.
-		const timer = setInterval(() => void load(), 10_000);
-		return () => clearInterval(timer);
 	});
 
 	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));

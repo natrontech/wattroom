@@ -63,13 +63,19 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
+	// The lobby (#251): every signed-in client holds one socket here; holding
+	// it IS being online, and every presence change pings it. See lobby.go.
+	lobby     map[*lobbyClient]string
+	lobbyAuth func(*http.Request) (userID string, ok bool)
 }
 
 // voiceEntry remembers when the join was reported, so a reconcile sweep
-// cannot prune a rider who joined after its snapshot was taken.
+// cannot prune a rider who joined after its snapshot was taken — and whether
+// their camera is live (#251, track_published).
 type voiceEntry struct {
 	name     string
 	joinedAt time.Time
+	camera   bool
 }
 
 // SetChatKeeper wires persistence in after construction, like SetPresence's
@@ -78,7 +84,8 @@ func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	return &Hub{log: log, access: access, saver: saver, now: time.Now,
-		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry)}
+		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
+		lobby: make(map[*lobbyClient]string)}
 }
 
 type room struct {
@@ -104,6 +111,29 @@ type room struct {
 	// kind+rider → last accepted time: limits are per RIDER, not per socket —
 	// a second tab must not double every allowance (audit #219).
 	lastInput map[string]time.Time
+	// rider id → last live sample, for the rail's watt dot (#251). Entries go
+	// stale harmlessly; the map is bounded by riders ever seen.
+	lastMetric map[string]time.Time
+	// Pings the lobby (#251) when the tick sees phase or the riding set change.
+	changed func()
+}
+
+// ridingWindow is how recent a sample must be to count as "riding now".
+const ridingWindow = 10 * time.Second
+
+// ridingLocked names riders with a live sample inside ridingWindow — the
+// caller holds rm.mu.
+func (rm *room) ridingLocked(now time.Time) []string {
+	var names []string
+	for id, at := range rm.lastMetric {
+		if now.Sub(at) <= ridingWindow {
+			if rider, ok := rm.seen[id]; ok {
+				names = append(names, rider.Name)
+			}
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
@@ -122,13 +152,14 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 
 func newRoom(slug string) *room {
 	return &room{
-		slug:    slug,
-		clients: make(map[*client]struct{}),
-		metrics: make(map[string]protocol.RiderMetrics),
-		session: newSession(),
-		record:  newAccumulator(),
-		music:   newJukebox(),
-		seen:    make(map[string]protocol.Rider),
+		slug:       slug,
+		clients:    make(map[*client]struct{}),
+		metrics:    make(map[string]protocol.RiderMetrics),
+		session:    newSession(),
+		record:     newAccumulator(),
+		music:      newJukebox(),
+		seen:       make(map[string]protocol.Rider),
+		lastMetric: make(map[string]time.Time),
 	}
 }
 
@@ -164,10 +195,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	rm := h.room(slug)
 	c := &client{rider: rider, conn: conn}
 	rm.join(c)
+	h.PresenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
+		h.PresenceChanged()
 		h.log.Info("rider left", "room", slug, "rider", rider.ID)
 	}()
 
@@ -297,18 +330,23 @@ func (h *Hub) Kick(slug, userID string) {
 // the rail (#39 design: the nav shows where the action is) — and now who,
 // so a rider can see their crew from any page. Riders, not sockets: a phone
 // spectator next to a desktop is one person. Lock, copy, unlock.
-func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice []string) {
+func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
-	inVoice := make([]string, 0, 4)
+	p := protocol.RoomPresence{Phase: "idle", Voice: make([]string, 0, 4)}
 	for _, entry := range h.voice[slug] {
-		inVoice = append(inVoice, entry.name)
+		p.Voice = append(p.Voice, entry.name)
+		if entry.camera {
+			p.Cameras = append(p.Cameras, entry.name)
+		}
 	}
 	h.mu.Unlock()
-	sort.Strings(inVoice)
+	sort.Strings(p.Voice)
+	sort.Strings(p.Cameras)
 	if !ok {
-		return 0, "idle", nil, inVoice
+		return p
 	}
+	now := h.now()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	seen := make(map[string]struct{}, len(rm.clients))
@@ -317,28 +355,44 @@ func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice 
 			continue
 		}
 		seen[c.rider.ID] = struct{}{}
-		riders = append(riders, c.rider.Name)
+		p.Riders = append(p.Riders, c.rider.Name)
 	}
-	sort.Strings(riders)
-	return len(seen), rm.session.phase, riders, inVoice
+	sort.Strings(p.Riders)
+	p.Connected = len(seen)
+	p.Riding = rm.ridingLocked(now)
+	state := rm.session.state(now)
+	p.Phase = state.Phase
+	if state.Phase == "countdown" || state.Phase == "running" || state.Phase == "paused" {
+		// The late-join radar: enough to render "Openers · 32 min in".
+		p.WorkoutName = state.WorkoutName
+		p.ElapsedSec = state.Elapsed
+	}
+	return p
 }
 
-// WhereIs answers the friends panel (ADR-0012): which room each of these
-// users is connected to right now — live state only, persisted nowhere.
-// Lock, copy the room refs, unlock; then per-room lock to scan clients.
+// WhereIs answers the friends panel (ADR-0012): who is online, and which room
+// each of these users is connected to right now — live state only, persisted
+// nowhere. Present in the map = online (the lobby socket, #251 — Slack's green
+// dot); a non-empty value names the room. Lock, copy the room refs, unlock;
+// then per-room lock to scan clients.
 func (h *Hub) WhereIs(userIDs []string) map[string]string {
 	wanted := make(map[string]struct{}, len(userIDs))
 	for _, id := range userIDs {
 		wanted[id] = struct{}{}
 	}
+	out := make(map[string]string, len(userIDs))
 	h.mu.Lock()
 	rooms := make(map[string]*room, len(h.rooms))
 	for slug, rm := range h.rooms {
 		rooms[slug] = rm
 	}
+	for _, id := range h.lobby {
+		if _, ok := wanted[id]; ok {
+			out[id] = ""
+		}
+	}
 	h.mu.Unlock()
 
-	out := make(map[string]string, len(userIDs))
 	for slug, rm := range rooms {
 		rm.mu.Lock()
 		for c := range rm.clients {
@@ -361,7 +415,15 @@ func (h *Hub) VoiceJoined(slug, identity, name string) {
 	if h.voice[slug] == nil {
 		h.voice[slug] = make(map[string]voiceEntry, 4)
 	}
-	h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+	// Merge, don't overwrite: a camera flag set by an early track_published
+	// must survive the participant_joined that follows it.
+	entry := h.voice[slug][identity]
+	entry.name = name
+	if entry.joinedAt.IsZero() {
+		entry.joinedAt = h.now()
+	}
+	h.voice[slug][identity] = entry
+	h.pingLobbyLocked()
 }
 
 func (h *Hub) VoiceLeft(slug, identity string) {
@@ -371,6 +433,28 @@ func (h *Hub) VoiceLeft(slug, identity string) {
 	if len(h.voice[slug]) == 0 {
 		delete(h.voice, slug)
 	}
+	h.pingLobbyLocked()
+}
+
+// VoiceCamera flips one participant's camera flag (#251) — track_published /
+// track_unpublished. Upserts: the track event can beat the join webhook, and
+// a live camera implies presence in the voice room anyway.
+func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	entry, ok := h.voice[slug][identity]
+	if !ok && !on {
+		return
+	}
+	if !ok {
+		entry = voiceEntry{name: name, joinedAt: h.now()}
+	}
+	entry.camera = on
+	if h.voice[slug] == nil {
+		h.voice[slug] = make(map[string]voiceEntry, 4)
+	}
+	h.voice[slug][identity] = entry
+	h.pingLobbyLocked()
 }
 
 // VoiceRoomClosed clears a whole room's voice state (room_finished).
@@ -378,6 +462,7 @@ func (h *Hub) VoiceRoomClosed(slug string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.voice, slug)
+	h.pingLobbyLocked()
 }
 
 // VoiceRooms lists the rooms the radar currently shows anyone in — the
@@ -399,9 +484,11 @@ func (h *Hub) VoiceRooms() []string {
 func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	changed := false
 	for identity, entry := range h.voice[slug] {
 		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
 			delete(h.voice[slug], identity)
+			changed = true
 		}
 	}
 	for identity, name := range present {
@@ -412,9 +499,13 @@ func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time)
 			h.voice[slug] = make(map[string]voiceEntry, len(present))
 		}
 		h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+		changed = true
 	}
 	if len(h.voice[slug]) == 0 {
 		delete(h.voice, slug)
+	}
+	if changed {
+		h.pingLobbyLocked()
 	}
 }
 
@@ -432,6 +523,7 @@ func (h *Hub) room(slug string) *room {
 	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = newRoom(slug)
+		rm.changed = h.PresenceChanged
 		h.rooms[slug] = rm
 		go rm.run(h.now, h.saver)
 	}
@@ -448,6 +540,10 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 	// is live (SPEC) and returns to 1 Hz after.
 	timer := time.NewTimer(tickInterval)
 	defer timer.Stop()
+	// Presence push (#251): phase and the riding set are the live signals the
+	// rail shows for rooms you are NOT in — ping the lobby only when one of
+	// them changes between ticks, never per tick.
+	lastPhase, lastRiding := "", ""
 	for range timer.C {
 		rm.mu.Lock()
 		interval := tickInterval
@@ -536,7 +632,12 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 				tick.Roster = append(tick.Roster, c.rider)
 			}
 		}
+		ridingKey := strings.Join(rm.ridingLocked(now()), "\n")
 		rm.mu.Unlock()
+		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding) {
+			lastPhase, lastRiding = tick.State.Phase, ridingKey
+			rm.changed()
+		}
 		// Stable roster order, so tiles do not shuffle every second.
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
 
@@ -597,6 +698,7 @@ func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.metrics[rider.ID] = m
+	rm.lastMetric[rider.ID] = time.Now()
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
