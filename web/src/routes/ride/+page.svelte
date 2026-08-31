@@ -283,24 +283,40 @@
 			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
 		},
 	]);
-	// Cadence band of the current block (#66) — display-only, steady steps.
-	const bandText = $derived.by(() => {
+	// Cadence and HR bands of the current block (#66/#67) — display-only.
+	const stepBand = (
+		low: number | undefined,
+		high: number | undefined,
+		unit: string,
+		value: number,
+	) => {
+		const text =
+			low !== undefined && high !== undefined
+				? `${low}–${high} ${unit}`
+				: high !== undefined
+					? `under ${high} ${unit}`
+					: low !== undefined
+						? `over ${low} ${unit}`
+						: null;
+		if (!text) return null;
+		const inBand =
+			value > 0 &&
+			(low === undefined || value >= low) &&
+			(high === undefined || value <= high);
+		return { text, inBand };
+	};
+	const bands = $derived.by(() => {
 		const seg = session?.info.segment;
-		if (!seg) return null;
-		const { cadenceLow: low, cadenceHigh: high } = seg;
-		if (low !== undefined && high !== undefined) return `${low}–${high} rpm`;
-		if (high !== undefined) return `under ${high} rpm`;
-		if (low !== undefined) return `over ${low} rpm`;
-		return null;
-	});
-	const inCadenceBand = $derived.by(() => {
-		const seg = session?.info.segment;
-		const rpm = session?.sample?.cadence ?? 0;
-		if (!seg || rpm <= 0) return false;
-		return (
-			(seg.cadenceLow === undefined || rpm >= seg.cadenceLow) &&
-			(seg.cadenceHigh === undefined || rpm <= seg.cadenceHigh)
-		);
+		if (!seg) return [];
+		return [
+			stepBand(
+				seg.cadenceLow,
+				seg.cadenceHigh,
+				'rpm',
+				session?.sample?.cadence ?? 0,
+			),
+			stepBand(seg.hrLow, seg.hrHigh, 'bpm', session?.sample?.heartRate ?? 0),
+		].filter((band) => band !== null);
 	});
 
 	// A frozen number is worse than a warning: past 3 s without a sample the
@@ -591,16 +607,16 @@
 					<span>0</span>
 					<span>
 						{target > 0 ? `target ${target} W` : 'no target'}
-						{#if bandText}
-							<!-- Cadence is this block's point; colour answers "am I doing it" (#66). -->
+						{#each bands as b (b.text)}
+							<!-- The band is this block's point; colour answers "am I doing it". -->
 							<span
-								class="{inCadenceBand
+								class="{b.inBand
 									? 'text-z4'
 									: 'text-z5'} font-semibold uppercase"
 							>
-								· at {bandText}</span
+								· at {b.text}</span
 							>
-						{/if}
+						{/each}
 					</span>
 					<span>{Math.round(ftp * 1.5)}</span>
 				</div>

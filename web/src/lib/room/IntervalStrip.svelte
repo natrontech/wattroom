@@ -7,6 +7,7 @@
 		onBias,
 		big = false,
 		cadence = 0,
+		hr = 0,
 	}: {
 		block: Block | null;
 		bias: number;
@@ -15,21 +16,38 @@
 		big?: boolean;
 		/** Your live rpm — colours the cadence band in or out (#66). */
 		cadence?: number;
+		/** Your live bpm — colours the HR band in or out (#67). */
+		hr?: number;
 	} = $props();
 
-	const bandText = $derived.by(() => {
-		if (!block) return null;
-		const { cadenceLow: low, cadenceHigh: high } = block;
-		if (low !== undefined && high !== undefined) return `${low}–${high} rpm`;
-		if (high !== undefined) return `under ${high} rpm`;
-		if (low !== undefined) return `over ${low} rpm`;
-		return null;
-	});
-	const inBand = $derived(
-		!!block &&
-			cadence > 0 &&
-			(block.cadenceLow === undefined || cadence >= block.cadenceLow) &&
-			(block.cadenceHigh === undefined || cadence <= block.cadenceHigh),
+	const band = (
+		low: number | undefined,
+		high: number | undefined,
+		unit: string,
+		value: number,
+	) => {
+		const text =
+			low !== undefined && high !== undefined
+				? `${low}–${high} ${unit}`
+				: high !== undefined
+					? `under ${high} ${unit}`
+					: low !== undefined
+						? `over ${low} ${unit}`
+						: null;
+		if (!text) return null;
+		const inBand =
+			value > 0 &&
+			(low === undefined || value >= low) &&
+			(high === undefined || value <= high);
+		return { text, inBand };
+	};
+	const bands = $derived(
+		block
+			? [
+					band(block.cadenceLow, block.cadenceHigh, 'rpm', cadence),
+					band(block.hrLow, block.hrHigh, 'bpm', hr),
+				].filter((b) => b !== null)
+			: [],
 	);
 </script>
 
@@ -57,16 +75,16 @@
 			>
 				{block.label}
 			</p>
-			{#if bandText}
-				<!-- Cadence is the point of this block; colour answers "am I doing it". -->
+			{#each bands as b (b.text)}
+				<!-- The band is the block's point; colour answers "am I doing it". -->
 				<p
 					class="font-display font-semibold tabular-nums {big
 						? 'text-[2.2vh]'
-						: 'text-sm'} {inBand ? 'text-z4' : 'text-z5'}"
+						: 'text-sm'} {b.inBand ? 'text-z4' : 'text-z5'}"
 				>
-					at {bandText}
+					at {b.text}
 				</p>
-			{/if}
+			{/each}
 		</div>
 
 		<div class="ml-auto text-right">

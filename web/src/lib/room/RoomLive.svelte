@@ -1107,6 +1107,7 @@
 						{block}
 						{bias}
 						cadence={you.cadence}
+						hr={you.hr}
 						onBias={trainer ? nudgeBias : undefined}
 					/>
 				</div>

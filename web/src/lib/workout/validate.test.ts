@@ -146,4 +146,22 @@ describe('validateWorkout', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.error).toContain('spiral guard');
 	});
+
+	it('accepts a sane HR band and refuses junk (#67)', () => {
+		const step = (extra: object) => ({
+			type: 'steady',
+			seconds: 300,
+			target: 0.65,
+			...extra,
+		});
+		expect(validateWorkout(ok([step({ hrHigh: 145 })])).ok).toBe(true);
+		expect(validateWorkout(ok([step({ hrLow: 120, hrHigh: 140 })])).ok).toBe(
+			true,
+		);
+		expect(validateWorkout(ok([step({ hrLow: 160, hrHigh: 120 })])).ok).toBe(
+			false,
+		);
+		expect(validateWorkout(ok([step({ hrHigh: 300 })])).ok).toBe(false);
+		expect(validateWorkout(ok([step({ hrLow: 'easy' })])).ok).toBe(false);
+	});
 });

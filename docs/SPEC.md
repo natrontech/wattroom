@@ -39,7 +39,13 @@ Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout →
 
 ## Workout JSON (draft — M1 finalizes)
 
-Planned, additive, not yet in the format: optional per-step HR bands (#67) — steps without them behave exactly as today.
+**HR bands (#67 flavour 1, shipped)**: `steady` steps may carry `hrLow`/`hrHigh`
+in raw bpm ("stay under 145" is `{ "hrHigh": 145 }`). Raw bpm on purpose —
+these are personal workouts; %LTHR is the upgrade path if shared HR workouts
+ever want it. Display-only and **never scored** (ADR-0008: no HR-derived
+competition — no execution, no medals, no ranking). Bounds 60–220 bpm.
+Closed-loop HR ERG (the trainer chasing a zone) is #67's remaining half and
+its own project.
 
 **Cadence bands (#66, shipped)**: `steady` steps may carry `cadenceLow` and/or
 `cadenceHigh` (rpm) — "under 60" is `{ "cadenceHigh": 60 }`, "over 100" is

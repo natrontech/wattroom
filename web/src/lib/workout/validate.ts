@@ -22,6 +22,9 @@ export const LIMITS = {
 	maxCadence: 150,
 	/** docs/SPEC.md spiral guard trips below this while ERG holds a target. */
 	guardTripCadence: 50,
+	/** bpm bounds for HR bands — outside these is a typo, not training. */
+	minHr: 60,
+	maxHr: 220,
 } as const;
 
 export type Validation =
@@ -68,6 +71,26 @@ function checkCadenceBand(
 	return null;
 }
 
+/** HR bands (#67): bounded bpm, right way up. Display-only downstream. */
+function checkHrBand(
+	value: Record<string, unknown>,
+	where: string,
+): string | null {
+	for (const field of ['hrLow', 'hrHigh'] as const) {
+		const v = value[field];
+		if (v === undefined) continue;
+		if (typeof v !== 'number' || !Number.isFinite(v))
+			return `${where}: ${field} must be a number`;
+		if (v < LIMITS.minHr || v > LIMITS.maxHr)
+			return `${where}: ${field} is outside ${LIMITS.minHr}–${LIMITS.maxHr} bpm`;
+	}
+	const low = value.hrLow as number | undefined;
+	const high = value.hrHigh as number | undefined;
+	if (low !== undefined && high !== undefined && low > high)
+		return `${where}: the HR band is upside down (${low} > ${high})`;
+	return null;
+}
+
 function checkFraction(
 	value: unknown,
 	where: string,
@@ -104,6 +127,8 @@ function checkStep(
 			if (seconds) return seconds;
 			const cadence = checkCadenceBand(value, where);
 			if (cadence) return cadence;
+			const hr = checkHrBand(value, where);
+			if (hr) return hr;
 			if (value.watts !== undefined) {
 				if (typeof value.watts !== 'number' || !Number.isFinite(value.watts)) {
 					return `${where}: watts must be a number`;
