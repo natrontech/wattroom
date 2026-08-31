@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import Select from '$lib/components/Select.svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { formatWhen } from '$lib/format';
@@ -52,6 +53,14 @@
 		onLeave,
 		onMember,
 		showAv = true,
+		voiceStatus = 'off',
+		devices = { mics: [], cams: [], outs: [] },
+		micId = '',
+		camId = '',
+		outId = '',
+		canPickOutput = false,
+		onDevice,
+		onDevicesOpen,
 	}: {
 		you: { name: string; ftp: number };
 		live: boolean;
@@ -86,7 +95,38 @@
 		onMember?: (slug: string, name: string) => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
+		/** Whether YOU are in the voice channel — the answer #181's feedback
+		 * says the UI never gave. */
+		voiceStatus?: 'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
+		/** What's plugged in, for the pickers ('' id = system default). */
+		devices?: {
+			mics: { deviceId: string; label: string }[];
+			cams: { deviceId: string; label: string }[];
+			outs: { deviceId: string; label: string }[];
+		};
+		micId?: string;
+		camId?: string;
+		outId?: string;
+		/** Speaker switching needs AudioContext.setSinkId — Chrome-only. */
+		canPickOutput?: boolean;
+		onDevice?: (kind: 'mic' | 'cam' | 'out', id: string) => void;
+		/** Labels only exist post-permission — re-enumerate when the panel opens. */
+		onDevicesOpen?: () => void;
 	} = $props();
+
+	const inVoice = $derived(voiceStatus === 'live');
+	const deviceOptions = (
+		list: { deviceId: string; label: string }[],
+		kind: string,
+	) => [
+		{ value: '', label: 'System default' },
+		...list
+			.filter((d) => d.deviceId && d.deviceId !== 'default')
+			.map((d, i) => ({
+				value: d.deviceId,
+				label: d.label || `${kind} ${i + 1}`,
+			})),
+	];
 
 	// Glossary vocabulary only — no per-screen synonyms.
 	const pages = [
@@ -282,32 +322,69 @@
 			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
 			>
 			{#if showAv}
+				<!-- Joined-and-live is green, joined-but-muted is red, not joined is
+				     dim — the three states #181's feedback couldn't tell apart. -->
 				<button
 					onclick={() => (onMic ? onMic() : (micOn = !micOn))}
-					class="rounded p-1 {micOn ? 'text-ink' : 'text-z6'}"
-					title={micOn ? 'mute' : 'unmute'}
-					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
+					class="rounded p-1 {inVoice
+						? micOn
+							? 'text-z4'
+							: 'text-z6'
+						: 'text-muted/50 hover:text-muted'}"
+					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
+					aria-label={inVoice
+						? micOn
+							? 'mute microphone'
+							: 'unmute microphone'
+						: 'join voice'}
 				>
-					{#if micOn}<Mic size={14} />{:else}<MicOff size={14} />{/if}
+					{#if inVoice && micOn}<Mic size={14} />{:else}<MicOff
+							size={14}
+						/>{/if}
 				</button>
 				<button
 					onclick={() => (onCam ? onCam() : (camOn = !camOn))}
-					class="rounded p-1 {camOn ? 'text-ink' : 'text-muted'}"
-					title={camOn ? 'camera off' : 'camera on'}
-					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
+					class="rounded p-1 {inVoice && camOn
+						? 'text-z4'
+						: 'text-muted/50 hover:text-muted'}"
+					title={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
+					aria-label={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
 				>
-					{#if camOn}<Video size={14} />{:else}<VideoOff size={14} />{/if}
+					{#if inVoice && camOn}<Video size={14} />{:else}<VideoOff
+							size={14}
+						/>{/if}
 				</button>
 				<button
-					onclick={() => (voiceAdvanced = !voiceAdvanced)}
+					onclick={() => {
+						voiceAdvanced = !voiceAdvanced;
+						if (voiceAdvanced) onDevicesOpen?.();
+					}}
 					class="rounded p-1 {voiceAdvanced ? 'text-ink' : 'text-muted'}"
-					title="voice settings"
-					aria-label="voice settings"
+					title="voice & device settings"
+					aria-label="voice and device settings"
 				>
 					<SlidersHorizontal size={14} />
 				</button>
 			{/if}
 		</div>
+		{#if showAv}
+			<!-- One always-present line answering "am I in voice, is my camera on":
+			     constant height, so the nav above never jumps. -->
+			<p class="text-muted mt-1.5 truncate text-[10px]">
+				{#if voiceStatus === 'live'}
+					<span class="text-z4">in voice</span>{camOn ? ' · camera on' : ''} ·
+					{voiceMode === 'ptt' ? 'push to talk' : 'voice activation'}
+				{:else if voiceStatus === 'connecting'}
+					joining voice…
+				{:else if voiceStatus === 'reconnecting'}
+					<span class="text-z5">voice reconnecting…</span>
+				{:else if voiceStatus === 'failed'}
+					<span class="text-z6">voice failed</span> — tap the mic to retry
+				{:else}
+					not in voice — tap the mic to join
+				{/if}
+			</p>
+		{/if}
 		{#if showAv && voiceMode === 'ptt' && micOn}
 			<!-- Hold to transmit — the desk spectator's mode (SPEC). -->
 			<button
@@ -359,6 +436,51 @@
 		{#if showAv}
 			{#if voiceAdvanced}
 				<div class="border-muted/15 mt-2 rounded border p-2">
+					<!-- Which mic/cam/speakers this machine is actually using (#181
+					     feedback) — one picker each, default until chosen. -->
+					<span class="eyebrow">devices</span>
+					<label class="mt-1.5 block text-[10px]">
+						<span class="text-muted">microphone</span>
+						<div class="mt-0.5">
+							<Select
+								label="Microphone"
+								value={micId}
+								options={deviceOptions(devices.mics, 'Microphone')}
+								onchange={(id) => onDevice?.('mic', id)}
+							/>
+						</div>
+					</label>
+					<label class="mt-1.5 block text-[10px]">
+						<span class="text-muted">camera</span>
+						<div class="mt-0.5">
+							<Select
+								label="Camera"
+								value={camId}
+								options={deviceOptions(devices.cams, 'Camera')}
+								onchange={(id) => onDevice?.('cam', id)}
+							/>
+						</div>
+					</label>
+					{#if canPickOutput}
+						<label class="mt-1.5 block text-[10px]">
+							<span class="text-muted">speakers · voice only</span>
+							<div class="mt-0.5">
+								<Select
+									label="Speakers"
+									value={outId}
+									options={deviceOptions(devices.outs, 'Speakers')}
+									onchange={(id) => onDevice?.('out', id)}
+								/>
+							</div>
+						</label>
+					{/if}
+					{#if devices.mics.length > 0 && !devices.mics.some((d) => d.label)}
+						<p class="text-muted/70 mt-1 text-[10px]">
+							Names appear after the first voice join grants mic access.
+						</p>
+					{/if}
+
+					<div class="border-ink/5 mt-3 border-t pt-2"></div>
 					<label class="flex items-center gap-2 text-[11px]">
 						<input
 							type="radio"

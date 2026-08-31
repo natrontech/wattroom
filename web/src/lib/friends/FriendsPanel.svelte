@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { MessageCircle } from '@lucide/svelte';
+	import { Copy, MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import Select from '$lib/components/Select.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { toasts } from '$lib/toast.svelte';
 
 	interface Friend {
 		id: string;
@@ -17,26 +17,36 @@
 		room?: string;
 		roomName?: string;
 	}
-	interface Candidate {
-		id: string;
-		name: string;
-	}
 
 	let friends = $state<Friend[] | null>(null);
-	let candidates = $state<Candidate[]>([]);
+	let myCode = $state('');
 	let error = $state<string | null>(null);
-	let picked = $state('');
+	let codeInput = $state('');
+	let codeError = $state<string | null>(null);
 	async function load() {
-		const res = await api<{ friends: Friend[]; candidates: Candidate[] }>(
-			'/api/friends',
-		);
+		const res = await api<{ friends: Friend[]; code: string }>('/api/friends');
 		if (!res.ok) {
 			error = res.error.message;
 			return;
 		}
 		error = null;
 		friends = res.data.friends;
-		candidates = res.data.candidates;
+		myCode = res.data.code;
+	}
+
+	async function addByCode(event: SubmitEvent) {
+		event.preventDefault();
+		const res = await api('/api/friends', {
+			method: 'POST',
+			json: { code: codeInput },
+		});
+		if (!res.ok) {
+			codeError = res.error.message;
+			return;
+		}
+		codeError = null;
+		codeInput = '';
+		await load();
 	}
 
 	$effect(() => {
@@ -71,10 +81,10 @@
 	{/if}
 
 	{#if friends !== null}
-		{#if friends.length === 0 && candidates.length === 0}
-			<!-- Nobody to add yet: teach the formation rule (ADR-0012). -->
+		{#if friends.length === 0}
+			<!-- Nobody yet: teach the formation rule (ADR-0012 amendment). -->
 			<p class="text-muted mt-3 text-sm">
-				Friends are made in rooms — ride with someone first, then add them here
+				Friends are made by trading codes — share yours below, or enter theirs,
 				to see when they're around.
 			</p>
 		{:else}
@@ -165,22 +175,37 @@
 			</div>
 		{/if}
 
-		{#if candidates.length > 0}
-			<div class="mt-3 max-w-xs">
-				<Select
-					label="Add a friend"
-					options={[
-						{ value: '', label: 'Add a friend…' },
-						...candidates.map((c) => ({ value: c.id, label: c.name })),
-					]}
-					bind:value={picked}
-					onchange={(id) => {
-						if (!id) return;
-						picked = '';
-						void act(`/api/friends/${id}`, 'POST');
+		<!-- Formation is code-only (ADR-0012 amendment): no user listing exists. -->
+		<div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+			{#if myCode}
+				<button
+					onclick={() => {
+						void navigator.clipboard.writeText(myCode);
+						toasts.push('Friend code copied.');
 					}}
+					class="text-muted hover:text-ink flex items-center gap-2 text-xs"
+					title="copy your friend code"
+				>
+					your code
+					<span class="font-display text-ink text-sm font-bold tracking-widest"
+						>{myCode}</span
+					>
+					<Copy size={13} />
+				</button>
+			{/if}
+			<form onsubmit={addByCode} class="flex items-center gap-2">
+				<input
+					bind:value={codeInput}
+					class="input w-36 uppercase"
+					placeholder="friend code"
+					maxlength="8"
+					aria-label="add a friend by code"
 				/>
-			</div>
+				<button class="btn btn-xs" disabled={!codeInput.trim()}>Add</button>
+			</form>
+		</div>
+		{#if codeError}
+			<p class="text-z6 mt-2 text-xs">{codeError}</p>
 		{/if}
 	{/if}
 </section>

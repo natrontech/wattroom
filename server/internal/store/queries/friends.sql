@@ -28,23 +28,7 @@ join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.
 where f.requester_id = $1 or f.addressee_id = $1
 order by u.display_name;
 
--- name: ListFriendCandidates :many
--- People I share a room with (ADR-0012's only formation path), minus me and
--- minus anyone I already have a row with.
-select distinct u.id, u.display_name
-from memberships mine
-join memberships theirs on theirs.room_id = mine.room_id and theirs.user_id <> mine.user_id
-join users u on u.id = theirs.user_id
-where mine.user_id = $1
-  and not exists (
-    select 1 from friendships f
-    where (f.requester_id = $1 and f.addressee_id = u.id)
-       or (f.requester_id = u.id and f.addressee_id = $1)
-  )
-order by u.display_name;
-
--- name: CountSharedRooms :one
--- The formation gate: a request is valid only between roommates.
-select count(*) from memberships a
-join memberships b on b.room_id = a.room_id
-where a.user_id = $1 and b.user_id = $2;
+-- name: GetUserByFriendCode :one
+-- The formation gate (ADR-0012 amendment): knowing the code IS the permission
+-- to ask.
+select * from users where friend_code = $1;

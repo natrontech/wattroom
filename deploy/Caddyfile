@@ -6,4 +6,17 @@
 	handle_path /livekit* {
 		reverse_proxy localhost:7880
 	}
+
+	# Binary unreachable (deploy, crash, `compose stop wattroom` for planned
+	# maintenance): the self-contained maintenance page, which reloads itself
+	# off /api/healthz. Real status code kept so probes still see the outage.
+	handle_errors {
+		root * /srv
+		rewrite * /maintenance.html
+		header Cache-Control no-store
+		header Retry-After 30
+		file_server {
+			status {err.status_code}
+		}
+	}
 }

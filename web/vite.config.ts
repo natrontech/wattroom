@@ -59,6 +59,8 @@ export default defineConfig({
 		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**'],
 	},
 	server: {
+		// 5174 for humans; PORT lets agent harnesses run parallel instances.
+		port: Number(process.env.PORT) || 5174,
 		proxy: {
 			// Go backend during development (make dev). WS needs ws: true.
 			// changeOrigin must stay OFF: the string shorthand turns it on, which

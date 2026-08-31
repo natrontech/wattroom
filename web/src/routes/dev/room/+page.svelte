@@ -16,8 +16,8 @@
 	import {
 		createRoom,
 		formatClock,
+		type MockRider,
 		ROOM_NAME,
-		TILE_METRICS,
 		type TileMetric,
 		workout,
 		ZONE_TEXT,
@@ -73,31 +73,14 @@
 		heard.block = index;
 	});
 
-	/** WATTROOM.md: user-switchable layouts. One grid, three weightings. */
-	type Layout = 'metrics' | 'video' | 'media';
-	const layouts: { id: Layout; label: string }[] = [
-		{ id: 'metrics', label: 'Metrics' },
-		{ id: 'video', label: 'Video' },
-		{ id: 'media', label: 'Media' },
-	];
-	let layout = $state<Layout>('metrics');
+	// One view, focus instead of layouts (#181 feedback): the Metrics/Video/Media
+	// tabs are gone — tapping a tile spotlights that rider, tapping again lets go.
+	let focusId = $state<string | null>(null);
+	const focused = $derived(room.riders.find((rider) => rider.id === focusId));
+	const others = $derived(room.riders.filter((rider) => rider.id !== focusId));
 
-	// Zwift shows everyone's HR; whether you want it on every tile is taste, so it's a toggle.
-	let tileMetrics = $state<TileMetric[]>(['hr']);
-	function toggleMetric(id: TileMetric) {
-		tileMetrics = tileMetrics.includes(id)
-			? tileMetrics.filter((m) => m !== id)
-			: [...tileMetrics, id];
-	}
-
-	// Video-first trades columns for tile size; media-focus demotes riders to a strip.
-	const riderGrid = $derived(
-		layout === 'media'
-			? 'shrink-0 grid-cols-3 sm:grid-cols-6'
-			: layout === 'video'
-				? 'min-h-0 flex-1 grid-rows-3 sm:grid-cols-2 sm:grid-rows-3 xl:grid-cols-3 xl:grid-rows-2'
-				: 'shrink-0 sm:grid-cols-2 xl:grid-cols-3',
-	);
+	// All three, always (#181 feedback) — the tile filters zeros itself.
+	const tileMetrics: TileMetric[] = ['hr', 'cadence', 'wkg'];
 
 	const phases: { id: Phase; label: string }[] = [
 		{ id: 'lounge', label: 'Lounge' },
@@ -159,26 +142,6 @@
 							class="rounded px-2.5 py-1 text-xs {room.phase === option.id
 								? 'bg-surface-raised text-ink'
 								: 'text-muted hover:text-ink'}">{option.label}</button
-						>
-					{/each}
-				</div>
-				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-					{#each layouts as option (option.id)}
-						<button
-							onclick={() => (layout = option.id)}
-							class="rounded px-2.5 py-1 text-xs {layout === option.id
-								? 'bg-surface-raised text-ink'
-								: 'text-muted hover:text-ink'}">{option.label}</button
-						>
-					{/each}
-				</div>
-				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-					{#each TILE_METRICS as metric (metric.id)}
-						<button
-							onclick={() => toggleMetric(metric.id)}
-							class="rounded px-2 py-1 text-xs {tileMetrics.includes(metric.id)
-								? 'bg-surface-raised text-ink'
-								: 'text-muted hover:text-ink'}">{metric.label}</button
 						>
 					{/each}
 				</div>
@@ -321,30 +284,53 @@
 				</div>
 			{/if}
 
-			{#if layout === 'media'}
-				<!-- Media-focus: the player takes the main area, riders drop to a strip beneath it. -->
-				<div class="flex min-h-0 flex-1 justify-center">
-					<PlayerTile tall />
-				</div>
-			{/if}
-
-			<!-- Rider tiles: camera and power fused, so there is one grid rather than three. -->
-			<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
-				{#if joining}
+			<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
+			     tap a tile to spotlight that rider, tap again to let go. -->
+			{#snippet tile(rider: MockRider)}
+				<RiderTile {rider} phase={room.phase} metrics={tileMetrics} />
+			{/snippet}
+			{#if joining}
+				<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
 					{#each { length: 6 } as _, i (i)}
 						<Skeleton class="aspect-video w-full" />
 					{/each}
-				{:else}
-					{#each room.riders as rider (rider.name)}
-						<RiderTile
-							{rider}
-							phase={room.phase}
-							stretch={layout === 'video'}
-							metrics={tileMetrics}
-						/>
-					{/each}
+				</div>
+			{:else if focused}
+				<button
+					onclick={() => (focusId = null)}
+					class="block w-full max-w-3xl text-left"
+					title="tap to unfocus"
+				>
+					{@render tile(focused)}
+				</button>
+				{#if others.length > 0}
+					<div
+						class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-6"
+					>
+						{#each others as rider (rider.id)}
+							<button
+								onclick={() => (focusId = rider.id)}
+								class="block text-left"
+								title="focus {rider.name}"
+							>
+								{@render tile(rider)}
+							</button>
+						{/each}
+					</div>
 				{/if}
-			</div>
+			{:else}
+				<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+					{#each room.riders as rider (rider.id)}
+						<button
+							onclick={() => (focusId = rider.id)}
+							class="block text-left"
+							title="focus {rider.name}"
+						>
+							{@render tile(rider)}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			{#if room.phase === 'countdown'}
 				<div
@@ -404,11 +390,7 @@
 						/>
 					</div>
 					<div class="mt-2">
-						<TargetWidget
-							{you}
-							variant="notch"
-							compact={layout !== 'metrics'}
-						/>
+						<TargetWidget {you} variant="notch" />
 					</div>
 				{/if}
 				<div class="mt-2 grid gap-2 lg:grid-cols-[1fr_260px]">
@@ -419,7 +401,6 @@
 							elapsed={room.elapsed}
 							ftp={you.ftp}
 							trace={you.trace}
-							compact={layout !== 'metrics'}
 						/>
 					</div>
 					<ExecutionMeter riders={room.riders} />
@@ -438,6 +419,11 @@
 			{/if}
 		</main>
 
-		<SidePanel {live} showPlayer={layout !== 'media'} />
+		<!-- Media lives in the panel now — the main area is riders and the ride. -->
+		<SidePanel {live} showPlayer>
+			{#snippet player()}
+				<PlayerTile />
+			{/snippet}
+		</SidePanel>
 	</div>
 {/if}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,6 +118,17 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path string) (int, map
 	return w.Code, decoded
 }
 
+// request sends a friend request by code — the only formation path.
+func request(t *testing.T, mux *http.ServeMux, user, code string) int {
+	t.Helper()
+	body := strings.NewReader(`{"code":"` + code + `"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/friends", body)
+	req.Header.Set("X-Test-User", user)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	return w.Code
+}
+
 func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 	t.Helper()
 	code, body := call(t, mux, user, http.MethodGet, "/api/friends")
@@ -137,28 +149,26 @@ func TestFriendLifecycle(t *testing.T) {
 	shareRoom(t, st, users, "pain-cave", "alice", "bob")
 	alice, bob := users.byToken["alice"], users.byToken["bob"]
 
-	// No auth → 401; garbage id → 400; self → 400.
+	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
 	if code, _ := call(t, mux, "", http.MethodGet, "/api/friends"); code != http.StatusUnauthorized {
 		t.Fatalf("unauthed list: %d", code)
 	}
-	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/not-a-uuid"); code != http.StatusBadRequest {
-		t.Fatalf("garbage id: %d", code)
+	if code := request(t, mux, "alice", "NOTACODE"); code != http.StatusNotFound {
+		t.Fatalf("unknown code: %d", code)
 	}
-	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(alice.ID)); code != http.StatusBadRequest {
+	if code := request(t, mux, "alice", ""); code != http.StatusBadRequest {
+		t.Fatalf("empty code: %d", code)
+	}
+	if code := request(t, mux, "alice", alice.FriendCode); code != http.StatusBadRequest {
 		t.Fatalf("self request: %d", code)
 	}
 
-	// cara shares no room with alice — the formation gate refuses (ADR-0012).
-	cara := users.byToken["cara"]
-	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(cara.ID)); code != http.StatusForbidden {
-		t.Fatalf("stranger request: %d", code)
-	}
-
-	// Roommate request → pending both ways; duplicate (either direction) → 409.
-	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)); code != http.StatusOK {
+	// Codes are the only gate — no shared room needed, and case/space forgiven.
+	if code := request(t, mux, "alice", "  "+strings.ToLower(bob.FriendCode)+" "); code != http.StatusOK {
 		t.Fatalf("request: %d", code)
 	}
-	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(alice.ID)); code != http.StatusConflict {
+	// Duplicate (either direction) → 409.
+	if code := request(t, mux, "bob", alice.FriendCode); code != http.StatusConflict {
 		t.Fatalf("mirror request: %d", code)
 	}
 	if got := friendsOf(t, mux, "alice")[0]["status"]; got != "pending_out" {
@@ -203,29 +213,23 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 }
 
-func TestCandidatesAreRoommatesOnly(t *testing.T) {
-	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "cave-2", "alice", "bob")
-	// cara shares nothing with alice.
+func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
+	mux, _, users, _ := setup(t)
 
+	// The list hands back my own code and never a user listing.
 	_, body := call(t, mux, "alice", http.MethodGet, "/api/friends")
-	raw, _ := body["candidates"].([]any)
-	if len(raw) != 1 {
-		t.Fatalf("candidates: %v", raw)
+	if body["code"] != users.byToken["alice"].FriendCode {
+		t.Fatalf("own code missing: %v", body)
 	}
-	first, _ := raw[0].(map[string]any)
-	if first["name"] != "bob" {
-		t.Fatalf("candidate is %v", first["name"])
+	if _, leaked := body["candidates"]; leaked {
+		t.Fatal("candidate listing still exposed")
 	}
 
-	// Once requested, bob leaves the candidate list.
-	bob := users.byToken["bob"]
-	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)); code != http.StatusOK {
-		t.Fatal("request failed")
+	// cara shares no room with alice — her code alone opens the door.
+	if code := request(t, mux, "alice", users.byToken["cara"].FriendCode); code != http.StatusOK {
+		t.Fatalf("stranger-by-code request: %d", code)
 	}
-	_, body = call(t, mux, "alice", http.MethodGet, "/api/friends")
-	raw, _ = body["candidates"].([]any)
-	if len(raw) != 0 {
-		t.Fatalf("candidates after request: %v", raw)
+	if got := friendsOf(t, mux, "cara")[0]["status"]; got != "pending_in" {
+		t.Fatalf("cara sees %v", got)
 	}
 }

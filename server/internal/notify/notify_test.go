@@ -116,7 +116,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
-	s.sessionPlanned(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, false)
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1 (opt-in member only)", len(fake.payloads))
@@ -136,6 +136,28 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	}
 	if !strings.Contains(text, "/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)) {
 		t.Fatalf("body misses the unsubscribe link: %q", text)
+	}
+}
+
+func TestSessionRescheduledSaysMoved(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+
+	s := service(h, srv.URL)
+	starts := time.Date(2026, 9, 2, 18, 30, 0, 0, time.Local)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, true)
+
+	if len(fake.payloads) != 1 {
+		t.Fatalf("sent %d emails, want exactly 1", len(fake.payloads))
+	}
+	p := fake.payloads[0]
+	if subject := fmt.Sprint(p["subject"]); !strings.HasPrefix(subject, "Moved: ") {
+		t.Fatalf("subject %q misses the Moved: prefix", subject)
+	}
+	if text := fmt.Sprint(p["text"]); !strings.Contains(text, "moved a planned session to") {
+		t.Fatalf("body %q does not say the plan moved", text)
 	}
 }
 

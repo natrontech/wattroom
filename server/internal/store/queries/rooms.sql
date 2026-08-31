@@ -73,5 +73,9 @@ order by starts_at limit 1;
 -- name: DeleteScheduledSession :execrows
 delete from scheduled_sessions where id = $1 and room_id = $2;
 
+-- name: RescheduleSession :one
+update scheduled_sessions set starts_at = $3
+where id = $1 and room_id = $2 returning *;
+
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;

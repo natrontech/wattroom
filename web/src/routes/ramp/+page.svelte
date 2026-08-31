@@ -9,7 +9,7 @@
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { pushProfile } from '$lib/profile-sync.svelte';
-	import { createProfileStore } from '$lib/profile.svelte';
+	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { createRideSession } from '$lib/workout/session.svelte';
 	import {
 		buildRampTest,
@@ -26,6 +26,7 @@
 	let done = $state(false);
 	let error = $state<string | null>(null);
 	let saved = $state(false);
+	let lthrSaved = $state(false);
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
@@ -35,6 +36,7 @@
 		error = null;
 		done = false;
 		saved = false;
+		lthrSaved = false;
 		try {
 			const next = createRideSession({
 				trainer,
@@ -80,6 +82,28 @@
 	const secondsToStep = $derived(
 		session ? session.info.secondsRemainingInSegment : 0,
 	);
+
+	// LTHR suggestion (ADR-0014): a maximal ramp ends near HRmax, and the
+	// SPEC's field estimate is 90 % of that. Suggested, never auto-applied —
+	// the same posture as FTP suggestions.
+	const maxHr = $derived(
+		(session?.recording ?? []).reduce(
+			(peak, sample) => Math.max(peak, sample.heartRate ?? 0),
+			0,
+		),
+	);
+	const suggestedLthr = $derived.by(() => {
+		const estimate = Math.round(0.9 * maxHr);
+		return estimate >= PROFILE_LIMITS.minLthr &&
+			estimate <= PROFILE_LIMITS.maxLthr
+			? estimate
+			: 0;
+	});
+	function saveLthr() {
+		const message = profile.update({ lthr: suggestedLthr });
+		if (message) error = message;
+		else lthrSaved = true;
+	}
 
 	async function saveFtp() {
 		const message =
@@ -258,6 +282,26 @@
 						class="text-muted hover:text-ink self-center py-2 text-xs underline"
 						>Keep my current {profile.current.ftp} W</a
 					>
+				</div>
+			{/if}
+
+			{#if suggestedLthr > 0}
+				<div class="border-ink/5 mt-6 border-t pt-4">
+					{#if lthrSaved}
+						<p class="text-z4 text-xs">
+							LTHR set to {suggestedLthr} bpm — your heart-rate zones now follow it.
+						</p>
+					{:else}
+						<p class="text-muted text-xs">
+							Your heart rate peaked at {maxHr} bpm — that puts your LTHR around
+							{suggestedLthr} bpm{profile.current.lthr
+								? ` (currently ${profile.current.lthr})`
+								: ''}.
+						</p>
+						<button onclick={saveLthr} class="btn btn-secondary btn-xs mt-2"
+							>Set LTHR to {suggestedLthr}</button
+						>
+					{/if}
 				</div>
 			{/if}
 		</div>

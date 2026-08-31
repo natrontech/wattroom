@@ -30,25 +30,6 @@ func (q *Queries) AcceptFriendRequest(ctx context.Context, arg AcceptFriendReque
 	return result.RowsAffected(), nil
 }
 
-const countSharedRooms = `-- name: CountSharedRooms :one
-select count(*) from memberships a
-join memberships b on b.room_id = a.room_id
-where a.user_id = $1 and b.user_id = $2
-`
-
-type CountSharedRoomsParams struct {
-	UserID   pgtype.UUID
-	UserID_2 pgtype.UUID
-}
-
-// The formation gate: a request is valid only between roommates.
-func (q *Queries) CountSharedRooms(ctx context.Context, arg CountSharedRoomsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countSharedRooms, arg.UserID, arg.UserID_2)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createFriendRequest = `-- name: CreateFriendRequest :exec
 insert into friendships (requester_id, addressee_id) values ($1, $2)
 `
@@ -107,45 +88,30 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 	return i, err
 }
 
-const listFriendCandidates = `-- name: ListFriendCandidates :many
-select distinct u.id, u.display_name
-from memberships mine
-join memberships theirs on theirs.room_id = mine.room_id and theirs.user_id <> mine.user_id
-join users u on u.id = theirs.user_id
-where mine.user_id = $1
-  and not exists (
-    select 1 from friendships f
-    where (f.requester_id = $1 and f.addressee_id = u.id)
-       or (f.requester_id = u.id and f.addressee_id = $1)
-  )
-order by u.display_name
+const getUserByFriendCode = `-- name: GetUserByFriendCode :one
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset from users where friend_code = $1
 `
 
-type ListFriendCandidatesRow struct {
-	ID          pgtype.UUID
-	DisplayName string
-}
-
-// People I share a room with (ADR-0012's only formation path), minus me and
-// minus anyone I already have a row with.
-func (q *Queries) ListFriendCandidates(ctx context.Context, userID pgtype.UUID) ([]ListFriendCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, listFriendCandidates, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListFriendCandidatesRow
-	for rows.Next() {
-		var i ListFriendCandidatesRow
-		if err := rows.Scan(&i.ID, &i.DisplayName); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+// The formation gate (ADR-0012 amendment): knowing the code IS the permission
+// to ask.
+func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByFriendCode, friendCode)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+	)
+	return i, err
 }
 
 const listFriendships = `-- name: ListFriendships :many

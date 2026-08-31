@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { MessageCircle, UserPlus, X } from '@lucide/svelte';
+	import { MessageCircle, X } from '@lucide/svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
@@ -60,30 +60,24 @@
 	});
 
 	// Friendship state decides the one action this card offers (ADR-0012).
-	let friendState = $state<
-		'unknown' | 'candidate' | 'pending' | 'friends' | 'self'
-	>('unknown');
+	// Requests form only by friend code — the card never offers "add".
+	let friendState = $state<'unknown' | 'pending' | 'friends' | 'self'>(
+		'unknown',
+	);
 	$effect(() => {
 		if (member.id === account.me?.id) {
 			friendState = 'self';
 			return;
 		}
-		void api<{
-			friends: { id: string; status: string }[];
-			candidates: { id: string }[];
-		}>('/api/friends').then((res) => {
+		void api<{ friends: { id: string; status: string }[] }>(
+			'/api/friends',
+		).then((res) => {
 			if (!res.ok) return;
 			const existing = res.data.friends.find((f) => f.id === member.id);
 			if (existing)
 				friendState = existing.status === 'accepted' ? 'friends' : 'pending';
-			else if (res.data.candidates.some((c) => c.id === member.id))
-				friendState = 'candidate';
 		});
 	});
-	async function addFriend() {
-		const res = await api(`/api/friends/${member.id}`, { method: 'POST' });
-		if (res.ok) friendState = 'pending';
-	}
 </script>
 
 <Modal
@@ -153,11 +147,7 @@
 		</div>
 	{/if}
 
-	{#if friendState === 'candidate'}
-		<button onclick={() => void addFriend()} class="btn btn-primary mt-4 w-full"
-			><UserPlus size={15} /> Add friend</button
-		>
-	{:else if friendState === 'pending'}
+	{#if friendState === 'pending'}
 		<p class="text-muted mt-4 text-center text-xs">friend request pending</p>
 	{:else if friendState === 'friends'}
 		<button

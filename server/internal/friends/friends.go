@@ -1,5 +1,5 @@
 // Package friends is ADR-0012 made small: mutual friendship formed only
-// through a shared room, presence that never pierces the room boundary.
+// by exchanging friend codes, presence that never pierces the room boundary.
 // The server stores who is friends with whom; "where they are" is answered
 // live from the hub and persisted nowhere.
 package friends
@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -41,7 +42,7 @@ func New(st *store.Store, users UserSource, presence PresenceSource, log *slog.L
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/friends", s.handleList)
-	mux.HandleFunc("POST /api/friends/{id}", s.handleRequest)
+	mux.HandleFunc("POST /api/friends", s.handleRequest)
 	mux.HandleFunc("POST /api/friends/{id}/accept", s.handleAccept)
 	mux.HandleFunc("DELETE /api/friends/{id}", s.handleDelete)
 }
@@ -62,13 +63,8 @@ type friendJSON struct {
 	RoomName string `json:"roomName,omitempty"`
 }
 
-type candidateJSON struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-// handleList is the whole panel in one GET: friends with presence, plus the
-// roommates you could still ask (the only formation path).
+// handleList is the whole panel in one GET: friends with presence, plus my
+// own friend code — the thing I hand out so people can ask me.
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -120,34 +116,39 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		friends = append(friends, entry)
 	}
 
-	rawCandidates, err := s.store.Queries.ListFriendCandidates(r.Context(), me.ID)
-	if err != nil {
-		s.log.Error("list friend candidates", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
-		return
-	}
-	candidates := make([]candidateJSON, 0, len(rawCandidates))
-	for _, c := range rawCandidates {
-		candidates = append(candidates, candidateJSON{ID: store.UUIDString(c.ID), Name: c.DisplayName})
-	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"friends": friends, "candidates": candidates})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"friends": friends, "code": me.FriendCode})
 }
 
 func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
-	me, target, ok := s.pair(w, r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
-	// The formation gate (ADR-0012): only roommates can be asked.
-	shared, err := s.store.Queries.CountSharedRooms(r.Context(), db.CountSharedRoomsParams{
-		UserID: me.ID, UserID_2: target,
-	})
-	if err != nil || shared == 0 {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only add people you share a room with.")
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := httpx.DecodeStrict(r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Send a JSON body with a friend code.")
+		return
+	}
+	// The formation gate (ADR-0012 amendment): knowing someone's code IS the
+	// permission to ask them.
+	code := strings.ToUpper(strings.TrimSpace(body.Code))
+	if code == "" {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Enter a friend code.", "code")
+		return
+	}
+	target, err := s.store.Queries.GetUserByFriendCode(r.Context(), code)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No rider has that code — double-check it with them.", "code")
+		return
+	}
+	if target.ID == me.ID {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "invalid_request", "That is your own code.", "code")
 		return
 	}
 	err = s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
-		RequesterID: me.ID, AddresseeID: target,
+		RequesterID: me.ID, AddresseeID: target.ID,
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {

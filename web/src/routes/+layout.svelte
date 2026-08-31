@@ -208,6 +208,19 @@
 					onMember={(slug, name) => void openMember(slug, name)}
 					micOn={av.micOn}
 					camOn={av.camOn}
+					voiceStatus={av.status}
+					devices={{ mics: av.mics, cams: av.cams, outs: av.outs }}
+					micId={av.micId}
+					camId={av.camId}
+					outId={av.outId}
+					canPickOutput={av.canPickOutput}
+					onDevice={(kind, id) =>
+						kind === 'mic'
+							? void av.setMic(id)
+							: kind === 'cam'
+								? void av.setCam(id)
+								: av.setOut(id)}
+					onDevicesOpen={() => void av.refreshDevices()}
 					micLevel={av.micLevel}
 					activeSpeaking={roster
 						.filter((r) => av.speaking[r.id])

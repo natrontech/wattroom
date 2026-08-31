@@ -8,6 +8,7 @@
 	import { api } from '$lib/api';
 	import { AVATAR_PRESETS } from '$lib/avatars';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
+	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 
 	const profile = createProfileStore();
@@ -42,6 +43,8 @@
 	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
+	// null = no anchor set; saving null clears it (ADR-0014, device-local).
+	let lthr = $state<number | null>(profile.current.lthr ?? null);
 	let sprintGrade = $state(profile.current.sprintGrade);
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
@@ -77,13 +80,23 @@
 			});
 			status = err
 				? err.message
-				: (profile.update({ ftp: nextFtp, kg, sprintGrade, singleSpeed }) ??
-					'Saved.');
+				: (profile.update({
+						ftp: nextFtp,
+						kg,
+						sprintGrade,
+						singleSpeed,
+						lthr: lthr ?? undefined,
+					}) ?? 'Saved.');
 			return;
 		}
 		status =
-			profile.update({ ftp: nextFtp, kg, sprintGrade, singleSpeed }) ??
-			'Saved.';
+			profile.update({
+				ftp: nextFtp,
+				kg,
+				sprintGrade,
+				singleSpeed,
+				lthr: lthr ?? undefined,
+			}) ?? 'Saved.';
 	}
 
 	async function deleteAccount() {
@@ -271,6 +284,54 @@
 						>Only used for w/kg — the number every contest here is scored on.</span
 					>
 				</label>
+				<label class="block">
+					<span class="eyebrow">LTHR (bpm)</span>
+					<input
+						type="number"
+						bind:value={lthr}
+						min={PROFILE_LIMITS.minLthr}
+						max={PROFILE_LIMITS.maxLthr}
+						placeholder="—"
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[11px]">
+						Threshold heart rate — anchors your HR zones the way FTP anchors
+						power zones.
+						{#if !lthr}
+							<a href="/ramp" class="hover:text-ink underline"
+								>A ramp test with a strap suggests one.</a
+							>
+						{/if}
+					</span>
+				</label>
+				{#if lthr && lthr >= PROFILE_LIMITS.minLthr && lthr <= PROFILE_LIMITS.maxLthr}
+					<div class="sm:col-span-2">
+						<span class="eyebrow">your heart-rate zones</span>
+						<div class="mt-2 flex flex-wrap gap-1.5">
+							{#each hrZoneRanges(lthr) as range (range.zone)}
+								<span
+									class="border-muted/15 bg-surface-raised rounded-full border px-3 py-1.5 text-[11px]"
+								>
+									<span class="{ZONE_TEXT[range.zone]} font-semibold"
+										>Z{range.zone}</span
+									>
+									<span class="text-muted ml-1">{range.name}</span>
+									<span class="ml-1 font-mono tabular-nums"
+										>{range.zone === 1
+											? `≤ ${range.high}`
+											: range.high !== undefined
+												? `${range.low}–${range.high}`
+												: `${range.low}+`}</span
+									>
+								</span>
+							{/each}
+						</div>
+						<p class="text-muted mt-1.5 text-[11px]">
+							Derived from your LTHR (Coggan levels) — they colour your own bpm
+							only, and are never scored.
+						</p>
+					</div>
+				{/if}
 				<label class="block">
 					<span class="eyebrow">sprint grade (%)</span>
 					<input
