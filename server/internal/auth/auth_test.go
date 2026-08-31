@@ -97,6 +97,7 @@ func TestUpdateMeRejectsJunk(t *testing.T) {
 		"weight":  `{"displayName":"x","ftpWatts":250,"weightKg":5}`,
 		"name":    `{"displayName":"","ftpWatts":250,"weightKg":80}`,
 		"unknown": `{"displayName":"x","ftpWatts":250,"weightKg":80,"admin":true}`,
+		"email":   `{"displayName":"x","ftpWatts":250,"weightKg":80,"email":"not-an-address"}`,
 	} {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me", strings.NewReader(body))
 		req.AddCookie(cookie)
@@ -105,6 +106,47 @@ func TestUpdateMeRejectsJunk(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("%s: expected 400, got %d", name, w.Code)
 		}
+	}
+}
+
+func TestUpdateMeEmailNotify(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	cookie := rec.Result().Cookies()[0]
+	patch := func(body string) db.User {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me", strings.NewReader(body))
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		s.handleUpdateMe(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("patch %s = %d: %s", body, w.Code, w.Body.String())
+		}
+		u, err := s.store.Queries.GetUser(t.Context(), user.ID)
+		if err != nil {
+			t.Fatalf("re-read user: %v", err)
+		}
+		return u
+	}
+
+	u := patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":"a@example.test","notifyPlanned":true}`)
+	if u.Email == nil || *u.Email != "a@example.test" || !u.NotifyPlanned {
+		t.Fatalf("email opt-in did not persist: %+v", u)
+	}
+	// A patch that omits both keeps them — clients predating the fields
+	// must not wipe the setting.
+	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80}`)
+	if u.Email == nil || !u.NotifyPlanned {
+		t.Fatalf("absent fields wiped the setting: %+v", u)
+	}
+	// Clearing the address forces the opt-in off: nothing to send to.
+	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":""}`)
+	if u.Email != nil || u.NotifyPlanned {
+		t.Fatalf("cleared email left notify on: %+v", u)
 	}
 }
 
