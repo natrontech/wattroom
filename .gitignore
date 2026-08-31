@@ -6,3 +6,6 @@ web/.svelte-kit/
 
 # macOS
 .DS_Store
+
+# air rebuild artifact - never a repo file
+server/tmp/
