@@ -39,9 +39,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 // SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
 // the tick line carries so reactions have something to attach to.
 func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (string, bool) {
-	// Tight budget: this runs in the sender's read loop — a stalled database
-	// must cost one line, not seconds of frozen metrics (#219).
-	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
+	// Runs on the hub's save worker (#219), so a stalled database backs up
+	// that queue — nobody's read loop. The budget just bounds the queue lag.
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	room, uid, ok := s.resolve(ctx, slug, userID)
 	if !ok {
@@ -121,8 +121,11 @@ func (s *Service) resolve(ctx context.Context, slug, userID string) (db.Room, pg
 type messageJSON struct {
 	ID   string `json:"id"`
 	From string `json:"from"`
-	Text string `json:"text"`
-	At   int64  `json:"at"`
+	// The author's rider id — the same field live tick lines carry (#219),
+	// so backlog and live render (and self-suppress) identically.
+	FromID string `json:"fromId"`
+	Text   string `json:"text"`
+	At     int64  `json:"at"`
 	// emoji → count, plus which the viewer pressed — same shape the live
 	// path builds client-side, so the panel renders one way.
 	Reactions map[string]int `json:"reactions,omitempty"`
@@ -185,7 +188,8 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		id := store.UUIDString(row.ID)
 		out = append(out, messageJSON{
-			ID: id, From: row.DisplayName, Text: row.Text,
+			ID: id, From: row.DisplayName, FromID: store.UUIDString(row.UserID),
+			Text:      row.Text,
 			At:        row.CreatedAt.Time.UnixMilli(),
 			Reactions: counts[id], Mine: mine[id],
 		})

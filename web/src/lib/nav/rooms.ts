@@ -1,15 +1,12 @@
 import { api } from '$lib/api';
+import type { RoomPresence } from '$lib/protocol';
 import type { RailRoom } from '$lib/room/mockcompat';
 
-interface RoomEntry {
+interface RoomEntry extends RoomPresence {
 	slug: string;
 	name: string;
 	icon?: string;
 	memberCount?: number;
-	connected?: number;
-	phase?: string;
-	riders?: string[];
-	voice?: string[];
 	nextSession?: { workoutName: string; startsAt: string };
 }
 
@@ -29,6 +26,11 @@ export async function fetchRailRooms(): Promise<RailRoom[]> {
 		connected: room.connected ?? 0,
 		riders: room.riders ?? [],
 		voice: room.voice ?? [],
+		cameras: room.cameras ?? [],
+		riding: room.riding ?? [],
+		session: room.workoutName
+			? { workoutName: room.workoutName, elapsedSec: room.elapsedSec ?? 0 }
+			: undefined,
 		next: room.nextSession,
 	}));
 }

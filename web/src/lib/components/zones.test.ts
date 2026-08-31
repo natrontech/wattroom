@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { Segment } from '$lib/workout/types';
-import { hrZoneOf, hrZoneRanges, timeInZones, zoneOf } from './zones';
+import { hrZoneOf, hrZoneRanges, plannedZoneSeconds, zoneOf } from './zones';
+
+describe('zoneOf', () => {
+	it('keeps SPEC boundaries inclusive on the low side', () => {
+		expect(zoneOf(110, 200)).toBe(1); // 55 % is still Z1
+		expect(zoneOf(112, 200)).toBe(2); // 56 %
+		expect(zoneOf(210, 200)).toBe(4); // 105 % is still threshold
+		expect(zoneOf(320, 200)).toBe(7); // 160 %
+	});
+});
 
 describe('hrZoneOf', () => {
 	it('maps the SPEC table for LTHR 160', () => {
@@ -29,50 +37,50 @@ describe('hrZoneOf', () => {
 	});
 });
 
-describe('timeInZones', () => {
-	const steady = (seconds: number, target: number): Segment => ({
-		kind: 'steady',
-		startSeconds: 0,
-		seconds,
-		fromFraction: target,
-		toFraction: target,
-		stepIndex: 0,
+describe('plannedZoneSeconds', () => {
+	it('buckets steady, ramp, and sprint seconds by zone', () => {
+		const zones = plannedZoneSeconds(
+			[
+				{
+					kind: 'steady',
+					stepIndex: 0,
+					startSeconds: 0,
+					seconds: 600,
+					fromFraction: 0.7,
+					toFraction: 0.7,
+				},
+				// 50 → 60 % crosses the Z1/Z2 line exactly halfway through.
+				{
+					kind: 'ramp',
+					stepIndex: 0,
+					startSeconds: 600,
+					seconds: 100,
+					fromFraction: 0.5,
+					toFraction: 0.6,
+				},
+				{ kind: 'sprint', stepIndex: 0, startSeconds: 700, seconds: 15 },
+			],
+			200,
+		);
+		expect(zones[1]).toBe(50);
+		expect(zones[2]).toBe(650);
+		expect(zones[7]).toBe(15);
+		expect(zones.reduce((a, b) => a + b, 0)).toBe(715);
 	});
 
-	it('buckets steady blocks by their target zone', () => {
-		const zones = timeInZones([steady(600, 0.5), steady(300, 0.9)], 200);
-		expect(zones[1]).toBe(600);
-		expect(zones[3]).toBe(300);
-	});
-
-	it('counts ramps at their midpoint and skips sprints', () => {
-		const ramp: Segment = {
-			kind: 'ramp',
-			startSeconds: 0,
-			seconds: 600,
-			fromFraction: 0.3,
-			toFraction: 0.7, // midpoint 0.5 → Z1
-			stepIndex: 0,
-		};
-		const sprint: Segment = {
-			kind: 'sprint',
-			startSeconds: 600,
-			seconds: 15,
-			stepIndex: 1,
-		};
-		const zones = timeInZones([ramp, sprint], 200);
-		expect(zones[1]).toBe(600);
-		expect(zones.reduce((a, b) => a + b, 0)).toBe(600);
-	});
-
-	it('honours absolute-watts overrides', () => {
-		const seg: Segment = {
-			kind: 'steady',
-			startSeconds: 0,
-			seconds: 60,
-			watts: 250,
-			stepIndex: 0,
-		};
-		expect(timeInZones([seg], 200)[zoneOf(250, 200)]).toBe(60);
+	it('scores absolute-watt steps against FTP', () => {
+		const zones = plannedZoneSeconds(
+			[
+				{
+					kind: 'steady',
+					stepIndex: 0,
+					startSeconds: 0,
+					seconds: 60,
+					watts: 250,
+				},
+			],
+			250,
+		);
+		expect(zones[4]).toBe(60);
 	});
 });

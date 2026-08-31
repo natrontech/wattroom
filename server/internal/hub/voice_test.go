@@ -25,10 +25,25 @@ func TestVoiceSync(t *testing.T) {
 	// join webhook never arrived.
 	h.VoiceSync("velvet", map[string]string{"kim": "Kim", "lena": "Lena"}, snapshot)
 
-	_, _, _, voice := h.Presence("velvet")
+	voice := h.Presence("velvet").Voice
 	want := []string{"Fresh", "Kim", "Lena"}
 	if !slices.Equal(voice, want) {
 		t.Fatalf("voice = %v, want %v", voice, want)
+	}
+
+	// A camera flag rides the same map (#251) — set by track_published, kept
+	// across a reconcile, gone with the leave.
+	h.VoiceCamera("velvet", "kim", "Kim", true)
+	if cams := h.Presence("velvet").Cameras; !slices.Equal(cams, []string{"Kim"}) {
+		t.Fatalf("cameras = %v, want [Kim]", cams)
+	}
+	h.VoiceSync("velvet", map[string]string{"kim": "Kim"}, clock)
+	if cams := h.Presence("velvet").Cameras; !slices.Equal(cams, []string{"Kim"}) {
+		t.Fatalf("cameras after sync = %v, want [Kim]", cams)
+	}
+	h.VoiceLeft("velvet", "kim")
+	if cams := h.Presence("velvet").Cameras; len(cams) != 0 {
+		t.Fatalf("cameras after leave = %v, want none", cams)
 	}
 
 	// An emptied room drops off the reconciler's work list entirely.

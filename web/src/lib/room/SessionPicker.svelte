@@ -5,7 +5,7 @@
 	// room to it: how long, which zones, any cadence/HR bands.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { ZONE_BG, timeInZones } from '$lib/components/zones';
+	import { ZONE_BG, plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
@@ -51,7 +51,7 @@
 
 	// Zone breakdown: where the time actually goes, in the graph's colours.
 	const zoneChips = $derived(
-		timeInZones(segments, ftp)
+		plannedZoneSeconds(segments, ftp)
 			.map((seconds, zone) => ({ zone, seconds }))
 			.filter((entry) => entry.zone > 0 && entry.seconds > 0)
 			.map((entry) => ({

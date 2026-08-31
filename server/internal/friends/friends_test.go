@@ -193,12 +193,28 @@ func TestFriendLifecycle(t *testing.T) {
 		t.Fatalf("presence entry: %+v", entry)
 	}
 
-	// In a room alice is NOT a member of: online yes, room withheld.
+	// In a room alice is NOT a member of: online yes, in a room yes, room
+	// name withheld — the boundary holds.
 	presence.where[store.UUIDString(bob.ID)] = "secret-lair"
 	shareRoom(t, st, users, "secret-lair", "bob")
 	entry = friendsOf(t, mux, "alice")[0]
-	if entry["online"] != true || entry["room"] != nil {
+	if entry["online"] != true || entry["inRoom"] != true || entry["room"] != nil {
 		t.Fatalf("boundary pierced: %+v", entry)
+	}
+
+	// Lobby-only (#251): present in the map with "" = app open, no room —
+	// Slack's green dot without a location.
+	presence.where[store.UUIDString(bob.ID)] = ""
+	entry = friendsOf(t, mux, "alice")[0]
+	if entry["online"] != true || entry["inRoom"] != nil || entry["room"] != nil {
+		t.Fatalf("lobby-only entry: %+v", entry)
+	}
+
+	// Not in the map at all = offline.
+	delete(presence.where, store.UUIDString(bob.ID))
+	entry = friendsOf(t, mux, "alice")[0]
+	if entry["online"] != nil {
+		t.Fatalf("offline entry: %+v", entry)
 	}
 
 	// Unfriend from either side deletes; a second delete 404s.

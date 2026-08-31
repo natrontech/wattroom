@@ -3,8 +3,16 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
+	import {
+		plannedZoneSeconds,
+		ZONE_BG,
+		ZONE_NAMES,
+		zoneOf,
+	} from '$lib/components/zones';
+	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
+	import { toasts } from '$lib/toast.svelte';
+	import { GripVertical } from '@lucide/svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byId, library } from '$lib/workout/library';
@@ -22,9 +30,8 @@
 	// ?from= copies a library workout as a starting point; ?w= edits a saved
 	// one — the shelf lives on the account now, so ?w= hydrates when it lands.
 	const editingId = page.url.searchParams.get('w');
-	const source = editingId
-		? undefined
-		: byId(page.url.searchParams.get('from') ?? '')?.workout;
+	const fromId = page.url.searchParams.get('from') ?? '';
+	const source = editingId ? undefined : byId(fromId)?.workout;
 
 	let workout = $state<Workout>(
 		source
@@ -43,14 +50,38 @@
 		else status = 'That saved workout was not found — this starts fresh.';
 		hydrated = true;
 	});
-	let selected = $state<number | null>(0);
-	let status = $state<string | null>(null);
+	// Selection is a path into the step tree: [i] top-level, [i, j] inside a
+	// repeat — that's what makes repeat children editable in the same inspector.
+	let selected = $state<number[] | null>([0]);
+	let status = $state<string | null>(
+		!editingId && fromId && !source
+			? 'That workout link didn’t match anything — this starts fresh.'
+			: null,
+	);
+
+	function stepAt(path: number[]): WorkoutStep | undefined {
+		let step: WorkoutStep | undefined = workout.steps[path[0]];
+		for (const i of path.slice(1)) {
+			if (step?.type !== 'repeat') return undefined;
+			step = step.steps[i];
+		}
+		return step;
+	}
+
+	function siblingsOf(path: number[]): WorkoutStep[] {
+		if (path.length === 1) return workout.steps;
+		const parent = stepAt(path.slice(0, -1));
+		return parent?.type === 'repeat' ? parent.steps : [];
+	}
+
+	const isSelected = (path: number[]) => selected?.join('.') === path.join('.');
 
 	// The preview runs the real engine, so it cannot flatter the JSON.
 	const segments = $derived(flatten(workout));
 	const total = $derived(durationSeconds(workout));
 	const check = $derived(validateWorkout(workout));
-	const current = $derived(selected === null ? null : workout.steps[selected]);
+	const current = $derived(selected === null ? null : stepAt(selected));
+	const zones = $derived(plannedZoneSeconds(segments, FTP));
 
 	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
 	// seconds were a dev unit that leaked into the UI.
@@ -112,7 +143,15 @@
 								],
 							};
 		workout.steps = [...workout.steps, step];
-		selected = workout.steps.length - 1;
+		selected = [workout.steps.length - 1];
+	}
+
+	function addInto(path: number[]) {
+		const rep = stepAt(path);
+		if (rep?.type !== 'repeat') return;
+		// ponytail: steady only — over-unders are steady pairs; other types via top-level
+		rep.steps.push({ type: 'steady', seconds: 300, target: 0.9 });
+		selected = [...path, rep.steps.length - 1];
 	}
 
 	// Drag to reorder (#170's intuitiveness bar): native HTML5 drag, no
@@ -129,30 +168,40 @@
 		const [moved] = next.splice(dragIndex, 1);
 		next.splice(dropIndex > dragIndex ? dropIndex - 1 : dropIndex, 0, moved);
 		workout.steps = next;
-		selected = dropIndex > dragIndex ? dropIndex - 1 : dropIndex;
+		selected = [dropIndex > dragIndex ? dropIndex - 1 : dropIndex];
 		dragIndex = dropIndex = null;
 	}
 
-	function move(index: number, by: number) {
+	function move(path: number[], by: number) {
+		const arr = siblingsOf(path);
+		const index = path[path.length - 1];
 		const to = index + by;
-		if (to < 0 || to >= workout.steps.length) return;
-		const next = [...workout.steps];
-		[next[index], next[to]] = [next[to], next[index]];
-		workout.steps = next;
-		selected = to;
+		if (to < 0 || to >= arr.length) return;
+		[arr[index], arr[to]] = [arr[to], arr[index]];
+		selected = [...path.slice(0, -1), to];
 	}
 
-	function remove(index: number) {
-		workout.steps = workout.steps.filter((_, i) => i !== index);
+	function remove(path: number[]) {
+		const arr = siblingsOf(path);
+		arr.splice(path[path.length - 1], 1);
 		selected = null;
 	}
 
 	// Loading replaces the sheet with a copy — the library stays pristine and a
-	// saved custom never edits in place from here (that is ?w=).
+	// saved custom never edits in place from here (that is ?w=). Undo over
+	// confirm (errors.md): the click runs, the toast is the way back.
 	function load(next: Workout, asCopy: boolean) {
+		const prev = $state.snapshot(workout) as Workout;
+		const prevSelected = selected;
 		workout = structuredClone($state.snapshot(next) as Workout);
 		if (asCopy) workout.name = `${next.name} (copy)`;
 		selected = null;
+		toasts.push(`Loaded “${workout.name}” — this replaced your sheet.`, {
+			undo: () => {
+				workout = prev;
+				selected = prevSelected;
+			},
+		});
 	}
 
 	async function save() {
@@ -170,10 +219,11 @@
 
 <main class="mx-auto max-w-6xl px-6 py-8">
 	<header class="flex flex-wrap items-center gap-4">
+		<!-- A visible border: an input that looks like a title never gets renamed. -->
 		<input
 			bind:value={workout.name}
 			aria-label="Workout name"
-			class="font-display border-muted/20 hover:border-muted/20 focus:border-muted/60 rounded border border-transparent bg-transparent text-2xl font-bold tracking-tight outline-none"
+			class="font-display border-muted/25 focus:border-muted/60 rounded border bg-transparent px-2 py-0.5 text-2xl font-bold tracking-tight outline-none"
 		/>
 		<span class="text-muted font-mono text-xs tabular-nums">
 			{formatClock(total)} · {segments.length} blocks
@@ -198,7 +248,18 @@
 	{/if}
 
 	<div class="panel mt-4 overflow-hidden">
-		<IntervalGraph {segments} {total} elapsed={0} ftp={FTP} trace={[]} />
+		<IntervalGraph
+			{segments}
+			{total}
+			elapsed={0}
+			ftp={FTP}
+			trace={[]}
+			selectedStep={selected?.[0] ?? null}
+			onSelect={(i) => (selected = [i])}
+		/>
+		<div class="border-ink/5 border-t px-4 py-3">
+			<ZoneBar seconds={zones} legend />
+		</div>
 	</div>
 
 	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
@@ -245,37 +306,53 @@
 		<section>
 			<h2 class="eyebrow">steps</h2>
 			<ul class="mt-3 space-y-1.5">
-				{#each workout.steps as step, i (i)}
+				{#snippet stepRow(step: WorkoutStep, path: number[])}
+					{@const i = path[0]}
+					{@const top = path.length === 1}
 					<li
-						draggable="true"
-						ondragstart={(e) => {
-							dragIndex = i;
-							e.dataTransfer?.setData('text/plain', String(i));
-							if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-						}}
-						ondragover={(e) => {
-							e.preventDefault();
-							const rect = e.currentTarget.getBoundingClientRect();
-							dropIndex = e.clientY < rect.top + rect.height / 2 ? i : i + 1;
-						}}
-						ondrop={(e) => {
-							e.preventDefault();
-							dropStep();
-						}}
-						ondragend={() => (dragIndex = dropIndex = null)}
-						class="{dragIndex === i ? 'opacity-40' : ''} {dropIndex === i
+						draggable={top}
+						ondragstart={top
+							? (e) => {
+									dragIndex = i;
+									e.dataTransfer?.setData('text/plain', String(i));
+									if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+								}
+							: undefined}
+						ondragover={top
+							? (e) => {
+									e.preventDefault();
+									const rect = e.currentTarget.getBoundingClientRect();
+									dropIndex =
+										e.clientY < rect.top + rect.height / 2 ? i : i + 1;
+								}
+							: undefined}
+						ondrop={top
+							? (e) => {
+									e.preventDefault();
+									dropStep();
+								}
+							: undefined}
+						ondragend={top ? () => (dragIndex = dropIndex = null) : undefined}
+						class="{top && dragIndex === i ? 'opacity-40' : ''} {top &&
+						dropIndex === i
 							? 'border-t-neon/70 border-t-2'
-							: dropIndex === i + 1 && i === workout.steps.length - 1
+							: top && dropIndex === i + 1 && i === workout.steps.length - 1
 								? 'border-b-neon/70 border-b-2'
-								: ''} cursor-grab rounded-lg active:cursor-grabbing"
+								: ''} rounded-lg {top
+							? 'cursor-grab active:cursor-grabbing'
+							: ''}"
 					>
 						<button
-							onclick={() => (selected = i)}
-							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {selected ===
-							i
+							onclick={() => (selected = path)}
+							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {isSelected(
+								path,
+							)
 								? 'bg-surface-raised border-ink/40'
 								: 'border-muted/15 hover:border-muted/40'}"
 						>
+							{#if top}
+								<GripVertical size={14} class="text-muted/50 -ml-1 shrink-0" />
+							{/if}
 							<span
 								class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
 									? 'bg-z7'
@@ -293,7 +370,24 @@
 								>{formatClock(stepSeconds(step))}</span
 							>
 						</button>
+						{#if step.type === 'repeat'}
+							<!-- The repeat's own steps, indented and just as editable (#255). -->
+							<ul class="mt-1.5 mb-1 ml-7 space-y-1.5">
+								{#each step.steps as inner, j (j)}
+									{@render stepRow(inner, [...path, j])}
+								{/each}
+								<li>
+									<button
+										onclick={() => addInto(path)}
+										class="btn btn-secondary btn-xs">+ step</button
+									>
+								</li>
+							</ul>
+						{/if}
 					</li>
+				{/snippet}
+				{#each workout.steps as step, i (i)}
+					{@render stepRow(step, [i])}
 				{/each}
 			</ul>
 
@@ -428,17 +522,9 @@
 								class="input mt-1 w-full font-mono tabular-nums"
 							/>
 						</label>
-						<ul class="text-muted space-y-1 text-xs">
-							{#each current.steps as inner, j (j)}
-								<li class="flex justify-between gap-2">
-									<span class="capitalize">{inner.type}</span>
-									<span class="font-mono tabular-nums">{describe(inner)}</span>
-								</li>
-							{/each}
-						</ul>
 						<p class="text-muted text-[11px]">
-							Editing steps inside a repeat comes with the nested editor; add a
-							second repeat for now.
+							Its steps sit indented under it in the list — click one to edit
+							it.
 						</p>
 					{:else if current.type !== 'sprint'}
 						<div class="grid grid-cols-2 gap-3">

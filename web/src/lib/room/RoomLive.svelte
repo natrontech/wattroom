@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
+	import { page } from '$app/state';
 	import {
 		LogOut as LeaveIcon,
 		MessageSquare,
@@ -121,6 +122,10 @@
 	const connection = roomConnection.join(slug);
 	const live = connection.live;
 	const av = connection.av;
+	// The rail's "voice is busy" link lands you IN the channel, not next to it
+	// (#251): ?voice=1 auto-joins once on mount; join() is idempotent.
+	if (page.url.searchParams.has('voice') && account.me?.avEnabled)
+		void av.join();
 	const profile = createProfileStore();
 	onDestroy(() => {
 		stopRiding();
