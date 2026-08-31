@@ -2,6 +2,21 @@
 	"version": "0.0.1",
 	"configurations": [
 		{
+			"name": "server",
+			"runtimeExecutable": "make",
+			"runtimeArgs": ["dev-server"],
+			"port": 8080
+		},
+		{
+			"name": "server-verify",
+			"runtimeExecutable": "sh",
+			"runtimeArgs": [
+				"-c",
+				"WATTROOM_ADDR=:8082 WATTROOM_DB='postgres://wattroom:wattroom@localhost:5432/wattroom' WATTROOM_DEV_LOGIN=1 WATTROOM_BASE_URL='http://localhost:8082' ./bin/wattroom-server"
+			],
+			"port": 8082
+		},
+		{
 			"name": "web",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--dir", "web", "dev", "--port", "5174", "--strictPort"],
