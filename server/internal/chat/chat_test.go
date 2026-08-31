@@ -303,3 +303,31 @@ func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
 		t.Fatalf("orphan survived: %d", res.Code)
 	}
 }
+
+func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
+	svc, mux, users, _ := setup(t)
+	alice := users.byToken["alice"]
+	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
+		Code: "CHAT04", Slug: "far-cave", Name: "Far", OwnerID: alice.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = svc.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", other.ID)
+	})
+	if err := svc.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+		RoomID: other.ID, UserID: alice.ID, Role: "member",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, theirs := postImage(t, mux, "alice", "far-cave", tinyPNG)
+	if theirs == "" {
+		t.Fatal("upload to far-cave failed")
+	}
+	// Referencing it from chat-cave must not persist: serving is room-scoped
+	// anyway, but the reference alone would pin the bytes past the sweep.
+	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "look", theirs); ok {
+		t.Fatal("cross-room image reference accepted")
+	}
+}

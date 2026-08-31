@@ -17,8 +17,16 @@ export interface DmHead {
 	peerAvatarPreset?: string;
 	peerTotalXp?: number;
 	text: string;
+	/** The latest line was an image (#285) — it has no text to preview. */
+	hasImage?: boolean;
 	mine: boolean;
 	at: number;
+}
+
+/** What a conversation's latest line reads as; an image has no words. */
+export function headPreview(head: DmHead): string {
+	if (head.text) return head.text;
+	return head.hasImage ? 'Sent an image' : '';
 }
 
 let heads = $state<DmHead[]>([]);
@@ -44,7 +52,7 @@ async function poll() {
 		const reading = dm.open?.id === head.peerId && !document.hidden;
 		if (!first && !reading && shouldAnnounce(`dm-${head.peerId}`, head.at)) {
 			play('chat');
-			notify.push(head.peerName, head.text, `dm-${head.peerId}`);
+			notify.push(head.peerName, headPreview(head), `dm-${head.peerId}`);
 		}
 	}
 	inbound = next;

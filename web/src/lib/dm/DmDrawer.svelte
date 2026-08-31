@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
 	import { api } from '$lib/api';
+	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import { compressImage } from '$lib/chat/media';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
@@ -11,6 +13,7 @@
 		id: string;
 		mine: boolean;
 		text: string;
+		imageId?: string;
 		at: number;
 	}
 
@@ -18,6 +21,29 @@
 	let draft = $state('');
 	let error = $state<string | null>(null);
 	let list = $state<HTMLDivElement | null>(null);
+	// A pasted image waiting on send (#285) — same flow as room chat.
+	let pendingImage = $state<{ blob: Blob; preview: string } | null>(null);
+
+	function clearPending() {
+		if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
+		pendingImage = null;
+	}
+
+	async function pasteImage(e: ClipboardEvent) {
+		const file = Array.from(e.clipboardData?.items ?? [])
+			.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+			?.getAsFile();
+		if (!file) return; // text pastes stay the input's business
+		e.preventDefault();
+		const blob = await compressImage(file);
+		if (!blob) {
+			error = 'That image cannot be sent — GIFs are capped at 2 MB.';
+			return;
+		}
+		clearPending();
+		error = null;
+		pendingImage = { blob, preview: URL.createObjectURL(blob) };
+	}
 
 	async function load(peerId: string, after: number) {
 		const res = await api<{ messages: Message[] }>(
@@ -60,15 +86,32 @@
 	async function send() {
 		const peer = dm.open;
 		const text = draft.trim();
-		if (!peer || !text) return;
+		const image = pendingImage;
+		if (!peer || (!text && !image)) return;
 		draft = '';
+		clearPending();
+		// The image uploads first; the message then carries only its id.
+		let imageId: string | undefined;
+		if (image) {
+			const up = await api<{ id: string }>(`/api/dms/${peer.id}/images`, {
+				method: 'POST',
+				body: image.blob,
+				headers: { 'content-type': image.blob.type },
+			});
+			if (!up.ok) {
+				error = up.error.message;
+				draft = text; // a refused message is not a deleted one
+				return;
+			}
+			imageId = up.data.id;
+		}
 		const res = await api(`/api/dms/${peer.id}`, {
 			method: 'POST',
-			json: { text },
+			json: { text, imageId },
 		});
 		if (!res.ok) {
 			error = res.error.message;
-			draft = text; // a refused message is not a deleted one
+			draft = text;
 			return;
 		}
 		await load(peer.id, messages.at(-1)?.at ?? 0);
@@ -103,7 +146,17 @@
 							? 'bg-neon/20'
 							: 'bg-surface'}"
 					>
-						<MessageText text={message.text} />
+						<!-- An image-only line has no text; MessageText turns a lone
+						     GIF link into the GIF itself. -->
+						{#if message.text}
+							<MessageText text={message.text} />
+						{/if}
+						{#if message.imageId}
+							<ChatImage
+								src="/api/dms/images/{message.imageId}"
+								alt={message.mine ? 'Image you sent' : 'Image you received'}
+							/>
+						{/if}
 					</span>
 				</div>
 			{:else}
@@ -113,22 +166,40 @@
 			{/each}
 			{#if error}<p class="text-z6 text-xs">{error}</p>{/if}
 		</div>
-		<form
-			class="border-ink/5 flex gap-1.5 border-t p-2"
-			onsubmit={(e) => {
-				e.preventDefault();
-				void send();
-			}}
-		>
-			<input
-				bind:value={draft}
-				maxlength="500"
-				placeholder="Message {dm.open.name}…"
-				class="input input-xs min-w-0 flex-1"
-			/>
-			<button disabled={!draft.trim()} class="btn btn-primary btn-xs"
-				>Send</button
+		<div class="border-ink/5 border-t p-2">
+			{#if pendingImage}
+				<div class="relative mb-2 inline-block">
+					<img
+						src={pendingImage.preview}
+						alt="Ready to send"
+						class="ring-ink/10 max-h-24 rounded ring-1"
+					/>
+					<button
+						onclick={clearPending}
+						class="bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-1.5 -right-1.5 rounded-full p-0.5 ring-1"
+						aria-label="Remove image"><X size={12} /></button
+					>
+				</div>
+			{/if}
+			<form
+				class="flex gap-1.5"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void send();
+				}}
 			>
-		</form>
+				<input
+					bind:value={draft}
+					onpaste={pasteImage}
+					maxlength="500"
+					placeholder="Message {dm.open.name}…"
+					class="input input-xs min-w-0 flex-1"
+				/>
+				<button
+					disabled={!draft.trim() && !pendingImage}
+					class="btn btn-primary btn-xs">Send</button
+				>
+			</form>
+		</div>
 	</div>
 {/if}
