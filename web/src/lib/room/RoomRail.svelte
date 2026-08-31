@@ -2,8 +2,11 @@
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { notify } from '$lib/notify.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import {
+		Bell,
+		BellOff,
 		LogOut,
 		Mic,
 		MicOff,
@@ -269,6 +272,17 @@
 				/>{/if}
 			theme · {theme.current}</button
 		>
+		{#if notify.supported}
+			<button
+				onclick={() =>
+					notify.enabled ? notify.disable() : void notify.enable()}
+				class="text-muted hover:text-ink mt-2 mr-3 inline-flex items-center gap-1 text-[10px] underline"
+				title="chat, arrivals and session starts reach you while the tab is in the background"
+			>
+				{#if notify.enabled}<Bell size={11} />{:else}<BellOff size={11} />{/if}
+				alerts · {notify.enabled ? 'on' : 'off'}</button
+			>
+		{/if}
 		{#if showAv}
 			<button
 				onclick={() => (voiceAdvanced = !voiceAdvanced)}
