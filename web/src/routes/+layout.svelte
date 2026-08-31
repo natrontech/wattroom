@@ -16,6 +16,7 @@
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import MobileNav from '$lib/nav/MobileNav.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
@@ -230,9 +231,14 @@
 				/>
 			{/if}
 		</div>
-		<div class="min-w-0 flex-1 overflow-y-auto">
+		<div class="min-w-0 flex-1 overflow-y-auto {caved ? '' : 'pb-16 md:pb-0'}">
 			{@render children()}
 		</div>
+		<!-- The ride owns the whole screen while caved; the tab bar returns
+		     with the lights. -->
+		{#if !caved}
+			<MobileNav />
+		{/if}
 		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
 		     frame: threads and music survive navigation the same way the
 		     room connection does. -->
