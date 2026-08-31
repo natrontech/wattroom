@@ -3,7 +3,13 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
+	import {
+		plannedZoneSeconds,
+		ZONE_BG,
+		ZONE_NAMES,
+		zoneOf,
+	} from '$lib/components/zones';
+	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
@@ -51,6 +57,7 @@
 	const total = $derived(durationSeconds(workout));
 	const check = $derived(validateWorkout(workout));
 	const current = $derived(selected === null ? null : workout.steps[selected]);
+	const zones = $derived(plannedZoneSeconds(segments, FTP));
 
 	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
 	// seconds were a dev unit that leaked into the UI.
@@ -199,6 +206,9 @@
 
 	<div class="panel mt-4 overflow-hidden">
 		<IntervalGraph {segments} {total} elapsed={0} ftp={FTP} trace={[]} />
+		<div class="border-ink/5 border-t px-4 py-3">
+			<ZoneBar seconds={zones} legend />
+		</div>
 	</div>
 
 	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
