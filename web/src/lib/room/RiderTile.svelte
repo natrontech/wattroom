@@ -92,8 +92,8 @@
 		</div>
 	{/if}
 
-	<!-- Overlay scrim: white numbers over a bright camera feed were unreadable
-	     (#181 follow-up). Darkens only the two edges the readouts live on. -->
+	<!-- Overlay scrim (#319): ink is white in the cave, and a bright camera feed
+	     swallowed the readouts whole. Darkens only the two edges they live on. -->
 	<div
 		class="pointer-events-none absolute inset-0"
 		style="background: linear-gradient(to bottom,
