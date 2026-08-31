@@ -1,0 +1,81 @@
+# The one end-to-end flow (WATTROOM.md): simulated trainer rides a workout and
+# produces a .fit — entering through the login gate like every rider.
+#
+# Split out of ci.yml purely so `paths` can gate it. It is the most expensive
+# job in the repo by a wide margin (~4 min against the next-largest 2 min), and
+# roughly a quarter of PRs here change only docs, ADRs, or infra — where there
+# is no ride to break. Same filter on push: a docs-only merge cannot break it
+# either, and the next code commit still covers everything.
+name: e2e
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'server/**'
+      - '.github/workflows/e2e.yml'
+  # Repeated rather than a YAML anchor: the Actions parser rejects anchors.
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'server/**'
+      - '.github/workflows/e2e.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: wattroom
+          POSTGRES_PASSWORD: wattroom
+          POSTGRES_DB: wattroom
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wattroom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: server/go.mod
+      # Warm the Go build cache: the e2e web server spawns `go run .`, and a cold
+      # module download used to still be running while the specs already were.
+      # Only the server binary — `./...` also compiled cmd/seed and every test
+      # dependency, none of which `go run .` needs. The real compile check is
+      # `go build ./...` in ci.yml's server job.
+      - run: go build -o /dev/null .
+        working-directory: server
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      # No --with-deps: the ubuntu runner image already ships Chromium's shared
+      # libraries, so it was an apt-get round trip for nothing.
+      - run: pnpm exec playwright install chromium
+        working-directory: web
+      # No `pnpm run build` here: playwright.config.ts's webServer always builds
+      # (deliberately — a reused build serves stale code), so a step here is a
+      # second full build of the same bundle.
+      - run: pnpm run test:e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: web/test-results/
+          retention-days: 7
