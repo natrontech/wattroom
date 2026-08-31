@@ -39,9 +39,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 // SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
 // the tick line carries so reactions have something to attach to.
 func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (string, bool) {
-	// Tight budget: this runs in the sender's read loop — a stalled database
-	// must cost one line, not seconds of frozen metrics (#219).
-	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
+	// Runs on the hub's save worker (#219), so a stalled database backs up
+	// that queue — nobody's read loop. The budget just bounds the queue lag.
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	room, uid, ok := s.resolve(ctx, slug, userID)
 	if !ok {

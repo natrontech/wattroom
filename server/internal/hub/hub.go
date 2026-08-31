@@ -63,6 +63,18 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
+	// Chat persistence queue (#219): read loops enqueue, one worker saves.
+	saves chan chatSave
+}
+
+// chatSave is one line awaiting persistence — enough to save it and to
+// address the follow-up ChatID back to its room.
+type chatSave struct {
+	rm      *room
+	slug    string
+	riderID string
+	text    string
+	at      int64
 }
 
 // voiceEntry remembers when the join was reported, so a reconcile sweep
@@ -77,8 +89,24 @@ type voiceEntry struct {
 func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
-	return &Hub{log: log, access: access, saver: saver, now: time.Now,
-		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry)}
+	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
+		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
+		saves: make(chan chatSave, 256)}
+	go h.saveWorker()
+	return h
+}
+
+// saveWorker drains the chat-persistence queue (#219): a stalled database
+// backs up this queue, never a sender's read loop or any tick. Exits when
+// the process does — the hub has no shutdown, it lives as long as the server.
+// ponytail: one worker for the whole hub; per-room workers if a slow save
+// ever lets one loud room starve the rest.
+func (h *Hub) saveWorker() {
+	for job := range h.saves {
+		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text); ok {
+			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
+		}
+	}
 }
 
 type room struct {
@@ -89,6 +117,7 @@ type room struct {
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
 	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
 	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
+	chatIDs []protocol.ChatID                // ids the async save assigned (#219)
 	session *session
 	record  *accumulator
 	music   *jukebox
@@ -194,11 +223,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 			if text != "" && rm.allow("chat", rider.ID, h.now(), time.Second) {
 				line := protocol.ChatLine{From: rider.Name, FromID: rider.ID, Text: text, At: h.now().UnixMilli()}
-				// Persist OUTSIDE any room lock (hub discipline) — the request
-				// goroutine may block on the database, the tick never does.
+				// The save runs on the hub's worker, never in this read loop
+				// (#219): the line broadcasts now, id-less; its persisted id
+				// follows on a later tick as a ChatID.
 				if h.chat != nil {
-					if id, ok := h.chat.SaveChat(ctx, slug, rider.ID, text); ok {
-						line.ID = id
+					select {
+					case h.saves <- chatSave{rm: rm, slug: slug, riderID: rider.ID, text: text, at: line.At}:
+					default:
+						// Full queue: the line stays ephemeral — blocking the
+						// sender's reads would be the worse failure.
+						h.log.Warn("chat save queue full, line not persisted", "room", slug, "rider", rider.ID)
 					}
 				}
 				rm.chatLine(line)
@@ -489,6 +523,8 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		} else {
 			rm.reacts = nil
 		}
+		idsNow := rm.chatIDs
+		rm.chatIDs = nil
 		tick := protocol.ServerTick{
 			At:            now().UnixMilli(),
 			State:         rm.session.state(now()),
@@ -496,6 +532,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			Cheers:        rm.cheers,
 			Chat:          chatNow,
 			ChatReactions: reactsNow,
+			ChatIDs:       idsNow,
 			Sprint:        rm.sprint.state(now(), rm.seen),
 			Game:          rm.lastGame,
 			Execution: func() map[string]float64 {
@@ -648,6 +685,16 @@ func (rm *room) chatLine(line protocol.ChatLine) {
 	// the rest — a burst must not silently eat accepted lines (#219).
 	if len(rm.chat) < 256 {
 		rm.chat = append(rm.chat, line)
+	}
+}
+
+func (rm *room) chatIDAssigned(id protocol.ChatID) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	// Bounded like every tick queue; the save queue's own 256 cap means this
+	// can only fill if ticks stall, and then persistence is the least worry.
+	if len(rm.chatIDs) < 256 {
+		rm.chatIDs = append(rm.chatIDs, id)
 	}
 }
 
