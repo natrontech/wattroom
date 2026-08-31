@@ -322,6 +322,16 @@ input[type='range']::-moz-range-thumb {
 	background: var(--color-neon);
 }
 
+/* The voice gate's slider draws no track of its own: the mic meter IS its
+ * track (#289), so the thumb sits on the level it is gating. Kept as two
+ * rules — one vendor selector either browser rejects kills the whole rule. */
+input[type='range'].gate-slider::-webkit-slider-runnable-track {
+	background: transparent;
+}
+input[type='range'].gate-slider::-moz-range-track {
+	background: transparent;
+}
+
 /* Spinners are unusable at the sizes these inputs run at, and they fight tabular-nums. */
 input[type='number'] {
 	-moz-appearance: textfield;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import GateMeter from '$lib/room/GateMeter.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -41,6 +41,7 @@
 		transmitting = false,
 		voiceMode = 'gate',
 		gateThreshold = 0.02,
+		effectiveThreshold = 0,
 		pttHeld = false,
 		onVoiceMode,
 		onGateThreshold,
@@ -79,6 +80,9 @@
 		transmitting?: boolean;
 		voiceMode?: 'gate' | 'ptt';
 		gateThreshold?: number;
+		/** What the gate is actually held at — music doubles it (SPEC). Falls
+		 * back to the stored value, so a caller without it still draws truth. */
+		effectiveThreshold?: number;
 		pttHeld?: boolean;
 		onVoiceMode?: (mode: 'gate' | 'ptt') => void;
 		onGateThreshold?: (threshold: number) => void;
@@ -121,6 +125,9 @@
 	} = $props();
 
 	const inVoice = $derived(voiceStatus === 'live');
+	const gateNow = $derived(effectiveThreshold || gateThreshold);
+	/** The meter says something only while a mic chain is actually running. */
+	const metering = $derived(micOn || micTesting);
 	const deviceOptions = (
 		list: { deviceId: string; label: string }[],
 		kind: string,
@@ -436,15 +443,17 @@
 					: 'hold to talk (or space)'}</button
 			>
 		{/if}
-		{#if showAv && (micOn || micTesting)}
-			<ProgressBar
-				pct={Math.round(micLevel * 140)}
-				h="h-1"
-				fill="{transmitting
-					? 'bg-z4'
-					: 'bg-muted/40'} transition-[width] duration-100"
+		{#if showAv && metering}
+			<!-- The axis the panel tunes on (#289), with the gate marked: "am I
+			     above it" is answerable without opening anything. -->
+			<GateMeter
+				level={micLevel}
+				effective={gateNow}
+				{transmitting}
 				class="mt-2"
-				title={transmitting ? 'transmitting' : 'gated — below the threshold'}
+				title={transmitting
+					? 'transmitting'
+					: 'gated — below the mark on this bar'}
 			/>
 		{/if}
 		<button
@@ -554,29 +563,46 @@
 								? 'testing — you hear yourself · stop'
 								: 'test my mic'}</button
 						>
-						{#if micTesting}
-							<p class="text-muted mt-1 text-[10px]">
+					{/if}
+					<!-- Level and gate on one axis (#289). The slider's track IS
+					     the meter, so tuning is "drag the mark under my voice" —
+					     and it works in voice, without leaving the room to do it. -->
+					<div class="mt-2">
+						<span class="text-muted text-[10px]"
+							>{voiceMode === 'gate'
+								? 'your level & gate threshold'
+								: 'your level'}</span
+						>
+						<GateMeter
+							level={micLevel}
+							effective={gateNow}
+							setting={gateThreshold}
+							{transmitting}
+							onThreshold={voiceMode === 'gate' ? onGateThreshold : undefined}
+							class="mt-1"
+						/>
+						<p class="text-muted text-[10px] leading-snug">
+							{#if !metering}
+								Join voice — or test your mic — to see your level here.
+							{:else if voiceMode === 'ptt'}
 								{transmitting
-									? 'gate open — this would transmit'
-									: 'gate closed — speak up or lower the threshold'}
+									? 'transmitting — the room hears you'
+									: 'closed until you hold to talk'}
+							{:else if transmitting}
+								<span class="text-z4">gate open</span> — the room hears you
+							{:else}
+								gate closed — speak up, or drag the gate left
+							{/if}
+						</p>
+						{#if voiceMode === 'gate' && gateNow !== gateThreshold}
+							<!-- SPEC doubles the gate under music; the mark shows where
+							     it actually sits, or the panel would be lying. -->
+							<p class="text-muted/70 mt-0.5 text-[10px] leading-snug">
+								Music is playing — the gate is held at the mark, above where you
+								set it.
 							</p>
 						{/if}
-					{/if}
-					{#if voiceMode === 'gate'}
-						<label class="mt-2 block text-[10px]">
-							<span class="text-muted">gate threshold</span>
-							<input
-								type="range"
-								min="0.005"
-								max="0.08"
-								step="0.005"
-								value={gateThreshold}
-								oninput={(e) =>
-									onGateThreshold?.(Number(e.currentTarget.value))}
-								class="mt-1 w-full"
-							/>
-						</label>
-					{/if}
+					</div>
 
 					<!-- The mixer (#179): every level in one place. Ducking dips
 					     under the music ceiling; it never fights these faders. -->
