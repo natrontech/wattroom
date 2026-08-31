@@ -59,7 +59,7 @@
 </script>
 
 <div
-	class="bg-surface-raised relative overflow-hidden rounded-lg ring-1 {stretch
+	class="bg-surface-raised @container relative overflow-hidden rounded-lg ring-1 {stretch
 		? 'h-full'
 		: 'aspect-video'} transition-shadow duration-200 {rider.speaking
 		? 'ring-neon shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-neon)_35%,transparent)]'
@@ -92,9 +92,20 @@
 		</div>
 	{/if}
 
+	<!-- Overlay scrim (#319): ink is white in the cave, and a bright camera feed
+	     swallowed the readouts whole. Darkens only the two edges they live on. -->
+	<div
+		class="pointer-events-none absolute inset-0"
+		style="background: linear-gradient(to bottom,
+			color-mix(in oklab, var(--color-paper) 60%, transparent) 0%,
+			transparent 30%,
+			transparent 55%,
+			color-mix(in oklab, var(--color-paper) 70%, transparent) 100%)"
+	></div>
+
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
-	<div class="absolute top-2 left-2.5 flex items-center gap-1.5">
-		<span class="text-ink text-xs font-medium drop-shadow">{rider.name}</span>
+	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
+		<span class="text-ink truncate text-sm font-semibold">{rider.name}</span>
 		{#if rider.coach}
 			<span
 				class="bg-paper/40 text-ink/80 rounded-full px-1.5 py-0.5 text-[9px]"
@@ -127,7 +138,7 @@
 					? 'text-watt glow-text'
 					: 'text-ink'}">{rider.watts}</span
 			>
-			<span class="text-ink/60 text-[10px]">W</span>
+			<span class="text-ink/75 text-xs font-medium">W</span>
 		</div>
 	{/if}
 
@@ -166,10 +177,12 @@
 
 	{#if live && extras.length && !rider.stale}
 		<div
-			class="text-ink/85 absolute right-2.5 bottom-3 flex gap-2.5 font-mono text-[11px] tabular-nums drop-shadow"
+			class="text-ink absolute right-2.5 bottom-3 flex gap-3 font-mono text-xs font-medium tabular-nums"
 		>
 			{#each extras as extra (extra.key)}
-				<span>{extra.text}<span class="text-ink/50"> {extra.unit}</span></span>
+				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}
+					>{extra.text}<span class="text-ink/70"> {extra.unit}</span></span
+				>
 			{/each}
 		</div>
 	{/if}
