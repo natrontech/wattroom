@@ -52,6 +52,35 @@ where room_id = $1 and started_at >= date_trunc('month', now());
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days';
 
+-- name: CurveBests :one
+-- Progression overlay (#222): best per SPEC curve window over three ranges,
+-- summary columns only — the sample blob stays cold.
+select
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best20m,
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best20m,
+    coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
+    coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
+    coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+from rides
+where user_id = $1;
+
+-- name: ListUserProgression :many
+-- Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
+-- time, so FTP history is free; best20m feeds the Category/w-kg trend.
+select started_at, seconds, kj, execution, ftp_watts,
+       coalesce((curve->>'best20m')::int, 0)::int as best20m
+from rides
+where user_id = $1 and started_at >= now() - interval '365 days'
+order by started_at
+limit 1000;
+
 -- name: ListUserRidesFull :many
 -- Export-all (#35): everything, blobs included — this is the one query
 -- allowed to read every blob, because the rider is taking their data home.

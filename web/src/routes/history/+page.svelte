@@ -6,6 +6,10 @@
 	import { api } from '$lib/api';
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
+	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
+	import FtpTrendChart, {
+		type TrendRide,
+	} from '$lib/components/FtpTrendChart.svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
@@ -19,6 +23,21 @@
 	let rides = $state<ServerRide[] | null>(null);
 	let error = $state<string | null>(null);
 
+	interface Curve {
+		best5s: number;
+		best1m: number;
+		best5m: number;
+		best20m: number;
+	}
+	interface Progression {
+		curve: { d30: Curve; d90: Curve; all: Curve };
+		rides: (TrendRide & { seconds: number; kj: number; execution: number })[];
+		category: string;
+		wkg: number;
+	}
+	let progression = $state<Progression | null>(null);
+	let progressionError = $state<string | null>(null);
+
 	async function load() {
 		const res = await api<{ rides: ServerRide[] }>('/api/rides');
 		if (res.ok) {
@@ -28,7 +47,17 @@
 			error = res.error.message;
 		}
 	}
+	async function loadProgression() {
+		const res = await api<Progression>('/api/progression');
+		if (res.ok) {
+			progression = res.data;
+			progressionError = null;
+		} else {
+			progressionError = res.error.message;
+		}
+	}
 	void load();
+	void loadProgression();
 </script>
 
 {#snippet rideRow(ride: RideRecord, badge?: string)}
@@ -98,6 +127,46 @@
 			</EmptyState>
 		</div>
 	{:else}
+		<!-- Progression (#222): trends from the same rides listed below. Charts
+		     degrade quietly — a failed analysis call never hides the ride list. -->
+		{#if progressionError}
+			<p class="text-muted mt-8 text-xs">
+				Progression could not be loaded.
+				<button
+					onclick={() => void loadProgression()}
+					class="hover:text-ink underline">Retry</button
+				>
+			</p>
+		{:else if progression && progression.rides.length > 0}
+			<section class="mt-8">
+				<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+					<h2 class="eyebrow">progression</h2>
+					<span class="text-muted text-xs">
+						Category
+						<span class="text-ink font-display text-sm font-bold"
+							>{progression.category}</span
+						>
+						{#if progression.wkg > 0}
+							· {progression.wkg.toFixed(1)} w/kg, 90-day best 20 min
+						{/if}
+					</span>
+				</div>
+				<div class="mt-3 grid gap-3 sm:grid-cols-2">
+					<div class="panel px-5 py-4">
+						<h3 class="text-muted mb-3 text-xs">Best power by duration</h3>
+						<PowerCurveChart
+							d30={progression.curve.d30}
+							d90={progression.curve.d90}
+							all={progression.curve.all}
+						/>
+					</div>
+					<div class="panel px-5 py-4">
+						<h3 class="text-muted mb-3 text-xs">FTP over the last year</h3>
+						<FtpTrendChart rides={progression.rides} />
+					</div>
+				</div>
+			</section>
+		{/if}
 		<ul class="mt-8 grid gap-2">
 			{#each rides as ride (ride.id)}
 				{@render rideRow(ride, ride.room ? 'room' : undefined)}

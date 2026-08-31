@@ -26,6 +26,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/notify"
+	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -91,6 +92,7 @@ func main() {
 			authService.SetMailAvailable(true)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
+		progression.New(st, authService, log).Register(mux)
 		ridesService := rides.New(st, authService, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)

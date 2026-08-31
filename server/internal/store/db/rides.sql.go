@@ -90,6 +90,61 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 	return id, err
 }
 
+const curveBests = `-- name: CurveBests :one
+select
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best20m,
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best20m,
+    coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
+    coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
+    coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+from rides
+where user_id = $1
+`
+
+type CurveBestsRow struct {
+	D30Best5s  int32
+	D30Best1m  int32
+	D30Best5m  int32
+	D30Best20m int32
+	D90Best5s  int32
+	D90Best1m  int32
+	D90Best5m  int32
+	D90Best20m int32
+	AllBest5s  int32
+	AllBest1m  int32
+	AllBest5m  int32
+	AllBest20m int32
+}
+
+// Progression overlay (#222): best per SPEC curve window over three ranges,
+// summary columns only — the sample blob stays cold.
+func (q *Queries) CurveBests(ctx context.Context, userID pgtype.UUID) (CurveBestsRow, error) {
+	row := q.db.QueryRow(ctx, curveBests, userID)
+	var i CurveBestsRow
+	err := row.Scan(
+		&i.D30Best5s,
+		&i.D30Best1m,
+		&i.D30Best5m,
+		&i.D30Best20m,
+		&i.D90Best5s,
+		&i.D90Best1m,
+		&i.D90Best5m,
+		&i.D90Best20m,
+		&i.AllBest5s,
+		&i.AllBest1m,
+		&i.AllBest5m,
+		&i.AllBest20m,
+	)
+	return i, err
+}
+
 const deleteUser = `-- name: DeleteUser :exec
 delete from users where id = $1
 `
@@ -221,6 +276,53 @@ func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]
 			return nil, err
 		}
 		items = append(items, week)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserProgression = `-- name: ListUserProgression :many
+select started_at, seconds, kj, execution, ftp_watts,
+       coalesce((curve->>'best20m')::int, 0)::int as best20m
+from rides
+where user_id = $1 and started_at >= now() - interval '365 days'
+order by started_at
+limit 1000
+`
+
+type ListUserProgressionRow struct {
+	StartedAt pgtype.Timestamptz
+	Seconds   int32
+	Kj        int32
+	Execution float32
+	FtpWatts  int16
+	Best20m   int32
+}
+
+// Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
+// time, so FTP history is free; best20m feeds the Category/w-kg trend.
+func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) ([]ListUserProgressionRow, error) {
+	rows, err := q.db.Query(ctx, listUserProgression, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserProgressionRow
+	for rows.Next() {
+		var i ListUserProgressionRow
+		if err := rows.Scan(
+			&i.StartedAt,
+			&i.Seconds,
+			&i.Kj,
+			&i.Execution,
+			&i.FtpWatts,
+			&i.Best20m,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
