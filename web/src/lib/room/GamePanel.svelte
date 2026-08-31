@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { play } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
@@ -235,14 +236,15 @@
 						>{i + 1}</span
 					>
 					<span class="w-20 truncate text-sm">{name(id)}</span>
-					<div class="bg-surface h-2 flex-1 overflow-hidden rounded-full">
-						<div
-							class="{ZONE_BG[4]} h-full rounded-full"
-							style="width: {((rider.score ?? 0) /
-								Math.max(1, standing[0]?.[1].score ?? 1)) *
-								100}%"
-						></div>
-					</div>
+					<ProgressBar
+						pct={((rider.score ?? 0) /
+							Math.max(1, standing[0]?.[1].score ?? 1)) *
+							100}
+						h="h-2"
+						track="bg-surface"
+						fill={ZONE_BG[4]}
+						class="flex-1"
+					/>
 					<span class="font-display w-8 text-right font-bold tabular-nums"
 						>{Math.round(rider.score ?? 0)}</span
 					>

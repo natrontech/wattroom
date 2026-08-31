@@ -12,61 +12,67 @@ export interface ApiError {
 export type ApiResult<T> =
 	{ ok: true; data: T } | { ok: false; error: ApiError };
 
+const NETWORK: ApiError = {
+	error: 'network',
+	message: 'The server is not reachable.',
+};
+
+function send(path: string, init?: RequestInit & { json?: unknown }) {
+	const { json, ...rest } = init ?? {};
+	return fetch(path, {
+		...rest,
+		...(json !== undefined && {
+			headers: { 'content-type': 'application/json', ...rest.headers },
+			body: JSON.stringify(json),
+		}),
+	});
+}
+
+async function failure(res: Response): Promise<{ ok: false; error: ApiError }> {
+	const body = await res.json().catch(() => null);
+	return {
+		ok: false,
+		error: body?.message
+			? (body as ApiError)
+			: {
+					error: 'internal_error',
+					message: 'The server did not answer properly.',
+				},
+	};
+}
+
 export async function api<T>(
 	path: string,
 	init?: RequestInit & { json?: unknown },
 ): Promise<ApiResult<T>> {
 	try {
-		const { json, ...rest } = init ?? {};
-		const res = await fetch(path, {
-			...rest,
-			...(json !== undefined && {
-				headers: { 'content-type': 'application/json', ...rest.headers },
-				body: JSON.stringify(json),
-			}),
-		});
+		const res = await send(path, init);
 		if (res.status === 204) return { ok: true, data: undefined as T };
-		const body = await res.json().catch(() => null);
-		if (res.ok) return { ok: true, data: body as T };
-		return {
-			ok: false,
-			error: body?.message
-				? (body as ApiError)
-				: {
-						error: 'internal_error',
-						message: 'The server did not answer properly.',
-					},
-		};
+		if (!res.ok) return failure(res);
+		return { ok: true, data: (await res.json().catch(() => null)) as T };
 	} catch {
-		return {
-			ok: false,
-			error: { error: 'network', message: 'The server is not reachable.' },
-		};
+		return { ok: false, error: NETWORK };
 	}
 }
 
 /** Same contract for binary responses (.fit exports) — api() assumes JSON. */
 export async function apiBlob(
 	path: string,
-	init?: RequestInit,
-): Promise<ApiResult<Blob>> {
+	init?: RequestInit & { json?: unknown },
+): Promise<ApiResult<{ blob: Blob; filename?: string }>> {
 	try {
-		const res = await fetch(path, init);
-		if (res.ok) return { ok: true, data: await res.blob() };
-		const body = await res.json().catch(() => null);
+		const res = await send(path, init);
+		if (!res.ok) return failure(res);
 		return {
-			ok: false,
-			error: body?.message
-				? (body as ApiError)
-				: {
-						error: 'internal_error',
-						message: 'The server did not answer properly.',
-					},
+			ok: true,
+			data: {
+				blob: await res.blob(),
+				filename: res.headers
+					.get('content-disposition')
+					?.match(/filename="(.+)"/)?.[1],
+			},
 		};
 	} catch {
-		return {
-			ok: false,
-			error: { error: 'network', message: 'The server is not reachable.' },
-		};
+		return { ok: false, error: NETWORK };
 	}
 }

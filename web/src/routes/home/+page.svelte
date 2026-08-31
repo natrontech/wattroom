@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -84,15 +85,16 @@
 	</h1>
 
 	{#if error}
-		<div
-			class="border-z6/40 bg-z6/10 mt-6 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"
-		>
-			<span>{error}</span>
-			<button
-				onclick={() => void load()}
-				class="text-muted hover:text-ink ml-auto text-xs underline"
-				>Retry</button
-			>
+		<div class="mt-6">
+			<Banner tone="error">
+				{error}
+				{#snippet action()}
+					<button
+						onclick={() => void load()}
+						class="text-muted hover:text-ink text-xs underline">Retry</button
+					>
+				{/snippet}
+			</Banner>
 		</div>
 	{/if}
 

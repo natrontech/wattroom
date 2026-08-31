@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { type MockRider, targetState } from '$lib/room/mockcompat';
 
 	let { riders }: { riders: MockRider[] } = $props();
@@ -30,14 +31,14 @@
 						? 'text-ink'
 						: 'text-muted'}">{entry.name}</span
 				>
-				<div class="bg-surface h-1.5 flex-1 overflow-hidden rounded-full">
-					<div
-						class="h-full rounded-full transition-[width] duration-500 {entry.you
-							? 'bg-watt'
-							: 'bg-neon/60'}"
-						style="width: {entry.pct}%"
-					></div>
-				</div>
+				<ProgressBar
+					pct={entry.pct}
+					track="bg-surface"
+					fill="{entry.you
+						? 'bg-watt'
+						: 'bg-neon/60'} transition-[width] duration-500"
+					class="flex-1"
+				/>
 				<!-- A dot for whether they are inside the band right now, not just cumulatively. -->
 				<span
 					class="h-1.5 w-1.5 shrink-0 rounded-full {entry.inBand

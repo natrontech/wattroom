@@ -20,7 +20,8 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
-	import { api } from '$lib/api';
+	import { api, apiBlob } from '$lib/api';
+	import Banner from '$lib/components/Banner.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { dev } from '$app/environment';
 	import { beforeNavigate } from '$app/navigation';
@@ -226,10 +227,9 @@
 		recovering = true;
 		error = null;
 		try {
-			const response = await fetch('/api/rides/export', {
+			const res = await apiBlob('/api/rides/export', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
+				json: {
 					startedAt: new Date(ride.startedAt).toISOString(),
 					samples: ride.samples.map((sample, index) => ({
 						second: index,
@@ -237,14 +237,10 @@
 						cadence: sample.cadence,
 						heartRate: sample.heartRate,
 					})),
-				}),
+				},
 			});
-			if (!response.ok) {
-				const payload = await response.json().catch(() => null);
-				throw new Error(payload?.message ?? 'The ride could not be exported.');
-			}
-			const blob = await response.blob();
-			const url = URL.createObjectURL(blob);
+			if (!res.ok) throw new Error(res.error.message);
+			const url = URL.createObjectURL(res.data.blob);
 			const a = document.createElement('a');
 			a.href = url;
 			a.download = `wattroom-recovered-${new Date(ride.startedAt).toISOString().slice(0, 10)}.fit`;
@@ -348,26 +344,18 @@
 		downloading = true;
 		error = null;
 		try {
-			const response = await fetch('/api/rides/export', {
+			const res = await apiBlob('/api/rides/export', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
+				json: {
 					startedAt: session.startedAt.toISOString(),
 					samples: session.recording,
-				}),
+				},
 			});
-			if (!response.ok) {
-				const payload = await response.json().catch(() => null);
-				throw new Error(payload?.message ?? 'The ride could not be exported.');
-			}
-			const blob = await response.blob();
-			const url = URL.createObjectURL(blob);
+			if (!res.ok) throw new Error(res.error.message);
+			const url = URL.createObjectURL(res.data.blob);
 			const link = document.createElement('a');
 			link.href = url;
-			link.download =
-				response.headers
-					.get('content-disposition')
-					?.match(/filename="(.+)"/)?.[1] ?? 'ride.fit';
+			link.download = res.data.filename ?? 'ride.fit';
 			link.click();
 			URL.revokeObjectURL(url);
 		} catch (cause) {
@@ -689,12 +677,12 @@
 				>
 			</div>
 			{#if signalLost}
-				<p
-					class="border-z6/40 bg-z6/10 mt-2 rounded-lg border px-4 py-2.5 text-sm"
-				>
-					Trainer signal lost — reconnecting. Keep pedalling; your targets
-					resume the moment it is back.
-				</p>
+				<div class="mt-2">
+					<Banner tone="error"
+						>Trainer signal lost — reconnecting. Keep pedalling; your targets
+						resume the moment it is back.</Banner
+					>
+				</div>
 			{/if}
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->

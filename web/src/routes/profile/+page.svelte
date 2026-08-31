@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
@@ -83,7 +84,7 @@
 
 	async function deleteAccount() {
 		deleting = true;
-		const res = await fetch('/api/me', { method: 'DELETE' });
+		const res = await api('/api/me', { method: 'DELETE' });
 		deleting = false;
 		if (res.ok) {
 			await account.signOut();
@@ -102,7 +103,10 @@
 	</div>
 
 	{#if !account.loaded}
-		<p class="text-muted mt-8 text-sm">Loading…</p>
+		<div class="panel mt-8 p-6">
+			<Skeleton class="h-4 w-40" />
+			<Skeleton class="mt-3 h-9" rows={3} />
+		</div>
 	{/if}
 
 	{#if account.loaded}

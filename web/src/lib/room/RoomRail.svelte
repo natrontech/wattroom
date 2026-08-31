@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { formatWhen } from '$lib/format';
@@ -277,17 +278,15 @@
 			>
 		{/if}
 		{#if showAv && (micOn || micTesting)}
-			<div
-				class="bg-surface-raised mt-2 h-1 overflow-hidden rounded-full"
+			<ProgressBar
+				pct={Math.round(micLevel * 140)}
+				h="h-1"
+				fill="{transmitting
+					? 'bg-z4'
+					: 'bg-muted/40'} transition-[width] duration-100"
+				class="mt-2"
 				title={transmitting ? 'transmitting' : 'gated — below the threshold'}
-			>
-				<div
-					class="h-full transition-[width] duration-100 {transmitting
-						? 'bg-z4'
-						: 'bg-muted/40'}"
-					style="width: {Math.min(100, Math.round(micLevel * 140))}%"
-				></div>
-			</div>
+			/>
 		{/if}
 		<button
 			onclick={() => theme.cycle()}

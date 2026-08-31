@@ -1,5 +1,8 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import Banner from '$lib/components/Banner.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { api } from '$lib/api';
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
@@ -60,23 +63,39 @@
 	</div>
 
 	{#if error}
-		<div class="border-z6/40 bg-z6/10 mt-8 rounded-lg border px-5 py-4 text-sm">
-			{error}
-			<button onclick={() => void load()} class="ml-2 underline">Retry</button>
+		<div class="mt-8">
+			<Banner tone="error">
+				{error}
+				{#snippet action()}
+					<button
+						onclick={() => void load()}
+						class="text-muted hover:text-ink text-xs underline">Retry</button
+					>
+				{/snippet}
+			</Banner>
 		</div>
 	{:else if rides === null}
-		<p class="text-muted mt-8 text-sm">Loading…</p>
+		<div class="mt-8 grid gap-3">
+			{#each { length: 3 } as _, i (i)}
+				<div class="border-muted/15 rounded-lg border px-5 py-4">
+					<Skeleton class="h-4 w-48" />
+					<Skeleton class="mt-2 h-3 w-28" />
+				</div>
+			{/each}
+		</div>
 	{:else if rides.length === 0 && device.all.length === 0}
 		<!-- Empty states teach (.claude/rules/ux.md). -->
-		<div
-			class="border-muted/15 mt-8 rounded-lg border border-dashed px-6 py-8 text-center"
-		>
-			<p class="text-sm">No rides yet.</p>
-			<p class="text-muted mx-auto mt-2 max-w-sm text-xs leading-relaxed">
-				Finish a workout and it lands here with its execution score. You can
-				export any ride as a .fit for Strava or your head unit.
-			</p>
-			<a href="/workouts" class="btn btn-primary mt-5">Pick a workout</a>
+		<div class="mt-8">
+			<EmptyState>
+				<p class="text-ink text-sm">No rides yet.</p>
+				<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
+					Finish a workout and it lands here with its execution score. You can
+					export any ride as a .fit for Strava or your head unit.
+				</p>
+				{#snippet cta()}
+					<a href="/workouts" class="btn btn-primary">Pick a workout</a>
+				{/snippet}
+			</EmptyState>
 		</div>
 	{:else}
 		<ul class="mt-8 grid gap-2">

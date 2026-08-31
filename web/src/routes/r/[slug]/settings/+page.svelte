@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import Banner from '$lib/components/Banner.svelte';
 	import { play } from '$lib/sound/cues';
 
 	interface Member {
@@ -136,11 +137,9 @@
 		</p>
 
 		{#if error}
-			<p
-				class="border-z6/40 bg-z6/10 text-z6 mt-4 rounded-lg border px-4 py-2 text-xs"
-			>
-				{error}
-			</p>
+			<div class="mt-4">
+				<Banner tone="error">{error}</Banner>
+			</div>
 		{/if}
 
 		<section class="panel mt-8 p-6">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
@@ -173,17 +174,17 @@
 					{/if}
 				</span>
 			</div>
-			<div class="bg-surface mt-2 h-1.5 overflow-hidden rounded-full">
-				<div
-					class="bg-neon h-full transition-[width] duration-300"
-					style="width: {(1 -
-						secondsToStep /
-							(session.elapsed < RAMP.warmupSeconds
-								? RAMP.warmupSeconds
-								: RAMP.stepSeconds)) *
-						100}%"
-				></div>
-			</div>
+			<ProgressBar
+				pct={(1 -
+					secondsToStep /
+						(session.elapsed < RAMP.warmupSeconds
+							? RAMP.warmupSeconds
+							: RAMP.stepSeconds)) *
+					100}
+				track="bg-surface"
+				fill="bg-neon transition-[width] duration-300"
+				class="mt-2"
+			/>
 
 			<div class="mt-6 text-center">
 				<button

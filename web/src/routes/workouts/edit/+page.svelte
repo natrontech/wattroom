@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
@@ -187,15 +188,13 @@
 
 	<!-- Validation is inline and constant: a rider should never press Save to find out. -->
 	{#if !check.ok}
-		<p
-			class="border-z6/40 bg-z6/10 text-z6 mt-3 rounded-lg border px-4 py-2 text-xs"
-		>
-			{check.error}
-		</p>
+		<div class="mt-3">
+			<Banner tone="error">{check.error}</Banner>
+		</div>
 	{:else if status}
-		<p class="border-z5/40 bg-z5/10 mt-3 rounded-lg border px-4 py-2 text-xs">
-			{status}
-		</p>
+		<div class="mt-3">
+			<Banner tone="warn">{status}</Banner>
+		</div>
 	{/if}
 
 	<div class="panel mt-4 overflow-hidden">

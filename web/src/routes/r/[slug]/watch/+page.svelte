@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -96,14 +97,11 @@
 						<span class="text-muted text-[10px]">W</span>
 					</div>
 					<div class="mt-1.5 flex items-center gap-2">
-						<div
-							class="bg-surface-raised h-1.5 flex-1 overflow-hidden rounded-full"
-						>
-							<div
-								class="h-full transition-[width] duration-500 {ZONE_BG[zone]}"
-								style="width: {fillPct(watts, rider.ftpWatts)}%"
-							></div>
-						</div>
+						<ProgressBar
+							pct={fillPct(watts, rider.ftpWatts)}
+							fill="{ZONE_BG[zone]} transition-[width] duration-500"
+							class="flex-1"
+						/>
 						<span
 							class="text-muted w-16 text-right font-mono text-[10px] tabular-nums"
 							>{wkg(watts, rider.weightKg)} w/kg</span
