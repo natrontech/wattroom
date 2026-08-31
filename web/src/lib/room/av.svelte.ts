@@ -8,6 +8,7 @@ import {
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { mountTrack } from '$lib/room/mount-track';
+import { stageOf } from '$lib/room/stage';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -23,6 +24,12 @@ import { mountTrack } from '$lib/room/mount-track';
 export type AvStatus =
 	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
+/** What the big surface is showing: somebody's screen, or somebody's camera. */
+export interface StageSource {
+	kind: 'screen' | 'camera';
+	id: string;
+}
+
 export function createRoomAv(slug: string) {
 	let status = $state<AvStatus>('off');
 	let micOn = $state(false);
@@ -31,8 +38,14 @@ export function createRoomAv(slug: string) {
 	let error = $state<string | null>(null);
 	/** Rider ids with a live camera track — bumped to retrigger attach. */
 	let videoOf = $state<Record<string, number>>({});
-	/** The one shared screen (#206): last share wins, like a projector. */
-	let screenOf = $state<{ id: string; key: number } | null>(null);
+	/**
+	 * Every live screenshare, in arrival order (#280). #206's projector kept
+	 * only the newest, so a second sharer silently replaced the first and
+	 * nobody could get back to them. The stage picks from this list.
+	 */
+	let screens = $state<{ id: string; key: number }[]>([]);
+	/** What the rider chose to put on the stage; null = follow the newest share. */
+	let stagePick = $state<StageSource | null>(null);
 	let speaking = $state<Record<string, boolean>>({});
 	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
 	 * once with a fresh token (#219: 6h expiry, transient drops). */
@@ -340,6 +353,15 @@ export function createRoomAv(slug: string) {
 		videoOf = { ...videoOf, [id]: (videoOf[id] ?? 0) + 1 };
 	}
 
+	/** Newest last: `stage` falls back to the end of this list. */
+	function addScreen(id: string) {
+		const key = (screens.find((s) => s.id === id)?.key ?? 0) + 1;
+		screens = [...screens.filter((s) => s.id !== id), { id, key }];
+	}
+	function dropScreen(id: string) {
+		screens = screens.filter((s) => s.id !== id);
+	}
+
 	// A camera turning OFF must clear the flag — bumping it left a blank
 	// tile claiming "camera on" for the rest of the session (audit #219).
 	function dropVideo(id: string) {
@@ -347,6 +369,28 @@ export function createRoomAv(slug: string) {
 		delete next[id];
 		videoOf = next;
 	}
+
+	/**
+	 * What is actually on the stage. A pick that has ended — they stopped
+	 * sharing, they turned their camera off — falls back to the newest live
+	 * share rather than blanking, which is the same rule #219 pinned for the
+	 * projector, now with somewhere to fall back TO.
+	 */
+	const stage = $derived(
+		stageOf(
+			stagePick,
+			screens.map((screen) => screen.id),
+			Object.keys(videoOf),
+		),
+	);
+	/** Bumped when the staged track is replaced, so the attach re-runs. */
+	const stageKey = $derived(
+		!stage
+			? 0
+			: stage.kind === 'screen'
+				? (screens.find((s) => s.id === stage.id)?.key ?? 0)
+				: (videoOf[stage.id] ?? 0),
+	);
 
 	async function join() {
 		// Double-click or an impatient rail tap must not build a second
@@ -407,10 +451,7 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
 					screenTracks.set(participant.identity, track);
-					screenOf = {
-						id: participant.identity,
-						key: (screenOf?.key ?? 0) + 1,
-					};
+					addScreen(participant.identity);
 				} else {
 					videoTracks.set(participant.identity, track);
 					bumpVideo(participant.identity);
@@ -432,14 +473,7 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
 					screenTracks.delete(participant.identity);
-					if (screenOf?.id === participant.identity) {
-						// Fall back to any remaining share — a teammate stopping
-						// theirs must not blank YOURS (audit #219).
-						const next = [...screenTracks.keys()][0];
-						screenOf = next
-							? { id: next, key: (screenOf?.key ?? 0) + 1 }
-							: null;
-					}
+					dropScreen(participant.identity);
 				} else {
 					videoTracks.delete(participant.identity);
 					dropVideo(participant.identity);
@@ -494,7 +528,8 @@ export function createRoomAv(slug: string) {
 			videoTracks.clear();
 			videoOf = {};
 			screenTracks.clear();
-			screenOf = null;
+			screens = [];
+			stagePick = null;
 			voice = {};
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
@@ -691,26 +726,42 @@ export function createRoomAv(slug: string) {
 				const id = room.localParticipant.identity;
 				if (sharing && track) {
 					screenTracks.set(id, track);
-					screenOf = { id, key: (screenOf?.key ?? 0) + 1 };
+					addScreen(id);
 				} else {
 					sharing = false;
 					screenTracks.delete(id);
-					if (screenOf?.id === id) screenOf = null;
+					dropScreen(id);
 				}
 			} catch {
 				sharing = false;
 			}
 		},
-		/** Attach a rider's video into a container; called from the tile. */
-		get screenOf() {
-			return screenOf;
+		/** Every live share, for the stage's source chips. */
+		get screens() {
+			return screens;
 		},
-		/** The projector surface — contain, not cover: a screen is a document. */
-		attachScreen(container: HTMLElement) {
+		get stage() {
+			return stage;
+		},
+		get stageKey() {
+			return stageKey;
+		},
+		/** null returns the stage to following the newest share. */
+		setStage(next: StageSource | null) {
+			stagePick = next;
+		},
+		/**
+		 * The stage surface. A screen is a document — contain, never crop; a
+		 * camera is a face, and letterboxing one looks like a fault.
+		 */
+		attachStage(container: HTMLElement) {
+			if (!stage) return mountTrack(container, undefined, 'contain');
 			mountTrack(
 				container,
-				screenOf ? screenTracks.get(screenOf.id) : undefined,
-				'contain',
+				stage.kind === 'screen'
+					? screenTracks.get(stage.id)
+					: videoTracks.get(stage.id),
+				stage.kind === 'screen' ? 'contain' : 'cover',
 			);
 		},
 		attach(riderId: string, container: HTMLElement) {

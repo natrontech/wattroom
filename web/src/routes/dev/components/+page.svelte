@@ -13,6 +13,8 @@
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Stage from '$lib/room/Stage.svelte';
+	import type { StageSource } from '$lib/room/av.svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
 
 	// The sprint demos anchor to mount time so the first one runs its real
@@ -24,6 +26,38 @@
 		{ riderId: 'sara', name: 'Sara', wkg: 12.6, watts: 830 },
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
+
+	// The stage (#280) needs live LiveKit tracks the gallery cannot have, so it
+	// gets a stand-in: a wall of small monospace, which is what people actually
+	// share and the reason zoom exists at all.
+	let stagePick = $state<StageSource>({ kind: 'screen', id: 'sara' });
+	const stageSources: {
+		kind: 'screen' | 'camera';
+		id: string;
+		label: string;
+	}[] = [
+		{ kind: 'screen', id: 'sara', label: "Sara's screen" },
+		{ kind: 'screen', id: 'ruben', label: "Ruben's screen" },
+		{ kind: 'camera', id: 'demo', label: 'You' },
+	];
+	function fakeSource(source: StageSource) {
+		return (node: HTMLElement) => {
+			const body =
+				source.kind === 'camera'
+					? `\n\n        ( camera feed — ${source.id} )`
+					: Array.from(
+							{ length: 34 },
+							(_, i) =>
+								`${String(i + 1).padStart(3, ' ')}  ${source.id}.ts   const segment = flatten(workout)[${i}]  //  ${(i * 37) % 400} W`,
+						).join('\n');
+			node.replaceChildren();
+			const screen = document.createElement('div');
+			screen.style.cssText =
+				'width:100%;height:100%;background:#0a0f1e;color:#7ee0b8;font:8px/1.5 ui-monospace,monospace;padding:10px;white-space:pre;overflow:hidden';
+			screen.textContent = body;
+			node.appendChild(screen);
+		};
+	}
 
 	// Frozen sample riders: a gallery should not move while you read it.
 	function rider(over: Partial<MockRider> = {}): MockRider {
@@ -414,4 +448,21 @@
 			}}
 		/>
 	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Stage — pick, zoom, pan, resize (#280)
+	</h2>
+	<p class="text-muted mt-2 mb-3 text-xs">
+		Scroll to zoom at the cursor, drag to pan, double-click to reset, drag the
+		bottom-right corner to resize. The size survives a reload.
+	</p>
+	<Stage
+		sources={stageSources}
+		stage={stagePick}
+		stageKey={stageSources.findIndex(
+			(s) => s.kind === stagePick.kind && s.id === stagePick.id,
+		)}
+		onPick={(source) => (stagePick = source)}
+		attach={fakeSource(stagePick)}
+	/>
 </main>
