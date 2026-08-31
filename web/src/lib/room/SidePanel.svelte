@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Plus, SmilePlus } from '@lucide/svelte';
-	import { keepSize } from '$lib/keep-size';
+	import { keepSize } from '$lib/pane';
 
 	// In media-focus the player lives in the main area, so the panel must not render a second one.
 	let {

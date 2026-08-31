@@ -4,8 +4,8 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { keepSize } from '$lib/keep-size';
-	import { Volume2 } from '@lucide/svelte';
+	import { dragPane, keepSize } from '$lib/pane';
+	import { GripHorizontal, Volume2 } from '@lucide/svelte';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the
@@ -201,12 +201,24 @@
 	     sit on the chat composer; below xl, sit ABOVE the chat toggle at
 	     right-4 bottom-4, which this z-[60] dock would otherwise bury (#219). -->
 	<div
+		data-pane="jukebox-dock"
 		class="fixed z-[60] {jukebox?.current
 			? ''
 			: 'hidden'} {page.url.pathname.startsWith('/r/')
 			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
 	>
+		{#if jukebox?.current}
+			<!-- The grab bar (#280): the tile itself is an iframe and swallows
+			     pointer events, so the drag has to start on our own chrome. -->
+			<div
+				{@attach dragPane}
+				class="text-muted/60 hover:text-muted flex cursor-grab touch-none justify-center py-1 active:cursor-grabbing"
+				title="drag to move the player"
+			>
+				<GripHorizontal size={14} />
+			</div>
+		{/if}
 		<!-- ≥200×200, always visible while media plays, nothing overlaid. The
 		     RMF floor is the resize minimum, so a drag cannot break it; the
 		     padding keeps the grip off the iframe, which would swallow it. -->

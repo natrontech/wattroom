@@ -1,13 +1,15 @@
 <script lang="ts">
 	import {
+		GripHorizontal,
 		Maximize,
+		PictureInPicture2,
 		RotateCcw,
 		ScreenShare,
 		Video as VideoIcon,
 		ZoomIn,
 		ZoomOut,
 	} from '@lucide/svelte';
-	import { keepSize } from '$lib/keep-size';
+	import { dragPane, keepSize } from '$lib/pane';
 	import {
 		FIT,
 		MAX_ZOOM,
@@ -96,6 +98,10 @@
 		return () => observer.disconnect();
 	}
 
+	/** Popped out (#280): the stage leaves the column and floats, Discord's
+	 * stream popout. Ephemeral like the source pick — a glance, not a setting. */
+	let popped = $state(false);
+
 	let dragging = $state(false);
 	function startPan(event: PointerEvent) {
 		if (view.zoom === 1) return;
@@ -114,14 +120,37 @@
 	}
 </script>
 
-<div class="mb-3">
+<div
+	data-pane="stage"
+	class={popped
+		? 'bg-surface ring-ink/15 fixed top-24 left-24 z-[55] rounded-lg p-1.5 shadow-2xl ring-1'
+		: 'mb-3'}
+>
+	{#if popped}
+		<div
+			{@attach dragPane}
+			class="text-muted flex cursor-grab touch-none items-center gap-2 px-1 pb-1.5 text-[11px] active:cursor-grabbing"
+		>
+			<GripHorizontal size={14} class="shrink-0 opacity-60" />
+			<span class="truncate"
+				>{sources.find((source) => source.key === activeKey)?.label ??
+					'stage'}</span
+			>
+			<button
+				onclick={() => (popped = false)}
+				class="hover:text-ink ml-auto shrink-0 underline">dock</button
+			>
+		</div>
+	{/if}
 	<div
 		bind:this={frame}
 		{@attach (node) => keepSize(node, 'stage')}
 		{@attach wheelZoom}
 		{@attach reclamp}
-		class="ring-neon/40 relative w-full overflow-hidden rounded-lg bg-black ring-1"
-		style="height: 420px; min-width: 320px; min-height: 200px; max-width: 100%; resize: both"
+		class="ring-neon/40 relative overflow-hidden rounded-lg bg-black ring-1 {popped
+			? 'w-[720px] max-w-[90vw]'
+			: 'w-full max-w-full'}"
+		style="height: 420px; min-width: 320px; min-height: 200px; resize: both"
 	>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
@@ -170,6 +199,12 @@
 				aria-label="fit to frame"><RotateCcw size={13} /></button
 			>
 			<button
+				onclick={() => (popped = !popped)}
+				class="text-muted hover:text-ink"
+				aria-label={popped ? 'dock the stage' : 'pop the stage out'}
+				><PictureInPicture2 size={13} /></button
+			>
+			<button
 				onclick={() => void frame?.requestFullscreen?.()}
 				class="text-muted hover:text-ink"
 				aria-label="fullscreen"><Maximize size={13} /></button
@@ -194,7 +229,9 @@
 			</button>
 		{/each}
 		<span class="text-muted/70 ml-auto text-[10px]"
-			>scroll to zoom · drag to pan · drag the corner to resize</span
+			>scroll to zoom · drag to pan · drag the corner to resize{popped
+				? ' · drag the bar to move'
+				: ''}</span
 		>
 	</div>
 </div>
