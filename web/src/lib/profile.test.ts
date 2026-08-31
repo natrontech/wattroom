@@ -88,6 +88,28 @@ describe('update rejects rather than coerces', () => {
 	});
 });
 
+describe('lthr (ADR-0014)', () => {
+	it('is absent by default — zones only exist once the rider anchors them', () => {
+		expect(parseProfile({}).lthr).toBeUndefined();
+	});
+
+	it('keeps a stored value inside the range and discards junk', () => {
+		expect(parseProfile({ lthr: 162 }).lthr).toBe(162);
+		expect(parseProfile({ lthr: 400 }).lthr).toBeUndefined();
+		expect(parseProfile({ lthr: '162' }).lthr).toBeUndefined();
+	});
+
+	it('update refuses an out-of-range LTHR and clears via undefined', () => {
+		stored.clear();
+		const store = createProfileStore();
+		expect(store.update({ lthr: 90 })).toMatch(/between 100 and 210/);
+		expect(store.update({ lthr: 162 })).toBeNull();
+		expect(store.current.lthr).toBe(162);
+		expect(store.update({ lthr: undefined })).toBeNull();
+		expect(store.current.lthr).toBeUndefined();
+	});
+});
+
 describe('shareHr', () => {
 	it('defaults to sharing — visible-in-room is the product promise', () => {
 		expect(parseProfile({}).shareHr).toBe(true);

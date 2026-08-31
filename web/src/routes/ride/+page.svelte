@@ -4,7 +4,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { hrZoneOf, ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import {
@@ -267,17 +267,28 @@
 	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
 	// cell is worse than no cell: it reads as a broken strap rather than no strap.
 	const readouts = $derived([
-		{ label: 'rpm', value: String(session?.sample?.cadence ?? 0) },
+		{ label: 'rpm', value: String(session?.sample?.cadence ?? 0), tone: '' },
 		...(session?.sample?.heartRate !== undefined
-			? [{ label: 'bpm', value: String(session.sample.heartRate) }]
+			? [
+					{
+						label: 'bpm',
+						value: String(session.sample.heartRate),
+						// Own bpm coloured by HR zone once an LTHR anchors them (ADR-0014).
+						tone: ZONE_TEXT[
+							hrZoneOf(session.sample.heartRate, profile.current.lthr)
+						],
+					},
+				]
 			: []),
 		{
 			label: 'block left',
 			value: formatClock(session?.info.secondsRemainingInSegment ?? 0),
+			tone: '',
 		},
 		{
 			label: 'execution',
 			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
+			tone: '',
 		},
 	]);
 	// Cadence and HR bands of the current block (#66/#67) — display-only.
@@ -623,7 +634,7 @@
 			{#each readouts as readout (readout.label)}
 				<div>
 					<span
-						class="font-display text-xl leading-none font-semibold tabular-nums"
+						class="font-display text-xl leading-none font-semibold tabular-nums {readout.tone}"
 						>{readout.value}</span
 					>
 					<span class="eyebrow ml-1">{readout.label}</span>

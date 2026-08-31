@@ -1,6 +1,11 @@
 <script lang="ts">
 	// The room's paperwork — invite, members, medals, settings — lives in a
 	// drawer so the room itself can be the full-viewport app the design is.
+	// Redesigned on #181 feedback: the invite is one copyable action, member
+	// moderation is quiet until you reach for it.
+	import { Check, Copy, Crown, ShieldBan } from '@lucide/svelte';
+	import { toasts } from '$lib/toast.svelte';
+
 	interface Member {
 		id: string;
 		displayName: string;
@@ -46,6 +51,29 @@
 		hammer: '🔨 Hammer',
 		lanterne_rouge: '🏮 Lanterne Rouge',
 	};
+
+	const inviteUrl = $derived(`${location.origin}/r/${slug}`);
+	let copied = $state(false);
+	async function copyInvite() {
+		try {
+			await navigator.clipboard.writeText(inviteUrl);
+			copied = true;
+			setTimeout(() => (copied = false), 2000);
+		} catch {
+			toasts.push('Could not copy — select the link instead.', {
+				tone: 'error',
+			});
+		}
+	}
+
+	// Banned members sink to the bottom; the owner sees them, nobody else does.
+	const shown = $derived(
+		[...members].sort(
+			(a, b) =>
+				Number(a.role === 'banned') - Number(b.role === 'banned') ||
+				Number(b.role === 'owner') - Number(a.role === 'owner'),
+		),
+	);
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (open = false)} />
@@ -67,33 +95,116 @@
 			>
 		</div>
 
-		{#if streakWeeks > 0 || monthKj > 0}
-			<div class="mt-4">
-				<span class="eyebrow">crew streak</span>
-				<p class="font-display text-sm font-bold">
-					{streakWeeks} wk · {(monthKj / 1000).toFixed(1)} MJ this month
+		<!-- Getting someone in is the drawer's number-one job: one action. -->
+		<div class="panel mt-5 px-4 py-3.5">
+			<span class="eyebrow">invite riders</span>
+			<div class="mt-2 flex items-center gap-2">
+				<span class="min-w-0 flex-1 truncate font-mono text-xs select-all"
+					>{inviteUrl}</span
+				>
+				<button
+					onclick={copyInvite}
+					class="btn btn-secondary btn-xs shrink-0"
+					aria-label="copy invite link"
+				>
+					{#if copied}<Check size={12} /> Copied{:else}<Copy size={12} /> Copy{/if}
+				</button>
+			</div>
+			{#if code}
+				<p class="text-muted mt-2 text-xs">
+					or the code
+					<span class="text-ink font-mono text-sm tracking-[0.25em] select-all"
+						>{code}</span
+					>
 				</p>
-			</div>
-		{/if}
-
-		<div class="mt-4">
-			<span class="eyebrow">invite link</span>
-			<p class="font-mono text-sm break-all select-all">
-				{location.origin}/r/{slug}
-			</p>
+			{/if}
+			<a
+				href="/r/{slug}/watch"
+				class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
+				>Watch on a phone (read-only)</a
+			>
 		</div>
-		{#if code}
-			<div class="mt-3">
-				<span class="eyebrow">code</span>
-				<p class="font-mono text-xl tracking-[0.3em] select-all">{code}</p>
+
+		{#if streakWeeks > 0 || monthKj > 0}
+			<div class="mt-5 flex gap-2">
+				<div class="border-muted/15 flex-1 rounded-lg border px-3 py-2">
+					<p class="font-display text-lg leading-tight font-bold tabular-nums">
+						{streakWeeks}<span class="text-muted ml-1 text-xs">wk</span>
+					</p>
+					<p class="eyebrow">crew streak</p>
+				</div>
+				<div class="border-muted/15 flex-1 rounded-lg border px-3 py-2">
+					<p class="font-display text-lg leading-tight font-bold tabular-nums">
+						{(monthKj / 1000).toFixed(1)}<span class="text-muted ml-1 text-xs"
+							>MJ</span
+						>
+					</p>
+					<p class="eyebrow">this month</p>
+				</div>
 			</div>
 		{/if}
 
-		<a
-			href="/r/{slug}/watch"
-			class="text-muted hover:text-ink mt-3 text-xs underline"
-			>Watch on a phone (read-only)</a
-		>
+		<div class="mt-6">
+			<span class="eyebrow">members · {members.length}</span>
+			<ul class="divide-ink/5 mt-1 divide-y">
+				{#each shown as member (member.id)}
+					<li class="flex items-center gap-2 py-2.5">
+						<span
+							class="min-w-0 truncate text-sm font-medium {member.role ===
+							'banned'
+								? 'text-muted line-through'
+								: ''}">{member.displayName}</span
+						>
+						{#if member.role === 'owner'}
+							<Crown size={12} class="text-muted shrink-0" />
+							<span class="eyebrow">owner</span>
+						{:else if member.role === 'coach'}
+							<span class="eyebrow">coach</span>
+						{:else if member.role === 'banned'}
+							<ShieldBan size={12} class="text-muted shrink-0" />
+							<span class="eyebrow">banned</span>
+						{/if}
+						{#if isOwner && member.role === 'banned'}
+							<button
+								onclick={() => onRole(member.id, 'member')}
+								disabled={busy}
+								class="btn btn-secondary btn-xs ml-auto">Unban</button
+							>
+						{:else if isOwner && member.role !== 'owner'}
+							<!-- Quiet until reached for: moderation is rare, the list
+							     is read daily. Ban/remove live behind the settings page
+							     too — here they are one tap for the mid-ride case. -->
+							<span
+								class="text-muted ml-auto flex shrink-0 items-center gap-2.5 text-[11px]"
+							>
+								<button
+									onclick={() =>
+										onRole(
+											member.id,
+											member.role === 'coach' ? 'member' : 'coach',
+										)}
+									disabled={busy}
+									class="hover:text-ink underline disabled:opacity-40"
+									>{member.role === 'coach' ? 'demote' : 'make coach'}</button
+								>
+								<button
+									onclick={() => onRemove(member.id)}
+									disabled={busy}
+									class="hover:text-z6 underline disabled:opacity-40"
+									>remove</button
+								>
+								<button
+									onclick={() => onRole(member.id, 'banned')}
+									disabled={busy}
+									class="hover:text-z6 underline disabled:opacity-40"
+									>ban</button
+								>
+							</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		</div>
 
 		{#if medals.length > 0}
 			<div class="mt-6">
@@ -111,55 +222,10 @@
 			</div>
 		{/if}
 
-		<div class="mt-6">
-			<span class="eyebrow">members</span>
-			<ul class="mt-2 grid gap-2">
-				{#each members as member (member.id)}
-					<li class="panel flex items-center gap-2 px-4 py-2.5">
-						<span class="text-sm font-medium">{member.displayName}</span>
-						<span class="eyebrow">{member.role}</span>
-						{#if isOwner && member.role === 'banned'}
-							<!-- Only the owner ever receives banned rows (#223). -->
-							<button
-								onclick={() => onRole(member.id, 'member')}
-								disabled={busy}
-								class="btn btn-secondary btn-xs ml-auto">Unban</button
-							>
-						{:else if isOwner && member.role !== 'owner'}
-							<div class="ml-auto flex gap-1.5">
-								<button
-									onclick={() =>
-										onRole(
-											member.id,
-											member.role === 'coach' ? 'member' : 'coach',
-										)}
-									disabled={busy}
-									class="btn btn-secondary btn-xs"
-									>{member.role === 'coach' ? 'Demote' : 'Make coach'}</button
-								>
-								<button
-									onclick={() => onRemove(member.id)}
-									disabled={busy}
-									class="btn btn-danger btn-xs">Remove</button
-								>
-								<button
-									onclick={() => onRole(member.id, 'banned')}
-									disabled={busy}
-									class="btn btn-danger btn-xs">Ban</button
-								>
-							</div>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		</div>
-
-		<div class="mt-6">
+		<div class="border-ink/5 mt-auto border-t pt-4">
 			{#if isOwner}
-				<a
-					href="/r/{slug}/settings"
-					class="text-muted hover:text-ink inline-block text-xs underline"
-					>Room settings</a
+				<a href="/r/{slug}/settings" class="btn btn-secondary"
+					>Room settings — name, icon, sounds, reactions</a
 				>
 			{:else if myId}
 				<button
