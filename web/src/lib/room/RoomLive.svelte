@@ -142,7 +142,13 @@
 		}
 	});
 
-	const canControl = $derived(role === 'owner' || role === 'coach');
+	// Roles change while you stand in the room: the tick's roster carries the
+	// new one, the page's fetched prop is frozen at open (rider report).
+	const myRole = $derived(
+		live.tick?.roster.find((rider) => rider.id === account.me?.id)?.role ??
+			role,
+	);
+	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
 	const shared = $derived(live.tick?.state);
 	const running = $derived(shared?.phase === 'running');
 	const phase = $derived(
@@ -178,7 +184,14 @@
 					at: now,
 				});
 			const known = lastKnown.get(rider.id);
-			const stale = !metrics && !!known && now - known.at < 30_000;
+			// The server drains its metrics map every tick, so a 1 Hz trainer
+			// misses a 1 Hz tick constantly — treating every gap as a fault
+			// flickered "no signal" and zeroed live watts between beats.
+			// Last-known values ride through the gap; only real silence reads
+			// as no signal.
+			const gap = known ? now - known.at : Infinity;
+			const held = !metrics && gap < 30_000 ? known : undefined;
+			const stale = !!held && gap >= 5_000;
 			const you = rider.id === account.me?.id;
 			const target = you
 				? myTarget
@@ -201,9 +214,9 @@
 					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
 					7,
 				),
-				watts: metrics?.watts ?? (stale ? (known?.watts ?? 0) : 0),
-				cadence: metrics?.cadence ?? (stale ? (known?.cadence ?? 0) : 0),
-				hr: metrics?.hr ?? (stale ? (known?.hr ?? 0) : 0),
+				watts: metrics?.watts ?? held?.watts ?? 0,
+				cadence: metrics?.cadence ?? held?.cadence ?? 0,
+				hr: metrics?.hr ?? held?.hr ?? 0,
 				stale,
 				paused: false,
 				lateJoined: false,
@@ -447,12 +460,20 @@
 			rideError = cause instanceof Error ? cause.message : String(cause);
 		}
 	}
-	function stopRiding() {
-		live.finish();
+	/** Re-pairing is one button (rider report): drop the trainer and release
+	 *  its subscription, keeping the ride buffer open so a fresh pair
+	 *  continues the same session. */
+	function unpair() {
 		unsubscribe?.();
+		unsubscribe = undefined;
 		void trainer?.setTargetPower(0);
 		void trainer?.disconnect();
 		trainer = null;
+		rideError = null;
+	}
+	function stopRiding() {
+		live.finish();
+		unpair();
 	}
 
 	// ── Connection fault + jukebox helpers ────────────────────────────────────
@@ -490,6 +511,13 @@
 		{ label: 'exec', value: `${Math.round(you.execution * 100)}%`, tone: '' },
 	]);
 	const myZone = $derived(zoneOf(you.watts, you.ftp));
+	// The projector was capped at 880 px on any screen (rider report: "too
+	// tiny"): it now takes the floor's full width, and fullscreen is native.
+	let projector = $state<HTMLDivElement | null>(null);
+	function fullscreenProjector() {
+		if (document.fullscreenElement) void document.exitFullscreen();
+		else void projector?.requestFullscreen().catch(() => {});
+	}
 	let admin = $state(false);
 	let chatSheet = $state(false);
 
@@ -741,8 +769,9 @@
 			     people — a screen is a document, so contain, never crop. -->
 			<div class="mb-3">
 				<div
-					class="ring-neon/40 overflow-hidden rounded-lg bg-black ring-1"
-					style="width: min(100%, 880px); aspect-ratio: 16/9"
+					bind:this={projector}
+					class="ring-neon/40 w-full overflow-hidden rounded-lg bg-black ring-1"
+					style="aspect-ratio: 16/9; max-height: 70vh"
 				>
 					{#key av.screenOf.key}
 						<div
@@ -752,7 +781,10 @@
 					{/key}
 				</div>
 				<p class="text-muted mt-1 text-[11px]">
-					{sharer} is sharing their screen
+					{sharer} is sharing their screen ·
+					<button onclick={fullscreenProjector} class="hover:text-ink underline"
+						>fullscreen</button
+					>
 					{#if av.sharing}
 						· <button
 							onclick={() => void av.toggleShare()}
@@ -810,8 +842,11 @@
 			</div>
 		{/if}
 
-		{#if !trainer}
-			<div class="mt-3 flex flex-wrap items-center gap-2">
+		<!-- Pairing must never take voice and camera with it: this row stayed
+		     hidden for the whole ride once a trainer connected, which also left
+		     no way to re-pair one that dropped (rider report). -->
+		<div class="mt-3 flex flex-wrap items-center gap-2">
+			{#if !trainer}
 				<button
 					onclick={() => ride(new FtmsTrainer())}
 					disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
@@ -830,50 +865,54 @@
 						class="btn btn-secondary">Ride simulated</button
 					>
 				{/if}
+			{:else}
+				<button onclick={unpair} class="btn btn-secondary"
+					>Unpair trainer</button
+				>
+			{/if}
 
-				{#if !account.me?.avEnabled}
-					<!-- No LiveKit configured: voice is not a thing here, so no
+			{#if !account.me?.avEnabled}
+				<!-- No LiveKit configured: voice is not a thing here, so no
 					     button that would 404 (#219, capability gating). -->
-				{:else if av.status === 'off' || av.status === 'failed'}
-					<button onclick={() => av.join()} class="btn btn-secondary"
-						>Join voice</button
-					>
-				{:else}
-					<!-- In voice: the controls live where you are (#181 feedback),
+			{:else if av.status === 'off' || av.status === 'failed'}
+				<button onclick={() => av.join()} class="btn btn-secondary"
+					>Join voice</button
+				>
+			{:else}
+				<!-- In voice: the controls live where you are (#181 feedback),
 					     not only off in the side navigation. -->
-					<button
-						onclick={() => av.toggleMic()}
-						class="rounded border px-4 py-2 text-sm {av.micOn
-							? 'border-z4/50 text-ink'
-							: 'border-z6/50 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
-					>
-					<button onclick={() => av.toggleCam()} class="btn btn-secondary"
-						>{av.camOn ? 'Cam off' : 'Cam on'}</button
-					>
-					<button
-						onclick={() => void av.toggleShare()}
-						class="btn btn-secondary inline-flex items-center gap-1.5"
-					>
-						{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
-								size={14}
-							/> Share screen{/if}
-					</button>
-					<button
-						onclick={() => av.leave()}
-						class="border-muted/30 text-muted hover:border-muted/60 hover:text-ink rounded border px-4 py-2 text-sm"
-						>Leave voice</button
-					>
-				{/if}
-				{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
-					<button
-						onclick={() => startWorkout(setupPicked.workout)}
-						class="btn btn-primary">Start {setupPicked.workout.name}</button
-					>
-					{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
-				{/if}
-				{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
-			</div>
-		{/if}
+				<button
+					onclick={() => av.toggleMic()}
+					class="rounded border px-4 py-2 text-sm {av.micOn
+						? 'border-z4/50 text-ink'
+						: 'border-z6/50 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
+				>
+				<button onclick={() => av.toggleCam()} class="btn btn-secondary"
+					>{av.camOn ? 'Cam off' : 'Cam on'}</button
+				>
+				<button
+					onclick={() => void av.toggleShare()}
+					class="btn btn-secondary inline-flex items-center gap-1.5"
+				>
+					{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
+							size={14}
+						/> Share screen{/if}
+				</button>
+				<button
+					onclick={() => av.leave()}
+					class="border-muted/30 text-muted hover:border-muted/60 hover:text-ink rounded border px-4 py-2 text-sm"
+					>Leave voice</button
+				>
+			{/if}
+			{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
+				<button
+					onclick={() => startWorkout(setupPicked.workout)}
+					class="btn btn-primary">Start {setupPicked.workout.name}</button
+				>
+				{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
+			{/if}
+			{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
+		</div>
 
 		{#if phase === 'lounge' && upcoming.length > 0}
 			<!-- The plan, phrased like a plan (#181 feedback): what, when, how
