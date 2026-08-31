@@ -68,7 +68,9 @@ describe('micLiveElsewhere (#293)', () => {
 	});
 
 	it('never counts the connection that just went quiet', () => {
-		expect(micLiveElsewhere([{ identity: a, micOpen: true }], jan, a)).toBe(false);
+		expect(micLiveElsewhere([{ identity: a, micOpen: true }], jan, a)).toBe(
+			false,
+		);
 	});
 
 	it('never counts another rider', () => {

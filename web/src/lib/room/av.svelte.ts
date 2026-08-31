@@ -535,7 +535,9 @@ export function createRoomAv(slug: string) {
 		if (!room) return false;
 		const asConnection = (p: {
 			identity: string;
-			getTrackPublication: (source: Track.Source) => { isMuted: boolean } | undefined;
+			getTrackPublication: (
+				source: Track.Source,
+			) => { isMuted: boolean } | undefined;
 		}) => {
 			const pub = p.getTrackPublication(Track.Source.Microphone);
 			return { identity: p.identity, micOpen: !!pub && !pub.isMuted };
@@ -890,10 +892,7 @@ export function createRoomAv(slug: string) {
 					micOn = false;
 				}
 			}
-			setVoice(
-				me,
-				micOn || micLive(me, myIdentity) ? 'live' : 'muted',
-			);
+			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
 		},
 		async toggleCam() {
 			if (!room) return;
