@@ -170,11 +170,19 @@
 			{/if}
 		</section>
 
-		<!-- Planned: what is coming, across every room you are in. -->
+		<!-- Planned: what is coming, across every room you are in. The next
+		     session per room — /sessions has the whole list and the planning. -->
 		<section class="mt-8">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Planned
-			</h2>
+			<div class="flex items-baseline gap-3">
+				<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
+					Planned
+				</h2>
+				<a
+					href="/sessions"
+					class="text-muted hover:text-ink ml-auto text-xs underline"
+					>All sessions →</a
+				>
+			</div>
 			{#if planned.length > 0}
 				<div class="panel mt-3">
 					{#each planned as room (room.slug)}
@@ -196,8 +204,10 @@
 				</div>
 			{:else}
 				<p class="text-muted mt-3 text-sm">
-					Nothing on the calendar — plan one from a room's lounge and it shows
-					up here for everyone.
+					Nothing on the calendar — <a
+						href="/sessions"
+						class="hover:text-ink underline">plan a session</a
+					> and it shows up here for everyone in the room.
 				</p>
 			{/if}
 		</section>
