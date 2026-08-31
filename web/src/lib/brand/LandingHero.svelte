@@ -134,7 +134,7 @@
 				{/if}
 
 				<div class="absolute top-1.5 left-2 flex items-center gap-1.5">
-					<span class="text-ink text-[10px] font-medium drop-shadow sm:text-xs"
+					<span class="text-ink text-[9px] font-medium drop-shadow sm:text-xs"
 						>{r.name}</span
 					>
 					{#if r.speaking}
@@ -145,7 +145,7 @@
 
 				<div class="absolute top-1.5 right-2 text-right">
 					<span
-						class="font-display text-sm font-bold sm:text-base {r.you
+						class="font-display text-xs font-bold sm:text-base {r.you
 							? 'text-watt glow-text-strong'
 							: 'text-ink'}">{watts[i]}</span
 					><span class="text-ink/60 ml-0.5 text-[9px]">w</span>
