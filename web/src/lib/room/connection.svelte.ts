@@ -1,3 +1,5 @@
+import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import { notify } from '$lib/notify.svelte';
@@ -207,3 +209,14 @@ export const roomConnection = {
 		current = null;
 	},
 };
+
+/**
+ * Leave, and step off the room page if standing on it — staring at a room
+ * you are no longer in, with no way back in, read as broken (rider report).
+ * Shared by every leave button (rail, mobile bar).
+ */
+export function leaveRoom() {
+	roomConnection.leave();
+	if (page.url.pathname.startsWith('/r/'))
+		void goto('/home', { replaceState: true });
+}

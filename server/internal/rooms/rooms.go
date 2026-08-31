@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -51,10 +52,10 @@ func cheerSet(stored string) []string {
 }
 
 // Presence is what rooms borrows from the hub — defined here, where it is
-// consumed. Optional: without it every room reads as quiet and a ban can't
-// sever a live socket.
+// consumed (the value type stays the hub's: it owns live state). Optional:
+// without it every room reads as quiet and a ban can't sever a live socket.
 type Presence interface {
-	Presence(slug string) (connected int, phase string, riders, voice []string)
+	Presence(slug string) hub.RoomPresence
 	Kick(slug, userID string)
 }
 
@@ -172,6 +173,16 @@ type roomJSON struct {
 	Riders []string `json:"riders,omitempty"`
 	// Who is in the voice channel (#149) — the sidebar radar's core signal.
 	Voice []string `json:"voice,omitempty"`
+	// Of those, who has a camera on; and who is pedalling right now (#251).
+	Video  []string `json:"video,omitempty"`
+	Riding []string `json:"riding,omitempty"`
+	// The running session — the rail's late-join radar (#251).
+	LiveSession *liveSessionJSON `json:"liveSession,omitempty"`
+}
+
+type liveSessionJSON struct {
+	WorkoutName string `json:"workoutName"`
+	ElapsedSec  int    `json:"elapsedSec"`
 }
 
 // --- handlers ---
@@ -258,7 +269,12 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.MemberCount = int(count)
 		}
 		if s.presence != nil {
-			entry.Connected, entry.Phase, entry.Riders, entry.Voice = s.presence.Presence(room.Slug)
+			p := s.presence.Presence(room.Slug)
+			entry.Connected, entry.Phase = p.Connected, p.Phase
+			entry.Riders, entry.Voice, entry.Video, entry.Riding = p.Riders, p.Voice, p.Video, p.Riding
+			if p.Phase == "countdown" || p.Phase == "running" || p.Phase == "paused" {
+				entry.LiveSession = &liveSessionJSON{WorkoutName: p.Workout, ElapsedSec: p.Elapsed}
+			}
 		}
 		if next, err := s.store.Queries.NextRoomSession(r.Context(), room.ID); err == nil {
 			entry.NextSession = &nextJSON{

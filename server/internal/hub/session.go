@@ -117,6 +117,19 @@ func (s *session) state(now time.Time) protocol.SessionState {
 	}
 }
 
+// elapsedAt is state()'s clock math without its transitions — for read paths
+// (Presence) that must never advance the machine.
+func (s *session) elapsedAt(now time.Time) int {
+	elapsed := int(s.banked.Seconds())
+	if s.phase == "running" {
+		elapsed = int((s.banked + now.Sub(s.startedAt)).Seconds())
+	}
+	if s.totalSeconds > 0 && elapsed > s.totalSeconds {
+		elapsed = s.totalSeconds
+	}
+	return elapsed
+}
+
 // apply runs one control message; the caller has already checked the role.
 func (s *session) apply(c protocol.Control, now time.Time) bool {
 	switch c.Action {

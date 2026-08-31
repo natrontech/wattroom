@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 
 type fakeSink struct {
 	joined, left map[string][]string
+	cams         map[string][]string
 	closed       []string
 	rooms        []string
 	synced       map[string]map[string]string
@@ -25,6 +27,12 @@ func (f *fakeSink) VoiceJoined(slug, identity, name string) {
 }
 func (f *fakeSink) VoiceLeft(slug, identity string) {
 	f.left[slug] = append(f.left[slug], identity)
+}
+func (f *fakeSink) VoiceCam(slug, identity string, on bool) {
+	if f.cams == nil {
+		f.cams = map[string][]string{}
+	}
+	f.cams[slug] = append(f.cams[slug], fmt.Sprintf("%s/%t", identity, on))
 }
 func (f *fakeSink) VoiceRoomClosed(slug string) { f.closed = append(f.closed, slug) }
 func (f *fakeSink) VoiceRooms() []string        { return f.rooms }
@@ -78,6 +86,19 @@ func TestWebhookFeedsTheRadar(t *testing.T) {
 	if code := post(signWebhook(t, "secret", "devkey", leave), leave); code != http.StatusOK {
 		t.Fatalf("leave event: %d", code)
 	}
+	// Camera on/off rides track events (#251); a mic publish is not a camera.
+	camOn := []byte(`{"event":"track_published","room":{"name":"velvet-hammer"},"participant":{"identity":"u1"},"track":{"type":"VIDEO","source":"CAMERA"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", camOn), camOn); code != http.StatusOK {
+		t.Fatalf("cam on event: %d", code)
+	}
+	camOff := []byte(`{"event":"track_unpublished","room":{"name":"velvet-hammer"},"participant":{"identity":"u1"},"track":{"type":"VIDEO","source":"CAMERA"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", camOff), camOff); code != http.StatusOK {
+		t.Fatalf("cam off event: %d", code)
+	}
+	mic := []byte(`{"event":"track_published","room":{"name":"velvet-hammer"},"participant":{"identity":"u1"},"track":{"type":"AUDIO","source":"MICROPHONE"}}`)
+	if code := post(signWebhook(t, "secret", "devkey", mic), mic); code != http.StatusOK {
+		t.Fatalf("mic event: %d", code)
+	}
 	done := []byte(`{"event":"room_finished","room":{"name":"velvet-hammer"}}`)
 	if code := post(signWebhook(t, "secret", "devkey", done), done); code != http.StatusOK {
 		t.Fatalf("finish event: %d", code)
@@ -90,6 +111,9 @@ func TestWebhookFeedsTheRadar(t *testing.T) {
 	}
 	if len(sink.closed) != 1 || sink.closed[0] != "velvet-hammer" {
 		t.Fatalf("closed: %v", sink.closed)
+	}
+	if got := sink.cams["velvet-hammer"]; len(got) != 2 || got[0] != "u1/true" || got[1] != "u1/false" {
+		t.Fatalf("cams: %v", got)
 	}
 
 	// Forgeries bounce: wrong secret, wrong issuer, tampered body.

@@ -25,9 +25,8 @@ func TestVoiceSync(t *testing.T) {
 	// join webhook never arrived.
 	h.VoiceSync("velvet", map[string]string{"kim": "Kim", "lena": "Lena"}, snapshot)
 
-	_, _, _, voice := h.Presence("velvet")
 	want := []string{"Fresh", "Kim", "Lena"}
-	if !slices.Equal(voice, want) {
+	if voice := h.Presence("velvet").Voice; !slices.Equal(voice, want) {
 		t.Fatalf("voice = %v, want %v", voice, want)
 	}
 

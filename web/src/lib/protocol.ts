@@ -287,6 +287,15 @@ export interface ServerTick {
   riders: { [key: string]: RiderMetrics};
 }
 /**
+ * PresencePing is the lobby socket's only message (#251): some room's
+ * presence changed — roster, voice, camera, or session phase. It carries no
+ * data on purpose; the client re-fetches /api/rooms, which is already
+ * membership-filtered, so the push can never widen what anyone sees.
+ */
+export interface PresencePing {
+  at: number /* int64 */; // unix millis, for debugging only
+}
+/**
  * Error tells a client why its connection or command was refused.
  */
 export interface Error {

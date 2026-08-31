@@ -17,6 +17,8 @@ type VoiceSink interface {
 	VoiceJoined(slug, identity, name string)
 	VoiceLeft(slug, identity string)
 	VoiceRoomClosed(slug string)
+	// Camera on/off for a voice participant (#251) — the rail's video dot.
+	VoiceCam(slug, identity string, on bool)
 	// The reconciler's two ends (#234): which rooms to ask LiveKit about,
 	// and its authoritative participant list applied back.
 	VoiceRooms() []string
@@ -43,6 +45,12 @@ type webhookEvent struct {
 		Identity string `json:"identity"`
 		Name     string `json:"name"`
 	} `json:"participant"`
+	// For track_published/track_unpublished: protobuf-JSON enums, so the
+	// camera is Type "VIDEO" + Source "CAMERA" (screenshare is its own source).
+	Track struct {
+		Type   string `json:"type"`
+		Source string `json:"source"`
+	} `json:"track"`
 }
 
 // handleWebhook verifies LiveKit's signature and updates the voice map.
@@ -72,6 +80,11 @@ func (s *Service) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			s.voice.VoiceJoined(event.Room.Name, event.Participant.Identity, event.Participant.Name)
 		case "participant_left":
 			s.voice.VoiceLeft(event.Room.Name, event.Participant.Identity)
+		case "track_published", "track_unpublished":
+			if event.Track.Type == "VIDEO" && event.Track.Source == "CAMERA" {
+				s.voice.VoiceCam(event.Room.Name, event.Participant.Identity,
+					event.Event == "track_published")
+			}
 		case "room_finished":
 			s.voice.VoiceRoomClosed(event.Room.Name)
 		}

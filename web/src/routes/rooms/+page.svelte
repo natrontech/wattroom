@@ -7,6 +7,7 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
+	import { railPresence } from '$lib/nav/presence.svelte';
 
 	interface RoomSummary {
 		slug: string;
@@ -70,6 +71,24 @@
 	// with the reason, instead of a 409 on click (ux.md capability gating).
 	const ownedOut = $derived(
 		(rooms ?? []).filter((room) => room.role === 'owner').length >= 3,
+	);
+
+	// Presence stays live via the store's push (#251) — the page's own fetch
+	// keeps only what the store doesn't carry (role, invite detail). This page
+	// used to freeze at first load.
+	const shown = $derived(
+		(rooms ?? []).map((room) => {
+			const p = railPresence.rooms.find((r) => r.slug === room.slug);
+			return p
+				? {
+						...room,
+						connected: p.connected,
+						riders: p.riders,
+						phase: p.live ? 'running' : 'idle',
+						nextSession: p.next,
+					}
+				: room;
+		}),
 	);
 
 	async function create() {
@@ -178,7 +197,7 @@
 		</div>
 	{:else if rooms !== null}
 		<div class="mt-8 grid gap-3">
-			{#each rooms as room (room.slug)}
+			{#each shown as room (room.slug)}
 				<a
 					href="/r/{room.slug}"
 					class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"

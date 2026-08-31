@@ -11,8 +11,8 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { takeNext } from '$lib/auth/next';
-	import { fetchRailRooms } from '$lib/nav/rooms';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { railPresence } from '$lib/nav/presence.svelte';
+	import { leaveRoom, roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
@@ -22,7 +22,6 @@
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
-	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let { children } = $props();
 
@@ -63,30 +62,31 @@
 			page.url.pathname !== '/login',
 	);
 
-	let railRooms = $state<RailRoom[]>([]);
+	// Presence is pushed, not polled (#251): the store holds one lobby socket
+	// and one rooms list for the whole app.
 	$effect(() => {
 		if (!framed) return;
-		page.url.pathname; // re-fetch presence on every navigation
-		const refresh = () =>
-			void fetchRailRooms().then((rooms) => (railRooms = rooms));
-		refresh();
-		// ponytail: 10 s poll for other rooms' presence; push it over the WS
-		// if the fleet ever makes polling expensive.
-		const timer = setInterval(refresh, 10_000);
-		return () => clearInterval(timer);
+		railPresence.start();
+		return () => railPresence.stop();
+	});
+	$effect(() => {
+		page.url.pathname; // catch up on navigation — a just-created room has no ping
+		railPresence.refresh();
 	});
 
 	// The room you are IN is tick-fresh: names change the second someone joins,
-	// not on the next poll (#191 rider report).
+	// not on the next push (#191 rider report).
 	const shownRooms = $derived(
-		railRooms.map((room) => {
+		railPresence.rooms.map((room) => {
 			const conn = roomConnection.current;
 			const roster = conn?.live.tick?.roster;
 			if (!conn || room.slug !== conn.slug || !roster) return room;
+			const metrics = conn.live.tick?.riders ?? {};
 			return {
 				...room,
 				connected: roster.length,
 				riders: roster.map((r) => r.name),
+				riding: roster.filter((r) => metrics[r.id]).map((r) => r.name),
 			};
 		}),
 	);
@@ -194,14 +194,7 @@
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}
 					connectedSlug={roomConnection.current.slug}
-					onLeave={() => {
-						roomConnection.leave();
-						// Leaving while standing in the room: the page must leave
-						// too, or you stare at a room you are no longer in with no
-						// way back in (rider report).
-						if (page.url.pathname.startsWith('/r/'))
-							void goto('/home', { replaceState: true });
-					}}
+					onLeave={leaveRoom}
 					onMember={(slug, name) => void openMember(slug, name)}
 					micOn={av.micOn}
 					camOn={av.camOn}

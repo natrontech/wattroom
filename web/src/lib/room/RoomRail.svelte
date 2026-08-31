@@ -66,8 +66,9 @@
 		onVoiceMode?: (mode: 'gate' | 'ptt') => void;
 		onGateThreshold?: (threshold: number) => void;
 		onPtt?: (held: boolean) => void;
-		/** Names speaking right now in the ACTIVE room (the only one you can
-		 * hear) — the rail highlights them Discord-style (#174). */
+		/** Names speaking right now in the CONNECTED room (the only one you
+		 * can hear) — the rail highlights them Discord-style (#174), on every
+		 * page: gating this on the URL killed the dots on navigation (#251). */
 		activeSpeaking?: string[];
 		/** Riders currently audible, for the per-rider faders (#179). */
 		mixRiders?: { id: string; name: string }[];
@@ -96,6 +97,18 @@
 	const activePath = $derived(page.url.pathname);
 
 	let voiceAdvanced = $state(false);
+
+	// The late-join radar (#251): elapsed keeps counting from the fetch
+	// anchor, so the line stays honest between presence pushes.
+	let nowMs = $state(Date.now());
+	$effect(() => {
+		const timer = setInterval(() => (nowMs = Date.now()), 10_000);
+		return () => clearInterval(timer);
+	});
+	function sessionElapsed(s: { elapsedSec: number; at: number }): string {
+		const min = Math.floor((s.elapsedSec + (nowMs - s.at) / 1000) / 60);
+		return min < 1 ? 'just started' : `${min} min in`;
+	}
 </script>
 
 <nav
@@ -165,7 +178,18 @@
 							>{room.members}</span
 						>
 					{/if}
-					{#if room.next && !room.riders?.length}
+					{#if room.live && room.session}
+						<!-- The ongoing session: what runs, how deep in — the
+						     late-join decision in one line (#251). -->
+						<span class="w-full truncate text-[10px]">
+							<span class="text-watt">{room.session.workoutName}</span>
+							<span class="text-muted/70">
+								· {sessionElapsed(room.session)}{room.slug === connectedSlug
+									? ''
+									: ' — join late'}</span
+							>
+						</span>
+					{:else if room.next && !room.live}
 						<span class="text-muted/70 w-full truncate text-[10px]"
 							>next: {room.next.workoutName} · {formatWhen(
 								room.next.startsAt,
@@ -180,9 +204,12 @@
 						{#each room.riders.slice(0, 8) as name (name)}
 							{@const inVoice = room.voice?.includes(name)}
 							{@const talking =
-								room.slug === activeSlug && activeSpeaking.includes(name)}
-							<!-- Listed = connected, so the dot is green full stop;
-							     voice brightens the name, talking pulses it (#174). -->
+								room.slug === connectedSlug && activeSpeaking.includes(name)}
+							{@const riding = room.riding?.includes(name)}
+							<!-- Listed = connected, so the dot is green full stop —
+							     unless they're pedalling: live watts wear the watt
+							     glow (#251). Voice brightens the name, talking
+							     pulses it (#174); a camera shows as the icon. -->
 							<li
 								class="flex items-center gap-1.5 text-[11px] {talking
 									? 'text-ink'
@@ -191,14 +218,18 @@
 										: 'text-ink/60'}"
 							>
 								<span
-									class="bg-z4 h-1.5 w-1.5 rounded-full {talking
-										? 'animate-pulse'
-										: ''}"
+									class="h-1.5 w-1.5 rounded-full {riding
+										? 'bg-watt glow-stroke'
+										: 'bg-z4'} {talking ? 'animate-pulse' : ''}"
+									title={riding ? 'riding now' : 'connected'}
 								></span>
 								<button
 									onclick={() => onMember?.(room.slug, name)}
 									class="hover:text-ink truncate hover:underline">{name}</button
 								>
+								{#if room.video?.includes(name)}
+									<Video size={10} class="text-muted/70 shrink-0" />
+								{/if}
 								{#if talking}
 									<span class="text-z4 text-[9px]">speaking</span>
 								{/if}
@@ -228,6 +259,37 @@
 			</li>
 		{/each}
 	</ul>
+
+	{#if connectedSlug}
+		{@const connectedRoom = rooms.find((r) => r.slug === connectedSlug)}
+		<!-- The connection strip (#251): Discord's answer to "am I in?" — a
+		     fixed spot that names the room and offers the one exit, on every
+		     page. The dot in the list above marks WHERE; this answers WHETHER. -->
+		<div class="border-ink/5 border-t px-3 py-2">
+			<div class="flex items-center gap-2">
+				<span class="bg-z4 h-2 w-2 shrink-0 animate-pulse rounded-full"></span>
+				<a
+					href={`/r/${connectedSlug}`}
+					class="hover:text-ink min-w-0 flex-1 truncate text-xs font-medium"
+					title="you are in this room — open it"
+					>{connectedRoom?.icon
+						? `${connectedRoom.icon} `
+						: ''}{connectedRoom?.name ?? connectedSlug}</a
+				>
+				{#if onLeave}
+					<button
+						onclick={onLeave}
+						class="text-muted hover:text-ink shrink-0 rounded p-1"
+						title="leave the room"
+						aria-label="leave the room"><LogOut size={13} /></button
+					>
+				{/if}
+			</div>
+			<p class="text-muted/70 mt-0.5 text-[10px]">
+				connected — you stay in while browsing
+			</p>
+		</div>
+	{/if}
 
 	<!-- Your own presence, pinned to the bottom the way a voice app does it.
 	     ONE row whatever the connection state — the nav above never jumps

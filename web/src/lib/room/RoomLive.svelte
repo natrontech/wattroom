@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
+	import { page } from '$app/state';
 	import {
 		LogOut as LeaveIcon,
 		MessageSquare,
@@ -121,6 +122,17 @@
 	const profile = createProfileStore();
 	onDestroy(() => {
 		stopRiding();
+	});
+
+	// ?voice=1 is the rail's one-click voice join (#149 → #251): the link
+	// promised voice, so deliver it — then strip the param, it is an intent,
+	// not an address.
+	$effect(() => {
+		if (!page.url.searchParams.has('voice')) return;
+		if (account.me?.avEnabled && av.status === 'off') void av.join();
+		const clean = new URL(page.url.href);
+		clean.searchParams.delete('voice');
+		history.replaceState(history.state, '', clean);
 	});
 
 	// Space is push-to-talk while that mode is on — never while typing.

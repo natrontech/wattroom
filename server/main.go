@@ -110,6 +110,15 @@ func main() {
 		friends.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+		// The lobby feed (#251): any signed-in rider, any page — a ping says
+		// "some room's presence changed, re-fetch the list". Auth here, so the
+		// hub handler stays transport-only.
+		mux.HandleFunc("GET /ws/presence", func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := authService.RequireUser(w, r, "Not signed in."); !ok {
+				return
+			}
+			h.HandleLobby(w, r)
+		})
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)

@@ -3,23 +3,14 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
+	import { railPresence } from '$lib/nav/presence.svelte';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. Rooms management stays on /rooms.
-	interface RoomEntry {
-		slug: string;
-		name: string;
-		icon?: string;
-		connected?: number;
-		riders?: string[];
-		voice?: string[];
-		phase?: string;
-		memberCount?: number;
-		nextSession?: { workoutName: string; startsAt: string };
-	}
+	// Presence comes from the app-wide store (#251) — pushed, not polled.
 	interface Ride {
 		id: string;
 		workoutName: string;
@@ -30,39 +21,23 @@
 
 	void account.load();
 
-	let rooms = $state<RoomEntry[] | null>(null);
 	let rides = $state<Ride[] | null>(null);
-	let error = $state<string | null>(null);
-
-	async function load() {
-		const res = await api<{ rooms: RoomEntry[] }>('/api/rooms');
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		error = null;
-		rooms = res.data.rooms;
-	}
 
 	$effect(() => {
 		if (!account.loaded || !account.me) return;
-		void load();
 		void api<{ rides: Ride[] }>('/api/rides').then((res) => {
 			if (res.ok) rides = res.data.rides;
 		});
-		// Presence stays honest while the page sits open.
-		const timer = setInterval(() => void load(), 10_000);
-		return () => clearInterval(timer);
 	});
 
-	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
+	const busy = $derived(
+		railPresence.rooms.filter((r) => (r.connected ?? 0) > 0),
+	);
 	const planned = $derived(
-		(rooms ?? [])
-			.filter((r) => r.nextSession)
+		railPresence.rooms
+			.filter((r) => r.next)
 			.sort(
-				(a, b) =>
-					Date.parse(a.nextSession!.startsAt) -
-					Date.parse(b.nextSession!.startsAt),
+				(a, b) => Date.parse(a.next!.startsAt) - Date.parse(b.next!.startsAt),
 			),
 	);
 	const week = $derived.by(() => {
@@ -85,13 +60,13 @@
 		Hey {account.me?.displayName ?? 'rider'}
 	</h1>
 
-	{#if error}
+	{#if railPresence.error}
 		<div class="mt-6">
 			<Banner tone="error">
-				{error}
+				{railPresence.error}
 				{#snippet action()}
 					<button
-						onclick={() => void load()}
+						onclick={() => railPresence.refresh()}
 						class="text-muted hover:text-ink text-xs underline">Retry</button
 					>
 				{/snippet}
@@ -99,7 +74,7 @@
 		</div>
 	{/if}
 
-	{#if rooms === null}
+	{#if !railPresence.loaded}
 		<div class="mt-8 grid gap-3">
 			{#each { length: 2 } as _, i (i)}
 				<div class="border-muted/15 rounded-lg border px-5 py-4">
@@ -122,7 +97,7 @@
 							class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
 						>
 							<span
-								class="{room.phase === 'running' || room.phase === 'countdown'
+								class="{room.live
 									? 'bg-watt glow-stroke'
 									: 'bg-z4'} h-2.5 w-2.5 shrink-0 rounded-full"
 							></span>
@@ -132,8 +107,8 @@
 								</p>
 								<p class="text-muted mt-0.5 text-xs">
 									{(room.riders ?? []).join(', ')}
-									{#if room.phase === 'running' || room.phase === 'countdown'}
-										· riding now{:else}
+									{#if room.live}
+										· riding {room.session?.workoutName ?? 'now'}{:else}
 										· in the lounge{/if}
 								</p>
 							</div>
@@ -169,10 +144,10 @@
 							<CalendarClock size={15} class="text-muted shrink-0" />
 							<div class="min-w-0">
 								<p class="truncate text-sm font-medium">
-									{room.nextSession?.workoutName}
+									{room.next?.workoutName}
 								</p>
 								<p class="text-muted text-xs">
-									{formatWhen(room.nextSession?.startsAt ?? '')} · {room.name}
+									{formatWhen(room.next?.startsAt ?? '')} · {room.name}
 								</p>
 							</div>
 						</a>

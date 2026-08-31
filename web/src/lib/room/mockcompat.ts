@@ -45,6 +45,13 @@ export interface RailRoom {
 	riders?: string[];
 	/** Who is in the voice channel (#149) — the radar's core signal. */
 	voice?: string[];
+	/** Of those, who has a camera on (#251). */
+	video?: string[];
+	/** Riders pedalling right now (#251) — live data, so the watt dot. */
+	riding?: string[];
+	/** The running session (#251): the rail's late-join radar. `at` anchors
+	 * elapsedSec to fetch time so the display can keep counting. */
+	session?: { workoutName: string; elapsedSec: number; at: number };
 	/** The next planned session, when one exists. */
 	next?: { workoutName: string; startsAt: string };
 }

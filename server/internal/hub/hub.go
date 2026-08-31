@@ -63,6 +63,11 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
+	// Lobby sockets (#251): one buffered-1 channel per connected client; a
+	// presence change signals them all, the buffer coalesces bursts. Leaf
+	// lock — never take another mutex while holding it.
+	lobbyMu sync.Mutex
+	lobby   map[chan struct{}]struct{}
 }
 
 // voiceEntry remembers when the join was reported, so a reconcile sweep
@@ -70,6 +75,7 @@ type Hub struct {
 type voiceEntry struct {
 	name     string
 	joinedAt time.Time
+	cam      bool // camera track published (#251)
 }
 
 // SetChatKeeper wires persistence in after construction, like SetPresence's
@@ -78,7 +84,8 @@ func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	return &Hub{log: log, access: access, saver: saver, now: time.Now,
-		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry)}
+		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
+		lobby: make(map[chan struct{}]struct{})}
 }
 
 type room struct {
@@ -101,6 +108,9 @@ type room struct {
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
+	// Called (outside the lock) when the tick sees the phase move — the
+	// lobby's session-start/end signal (#251). Nil in tests that never care.
+	changed func()
 	// kind+rider → last accepted time: limits are per RIDER, not per socket —
 	// a second tab must not double every allowance (audit #219).
 	lastInput map[string]time.Time
@@ -164,10 +174,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	rm := h.room(slug)
 	c := &client{rider: rider, conn: conn}
 	rm.join(c)
+	h.presenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
+		h.presenceChanged()
 		h.log.Info("rider left", "room", slug, "rider", rider.ID)
 	}()
 
@@ -293,21 +305,42 @@ func (h *Hub) Kick(slug, userID string) {
 	}
 }
 
+// RoomPresence is one room's live picture for the rooms list and the rail —
+// who is connected, in voice, on camera, pedalling, and what session runs.
+type RoomPresence struct {
+	Connected int
+	Phase     string
+	// The picked workout and how far the timeline is — the rail's late-join
+	// radar (#251). Meaningful only while the phase is not idle.
+	Workout string
+	Elapsed int
+	Riders  []string
+	// Riders with a live sample this second — the sweating ones.
+	Riding []string
+	Voice  []string
+	// In voice with a camera track published.
+	Video []string
+}
+
 // Presence answers "is anything happening in there" for the rooms list and
 // the rail (#39 design: the nav shows where the action is) — and now who,
 // so a rider can see their crew from any page. Riders, not sockets: a phone
 // spectator next to a desktop is one person. Lock, copy, unlock.
-func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice []string) {
+func (h *Hub) Presence(slug string) RoomPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
-	inVoice := make([]string, 0, 4)
+	p := RoomPresence{Phase: "idle", Voice: make([]string, 0, 4)}
 	for _, entry := range h.voice[slug] {
-		inVoice = append(inVoice, entry.name)
+		p.Voice = append(p.Voice, entry.name)
+		if entry.cam {
+			p.Video = append(p.Video, entry.name)
+		}
 	}
 	h.mu.Unlock()
-	sort.Strings(inVoice)
+	sort.Strings(p.Voice)
+	sort.Strings(p.Video)
 	if !ok {
-		return 0, "idle", nil, inVoice
+		return p
 	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -317,10 +350,71 @@ func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice 
 			continue
 		}
 		seen[c.rider.ID] = struct{}{}
-		riders = append(riders, c.rider.Name)
+		p.Riders = append(p.Riders, c.rider.Name)
+		if _, pedalling := rm.metrics[c.rider.ID]; pedalling {
+			p.Riding = append(p.Riding, c.rider.Name)
+		}
 	}
-	sort.Strings(riders)
-	return len(seen), rm.session.phase, riders, inVoice
+	sort.Strings(p.Riders)
+	sort.Strings(p.Riding)
+	p.Connected = len(seen)
+	p.Phase = rm.session.phase
+	p.Workout = rm.session.workoutName
+	p.Elapsed = rm.session.elapsedAt(h.now())
+	return p
+}
+
+// presenceChanged wakes every lobby socket (#251). Non-blocking: each
+// client's buffered-1 channel coalesces a burst into one ping. Safe to call
+// while holding h.mu — lobbyMu is a leaf lock.
+func (h *Hub) presenceChanged() {
+	h.lobbyMu.Lock()
+	defer h.lobbyMu.Unlock()
+	for ch := range h.lobby {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// HandleLobby is the app-wide presence feed (#251): signed-in riders hold one
+// of these from any page, and a ping tells them to re-fetch the rooms list.
+// The caller owns authentication — this handler trusts the request.
+func (h *Hub) HandleLobby(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer func() { _ = conn.CloseNow() }()
+	ch := make(chan struct{}, 1)
+	// Prime one hello ping: the client refreshes on connect anyway, and it
+	// makes "the lobby is listening" observable — no registration race.
+	ch <- struct{}{}
+	h.lobbyMu.Lock()
+	h.lobby[ch] = struct{}{}
+	h.lobbyMu.Unlock()
+	defer func() {
+		h.lobbyMu.Lock()
+		delete(h.lobby, ch)
+		h.lobbyMu.Unlock()
+	}()
+	// The client never speaks; CloseRead surfaces its disappearance as a
+	// cancelled context.
+	ctx := conn.CloseRead(r.Context())
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+			writeCtx, cancel := context.WithTimeout(ctx, tickInterval)
+			err := wsjson.Write(writeCtx, conn, protocol.PresencePing{At: h.now().UnixMilli()})
+			cancel()
+			if err != nil {
+				return
+			}
+		}
+	}
 }
 
 // WhereIs answers the friends panel (ADR-0012): which room each of these
@@ -362,22 +456,47 @@ func (h *Hub) VoiceJoined(slug, identity, name string) {
 		h.voice[slug] = make(map[string]voiceEntry, 4)
 	}
 	h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+	h.presenceChanged()
 }
 
 func (h *Hub) VoiceLeft(slug, identity string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if _, ok := h.voice[slug][identity]; !ok {
+		return
+	}
 	delete(h.voice[slug], identity)
 	if len(h.voice[slug]) == 0 {
 		delete(h.voice, slug)
 	}
+	h.presenceChanged()
+}
+
+// VoiceCam flags a voice participant's camera (#251), fed by LiveKit's
+// track_published/track_unpublished webhooks. An identity the radar does not
+// know is ignored — the flag rides the voice entry, and a publish racing the
+// join webhook just stays off until the next toggle.
+func (h *Hub) VoiceCam(slug, identity string, on bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	entry, ok := h.voice[slug][identity]
+	if !ok || entry.cam == on {
+		return
+	}
+	entry.cam = on
+	h.voice[slug][identity] = entry
+	h.presenceChanged()
 }
 
 // VoiceRoomClosed clears a whole room's voice state (room_finished).
 func (h *Hub) VoiceRoomClosed(slug string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if _, ok := h.voice[slug]; !ok {
+		return
+	}
 	delete(h.voice, slug)
+	h.presenceChanged()
 }
 
 // VoiceRooms lists the rooms the radar currently shows anyone in — the
@@ -399,9 +518,11 @@ func (h *Hub) VoiceRooms() []string {
 func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	changed := false
 	for identity, entry := range h.voice[slug] {
 		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
 			delete(h.voice[slug], identity)
+			changed = true
 		}
 	}
 	for identity, name := range present {
@@ -412,9 +533,13 @@ func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time)
 			h.voice[slug] = make(map[string]voiceEntry, len(present))
 		}
 		h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+		changed = true
 	}
 	if len(h.voice[slug]) == 0 {
 		delete(h.voice, slug)
+	}
+	if changed {
+		h.presenceChanged()
 	}
 }
 
@@ -432,6 +557,7 @@ func (h *Hub) room(slug string) *room {
 	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = newRoom(slug)
+		rm.changed = h.presenceChanged
 		h.rooms[slug] = rm
 		go rm.run(h.now, h.saver)
 	}
@@ -448,6 +574,9 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 	// is live (SPEC) and returns to 1 Hz after.
 	timer := time.NewTimer(tickInterval)
 	defer timer.Stop()
+	// Phase transitions all pass through the tick (state() advances the
+	// clock-driven ones) — one comparison here feeds the lobby (#251).
+	lastPhase := "idle"
 	for range timer.C {
 		rm.mu.Lock()
 		interval := tickInterval
@@ -537,6 +666,12 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			}
 		}
 		rm.mu.Unlock()
+		if tick.State.Phase != lastPhase {
+			lastPhase = tick.State.Phase
+			if rm.changed != nil {
+				rm.changed()
+			}
+		}
 		// Stable roster order, so tiles do not shuffle every second.
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
 
