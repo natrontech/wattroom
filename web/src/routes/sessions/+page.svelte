@@ -5,6 +5,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { nextHourInput, toLocalInput } from '$lib/components/when';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatClock } from '$lib/format';
@@ -80,16 +81,9 @@
 	// ── The plan form ─────────────────────────────────────────────────────────
 	let roomSlug = $state('');
 	let workoutKey = $state('');
-	let planAt = $state(defaultPlanAt());
+	let planAt = $state(nextHourInput());
 	let busy = $state(false);
 	let formError = $state<string | null>(null);
-
-	function defaultPlanAt(): string {
-		const t = new Date(Date.now() + 60 * 60 * 1000);
-		t.setMinutes(0, 0, 0);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		return t.toISOString().slice(0, 16); // datetime-local format
-	}
 	// Defaults, not settings (ux.md's 95 % rule): one plannable room needs no
 	// choosing, and the shelf's first entry is a fine starting pick.
 	$effect(() => {
@@ -119,7 +113,7 @@
 			return;
 		}
 		formError = null;
-		planAt = defaultPlanAt();
+		planAt = nextHourInput();
 		toasts.push(`${pickedWorkout.name} is on the calendar.`);
 		await load();
 	}
@@ -130,9 +124,7 @@
 
 	function openMove(entry: Planned) {
 		movingId = movingId === entry.id ? null : entry.id;
-		const t = new Date(entry.startsAt);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		moveAt = t.toISOString().slice(0, 16);
+		moveAt = toLocalInput(new Date(entry.startsAt));
 	}
 
 	async function move(entry: Planned) {

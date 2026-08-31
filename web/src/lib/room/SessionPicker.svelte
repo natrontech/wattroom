@@ -5,6 +5,7 @@
 	// room to it: how long, which zones, any cadence/HR bands.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { nextHourInput } from '$lib/components/when';
 	import { ZONE_BG, plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import {
@@ -91,13 +92,7 @@
 		return [...chips];
 	});
 
-	let planAt = $state(defaultPlanAt());
-	function defaultPlanAt(): string {
-		const t = new Date(Date.now() + 60 * 60 * 1000);
-		t.setMinutes(0, 0, 0);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		return t.toISOString().slice(0, 16); // datetime-local format
-	}
+	let planAt = $state(nextHourInput());
 
 	// One line each, straight from docs/SPEC.md's parameter table.
 	const GAMES = [

@@ -34,6 +34,7 @@
 	import { wireMetrics } from '$lib/room/wire';
 	import { describeBlock, type RoomRider } from '$lib/room/view';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { toLocalInput } from '$lib/components/when';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -386,9 +387,7 @@
 	let moveAt = $state('');
 	function openMove(entry: (typeof upcoming)[number]) {
 		movingId = movingId === entry.id ? null : entry.id;
-		const t = new Date(entry.startsAt);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		moveAt = t.toISOString().slice(0, 16); // datetime-local format
+		moveAt = toLocalInput(new Date(entry.startsAt));
 	}
 
 	function startScheduled(entry: (typeof upcoming)[number]) {
