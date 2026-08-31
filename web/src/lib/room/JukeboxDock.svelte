@@ -4,6 +4,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { Volume2 } from '@lucide/svelte';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the
@@ -223,6 +224,21 @@
 			<p class="text-muted mt-1 max-w-[356px] truncate text-[10px]">
 				{jukebox.current.title} · playing for the room
 			</p>
+			<!-- Your ears only (#179): the same fader as the rail's mixer, where
+			     the music actually is. Below the tile — RMF forbids overlays. -->
+			<div class="mt-1 flex max-w-[356px] items-center gap-2">
+				<Volume2 size={12} class="text-muted shrink-0" />
+				<input
+					type="range"
+					min="0"
+					max="100"
+					step="5"
+					value={mixer.music}
+					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
+					class="w-full"
+					aria-label="music volume"
+				/>
+			</div>
 		{/if}
 	</div>
 {/if}

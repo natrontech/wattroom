@@ -223,7 +223,7 @@
 						.filter((r) => av.speaking[r.id])
 						.map((r) => r.name)}
 					mixRiders={roster
-						.filter((r) => r.id !== account.me?.id)
+						.filter((r) => r.id !== account.me?.id && av.voice[r.id] === 'live')
 						.map((r) => ({ id: r.id, name: r.name }))}
 					onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
 					transmitting={av.transmitting}
