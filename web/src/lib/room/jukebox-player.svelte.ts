@@ -12,6 +12,8 @@ export const playerInfo = $state({
 	drift: 0,
 	/** The browser refused to start audio without a gesture — needs one tap. */
 	blocked: false,
+	/** The dock's own play, for whichever surface has to ask for that tap (#316). */
+	start: () => {},
 });
 
 /** How far out of step is still "in sync" for a room listening together. */

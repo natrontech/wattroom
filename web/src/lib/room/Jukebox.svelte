@@ -1,10 +1,13 @@
 <script lang="ts">
 	import {
 		FastForward,
+		PanelRight,
 		Pause,
+		PictureInPicture2,
 		Play,
 		Rewind,
 		SkipForward,
+		Tv,
 	} from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
@@ -12,6 +15,7 @@
 	import { addYouTubeUrl, thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { type Seat, seating, setSeat } from '$lib/room/jukebox-seat.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
 
@@ -59,6 +63,32 @@
 		send({ action: 'move', entryId, index: from + by });
 	}
 
+	// ── Where the picture goes (#316) ─────────────────────────────────────────
+	// Listening to a track and watching a video together are the same queue and
+	// different rooms: one wants the panel, the other wants the big spot above
+	// the cams. The choice is the rider's and it is remembered per device.
+	const SPOTS: { name: Seat; label: string; hint: string; icon: typeof Tv }[] =
+		[
+			{
+				name: 'panel',
+				label: 'panel',
+				hint: 'play it here in the jukebox',
+				icon: PanelRight,
+			},
+			{
+				name: 'room',
+				label: 'room',
+				hint: 'play it big, above the cams',
+				icon: Tv,
+			},
+			{
+				name: 'float',
+				label: 'float',
+				hint: 'float it over the app',
+				icon: PictureInPicture2,
+			},
+		];
+
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
 	let url = $state('');
 	let addError = $state<string | null>(null);
@@ -93,6 +123,24 @@
 	</div>
 
 	{#if current}
+		<div class="flex gap-1" role="group" aria-label="where the video plays">
+			{#each SPOTS as spot (spot.name)}
+				{@const Icon = spot.icon}
+				{@const on = seating.want === spot.name}
+				<button
+					onclick={() => setSeat(spot.name)}
+					aria-pressed={on}
+					title={spot.hint}
+					class="flex flex-1 items-center justify-center gap-1 rounded border py-1.5 text-[10px] {on
+						? 'border-neon text-ink'
+						: 'border-muted/20 text-muted hover:text-ink'}"
+				>
+					<Icon size={12} />
+					{spot.label}
+				</button>
+			{/each}
+		</div>
+
 		<div class="flex min-w-0 flex-col gap-2">
 			<div class="flex min-w-0 items-start gap-2.5">
 				<img

@@ -40,6 +40,8 @@
 	import GamePanel from '$lib/room/GamePanel.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
+	import JukeboxSeat from '$lib/room/JukeboxSeat.svelte';
+	import { seating } from '$lib/room/jukebox-seat.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Banner from '$lib/components/Banner.svelte';
@@ -267,6 +269,13 @@
 	// metrics, media lives in the panel/dock, and tapping a tile spotlights
 	// that rider. Ephemeral by design — a focus is a glance, not a preference.
 	let tv = $state(false);
+	// The jukebox can take the big spot instead of a rider (#316): a long
+	// video watched together IS what the room is looking at, so the cams step
+	// down to the same strip a spotlight leaves them in.
+	const videoInRoom = $derived(
+		seating.want === 'room' && !!live.tick?.jukebox?.current,
+	);
+
 	let focusId = $state<string | null>(null);
 	// The stage's menu, named (#280): av knows the tracks, only this page
 	// knows whose they are.
@@ -791,6 +800,12 @@
 			/>
 		{/if}
 
+		{#if videoInRoom}
+			<!-- Always here, above the cams, whatever else is on screen: the
+			     player is a fixture of the room, not a tile that shuffles. -->
+			<JukeboxSeat name="room" />
+		{/if}
+
 		<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
 		     tap a tile to spotlight that rider, tap again to let go. -->
 		{#snippet tile(rider: RoomRider)}
@@ -825,7 +840,11 @@
 				</div>
 			{/if}
 		{:else}
-			<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+			<div
+				class="grid shrink-0 gap-3 {videoInRoom
+					? 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-6'
+					: 'sm:grid-cols-2 xl:grid-cols-3'}"
+			>
 				{#each riders as rider (rider.id)}
 					<button
 						onclick={() => (focusId = rider.id)}
@@ -1149,6 +1168,7 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
+		video={seating.want === 'panel' && !!live.tick?.jukebox?.current}
 		messages={live.chatLog}
 		reactions={live.chatReactions}
 		myReacts={live.myReacts}

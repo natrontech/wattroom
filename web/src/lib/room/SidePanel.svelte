@@ -6,6 +6,7 @@
 	import { compressImage } from '$lib/chat/media';
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
+	import JukeboxSeat from '$lib/room/JukeboxSeat.svelte';
 
 	// The panel is chat plus one slot: the jukebox playlist owns the whole
 	// queue surface (#286) — the panel used to render a second, read-only
@@ -14,6 +15,7 @@
 	let {
 		live,
 		player,
+		video = false,
 		messages = [],
 		slug = undefined,
 		onCheer,
@@ -26,6 +28,8 @@
 		live: boolean;
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
+		/** Seat the room's player above it (#316) — the jukebox's default home. */
+		video?: boolean;
 		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
 		messages?: {
 			id?: string;
@@ -114,8 +118,20 @@
 	style="direction: rtl; resize: horizontal; min-width: 240px; max-width: 40vw"
 >
 	<div class="flex h-full flex-col" style="direction: ltr">
+		{#if video}
+			<!-- Outside the scroller on purpose: a picture that can be scrolled
+			     out of the panel is one the room stops seeing (RMF). -->
+			<div class="border-ink/5 shrink-0 border-b p-3">
+				<JukeboxSeat name="panel" />
+			</div>
+		{/if}
+
 		{#if player}
-			<div class="border-ink/5 max-h-[62%] overflow-y-auto border-b p-4">
+			<div
+				class="border-ink/5 overflow-y-auto border-b p-4 {video
+					? 'max-h-[42%]'
+					: 'max-h-[62%]'}"
+			>
 				{@render player()}
 			</div>
 		{/if}

@@ -10,9 +10,16 @@
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { centrePane, dragPane, keepSize } from '$lib/pane';
 	import {
+		hydrateSeat,
+		seatNode,
+		seating,
+		setSeat,
+	} from '$lib/room/jukebox-seat.svelte';
+	import {
 		FastForward,
 		GripHorizontal,
 		Minimize2,
+		PanelRight,
 		Pause,
 		Play,
 		Rewind,
@@ -359,6 +366,9 @@
 		wantedPlayAt = performance.now();
 		player?.playVideo?.();
 	}
+	// A seated player is only a picture: the tap that lifts an autoplay block
+	// has to be askable from the seat, which owns the space under it.
+	playerInfo.start = startPlayback;
 
 	// ── Who is talking, while you are somewhere else ──────────────────────────
 	// Off the room page there are no tiles, so the dock carries one face: the
@@ -403,50 +413,142 @@
 
 	const showPlayer = $derived(!!jukebox?.current);
 	const title = $derived(jukebox?.current?.title ?? speaker?.name ?? '');
+
+	// ── Seats (#316) ──────────────────────────────────────────────────────────
+	// The picture belongs where the room is looking: the jukebox panel by
+	// default, the stage when the room is watching something together, and
+	// floating only when neither is on screen — off the room page, or a window
+	// too narrow to give the player its 200×200. The iframe never moves. The
+	// shell is flown over the seat's box instead, so a re-seat costs neither a
+	// reload nor a second of the shared playhead.
+	let seat = $state<HTMLElement | null>(null);
+	const seated = $derived(!!seat);
+	const corner = $derived(
+		offRoom
+			? 'right-4 bottom-4'
+			: 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4',
+	);
+	const skin = $derived(
+		seated
+			? 'rounded bg-black'
+			: `bg-surface ring-ink/15 rounded-lg shadow-2xl ring-1 ${corner}`,
+	);
+
+	function set(style: CSSStyleDeclaration, prop: string, value: string) {
+		if (style.getPropertyValue(prop) !== value) style.setProperty(prop, value);
+	}
+
+	/** Floating: the corner, at the size the rider left it, never below the floor. */
+	function unseat(node: HTMLElement) {
+		const s = node.style;
+		s.left = s.top = s.right = s.bottom = '';
+		s.width = '380px';
+		s.height = `${252 + CHROME}px`;
+		s.minWidth = '260px';
+		s.minHeight = `${200 + CHROME}px`;
+		s.maxWidth = '96vw';
+		s.maxHeight = '90vh';
+		s.resize = 'both';
+	}
+
+	/** Seated: cover the box exactly — the floor is the seat's to guarantee. */
+	function seatTo(node: HTMLElement, rect: DOMRect) {
+		const s = node.style;
+		set(s, 'left', `${Math.round(rect.left)}px`);
+		set(s, 'top', `${Math.round(rect.top)}px`);
+		set(s, 'width', `${Math.round(rect.width)}px`);
+		set(s, 'height', `${Math.round(rect.height)}px`);
+		set(s, 'right', 'auto');
+		set(s, 'bottom', 'auto');
+		set(s, 'min-width', '0px');
+		set(s, 'min-height', '0px');
+		set(s, 'max-width', 'none');
+		set(s, 'max-height', 'none');
+		set(s, 'resize', 'none');
+	}
+
+	// A seat moves for reasons no observer reports: the panel scrolls, the
+	// queue grows, a rider tile wraps a row. One frame loop measuring one box
+	// is cheaper and more honest than the pile of observers that would take.
+	$effect(() => {
+		if (!conn) return;
+		hydrateSeat();
+		let frame = requestAnimationFrame(function follow() {
+			frame = requestAnimationFrame(follow);
+			const node = showPlayer
+				? seatNode((el) => el.getBoundingClientRect())
+				: null;
+			seating.at = node ? seating.want : 'float';
+			if (node !== seat) {
+				// Let the change settle before touching geometry: taking a seat
+				// detaches the size-remembering attachment, and a seat's size
+				// written before that lands is a seat's size remembered as the
+				// floating dock's own.
+				seat = node;
+				return;
+			}
+			if (node && shell) seatTo(shell, node.getBoundingClientRect());
+		});
+		return () => cancelAnimationFrame(frame);
+	});
 </script>
 
 {#if conn}
-	<!-- Until it is dragged the dock sits in the corner, clear of the side
-	     panel at whatever width the rider left it, and above the chat button
-	     the z-[60] dock would otherwise bury below xl (#219). -->
+	<!-- Seated, the shell covers a box in the room and wears none of its own
+	     chrome. Floating, it sits in the corner clear of the side panel at
+	     whatever width the rider left it, and above the chat button the z-[60]
+	     dock would otherwise bury below xl (#219). -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
-		{@attach (node) => keepSize(node, PANE)}
-		class="bg-surface ring-ink/15 fixed z-[60] flex flex-col overflow-hidden rounded-lg shadow-2xl ring-1 {showPlayer ||
-		speaker
+		{@attach (node) => {
+			if (seated) return;
+			unseat(node);
+			return keepSize(node, PANE);
+		}}
+		class="fixed z-[60] flex flex-col overflow-hidden {showPlayer || speaker
 			? ''
-			: 'hidden'} {page.url.pathname.startsWith('/r/')
-			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
-			: 'right-4 bottom-4'}"
-		style="width: 380px; height: {252 + CHROME}px; min-width: 260px;
-			min-height: {200 + CHROME}px; max-width: 96vw; max-height: 90vh;
-			resize: both"
+			: 'hidden'} {skin}"
 	>
-		<!-- Drag handle. Chrome only — never over the player (RMF). -->
-		<div
-			{@attach dragPane}
-			class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
-		>
-			<GripHorizontal size={12} class="shrink-0" />
-			{#if showPlayer && jukebox?.playing && !playerInfo.live}
-				<span
-					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
-						? 'bg-watt glow-stroke'
-						: 'bg-muted animate-pulse'}"
-					title={inSync
-						? 'in sync with the room'
-						: "catching up to the room's playhead"}
-				></span>
-			{/if}
-			<span class="truncate text-[10px]">{title}</span>
-			<button
-				onclick={() => shell && centrePane(shell, PANE)}
-				class="hover:text-ink ml-auto shrink-0"
-				title="centre the dock"
-				aria-label="centre the dock"><Minimize2 size={12} /></button
+		{#if !seated}
+			<!-- Drag handle. Chrome only — never over the player (RMF). -->
+			<div
+				{@attach dragPane}
+				class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
 			>
-		</div>
+				<GripHorizontal size={12} class="shrink-0" />
+				{#if showPlayer && jukebox?.playing && !playerInfo.live}
+					<span
+						class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
+							? 'bg-watt glow-stroke'
+							: 'bg-muted animate-pulse'}"
+						title={inSync
+							? 'in sync with the room'
+							: "catching up to the room's playhead"}
+					></span>
+				{/if}
+				<span class="truncate text-[10px]">{title}</span>
+				{#if !offRoom && seating.want === 'float'}
+					<!-- Floating over the room you are looking at is a choice, and
+					     it has to be one click to undo. -->
+					<button
+						onclick={() => setSeat('panel')}
+						class="hover:text-ink ml-auto shrink-0"
+						title="put the player back in the jukebox"
+						aria-label="put the player back in the jukebox"
+						><PanelRight size={12} /></button
+					>
+				{/if}
+				<button
+					onclick={() => shell && centrePane(shell, PANE)}
+					class="hover:text-ink shrink-0 {!offRoom && seating.want === 'float'
+						? ''
+						: 'ml-auto'}"
+					title="centre the dock"
+					aria-label="centre the dock"><Minimize2 size={12} /></button
+				>
+			</div>
+		{/if}
 
 		<div class="flex min-h-0 flex-1 bg-black">
 			{#if speaker}
@@ -484,7 +586,7 @@
 			</div>
 		</div>
 
-		{#if showPlayer && playerInfo.blocked}
+		{#if showPlayer && playerInfo.blocked && !seated}
 			<!-- The browser refused to start audio with no gesture behind it.
 			     One tap fixes it for the rest of the session. Beside the
 			     player, never over it (RMF). -->
@@ -495,7 +597,7 @@
 			>
 		{/if}
 
-		{#if showPlayer}
+		{#if showPlayer && !seated}
 			<!-- Transport for the room, then your own ears (#179): the same fader
 			     as the rail's mixer, where the music actually is. Below the tile —
 			     RMF forbids overlays. -->
