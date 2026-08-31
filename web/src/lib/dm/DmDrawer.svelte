@@ -4,6 +4,7 @@
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import { compressImage } from '$lib/chat/media';
+	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
@@ -20,7 +21,6 @@
 	let messages = $state<Message[]>([]);
 	let draft = $state('');
 	let error = $state<string | null>(null);
-	let list = $state<HTMLDivElement | null>(null);
 	// A pasted image waiting on send (#285) — same flow as room chat.
 	let pendingImage = $state<{ blob: Blob; preview: string } | null>(null);
 
@@ -67,7 +67,6 @@
 			// "Seen" only when you could actually have seen it — a drawer left
 			// open in a hidden tab must keep the badge (audit #219).
 			if (!document.hidden) dm.stampSeen(peerId);
-			queueMicrotask(() => list?.scrollTo({ top: list.scrollHeight }));
 		}
 	}
 
@@ -136,7 +135,7 @@
 			>
 		</div>
 		<div
-			bind:this={list}
+			{@attach stickToBottom}
 			class="min-h-0 flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto p-3"
 		>
 			{#each messages as message (message.id)}

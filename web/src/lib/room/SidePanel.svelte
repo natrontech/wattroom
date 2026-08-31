@@ -10,6 +10,7 @@
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import { compressImage } from '$lib/chat/media';
+	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
 
@@ -128,115 +129,124 @@
 		{/if}
 
 		<div class="eyebrow px-4 pt-3 pb-1">chat</div>
-		<ul
-			class="flex flex-1 flex-col justify-end space-y-2 overflow-x-hidden overflow-y-auto px-4 py-2"
+		<!-- `mt-auto` on the list, not `justify-end` on the box (#291): the
+		     spare room goes above the oldest line, so overflow spills off the
+		     END edge and scrollback is reachable. -->
+		<div
+			{@attach stickToBottom}
+			data-testid="chat-log"
+			class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-2"
 		>
-			{#each timeline as entry, i (entry.key)}
-				{#if entry.kind === 'event'}
-					<!-- An event, not a message: no avatar, no reactions, nothing to
+			<ul class="mt-auto space-y-2">
+				{#each timeline as entry, i (entry.key)}
+					{#if entry.kind === 'event'}
+						<!-- An event, not a message: no avatar, no reactions, nothing to
 					     copy. The room talking about itself stays quieter than the
 					     people in it. -->
-					<li
-						class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
-					>
-						<Music size={11} class="shrink-0 translate-y-0.5 opacity-70" />
-						<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span>
-						<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
-							>{clock(entry.at)}</span
+						<li
+							class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
 						>
-					</li>
-				{:else}
-					{@const message = entry.message}
-					{@const prev = timeline[i - 1]}
-					{@const grouped =
-						prev?.kind === 'message' &&
-						prev.message.from === message.from &&
-						message.at - prev.at < GROUP_GAP_MS}
-					<li class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}">
-						<div class="flex items-baseline gap-1.5">
-							{#if !grouped}
-								<span class="text-muted min-w-0 truncate font-medium"
-									>{message.from}</span
-								>
-								<span class="text-muted/40 shrink-0 font-mono text-[10px]"
-									>{clock(message.at)}</span
-								>
-							{/if}
-							<span
-								class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+							<Music size={11} class="shrink-0 translate-y-0.5 opacity-70" />
+							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
 							>
-								{#if message.text}
-									<button
-										onclick={() => copy(message.text)}
-										class="text-muted/60 hover:text-ink"
-										aria-label="copy message"><Copy size={12} /></button
+							<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
+								>{clock(entry.at)}</span
+							>
+						</li>
+					{:else}
+						{@const message = entry.message}
+						{@const prev = timeline[i - 1]}
+						{@const grouped =
+							prev?.kind === 'message' &&
+							prev.message.from === message.from &&
+							message.at - prev.at < GROUP_GAP_MS}
+						<li class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}">
+							<div class="flex items-baseline gap-1.5">
+								{#if !grouped}
+									<span class="text-muted min-w-0 truncate font-medium"
+										>{message.from}</span
+									>
+									<span class="text-muted/40 shrink-0 font-mono text-[10px]"
+										>{clock(message.at)}</span
 									>
 								{/if}
-								{#if message.id && onReact}
-									{@const id = message.id}
-									<button
-										onclick={() => (reactingTo = reactingTo === id ? null : id)}
-										class="text-muted/60 hover:text-ink"
-										aria-label="react"><SmilePlus size={13} /></button
-									>
-								{/if}
-							</span>
-						</div>
-						<!-- An image-only line has no text to render; MessageText turns a
-				     lone GIF link into the GIF itself. -->
-						{#if message.text}
-							<div class="text-ink/85 wrap-anywhere">
-								<MessageText text={message.text} />
-							</div>
-						{/if}
-						{#if message.imageId && slug}
-							<ChatImage
-								src="/api/rooms/{slug}/chat/images/{message.imageId}"
-								alt="Sent by {message.from}"
-							/>
-						{/if}
-						{#if message.id && onReact}
-							{@const id = message.id}
-							{#if reactingTo === id}
 								<span
-									class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
+									class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
 								>
-									{#each cheers as emoji (emoji)}
+									{#if message.text}
 										<button
-											onclick={() => {
-												onReact(id, emoji);
-												reactingTo = null;
-											}}
-											class="px-0.5 hover:scale-125">{emoji}</button
+											onclick={() => copy(message.text)}
+											class="text-muted/60 hover:text-ink"
+											aria-label="copy message"><Copy size={12} /></button
 										>
-									{/each}
-								</span>
-							{/if}
-							{#if reactions[id]}
-								<span class="mt-0.5 flex flex-wrap gap-1">
-									{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [emoji, count] (emoji)}
+									{/if}
+									{#if message.id && onReact}
+										{@const id = message.id}
 										<button
-											onclick={() => onReact(id, emoji)}
-											class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
-												`${id}:${emoji}`
-											]
-												? 'ring-neon bg-neon/15'
-												: 'ring-ink/10 bg-surface-raised'}"
-											>{emoji} {count}</button
+											onclick={() =>
+												(reactingTo = reactingTo === id ? null : id)}
+											class="text-muted/60 hover:text-ink"
+											aria-label="react"><SmilePlus size={13} /></button
 										>
-									{/each}
+									{/if}
 								</span>
+							</div>
+							<!-- An image-only line has no text to render; MessageText turns a
+				     lone GIF link into the GIF itself. -->
+							{#if message.text}
+								<div class="text-ink/85 wrap-anywhere">
+									<MessageText text={message.text} />
+								</div>
 							{/if}
-						{/if}
+							{#if message.imageId && slug}
+								<ChatImage
+									src="/api/rooms/{slug}/chat/images/{message.imageId}"
+									alt="Sent by {message.from}"
+								/>
+							{/if}
+							{#if message.id && onReact}
+								{@const id = message.id}
+								{#if reactingTo === id}
+									<span
+										class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
+									>
+										{#each cheers as emoji (emoji)}
+											<button
+												onclick={() => {
+													onReact(id, emoji);
+													reactingTo = null;
+												}}
+												class="px-0.5 hover:scale-125">{emoji}</button
+											>
+										{/each}
+									</span>
+								{/if}
+								{#if reactions[id]}
+									<span class="mt-0.5 flex flex-wrap gap-1">
+										{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [emoji, count] (emoji)}
+											<button
+												onclick={() => onReact(id, emoji)}
+												class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
+													`${id}:${emoji}`
+												]
+													? 'ring-neon bg-neon/15'
+													: 'ring-ink/10 bg-surface-raised'}"
+												>{emoji} {count}</button
+											>
+										{/each}
+									</span>
+								{/if}
+							{/if}
+						</li>
+					{/if}
+				{:else}
+					<li class="text-muted/60 text-xs">
+						Warm-up talk lands here — the room keeps the recent history. Voice
+						stays the main channel.
 					</li>
-				{/if}
-			{:else}
-				<li class="text-muted/60 text-xs">
-					Warm-up talk lands here — the room keeps the recent history. Voice
-					stays the main channel.
-				</li>
-			{/each}
-		</ul>
+				{/each}
+			</ul>
+		</div>
 
 		<div class="border-ink/5 border-t p-3">
 			{#if !live}
