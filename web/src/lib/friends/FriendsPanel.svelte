@@ -152,45 +152,6 @@
 			</div>
 		{/if}
 
-		{#if dmHeads.heads.length > 0}
-			<!-- Your conversations (#208): the DM history's front door. -->
-			<h3 class="eyebrow mt-6">messages</h3>
-			<div class="panel mt-2">
-				{#each dmHeads.heads as head (head.peerId)}
-					<button
-						onclick={() => {
-							dm.show(head.peerId, head.peerName);
-							dmHeads.bump();
-						}}
-						class="border-ink/5 hover:bg-surface flex w-full items-center gap-3 border-b px-4 py-2.5 text-left transition-colors last:border-b-0"
-					>
-						<span class="relative shrink-0">
-							<MessageCircle size={15} class="text-muted" />
-							{#if dmHeads.unread(head.peerId)}
-								<span
-									class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
-								></span>
-							{/if}
-						</span>
-						<span class="min-w-0">
-							<span class="block truncate text-xs font-medium"
-								>{head.peerName}</span
-							>
-							<span class="text-muted block truncate text-[11px]"
-								>{head.mine ? 'you: ' : ''}{head.text}</span
-							>
-						</span>
-						<span class="text-muted/60 ml-auto shrink-0 text-[10px]">
-							{new Date(head.at).toLocaleTimeString(undefined, {
-								hour: '2-digit',
-								minute: '2-digit',
-							})}
-						</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-
 		{#if candidates.length > 0}
 			<div class="mt-3 max-w-xs">
 				<Select

@@ -10,6 +10,7 @@
 		Bell,
 		BellOff,
 		LogOut,
+		MessageCircle,
 		Mic,
 		MicOff,
 		Monitor,
@@ -19,6 +20,8 @@
 		Video,
 		VideoOff,
 	} from '@lucide/svelte';
+	import { dm } from '$lib/dm/dm.svelte';
+	import { dmHeads } from '$lib/dm/heads.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let {
@@ -214,6 +217,32 @@
 			</li>
 		{/each}
 	</ul>
+
+	{#if dmHeads.heads.length > 0}
+		<!-- DM threads live on the rail (like Discord), not on Home — one
+		     click from anywhere, unread dot included. -->
+		<div class="eyebrow px-4 pt-3 pb-1">messages</div>
+		<ul class="px-2">
+			{#each dmHeads.heads as head (head.peerId)}
+				<li>
+					<button
+						onclick={() => {
+							dm.show(head.peerId, head.peerName);
+							dmHeads.bump();
+						}}
+						class="text-muted hover:text-ink flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+					>
+						<MessageCircle size={13} class="shrink-0" />
+						<span class="truncate">{head.peerName}</span>
+						{#if dmHeads.unread(head.peerId)}
+							<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
+							></span>
+						{/if}
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 
 	<div class="eyebrow px-4 pt-3 pb-1">everywhere</div>
 	<ul class="px-2 pb-2">
