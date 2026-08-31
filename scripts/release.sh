@@ -39,6 +39,15 @@ fi
 month=$(date +%Y.%m)
 last=$(git tag --list "$month.*" | awk -F. '{print $3}' | sort -n | tail -1)
 version="$month.$((${last:-0} + 1))"
+# A previous run can have promoted the changelog and then failed before
+# tagging — which is exactly what happened cutting 2026.09.1. Re-running would
+# otherwise add a second heading for the same version.
+if grep -qF "## [$version]" CHANGELOG.md; then
+	echo "CHANGELOG.md already has a section for $version — an earlier run promoted it but did not tag." >&2
+	echo "Tag that commit by hand, or revert the promotion, then run this again." >&2
+	exit 1
+fi
+
 prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
 today=$(date +%F)
 
@@ -87,15 +96,30 @@ awk -v v="$version" '
 gh pr create --base main --head "$branch" --title "docs: release $version" --body-file "$notes"
 rm -f "$notes"
 
-# Step off the branch first so --delete-branch can remove it locally too.
-git checkout -q main
+# Detach rather than checking out main: main is often checked out in another
+# worktree, and `git checkout main` fails outright when it is — which is how
+# 2026.09.1 got its PR opened and then stopped short of its tag.
+git checkout -q --detach
 # Zero approvals are required, but mergeability takes a moment to compute.
 for _ in $(seq 30); do
 	[ "$(gh pr view "$branch" --json mergeable --jq .mergeable)" = MERGEABLE ] && break
 	sleep 2
 done
-gh pr merge "$branch" --squash --delete-branch
-git pull -q --ff-only
-git tag -a "$version" -m "$version"
+gh pr merge "$branch" --squash
+
+# Tag the merged commit directly. Nothing here needs main checked out, so this
+# works from any worktree.
+git fetch -q origin main
+git tag -a "$version" -m "$version" FETCH_HEAD
 git push -q origin "$version"
+git push -q origin --delete "$branch" 2>/dev/null || true
+git branch -q -D "$branch" 2>/dev/null || true
+
+# Back to main, and up to date with what was just merged. This fails harmlessly
+# when main is checked out in another worktree — the tag is pushed either way.
+if git checkout -q main 2>/dev/null; then
+	git merge -q --ff-only FETCH_HEAD 2>/dev/null || true
+else
+	echo "note: left on a detached HEAD — main is checked out in another worktree"
+fi
 echo "$version tagged and pushed — publish.yml builds the image and cuts the release"
