@@ -9,6 +9,7 @@
 	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
 	import { takeNext } from '$lib/auth/next';
 	import { fetchRailRooms } from '$lib/nav/rooms';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -19,6 +20,7 @@
 	import MobileNav from '$lib/nav/MobileNav.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
+	import Toasts from '$lib/components/Toasts.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
@@ -109,19 +111,19 @@
 		medals: PopoutMedal[];
 	} | null>(null);
 	async function openMember(slug: string, name: string) {
-		const res = await fetch(`/api/rooms/${slug}`).then(
-			(r) => (r.ok ? r.json() : null),
-			() => null,
-		);
-		const member = res?.members?.find(
-			(m: PopoutMember) => m.displayName === name,
-		);
+		const res = await api<{
+			name?: string;
+			members?: PopoutMember[];
+			medals?: PopoutMedal[];
+		}>(`/api/rooms/${slug}`);
+		if (!res.ok) return;
+		const member = res.data.members?.find((m) => m.displayName === name);
 		if (member)
 			popout = {
 				member,
-				roomName: res.name ?? slug,
+				roomName: res.data.name ?? slug,
 				slug,
-				medals: res.medals ?? [],
+				medals: res.data.medals ?? [],
 			};
 	}
 
@@ -260,3 +262,6 @@
 {:else}
 	{@render children()}
 {/if}
+
+<!-- App-wide, framed or not — a toast must be able to land anywhere. -->
+<Toasts />

@@ -37,15 +37,12 @@ function createAccountStore() {
 	async function load(): Promise<void> {
 		try {
 			const [meRes, provRes] = await Promise.all([
-				fetch('/api/me'),
-				fetch('/api/auth/providers'),
+				api<Me>('/api/me'),
+				api<{ providers?: string[] }>('/api/auth/providers'),
 			]);
-			me = meRes.ok ? await meRes.json() : null;
-			// 404 = server running without a database; both stay hidden.
-			providers = provRes.ok ? ((await provRes.json()).providers ?? []) : [];
-		} catch {
-			me = null;
-			providers = [];
+			me = meRes.ok ? meRes.data : null;
+			// Any failure (404 = server running without a database) stays hidden.
+			providers = provRes.ok ? (provRes.data.providers ?? []) : [];
 		} finally {
 			loaded = true;
 		}
@@ -79,7 +76,7 @@ function createAccountStore() {
 			return res.error;
 		},
 		async signOut(): Promise<void> {
-			await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+			await api('/api/auth/logout', { method: 'POST' });
 			me = null;
 		},
 	};

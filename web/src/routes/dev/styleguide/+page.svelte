@@ -181,33 +181,33 @@
 		</div>
 	</div>
 
-	<!-- Chrome components -->
+	<!-- Chrome components: the kit utilities from app.css. These ARE the
+	     definitions — never retype the class strings at a call site. -->
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Chrome</h2>
-	<div
-		class="border-muted/15 bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-6"
-	>
-		<button
-			class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
-			>Primary</button
-		>
-		<button
-			class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-			>Secondary</button
-		>
-		<button class="text-muted hover:text-ink rounded px-4 py-2 text-sm"
-			>Ghost</button
-		>
-		<button
-			class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
-			>Destructive</button
-		>
-		<input
-			class="border-muted/25 placeholder:text-muted/60 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none"
-			placeholder="Room name"
-		/>
+	<div class="panel mt-4 flex flex-wrap items-center gap-3 p-6">
+		<button class="btn btn-primary">Primary</button>
+		<button class="btn btn-secondary">Secondary</button>
+		<button class="btn btn-ghost">Ghost</button>
+		<button class="btn btn-danger">Destructive</button>
+		<button class="btn btn-accent">Go live</button>
+		<button class="btn btn-primary btn-xs">Compact</button>
+		<button class="btn btn-secondary btn-lg">Big tap target</button>
+		<button class="btn btn-primary" disabled>Disabled</button>
+		<input class="input" placeholder="Room name" />
 		<span
 			class="border-muted/25 text-muted rounded-full border px-3 py-1 text-xs"
 			>coach</span
 		>
 	</div>
+	<p class="text-muted mt-3 max-w-2xl text-xs">
+		<code class="text-ink/80">btn</code> + variant (+
+		<code class="text-ink/80">btn-xs</code>/<code class="text-ink/80"
+			>btn-lg</code
+		>), <code class="text-ink/80">input</code>,
+		<code class="text-ink/80">panel</code>,
+		<code class="text-ink/80">eyebrow</code>,
+		<code class="text-ink/80">page</code> — defined once in app.css. Icons are
+		Lucide (<code class="text-ink/80">@lucide/svelte</code>), not unicode
+		glyphs.
+	</p>
 </main>

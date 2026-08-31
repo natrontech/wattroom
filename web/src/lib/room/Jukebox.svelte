@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Pause, Play, SkipForward } from '@lucide/svelte';
+	import { formatClockLong } from '$lib/format';
 	import type { JukeboxState } from '$lib/protocol';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
@@ -43,13 +44,6 @@
 			? Math.min(Math.max(pos, 0), duration)
 			: Math.max(pos, 0);
 	});
-	function fmt(sec: number): string {
-		const s = Math.max(0, Math.floor(sec));
-		const m = Math.floor(s / 60) % 60;
-		const h = Math.floor(s / 3600);
-		const two = (n: number) => String(n).padStart(2, '0');
-		return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
-	}
 	const maxSeekable = 6 * 3600; // mirrors the server clamp
 	function seekTo(pos: number) {
 		const max = duration > 0 ? duration - 1 : maxSeekable;
@@ -77,14 +71,12 @@
 	<div class="flex flex-wrap items-start gap-4">
 		<div class="min-w-60 flex-1">
 			<div class="flex items-center gap-2">
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>jukebox</span
-				>
+				<span class="eyebrow">jukebox</span>
 				{#if jukebox?.current}
 					<span class="truncate text-xs">{jukebox.current.title}</span>
 					<button
 						onclick={() => send(jukebox?.playing ? 'pause' : 'play')}
-						class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-2.5 py-1.5"
+						class="btn btn-secondary btn-xs ml-auto"
 						aria-label={jukebox.playing ? 'pause' : 'play'}
 					>
 						{#if jukebox.playing}<Pause size={13} />{:else}<Play
@@ -93,7 +85,7 @@
 					</button>
 					<button
 						onclick={() => send('skip')}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5"
+						class="btn btn-secondary btn-xs"
 						aria-label="skip"><SkipForward size={13} /></button
 					>
 				{/if}
@@ -103,7 +95,7 @@
 				<div class="mt-2 flex items-center gap-2">
 					<button
 						onclick={() => seekTo(elapsed - 30)}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						class="btn btn-secondary btn-xs"
 						aria-label="back 30 seconds">−30s</button
 					>
 					<div class="min-w-0 flex-1">
@@ -130,13 +122,13 @@
 						<div
 							class="text-muted flex justify-between font-mono text-[10px] tabular-nums"
 						>
-							<span>{fmt(elapsed)}</span>
-							<span>{duration > 0 ? fmt(duration) : '–:––'}</span>
+							<span>{formatClockLong(elapsed)}</span>
+							<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
 						</div>
 					</div>
 					<button
 						onclick={() => seekTo(elapsed + 30)}
-						class="border-muted/30 hover:border-muted/60 rounded border px-2.5 py-1.5 text-xs"
+						class="btn btn-secondary btn-xs"
 						aria-label="forward 30 seconds">+30s</button
 					>
 				</div>
@@ -155,11 +147,9 @@
 				<input
 					bind:value={url}
 					placeholder="Paste a YouTube link"
-					class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-xs outline-none"
+					class="input input-xs min-w-0 flex-1"
 				/>
-				<button
-					disabled={!url.trim()}
-					class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+				<button disabled={!url.trim()} class="btn btn-primary btn-xs"
 					>Add</button
 				>
 			</form>

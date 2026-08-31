@@ -1,12 +1,9 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { play } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import {
-		formatClock,
-		ZONE_BG,
-		ZONE_NAMES,
-		ZONE_TEXT,
-	} from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import type { GameState, Rider } from '$lib/protocol';
 
@@ -96,9 +93,7 @@
 			>
 		{/if}
 		{#if canControl}
-			<button
-				onclick={end}
-				class="border-muted/30 hover:border-muted/60 ml-auto rounded border px-3 py-1 text-xs"
+			<button onclick={end} class="btn btn-secondary btn-xs ml-auto"
 				>End game</button
 			>
 		{/if}
@@ -137,7 +132,7 @@
 				>
 					{Math.round((game.linePct ?? 0) * 100)}%
 				</div>
-				<p class="text-muted mt-1.5 text-[10px] tracking-wider uppercase">
+				<p class="eyebrow mt-1.5">
 					{game.mode === 'collective-ramp' ? 'room average line' : 'this round'}
 				</p>
 			</div>
@@ -145,9 +140,7 @@
 				<div class="font-display text-2xl leading-none font-bold tabular-nums">
 					{alive.length}
 				</div>
-				<p class="text-muted mt-1.5 text-[10px] tracking-wider uppercase">
-					still in
-				</p>
+				<p class="eyebrow mt-1.5">still in</p>
 			</div>
 			{#if out.length > 0}
 				<p class="text-muted self-center text-xs">
@@ -183,7 +176,7 @@
 	{:else if game.mode === 'watt-golf'}
 		<!-- The whole mode is the absence of a meter. -->
 		<div class="mt-4 text-center">
-			<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
+			<p class="eyebrow">
 				hole {game.round} of 9
 			</p>
 			<div
@@ -206,7 +199,7 @@
 		</div>
 	{:else if game.mode === 'sprint-roulette'}
 		<div class="mt-4 text-center">
-			<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
+			<p class="eyebrow">
 				{game.roundEndsAtMs && game.roundEndsAtMs > now
 					? 'sprint!'
 					: 'next sprint'}
@@ -243,14 +236,15 @@
 						>{i + 1}</span
 					>
 					<span class="w-20 truncate text-sm">{name(id)}</span>
-					<div class="bg-surface h-2 flex-1 overflow-hidden rounded-full">
-						<div
-							class="{ZONE_BG[4]} h-full rounded-full"
-							style="width: {((rider.score ?? 0) /
-								Math.max(1, standing[0]?.[1].score ?? 1)) *
-								100}%"
-						></div>
-					</div>
+					<ProgressBar
+						pct={((rider.score ?? 0) /
+							Math.max(1, standing[0]?.[1].score ?? 1)) *
+							100}
+						h="h-2"
+						track="bg-surface"
+						fill={ZONE_BG[4]}
+						class="flex-1"
+					/>
 					<span class="font-display w-8 text-right font-bold tabular-nums"
 						>{Math.round(rider.score ?? 0)}</span
 					>
@@ -264,9 +258,7 @@
 		<!-- Team Relay: one number the whole room owns. -->
 		<div class="mt-4 flex flex-wrap items-baseline gap-6">
 			<div>
-				<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					on the front
-				</p>
+				<p class="eyebrow">on the front</p>
 				<p class="font-display text-watt glow-text mt-1 text-2xl font-bold">
 					{front ? name(front[0]) : '—'}
 				</p>
@@ -277,9 +269,7 @@
 				</p>
 			</div>
 			<div class="ml-auto text-right">
-				<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					room distance
-				</p>
+				<p class="eyebrow">room distance</p>
 				<p class="font-display mt-1 text-2xl font-bold tabular-nums">
 					{Math.round((game.roomDistance ?? 0) / 1000)} kJ
 				</p>

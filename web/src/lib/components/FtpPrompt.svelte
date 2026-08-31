@@ -28,15 +28,9 @@
 		have set. Raising it makes every workout harder, so it's your call.
 	</p>
 	<div class="mt-4 flex gap-2">
-		<button
-			onclick={onApply}
-			class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium"
+		<button onclick={onApply} class="btn btn-primary"
 			>Set FTP to {suggested} W</button
 		>
-		<button
-			onclick={onKeep}
-			class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
-			>Keep {current} W</button
-		>
+		<button onclick={onKeep} class="btn btn-secondary">Keep {current} W</button>
 	</div>
 </div>

@@ -64,3 +64,12 @@ A light scheme exists, but the identity holds its ground:
 - Components never say white or black — the `--color-ink`/`--color-paper`
   pair flips with the scheme, and the zone ramp gets darkened variants so
   the dataviz survives white.
+
+## Amendment — the toggle shipped after all (2026-08-31, #230)
+
+"No toggle" above is superseded: riders asked, and the rail now carries a
+three-state cycle (auto → dark → light, `theme.svelte.ts`, persisted). The
+95%-rule reading changed with the evidence — scheme preference turned out to
+be one of the settings people genuinely differ on. Everything else in the
+amendment stands: `.cave` still forces dark and ignores the toggle, glow
+still exists only in the cave.

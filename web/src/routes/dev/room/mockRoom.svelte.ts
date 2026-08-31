@@ -6,12 +6,12 @@ import type { Segment, Workout } from '$lib/workout/types';
 export {
 	CEILING,
 	fillPct,
-	formatClock,
 	ZONE_BG,
 	ZONE_NAMES,
 	ZONE_TEXT,
 	zoneOf,
 } from '$lib/components/zones';
+export { formatClock } from '$lib/format';
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
 
 export const workout: Workout = {

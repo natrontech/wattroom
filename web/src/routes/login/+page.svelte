@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { GITHUB_MARK, GOOGLE_G, STRAVA_MARK } from '$lib/brand/icons';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { rememberNext, takeNext } from '$lib/auth/next';
 
@@ -50,7 +51,7 @@
 			<p class="text-muted mt-3 text-sm">Train together, not alone.</p>
 
 			{#if !account.loaded}
-				<p class="text-muted mt-8 text-sm">Loading…</p>
+				<Skeleton class="mt-8 h-11" rows={2} />
 			{:else if account.providers.length > 0}
 				<div class="mt-8 grid gap-2.5">
 					{#each account.providers as id (id)}
