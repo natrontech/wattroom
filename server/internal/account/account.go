@@ -24,7 +24,7 @@ import (
 // Sessions is what account needs from auth: who is asking, and the ability to
 // end their session after the purge.
 type Sessions interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
@@ -46,9 +46,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 // ride's raw 1 Hz samples as its own JSON file, decompressed — an export the
 // rider can open, not a database dump they cannot.
 func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.sessions.User(r)
+	user, ok := s.sessions.RequireUser(w, r, "Sign in to export your data.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in to export your data.")
 		return
 	}
 	rides, err := s.store.Queries.ListUserRidesFull(r.Context(), user.ID)
@@ -124,9 +123,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 // handleDelete is the purge. The confirmation lives client-side (a typed
 // phrase); the server's job is to be certain who is asking and delete once.
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.sessions.User(r)
+	user, ok := s.sessions.RequireUser(w, r, "Sign in first.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Sign in first.")
 		return
 	}
 	if err := s.store.Queries.DeleteUser(r.Context(), user.ID); err != nil {

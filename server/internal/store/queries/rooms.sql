@@ -72,6 +72,10 @@ order by starts_at limit 1;
 -- name: DeleteScheduledSession :execrows
 delete from scheduled_sessions where id = $1 and room_id = $2;
 
+-- name: RescheduleSession :one
+update scheduled_sessions set starts_at = $3
+where id = $1 and room_id = $2 returning *;
+
 -- name: ListRoomCalendar :many
 -- The iCal feed (#245): unlike the in-room list, it keeps a month of history
 -- and has no cap — a calendar that self-erases reads as broken.

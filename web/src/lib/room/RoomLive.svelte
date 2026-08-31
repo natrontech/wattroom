@@ -24,19 +24,15 @@
 	import { formatClock, formatWhen, wkg } from '$lib/format';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { durationSeconds, flatten, targetAt } from '$lib/workout/engine';
+	import { flatten, targetAt } from '$lib/workout/engine';
 	import { library } from '$lib/workout/library';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
-	import {
-		describeBlock,
-		TILE_METRICS,
-		type RoomRider,
-		type TileMetric,
-	} from '$lib/room/view';
+	import { describeBlock, type RoomRider } from '$lib/room/view';
+	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -46,8 +42,7 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Banner from '$lib/components/Banner.svelte';
-	import Select from '$lib/components/Select.svelte';
-	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -55,7 +50,7 @@
 	import RoomAdmin from '$lib/room/RoomAdmin.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import type { Medal } from '$lib/components/MedalCard.svelte';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { hrZoneOf, ZONE_TEXT, zoneOf } from '$lib/components/zones';
 
 	interface AdminMember {
 		id: string;
@@ -84,6 +79,7 @@
 		onRemove,
 		upcoming = [],
 		onSchedule,
+		onReschedule,
 		onUnschedule,
 		icsToken = '',
 		onRotateIcs,
@@ -112,6 +108,7 @@
 			createdBy: string;
 		}[];
 		onSchedule: (name: string, json: string, startsAt: string) => void;
+		onReschedule: (id: string, startsAt: string) => void;
 		onUnschedule: (id: string) => void;
 		/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
 		icsToken?: string;
@@ -246,46 +243,14 @@
 			: null,
 	);
 
-	// ── Layouts and tile metrics (#22) — per-rider conveniences ──────────────
-	type Layout = 'metrics' | 'video' | 'media';
-	const layouts: { id: Layout; label: string }[] = [
-		{ id: 'metrics', label: 'Metrics' },
-		{ id: 'video', label: 'Video' },
-		{ id: 'media', label: 'Media' },
-	];
-	const LAYOUT_KEY = 'wattroom.layout.v1';
-	let layout = $state<Layout>('metrics');
+	// ── One view, focus instead of layouts (#181 feedback) ───────────────────
+	// The Metrics/Video/Media tabs are gone: tiles always fuse camera and
+	// metrics, media lives in the panel/dock, and tapping a tile spotlights
+	// that rider. Ephemeral by design — a focus is a glance, not a preference.
 	let tv = $state(false);
-	try {
-		const stored = localStorage.getItem(LAYOUT_KEY);
-		// 'media' is deliberately not restored: landing in a player layout
-		// with an empty deck is a void (#170) — it is a mode you enter when
-		// music plays, not a preference.
-		if (stored === 'video') layout = stored;
-	} catch {
-		/* default stands */
-	}
-	function setLayout(next: Layout) {
-		layout = next;
-		try {
-			localStorage.setItem(LAYOUT_KEY, next);
-		} catch {
-			/* convenience only */
-		}
-	}
-	let tileMetrics = $state<TileMetric[]>(['hr']);
-	function toggleMetric(id: TileMetric) {
-		tileMetrics = tileMetrics.includes(id)
-			? tileMetrics.filter((m) => m !== id)
-			: [...tileMetrics, id];
-	}
-	const riderGrid = $derived(
-		layout === 'media'
-			? 'shrink-0 grid-cols-3 sm:grid-cols-6'
-			: layout === 'video'
-				? 'sm:grid-cols-2 xl:grid-cols-3'
-				: 'shrink-0 sm:grid-cols-2 xl:grid-cols-3',
-	);
+	let focusId = $state<string | null>(null);
+	const focused = $derived(riders.find((rider) => rider.id === focusId));
+	const others = $derived(riders.filter((rider) => rider.id !== focusId));
 
 	// ── Sounds follow state (riders are not watching) ─────────────────────────
 	// Cue ducking + the music-aware gate threshold moved to the room
@@ -307,18 +272,6 @@
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
-	let pickedId = $state(library[0].id);
-	const GAMES = [
-		{ id: 'backyard-ramp', label: 'Backyard Ramp' },
-		{ id: 'collective-ramp', label: 'Collective Ramp' },
-		{ id: 'floor-is-lava', label: 'Floor is Lava' },
-		{ id: 'watt-golf', label: 'Watt Golf' },
-		{ id: 'sprint-roulette', label: 'Sprint Roulette' },
-		{ id: 'points-race', label: 'Points Race' },
-		{ id: 'team-relay', label: 'Team Relay' },
-	];
-	let pickedGame = $state(GAMES[0].id);
-
 	function startWorkout(picked: import('$lib/workout/types').Workout) {
 		mySamples = [];
 		myTrace = [];
@@ -336,9 +289,8 @@
 		setup = false;
 	}
 
-	// ── Session setup (#115): training-first, games one step away ─────────────
+	// ── Session setup (#115, redesigned as SessionPicker) ─────────────────────
 	let setup = $state(false);
-	let setupGames = $state(false);
 	const custom = createCustomStore();
 	// Recently ridden first: the rider's history ranks the shelf.
 	let recency = $state<Map<string, number>>(new Map());
@@ -363,21 +315,10 @@
 				(recency.get(b.workout.name) ?? 999),
 		),
 	);
-	const setupPicked = $derived(
-		shelf.find((entry) => entry.id === pickedId) ?? shelf[0],
-	);
-	const setupSegments = $derived(
-		setupPicked ? flatten(setupPicked.workout) : [],
-	);
+	// The quick-start on the lounge floor offers the most recently ridden.
+	const setupPicked = $derived(shelf[0]);
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
-	let planAt = $state(defaultPlanAt());
-	function defaultPlanAt(): string {
-		const t = new Date(Date.now() + 60 * 60 * 1000);
-		t.setMinutes(0, 0, 0);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		return t.toISOString().slice(0, 16); // datetime-local format
-	}
 	/** Startable a little early and through the grace the server keeps it visible. */
 	function due(iso: string): boolean {
 		const diff = new Date(iso).getTime() - Date.now();
@@ -390,6 +331,16 @@
 		toasts.push(
 			'Calendar link copied — subscribe "from URL" in your calendar app.',
 		);
+	}
+
+	// Moving a plan (#258): "move" folds a WhenPicker out under the card row.
+	let movingId = $state<string | null>(null);
+	let moveAt = $state('');
+	function openMove(entry: (typeof upcoming)[number]) {
+		movingId = movingId === entry.id ? null : entry.id;
+		const t = new Date(entry.startsAt);
+		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
+		moveAt = t.toISOString().slice(0, 16); // datetime-local format
 	}
 
 	function startScheduled(entry: (typeof upcoming)[number]) {
@@ -515,13 +466,23 @@
 	const currentTitle = $derived(live.tick?.jukebox?.current?.title ?? '');
 
 	const readouts = $derived([
-		{ label: 'rpm', value: String(you.cadence) },
-		...(you.hr > 0 ? [{ label: 'bpm', value: String(you.hr) }] : []),
+		{ label: 'rpm', value: String(you.cadence), tone: '' },
+		...(you.hr > 0
+			? [
+					{
+						label: 'bpm',
+						value: String(you.hr),
+						// Own bpm coloured by HR zone once an LTHR anchors them (ADR-0014).
+						tone: ZONE_TEXT[hrZoneOf(you.hr, profile.current.lthr)],
+					},
+				]
+			: []),
 		{
 			label: 'w/kg',
 			value: wkg(you.watts, you.kg),
+			tone: '',
 		},
-		{ label: 'exec', value: `${Math.round(you.execution * 100)}%` },
+		{ label: 'exec', value: `${Math.round(you.execution * 100)}%`, tone: '' },
 	]);
 	const myZone = $derived(zoneOf(you.watts, you.ftp));
 	let admin = $state(false);
@@ -590,6 +551,7 @@
 			tv = false;
 			setup = false;
 			chatSheet = false;
+			focusId = null;
 		}
 	}}
 />
@@ -617,115 +579,22 @@
 {/if}
 
 {#if setup}
-	<!-- Session setup (#115): the room's "what are we doing tonight" moment.
-	     Training is the whole default flow; games are one step away. -->
-	<button
-		class="bg-paper/50 fixed inset-0 z-40"
-		aria-label="Close session setup"
-		onclick={() => (setup = false)}
-	></button>
-	<div
-		class="border-muted/15 bg-surface fixed inset-x-4 top-[8dvh] bottom-[8dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[44rem] md:-translate-x-1/2"
-	>
-		<header class="border-ink/5 flex items-center gap-3 border-b px-5 py-4">
-			<h2 class="font-display text-lg font-bold">Tonight's session</h2>
-			<button
-				onclick={() => (setup = false)}
-				class="text-muted hover:text-ink ml-auto text-sm">Close</button
-			>
-		</header>
-
-		<div class="flex min-h-0 flex-1">
-			<ul class="border-ink/5 w-56 shrink-0 overflow-y-auto border-r p-2">
-				{#each shelf as entry (entry.id)}
-					<li>
-						<button
-							onclick={() => (pickedId = entry.id)}
-							class="w-full rounded px-3 py-2.5 text-left {setupPicked?.id ===
-							entry.id
-								? 'bg-surface-raised text-ink'
-								: 'text-muted hover:text-ink'}"
-						>
-							<span class="block truncate text-sm font-medium"
-								>{entry.workout.name}</span
-							>
-							<span class="block font-mono text-[11px] tabular-nums"
-								>{formatClock(durationSeconds(entry.workout))}{entry.yours
-									? ' · yours'
-									: ''}</span
-							>
-						</button>
-					</li>
-				{/each}
-			</ul>
-
-			<div class="flex min-w-0 flex-1 flex-col p-4">
-				{#if setupPicked}
-					<p class="font-display font-bold">{setupPicked.workout.name}</p>
-					<p class="text-muted mt-1 text-xs">
-						{'summary' in setupPicked ? setupPicked.summary : ''}
-					</p>
-					<div class="panel mt-3 overflow-hidden">
-						<IntervalGraph
-							segments={setupSegments}
-							total={durationSeconds(setupPicked.workout)}
-							elapsed={0}
-							ftp={profile.current.ftp}
-							trace={[]}
-						/>
-					</div>
-					<div class="mt-4 flex flex-wrap items-center gap-2">
-						<button
-							onclick={() => startWorkout(setupPicked.workout)}
-							class="btn btn-primary btn-lg"
-							>Start {setupPicked.workout.name}</button
-						>
-						<span class="text-muted text-xs">or plan it:</span>
-						<WhenPicker bind:value={planAt} />
-						<button
-							onclick={() => {
-								onSchedule(
-									setupPicked.workout.name,
-									JSON.stringify(setupPicked.workout),
-									new Date(planAt).toISOString(),
-								);
-								setup = false;
-							}}
-							disabled={adminBusy || !planAt}
-							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-2 text-xs disabled:opacity-40"
-							>Plan</button
-						>
-					</div>
-				{/if}
-
-				<div class="border-ink/5 mt-auto border-t pt-3">
-					{#if !setupGames}
-						<button
-							onclick={() => (setupGames = true)}
-							class="text-muted hover:text-ink text-sm underline"
-							>Play a game instead</button
-						>
-					{:else if !live.tick?.game}
-						<div class="flex flex-wrap items-center gap-2">
-							<Select
-								bind:value={pickedGame}
-								label="Game mode"
-								options={GAMES.map((g) => ({ value: g.id, label: g.label }))}
-							/>
-							<button
-								onclick={() => {
-									live.control('game', undefined, pickedGame);
-									setup = false;
-								}}
-								class="border-neon/50 hover:bg-neon/10 rounded border px-4 py-2 text-sm"
-								>Start game</button
-							>
-						</div>
-					{/if}
-				</div>
-			</div>
-		</div>
-	</div>
+	<SessionPicker
+		{shelf}
+		ftp={profile.current.ftp}
+		busy={adminBusy}
+		gameRunning={!!live.tick?.game}
+		onStart={(workout) => startWorkout(workout)}
+		onPlan={(name, json, at) => {
+			onSchedule(name, json, at);
+			setup = false;
+		}}
+		onStartGame={(id) => {
+			live.control('game', undefined, id);
+			setup = false;
+		}}
+		onClose={() => (setup = false)}
+	/>
 {/if}
 
 <RoomAdmin
@@ -768,29 +637,9 @@
 				</p>
 			</div>
 
-			<div class="border-muted/20 ml-auto flex gap-1 rounded border p-0.5">
-				{#each layouts as option (option.id)}
-					<button
-						onclick={() => setLayout(option.id)}
-						class="rounded px-2.5 py-1 text-xs {layout === option.id
-							? 'bg-surface-raised text-ink'
-							: 'text-muted hover:text-ink'}">{option.label}</button
-					>
-				{/each}
-			</div>
-			<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-				{#each TILE_METRICS as metric (metric.id)}
-					<button
-						onclick={() => toggleMetric(metric.id)}
-						class="rounded px-2 py-1 text-xs {tileMetrics.includes(metric.id)
-							? 'bg-surface-raised text-ink'
-							: 'text-muted hover:text-ink'}">{metric.label}</button
-					>
-				{/each}
-			</div>
 			<button
 				onclick={() => (tv = true)}
-				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
+				class="border-muted/20 text-muted hover:text-ink ml-auto inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
 				><Tv size={13} /> TV</button
 			>
 			<button
@@ -880,35 +729,6 @@
 			</div>
 		{/if}
 
-		{#if layout === 'media'}
-			<!-- Media-focus: the controls, front and centre — the player itself
-			     lives in the dock (#216), so this is a desk, not a screen (#219). -->
-			<div class="mx-auto w-full max-w-xl">
-				{#if !live.tick?.jukebox?.current && !live.tick?.jukebox?.queue?.length}
-					<p
-						class="text-muted border-muted/10 rounded-lg border border-dashed px-5 py-3 text-center text-xs"
-					>
-						Nothing queued yet — paste a YouTube link and the whole room hears
-						it in sync, ducked under voice.
-					</p>
-				{/if}
-				<Jukebox
-					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title, jamUrl, positionSec) =>
-						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-				/>
-			</div>
-		{/if}
-
-		{#if layout === 'video' && !Object.values(av.videoOf).some(Boolean)}
-			<p
-				class="text-muted border-muted/10 mb-3 rounded-lg border border-dashed px-5 py-4 text-center text-xs"
-			>
-				Nobody's on camera — join voice and yours turns on. Tiles show video the
-				moment it arrives.
-			</p>
-		{/if}
-
 		{#if av.screenOf}
 			{@const sharer =
 				riders.find((r) => r.id === av.screenOf?.id)?.name ?? 'someone'}
@@ -938,21 +758,52 @@
 			</div>
 		{/if}
 
-		<!-- Rider tiles: camera and power fused — one grid, not three. -->
-		<div class="grid gap-3 {riderGrid} {layout === 'media' ? 'mt-3' : ''}">
-			{#each riders as rider (rider.id)}
-				<RiderTile
-					{rider}
-					{phase}
-					stretch={layout === 'video'}
-					metrics={tileMetrics}
-					videoKey={av.videoOf[rider.id]}
-					videoAttach={av.videoOf[rider.id]
-						? (node) => av.attach(rider.id, node)
-						: undefined}
-				/>
-			{/each}
-		</div>
+		<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
+		     tap a tile to spotlight that rider, tap again to let go. -->
+		{#snippet tile(rider: RoomRider)}
+			<RiderTile
+				{rider}
+				{phase}
+				videoKey={av.videoOf[rider.id]}
+				videoAttach={av.videoOf[rider.id]
+					? (node) => av.attach(rider.id, node)
+					: undefined}
+			/>
+		{/snippet}
+		{#if focused}
+			<button
+				onclick={() => (focusId = null)}
+				class="block w-full max-w-3xl text-left"
+				title="tap to unfocus"
+			>
+				{@render tile(focused)}
+			</button>
+			{#if others.length > 0}
+				<div class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-6">
+					{#each others as rider (rider.id)}
+						<button
+							onclick={() => (focusId = rider.id)}
+							class="block text-left"
+							title="focus {rider.name}"
+						>
+							{@render tile(rider)}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		{:else}
+			<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				{#each riders as rider (rider.id)}
+					<button
+						onclick={() => (focusId = rider.id)}
+						class="block text-left"
+						title="focus {rider.name}"
+					>
+						{@render tile(rider)}
+					</button>
+				{/each}
+			</div>
+		{/if}
 
 		{#if !trainer}
 			<div class="mt-3 flex flex-wrap items-center gap-2">
@@ -1051,12 +902,31 @@
 							{/if}
 							{#if canControl}
 								<button
+									onclick={() => openMove(entry)}
+									class="text-muted hover:text-ink text-[11px] underline"
+									>move</button
+								>
+								<button
 									onclick={() => onUnschedule(entry.id)}
 									class="text-muted hover:text-ink text-[11px] underline"
 									>remove</button
 								>
 							{/if}
 						</span>
+						{#if canControl && movingId === entry.id}
+							<div class="flex w-full flex-wrap items-center gap-2 pt-1">
+								<WhenPicker bind:value={moveAt} />
+								<button
+									onclick={() => {
+										onReschedule(entry.id, new Date(moveAt).toISOString());
+										movingId = null;
+									}}
+									disabled={adminBusy || !moveAt}
+									class="btn btn-secondary btn-xs disabled:opacity-40"
+									>Move</button
+								>
+							</div>
+						{/if}
 					</div>
 				{/each}
 				{#if icsToken}
@@ -1134,7 +1004,7 @@
 				{#each readouts as readout (readout.label)}
 					<div class="text-right">
 						<span
-							class="font-display text-lg leading-none font-semibold tabular-nums"
+							class="font-display text-lg leading-none font-semibold tabular-nums {readout.tone}"
 							>{readout.value}</span
 						>
 						<span class="eyebrow ml-1">{readout.label}</span>
@@ -1184,7 +1054,7 @@
 					/>
 				</div>
 				<div class="mt-2">
-					<TargetWidget {you} variant="notch" compact={layout !== 'metrics'} />
+					<TargetWidget {you} variant="notch" />
 				</div>
 			{/if}
 			<div class="mt-2 grid gap-2 lg:grid-cols-[1fr_260px]">
@@ -1195,7 +1065,6 @@
 						elapsed={shared?.elapsed ?? 0}
 						ftp={you.ftp}
 						trace={you.trace}
-						compact={layout !== 'metrics'}
 					/>
 				</div>
 				<ExecutionMeter {riders} />
@@ -1232,8 +1101,7 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
-		showPlayer={layout !== 'media' &&
-			(!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl)}
+		showPlayer={!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl}
 		queue={queueView}
 		onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
 		onJam={(url) => live.jukebox('jam', undefined, undefined, url)}

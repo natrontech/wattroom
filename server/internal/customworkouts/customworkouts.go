@@ -18,7 +18,7 @@ import (
 
 // UserSource resolves the signed-in user — same shape rooms consumes.
 type UserSource interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
@@ -81,9 +81,8 @@ func nameOf(raw json.RawMessage) string {
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rows, err := s.store.Queries.ListUserWorkouts(r.Context(), user.ID)
@@ -103,9 +102,8 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	var req saveRequest
@@ -133,9 +131,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
@@ -169,9 +166,8 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))

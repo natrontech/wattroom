@@ -1,10 +1,12 @@
 package rooms
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -27,9 +29,8 @@ type scheduledJSON struct {
 // requireControl is requireRole for "coach or owner" — the pair the matrix
 // hands the shared timeline to.
 func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return db.Room{}, db.User{}, false
 	}
 	room, ok := s.roomBySlug(w, r)
@@ -71,8 +72,7 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 			"That is not a workout the engine can ride.", "workoutJson")
 		return
 	}
-	now := time.Now()
-	if req.StartsAt.Before(now.Add(-time.Minute)) || req.StartsAt.After(now.AddDate(0, 3, 0)) {
+	if !plannableAt(req.StartsAt) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A session is planned between now and three months out.", "startsAt")
 		return
@@ -94,6 +94,52 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		WorkoutJSON: string(row.WorkoutJson),
 		StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: user.DisplayName,
 	})
+}
+
+// plannableAt bounds both planning and moving a session.
+func plannableAt(t time.Time) bool {
+	now := time.Now()
+	return !t.Before(now.Add(-time.Minute)) && !t.After(now.AddDate(0, 3, 0))
+}
+
+func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
+	room, user, ok := s.requireControl(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	}
+	var req struct {
+		StartsAt time.Time `json:"startsAt"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	if !plannableAt(req.StartsAt) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A session is planned between now and three months out.", "startsAt")
+		return
+	}
+	row, err := s.store.Queries.RescheduleSession(r.Context(), db.RescheduleSessionParams{
+		ID: id, RoomID: room.ID, StartsAt: pgTime(req.StartsAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	}
+	if err != nil {
+		s.log.Error("reschedule failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be moved. Try again.")
+		return
+	}
+	if s.notifier != nil {
+		s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {

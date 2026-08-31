@@ -50,6 +50,7 @@ services:
       DOMAIN: ${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./maintenance.html:/srv/maintenance.html:ro
       - caddy-data:/data
       - caddy-config:/config
 

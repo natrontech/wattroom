@@ -277,7 +277,7 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, m.role, m.joined_at
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, m.role, m.joined_at
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -295,6 +295,7 @@ type ListRoomMembersRow struct {
 	Email         *string
 	NotifyPlanned bool
 	UnsubToken    pgtype.UUID
+	FriendCode    string
 	Role          string
 	JoinedAt      pgtype.Timestamptz
 }
@@ -319,6 +320,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.Email,
 			&i.NotifyPlanned,
 			&i.UnsubToken,
+			&i.FriendCode,
 			&i.Role,
 			&i.JoinedAt,
 		); err != nil {
@@ -450,6 +452,32 @@ func (q *Queries) NextRoomSession(ctx context.Context, roomID pgtype.UUID) (Next
 	row := q.db.QueryRow(ctx, nextRoomSession, roomID)
 	var i NextRoomSessionRow
 	err := row.Scan(&i.WorkoutName, &i.StartsAt)
+	return i, err
+}
+
+const rescheduleSession = `-- name: RescheduleSession :one
+update scheduled_sessions set starts_at = $3
+where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at
+`
+
+type RescheduleSessionParams struct {
+	ID       pgtype.UUID
+	RoomID   pgtype.UUID
+	StartsAt pgtype.Timestamptz
+}
+
+func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionParams) (ScheduledSession, error) {
+	row := q.db.QueryRow(ctx, rescheduleSession, arg.ID, arg.RoomID, arg.StartsAt)
+	var i ScheduledSession
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.WorkoutName,
+		&i.WorkoutJson,
+		&i.StartsAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 

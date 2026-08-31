@@ -14,7 +14,8 @@
 		rider,
 		phase,
 		stretch = false,
-		metrics = [],
+		// All three, always (#181 feedback) — the tile filters zeros itself.
+		metrics = ['hr', 'cadence', 'wkg'],
 		videoKey = 0,
 		videoAttach,
 	}: {

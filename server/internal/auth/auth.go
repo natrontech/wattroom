@@ -309,18 +309,51 @@ func (s *Service) startSession(w http.ResponseWriter, r *http.Request, userID pg
 	return nil
 }
 
-// User resolves the session cookie to the signed-in user. The zero-trust
-// version of "middleware" — handlers call it where they need it.
-func (s *Service) User(r *http.Request) (db.User, bool) {
+// errNoSession separates "no valid session" from "the lookup itself failed" —
+// a Postgres outage must read as internal_error, not bounce every signed-in
+// rider to login (#236).
+var errNoSession = errors.New("no session")
+
+func (s *Service) lookup(r *http.Request) (db.User, error) {
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil || cookie.Value == "" {
-		return db.User{}, false
+		return db.User{}, errNoSession
 	}
 	user, err := s.store.Queries.GetSessionUser(r.Context(), hash(cookie.Value))
-	if err != nil {
-		return db.User{}, false
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.User{}, errNoSession
 	}
-	return user, true
+	if err != nil {
+		return db.User{}, err
+	}
+	return user, nil
+}
+
+// User resolves the session cookie to the signed-in user, treating any
+// failure as signed-out. The zero-trust version of "middleware" — handlers
+// call it where they need it. For optional-auth paths only; handlers that
+// refuse anonymous requests use RequireUser, which tells 401 from 500.
+func (s *Service) User(r *http.Request) (db.User, bool) {
+	user, err := s.lookup(r)
+	return user, err == nil
+}
+
+// RequireUser is the mandatory-auth User: it resolves the session or writes
+// the refusal — 401 with signInMessage when there is no valid session, 500
+// when the lookup itself failed (.claude/rules/errors.md, #236).
+func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	user, err := s.lookup(r)
+	switch {
+	case err == nil:
+		return user, true
+	case errors.Is(err, errNoSession):
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", signInMessage)
+	default:
+		s.log.Error("session lookup failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"Could not check your session — try again in a moment.")
+	}
+	return db.User{}, false
 }
 
 func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -365,9 +398,8 @@ type meResponse struct {
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.User(r)
+	user, ok := s.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	response := s.toMe(user)
@@ -389,9 +421,8 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
 		return
 	}
-	user, ok := s.User(r)
+	user, ok := s.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 

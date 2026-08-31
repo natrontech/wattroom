@@ -59,14 +59,24 @@ func (s *Service) Register(mux *http.ServeMux) {
 // forget: the handler must not wait on a mail provider. The goroutine exits
 // when the member list is sent or the one-minute context runs out.
 func (s *Service) SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
+	s.sessionAsync(room, workoutName, startsAt, planner, false)
+}
+
+// SessionRescheduled is SessionPlanned for a plan that moved (#258): same
+// audience, subject and body say so.
+func (s *Service) SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
+	s.sessionAsync(room, workoutName, startsAt, planner, true)
+}
+
+func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		s.sessionPlanned(ctx, room, workoutName, startsAt, planner)
+		s.sessionMail(ctx, room, workoutName, startsAt, planner, moved)
 	}()
 }
 
-func (s *Service) sessionPlanned(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
+func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {
 	targets, err := s.store.Queries.ListRoomNotifyTargets(ctx, db.ListRoomNotifyTargetsParams{
 		RoomID: room.ID, ID: planner,
 	})
@@ -77,10 +87,15 @@ func (s *Service) sessionPlanned(ctx context.Context, room db.Room, workoutName 
 	// ponytail: times render in the server's zone — per-rider zones when riders ask.
 	when := startsAt.Local().Format("Mon 2 Jan, 15:04")
 	subject := fmt.Sprintf("%s rides %s — %s", room.Name, workoutName, when)
+	verb := "has a planned session"
+	if moved {
+		subject = "Moved: " + subject
+		verb = "moved a planned session to"
+	}
 	for _, t := range targets {
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
 			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
-		body := fmt.Sprintf(`%s has a planned session:
+		body := fmt.Sprintf(`%s %s:
 
     %s
     %s
@@ -89,7 +104,7 @@ Ride it here: %s/r/%s
 
 You get this because session emails are switched on in your WattRoom
 profile. Turn them off: %s`,
-			room.Name, workoutName, when, s.baseURL, room.Slug, unsub)
+			room.Name, verb, workoutName, when, s.baseURL, room.Slug, unsub)
 		if err := s.send(ctx, *t.Email, subject, body, unsub); err != nil {
 			s.log.Warn("session email failed", "err", err, "room", room.Slug)
 		}

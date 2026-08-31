@@ -100,8 +100,18 @@
 					<span
 						class="max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-snug {message.mine
 							? 'bg-neon/20'
-							: 'bg-surface'}">{message.text}</span
+							: 'bg-surface'}"
 					>
+						<!-- Only same-origin links become anchors (room invites);
+						     everything else stays inert text. -->
+						{#each message.text.split(/(https?:\/\/\S+)/) as part, i (i)}
+							{#if part.startsWith(location.origin + '/')}
+								<a href={part.slice(location.origin.length)} class="underline"
+									>{part}</a
+								>
+							{:else}{part}{/if}
+						{/each}
+					</span>
 				</div>
 			{:else}
 				<p class="text-muted/60 text-xs">

@@ -147,6 +147,11 @@
 					act(`/api/rooms/${room?.slug}/schedule`, {
 						json: { workoutName, workoutJson, startsAt },
 					})}
+				onReschedule={(id, startsAt) =>
+					act(`/api/rooms/${room?.slug}/schedule/${id}`, {
+						method: 'PATCH',
+						json: { startsAt },
+					})}
 				onUnschedule={(id) =>
 					act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
 				icsToken={room.icsToken ?? ''}

@@ -14,7 +14,12 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-import "log/slog"
+import (
+	"encoding/json"
+	"log/slog"
+
+	"github.com/natrontech/wattroom/server/internal/httpx"
+)
 
 func testService(t *testing.T) *Service {
 	t.Helper()
@@ -394,4 +399,68 @@ func TestSyntheticSignIn(t *testing.T) {
 			t.Fatalf("synthetic must not appear in the provider list: %s", rec.Body.String())
 		}
 	})
+}
+
+// #236: a Postgres outage must read as internal_error (500), never bounce a
+// valid session to login as "unauthorized" (401).
+func TestRequireUserTellsOutageFromSignedOut(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	if err := s.startSession(rec, req, user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	session := rec.Result().Cookies()[0]
+
+	// Ordered: the last case closes the pool.
+	tests := []struct {
+		name       string
+		cookie     *http.Cookie
+		breakDB    bool
+		wantOK     bool
+		wantStatus int
+		wantCode   string
+	}{
+		{"valid session", session, false, true, 0, ""},
+		{"no cookie", nil, false, false, http.StatusUnauthorized, "unauthorized"},
+		{"stale cookie", &http.Cookie{
+			Name: sessionCookie, Value: "stale",
+			Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		}, false, false, http.StatusUnauthorized, "unauthorized"},
+		{"database down", session, true, false, http.StatusInternalServerError, "internal_error"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.breakDB {
+				s.store.Pool.Close()
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			if tt.cookie != nil {
+				r.AddCookie(tt.cookie)
+			}
+			got, ok := s.RequireUser(w, r, "Not signed in.")
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %v, want %v (body %s)", ok, tt.wantOK, w.Body.String())
+			}
+			if tt.wantOK {
+				if got.ID != user.ID {
+					t.Fatalf("wrong user resolved")
+				}
+				return
+			}
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d (body %s)", w.Code, tt.wantStatus, w.Body.String())
+			}
+			var body httpx.ErrorResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("bad error body %q: %v", w.Body.String(), err)
+			}
+			if body.Error != tt.wantCode {
+				t.Fatalf("error code = %q, want %q", body.Error, tt.wantCode)
+			}
+		})
+	}
 }

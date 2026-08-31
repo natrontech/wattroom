@@ -30,7 +30,8 @@ type RiderRecord struct {
 
 // SessionSaver persists a closed session's rides. Defined here, where it is
 // consumed; stats.Saver implements it. Nil means "no database" and sessions
-// simply stay in memory, as before.
+// simply stay in memory, as before. The implementation owns timeouts and
+// retries and may block for minutes — the hub calls it from a goroutine.
 type SessionSaver interface {
 	SaveSession(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
 }
@@ -540,12 +541,12 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
 
 		if closing != nil {
-			// Fire and log: the tick loop never blocks on the database.
-			go func(meta protocol.SessionState, riders []RiderRecord) {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				saver.SaveSession(ctx, rm.slug, meta.WorkoutName, meta.WorkoutJSON, time.UnixMilli(now().UnixMilli()-int64(meta.Elapsed)*1000), riders)
-			}(closingMeta, closing)
+			// Fire and hand off: the tick loop never blocks on the database.
+			// The saver owns timeouts and retries (#235); the goroutine exits
+			// when its bounded retry policy returns — minutes at worst.
+			go saver.SaveSession(context.Background(), rm.slug,
+				closingMeta.WorkoutName, closingMeta.WorkoutJSON,
+				time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
 		}
 
 		metricTicks.Inc()

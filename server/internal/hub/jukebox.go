@@ -60,7 +60,9 @@ func newJukebox() *jukebox {
 // place — sharing it was a data race (audit #219).
 func (j *jukebox) snapshot() protocol.JukeboxState {
 	out := j.state
-	out.Queue = append([]protocol.JukeboxEntry(nil), j.state.Queue...)
+	// Non-nil even when empty — nil marshals as null and the wire type
+	// promises an array (crashed clients on room open).
+	out.Queue = append(make([]protocol.JukeboxEntry, 0, len(j.state.Queue)), j.state.Queue...)
 	return out
 }
 

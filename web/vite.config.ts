@@ -33,7 +33,7 @@ function hardwareLog(): Plugin {
 					res.end();
 				});
 			});
-		}
+		},
 	};
 }
 
@@ -45,27 +45,29 @@ export default defineConfig({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 			},
 
 			// SPA mode: the Go server serves index.html as fallback for all routes.
-			adapter: adapter({ fallback: 'index.html' })
-		})
+			adapter: adapter({ fallback: 'index.html' }),
+		}),
 	],
 	test: {
 		// e2e/ belongs to Playwright. Vitest's default **/*.spec.ts glob picks it up
 		// otherwise and fails with "Playwright Test did not expect test() to be
 		// called here" — which reads like a Playwright problem and is not one.
-		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**']
+		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**'],
 	},
 	server: {
+		// 5174 for humans; PORT lets agent harnesses run parallel instances.
+		port: Number(process.env.PORT) || 5174,
 		proxy: {
 			// Go backend during development (make dev). WS needs ws: true.
 			// changeOrigin must stay OFF: the string shorthand turns it on, which
 			// rewrites Host to :8080 while Origin stays :5174 — and the server's
 			// same-origin check then 403s every PATCH /api/me and logout in dev.
 			'/api': { target: 'http://localhost:8080', changeOrigin: false },
-			'/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: false }
-		}
-	}
+			'/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: false },
+		},
+	},
 });
