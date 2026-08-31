@@ -83,6 +83,14 @@ type bodyJSON struct {
 		Best20m int `json:"best20m"`
 	} `json:"rides"`
 	Category string `json:"category"`
+	Load     *struct {
+		Building bool    `json:"building"`
+		Fitness  float64 `json:"fitness"`
+		Zone     string  `json:"zone"`
+		Series   []struct {
+			Date string `json:"date"`
+		} `json:"series"`
+	} `json:"load"`
 }
 
 func get(t *testing.T, mux *http.ServeMux, user string) (int, bodyJSON) {
@@ -149,5 +157,25 @@ func TestTrends(t *testing.T) {
 	// 230 W / 70 kg = 3.29 w/kg → Category B per SPEC.
 	if body.Category != "B" {
 		t.Fatalf("category: got %v, want B", body.Category)
+	}
+	if body.Load == nil {
+		t.Fatal("load block missing with ride history present")
+	}
+	if body.Load.Building {
+		t.Fatal("140 days of history is past the 28-day cold start")
+	}
+	if body.Load.Fitness <= 0 || body.Load.Zone == "" {
+		t.Fatalf("load block not computed: %+v", body.Load)
+	}
+	if len(body.Load.Series) == 0 || len(body.Load.Series) > 120 {
+		t.Fatalf("series must cover at most 120 days, got %d", len(body.Load.Series))
+	}
+}
+
+func TestEmptyHistoryHasNoLoad(t *testing.T) {
+	mux, _, _ := setup(t)
+	_, body := get(t, mux, "alice")
+	if body.Load != nil {
+		t.Fatalf("no rides must mean no load block, got %+v", body.Load)
 	}
 }

@@ -179,6 +179,7 @@ func BuildRideRow(
 		return db.CreateRideParams{}, err
 	}
 
+	normWatts := int16(NormPower(watts)) //nolint:gosec // samples bounded 0-3000
 	return db.CreateRideParams{
 		UserID:      userID,
 		RoomID:      roomID,
@@ -192,6 +193,7 @@ func BuildRideRow(
 		Samples:     buf.Bytes(),
 		Curve:       curveJSON,
 		Xp:          int32(XP(kj, execution)), //nolint:gosec // bounded by kj
+		NormWatts:   &normWatts,
 	}, nil
 }
 

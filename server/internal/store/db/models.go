@@ -79,6 +79,7 @@ type Ride struct {
 	CreatedAt   pgtype.Timestamptz
 	Curve       []byte
 	Xp          int32
+	NormWatts   *int16
 }
 
 type Room struct {

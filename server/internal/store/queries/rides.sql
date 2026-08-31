@@ -1,9 +1,9 @@
 -- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp
+    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp, norm_watts
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 returning id;
 
 -- name: ListUserRides :many
@@ -74,12 +74,22 @@ where user_id = $1;
 -- name: ListUserProgression :many
 -- Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
 -- time, so FTP history is free; best20m feeds the Category/w-kg trend.
+-- norm_watts falls back to avg_watts for rides the backfill has not reached.
 select started_at, seconds, kj, execution, ftp_watts,
-       coalesce((curve->>'best20m')::int, 0)::int as best20m
+       coalesce((curve->>'best20m')::int, 0)::int as best20m,
+       coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
 where user_id = $1 and started_at >= now() - interval '365 days'
 order by started_at
 limit 1000;
+
+-- name: ListRidesMissingNorm :many
+-- The ADR-0014 backfill's read: each blob is read exactly once, then goes
+-- cold again — the per-ride-read storage rule holds.
+select id, samples from rides where norm_watts is null limit $1;
+
+-- name: SetRideNormWatts :exec
+update rides set norm_watts = $2 where id = $1;
 
 -- name: ListUserRidesFull :many
 -- Export-all (#35): everything, blobs included — this is the one query

@@ -93,6 +93,8 @@ func main() {
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		progression.New(st, authService, log).Register(mux)
+		// One-pass norm_watts fill for pre-ADR-0014 rides; exits when done.
+		go stats.BackfillNormWatts(context.Background(), st, log)
 		ridesService := rides.New(st, authService, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
