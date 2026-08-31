@@ -47,11 +47,14 @@ This supersedes the palette half of WATTROOM.md §7. The restraint rule survives
 
 A light scheme exists, but the identity holds its ground:
 
-- **The cave never sees daylight.** The room (`/r/*`), TV mode, the login
-  and landing brand surfaces, and the /dev mocks always render the dark
-  set — a `.cave` scope re-asserts the tokens, so they are pixel-identical
-  whatever the OS says. Ride legibility was designed against black; that
-  design is not renegotiated by an OS setting.
+- **The cave never sees daylight — and the cave is the RIDE.** (Refined on
+  rider feedback 2026-08-31: the room's lounge is a desk surface and follows
+  the theme.) The dark set is forced while a session runs (countdown /
+  running / paused, in the room or the solo player), in TV mode, on the
+  spectator view, and on the login/landing brand surfaces and /dev mocks —
+  a `.cave` scope flips every token at once, so the lights go down when the
+  ride starts and come back up when it ends. Ride legibility was designed
+  against black; that design is not renegotiated by an OS setting.
 - **Desk surfaces follow `prefers-color-scheme`** — rooms list, workouts,
   editor, history, profile, sensors. No toggle (the 95% rule): the OS
   already asked.

@@ -600,7 +600,8 @@
 />
 
 {#if tv}
-	<div class="bg-surface fixed inset-0 z-50">
+	<!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
+	<div class="cave bg-surface fixed inset-0 z-50">
 		<button
 			onclick={() => (tv = false)}
 			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"

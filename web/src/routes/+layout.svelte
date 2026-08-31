@@ -160,12 +160,16 @@
 {:else if gated}
 	<!-- redirecting -->
 {:else if framed}
-	<!-- The room is the cave (#113): daylight stops at its door. -->
-	<div
-		class="flex h-dvh overflow-hidden {page.url.pathname.startsWith('/r/')
-			? 'cave bg-surface'
-			: ''}"
-	>
+	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
+	     a desk surface and follows the theme — the lights go down when the
+	     session starts, and come back up when it ends. -->
+	{@const ridePhase = roomConnection.current?.live.tick?.state.phase}
+	{@const caved =
+		page.url.pathname.startsWith('/r/') &&
+		(ridePhase === 'countdown' ||
+			ridePhase === 'running' ||
+			ridePhase === 'paused')}
+	<div class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}">
 		<div class="hidden shrink-0 md:block">
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}
