@@ -2,6 +2,7 @@
 // the same two-process split production uses rather than a mock.
 import { spawn } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 
@@ -67,6 +68,30 @@ const web = createServer((req, res) => {
 	if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
 	res.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
 	createReadStream(file).pipe(res);
+});
+
+// The room talks over /ws (live.svelte.ts), so the proxy has to carry the
+// upgrade too — an HTTP-only proxy leaves the SPA stuck on "Lost the room" and
+// every room flow untestable. Raw socket piping: the handshake is already a
+// complete HTTP request, so it only has to be replayed upstream verbatim.
+web.on('upgrade', (req, socket, head) => {
+	const upstream = connect(API_PORT, '127.0.0.1', () => {
+		const headers = Object.entries(req.headers)
+			.map(([name, value]) => `${name}: ${value}\r\n`)
+			.join('');
+		upstream.write(`${req.method} ${req.url} HTTP/1.1\r\n${headers}\r\n`);
+		// Node hands over whatever arrived with the handshake; dropping it loses
+		// the client's first frame.
+		if (head?.length) upstream.write(head);
+		socket.pipe(upstream);
+		upstream.pipe(socket);
+	});
+	const drop = () => {
+		socket.destroy();
+		upstream.destroy();
+	};
+	upstream.on('error', drop);
+	socket.on('error', drop);
 });
 
 // Playwright's readiness probe hits :4173 — only answer once the Go API is
