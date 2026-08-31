@@ -7,6 +7,7 @@ import {
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { mountTrack } from '$lib/room/mount-track';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -127,6 +128,7 @@ export function createRoomAv(slug: string) {
 		mic.gain.gain.setTargetAtTime(openNow ? 1 : 0, mic.ctx.currentTime, 0.005);
 	}
 
+	let lastTick = 0;
 	function runGate() {
 		if (!mic || (!micOn && !testing)) return;
 		if (mode === 'ptt') {
@@ -135,10 +137,16 @@ export function createRoomAv(slug: string) {
 		}
 		const threshold = musicPlaying ? gateThreshold * 2 : gateThreshold;
 		const now = performance.now();
+		// Hidden tabs clamp timers to ~1 s (#214): with a fixed 800 ms hold the
+		// gate chopped speech at 1 Hz in the background. Hold at least two real
+		// intervals, whatever the browser is actually giving us.
+		const dt = lastTick > 0 ? now - lastTick : 120;
+		lastTick = now;
+		const hold = Math.max(800, 2.5 * dt);
 		if (micLevel >= threshold) {
 			lastLoud = now;
 			if (!transmitting) setGate(true);
-		} else if (transmitting && now - lastLoud > 800) {
+		} else if (transmitting && now - lastLoud > hold) {
 			setGate(false);
 		}
 	}
@@ -244,6 +252,16 @@ export function createRoomAv(slug: string) {
 		} catch {
 			// routing failed: the element still plays at unity — degraded, not broken
 		}
+	}
+
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState !== 'visible') return;
+			// Browsers may suspend audio graphs in long-hidden tabs; coming
+			// back must not need a rejoin (#214).
+			if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
+			if (outCtx?.state === 'suspended') void outCtx.resume();
+		});
 	}
 
 	function bumpVideo(id: string) {
@@ -499,24 +517,14 @@ export function createRoomAv(slug: string) {
 		},
 		/** The projector surface — contain, not cover: a screen is a document. */
 		attachScreen(container: HTMLElement) {
-			const track = screenOf ? screenTracks.get(screenOf.id) : undefined;
-			container.replaceChildren();
-			if (!track) return;
-			const el = track.attach();
-			el.style.width = '100%';
-			el.style.height = '100%';
-			el.style.objectFit = 'contain';
-			container.appendChild(el);
+			mountTrack(
+				container,
+				screenOf ? screenTracks.get(screenOf.id) : undefined,
+				'contain',
+			);
 		},
 		attach(riderId: string, container: HTMLElement) {
-			const track = videoTracks.get(riderId);
-			container.replaceChildren();
-			if (!track) return;
-			const el = track.attach();
-			el.style.width = '100%';
-			el.style.height = '100%';
-			el.style.objectFit = 'cover';
-			container.appendChild(el);
+			mountTrack(container, videoTracks.get(riderId), 'cover');
 		},
 		leave() {
 			closeMic();
