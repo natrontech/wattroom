@@ -2,6 +2,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
@@ -459,6 +460,14 @@
 				/>
 			</div>
 		{/if}
+
+		<!-- Accent palette (#292, ADR-0005 amended): a pair, never one colour. -->
+		<section class="border-muted/15 mt-3 rounded-lg border p-6">
+			<h2 class="font-display font-bold">Appearance</h2>
+			<div class="mt-4">
+				<PalettePicker />
+			</div>
+		</section>
 
 		<!-- Coach access (ADR-0017): read-only tokens for your own AI/tools. -->
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">

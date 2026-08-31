@@ -73,3 +73,30 @@ three-state cycle (auto → dark → light, `theme.svelte.ts`, persisted). The
 be one of the settings people genuinely differ on. Everything else in the
 amendment stands: `.cave` still forces dark and ignores the toggle, glow
 still exists only in the cave.
+
+## Amendment — the palette becomes a choice (2026-08-31, #292)
+
+The Outrun values above stop being the only palette and become the *default*
+one. Riders pick an accent pair on the profile page: four presets (Outrun,
+Tron Ice, Miami Nights, Laser Yellow — the same four this ADR compared) plus
+one custom entry that takes a single hue.
+
+What does not change is the part this ADR exists to protect. A palette is
+always a **pair with two jobs**: the watt hue marks live data and is the only
+thing that glows, the neon hue is structural chrome and never does. The
+picker cannot express anything else — the custom entry exposes one hue and
+derives the second 65° behind it (the separation the shipped pair ships with),
+at Outrun's measured lightness and chroma, so glow behaviour and TV-mode
+legibility are inherited rather than re-rolled per rider.
+
+This also discharges the revisit trigger recorded above. "If alpha riders
+report the palette is tiring across long sessions, Tron Ice is the drop-in
+fallback" is now a setting instead of a future decision, and the magenta
+fatigue question no longer needs an ADR to answer — it needs a rider to click
+the colder preset.
+
+The three non-Outrun presets are reconstructions: this ADR recorded the
+palette *names* it compared, not their values. Their hues match the names and
+their lightness/chroma were solved so each accent stays inside sRGB and clears
+3.5:1 against its own surface, but they want a design pass against real mocks
+before anyone treats them as the ones that lost in 2026-08.
