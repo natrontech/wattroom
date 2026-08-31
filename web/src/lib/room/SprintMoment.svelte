@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { play } from '$lib/sound/cues';
+	import { play, playCountdownTick } from '$lib/sound/cues';
 	import type { SprintState } from '$lib/protocol';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
@@ -32,13 +32,20 @@
 	const countdown = $derived(Math.ceil((sprint.startsAtMs - now) / 1000));
 	const remaining = $derived(Math.max(0, (sprint.endsAtMs - now) / 1000));
 
-	// The klaxon sounds once when the sprint arms, go once at the gun.
+	// The klaxon grabs attention once when the sprint arms; the last two
+	// seconds reuse the rising countdown ticks, then the gun.
 	let heard = $state<string | null>(null);
+	let heardSecond = -1;
 	$effect(() => {
 		if (silent) return;
-		if (phase === 'klaxon' && heard === null) {
-			heard = 'klaxon';
-			play('klaxon');
+		if (phase === 'klaxon' && countdown !== heardSecond) {
+			heardSecond = countdown;
+			if (heard === null) {
+				heard = 'klaxon';
+				play('klaxon');
+			} else if (countdown > 0 && countdown <= 2) {
+				playCountdownTick(countdown);
+			}
 		}
 		if (phase === 'live' && heard === 'klaxon') {
 			heard = 'go';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { play, playCountdown } from '$lib/sound/cues';
+	import { play, playCountdown, playCountdownTick } from '$lib/sound/cues';
 	import CheerLayer from './CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -46,10 +46,12 @@
 	let heard: {
 		phase: typeof room.phase;
 		sprint: typeof room.sprint;
+		sprintLeft: number;
 		block?: number;
 	} = {
 		phase: room.phase,
 		sprint: room.sprint,
+		sprintLeft: room.sprintLeft,
 		block: room.block?.index,
 	};
 	$effect(() => {
@@ -59,9 +61,18 @@
 		}
 		if (room.sprint !== heard.sprint) {
 			if (room.sprint === 'armed') play('klaxon');
+			if (room.sprint === 'active') play('go');
 			if (room.sprint === 'podium') play('fanfare');
 			heard.sprint = room.sprint;
+		} else if (
+			room.sprint === 'armed' &&
+			room.sprintLeft !== heard.sprintLeft &&
+			room.sprintLeft > 0 &&
+			room.sprintLeft <= 2
+		) {
+			playCountdownTick(room.sprintLeft);
 		}
+		heard.sprintLeft = room.sprintLeft;
 		const index = room.block?.index;
 		if (
 			index !== undefined &&
