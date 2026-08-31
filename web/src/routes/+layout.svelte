@@ -12,6 +12,13 @@
 	import { api } from '$lib/api';
 	import { takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
+	// Side-effect imports: both apply their stored choice to :root the moment
+	// they load, so they belong to the shell rather than to whichever screen
+	// happens to render their control. The palette reached only /profile and
+	// /dev/components before this (#329); the scheme was correct only because
+	// RoomRail imports it and the shell renders RoomRail.
+	import '$lib/palette.svelte';
+	import '$lib/theme.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
