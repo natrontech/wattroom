@@ -400,7 +400,14 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
-<main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
+<!-- Mid-ride the solo player is the cave too (#113 refined): setup and the
+     summary are desk surfaces, the effort itself gets the dark. -->
+<main
+	class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5 {session &&
+	session.state !== 'done'
+		? 'cave'
+		: ''}"
+>
 	{#if !session}
 		<!-- Pre-ride: pick your effort level and how you are getting power in. -->
 		<div class="m-auto w-full max-w-md text-center">
