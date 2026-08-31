@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>WattRoom — back in a moment</title>
+    <!--
+			Served by Caddy when the wattroom binary is unreachable (deploy, crash,
+			or `compose stop wattroom` for planned maintenance). Fully self-contained:
+			the app — fonts included — is down, so nothing here may fetch anything
+			except the health probe. Colors are the dark set from web/src/app.css.
+		-->
+    <style>
+      :root {
+        --surface: #0a0118;
+        --raised: #1a0736;
+        --muted: #9182b8;
+        --watt: #ff3d8b;
+        --neon: #8b2bff;
+      }
+      * {
+        margin: 0;
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        background: var(--surface);
+        color: #fff;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        text-align: center;
+      }
+      .grid-bg {
+        position: fixed;
+        inset: 0 0 auto;
+        height: 45dvh;
+        opacity: 0.4;
+        pointer-events: none;
+        background-image:
+          repeating-linear-gradient(
+            to right,
+            color-mix(in oklab, var(--neon) 30%, transparent) 0 1px,
+            transparent 1px 44px
+          ),
+          repeating-linear-gradient(
+            to bottom,
+            color-mix(in oklab, var(--neon) 30%, transparent) 0 1px,
+            transparent 1px 44px
+          );
+        mask-image: linear-gradient(to bottom, black 15%, transparent);
+      }
+      .card {
+        position: relative;
+        max-width: 26rem;
+        padding: 2.5rem 2rem;
+        border: 1px solid color-mix(in oklab, var(--muted) 20%, transparent);
+        border-radius: 0.75rem;
+        background: color-mix(in oklab, var(--raised) 80%, transparent);
+      }
+      h1 {
+        margin-top: 1.25rem;
+        font-size: 1.25rem;
+      }
+      .copy {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .probe {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--watt);
+        box-shadow: 0 0 0.5em var(--watt);
+        animation: pulse 2s ease-in-out infinite;
+      }
+      .bars rect {
+        transform-box: fill-box;
+        transform-origin: bottom;
+        animation: eq 2.2s ease-in-out infinite;
+        animation-delay: calc(var(--i) * -0.37s);
+      }
+      @keyframes eq {
+        0%,
+        100% {
+          transform: scaleY(0.5);
+        }
+        50% {
+          transform: scaleY(1);
+        }
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.3;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bars rect,
+        .dot {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid-bg" aria-hidden="true"></div>
+    <main class="card">
+      <!-- The equalizer W, breathing slowly: someone is on the tools. -->
+      <svg
+        class="bars"
+        viewBox="0 0 64 64"
+        width="52"
+        height="52"
+        fill="none"
+        role="img"
+        aria-label="WattRoom"
+      >
+        <defs>
+          <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--watt)" />
+            <stop offset="100%" stop-color="var(--neon)" />
+          </linearGradient>
+        </defs>
+        <rect
+          x="2"
+          y="12"
+          width="8"
+          height="46"
+          rx="4"
+          fill="url(#sunset)"
+          style="--i: 0"
+        />
+        <rect
+          x="15"
+          y="38"
+          width="8"
+          height="20"
+          rx="4"
+          fill="url(#sunset)"
+          style="--i: 1"
+        />
+        <rect
+          x="28"
+          y="24"
+          width="8"
+          height="34"
+          rx="4"
+          fill="url(#sunset)"
+          style="--i: 2"
+        />
+        <rect
+          x="41"
+          y="38"
+          width="8"
+          height="20"
+          rx="4"
+          fill="url(#sunset)"
+          style="--i: 3"
+        />
+        <rect
+          x="54"
+          y="12"
+          width="8"
+          height="46"
+          rx="4"
+          fill="url(#sunset)"
+          style="--i: 4"
+        />
+      </svg>
+      <h1>Up on the stand.</h1>
+      <p class="copy">
+        WattRoom is getting a quick service — a deploy or restart is in
+        progress. Your rides and rooms are safe.
+      </p>
+      <p class="probe">
+        <span class="dot" aria-hidden="true"></span>
+        checking every 5&nbsp;seconds — this page comes back on its own
+      </p>
+    </main>
+    <script>
+      const probe = async () => {
+        try {
+          const r = await fetch("/api/healthz", { cache: "no-store" });
+          if (r.ok) return location.reload();
+        } catch {}
+        setTimeout(probe, 5000);
+      };
+      setTimeout(probe, 5000);
+    </script>
+  </body>
+</html>
