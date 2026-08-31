@@ -76,3 +76,31 @@ export function plannedZoneSeconds(segments: Segment[], ftp: number): number[] {
 export function fillPct(watts: number, ftp: number): number {
 	return Math.min(100, Math.max(0, (watts / ftp / CEILING) * 100));
 }
+
+/** Upper %LTHR edge of HR zones 1–4 (docs/SPEC.md, ADR-0014); Z5 is open-ended. */
+const HR_EDGES = [0.68, 0.83, 0.94, 1.05];
+
+/**
+ * Heart-rate zone of the rider's OWN bpm (Coggan 5-zone, % of LTHR).
+ * Display-only, never scored (ADR-0008). 0 = no LTHR set or no reading.
+ */
+export function hrZoneOf(bpm: number, lthr: number | undefined): number {
+	if (!lthr || bpm <= 0) return 0;
+	const pct = bpm / lthr;
+	const zone = HR_EDGES.findIndex((edge) => pct <= edge);
+	return zone === -1 ? 5 : zone + 1;
+}
+
+/** bpm edges of the HR zones for a given LTHR — the profile's read-only table. */
+export function hrZoneRanges(
+	lthr: number,
+): { zone: number; name: string; low: number; high?: number }[] {
+	// floor, not round: the high edge is the largest bpm still inside the zone,
+	// and rounding up would display a number hrZoneOf puts in the next zone.
+	return [1, 2, 3, 4, 5].map((zone) => ({
+		zone,
+		name: ZONE_NAMES[zone],
+		low: zone === 1 ? 0 : Math.floor(HR_EDGES[zone - 2] * lthr) + 1,
+		high: zone === 5 ? undefined : Math.floor(HR_EDGES[zone - 1] * lthr),
+	}));
+}

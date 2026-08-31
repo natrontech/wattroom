@@ -188,7 +188,7 @@ type RemoveChatReactionParams struct {
 }
 
 // Room-scoped like the insert — a socket in room A must not toggle
-// reactions on room B's messages (audit #219).
+// reactions on room B's messages (audit #218).
 func (q *Queries) RemoveChatReaction(ctx context.Context, arg RemoveChatReactionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, removeChatReaction,
 		arg.MessageID,

@@ -51,6 +51,22 @@ pending no more.
   they can't). Annoyance ceiling accepted for the alpha; blocking is the
   named upgrade path.
 
+## Amendment — formation by friend code only (2026-08-31)
+
+The roommate picker is gone. Every user gets a random 8-character **friend
+code** (read-aloud-safe alphabet, like room codes); a request is created
+only by entering someone's code — `POST /api/friends {code}`. Knowing the
+code IS the permission to ask: the server never lists users as candidates,
+roommates included, and the member card no longer offers "add".
+
+- The shared-room gate falls with the picker: codes travel out-of-band
+  (chat, voice, in person), so you can befriend someone before ever sharing
+  a room with them.
+- The anti-spam property survives in a different shape: a stranger still
+  cannot find or address you. A code is unguessable in practice (16^8
+  space) and grants only "may send a request", which the addressee accepts
+  or silently dismisses as before.
+
 ## Amendment — direct messages, friends only (2026-08-31, #208)
 
 DMs exist exactly where friendship exists: only an **accepted friend** can

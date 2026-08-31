@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plannedZoneSeconds, zoneOf } from './zones';
+import { hrZoneOf, hrZoneRanges, plannedZoneSeconds, zoneOf } from './zones';
 
 describe('zoneOf', () => {
 	it('keeps SPEC boundaries inclusive on the low side', () => {
@@ -7,6 +7,33 @@ describe('zoneOf', () => {
 		expect(zoneOf(112, 200)).toBe(2); // 56 %
 		expect(zoneOf(210, 200)).toBe(4); // 105 % is still threshold
 		expect(zoneOf(320, 200)).toBe(7); // 160 %
+	});
+});
+
+describe('hrZoneOf', () => {
+	it('maps the SPEC table for LTHR 160', () => {
+		expect(hrZoneOf(100, 160)).toBe(1); // 62 %
+		expect(hrZoneOf(120, 160)).toBe(2); // 75 %
+		expect(hrZoneOf(145, 160)).toBe(3); // 91 %
+		expect(hrZoneOf(160, 160)).toBe(4); // 100 %
+		expect(hrZoneOf(175, 160)).toBe(5); // 109 %
+	});
+
+	it('is zone 0 without an anchor or a reading', () => {
+		expect(hrZoneOf(150, undefined)).toBe(0);
+		expect(hrZoneOf(0, 160)).toBe(0);
+	});
+
+	it('agrees with the displayed ranges at every edge', () => {
+		// 155 is the trap: 0.83 × 155 = 128.65, and rounding up would put the
+		// displayed Z2 ceiling into Z3.
+		for (const lthr of [150, 155, 163]) {
+			for (const range of hrZoneRanges(lthr)) {
+				expect(hrZoneOf(Math.max(1, range.low), lthr)).toBe(range.zone);
+				if (range.high !== undefined)
+					expect(hrZoneOf(range.high, lthr)).toBe(range.zone);
+			}
+		}
 	});
 });
 
