@@ -35,6 +35,8 @@
 		return () => clearInterval(timer);
 	});
 	const duration = $derived(playerInfo.duration);
+	/** A livestream has no timeline to scrub — the room rides the edge. */
+	const streaming = $derived(playerInfo.live);
 	const elapsed = $derived.by(() => {
 		if (!jukebox?.current) return 0;
 		const pos =
@@ -91,7 +93,14 @@
 				{/if}
 			</div>
 
-			{#if jukebox?.current}
+			{#if jukebox?.current && streaming}
+				<p class="text-watt mt-2 text-[10px] tracking-wider uppercase">
+					live · playing at the stream edge
+				</p>
+				<p class="text-muted mt-1 text-[10px]">
+					added by {jukebox.current.addedBy}
+				</p>
+			{:else if jukebox?.current}
 				<div class="mt-2 flex items-center gap-2">
 					<button
 						onclick={() => seekTo(elapsed - 30)}
