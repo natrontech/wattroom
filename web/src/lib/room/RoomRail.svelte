@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { theme } from '$lib/theme.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let {
@@ -100,15 +101,37 @@
 						? 'bg-surface-raised text-ink'
 						: 'text-muted hover:text-ink'}"
 				>
+					{#if room.slug === connectedSlug}
+						<span
+							class="bg-z4 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full"
+							title="you are in this room"
+						></span>
+					{/if}
 					<span class="truncate">{room.name}</span>
+					{#if room.slug === connectedSlug && onLeave}
+						<button
+							onclick={(e) => {
+								e.preventDefault();
+								onLeave();
+							}}
+							class="text-muted hover:text-ink ml-auto shrink-0 text-[10px] underline"
+							title="leave the room">leave</button
+						>
+					{/if}
 					{#if room.live}
 						<span
-							class="bg-watt glow-stroke ml-auto h-1.5 w-1.5 shrink-0 rounded-full"
+							class="bg-watt glow-stroke h-1.5 w-1.5 shrink-0 rounded-full {room.slug ===
+							connectedSlug
+								? ''
+								: 'ml-auto'}"
 							title="riding now"
 						></span>
 					{:else if (room.connected ?? 0) > 0}
 						<span
-							class="ml-auto flex shrink-0 items-center gap-1"
+							class="flex shrink-0 items-center gap-1 {room.slug ===
+							connectedSlug
+								? ''
+								: 'ml-auto'}"
 							title={(room.riders ?? []).join(', ')}
 						>
 							<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
@@ -140,19 +163,19 @@
 							{@const inVoice = room.voice?.includes(name)}
 							{@const talking =
 								room.slug === activeSlug && activeSpeaking.includes(name)}
+							<!-- Listed = connected, so the dot is green full stop;
+							     voice brightens the name, talking pulses it (#174). -->
 							<li
 								class="flex items-center gap-1.5 text-[11px] {talking
 									? 'text-ink'
 									: inVoice
-										? 'text-ink/80'
-										: 'text-muted'}"
+										? 'text-ink/85'
+										: 'text-ink/60'}"
 							>
 								<span
-									class="h-1.5 w-1.5 rounded-full {talking
-										? 'bg-z4 animate-pulse'
-										: inVoice
-											? 'bg-z4'
-											: 'bg-muted/30'}"
+									class="bg-z4 h-1.5 w-1.5 rounded-full {talking
+										? 'animate-pulse'
+										: ''}"
 								></span>
 								<span class="truncate">{name}</span>
 								{#if talking}
@@ -189,24 +212,6 @@
 
 	<!-- Your own presence, pinned to the bottom the way a voice app does it. -->
 	<div class="border-ink/5 border-t px-3 py-3">
-		{#if connectedSlug}
-			<div class="mb-2 flex items-center gap-2">
-				<span class="bg-z4 h-1.5 w-1.5 animate-pulse rounded-full"></span>
-				<a
-					href="/r/{connectedSlug}"
-					class="text-ink min-w-0 flex-1 truncate text-[11px] hover:underline"
-					>in {rooms.find((room) => room.slug === connectedSlug)?.name ??
-						connectedSlug}</a
-				>
-				{#if onLeave}
-					<button
-						onclick={onLeave}
-						class="text-muted hover:text-ink shrink-0 text-[10px] underline"
-						>leave</button
-					>
-				{/if}
-			</div>
-		{/if}
 		<div class="flex items-center gap-2">
 			<span class="bg-z4 h-2 w-2 rounded-full"></span>
 			<span class="truncate text-xs font-medium">{you.name}</span>
@@ -240,6 +245,12 @@
 				></div>
 			</div>
 		{/if}
+		<button
+			onclick={() => theme.cycle()}
+			class="text-muted hover:text-ink mt-2 mr-3 text-[10px] underline"
+			title="auto follows your OS; the room is always dark"
+			>theme · {theme.current}</button
+		>
 		{#if showAv}
 			<button
 				onclick={() => (voiceAdvanced = !voiceAdvanced)}
