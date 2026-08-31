@@ -1,3 +1,4 @@
+import { account } from '$lib/account.svelte';
 import type {
 	ClientMessage,
 	RiderMetrics,
@@ -24,6 +25,7 @@ export function createRoomLive(slug: string) {
 	// "did I press it" — the client's own knowledge, keyed id:emoji.
 	let myReacts = $state<Record<string, boolean>>({});
 	let refusal = $state<string | null>(null);
+	let refusalAt = 0;
 	let socket: WebSocket | null = null;
 	let closed = false;
 	let attempts = 0;
@@ -54,6 +56,9 @@ export function createRoomLive(slug: string) {
 			}
 			status = 'live';
 			attempts = 0;
+			const queued = pending;
+			pending = [];
+			for (const message of queued) send(message);
 			if (gapSeq !== null) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -81,19 +86,33 @@ export function createRoomLive(slug: string) {
 				}
 				if (msg.tick.chatReactions?.length) {
 					const next = { ...chatReactions };
+					const pressed = { ...myReacts };
+					let mineChanged = false;
 					for (const change of msg.tick.chatReactions) {
 						next[change.messageId] = {
 							...next[change.messageId],
 							[change.emoji]: change.count,
 						};
+						// The server echoes the actor: my own tabs reconcile the
+						// highlight from truth, not from the click (#219).
+						if (change.by && change.by === account.me?.id) {
+							pressed[`${change.messageId}:${change.emoji}`] = change.added;
+							mineChanged = true;
+						}
 					}
 					chatReactions = next;
+					if (mineChanged) myReacts = pressed;
 				}
 			}
-			// A refused command is feedback, not a fault — shown, then cleared on
-			// the next successful tick.
-			if (msg.error) refusal = msg.error.message;
-			else refusal = null;
+			// A refused command is feedback, not a fault — it stays up long
+			// enough to read (ticks arrive every second; clearing on each one
+			// made refusals subliminal — audit #219).
+			if (msg.error) {
+				refusal = msg.error.message;
+				refusalAt = Date.now();
+			} else if (refusal && Date.now() - refusalAt > 6_000) {
+				refusal = null;
+			}
 		};
 		socket.onclose = () => {
 			if (closed) return;
@@ -111,9 +130,16 @@ export function createRoomLive(slug: string) {
 	}
 	connect();
 
+	// Words typed during a reconnect wait here and flush on reopen — a chat
+	// line must never silently vanish (audit #219). Metrics are continuous
+	// and never queued; stale watts help nobody.
+	let pending: ClientMessage[] = [];
 	function send(message: ClientMessage) {
-		if (socket?.readyState === WebSocket.OPEN)
+		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
+		} else if (!message.metrics && pending.length < 16) {
+			pending.push(message);
+		}
 	}
 
 	return {
@@ -164,16 +190,24 @@ export function createRoomLive(slug: string) {
 				mine?: string[];
 			}[],
 		) {
-			chatLog = messages.map((m) => ({
-				id: m.id,
-				from: m.from,
-				text: m.text,
-				at: m.at,
-			}));
-			const counts: Record<string, Record<string, number>> = {};
-			const pressed: Record<string, boolean> = {};
+			// Live lines may land before the backlog resolves; the seed merges
+			// UNDER them by id — replacing wholesale ate the first seconds of a
+			// conversation (audit #219). Live reaction counts stay authoritative.
+			const liveIds = new Set(chatLog.map((line) => line.id).filter(Boolean));
+			chatLog = [
+				...messages
+					.filter((m) => !liveIds.has(m.id))
+					.map((m) => ({ id: m.id, from: m.from, text: m.text, at: m.at })),
+				...chatLog,
+			]
+				.sort((a, b) => a.at - b.at)
+				.slice(-200);
+			const counts: Record<string, Record<string, number>> = {
+				...chatReactions,
+			};
+			const pressed: Record<string, boolean> = { ...myReacts };
 			for (const m of messages) {
-				if (m.reactions) counts[m.id] = m.reactions;
+				if (m.reactions && !counts[m.id]) counts[m.id] = m.reactions;
 				for (const emoji of m.mine ?? []) pressed[`${m.id}:${emoji}`] = true;
 			}
 			chatReactions = counts;
@@ -196,8 +230,11 @@ export function createRoomLive(slug: string) {
 			title?: string,
 			jamUrl?: string,
 			positionSec?: number,
+			anchorMs?: number,
 		) {
-			send({ jukebox: { action, videoId, title, jamUrl, positionSec } });
+			send({
+				jukebox: { action, videoId, title, jamUrl, positionSec, anchorMs },
+			});
 		},
 		control(
 			action: string,

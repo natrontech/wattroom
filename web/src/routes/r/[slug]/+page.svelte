@@ -75,12 +75,15 @@
 	// core (pair + ride) needs Web Bluetooth a phone browser doesn't have —
 	// so a member opening the share link on a phone lands on the watch view
 	// (#124). ?full=1 is the escape hatch, linked from the watch footer.
+	// Decided SYNCHRONOUSLY: rendering RoomLive first opened a second,
+	// unleavable socket before the redirect landed (#219).
+	const phoneSpectator =
+		typeof window !== 'undefined' &&
+		!page.url.searchParams.has('full') &&
+		matchMedia('(max-width: 767px)').matches;
 	$effect(() => {
-		if (!room || !isMember) return;
-		if (page.url.searchParams.has('full')) return;
-		if (matchMedia('(max-width: 767px)').matches) {
-			void goto(`/r/${room.slug}/watch`, { replaceState: true });
-		}
+		if (!room || !isMember || !phoneSpectator) return;
+		void goto(`/r/${room.slug}/watch`, { replaceState: true });
 	});
 </script>
 
@@ -126,32 +129,38 @@
 {:else}
 	<!-- A member's room IS the app: full viewport, rail | main | panel (#39). -->
 	{#key room.slug}
-		<RoomLive
-			slug={room.slug}
-			role={room.role ?? 'member'}
-			roomName={room.name}
-			icon={room.icon ?? ''}
-			cheers={room.cheers}
-			code={room.code ?? ''}
-			soundPack={room.soundPack ?? 'base'}
-			members={room.members ?? []}
-			medals={room.medals ?? []}
-			streakWeeks={room.streakWeeks ?? 0}
-			monthKj={room.monthKj ?? 0}
-			upcoming={room.upcoming ?? []}
-			onSchedule={(workoutName, workoutJson, startsAt) =>
-				act(`/api/rooms/${room?.slug}/schedule`, {
-					json: { workoutName, workoutJson, startsAt },
-				})}
-			onUnschedule={(id) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
-			adminBusy={busy}
-			onRole={(userId, nextRole) =>
-				act(`/api/rooms/${room?.slug}/role`, {
-					json: { userId, role: nextRole },
-				})}
-			onRemove={(userId) =>
-				act(`/api/rooms/${room?.slug}/members/${userId}`, { method: 'DELETE' })}
-		/>
+		{#if phoneSpectator}
+			<!-- redirecting to the watch view -->
+		{:else}
+			<RoomLive
+				slug={room.slug}
+				role={room.role ?? 'member'}
+				roomName={room.name}
+				icon={room.icon ?? ''}
+				cheers={room.cheers}
+				code={room.code ?? ''}
+				soundPack={room.soundPack ?? 'base'}
+				members={room.members ?? []}
+				medals={room.medals ?? []}
+				streakWeeks={room.streakWeeks ?? 0}
+				monthKj={room.monthKj ?? 0}
+				upcoming={room.upcoming ?? []}
+				onSchedule={(workoutName, workoutJson, startsAt) =>
+					act(`/api/rooms/${room?.slug}/schedule`, {
+						json: { workoutName, workoutJson, startsAt },
+					})}
+				onUnschedule={(id) =>
+					act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
+				adminBusy={busy}
+				onRole={(userId, nextRole) =>
+					act(`/api/rooms/${room?.slug}/role`, {
+						json: { userId, role: nextRole },
+					})}
+				onRemove={(userId) =>
+					act(`/api/rooms/${room?.slug}/members/${userId}`, {
+						method: 'DELETE',
+					})}
+			/>
+		{/if}
 	{/key}
 {/if}

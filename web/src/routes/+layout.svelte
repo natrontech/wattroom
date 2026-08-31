@@ -15,6 +15,8 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
+	import { dmHeads } from '$lib/dm/heads.svelte';
+	import MobileNav from '$lib/nav/MobileNav.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
@@ -23,6 +25,12 @@
 	let { children } = $props();
 
 	void account.load();
+
+	// DM arrivals blip and badge on every page, not just where the friends
+	// panel mounts (audit #219).
+	$effect(() => {
+		if (account.me) dmHeads.start();
+	});
 
 	// Account → local profile cache, once me arrives (ADR-0009: server truth).
 	const profile = createProfileStore();
@@ -177,6 +185,7 @@
 				{@const roster = roomConnection.current.live.tick?.roster ?? []}
 				<RoomRail
 					you={railYou}
+					showAv={!!account.me?.avEnabled}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}
@@ -223,9 +232,14 @@
 				/>
 			{/if}
 		</div>
-		<div class="min-w-0 flex-1 overflow-y-auto">
+		<div class="min-w-0 flex-1 overflow-y-auto {caved ? '' : 'pb-16 md:pb-0'}">
 			{@render children()}
 		</div>
+		<!-- The ride owns the whole screen while caved; the tab bar returns
+		     with the lights. -->
+		{#if !caved}
+			<MobileNav />
+		{/if}
 		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
 		     frame: threads and music survive navigation the same way the
 		     room connection does. -->

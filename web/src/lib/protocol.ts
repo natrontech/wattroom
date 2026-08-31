@@ -119,6 +119,12 @@ export interface JukeboxCommand {
    */
   positionSec?: number /* float64 */;
   /**
+   * For "ended": the anchor the client was playing against. Every client
+   * (and tab) reports the end — the epoch match makes N echoes advance
+   * the queue exactly once even when the same video is queued twice.
+   */
+  anchorMs?: number /* int64 */;
+  /**
    * For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
    * shows as a join card. Empty clears it. Link-out only — no API, ever.
    */
@@ -136,6 +142,11 @@ export interface ChatLine {
    */
   id?: string;
   from: string; // filled by the server, like cheers
+  /**
+   * The author's rider id (#219): display names are not unique, and the
+   * client's own-message suppression must not mute a namesake.
+   */
+  fromId?: string;
   text: string;
   at: number /* int64 */; // server millis, for ordering only
 }
@@ -148,13 +159,16 @@ export interface ChatReact {
   emoji: string;
 }
 /**
- * ChatReactionCount is a changed total, broadcast on the tick. "Did I react"
- * is the client's own knowledge — the shared tick carries only the count.
+ * ChatReactionCount is a changed total, broadcast on the tick — plus who
+ * changed it and which way (#219): the actor's own tabs reconcile their
+ * "did I react" highlight from the server instead of trusting the click.
  */
 export interface ChatReactionCount {
   messageId: string;
   emoji: string;
   count: number /* int */;
+  by?: string; // rider id of the toggler
+  added: boolean;
 }
 /**
  * Cheer is the room's reaction layer (#74) — and the spectator's one verb.

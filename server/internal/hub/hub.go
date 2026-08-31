@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -39,7 +40,7 @@ type SessionSaver interface {
 // database" — chat stays ephemeral, lines carry no id, reactions no-op.
 type ChatKeeper interface {
 	SaveChat(ctx context.Context, slug, userID, text string) (id string, ok bool)
-	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, ok bool)
+	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
 // Access is what the hub needs from the durable side: who is this request,
@@ -91,6 +92,23 @@ type room struct {
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
+	// kind+rider → last accepted time: limits are per RIDER, not per socket —
+	// a second tab must not double every allowance (audit #219).
+	lastInput map[string]time.Time
+}
+
+func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if rm.lastInput == nil {
+		rm.lastInput = make(map[string]time.Time)
+	}
+	key := kind + ":" + riderID
+	if now.Sub(rm.lastInput[key]) < min {
+		return false
+	}
+	rm.lastInput[key] = now
+	return true
 }
 
 func newRoom(slug string) *room {
@@ -108,13 +126,6 @@ func newRoom(slug string) *room {
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
-	// lastCheer rate-limits reactions: a cheer is a tap, not a firehose.
-	lastCheer time.Time
-	// lastChat rate-limits lines the same way — typing on a bike is rare,
-	// a hostile client is not.
-	lastChat time.Time
-	// lastReact allows quick toggling but not a firehose.
-	lastReact time.Time
 }
 
 // Cheers and chat reactions are shape-checked (protocol.IsEmoji — one emoji,
@@ -165,9 +176,15 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Chat != nil {
 			// Untrusted input: bounded text, 1/s per rider, sender is presence.
 			text := strings.TrimSpace(msg.Chat.Text)
-			if text != "" && len(text) <= 500 && h.now().Sub(c.lastChat) >= time.Second {
-				c.lastChat = h.now()
-				line := protocol.ChatLine{From: rider.Name, Text: text, At: h.now().UnixMilli()}
+			if utf8.RuneCountInString(text) > 500 {
+				// The client caps at 500 CHARACTERS — counting bytes here cut
+				// non-Latin scripts off at half the advertised limit and then
+				// dropped the line silently (audit #219).
+				h.writeError(ctx, c, "validation_error", "That message is too long — 500 characters is the cap.")
+				continue
+			}
+			if text != "" && rm.allow("chat", rider.ID, h.now(), time.Second) {
+				line := protocol.ChatLine{From: rider.Name, FromID: rider.ID, Text: text, At: h.now().UnixMilli()}
 				// Persist OUTSIDE any room lock (hub discipline) — the request
 				// goroutine may block on the database, the tick never does.
 				if h.chat != nil {
@@ -179,24 +196,26 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.ChatReact != nil && h.chat != nil {
-			if protocol.IsEmoji(msg.ChatReact.Emoji) && h.now().Sub(c.lastReact) >= 300*time.Millisecond {
-				c.lastReact = h.now()
-				if count, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
+			if protocol.IsEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
+				if count, added, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
-						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji, Count: count,
+						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
+						Count: count, By: rider.ID, Added: added,
 					})
 				}
 			}
 		}
 		if msg.Cheer != nil {
-			if protocol.IsEmoji(msg.Cheer.Emoji) && h.now().Sub(c.lastCheer) >= time.Second {
-				c.lastCheer = h.now()
+			if protocol.IsEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}
 		if msg.Jukebox != nil {
-			// Any member; the jukebox validates its own input.
-			rm.jukebox(*msg.Jukebox, rider.Name, h.now())
+			// Any member; the jukebox validates its own input. Throttled like
+			// every other input — it was the one unlimited channel (audit #219).
+			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
+				rm.jukebox(*msg.Jukebox, rider.Name, h.now())
+			}
 		}
 		if msg.Backfill != nil {
 			// A reconnect's replay: into the ride record only — stale samples
@@ -407,13 +426,29 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		} else {
 			rm.lastGame = nil
 		}
+		// Drain a bounded slice per tick and CARRY the overflow — a burst
+		// above the per-tick cap used to vanish silently (#219).
+		chatNow := rm.chat
+		if len(chatNow) > 32 {
+			chatNow = rm.chat[:32]
+			rm.chat = append([]protocol.ChatLine(nil), rm.chat[32:]...)
+		} else {
+			rm.chat = nil
+		}
+		reactsNow := rm.reacts
+		if len(reactsNow) > 64 {
+			reactsNow = rm.reacts[:64]
+			rm.reacts = append([]protocol.ChatReactionCount(nil), rm.reacts[64:]...)
+		} else {
+			rm.reacts = nil
+		}
 		tick := protocol.ServerTick{
 			At:            now().UnixMilli(),
 			State:         rm.session.state(now()),
 			Jukebox:       rm.music.snapshot(),
 			Cheers:        rm.cheers,
-			Chat:          rm.chat,
-			ChatReactions: rm.reacts,
+			Chat:          chatNow,
+			ChatReactions: reactsNow,
 			Sprint:        rm.sprint.state(now(), rm.seen),
 			Game:          rm.lastGame,
 			Execution: func() map[string]float64 {
@@ -428,8 +463,6 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
-		rm.chat = nil
-		rm.reacts = nil
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
@@ -491,7 +524,18 @@ func (rm *room) leave(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
-	delete(rm.metrics, c.rider.ID)
+	// A phone spectator closing must not blank the desktop's tile: metrics
+	// go only when the rider's LAST socket does (#219).
+	last := true
+	for other := range rm.clients {
+		if other.rider.ID == c.rider.ID {
+			last = false
+			break
+		}
+	}
+	if last {
+		delete(rm.metrics, c.rider.ID)
+	}
 	metricRiders.Dec()
 }
 
@@ -553,7 +597,9 @@ func (rm *room) cheer(c protocol.Cheer) {
 func (rm *room) chatLine(line protocol.ChatLine) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	if len(rm.chat) < 32 {
+	// 256 bounds a hostile flood; the tick drains 32 per second and CARRIES
+	// the rest — a burst must not silently eat accepted lines (#219).
+	if len(rm.chat) < 256 {
 		rm.chat = append(rm.chat, line)
 	}
 }
@@ -561,7 +607,7 @@ func (rm *room) chatLine(line protocol.ChatLine) {
 func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	if len(rm.reacts) < 64 {
+	if len(rm.reacts) < 256 {
 		rm.reacts = append(rm.reacts, count)
 	}
 }

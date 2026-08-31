@@ -88,6 +88,10 @@ type JukeboxCommand struct {
 	// For "seek": the new shared playhead. For "add": start the entry here
 	// (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
 	PositionSec float64 `json:"positionSec,omitempty"`
+	// For "ended": the anchor the client was playing against. Every client
+	// (and tab) reports the end — the epoch match makes N echoes advance
+	// the queue exactly once even when the same video is queued twice.
+	AnchorMs int64 `json:"anchorMs,omitempty"`
 	// For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
 	// shows as a join card. Empty clears it. Link-out only — no API, ever.
 	JamURL string `json:"jamUrl,omitempty"`
@@ -101,8 +105,11 @@ type ChatLine struct {
 	// Empty when the server runs without a database.
 	ID   string `json:"id,omitempty"`
 	From string `json:"from"` // filled by the server, like cheers
-	Text string `json:"text"`
-	At   int64  `json:"at"` // server millis, for ordering only
+	// The author's rider id (#219): display names are not unique, and the
+	// client's own-message suppression must not mute a namesake.
+	FromID string `json:"fromId,omitempty"`
+	Text   string `json:"text"`
+	At     int64  `json:"at"` // server millis, for ordering only
 }
 
 // ChatReact toggles one rider's emoji on one message (#201) — the cheer
@@ -112,12 +119,15 @@ type ChatReact struct {
 	Emoji     string `json:"emoji"`
 }
 
-// ChatReactionCount is a changed total, broadcast on the tick. "Did I react"
-// is the client's own knowledge — the shared tick carries only the count.
+// ChatReactionCount is a changed total, broadcast on the tick — plus who
+// changed it and which way (#219): the actor's own tabs reconcile their
+// "did I react" highlight from the server instead of trusting the click.
 type ChatReactionCount struct {
 	MessageID string `json:"messageId"`
 	Emoji     string `json:"emoji"`
 	Count     int    `json:"count"`
+	By        string `json:"by,omitempty"` // rider id of the toggler
+	Added     bool   `json:"added"`
 }
 
 // Cheer is the room's reaction layer (#74) — and the spectator's one verb.
