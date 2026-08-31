@@ -11,6 +11,8 @@
 		ftp,
 		trace,
 		compact = false,
+		selectedStep = null,
+		onSelect,
 	}: {
 		segments: Segment[];
 		total: number;
@@ -18,6 +20,9 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
+		/** Editor hooks: present ⇒ blocks are clickable and select their step. */
+		selectedStep?: number | null;
+		onSelect?: (stepIndex: number) => void;
 	} = $props();
 
 	const W = 1000;
@@ -58,6 +63,7 @@
 				points: `${x0},${BASE} ${x0},${y(from)} ${x1},${y(to)} ${x1},${BASE}`,
 				edge: `${x0},${y(from)} ${x1},${y(to)}`,
 				zone,
+				stepIndex: seg.stepIndex,
 				sprint: seg.kind === 'sprint',
 				label:
 					seg.kind === 'sprint'
@@ -83,11 +89,30 @@
 		preserveAspectRatio="none"
 	>
 		{#each blocks as block, i (i)}
+			{@const picked =
+				selectedStep !== null && block.stepIndex === selectedStep}
+			<!-- Opacity via class, not attribute, so hover/selected states can win.
+			     tabindex/role/keydown appear together or not at all — the static
+			     checker can't see that through the conditionals. -->
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<polygon
 				points={block.points}
-				class={ZONE_TEXT[block.zone]}
+				class="{ZONE_TEXT[block.zone]} {picked
+					? 'opacity-80'
+					: block.sprint
+						? 'opacity-30'
+						: 'opacity-45'} {onSelect
+					? 'cursor-pointer outline-none hover:opacity-70 focus-visible:outline-2 focus-visible:outline-current'
+					: ''}"
 				fill="currentColor"
-				opacity={block.sprint ? 0.3 : 0.45}
+				role={onSelect ? 'button' : undefined}
+				tabindex={onSelect ? 0 : undefined}
+				aria-label={onSelect ? block.label : undefined}
+				onclick={onSelect && (() => onSelect(block.stepIndex))}
+				onkeydown={onSelect &&
+					((e) => {
+						if (e.key === 'Enter' || e.key === ' ') onSelect(block.stepIndex);
+					})}
 			>
 				<title>{block.label}</title>
 			</polygon>
