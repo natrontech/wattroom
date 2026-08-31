@@ -449,9 +449,10 @@ export function createRoomAv(slug: string) {
 			myIdentity = room.localParticipant.identity;
 			me = riderOf(myIdentity);
 			status = 'live';
-			// The tab you just opened is the one you are looking at, so it takes
-			// the mic and camera; your other tabs stand down when this lands.
-			claimAv();
+			myClaim = claimOf(room.localParticipant);
+			// A tab already in the room could, in principle, hold a newer claim
+			// than this one — check rather than assume newest-connected wins.
+			for (const p of room.remoteParticipants.values()) considerClaim(p);
 			// Post-permission the labels are real — the pickers can name devices.
 			void refreshDevices();
 			// Mic on by default (SPEC); a denied permission downgrades to
@@ -477,12 +478,28 @@ export function createRoomAv(slug: string) {
 	// ── One rider, several tabs (#293) ───────────────────────────────────────
 	// LiveKit gives each tab its own participant now, so nothing evicts
 	// anything; what is left is a product question — which tab holds the mic.
-	// The newest claim wins, announced over the room's data channel, and the
-	// tabs that lose say so instead of going mysteriously quiet.
+	// Newest wins: opening a room moves the mic to the tab you are looking at.
+	//
+	// A tab joining needs no announcement — LiveKit tells everyone, with a
+	// server-assigned joinedAt that beats comparing browser clocks. Only an
+	// explicit "use this tab instead" has to be broadcast, and by then the
+	// sender is a participant the others already know. (Publishing a claim on
+	// join instead looked simpler and did not work: the packet outruns the
+	// join event, and the receiver gets it with no sender attached.)
 	let myClaim: Claim | null = null;
 	/** Whether the mic was open when this tab handed over, for taking it back. */
 	let micBeforeHandoff = false;
 
+	function claimOf(p: { identity: string; joinedAt?: Date }): Claim {
+		return { identity: p.identity, at: p.joinedAt?.getTime() ?? Date.now() };
+	}
+
+	/** Stand down if this participant is a newer tab of mine. */
+	function considerClaim(p: { identity: string; joinedAt?: Date }) {
+		if (myClaim && yieldsTo(myClaim, claimOf(p))) void standDown();
+	}
+
+	/** Announce that the mic and camera are moving here, now. */
 	function claimAv() {
 		if (!room) return;
 		myClaim = { identity: myIdentity, at: Date.now() };
@@ -540,6 +557,9 @@ export function createRoomAv(slug: string) {
 	}
 
 	function wire(r: Room) {
+		// Only an explicit takeover arrives this way. The sender must be a
+		// participant we know — an unattributed packet is not something to
+		// mute a rider's microphone over.
 		r.on(RoomEvent.DataReceived, (payload, participant) => {
 			if (!participant || !myClaim) return;
 			let at: unknown;
@@ -605,7 +625,11 @@ export function createRoomAv(slug: string) {
 				{ isMuted: boolean } | undefined;
 			setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 		};
-		r.on(RoomEvent.ParticipantConnected, (p) => audioState(p));
+		r.on(RoomEvent.ParticipantConnected, (p) => {
+			audioState(p);
+			// Another tab of yours just opened: it is the one you are looking at.
+			considerClaim(p);
+		});
 		r.on(RoomEvent.ParticipantDisconnected, (p) => {
 			const rider = riderOf(p.identity);
 			// Their other tab may still be in the room — one closed tab does not
