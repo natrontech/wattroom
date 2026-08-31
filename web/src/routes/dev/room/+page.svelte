@@ -11,6 +11,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import SprintMoment from './SprintMoment.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
+	import Stage from '$lib/room/Stage.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import {
@@ -37,6 +38,7 @@
 	const live = $derived(room.phase === 'live');
 
 	let tv = $state(false);
+	let stagePick = $state('screen:ada');
 	// Joining a real room waits on the WS handshake and LiveKit tracks; show that.
 	let joining = $state(false);
 
@@ -294,6 +296,28 @@
 					/>
 				</div>
 			{/if}
+
+			<!-- The stage (#280) with a fake picture: a real screenshare needs two
+			     machines and a display-capture prompt, so this is the only place
+			     the pick/zoom/pan/resize chrome can be eyeballed. -->
+			<Stage
+				sources={[
+					{ key: 'screen:ada', kind: 'screen', label: "Ada's screen" },
+					{ key: 'screen:you', kind: 'screen', label: 'Your screen' },
+					{ key: 'cam:ada', kind: 'cam', label: 'Ada' },
+				]}
+				activeKey={stagePick}
+				trackKey={stagePick}
+				onPick={(key) => (stagePick = key)}
+				attach={(node) => {
+					node.replaceChildren();
+					const board = document.createElement('div');
+					board.style.cssText =
+						'width:100%;height:100%;display:grid;place-items:center;font:600 28px system-ui;color:#fff;background:repeating-linear-gradient(45deg,#1c1030,#1c1030 24px,#2a1750 24px,#2a1750 48px)';
+					board.textContent = stagePick;
+					node.appendChild(board);
+				}}
+			/>
 
 			<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
 			     tap a tile to spotlight that rider, tap again to let go. -->

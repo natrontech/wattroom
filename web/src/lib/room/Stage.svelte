@@ -1,0 +1,200 @@
+<script lang="ts">
+	import {
+		Maximize,
+		RotateCcw,
+		ScreenShare,
+		Video as VideoIcon,
+		ZoomIn,
+		ZoomOut,
+	} from '@lucide/svelte';
+	import { keepSize } from '$lib/keep-size';
+	import {
+		FIT,
+		MAX_ZOOM,
+		panBy,
+		type StageView,
+		zoomAbout,
+	} from '$lib/room/stage';
+
+	/**
+	 * The stage (#280): the one big surface, and the rider decides what is on
+	 * it. Many people can share at once, so the picker is the feature — plus
+	 * zoom, because a 1440p screenshare letterboxed into a room panel is
+	 * unreadable exactly when it matters (a chart, a route, a settings dialog).
+	 *
+	 * Size is dragged natively (CSS `resize`) and remembered per device.
+	 */
+	interface StageSource {
+		key: string;
+		kind: 'screen' | 'cam';
+		label: string;
+	}
+
+	let {
+		sources,
+		activeKey,
+		trackKey,
+		onPick,
+		attach,
+	}: {
+		sources: StageSource[];
+		activeKey: string;
+		/** activeKey plus the track generation — remounts on a fresh track. */
+		trackKey: string;
+		onPick: (key: string) => void;
+		/** Mounts the active source's video into the surface. */
+		attach: (node: HTMLElement) => void;
+	} = $props();
+
+	let frame = $state<HTMLElement | null>(null);
+	let view = $state<StageView>(FIT);
+
+	// A new source is a new picture: inherited zoom would land you staring at
+	// a corner of someone else's screen.
+	$effect(() => {
+		activeKey;
+		view = FIT;
+	});
+
+	function rezoom(zoom: number, atX = 0, atY = 0) {
+		const next = zoomAbout(
+			view,
+			zoom,
+			atX,
+			atY,
+			frame?.clientWidth ?? 0,
+			frame?.clientHeight ?? 0,
+		);
+		const moved = next.zoom !== view.zoom;
+		view = next;
+		return moved;
+	}
+
+	function wheelZoom(node: HTMLElement) {
+		// Svelte's onwheel is passive, and this one must be able to cancel the
+		// page scroll — hence the manual listener.
+		const onWheel = (event: WheelEvent) => {
+			const rect = node.getBoundingClientRect();
+			const moved = rezoom(
+				view.zoom * Math.exp(-event.deltaY / 400),
+				event.clientX - rect.left - rect.width / 2,
+				event.clientY - rect.top - rect.height / 2,
+			);
+			// At a zoom limit the gesture was really a scroll: let the page have it.
+			if (moved) event.preventDefault();
+		};
+		node.addEventListener('wheel', onWheel, { passive: false });
+		return () => node.removeEventListener('wheel', onWheel);
+	}
+
+	/** Shrinking the frame while zoomed would strand the picture off-centre. */
+	function reclamp(node: HTMLElement) {
+		const observer = new ResizeObserver(() => {
+			view = panBy(view, 0, 0, node.clientWidth, node.clientHeight);
+		});
+		observer.observe(node);
+		return () => observer.disconnect();
+	}
+
+	let dragging = $state(false);
+	function startPan(event: PointerEvent) {
+		if (view.zoom === 1) return;
+		dragging = true;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+	}
+	function pan(event: PointerEvent) {
+		if (!dragging) return;
+		view = panBy(
+			view,
+			event.movementX,
+			event.movementY,
+			frame?.clientWidth ?? 0,
+			frame?.clientHeight ?? 0,
+		);
+	}
+</script>
+
+<div class="mb-3">
+	<div
+		bind:this={frame}
+		{@attach (node) => keepSize(node, 'stage')}
+		{@attach wheelZoom}
+		{@attach reclamp}
+		class="ring-neon/40 relative w-full overflow-hidden rounded-lg bg-black ring-1"
+		style="height: 420px; min-width: 320px; min-height: 200px; max-width: 100%; resize: both"
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="h-full w-full"
+			style="transform: translate({view.x}px, {view.y}px) scale({view.zoom}); transition: {dragging
+				? 'none'
+				: 'transform 120ms ease-out'}; cursor: {view.zoom === 1
+				? 'default'
+				: dragging
+					? 'grabbing'
+					: 'grab'}"
+			onpointerdown={startPan}
+			onpointermove={pan}
+			onpointerup={() => (dragging = false)}
+			onpointercancel={() => (dragging = false)}
+			ondblclick={() => (view = FIT)}
+		>
+			{#key trackKey}
+				<div class="h-full w-full" {@attach attach}></div>
+			{/key}
+		</div>
+
+		<!-- Zoom chrome sits on the frame, never on the picture's middle. -->
+		<div
+			class="bg-surface/80 ring-ink/10 absolute right-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-1 ring-1 backdrop-blur"
+		>
+			<button
+				onclick={() => rezoom(view.zoom / 1.5)}
+				disabled={view.zoom === 1}
+				class="text-muted hover:text-ink disabled:opacity-30"
+				aria-label="zoom out"><ZoomOut size={14} /></button
+			>
+			<span class="font-display text-muted w-9 text-center text-[10px]"
+				>{view.zoom.toFixed(1)}×</span
+			>
+			<button
+				onclick={() => rezoom(view.zoom * 1.5)}
+				disabled={view.zoom === MAX_ZOOM}
+				class="text-muted hover:text-ink disabled:opacity-30"
+				aria-label="zoom in"><ZoomIn size={14} /></button
+			>
+			<button
+				onclick={() => (view = FIT)}
+				disabled={view.zoom === 1}
+				class="text-muted hover:text-ink disabled:opacity-30"
+				aria-label="fit to frame"><RotateCcw size={13} /></button
+			>
+			<button
+				onclick={() => void frame?.requestFullscreen?.()}
+				class="text-muted hover:text-ink"
+				aria-label="fullscreen"><Maximize size={13} /></button
+			>
+		</div>
+	</div>
+
+	<!-- Who is on stage, and who else could be. One tap swaps. -->
+	<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+		{#each sources as source (source.key)}
+			<button
+				onclick={() => onPick(source.key)}
+				class="inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] {source.key ===
+				activeKey
+					? 'border-neon/60 text-ink'
+					: 'border-muted/20 text-muted hover:text-ink'}"
+			>
+				{#if source.kind === 'screen'}<ScreenShare size={12} />{:else}<VideoIcon
+						size={12}
+					/>{/if}
+				{source.label}
+			</button>
+		{/each}
+		<span class="text-muted/70 ml-auto text-[10px]"
+			>scroll to zoom · drag to pan · drag the corner to resize</span
+		>
+	</div>
+</div>

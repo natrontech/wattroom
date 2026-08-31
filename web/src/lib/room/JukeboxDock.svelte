@@ -4,6 +4,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { keepSize } from '$lib/keep-size';
 	import { Volume2 } from '@lucide/svelte';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
@@ -137,7 +138,7 @@
 		if (ducked) {
 			wasDucked = true;
 			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * 0.25), 150);
+			rampTo(Math.round(baseVolume * mixer.duck), 150);
 		} else if (wasDucked) {
 			// The SPEC release: hold, then ramp back up.
 			wasDucked = false;
@@ -203,13 +204,16 @@
 		class="fixed z-[60] {jukebox?.current
 			? ''
 			: 'hidden'} {page.url.pathname.startsWith('/r/')
-			? 'right-4 bottom-20 xl:right-[340px] xl:bottom-4'
+			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
 	>
-		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
+		<!-- ≥200×200, always visible while media plays, nothing overlaid. The
+		     RMF floor is the resize minimum, so a drag cannot break it; the
+		     padding keeps the grip off the iframe, which would swallow it. -->
 		<div
-			class="ring-ink/15 relative overflow-hidden rounded-lg bg-black shadow-lg ring-1"
-			style="width: 356px; height: 200px"
+			{@attach (node) => keepSize(node, 'jukebox-dock')}
+			class="ring-ink/15 relative overflow-hidden rounded-lg bg-black pr-2 pb-2 shadow-lg ring-1"
+			style="width: 364px; height: 208px; min-width: 208px; min-height: 208px; max-width: 80vw; max-height: 70vh; resize: both"
 		>
 			<div bind:this={container} class="h-full w-full"></div>
 			{#if apiFailed}
@@ -222,12 +226,12 @@
 			{/if}
 		</div>
 		{#if jukebox?.current}
-			<p class="text-muted mt-1 max-w-[356px] truncate text-[10px]">
+			<p class="text-muted mt-1 max-w-full truncate text-[10px]">
 				{jukebox.current.title} · playing for the room
 			</p>
 			<!-- Your ears only (#179): the same fader as the rail's mixer, where
 			     the music actually is. Below the tile — RMF forbids overlays. -->
-			<div class="mt-1 flex max-w-[356px] items-center gap-2">
+			<div class="mt-1 flex max-w-full items-center gap-2">
 				<Volume2 size={12} class="text-muted shrink-0" />
 				<input
 					type="range"
