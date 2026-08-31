@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -117,16 +118,14 @@
 					{@const riderZone = zoneOf(rider.watts, rider.ftp)}
 					<div class="flex items-center gap-[1.2vw]">
 						<span class="w-[7vw] truncate text-[2.6vh]">{rider.name}</span>
-						<div
-							class="bg-surface-raised h-[1.6vh] flex-1 overflow-hidden rounded-full"
-						>
-							<div
-								class="h-full transition-[width] duration-500 ease-out {ZONE_BG[
-									riderZone
-								]}"
-								style="width: {fillPct(rider.watts, rider.ftp)}%"
-							></div>
-						</div>
+						<ProgressBar
+							pct={fillPct(rider.watts, rider.ftp)}
+							h="h-[1.6vh]"
+							fill="{ZONE_BG[
+								riderZone
+							]} transition-[width] duration-500 ease-out"
+							class="flex-1"
+						/>
 						<span
 							class="font-display w-[6vw] text-right text-[3.2vh] font-bold tabular-nums"
 							>{rider.watts}</span

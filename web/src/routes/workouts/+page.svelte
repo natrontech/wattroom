@@ -1,10 +1,12 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import type { Workout } from '$lib/workout/types';
+	import { toasts } from '$lib/toast.svelte';
 
 	// FTP only scales the preview here; the ride screen owns the real value (#16).
 	const previewFtp = 265;
@@ -20,7 +22,7 @@
 	);
 </script>
 
-<main class="mx-auto max-w-4xl px-6 py-10">
+<main class="page max-w-4xl">
 	<div class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
@@ -34,9 +36,7 @@
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-6">
 		<div class="flex items-baseline gap-3">
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-				your workouts
-			</h2>
+			<h2 class="eyebrow">your workouts</h2>
 			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
 				>New workout</a
 			>
@@ -52,7 +52,7 @@
 			<ul class="mt-2 grid gap-2">
 				{#each custom.all as entry (entry.id)}
 					<li
-						class="border-muted/15 bg-surface-raised flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-5 py-3"
+						class="panel flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3"
 					>
 						<a
 							href="/ride?w={entry.id}"
@@ -67,7 +67,17 @@
 							class="text-muted hover:text-ink ml-auto text-xs">Edit</a
 						>
 						<button
-							onclick={() => void custom.remove(entry.id)}
+							onclick={() => {
+								// Undo over confirm (errors.md): delete now, offer the way back.
+								const workout = $state.snapshot(entry.workout) as Workout;
+								void custom.remove(entry.id).then((err) => {
+									if (err) toasts.push(err, { tone: 'error' });
+									else
+										toasts.push(`Deleted “${workout.name}”.`, {
+											undo: () => void custom.save(workout),
+										});
+								});
+							}}
 							class="text-muted hover:text-ink text-xs">Delete</button
 						>
 					</li>
@@ -76,9 +86,7 @@
 		{/if}
 	</section>
 
-	<h2 class="text-muted mt-8 text-[10px] tracking-[0.2em] uppercase">
-		curated
-	</h2>
+	<h2 class="eyebrow mt-8">curated</h2>
 	<div class="mt-6 flex flex-wrap gap-1">
 		{#each ['All', ...focuses] as option (option)}
 			<button
@@ -92,9 +100,7 @@
 
 	<ul class="mt-4 grid gap-3">
 		{#each shown as entry (entry.id)}
-			<li
-				class="border-muted/15 bg-surface-raised hover:border-muted/40 overflow-hidden rounded-lg border transition-colors"
-			>
+			<li class="panel hover:border-muted/40 overflow-hidden transition-colors">
 				<!-- Not one big anchor: the card carries two actions, and nesting them
 				     inside a link is invalid and unreachable by keyboard. -->
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pt-4">
@@ -103,9 +109,7 @@
 						class="font-display font-bold hover:underline"
 						>{entry.workout.name}</a
 					>
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>{entry.focus}</span
-					>
+					<span class="eyebrow">{entry.focus}</span>
 					<span class="text-muted ml-auto font-mono text-xs tabular-nums"
 						>{formatClock(durationSeconds(entry.workout))}</span
 					>

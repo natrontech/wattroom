@@ -121,11 +121,9 @@
 				bind:value={draft}
 				maxlength="500"
 				placeholder="Message {dm.open.name}…"
-				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-2.5 py-1.5 text-xs outline-none"
+				class="input input-xs min-w-0 flex-1"
 			/>
-			<button
-				disabled={!draft.trim()}
-				class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+			<button disabled={!draft.trim()} class="btn btn-primary btn-xs"
 				>Send</button
 			>
 		</form>

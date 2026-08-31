@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import { wkg } from '$lib/format';
 	import {
 		fillPct,
 		type TileMetric,
@@ -48,7 +49,7 @@
 						: {
 								key: metric,
 								value: rider.watts,
-								text: (rider.watts / rider.kg).toFixed(1),
+								text: wkg(rider.watts, rider.kg),
 								unit: 'w/kg',
 							},
 			)

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import Banner from '$lib/components/Banner.svelte';
 	import { play } from '$lib/sound/cues';
 
 	interface Member {
@@ -154,7 +155,7 @@
 		</div>
 	</main>
 {:else if room}
-	<main class="mx-auto max-w-2xl px-6 py-10">
+	<main class="page max-w-2xl">
 		<a href="/r/{room.slug}" class="text-muted hover:text-ink text-xs underline"
 			>← {room.name}</a
 		>
@@ -166,32 +167,24 @@
 		</p>
 
 		{#if error}
-			<p
-				class="border-z6/40 bg-z6/10 text-z6 mt-4 rounded-lg border px-4 py-2 text-xs"
-			>
-				{error}
-			</p>
+			<div class="mt-4">
+				<Banner tone="error">{error}</Banner>
+			</div>
 		{/if}
 
-		<section
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6"
-		>
+		<section class="panel mt-8 p-6">
 			<label class="block">
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>room name</span
-				>
+				<span class="eyebrow">room name</span>
 				<input
 					bind:value={name}
 					onchange={save}
 					disabled={busy}
-					class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
+					class="input mt-1 w-full"
 				/>
 			</label>
 
 			<label class="mt-4 block">
-				<span class="text-muted text-[10px] tracking-wider uppercase"
-					>room icon</span
-				>
+				<span class="eyebrow">room icon</span>
 				<span class="mt-1 flex items-center gap-2">
 					<input
 						bind:value={icon}
@@ -199,14 +192,13 @@
 						disabled={busy}
 						maxlength="8"
 						placeholder="🚴"
-						class="border-muted/25 w-16 rounded border bg-transparent px-3 py-2 text-center text-sm"
+						class="input w-16 text-center"
 					/>
 					{#each ICON_IDEAS as idea (idea)}
 						<button
 							onclick={() => ((icon = idea), void save())}
 							disabled={busy}
-							class="border-muted/20 hover:border-muted/50 rounded border px-2 py-1.5 text-sm"
-							>{idea}</button
+							class="btn btn-secondary btn-xs">{idea}</button
 						>
 					{/each}
 				</span>
@@ -221,9 +213,7 @@
 			     save() so nothing stored is lost. -->
 		</section>
 
-		<section
-			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
-		>
+		<section class="panel mt-3 p-6">
 			<h2 class="font-display font-bold">Sound pack</h2>
 			<div class="mt-3 grid gap-2">
 				{#each packs as option (option.id)}
@@ -247,7 +237,7 @@
 						{#if option.id !== 'silent'}
 							<button
 								onclick={(event) => (event.preventDefault(), play('fanfare'))}
-								class="border-muted/25 hover:border-muted/60 ml-auto shrink-0 rounded border px-3 py-1.5 text-xs"
+								class="btn btn-secondary btn-xs ml-auto shrink-0"
 								>Preview</button
 							>
 						{/if}
@@ -259,9 +249,7 @@
 			</p>
 		</section>
 
-		<section
-			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
-		>
+		<section class="panel mt-3 p-6">
 			<h2 class="font-display font-bold">Reactions</h2>
 			<p class="text-muted mt-1.5 text-xs">
 				The room's emoji vocabulary — cheers mid-ride, reactions on chat. Up to
@@ -289,12 +277,11 @@
 							bind:value={newCheer}
 							maxlength="8"
 							placeholder="＋ emoji"
-							class="border-muted/25 w-24 rounded-full border bg-transparent px-3 py-1.5 text-center text-sm"
+							class="input input-xs w-24 rounded-full text-center"
 						/>
 						<button
 							disabled={busy || !newCheer.trim()}
-							class="border-muted/25 hover:border-muted/60 rounded-full border px-3 py-1.5 text-xs disabled:opacity-40"
-							>Add</button
+							class="btn btn-secondary btn-xs">Add</button
 						>
 					</form>
 				{/if}
@@ -307,9 +294,7 @@
 			>
 		</section>
 
-		<section
-			class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6"
-		>
+		<section class="panel mt-3 p-6">
 			<h2 class="font-display font-bold">Who's in here</h2>
 			<ul class="divide-ink/5 mt-3 divide-y">
 				{#each room.members ?? [] as member (member.id)}
@@ -317,15 +302,12 @@
 						<span class="text-sm {member.role === 'banned' ? 'text-muted' : ''}"
 							>{member.displayName}</span
 						>
-						<span class="text-muted text-[10px] tracking-wider uppercase"
-							>{member.role}</span
-						>
+						<span class="eyebrow">{member.role}</span>
 						{#if member.role === 'banned'}
 							<button
 								onclick={() => setRole(member.id, 'member')}
 								disabled={busy}
-								class="border-muted/25 hover:border-muted/60 ml-auto rounded border px-3 py-1.5 text-xs disabled:opacity-40"
-								>Unban</button
+								class="btn btn-secondary btn-xs ml-auto">Unban</button
 							>
 						{:else if member.role !== 'owner'}
 							<span class="ml-auto flex gap-1.5">
@@ -336,7 +318,7 @@
 											member.role === 'coach' ? 'member' : 'coach',
 										)}
 									disabled={busy}
-									class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+									class="btn btn-secondary btn-xs"
 									>{member.role === 'coach'
 										? 'Remove coach'
 										: 'Make coach'}</button
@@ -344,8 +326,7 @@
 								<button
 									onclick={() => setRole(member.id, 'banned')}
 									disabled={busy}
-									class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-3 py-1.5 text-xs disabled:opacity-40"
-									>Ban</button
+									class="btn btn-danger btn-xs">Ban</button
 								>
 							</span>
 						{/if}
@@ -375,21 +356,18 @@
 						<button
 							onclick={remove}
 							disabled={busy}
-							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:opacity-40"
-							>Delete room</button
+							class="btn btn-danger-solid">Delete room</button
 						>
 						<button
 							onclick={() => (confirmDelete = false)}
-							class="border-muted/30 rounded border px-4 py-2 text-sm"
-							>Cancel</button
+							class="btn btn-secondary">Cancel</button
 						>
 					</div>
 				</div>
 			{:else}
 				<button
 					onclick={() => (confirmDelete = true)}
-					class="border-z6/40 text-z6 hover:bg-z6/10 mt-4 rounded border px-4 py-2 text-sm"
-					>Delete room</button
+					class="btn btn-danger mt-4">Delete room</button
 				>
 			{/if}
 		</section>

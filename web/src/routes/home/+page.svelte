@@ -2,7 +2,9 @@
 	import { ArrowRight, CalendarClock, Flame } from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { formatWhen } from '$lib/format';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -76,30 +78,24 @@
 			kj: Math.round(recent.reduce((sum, ride) => sum + ride.kj, 0)),
 		};
 	});
-
-	const when = (iso: string) =>
-		new Date(iso).toLocaleString(undefined, {
-			weekday: 'short',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
 </script>
 
-<main class="mx-auto max-w-4xl px-6 py-10">
+<main class="page max-w-4xl">
 	<h1 class="font-display text-3xl font-bold tracking-tight">
 		Hey {account.me?.displayName ?? 'rider'}
 	</h1>
 
 	{#if error}
-		<div
-			class="border-z6/40 bg-z6/10 mt-6 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"
-		>
-			<span>{error}</span>
-			<button
-				onclick={() => void load()}
-				class="text-muted hover:text-ink ml-auto text-xs underline"
-				>Retry</button
-			>
+		<div class="mt-6">
+			<Banner tone="error">
+				{error}
+				{#snippet action()}
+					<button
+						onclick={() => void load()}
+						class="text-muted hover:text-ink text-xs underline">Retry</button
+					>
+				{/snippet}
+			</Banner>
 		</div>
 	{/if}
 
@@ -123,7 +119,7 @@
 					{#each busy as room (room.slug)}
 						<a
 							href="/r/{room.slug}"
-							class="border-muted/15 bg-surface-raised hover:border-muted/40 flex items-center gap-4 rounded-lg border px-5 py-4 transition-colors"
+							class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
 						>
 							<span
 								class="{room.phase === 'running' || room.phase === 'countdown'
@@ -164,7 +160,7 @@
 				Planned
 			</h2>
 			{#if planned.length > 0}
-				<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border">
+				<div class="panel mt-3">
 					{#each planned as room (room.slug)}
 						<a
 							href="/r/{room.slug}"
@@ -176,7 +172,7 @@
 									{room.nextSession?.workoutName}
 								</p>
 								<p class="text-muted text-xs">
-									{when(room.nextSession?.startsAt ?? '')} · {room.name}
+									{formatWhen(room.nextSession?.startsAt ?? '')} · {room.name}
 								</p>
 							</div>
 						</a>
@@ -199,29 +195,21 @@
 				Your week
 			</h2>
 			<div class="mt-3 grid grid-cols-3 gap-3">
-				<div
-					class="border-muted/15 bg-surface-raised rounded-lg border px-4 py-3"
-				>
+				<div class="panel px-4 py-3">
 					<p class="font-display text-2xl font-bold tabular-nums">
 						{rides === null ? '–' : week.count}
 					</p>
-					<p class="text-muted text-[10px] tracking-wider uppercase">rides</p>
+					<p class="eyebrow">rides</p>
 				</div>
-				<div
-					class="border-muted/15 bg-surface-raised rounded-lg border px-4 py-3"
-				>
+				<div class="panel px-4 py-3">
 					<p class="font-display text-2xl font-bold tabular-nums">
 						{rides === null ? '–' : week.minutes}<span
 							class="text-muted ml-1 text-sm">min</span
 						>
 					</p>
-					<p class="text-muted text-[10px] tracking-wider uppercase">
-						in the saddle
-					</p>
+					<p class="eyebrow">in the saddle</p>
 				</div>
-				<div
-					class="border-muted/15 bg-surface-raised rounded-lg border px-4 py-3"
-				>
+				<div class="panel px-4 py-3">
 					<p
 						class="font-display inline-flex items-center gap-1.5 text-2xl font-bold tabular-nums"
 					>
@@ -230,7 +218,7 @@
 						>
 						{#if week.kj > 0}<Flame size={16} class="text-z5" />{/if}
 					</p>
-					<p class="text-muted text-[10px] tracking-wider uppercase">work</p>
+					<p class="eyebrow">work</p>
 				</div>
 			</div>
 			<p class="text-muted mt-2 text-xs">

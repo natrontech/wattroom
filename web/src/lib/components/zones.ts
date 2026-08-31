@@ -52,8 +52,3 @@ export function zoneOf(watts: number, ftp: number): number {
 export function fillPct(watts: number, ftp: number): number {
 	return Math.min(100, Math.max(0, (watts / ftp / CEILING) * 100));
 }
-
-export function formatClock(seconds: number): string {
-	const minutes = Math.floor(seconds / 60);
-	return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-}

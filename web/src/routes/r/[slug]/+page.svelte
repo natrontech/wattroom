@@ -102,17 +102,14 @@
 {:else if room && !isMember}
 	<!-- The golden path: someone opened a shared link. One decision, one button. -->
 	<main class="grid min-h-dvh place-items-center px-6">
-		<div
-			class="border-muted/15 bg-surface-raised w-full max-w-md rounded-lg border px-6 py-10 text-center"
-		>
+		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
 			<p class="text-muted mt-2 text-sm">You have been invited to ride here.</p>
 			<button
 				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
 				disabled={busy}
-				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded px-5 py-3 text-sm font-semibold disabled:opacity-40"
-				>Join {room.name}</button
+				class="btn btn-primary btn-lg mt-6">Join {room.name}</button
 			>
 			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}
 		</div>

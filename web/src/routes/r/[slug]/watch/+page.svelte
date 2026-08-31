@@ -1,9 +1,11 @@
 <script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { fillPct, formatClock, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { formatClock, wkg } from '$lib/format';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { api } from '$lib/api';
@@ -96,9 +98,7 @@
 					<div class="flex items-baseline gap-2">
 						<span class="truncate text-sm">{rider.name}</span>
 						{#if rider.role !== 'member'}
-							<span class="text-muted text-[9px] tracking-wider uppercase"
-								>{rider.role}</span
-							>
+							<span class="eyebrow">{rider.role}</span>
 						{/if}
 						<span
 							class="font-display ml-auto text-2xl leading-none font-bold tabular-nums"
@@ -107,17 +107,14 @@
 						<span class="text-muted text-[10px]">W</span>
 					</div>
 					<div class="mt-1.5 flex items-center gap-2">
-						<div
-							class="bg-surface-raised h-1.5 flex-1 overflow-hidden rounded-full"
-						>
-							<div
-								class="h-full transition-[width] duration-500 {ZONE_BG[zone]}"
-								style="width: {fillPct(watts, rider.ftpWatts)}%"
-							></div>
-						</div>
+						<ProgressBar
+							pct={fillPct(watts, rider.ftpWatts)}
+							fill="{ZONE_BG[zone]} transition-[width] duration-500"
+							class="flex-1"
+						/>
 						<span
 							class="text-muted w-16 text-right font-mono text-[10px] tabular-nums"
-							>{rider.weightKg > 0 ? (watts / rider.weightKg).toFixed(1) : '–'} w/kg</span
+							>{wkg(watts, rider.weightKg)} w/kg</span
 						>
 					</div>
 				</li>
@@ -192,13 +189,9 @@
 				bind:value={draft}
 				maxlength="500"
 				placeholder="Say something…"
-				class="border-muted/25 focus:border-muted/60 min-w-0 flex-1 rounded border bg-transparent px-3 py-2 text-sm outline-none"
+				class="input min-w-0 flex-1"
 			/>
-			<button
-				disabled={!draft.trim()}
-				class="border-muted/25 hover:border-muted/60 rounded border px-4 py-2 text-sm disabled:opacity-40"
-				>Send</button
-			>
+			<button disabled={!draft.trim()} class="btn btn-secondary">Send</button>
 		</form>
 		{#if live.tick?.jukebox?.jamUrl}
 			<div class="mt-3">

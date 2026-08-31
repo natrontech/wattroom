@@ -63,7 +63,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-3xl px-6 py-10">
+<main class="page max-w-3xl">
 	<div class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
@@ -105,18 +105,13 @@
 	</div>
 
 	<div class="mt-8 flex flex-wrap items-center gap-3">
-		<a
-			href="/workouts"
-			class="bg-ink text-paper hover:bg-ink/90 rounded px-5 py-3 text-sm font-semibold"
-			>Pick a workout</a
-		>
+		<a href="/workouts" class="btn btn-primary btn-lg">Pick a workout</a>
 		{#if dev}
 			<!-- Same reason SimulatedTrainer exists: the dashboard has to be
 			     buildable without a strap on your chest. Dev-only (#123). -->
 			<button
 				onclick={() => pair('heart-rate', true)}
-				class="border-muted/30 hover:border-muted/60 rounded border px-5 py-3 text-sm"
-				>Simulate a strap</button
+				class="btn btn-secondary btn-lg">Simulate a strap</button
 			>
 		{/if}
 	</div>

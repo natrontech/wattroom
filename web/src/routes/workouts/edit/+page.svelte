@@ -1,13 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import {
-		formatClock,
-		ZONE_BG,
-		ZONE_NAMES,
-		zoneOf,
-	} from '$lib/components/zones';
+	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byId, library } from '$lib/workout/library';
@@ -183,10 +180,7 @@
 		</span>
 		<div class="ml-auto flex items-center gap-3">
 			<a href="/workouts" class="text-muted hover:text-ink text-sm">Cancel</a>
-			<button
-				onclick={save}
-				disabled={!check.ok}
-				class="bg-ink text-paper hover:bg-ink/90 rounded px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+			<button onclick={save} disabled={!check.ok} class="btn btn-primary"
 				>Save</button
 			>
 		</div>
@@ -194,26 +188,22 @@
 
 	<!-- Validation is inline and constant: a rider should never press Save to find out. -->
 	{#if !check.ok}
-		<p
-			class="border-z6/40 bg-z6/10 text-z6 mt-3 rounded-lg border px-4 py-2 text-xs"
-		>
-			{check.error}
-		</p>
+		<div class="mt-3">
+			<Banner tone="error">{check.error}</Banner>
+		</div>
 	{:else if status}
-		<p class="border-z5/40 bg-z5/10 mt-3 rounded-lg border px-4 py-2 text-xs">
-			{status}
-		</p>
+		<div class="mt-3">
+			<Banner tone="warn">{status}</Banner>
+		</div>
 	{/if}
 
-	<div
-		class="border-muted/15 bg-surface-raised mt-4 overflow-hidden rounded-lg border"
-	>
+	<div class="panel mt-4 overflow-hidden">
 		<IntervalGraph {segments} {total} elapsed={0} ftp={FTP} trace={[]} />
 	</div>
 
 	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
 		<aside>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">library</h2>
+			<h2 class="eyebrow">library</h2>
 			<ul class="mt-3 space-y-1">
 				{#each custom.all as entry (entry.id)}
 					<li>
@@ -253,7 +243,7 @@
 		</aside>
 
 		<section>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">steps</h2>
+			<h2 class="eyebrow">steps</h2>
 			<ul class="mt-3 space-y-1.5">
 				{#each workout.steps as step, i (i)}
 					<li
@@ -311,24 +301,19 @@
 				{#each ['steady', 'ramp', 'repeat', 'sprint'] as type (type)}
 					<button
 						onclick={() => add(type as 'steady' | 'ramp' | 'sprint' | 'repeat')}
-						class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs capitalize"
-						>+ {type}</button
+						class="btn btn-secondary btn-xs capitalize">+ {type}</button
 					>
 				{/each}
 			</div>
 		</section>
 
 		<aside>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">step</h2>
+			<h2 class="eyebrow">step</h2>
 			{#if current}
-				<div
-					class="border-muted/15 bg-surface-raised mt-3 space-y-4 rounded-lg border p-4"
-				>
+				<div class="panel mt-3 space-y-4 p-4">
 					{#if current.type !== 'repeat'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>duration</span
-							>
+							<span class="eyebrow">duration</span>
 							<input
 								value={formatClock(current.seconds)}
 								onchange={(event) => {
@@ -336,7 +321,7 @@
 									if (parsed !== null) current.seconds = parsed;
 									event.currentTarget.value = formatClock(current.seconds);
 								}}
-								class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								class="input mt-1 w-full font-mono tabular-nums"
 							/>
 							<span class="text-muted mt-1 block text-[10px]"
 								>m:ss — a bare number is minutes</span
@@ -346,9 +331,7 @@
 
 					{#if current.type === 'steady'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>target (% FTP)</span
-							>
+							<span class="eyebrow">target (% FTP)</span>
 							<input
 								type="number"
 								min="20"
@@ -357,7 +340,7 @@
 								oninput={(event) =>
 									((current as SteadyStep).target =
 										Number(event.currentTarget.value) / 100)}
-								class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								class="input mt-1 w-full font-mono tabular-nums"
 							/>
 							<span class="text-muted mt-1 block text-[11px]">
 								{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
@@ -368,9 +351,7 @@
 						     leave it blank. Empty input = no bound on that side. -->
 						<div class="grid grid-cols-2 gap-3">
 							<label class="block">
-								<span class="text-muted text-[10px] tracking-wider uppercase"
-									>rpm from</span
-								>
+								<span class="eyebrow">rpm from</span>
 								<input
 									type="number"
 									min="51"
@@ -382,13 +363,11 @@
 											event.currentTarget.value === ''
 												? undefined
 												: Number(event.currentTarget.value))}
-									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+									class="input mt-1 w-full font-mono tabular-nums"
 								/>
 							</label>
 							<label class="block">
-								<span class="text-muted text-[10px] tracking-wider uppercase"
-									>rpm to</span
-								>
+								<span class="eyebrow">rpm to</span>
 								<input
 									type="number"
 									min="30"
@@ -400,15 +379,13 @@
 											event.currentTarget.value === ''
 												? undefined
 												: Number(event.currentTarget.value))}
-									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+									class="input mt-1 w-full font-mono tabular-nums"
 								/>
 							</label>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<label class="block">
-								<span class="text-muted text-[10px] tracking-wider uppercase"
-									>bpm from</span
-								>
+								<span class="eyebrow">bpm from</span>
 								<input
 									type="number"
 									min="60"
@@ -420,13 +397,11 @@
 											event.currentTarget.value === ''
 												? undefined
 												: Number(event.currentTarget.value))}
-									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+									class="input mt-1 w-full font-mono tabular-nums"
 								/>
 							</label>
 							<label class="block">
-								<span class="text-muted text-[10px] tracking-wider uppercase"
-									>bpm to</span
-								>
+								<span class="eyebrow">bpm to</span>
 								<input
 									type="number"
 									min="60"
@@ -438,21 +413,19 @@
 											event.currentTarget.value === ''
 												? undefined
 												: Number(event.currentTarget.value))}
-									class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+									class="input mt-1 w-full font-mono tabular-nums"
 								/>
 							</label>
 						</div>
 					{:else if current.type === 'repeat'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>repeats</span
-							>
+							<span class="eyebrow">repeats</span>
 							<input
 								type="number"
 								min="1"
 								max="50"
 								bind:value={current.times}
-								class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+								class="input mt-1 w-full font-mono tabular-nums"
 							/>
 						</label>
 						<ul class="text-muted space-y-1 text-xs">
@@ -471,9 +444,7 @@
 						<div class="grid grid-cols-2 gap-3">
 							{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}
 								<label class="block">
-									<span class="text-muted text-[10px] tracking-wider uppercase"
-										>{field.label} (%)</span
-									>
+									<span class="eyebrow">{field.label} (%)</span>
 									<input
 										type="number"
 										min="20"
@@ -484,7 +455,7 @@
 										oninput={(event) =>
 											((current as RampStep)[field.key as 'from' | 'to'] =
 												Number(event.currentTarget.value) / 100)}
-										class="border-muted/25 focus:border-muted/60 mt-1 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tabular-nums outline-none"
+										class="input mt-1 w-full font-mono tabular-nums"
 									/>
 								</label>
 							{/each}
@@ -499,18 +470,17 @@
 					<div class="border-ink/5 flex gap-2 border-t pt-3">
 						<button
 							onclick={() => move(selected!, -1)}
-							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
+							class="btn btn-secondary btn-xs"
 							aria-label="Move step up">↑</button
 						>
 						<button
 							onclick={() => move(selected!, 1)}
-							class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
+							class="btn btn-secondary btn-xs"
 							aria-label="Move step down">↓</button
 						>
 						<button
 							onclick={() => remove(selected!)}
-							class="border-z6/40 text-z6 hover:bg-z6/10 ml-auto rounded border px-3 py-1.5 text-xs"
-							>Delete</button
+							class="btn btn-danger btn-xs ml-auto">Delete</button
 						>
 					</div>
 				</div>
