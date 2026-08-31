@@ -3,31 +3,10 @@
 	// navigate at all. Five primary tabs, thumb-sized (ux.md); Ramp test and
 	// Sensors stay reachable in context (home, ride, profile).
 	import { page } from '$app/state';
-	import {
-		ChartColumn,
-		History,
-		House,
-		UserRound,
-		Users,
-	} from '@lucide/svelte';
+	import { activeHref, pages } from './pages';
 
-	const tabs = [
-		{ href: '/home', label: 'Home', icon: House },
-		{ href: '/rooms', label: 'Rooms', icon: Users },
-		{ href: '/workouts', label: 'Workouts', icon: ChartColumn },
-		{ href: '/history', label: 'Rides', icon: History },
-		{ href: '/profile', label: 'Profile', icon: UserRound },
-	];
-
-	// A room page (/r/…) belongs to the Rooms tab.
-	const active = $derived(
-		tabs.find((t) =>
-			t.href === '/rooms'
-				? page.url.pathname.startsWith('/rooms') ||
-					page.url.pathname.startsWith('/r/')
-				: page.url.pathname.startsWith(t.href),
-		)?.href,
-	);
+	const tabs = pages.filter((p) => p.primary);
+	const active = $derived(activeHref(page.url.pathname));
 </script>
 
 <nav
