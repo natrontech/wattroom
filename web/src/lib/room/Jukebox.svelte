@@ -163,7 +163,7 @@
 				/>
 			</div>
 
-			{#if jukebox && jukebox.queue.length > 0}
+			{#if jukebox?.queue?.length}
 				<ul class="mt-2 grid gap-1">
 					{#each jukebox.queue as entry, i (entry.videoId + i)}
 						<li class="text-muted flex items-center gap-2 text-xs">
