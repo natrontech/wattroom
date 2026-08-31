@@ -15,6 +15,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import DmDrawer from '$lib/dm/DmDrawer.svelte';
+	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
@@ -225,8 +226,10 @@
 		<div class="min-w-0 flex-1 overflow-y-auto">
 			{@render children()}
 		</div>
-		<!-- The DM drawer (#208) lives on the frame: a thread survives
-		     navigation the same way the room connection does. -->
+		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
+		     frame: threads and music survive navigation the same way the
+		     room connection does. -->
+		<JukeboxDock />
 		<DmDrawer />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
