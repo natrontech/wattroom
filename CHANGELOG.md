@@ -16,6 +16,8 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.1] - 2026-09-01
+
 ### Added
 
 - Solo workout player: FTMS trainer control, heart-rate/cadence/power sensor
@@ -52,4 +54,5 @@ not a second copy of `git log`.
   would have served rider counts and Go runtime internals to anyone; caught
   before wattroom.ch was ever deployed, so nothing was exposed in practice.
 
-[Unreleased]: https://github.com/natrontech/wattroom/commits/main
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.1...HEAD
+[2026.09.1]: https://github.com/natrontech/wattroom/releases/tag/2026.09.1
