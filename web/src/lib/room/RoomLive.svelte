@@ -12,7 +12,7 @@
 		VideoOff,
 	} from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
-	import { play, setDucked, setMuted } from '$lib/sound/cues';
+	import { play, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { arbitrate } from '$lib/ble/arbitrate';
@@ -113,11 +113,6 @@
 	const profile = createProfileStore();
 	onDestroy(() => {
 		stopRiding();
-	});
-
-	// SPEC room audio: the gate threshold doubles while the jukebox plays.
-	$effect(() => {
-		av.setMusicPlaying(!!live.tick?.jukebox?.playing);
 	});
 
 	// Space is push-to-talk while that mode is on — never while typing.
@@ -291,13 +286,8 @@
 	);
 
 	// ── Sounds follow state (riders are not watching) ─────────────────────────
-	$effect(() => {
-		setDucked(
-			Object.entries(av.speaking).some(
-				([id, active]) => active && id !== account.me?.id,
-			),
-		);
-	});
+	// Cue ducking + the music-aware gate threshold moved to the room
+	// connection (#216) — they must work on every page, not just this one.
 	let heardCount = -1;
 	$effect(() => {
 		if (shared?.phase !== 'countdown') {
@@ -896,10 +886,6 @@
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title, jamUrl, positionSec) =>
 						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-					large
-					ducked={Object.entries(av.speaking).some(
-						([id, active]) => active && id !== account.me?.id,
-					)}
 				/>
 			</div>
 		{/if}
@@ -1217,9 +1203,6 @@
 					jukebox={live.tick?.jukebox}
 					send={(action, videoId, title, jamUrl, positionSec) =>
 						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-					ducked={Object.entries(av.speaking).some(
-						([id, active]) => active && id !== account.me?.id,
-					)}
 				/>
 			{/snippet}
 		</SidePanel>

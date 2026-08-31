@@ -2,7 +2,7 @@ import { account } from '$lib/account.svelte';
 import { notify } from '$lib/notify.svelte';
 import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
-import { play } from '$lib/sound/cues';
+import { play, setDucked } from '$lib/sound/cues';
 
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
@@ -84,6 +84,20 @@ function connect(slug: string): Connection {
 				play('chat');
 				notify.push(`${line.from} · ${slug}`, line.text, `chat-${slug}`);
 			}
+		});
+
+		// Room audio follows the connection, not the page (#216): the gate
+		// threshold doubles while the jukebox plays, and cues duck under a
+		// voice — wherever in the app you are standing.
+		$effect(() => {
+			av.setMusicPlaying(!!live.tick?.jukebox?.playing);
+		});
+		$effect(() => {
+			setDucked(
+				Object.entries(av.speaking).some(
+					([id, active]) => active && id !== account.me?.id,
+				),
+			);
 		});
 
 		// A session starting is the one event nobody wants to miss (#202).

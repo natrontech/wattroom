@@ -3,18 +3,15 @@
 	import type { JukeboxState } from '$lib/protocol';
 	import JamCard from '$lib/room/JamCard.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
-	import { mixer } from '$lib/sound/mixer.svelte';
+	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 
-	// The synced YouTube jukebox (#23). Hard TOS constraints (WATTROOM.md,
-	// YouTube RMF): the player tile is ≥200×200, always visible while media
-	// plays, and NOTHING is overlaid on it. Audio is local per rider — own
-	// iframe, own volume — and never enters the voice path.
+	// The jukebox CONTROLS (#23, #216): transport, queue, adding. The player
+	// itself is JukeboxDock, docked on the app frame so music follows the
+	// connection — this component never touches an iframe.
 
 	let {
 		jukebox,
 		send,
-		large = false,
-		ducked = false,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (
@@ -24,148 +21,19 @@
 			jamUrl?: string,
 			positionSec?: number,
 		) => void;
-		large?: boolean;
-		/** Someone is talking: dip the music, Discord-style (#24). */
-		ducked?: boolean;
 	} = $props();
 
 	let url = $state('');
 	let addError = $state<string | null>(null);
-	let container = $state<HTMLDivElement | null>(null);
 
-	// ── YouTube IFrame API ────────────────────────────────────────────────────
-	// One global loader; the API script is YouTube's requirement, not a CDN whim.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	type YtPlayer = any;
-	let player: YtPlayer = null;
-	let playerReady = $state(false);
-	let loadedVideo: string | null = null;
-
-	function withApi(cb: () => void) {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const w = window as any;
-		if (w.YT?.Player) return cb();
-		const existing = w.onYouTubeIframeAPIReady;
-		w.onYouTubeIframeAPIReady = () => {
-			existing?.();
-			cb();
-		};
-		if (!document.querySelector('script[src*="iframe_api"]')) {
-			const tag = document.createElement('script');
-			tag.src = 'https://www.youtube.com/iframe_api';
-			document.head.appendChild(tag);
-		}
-	}
-
-	$effect(() => {
-		const node = container;
-		if (!node || player) return;
-		withApi(() => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			player = new (window as any).YT.Player(node, {
-				width: '100%',
-				height: '100%',
-				playerVars: { playsinline: 1, rel: 0 },
-				events: {
-					onReady: () => (playerReady = true),
-					onStateChange: (e: { data: number }) => {
-						// 0 = ended: report it; the server advances exactly once.
-						if (e.data === 0 && loadedVideo) send('ended', loadedVideo);
-					},
-					onError: () => {
-						// Non-embeddable or broken: skip for everyone rather than
-						// leaving each rider staring at a different error.
-						if (loadedVideo) send('ended', loadedVideo);
-					},
-				},
-			});
-		});
-	});
-
-	// ── Ducking (#24, ramps per #152): client-side mix only. The rider's own
-	// volume is the baseline — read when unducked, so their slider is
-	// respected. SPEC numbers: dip to 25 % over 150 ms, release after a 600 ms
-	// hold over 400 ms — an abrupt drop is worse than no ducking, and the hold
-	// stops the level pumping on the gaps between words.
-	let baseVolume = mixer.music;
-	let releaseTimer: ReturnType<typeof setTimeout> | undefined;
-	let rampTimer: ReturnType<typeof setInterval> | undefined;
-
-	// The iframe API only takes integer volumes — a ramp is a stepped one.
-	function rampTo(target: number, ms: number) {
-		clearInterval(rampTimer);
-		const from = player.getVolume?.() ?? target;
-		const steps = Math.max(1, Math.round(ms / 30));
-		let step = 0;
-		rampTimer = setInterval(() => {
-			step += 1;
-			const v = from + ((target - from) * step) / steps;
-			player.setVolume?.(Math.round(v));
-			if (step >= steps) clearInterval(rampTimer);
-		}, 30);
-	}
-
-	$effect(() => {
-		if (!playerReady) return;
-		baseVolume = mixer.music; // the mixer owns the ceiling (#179)
-		if (ducked) {
-			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * 0.25), 150);
-		} else {
-			releaseTimer = setTimeout(() => rampTo(baseVolume, 400), 600);
-		}
-		return () => {
-			clearTimeout(releaseTimer);
-			clearInterval(rampTimer);
-		};
-	});
-
-	// ── Chase the server's playhead ───────────────────────────────────────────
-	// Tiered per the issue: beyond 2 s seek, 0.3–2 s nudge playbackRate, else 1×.
-	$effect(() => {
-		if (!playerReady || !jukebox) return;
-		const current = jukebox.current;
-		if (!current) {
-			if (loadedVideo) {
-				player.stopVideo?.();
-				loadedVideo = null;
-			}
-			return;
-		}
-		const target =
-			jukebox.positionSec +
-			(jukebox.playing ? (Date.now() - jukebox.anchorMs) / 1000 : 0);
-
-		if (loadedVideo !== current.videoId) {
-			loadedVideo = current.videoId;
-			player.loadVideoById(current.videoId, target);
-			return;
-		}
-		if (!jukebox.playing) {
-			if (player.getPlayerState?.() === 1) player.pauseVideo();
-			return;
-		}
-		if (player.getPlayerState?.() === 2) player.playVideo();
-
-		const drift = target - (player.getCurrentTime?.() ?? 0);
-		const abs = Math.abs(drift);
-		if (abs > 2) player.seekTo(target, true);
-		else if (abs > 0.3) player.setPlaybackRate(drift > 0 ? 1.25 : 0.75);
-		else player.setPlaybackRate(1);
-	});
-
-	// ── The transport row (#114): shared playhead, chunky jumps, a bar for
-	// desk fingers. All of it outside the iframe — RMF forbids overlays.
+	// ── The transport row (#114): shared playhead, chunky jumps. ─────────────
 	let nowMs = $state(Date.now());
-	let duration = $state(0);
 	$effect(() => {
-		if (!playerReady || !jukebox?.current) return;
-		const timer = setInterval(() => {
-			nowMs = Date.now();
-			duration = player?.getDuration?.() || 0;
-		}, 500);
+		if (!jukebox?.current) return;
+		const timer = setInterval(() => (nowMs = Date.now()), 500);
 		return () => clearInterval(timer);
 	});
+	const duration = $derived(playerInfo.duration);
 	const elapsed = $derived.by(() => {
 		if (!jukebox?.current) return 0;
 		const pos =
@@ -182,6 +50,7 @@
 		const two = (n: number) => String(n).padStart(2, '0');
 		return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
 	}
+	const maxSeekable = 6 * 3600; // mirrors the server clamp
 	function seekTo(pos: number) {
 		const max = duration > 0 ? duration - 1 : maxSeekable;
 		send(
@@ -192,7 +61,6 @@
 			Math.min(Math.max(pos, 0), max),
 		);
 	}
-	const maxSeekable = 6 * 3600; // mirrors the server clamp
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
 	async function addFromUrl() {
@@ -207,18 +75,6 @@
 
 <section class="mt-4">
 	<div class="flex flex-wrap items-start gap-4">
-		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
-		<div
-			class="bg-paper overflow-hidden rounded-lg {jukebox?.current
-				? ''
-				: 'hidden'}"
-			style={large
-				? 'width: min(100%, 712px); aspect-ratio: 16/9'
-				: 'width: 356px; height: 200px'}
-		>
-			<div bind:this={container} class="h-full w-full"></div>
-		</div>
-
 		<div class="min-w-60 flex-1">
 			<div class="flex items-center gap-2">
 				<span class="text-muted text-[10px] tracking-wider uppercase"

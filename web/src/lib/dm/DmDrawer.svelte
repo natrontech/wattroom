@@ -2,6 +2,7 @@
 	import { X } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { dm } from '$lib/dm/dm.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 
 	// The DM drawer (#208): one thread, bottom-right, polled — a note between
 	// rides, not a live wire (ADR-0012 amended).
@@ -72,7 +73,10 @@
 
 {#if dm.open}
 	<div
-		class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-50 flex h-96 w-80 flex-col rounded-lg shadow-lg ring-1"
+		class="bg-surface-raised ring-ink/15 fixed bottom-4 z-50 flex h-96 w-80 flex-col rounded-lg shadow-lg ring-1 {roomConnection
+			.current?.live.tick?.jukebox?.current
+			? 'right-[392px]'
+			: 'right-4'}"
 		role="dialog"
 		aria-label="messages with {dm.open.name}"
 	>
