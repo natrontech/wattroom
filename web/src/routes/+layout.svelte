@@ -14,6 +14,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
+	import MemberCard from '$lib/room/MemberCard.svelte';
 	import RoomRail from '$lib/room/RoomRail.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
@@ -76,6 +77,44 @@
 		}),
 	);
 
+	// The member popout (#207): a rail click fetches the room's member list
+	// (member-gated server-side) and shows who that rider is.
+	interface PopoutMember {
+		id: string;
+		displayName: string;
+		role: string;
+		ftpWatts: number;
+		weightKg: number;
+		joinedAt: string;
+	}
+	interface PopoutMedal {
+		kind: string;
+		rider: string;
+		awardedAt: string;
+	}
+	let popout = $state<{
+		member: PopoutMember;
+		roomName: string;
+		slug: string;
+		medals: PopoutMedal[];
+	} | null>(null);
+	async function openMember(slug: string, name: string) {
+		const res = await fetch(`/api/rooms/${slug}`).then(
+			(r) => (r.ok ? r.json() : null),
+			() => null,
+		);
+		const member = res?.members?.find(
+			(m: PopoutMember) => m.displayName === name,
+		);
+		if (member)
+			popout = {
+				member,
+				roomName: res.name ?? slug,
+				slug,
+				medals: res.medals ?? [],
+			};
+	}
+
 	const railYou = $derived({
 		name: account.me?.displayName ?? '',
 		ftp: account.me?.ftpWatts ?? 0,
@@ -137,6 +176,7 @@
 					activeSlug={page.params?.slug ?? ''}
 					connectedSlug={roomConnection.current.slug}
 					onLeave={() => roomConnection.leave()}
+					onMember={(slug, name) => void openMember(slug, name)}
 					micOn={av.micOn}
 					camOn={av.camOn}
 					micLevel={av.micLevel}
@@ -165,6 +205,7 @@
 					live={false}
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}
+					onMember={(slug, name) => void openMember(slug, name)}
 					showAv={false}
 				/>
 			{/if}
@@ -172,6 +213,17 @@
 		<div class="min-w-0 flex-1 overflow-y-auto">
 			{@render children()}
 		</div>
+		{#if popout}
+			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
+			<MemberCard
+				member={popout.member}
+				roomName={popout.roomName}
+				medals={popout.medals}
+				online={room?.riders?.includes(popout.member.displayName) ?? false}
+				inVoice={room?.voice?.includes(popout.member.displayName) ?? false}
+				onClose={() => (popout = null)}
+			/>
+		{/if}
 	</div>
 {:else}
 	{@render children()}

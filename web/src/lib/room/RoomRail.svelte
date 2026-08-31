@@ -43,6 +43,7 @@
 		onMicTest,
 		connectedSlug = '',
 		onLeave,
+		onMember,
 		showAv = true,
 	}: {
 		you: { name: string; ftp: number };
@@ -74,6 +75,8 @@
 		/** The room you are IN (#173) — shown and leavable from anywhere. */
 		connectedSlug?: string;
 		onLeave?: () => void;
+		/** Click a member (#207): who is this rider. */
+		onMember?: (slug: string, name: string) => void;
 		/** The AV controls only make sense inside a room. */
 		showAv?: boolean;
 	} = $props();
@@ -192,7 +195,10 @@
 										? 'animate-pulse'
 										: ''}"
 								></span>
-								<span class="truncate">{name}</span>
+								<button
+									onclick={() => onMember?.(room.slug, name)}
+									class="hover:text-ink truncate hover:underline">{name}</button
+								>
 								{#if talking}
 									<span class="text-z4 text-[9px]">speaking</span>
 								{/if}

@@ -15,7 +15,7 @@ values ($1, $2, $3)
 on conflict (room_id, user_id) do nothing;
 
 -- name: ListRoomMembers :many
-select u.*, m.role
+select u.*, m.role, m.joined_at
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
