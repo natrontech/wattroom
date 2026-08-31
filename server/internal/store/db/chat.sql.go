@@ -273,7 +273,10 @@ func (q *Queries) SaveChatImage(ctx context.Context, arg SaveChatImageParams) (p
 
 const saveChatMessage = `-- name: SaveChatMessage :one
 insert into chat_messages (room_id, user_id, text, image_id)
-values ($1, $2, $3, $4) returning id
+select $1, $2, $3, $4
+where $4::uuid is null
+   or exists (select 1 from chat_images where id = $4 and room_id = $1)
+returning id
 `
 
 type SaveChatMessageParams struct {
@@ -283,6 +286,9 @@ type SaveChatMessageParams struct {
 	ImageID pgtype.UUID
 }
 
+// An attached image must belong to THIS room. Serving already scopes by room,
+// so a foreign id could never be viewed — but referencing one would pin its
+// bytes past the sweep, which is how a client escapes the storage bound.
 func (q *Queries) SaveChatMessage(ctx context.Context, arg SaveChatMessageParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, saveChatMessage,
 		arg.RoomID,

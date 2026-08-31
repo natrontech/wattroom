@@ -11,11 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getDmImage = `-- name: GetDmImage :one
+select mime, bytes from dm_images
+where id = $1
+  and (sender_id = $2 or recipient_id = $2)
+`
+
+type GetDmImageParams struct {
+	ImageID  pgtype.UUID
+	ViewerID pgtype.UUID
+}
+
+type GetDmImageRow struct {
+	Mime  string
+	Bytes []byte
+}
+
+// The row's own pair is the permission: readable by its sender or recipient,
+// nobody else — no friendship re-check, an unfriending must not black out
+// pictures already delivered.
+func (q *Queries) GetDmImage(ctx context.Context, arg GetDmImageParams) (GetDmImageRow, error) {
+	row := q.db.QueryRow(ctx, getDmImage, arg.ImageID, arg.ViewerID)
+	var i GetDmImageRow
+	err := row.Scan(&i.Mime, &i.Bytes)
+	return i, err
+}
+
 const listDmHeads = `-- name: ListDmHeads :many
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url, peer.avatar_preset,
     (select coalesce(sum(xp), 0) from rides r where r.user_id = peer.id)::bigint as total_xp,
-    m.text, m.sender_id, m.created_at
+    m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m
 join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
@@ -30,6 +56,7 @@ type ListDmHeadsRow struct {
 	AvatarPreset *string
 	TotalXp      int64
 	Text         string
+	ImageID      pgtype.UUID
 	SenderID     pgtype.UUID
 	CreatedAt    pgtype.Timestamptz
 }
@@ -51,6 +78,7 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.AvatarPreset,
 			&i.TotalXp,
 			&i.Text,
+			&i.ImageID,
 			&i.SenderID,
 			&i.CreatedAt,
 		); err != nil {
@@ -65,7 +93,7 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 }
 
 const listDms = `-- name: ListDms :many
-select m.id, m.sender_id, m.text, m.created_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at
 from dm_messages m
 where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
@@ -84,6 +112,7 @@ type ListDmsRow struct {
 	ID        pgtype.UUID
 	SenderID  pgtype.UUID
 	Text      string
+	ImageID   pgtype.UUID
 	CreatedAt pgtype.Timestamptz
 }
 
@@ -101,6 +130,7 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 			&i.ID,
 			&i.SenderID,
 			&i.Text,
+			&i.ImageID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -111,6 +141,28 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 		return nil, err
 	}
 	return items, nil
+}
+
+const pruneDmImages = `-- name: PruneDmImages :exec
+delete from dm_images i
+where least(i.sender_id, i.recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(i.sender_id, i.recipient_id) = greatest($1::uuid, $2::uuid)
+  and i.created_at < now() - interval '15 minutes'
+  and not exists (
+      select 1 from dm_messages m where m.image_id = i.id
+  )
+`
+
+type PruneDmImagesParams struct {
+	Column1 pgtype.UUID
+	Column2 pgtype.UUID
+}
+
+// Swept with the pair's 500-message bound: an image outlives neither its
+// message nor a 15-minute grace for uploads still awaiting their send.
+func (q *Queries) PruneDmImages(ctx context.Context, arg PruneDmImagesParams) error {
+	_, err := q.db.Exec(ctx, pruneDmImages, arg.Column1, arg.Column2)
+	return err
 }
 
 const pruneDms = `-- name: PruneDms :exec
@@ -139,15 +191,54 @@ func (q *Queries) PruneDms(ctx context.Context, arg PruneDmsParams) error {
 	return err
 }
 
-const sendDm = `-- name: SendDm :one
-insert into dm_messages (sender_id, recipient_id, text)
-select $1, $2, $3
+const saveDmImage = `-- name: SaveDmImage :one
+insert into dm_images (sender_id, recipient_id, mime, bytes)
+select $1, $2, $3, $4
 where exists (
     select 1 from friendships f
     where f.status = 'accepted'
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+returning id
+`
+
+type SaveDmImageParams struct {
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+	Mime        string
+	Bytes       []byte
+}
+
+// Gated identically to SendDm (#285): an image is a message body, so it must
+// clear the same friendship bar before a single byte is stored.
+func (q *Queries) SaveDmImage(ctx context.Context, arg SaveDmImageParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, saveDmImage,
+		arg.SenderID,
+		arg.RecipientID,
+		arg.Mime,
+		arg.Bytes,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const sendDm = `-- name: SendDm :one
+insert into dm_messages (sender_id, recipient_id, text, image_id)
+select $1, $2, $3, $4
+where exists (
+    select 1 from friendships f
+    where f.status = 'accepted'
+      and ((f.requester_id = $1 and f.addressee_id = $2)
+        or (f.requester_id = $2 and f.addressee_id = $1))
+)
+and ($4::uuid is null or exists (
+    select 1 from dm_images i
+    where i.id = $4
+      and least(i.sender_id, i.recipient_id) = least($1::uuid, $2::uuid)
+      and greatest(i.sender_id, i.recipient_id) = greatest($1::uuid, $2::uuid)
+))
 returning id, created_at
 `
 
@@ -155,6 +246,7 @@ type SendDmParams struct {
 	SenderID    pgtype.UUID
 	RecipientID pgtype.UUID
 	Text        string
+	ImageID     pgtype.UUID
 }
 
 type SendDmRow struct {
@@ -164,8 +256,16 @@ type SendDmRow struct {
 
 // The friendship row IS the permission (ADR-0012 amended): no accepted
 // friendship, no insert — the caller reads zero rows back and refuses.
+// An attached image must belong to THIS pair. Serving already scopes by pair,
+// so a foreign id could never be viewed — but referencing one would pin its
+// bytes past the sweep, which is how a client escapes the storage bound.
 func (q *Queries) SendDm(ctx context.Context, arg SendDmParams) (SendDmRow, error) {
-	row := q.db.QueryRow(ctx, sendDm, arg.SenderID, arg.RecipientID, arg.Text)
+	row := q.db.QueryRow(ctx, sendDm,
+		arg.SenderID,
+		arg.RecipientID,
+		arg.Text,
+		arg.ImageID,
+	)
 	var i SendDmRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err

@@ -41,12 +41,22 @@ type ChatReaction struct {
 	Emoji     string
 }
 
+type DmImage struct {
+	ID          pgtype.UUID
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+	Mime        string
+	Bytes       []byte
+	CreatedAt   pgtype.Timestamptz
+}
+
 type DmMessage struct {
 	ID          pgtype.UUID
 	SenderID    pgtype.UUID
 	RecipientID pgtype.UUID
 	Text        string
 	CreatedAt   pgtype.Timestamptz
+	ImageID     pgtype.UUID
 }
 
 type Friendship struct {
