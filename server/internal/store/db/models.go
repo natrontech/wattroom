@@ -155,6 +155,7 @@ type User struct {
 	UnsubToken    pgtype.UUID
 	FriendCode    string
 	AvatarPreset  *string
+	IcsToken      string
 }
 
 type Workout struct {

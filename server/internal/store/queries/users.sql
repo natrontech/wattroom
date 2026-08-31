@@ -22,3 +22,10 @@ select u.id, u.email, u.unsub_token
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1 and u.notify_planned and u.email is not null and u.id <> $2;
+
+-- name: GetUserByIcsToken :one
+select * from users where ics_token = $1;
+
+-- name: RotateUserIcsToken :one
+update users set ics_token = replace(gen_random_uuid()::text, '-', '')
+where id = $1 returning ics_token;

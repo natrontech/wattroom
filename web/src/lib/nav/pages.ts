@@ -29,11 +29,17 @@ export const pages = [
 	{ href: '/profile', label: 'Profile', icon: UserRound, primary: true },
 ];
 
-/** Which entry a path lights up — a room page (/r/…) belongs to Rooms. */
+/**
+ * Which entry a path lights up. A room page (/r/…) belongs to Rooms, and so
+ * does /sessions — planning is something you do to a room, not a ninth
+ * destination competing with it in the bar.
+ */
+const ROOMS_PATHS = ['/rooms', '/r/', '/sessions'];
+
 export function activeHref(pathname: string): string | undefined {
 	return pages.find((p) =>
 		p.href === '/rooms'
-			? pathname.startsWith('/rooms') || pathname.startsWith('/r/')
+			? ROOMS_PATHS.some((prefix) => pathname.startsWith(prefix))
 			: pathname.startsWith(p.href),
 	)?.href;
 }

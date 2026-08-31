@@ -5,6 +5,7 @@
 	// room to it: how long, which zones, any cadence/HR bands.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { nextHourInput } from '$lib/components/when';
 	import { ZONE_BG, plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import {
@@ -91,13 +92,7 @@
 		return [...chips];
 	});
 
-	let planAt = $state(defaultPlanAt());
-	function defaultPlanAt(): string {
-		const t = new Date(Date.now() + 60 * 60 * 1000);
-		t.setMinutes(0, 0, 0);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		return t.toISOString().slice(0, 16); // datetime-local format
-	}
+	let planAt = $state(nextHourInput());
 
 	// One line each, straight from docs/SPEC.md's parameter table.
 	const GAMES = [
@@ -231,25 +226,43 @@
 						{/each}
 					</div>
 
-					<div class="mt-4 flex flex-wrap items-center gap-2">
+					<!-- Two things you can do with a workout, weighted the same
+					     (#325). Planning used to read as "or plan it:" in muted
+					     grey under the real button, which is how riders stopped
+					     finding it. -->
+					<div
+						class="border-ink/5 mt-5 flex flex-wrap items-center gap-3 border-t pt-4"
+					>
+						<div class="min-w-0">
+							<p class="eyebrow">start now</p>
+							<p class="text-muted mt-1 text-xs">
+								Everyone in the lounge rides it with you.
+							</p>
+						</div>
 						<button
 							onclick={() => onStart(picked.workout)}
-							class="btn btn-primary">Start {picked.workout.name}</button
+							class="btn btn-primary ml-auto"
+							>Start {picked.workout.name}</button
 						>
 					</div>
-					<div class="mt-3 flex flex-wrap items-center gap-2">
-						<span class="text-muted text-xs">or plan it:</span>
-						<WhenPicker bind:value={planAt} />
-						<button
-							onclick={() =>
-								onPlan(
-									picked.workout.name,
-									JSON.stringify(picked.workout),
-									new Date(planAt).toISOString(),
-								)}
-							disabled={busy || !planAt}
-							class="btn btn-secondary disabled:opacity-40">Plan</button
-						>
+					<div class="border-ink/5 mt-4 border-t pt-4">
+						<p class="eyebrow">plan for later</p>
+						<p class="text-muted mt-1 text-xs">
+							The room hears about it and it lands in every subscribed calendar.
+						</p>
+						<div class="mt-2 flex flex-wrap items-center gap-2">
+							<WhenPicker bind:value={planAt} />
+							<button
+								onclick={() =>
+									onPlan(
+										picked.workout.name,
+										JSON.stringify(picked.workout),
+										new Date(planAt).toISOString(),
+									)}
+								disabled={busy || !planAt}
+								class="btn btn-secondary ml-auto">Plan session</button
+							>
+						</div>
 					</div>
 				{/if}
 			</div>

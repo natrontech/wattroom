@@ -34,6 +34,7 @@
 	import { wireMetrics } from '$lib/room/wire';
 	import { describeBlock, type RoomRider } from '$lib/room/view';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { toLocalInput } from '$lib/components/when';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -386,9 +387,7 @@
 	let moveAt = $state('');
 	function openMove(entry: (typeof upcoming)[number]) {
 		movingId = movingId === entry.id ? null : entry.id;
-		const t = new Date(entry.startsAt);
-		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
-		moveAt = t.toISOString().slice(0, 16); // datetime-local format
+		moveAt = toLocalInput(new Date(entry.startsAt));
 	}
 
 	function startScheduled(entry: (typeof upcoming)[number]) {
@@ -910,9 +909,11 @@
 			{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
 		</div>
 
-		{#if phase === 'lounge' && upcoming.length > 0}
+		{#if phase === 'lounge' && (upcoming.length > 0 || icsToken)}
 			<!-- The plan, phrased like a plan (#181 feedback): what, when, how
-			     long, whose idea — a card, not a floating row of monospace. -->
+			     long, whose idea — a card, not a floating row of monospace. The
+			     card also shows with nothing in it (#325): the subscribe link
+			     used to be hidden behind having a plan already. -->
 			<div
 				class="border-neon/30 bg-surface-raised mt-4 max-w-2xl rounded-lg border"
 			>
@@ -977,12 +978,25 @@
 						{/if}
 					</div>
 				{/each}
+				{#if upcoming.length === 0}
+					<p class="text-muted px-4 py-3 text-xs">
+						Nothing planned in this room yet — <em>Pick a workout</em>, then
+						plan it for later instead of starting it.
+					</p>
+				{/if}
 				{#if icsToken}
-					<div class="border-ink/5 flex items-center gap-4 border-t px-4 py-2">
+					<div
+						class="border-ink/5 flex flex-wrap items-center gap-4 border-t px-4 py-2"
+					>
+						<a
+							href="/sessions"
+							class="text-muted hover:text-ink text-[11px] underline"
+							>all your sessions</a
+						>
 						<button
 							onclick={copyIcsUrl}
 							class="text-muted hover:text-ink text-[11px] underline"
-							>subscribe in your calendar</button
+							>subscribe to this room</button
 						>
 						{#if role === 'owner'}
 							<button
