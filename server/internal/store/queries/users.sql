@@ -9,7 +9,7 @@ select * from users where id = $1;
 -- name: UpdateUserProfile :one
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    email = $6, notify_planned = $7
+    email = $6, notify_planned = $7, avatar_preset = $8
 where id = $1
 returning *;
 

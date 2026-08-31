@@ -139,15 +139,21 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 	type headJSON struct {
 		PeerID   string `json:"peerId"`
 		PeerName string `json:"peerName"`
-		Text     string `json:"text"`
-		Mine     bool   `json:"mine"`
-		At       int64  `json:"at"`
+		// Peer avatar + lifetime XP (#253) for the thread rows.
+		PeerAvatarURL    *string `json:"peerAvatarUrl,omitempty"`
+		PeerAvatarPreset *string `json:"peerAvatarPreset,omitempty"`
+		PeerTotalXp      int64   `json:"peerTotalXp"`
+		Text             string  `json:"text"`
+		Mine             bool    `json:"mine"`
+		At               int64   `json:"at"`
 	}
 	out := make([]headJSON, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, headJSON{
 			PeerID: store.UUIDString(row.PeerID), PeerName: row.DisplayName,
-			Text: row.Text, Mine: row.SenderID == me.ID,
+			PeerAvatarURL: row.AvatarUrl, PeerAvatarPreset: row.AvatarPreset,
+			PeerTotalXp: row.TotalXp,
+			Text:        row.Text, Mine: row.SenderID == me.ID,
 			At: row.CreatedAt.Time.UnixMilli(),
 		})
 	}

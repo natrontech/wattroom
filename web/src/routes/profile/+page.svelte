@@ -1,9 +1,13 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { AVATAR_PRESETS } from '$lib/avatars';
+	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 
 	const profile = createProfileStore();
@@ -95,6 +99,22 @@
 	}
 
 	const measured = $derived(profile.current.ftpMeasuredAt);
+
+	// Level header facts (#253) — docs/SPEC.md thresholds via $lib/level.
+	const xp = $derived(account.me?.totalXp ?? 0);
+	const level = $derived(levelFromXp(xp));
+
+	// Picking is reversible with one more click — save immediately, no confirm.
+	async function pickAvatar(presetId: string) {
+		if (!account.me) return;
+		const err = await account.save({
+			displayName: name || account.me.displayName,
+			ftpWatts: ftp,
+			weightKg: kg,
+			avatarPreset: presetId,
+		});
+		if (err) status = err.message;
+	}
 </script>
 
 <main class="page max-w-2xl">
@@ -110,7 +130,76 @@
 	{/if}
 
 	{#if account.loaded}
-		<section class="panel mt-8 p-6">
+		{#if account.me}
+			<!-- Who you are here (#253): avatar, level, the road to the next. -->
+			<section class="panel mt-8 p-6">
+				<div class="flex items-center gap-6">
+					<Avatar
+						name={account.me.displayName}
+						avatarUrl={account.me.avatarUrl}
+						preset={account.me.avatarPreset}
+						{xp}
+						size={76}
+					/>
+					<div class="min-w-0 flex-1">
+						<p class="eyebrow">level</p>
+						<p
+							class="font-display mt-0.5 text-3xl leading-none font-bold tabular-nums"
+						>
+							{level}
+						</p>
+						<ProgressBar
+							pct={Math.round(levelProgress(xp) * 100)}
+							h="h-1"
+							fill="bg-neon"
+							class="mt-3 max-w-60"
+						/>
+						<p class="text-muted mt-1.5 font-mono text-[11px] tabular-nums">
+							{xp.toLocaleString()} XP · {(
+								xpForLevel(level + 1) - xp
+							).toLocaleString()} to level {level + 1}
+						</p>
+					</div>
+				</div>
+				<div class="border-ink/5 mt-5 border-t pt-4">
+					<span class="eyebrow">avatar</span>
+					<div class="mt-2.5 flex flex-wrap items-center gap-2">
+						<button
+							onclick={() => void pickAvatar('')}
+							class="rounded-full border-2 p-0.5 transition-colors {!account.me
+								.avatarPreset
+								? 'border-neon'
+								: 'hover:border-muted/40 border-transparent'}"
+							title={account.me.avatarUrl
+								? 'your sign-in photo'
+								: 'your initial'}
+							aria-label="use your default avatar"
+						>
+							<Avatar
+								name={account.me.displayName}
+								avatarUrl={account.me.avatarUrl}
+								size={32}
+							/>
+						</button>
+						{#each AVATAR_PRESETS as preset (preset.id)}
+							<button
+								onclick={() => void pickAvatar(preset.id)}
+								class="rounded-full border-2 p-0.5 transition-colors {account.me
+									.avatarPreset === preset.id
+									? 'border-neon'
+									: 'hover:border-muted/40 border-transparent'}"
+								title={preset.id}
+								aria-label="pick the {preset.id} avatar"
+							>
+								<Avatar name={preset.id} preset={preset.id} size={32} />
+							</button>
+						{/each}
+					</div>
+				</div>
+			</section>
+		{/if}
+
+		<section class="panel mt-3 p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
 					<span class="eyebrow">display name</span>

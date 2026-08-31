@@ -13,6 +13,10 @@ export interface Me {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;
+	/** Picked preset id (#253); absent = OAuth photo, then initial. */
+	avatarPreset?: string;
+	/** Lifetime XP — level and ring derive from it (docs/SPEC.md). */
+	totalXp?: number;
 	ftpWatts: number;
 	weightKg: number;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
@@ -67,6 +71,8 @@ function createAccountStore() {
 			stravaUpload?: boolean;
 			email?: string;
 			notifyPlanned?: boolean;
+			/** "" clears the pick (back to the photo); absent keeps it. */
+			avatarPreset?: string;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
 			if (res.ok) {

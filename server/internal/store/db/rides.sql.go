@@ -370,3 +370,15 @@ func (q *Queries) RoomMonthKj(ctx context.Context, roomID pgtype.UUID) (int64, e
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const userTotalXp = `-- name: UserTotalXp :one
+select coalesce(sum(xp), 0)::bigint from rides where user_id = $1
+`
+
+// #253: lifetime XP → level (docs/SPEC.md thresholds, computed client-side).
+func (q *Queries) UserTotalXp(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, userTotalXp, userID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}

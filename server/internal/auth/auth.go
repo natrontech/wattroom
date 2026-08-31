@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/mail"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -374,8 +375,13 @@ type meResponse struct {
 	ID          string  `json:"id"`
 	DisplayName string  `json:"displayName"`
 	AvatarURL   *string `json:"avatarUrl,omitempty"`
-	FtpWatts    int16   `json:"ftpWatts"`
-	WeightKg    int16   `json:"weightKg"`
+	// Rider-picked preset id (#253) — an opaque slug the client's catalog
+	// resolves; absent falls back to the OAuth photo, then an initial.
+	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	// Lifetime XP — the level and its ring derive from this (docs/SPEC.md).
+	TotalXp  int64 `json:"totalXp"`
+	FtpWatts int16 `json:"ftpWatts"`
+	WeightKg int16 `json:"weightKg"`
 	// The FTP auto-detect prompt (#26): filled when the 90-day curve outgrows
 	// the setting. A suggestion, never an application — FTP moves every
 	// workout's difficulty (docs/SPEC.md).
@@ -404,6 +410,9 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
+	if xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID); err == nil {
+		response.TotalXp = xp
+	}
 	if best, err := s.store.Queries.Best20mIn90Days(r.Context(), user.ID); err == nil {
 		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 			response.SuggestedFtp = suggested
@@ -435,6 +444,8 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		StravaUpload  *bool   `json:"stravaUpload"`
 		Email         *string `json:"email"`
 		NotifyPlanned *bool   `json:"notifyPlanned"`
+		// "" clears the pick (back to the OAuth photo); absent keeps it.
+		AvatarPreset *string `json:"avatarPreset"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -480,10 +491,23 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if email == nil {
 		notify = false // no address, nothing to send to
 	}
+	preset := user.AvatarPreset
+	if req.AvatarPreset != nil {
+		switch p := *req.AvatarPreset; {
+		case p == "":
+			preset = nil
+		case !validPreset(p):
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"That avatar is not one of the presets.", "avatarPreset")
+			return
+		default:
+			preset = &p
+		}
+	}
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
-		Email: email, NotifyPlanned: notify,
+		Email: email, NotifyPlanned: notify, AvatarPreset: preset,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)
@@ -491,7 +515,13 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			"Your profile could not be saved. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.toMe(updated))
+	response := s.toMe(updated)
+	// The client replaces its whole `me` with this — a missing XP total
+	// would flash the level chip back to zero on every save.
+	if xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID); err == nil {
+		response.TotalXp = xp
+	}
+	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 func (s *Service) toMe(u db.User) meResponse {
@@ -500,6 +530,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		ID:            store.UUIDString(u.ID),
 		DisplayName:   u.DisplayName,
 		AvatarURL:     u.AvatarUrl,
+		AvatarPreset:  u.AvatarPreset,
 		FtpWatts:      u.FtpWatts,
 		WeightKg:      u.WeightKg,
 		Email:         u.Email,
@@ -513,6 +544,10 @@ func validEmail(e string) bool {
 	a, err := mail.ParseAddress(e)
 	return err == nil && a.Address == e
 }
+
+// validPreset bounds the avatar preset id: a short kebab slug. The catalog
+// itself lives client-side (#253); the server only refuses junk.
+var validPreset = regexp.MustCompile(`^[a-z0-9-]{1,32}$`).MatchString
 
 // --- plumbing ---
 

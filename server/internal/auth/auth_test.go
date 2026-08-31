@@ -103,6 +103,7 @@ func TestUpdateMeRejectsJunk(t *testing.T) {
 		"name":    `{"displayName":"","ftpWatts":250,"weightKg":80}`,
 		"unknown": `{"displayName":"x","ftpWatts":250,"weightKg":80,"admin":true}`,
 		"email":   `{"displayName":"x","ftpWatts":250,"weightKg":80,"email":"not-an-address"}`,
+		"preset":  `{"displayName":"x","ftpWatts":250,"weightKg":80,"avatarPreset":"<script>"}`,
 	} {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me", strings.NewReader(body))
 		req.AddCookie(cookie)
@@ -152,6 +153,20 @@ func TestUpdateMeEmailNotify(t *testing.T) {
 	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":""}`)
 	if u.Email != nil || u.NotifyPlanned {
 		t.Fatalf("cleared email left notify on: %+v", u)
+	}
+
+	// Avatar preset (#253): pick persists, absent keeps, "" clears.
+	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"avatarPreset":"flame"}`)
+	if u.AvatarPreset == nil || *u.AvatarPreset != "flame" {
+		t.Fatalf("avatar pick did not persist: %+v", u)
+	}
+	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80}`)
+	if u.AvatarPreset == nil || *u.AvatarPreset != "flame" {
+		t.Fatalf("absent avatarPreset wiped the pick: %+v", u)
+	}
+	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"avatarPreset":""}`)
+	if u.AvatarPreset != nil {
+		t.Fatalf("empty avatarPreset did not clear the pick: %+v", u)
 	}
 }
 

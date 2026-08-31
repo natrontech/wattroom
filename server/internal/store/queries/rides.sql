@@ -65,3 +65,7 @@ delete from users where id = $1;
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload
 from rides r join users u on u.id = r.user_id
 where r.id = $1;
+
+-- name: UserTotalXp :one
+-- #253: lifetime XP → level (docs/SPEC.md thresholds, computed client-side).
+select coalesce(sum(xp), 0)::bigint from rides where user_id = $1;

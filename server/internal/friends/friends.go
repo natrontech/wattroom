@@ -49,6 +49,10 @@ func (s *Service) Register(mux *http.ServeMux) {
 type friendJSON struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	// Avatar + lifetime XP (#253) — same facts the rooms roster shows.
+	AvatarURL    *string `json:"avatarUrl,omitempty"`
+	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	TotalXp      int64   `json:"totalXp"`
 	// accepted | pending_in (they asked me) | pending_out (I asked them)
 	Status string `json:"status"`
 	// Presence — accepted friends only (ADR-0012): a boolean, plus the room
@@ -87,7 +91,11 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 
 	friends := make([]friendJSON, 0, len(rows))
 	for _, row := range rows {
-		entry := friendJSON{ID: store.UUIDString(row.ID), Name: row.DisplayName}
+		entry := friendJSON{
+			ID: store.UUIDString(row.ID), Name: row.DisplayName,
+			AvatarURL: row.AvatarUrl, AvatarPreset: row.AvatarPreset,
+			TotalXp: row.TotalXp,
+		}
 		switch {
 		case row.Status == "accepted":
 			entry.Status = "accepted"

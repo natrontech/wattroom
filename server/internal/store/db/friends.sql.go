@@ -149,7 +149,8 @@ func (q *Queries) ListFriendCandidates(ctx context.Context, userID pgtype.UUID) 
 }
 
 const listFriendships = `-- name: ListFriendships :many
-select f.status, f.requester_id, u.id, u.display_name
+select f.status, f.requester_id, u.id, u.display_name, u.avatar_url, u.avatar_preset,
+    (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1
@@ -157,13 +158,17 @@ order by u.display_name
 `
 
 type ListFriendshipsRow struct {
-	Status      string
-	RequesterID pgtype.UUID
-	ID          pgtype.UUID
-	DisplayName string
+	Status       string
+	RequesterID  pgtype.UUID
+	ID           pgtype.UUID
+	DisplayName  string
+	AvatarUrl    *string
+	AvatarPreset *string
+	TotalXp      int64
 }
 
-// All rows involving me, resolved to the other person.
+// All rows involving me, resolved to the other person. Avatar + lifetime XP
+// ride along for the friend rows' avatars (#253).
 func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) ([]ListFriendshipsRow, error) {
 	rows, err := q.db.Query(ctx, listFriendships, requesterID)
 	if err != nil {
@@ -178,6 +183,9 @@ func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) 
 			&i.RequesterID,
 			&i.ID,
 			&i.DisplayName,
+			&i.AvatarUrl,
+			&i.AvatarPreset,
+			&i.TotalXp,
 		); err != nil {
 			return nil, err
 		}

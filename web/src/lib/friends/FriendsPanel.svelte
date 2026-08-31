@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -8,6 +9,9 @@
 	interface Friend {
 		id: string;
 		name: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
 		status: 'accepted' | 'pending_in' | 'pending_out';
 		online?: boolean;
 		room?: string;
@@ -79,12 +83,21 @@
 					<div
 						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
 					>
-						<span
-							class="h-2 w-2 shrink-0 rounded-full {friend.online
-								? 'bg-z4'
-								: 'bg-muted/40'}"
-							title={friend.online ? 'in a room' : 'offline'}
-						></span>
+						<span class="relative shrink-0">
+							<Avatar
+								name={friend.name}
+								avatarUrl={friend.avatarUrl}
+								preset={friend.avatarPreset}
+								xp={friend.totalXp}
+								size={30}
+							/>
+							<span
+								class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
+									? 'bg-z4'
+									: 'bg-muted/40'}"
+								title={friend.online ? 'in a room' : 'offline'}
+							></span>
+						</span>
 						<span class="text-sm font-medium">{friend.name}</span>
 						<span class="text-muted min-w-0 truncate text-xs">
 							{#if friend.roomName}

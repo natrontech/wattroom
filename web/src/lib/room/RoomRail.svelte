@@ -22,6 +22,8 @@
 	} from '@lucide/svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { account } from '$lib/account.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 
 	let {
@@ -232,7 +234,13 @@
 						}}
 						class="text-muted hover:text-ink flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
 					>
-						<MessageCircle size={13} class="shrink-0" />
+						<Avatar
+							name={head.peerName}
+							avatarUrl={head.peerAvatarUrl}
+							preset={head.peerAvatarPreset}
+							xp={head.peerTotalXp}
+							size={22}
+						/>
 						<span class="truncate">{head.peerName}</span>
 						{#if dmHeads.unread(head.peerId)}
 							<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
@@ -263,7 +271,13 @@
 	     (rider report: the height flicker read as broken). -->
 	<div class="border-ink/5 border-t px-3 py-3">
 		<div class="flex h-7 items-center gap-2">
-			<span class="bg-z4 h-2 w-2 shrink-0 rounded-full"></span>
+			<Avatar
+				name={you.name}
+				avatarUrl={account.me?.avatarUrl}
+				preset={account.me?.avatarPreset}
+				xp={account.me?.totalXp}
+				size={24}
+			/>
 			<span class="truncate text-xs font-medium">{you.name}</span>
 			<span class="text-muted ml-auto font-mono text-[10px]">{you.ftp} FTP</span
 			>
