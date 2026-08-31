@@ -162,6 +162,9 @@ func (s *Service) Eject(slug, userID string) {
 		apiURL = "http" + rest
 	}
 	body, _ := json.Marshal(map[string]string{"room": slug, "identity": userID})
+	// Detached from the request context on purpose: a kick must complete even
+	// if the banning owner's request is canceled. The client's 3s timeout is
+	// the bound.
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost,
 		strings.TrimSuffix(apiURL, "/")+"/twirp/livekit.RoomService/RemoveParticipant",
 		bytes.NewReader(body))
