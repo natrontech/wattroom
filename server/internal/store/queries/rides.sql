@@ -330,9 +330,13 @@ select samples from rides where id = $1 and user_id = $2;
 delete from users where id = $1;
 
 -- name: GetRideForUpload :one
--- The uploader's one read: the ride plus the owner's consent flag.
-select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload
-from rides r join users u on u.id = r.user_id
+-- The uploader's one read: the ride plus the owner's consent flag and the
+-- room name for the activity description (null for solo rides).
+select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
+       rm.name as room_name
+from rides r
+join users u on u.id = r.user_id
+left join rooms rm on rm.id = r.room_id
 where r.id = $1;
 
 -- name: UserTotalXp :one

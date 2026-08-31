@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -46,7 +47,8 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 		r.Body = http.MaxBytesReader(w, r.Body, 8<<20)
 		if err := r.ParseMultipartForm(8 << 20); err != nil || //nolint:gosec // test fake; body capped by MaxBytesReader above
 			r.FormValue("data_type") != "fit" || r.FormValue("name") == "" ||
-			r.FormValue("external_id") == "" {
+			r.FormValue("external_id") == "" ||
+			!strings.Contains(r.FormValue("description"), "wattroom.ch") {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
