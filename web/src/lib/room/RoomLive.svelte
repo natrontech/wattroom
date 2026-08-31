@@ -851,6 +851,14 @@
 						>{av.camOn ? 'Cam off' : 'Cam on'}</button
 					>
 					<button
+						onclick={() => void av.toggleShare()}
+						class="btn btn-secondary inline-flex items-center gap-1.5"
+					>
+						{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
+								size={14}
+							/> Share screen{/if}
+					</button>
+					<button
 						onclick={() => av.leave()}
 						class="border-muted/30 text-muted hover:border-muted/60 hover:text-ink rounded border px-4 py-2 text-sm"
 						>Leave voice</button

@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { formatWhen } from '$lib/format';
+	import { play } from '$lib/sound/cues';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { notify } from '$lib/notify.svelte';
 	import { theme } from '$lib/theme.svelte';
@@ -578,6 +579,7 @@
 								step="0.05"
 								value={mixer.cues}
 								oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
+								onchange={() => play('block')}
 								class="mt-0.5 w-full"
 							/>
 						</label>

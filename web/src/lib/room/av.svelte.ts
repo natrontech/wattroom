@@ -421,6 +421,11 @@ export function createRoomAv(slug: string) {
 				audioElements.set(participant.identity, el);
 				document.body.appendChild(el);
 				routeRiderAudio(participant.identity, el);
+				// Mute here is unpublish, not track-mute (the gate owns the gain),
+				// so the mic chip must follow the publication itself — Muted/
+				// Unmuted never fire and ParticipantConnected ran pre-publish.
+				if (pub.source === Track.Source.Microphone)
+					setVoice(participant.identity, 'live');
 			}
 		});
 		r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
@@ -447,6 +452,8 @@ export function createRoomAv(slug: string) {
 				riderGains.delete(participant.identity);
 				riderSources.get(participant.identity)?.disconnect();
 				riderSources.delete(participant.identity);
+				if (pub.source === Track.Source.Microphone)
+					setVoice(participant.identity, 'muted');
 			}
 		});
 		const audioState = (p: {
