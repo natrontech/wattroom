@@ -68,10 +68,16 @@
 	}
 
 	// Decorative footer, not ride data: on failure it simply doesn't render.
+	// The release tag is the useful half now (#345); the commit stays for the
+	// case where a build is not a release and reports "dev".
 	let version = $state<string | null>(null);
-	void api<{ commit: string }>('/api/version').then((r) => {
+	let release = $state<string | null>(null);
+	void api<{ commit: string; version?: string }>('/api/version').then((r) => {
 		// ?. guards an old server answering with the SPA fallback (data: null).
-		if (r.ok) version = r.data?.commit ?? null;
+		if (!r.ok) return;
+		version = r.data?.commit ?? null;
+		const tag = r.data?.version;
+		release = tag && tag !== 'dev' ? tag : null;
 	});
 
 	// WATTROOM.md: social OAuth only — no passwords, ever.
@@ -609,6 +615,9 @@
 	<footer class="text-muted/60 mt-10 text-center font-mono text-[11px]">
 		<p>
 			wattroom
+			{#if release}
+				<a href="/whats-new" class="hover:text-ink underline">{release}</a>
+			{/if}
 			{#if version && version !== 'dev'}
 				<!-- +dirty is display-only; the commit link needs the bare sha. -->
 				<a
