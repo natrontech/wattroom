@@ -61,6 +61,56 @@ export function createRoomAv(slug: string) {
 	} catch {
 		// storage blocked: SPEC defaults stand
 	}
+
+	// ── Device selection (#181 feedback: "which input/output/camera is this?").
+	// '' = browser default. Persisted per device — a chosen mic survives rejoin.
+	let micId = $state('');
+	let camId = $state('');
+	let outId = $state('');
+	let deviceList = $state<MediaDeviceInfo[]>([]);
+	const DEVICES_KEY = 'wattroom.devices.v1';
+	try {
+		const saved = JSON.parse(localStorage.getItem(DEVICES_KEY) ?? '{}');
+		if (typeof saved.mic === 'string') micId = saved.mic;
+		if (typeof saved.cam === 'string') camId = saved.cam;
+		if (typeof saved.out === 'string') outId = saved.out;
+	} catch {
+		// per-device convenience only
+	}
+	function persistDevices() {
+		try {
+			localStorage.setItem(
+				DEVICES_KEY,
+				JSON.stringify({ mic: micId, cam: camId, out: outId }),
+			);
+		} catch {
+			// per-device convenience only
+		}
+	}
+	async function refreshDevices() {
+		try {
+			deviceList = await navigator.mediaDevices.enumerateDevices();
+		} catch {
+			deviceList = [];
+		}
+	}
+	const mics = $derived(deviceList.filter((d) => d.kind === 'audioinput'));
+	const cams = $derived(deviceList.filter((d) => d.kind === 'videoinput'));
+	const outs = $derived(deviceList.filter((d) => d.kind === 'audiooutput'));
+	// Voice output rides the WebAudio bus, so switching speakers needs
+	// AudioContext.setSinkId — Chrome has it, and Chrome is the platform
+	// (ADR-0004); elsewhere the picker simply doesn't render.
+	const canPickOutput =
+		typeof AudioContext !== 'undefined' &&
+		'setSinkId' in AudioContext.prototype;
+	function applySink() {
+		if (!outCtx || !outId || !canPickOutput) return;
+		void (outCtx as AudioContext & { setSinkId(id: string): Promise<void> })
+			.setSinkId(outId)
+			.catch(() => {
+				// unplugged sink: audio falls back to the OS default, not silence
+			});
+	}
 	function persistVoice() {
 		try {
 			localStorage.setItem(
@@ -88,15 +138,30 @@ export function createRoomAv(slug: string) {
 	let meterTimer: ReturnType<typeof setInterval> | undefined;
 	let lastLoud = 0;
 
+	/** The capture constraints, honouring the chosen mic; an unplugged choice
+	 * falls back to the default instead of failing the join. */
+	async function captureMic(): Promise<MediaStream> {
+		const base = {
+			noiseSuppression: true,
+			echoCancellation: true,
+			autoGainControl: true,
+		};
+		if (micId) {
+			try {
+				return await navigator.mediaDevices.getUserMedia({
+					audio: { ...base, deviceId: { exact: micId } },
+				});
+			} catch {
+				micId = '';
+				persistDevices();
+			}
+		}
+		return navigator.mediaDevices.getUserMedia({ audio: base });
+	}
+
 	async function openMic() {
 		if (mic) closeMic(); // a mic test or stale chain must not orphan a stream
-		const raw = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				noiseSuppression: true,
-				echoCancellation: true,
-				autoGainControl: true,
-			},
-		});
+		const raw = await captureMic();
 		const ctx = new AudioContext();
 		const source = ctx.createMediaStreamSource(raw);
 		const analyser = ctx.createAnalyser();
@@ -163,13 +228,7 @@ export function createRoomAv(slug: string) {
 	let testing = $state(false);
 	async function startMicTest() {
 		if (mic || testing) return;
-		const raw = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				noiseSuppression: true,
-				echoCancellation: true,
-				autoGainControl: true,
-			},
-		});
+		const raw = await captureMic();
 		const ctx = new AudioContext();
 		const source = ctx.createMediaStreamSource(raw);
 		const analyser = ctx.createAnalyser();
@@ -237,7 +296,10 @@ export function createRoomAv(slug: string) {
 
 	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
 		try {
-			outCtx ??= new AudioContext();
+			if (!outCtx) {
+				outCtx = new AudioContext();
+				applySink();
+			}
 			// One limiter for all rider audio (#152): faders go to ×2, and two
 			// boosted voices summing past 1.0 would hard-clip at the DAC.
 			if (!riderBus) {
@@ -268,8 +330,10 @@ export function createRoomAv(slug: string) {
 		if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
 		if (outCtx?.state === 'suspended') void outCtx.resume();
 	}
+	const onDeviceChange = () => void refreshDevices();
 	if (typeof document !== 'undefined') {
 		document.addEventListener('visibilitychange', onVisible);
+		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
 
 	function bumpVideo(id: string) {
@@ -311,10 +375,13 @@ export function createRoomAv(slug: string) {
 					noiseSuppression: true,
 					echoCancellation: true,
 				},
+				...(camId ? { videoCaptureDefaults: { deviceId: camId } } : {}),
 			});
 			wire(room);
 			await room.connect(res.data.url, res.data.token);
 			status = 'live';
+			// Post-permission the labels are real — the pickers can name devices.
+			void refreshDevices();
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
 			for (const p of room.remoteParticipants.values()) {
@@ -493,6 +560,59 @@ export function createRoomAv(slug: string) {
 		get micTesting() {
 			return testing;
 		},
+		// ── Devices: what's plugged in, what's chosen, and switching live ──────
+		get mics() {
+			return mics;
+		},
+		get cams() {
+			return cams;
+		},
+		get outs() {
+			return outs;
+		},
+		get micId() {
+			return micId;
+		},
+		get camId() {
+			return camId;
+		},
+		get outId() {
+			return outId;
+		},
+		get canPickOutput() {
+			return canPickOutput;
+		},
+		refreshDevices,
+		/** Switching mid-transmission rebuilds the capture chain in place. */
+		async setMic(id: string) {
+			micId = id;
+			persistDevices();
+			if (testing) {
+				stopMicTest();
+				await startMicTest().catch(() => {
+					testing = false;
+				});
+			} else if (micOn) {
+				try {
+					await openMic();
+				} catch {
+					micOn = false;
+					if (room) setVoice(room.localParticipant.identity, 'muted');
+				}
+			}
+		},
+		async setCam(id: string) {
+			camId = id;
+			persistDevices();
+			if (camOn && room) {
+				await room.switchActiveDevice('videoinput', id).catch(() => {});
+			}
+		},
+		setOut(id: string) {
+			outId = id;
+			persistDevices();
+			applySink();
+		},
 		async toggleMicTest() {
 			if (testing) stopMicTest();
 			else
@@ -600,8 +720,13 @@ export function createRoomAv(slug: string) {
 			// This av instance dies with the connection: audio graph and
 			// listener go with it, or six room-hops exhaust the browser's
 			// AudioContext budget (audit #219).
-			if (typeof document !== 'undefined')
+			if (typeof document !== 'undefined') {
 				document.removeEventListener('visibilitychange', onVisible);
+				navigator.mediaDevices?.removeEventListener(
+					'devicechange',
+					onDeviceChange,
+				);
+			}
 			for (const gain of riderGains.values()) gain.disconnect();
 			for (const source of riderSources.values()) source.disconnect();
 			riderGains.clear();
