@@ -9,7 +9,12 @@ import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { mountTrack } from '$lib/room/mount-track';
 import { pickStage } from '$lib/room/stage';
-import { type Claim, riderOf, yieldsTo } from '$lib/room/tabs';
+import {
+	type Claim,
+	micLiveElsewhere,
+	riderOf,
+	yieldsTo,
+} from '$lib/room/tabs';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -517,6 +522,33 @@ export function createRoomAv(slug: string) {
 			.catch(() => {});
 	}
 
+	/**
+	 * Is any OTHER connection of this rider publishing an open mic?
+	 *
+	 * Muting here is unpublishing, and `voice` is keyed by rider while the
+	 * events that drive it are per connection — so a tab standing down
+	 * broadcasts an unpublish for a rider who is still live in the tab that
+	 * just took over, and everyone reads them as muted. Ask the room instead
+	 * of trusting the event.
+	 */
+	function micLive(rider: string, except: string) {
+		if (!room) return false;
+		const asConnection = (p: {
+			identity: string;
+			getTrackPublication: (source: Track.Source) => { isMuted: boolean } | undefined;
+		}) => {
+			const pub = p.getTrackPublication(Track.Source.Microphone);
+			return { identity: p.identity, micOpen: !!pub && !pub.isMuted };
+		};
+		return micLiveElsewhere(
+			[room.localParticipant, ...room.remoteParticipants.values()].map(
+				asConnection,
+			),
+			rider,
+			except,
+		);
+	}
+
 	/** Is any other connection of this rider still in the room? */
 	function stillHere(rider: string, except: string) {
 		if (!room) return false;
@@ -554,6 +586,10 @@ export function createRoomAv(slug: string) {
 			await room.localParticipant.setCameraEnabled(false).catch(() => {});
 			if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
 		}
+		// Screenshare deliberately stays. Sharing a laptop screen while riding
+		// from the tablet is a real thing to want, and unlike a mic two shares
+		// do not fight — they are silent. `screenTracks` keys by rider though,
+		// so the room shows one of them: the last to publish.
 	}
 
 	function wire(r: Room) {
@@ -614,7 +650,11 @@ export function createRoomAv(slug: string) {
 				riderGains.delete(participant.identity);
 				riderSources.get(participant.identity)?.disconnect();
 				riderSources.delete(participant.identity);
-				if (pub.source === Track.Source.Microphone) setVoice(rider, 'muted');
+				if (
+					pub.source === Track.Source.Microphone &&
+					!micLive(rider, participant.identity)
+				)
+					setVoice(rider, 'muted');
 			}
 		});
 		const audioState = (p: {
@@ -642,7 +682,9 @@ export function createRoomAv(slug: string) {
 				void takeOver({ reopenMic: micBeforeHandoff });
 		});
 		r.on(RoomEvent.TrackMuted, (pub, p) => {
-			if (pub.kind === Track.Kind.Audio) setVoice(riderOf(p.identity), 'muted');
+			const rider = riderOf(p.identity);
+			if (pub.kind === Track.Kind.Audio && !micLive(rider, p.identity))
+				setVoice(rider, 'muted');
 		});
 		r.on(RoomEvent.TrackUnmuted, (pub, p) => {
 			if (pub.kind === Track.Kind.Audio) setVoice(riderOf(p.identity), 'live');
@@ -830,6 +872,13 @@ export function createRoomAv(slug: string) {
 		async toggleMic() {
 			if (!room) return;
 			if (testing) stopMicTest();
+			// Pressing the mic in a tab that stood down means "bring it here",
+			// not "publish a second one" — the rail says the mic lives in
+			// another tab, and the button must not quietly contradict it.
+			if (handedOff) {
+				await takeOver();
+				return;
+			}
 			if (micOn) {
 				closeMic();
 				micOn = false;
@@ -841,7 +890,10 @@ export function createRoomAv(slug: string) {
 					micOn = false;
 				}
 			}
-			setVoice(me, micOn ? 'live' : 'muted');
+			setVoice(
+				me,
+				micOn || micLive(me, myIdentity) ? 'live' : 'muted',
+			);
 		},
 		async toggleCam() {
 			if (!room) return;

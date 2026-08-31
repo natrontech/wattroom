@@ -36,3 +36,28 @@ export function yieldsTo(mine: Claim, theirs: Claim): boolean {
 	if (theirs.at !== mine.at) return theirs.at > mine.at;
 	return theirs.identity > mine.identity;
 }
+
+/** One of a rider's live connections, as far as the mic chip cares. */
+export interface Connection {
+	identity: string;
+	micOpen: boolean;
+}
+
+/**
+ * Is any connection of `rider` other than `except` holding an open mic?
+ *
+ * Muting in this app is unpublishing, and the room keys mic state by rider
+ * while LiveKit reports it per connection — so the tab that stands down
+ * announces an unpublish for a rider who is still live in the tab that took
+ * over. Without this check the rider reads "mic off" everywhere, including in
+ * the tab holding the mic.
+ */
+export function micLiveElsewhere(
+	connections: Connection[],
+	rider: string,
+	except: string,
+): boolean {
+	return connections.some(
+		(c) => c.identity !== except && riderOf(c.identity) === rider && c.micOpen,
+	);
+}

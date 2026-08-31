@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { riderOf, yieldsTo } from './tabs';
+import { micLiveElsewhere, riderOf, yieldsTo } from './tabs';
 
 const jan = 'b1f0-jan';
 const bea = 'c2a1-bea';
@@ -42,5 +42,38 @@ describe('yieldsTo (#293)', () => {
 		const a = { identity: `${jan}#aaa`, at: 1000 };
 		const b = { identity: `${jan}#bbb`, at: 1000 };
 		expect(yieldsTo(a, b)).not.toBe(yieldsTo(b, a));
+	});
+});
+
+describe('micLiveElsewhere (#293)', () => {
+	const a = `${jan}#aaa`;
+	const b = `${jan}#bbb`;
+
+	it('keeps a rider live while their other tab holds the mic', () => {
+		// The stood-down tab unpublishes; taking that at face value would read
+		// the rider as muted in the very tab holding their microphone.
+		const conns = [
+			{ identity: a, micOpen: false },
+			{ identity: b, micOpen: true },
+		];
+		expect(micLiveElsewhere(conns, jan, a)).toBe(true);
+	});
+
+	it('reports muted once no tab of theirs has an open mic', () => {
+		const conns = [
+			{ identity: a, micOpen: false },
+			{ identity: b, micOpen: false },
+		];
+		expect(micLiveElsewhere(conns, jan, a)).toBe(false);
+	});
+
+	it('never counts the connection that just went quiet', () => {
+		expect(micLiveElsewhere([{ identity: a, micOpen: true }], jan, a)).toBe(false);
+	});
+
+	it('never counts another rider', () => {
+		expect(
+			micLiveElsewhere([{ identity: `${bea}#ccc`, micOpen: true }], jan, a),
+		).toBe(false);
 	});
 });
