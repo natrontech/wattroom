@@ -1,0 +1,10 @@
+[Unit]
+Description=Converge WattRoom onto the release pinned in the homelab repo
+Documentation=https://github.com/natrontech/wattroom/blob/main/docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wattroom-update.env
+ExecStart=/opt/wattroom/wattroom-update.sh

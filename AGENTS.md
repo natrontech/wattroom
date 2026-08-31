@@ -38,5 +38,6 @@ Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting 
 - `web/src/lib/protocol.ts` is **generated** — edit the Go structs, never the TS.
 - Go: stdlib-first, no frameworks/ORM, `log/slog`, table tests. Web: Svelte 5 runes, Tailwind v4 utilities, no component library.
 - Privacy is architecture: metrics room-scoped, AV never recorded, rides private by default. Never loosen.
+- **Migrations are expand/contract** ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)): a release only *adds* — nullable columns, new tables, new indexes. Dropping or renaming a column happens one release **after** the release whose code stopped using it. The server migrates at boot and goose is forward-only in practice, so this rule is the only reason retagging to the previous image is safe. Break it and the rollback path silently stops working, discovered at the worst possible moment.
 - Never copy code from Auuki (AGPL reference-reading only).
 - Two accents, distinct jobs ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): `--color-watt` (magenta) marks live data and is the only thing that glows; `--color-neon` (violet) is structural chrome and never glows.
