@@ -65,8 +65,8 @@ want=$(tr -d '[:space:]' <"$PIN_REPO_DIR/$PIN_FILE") || die "cannot read pin $PI
 
 # The pin is an instruction from a file; it becomes an image tag and a path, so
 # it is validated before it is either.
-printf '%s' "$want" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' ||
-	die "pin is not a release tag: '$want'"
+printf '%s' "$want" | grep -Eq '^[0-9]{4}\.(0[1-9]|1[0-2])\.[0-9]+$' ||
+	die "pin is not a CalVer release tag: '$want'"
 
 # What is actually serving is the truth about "current"; .env is only what
 # compose will use next. Asking the container first means a run killed between
