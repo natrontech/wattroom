@@ -24,6 +24,36 @@ itself) until `up -d wattroom` brings the binary back. No flag, no mode.
 DNS: wattroom.ch A/AAAA to the VM. Caddy takes TLS from there. Open 80, 443
 (tcp+udp), 7880-7881, and LiveKit's RTC UDP range on the VM firewall.
 
-After the first deploy, set the two GitHub repository secrets that switch on
-the production synthetic (#55): PROD_URL and PUSHGATEWAY_URL. Grafana points
-at the prometheus service; dashboards are the homelab's, per its own rules.
+## Monitoring
+
+One Prometheus for the homelab, not one per workload (ADR-0006's convention,
+applied by ADR-0019). This stack no longer runs its own — the homelab's scrapes
+the container directly over a shared docker network, which is also why nothing
+has to be published to reach it:
+
+    docker network create monitoring   # once, if the homelab stack hasn't
+
+Put the homelab's Prometheus container on that same network, then give it:
+
+    scrape_configs:
+      - job_name: wattroom          # the job name WattroomDown matches on
+        static_configs:
+          - targets: ['wattroom:8080']
+    rule_files:
+      - /opt/wattroom/alerts.yml
+
+and mount `/opt/wattroom/alerts.yml` into it read-only. The rules live in this
+repo because they describe WattRoom's failure modes; same VM, so there is no
+copy to drift. Routing to a phone and dashboards are the homelab's, per its own
+rules.
+
+`/metrics` is not reachable from the internet — Caddy 404s it, and the Go
+handler is mounted bare on the mux, so that one block is the whole gate. Check
+it from the VM the way Prometheus does:
+
+    docker run --rm --network monitoring curlimages/curl -s http://wattroom:8080/metrics
+
+The production synthetic ride — the check that proves a *ride* works rather
+than that a homepage returns 200 — is not wired yet (#314). Until it is,
+`WATTROOM_SYNTHETIC_TOKEN` can stay unset: `POST /api/auth/synthetic` 404s and
+the path does not exist.

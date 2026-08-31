@@ -2,6 +2,14 @@
 	# WS upgrade and everything else to the one binary.
 	reverse_proxy wattroom:8080
 
+	# /metrics belongs to the homelab's Prometheus, which reaches the container
+	# directly over the monitoring network (ADR-0019) — it is never the
+	# internet's. Rider counts are room-scoped data, and the Go handler is
+	# mounted bare on the mux, so this block is the only thing gating it.
+	handle /metrics* {
+		respond 404
+	}
+
 	# LiveKit signaling; media flows over host-network UDP directly.
 	handle_path /livekit* {
 		reverse_proxy localhost:7880

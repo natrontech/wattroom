@@ -1,8 +1,0 @@
-global:
-  scrape_interval: 30s
-rule_files:
-  - /etc/prometheus/alerts.yml
-scrape_configs:
-  - job_name: wattroom
-    static_configs:
-      - targets: ['wattroom:8080']

@@ -1,7 +1,14 @@
 # 0006 — Ride feedback: in-app flag → GitHub issue → agent fix → deliberate deploy
 
-- Status: proposed
+- Status: proposed; the deploy half partially superseded by [ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)
 - Date: 2026-08-29
+
+> **ADR-0019 (2026-08-31)** replaces the "One environment, deliberate deploys"
+> paragraph below: the VM converges on a tag pinned in the homelab repo rather
+> than waiting for `make sync-wattroom` from the Mac, and rolls itself back when
+> a deploy fails its health gate. Everything else here stands — capture, the
+> replayable trace, intake, the human-started agent, one Prometheus for the
+> homelab, and snapshot-before-mutate.
 
 ## Context
 
