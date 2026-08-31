@@ -31,7 +31,7 @@ All work is tracked as GitHub issues on milestones M0–M6; nobody works untrack
 4. **Progress lives in the issue/PR**, not in chat apps: blockers, decisions, findings → comments. A decision made in a thread still gets an ADR.
 5. **Done** = CI green, self-review of the diff, PR marked ready. Out-of-scope discoveries become new issues (right milestone + label), never PR scope-creep.
 
-Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
+Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
 
 ## Hard rules
 
