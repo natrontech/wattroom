@@ -215,16 +215,28 @@ export function createRoomAv(slug: string) {
 	// quiet teammate can go ABOVE unity — element.volume caps at 1, WebAudio
 	// doesn't.
 	let outCtx: AudioContext | null = null;
+	let riderBus: DynamicsCompressorNode | null = null;
 	const riderGains = new Map<string, GainNode>();
 
 	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
 		try {
 			outCtx ??= new AudioContext();
+			// One limiter for all rider audio (#152): faders go to ×2, and two
+			// boosted voices summing past 1.0 would hard-clip at the DAC.
+			if (!riderBus) {
+				riderBus = outCtx.createDynamicsCompressor();
+				riderBus.threshold.value = -6;
+				riderBus.knee.value = 4;
+				riderBus.ratio.value = 12;
+				riderBus.attack.value = 0.003;
+				riderBus.release.value = 0.25;
+				riderBus.connect(outCtx.destination);
+			}
 			const source = outCtx.createMediaElementSource(el);
 			const gain = outCtx.createGain();
 			gain.gain.value = mixer.riderGain(identity);
 			source.connect(gain);
-			gain.connect(outCtx.destination);
+			gain.connect(riderBus);
 			riderGains.set(identity, gain);
 		} catch {
 			// routing failed: the element still plays at unity — degraded, not broken

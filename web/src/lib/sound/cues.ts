@@ -275,7 +275,18 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	if (!ctx) {
 		ctx = new AudioContext();
 		master = ctx.createGain();
-		master.connect(ctx.destination);
+		// A limiter after the master (#152): cues pile up — klaxon, a cheer
+		// burst and a block change can land in the same second — and a summed
+		// peak past 1.0 hard-clips, which is harsh on laptop speakers and
+		// headphones alike. Squash the pileup instead.
+		const limiter = ctx.createDynamicsCompressor();
+		limiter.threshold.value = -6;
+		limiter.knee.value = 4;
+		limiter.ratio.value = 12;
+		limiter.attack.value = 0.003;
+		limiter.release.value = 0.25;
+		master.connect(limiter);
+		limiter.connect(ctx.destination);
 	}
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
 	if (ctx.state === 'suspended') void ctx.resume();
