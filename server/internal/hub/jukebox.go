@@ -13,6 +13,20 @@ import (
 // from growing room memory, and nobody queues fifty songs in good faith.
 const maxQueue = 50
 
+// A video longer than six hours is not a party track; the clamp bounds the
+// untrusted playhead the same way metrics are bounded.
+const maxSeekSec = 6 * 3600
+
+func clampSec(v float64) float64 {
+	if v < 0 || v != v { // NaN guards itself
+		return 0
+	}
+	if v > maxSeekSec {
+		return maxSeekSec
+	}
+	return v
+}
+
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
 // jukebox is the server's half of the synced player (#23): it owns the queue
@@ -66,7 +80,10 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 		if len(title) > 200 {
 			title = title[:200]
 		}
-		entry := protocol.JukeboxEntry{VideoID: cmd.VideoID, Title: title, AddedBy: addedBy}
+		entry := protocol.JukeboxEntry{
+			VideoID: cmd.VideoID, Title: title, AddedBy: addedBy,
+			StartSec: clampSec(cmd.PositionSec),
+		}
 		if j.state.Current == nil {
 			// An empty deck plays immediately — adding the first song IS pressing play.
 			j.play(entry, now)
@@ -113,6 +130,17 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 		j.state.Playing = false
 		return true
 
+	case "seek":
+		// Moving the anchor IS the whole feature (#114): clients converge
+		// through the same drift-chase play/pause already use. Works paused
+		// too — the playhead moves, the deck stays stopped.
+		if j.state.Current == nil {
+			return false
+		}
+		j.state.PositionSec = clampSec(cmd.PositionSec)
+		j.state.AnchorMs = now.UnixMilli()
+		return true
+
 	case "skip":
 		if j.state.Current == nil {
 			return false
@@ -137,7 +165,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, addedBy string, now time.Ti
 func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
 	j.state.Current = &entry
 	j.state.Playing = true
-	j.state.PositionSec = 0
+	j.state.PositionSec = entry.StartSec
 	j.state.AnchorMs = now.UnixMilli()
 }
 

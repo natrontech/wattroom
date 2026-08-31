@@ -882,8 +882,8 @@
 				{/if}
 				<Jukebox
 					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title, jamUrl) =>
-						live.jukebox(action, videoId, title, jamUrl)}
+					send={(action, videoId, title, jamUrl, positionSec) =>
+						live.jukebox(action, videoId, title, jamUrl, positionSec)}
 					large
 					ducked={Object.entries(av.speaking).some(
 						([id, active]) => active && id !== account.me?.id,
@@ -1145,8 +1145,8 @@
 			{#snippet player()}
 				<Jukebox
 					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title, jamUrl) =>
-						live.jukebox(action, videoId, title, jamUrl)}
+					send={(action, videoId, title, jamUrl, positionSec) =>
+						live.jukebox(action, videoId, title, jamUrl, positionSec)}
 					ducked={Object.entries(av.speaking).some(
 						([id, active]) => active && id !== account.me?.id,
 					)}

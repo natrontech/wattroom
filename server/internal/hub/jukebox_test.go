@@ -127,3 +127,49 @@ func TestJamLink(t *testing.T) {
 		t.Fatal("not cleared")
 	}
 }
+
+func TestSeekMovesTheSharedPlayhead(t *testing.T) {
+	j := newJukebox()
+	// No deck → refuse.
+	if j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 10}, "jan", jat(0)) {
+		t.Fatal("seek with empty deck accepted")
+	}
+	add(j, "dQw4w9WgXcQ", jat(0))
+	if !j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 94}, "jan", jat(10)) {
+		t.Fatal("seek refused")
+	}
+	if got := j.positionAt(jat(15)); got != 99 {
+		t.Fatalf("playhead after seek: %v", got)
+	}
+	// Untrusted input clamps: negatives to zero, silly hours to the cap.
+	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: -5}, "jan", jat(20))
+	if got := j.positionAt(jat(20)); got != 0 {
+		t.Fatalf("negative seek: %v", got)
+	}
+	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 1e9}, "jan", jat(20))
+	if got := j.positionAt(jat(20)); got != maxSeekSec {
+		t.Fatalf("huge seek: %v", got)
+	}
+	// Seeking while paused moves the playhead and stays paused.
+	j.apply(protocol.JukeboxCommand{Action: "pause"}, "jan", jat(30))
+	j.apply(protocol.JukeboxCommand{Action: "seek", PositionSec: 60}, "jan", jat(31))
+	s := j.snapshot()
+	if s.Playing || j.positionAt(jat(99)) != 60 {
+		t.Fatalf("paused seek: playing=%v pos=%v", s.Playing, j.positionAt(jat(99)))
+	}
+}
+
+func TestPastedTimestampStartsTheEntryThere(t *testing.T) {
+	j := newJukebox()
+	// Empty deck: plays immediately from the timestamp.
+	j.apply(protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", PositionSec: 94}, "jan", jat(0))
+	if got := j.positionAt(jat(6)); got != 100 {
+		t.Fatalf("start-at on immediate play: %v", got)
+	}
+	// Queued: the timestamp waits with the entry until it reaches the deck.
+	j.apply(protocol.JukeboxCommand{Action: "add", VideoID: "abcdefghijk", PositionSec: 30}, "jan", jat(1))
+	j.apply(protocol.JukeboxCommand{Action: "skip"}, "jan", jat(10))
+	if got := j.positionAt(jat(12)); got != 32 {
+		t.Fatalf("start-at from queue: %v", got)
+	}
+}

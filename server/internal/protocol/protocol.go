@@ -82,9 +82,12 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "ended" | "jam"
+	Action  string `json:"action"` // "add" | "remove" | "play" | "pause" | "skip" | "seek" | "ended" | "jam"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
+	// For "seek": the new shared playhead. For "add": start the entry here
+	// (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
+	PositionSec float64 `json:"positionSec,omitempty"`
 	// For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
 	// shows as a join card. Empty clears it. Link-out only — no API, ever.
 	JamURL string `json:"jamUrl,omitempty"`
@@ -146,6 +149,8 @@ type JukeboxEntry struct {
 	VideoID string `json:"videoId"`
 	Title   string `json:"title"`
 	AddedBy string `json:"addedBy"`
+	// Where playback begins when this entry reaches the deck (?t= paste).
+	StartSec float64 `json:"startSec,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the

@@ -110,9 +110,14 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "ended" | "jam"
+  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "seek" | "ended" | "jam"
   videoId?: string;
   title?: string;
+  /**
+   * For "seek": the new shared playhead. For "add": start the entry here
+   * (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
+   */
+  positionSec?: number /* float64 */;
   /**
    * For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
    * shows as a join card. Empty clears it. Link-out only — no API, ever.
@@ -188,6 +193,10 @@ export interface JukeboxEntry {
   videoId: string;
   title: string;
   addedBy: string;
+  /**
+   * Where playback begins when this entry reaches the deck (?t= paste).
+   */
+  startSec?: number /* float64 */;
 }
 /**
  * JukeboxState is the server's truth about what plays where. Clients chase the
