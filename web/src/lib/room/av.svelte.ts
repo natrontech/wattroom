@@ -8,6 +8,7 @@ import {
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { mountTrack } from '$lib/room/mount-track';
+import { pickStage } from '$lib/room/stage';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -31,8 +32,17 @@ export function createRoomAv(slug: string) {
 	let error = $state<string | null>(null);
 	/** Rider ids with a live camera track — bumped to retrigger attach. */
 	let videoOf = $state<Record<string, number>>({});
-	/** The one shared screen (#206): last share wins, like a projector. */
-	let screenOf = $state<{ id: string; key: number } | null>(null);
+	/**
+	 * Every live screenshare (#280). #206's projector kept exactly one — a
+	 * second sharer silently stole the room's screen. LiveKit was always fine
+	 * with many; only the UI insisted on one, so keep them all in arrival
+	 * order (last = newest) and let the viewer choose.
+	 */
+	let screens = $state<{ id: string; key: number }[]>([]);
+	let screenSeq = 0;
+	/** What YOU want on the stage: a `screen:`/`cam:` key, or null = newest
+	 * share. Yours alone — a stage pick is a glance, never room state. */
+	let stagePick = $state<string | null>(null);
 	let speaking = $state<Record<string, boolean>>({});
 	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
 	 * once with a fresh token (#219: 6h expiry, transient drops). */
@@ -336,6 +346,18 @@ export function createRoomAv(slug: string) {
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
 
+	function addScreen(id: string) {
+		screenSeq += 1;
+		screens = [...screens.filter((s) => s.id !== id), { id, key: screenSeq }];
+	}
+
+	function dropScreen(id: string) {
+		screens = screens.filter((s) => s.id !== id);
+		// A sharer stopping must not blank the stage for everyone — falling
+		// back to null lets the derived pick the next newest share (#206).
+		if (stagePick === `screen:${id}`) stagePick = null;
+	}
+
 	function bumpVideo(id: string) {
 		videoOf = { ...videoOf, [id]: (videoOf[id] ?? 0) + 1 };
 	}
@@ -347,6 +369,26 @@ export function createRoomAv(slug: string) {
 		delete next[id];
 		videoOf = next;
 	}
+
+	/**
+	 * The stage's menu: every share, then every open camera. Screens lead
+	 * because a shared screen is why anyone looks at the stage at all.
+	 */
+	const stageSources = $derived([
+		...screens.map((s) => ({
+			key: `screen:${s.id}`,
+			id: s.id,
+			kind: 'screen' as const,
+			gen: s.key,
+		})),
+		...Object.entries(videoOf).map(([id, gen]) => ({
+			key: `cam:${id}`,
+			id,
+			kind: 'cam' as const,
+			gen,
+		})),
+	]);
+	const stage = $derived(pickStage(stageSources, stagePick));
 
 	async function join() {
 		// Double-click or an impatient rail tap must not build a second
@@ -407,10 +449,7 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
 					screenTracks.set(participant.identity, track);
-					screenOf = {
-						id: participant.identity,
-						key: (screenOf?.key ?? 0) + 1,
-					};
+					addScreen(participant.identity);
 				} else {
 					videoTracks.set(participant.identity, track);
 					bumpVideo(participant.identity);
@@ -432,14 +471,7 @@ export function createRoomAv(slug: string) {
 			if (track.kind === Track.Kind.Video) {
 				if (pub.source === Track.Source.ScreenShare) {
 					screenTracks.delete(participant.identity);
-					if (screenOf?.id === participant.identity) {
-						// Fall back to any remaining share — a teammate stopping
-						// theirs must not blank YOURS (audit #219).
-						const next = [...screenTracks.keys()][0];
-						screenOf = next
-							? { id: next, key: (screenOf?.key ?? 0) + 1 }
-							: null;
-					}
+					dropScreen(participant.identity);
 				} else {
 					videoTracks.delete(participant.identity);
 					dropVideo(participant.identity);
@@ -494,7 +526,8 @@ export function createRoomAv(slug: string) {
 			videoTracks.clear();
 			videoOf = {};
 			screenTracks.clear();
-			screenOf = null;
+			screens = [];
+			stagePick = null;
 			voice = {};
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
@@ -691,26 +724,39 @@ export function createRoomAv(slug: string) {
 				const id = room.localParticipant.identity;
 				if (sharing && track) {
 					screenTracks.set(id, track);
-					screenOf = { id, key: (screenOf?.key ?? 0) + 1 };
+					addScreen(id);
 				} else {
 					sharing = false;
 					screenTracks.delete(id);
-					if (screenOf?.id === id) screenOf = null;
+					dropScreen(id);
 				}
 			} catch {
 				sharing = false;
 			}
 		},
-		/** Attach a rider's video into a container; called from the tile. */
-		get screenOf() {
-			return screenOf;
+		/** Everything the stage can show, screens first (#280). */
+		get stageSources() {
+			return stageSources;
 		},
-		/** The projector surface — contain, not cover: a screen is a document. */
-		attachScreen(container: HTMLElement) {
+		/** What the stage is showing right now, `gen` bumping per fresh track. */
+		get stage() {
+			return stage;
+		},
+		/** Pick a source, or null to follow the newest share again. */
+		setStage(key: string | null) {
+			stagePick = key;
+		},
+		/** The stage surface: a screen is a document (contain), a face isn't. */
+		attachStage(container: HTMLElement) {
+			const source = stage;
 			mountTrack(
 				container,
-				screenOf ? screenTracks.get(screenOf.id) : undefined,
-				'contain',
+				source
+					? (source.kind === 'screen' ? screenTracks : videoTracks).get(
+							source.id,
+						)
+					: undefined,
+				source?.kind === 'screen' ? 'contain' : 'cover',
 			);
 		},
 		attach(riderId: string, container: HTMLElement) {

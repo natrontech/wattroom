@@ -588,6 +588,24 @@
 								class="mt-0.5 w-full"
 							/>
 						</label>
+						<label class="mt-1.5 block text-[10px]">
+							<span class="text-muted"
+								>duck under voice · {mixer.duck === 1
+									? 'off'
+									: `−${Math.round((1 - mixer.duck) * 100)}%`}</span
+							>
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								value={mixer.duck}
+								oninput={(e) => mixer.setDuck(Number(e.currentTarget.value))}
+								onchange={() => play('block')}
+								class="mt-0.5 w-full"
+								aria-label="how far music and cues dip under a voice"
+							/>
+						</label>
 						{#each mixRiders as rider (rider.id)}
 							<label class="mt-1.5 block text-[10px]">
 								<span class="text-muted">{rider.name}</span>

@@ -7,6 +7,7 @@
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { centrePane, dragPane, keepSize } from '$lib/pane';
 	import {
 		FastForward,
 		GripHorizontal,
@@ -41,111 +42,12 @@
 	let shell = $state<HTMLDivElement | null>(null);
 
 	// ── Placement ─────────────────────────────────────────────────────────────
-	// Min size is the RMF floor plus the two chrome strips, so the player
-	// itself can never be dragged below 200×200.
+	// Drag, resize and remember are the shared pane helpers ($lib/pane) — the
+	// stage's popped-out window works the same way. Min size is the RMF floor
+	// plus the two chrome strips, enforced in CSS, so the player itself can
+	// never be dragged below 200×200.
+	const PANE = 'jukebox-dock';
 	const CHROME = 56;
-	const MIN_W = 260;
-	const MIN_H = 200 + CHROME;
-	const DOCK_KEY = 'wattroom.dock.v1';
-	interface Box {
-		x: number;
-		y: number;
-		w: number;
-		h: number;
-	}
-	let box = $state<Box | null>(null);
-
-	function clamp(next: Box): Box {
-		const w = Math.max(MIN_W, Math.min(next.w, window.innerWidth));
-		const h = Math.max(MIN_H, Math.min(next.h, window.innerHeight));
-		return {
-			w,
-			h,
-			x: Math.max(0, Math.min(next.x, window.innerWidth - w)),
-			y: Math.max(0, Math.min(next.y, window.innerHeight - h)),
-		};
-	}
-	function save() {
-		try {
-			localStorage.setItem(DOCK_KEY, JSON.stringify(box));
-		} catch {
-			// placement is a convenience; a blocked store costs only the memory
-		}
-	}
-	function defaults(): Box {
-		const w = 380;
-		const h = 252;
-		// Clear of the side panel on a wide screen, and of the chat button below it.
-		return clamp({
-			w,
-			h,
-			x: window.innerWidth - w - (window.innerWidth >= 1280 ? 340 : 16),
-			y: window.innerHeight - h - 16,
-		});
-	}
-	$effect(() => {
-		if (box) return;
-		try {
-			const saved = JSON.parse(localStorage.getItem(DOCK_KEY) ?? 'null');
-			box = saved ? clamp(saved) : defaults();
-		} catch {
-			box = defaults();
-		}
-	});
-
-	function drag(event: PointerEvent) {
-		if (!box) return;
-		const handle = event.currentTarget as HTMLElement;
-		const from = { px: event.clientX, py: event.clientY, x: box.x, y: box.y };
-		try {
-			handle.setPointerCapture(event.pointerId);
-		} catch {
-			// no capture: the drag still tracks while the pointer is over the handle
-		}
-		const move = (moved: PointerEvent) => {
-			box = clamp({
-				...box!,
-				x: from.x + moved.clientX - from.px,
-				y: from.y + moved.clientY - from.py,
-			});
-		};
-		const done = () => {
-			handle.removeEventListener('pointermove', move);
-			handle.removeEventListener('pointerup', done);
-			handle.removeEventListener('pointercancel', done);
-			save();
-		};
-		handle.addEventListener('pointermove', move);
-		handle.addEventListener('pointerup', done);
-		handle.addEventListener('pointercancel', done);
-	}
-
-	function centre() {
-		if (!box) return;
-		box = clamp({
-			...box,
-			x: (window.innerWidth - box.w) / 2,
-			y: (window.innerHeight - box.h) / 2,
-		});
-		save();
-	}
-
-	// The corner handle is the browser's own (CSS resize) — this only records
-	// where the rider left it.
-	$effect(() => {
-		const node = shell;
-		if (!node) return;
-		const observer = new ResizeObserver(() => {
-			const w = node.offsetWidth;
-			const h = node.offsetHeight;
-			if (!box || w < MIN_W || h < MIN_H) return; // hidden dock reads 0
-			if (w === box.w && h === box.h) return;
-			box = { ...box, w, h };
-			save();
-		});
-		observer.observe(node);
-		return () => observer.disconnect();
-	});
 
 	// ── YouTube IFrame API ────────────────────────────────────────────────────
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -272,7 +174,7 @@
 		if (ducked) {
 			wasDucked = true;
 			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * 0.25), 150);
+			rampTo(Math.round(baseVolume * mixer.duck), 150);
 		} else if (wasDucked) {
 			// The SPEC release: hold, then ramp back up.
 			wasDucked = false;
@@ -394,28 +296,33 @@
 	const title = $derived(jukebox?.current?.title ?? speaker?.name ?? '');
 </script>
 
-<svelte:window onresize={() => box && (box = clamp(box))} />
-
-{#if conn && box}
+{#if conn}
+	<!-- Until it is dragged the dock sits in the corner, clear of the side
+	     panel at whatever width the rider left it, and above the chat button
+	     the z-[60] dock would otherwise bury below xl (#219). -->
 	<div
 		bind:this={shell}
+		data-pane={PANE}
+		{@attach (node) => keepSize(node, PANE)}
 		class="bg-surface ring-ink/15 fixed z-[60] flex flex-col overflow-hidden rounded-lg shadow-2xl ring-1 {showPlayer ||
 		speaker
 			? ''
-			: 'hidden'}"
-		style="left: {box.x}px; top: {box.y}px; width: {box.w}px; height: {box.h}px;
-			min-width: {MIN_W}px; min-height: {MIN_H}px; resize: both"
+			: 'hidden'} {page.url.pathname.startsWith('/r/')
+			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
+			: 'right-4 bottom-4'}"
+		style="width: 380px; height: {252 + CHROME}px; min-width: 260px;
+			min-height: {200 + CHROME}px; max-width: 96vw; max-height: 90vh;
+			resize: both"
 	>
 		<!-- Drag handle. Chrome only — never over the player (RMF). -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			onpointerdown={drag}
-			class="border-ink/10 text-muted flex h-6 shrink-0 cursor-move touch-none items-center gap-1.5 border-b px-2"
+			{@attach dragPane}
+			class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
 		>
 			<GripHorizontal size={12} class="shrink-0" />
 			<span class="truncate text-[10px]">{title}</span>
 			<button
-				onclick={centre}
+				onclick={() => shell && centrePane(shell, PANE)}
 				class="hover:text-ink ml-auto shrink-0"
 				title="centre the dock"
 				aria-label="centre the dock"><Minimize2 size={12} /></button

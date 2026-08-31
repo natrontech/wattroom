@@ -45,6 +45,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
+	import Stage from '$lib/room/Stage.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
@@ -267,6 +268,17 @@
 	// that rider. Ephemeral by design — a focus is a glance, not a preference.
 	let tv = $state(false);
 	let focusId = $state<string | null>(null);
+	// The stage's menu, named (#280): av knows the tracks, only this page
+	// knows whose they are.
+	const stageSources = $derived(
+		av.stageSources.map((source) => ({
+			key: source.key,
+			kind: source.kind,
+			label:
+				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
+				(source.kind === 'screen' ? "'s screen" : ''),
+		})),
+	);
 	const focused = $derived(riders.find((rider) => rider.id === focusId));
 	const others = $derived(riders.filter((rider) => rider.id !== focusId));
 
@@ -529,13 +541,6 @@
 		{ label: 'exec', value: `${Math.round(you.execution * 100)}%`, tone: '' },
 	]);
 	const myZone = $derived(zoneOf(you.watts, you.ftp));
-	// The projector was capped at 880 px on any screen (rider report: "too
-	// tiny"): it now takes the floor's full width, and fullscreen is native.
-	let projector = $state<HTMLDivElement | null>(null);
-	function fullscreenProjector() {
-		if (document.fullscreenElement) void document.exitFullscreen();
-		else void projector?.requestFullscreen().catch(() => {});
-	}
 	let admin = $state(false);
 	let chatSheet = $state(false);
 
@@ -780,37 +785,16 @@
 			</div>
 		{/if}
 
-		{#if av.screenOf}
-			{@const sharer =
-				riders.find((r) => r.id === av.screenOf?.id)?.name ?? 'someone'}
-			<!-- The projector (#206): one shared screen, room-wide, above the
-			     people — a screen is a document, so contain, never crop. -->
-			<div class="mb-3">
-				<div
-					bind:this={projector}
-					class="ring-neon/40 w-full overflow-hidden rounded-lg bg-black ring-1"
-					style="aspect-ratio: 16/9; max-height: 70vh"
-				>
-					{#key av.screenOf.key}
-						<div
-							class="h-full w-full"
-							{@attach (node) => av.attachScreen(node)}
-						></div>
-					{/key}
-				</div>
-				<p class="text-muted mt-1 text-[11px]">
-					{sharer} is sharing their screen ·
-					<button onclick={fullscreenProjector} class="hover:text-ink underline"
-						>fullscreen</button
-					>
-					{#if av.sharing}
-						· <button
-							onclick={() => void av.toggleShare()}
-							class="hover:text-ink underline">stop</button
-						>
-					{/if}
-				</p>
-			</div>
+		{#if av.stage}
+			<!-- The stage (#280): many people may share at once, so the picker
+			     below chooses; the frame zooms, pans, resizes and pops out. -->
+			<Stage
+				sources={stageSources}
+				activeKey={av.stage.key}
+				trackKey={`${av.stage.key}:${av.stage.gen}`}
+				onPick={(key) => av.setStage(key)}
+				attach={(node) => av.attachStage(node)}
+			/>
 		{/if}
 
 		<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
