@@ -246,6 +246,8 @@
 			<p class="text-muted mt-2 text-xs">
 				FTP {account.me?.ftpWatts ?? '–'} W ·
 				<a href="/history" class="hover:text-ink underline">all rides</a> ·
+				<a href="/progression" class="hover:text-ink underline">progression</a>
+				·
 				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
 			</p>
 		</section>
