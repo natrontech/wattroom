@@ -5,6 +5,7 @@
 ## Checklist
 
 - [ ] `make ci` passes locally
+- [ ] Changelog line added to `## [Unreleased]` in `CHANGELOG.md` (or: no user-visible change)
 - [ ] Protocol touched? → edited Go structs + ran `make protocol`, both committed
 - [ ] Decision made? → ADR added in `docs/decisions/`
 - [ ] BLE layer touched? → tested on real hardware (state trainer model) or explained why simulator coverage suffices

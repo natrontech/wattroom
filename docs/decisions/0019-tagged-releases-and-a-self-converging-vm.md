@@ -5,6 +5,15 @@
 - Supersedes: [ADR-0006](0006-alpha-feedback-loop.md)'s "One environment, deliberate deploys" paragraph. The rest of ADR-0006 — capture, the replayable trace, intake, the human-started agent — is untouched.
 - Amends: [ADR-0002](0002-single-vm-compose-deploy.md), whose deploy path was "`git pull && docker compose up -d` (or a small deploy script/action)". This is that script, specified.
 
+> **Amended 2026-09-01.** This ADR originally decided there would be no
+> `CHANGELOG.md` — GitHub's `--generate-notes` was to be the changelog, on the
+> grounds that conventional-commit squash titles make one for free. That is a
+> commit-log dump, which [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+> names as a bad practice for the reason that matters here: a changelog is read
+> by a person deciding whether to upgrade, and squash titles are written for
+> reviewers. The rest of the decision is unchanged; only who writes the notes
+> is. See the "changelog is written, not generated" paragraph below.
+
 ## Context
 
 Jan is the only person with access to the homelab. Every deploy, every rollback, and every "did that break something" is therefore gated on his attention, and a deploy costs enough attention to be worth skipping — which is how a project ends up with a production running an image nobody can name.
@@ -22,7 +31,9 @@ ADR-0006 named the homelab's conventions — repo-is-truth, `make sync-<stack>`,
 
 ## Decision
 
-**A release is a tag, cut by hand.** `git tag v0.4.0 && git push --tags`. `publish.yml` gains a tag trigger that builds `:v0.4.0` from the existing Dockerfile and then runs `gh release create --generate-notes`. PR titles are already conventional commits and merges are already squashes, so GitHub writes the changelog off the commit range for free — no `CHANGELOG.md`, no release bot, no changelog generator. `:main` keeps building on every push, for testing; only tags are deployable.
+**A release is a tag, cut by hand.** `make release VERSION=v0.4.0` promotes the changelog, commits, tags and pushes; `publish.yml` has a tag trigger that builds `:v0.4.0` from the existing Dockerfile and cuts the GitHub Release from that changelog section. `:main` keeps building on every push, for testing; only tags are deployable.
+
+**The changelog is written, not generated** (amended 2026-09-01, see the note above). `CHANGELOG.md` follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/): every PR adds one line to `## [Unreleased]` under the heading that fits, and `make release` promotes that section into a dated release and opens a fresh one, refusing outright when it is empty. The release body is that same section, so the file and the GitHub Release cannot disagree. Promotion happens *before* the tag, so a tag always points at a tree whose changelog already describes it.
 
 **The deployed tag is pinned in the homelab repo, and the VM converges on it.** Repo-is-truth is preserved: what production is running is a line in git with a commit author and a date, not a fact in Jan's memory. Promotion is a one-line commit, doable from a phone; rollback is `git revert` of that commit. The VM pulls, but it pulls the repo's stated intent — never "whatever is newest" — which is the half of "nothing auto-pulls" worth keeping. Build and blessing stay separate events.
 

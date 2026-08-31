@@ -39,11 +39,22 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # Last, so a release never names an image that failed to push. PR titles
-      # are conventional commits and merges are squashes, so GitHub writes the
-      # notes off the commit range — there is no changelog tooling here.
+      # Last, so a release never names an image that failed to push. The notes
+      # are the CHANGELOG section this tag was cut with (`make release` writes
+      # it before tagging), so the Release and the file cannot disagree — and
+      # neither is a commit-log dump.
       - name: cut the release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        run: |
+          awk -v v="$GITHUB_REF_NAME" '
+            index($0, "## [" v "]") == 1 { f = 1; next }
+            /^## \[/ { f = 0 }
+            f
+          ' CHANGELOG.md > notes.md
+          grep -q '[^[:space:]]' notes.md || {
+            echo "CHANGELOG.md has no section for $GITHUB_REF_NAME — was it tagged with make release?" >&2
+            exit 1
+          }
+          gh release create "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

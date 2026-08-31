@@ -1,7 +1,7 @@
 # WattRoom — common tasks. Dev loop: `make infra` once, then `make dev-server`
 # and `make dev-web` in two terminals (Vite proxies /api and /ws to :8080).
 
-.PHONY: infra dev-server dev-web web protocol sqlc seed build test lint check ci
+.PHONY: infra dev-server dev-web web protocol sqlc seed build test lint check ci release
 
 infra: ## start Postgres + LiveKit containers
 	docker compose up -d
@@ -45,3 +45,6 @@ lint:
 	cd web && pnpm run format:check
 
 ci: test lint ## what CI runs
+
+release: ## cut a release: promote the changelog, tag, push (make release VERSION=v0.4.0)
+	@scripts/release.sh $(VERSION)
