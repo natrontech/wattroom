@@ -2,6 +2,7 @@
 	import { dev } from '$app/environment';
 	import {
 		LogOut as LeaveIcon,
+		MessageSquare,
 		Mic,
 		MicOff,
 		ScreenShare,
@@ -511,6 +512,7 @@
 	]);
 	const myZone = $derived(zoneOf(you.watts, you.ftp));
 	let admin = $state(false);
+	let chatSheet = $state(false);
 
 	// Session close (#39's summary design): my own samples this session become
 	// the summary, and my medal — if the room awarded one — comes back with the
@@ -853,16 +855,12 @@
 		{/if}
 
 		{#if layout === 'media'}
-			<!-- Media-focus: the player takes the main area, riders drop to a strip. -->
-			<div
-				class="flex min-h-0 flex-col items-center justify-center gap-3 {live
-					.tick?.jukebox?.current
-					? 'flex-1'
-					: ''}"
-			>
+			<!-- Media-focus: the controls, front and centre — the player itself
+			     lives in the dock (#216), so this is a desk, not a screen (#219). -->
+			<div class="mx-auto w-full max-w-xl">
 				{#if !live.tick?.jukebox?.current && !live.tick?.jukebox?.queue?.length}
 					<p
-						class="text-muted border-muted/10 max-w-md rounded-lg border border-dashed px-5 py-3 text-center text-xs"
+						class="text-muted border-muted/10 rounded-lg border border-dashed px-5 py-3 text-center text-xs"
 					>
 						Nothing queued yet — paste a YouTube link and the whole room hears
 						it in sync, ducked under voice.
@@ -953,7 +951,10 @@
 					>
 				{/if}
 
-				{#if av.status === 'off' || av.status === 'failed'}
+				{#if !account.me?.avEnabled}
+					<!-- No LiveKit configured: voice is not a thing here, so no
+					     button that would 404 (#219, capability gating). -->
+				{:else if av.status === 'off' || av.status === 'failed'}
 					<button
 						onclick={() => av.join()}
 						class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
@@ -1169,28 +1170,53 @@
 	</main>
 
 	<div class="hidden shrink-0 xl:block">
-		<SidePanel
-			live={phase === 'live'}
-			showPlayer={layout !== 'media' &&
-				(!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl)}
-			queue={queueView}
-			onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
-			onJam={(url) => live.jukebox('jam', undefined, undefined, url)}
-			jamUrl={live.tick?.jukebox?.jamUrl}
-			messages={live.chatLog}
-			reactions={live.chatReactions}
-			myReacts={live.myReacts}
-			onReact={(id, emoji) => live.react(id, emoji)}
-			onCheer={(emoji) => live.cheer(emoji)}
-			onChat={(text) => live.chat(text)}
-		>
-			{#snippet player()}
-				<Jukebox
-					jukebox={live.tick?.jukebox}
-					send={(action, videoId, title, jamUrl, positionSec) =>
-						live.jukebox(action, videoId, title, jamUrl, positionSec)}
-				/>
-			{/snippet}
-		</SidePanel>
+		{@render panel()}
 	</div>
 </div>
+
+<!-- Below xl the panel becomes a summonable sheet — the blips were firing
+     for a chat no laptop-sized window could open (#219). -->
+<button
+	onclick={() => (chatSheet = true)}
+	class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-40 grid h-12 w-12 place-items-center rounded-full shadow-lg ring-1 xl:hidden"
+	aria-label="open chat"
+>
+	<MessageSquare size={18} />
+</button>
+{#if chatSheet}
+	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+	<div
+		class="bg-paper/50 fixed inset-0 z-50 xl:hidden"
+		onclick={(e) => e.target === e.currentTarget && (chatSheet = false)}
+	>
+		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">
+			{@render panel()}
+		</div>
+	</div>
+{/if}
+
+{#snippet panel()}
+	<SidePanel
+		live={phase === 'live'}
+		showPlayer={layout !== 'media' &&
+			(!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl)}
+		queue={queueView}
+		onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
+		onJam={(url) => live.jukebox('jam', undefined, undefined, url)}
+		jamUrl={live.tick?.jukebox?.jamUrl}
+		messages={live.chatLog}
+		reactions={live.chatReactions}
+		myReacts={live.myReacts}
+		onReact={(id, emoji) => live.react(id, emoji)}
+		onCheer={(emoji) => live.cheer(emoji)}
+		onChat={(text) => live.chat(text)}
+	>
+		{#snippet player()}
+			<Jukebox
+				jukebox={live.tick?.jukebox}
+				send={(action, videoId, title, jamUrl, positionSec) =>
+					live.jukebox(action, videoId, title, jamUrl, positionSec)}
+			/>
+		{/snippet}
+	</SidePanel>
+{/snippet}

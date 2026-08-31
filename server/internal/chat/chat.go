@@ -39,7 +39,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 // SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
 // the tick line carries so reactions have something to attach to.
 func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (string, bool) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	// Tight budget: this runs in the sender's read loop — a stalled database
+	// must cost one line, not seconds of frozen metrics (#219).
+	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
 	defer cancel()
 	room, uid, ok := s.resolve(ctx, slug, userID)
 	if !ok {
@@ -68,23 +70,23 @@ func (s *Service) SaveChat(ctx context.Context, slug, userID, text string) (stri
 
 // ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
 // return the new total. The insert refuses messages outside this room.
-func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (int, bool) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (int, bool, bool) {
+	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
 	defer cancel()
 	room, uid, ok := s.resolve(ctx, slug, userID)
 	if !ok {
-		return 0, false
+		return 0, false, false
 	}
 	mid, err := store.ParseUUID(messageID)
 	if err != nil {
-		return 0, false
+		return 0, false, false
 	}
 	added, err := s.store.Queries.AddChatReaction(ctx, db.AddChatReactionParams{
 		MessageID: mid, UserID: uid, Emoji: emoji, RoomID: room.ID,
 	})
 	if err != nil {
 		s.log.Warn("add reaction", "err", err, "room", slug)
-		return 0, false
+		return 0, false, false
 	}
 	if added == 0 {
 		removed, err := s.store.Queries.RemoveChatReaction(ctx, db.RemoveChatReactionParams{
@@ -92,16 +94,16 @@ func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, e
 		})
 		if err != nil || removed == 0 {
 			// Neither added nor removed: the message is not in this room.
-			return 0, false
+			return 0, false, false
 		}
 	}
 	count, err := s.store.Queries.CountChatReaction(ctx, db.CountChatReactionParams{
 		MessageID: mid, Emoji: emoji,
 	})
 	if err != nil {
-		return 0, false
+		return 0, false, false
 	}
-	return int(count), true
+	return int(count), added > 0, true
 }
 
 func (s *Service) resolve(ctx context.Context, slug, userID string) (db.Room, pgtype.UUID, bool) {

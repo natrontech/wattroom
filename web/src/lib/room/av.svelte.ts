@@ -33,6 +33,9 @@ export function createRoomAv(slug: string) {
 	/** The one shared screen (#206): last share wins, like a projector. */
 	let screenOf = $state<{ id: string; key: number } | null>(null);
 	let speaking = $state<Record<string, boolean>>({});
+	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
+	 * once with a fresh token (#219: 6h expiry, transient drops). */
+	let dropped = $state(0);
 	/**
 	 * Who is in voice and whether their mic is open (#151): absent = not in
 	 * voice at all — three states a tile can tell apart at a glance.
@@ -394,6 +397,7 @@ export function createRoomAv(slug: string) {
 			speaking = next;
 		});
 		r.on(RoomEvent.Disconnected, () => {
+			const unexpected = status === 'live';
 			for (const el of audioElements.values()) el.remove();
 			audioElements.clear();
 			videoTracks.clear();
@@ -410,10 +414,14 @@ export function createRoomAv(slug: string) {
 			room = null;
 			closeMic();
 			if (status === 'live') status = 'off';
+			if (unexpected) dropped += 1;
 		});
 	}
 
 	return {
+		get dropped() {
+			return dropped;
+		},
 		get status() {
 			return status;
 		},

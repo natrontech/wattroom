@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
@@ -26,6 +27,7 @@
 	type YtPlayer = any;
 	let player: YtPlayer = null;
 	let playerReady = $state(false);
+	let apiFailed = $state(false);
 	let loadedVideo: string | null = null;
 
 	function withApi(cb: () => void) {
@@ -47,7 +49,14 @@
 	$effect(() => {
 		const node = container;
 		if (!node || player) return;
+		// A blocked iframe_api (adblock, corporate DNS) must say so instead of
+		// rendering a silent black tile forever (#219).
+		const failTimer = setTimeout(() => {
+			if (!playerReady) apiFailed = true;
+		}, 8_000);
 		withApi(() => {
+			clearTimeout(failTimer);
+			if (player) return; // two queued callbacks must not build twice
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			player = new (window as any).YT.Player(node, {
 				width: '100%',
@@ -88,6 +97,7 @@
 			});
 		});
 		return () => {
+			clearTimeout(failTimer);
 			// The dock unmounts only when the connection ends — tear the
 			// iframe down cleanly so a rejoin starts fresh.
 			player?.destroy?.();
@@ -182,13 +192,29 @@
 </script>
 
 {#if conn}
-	<div class="fixed right-4 bottom-4 z-[60] {jukebox?.current ? '' : 'hidden'}">
+	<!-- In the room at xl+, slide left of the side panel — the dock must not
+	     sit on the chat composer (#219). -->
+	<div
+		class="fixed bottom-4 z-[60] {jukebox?.current
+			? ''
+			: 'hidden'} {page.url.pathname.startsWith('/r/')
+			? 'right-4 xl:right-[340px]'
+			: 'right-4'}"
+	>
 		<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 		<div
-			class="ring-ink/15 overflow-hidden rounded-lg bg-black shadow-lg ring-1"
+			class="ring-ink/15 relative overflow-hidden rounded-lg bg-black shadow-lg ring-1"
 			style="width: 356px; height: 200px"
 		>
 			<div bind:this={container} class="h-full w-full"></div>
+			{#if apiFailed}
+				<div
+					class="text-muted absolute inset-0 grid place-items-center bg-black/80 p-4 text-center text-xs"
+				>
+					The player could not load — a blocker may be stopping YouTube. The
+					room's music continues for everyone else.
+				</div>
+			{/if}
 		</div>
 		{#if jukebox?.current}
 			<p class="text-muted mt-1 max-w-[356px] truncate text-[10px]">

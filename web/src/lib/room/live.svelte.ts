@@ -1,3 +1,4 @@
+import { account } from '$lib/account.svelte';
 import type {
 	ClientMessage,
 	RiderMetrics,
@@ -85,13 +86,22 @@ export function createRoomLive(slug: string) {
 				}
 				if (msg.tick.chatReactions?.length) {
 					const next = { ...chatReactions };
+					const pressed = { ...myReacts };
+					let mineChanged = false;
 					for (const change of msg.tick.chatReactions) {
 						next[change.messageId] = {
 							...next[change.messageId],
 							[change.emoji]: change.count,
 						};
+						// The server echoes the actor: my own tabs reconcile the
+						// highlight from truth, not from the click (#219).
+						if (change.by && change.by === account.me?.id) {
+							pressed[`${change.messageId}:${change.emoji}`] = change.added;
+							mineChanged = true;
+						}
 					}
 					chatReactions = next;
+					if (mineChanged) myReacts = pressed;
 				}
 			}
 			// A refused command is feedback, not a fault — it stays up long
