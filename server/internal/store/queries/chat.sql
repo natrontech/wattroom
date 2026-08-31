@@ -17,7 +17,7 @@ where cm.room_id = $1 and cm.id not in (
 -- name: ListRoomChat :many
 -- Newest $2, oldest-first for rendering; a deleted author's rows are gone
 -- (cascade), so the join never dangles.
-select m.id, u.display_name, m.text, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.created_at
 from (
     select * from chat_messages
     where room_id = $1
@@ -47,7 +47,7 @@ on conflict do nothing;
 
 -- name: RemoveChatReaction :execrows
 -- Room-scoped like the insert — a socket in room A must not toggle
--- reactions on room B's messages (audit #218).
+-- reactions on room B's messages (audit #219).
 delete from chat_reactions r
 using chat_messages m
 where r.message_id = $1 and r.user_id = $2 and r.emoji = $3

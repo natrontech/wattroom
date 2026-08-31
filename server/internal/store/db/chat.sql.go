@@ -105,7 +105,7 @@ func (q *Queries) ListChatReactions(ctx context.Context, arg ListChatReactionsPa
 }
 
 const listRoomChat = `-- name: ListRoomChat :many
-select m.id, u.display_name, m.text, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.created_at
 from (
     select id, room_id, user_id, text, created_at from chat_messages
     where room_id = $1
@@ -123,6 +123,7 @@ type ListRoomChatParams struct {
 
 type ListRoomChatRow struct {
 	ID          pgtype.UUID
+	UserID      pgtype.UUID
 	DisplayName string
 	Text        string
 	CreatedAt   pgtype.Timestamptz
@@ -141,6 +142,7 @@ func (q *Queries) ListRoomChat(ctx context.Context, arg ListRoomChatParams) ([]L
 		var i ListRoomChatRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.UserID,
 			&i.DisplayName,
 			&i.Text,
 			&i.CreatedAt,
