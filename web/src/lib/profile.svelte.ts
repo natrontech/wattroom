@@ -12,6 +12,8 @@ export const PROFILE_LIMITS = {
 	maxFtp: 600,
 	minKg: 30,
 	maxKg: 200,
+	minLthr: 100,
+	maxLthr: 210,
 } as const;
 
 export interface Profile {
@@ -19,6 +21,13 @@ export interface Profile {
 	kg: number;
 	/** ms epoch of the ramp test that set this FTP, if one did. */
 	ftpMeasuredAt?: number;
+	/**
+	 * Lactate threshold heart rate, bpm (ADR-0014) — the one anchor the HR
+	 * zones derive from, the way power zones derive from FTP. Absent = the
+	 * rider hasn't set one and bpm renders unzoned. Device-local, own-bpm
+	 * colouring only (ADR-0008).
+	 */
+	lthr?: number;
 	/**
 	 * Sprint setup (#30/#41): the slope a sprint moment throws you onto, and
 	 * whether this is a single-speed setup (Zwift Cog) — where slope mode has
@@ -54,7 +63,7 @@ function inRange(value: unknown, min: number, max: number): value is number {
 export function parseProfile(value: unknown): Profile {
 	if (typeof value !== 'object' || value === null)
 		return { ...DEFAULT_PROFILE };
-	const { ftp, kg, ftpMeasuredAt, shareHr, sprintGrade, singleSpeed } =
+	const { ftp, kg, ftpMeasuredAt, lthr, shareHr, sprintGrade, singleSpeed } =
 		value as Record<string, unknown>;
 	return {
 		ftp: inRange(ftp, PROFILE_LIMITS.minFtp, PROFILE_LIMITS.maxFtp)
@@ -65,6 +74,9 @@ export function parseProfile(value: unknown): Profile {
 			: DEFAULT_PROFILE.kg,
 		ftpMeasuredAt:
 			typeof ftpMeasuredAt === 'number' ? ftpMeasuredAt : undefined,
+		lthr: inRange(lthr, PROFILE_LIMITS.minLthr, PROFILE_LIMITS.maxLthr)
+			? lthr
+			: undefined,
 		shareHr: typeof shareHr === 'boolean' ? shareHr : true,
 		sprintGrade: inRange(sprintGrade, 1, 15)
 			? sprintGrade
@@ -106,6 +118,14 @@ export function createProfileStore() {
 				!inRange(next.kg, PROFILE_LIMITS.minKg, PROFILE_LIMITS.maxKg)
 			) {
 				return `Weight has to be between ${PROFILE_LIMITS.minKg} and ${PROFILE_LIMITS.maxKg} kg.`;
+			}
+			// lthr: undefined clears the anchor (the spread overwrites), so only a
+			// present number is validated.
+			if (
+				next.lthr !== undefined &&
+				!inRange(next.lthr, PROFILE_LIMITS.minLthr, PROFILE_LIMITS.maxLthr)
+			) {
+				return `LTHR has to be between ${PROFILE_LIMITS.minLthr} and ${PROFILE_LIMITS.maxLthr} bpm.`;
 			}
 			const merged = parseProfile({ ...profile, ...next });
 			try {
