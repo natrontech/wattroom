@@ -5,14 +5,15 @@
  */
 export interface StageSource {
 	key: string;
-	kind: 'screen' | 'cam';
+	kind: 'screen' | 'cam' | 'jukebox';
 }
 
 /**
- * Your pick if it is still live, else the newest share, else nothing.
- * Cameras never claim the stage on their own — the rider tiles already show
- * them, and a face jumping onto the big surface when a share ends is a
- * surprise, not a feature.
+ * Your pick if it is still live, else the newest share, else the jukebox
+ * video, else nothing. A share leads because a shared screen is why anyone
+ * looks at the stage at all. Cameras never claim it on their own — the rider
+ * tiles already show them, and a face jumping onto the big surface when a
+ * share ends is a surprise, not a feature.
  */
 export function pickStage<T extends StageSource>(
 	sources: T[],
@@ -21,6 +22,7 @@ export function pickStage<T extends StageSource>(
 	return (
 		sources.find((source) => source.key === pick) ??
 		sources.findLast((source) => source.kind === 'screen') ??
+		sources.find((source) => source.kind === 'jukebox') ??
 		null
 	);
 }

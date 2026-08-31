@@ -963,13 +963,19 @@ export function createRoomAv(slug: string) {
 		get stage() {
 			return stage();
 		},
+		/** The rider's pick. The room page resolves it — its source list is
+		 *  longer than ours, the jukebox video is on it too (#316). */
+		get stagePick() {
+			return stagePick;
+		},
 		/** Pick a source, or null to follow the newest share again. */
 		setStage(key: string | null) {
 			stagePick = key;
 		},
-		/** The stage surface: a screen is a document (contain), a face isn't. */
-		attachStage(container: HTMLElement) {
-			const source = stage();
+		/** The stage surface: a screen is a document (contain), a face isn't.
+		 *  A key we do not know is not ours to draw — the jukebox seats itself. */
+		attachStage(container: HTMLElement, key: string) {
+			const source = stageSources().find((candidate) => candidate.key === key);
 			mountTrack(
 				container,
 				source

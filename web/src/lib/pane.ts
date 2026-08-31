@@ -7,6 +7,16 @@
  * writes them back. Position does need code, but only for floating panes —
  * `dragPane` moves the nearest `[data-pane]` ancestor, whose value is the key.
  */
+import {
+	CURSOR,
+	EDGES,
+	type Edge,
+	gripStyle,
+	type Guides,
+	resizeRect,
+	snapSpan,
+} from '$lib/pane-snap';
+
 interface Spot {
 	w?: number;
 	h?: number;
@@ -59,6 +69,9 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	publish();
 	const observer = new ResizeObserver(() => {
 		publish();
+		// Someone else is driving the rect (the stage seat, #316) — that size
+		// is the stage's, not one the rider chose.
+		if (node.dataset.seated !== undefined) return;
 		if (`${node.style.width}|${node.style.height}` === authored) return;
 		save(key, {
 			w: parseInt(node.style.width, 10) || 0,
@@ -70,6 +83,27 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 		observer.disconnect();
 		document.documentElement.style.removeProperty(`--pane-${key}-w`);
 	};
+}
+
+/**
+ * Put a pane back the way the rider left it, after something else borrowed
+ * its rect (#316). `fallback` is the size the component authors, which the
+ * borrower overwrote — inline styles have no memory of what they replaced.
+ */
+export function restorePane(
+	node: HTMLElement,
+	key: string,
+	fallback: { w: number; h: number },
+): void {
+	const { w, h, x, y } = load(key);
+	node.style.width = `${w || fallback.w}px`;
+	node.style.height = `${h || fallback.h}px`;
+	if (x !== undefined && y !== undefined) place(node, x, y);
+	else {
+		// Never dragged: back to the corner its CSS docks it to.
+		node.style.left = node.style.top = '';
+		node.style.right = node.style.bottom = '';
+	}
 }
 
 /** Enough pane left on screen to grab it again after a viewport change. */
@@ -133,10 +167,11 @@ export function dragPane(handle: HTMLElement): () => void {
 	};
 	const move = (event: PointerEvent) => {
 		if (!from) return;
+		const lines = guides();
 		place(
 			pane,
-			from.left + event.clientX - from.x,
-			from.top + event.clientY - from.y,
+			snapSpan(from.left + event.clientX - from.x, pane.offsetWidth, lines.x),
+			snapSpan(from.top + event.clientY - from.y, pane.offsetHeight, lines.y),
 		);
 	};
 	const up = () => {
@@ -159,5 +194,98 @@ export function dragPane(handle: HTMLElement): () => void {
 		handle.removeEventListener('pointerup', up);
 		handle.removeEventListener('pointercancel', up);
 		window.removeEventListener('resize', reposition);
+	};
+}
+
+/**
+ * The lines a pane clicks to: the viewport's edges and middle, and the gutter
+ * left of the room's side panel — where the dock lives by default, and the
+ * one edge a rider actually aims for.
+ */
+function guides(): Guides {
+	const panel = parseFloat(
+		getComputedStyle(document.documentElement).getPropertyValue(
+			'--pane-side-panel-w',
+		),
+	);
+	const gutter = window.innerWidth - (panel > 0 ? panel : 0);
+	return {
+		x: [0, window.innerWidth / 2, gutter, window.innerWidth],
+		y: [0, window.innerHeight / 2, window.innerHeight],
+	};
+}
+
+/**
+ * Resize a floating pane from any edge or corner, with soft guides (#316).
+ * Replaces CSS `resize` on panes that need to be tucked somewhere precise;
+ * the grips are transparent and sit in the pane's own margin of chrome, so
+ * nothing is drawn over the picture.
+ */
+export function resizePane(node: HTMLElement, key: string): () => void {
+	const grips = EDGES.map((edge) => {
+		const grip = document.createElement('div');
+		grip.dataset.resize = edge;
+		grip.style.cssText =
+			`position:absolute;z-index:2;touch-action:none;` +
+			`cursor:${CURSOR[edge]}-resize;${gripStyle(edge)}`;
+		node.appendChild(grip);
+		return grip;
+	});
+
+	let from: { edge: Edge; x: number; y: number; rect: DOMRect } | null = null;
+	const down = (event: PointerEvent) => {
+		const edge = (event.target as HTMLElement).dataset?.resize as
+			Edge | undefined;
+		if (!edge) return;
+		from = {
+			edge,
+			x: event.clientX,
+			y: event.clientY,
+			rect: node.getBoundingClientRect(),
+		};
+		(event.target as HTMLElement).setPointerCapture(event.pointerId);
+		event.preventDefault(); // no text selection while dragging
+	};
+	const move = (event: PointerEvent) => {
+		if (!from) return;
+		const style = getComputedStyle(node);
+		const next = resizeRect(
+			from.rect,
+			from.edge,
+			event.clientX - from.x,
+			event.clientY - from.y,
+			{
+				minW: parseFloat(style.minWidth) || 0,
+				minH: parseFloat(style.minHeight) || 0,
+				maxW: parseFloat(style.maxWidth) || window.innerWidth,
+				maxH: parseFloat(style.maxHeight) || window.innerHeight,
+			},
+			guides(),
+		);
+		node.style.width = `${next.width}px`;
+		node.style.height = `${next.height}px`;
+		place(node, next.left, next.top);
+	};
+	const up = () => {
+		if (!from) return;
+		from = null;
+		save(key, {
+			w: parseInt(node.style.width, 10) || 0,
+			h: parseInt(node.style.height, 10) || 0,
+			x: parseInt(node.style.left, 10) || 0,
+			y: parseInt(node.style.top, 10) || 0,
+		});
+	};
+
+	node.addEventListener('pointerdown', down);
+	node.addEventListener('pointermove', move);
+	node.addEventListener('pointerup', up);
+	node.addEventListener('pointercancel', up);
+	return () => {
+		node.removeEventListener('pointerdown', down);
+		node.removeEventListener('pointermove', move);
+		node.removeEventListener('pointerup', up);
+		node.removeEventListener('pointercancel', up);
+		for (const grip of grips) grip.remove();
 	};
 }

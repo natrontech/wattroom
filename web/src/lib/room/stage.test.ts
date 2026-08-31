@@ -6,6 +6,7 @@ const screens = [
 	{ key: 'screen:b', kind: 'screen' as const },
 ];
 const cam = { key: 'cam:c', kind: 'cam' as const };
+const jukebox = { key: 'jukebox', kind: 'jukebox' as const };
 
 describe('pickStage (#280)', () => {
 	it('honours your pick over the newest share', () => {
@@ -18,6 +19,16 @@ describe('pickStage (#280)', () => {
 		// The picked share ended: the other one takes over, not the webcam.
 		expect(pickStage([screens[0], cam], 'screen:b')?.key).toBe('screen:a');
 		expect(pickStage([cam], null)).toBe(null);
+	});
+
+	// #316: the room's video seats on the stage, but behind a share — someone
+	// sharing a chart is saying "look at this", the music video is not.
+	it('gives the jukebox the stage below a share, above a camera', () => {
+		expect(pickStage([cam, jukebox], null)?.key).toBe('jukebox');
+		expect(pickStage([...screens, cam, jukebox], null)?.key).toBe('screen:b');
+		expect(pickStage([...screens, jukebox], 'jukebox')?.key).toBe('jukebox');
+		// The track ended mid-pick: the stage falls back rather than blanking.
+		expect(pickStage([...screens], 'jukebox')?.key).toBe('screen:b');
 	});
 });
 
