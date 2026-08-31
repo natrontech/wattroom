@@ -50,10 +50,40 @@
 	}
 	void load();
 	void loadProgression();
+
+	// Chart drilldown: a click lands on the ride row it came from.
+	let highlightId = $state<string | null>(null);
+	function focusRide(id: string) {
+		highlightId = id;
+		document
+			.getElementById(`ride-${id}`)
+			?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
+	function focusDay(date: string) {
+		// Snap to the nearest ride: most days carry no ride, and a click that
+		// silently does nothing reads as broken.
+		const target = new Date(date + 'T12:00:00Z').getTime();
+		let best: ServerRide | null = null;
+		let dist = Infinity;
+		for (const ride of rides ?? []) {
+			const d = Math.abs(new Date(ride.startedAt).getTime() - target);
+			if (d < dist) {
+				dist = d;
+				best = ride;
+			}
+		}
+		if (best) focusRide(best.id);
+	}
 </script>
 
 {#snippet rideRow(ride: RideRecord, badge?: string)}
-	<li class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
+	<li
+		id="ride-{ride.id}"
+		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
+		ride.id
+			? 'ring-z2/70 ring-1'
+			: ''}"
+	>
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
 			<span class="eyebrow">{badge}</span>
@@ -72,7 +102,7 @@
 	</li>
 {/snippet}
 
-<main class="page max-w-3xl">
+<main class="page max-w-4xl">
 	<div class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
@@ -143,24 +173,43 @@
 						{/if}
 					</span>
 				</div>
-				<div class="mt-3 grid gap-3 sm:grid-cols-2">
-					<div class="panel px-5 py-4">
-						<h3 class="text-muted mb-3 text-xs">Best power by duration</h3>
+				<div class="mt-3 grid gap-3">
+					<div class="panel px-6 py-5">
+						<h3 class="text-ink text-sm font-semibold">
+							Best power by duration
+						</h3>
+						<!-- Interpretation lives in the UI, not the rider's head:
+						     every panel says what its numbers mean in one line. -->
+						<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
+							Your hardest average power held for each duration. The shades
+							compare now with your past: a darker bar reaching its lighter
+							neighbours means you're back at your best.
+						</p>
 						<PowerCurveChart
 							d30={progression.curve.d30}
 							d90={progression.curve.d90}
 							all={progression.curve.all}
 						/>
 					</div>
-					<div class="panel px-5 py-4">
-						<h3 class="text-muted mb-3 text-xs">FTP over the last year</h3>
-						<FtpTrendChart rides={progression.rides} />
+					<div class="panel px-6 py-5">
+						<h3 class="text-ink text-sm font-semibold">
+							FTP over the last year
+						</h3>
+						<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
+							The line is the FTP your rides were scored against; each dot is a
+							ride's best 20 minutes. Dots climbing away above the line mean
+							your FTP is due a retest.
+						</p>
+						<FtpTrendChart
+							rides={progression.rides}
+							onpick={(ride) => focusRide(ride.id)}
+						/>
 					</div>
 					{#if progression.load && progression.load.series.length > 1}
 						{@const load = progression.load}
-						<div class="panel px-5 py-4 sm:col-span-2">
+						<div class="panel px-6 py-5">
 							<div class="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-								<h3 class="text-muted text-xs">Training load</h3>
+								<h3 class="text-ink text-sm font-semibold">Training load</h3>
 								{#if load.building}
 									<span class="text-muted text-xs italic"
 										>building history — form shows after your first month</span
@@ -179,7 +228,13 @@
 									>based on your WattRoom rides</span
 								>
 							</div>
-							<FitnessChart series={load.series} />
+							<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
+								Every ride adds load. Fitness is the load your body is used to
+								(a slow 42-day average); fatigue is the last week (fast).
+								Training with fatigue a little above fitness is what builds —
+								far above it is where recovery earns more than riding.
+							</p>
+							<FitnessChart series={load.series} onpick={focusDay} />
 						</div>
 					{/if}
 				</div>
