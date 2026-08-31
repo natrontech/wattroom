@@ -4,6 +4,7 @@
 	// Redesigned on #181 feedback: the invite is one copyable action, member
 	// moderation is quiet until you reach for it.
 	import { Check, Copy, Crown, ShieldBan } from '@lucide/svelte';
+	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
 
 	interface Member {
@@ -66,6 +67,36 @@
 		}
 	}
 
+	// Friends you could pull in: accepted, not already members. The invite is
+	// a DM carrying the room link — the friendship gate is the permission.
+	interface FriendRow {
+		id: string;
+		name: string;
+		status: string;
+	}
+	let invitable = $state<FriendRow[]>([]);
+	let invited = $state<string[]>([]);
+	$effect(() => {
+		if (!open) return;
+		void api<{ friends: FriendRow[] }>('/api/friends').then((res) => {
+			if (!res.ok) return;
+			invitable = res.data.friends.filter(
+				(f) => f.status === 'accepted' && !members.some((m) => m.id === f.id),
+			);
+		});
+	});
+	async function invite(friend: FriendRow) {
+		const res = await api(`/api/dms/${friend.id}`, {
+			method: 'POST',
+			json: { text: `Come ride with me: ${inviteUrl}` },
+		});
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		invited.push(friend.id);
+	}
+
 	// Banned members sink to the bottom; the owner sees them, nobody else does.
 	const shown = $derived(
 		[...members].sort(
@@ -117,6 +148,28 @@
 						>{code}</span
 					>
 				</p>
+			{/if}
+			{#if invitable.length > 0}
+				<div class="border-ink/5 mt-3 border-t pt-2.5">
+					<span class="eyebrow">or DM a friend the link</span>
+					<ul class="mt-1.5 space-y-1.5">
+						{#each invitable as friend (friend.id)}
+							<li class="flex items-center gap-2 text-xs">
+								<span class="min-w-0 truncate">{friend.name}</span>
+								{#if invited.includes(friend.id)}
+									<span class="text-muted ml-auto flex items-center gap-1">
+										<Check size={12} /> invited
+									</span>
+								{:else}
+									<button
+										onclick={() => void invite(friend)}
+										class="btn btn-secondary btn-xs ml-auto">Invite</button
+									>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
 			<a
 				href="/r/{slug}/watch"
