@@ -145,7 +145,7 @@
 			void goto(next, { replaceState: true });
 		} else if (page.url.pathname === '/') {
 			routed = true;
-			void goto('/rooms', { replaceState: true });
+			void goto('/home', { replaceState: true });
 		}
 	});
 </script>
@@ -180,7 +180,14 @@
 					rooms={shownRooms}
 					activeSlug={page.params?.slug ?? ''}
 					connectedSlug={roomConnection.current.slug}
-					onLeave={() => roomConnection.leave()}
+					onLeave={() => {
+						roomConnection.leave();
+						// Leaving while standing in the room: the page must leave
+						// too, or you stare at a room you are no longer in with no
+						// way back in (rider report).
+						if (page.url.pathname.startsWith('/r/'))
+							void goto('/home', { replaceState: true });
+					}}
 					onMember={(slug, name) => void openMember(slug, name)}
 					micOn={av.micOn}
 					camOn={av.camOn}
