@@ -16,6 +16,11 @@ services:
       - postgres
     expose:
       - '8080'
+    # default keeps postgres/caddy reachable; monitoring is how the homelab
+    # Prometheus gets at /metrics without Caddy publishing it (ADR-0019).
+    networks:
+      - default
+      - monitoring
 
   postgres:
     image: postgres:18
@@ -75,19 +80,15 @@ services:
     depends_on:
       - postgres
 
-  prometheus:
-    image: prom/prometheus:v3.7.4
-    restart: unless-stopped
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prom-data:/prometheus
-    expose:
-      - '9090'
-
 volumes:
   pgdata:
   feedback:
   caddy-data:
   caddy-config:
-  prom-data:
+
+# One Prometheus for the homelab, not one per workload (ADR-0006's convention,
+# ADR-0019 applying it). Create it once with `docker network create monitoring`
+# if the homelab stack hasn't already; rename both sides if yours differs.
+networks:
+  monitoring:
+    external: true

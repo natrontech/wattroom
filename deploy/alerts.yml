@@ -1,30 +1,32 @@
-# Prometheus alert rules for the WattRoom deploy (#55). #36's compose stack
-# loads this file; the rules alert on the subsystems that go quiet first, not
-# on HTTP 200 — a healthy homepage over a broken ride is exactly the failure
-# mode the homelab observability rule was written about.
+# Prometheus alert rules for WattRoom. These live here, with the app whose
+# failure modes they describe; the homelab's Prometheus — the only one, per
+# ADR-0006 — mounts this file straight from /opt/wattroom/alerts.yml and owns
+# the routing to a phone (ADR-0019). Same VM, so there is no copy to drift.
+#
+# Every rule below watches a metric that something actually produces. The two
+# synthetic-ride rules that used to sit here watched wattroom_synthetic_ride_*,
+# which nothing pushes yet — absent() would have paged on load. They move with
+# the synthetic timer that produces them.
+#
+# The rules alert on the subsystems that go quiet first, not on HTTP 200: a
+# healthy homepage over a broken ride is exactly the failure mode the homelab
+# observability rule was written about.
 groups:
   - name: wattroom-ride
     rules:
-      # The synthetic ride is the truth: it failed, or it stopped reporting.
-      - alert: WattroomSyntheticRideFailing
-        expr: wattroom_synthetic_ride_success == 0
-        for: 35m # two missed runs on the 30-min timer
-        labels: { severity: page }
-        annotations:
-          summary: "The synthetic ride is failing against production"
-
-      # absent() guard: a dead timer must not read as a healthy service.
-      - alert: WattroomSyntheticRideSilent
-        expr: absent(wattroom_synthetic_ride_timestamp_seconds) or (time() - wattroom_synthetic_ride_timestamp_seconds > 5400)
-        for: 10m
-        labels: { severity: page }
-        annotations:
-          summary: "No synthetic ride has reported for 90 minutes — the timer is dead, not the service healthy"
-
-      # Server-side ride vitals, scraped from /metrics (#36's scrape job).
+      # Ride vitals, scraped from /metrics over the monitoring network.
       - alert: WattroomTicksSilentWithRiders
         expr: wattroom_room_riders > 0 and rate(wattroom_room_ticks_total[5m]) == 0
         for: 5m
         labels: { severity: page }
         annotations:
-          summary: "Riders are connected but no room ticks are flowing"
+          summary: 'Riders are connected but no room ticks are flowing'
+
+      # absent() guard: a scrape that stopped must not read as a healthy
+      # service. This one is safe to ship now — the target exists.
+      - alert: WattroomDown
+        expr: up{job="wattroom"} == 0
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: 'Prometheus cannot scrape wattroom — the binary or the VM is gone'
