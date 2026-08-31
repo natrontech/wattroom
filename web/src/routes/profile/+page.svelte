@@ -5,9 +5,19 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
+	import FtpTrendChart, {
+		type TrendRide,
+	} from '$lib/components/FtpTrendChart.svelte';
 
 	const profile = createProfileStore();
 	void account.load();
+
+	// The FTP number's story (#222) — decorative context under the field, so
+	// on failure it simply doesn't render.
+	let trend = $state<TrendRide[]>([]);
+	void api<{ rides: TrendRide[] }>('/api/progression').then((r) => {
+		if (r.ok) trend = r.data?.rides ?? [];
+	});
 
 	// Decorative footer, not ride data: on failure it simply doesn't render.
 	let version = $state<string | null>(null);
@@ -168,6 +178,11 @@
 							>
 						{/if}
 					</span>
+					{#if trend.length >= 2}
+						<span class="mt-3 block">
+							<FtpTrendChart rides={trend} />
+						</span>
+					{/if}
 				</label>
 				<label class="block">
 					<span class="eyebrow">weight (kg)</span>
