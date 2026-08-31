@@ -5,6 +5,11 @@
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
+	import {
+		fetchProgression,
+		FORM_SENTENCES,
+		type LoadSummary,
+	} from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -34,6 +39,7 @@
 	let rooms = $state<RoomEntry[] | null>(null);
 	let rides = $state<Ride[] | null>(null);
 	let error = $state<string | null>(null);
+	let form = $state<LoadSummary | null>(null);
 
 	async function load() {
 		const res = await api<{ rooms: RoomEntry[] }>('/api/rooms');
@@ -53,6 +59,13 @@
 	});
 	$effect(() => {
 		if (!account.loaded || !account.me) return;
+		void fetchProgression().then((res) => {
+			// Decorative context — on failure the form line simply stays away.
+			// Hidden through the SPEC cold start: numbers first, opinions once
+			// they mean something.
+			if (res.ok && res.data?.load && !res.data.load.building)
+				form = res.data.load;
+		});
 		void api<{ rides: Ride[] }>('/api/rides').then((res) => {
 			if (res.ok) rides = res.data.rides;
 		});
@@ -224,9 +237,20 @@
 					<p class="eyebrow">work</p>
 				</div>
 			</div>
+			{#if form}
+				<p class="text-muted mt-2 text-xs">
+					<span class="text-ink font-display font-semibold"
+						>form {form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%</span
+					>
+					· {FORM_SENTENCES[form.zone] ?? form.zone} ·
+					<span class="text-[11px]">from your WattRoom rides</span>
+				</p>
+			{/if}
 			<p class="text-muted mt-2 text-xs">
 				FTP {account.me?.ftpWatts ?? '–'} W ·
 				<a href="/history" class="hover:text-ink underline">all rides</a> ·
+				<a href="/progression" class="hover:text-ink underline">progression</a>
+				·
 				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
 			</p>
 		</section>

@@ -129,6 +129,52 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
 
+## Training load (defaults — tune in alpha; model rationale ADR-0016, research RESEARCH.md §13)
+
+Naming is deliberate: TSS/NP/IF/CTL/ATL/TSB are Peaksware trademarks — WattRoom ships the
+published math under the names **Load, Intensity, Fitness, Fatigue, Form** (the
+intervals.icu convention). Everything below is per-rider, computed from WattRoom rides
+only, and every surface says so ("based on your WattRoom rides").
+
+- **NormPower** (per ride): 30 s rolling average of 1 Hz power → each value to the 4th
+  power → mean → 4th root. Rides shorter than 20 min use plain average power instead
+  (the rolling-4th-power estimate is not meaningful below that; TrainingPeaks convention).
+  Stored on the ride at save time; missing values are backfilled once from the sample blob.
+- **Intensity** = `NormPower / FTP-at-ride-time`.
+- **Load** = `Intensity² × hours × 100` — one hour exactly at FTP = 100 by construction.
+  Derived from stored columns on read, never stored itself.
+- **Daily Load** = sum of that UTC day's rides; a day without rides counts 0.
+- **Fitness** = 42-day exponentially-weighted average of daily Load
+  (`F_d = F_d−1 + (Load_d − F_d−1)/42`). **Fatigue** = the same with 7
+  (`/7`). **Form** = yesterday's Fitness − yesterday's Fatigue, displayed as a
+  **percentage of Fitness** (absolute bands assume a ~100 Load/day athlete; ours aren't).
+- **Form zones** (Friel-derived, via intervals.icu's percentage form):
+  **> +20 %** transition · **+5…+20 %** fresh · **−10…+5 %** grey ·
+  **−30…−10 %** optimal (building) · **< −30 %** high risk.
+- **Cold start**: form status and every load-derived nudge stay hidden until **28 days**
+  after the rider's first saved ride — a 42-day average over a week of data reads as a
+  dangerous ramp for every new rider. Charts may render sooner with a "building history"
+  note.
+- **Tone rule** (not a number, still binding): zone words describe the day, never grade
+  the rider — no "unproductive", no "failed". Load-derived suggestions are hints with a
+  one-clause why and never gate picking any workout.
+
+**Suggested for today** (one suggestion, first matching rule wins; nothing before the
+28-day cold start; thresholds from RESEARCH.md §13.3, worded per the tone rule):
+
+| # | Rule | Suggests | Why-clause |
+| --- | --- | --- | --- |
+| 1 | form < −30 % | recover | "carrying serious load" |
+| 2 | no ride in ≥ 14 days | restart | "first ride back after a break" |
+| 3 | yesterday's Load > 1.5 × median ride Load | endurance | "yesterday was big" |
+| 4 | Fitness rose > 8 in the last 7 days | endurance | "load is climbing fast" |
+| 5 | form ≥ +5 % | intensity | "you're fresh" |
+| — | otherwise | no suggestion | |
+
+Suggestion → workout focus: **recover** = Recovery · **restart** = Recovery, Endurance ·
+**endurance** = Endurance · **intensity** = Sweet spot, Threshold, VO₂ max. The badge
+marks matching workouts in the picker; every workout stays rideable.
+
 ## Ride guards
 
 Numbers moved here from code after being ridden (#46). The cadence path was validated on a

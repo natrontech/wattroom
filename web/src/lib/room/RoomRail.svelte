@@ -131,6 +131,7 @@
 		{ href: '/ramp', label: 'Ramp test' },
 		{ href: '/pair', label: 'Sensors' },
 		{ href: '/history', label: 'Rides' },
+		{ href: '/progression', label: 'Progression' },
 		{ href: '/profile', label: 'Profile' },
 	];
 	const activePath = $derived(page.url.pathname);

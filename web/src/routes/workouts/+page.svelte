@@ -7,12 +7,25 @@
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import type { Workout } from '$lib/workout/types';
 	import { toasts } from '$lib/toast.svelte';
+	import {
+		fetchProgression,
+		suggestedFocuses,
+		type Suggestion,
+	} from '$lib/progression';
 
 	// FTP only scales the preview here; the ride screen owns the real value (#16).
 	const previewFtp = 265;
 
 	const custom = createCustomStore();
 	let active = $state<Focus | 'All'>('All');
+
+	// SPEC's "suggested for today" (#222): a badge with its one-clause why —
+	// hidden through the cold start (the server withholds it), never a gate.
+	let suggestion = $state<Suggestion | null>(null);
+	void fetchProgression().then((r) => {
+		if (r.ok) suggestion = r.data?.load?.suggestion ?? null;
+	});
+	const suggested = $derived(suggestedFocuses(suggestion));
 	const shown = $derived(
 		active === 'All'
 			? [...library].sort(
@@ -87,6 +100,13 @@
 	</section>
 
 	<h2 class="eyebrow mt-8">curated</h2>
+	{#if suggestion && suggested.length > 0}
+		<p class="text-muted mt-2 text-xs">
+			Suggested for today:
+			<span class="text-ink font-semibold">{suggested.join(' / ')}</span>
+			— {suggestion.why}. Your call, always.
+		</p>
+	{/if}
 	<div class="mt-6 flex flex-wrap gap-1">
 		{#each ['All', ...focuses] as option (option)}
 			<button
@@ -110,6 +130,11 @@
 						>{entry.workout.name}</a
 					>
 					<span class="eyebrow">{entry.focus}</span>
+					{#if suggestion && suggested.includes(entry.focus)}
+						<span class="eyebrow text-z4" title={suggestion.why}
+							>suggested today</span
+						>
+					{/if}
 					<span class="text-muted ml-auto font-mono text-xs tabular-nums"
 						>{formatClock(durationSeconds(entry.workout))}</span
 					>

@@ -49,9 +49,9 @@ func (q *Queries) CreateMedal(ctx context.Context, arg CreateMedalParams) error 
 const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp
+    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp, norm_watts
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 returning id
 `
 
@@ -68,6 +68,7 @@ type CreateRideParams struct {
 	Samples     []byte
 	Curve       []byte
 	Xp          int32
+	NormWatts   *int16
 }
 
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
@@ -84,10 +85,66 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.Samples,
 		arg.Curve,
 		arg.Xp,
+		arg.NormWatts,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const curveBests = `-- name: CurveBests :one
+select
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best20m,
+    coalesce(max((curve->>'best5s')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5s,
+    coalesce(max((curve->>'best1m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best1m,
+    coalesce(max((curve->>'best5m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best5m,
+    coalesce(max((curve->>'best20m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best20m,
+    coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
+    coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
+    coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+from rides
+where user_id = $1
+`
+
+type CurveBestsRow struct {
+	D30Best5s  int32
+	D30Best1m  int32
+	D30Best5m  int32
+	D30Best20m int32
+	D90Best5s  int32
+	D90Best1m  int32
+	D90Best5m  int32
+	D90Best20m int32
+	AllBest5s  int32
+	AllBest1m  int32
+	AllBest5m  int32
+	AllBest20m int32
+}
+
+// Progression overlay (#222): best per SPEC curve window over three ranges,
+// summary columns only — the sample blob stays cold.
+func (q *Queries) CurveBests(ctx context.Context, userID pgtype.UUID) (CurveBestsRow, error) {
+	row := q.db.QueryRow(ctx, curveBests, userID)
+	var i CurveBestsRow
+	err := row.Scan(
+		&i.D30Best5s,
+		&i.D30Best1m,
+		&i.D30Best5m,
+		&i.D30Best20m,
+		&i.D90Best5s,
+		&i.D90Best1m,
+		&i.D90Best5m,
+		&i.D90Best20m,
+		&i.AllBest5s,
+		&i.AllBest1m,
+		&i.AllBest5m,
+		&i.AllBest20m,
+	)
+	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
@@ -100,7 +157,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getRide = `-- name: GetRide :one
-select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp from rides where id = $1 and user_id = $2
+select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp, norm_watts from rides where id = $1 and user_id = $2
 `
 
 type GetRideParams struct {
@@ -127,6 +184,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) 
 		&i.CreatedAt,
 		&i.Curve,
 		&i.Xp,
+		&i.NormWatts,
 	)
 	return i, err
 }
@@ -159,6 +217,37 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 		&i.StravaUpload,
 	)
 	return i, err
+}
+
+const listRidesMissingNorm = `-- name: ListRidesMissingNorm :many
+select id, samples from rides where norm_watts is null limit $1
+`
+
+type ListRidesMissingNormRow struct {
+	ID      pgtype.UUID
+	Samples []byte
+}
+
+// The ADR-0016 backfill's read: each blob is read exactly once, then goes
+// cold again — the per-ride-read storage rule holds.
+func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]ListRidesMissingNormRow, error) {
+	rows, err := q.db.Query(ctx, listRidesMissingNorm, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRidesMissingNormRow
+	for rows.Next() {
+		var i ListRidesMissingNormRow
+		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRoomMedals = `-- name: ListRoomMedals :many
@@ -221,6 +310,59 @@ func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]
 			return nil, err
 		}
 		items = append(items, week)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserProgression = `-- name: ListUserProgression :many
+select id, started_at, seconds, kj, execution, ftp_watts,
+       coalesce((curve->>'best20m')::int, 0)::int as best20m,
+       coalesce(norm_watts, avg_watts)::int as norm_watts
+from rides
+where user_id = $1 and started_at >= now() - interval '365 days'
+order by started_at
+limit 1000
+`
+
+type ListUserProgressionRow struct {
+	ID        pgtype.UUID
+	StartedAt pgtype.Timestamptz
+	Seconds   int32
+	Kj        int32
+	Execution float32
+	FtpWatts  int16
+	Best20m   int32
+	NormWatts int32
+}
+
+// Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
+// time, so FTP history is free; best20m feeds the Category/w-kg trend.
+// norm_watts falls back to avg_watts for rides the backfill has not reached.
+func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) ([]ListUserProgressionRow, error) {
+	rows, err := q.db.Query(ctx, listUserProgression, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserProgressionRow
+	for rows.Next() {
+		var i ListUserProgressionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StartedAt,
+			&i.Seconds,
+			&i.Kj,
+			&i.Execution,
+			&i.FtpWatts,
+			&i.Best20m,
+			&i.NormWatts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -317,7 +459,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 }
 
 const listUserRidesFull = `-- name: ListUserRidesFull :many
-select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp from rides where user_id = $1 order by started_at
+select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp, norm_watts from rides where user_id = $1 order by started_at
 `
 
 // Export-all (#35): everything, blobs included — this is the one query
@@ -347,6 +489,7 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.CreatedAt,
 			&i.Curve,
 			&i.Xp,
+			&i.NormWatts,
 		); err != nil {
 			return nil, err
 		}
@@ -369,4 +512,18 @@ func (q *Queries) RoomMonthKj(ctx context.Context, roomID pgtype.UUID) (int64, e
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const setRideNormWatts = `-- name: SetRideNormWatts :exec
+update rides set norm_watts = $2 where id = $1
+`
+
+type SetRideNormWattsParams struct {
+	ID        pgtype.UUID
+	NormWatts *int16
+}
+
+func (q *Queries) SetRideNormWatts(ctx context.Context, arg SetRideNormWattsParams) error {
+	_, err := q.db.Exec(ctx, setRideNormWatts, arg.ID, arg.NormWatts)
+	return err
 }

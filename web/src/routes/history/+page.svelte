@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -19,11 +21,32 @@
 	let rides = $state<ServerRide[] | null>(null);
 	let error = $state<string | null>(null);
 
+	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
+	let highlightId = $state<string | null>(null);
+
 	async function load() {
 		const res = await api<{ rides: ServerRide[] }>('/api/rides');
 		if (res.ok) {
 			rides = res.data.rides;
 			error = null;
+			const picked = page.url.searchParams.get('ride');
+			if (picked && rides.some((ride) => ride.id === picked)) {
+				highlightId = picked;
+				await tick();
+				// Instant, retried: smooth scrolling gets cancelled by the route
+				// transition, and arriving from another page needs a position,
+				// not an animation.
+				for (const delay of [50, 400]) {
+					setTimeout(() => {
+						const row = document.getElementById(`ride-${picked}`);
+						if (!row) return;
+						const box = row.getBoundingClientRect();
+						if (box.top > window.innerHeight * 0.8 || box.top < 0) {
+							row.scrollIntoView({ behavior: 'instant', block: 'center' });
+						}
+					}, delay);
+				}
+			}
 		} else {
 			error = res.error.message;
 		}
@@ -32,7 +55,13 @@
 </script>
 
 {#snippet rideRow(ride: RideRecord, badge?: string)}
-	<li class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
+	<li
+		id="ride-{ride.id}"
+		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
+		ride.id
+			? 'ring-z2/70 ring-1'
+			: ''}"
+	>
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
 			<span class="eyebrow">{badge}</span>
@@ -52,7 +81,7 @@
 {/snippet}
 
 <main class="page max-w-3xl">
-	<div class="flex items-center gap-3">
+	<div class="flex flex-wrap items-center gap-3">
 		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>
@@ -60,6 +89,11 @@
 				Private by default — visible to you, and nobody else.
 			</p>
 		</div>
+		<a
+			href="/progression"
+			class="text-muted hover:text-ink ml-auto text-xs underline"
+			>Progression →</a
+		>
 	</div>
 
 	{#if error}
