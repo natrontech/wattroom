@@ -1,6 +1,12 @@
 -- name: SaveChatMessage :one
+-- An attached image must belong to THIS room. Serving already scopes by room,
+-- so a foreign id could never be viewed — but referencing one would pin its
+-- bytes past the sweep, which is how a client escapes the storage bound.
 insert into chat_messages (room_id, user_id, text, image_id)
-values ($1, $2, $3, $4) returning id;
+select $1, $2, $3, $4
+where $4::uuid is null
+   or exists (select 1 from chat_images where id = $4 and room_id = $1)
+returning id;
 
 -- name: SaveChatImage :one
 insert into chat_images (room_id, user_id, mime, bytes)

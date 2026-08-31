@@ -5,7 +5,6 @@ package chat
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -172,10 +171,6 @@ func (s *Service) member(w http.ResponseWriter, r *http.Request) (db.Room, db.Us
 	return room, me, true
 }
 
-// maxImageBytes caps one pasted chat image (#279). The client compresses to
-// WebP well under this — the cap is the trust boundary, not the target.
-const maxImageBytes = 2 << 20
-
 // handleImageUpload stores one pasted image: raw bytes in, blob id out. The
 // sender then puts that id on a chat line; never-sent uploads are swept by
 // PruneChatImages. ponytail: no per-user rate limit — members only, and the
@@ -186,18 +181,8 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImageBytes))
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "Images are capped at 2 MB.")
-		return
-	}
-	// Sniffed, never trusted from headers — this byte blob is served back to
-	// every member's <img>.
-	mime := http.DetectContentType(data)
-	switch mime {
-	case "image/png", "image/jpeg", "image/webp", "image/gif":
-	default:
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "Only PNG, JPEG, WebP, or GIF images can be sent.")
+	data, mime, ok := httpx.ReadImageUpload(w, r)
+	if !ok {
 		return
 	}
 	id, err := s.store.Queries.SaveChatImage(r.Context(), db.SaveChatImageParams{
