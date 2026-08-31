@@ -455,7 +455,7 @@
 		</main>
 
 		<!-- Media lives in the panel now — the main area is riders and the ride. -->
-		<SidePanel {live} showPlayer>
+		<SidePanel {live}>
 			{#snippet player()}
 				<PlayerTile />
 			{/snippet}

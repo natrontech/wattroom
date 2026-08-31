@@ -1,23 +1,21 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Copy, Plus, SmilePlus, X } from '@lucide/svelte';
+	import { Copy, SmilePlus, X } from '@lucide/svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import { compressImage } from '$lib/chat/media';
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
 
-	// In media-focus the player lives in the main area, so the panel must not render a second one.
+	// The panel is chat plus one slot: the jukebox playlist owns the whole
+	// queue surface (#286) — the panel used to render a second, read-only
+	// copy of it right underneath, with its own add field that routed a
+	// Spotify link to a feature that no longer exists (ADR-0018).
 	let {
 		live,
-		showPlayer,
 		player,
-		queue = [],
 		messages = [],
 		slug = undefined,
-		jamUrl = undefined,
-		onAdd,
-		onJam,
 		onCheer,
 		onChat,
 		reactions = {},
@@ -26,10 +24,8 @@
 		cheers = ['🔥', '💪', '👏', '💀', '🚀', '🧊'],
 	}: {
 		live: boolean;
-		showPlayer: boolean;
-		/** The real player (the jukebox) renders into the panel's top slot. */
+		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
-		queue?: { title: string; by?: string }[];
 		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
 		messages?: {
 			id?: string;
@@ -45,20 +41,12 @@
 		/** "id:emoji" → I pressed it. */
 		myReacts?: Record<string, boolean>;
 		onReact?: (messageId: string, emoji: string) => void;
-		onAdd?: (url: string) => void;
-		/** Spotify Jam link-out (#96) — set/clear from the add expander. */
-		jamUrl?: string;
-		onJam?: (url: string) => void;
 		onCheer?: (emoji: string) => void;
 		/** A pasted image rides along as a blob; the parent owns the upload. */
 		onChat?: (text: string, image?: Blob) => void;
 		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
 		cheers?: string[];
 	} = $props();
-
-	// Any member can add (SPEC roles): paste is the golden path.
-	let adding = $state(false);
-	let url = $state('');
 
 	let reactingTo = $state<string | null>(null);
 
@@ -126,66 +114,11 @@
 	style="direction: rtl; resize: horizontal; min-width: 240px; max-width: 40vw"
 >
 	<div class="flex h-full flex-col" style="direction: ltr">
-		{#if showPlayer && player}
-			<div class="border-ink/5 border-b p-3">
+		{#if player}
+			<div class="border-ink/5 max-h-[62%] overflow-y-auto border-b p-4">
 				{@render player()}
 			</div>
 		{/if}
-
-		<div class="border-ink/5 border-b px-4 py-3">
-			<div class="eyebrow flex items-center justify-between">
-				<span>queue</span>
-				<button
-					onclick={() => (adding = !adding)}
-					class="text-muted hover:text-ink"
-					aria-label="Add to queue"
-					>{#if adding}close{:else}<Plus size={13} />{/if}</button
-				>
-			</div>
-
-			{#if adding}
-				<form
-					class="mt-2"
-					onsubmit={(e) => {
-						e.preventDefault();
-						const raw = url.trim();
-						if (!raw) return;
-						// One field, two services: a Spotify link becomes the Jam card,
-						// anything else goes to the YouTube queue.
-						if (/spotify\.link|spotify\.com/.test(raw)) onJam?.(raw);
-						else onAdd?.(raw);
-						url = '';
-						adding = false;
-					}}
-				>
-					<input
-						bind:value={url}
-						class="border-muted/25 placeholder:text-muted/60 w-full rounded border bg-transparent px-3 py-2 text-xs outline-none"
-						placeholder="Paste a YouTube or Spotify Jam link"
-					/>
-				</form>
-			{/if}
-			<ul class="mt-2 space-y-1">
-				{#each queue.slice(0, 5) as track, i (track.title + i)}
-					<li class="flex items-baseline gap-2 text-xs">
-						<span
-							class="{i === 0
-								? 'text-watt'
-								: 'text-muted'} w-3 shrink-0 font-mono text-[10px]"
-							>{i === 0 ? '▶' : i + 1}</span
-						>
-						<span class="{i === 0 ? 'text-ink' : 'text-muted'} truncate"
-							>{track.title}</span
-						>
-						{#if track.by}
-							<span class="text-muted/60 ml-auto shrink-0 font-mono text-[10px]"
-								>{track.by}</span
-							>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		</div>
 
 		<div class="eyebrow px-4 pt-3 pb-1">chat</div>
 		<ul

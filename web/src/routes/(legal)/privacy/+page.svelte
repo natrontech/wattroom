@@ -127,10 +127,6 @@
 			under its own privacy policy.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">Spotify.</strong> The Jam card is a link
-			and a QR code, nothing more — WattRoom sends no data to Spotify.
-		</li>
-		<li>
 			<strong class="text-ink font-medium">Resend, Inc. (USA).</strong> Delivers the
 			session-reminder emails, so they see your address — but only if you saved one.
 		</li>

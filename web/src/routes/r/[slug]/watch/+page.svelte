@@ -7,7 +7,7 @@
 	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import { formatClock, wkg } from '$lib/format';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
-	import JamCard from '$lib/room/JamCard.svelte';
+	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import { api } from '$lib/api';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
@@ -201,9 +201,23 @@
 			/>
 			<button disabled={!draft.trim()} class="btn btn-secondary">Send</button>
 		</form>
-		{#if live.tick?.jukebox?.jamUrl}
-			<div class="mt-3">
-				<JamCard jamUrl={live.tick.jukebox.jamUrl} />
+		{#if live.tick?.jukebox?.current}
+			<!-- The spectator hears the room's music in their own tab or not at
+			     all (SPEC roles: cheering is their one verb) — but seeing what
+			     is on is what makes a cheer land on the beat. -->
+			{@const track = live.tick.jukebox.current}
+			<div class="mt-3 flex items-center gap-2.5">
+				<img
+					src={thumbnailFor(track.videoId)}
+					alt=""
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					class="bg-surface h-9 w-16 shrink-0 rounded object-cover"
+				/>
+				<div class="min-w-0">
+					<p class="eyebrow">now playing</p>
+					<p class="truncate text-xs">{track.title}</p>
+				</div>
 			</div>
 		{/if}
 	</div>

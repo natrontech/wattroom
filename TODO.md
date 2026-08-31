@@ -56,7 +56,8 @@ share link landing on the spectator view (#124).
 
 All shipped: LiveKit tokens/voice/camera, the three layouts + TV mode
 (idle TV is a lounge screen since #125), the synced RMF-compliant jukebox
-with ducking, and the Spotify Jam link-out card (#96, ADR-0003).
+with ducking. (The Jam link-out card #96/ADR-0003 shipped and was
+removed again by ADR-0018 — one room, one music surface.)
 Still unverified by human ears: two-browser voice/camera and audible
 jukebox sync — see the pre-launch list in docs/LAUNCH.md.
 

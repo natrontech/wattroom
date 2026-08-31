@@ -2,20 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
 
 describe('chase', () => {
-	it('seeks a big gap and nudges a small one', () => {
+	it('seeks a real gap, in either direction', () => {
 		expect(chase(120, 100, false)).toEqual({ do: 'seek', to: 120 });
-		expect(chase(101, 100, false)).toEqual({ do: 'rate', rate: 1.25 });
-		expect(chase(99, 100, false)).toEqual({ do: 'rate', rate: 0.75 });
+		expect(chase(100, 120, false)).toEqual({ do: 'seek', to: 100 });
 	});
 
-	it('plays straight inside the deadband', () => {
-		expect(chase(100.2, 100, false)).toEqual({ do: 'rate', rate: 1 });
+	it('plays straight inside the threshold rather than nudging the rate', () => {
+		// A 25 % tempo step (the smallest YouTube honours) is a worse
+		// artefact on music than a second of drift — #286.
+		expect(chase(101, 100, false)).toEqual({ do: 'hold' });
+		expect(chase(100.2, 100, false)).toEqual({ do: 'hold' });
 	});
 
 	it('never seeks a livestream, however far the anchor has walked', () => {
 		// The room anchor counts from the moment the stream was queued; the
 		// player's clock is the stream's own. Chasing that seeks every tick.
-		expect(chase(30, 7200, true)).toEqual({ do: 'rate', rate: 1 });
+		expect(chase(30, 7200, true)).toEqual({ do: 'hold' });
 	});
 });
 

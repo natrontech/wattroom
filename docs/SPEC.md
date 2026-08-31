@@ -15,6 +15,8 @@
 | **Level** | XP-based, only goes up, earned by work done. |
 | **Category** | Fitness tier D–A from your 90-day w/kg power curve. Moves both directions. |
 | **Sprint moment** | Coach- or workout-armed 15 s all-out window; trainer flips ERG→slope. |
+| **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube playlist on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
+| **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
@@ -28,7 +30,8 @@
 | Pick workout / mode, start countdown, pause/end session | ✓ | ✓ | – | – |
 | Arm sprint moments | ✓ | ✓ | – | – |
 | Add to jukebox queue | ✓ | ✓ | ✓ | – |
-| Jukebox play/pause/skip | ✓ | ✓ | ✓ (default — tune in alpha) | – |
+| Jukebox play/pause/skip/seek | ✓ | ✓ | ✓ (default — tune in alpha) | – |
+| Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | – |
 | Emoji cheers | ✓ | ✓ | ✓ | ✓ |
@@ -229,12 +232,13 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 ## Sync tolerances
 
 - Metrics latency budget: pedal → every screen **< 500 ms**.
-- Jukebox drift (revised per RESEARCH.md §10): **seek-first design** — hard `seekTo(t, allowSeekAhead=true)` when drift > 1.5 s **(default — tune in alpha)**, then **re-measure** (unbuffered seeks land on an earlier keyframe). Rate-nudging is an *optional* enhancement: YouTube rounds unsupported rates toward 1 and only `onPlaybackRateChange` confirms a change, so nudge only at rates listed by `getAvailablePlaybackRates()`, else skip the tier entirely. Between corrections, dead-reckon position locally every 250 ms (OpenTogetherTube's proven design).
+- Jukebox drift (revised per RESEARCH.md §10): **seek-first design** — hard `seekTo(t, allowSeekAhead=true)` when drift > 1.5 s **(default — tune in alpha)**, then **hold still for a 1.2 s settle window and re-measure** (unbuffered seeks land on an earlier keyframe and read back stale while buffering — measuring through it turns one correction into a storm). Rate-nudging is skipped entirely as of #286: YouTube rounds unsupported rates toward 1, and the rates it *does* support are 25 % steps, which on music is a worse artefact than the drift it corrects. Between corrections, dead-reckon position locally every 250 ms (OpenTogetherTube's proven design).
+- Jukebox playhead arithmetic is on **server time, never the rider's wall clock** (#286): a client's clock is routinely seconds off, and adding `Date.now()` to a server anchor put that skew straight into the playhead — each rider chased a different target. Clients estimate the offset from `ServerTick.At` (**max of the last 8 samples** — the least-delayed tick is the truest, no ping/pong needed) and reset the window on every socket open. Below **0.6 s** of measured drift the room reads as in sync, and the panel says so.
 - Shared timeline: server-authoritative; clients render from tick timestamps, never local clocks.
 
 ## Room audio defaults (defaults — tune in alpha; rationale RESEARCH.md §12)
 
 - Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation + autoGainControl on). Gate numbers: open at level **≥ 0.02** (analyser RMS, 0–1), hold open **800 ms** after dropping below, **5 ms** gain ramps (no clicks); while the jukebox plays the threshold **doubles** (defaults — tune in alpha). The gate rides a local gain stage, never the track's mute — mute state shown to others is only ever the rider's own toggle. Push-to-talk is the alternative, not the default: it suits the desk spectator, and says so where offered.
 - Joining a room with music playing and mic open → one-line **headphone nudge** (dismissible, never blocking). Echo cancellation is treated as best-effort — the defaults must work without it.
-- Jukebox audio is always local per rider (own iframe, own volume) and never enters the voice path. Ducking (#24/#152): dip to **25 %** of the rider's own volume with a **150 ms** attack ramp; release after a **600 ms** hold with a **400 ms** ramp — never a snap in either direction (defaults — tune in alpha).
+- The jukebox is the room's **only** music surface (ADR-0018). Jukebox audio is always local per rider (own iframe, own volume) and never enters the voice path. Ducking (#24/#152): dip to **25 %** of the rider's own volume with a **150 ms** attack ramp; release after a **600 ms** hold with a **400 ms** ramp — never a snap in either direction (defaults — tune in alpha).
 - Ride-critical timers (ERG targets, tick handling) run in a **Web Worker** with Wake Lock held — main-thread timers throttle in hidden tabs (an active call exempts the tab, solo rides are not exempt).

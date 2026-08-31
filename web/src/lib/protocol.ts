@@ -110,9 +110,19 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "play" | "pause" | "skip" | "seek" | "ended" | "jam"
+  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "seek" | "ended"
   videoId?: string;
   title?: string;
+  /**
+   * For "remove" | "vote" | "move": which queue entry (#286). Video ids
+   * are not unique — the same track queued twice is two entries, and
+   * addressing by video used to hit the wrong one.
+   */
+  entryId?: string;
+  /**
+   * For "move": the entry's new index in the queue, clamped to it.
+   */
+  index?: number /* int */;
   /**
    * For "seek": the new shared playhead. For "add": start the entry here
    * (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
@@ -124,11 +134,6 @@ export interface JukeboxCommand {
    * the queue exactly once even when the same video is queued twice.
    */
   anchorMs?: number /* int64 */;
-  /**
-   * For action "jam" (#96, ADR-0003): a Spotify Jam invite link the room
-   * shows as a join card. Empty clears it. Link-out only — no API, ever.
-   */
-  jamUrl?: string;
 }
 /**
  * ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
@@ -243,6 +248,10 @@ export interface SessionState {
   totalSeconds?: number /* int */;
 }
 export interface JukeboxEntry {
+  /**
+   * Room-unique, server-assigned: what remove/vote/move address (#286).
+   */
+  id: string;
   videoId: string;
   title: string;
   addedBy: string;
@@ -250,10 +259,20 @@ export interface JukeboxEntry {
    * Where playback begins when this entry reaches the deck (?t= paste).
    */
   startSec?: number /* float64 */;
+  /**
+   * Upvotes float an entry above lower-voted ones (#286). The voters are
+   * rider ids, not a count — room-scoped like every other live field, and
+   * the only way a client renders "you voted" from truth, not from its
+   * own click. The count is len(voters); nothing to keep in sync.
+   */
+  voters?: string[];
 }
 /**
  * JukeboxState is the server's truth about what plays where. Clients chase the
- * anchor: position = PositionSec, plus wall time since AnchorMs while playing.
+ * anchor: position = PositionSec, plus SERVER time since AnchorMs while
+ * playing — a client's own wall clock is skewed by seconds and applying it
+ * here is what made the jukebox "not synced" (#286). Clients estimate the
+ * offset from ServerTick.At and translate.
  * The audio itself is local per rider — their iframe, their volume — and never
  * enters the voice path (SPEC room audio defaults).
  */
@@ -264,10 +283,10 @@ export interface JukeboxState {
   positionSec: number /* float64 */;
   anchorMs: number /* int64 */;
   /**
-   * The room's Spotify Jam invite link (#96) — audio per rider in their own
-   * app, never ducked, never synced. Set and cleared like any jukebox action.
+   * What the room just played, newest first (#286) — the deck's short
+   * memory, so "put that on again" is one tap and nobody retypes a link.
    */
-  jamUrl?: string;
+  history: JukeboxEntry[];
 }
 /**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest

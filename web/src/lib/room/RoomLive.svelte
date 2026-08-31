@@ -513,12 +513,6 @@
 			droppedAt = Date.now();
 		if (live.status === 'live') droppedAt = null;
 	});
-	const queueView = $derived(
-		(live.tick?.jukebox?.queue ?? []).map((entry) => ({
-			title: entry.title,
-			by: entry.addedBy,
-		})),
-	);
 	const currentTitle = $derived(live.tick?.jukebox?.current?.title ?? '');
 
 	const readouts = $derived([
@@ -1155,11 +1149,6 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
-		showPlayer={!!live.tick?.jukebox?.current || !!live.tick?.jukebox?.jamUrl}
-		queue={queueView}
-		onAdd={(url) => void addYouTubeUrl(url, live.jukebox)}
-		onJam={(url) => live.jukebox('jam', undefined, undefined, url)}
-		jamUrl={live.tick?.jukebox?.jamUrl}
 		messages={live.chatLog}
 		reactions={live.chatReactions}
 		myReacts={live.myReacts}
@@ -1170,11 +1159,7 @@
 		{cheers}
 	>
 		{#snippet player()}
-			<Jukebox
-				jukebox={live.tick?.jukebox}
-				send={(action, videoId, title, jamUrl, positionSec) =>
-					live.jukebox(action, videoId, title, jamUrl, positionSec)}
-			/>
+			<Jukebox jukebox={live.tick?.jukebox} send={live.jukebox} />
 		{/snippet}
 	</SidePanel>
 {/snippet}

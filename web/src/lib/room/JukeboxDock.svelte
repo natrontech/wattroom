@@ -4,7 +4,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
-	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { centrePane, dragPane, keepSize } from '$lib/pane';
@@ -56,8 +57,26 @@
 	let playerReady = $state(false);
 	let apiFailed = $state(false);
 	let loadedVideo: string | null = null;
+	/** The anchor the loaded video belongs to — the same video replayed is a new play. */
+	let loadedAnchor = 0;
 	/** A livestream has no shared playhead to chase — everyone rides the edge. */
 	let streaming = false;
+
+	const UNSTARTED = -1,
+		ENDED = 0,
+		PLAYING = 1,
+		PAUSED = 2,
+		BUFFERING = 3;
+
+	/** Report the end against the anchor we were playing — never the newest one. */
+	function reportEnded() {
+		if (loadedVideo)
+			conn?.live.jukebox({
+				action: 'ended',
+				videoId: loadedVideo,
+				anchorMs: loadedAnchor,
+			});
+	}
 
 	function withApi(cb: () => void) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,17 +119,12 @@
 						player.setVolume?.(Math.round(mixer.music));
 					},
 					onStateChange: (e: { data: number }) => {
-						// 0 = ended: report it WITH the play epoch — the server
+						// A state the browser granted means autoplay was not refused.
+						if (e.data === PLAYING || e.data === BUFFERING)
+							playerInfo.blocked = false;
+						// Ended: report it WITH the play epoch — the server
 						// advances exactly once per (video, epoch).
-						if (e.data === 0 && loadedVideo)
-							conn?.live.jukebox(
-								'ended',
-								loadedVideo,
-								undefined,
-								undefined,
-								undefined,
-								conn?.live.tick?.jukebox?.anchorMs,
-							);
+						if (e.data === ENDED) reportEnded();
 					},
 					onError: (e: { data: number }) => {
 						// Non-embeddable or broken: skip for everyone rather than
@@ -122,15 +136,7 @@
 								? 'That video blocks playback outside YouTube — skipped. Try another upload of it.'
 								: 'That video could not be played here — skipped.',
 						);
-						if (loadedVideo)
-							conn?.live.jukebox(
-								'ended',
-								loadedVideo,
-								undefined,
-								undefined,
-								undefined,
-								conn?.live.tick?.jukebox?.anchorMs,
-							);
+						reportEnded();
 					},
 				},
 			});
@@ -146,6 +152,8 @@
 			streaming = false;
 			playerInfo.duration = 0;
 			playerInfo.live = false;
+			playerInfo.drift = 0;
+			playerInfo.blocked = false;
 		};
 	});
 
@@ -190,35 +198,65 @@
 		};
 	});
 
-	// ── Chase the server's playhead (tiered per the issue). ──────────────────
-	$effect(() => {
-		if (!playerReady) return;
-		if (conn?.live.status !== 'live') {
-			// No ticks, no chase: a stuck 1.25× nudge is worse than drift.
-			player.setPlaybackRate?.(1);
-			return;
-		}
-		if (!jukebox) return;
-		const current = jukebox.current;
-		if (!current) {
-			if (loadedVideo) {
-				player.stopVideo?.();
-				loadedVideo = null;
-				streaming = false;
-				playerInfo.duration = 0;
-				playerInfo.live = false;
-			}
-			return;
-		}
-		const target =
-			jukebox.positionSec +
-			(jukebox.playing ? (Date.now() - jukebox.anchorMs) / 1000 : 0);
+	// ── Chase the room's playhead (#286, docs/SPEC.md sync tolerances) ───────
+	//
+	// On SERVER time, seek-first, on its own 250 ms timer rather than on the
+	// 1 Hz tick: a stalled tick used to freeze the correction, and the
+	// rider's own wall clock used to define the target it chased.
+	const SETTLE_MS = 1_200;
+	let settleUntil = 0;
+	let wantedPlayAt = 0;
 
-		if (loadedVideo !== current.videoId) {
-			loadedVideo = current.videoId;
-			streaming = false;
-			playerInfo.live = false;
-			player.loadVideoById(current.videoId, target);
+	function unload() {
+		player.stopVideo?.();
+		loadedVideo = null;
+		streaming = false;
+		playerInfo.duration = 0;
+		playerInfo.live = false;
+		playerInfo.drift = 0;
+		playerInfo.blocked = false;
+	}
+
+	function load(videoId: string, at: number, playing: boolean) {
+		loadedVideo = videoId;
+		streaming = false;
+		playerInfo.live = false;
+		playerInfo.drift = 0;
+		settleUntil = performance.now() + SETTLE_MS;
+		// A rate left at 1.25 by an older client (or the rider's own menu)
+		// outlives the video it was set on.
+		player.setPlaybackRate?.(1);
+		// cue, not load, while the room is paused: loadVideoById autoplays, so
+		// joining a paused room used to blast a second of audio at everyone.
+		if (playing) {
+			player.loadVideoById(videoId, at);
+			wantedPlayAt = performance.now();
+		} else {
+			player.cueVideoById(videoId, at);
+			wantedPlayAt = 0;
+		}
+	}
+
+	function tickChase() {
+		if (!player || !playerReady) return;
+		const live = conn?.live;
+		const deck = live?.tick?.jukebox;
+		if (live?.status !== 'live' || !deck) return;
+
+		if (!deck.current) {
+			if (loadedVideo) unload();
+			return;
+		}
+
+		const target = playheadAt(deck, serverNow());
+		// A repeat of the same video arrives with a new anchor — a new play,
+		// not the one already loaded.
+		if (
+			loadedVideo !== deck.current.videoId ||
+			loadedAnchor !== deck.anchorMs
+		) {
+			loadedAnchor = deck.anchorMs;
+			load(deck.current.videoId, target, deck.playing);
 			return;
 		}
 
@@ -230,26 +268,64 @@
 			playerInfo.live = true;
 			player.seekTo?.(player.getDuration?.() ?? 0, true);
 		}
-		if (streaming) {
-			const edge = chase(target, player.getCurrentTime?.() ?? 0, true);
-			if (edge.do === 'rate') player.setPlaybackRate?.(edge.rate);
-			if (!jukebox.playing) {
-				if (player.getPlayerState?.() === 1) player.pauseVideo();
-			} else if (player.getPlayerState?.() === 2) player.playVideo();
+		playerInfo.duration = streaming ? 0 : player.getDuration?.() || 0;
+
+		const state = player.getPlayerState?.() ?? UNSTARTED;
+		if (!deck.playing) {
+			if (state === PLAYING || state === BUFFERING) player.pauseVideo?.();
+			playerInfo.drift = 0;
+			playerInfo.blocked = false;
 			return;
 		}
-
-		playerInfo.duration = player.getDuration?.() || 0;
-		if (!jukebox.playing) {
-			if (player.getPlayerState?.() === 1) player.pauseVideo();
-			return;
+		if (state === PAUSED || state === UNSTARTED) {
+			player.playVideo?.();
+			if (!wantedPlayAt) wantedPlayAt = performance.now();
 		}
-		if (player.getPlayerState?.() === 2) player.playVideo();
+		// Autoplay policy: a browser with no gesture behind it refuses to
+		// start, and the rider then hears nothing with nothing to press.
+		if (
+			wantedPlayAt &&
+			state !== PLAYING &&
+			state !== BUFFERING &&
+			performance.now() - wantedPlayAt > 2_000
+		)
+			playerInfo.blocked = true;
 
-		const next = chase(target, player.getCurrentTime?.() ?? 0, false);
-		if (next.do === 'seek') player.seekTo(next.to, true);
-		else player.setPlaybackRate(next.rate);
+		// A seek lands asynchronously and reads back stale while it buffers —
+		// measuring through it is what turned one correction into a storm.
+		if (streaming || performance.now() < settleUntil || state === BUFFERING)
+			return;
+
+		const at = player.getCurrentTime?.() ?? 0;
+		playerInfo.drift = at - target;
+		const next = chase(target, at, false);
+		if (next.do === 'seek') {
+			// allowSeekAhead: the target is usually outside the buffer.
+			player.seekTo(next.to, true);
+			settleUntil = performance.now() + SETTLE_MS;
+		}
+	}
+
+	$effect(() => {
+		if (!playerReady) return;
+		const timer = setInterval(tickChase, 250);
+		// A hidden tab throttles timers while the media element keeps playing,
+		// so the first thing to do on returning is re-measure.
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') tickChase();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
 	});
+
+	function startPlayback() {
+		playerInfo.blocked = false;
+		wantedPlayAt = performance.now();
+		player?.playVideo?.();
+	}
 
 	// ── Who is talking, while you are somewhere else ──────────────────────────
 	// Off the room page there are no tiles, so the dock carries one face: the
@@ -276,21 +352,21 @@
 	// the side panel is gone, and the dock was the only thing left playing with
 	// nothing to press. Every button commands the ROOM — the deck is shared.
 	function transport(action: string) {
-		conn?.live.jukebox(action);
+		conn?.live.jukebox({ action });
 	}
 	function nudge(seconds: number) {
 		if (!jukebox?.current) return;
-		conn?.live.jukebox(
-			'seek',
-			undefined,
-			undefined,
-			undefined,
-			clampSeek(
-				playheadAt(jukebox, Date.now(), playerInfo.duration) + seconds,
+		conn?.live.jukebox({
+			action: 'seek',
+			positionSec: clampSeek(
+				playheadAt(jukebox, serverNow(), playerInfo.duration) + seconds,
 				playerInfo.duration,
 			),
-		);
+		});
 	}
+
+	// Proof the room is together, on the frame that is always on screen.
+	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
 
 	const showPlayer = $derived(!!jukebox?.current);
 	const title = $derived(jukebox?.current?.title ?? speaker?.name ?? '');
@@ -320,6 +396,16 @@
 			class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
 		>
 			<GripHorizontal size={12} class="shrink-0" />
+			{#if showPlayer && jukebox?.playing && !playerInfo.live}
+				<span
+					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
+						? 'bg-watt glow-stroke'
+						: 'bg-muted animate-pulse'}"
+					title={inSync
+						? 'in sync with the room'
+						: "catching up to the room's playhead"}
+				></span>
+			{/if}
 			<span class="truncate text-[10px]">{title}</span>
 			<button
 				onclick={() => shell && centrePane(shell, PANE)}
@@ -364,6 +450,17 @@
 				{/if}
 			</div>
 		</div>
+
+		{#if showPlayer && playerInfo.blocked}
+			<!-- The browser refused to start audio with no gesture behind it.
+			     One tap fixes it for the rest of the session. Beside the
+			     player, never over it (RMF). -->
+			<button
+				onclick={startPlayback}
+				class="btn btn-accent shrink-0 justify-center rounded-none py-2 text-xs"
+				>Tap to hear the room's music</button
+			>
+		{/if}
 
 		{#if showPlayer}
 			<!-- Transport for the room, then your own ears (#179): the same fader
