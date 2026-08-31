@@ -48,9 +48,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Stop at the next heading *or* the link-reference block: the oldest
+          # section has no heading after it, and the first release ever is
+          # that section.
           awk -v v="$GITHUB_REF_NAME" '
             index($0, "## [" v "]") == 1 { f = 1; next }
-            /^## \[/ { f = 0 }
+            /^## \[/ || /^\[[^]]+\]:/ { f = 0 }
             f
           ' CHANGELOG.md > notes.md
           grep -q '[^[:space:]]' notes.md || {

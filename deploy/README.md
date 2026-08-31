@@ -20,7 +20,8 @@ drops land one release *after* the release whose code stopped using the thing.
 Break that rule and the old binary meets a schema it cannot serve.
 
 Releases are cut with `make release`, which computes the next CalVer number
-(`YYYY.0M.MICRO`), promotes the changelog, tags and pushes — building
+(`YYYY.0M.MICRO`), opens and merges a release PR promoting the changelog, then
+tags the result — building
 `ghcr.io/natrontech/wattroom:2026.09.1` and opening a GitHub Release whose
 notes are that release's changelog section. Pushes to main still
 build `:main` for testing; never pin the VM to it, because a moving tag has no

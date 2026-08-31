@@ -11,6 +11,10 @@
 # The changelog is promoted *before* the tag so the tag points at a tree whose
 # CHANGELOG.md already describes that release — publish.yml then reads the
 # section back out for the GitHub Release body, and the two cannot disagree.
+#
+# The promotion goes through a pull request because main's ruleset rejects
+# direct pushes (GH013). It needs no approvals, so this merges it and then tags
+# the resulting main commit; tags are not covered by the ruleset.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -66,8 +70,32 @@ if ! { awk -v v="$version" -v d="$today" -v prev="$prev" -v url="$repo_url" '
 	exit 1
 fi
 
+branch="release/$version"
+git checkout -q -b "$branch"
 git add CHANGELOG.md
 git commit -qm "docs: release $version"
+git push -q -u origin "$branch"
+
+# The PR body is the release's own changelog section, so the thing being
+# reviewed says what it is.
+notes=$(mktemp)
+awk -v v="$version" '
+	index($0, "## [" v "]") == 1 { f = 1; next }
+	/^## \[/ || /^\[[^]]+\]:/ { f = 0 }
+	f
+' CHANGELOG.md >"$notes"
+gh pr create --base main --head "$branch" --title "docs: release $version" --body-file "$notes"
+rm -f "$notes"
+
+# Step off the branch first so --delete-branch can remove it locally too.
+git checkout -q main
+# Zero approvals are required, but mergeability takes a moment to compute.
+for _ in $(seq 30); do
+	[ "$(gh pr view "$branch" --json mergeable --jq .mergeable)" = MERGEABLE ] && break
+	sleep 2
+done
+gh pr merge "$branch" --squash --delete-branch
+git pull -q --ff-only
 git tag -a "$version" -m "$version"
-git push -q origin main "$version"
+git push -q origin "$version"
 echo "$version tagged and pushed — publish.yml builds the image and cuts the release"
