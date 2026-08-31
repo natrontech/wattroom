@@ -19,7 +19,7 @@ import (
 
 // UserSource resolves the signed-in user — same shape rooms consumes.
 type UserSource interface {
-	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
@@ -132,9 +132,8 @@ type messageJSON struct {
 // handleBacklog is the join-time load: the newest lines, oldest first,
 // members only — chat never leaves the room (ADR-0010).
 func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
-	me, ok := s.users.User(r)
+	me, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), r.PathValue("slug"))

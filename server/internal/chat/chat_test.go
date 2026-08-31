@@ -21,6 +21,14 @@ func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
 	return u, ok
 }
 
+func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	u, ok := f.User(r)
+	if !ok {
+		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
+	}
+	return u, ok
+}
+
 func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
 	t.Helper()
 	dsn := os.Getenv("WATTROOM_TEST_DB")

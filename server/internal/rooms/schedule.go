@@ -27,9 +27,8 @@ type scheduledJSON struct {
 // requireControl is requireRole for "coach or owner" — the pair the matrix
 // hands the shared timeline to.
 func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return db.Room{}, db.User{}, false
 	}
 	room, ok := s.roomBySlug(w, r)
