@@ -2,24 +2,28 @@
 import { describe, expect, it } from 'vitest';
 import { mountTrack } from './mount-track';
 
-// A fake LiveKit track: counts attaches, remembers orphans like the real one.
+// A fake LiveKit track: counts attaches, remembers its elements like the real
+// one, and detaches per element.
 function fakeTrack(id: string) {
-	const attached: HTMLMediaElement[] = [];
 	return {
 		attaches: 0,
+		attachedElements: [] as HTMLMediaElement[],
 		mediaStreamTrack: { id } as MediaStreamTrack,
 		attach() {
 			this.attaches += 1;
 			const el = document.createElement('video');
-			attached.push(el);
+			this.attachedElements.push(el);
 			return el;
 		},
-		detach() {
-			const dropped = attached.splice(0);
-			return dropped;
+		detach(element: HTMLMediaElement) {
+			this.attachedElements = this.attachedElements.filter(
+				(el) => el !== element,
+			);
+			element.remove();
+			return element;
 		},
 		get orphans() {
-			return attached.length;
+			return this.attachedElements.length;
 		},
 	};
 }
@@ -48,6 +52,7 @@ describe('mountTrack (#214)', () => {
 		expect((container.firstElementChild as HTMLElement).dataset.trackId).toBe(
 			't2',
 		);
+		expect(first.orphans).toBe(0);
 		expect(second.orphans).toBe(1);
 	});
 
@@ -56,5 +61,41 @@ describe('mountTrack (#214)', () => {
 		mountTrack(container, fakeTrack('t1'), 'cover');
 		mountTrack(container, undefined, 'cover');
 		expect(container.children.length).toBe(0);
+	});
+
+	// #335: the stage and the rider tile show the same camera. Putting it on
+	// the stage used to detach every element the track held — the tile below
+	// went black, and the next tick blanked the stage right back.
+	it('a second container does not steal the track from the first', () => {
+		const tile = document.createElement('div');
+		const stage = document.createElement('div');
+		document.body.append(tile, stage);
+		const cam = fakeTrack('cam');
+		mountTrack(tile, cam, 'cover');
+		mountTrack(stage, cam, 'contain');
+		expect(tile.children.length).toBe(1);
+		expect(stage.children.length).toBe(1);
+		expect(cam.attaches).toBe(2);
+		// And both stay put while the attachments re-run every tick.
+		for (let i = 0; i < 10; i += 1) {
+			mountTrack(tile, cam, 'cover');
+			mountTrack(stage, cam, 'contain');
+		}
+		expect(cam.attaches).toBe(2);
+		expect(tile.children.length).toBe(1);
+		expect(stage.children.length).toBe(1);
+		tile.remove();
+		stage.remove();
+	});
+
+	it('sweeps elements whose container was thrown away by a {#key} block', () => {
+		const gone = document.createElement('div');
+		const live = document.createElement('div');
+		document.body.append(live);
+		const track = fakeTrack('t1');
+		mountTrack(gone, track, 'cover'); // never in the document
+		mountTrack(live, track, 'cover');
+		expect(track.orphans).toBe(1);
+		live.remove();
 	});
 });
