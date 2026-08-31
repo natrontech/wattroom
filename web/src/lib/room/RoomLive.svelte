@@ -31,6 +31,7 @@
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { wireMetrics } from '$lib/room/wire';
 	import { describeBlock, type RoomRider } from '$lib/room/view';
+	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -77,6 +78,7 @@
 		onRemove,
 		upcoming = [],
 		onSchedule,
+		onReschedule,
 		onUnschedule,
 	}: {
 		slug: string;
@@ -103,6 +105,7 @@
 			createdBy: string;
 		}[];
 		onSchedule: (name: string, json: string, startsAt: string) => void;
+		onReschedule: (id: string, startsAt: string) => void;
 		onUnschedule: (id: string) => void;
 	} = $props();
 
@@ -315,6 +318,16 @@
 		const diff = new Date(iso).getTime() - Date.now();
 		return diff < 10 * 60 * 1000 && diff > -30 * 60 * 1000;
 	}
+	// Moving a plan (#258): "move" folds a WhenPicker out under the card row.
+	let movingId = $state<string | null>(null);
+	let moveAt = $state('');
+	function openMove(entry: (typeof upcoming)[number]) {
+		movingId = movingId === entry.id ? null : entry.id;
+		const t = new Date(entry.startsAt);
+		t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
+		moveAt = t.toISOString().slice(0, 16); // datetime-local format
+	}
+
 	function startScheduled(entry: (typeof upcoming)[number]) {
 		const segments = parseSharedSegments(entry.workoutJson);
 		const total = segments.reduce(
@@ -874,12 +887,31 @@
 							{/if}
 							{#if canControl}
 								<button
+									onclick={() => openMove(entry)}
+									class="text-muted hover:text-ink text-[11px] underline"
+									>move</button
+								>
+								<button
 									onclick={() => onUnschedule(entry.id)}
 									class="text-muted hover:text-ink text-[11px] underline"
 									>remove</button
 								>
 							{/if}
 						</span>
+						{#if canControl && movingId === entry.id}
+							<div class="flex w-full flex-wrap items-center gap-2 pt-1">
+								<WhenPicker bind:value={moveAt} />
+								<button
+									onclick={() => {
+										onReschedule(entry.id, new Date(moveAt).toISOString());
+										movingId = null;
+									}}
+									disabled={adminBusy || !moveAt}
+									class="btn btn-secondary btn-xs disabled:opacity-40"
+									>Move</button
+								>
+							</div>
+						{/if}
 					</div>
 				{/each}
 			</div>
