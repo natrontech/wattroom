@@ -12,6 +12,13 @@ export interface SteadyStep {
 	seconds: number;
 	target?: number;
 	watts?: number;
+	/**
+	 * Optional cadence band, rpm (#66) — display-only: the execution score
+	 * stays power-based per docs/SPEC.md. One side may be omitted: "under 60"
+	 * is { cadenceHigh: 60 }, "over 100" is { cadenceLow: 100 }.
+	 */
+	cadenceLow?: number;
+	cadenceHigh?: number;
 }
 
 export interface RepeatStep {
@@ -49,6 +56,9 @@ export interface Segment {
 	toFraction?: number;
 	/** absolute watts override (SteadyStep.watts) */
 	watts?: number;
+	/** cadence band carried from the step (steady only, display-only) */
+	cadenceLow?: number;
+	cadenceHigh?: number;
 	/** index into the original (unexpanded) step list, for UI highlighting */
 	stepIndex: number;
 }

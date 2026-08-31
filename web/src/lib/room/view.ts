@@ -60,6 +60,9 @@ export interface Block {
 	label: string;
 	watts: number;
 	secondsLeft: number;
+	/** Optional cadence band for this block (#66) — display-only. */
+	cadenceLow?: number;
+	cadenceHigh?: number;
 	next: { label: string; watts: number; seconds: number } | null;
 }
 
@@ -95,6 +98,8 @@ export function describeBlock(
 		label: label(info.segment),
 		watts: info.targetWatts ?? 0,
 		secondsLeft: Math.round(info.secondsRemainingInSegment),
+		cadenceLow: info.segment.cadenceLow,
+		cadenceHigh: info.segment.cadenceHigh,
 		next: upcoming
 			? {
 					label: label(upcoming),

@@ -17,6 +17,11 @@ export const LIMITS = {
 	maxFraction: 3,
 	maxWatts: 3000,
 	maxRepeats: 50,
+	/** rpm bounds for cadence bands — outside these is a typo, not training. */
+	minCadence: 30,
+	maxCadence: 150,
+	/** docs/SPEC.md spiral guard trips below this while ERG holds a target. */
+	guardTripCadence: 50,
 } as const;
 
 export type Validation =
@@ -33,6 +38,33 @@ function checkSeconds(value: unknown, where: string): string | null {
 		return `${where}: steps shorter than ${LIMITS.minSeconds}s are not rideable`;
 	if (value > LIMITS.maxSeconds)
 		return `${where}: step is longer than ${LIMITS.maxSeconds / 3600} hours`;
+	return null;
+}
+
+/**
+ * Cadence bands are display-only but still untrusted input (#66). A band
+ * whose floor sits at or under the spiral guard's trip point would have the
+ * guard releasing the target the rider is deliberately grinding at — refuse
+ * it rather than let a workout fight a safety feature (docs/SPEC.md).
+ */
+function checkCadenceBand(
+	value: Record<string, unknown>,
+	where: string,
+): string | null {
+	for (const field of ['cadenceLow', 'cadenceHigh'] as const) {
+		const v = value[field];
+		if (v === undefined) continue;
+		if (typeof v !== 'number' || !Number.isFinite(v))
+			return `${where}: ${field} must be a number`;
+		if (v < LIMITS.minCadence || v > LIMITS.maxCadence)
+			return `${where}: ${field} is outside ${LIMITS.minCadence}–${LIMITS.maxCadence} rpm`;
+	}
+	const low = value.cadenceLow as number | undefined;
+	const high = value.cadenceHigh as number | undefined;
+	if (low !== undefined && high !== undefined && low > high)
+		return `${where}: the cadence band is upside down (${low} > ${high})`;
+	if (low !== undefined && low <= LIMITS.guardTripCadence)
+		return `${where}: a ${low} rpm floor sits at the spiral guard's ${LIMITS.guardTripCadence} rpm trip — the guard would fight the workout`;
 	return null;
 }
 
@@ -70,6 +102,8 @@ function checkStep(
 		case 'steady': {
 			const seconds = checkSeconds(value.seconds, where);
 			if (seconds) return seconds;
+			const cadence = checkCadenceBand(value, where);
+			if (cadence) return cadence;
 			if (value.watts !== undefined) {
 				if (typeof value.watts !== 'number' || !Number.isFinite(value.watts)) {
 					return `${where}: watts must be a number`;
