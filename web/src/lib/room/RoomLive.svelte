@@ -836,6 +836,16 @@
 					onRecover={() => location.reload()}
 				/>
 			</div>
+		{:else if av.status === 'reconnecting'}
+			<!-- Media gapped while the SDK retries (#234) — the room banner
+			     above already covers voice when the whole connection is down. -->
+			<div class="mb-3">
+				<FaultBanner
+					fault={{ kind: 'voice', state: 'reconnecting' }}
+					bufferedSeconds={0}
+					onRecover={() => void av.join()}
+				/>
+			</div>
 		{/if}
 
 		{#if shared?.phase === 'paused'}

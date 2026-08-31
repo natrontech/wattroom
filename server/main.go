@@ -117,6 +117,8 @@ func main() {
 			avService.Register(mux)
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)
+			// Webhooks alone leak ghosts when LiveKit hard-crashes (#234).
+			avService.StartReconciler(context.Background())
 			// Bans and removals eject from voice too, not just the metrics WS.
 			roomsService.SetVoiceEjector(avService)
 		}

@@ -141,40 +141,48 @@ func (s *Service) sign(payload claims) (string, error) {
 	return signing + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
-// Eject removes a rider from the room's LiveKit session — the voice arm of a
-// ban or removal (#223), via a hand-rolled twirp RemoveParticipant call
-// (stdlib-first: one POST against pulling in the LiveKit server SDK).
-// Best-effort by design: a failure only means the rider lingers on camera
-// until they disconnect — Authorize already refuses their next token.
-func (s *Service) Eject(slug, userID string) {
+// roomAPI posts one twirp RoomService call with a fresh room-admin token —
+// the hand-rolled shape under Eject and the voice reconciler (stdlib-first:
+// one POST against pulling in the LiveKit server SDK). Callers close the body.
+func (s *Service) roomAPI(ctx context.Context, method, slug string, payload any) (*http.Response, error) {
 	now := s.now()
 	token, err := s.sign(claims{
 		Iss: s.cfg.Key, Sub: s.cfg.Key, Nbf: now.Unix(), Exp: now.Add(time.Minute).Unix(),
 		Video: videoGrant{Room: slug, RoomAdmin: true},
 	})
 	if err != nil {
-		s.log.Error("eject token mint failed", "err", err, "room", slug)
-		return
+		return nil, err
 	}
 	// The signalling URL is ws(s)://; the twirp API lives on http(s)://.
 	apiURL := s.cfg.URL
 	if rest, ok := strings.CutPrefix(apiURL, "ws"); ok {
 		apiURL = "http" + rest
 	}
-	body, _ := json.Marshal(map[string]string{"room": slug, "identity": userID})
-	// Detached from the request context on purpose: a kick must complete even
-	// if the banning owner's request is canceled. The client's 3s timeout is
-	// the bound.
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost,
-		strings.TrimSuffix(apiURL, "/")+"/twirp/livekit.RoomService/RemoveParticipant",
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		strings.TrimSuffix(apiURL, "/")+"/twirp/livekit.RoomService/"+method,
 		bytes.NewReader(body))
 	if err != nil {
-		s.log.Error("eject request build failed", "err", err, "room", slug)
-		return
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+	return (&http.Client{Timeout: 3 * time.Second}).Do(req)
+}
+
+// Eject removes a rider from the room's LiveKit session — the voice arm of a
+// ban or removal (#223). Best-effort by design: a failure only means the
+// rider lingers on camera until they disconnect — Authorize already refuses
+// their next token.
+func (s *Service) Eject(slug, userID string) {
+	// Detached from the request context on purpose: a kick must complete even
+	// if the banning owner's request is canceled. The client's 3s timeout is
+	// the bound.
+	resp, err := s.roomAPI(context.Background(), "RemoveParticipant", slug,
+		map[string]string{"room": slug, "identity": userID})
 	if err != nil {
 		s.log.Warn("eject call failed", "err", err, "room", slug, "rider", userID)
 		return

@@ -58,9 +58,17 @@ type Hub struct {
 	now    func() time.Time
 	mu     sync.Mutex
 	rooms  map[string]*room
-	// slug → identity → display name; fed by LiveKit webhooks (#149).
-	voice map[string]map[string]string
+	// slug → identity → who; fed by LiveKit webhooks (#149) and reconciled
+	// against LiveKit's own participant list (#234).
+	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
+}
+
+// voiceEntry remembers when the join was reported, so a reconcile sweep
+// cannot prune a rider who joined after its snapshot was taken.
+type voiceEntry struct {
+	name     string
+	joinedAt time.Time
 }
 
 // SetChatKeeper wires persistence in after construction, like SetPresence's
@@ -69,7 +77,7 @@ func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	return &Hub{log: log, access: access, saver: saver, now: time.Now,
-		rooms: make(map[string]*room), voice: make(map[string]map[string]string)}
+		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry)}
 }
 
 type room struct {
@@ -292,8 +300,8 @@ func (h *Hub) Presence(slug string) (connected int, phase string, riders, voice 
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
 	inVoice := make([]string, 0, 4)
-	for _, name := range h.voice[slug] {
-		inVoice = append(inVoice, name)
+	for _, entry := range h.voice[slug] {
+		inVoice = append(inVoice, entry.name)
 	}
 	h.mu.Unlock()
 	sort.Strings(inVoice)
@@ -350,9 +358,9 @@ func (h *Hub) VoiceJoined(slug, identity, name string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.voice[slug] == nil {
-		h.voice[slug] = make(map[string]string, 4)
+		h.voice[slug] = make(map[string]voiceEntry, 4)
 	}
-	h.voice[slug][identity] = name
+	h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
 }
 
 func (h *Hub) VoiceLeft(slug, identity string) {
@@ -369,6 +377,44 @@ func (h *Hub) VoiceRoomClosed(slug string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.voice, slug)
+}
+
+// VoiceRooms lists the rooms the radar currently shows anyone in — the
+// reconciler's work list. Lock, copy, unlock.
+func (h *Hub) VoiceRooms() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	slugs := make([]string, 0, len(h.voice))
+	for slug := range h.voice {
+		slugs = append(slugs, slug)
+	}
+	return slugs
+}
+
+// VoiceSync applies LiveKit's actual participant list (#234): a hard-crashed
+// LiveKit never sends participant_left, so identities it no longer knows are
+// pruned — unless they joined after the snapshot at `since` was requested —
+// and anyone a lost webhook missed is added.
+func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for identity, entry := range h.voice[slug] {
+		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
+			delete(h.voice[slug], identity)
+		}
+	}
+	for identity, name := range present {
+		if _, ok := h.voice[slug][identity]; ok {
+			continue
+		}
+		if h.voice[slug] == nil {
+			h.voice[slug] = make(map[string]voiceEntry, len(present))
+		}
+		h.voice[slug][identity] = voiceEntry{name: name, joinedAt: h.now()}
+	}
+	if len(h.voice[slug]) == 0 {
+		delete(h.voice, slug)
+	}
 }
 
 func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {

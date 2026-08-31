@@ -23,6 +23,19 @@
 							'Bluetooth dropped and three retries failed. Wake the trainer (spin the cranks) and reconnect.',
 					};
 		}
+		if (fault.kind === 'voice') {
+			return fault.state === 'reconnecting'
+				? {
+						title: 'Voice dropped',
+						detail:
+							'Reconnecting the call — the room may not hear you right now. Your ride and metrics are unaffected.',
+					}
+				: {
+						title: "Voice didn't come back",
+						detail:
+							'The call could not reconnect. Your ride is unaffected — rejoin voice when you are ready.',
+					};
+		}
 		return fault.state === 'reconnecting'
 			? {
 					title: 'Lost the room',

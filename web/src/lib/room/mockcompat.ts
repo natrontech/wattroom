@@ -27,7 +27,7 @@ export {
 export type Phase = 'lounge' | 'countdown' | 'live';
 
 export interface Fault {
-	kind: 'trainer' | 'room';
+	kind: 'trainer' | 'room' | 'voice';
 	state: 'reconnecting' | 'lost';
 }
 
