@@ -207,6 +207,18 @@ desk distance between efforts. Column 3 during a session is read at three metres
 and obeys `ux.md` in full: huge tap targets, no precision gestures, no typing.
 The `.cave` scope already marks exactly that boundary, and it keeps doing so.
 
+## The mock is gone (2026-09-01)
+
+`/dev/shape` did its job — every screen of the shape rendered on the real
+components, so the members column, the two-strip nav and the sprint takeover
+were decided by looking rather than by argument. Once the shape shipped, the
+app moved past the mock on Home, the Lounge, the picker and the jukebox within
+a day, and a second copy of every screen that drifts is debt nobody maintains.
+It was deleted in the same PR that shipped the shape (#383); its shared pieces
+— `Instrument`, `SecondaryRow`, `RidingBars` — had already moved into `$lib`.
+The app is the reference. The mock is in that PR's history if a screen ever
+needs to be argued about again.
+
 ## Amendments — riding the shipped shape (2026-09-01)
 
 Two rules that were not in the mock and only showed up in the real thing:

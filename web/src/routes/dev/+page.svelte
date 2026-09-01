@@ -10,11 +10,6 @@
 			label: 'Styleguide',
 			hint: 'Tokens, glow scale, chrome vs data components',
 		},
-		{
-			href: '/dev/shape',
-			label: 'Shape',
-			hint: "ADR-0020's four columns, every route rendered inside them",
-		},
 	];
 </script>
 

@@ -1,1 +1,0 @@
-- Dev builds gain `/dev/shape`: every screen in the new shape, on the real components, with viewport and light/dark toggles. Design reference for the redesign, not a rider-facing surface.
