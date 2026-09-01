@@ -16,6 +16,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Security
+
+- Corrected the 2026.09.1 note about the `/metrics` exposure: it claimed
+  nothing was exposed in practice, which was wrong. wattroom.ch was already
+  live, so the endpoint was public for as long as the site had been running.
+
 ### Changed
 
 - Appearance themes now recolour the whole app — surfaces, text, accents, and
@@ -64,9 +70,15 @@ not a second copy of `git log`.
 
 ### Security
 
-- `/metrics` is no longer proxied to the public internet. The deploy config
-  would have served rider counts and Go runtime internals to anyone; caught
-  before wattroom.ch was ever deployed, so nothing was exposed in practice.
+- `/metrics` is no longer proxied to the public internet. Until this release
+  wattroom.ch served rider counts and Go runtime internals to anyone who asked
+  for them.
+
+  *Corrected 2026-09-01.* This entry first claimed the exposure was caught
+  before wattroom.ch was ever deployed and that nothing was exposed in
+  practice. That was wrong — the site was already live, so the endpoint was
+  reachable for as long as it had been running. The fix itself is unchanged;
+  only the claim about impact was false.
 
 [Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.2...HEAD
 [2026.09.2]: https://github.com/natrontech/wattroom/compare/2026.09.1...2026.09.2
