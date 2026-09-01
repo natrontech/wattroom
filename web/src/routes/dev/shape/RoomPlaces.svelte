@@ -4,16 +4,18 @@
 	// URL, and the content column starts with the work instead of a header
 	// repeating the room name column 2 already carries.
 	import Avatar from '$lib/components/Avatar.svelte';
-	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, wkg } from '$lib/format';
-	import { plannedZoneSeconds } from '$lib/components/zones';
+	import {
+		fillPct,
+		plannedZoneSeconds,
+		ZONE_BG,
+		zoneOf,
+	} from '$lib/components/zones';
 	import type { Segment } from '$lib/workout/types';
-	import type { Block, RoomRider } from '$lib/room/view';
+	import { targetState, type Block, type RoomRider } from '$lib/room/view';
 	import {
 		CalendarClock,
 		Crown,
@@ -155,65 +157,160 @@
 		</div>
 	</div>
 {:else if screen === 'room-training'}
-	<!-- The 3 m surface, and the only column that obeys ux.md in full: the
-	     sidebar and the people column may stay desk-dense, this cannot.
-	     Explicit grid rows rather than a stack of flex-1 boxes — the first
-	     version stretched the graph to fill, which pushed the execution meter
-	     off the bottom and left 200 px of nothing above it. Nothing here
-	     scrolls: if it does not fit at 860 px it is not readable at 3 m. -->
-	<div
-		class="grid h-full min-h-0 grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] gap-3 overflow-hidden px-5 py-4"
-	>
-		<header class="flex items-baseline gap-4">
-			<span class="font-display text-5xl leading-none font-bold tabular-nums"
-				>{formatClock(elapsed)}</span
-			>
-			<span class="text-muted text-sm tabular-nums">/ {formatClock(total)}</span
-			>
-			<span class="ml-auto text-right">
-				<span class="font-display block text-base font-bold"
-					>Sweet Spot 2×20</span
-				>
-				<span class="text-muted flex items-center justify-end gap-1.5 text-xs">
-					<span
-						class="bg-watt glow-stroke h-1.5 w-1.5 animate-pulse rounded-full"
-					></span>
-					{riders.length} riding · Nina is coaching
-				</span>
-			</span>
+	<!-- The 3 m surface. Every other column in this app may be desk-dense; this
+	     one is an INSTRUMENT, and it is designed backwards from one question a
+	     rider asks at 160 bpm: am I on target. The previous pass stacked five
+	     equal-weight panels, which is a settings page — nothing was the hero,
+	     so the answer had to be hunted for.
+	
+	     Three moves. The number is a NEEDLE: it travels horizontally with your
+	     power, over a track that marks the tolerance band, so "left or right of
+	     the bright zone" reads before any digit does. The interval graph is the
+	     HORIZON — full-bleed along the bottom, which is what ADR-0005 means by
+	     "interval graphs glow like a night ride". And the execution meter is
+	     gone from here entirely: it is roster data, so it moved into the people
+	     column, which was otherwise showing a chat nobody types in mid-ride.
+	
+	     Colour stays disciplined (ADR-0005): the live number is watt-magenta and
+	     is the only thing that glows; the zone shows in the track fill, which is
+	     dataviz. -->
+	{@const pct = (w: number) => fillPct(w, you.ftp)}
+	{@const state = targetState(you)}
+	<div class="grid h-full min-h-0 grid-rows-[auto_1fr_auto] overflow-hidden">
+		<!-- What you are doing, and for how much longer. Quiet on purpose: it is
+		     read between efforts, not during one. -->
+		<header class="flex items-end gap-6 px-6 pt-5 pb-4">
+			<div class="min-w-0">
+				<p class="eyebrow">block {block?.index ?? 1} of {block?.count ?? 6}</p>
+				<h2 class="font-display truncate text-3xl leading-none font-bold">
+					{block?.label ?? 'Warm-up'}
+				</h2>
+			</div>
+			<div class="shrink-0">
+				<p class="eyebrow">left in block</p>
+				<p class="font-display text-3xl leading-none font-bold tabular-nums">
+					{formatClock(block?.secondsLeft ?? 0)}
+				</p>
+			</div>
+			{#if block?.next}
+				<p class="text-muted min-w-0 truncate text-xs">
+					next · {block.next.label}
+					{block.next.watts} W for {Math.round(block.next.seconds / 60)} min
+				</p>
+			{/if}
+			<p class="text-muted ml-auto shrink-0 text-sm tabular-nums">
+				{formatClock(elapsed)}
+				<span class="text-muted/50">/ {formatClock(total)}</span>
+			</p>
 		</header>
 
-		<IntervalStrip
-			{block}
-			{bias}
-			onBias={() => {}}
-			big
-			cadence={you.cadence}
-			hr={you.hr}
-		/>
-
-		<!-- One row, one height. The stats were a column beside the bar before,
-		     which stretched to the bar's height and read as an empty strip. -->
-		<div class="flex gap-3">
-			<div class="min-w-0 flex-1">
-				<TargetWidget {you} variant="notch" />
+		<!-- The instrument. -->
+		<section class="grid min-h-0 content-center px-6">
+			<div class="relative h-32">
+				<!-- The needle. clamp() keeps it on screen at 0 W and at a sprint,
+				     without a resize observer. -->
+				<div
+					class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
+					style="left: clamp(5rem, {pct(you.watts)}%, calc(100% - 5rem))"
+				>
+					<span
+						class="font-display text-watt glow-text-strong block text-[7rem] leading-[0.85] font-bold tabular-nums"
+						>{you.watts}</span
+					>
+					<span class="eyebrow">watts</span>
+				</div>
 			</div>
-			<div
-				class="bg-surface-raised ring-ink/10 divide-ink/10 grid h-24 w-72 shrink-0 grid-cols-3 divide-x rounded-lg ring-1"
-			>
+
+			<div class="relative mt-3 h-14">
+				<div
+					class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full"
+				>
+					{#if state.has}
+						<!-- The slot you are aiming at. -->
+						<div
+							class="bg-neon/30 absolute inset-y-0"
+							style="left: {pct(you.target - state.band)}%; width: {pct(
+								you.target + state.band,
+							) - pct(you.target - state.band)}%"
+						></div>
+					{/if}
+					<!-- Zone in the fill: dataviz, so it may carry the ramp. The
+					     class must stay literal — Tailwind scans source text, so a
+					     composed `bg-z3/60` is never generated (zones.ts). Opacity
+					     rides on the wrapper instead. -->
+					<div
+						class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
+						style="width: {pct(you.watts)}%"
+					>
+						<div
+							class="{ZONE_BG[zoneOf(you.watts, you.ftp)]} h-full w-full"
+						></div>
+					</div>
+					{#if state.has}
+						<div
+							class="bg-neon absolute inset-y-0 w-1"
+							style="left: {pct(you.target)}%"
+						></div>
+					{/if}
+				</div>
+			</div>
+
+			<div class="text-muted mt-2 flex items-baseline text-xs tabular-nums">
+				<span>0</span>
+				<span
+					class="mx-auto text-sm {state.inBand
+						? 'text-z4'
+						: state.delta > 0
+							? 'text-z5'
+							: 'text-muted'}"
+				>
+					{#if !state.has}
+						no target — spin easy
+					{:else if state.inBand}
+						on target · {you.target} W
+					{:else}
+						{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {you.target}
+					{/if}
+				</span>
+				<span>{Math.round(you.ftp * 1.5)}</span>
+			</div>
+
+			<!-- Secondary. One row, no boxes: these are glanced at, never hunted
+			     for. Bias is the one control a rider touches mid-interval, so it
+			     gets thumb-sized targets (ux.md). -->
+			<div class="border-ink/5 mt-8 flex items-center gap-8 border-t pt-4">
 				{#each [{ label: 'rpm', value: `${you.cadence}` }, { label: 'bpm', value: `${you.hr}` }, { label: 'w/kg', value: wkg(you.watts, you.kg) }] as stat (stat.label)}
-					<div class="grid place-content-center text-center">
+					<div>
 						<span
-							class="font-display block text-3xl leading-none font-bold tabular-nums"
+							class="font-display block text-2xl leading-none font-bold tabular-nums"
 							>{stat.value}</span
 						>
-						<span class="eyebrow mt-1 block">{stat.label}</span>
+						<span class="eyebrow">{stat.label}</span>
 					</div>
 				{/each}
+				<div class="ml-auto flex items-center gap-2">
+					<button
+						class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
+						aria-label="ease the target by one percent">−</button
+					>
+					<span class="text-center">
+						<span
+							class="font-display block text-xl leading-none font-bold tabular-nums"
+							>{Math.round(bias * 100)}%</span
+						>
+						<span class="eyebrow">bias</span>
+					</span>
+					<button
+						class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
+						aria-label="raise the target by one percent">+</button
+					>
+				</div>
 			</div>
-		</div>
+		</section>
 
-		<div class="panel min-h-0 p-3">
+		<!-- The horizon. Full-bleed, no panel: the session is the ground the
+		     numbers stand on, not another card. -->
+		<div class="h-44">
 			<IntervalGraph
 				{segments}
 				{total}
@@ -222,8 +319,6 @@
 				trace={you.trace}
 			/>
 		</div>
-
-		<ExecutionMeter {riders} />
 	</div>
 {:else if screen === 'room-sessions'}
 	<div class="mx-auto w-full max-w-3xl px-5 py-6">

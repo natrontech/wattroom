@@ -9,19 +9,28 @@
 	// which the tile grid does not survive. Both alternatives were mocked and
 	// dropped; the reasoning is ADR-0020's, the markup is in git.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import type { RoomRider } from '$lib/room/view';
 	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
 
 	let {
 		riders,
 		speakingName = '',
+		live = false,
 	}: {
 		riders: RoomRider[];
 		speakingName?: string;
+		/** A session is running — the roster carries execution instead of chatter. */
+		live?: boolean;
 	} = $props();
 
-	const inVoice = $derived(riders.filter((r) => !r.muted));
-	const away = $derived(riders.filter((r) => r.muted));
+	// Mid-ride the useful split is riding / not; in the lounge it is voice /
+	// not. Same column, and the heading says which question it is answering —
+	// grouping by mic put a pedalling rider under "in the room".
+	const here = $derived(
+		live ? riders.filter((r) => r.watts > 0) : riders.filter((r) => !r.muted),
+	);
+	const away = $derived(riders.filter((r) => !here.includes(r)));
 
 	const chat = [
 		{
@@ -60,29 +69,61 @@
 				></span>
 			{/if}
 		</span>
-		<span class="min-w-0 flex-1 truncate {talking ? 'font-medium' : ''}"
-			>{rider.name}</span
-		>
-		{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
-		{#if rider.cameraOn}<Video size={11} class="text-muted shrink-0" />{/if}
-		{#if talking}
-			<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
-		{:else if rider.muted}
-			<MicOff size={11} class="text-muted/50 shrink-0" />
-		{/if}
+		<span class="min-w-0 flex-1">
+			<span class="flex items-center gap-1.5">
+				<span class="min-w-0 flex-1 truncate {talking ? 'font-medium' : ''}"
+					>{rider.name}</span
+				>
+				{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
+				{#if rider.cameraOn}<Video size={11} class="text-muted shrink-0" />{/if}
+				{#if talking}
+					<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
+				{:else if rider.muted}
+					<MicOff size={11} class="text-muted/50 shrink-0" />
+				{/if}
+				{#if live && rider.watts > 0}
+					<span class="text-muted shrink-0 text-[10px] tabular-nums"
+						>{Math.round(rider.execution * 100)}%</span
+					>
+				{/if}
+			</span>
+			{#if live && rider.watts > 0}
+				<!-- Execution moved off the training surface (ADR-0020): how well
+				     everyone is holding target is roster data, and the roster is
+				     here. It also gives this column a job mid-ride, when nobody
+				     is typing. -->
+				<span class="mt-1 block">
+					<ProgressBar
+						pct={rider.execution * 100}
+						h="h-1"
+						fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
+						title="{rider.name} is holding target {Math.round(
+							rider.execution * 100,
+						)}% of the time"
+					/>
+				</span>
+			{/if}
+		</span>
 	</li>
 {/snippet}
 
 {#snippet roster()}
-	<div class="max-h-56 min-h-0 shrink-0 overflow-y-auto">
+	<div
+		class="min-h-0 shrink-0 overflow-y-auto {live ? 'max-h-none' : 'max-h-56'}"
+	>
 		<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
-			<Headphones size={10} /> in voice — {inVoice.length}
+			{#if !live}<Headphones size={10} />{/if}
+			{live ? `holding target — ${here.length}` : `in voice — ${here.length}`}
 		</div>
 		<ul class="px-1">
-			{#each inVoice as rider (rider.id)}{@render person(rider)}{/each}
+			{#each here as rider (rider.id)}{@render person(rider)}{/each}
 		</ul>
 		{#if away.length}
-			<div class="eyebrow px-3 pt-3 pb-1">in the room — {away.length}</div>
+			<div class="eyebrow px-3 pt-3 pb-1">
+				{live
+					? `not pedalling — ${away.length}`
+					: `in the room — ${away.length}`}
+			</div>
 			<ul class="px-1">
 				{#each away as rider (rider.id)}{@render person(rider)}{/each}
 			</ul>

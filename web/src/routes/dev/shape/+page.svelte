@@ -130,7 +130,7 @@
 			class="ring-muted/20 mx-auto overflow-hidden rounded-lg ring-1 {screen.caved
 				? 'cave'
 				: ''} bg-surface text-ink"
-			style="width: {width}px; max-width: 100%; height: 860px"
+			style="width: {width}px; max-width: 100%; height: min(860px, calc(100dvh - 9rem))"
 		>
 			{#if screen.context === 'bare'}
 				<EdgeScreens
@@ -181,7 +181,11 @@
 						{/if}
 					</main>
 					{#if screen.context === 'room' && people}
-						<PeopleColumn riders={room.riders} speakingName={speaking} />
+						<PeopleColumn
+							riders={room.riders}
+							speakingName={speaking}
+							live={room.phase === 'live'}
+						/>
 					{/if}
 					<!-- Overlays render over the frame they belong to. -->
 					{#if screen.id === 'room-picker' || screen.id === 'room-summary'}
