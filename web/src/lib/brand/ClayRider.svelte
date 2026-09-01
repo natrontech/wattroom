@@ -13,6 +13,10 @@
 	const skin = 'hsl(28 55% 66%)';
 	const helmet = $derived(`hsl(${hue + 150} 70% 60%)`);
 	const frame = $derived(`hsl(${hue + 40} 28% 24%)`);
+	// The drawing's black (tyres, bar, hub, pupil): the room's surface pulled
+	// almost to black, so it stays dark on both families — ink goes white in
+	// the cave, where the landing lives, and paper goes white in daylight.
+	const outline = 'color-mix(in oklab, var(--color-surface) 20%, black)';
 	const cycle = $derived(0.9 / speed);
 </script>
 
@@ -37,7 +41,7 @@
 				cy="52"
 				r="12"
 				fill="none"
-				stroke="#191029"
+				stroke={outline}
 				stroke-width="3.5"
 			/>
 			<circle
@@ -60,18 +64,18 @@
 		/>
 		<path
 			d="M34.5 26.5 h9"
-			stroke="#191029"
+			stroke={outline}
 			stroke-width="3.5"
 			stroke-linecap="round"
 		/>
 		<path
 			d="M64 26 q4.5 -1 4.5 3"
-			stroke="#191029"
+			stroke={outline}
 			stroke-width="2.5"
 			stroke-linecap="round"
 			fill="none"
 		/>
-		<circle cx="46" cy="49" r="2.4" fill="#191029" />
+		<circle cx="46" cy="49" r="2.4" fill={outline} />
 
 		<!-- back leg -->
 		<g class="leg leg-b">
@@ -121,7 +125,7 @@
 			fill={helmet}
 			transform="rotate(-8 63 6.2)"
 		/>
-		<circle cx="66.5" cy="9" r="0.9" fill="#191029" />
+		<circle cx="66.5" cy="9" r="0.9" fill={outline} />
 	</g>
 </svg>
 
