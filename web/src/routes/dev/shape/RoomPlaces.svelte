@@ -10,7 +10,7 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
-	import { formatClock } from '$lib/format';
+	import { formatClock, wkg } from '$lib/format';
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import type { Segment } from '$lib/workout/types';
 	import type { Block, RoomRider } from '$lib/room/view';
@@ -155,45 +155,65 @@
 		</div>
 	</div>
 {:else if screen === 'room-training'}
-	<!-- The 3 m surface. Column 3 is the ONLY column that obeys ux.md in full:
-	     the number is enormous, the one control is a thumb target, and nothing
-	     here needs a mouse. Columns 1, 2 and 4 stay desk-dense on purpose. -->
-	<div class="flex h-full min-h-0 flex-col gap-3 px-5 py-4">
-		<div class="flex shrink-0 items-baseline gap-4">
-			<span class="font-display text-4xl font-bold tabular-nums"
+	<!-- The 3 m surface, and the only column that obeys ux.md in full: the
+	     sidebar and the people column may stay desk-dense, this cannot.
+	     Explicit grid rows rather than a stack of flex-1 boxes — the first
+	     version stretched the graph to fill, which pushed the execution meter
+	     off the bottom and left 200 px of nothing above it. Nothing here
+	     scrolls: if it does not fit at 860 px it is not readable at 3 m. -->
+	<div
+		class="grid h-full min-h-0 grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] gap-3 overflow-hidden px-5 py-4"
+	>
+		<header class="flex items-baseline gap-4">
+			<span class="font-display text-5xl leading-none font-bold tabular-nums"
 				>{formatClock(elapsed)}</span
 			>
-			<span class="text-muted text-sm">of {formatClock(total)}</span>
-			<span class="font-display ml-auto text-sm font-bold">Sweet Spot 2×20</span
+			<span class="text-muted text-sm tabular-nums">/ {formatClock(total)}</span
 			>
-		</div>
+			<span class="ml-auto text-right">
+				<span class="font-display block text-base font-bold"
+					>Sweet Spot 2×20</span
+				>
+				<span class="text-muted flex items-center justify-end gap-1.5 text-xs">
+					<span
+						class="bg-watt glow-stroke h-1.5 w-1.5 animate-pulse rounded-full"
+					></span>
+					{riders.length} riding · Nina is coaching
+				</span>
+			</span>
+		</header>
 
-		<div class="shrink-0">
-			<IntervalStrip
-				{block}
-				{bias}
-				onBias={() => {}}
-				big
-				cadence={you.cadence}
-				hr={you.hr}
-			/>
-		</div>
+		<IntervalStrip
+			{block}
+			{bias}
+			onBias={() => {}}
+			big
+			cadence={you.cadence}
+			hr={you.hr}
+		/>
 
-		<div class="grid shrink-0 gap-3 lg:grid-cols-[1fr_auto]">
-			<TargetWidget {you} variant="notch" />
-			<div class="panel grid grid-cols-3 gap-4 px-4 py-3 lg:grid-cols-1">
-				{#each [{ label: 'rpm', value: you.cadence }, { label: 'bpm', value: you.hr }, { label: 'w/kg', value: (you.watts / you.kg).toFixed(1) }] as stat (stat.label)}
-					<div>
-						<p class="eyebrow">{stat.label}</p>
-						<p class="font-display text-2xl font-bold tabular-nums">
-							{stat.value}
-						</p>
+		<!-- One row, one height. The stats were a column beside the bar before,
+		     which stretched to the bar's height and read as an empty strip. -->
+		<div class="flex gap-3">
+			<div class="min-w-0 flex-1">
+				<TargetWidget {you} variant="notch" />
+			</div>
+			<div
+				class="bg-surface-raised ring-ink/10 divide-ink/10 grid h-24 w-72 shrink-0 grid-cols-3 divide-x rounded-lg ring-1"
+			>
+				{#each [{ label: 'rpm', value: `${you.cadence}` }, { label: 'bpm', value: `${you.hr}` }, { label: 'w/kg', value: wkg(you.watts, you.kg) }] as stat (stat.label)}
+					<div class="grid place-content-center text-center">
+						<span
+							class="font-display block text-3xl leading-none font-bold tabular-nums"
+							>{stat.value}</span
+						>
+						<span class="eyebrow mt-1 block">{stat.label}</span>
 					</div>
 				{/each}
 			</div>
 		</div>
 
-		<div class="panel min-h-0 flex-1 p-3">
+		<div class="panel min-h-0 p-3">
 			<IntervalGraph
 				{segments}
 				{total}
@@ -203,9 +223,7 @@
 			/>
 		</div>
 
-		<div class="shrink-0">
-			<ExecutionMeter {riders} />
-		</div>
+		<ExecutionMeter {riders} />
 	</div>
 {:else if screen === 'room-sessions'}
 	<div class="mx-auto w-full max-w-3xl px-5 py-6">

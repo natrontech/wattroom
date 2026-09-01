@@ -2,16 +2,14 @@
 	// ADR-0020 made clickable. One frame, four columns, every route rendered
 	// inside it — so the shape is decided by looking rather than by argument.
 	//
-	// The toolbar controls exist because they are the three things the ADR is
-	// least sure about: the members column (three answers, one has to win), the
-	// viewport ladder (does 1280 px survive four columns), and the scheme (the
-	// lounge is a desk surface, the ride is the cave — both have to hold).
+	// The two toolbar controls left are conditions, not choices: the viewport
+	// ladder (does 1280 px survive the frame) and the scheme (the lounge is a
+	// desk surface, the ride is the cave — both have to hold). The nav and
+	// members toggles are gone with the alternatives they compared.
 	import DmPlaces from './DmPlaces.svelte';
 	import EdgeScreens from './EdgeScreens.svelte';
 	import PeopleColumn from './PeopleColumn.svelte';
-	import PlacesColumn from './PlacesColumn.svelte';
 	import RoomPlaces from './RoomPlaces.svelte';
-	import RoomsColumn from './RoomsColumn.svelte';
 	import SidebarColumn from './SidebarColumn.svelte';
 	import YourPlaces from './YourPlaces.svelte';
 	import YourStats from './YourStats.svelte';
@@ -27,16 +25,13 @@
 	});
 
 	let id = $state('room-lounge');
-	let nav = $state<'one' | 'two'>('one');
-	let members = $state<'stacked' | 'tabbed' | 'column'>('stacked');
 	let width = $state(1600);
 	let scheme = $state<'dark' | 'light'>('dark');
 
 	const screen = $derived(SCREENS.find((s) => s.id === id)!);
-	// The ladder from ADR-0020: column 2 collapses to icons below 1600, the
-	// people column goes to a sheet below 1280. A media query in the real
-	// build; a number here, so both sides are visible at once.
-	const collapsed = $derived(width < 1600);
+	// The ladder from ADR-0020: the people column becomes the summonable sheet
+	// it already is below `xl`. A media query in the real build; a number here,
+	// so both sides are visible at once.
 	const people = $derived(width >= 1280);
 	const you = $derived(room.riders.find((r) => r.you)!);
 
@@ -67,21 +62,10 @@
 		delete document.documentElement.dataset.theme;
 		palette.refresh();
 	});
-	const navWidth = $derived(
-		screen.context === 'bare'
-			? 0
-			: nav === 'one'
-				? 240
-				: 208 + (collapsed ? 56 : 176),
-	);
 	const contentWidth = $derived(
 		width -
-			navWidth -
-			(screen.context === 'room' && people
-				? members === 'column'
-					? 480
-					: 272
-				: 0),
+			(screen.context === 'bare' ? 0 : 240) -
+			(screen.context === 'room' && people ? 272 : 0),
 	);
 </script>
 
@@ -100,23 +84,6 @@
 						{/each}
 					</optgroup>
 				{/each}
-			</select>
-		</label>
-
-		<label class="flex items-center gap-1.5">
-			<span class="text-muted">nav</span>
-			<select bind:value={nav} class="input input-xs">
-				<option value="one">one sidebar — rooms open into their places</option>
-				<option value="two">two columns — Discord's literal shape</option>
-			</select>
-		</label>
-
-		<label class="flex items-center gap-1.5">
-			<span class="text-muted">members</span>
-			<select bind:value={members} class="input input-xs">
-				<option value="stacked">stacked — roster above chat</option>
-				<option value="tabbed">tabbed — chat / members</option>
-				<option value="column">column — its own, beside chat</option>
 			</select>
 		</label>
 
@@ -176,31 +143,13 @@
 				/>
 			{:else}
 				<div class="relative flex h-full">
-					{#if nav === 'one'}
-						<SidebarColumn
-							context={screen.context}
-							place={screen.place}
-							peer={screen.peer}
-							connectedSlug="thursday-sufferfest"
-							live={room.phase === 'live'}
-						/>
-					{:else}
-						<RoomsColumn
-							activeSlug={screen.context === 'room'
-								? 'thursday-sufferfest'
-								: ''}
-							connectedSlug="thursday-sufferfest"
-							live={room.phase === 'live'}
-						/>
-						<PlacesColumn
-							context={screen.context}
-							place={screen.place}
-							roomName="Thursday Sufferfest"
-							roomIcon="🔥"
-							live={room.phase === 'live'}
-							{collapsed}
-						/>
-					{/if}
+					<SidebarColumn
+						context={screen.context}
+						place={screen.place}
+						peer={screen.peer}
+						connectedSlug="thursday-sufferfest"
+						live={room.phase === 'live'}
+					/>
 					<main class="min-w-0 flex-1 overflow-hidden">
 						{#if screen.group === 'In a room'}
 							<RoomPlaces
@@ -232,11 +181,7 @@
 						{/if}
 					</main>
 					{#if screen.context === 'room' && people}
-						<PeopleColumn
-							riders={room.riders}
-							variant={members}
-							speakingName={speaking}
-						/>
+						<PeopleColumn riders={room.riders} speakingName={speaking} />
 					{/if}
 					<!-- Overlays render over the frame they belong to. -->
 					{#if screen.id === 'room-picker' || screen.id === 'room-summary'}

@@ -1,6 +1,6 @@
 # ADR-0020: The app takes Discord's shape — one frame, one sidebar, no switchable layouts
 
-Date: 2026-09-01 · Status: proposed (#181)
+Date: 2026-09-01 · Status: accepted (#181)
 
 ## Context
 
@@ -110,8 +110,13 @@ a URL — and that includes the two surfaces that were neither a tab nor a page:
 The sidebar's messages section is already the DM list, so promoting both costs
 a destination each and no new chrome.
 
-**People and talk** is the right-hand column, in a room only. Which shape it
-takes is the one question this ADR leaves open — see the consequences.
+**People and talk is one column, roster stacked above chat**, in a room only —
+#181's third gap. The roster has to be there without being asked for; that is
+the whole "this room is populated" read, and a Chat/Members toggle only shows
+it to someone who already suspected they wanted it. Members as a column of
+their own — the literal reading of "a fourth column" — was the other candidate
+and loses on the budget below: it takes content to 530 px at 1280 px, which the
+tile grid does not survive.
 
 The budget: 1280 − 240 − 272 = **768 px of content**, against 624 px for the
 two-column version. The ladder is by media query, never a setting (`ux.md`,
@@ -166,18 +171,17 @@ The `.cave` scope already marks exactly that boundary, and it keeps doing so.
   it is deliberately not this shell.
 - **Column count is a real budget**, and it is what killed the literal copy.
   One sidebar leaves 768 px at 1280 px; two leave 624 px. That is also the
-  number the members question is decided against — members as a column of their
-  own takes content down to 530 px, which the mock shows is not survivable.
+  number the members question was decided against — members as a column of their
+  own takes content down to 530 px, which the mock showed is not survivable.
 - **Voice stays a state you carry, not a place you join.** #181 raises this and
   the answer is no: a training room has one conversation, and making voice a
   sub-room would put the crew in two of them. What was missing is not a voice
   channel — it is a visible roster of who can hear you, which column 4 now is.
-- **Accepting:** the members column is unresolved until the mock is looked at,
-  and this ADR is `proposed` until then. `/dev/shape` carries three answers —
-  a roster stacked above chat in one column, a Chat/Members toggle, and members
-  as a column of their own — and the toggle for the rejected two-strip nav is
-  kept beside them, so the comparison stays reproducible rather than
-  remembered. Everything else above is independent of that answer.
+- **Accepting:** three shapes were mocked and dropped — the two-strip nav, the
+  Chat/Members toggle, and members as their own column. They are deliberately
+  not kept as toggles: once a decision is made, an alternative living in the
+  mock is a second design every implementation PR has to keep in sync. The
+  reasoning is here; the markup is in this PR's history.
 - **Revisit trigger:** if riders start using column 2 as a tab strip — clicking
   back and forth mid-interval — the places are wrong, not the shape. That is
   the signal to merge Lounge and Training rather than to bring switching back.

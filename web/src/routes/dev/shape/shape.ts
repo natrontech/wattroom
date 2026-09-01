@@ -264,7 +264,7 @@ export const SCREENS: Screen[] = [
 
 export const GROUPS = [...new Set(SCREENS.map((s) => s.group))];
 
-/** Column 2 inside a room. */
+/** The places inside a room — the sidebar opens the one you are standing in. */
 export const ROOM_PLACES = [
 	{ id: 'lounge', label: 'Lounge', hint: 'talk, tiles, the stage' },
 	{ id: 'training', label: 'Training', hint: 'the session and your numbers' },
@@ -273,22 +273,10 @@ export const ROOM_PLACES = [
 	{ id: 'settings', label: 'Settings', hint: 'name, sounds, reactions' },
 ];
 
-/** Column 2 outside a room — what TopNav used to be, vertical and permanent. */
-export const YOUR_PLACES = [
-	{ id: 'home', label: 'Home', hint: '' },
-	{ id: 'rooms', label: 'Rooms', hint: '' },
-	{ id: 'sessions', label: 'Sessions', hint: '' },
-	{ id: 'workouts', label: 'Workouts', hint: '' },
-	{ id: 'history', label: 'Rides', hint: '' },
-	{ id: 'progression', label: 'Progression', hint: '' },
-	{ id: 'ramp', label: 'Ramp test', hint: '' },
-	{ id: 'pair', label: 'Sensors', hint: '' },
-	{ id: 'profile', label: 'Profile', hint: '' },
-];
-
 /**
- * Column 1's whole argument (#181, gap 4): a room you are NOT looking at has to
- * say something, or the app has no reason to stay open in a background window.
+ * The sidebar's whole argument (#181, gap 4): a room you are NOT looking at has
+ * to say something, or the app has no reason to stay open in a background
+ * window.
  */
 export interface RailRoom {
 	slug: string;

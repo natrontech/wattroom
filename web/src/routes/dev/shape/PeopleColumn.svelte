@@ -1,29 +1,24 @@
 <script lang="ts">
-	// ADR-0020 column 4, and the one question the ADR leaves open (#181 gap 3).
-	// Discord's right column is WHO IS HERE; ours is chat, so the room's roster
-	// is legible only from tiles that vanish behind the stage.
+	// The room's people and the room's talk, in ONE column (ADR-0020, #181 gap
+	// 3). Discord's right column is WHO IS HERE; ours was chat alone, so the
+	// roster was legible only from tiles that vanish behind the stage.
 	//
-	// Three answers, mocked so the decision is made by looking:
-	//   column   — members get a column of their own beside chat (the literal
-	//              reading of "a fourth column"; costs 240 px)
-	//   tabbed   — one column, Chat / Members toggle (cheapest, but who-is-here
-	//              is only there when you ask for it)
-	//   stacked  — roster pinned above chat in one column, always visible
+	// Stacked rather than tabbed or split: the roster has to be there without
+	// being asked for — that is the whole "this room is populated" read — and
+	// members as a column of their own took content down to 530 px at 1280 px,
+	// which the tile grid does not survive. Both alternatives were mocked and
+	// dropped; the reasoning is ADR-0020's, the markup is in git.
 	import Avatar from '$lib/components/Avatar.svelte';
 	import type { RoomRider } from '$lib/room/view';
 	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
 
 	let {
 		riders,
-		variant = 'stacked',
 		speakingName = '',
 	}: {
 		riders: RoomRider[];
-		variant?: 'column' | 'tabbed' | 'stacked';
 		speakingName?: string;
 	} = $props();
-
-	let tab = $state<'chat' | 'members'>('chat');
 
 	const inVoice = $derived(riders.filter((r) => !r.muted));
 	const away = $derived(riders.filter((r) => r.muted));
@@ -78,10 +73,8 @@
 	</li>
 {/snippet}
 
-{#snippet roster(compact: boolean)}
-	<div
-		class="min-h-0 {compact ? 'max-h-56 shrink-0' : 'flex-1'} overflow-y-auto"
-	>
+{#snippet roster()}
+	<div class="max-h-56 min-h-0 shrink-0 overflow-y-auto">
 		<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 			<Headphones size={10} /> in voice — {inVoice.length}
 		</div>
@@ -137,39 +130,8 @@
 	</div>
 {/snippet}
 
-{#if variant === 'column'}
-	<!-- The literal fourth column. Honest about its cost: 240 px that column 3
-	     does not get, and at 1280 px column 3 is already the tight one. -->
-	<aside class="border-ink/5 flex h-full w-56 shrink-0 flex-col border-l">
-		{@render roster(false)}
-	</aside>
-	<aside class="border-ink/5 flex h-full w-64 shrink-0 flex-col border-l">
-		{@render talk()}
-	</aside>
-{:else if variant === 'tabbed'}
-	<aside class="border-ink/5 flex h-full w-68 shrink-0 flex-col border-l">
-		<div class="border-ink/5 flex border-b">
-			{#each ['chat', 'members'] as const as id (id)}
-				<button
-					onclick={() => (tab = id)}
-					aria-current={tab === id ? 'page' : undefined}
-					class="-mb-px flex-1 border-b-2 py-2.5 text-xs font-medium capitalize {tab ===
-					id
-						? 'border-neon text-ink'
-						: 'text-muted hover:text-ink border-transparent'}"
-				>
-					{id}{id === 'members' ? ` · ${riders.length}` : ''}
-				</button>
-			{/each}
-		</div>
-		{#if tab === 'chat'}{@render talk()}{:else}{@render roster(false)}{/if}
-	</aside>
-{:else}
-	<!-- Stacked: the roster is always visible, chat gets the rest. Costs one
-	     column, keeps Discord's "the room is populated" read. -->
-	<aside class="border-ink/5 flex h-full w-68 shrink-0 flex-col border-l">
-		{@render roster(true)}
-		<div class="border-ink/5 border-t"></div>
-		{@render talk()}
-	</aside>
-{/if}
+<aside class="border-ink/5 flex h-full w-68 shrink-0 flex-col border-l">
+	{@render roster()}
+	<div class="border-ink/5 border-t"></div>
+	{@render talk()}
+</aside>
