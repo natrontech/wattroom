@@ -120,14 +120,28 @@
 
 		{#if screen === 'room-focus'}
 			<!-- What "video-first" used to be a whole layout for: one rider,
-			     bigger. A tap, not a mode you have to remember you are in. -->
-			<div class="mb-3 max-w-2xl shrink-0">
-				<RiderTile rider={others[1]} phase="lounge" stretch />
-			</div>
-			<div class="grid shrink-0 grid-cols-3 gap-2 xl:grid-cols-5">
-				{#each riders.filter((r) => r.id !== others[1].id) as rider (rider.id)}
-					<RiderTile {rider} phase="lounge" />
-				{/each}
+			     bigger. A tap, not a mode you have to remember you are in.
+			     `stretch` is deliberately NOT used — it sets h-full, which needs a
+			     parent with a height, and in a width-constrained box it collapses
+			     the tile to nothing. aspect-video is what a focused tile wants. -->
+			{@const focused = others[1]}
+			<div
+				class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
+			>
+				<div>
+					<RiderTile rider={focused} phase="lounge" />
+					<p class="text-muted mt-2 text-xs">
+						<span class="text-ink font-medium">{focused.name}</span> is focused —
+						tap their tile again to let go.
+					</p>
+				</div>
+				<!-- Everyone else stays visible beside them, small. Focus narrows
+				     what you are looking at; it does not empty the room. -->
+				<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
+					{#each riders.filter((r) => r.id !== focused.id) as rider (rider.id)}
+						<RiderTile {rider} phase="lounge" />
+					{/each}
+				</div>
 			</div>
 		{:else}
 			<!-- One fused grid: camera and metrics on the same tile (#181). -->
