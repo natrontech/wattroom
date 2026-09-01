@@ -21,6 +21,10 @@ not a second copy of `git log`.
 - The room's chat now carries what the room did with its plan: a session
   planned, moved or cancelled, one starting and one finishing, and a reminder
   ten minutes before a planned session is due.
+- An installer for the release-tracking timer that checks the setup before it
+  switches anything on — a missing image tag, unreadable registry auth, or a
+  server still on `:main` with nothing to roll back to all surface in the
+  foreground, and the timer is enabled only after one convergence succeeds.
 
 ### Changed
 
@@ -43,6 +47,11 @@ not a second copy of `git log`.
 
 - The page no longer scrolls by the height of the top nav: the room fills
   exactly what is left of the screen instead of one nav-bar too much.
+- Stopping a screen share from the browser's own bar now ends it in the room.
+  The button had gone on offering to stop a share that was already over, and
+  the stage sat on its last frame while the room saw nothing.
+- A dropped connection no longer leaves the mic button reading "on" with no
+  mic behind it — which stuck permanently when the rejoin also failed.
 
 ### Security
 
