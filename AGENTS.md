@@ -21,7 +21,7 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 
 ## Working on the issue board (mandatory for humans AND agents)
 
-All work is tracked as GitHub issues on milestones M0–M6; nobody works untracked.
+All work is tracked as GitHub issues on milestones (M0 onward); nobody works untracked.
 
 1. **Before starting**: check the issue is unassigned and unclaimed (`gh issue view <n> --comments`) **and that no open PR already covers it** (`gh pr list`). If someone (or someone's agent) is on it, coordinate in comments instead of duplicating.
    The draft PR is the claim (step 3), and agents routinely open one without commenting on the issue — so a quiet issue is not an idle one. Two agents shipped the same feature twice for want of this one command (#280 → #284 and #294).
