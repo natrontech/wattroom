@@ -82,3 +82,21 @@ where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
 
 -- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2;
+
+-- name: MarkRoomRead :exec
+-- Opening a room is reading it. Upsert so the first visit works the same as
+-- the hundredth.
+insert into room_reads (room_id, user_id, read_at)
+values ($1, $2, now())
+on conflict (room_id, user_id) do update set read_at = now();
+
+-- name: CountRoomUnread :one
+-- Lines from other people since you last opened the room. A rider who has
+-- never opened it sees the whole bounded log, which is the honest answer:
+-- everything in there is new to them.
+select count(*)
+from chat_messages m
+left join room_reads r on r.room_id = m.room_id and r.user_id = $2
+where m.room_id = $1
+  and m.user_id != $2
+  and (r.read_at is null or m.created_at > r.read_at);

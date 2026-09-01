@@ -120,8 +120,12 @@
 									title="you are in this room"
 								></span>
 							{/if}
-							<span class="truncate text-sm {open ? 'font-semibold' : ''}"
-								>{room.icon ? `${room.icon} ` : ''}{room.name}</span
+							<span
+								class="truncate text-sm {open
+									? 'font-semibold'
+									: room.unread
+										? 'text-ink font-semibold'
+										: ''}">{room.icon ? `${room.icon} ` : ''}{room.name}</span
 							>
 							{#if here && onLeave}
 								<button
@@ -132,6 +136,16 @@
 									class="text-muted hover:text-ink ml-auto shrink-0"
 									title="leave the room"
 									aria-label="leave the room"><LogOut size={12} /></button
+								>
+							{:else if room.unread}
+								<!-- The strongest reason a chat app stays open in a
+								     background window. Quiet by design: the count is
+								     chrome, so it takes the muted surface — the live hue
+								     is for live data (ADR-0005). -->
+								<span
+									class="bg-muted/25 text-ink ml-auto shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+									title="{room.unread} new since you were last here"
+									>{room.unread > 99 ? '99+' : room.unread}</span
 								>
 							{:else if (room.connected ?? 0) > 0}
 								<span class="ml-auto flex shrink-0 items-center gap-1">
