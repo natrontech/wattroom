@@ -53,6 +53,10 @@ jobs:
   # Six of the seven changes in 2026.09.2 shipped with no changelog line, so
   # the release notes described one of them. A rule nobody checks is not a
   # rule — agents merge in parallel and none of them will notice.
+  #
+  # The entry is a file per PR (changelog.d/) rather than a shared section:
+  # eight agents editing the same lines conflicted constantly, and a conflict
+  # resolved carelessly during a rebase drops somebody's entry silently.
   changelog:
     if: >-
       github.event_name == 'pull_request' &&
@@ -69,15 +73,26 @@ jobs:
             echo "No server/ or web/src change — nothing to announce."
             exit 0
           fi
-          if grep -qx 'CHANGELOG.md' <<<"$changed"; then
-            echo "Changelog line present."
+          if grep -qE '^changelog\.d/(added|changed|deprecated|removed|fixed|security)-' <<<"$changed"; then
+            echo "Changelog entry present."
             exit 0
           fi
+          if grep -qE '^changelog\.d/' <<<"$changed"; then
+            echo 'A changelog.d/ file was added but its name does not start with a' >&2
+            echo 'category, so the release step would drop it silently.' >&2
+            exit 1
+          fi
           cat >&2 <<'MSG'
-          This PR changes server/ or web/src but adds no CHANGELOG.md line.
+          This PR changes server/ or web/src but adds no changelog entry.
 
-          Add one under ## [Unreleased], in the Keep a Changelog section that
-          fits, written for someone deciding whether to upgrade.
+          Add one file — not an edit to CHANGELOG.md, which every agent would
+          then conflict on:
+
+              changelog.d/<category>-<slug>.md
+
+          category is added / changed / deprecated / removed / fixed / security.
+          The file holds the bullet as it should appear, written for someone
+          deciding whether to upgrade. See changelog.d/README.md.
 
           If the change genuinely cannot be seen by a rider — tooling, tests,
           refactors — apply the `no-changelog` label instead.
