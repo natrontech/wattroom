@@ -21,6 +21,10 @@ not a second copy of `git log`.
 - The landing page carries two live numbers: how many riders are online right
   now (it hides itself when nobody is), and the repo's real star count next to
   the GitHub link.
+- `wattroom_room_riding` on `/metrics`: how many riders have sent a power
+  sample in the last 10 seconds, as opposed to how many are sitting in a room.
+  Anyone automating deploys can use it to avoid restarting mid-interval — a
+  room between sessions no longer looks like a ride in progress.
 
 ## [2026.09.3] - 2026-09-01
 

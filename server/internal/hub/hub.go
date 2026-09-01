@@ -106,6 +106,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		lobby: make(map[*lobbyClient]string),
 		saves: make(chan chatSave, 256)}
 	go h.saveWorker()
+	h.registerRidingMetric()
 	return h
 }
 
