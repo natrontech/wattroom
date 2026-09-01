@@ -34,58 +34,19 @@ hardcoded "ok":
     curl -s https://wattroom.ch/api/version    # {"version":"2026.09.1",...}
     curl -s https://wattroom.ch/api/healthz    # ok
 
-## The VM deploys itself
+## Deploying this
 
-Rather than the three lines above, the VM tracks the newest published release
-by itself (ADR-0019). Cutting a release *is* deploying it. Install:
+This directory is the **self-hosting reference**: what the app needs to run, not
+what runs wattroom.ch. Deployment automation belongs to whoever operates the
+box, because it has to fit their edge proxy, their metrics system and their
+backup driver — for wattroom.ch that is `janlauber/homelab`, which drops the
+`caddy`, `prometheus` and `backup` services below for exactly those reasons and
+rolls releases out with its own timer.
 
-    sudo ./install-updater.sh
-
-It checks the things that fail quietly first — no `WATTROOM_TAG` (the stack
-would refuse to start), still pinned to `:main` (nothing to roll back to), no
-readable ghcr.io credential — then installs, runs **one convergence in the
-foreground** so you see the result now rather than in the journal five minutes
-later, and only enables the timer if that run succeeded. Safe to re-run.
-
-It reuses the credential `docker login ghcr.io` already stored, so there is no
-new secret and no repo to clone.
-
-Every five minutes it takes the highest CalVer tag in the registry and, if it
-differs from what is actually serving:
-
-1. **refuses to interrupt a ride** — a server that answers with riders on it
-   defers to the next tick. A count it cannot read from a *responding* server
-   also defers: a missed deploy costs five minutes, a deploy into a group ride
-   costs the ride.
-2. `pg_dump`s to `backups/`. No dump, no deploy.
-3. pulls and `up -d`s the new tag, then waits up to `GATE_TIMEOUT` for
-   `/api/version` to report *that* tag and `/api/healthz` to answer 200. It
-   asks over `127.0.0.1:8080`, which the stack publishes for exactly this —
-   loopback is not an exposure, and `/metrics` has no route through Caddy.
-4. on failure, retags to the previous release and brings it back — then checks
-   that too, because a failed rollback is the one thing that must page.
-5. only then writes the new tag into `.env`. A run killed before that leaves
-   `.env` naming the last release known to work.
-
-It never restores a dump. That would discard every ride recorded since the
-dump, which is worse than the bug being rolled back from — restoring is a
-break-glass path with a person present. Automated recovery stops at the image.
-
-**Rolling back on purpose**, or holding a version: put the tag in
-`WATTROOM_PIN` in `.env` and `up -d wattroom`. While that is set the updater
-leaves the box alone — without it, tracking would put the newest release
-straight back. A failed health gate sets the same field for you, so a bad
-release cannot be retried every five minutes overnight. Clear it to resume.
-
-Watch it with `journalctl -u wattroom-update -f`, or run it once by hand with
-`systemctl start wattroom-update`.
-
-Planned maintenance is `docker compose -f docker-compose.prod.yml stop wattroom`
-— Caddy then serves maintenance.html (which polls /api/healthz and reloads
-itself) until `up -d wattroom` brings the binary back. No flag, no mode.
-
-DNS: wattroom.ch A/AAAA to the VM. Caddy takes TLS from there. Open 80, 443
-(tcp+udp), 7880-7881, and LiveKit's RTC UDP range on the VM firewall.
+If you are self-hosting, the three lines above are a complete deploy. Automate
+them wherever your other services are automated, and keep two properties:
+never restart into a ride (`wattroom_room_riders` on `/metrics` tells you), and
+take a dump first, because migrations run at boot and are forward-only.
 
 ## Monitoring
 

@@ -14,6 +14,18 @@
 > reviewers. The rest of the decision is unchanged; only who writes the notes
 > is. See the "changelog is written, not generated" paragraph below.
 
+> **Amended again 2026-09-01.** The self-converging deploy is **not in this
+> repo**. It lives with the operator, in `janlauber/homelab`, as carve-out 2 of
+> that repo's update policy — modelled on the `stutz` auto-updater it already
+> had. Two earlier amendments here (the homelab pin, then GHCR tracking) were
+> written against a production this repo had guessed at: the app's
+> `deploy/docker-compose.prod.yml` is not what runs, its Caddy is dropped
+> because an edge proxy owns 80/443, and its Prometheus is dropped because the
+> homelab has one metrics system. `deploy/` remains the self-hosting reference
+> and the source of the alert rules; **releases are this repo's job, deploying
+> them is the operator's.** Everything below about tags, changelogs, gates and
+> expand/contract still stands — those are release properties, not deploy ones.
+
 ## Context
 
 Jan is the only person with access to the homelab. Every deploy, every rollback, and every "did that break something" is therefore gated on his attention, and a deploy costs enough attention to be worth skipping — which is how a project ends up with a production running an image nobody can name.

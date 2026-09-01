@@ -77,6 +77,6 @@ Parked with reason: 30 s disconnect grace for elimination modes.
 
 - [ ] Strava auto-upload; account export-all + delete
 - [x] Production compose stack on a single VM (ADR-0002): Dockerfile + GHCR publish, Caddy TLS, pg_dump backups; **wattroom.ch is live** and serving
-- [ ] Release-driven deploy switched on: the systemd timer from ADR-0019 installed on the VM with a pin-repo checkout. Until then, deploys are manual — releases do not roll themselves out
+- [x] Release-driven deploy: lives in `janlauber/homelab` (carve-out 2 of its update policy), not here — this repo cuts releases, the operator's repo rolls them out
 - [ ] Calibration guidance, sensor dropout handling, UX polish
 - [ ] Alpha: weekly rides with the crew — success = they keep choosing it
