@@ -233,7 +233,11 @@
 		<div class="flex min-h-0 flex-1">
 			<div class="border-ink/5 flex w-60 shrink-0 flex-col border-r">
 				<div class="p-2">
+					<!-- Focused on open: the fastest way through 27 workouts is to
+					     start typing, and nobody should have to click into the box
+					     first. -->
 					<input
+						{@attach (node) => node.focus()}
 						bind:value={query}
 						placeholder="Find a workout…"
 						class="input input-xs w-full"
