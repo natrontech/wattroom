@@ -231,13 +231,17 @@ Two rules that were not in the mock and only showed up in the real thing:
   content runs the column, and a section that would stretch too far goes
   multi-column at `xl` instead — Home's right rail, the workout cards, the
   ride charts. A new route does not choose a width, and never centres.
-- **The jukebox dock and a modal keep out of each other's way.** The dock is
-  above everything because RMF wants the player visible while media plays, so
-  a modal may not bury it — which put it straight over the session picker's
-  action bar. A modal counts itself open (`modals.svelte`); while one is, the
-  dock treats a covered stage as no seat and goes to its corner, and the modal
-  keeps a gutter above the dock's published height. Nothing hidden, nothing
-  overlaid. A new modal uses `Modal` or attaches `countModal`.
+- **The jukebox dock and a modal keep out of each other's way.** RMF wants
+  the player visible while media plays and nothing of *ours* drawn over it —
+  not the player over a dialog the rider opened. So the floating dock sits
+  below dialogs, drawers and toasts, and outranks only the stage while seated
+  in it (#395). A modal counts itself open (`modals.svelte`); while one is,
+  the dock treats a covered stage as no seat and goes to its corner, and the
+  modal keeps a gutter above the dock's published height. The seat is
+  re-measured every frame while offered, so a banner or a message above the
+  stage moves the player with it; a fullscreen that does not contain the dock
+  pauses this client's player until it exits. A new modal uses `Modal` or
+  attaches `countModal`.
 
 Also recorded: the session picker opens for **one intent** — start, or plan —
 with the other a link away; starting and planning had been one modal with two

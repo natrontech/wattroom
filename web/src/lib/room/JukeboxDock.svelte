@@ -274,8 +274,27 @@
 		}
 	}
 
+	// Fullscreen draws only the fullscreen element's subtree: a fixed dock
+	// outside it is not rendered at all while the music plays on — the exact
+	// RMF condition the dock exists to satisfy (#395). Pause this client's
+	// player for the duration; on exit the chase re-seeks and resumes.
+	let hiddenByFullscreen = $state(false);
+	$effect(() => {
+		const check = () => {
+			const full = document.fullscreenElement;
+			hiddenByFullscreen = !!full && !!shell && !full.contains(shell);
+			if (!hiddenByFullscreen) tickChase();
+		};
+		document.addEventListener('fullscreenchange', check);
+		return () => document.removeEventListener('fullscreenchange', check);
+	});
+
 	function tickChase() {
 		if (!player || !playerReady) return;
+		if (hiddenByFullscreen) {
+			if (player.getPlayerState?.() === PLAYING) player.pauseVideo?.();
+			return;
+		}
 		const live = conn?.live;
 		const deck = live?.tick?.jukebox;
 		if (live?.status !== 'live' || !deck) {
@@ -445,14 +464,19 @@
 {#if conn}
 	<!-- Until it is dragged the dock sits in the corner, clear of the side
 	     panel at whatever width the rider left it, and above the chat button
-	     the z-[60] dock would otherwise bury below xl (#219). -->
+	     below xl (#219). Stacking (#395): floating, it sits BELOW dialogs,
+	     drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over the
+	     player, not a dialog the rider opened over it. Seated, it has to clear
+	     the stage it sits in, and a popped-out stage is z-[55]. -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
 		data-seated={seat ? '' : undefined}
 		{@attach (node) => keepSize(node, PANE)}
 		{@attach (node) => (seat ? undefined : resizePane(node, PANE))}
-		class="bg-surface fixed z-[60] flex flex-col overflow-hidden rounded-lg {seat
+		class="bg-surface fixed {seat
+			? 'z-[56]'
+			: 'z-30'} flex flex-col overflow-hidden rounded-lg {seat
 			? ''
 			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer || speaker
 			? ''
