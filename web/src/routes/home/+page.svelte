@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { ArrowRight, CalendarClock, Flame } from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
@@ -42,27 +43,14 @@
 	// place this belongs — ux.md: never interrupt a rider mid-interval.
 	void changelog.load();
 
-	let rooms = $state<RoomEntry[] | null>(null);
 	let rides = $state<Ride[] | null>(null);
 	let error = $state<string | null>(null);
 	let form = $state<LoadSummary | null>(null);
 
-	async function load() {
-		const res = await api<{ rooms: RoomEntry[] }>('/api/rooms');
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		error = null;
-		rooms = res.data.rooms;
-	}
-
-	$effect(() => {
-		// Presence stays honest while the page sits open: pushed (#251), not
-		// polled — every lobby ping re-fetches the room list.
-		presence.version;
-		if (account.loaded && account.me) void load();
-	});
+	// The shell's presence store is this list, re-fetched on every lobby ping
+	// (#251). Home used to fetch it again, so each ping cost two identical
+	// requests; the rail feed carries everything this page reads.
+	const rooms = $derived(presence.loaded ? presence.rooms : null);
 	$effect(() => {
 		if (!account.loaded || !account.me) return;
 		void fetchProgression().then((res) => {
@@ -80,11 +68,9 @@
 	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
 	const planned = $derived(
 		(rooms ?? [])
-			.filter((r) => r.nextSession)
+			.filter((r) => r.next)
 			.sort(
-				(a, b) =>
-					Date.parse(a.nextSession!.startsAt) -
-					Date.parse(b.nextSession!.startsAt),
+				(a, b) => Date.parse(a.next!.startsAt) - Date.parse(b.next!.startsAt),
 			),
 	);
 	const week = $derived.by(() => {
@@ -113,18 +99,12 @@
 		joinCode.length > 0 && !/^[A-Z0-9]{0,6}$/i.test(joinCode),
 	);
 	// docs/SPEC.md ownership cap: at 3 owned rooms the affordance disables with
-	// the reason, instead of a 409 on click (ux.md capability gating). The
-	// presence feed carries no role, so the count comes from the room list.
-	let ownedCount = $state(0);
-	$effect(() => {
-		presence.version;
-		if (!account.me) return;
-		void api<{ rooms: { role: string }[] }>('/api/rooms').then((res) => {
-			if (res.ok)
-				ownedCount = res.data.rooms.filter((r) => r.role === 'owner').length;
-		});
-	});
-	const ownedOut = $derived(ownedCount >= 3);
+	// the reason, instead of a 409 on click (ux.md capability gating). Off the
+	// presence feed the shell already holds — fetching /api/rooms again here
+	// doubled the request on every ping.
+	const ownedOut = $derived(
+		(rooms ?? []).filter((room) => room.role === 'owner').length >= 3,
+	);
 
 	async function createRoom() {
 		roomBusy = true;
@@ -160,7 +140,7 @@
 				{error}
 				{#snippet action()}
 					<button
-						onclick={() => void load()}
+						onclick={() => location.reload()}
 						class="text-muted hover:text-ink text-xs underline">Retry</button
 					>
 				{/snippet}
@@ -206,18 +186,18 @@
 							href="/r/{room.slug}"
 							class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
 						>
-							<span
-								class="{room.phase === 'running' || room.phase === 'countdown'
-									? 'bg-watt glow-stroke'
-									: 'bg-z4'} h-2.5 w-2.5 shrink-0 rounded-full"
-							></span>
+							{#if room.live}
+								<RidingBars size={12} />
+							{:else}
+								<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"></span>
+							{/if}
 							<div class="min-w-0">
 								<p class="font-display font-bold">
 									{room.icon ? `${room.icon} ` : ''}{room.name}
 								</p>
 								<p class="text-muted mt-0.5 text-xs">
 									{(room.riders ?? []).join(', ')}
-									{#if room.phase === 'running' || room.phase === 'countdown'}
+									{#if room.live}
 										· riding now{:else}
 										· in the lounge{/if}
 								</p>
@@ -330,10 +310,10 @@
 							<CalendarClock size={15} class="text-muted shrink-0" />
 							<div class="min-w-0">
 								<p class="truncate text-sm font-medium">
-									{room.nextSession?.workoutName}
+									{room.next?.workoutName}
 								</p>
 								<p class="text-muted text-xs">
-									{formatWhen(room.nextSession?.startsAt ?? '')} · {room.name}
+									{formatWhen(room.next?.startsAt ?? '')} · {room.name}
 								</p>
 							</div>
 						</a>
