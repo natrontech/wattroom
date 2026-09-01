@@ -941,113 +941,113 @@
 				onEndGame={() => live.control('game-end')}
 				onPick={() => (setup = true)}
 			/>
-			{#if phase === 'lounge' && (upcoming.length > 0 || icsToken)}
-				<!-- The plan, phrased like a plan (#181 feedback): what, when, how
-			     long, whose idea — a card, not a floating row of monospace. The
-			     card also shows with nothing in it (#325): the subscribe link
-			     used to be hidden behind having a plan already. -->
-				<div
-					class="border-neon/30 bg-surface-raised mt-4 max-w-2xl rounded-lg border"
-				>
-					{#each upcoming as entry, i (entry.id)}
-						<div
-							class="border-ink/5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0"
-						>
-							<div class="min-w-0 flex-1">
-								<p class="eyebrow">
-									{i === 0 ? 'next session in this room' : 'after that'}
-								</p>
-								<p class="font-display truncate text-base font-bold">
-									{entry.workoutName}
-								</p>
-								<p class="text-muted mt-0.5 text-xs">
-									{formatWhen(entry.startsAt, true)} ·
-									{Math.round(
-										parseSharedSegments(entry.workoutJson).reduce(
-											(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
-											0,
-										) / 60,
-									)} min · planned by {entry.createdBy}
-								</p>
-							</div>
-							<span class="flex shrink-0 items-center gap-3">
-								{#if due(entry.startsAt)}
-									{#if canControl}
-										<button
-											onclick={() => startScheduled(entry)}
-											class="btn btn-primary">Start now</button
-										>
-									{:else}
-										<span class="text-watt glow-text text-xs"
-											>starting soon</span
-										>
-									{/if}
-								{/if}
+		{/if}
+		<!-- Outside the tabs on purpose: what the room is doing next is the
+	     room's business on either of them (rider report). -->
+		{#if phase === 'lounge' && (upcoming.length > 0 || icsToken)}
+			<!-- The plan, phrased like a plan (#181 feedback): what, when, how
+		     long, whose idea — a card, not a floating row of monospace. The
+		     card also shows with nothing in it (#325): the subscribe link
+		     used to be hidden behind having a plan already. -->
+			<div
+				class="border-neon/30 bg-surface-raised mt-4 max-w-2xl rounded-lg border"
+			>
+				{#each upcoming as entry, i (entry.id)}
+					<div
+						class="border-ink/5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0"
+					>
+						<div class="min-w-0 flex-1">
+							<p class="eyebrow">
+								{i === 0 ? 'next session in this room' : 'after that'}
+							</p>
+							<p class="font-display truncate text-base font-bold">
+								{entry.workoutName}
+							</p>
+							<p class="text-muted mt-0.5 text-xs">
+								{formatWhen(entry.startsAt, true)} ·
+								{Math.round(
+									parseSharedSegments(entry.workoutJson).reduce(
+										(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
+										0,
+									) / 60,
+								)} min · planned by {entry.createdBy}
+							</p>
+						</div>
+						<span class="flex shrink-0 items-center gap-3">
+							{#if due(entry.startsAt)}
 								{#if canControl}
 									<button
-										onclick={() => openMove(entry)}
-										class="text-muted hover:text-ink text-[11px] underline"
-										>move</button
+										onclick={() => startScheduled(entry)}
+										class="btn btn-primary">Start now</button
 									>
-									<button
-										onclick={() => onUnschedule(entry.id)}
-										class="text-muted hover:text-ink text-[11px] underline"
-										>remove</button
-									>
+								{:else}
+									<span class="text-watt glow-text text-xs">starting soon</span>
 								{/if}
-							</span>
-							{#if canControl && movingId === entry.id}
-								<div class="flex w-full flex-wrap items-center gap-2 pt-1">
-									<WhenPicker bind:value={moveAt} />
-									<button
-										onclick={() => {
-											onReschedule(entry.id, new Date(moveAt).toISOString());
-											movingId = null;
-										}}
-										disabled={adminBusy || !moveAt}
-										class="btn btn-secondary btn-xs disabled:opacity-40"
-										>Move</button
-									>
-								</div>
 							{/if}
-						</div>
-					{/each}
-					{#if upcoming.length === 0}
-						<p class="text-muted px-4 py-3 text-xs">
-							Nothing planned in this room yet — <em>Pick a workout</em>, then
-							plan it for later instead of starting it.
-						</p>
-					{/if}
-					{#if icsToken}
-						<div
-							class="border-ink/5 flex flex-wrap items-center gap-4 border-t px-4 py-2"
-						>
-							<a
-								href="/sessions"
-								class="text-muted hover:text-ink text-[11px] underline"
-								>all your sessions</a
-							>
-							<button
-								onclick={copyIcsUrl}
-								class="text-muted hover:text-ink text-[11px] underline"
-								>subscribe to this room</button
-							>
-							{#if role === 'owner'}
+							{#if canControl}
 								<button
-									onclick={() => {
-										onRotateIcs();
-										toasts.push(
-											'Calendar link reset — shared links stop working.',
-										);
-									}}
+									onclick={() => openMove(entry)}
 									class="text-muted hover:text-ink text-[11px] underline"
-									>reset link</button
+									>move</button
+								>
+								<button
+									onclick={() => onUnschedule(entry.id)}
+									class="text-muted hover:text-ink text-[11px] underline"
+									>remove</button
 								>
 							{/if}
-						</div>
-					{/if}
-				</div>
-			{/if}
+						</span>
+						{#if canControl && movingId === entry.id}
+							<div class="flex w-full flex-wrap items-center gap-2 pt-1">
+								<WhenPicker bind:value={moveAt} />
+								<button
+									onclick={() => {
+										onReschedule(entry.id, new Date(moveAt).toISOString());
+										movingId = null;
+									}}
+									disabled={adminBusy || !moveAt}
+									class="btn btn-secondary btn-xs disabled:opacity-40"
+									>Move</button
+								>
+							</div>
+						{/if}
+					</div>
+				{/each}
+				{#if upcoming.length === 0}
+					<p class="text-muted px-4 py-3 text-xs">
+						Nothing planned in this room yet — <em>Pick a workout</em>, then
+						plan it for later instead of starting it.
+					</p>
+				{/if}
+				{#if icsToken}
+					<div
+						class="border-ink/5 flex flex-wrap items-center gap-4 border-t px-4 py-2"
+					>
+						<a
+							href="/sessions"
+							class="text-muted hover:text-ink text-[11px] underline"
+							>all your sessions</a
+						>
+						<button
+							onclick={copyIcsUrl}
+							class="text-muted hover:text-ink text-[11px] underline"
+							>subscribe to this room</button
+						>
+						{#if role === 'owner'}
+							<button
+								onclick={() => {
+									onRotateIcs();
+									toasts.push(
+										'Calendar link reset — shared links stop working.',
+									);
+								}}
+								class="text-muted hover:text-ink text-[11px] underline"
+								>reset link</button
+							>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/if}
 		<!-- Pairing must never take voice and camera with it: this row stayed
 		     hidden for the whole ride once a trainer connected, which also left
