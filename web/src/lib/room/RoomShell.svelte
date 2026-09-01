@@ -908,6 +908,7 @@
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
+		{riders}
 		messages={live.chatLog}
 		events={[...live.roomEvents, ...reminders]}
 		reactions={live.chatReactions}

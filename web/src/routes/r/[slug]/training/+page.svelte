@@ -102,7 +102,11 @@
 
 		{#if focus === 'sprint' && room.sprint}
 			<section class="min-h-0 px-6">
-				<SprintMoment sprint={room.sprint} myWatts={room.you.watts} />
+				<SprintMoment
+					sprint={room.sprint}
+					myWatts={room.you.watts}
+					roster={room.riders}
+				/>
 			</section>
 		{:else if focus === 'game' && room.game}
 			<section class="min-h-0 overflow-y-auto px-6">
