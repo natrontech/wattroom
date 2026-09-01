@@ -16,6 +16,8 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.3] - 2026-09-01
+
 ### Added
 
 - The room's chat now carries what the room did with its plan: a session
@@ -138,6 +140,7 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.2...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.3...HEAD
+[2026.09.3]: https://github.com/natrontech/wattroom/compare/2026.09.2...2026.09.3
 [2026.09.2]: https://github.com/natrontech/wattroom/compare/2026.09.1...2026.09.2
 [2026.09.1]: https://github.com/natrontech/wattroom/releases/tag/2026.09.1
