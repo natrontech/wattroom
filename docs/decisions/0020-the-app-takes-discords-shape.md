@@ -123,6 +123,19 @@ Underneath the focus, always, the **crew**: a camera thumb and live watts,
 w/kg, rpm and bpm for every rider. A group-training surface that shows only
 your own numbers is a solo app with a chat window attached.
 
+The focus slot pays for itself four times, and this is what makes it a shape
+rather than a special case for video. It holds, in priority order:
+
+| Focus | When |
+| --- | --- |
+| **Sprint moment** | a 15 s all-out window is armed — WATTROOM.md's "one place the UI is allowed to go loud", so it takes the screen and gives it back |
+| **Game** | the session is a game mode rather than a workout (`GamePanel`) |
+| **Shared screen** | someone is sharing (LiveKit) |
+| **Your instrument** | the default, and what returns when the others end |
+
+Cheers (`CheerLayer`) stay an overlay across all four — they are the room
+reacting, not a thing to look at.
+
 **The jukebox is frame-level, not a place — and that is a licence term, not a
 preference.** WATTROOM.md's YouTube RMF rules require the player tile to be
 ≥ 200 × 200, always visible while media plays, never overlaid, and never
