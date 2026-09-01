@@ -31,6 +31,10 @@ export interface Me {
 	email?: string | null;
 	notifyPlanned?: boolean;
 	mailAvailable?: boolean;
+	/** Appearance follows the account (#326): the palette choice JSON ("" =
+	 * the default) and the scheme ("" = auto); null = never chosen anywhere. */
+	accentPalette?: string | null;
+	colorScheme?: string | null;
 }
 
 function createAccountStore() {

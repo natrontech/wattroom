@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import '../app.css';
 	import '@fontsource/barlow/400.css';
 	import '@fontsource/barlow/600.css';
@@ -18,7 +19,8 @@
 	// /dev/components before this (#329); the scheme was correct only because
 	// RoomRail imports it and the shell renders RoomRail.
 	import '$lib/palette.svelte';
-	import '$lib/theme.svelte';
+	import { theme } from '$lib/theme.svelte';
+	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -45,6 +47,18 @@
 	const profile = createProfileStore();
 	$effect(() => {
 		if (account.me) pullProfile(profile);
+	});
+
+	// Appearance follows the account (#326): the server's choice wins over
+	// this device's; a device that chose first pushes its choice up. Untracked:
+	// adopting writes the stores it reads, and this effect is about `me`.
+	$effect(() => {
+		const me = account.me;
+		if (!me) return;
+		untrack(() => {
+			palette.adopt(me.accentPalette);
+			theme.adopt(me.colorScheme);
+		});
 	});
 
 	// ADR-0009: everything behind sign-in. /login is the only public route;

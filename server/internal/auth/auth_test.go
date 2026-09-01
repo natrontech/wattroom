@@ -208,6 +208,53 @@ func bareService() *Service {
 	return &Service{log: slog.New(slog.DiscardHandler), providers: map[string]provider{}, secure: false}
 }
 
+// Appearance follows the account (#326): the choice round-trips, "" is kept
+// as "the default, chosen" (not null), junk is refused, and no cookie is 401.
+func TestUpdateAppearance(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	cookie := rec.Result().Cookies()[0]
+	patch := func(body string) (int, meResponse) {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me/appearance", strings.NewReader(body))
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		s.handleUpdateAppearance(w, req)
+		var got meResponse
+		_ = json.NewDecoder(w.Body).Decode(&got)
+		return w.Code, got
+	}
+
+	code, got := patch(`{"accentPalette":"{\"kind\":\"preset\",\"identity\":\"tron\"}","colorScheme":"light"}`)
+	if code != http.StatusOK || got.AccentPalette == nil || *got.AccentPalette != `{"kind":"preset","identity":"tron"}` || got.ColorScheme == nil || *got.ColorScheme != "light" {
+		t.Fatalf("round trip: %d %+v", code, got)
+	}
+	// Absent keeps; "" is a value.
+	code, got = patch(`{"colorScheme":""}`)
+	if code != http.StatusOK || got.AccentPalette == nil || got.ColorScheme == nil || *got.ColorScheme != "" {
+		t.Fatalf("partial patch: %d %+v", code, got)
+	}
+	for name, body := range map[string]string{
+		"scheme":  `{"colorScheme":"sepia"}`,
+		"long":    `{"accentPalette":"` + strings.Repeat("x", maxPaletteChoice+1) + `"}`,
+		"unknown": `{"font":"comic"}`,
+	} {
+		if code, _ := patch(body); code != http.StatusBadRequest {
+			t.Errorf("%s: expected 400, got %d", name, code)
+		}
+	}
+
+	w := httptest.NewRecorder()
+	s.handleUpdateAppearance(w, httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me/appearance", strings.NewReader(`{}`)))
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("no cookie: expected 401, got %d", w.Code)
+	}
+}
+
 func TestMeUnauthenticated(t *testing.T) {
 	w := httptest.NewRecorder()
 	bareService().handleMe(w, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil))
