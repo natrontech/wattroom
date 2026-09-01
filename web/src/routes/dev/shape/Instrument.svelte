@@ -11,4 +11,10 @@
 	}: { you: RoomRider; compact?: boolean; targetLabel?: string } = $props();
 </script>
 
-<Instrument {you} {compact} {targetLabel} />
+<Instrument
+	watts={you.watts}
+	target={you.target}
+	ftp={you.ftp}
+	{compact}
+	{targetLabel}
+/>

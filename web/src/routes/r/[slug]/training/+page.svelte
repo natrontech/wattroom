@@ -125,7 +125,11 @@
 			</section>
 		{:else}
 			<section class="grid min-h-0 content-center px-6">
-				<Instrument you={room.you} />
+				<Instrument
+					watts={room.you.watts}
+					target={room.you.target}
+					ftp={room.you.ftp}
+				/>
 			</section>
 		{/if}
 
@@ -139,11 +143,19 @@
 				{#if focus === 'media'}
 					<!-- Under the player, never over it (RMF). -->
 					<div class="min-w-0 flex-1">
-						<Instrument you={room.you} compact />
+						<Instrument
+							watts={room.you.watts}
+							target={room.you.target}
+							ftp={room.you.ftp}
+							compact
+						/>
 					</div>
 				{/if}
 				<SecondaryRow
-					you={room.you}
+					cadence={room.you.cadence}
+					hr={room.you.hr}
+					watts={room.you.watts}
+					kg={room.you.kg}
 					bias={room.bias}
 					small={focus === 'media'}
 					onBias={room.trainer ? (step) => room.nudgeBias(step) : undefined}

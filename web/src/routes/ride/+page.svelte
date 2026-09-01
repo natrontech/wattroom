@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Instrument from '$lib/room/Instrument.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -569,65 +570,22 @@
 			</div>
 		{/if}
 
-		<!-- The number, and where it sits against the target. -->
-		<section class="panel mt-4 flex items-center gap-8 px-6 py-5">
-			<div class="shrink-0">
-				<span
-					class="text-watt glow-text-strong font-display text-6xl leading-none font-bold tabular-nums"
-					>{watts}</span
-				>
-				<span class="text-muted ml-1 text-sm">W</span>
-			</div>
-			<div class="flex-1">
-				<div class="bg-surface relative h-8 overflow-hidden rounded">
-					{#if target > 0}
-						<div
-							class="bg-neon/35 absolute inset-y-0"
-							style="left: {pct(target - band)}%; width: {pct(target + band) -
-								pct(target - band)}%"
-						></div>
-					{/if}
-					<div
-						class="bg-watt/70 absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-						style="width: {pct(watts)}%"
-					></div>
-					{#if target > 0}
-						<div
-							class="bg-neon absolute inset-y-0 w-0.5"
-							style="left: {pct(target)}%"
-						></div>
-					{/if}
-				</div>
-				<div
-					class="text-muted mt-1.5 flex justify-between font-mono text-[10px] tabular-nums"
-				>
-					<span>0</span>
-					<span>
-						{target > 0 ? `target ${target} W` : 'no target'}
-						{#each bands as b (b.text)}
-							<!-- The band is this block's point; colour answers "am I doing it". -->
-							<span
-								class="{b.inBand
-									? 'text-z4'
-									: 'text-z5'} font-semibold uppercase"
-							>
-								· at {b.text}</span
-							>
-						{/each}
-					</span>
-					<span>{Math.round(ftp * 1.5)}</span>
-				</div>
-			</div>
-			<div class="shrink-0 text-right">
-				<div
-					class="font-display text-2xl leading-none font-semibold tabular-nums {ZONE_TEXT[
-						zone
-					]}"
-				>
-					Z{zone}
-				</div>
-				<div class="eyebrow mt-1">zone</div>
-			</div>
+		<!-- The same instrument the room uses (ADR-0020, #386). These were two
+		     designs for one activity: a number beside a bar here, a needle over
+		     a tolerance band there. The number travels with your power now, so
+		     "left or right of the bright slot" reads before any digit does. -->
+		<section class="mt-4">
+			<Instrument {watts} {target} {ftp} />
+			{#if bands.length > 0}
+				<p class="text-muted mt-2 text-center text-xs">
+					{#each bands as b (b.text)}
+						<!-- The band is this block's point; colour answers "am I doing it". -->
+						<span class="{b.inBand ? 'text-z4' : 'text-z5'} font-semibold"
+							>at {b.text}</span
+						>
+					{/each}
+				</p>
+			{/if}
 		</section>
 
 		<div class="mt-3 flex flex-wrap items-center gap-x-8 gap-y-3">

@@ -17,4 +17,12 @@
 	} = $props();
 </script>
 
-<SecondaryRow {you} {bias} {small} {onBias} />
+<SecondaryRow
+	cadence={you.cadence}
+	hr={you.hr}
+	watts={you.watts}
+	kg={you.kg}
+	{bias}
+	{small}
+	{onBias}
+/>

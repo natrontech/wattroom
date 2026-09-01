@@ -8,24 +8,30 @@
 	// slot" reads before any digit does. clamp() keeps it on screen at 0 W and
 	// at a sprint without a resize observer.
 	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
-	import { targetState, type RoomRider } from '$lib/room/view';
-	import { wkg } from '$lib/format';
+	import { targetState } from '$lib/room/view';
 
+	// Primitives, not a RoomRider: the solo ride and the ramp test have watts
+	// and a target without a roster to belong to, and coupling the instrument
+	// to the room's view model is what kept them on a separate design.
 	let {
-		you,
+		watts,
+		target,
+		ftp,
 		compact = false,
 		targetLabel = 'target',
 	}: {
-		you: RoomRider;
+		watts: number;
+		target: number;
+		ftp: number;
 		/** Collapsed to a single bar — what it becomes under a shared player. */
 		compact?: boolean;
 		/** The ramp test prescribes a step, not a target. */
 		targetLabel?: string;
 	} = $props();
 
-	const pct = (w: number) => fillPct(w, you.ftp);
-	const state = $derived(targetState(you));
-	const zone = $derived(zoneOf(you.watts, you.ftp));
+	const pct = (w: number) => fillPct(w, ftp);
+	const state = $derived(targetState({ watts, target }));
+	const zone = $derived(zoneOf(watts, ftp));
 </script>
 
 {#snippet track(height: string)}
@@ -37,9 +43,9 @@
 				<!-- The slot you are aiming at. -->
 				<div
 					class="bg-neon/30 absolute inset-y-0"
-					style="left: {pct(you.target - state.band)}%; width: {pct(
-						you.target + state.band,
-					) - pct(you.target - state.band)}%"
+					style="left: {pct(target - state.band)}%; width: {pct(
+						target + state.band,
+					) - pct(target - state.band)}%"
 				></div>
 			{/if}
 			<!-- Literal zone class: Tailwind scans source text, so a composed
@@ -47,14 +53,14 @@
 			     is contrast-gated at 3:1 and dimming it voids that. -->
 			<div
 				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-				style="width: {pct(you.watts)}%"
+				style="width: {pct(watts)}%"
 			>
 				<div class="{ZONE_BG[zone]} h-full w-full"></div>
 			</div>
 			{#if state.has}
 				<div
 					class="bg-neon absolute inset-y-0 w-1"
-					style="left: {pct(you.target)}%"
+					style="left: {pct(target)}%"
 				></div>
 			{/if}
 		</div>
@@ -66,7 +72,7 @@
 		<span class="flex shrink-0 items-baseline gap-1.5">
 			<span
 				class="font-display text-watt glow-text-strong text-4xl leading-none font-bold tabular-nums"
-				>{you.watts}</span
+				>{watts}</span
 			>
 			<span class="eyebrow">w</span>
 		</span>
@@ -75,18 +81,18 @@
 			class="shrink-0 text-xs tabular-nums {state.inBand
 				? 'text-z4'
 				: 'text-muted'}"
-			>{state.has ? `${targetLabel} ${you.target} W` : 'no target'}</span
+			>{state.has ? `${targetLabel} ${target} W` : 'no target'}</span
 		>
 	</div>
 {:else}
 	<div class="relative h-28">
 		<div
 			class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-			style="left: clamp(5rem, {pct(you.watts)}%, calc(100% - 5rem))"
+			style="left: clamp(5rem, {pct(watts)}%, calc(100% - 5rem))"
 		>
 			<span
 				class="font-display text-watt glow-text-strong block text-[6.5rem] leading-[0.85] font-bold tabular-nums"
-				>{you.watts}</span
+				>{watts}</span
 			>
 			<span class="eyebrow">watts</span>
 		</div>
@@ -106,11 +112,11 @@
 			{#if !state.has}
 				no {targetLabel} — spin easy
 			{:else if state.inBand}
-				on {targetLabel} · {you.target} W
+				on {targetLabel} · {target} W
 			{:else}
-				{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {you.target}
+				{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {target}
 			{/if}
 		</span>
-		<span>{Math.round(you.ftp * 1.5)}</span>
+		<span>{Math.round(ftp * 1.5)}</span>
 	</div>
 {/if}

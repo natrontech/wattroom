@@ -3,15 +3,22 @@
 	// boxes. Bias keeps thumb-sized targets whatever else shrinks: it is the
 	// one control a rider reaches for mid-interval (ux.md).
 	import { wkg } from '$lib/format';
-	import type { RoomRider } from '$lib/room/view';
 
+	// Primitives, not a RoomRider: the solo ride and the ramp test have these
+	// numbers without a roster to belong to.
 	let {
-		you,
+		cadence,
+		hr,
+		watts,
+		kg,
 		bias,
 		small = false,
 		onBias,
 	}: {
-		you: RoomRider;
+		cadence: number;
+		hr: number;
+		watts: number;
+		kg: number;
 		bias: number;
 		small?: boolean;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
@@ -20,7 +27,7 @@
 </script>
 
 <div class="flex items-center gap-6">
-	{#each [{ label: 'rpm', value: `${you.cadence}` }, { label: 'bpm', value: `${you.hr}` }, { label: 'w/kg', value: wkg(you.watts, you.kg) }] as stat (stat.label)}
+	{#each [{ label: 'rpm', value: `${cadence}` }, { label: 'bpm', value: `${hr}` }, { label: 'w/kg', value: wkg(watts, kg) }] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small

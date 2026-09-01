@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Instrument from '$lib/room/Instrument.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -158,26 +159,15 @@
 		</div>
 	{:else if !done}
 		<div class="panel mt-8 p-8">
-			<div class="flex items-end justify-between gap-6">
-				<div>
-					<div class="flex items-baseline gap-2">
-						<span
-							class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
-							>{session.sample?.watts ?? 0}</span
-						>
-						<span class="text-muted text-xl">W</span>
-					</div>
-					<p class="eyebrow mt-2">your power</p>
-				</div>
-				<div class="text-right">
-					<div
-						class="font-display text-4xl leading-none font-bold tabular-nums"
-					>
-						{session.target}
-					</div>
-					<p class="eyebrow mt-2">hold this</p>
-				</div>
-			</div>
+			<!-- The same instrument the room and the solo ride use (ADR-0020,
+			     #386) — a ramp prescribes a step rather than a target, and that
+			     is the only difference. -->
+			<Instrument
+				watts={session.sample?.watts ?? 0}
+				target={session.target}
+				ftp={profile.current.ftp}
+				targetLabel="step"
+			/>
 
 			<div class="mt-8 flex items-center justify-between text-sm">
 				<span class="text-muted">
