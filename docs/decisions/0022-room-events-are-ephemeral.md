@@ -1,4 +1,4 @@
-# ADR-0019: Room events ride the tick and are never persisted
+# ADR-0022: Room events ride the tick and are never persisted
 
 - Status: accepted
 - Date: 2026-08-31

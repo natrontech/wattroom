@@ -17,7 +17,7 @@
 | **Sprint moment** | Coach- or workout-armed 15 s all-out window; trainer flips ERG→slope. |
 | **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube playlist on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
 | **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
-| **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0019](decisions/0019-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
+| **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
