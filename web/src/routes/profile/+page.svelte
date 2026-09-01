@@ -1,11 +1,12 @@
 <script lang="ts">
 	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { Gauge, Zap } from '@lucide/svelte';
+	import { Monitor, Moon, Sun, Gauge, Zap } from '@lucide/svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
+	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
@@ -17,6 +18,12 @@
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import { fetchProgression, type TrendRide } from '$lib/progression';
 
+	const SCHEMES: { value: ThemeChoice; label: string; icon: typeof Monitor }[] =
+		[
+			{ value: 'auto', label: 'Auto', icon: Monitor },
+			{ value: 'dark', label: 'Dark', icon: Moon },
+			{ value: 'light', label: 'Light', icon: Sun },
+		];
 	const profile = createProfileStore();
 	void account.load();
 
@@ -484,6 +491,26 @@
 			<h2 class="font-display font-bold">Appearance</h2>
 			<div class="mt-4">
 				<PalettePicker />
+			</div>
+			<!-- The scheme toggle lived on the room rail until ADR-0020 retired it
+			     (#326): auto follows the OS, the ride is always dark. -->
+			<div class="mt-5 flex flex-wrap items-center gap-2">
+				<span class="eyebrow mr-1">scheme</span>
+				{#each SCHEMES as option (option.value)}
+					<button
+						onclick={() => theme.set(option.value)}
+						aria-pressed={theme.current === option.value}
+						class="btn btn-xs {theme.current === option.value
+							? 'btn-primary'
+							: 'btn-secondary'}"
+					>
+						<option.icon size={12} />
+						{option.label}
+					</button>
+				{/each}
+				<span class="text-muted text-[11px]">
+					auto follows your OS — the ride is always dark
+				</span>
 			</div>
 		</section>
 

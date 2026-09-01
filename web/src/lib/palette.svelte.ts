@@ -9,12 +9,14 @@
  * whatever the scheme setting resolves to right now, so `auto` keeps meaning
  * "follow the OS" and the choice survives the flip.
  */
+import { syncAppearance } from './appearance';
 import { TOKENS, type Theme, type ThemeFamily } from './palette';
 import {
 	DEFAULT_CHOICE,
 	DEFAULT_IDENTITY,
 	parseChoice,
 	resolveTheme,
+	serializeChoice,
 	themeFor,
 	type ThemeChoice,
 } from './themes';
@@ -85,6 +87,18 @@ window
 	.matchMedia?.('(prefers-color-scheme: light)')
 	.addEventListener?.('change', apply);
 
+function remember(next: ThemeChoice) {
+	try {
+		if (next.kind === 'preset' && next.identity === DEFAULT_IDENTITY) {
+			localStorage.removeItem(KEY);
+		} else {
+			localStorage.setItem(KEY, JSON.stringify(next));
+		}
+	} catch {
+		/* fine — the choice just won't survive a reload */
+	}
+}
+
 export const palette = {
 	get choice() {
 		return choice;
@@ -99,15 +113,25 @@ export const palette = {
 	refresh: apply,
 	select(next: ThemeChoice) {
 		choice = next;
-		try {
-			if (next.kind === 'preset' && next.identity === 'outrun') {
-				localStorage.removeItem(KEY);
-			} else {
-				localStorage.setItem(KEY, JSON.stringify(next));
-			}
-		} catch {
-			/* fine — the choice just won't survive a reload */
+		remember(next);
+		apply();
+		syncAppearance({ accentPalette: serializeChoice(next) });
+	},
+	/**
+	 * The account's choice arrived (#326). A string — "" for the default —
+	 * wins over this device; null means no device has chosen yet, so this
+	 * one's choice goes up instead of being dropped.
+	 */
+	adopt(stored: string | null | undefined) {
+		if (stored === null || stored === undefined) {
+			if (serializeChoice(choice))
+				syncAppearance({ accentPalette: serializeChoice(choice) });
+			return;
 		}
+		const next = parseChoice(stored || null);
+		if (serializeChoice(next) === serializeChoice(choice)) return;
+		choice = next;
+		remember(next);
 		apply();
 	},
 };

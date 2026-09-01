@@ -162,6 +162,8 @@ type User struct {
 	FriendCode    string
 	AvatarPreset  *string
 	IcsToken      string
+	AccentPalette *string
+	ColorScheme   *string
 }
 
 type Workout struct {

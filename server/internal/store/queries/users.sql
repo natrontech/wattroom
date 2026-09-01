@@ -29,3 +29,6 @@ select * from users where ics_token = $1;
 -- name: RotateUserIcsToken :one
 update users set ics_token = replace(gen_random_uuid()::text, '-', '')
 where id = $1 returning ics_token;
+
+-- name: UpdateUserAppearance :one
+update users set accent_palette = $2, color_scheme = $3 where id = $1 returning *;

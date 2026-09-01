@@ -88,6 +88,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
+	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
 }
 
 // handleProviders lists configured provider ids, so the web renders sign-in
@@ -421,6 +422,10 @@ type meResponse struct {
 	Email         *string `json:"email,omitempty"`
 	NotifyPlanned bool    `json:"notifyPlanned"`
 	MailAvailable bool    `json:"mailAvailable,omitempty"`
+	// Appearance follows the account (#326). Nil: no device has chosen yet;
+	// "": the default, chosen. The client tells the two apart.
+	AccentPalette *string `json:"accentPalette"`
+	ColorScheme   *string `json:"colorScheme"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -526,6 +531,65 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
 }
 
+// maxPaletteChoice bounds the stored palette choice: the client's own JSON
+// ({"kind":"custom","hue":200}) is under 40 bytes; anything near this is junk.
+const maxPaletteChoice = 120
+
+// handleUpdateAppearance stores the theme identity and the scheme toggle on
+// the account (#326), so the next device shows the same room. Both stay
+// opaque to the server beyond bounds — the palette is the client's choice
+// JSON, the scheme "", "dark" or "light". Absent keeps the current value; ""
+// is the default chosen on purpose, distinct from never chosen (null), which
+// the client reads as "push what this device has".
+func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request) {
+	if !s.sameOrigin(r) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
+		return
+	}
+	user, ok := s.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	var req struct {
+		AccentPalette *string `json:"accentPalette"`
+		ColorScheme   *string `json:"colorScheme"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That appearance update could not be read.")
+		return
+	}
+	palette := user.AccentPalette
+	if req.AccentPalette != nil {
+		if len(*req.AccentPalette) > maxPaletteChoice {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"That palette choice is not one the app makes.", "accentPalette")
+			return
+		}
+		palette = req.AccentPalette
+	}
+	scheme := user.ColorScheme
+	if req.ColorScheme != nil {
+		switch *req.ColorScheme {
+		case "", "dark", "light":
+			scheme = req.ColorScheme
+		default:
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"Scheme has to be dark, light, or empty for auto.", "colorScheme")
+			return
+		}
+	}
+	updated, err := s.store.Queries.UpdateUserAppearance(r.Context(), db.UpdateUserAppearanceParams{
+		ID: user.ID, AccentPalette: palette, ColorScheme: scheme,
+	})
+	if err != nil {
+		s.log.Error("appearance update failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"Your appearance could not be saved. Try again.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+}
+
 // fullMe is the complete GET/PATCH /api/me body: toMe plus the fields that
 // need extra queries or service config.
 func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
@@ -558,6 +622,8 @@ func (s *Service) toMe(u db.User) meResponse {
 		Email:         u.Email,
 		NotifyPlanned: u.NotifyPlanned,
 		MailAvailable: s.mailAvailable,
+		AccentPalette: u.AccentPalette,
+		ColorScheme:   u.ColorScheme,
 	}
 }
 

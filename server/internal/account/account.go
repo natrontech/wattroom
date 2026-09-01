@@ -80,6 +80,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		"createdAt":     user.CreatedAt.Time,
 		"email":         user.Email,
 		"notifyPlanned": user.NotifyPlanned,
+		"accentPalette": user.AccentPalette,
+		"colorScheme":   user.ColorScheme,
 	}
 	if !writeJSON("profile.json", profile) {
 		return

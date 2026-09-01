@@ -222,3 +222,13 @@ export function parseChoice(raw: string | null): ThemeChoice {
 	}
 	return DEFAULT_CHOICE;
 }
+
+/**
+ * The stored form of a choice: "" for the default, so the account can tell
+ * "chose the default" from "never chose" (#326). parseChoice reads it back.
+ */
+export function serializeChoice(choice: ThemeChoice): string {
+	if (choice.kind === 'preset' && choice.identity === DEFAULT_IDENTITY)
+		return '';
+	return JSON.stringify(choice);
+}

@@ -23,6 +23,7 @@ import {
 	customTheme,
 	parseChoice,
 	resolveTheme,
+	serializeChoice,
 	themeById,
 	themesFor,
 } from './themes';
@@ -247,6 +248,16 @@ describe('choice parsing', () => {
 		expect(parseChoice('{"kind":"custom","hue":-40}')).toEqual({
 			kind: 'custom',
 			hue: 320,
+		});
+	});
+
+	it('serialises the default as "" and round-trips the rest (#326)', () => {
+		expect(serializeChoice(DEFAULT_CHOICE)).toBe('');
+		const tron = { kind: 'preset', identity: 'tron' } as const;
+		expect(parseChoice(serializeChoice(tron))).toEqual(tron);
+		expect(parseChoice(serializeChoice({ kind: 'custom', hue: 200 }))).toEqual({
+			kind: 'custom',
+			hue: 200,
 		});
 	});
 
