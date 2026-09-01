@@ -43,6 +43,19 @@ if [ ${#fragments[@]} -eq 0 ]; then
 	exit 1
 fi
 
+# A hand-written entry under ## [Unreleased] is no longer read by anything, so
+# it would sit there looking published and never reach a release. Catch it
+# rather than silently ignore it — silent loss is what changelog.d/ exists to
+# prevent, and it would be absurd to reintroduce it here.
+if awk '/^## \[Unreleased\]/{f=1;next} /^## \[/ || /^\[[^]]+\]:/{f=0} f && NF' CHANGELOG.md | grep -q .; then
+	echo "CHANGELOG.md has hand-written entries under ## [Unreleased]:" >&2
+	awk '/^## \[Unreleased\]/{f=1;next} /^## \[/ || /^\[[^]]+\]:/{f=0} f && NF' CHANGELOG.md | sed 's/^/  /' >&2
+	echo "" >&2
+	echo "Nothing reads them any more. Move each into changelog.d/<category>-<slug>.md" >&2
+	echo "and remove them from CHANGELOG.md, then run this again." >&2
+	exit 1
+fi
+
 # Collate: Keep a Changelog order, not filesystem order.
 notes=$(mktemp)
 for cat in added changed deprecated removed fixed security; do

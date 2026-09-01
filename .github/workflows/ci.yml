@@ -60,7 +60,8 @@ jobs:
   changelog:
     if: >-
       github.event_name == 'pull_request' &&
-      !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+      !contains(github.event.pull_request.labels.*.name, 'no-changelog') &&
+      !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -69,6 +70,19 @@ jobs:
       - name: a rider-visible change needs a changelog line
         run: |
           changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+
+          # CHANGELOG.md is generated from changelog.d/ at release time. Editing
+          # it by hand puts text where nothing will ever read it — the entry
+          # never reaches a release and just sits there looking published.
+          if grep -qx 'CHANGELOG.md' <<<"$changed"; then
+            echo 'This PR edits CHANGELOG.md by hand.' >&2
+            echo '' >&2
+            echo 'That file is collated from changelog.d/ when a release is cut, so an' >&2
+            echo 'entry added here is never read and never ships. Put it in' >&2
+            echo 'changelog.d/<category>-<slug>.md instead — see changelog.d/README.md.' >&2
+            exit 1
+          fi
+
           if ! grep -qE '^(server/|web/src/)' <<<"$changed"; then
             echo "No server/ or web/src change — nothing to announce."
             exit 0
