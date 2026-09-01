@@ -244,7 +244,7 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ⏳ Strava auto-upload
 - ✅ Account export-all + delete (full purge)
 - ✅ Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)) — wattroom.ch is live
-- ⏳ Release-driven auto-deploy ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)) not yet installed on the VM; deploys are manual today. Grafana dashboards
+- ✅ Release-driven auto-deploy ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)) — implemented in the operator's `janlauber/homelab`, not here. Grafana dashboards
 - ✅ Calibration/spindown, sensor dropout handling, UX polish
 - ✅ Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
 
