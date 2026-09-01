@@ -39,10 +39,13 @@ hardcoded "ok":
 Rather than the three lines above, the VM tracks the newest published release
 by itself (ADR-0019). Cutting a release *is* deploying it. Install:
 
-    cp wattroom-update.sh /opt/wattroom/
-    cp wattroom-update.service wattroom-update.timer /etc/systemd/system/
-    cp wattroom-update.env.example /etc/wattroom-update.env   # then edit it
-    systemctl enable --now wattroom-update.timer
+    sudo ./install-updater.sh
+
+It checks the things that fail quietly first — no `WATTROOM_TAG` (the stack
+would refuse to start), still pinned to `:main` (nothing to roll back to), no
+readable ghcr.io credential — then installs, runs **one convergence in the
+foreground** so you see the result now rather than in the journal five minutes
+later, and only enables the timer if that run succeeded. Safe to re-run.
 
 It reuses the credential `docker login ghcr.io` already stored, so there is no
 new secret and no repo to clone.
