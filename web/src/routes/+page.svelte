@@ -3,8 +3,25 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { GITHUB_MARK } from '$lib/brand/icons';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
 
 	void account.load();
+
+	// The public page's live numbers: riders online right now, and the repo's
+	// stars. Both come from the server (one poll, no visitor calls GitHub); a
+	// failure or a zero just hides the line rather than advertising an empty
+	// room.
+	let live = $state<{ online: number; stars: number } | null>(null);
+	$effect(() => {
+		if (!account.loaded || account.me) return;
+		const tick = async () => {
+			const res = await api<{ online: number; stars: number }>('/api/live');
+			live = res.ok ? res.data : null;
+		};
+		void tick();
+		const id = setInterval(tick, 20_000);
+		return () => clearInterval(id);
+	});
 
 	const repo = 'https://github.com/natrontech/wattroom';
 
@@ -79,6 +96,9 @@
 						><path d={GITHUB_MARK} /></svg
 					>
 					<span class="hidden sm:inline">Star on GitHub</span>
+					{#if live && live.stars > 0}
+						<span class="text-muted tabular-nums">{live.stars}</span>
+					{/if}
 				</a>
 				<a
 					href="/login"
@@ -104,6 +124,19 @@
 				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded-lg px-7 py-3 text-sm font-semibold"
 				>Open your first room</a
 			>
+
+			{#if live && live.online > 0}
+				<p
+					class="text-watt glow-text font-display mt-4 flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase"
+					aria-live="polite"
+				>
+					<span
+						class="h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
+						aria-hidden="true"
+					></span>
+					{live.online} rider{live.online === 1 ? '' : 's'} online now
+				</p>
+			{/if}
 
 			<!-- The one glowing thing: a session in progress. -->
 			<div class="mt-10 w-full max-w-2xl">

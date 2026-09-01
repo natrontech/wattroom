@@ -21,6 +21,9 @@ not a second copy of `git log`.
 - The room's chat now carries what the room did with its plan: a session
   planned, moved or cancelled, one starting and one finishing, and a reminder
   ten minutes before a planned session is due.
+- The landing page carries two live numbers: how many riders are online right
+  now (it hides itself when nobody is), and the repo's real star count next to
+  the GitHub link.
 - An installer for the release-tracking timer that checks the setup before it
   switches anything on — a missing image tag, unreadable registry auth, or a
   server still on `:main` with nothing to roll back to all surface in the
