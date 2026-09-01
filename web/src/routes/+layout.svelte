@@ -23,7 +23,9 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
+	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
@@ -131,7 +133,14 @@
 			};
 	}
 
-	const railYou = $derived({ name: account.me?.displayName ?? '' });
+	// Below md the sidebar is a drawer (#391). It closes on navigation —
+	// leaving it open over the page you just asked for is the classic
+	// mobile-nav bug.
+	let drawer = $state(false);
+	$effect(() => {
+		page.url.pathname;
+		drawer = false;
+	});
 
 	// Leaving while standing in the room: the page must leave too, or you
 	// stare at a room you are no longer in with no way back in (rider report).
@@ -194,8 +203,23 @@
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
 		     rooms, the places inside the room you are standing in, messages and
 		     you. Owned here so navigating out of a room does not swap instances
-		     (#191). Hidden below md, where it becomes a drawer. -->
-		<div class="hidden shrink-0 md:block">
+		     (#191). Below md it slides in as a drawer — same instance, same
+		     order: a small window gets the shape, not a different app (#391).
+		     A PHONE is a different question and already has its answer —
+		     WATTROOM.md scopes phones read-only and /r/[slug] redirects them to
+		     the spectator view. -->
+		{#if drawer}
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div
+				class="bg-paper/60 fixed inset-0 z-40 md:hidden"
+				onclick={() => (drawer = false)}
+			></div>
+		{/if}
+		<div
+			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
+				? 'translate-x-0 shadow-2xl'
+				: '-translate-x-full'}"
+		>
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}
 				<Sidebar
@@ -223,6 +247,24 @@
 			{/if}
 		</div>
 		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+			{#if !caved}
+				<!-- The only chrome the drawer needs. It goes with the lights: the
+				     ride owns the whole screen (#113). -->
+				<div
+					class="border-ink/5 flex shrink-0 items-center gap-2 border-b px-3 py-2 md:hidden"
+				>
+					<button
+						onclick={() => (drawer = true)}
+						class="text-muted hover:text-ink rounded p-1"
+						aria-label="open navigation"><Menu size={20} /></button
+					>
+					<Logo
+						size={18}
+						live={roomConnection.current?.live.tick?.state.phase === 'running'}
+					/>
+					<span class="font-display truncate text-sm font-bold">WattRoom</span>
+				</div>
+			{/if}
 			<div class="min-h-0 flex-1 overflow-y-auto">
 				{@render children()}
 			</div>
