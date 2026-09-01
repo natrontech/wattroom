@@ -3,6 +3,9 @@
 
 .PHONY: infra dev-server dev-web web changelog protocol sqlc seed build test lint check ci release
 
+# The Go version CI lints with (go-version-file: server/go.mod); see lint.
+GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
+
 infra: ## start Postgres + LiveKit containers
 	docker compose up -d
 
@@ -45,7 +48,11 @@ lint:
 	@# .claude/worktrees/, and a shared ~/.cache/golangci-lint served their
 	@# cached results back here — reporting a finding against a file path in
 	@# somebody else's tree, which no exclusion could correctly silence.
-	cd server && GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
+	@# golangci-lint's vendored staticcheck must match the Go it analyses — a newer
+	@# local Go panics in buildir. go.mod's go line is only a minimum under GOTOOLCHAIN=auto
+	@# (a toolchain line equal to it is not even allowed), so this env var alone makes
+	@# `make lint` run the exact Go CI lints with (#334).
+	cd server && GOTOOLCHAIN=go$(GO_VERSION) GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 	cd web && pnpm run check
 	cd web && pnpm run format:check
 
