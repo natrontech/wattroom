@@ -141,6 +141,10 @@
 	<!-- A member's room IS the app. The shell owns the connection, the AV and
 	     the ride; the place standing in it is the child route (ADR-0020). -->
 	{#key room.slug}
+		<!-- The places carry no visible room title — the sidebar names the room
+		     you are standing in (ADR-0020) — so the page's heading is for
+		     assistive tech: which room this is. -->
+		<h1 class="sr-only">{room.icon ? `${room.icon} ` : ''}{room.name}</h1>
 		{#if phoneSpectator}
 			<!-- redirecting to the watch view -->
 		{:else}
