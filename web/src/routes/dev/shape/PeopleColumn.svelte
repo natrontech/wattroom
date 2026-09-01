@@ -9,6 +9,7 @@
 	// which the tile grid does not survive. Both alternatives were mocked and
 	// dropped; the reasoning is ADR-0020's, the markup is in git.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RidingBars from './RidingBars.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import type { RoomRider } from '$lib/room/view';
 	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
@@ -57,12 +58,13 @@
 	>
 		<span class="relative shrink-0">
 			<Avatar name={rider.name} size={22} />
-			<!-- Riding is live data, so it is the one dot that glows. -->
 			{#if rider.watts > 0}
+				<!-- Riding is motion, not a red-adjacent dot. -->
 				<span
-					class="bg-watt glow-stroke ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"
-					title="riding now"
-				></span>
+					class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
+				>
+					<RidingBars size={8} />
+				</span>
 			{:else}
 				<span
 					class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"

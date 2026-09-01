@@ -4,6 +4,7 @@
 	// gone (it is column 2 now), so what they have to prove here is that their
 	// content survives ~700 px instead of a full-width page.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import RidingBars from './RidingBars.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import type { Segment } from '$lib/workout/types';
@@ -13,6 +14,7 @@
 		ChevronDown,
 		GripVertical,
 		Plus,
+		Gauge,
 		Radio,
 		Sparkles,
 	} from '@lucide/svelte';
@@ -64,7 +66,9 @@
 						>
 					</span>
 					{#if room.session}
-						<span class="text-watt glow-text shrink-0 text-xs">riding</span>
+						<span class="text-watt flex shrink-0 items-center gap-1.5 text-xs">
+							<RidingBars size={10} /> riding
+						</span>
 					{/if}
 				</li>
 			{/each}
@@ -80,16 +84,36 @@
 			{/each}
 		</div>
 
-		<h3 class="eyebrow mt-8">planned</h3>
-		<div class="panel mt-2 flex items-center gap-3 px-4 py-3">
-			<CalendarClock size={16} class="text-muted shrink-0" />
-			<div class="min-w-0 flex-1">
-				<p class="font-display truncate text-sm font-bold">Sweet Spot 2×20</p>
-				<p class="text-muted text-[11px]">
-					Thu 20:00 · Thursday Sufferfest · planned by Nina
-				</p>
-			</div>
+		<!-- /sessions retires into this (ADR-0020): a cross-room list of what is
+		     coming was never a destination of its own — it is the second half of
+		     "what is happening", which is what Home is for. Per-room planning
+		     stays in the room's own Sessions place. -->
+		<div class="mt-8 flex items-center gap-3">
+			<h3 class="eyebrow">what's next</h3>
+			<button class="btn btn-ghost btn-xs ml-auto"
+				><Plus size={12} /> Plan a session</button
+			>
 		</div>
+		<ul class="mt-2 space-y-1.5">
+			{#each [{ room: '🔥 Thursday Sufferfest', name: 'Sweet Spot 2×20', when: 'Thu 20:00', by: 'Nina' }, { room: '🌄 Sunday Long Ride', name: 'Endurance 90', when: 'Sun 09:00', by: 'You' }, { room: '🚴 mfw-5', name: 'VO₂ 5×3', when: 'Tue 18:30', by: 'Jonas' }] as entry (entry.name)}
+				<li class="panel flex items-center gap-3 px-4 py-2.5">
+					<CalendarClock size={15} class="text-muted shrink-0" />
+					<span class="min-w-0 flex-1">
+						<span class="block truncate text-sm font-medium">{entry.name}</span>
+						<span class="text-muted block truncate text-[11px]"
+							>{entry.when} · {entry.room} · planned by {entry.by}</span
+						>
+					</span>
+					<button
+						class="text-muted hover:text-ink shrink-0 text-[11px] underline"
+						>move</button
+					>
+				</li>
+			{/each}
+		</ul>
+		<button class="text-muted hover:text-ink mt-2 text-[11px] underline"
+			>subscribe to your sessions</button
+		>
 	</div>
 {:else if screen === 'rooms'}
 	<div class="mx-auto w-full max-w-3xl px-5 py-6">
@@ -210,6 +234,23 @@
 				</li>
 			{/each}
 		</ul>
+		<!-- /ramp retires here: a ramp test is a workout you start, not a page
+		     you visit. It keeps its own screen because what it DOES is different
+		     — it writes your FTP — but it is reached from the shelf. -->
+		<h3 class="eyebrow mt-8">measure</h3>
+		<ul class="mt-2">
+			<li class="panel flex items-center gap-3 px-4 py-2.5">
+				<Gauge size={15} class="text-muted shrink-0" />
+				<span class="min-w-0 flex-1">
+					<span class="block truncate text-sm font-medium">Ramp test</span>
+					<span class="text-muted block truncate text-[11px]"
+						>~20 min · sets your FTP, and suggests an LTHR</span
+					>
+				</span>
+				<a href="#ramp" class="btn btn-accent btn-xs shrink-0">Start</a>
+			</li>
+		</ul>
+
 		<h3 class="eyebrow mt-8">curated</h3>
 		<ul class="mt-2 space-y-1.5">
 			{#each shelf.slice(2) as entry (entry.name)}

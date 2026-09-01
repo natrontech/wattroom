@@ -12,6 +12,7 @@
 	// voice — the sidebar keeps its green dot. And mid-ride you are in the cave,
 	// where typing is off the table anyway (ux.md).
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RidingBars from './RidingBars.svelte';
 	import { MessageCircle, Radio, UserPlus } from '@lucide/svelte';
 
 	let { screen }: { screen: string } = $props();
@@ -159,18 +160,20 @@
 					<li class="flex items-center gap-3 px-4 py-2.5">
 						<span class="relative shrink-0">
 							<Avatar name={friend.name} size={30} />
-							<span
-								class="ring-surface-raised absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full ring-2 {friend.riding
-									? 'bg-watt glow-stroke'
-									: friend.online
+							{#if friend.riding}
+								<span
+									class="bg-surface-raised ring-surface-raised absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
+								>
+									<RidingBars size={9} />
+								</span>
+							{:else}
+								<span
+									class="ring-surface-raised absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full ring-2 {friend.online
 										? 'bg-z4'
 										: 'bg-muted/40'}"
-								title={friend.riding
-									? 'riding now'
-									: friend.online
-										? 'online'
-										: 'offline'}
-							></span>
+									title={friend.online ? 'online' : 'offline'}
+								></span>
+							{/if}
 						</span>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate text-sm font-medium"

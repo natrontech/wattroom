@@ -11,6 +11,7 @@
 	// every room still carries its signal (gap 4). It gives back 176 px and one
 	// entire vertical border.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RidingBars from './RidingBars.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { DM_HEADS, RAIL_ROOMS, ROOM_PLACES } from './shape';
 	import {
@@ -23,7 +24,7 @@
 		MessagesSquare,
 		Mic,
 		Settings,
-		TrendingUp,
+		Plus,
 		Users,
 		VideoOff,
 	} from '@lucide/svelte';
@@ -42,14 +43,17 @@
 		peer?: string;
 	} = $props();
 
-	// Four, not nine. Sensors, Ramp test and Profile are things you set up or
-	// visit occasionally — they live behind the cog, where the mixer and the
-	// voice gate went. A sidebar that lists everything lists nothing.
+	// Three, not nine. The shape retired the rest rather than relocating them:
+	// /rooms was a list the sidebar already IS (its two real actions are the +
+	// below), /sessions was a cross-room plan list that belongs on Home beside
+	// "what is happening", and /progression was the chart half of a ride log
+	// that had been split in two. Sensors, the ramp test and the profile are
+	// occasional, so they sit behind the cog. A sidebar that lists everything
+	// lists nothing.
 	const YOURS = [
 		{ id: 'home', label: 'Home', icon: House },
 		{ id: 'workouts', label: 'Workouts', icon: ChartColumn },
 		{ id: 'history', label: 'Rides', icon: History },
-		{ id: 'progression', label: 'Progression', icon: TrendingUp },
 	];
 	const PLACE_ICONS: Record<string, typeof House> = {
 		lounge: MessagesSquare,
@@ -89,7 +93,12 @@
 
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
 			your rooms
-			<a href="#rooms" class="hover:text-ink ml-auto normal-case">manage</a>
+			<!-- Everything /rooms really carried: open one, or join with a code. -->
+			<button
+				class="hover:text-ink ml-auto"
+				title="open a room or join with a code"
+				aria-label="open a room or join with a code"><Plus size={13} /></button
+			>
 		</div>
 		<ul class="space-y-0.5">
 			{#each RAIL_ROOMS as room (room.slug)}
@@ -142,10 +151,9 @@
 						</span>
 						{#if !open && room.session}
 							<span
-								class="text-watt/90 mt-0.5 flex items-center gap-1 truncate text-[10px]"
+								class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
 							>
-								<span class="bg-watt glow-stroke h-1 w-1 shrink-0 rounded-full"
-								></span>
+								<RidingBars size={9} />
 								{room.session.workoutName} · {Math.round(
 									room.session.elapsedSec / 60,
 								)} min in
@@ -184,10 +192,7 @@
 										<Icon size={14} class="shrink-0" />
 										<span class="truncate">{entry.label}</span>
 										{#if entry.id === 'training' && live}
-											<span
-												class="bg-watt glow-stroke ml-auto h-1.5 w-1.5 shrink-0 animate-pulse rounded-full"
-												title="a session is running"
-											></span>
+											<span class="ml-auto"><RidingBars size={10} /></span>
 										{/if}
 									</a>
 								</li>

@@ -5,6 +5,7 @@
 	// repeating the room name column 2 already carries.
 	import Avatar from '$lib/components/Avatar.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import RidingBars from './RidingBars.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, wkg } from '$lib/format';
@@ -12,6 +13,7 @@
 		fillPct,
 		plannedZoneSeconds,
 		ZONE_BG,
+		ZONE_TEXT,
 		zoneOf,
 	} from '$lib/components/zones';
 	import type { Segment } from '$lib/workout/types';
@@ -156,29 +158,27 @@
 			</p>
 		</div>
 	</div>
-{:else if screen === 'room-training'}
-	<!-- The 3 m surface. Every other column in this app may be desk-dense; this
-	     one is an INSTRUMENT, and it is designed backwards from one question a
-	     rider asks at 160 bpm: am I on target. The previous pass stacked five
-	     equal-weight panels, which is a settings page — nothing was the hero,
-	     so the answer had to be hunted for.
+{:else if screen === 'room-training' || screen === 'room-training-media'}
+	<!-- The 3 m surface, built backwards from one question — am I on target —
+	     and one fact this app exists for: you are not riding alone.
 	
-	     Three moves. The number is a NEEDLE: it travels horizontally with your
-	     power, over a track that marks the tolerance band, so "left or right of
-	     the bright zone" reads before any digit does. The interval graph is the
-	     HORIZON — full-bleed along the bottom, which is what ADR-0005 means by
-	     "interval graphs glow like a night ride". And the execution meter is
-	     gone from here entirely: it is roster data, so it moved into the people
-	     column, which was otherwise showing a chat nobody types in mid-ride.
+	     A FOCUS SLOT, not a fixed layout. Normally the focus is your own
+	     instrument. The moment someone shares a screen or the jukebox plays a
+	     video, that takes the focus and the instrument collapses to a bar
+	     underneath it — never on top: RMF forbids anything overlaid on the
+	     player, so the numbers go below rather than over. That is the same
+	     "media-focus layout" WATTROOM.md used to make you pick from a menu,
+	     except the room picks it for you when there is media to show.
 	
-	     Colour stays disciplined (ADR-0005): the live number is watt-magenta and
-	     is the only thing that glows; the zone shows in the track fill, which is
-	     dataviz. -->
+	     Under the focus, always, the CREW: a camera thumb and live numbers for
+	     everyone. The previous pass showed your own watts and nothing else,
+	     which turned group training into solo training with a chat window. -->
+	{@const media = screen === 'room-training-media'}
 	{@const pct = (w: number) => fillPct(w, you.ftp)}
 	{@const state = targetState(you)}
-	<div class="grid h-full min-h-0 grid-rows-[auto_1fr_auto] overflow-hidden">
-		<!-- What you are doing, and for how much longer. Quiet on purpose: it is
-		     read between efforts, not during one. -->
+	<div
+		class="grid h-full min-h-0 grid-rows-[auto_1fr_auto_auto] overflow-hidden"
+	>
 		<header class="flex items-end gap-6 px-6 pt-5 pb-4">
 			<div class="min-w-0">
 				<p class="eyebrow">block {block?.index ?? 1} of {block?.count ?? 6}</p>
@@ -204,120 +204,224 @@
 			</p>
 		</header>
 
-		<!-- The instrument. -->
-		<section class="grid min-h-0 content-center px-6">
-			<div class="relative h-32">
-				<!-- The needle. clamp() keeps it on screen at 0 W and at a sprint,
-				     without a resize observer. -->
+		<!-- The focus. -->
+		{#if media}
+			<section class="grid min-h-0 place-items-center px-6">
 				<div
-					class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-					style="left: clamp(5rem, {pct(you.watts)}%, calc(100% - 5rem))"
+					class="ring-neon/30 relative aspect-video max-h-full w-full overflow-hidden rounded-lg ring-1"
 				>
+					<div
+						class="h-full w-full"
+						style="background: radial-gradient(120% 90% at 30% 20%, oklch(0.42 0.16 300), oklch(0.14 0.05 300))"
+					></div>
+				</div>
+			</section>
+		{:else}
+			<section class="grid min-h-0 content-center px-6">
+				<div class="relative h-28">
+					<!-- The needle: your number travels with your power, so "left or
+					     right of the bright slot" reads before any digit does.
+					     clamp() keeps it on screen at 0 W and at a sprint. -->
+					<div
+						class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
+						style="left: clamp(5rem, {pct(you.watts)}%, calc(100% - 5rem))"
+					>
+						<span
+							class="font-display text-watt glow-text-strong block text-[6.5rem] leading-[0.85] font-bold tabular-nums"
+							>{you.watts}</span
+						>
+						<span class="eyebrow">watts</span>
+					</div>
+				</div>
+
+				<div class="relative mt-3 h-12">
+					<div
+						class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full"
+					>
+						{#if state.has}
+							<div
+								class="bg-neon/30 absolute inset-y-0"
+								style="left: {pct(you.target - state.band)}%; width: {pct(
+									you.target + state.band,
+								) - pct(you.target - state.band)}%"
+							></div>
+						{/if}
+						<!-- Literal zone class — Tailwind scans source text, so a
+						     composed `bg-z3/60` is never generated (zones.ts). Full
+						     strength: the ramp is contrast-gated at 3:1. -->
+						<div
+							class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
+							style="width: {pct(you.watts)}%"
+						>
+							<div
+								class="{ZONE_BG[zoneOf(you.watts, you.ftp)]} h-full w-full"
+							></div>
+						</div>
+						{#if state.has}
+							<div
+								class="bg-neon absolute inset-y-0 w-1"
+								style="left: {pct(you.target)}%"
+							></div>
+						{/if}
+					</div>
+				</div>
+
+				<div class="text-muted mt-2 flex items-baseline text-xs tabular-nums">
+					<span>0</span>
 					<span
-						class="font-display text-watt glow-text-strong block text-[7rem] leading-[0.85] font-bold tabular-nums"
+						class="mx-auto text-sm {state.inBand
+							? 'text-z4'
+							: state.delta > 0
+								? 'text-z5'
+								: 'text-muted'}"
+					>
+						{#if !state.has}
+							no target — spin easy
+						{:else if state.inBand}
+							on target · {you.target} W
+						{:else}
+							{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {you.target}
+						{/if}
+					</span>
+					<span>{Math.round(you.ftp * 1.5)}</span>
+				</div>
+			</section>
+		{/if}
+
+		<!-- Your numbers. Full row normally; a single compact bar under the
+		     player when media has the focus — below it, never over it (RMF). -->
+		<div class="mt-4 flex items-center gap-6 px-6">
+			{#if media}
+				<span class="flex shrink-0 items-baseline gap-1.5">
+					<span
+						class="font-display text-watt glow-text-strong text-4xl leading-none font-bold tabular-nums"
 						>{you.watts}</span
 					>
-					<span class="eyebrow">watts</span>
-				</div>
-			</div>
-
-			<div class="relative mt-3 h-14">
-				<div
-					class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full"
-				>
-					{#if state.has}
-						<!-- The slot you are aiming at. -->
-						<div
-							class="bg-neon/30 absolute inset-y-0"
-							style="left: {pct(you.target - state.band)}%; width: {pct(
-								you.target + state.band,
-							) - pct(you.target - state.band)}%"
-						></div>
-					{/if}
-					<!-- Zone in the fill: dataviz, so it may carry the ramp. The
-					     class must stay literal — Tailwind scans source text, so a
-					     composed `bg-z3/60` is never generated (zones.ts). Opacity
-					     rides on the wrapper instead. -->
-					<div
-						class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-						style="width: {pct(you.watts)}%"
-					>
-						<div
-							class="{ZONE_BG[zoneOf(you.watts, you.ftp)]} h-full w-full"
-						></div>
-					</div>
-					{#if state.has}
-						<div
-							class="bg-neon absolute inset-y-0 w-1"
-							style="left: {pct(you.target)}%"
-						></div>
-					{/if}
-				</div>
-			</div>
-
-			<div class="text-muted mt-2 flex items-baseline text-xs tabular-nums">
-				<span>0</span>
-				<span
-					class="mx-auto text-sm {state.inBand
-						? 'text-z4'
-						: state.delta > 0
-							? 'text-z5'
-							: 'text-muted'}"
-				>
-					{#if !state.has}
-						no target — spin easy
-					{:else if state.inBand}
-						on target · {you.target} W
-					{:else}
-						{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {you.target}
-					{/if}
+					<span class="eyebrow">w</span>
 				</span>
-				<span>{Math.round(you.ftp * 1.5)}</span>
-			</div>
-
-			<!-- Secondary. One row, no boxes: these are glanced at, never hunted
-			     for. Bias is the one control a rider touches mid-interval, so it
-			     gets thumb-sized targets (ux.md). -->
-			<div class="border-ink/5 mt-8 flex items-center gap-8 border-t pt-4">
-				{#each [{ label: 'rpm', value: `${you.cadence}` }, { label: 'bpm', value: `${you.hr}` }, { label: 'w/kg', value: wkg(you.watts, you.kg) }] as stat (stat.label)}
-					<div>
+				<span class="relative h-3 min-w-0 flex-1">
+					<span
+						class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full"
+					>
+						{#if state.has}
+							<span
+								class="bg-neon/30 absolute inset-y-0"
+								style="left: {pct(you.target - state.band)}%; width: {pct(
+									you.target + state.band,
+								) - pct(you.target - state.band)}%"
+							></span>
+						{/if}
 						<span
-							class="font-display block text-2xl leading-none font-bold tabular-nums"
-							>{stat.value}</span
+							class="absolute inset-y-0 left-0 transition-[width] duration-500"
+							style="width: {pct(you.watts)}%"
 						>
-						<span class="eyebrow">{stat.label}</span>
+							<span
+								class="{ZONE_BG[
+									zoneOf(you.watts, you.ftp)
+								]} block h-full w-full"
+							></span>
+						</span>
+					</span>
+				</span>
+				<span
+					class="shrink-0 text-xs tabular-nums {state.inBand
+						? 'text-z4'
+						: 'text-muted'}"
+					>{state.has ? `target ${you.target} W` : 'no target'}</span
+				>
+			{/if}
+			{#each [{ label: 'rpm', value: `${you.cadence}` }, { label: 'bpm', value: `${you.hr}` }, { label: 'w/kg', value: wkg(you.watts, you.kg) }] as stat (stat.label)}
+				<div class="shrink-0">
+					<span
+						class="font-display block leading-none font-bold tabular-nums {media
+							? 'text-lg'
+							: 'text-2xl'}">{stat.value}</span
+					>
+					<span class="eyebrow">{stat.label}</span>
+				</div>
+			{/each}
+			<!-- Bias is the one control reached for mid-interval, so it keeps
+			     thumb-sized targets whatever else shrinks (ux.md). -->
+			<div class="ml-auto flex shrink-0 items-center gap-2">
+				<button
+					class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
+					aria-label="ease the target by one percent">−</button
+				>
+				<span class="text-center">
+					<span
+						class="font-display block text-lg leading-none font-bold tabular-nums"
+						>{Math.round(bias * 100)}%</span
+					>
+					<span class="eyebrow">bias</span>
+				</span>
+				<button
+					class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
+					aria-label="raise the target by one percent">+</button
+				>
+			</div>
+		</div>
+
+		<!-- The crew. Camera thumb and live numbers for everyone — this is group
+		     training, and without it the surface is a solo app with a chat. -->
+		<div class="mt-4">
+			<div class="flex gap-2 px-6">
+				{#each riders.filter((r) => !r.you) as rider (rider.id)}
+					{@const zone = zoneOf(rider.watts, rider.ftp)}
+					<div class="min-w-0 flex-1">
+						<div
+							class="ring-ink/10 relative aspect-video overflow-hidden rounded ring-1"
+						>
+							{#if rider.cameraOn}
+								<div
+									class="h-full w-full"
+									style="background: radial-gradient(120% 100% at 40% 20%, oklch(0.45 0.13 {rider.hue}), oklch(0.16 0.05 {rider.hue}))"
+								></div>
+							{:else}
+								<div
+									class="bg-surface-raised grid h-full w-full place-items-center"
+								>
+									{#if rider.watts > 0}<RidingBars size={16} />{/if}
+								</div>
+							{/if}
+							<!-- Watts on the thumb: at 3 m the number has to be on the
+							     face you are already looking at. -->
+							<span
+								class="from-paper/85 absolute inset-x-0 bottom-0 flex items-baseline gap-1 bg-gradient-to-t to-transparent px-1.5 pt-4 pb-1"
+							>
+								<span
+									class="font-display {ZONE_TEXT[
+										zone
+									]} text-xl leading-none font-bold tabular-nums"
+									>{rider.watts}</span
+								>
+								<span class="text-muted text-[9px]">W</span>
+								<span class="text-muted ml-auto truncate text-[10px]"
+									>{rider.name}</span
+								>
+							</span>
+						</div>
+						<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
+							{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm · {rider.hr}
+							bpm
+						</p>
 					</div>
 				{/each}
-				<div class="ml-auto flex items-center gap-2">
-					<button
-						class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
-						aria-label="ease the target by one percent">−</button
-					>
-					<span class="text-center">
-						<span
-							class="font-display block text-xl leading-none font-bold tabular-nums"
-							>{Math.round(bias * 100)}%</span
-						>
-						<span class="eyebrow">bias</span>
-					</span>
-					<button
-						class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg"
-						aria-label="raise the target by one percent">+</button
-					>
-				</div>
 			</div>
-		</section>
 
-		<!-- The horizon. Full-bleed, no panel: the session is the ground the
-		     numbers stand on, not another card. -->
-		<div class="h-44">
-			<IntervalGraph
-				{segments}
-				{total}
-				{elapsed}
-				ftp={you.ftp}
-				trace={you.trace}
-			/>
+			{#if !media}
+				<!-- The horizon. The session is the ground the numbers stand on,
+				     not another card. It gives way to the player when media has
+				     the focus — two grounds is one too many. -->
+				<div class="mt-3 h-28">
+					<IntervalGraph
+						{segments}
+						{total}
+						{elapsed}
+						ftp={you.ftp}
+						trace={you.trace}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 {:else if screen === 'room-sessions'}

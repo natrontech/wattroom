@@ -75,7 +75,36 @@
 
 {#if screen === 'history'}
 	<div class="mx-auto w-full max-w-3xl px-5 py-6">
-		<h2 class="font-display mb-5 text-2xl font-bold tracking-tight">Rides</h2>
+		<h2 class="font-display text-2xl font-bold tracking-tight">Rides</h2>
+		<!-- /progression retires into this (ADR-0020). The two were one subject
+		     split down the middle: charts on one page, the rides they are drawn
+		     from on another, and every drilldown a navigation between them. -->
+		<p class="text-muted mt-1 mb-5 text-xs">
+			What you have done, and what it is adding up to.
+		</p>
+
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="panel p-4">
+				<h3 class="text-sm font-semibold">Best power by duration</h3>
+				<div class="mt-3">
+					<PowerCurveChart
+						d30={{ best5s: 980, best1m: 520, best5m: 330, best20m: 278 }}
+						d90={{ best5s: 1020, best1m: 545, best5m: 342, best20m: 285 }}
+						all={{ best5s: 1105, best1m: 580, best5m: 356, best20m: 291 }}
+					/>
+				</div>
+			</div>
+			<div class="panel p-4">
+				<h3 class="text-sm font-semibold">FTP over the last year</h3>
+				<div class="mt-3"><FtpTrendChart rides={trend} height={150} /></div>
+			</div>
+		</div>
+		<div class="panel mt-3 p-4">
+			<h3 class="text-sm font-semibold">Training load</h3>
+			<div class="mt-3"><FitnessChart series={form} /></div>
+		</div>
+
+		<h3 class="eyebrow mt-8 mb-2">every ride</h3>
 		<ul class="space-y-2">
 			{#each rides as ride (ride.id)}
 				<li class="panel px-4 py-3">
@@ -103,30 +132,6 @@
 				</li>
 			{/each}
 		</ul>
-	</div>
-{:else if screen === 'progression'}
-	<div class="mx-auto w-full max-w-3xl space-y-6 px-5 py-6">
-		<h2 class="font-display text-2xl font-bold tracking-tight">Progression</h2>
-		<!-- The charts are the shipped components, so the column budget is being
-		     tested against the real thing rather than a rectangle. -->
-		<div class="panel p-4">
-			<h3 class="text-sm font-semibold">Best power by duration</h3>
-			<div class="mt-3">
-				<PowerCurveChart
-					d30={{ best5s: 980, best1m: 520, best5m: 330, best20m: 278 }}
-					d90={{ best5s: 1020, best1m: 545, best5m: 342, best20m: 285 }}
-					all={{ best5s: 1105, best1m: 580, best5m: 356, best20m: 291 }}
-				/>
-			</div>
-		</div>
-		<div class="panel p-4">
-			<h3 class="text-sm font-semibold">FTP over the last year</h3>
-			<div class="mt-3"><FtpTrendChart rides={trend} height={200} /></div>
-		</div>
-		<div class="panel p-4">
-			<h3 class="text-sm font-semibold">Training load</h3>
-			<div class="mt-3"><FitnessChart series={form} /></div>
-		</div>
 	</div>
 {:else if screen === 'profile'}
 	<div class="mx-auto w-full max-w-2xl space-y-6 px-5 py-6">

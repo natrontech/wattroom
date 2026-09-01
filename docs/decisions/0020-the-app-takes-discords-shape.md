@@ -86,9 +86,42 @@ What the merge does **not** give up — these were the whole point:
    count, mention badge, "Sweet Spot 2×20, 12 min in", who is in voice. That is
    ADR-0010's crew radar, and it is why rooms keep **names** rather than
    becoming Discord's 48 px icons.
-4. **The top section is four entries, not nine.** Home, Workouts, Rides,
-   Progression. Ramp test, Sensors and Profile are occasional, so they sit
-   behind the cog. A sidebar that lists everything lists nothing.
+4. **The top section is three entries, not nine** — and the missing six are
+   *retired*, not relocated. A sidebar that lists everything lists nothing.
+
+   | Was | Now | Why |
+   | --- | --- | --- |
+   | `/rooms` | the sidebar, plus a `+` | The sidebar already is the room list. All the page carried beyond it was "open a room" and "join with a code" — two actions, not a destination. Invites and medal history belong to the room's own Members place. |
+   | `/sessions` | Home | A cross-room list of what is coming is the second half of "what is happening", which is what Home is for. Per-room planning stays in the room's Sessions place. |
+   | `/progression` | Rides | One subject split down the middle: the charts on one page, the rides they are drawn from on another, and every drilldown a navigation between them. |
+   | `/ramp` | Workouts | A ramp test is a workout you start, not a page you visit. It keeps its own screen because it writes your FTP; it is reached from the shelf. |
+   | `/pair`, `/whats-new` | the cog | Set up once, read once. |
+
+   What is left is Home, Workouts, Rides — plus your rooms, your messages, and
+   the cog.
+
+**Riding is motion, not a coloured dot.** A magenta dot beside a green presence
+dot reads as a traffic light, and this palette's pink end sits close enough to
+the danger ramp (`z6`) that the first thought is "something is broken" — rider
+feedback, and it is correct. The fix is the form, not the hue: "riding now"
+becomes the **equalizer bars from the WattRoom mark**, animating, which
+ADR-0005 already defines as the quiet "a session is running" signal. Errors do
+not dance. Green stays presence, `z6` stays reserved for faults, and the same
+indicator is used everywhere riding appears — the rail, the roster, the friends
+list, Home.
+
+**Training has a focus slot, and always shows the crew.** The focus is normally
+your own instrument: the watts number travels horizontally over a track marking
+the tolerance band, so "left or right of the bright slot" reads before any digit
+does. When someone shares a screen or the jukebox plays a video, **the player
+takes the focus and the instrument collapses to a bar beneath it — never over
+it**, because the RMF rules in WATTROOM.md forbid anything overlaid on the
+player. That is the old "media-focus layout", except the room enters it when
+there is media rather than making the rider pick it from a menu.
+
+Underneath the focus, always, the **crew**: a camera thumb and live watts,
+w/kg, rpm and bpm for every rider. A group-training surface that shows only
+your own numbers is a solo app with a chat window attached.
 
 **Content is one column, one job, no tabs.** What was a tab is now a place with
 a URL — and that includes the two surfaces that were neither a tab nor a page:
@@ -154,10 +187,14 @@ The `.cave` scope already marks exactly that boundary, and it keeps doing so.
   navigating out of a room is a column-3 swap rather than a different app. The
   #181 complaint that it "still doesn't feel like a lounge" is largely this:
   the lounge felt temporary because leaving it changed the furniture.
-- **Three components stop having a reason to exist**, rather than being
-  refactored: `TopNav.svelte`, `MobileNav.svelte`'s destination list, and
-  `DmDrawer.svelte`. Each existed to give something a home the shape did not
-  otherwise provide.
+- **Three components and five destinations stop having a reason to exist**,
+  rather than being refactored: `TopNav.svelte`, `MobileNav.svelte`'s
+  destination list, `DmDrawer.svelte`, and the `/rooms`, `/sessions`,
+  `/progression`, `/ramp` and `/pair` routes. Each existed to give something a
+  home the shape did not otherwise provide. Nine destinations become three.
+- **The status vocabulary gets smaller, not larger.** Green means present,
+  moving bars mean riding, and the `z6` end of the ramp is left alone — so when
+  something *is* broken, it is the only red on screen.
 - **`RoomLive.svelte` splits by construction.** Its header, tab strip, stage,
   grid and training dashboard become the shell plus one component per place.
   The 1171-line file is not refactored on purpose; it stops having a reason to

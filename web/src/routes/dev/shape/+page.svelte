@@ -164,7 +164,7 @@
 							/>
 						{:else if screen.group === 'Messages'}
 							<DmPlaces screen={screen.id} />
-						{:else if ['home', 'rooms', 'sessions', 'workouts', 'editor'].includes(screen.id)}
+						{:else if ['home', 'workouts', 'editor'].includes(screen.id)}
 							<YourPlaces
 								screen={screen.id}
 								segments={room.segments}
