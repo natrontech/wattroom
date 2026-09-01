@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Logo from '$lib/brand/Logo.svelte';
+	import { Gauge } from '@lucide/svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
@@ -35,9 +35,8 @@
 	);
 </script>
 
-<main class="page max-w-4xl">
+<main class="page">
 	<div class="flex items-center gap-3">
-		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Workouts</h1>
 			<p class="text-muted text-xs">
@@ -98,6 +97,24 @@
 			</ul>
 		{/if}
 	</section>
+
+	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
+	     a destination. It keeps its own ride screen — it writes your FTP — but
+	     it is reached from the shelf. -->
+	<h2 class="eyebrow mt-8">measure</h2>
+	<ul class="mt-3">
+		<li class="panel flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+			<Gauge size={16} class="text-muted shrink-0" />
+			<div class="min-w-0 flex-1">
+				<p class="font-display truncate text-base font-bold">Ramp test</p>
+				<p class="text-muted mt-0.5 text-xs">
+					About 20 minutes. Sets your FTP, and suggests an LTHR from how it
+					ended.
+				</p>
+			</div>
+			<a href="/ramp" class="btn btn-accent btn-xs shrink-0">Start</a>
+		</li>
+	</ul>
 
 	<h2 class="eyebrow mt-8">curated</h2>
 	{#if suggestion && suggested.length > 0}

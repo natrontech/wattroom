@@ -4,7 +4,15 @@
 	import ChatImage from './ChatImage.svelte';
 	import LinkPreview from './LinkPreview.svelte';
 
-	let { text, preview = true }: { text: string; preview?: boolean } = $props();
+	let {
+		text,
+		preview = true,
+		onQueue,
+	}: {
+		text: string;
+		preview?: boolean;
+		onQueue?: (url: string) => void;
+	} = $props();
 
 	// A message that is nothing but an allowlisted GIF link becomes the GIF
 	// (#279) — the same "show it, don't link it" rule LinkPreview follows, for
@@ -41,4 +49,4 @@
 				class="bg-surface-raised text-ink/90 rounded px-1 py-0.5 font-mono text-[0.95em]"
 				>{part.text}</code
 			>{:else}<span class={marks(part)}>{part.text}</span
-			>{/if}{/each}{#if preview}<LinkPreview {parts} />{/if}{/if}
+			>{/if}{/each}{#if preview}<LinkPreview {parts} {onQueue} />{/if}{/if}

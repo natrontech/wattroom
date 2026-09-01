@@ -7,7 +7,6 @@
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import PlayerTile from '$lib/room/PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import RoomRail from '$lib/room/RoomRail.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import SprintMoment from './SprintMoment.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
@@ -126,8 +125,6 @@
 	</div>
 {:else}
 	<div class="flex h-full">
-		<RoomRail {you} {live} />
-
 		<main
 			class="relative flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4"
 		>

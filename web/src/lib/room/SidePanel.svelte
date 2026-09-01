@@ -14,26 +14,76 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
 
-	// The panel is chat plus one slot: the jukebox playlist owns the whole
-	// queue surface (#286) — the panel used to render a second, read-only
-	// copy of it right underneath, with its own add field that routed a
-	// Spotify link to a feature that no longer exists (ADR-0018).
+	// Drag the left edge to change the width. Pointer capture keeps the drag
+	// alive when the cursor outruns a 6 px strip; keepSize's observer saves
+	// the width once it differs from what the class authored.
+	function edgeResize(node: HTMLElement) {
+		const grip = node.querySelector<HTMLElement>('[data-grip]');
+		if (!grip) return;
+		let from: { x: number; w: number } | null = null;
+		const down = (e: PointerEvent) => {
+			from = { x: e.clientX, w: node.offsetWidth };
+			grip.setPointerCapture(e.pointerId);
+			e.preventDefault();
+		};
+		const move = (e: PointerEvent) => {
+			if (!from) return;
+			const style = getComputedStyle(node);
+			const min = parseFloat(style.minWidth) || 240;
+			const max = parseFloat(style.maxWidth) || window.innerWidth;
+			const w = from.w - (e.clientX - from.x);
+			node.style.width = `${Math.round(Math.max(min, Math.min(max, w)))}px`;
+		};
+		const up = () => (from = null);
+		grip.addEventListener('pointerdown', down);
+		grip.addEventListener('pointermove', move);
+		grip.addEventListener('pointerup', up);
+		grip.addEventListener('pointercancel', up);
+		return () => {
+			grip.removeEventListener('pointerdown', down);
+			grip.removeEventListener('pointermove', move);
+			grip.removeEventListener('pointerup', up);
+			grip.removeEventListener('pointercancel', up);
+		};
+	}
+	import Avatar from '$lib/components/Avatar.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import RidingBars from '$lib/components/RidingBars.svelte';
+	import type { RoomRider } from '$lib/room/view';
+	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
+
+	// The room's people and the room's talk, in one column (ADR-0020). Discord's
+	// right column is WHO IS HERE; ours was chat alone, so the roster was
+	// legible only from tiles that vanish behind the stage.
+	//
+	// Stacked rather than tabbed: the roster has to be there without being
+	// asked for — that is the whole "this room is populated" read — and giving
+	// members a column of their own took content to 530 px at 1280, which the
+	// tile grid does not survive.
+	//
+	// Plus one slot: the jukebox playlist owns the whole queue surface (#286).
 	let {
 		live,
+		riders = [],
 		player,
 		messages = [],
 		events = [],
 		slug = undefined,
 		onCheer,
 		onChat,
+		onQueue,
 		reactions = {},
 		myReacts = {},
 		onReact,
 		cheers = ['🔥', '💪', '👏', '💀', '🚀', '🧊'],
 	}: {
 		live: boolean;
+		/** Who is here (ADR-0020, #181 gap 3) — the roster sits above the chat. */
+		riders?: RoomRider[];
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
+		/** A YouTube link in the chat is one tap from the jukebox. */
+		onQueue?: (url: string) => void;
 		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
 		messages?: TimelineMessage[];
 		/** What the room did (#321) — jukebox lines, interleaved with the talking. */
@@ -113,15 +163,117 @@
 	}
 </script>
 
-<!-- Resizable (#280): `direction: rtl` puts the native resize grip on the
-     panel's LEFT border — the edge you actually want to drag on a right-hand
-     dock — and the inner wrapper puts writing direction back. -->
+{#snippet person(rider: RoomRider)}
+	<li
+		class="flex items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+			? 'text-ink'
+			: 'text-ink/70'}"
+	>
+		<span class="relative shrink-0">
+			<Avatar name={rider.name} size={22} />
+			{#if rider.watts > 0}
+				<!-- Riding is motion, not a red-adjacent dot (ADR-0020). -->
+				<span
+					class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
+				>
+					<RidingBars size={8} />
+				</span>
+			{:else}
+				<span
+					class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"
+				></span>
+			{/if}
+		</span>
+		<span class="min-w-0 flex-1">
+			<span class="flex items-center gap-1.5">
+				<span
+					class="min-w-0 flex-1 truncate {rider.speaking ? 'font-medium' : ''}"
+					>{rider.name}</span
+				>
+				{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
+				{#if rider.cameraOn}<Video size={11} class="text-muted shrink-0" />{/if}
+				{#if rider.speaking}
+					<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
+				{:else if rider.muted}
+					<MicOff size={11} class="text-muted/50 shrink-0" />
+				{/if}
+				{#if live && rider.watts > 0}
+					<span class="text-muted shrink-0 text-[10px] tabular-nums"
+						>{Math.round(rider.execution * 100)}%</span
+					>
+				{/if}
+			</span>
+			{#if live && rider.watts > 0}
+				<!-- Execution moved off the training surface (ADR-0020): how well
+				     everyone is holding target is roster data, and this is the
+				     roster. It also gives the column a job mid-ride, when nobody
+				     is typing. -->
+				<span class="mt-1 block">
+					<ProgressBar
+						pct={rider.execution * 100}
+						h="h-1"
+						fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
+						title="{rider.name} is holding target {Math.round(
+							rider.execution * 100,
+						)}% of the time"
+					/>
+				</span>
+			{/if}
+		</span>
+	</li>
+{/snippet}
+
+<!-- Resizable (#280) from its left edge. The browser's own `resize` grip is a
+     corner of diagonal lines that belongs to no design; this is a 6 px strip
+     on the border that lights up on hover and drags. keepSize persists the
+     width it sets, the same way it did for the native grip. -->
 <aside
 	{@attach (node) => keepSize(node, 'side-panel')}
-	class="border-ink/5 h-full w-80 shrink-0 overflow-hidden border-l"
-	style="direction: rtl; resize: horizontal; min-width: 240px; max-width: 40vw"
+	{@attach edgeResize}
+	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
+	style="min-width: 240px; max-width: 40vw"
 >
-	<div class="flex h-full flex-col" style="direction: ltr">
+	<div
+		data-grip
+		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none transition-colors"
+		role="separator"
+		aria-orientation="vertical"
+		aria-label="resize the panel"
+	></div>
+	<div class="flex h-full flex-col">
+		{#if riders.length > 0}
+			<!-- Mid-ride the useful split is riding / not; in the lounge it is
+			     voice / not, and the heading says which question it answers. -->
+			{@const here = live
+				? riders.filter((r) => r.watts > 0)
+				: riders.filter((r) => r.inVoice)}
+			{@const away = riders.filter((r) => !here.includes(r))}
+			<div
+				class="border-ink/5 min-h-0 shrink-0 overflow-y-auto border-b {live
+					? 'max-h-[45%]'
+					: 'max-h-56'}"
+			>
+				<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
+					{#if !live}<Headphones size={10} />{/if}
+					{live
+						? `holding target — ${here.length}`
+						: `in voice — ${here.length}`}
+				</div>
+				<ul class="px-1">
+					{#each here as rider (rider.id)}{@render person(rider)}{/each}
+				</ul>
+				{#if away.length > 0}
+					<div class="eyebrow px-3 pt-3 pb-1">
+						{live
+							? `not pedalling — ${away.length}`
+							: `in the room — ${away.length}`}
+					</div>
+					<ul class="px-1 pb-2">
+						{#each away as rider (rider.id)}{@render person(rider)}{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
 		{#if player}
 			<div class="border-ink/5 max-h-[62%] overflow-y-auto border-b p-4">
 				{@render player()}
@@ -197,7 +349,7 @@
 				     lone GIF link into the GIF itself. -->
 							{#if message.text}
 								<div class="text-ink/85 wrap-anywhere">
-									<MessageText text={message.text} />
+									<MessageText text={message.text} {onQueue} />
 								</div>
 							{/if}
 							{#if message.imageId && slug}

@@ -53,4 +53,8 @@ export interface RailRoom {
 	session?: { workoutName: string; elapsedSec: number };
 	/** The next planned session, when one exists. */
 	next?: { workoutName: string; startsAt: string };
+	/** Lines from other people since you last opened it (#389). */
+	unread?: number;
+	/** owner | coach | member — the ownership cap counts against it. */
+	role?: string;
 }

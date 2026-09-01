@@ -1,45 +1,72 @@
 import {
+	Activity,
+	CalendarClock,
 	ChartColumn,
-	Gauge,
 	History,
 	House,
-	TrendingUp,
-	UserRound,
+	MessagesSquare,
+	Settings,
 	Users,
-	Zap,
 } from '@lucide/svelte';
 
 /**
- * The app's page navigation: the top bar shows all of it, the phone tab bar
- * the `primary` five. Glossary vocabulary only — no per-screen synonyms.
+ * The app's destinations, and the places inside a room. Both live in the one
+ * sidebar (ADR-0020) — there is no second navigation to keep in sync.
+ *
+ * Three, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
+ * second half of "what is happening" (Home), `/progression` the chart half of
+ * a ride log split down the middle, `/ramp` a workout you start rather than a
+ * page you visit, and `/pair` is set up once. A sidebar that lists everything
+ * lists nothing.
  */
 export const pages = [
-	{ href: '/home', label: 'Home', icon: House, primary: true },
-	{ href: '/rooms', label: 'Rooms', icon: Users, primary: true },
-	{ href: '/workouts', label: 'Workouts', icon: ChartColumn, primary: true },
-	{ href: '/ramp', label: 'Ramp test', icon: Gauge, primary: false },
-	{ href: '/pair', label: 'Sensors', icon: Zap, primary: false },
-	{ href: '/history', label: 'Rides', icon: History, primary: true },
-	{
-		href: '/progression',
-		label: 'Progression',
-		icon: TrendingUp,
-		primary: false,
-	},
-	{ href: '/profile', label: 'Profile', icon: UserRound, primary: true },
+	{ href: '/home', label: 'Home', icon: House },
+	{ href: '/workouts', label: 'Workouts', icon: ChartColumn },
+	{ href: '/history', label: 'Rides', icon: History },
 ];
 
-/**
- * Which entry a path lights up. A room page (/r/…) belongs to Rooms, and so
- * does /sessions — planning is something you do to a room, not a ninth
- * destination competing with it in the bar.
- */
-const ROOMS_PATHS = ['/rooms', '/r/', '/sessions'];
+/** The room you are standing in opens into these. */
+export const roomPlaces = [
+	{
+		path: '',
+		label: 'Lounge',
+		icon: MessagesSquare,
+		hint: 'talk, tiles, the stage',
+	},
+	{
+		path: '/training',
+		label: 'Training',
+		icon: Activity,
+		hint: 'the session and your numbers',
+	},
+	{
+		path: '/sessions',
+		label: 'Sessions',
+		icon: CalendarClock,
+		hint: "what's planned here",
+	},
+	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
+	{
+		path: '/settings',
+		label: 'Settings',
+		icon: Settings,
+		hint: 'name, sounds, reactions',
+	},
+];
 
+/** Which destination a path lights up. */
 export function activeHref(pathname: string): string | undefined {
-	return pages.find((p) =>
-		p.href === '/rooms'
-			? ROOMS_PATHS.some((prefix) => pathname.startsWith(prefix))
-			: pathname.startsWith(p.href),
-	)?.href;
+	return pages.find((p) => pathname.startsWith(p.href))?.href;
+}
+
+/**
+ * Which place inside `slug` a path is on. Longest match wins, so `/training`
+ * does not resolve to the lounge's empty path.
+ */
+export function activePlace(pathname: string, slug: string): string {
+	const rest = pathname.slice(`/r/${slug}`.length);
+	const hit = roomPlaces
+		.filter((p) => p.path && rest.startsWith(p.path))
+		.sort((a, b) => b.path.length - a.path.length)[0];
+	return hit?.path ?? '';
 }

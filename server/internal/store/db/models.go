@@ -125,6 +125,12 @@ type Room struct {
 	IcsToken  string
 }
 
+type RoomRead struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+	ReadAt pgtype.Timestamptz
+}
+
 type ScheduledSession struct {
 	ID          pgtype.UUID
 	RoomID      pgtype.UUID

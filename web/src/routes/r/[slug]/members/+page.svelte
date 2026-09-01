@@ -1,0 +1,128 @@
+<script lang="ts">
+	// The room's Members place (ADR-0020) — #181's third gap, the paperwork
+	// half. The people column is the live read: who is here, who is talking,
+	// who is holding target. This is roles, medals and the invite, which is
+	// what /rooms used to carry.
+	import Avatar from '$lib/components/Avatar.svelte';
+	import { useRoom } from '$lib/room/context';
+	import { account } from '$lib/account.svelte';
+	import { toasts } from '$lib/toast.svelte';
+	import { levelFromXp } from '$lib/level';
+	import { wkg } from '$lib/format';
+	import { Crown, Copy } from '@lucide/svelte';
+
+	const room = useRoom();
+	const isOwner = $derived(room.myRole === 'owner');
+
+	const medalsOf = (name: string) =>
+		room.medals.filter((m) => m.rider === name).length;
+
+	async function copyInvite() {
+		await navigator.clipboard.writeText(`${location.origin}/r/${room.slug}`);
+		toasts.push('Invite link copied.');
+	}
+</script>
+
+<div class="page">
+	<h2 class="font-display mb-1 text-xl font-bold">
+		Who rides here — {room.members.length}
+	</h2>
+	<p class="text-muted mb-5 text-xs">
+		The people column is the live read; this is the paperwork.
+	</p>
+
+	<ul class="divide-ink/5 panel divide-y">
+		{#each room.members as member (member.id)}
+			{@const medals = medalsOf(member.displayName)}
+			<li class="flex items-center gap-3 px-4 py-2.5">
+				<Avatar
+					name={member.displayName}
+					avatarUrl={member.avatarUrl}
+					preset={member.avatarPreset}
+					xp={member.totalXp}
+					size={32}
+				/>
+				<span class="min-w-0 flex-1">
+					<span class="flex items-center gap-1.5">
+						<span class="truncate text-sm font-medium"
+							>{member.displayName}</span
+						>
+						{#if member.role === 'owner'}
+							<Crown size={12} class="text-muted" />
+						{/if}
+						<span class="text-muted/70 text-[10px]"
+							>lv {levelFromXp(member.totalXp ?? 0)}</span
+						>
+					</span>
+					<!-- Room-visible rider facts (#207): the same numbers the roster
+					     tiles show. Rides and history stay private. -->
+					<span class="text-muted block text-[11px] tabular-nums">
+						{member.role}
+						{#if member.ftpWatts}
+							· {member.ftpWatts} W
+							{#if member.weightKg}
+								· {wkg(member.ftpWatts, member.weightKg)} w/kg{/if}
+						{/if}
+						{#if member.joinedAt}
+							· since {new Date(member.joinedAt).toLocaleDateString(undefined, {
+								month: 'short',
+								year: 'numeric',
+							})}
+						{/if}
+					</span>
+				</span>
+				{#if medals > 0}
+					<span class="text-muted shrink-0 text-xs tabular-nums"
+						>🏅 {medals}</span
+					>
+				{/if}
+				{#if isOwner && member.id !== account.me?.id}
+					<button
+						onclick={() =>
+							room.setRole(
+								member.id,
+								member.role === 'coach' ? 'member' : 'coach',
+							)}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0"
+						>{member.role === 'coach' ? 'Make member' : 'Make coach'}</button
+					>
+					<button
+						onclick={() => room.removeMember(member.id)}
+						disabled={room.adminBusy}
+						class="text-muted hover:text-z6 shrink-0 text-[11px]">remove</button
+					>
+				{/if}
+			</li>
+		{/each}
+	</ul>
+
+	<h3 class="eyebrow mt-8">invite</h3>
+	<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+		<span class="min-w-0">
+			<span class="eyebrow">room code</span>
+			<span class="font-display block text-lg font-bold tracking-widest"
+				>{room.code}</span
+			>
+		</span>
+		<button onclick={copyInvite} class="btn btn-secondary btn-xs ml-auto"
+			><Copy size={13} /> Copy invite link</button
+		>
+	</div>
+
+	{#if room.medals.length > 0}
+		<h3 class="eyebrow mt-8">medal history</h3>
+		<ul class="divide-ink/5 panel mt-2 divide-y">
+			{#each room.medals.slice(0, 12) as medal (medal.awardedAt + medal.rider)}
+				<li class="flex items-center gap-3 px-4 py-2 text-xs">
+					<span class="shrink-0">🏅</span>
+					<span class="min-w-0 flex-1 truncate">{medal.rider}</span>
+					<span class="text-muted truncate">{medal.kind}</span>
+					<span class="text-muted/60 shrink-0 tabular-nums"
+						>{new Date(medal.awardedAt).toLocaleDateString()}</span
+					>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</div>

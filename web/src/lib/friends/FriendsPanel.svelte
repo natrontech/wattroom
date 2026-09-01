@@ -1,4 +1,6 @@
 <script lang="ts">
+	import RidingBars from '$lib/components/RidingBars.svelte';
+	import { levelFromXp } from '$lib/level';
 	import { Copy, MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -73,11 +75,7 @@
 	);
 </script>
 
-<section class="mt-10">
-	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-		Friends
-	</h2>
-
+<section class="mt-6">
 	{#if error}
 		<p class="text-z6 mt-3 text-xs">{error}</p>
 	{/if}
@@ -105,14 +103,31 @@
 								xp={friend.totalXp}
 								size={30}
 							/>
-							<span
-								class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
-									? 'bg-z4'
-									: 'bg-muted/40'}"
-								title={friend.online ? 'online' : 'offline'}
-							></span>
+							{#if friend.inRoom}
+								<span
+									class="bg-surface-raised ring-surface-raised absolute -top-1 -left-1 rounded-full px-0.5 py-px ring-2"
+								>
+									<RidingBars size={8} />
+								</span>
+							{:else}
+								<span
+									class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
+										? 'bg-z4'
+										: 'bg-muted/40'}"
+									title={friend.online ? 'online' : 'offline'}
+								></span>
+							{/if}
 						</span>
-						<span class="text-sm font-medium">{friend.name}</span>
+						<span class="min-w-0">
+							<span class="flex items-center gap-1.5 text-sm font-medium">
+								{friend.name}
+								<!-- Lifetime level is friend-visible identity (#253);
+								     watts are not (ADR-0012). -->
+								<span class="text-muted/70 text-[10px] font-normal"
+									>lv {levelFromXp(friend.totalXp ?? 0)}</span
+								>
+							</span>
+						</span>
 						<span class="text-muted min-w-0 truncate text-xs">
 							{#if friend.roomName}
 								in {friend.roomName}
@@ -123,11 +138,9 @@
 							{/if}
 						</span>
 						<span class="ml-auto flex shrink-0 items-center gap-3">
-							<button
-								onclick={() => {
-									dm.show(friend.id, friend.name);
-									dmHeads.bump();
-								}}
+							<a
+								href="/dm/{friend.id}"
+								onclick={() => dm.show(friend.id, friend.name)}
 								class="text-muted hover:text-ink relative"
 								title="message {friend.name}"
 								aria-label="message {friend.name}"
@@ -138,7 +151,7 @@
 										class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
 									></span>
 								{/if}
-							</button>
+							</a>
 							{#if friend.room}
 								<a href="/r/{friend.room}" class="btn btn-primary btn-xs"
 									>Join them</a

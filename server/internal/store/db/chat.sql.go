@@ -56,6 +56,30 @@ func (q *Queries) CountChatReaction(ctx context.Context, arg CountChatReactionPa
 	return count, err
 }
 
+const countRoomUnread = `-- name: CountRoomUnread :one
+select count(*)
+from chat_messages m
+left join room_reads r on r.room_id = m.room_id and r.user_id = $2
+where m.room_id = $1
+  and m.user_id != $2
+  and (r.read_at is null or m.created_at > r.read_at)
+`
+
+type CountRoomUnreadParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Lines from other people since you last opened the room. A rider who has
+// never opened it sees the whole bounded log, which is the honest answer:
+// everything in there is new to them.
+func (q *Queries) CountRoomUnread(ctx context.Context, arg CountRoomUnreadParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoomUnread, arg.RoomID, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getChatImage = `-- name: GetChatImage :one
 select mime, bytes from chat_images
 where id = $1 and room_id = $2
@@ -181,6 +205,24 @@ func (q *Queries) ListRoomChat(ctx context.Context, arg ListRoomChatParams) ([]L
 		return nil, err
 	}
 	return items, nil
+}
+
+const markRoomRead = `-- name: MarkRoomRead :exec
+insert into room_reads (room_id, user_id, read_at)
+values ($1, $2, now())
+on conflict (room_id, user_id) do update set read_at = now()
+`
+
+type MarkRoomReadParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Opening a room is reading it. Upsert so the first visit works the same as
+// the hundredth.
+func (q *Queries) MarkRoomRead(ctx context.Context, arg MarkRoomReadParams) error {
+	_, err := q.db.Exec(ctx, markRoomRead, arg.RoomID, arg.UserID)
+	return err
 }
 
 const pruneChat = `-- name: PruneChat :exec

@@ -44,6 +44,10 @@ export const presence = {
 	get rooms() {
 		return rooms;
 	},
+	/** False until the first answer lands — a skeleton, not an empty list. */
+	get loaded() {
+		return version > 0;
+	},
 	/** Bumps on every change ping — pages re-fetch what they show off this. */
 	get version() {
 		return version;

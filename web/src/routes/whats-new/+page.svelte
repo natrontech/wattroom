@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -13,9 +12,8 @@
 
 <svelte:head><title>What's new · WattRoom</title></svelte:head>
 
-<main class="page max-w-3xl">
+<main class="page">
 	<div class="flex flex-wrap items-center gap-3">
-		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">What's new</h1>
 			<p class="text-muted text-xs">

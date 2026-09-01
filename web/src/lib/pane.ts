@@ -60,11 +60,19 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	// too, not only from the observer: a neighbour laid out in the same frame
 	// must not fall back to the default width for a tick.
 	const publish = () => {
+		const root = document.documentElement.style;
+		// A hidden pane (the dock with nothing playing) publishes nothing — a
+		// stale height would keep every gutter reserved for a player that is
+		// not there.
 		if (node.offsetWidth > 0)
-			document.documentElement.style.setProperty(
-				`--pane-${key}-w`,
-				`${node.offsetWidth}px`,
-			);
+			root.setProperty(`--pane-${key}-w`, `${node.offsetWidth}px`);
+		else root.removeProperty(`--pane-${key}-w`);
+		// Height too: the jukebox dock floats over the content column, and the
+		// training place reserves that much so the player never sits on the
+		// crew strip or the horizon (ADR-0020).
+		if (node.offsetHeight > 0)
+			root.setProperty(`--pane-${key}-h`, `${node.offsetHeight}px`);
+		else root.removeProperty(`--pane-${key}-h`);
 	};
 	publish();
 	const observer = new ResizeObserver(() => {
@@ -82,6 +90,7 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	return () => {
 		observer.disconnect();
 		document.documentElement.style.removeProperty(`--pane-${key}-w`);
+		document.documentElement.style.removeProperty(`--pane-${key}-h`);
 	};
 }
 

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -185,6 +186,10 @@ type roomJSON struct {
 	// running session's name and elapsed. Members-only, room-scoped like every
 	// live signal.
 	MemberCount int `json:"memberCount,omitempty"`
+	// Lines from other people since you last opened this room (#389) — the
+	// rail's whole argument for spending width on a room you are not looking
+	// at. Per-rider, so it does not belong in RoomPresence.
+	Unread int `json:"unread,omitempty"`
 	protocol.RoomPresence
 }
 
@@ -274,6 +279,16 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		if s.presence != nil {
 			entry.RoomPresence = s.presence.Presence(room.Slug)
 		}
+		// Standing in a room is reading it: a badge on the room you are looking
+		// at is noise, and handleGet has already stamped it read.
+		if !slices.Contains(entry.Riders, user.DisplayName) {
+			if n, err := s.store.Queries.CountRoomUnread(r.Context(), db.CountRoomUnreadParams{
+				RoomID: room.ID,
+				UserID: user.ID,
+			}); err == nil {
+				entry.Unread = int(n)
+			}
+		}
 		if next, err := s.store.Queries.NextRoomSession(r.Context(), room.ID); err == nil {
 			entry.NextSession = &nextJSON{
 				WorkoutName: next.WorkoutName,
@@ -302,6 +317,13 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			RoomID: room.ID, UserID: user.ID,
 		}); err == nil && m.Role != "banned" {
 			response.Role = m.Role
+			// Opening the room is reading it (#389): the badge clears here, so
+			// the rail stops shouting about a room you are standing in.
+			if err := s.store.Queries.MarkRoomRead(r.Context(), db.MarkRoomReadParams{
+				RoomID: room.ID, UserID: user.ID,
+			}); err != nil {
+				s.log.Warn("mark room read failed", "err", err, "room", room.Slug)
+			}
 			response.Code = room.Code
 			response.SoundPack = room.SoundPack
 			response.Cheers = cheerSet(room.Cheers)

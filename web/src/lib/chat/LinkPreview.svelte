@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Part } from './inline';
+	import { ListPlus } from '@lucide/svelte';
 
 	// Keyless oEmbed for the two services the room speaks — same trick the
 	// jukebox uses for titles. A generic unfurl would need a server-side OG
@@ -34,11 +35,22 @@
 
 	// The first unfurlable link in the message gets the card — messengers
 	// preview one link, not five.
-	let { parts }: { parts: Part[] } = $props();
+	let {
+		parts,
+		onQueue,
+	}: {
+		parts: Part[];
+		/** Given in a room: a YouTube card grows a Queue button, so a link
+		 *  dropped in the chat is one tap from the jukebox. */
+		onQueue?: (url: string) => void;
+	} = $props();
 	const url = $derived(
 		parts.find((p) => p.external && endpointFor(p.text))?.text,
 	);
 	let card = $state<Card | null>(null);
+	const queueable = $derived(
+		!!onQueue && !!card && /youtube\.com$|youtu\.be$/.test(card.host),
+	);
 
 	$effect(() => {
 		if (!url) {
@@ -73,27 +85,41 @@
 </script>
 
 {#if card && url}
-	<a
-		href={url}
-		target="_blank"
-		rel="noopener noreferrer"
-		class="border-ink/10 hover:border-neon/40 bg-surface-raised mt-1 flex items-center gap-2 rounded border p-1.5"
-	>
-		{#if card.thumb}
-			<img
-				src={card.thumb}
-				alt=""
-				loading="lazy"
-				class="h-9 w-16 shrink-0 rounded object-cover"
-			/>
+	<span class="mt-1 flex items-stretch gap-1">
+		<a
+			href={url}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="border-ink/10 hover:border-neon/40 bg-surface-raised flex min-w-0 flex-1 items-center gap-2 rounded border p-1.5"
+		>
+			{#if card.thumb}
+				<img
+					src={card.thumb}
+					alt=""
+					loading="lazy"
+					class="h-9 w-16 shrink-0 rounded object-cover"
+				/>
+			{/if}
+			<span class="min-w-0">
+				<span class="text-ink/85 block truncate text-[11px] leading-tight"
+					>{card.title}</span
+				>
+				<span class="text-muted/70 block truncate font-mono text-[10px]"
+					>{card.host}</span
+				>
+			</span>
+		</a>
+		{#if queueable}
+			<!-- The whole reason a link lands in the chat during a ride. -->
+			<button
+				onclick={() => onQueue?.(url)}
+				class="border-ink/10 hover:border-neon/40 bg-surface-raised text-muted hover:text-ink flex shrink-0 flex-col items-center justify-center gap-0.5 rounded border px-2 text-[10px]"
+				title="add to the jukebox queue"
+				aria-label="add {card.title} to the jukebox queue"
+			>
+				<ListPlus size={14} />
+				queue
+			</button>
 		{/if}
-		<span class="min-w-0">
-			<span class="text-ink/85 block truncate text-[11px] leading-tight"
-				>{card.title}</span
-			>
-			<span class="text-muted/70 block truncate font-mono text-[10px]"
-				>{card.host}</span
-			>
-		</span>
-	</a>
+	</span>
 {/if}

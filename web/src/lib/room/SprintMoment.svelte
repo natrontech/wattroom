@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { play, playCountdownTick } from '$lib/sound/cues';
 	import type { SprintState } from '$lib/protocol';
+	import type { RoomRider } from '$lib/room/view';
+	import { wkg } from '$lib/format';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
 	// mini-podium. Times come as server-clock anchors; local now is close
@@ -8,13 +10,24 @@
 	let {
 		sprint,
 		myWatts,
+		roster = [],
 		silent = false,
 	}: {
 		sprint: SprintState;
 		myWatts: number;
+		/** The room, for the live standings — absent outside a room. */
+		roster?: RoomRider[];
 		/** The /dev gallery mounts this without a ride — no klaxon there. */
 		silent?: boolean;
 	} = $props();
+
+	// Ranked on w/kg, the fair ordering for mixed groups (docs/SPEC.md).
+	const ranked = $derived(
+		[...roster].sort((a, b) => b.watts / b.kg - a.watts / a.kg),
+	);
+	const leader = $derived(
+		ranked.length > 0 ? ranked[0].watts / ranked[0].kg : 0,
+	);
 
 	let now = $state(Date.now());
 	$effect(() => {
@@ -58,52 +71,118 @@
 	});
 </script>
 
+<!-- ADR-0020: the sprint takes the focus and gives it back. This was a card
+     appended under the dashboard — the quietest element on screen for the
+     loudest fifteen seconds in the product, which WATTROOM.md calls the one
+     place the UI is allowed to go loud. `roster` absent keeps the old compact
+     rendering for /dev/modes, which mounts it without a room. -->
 {#if phase === 'klaxon'}
-	<div
-		class="border-watt/50 bg-surface-raised mt-4 rounded-lg border-2 px-5 py-4 text-center"
-	>
-		<p class="text-muted text-[10px] tracking-[0.3em] uppercase">sprint in</p>
-		<p
-			class="text-watt glow-text-strong font-display text-6xl font-bold tabular-nums"
-		>
-			{countdown}
-		</p>
+	<div class="grid h-full place-items-center">
+		<div class="text-center">
+			<p class="eyebrow">get ready</p>
+			<p
+				class="font-display text-watt glow-text-strong text-[9rem] leading-none font-bold tabular-nums"
+			>
+				{Math.max(0, countdown)}
+			</p>
+			<p class="font-display mt-2 text-3xl font-bold">SPRINT</p>
+			<p class="text-muted mt-1 text-sm">
+				15 seconds, all out — your trainer lets go of the target
+			</p>
+		</div>
 	</div>
 {:else if phase === 'live'}
-	<div
-		class="border-watt/50 bg-surface-raised mt-4 rounded-lg border-2 px-5 py-4 text-center"
-	>
-		<p class="text-muted text-[10px] tracking-[0.3em] uppercase">
-			all out — {remaining.toFixed(1)}s
-		</p>
-		<p
-			class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
-		>
-			{myWatts}
-		</p>
+	<div class="grid h-full min-h-0 grid-rows-[auto_1fr] gap-4">
+		<div class="flex items-end gap-6">
+			<div>
+				<p class="eyebrow">all out</p>
+				<p
+					class="font-display text-watt glow-text-strong text-8xl leading-none font-bold tabular-nums"
+				>
+					{myWatts}
+				</p>
+			</div>
+			<div class="ml-auto pb-2 text-right">
+				<p class="eyebrow">left</p>
+				<p class="font-display text-5xl leading-none font-bold tabular-nums">
+					{remaining.toFixed(1)}
+				</p>
+			</div>
+		</div>
+
+		{#if ranked.length > 0}
+			<!-- A sprint is a contest, so the crew stops being context and becomes
+			     the scoreboard. Ranked on w/kg — a 62 kg climber and a 78 kg
+			     sprinter are not racing the same number (docs/SPEC.md's rule for
+			     every contest here). -->
+			<ol class="min-h-0 space-y-1.5 overflow-y-auto">
+				{#each ranked as rider, i (rider.id)}
+					<li
+						class="flex items-center gap-3 rounded px-3 py-2 {rider.you
+							? 'bg-surface-raised'
+							: ''}"
+					>
+						<span
+							class="font-display text-muted w-6 shrink-0 text-lg font-bold tabular-nums"
+							>{i + 1}</span
+						>
+						<span
+							class="min-w-0 flex-1 truncate text-sm {rider.you
+								? 'font-semibold'
+								: ''}">{rider.name}</span
+						>
+						<span
+							class="bg-surface hidden h-2 w-40 shrink-0 overflow-hidden rounded-full sm:block"
+						>
+							<span
+								class="bg-watt block h-full transition-[width] duration-300"
+								style="width: {leader > 0
+									? Math.min(100, (rider.watts / rider.kg / leader) * 100)
+									: 0}%"
+							></span>
+						</span>
+						<span
+							class="font-display w-16 shrink-0 text-right text-lg font-bold tabular-nums {i ===
+							0
+								? 'text-watt glow-text'
+								: ''}">{wkg(rider.watts, rider.kg)}</span
+						>
+						<span
+							class="text-muted w-14 shrink-0 text-right text-xs tabular-nums"
+							>{rider.watts} W</span
+						>
+					</li>
+				{/each}
+			</ol>
+		{/if}
 	</div>
 {:else if sprint.results}
-	<div
-		class="border-muted/20 bg-surface-raised mt-4 rounded-lg border px-5 py-4"
-	>
-		<p class="text-muted text-[10px] tracking-[0.3em] uppercase">
-			sprint podium
-		</p>
-		<ol class="mt-2 grid gap-1">
-			{#each sprint.results.slice(0, 5) as score, i (score.riderId)}
-				<li class="flex items-baseline gap-2 text-sm">
-					<span class="text-muted w-5"
-						>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`}</span
+	<div class="grid h-full place-items-center">
+		<div class="w-full max-w-lg text-center">
+			<p class="eyebrow">sprint podium</p>
+			<ol class="mt-4 space-y-2">
+				{#each sprint.results.slice(0, 3) as score, i (score.riderId)}
+					<li
+						class="flex items-center gap-3 rounded-lg px-4 py-3 {i === 0
+							? 'border-watt/40 border-2'
+							: 'bg-surface-raised'}"
 					>
-					<span class="font-medium">{score.name}</span>
-					<span
-						class="font-display ml-auto font-bold tabular-nums {i === 0
-							? 'text-watt glow-text'
-							: ''}">{score.wkg.toFixed(1)} w/kg</span
-					>
-					<span class="text-muted text-xs tabular-nums">{score.watts} W</span>
-				</li>
-			{/each}
-		</ol>
+						<span class="shrink-0 text-2xl">{['🥇', '🥈', '🥉'][i]}</span>
+						<span class="flex-1 truncate text-left font-medium"
+							>{score.name}</span
+						>
+						<span
+							class="font-display text-2xl font-bold tabular-nums {i === 0
+								? 'text-watt glow-text-strong'
+								: ''}">{score.wkg.toFixed(1)}</span
+						>
+						<span class="text-muted text-xs">w/kg</span>
+					</li>
+				{/each}
+			</ol>
+			<p class="text-muted mt-4 text-xs">
+				Back to the workout — targets return in a moment.
+			</p>
+		</div>
 	</div>
 {/if}

@@ -10,6 +10,8 @@ import type { Workout } from './types';
 export interface ShelfEntry {
 	id: string;
 	yours: boolean;
+	/** Ridden in your recent history — the picker lists these first, named. */
+	recent?: boolean;
 	focus?: string;
 	/** One line on what it is for; the library's, absent on your own. */
 	summary?: string;
