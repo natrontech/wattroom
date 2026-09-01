@@ -257,18 +257,23 @@
 				/>
 			{/if}
 		</div>
-		<!-- Room chip adds a second bar on mobile — pad the content past both. -->
-		<div
-			class="min-w-0 flex-1 overflow-y-auto {caved
-				? ''
-				: roomConnection.current
-					? 'pb-28 md:pb-0'
-					: 'pb-16 md:pb-0'}"
-		>
+		<!-- The nav is a row of the column, not a sticky block inside the scroll
+		     area: a full-height page (the room) sizes itself against what is
+		     left, instead of a viewport that is one nav taller than the screen. -->
+		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 			{#if !caved}
 				<TopNav />
 			{/if}
-			{@render children()}
+			<!-- Room chip adds a second bar on mobile — pad the content past both. -->
+			<div
+				class="min-h-0 flex-1 overflow-y-auto {caved
+					? ''
+					: roomConnection.current
+						? 'pb-28 md:pb-0'
+						: 'pb-16 md:pb-0'}"
+			>
+				{@render children()}
+			</div>
 		</div>
 		<!-- The ride owns the whole screen while caved; the tab bar returns
 		     with the lights. -->

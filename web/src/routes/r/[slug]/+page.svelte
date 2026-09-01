@@ -89,7 +89,7 @@
 </script>
 
 {#if error && !room}
-	<main class="grid min-h-dvh place-items-center px-6">
+	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<Logo size={40} />
 			<p class="mt-6 text-sm">{error}</p>
@@ -102,7 +102,7 @@
 	</main>
 {:else if room && !isMember}
 	<!-- The golden path: someone opened a shared link. One decision, one button. -->
-	<main class="grid min-h-dvh place-items-center px-6">
+	<main class="grid min-h-full place-items-center px-6">
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
@@ -118,7 +118,7 @@
 {:else if !room}
 	<!-- Loading: a page never renders blank (.claude/rules/errors.md) — a cold
 	     server takes seconds and the void read as broken. -->
-	<main class="grid min-h-dvh place-items-center px-6">
+	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center" aria-busy="true">
 			<Logo size={40} />
 			<p class="text-muted mt-4 text-sm">Opening the room…</p>

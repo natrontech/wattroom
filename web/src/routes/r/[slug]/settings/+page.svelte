@@ -132,7 +132,7 @@
 </script>
 
 {#if error && !room}
-	<main class="grid min-h-dvh place-items-center px-6">
+	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<p class="text-sm">{error}</p>
 			<a
@@ -144,7 +144,7 @@
 	</main>
 {:else if room && room.role !== 'owner'}
 	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click. -->
-	<main class="grid min-h-dvh place-items-center px-6">
+	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<p class="text-sm">Only {room.name}'s owner can change its settings.</p>
 			<a

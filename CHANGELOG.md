@@ -4,7 +4,7 @@ All notable changes to WattRoom are recorded here.
 
 The format is [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
 Versions are [CalVer](https://calver.org/) `YYYY.0M.MICRO` — `2026.09.1`, then
-`2026.09.2`, and MICRO back to 1 next month. The number tells you *when* a
+`2026.09.2`, and MICRO back to 1 next month. The number tells you _when_ a
 release is from; whether it breaks anything for you is what the headings below
 are for, so read Changed and Removed rather than counting digits.
 
@@ -35,6 +35,11 @@ not a second copy of `git log`.
 - Appearance themes now recolour the whole app — surfaces, text, accents, and
   power zones — with matching dark and daylight variants instead of changing
   only two accent colours.
+
+### Fixed
+
+- The page no longer scrolls by the height of the top nav: the room fills
+  exactly what is left of the screen instead of one nav-bar too much.
 
 ### Security
 
