@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
-	import Logo from '$lib/brand/Logo.svelte';
 	import DeviceSlot, { type Slot } from '$lib/components/DeviceSlot.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
 	import { sensors } from '$lib/sensors.svelte';
@@ -65,7 +64,6 @@
 
 <main class="page max-w-3xl">
 	<div class="flex items-center gap-3">
-		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Sensors</h1>
 			<p class="text-muted text-xs">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { ArrowRight, CalendarClock, Flame } from '@lucide/svelte';
+	import { ArrowRight, CalendarClock, Flame, Radio } from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -66,6 +66,32 @@
 	});
 
 	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
+
+	const greeting = $derived.by(() => {
+		const h = new Date().getHours();
+		return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
+	});
+	// One sentence and one button: the room that is riding, else the room
+	// with people in it, else nothing — a hero with nowhere to go is noise.
+	const headline = $derived.by(() => {
+		const live = busy.find((r) => r.live && r.session);
+		if (live && live.session) {
+			const min = Math.round(live.session.elapsedSec / 60);
+			return {
+				slug: live.slug,
+				text: `${live.name} is riding right now — ${min < 1 ? 'just starting' : `${min} minute${min === 1 ? '' : 's'} in`}.`,
+				cta: 'Join the ride',
+			};
+		}
+		const around = busy[0];
+		if (around)
+			return {
+				slug: around.slug,
+				text: `${(around.riders ?? []).join(', ')} ${(around.riders ?? []).length === 1 ? 'is' : 'are'} in ${around.name}.`,
+				cta: 'Join them',
+			};
+		return null;
+	});
 	const planned = $derived(
 		(rooms ?? [])
 			.filter((r) => r.next)
@@ -130,9 +156,18 @@
 </script>
 
 <main class="page max-w-4xl">
+	<!-- The mock's header (ADR-0020): a greeting, one sentence on what is
+	     happening, and the one thing to do about it. Home is the between-
+	     rides surface, so the first thing it says is where the ride is. -->
 	<h1 class="font-display text-3xl font-bold tracking-tight">
-		Hey {account.me?.displayName ?? 'rider'}
+		{greeting}, {account.me?.displayName?.split(' ')[0] ?? 'rider'}.
 	</h1>
+	{#if headline}
+		<p class="text-muted mt-1 text-sm">{headline.text}</p>
+		<a href="/r/{headline.slug}" class="btn btn-accent btn-lg mt-4"
+			><Radio size={15} /> {headline.cta}</a
+		>
+	{/if}
 
 	{#if error}
 		<div class="mt-6">
@@ -174,10 +209,10 @@
 			{/each}
 		</div>
 	{:else}
-		<!-- Happening now: the reason to open the app — people. -->
+		<!-- Around right now: the reason to open the app — people. -->
 		<section class="mt-8">
 			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Happening now
+				Around right now
 			</h2>
 			{#if busy.length > 0}
 				<div class="mt-3 grid gap-3">
@@ -215,6 +250,54 @@
 					place to appear.
 				</p>
 			{/if}
+		</section>
+
+		<!-- Your week: enough numbers to feel momentum, not a dashboard farm. -->
+		<section class="mt-10">
+			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
+				Your week
+			</h2>
+			<div class="mt-3 grid grid-cols-3 gap-3">
+				<div class="panel px-4 py-3">
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{rides === null ? '–' : week.count}
+					</p>
+					<p class="eyebrow">rides</p>
+				</div>
+				<div class="panel px-4 py-3">
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{rides === null ? '–' : week.minutes}<span
+							class="text-muted ml-1 text-sm">min</span
+						>
+					</p>
+					<p class="eyebrow">in the saddle</p>
+				</div>
+				<div class="panel px-4 py-3">
+					<p
+						class="font-display inline-flex items-center gap-1.5 text-2xl font-bold tabular-nums"
+					>
+						{rides === null ? '–' : week.kj}<span class="text-muted text-sm"
+							>kJ</span
+						>
+						{#if week.kj > 0}<Flame size={16} class="text-z5" />{/if}
+					</p>
+					<p class="eyebrow">work</p>
+				</div>
+			</div>
+			{#if form}
+				<p class="text-muted mt-2 text-xs">
+					<span class="text-ink font-display font-semibold"
+						>form {form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%</span
+					>
+					· {FORM_SENTENCES[form.zone] ?? form.zone} ·
+					<span class="text-[11px]">from your WattRoom rides</span>
+				</p>
+			{/if}
+			<p class="text-muted mt-2 text-xs">
+				FTP {account.me?.ftpWatts ?? '–'} W ·
+				<a href="/history" class="hover:text-ink underline">all rides</a> ·
+				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
+			</p>
 		</section>
 
 		<!-- Your rooms: the sidebar is the list, so this is only what the list
@@ -340,54 +423,6 @@
 					>All friends →</a
 				>
 			</div>
-		</section>
-
-		<!-- Your week: enough numbers to feel momentum, not a dashboard farm. -->
-		<section class="mt-10">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Your week
-			</h2>
-			<div class="mt-3 grid grid-cols-3 gap-3">
-				<div class="panel px-4 py-3">
-					<p class="font-display text-2xl font-bold tabular-nums">
-						{rides === null ? '–' : week.count}
-					</p>
-					<p class="eyebrow">rides</p>
-				</div>
-				<div class="panel px-4 py-3">
-					<p class="font-display text-2xl font-bold tabular-nums">
-						{rides === null ? '–' : week.minutes}<span
-							class="text-muted ml-1 text-sm">min</span
-						>
-					</p>
-					<p class="eyebrow">in the saddle</p>
-				</div>
-				<div class="panel px-4 py-3">
-					<p
-						class="font-display inline-flex items-center gap-1.5 text-2xl font-bold tabular-nums"
-					>
-						{rides === null ? '–' : week.kj}<span class="text-muted text-sm"
-							>kJ</span
-						>
-						{#if week.kj > 0}<Flame size={16} class="text-z5" />{/if}
-					</p>
-					<p class="eyebrow">work</p>
-				</div>
-			</div>
-			{#if form}
-				<p class="text-muted mt-2 text-xs">
-					<span class="text-ink font-display font-semibold"
-						>form {form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%</span
-					>
-					· {FORM_SENTENCES[form.zone] ?? form.zone} ·
-					<span class="text-[11px]">from your WattRoom rides</span>
-				</p>
-			{/if}
-			<p class="text-muted mt-2 text-xs">
-				FTP {account.me?.ftpWatts ?? '–'} W ·
-				<a href="/history" class="hover:text-ink underline">all rides</a> ·
-				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
-			</p>
 		</section>
 	{/if}
 </main>

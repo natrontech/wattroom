@@ -8,16 +8,12 @@
 	// as a tap rather than a mode you have to remember you are in.
 	import { dev } from '$app/environment';
 	import RiderTile from '$lib/room/RiderTile.svelte';
+	import SessionControls from '$lib/room/SessionControls.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import {
-		MonitorUp,
-		Radio,
-		ScreenShare,
-		ScreenShareOff,
-	} from '@lucide/svelte';
+	import { MonitorUp, ScreenShare, ScreenShareOff } from '@lucide/svelte';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
@@ -40,11 +36,7 @@
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
-		{#if room.canControl}
-			<button onclick={() => room.openPicker()} class="btn btn-accent btn-lg"
-				><Radio size={15} /> Start a session</button
-			>
-		{/if}
+		<SessionControls />
 		{#if av && account.me?.avEnabled}
 			{#if av.status === 'off' || av.status === 'failed'}
 				<button onclick={() => void av.join()} class="btn btn-secondary"

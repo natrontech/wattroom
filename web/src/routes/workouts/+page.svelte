@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Gauge } from '@lucide/svelte';
-	import Logo from '$lib/brand/Logo.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
@@ -38,7 +37,6 @@
 
 <main class="page max-w-4xl">
 	<div class="flex items-center gap-3">
-		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Workouts</h1>
 			<p class="text-muted text-xs">

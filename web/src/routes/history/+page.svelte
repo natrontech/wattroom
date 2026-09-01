@@ -9,7 +9,6 @@
 	} from '$lib/progression';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
-	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -128,7 +127,6 @@
 
 <main class="page max-w-3xl">
 	<div class="flex flex-wrap items-center gap-3">
-		<Logo size={30} />
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>
 			<p class="text-muted text-xs">

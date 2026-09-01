@@ -115,6 +115,12 @@
 				class="btn btn-primary btn-lg mt-6">Join {room.name}</button
 			>
 			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}
+			<!-- Privacy is architecture (WATTROOM.md): say what the room sees
+			     before the button, not in a policy page after it. -->
+			<p class="text-muted/70 mt-4 text-[11px]">
+				Your watts are visible to this room while you ride here, and nowhere
+				else.
+			</p>
 		</div>
 	</main>
 {:else if !room}

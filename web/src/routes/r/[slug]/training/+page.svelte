@@ -11,6 +11,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { formatClock, wkg } from '$lib/format';
@@ -41,11 +42,7 @@
 				Nothing is running yet. Training is where your numbers live once someone
 				starts a session.
 			</p>
-			{#if room.canControl}
-				<button onclick={() => room.openPicker()} class="btn btn-accent mt-4"
-					>Start a session</button
-				>
-			{/if}
+			<div class="mt-4 flex justify-center"><SessionControls /></div>
 		</div>
 	</div>
 {:else if room.phase === 'countdown'}
@@ -63,6 +60,7 @@
 			<p class="text-muted mt-1 text-sm">
 				{room.riders.length} rider{room.riders.length === 1 ? '' : 's'}
 			</p>
+			<div class="mt-4 flex justify-center"><SessionControls compact /></div>
 		</div>
 	</div>
 {:else}
@@ -98,6 +96,7 @@
 				{formatClock(elapsed)}
 				<span class="text-muted/50">/ {formatClock(total)}</span>
 			</p>
+			<SessionControls compact />
 		</header>
 
 		{#if focus === 'sprint' && room.sprint}
