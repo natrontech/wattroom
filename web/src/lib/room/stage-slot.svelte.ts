@@ -21,21 +21,40 @@ export const stageSlot = $state<{ seat: Seat | null }>({ seat: null });
 /** Below this much of the stage on screen, the dock takes the video back. */
 const ENOUGH_VISIBLE = 0.5;
 
+/** The seat a hole's rect amounts to; none while hidden or not laid out. */
+export function seatOf(rect: DOMRectReadOnly, visible: boolean): Seat | null {
+	return visible && rect.width > 0
+		? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+		: null;
+}
+
+export function sameSeat(a: Seat | null, b: Seat | null): boolean {
+	if (!a || !b) return a === b;
+	return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+}
+
 /**
  * Offer `node` as the player's seat for as long as it is attached and mostly
  * on screen. Returns the teardown, so it drops straight into an attachment.
+ *
+ * The hole is re-measured every animation frame while offered (#395). A
+ * banner above the stage, a message landing, a tab switch — anything that
+ * moves the hole without resizing it — fires no observer, and a scroll
+ * listener paints a frame behind. One getBoundingClientRect per frame, and
+ * a publish only when the numbers changed.
+ * ponytail: a rAF poll of one rect, not a MutationObserver over every ancestor.
  */
 export function offerSeat(node: HTMLElement): () => void {
 	let visible = true;
+	let raf = 0;
 	const publish = () => {
-		const rect = node.getBoundingClientRect();
-		stageSlot.seat =
-			visible && rect.width > 0
-				? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-				: null;
+		const next = seatOf(node.getBoundingClientRect(), visible);
+		if (!sameSeat(stageSlot.seat, next)) stageSlot.seat = next;
 	};
-	const resize = new ResizeObserver(publish);
-	resize.observe(node);
+	const frame = () => {
+		publish();
+		raf = requestAnimationFrame(frame);
+	};
 	const intersect = new IntersectionObserver(
 		([entry]) => {
 			visible = entry.intersectionRatio >= ENOUGH_VISIBLE;
@@ -44,16 +63,10 @@ export function offerSeat(node: HTMLElement): () => void {
 		{ threshold: [0, ENOUGH_VISIBLE, 1] },
 	);
 	intersect.observe(node);
-	// Scrolling moves the seat without resizing anything, and any ancestor
-	// can be the scroller — hence the capturing window listener.
-	window.addEventListener('scroll', publish, true);
-	window.addEventListener('resize', publish);
-	publish();
+	frame();
 	return () => {
-		resize.disconnect();
+		cancelAnimationFrame(raf);
 		intersect.disconnect();
-		window.removeEventListener('scroll', publish, true);
-		window.removeEventListener('resize', publish);
 		stageSlot.seat = null;
 	};
 }
