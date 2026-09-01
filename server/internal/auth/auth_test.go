@@ -325,6 +325,54 @@ func TestDevLoginCreatesSession(t *testing.T) {
 	}
 }
 
+func TestDevLoginAsMintsASecondRider(t *testing.T) {
+	// ?as=Nina is a different rider from Dev Rider, and asking twice is still
+	// one Nina — the same no-multiplication rule the default identity keeps.
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	s := testService(t)
+	s.providers = providersFromEnv("http://localhost:8080")
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(),
+			"delete from users where id in (select user_id from identities where provider = 'dev')")
+	})
+	login := func(as string) *http.Cookie {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start?as="+as, nil)
+		req.SetPathValue("provider", "dev")
+		w := httptest.NewRecorder()
+		s.handleStart(w, req)
+		if w.Code != http.StatusFound {
+			t.Fatalf("dev login as %q: %d %s", as, w.Code, w.Body.String())
+		}
+		return w.Result().Cookies()[0]
+	}
+	nina := login("Nina")
+	login("Nina")
+	dev := login("")
+	authed := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+	authed.AddCookie(nina)
+	if user, ok := s.User(authed); !ok || user.DisplayName != "Nina" {
+		t.Fatalf("?as=Nina did not resolve to Nina (ok=%v)", ok)
+	}
+	authed2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+	authed2.AddCookie(dev)
+	if user, ok := s.User(authed2); !ok || user.DisplayName != "Dev Rider" {
+		t.Fatalf("default dev login changed (ok=%v)", ok)
+	}
+	var count int
+	_ = s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from identities where provider = 'dev'").Scan(&count)
+	if count != 2 {
+		t.Fatalf("expected Dev Rider + Nina, got %d dev identities", count)
+	}
+	// Junk falls back rather than failing a dev at the door.
+	junk := login("%3Cscript%3E")
+	authed3 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+	authed3.AddCookie(junk)
+	if user, ok := s.User(authed3); !ok || user.DisplayName != "Dev Rider" {
+		t.Fatalf("junk ?as= should fall back to Dev Rider (ok=%v)", ok)
+	}
+}
+
 func TestParallelDevLoginsShareOneUser(t *testing.T) {
 	// The identity-create race (found by parallel e2e workers, same shape as a
 	// double-clicked OAuth redirect): every concurrent first sign-in must
