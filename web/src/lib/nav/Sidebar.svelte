@@ -105,7 +105,10 @@
 		<ul class="space-y-0.5">
 			{#each rooms as room (room.slug)}
 				{@const here = room.slug === connectedSlug}
-				{@const open = room.slug === activeSlug}
+				<!-- Opened: the room whose pages you are on, AND the one you are
+				     standing in — reading a DM or Home while connected must not
+				     fold Training two clicks away (rider report, #416). -->
+				{@const open = room.slug === activeSlug || here}
 				<li>
 					<a
 						href="/r/{room.slug}"
@@ -195,7 +198,7 @@
 							class="border-ink/10 mt-0.5 mb-1 ml-3 space-y-0.5 border-l pl-2"
 						>
 							{#each roomPlaces as entry (entry.path)}
-								{@const on = place === entry.path}
+								{@const on = room.slug === activeSlug && place === entry.path}
 								<li>
 									<a
 										href="/r/{room.slug}{entry.path}"

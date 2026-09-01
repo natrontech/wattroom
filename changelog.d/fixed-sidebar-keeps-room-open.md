@@ -1,0 +1,1 @@
+- The room you are in stays opened in the sidebar while you read a message or visit Home, so Training is one click away again instead of two.
