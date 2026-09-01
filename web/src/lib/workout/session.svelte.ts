@@ -44,6 +44,18 @@ export function toleranceBand(target: number): number {
 
 export type RideState = 'idle' | 'running' | 'autopaused' | 'resuming' | 'done';
 
+/**
+ * The frame caves while a solo session is live (ADR-0020: the ride is the
+ * cave, sidebar included). The layout cannot see a page's session, so the
+ * last one started is published here; /ride and /ramp stop theirs on destroy.
+ */
+let latest = $state.raw<{ state: RideState } | null>(null);
+export const soloRide = {
+	get active() {
+		return !!latest && latest.state !== 'idle' && latest.state !== 'done';
+	},
+};
+
 export interface RideOptions {
 	trainer: Trainer;
 	workout: Workout;
@@ -282,6 +294,11 @@ export function createRideSession({
 			if (trainer.status !== 'connected') await trainer.connect();
 			unsubscribe = trainer.onSample(onSample);
 			state = 'running';
+			latest = {
+				get state() {
+					return state;
+				},
+			};
 			applyTarget();
 			ticker = createTicker(tick, { now });
 			// The screen staying on is part of "a ride is running" — owned here so

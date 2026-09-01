@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { onDestroy } from 'svelte';
 	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
@@ -113,6 +114,9 @@
 		if (message) error = message;
 		else saved = true;
 	}
+	// This page is the session's only owner: leaving mid-test ends it, or the
+	// trainer holds a step with nobody watching and the frame stays caved.
+	onDestroy(() => session?.stop());
 </script>
 
 <main class="page">

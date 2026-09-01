@@ -20,6 +20,7 @@
 	import '$lib/palette.svelte';
 	import '$lib/theme.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -192,13 +193,16 @@
 {:else if framed}
 	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
 	     a desk surface and follows the theme — the lights go down when the
-	     session starts, and come back up when it ends. -->
+	     session starts, and come back up when it ends. A solo ride or ramp
+	     test is a ride too (ADR-0020), so the whole frame goes dark with it —
+	     not a dark instrument beside a daylight sidebar. -->
 	{@const ridePhase = roomConnection.current?.live.tick?.state.phase}
 	{@const caved =
-		page.url.pathname.startsWith('/r/') &&
-		(ridePhase === 'countdown' ||
-			ridePhase === 'running' ||
-			ridePhase === 'paused')}
+		(page.url.pathname.startsWith('/r/') &&
+			(ridePhase === 'countdown' ||
+				ridePhase === 'running' ||
+				ridePhase === 'paused')) ||
+		soloRide.active}
 	<div class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}">
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
 		     rooms, the places inside the room you are standing in, messages and

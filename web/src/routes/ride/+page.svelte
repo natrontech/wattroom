@@ -24,6 +24,7 @@
 	import { api, apiBlob } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
+	import { onDestroy } from 'svelte';
 	import { dev } from '$app/environment';
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
@@ -397,18 +398,18 @@
 		window.addEventListener('beforeunload', handler);
 		return () => window.removeEventListener('beforeunload', handler);
 	});
+	// This page is the session's only owner: leaving it ends the ride, as the
+	// confirm above promises — or the trainer holds a target with nobody
+	// watching and the frame stays caved.
+	onDestroy(() => session?.stop());
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
-<!-- Mid-ride the solo player is the cave too (#113 refined): setup and the
-     summary are desk surfaces, the effort itself gets the dark. -->
-<main
-	class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5 {session &&
-	session.state !== 'done'
-		? 'cave'
-		: ''}"
->
+<!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,
+     ADR-0020): the layout reads soloRide.active. Setup and the summary are
+     desk surfaces, the effort itself gets the dark. -->
+<main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
 	{#if !session}
 		<!-- Pre-ride: pick your effort level and how you are getting power in. -->
 		<div class="m-auto w-full max-w-md text-center">
