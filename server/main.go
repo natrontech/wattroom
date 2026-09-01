@@ -4,11 +4,14 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -130,6 +133,17 @@ func main() {
 			return store.UUIDString(user.ID), ok
 		})
 		mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
+		// The landing page's live numbers, public because the page is: riders
+		// online right now and the repo's stars. Counts only — no identities,
+		// nothing room-scoped.
+		stars := pollStars(context.Background(), log)
+		mux.HandleFunc("GET /api/live", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(struct {
+				Online int   `json:"online"`
+				Stars  int64 `json:"stars"`
+			}{h.OnlineCount(), stars.Load()})
+		})
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)
@@ -279,4 +293,56 @@ func spaHandler(social *og.Service) http.Handler {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(social.Inject(index, r))
 	})
+}
+
+// pollStars keeps the repo's star count fresh in the background so the landing
+// page reads one number from us instead of every visitor calling GitHub —
+// unauthenticated api.github.com allows 60 requests an hour per address, and
+// no visitor's address needs to reach GitHub for a star count. Zero means
+// unknown (not fetched yet, or GitHub unreachable) and the page hides it.
+// ponytail: fixed 15 min refresh, no ETag — stars are not a live metric.
+func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
+	var stars atomic.Int64
+	go func() {
+		for {
+			n, err := fetchStars(ctx)
+			if err != nil {
+				log.Warn("github stars unavailable", "err", err)
+			} else {
+				stars.Store(n)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(15 * time.Minute):
+			}
+		}
+	}()
+	return &stars
+}
+
+func fetchStars(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		"https://api.github.com/repos/natrontech/wattroom", nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = res.Body.Close() }()
+	if res.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("github answered %s", res.Status)
+	}
+	var body struct {
+		Stars int64 `json:"stargazers_count"`
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&body); err != nil {
+		return 0, err
+	}
+	return body.Stars, nil
 }

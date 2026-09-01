@@ -84,3 +84,37 @@ func TestLobbyPresence(t *testing.T) {
 		return !online
 	})
 }
+
+// The landing page's live number: distinct riders holding a lobby socket. Two
+// tabs are one rider, and the count drops when the last one closes.
+func TestOnlineCount(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	h.SetLobbyAuth(func(r *http.Request) (string, bool) {
+		name, _, _ := strings.Cut(r.Header.Get("X-Rider"), ":")
+		return name, name != ""
+	})
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	if n := h.OnlineCount(); n != 0 {
+		t.Fatalf("empty hub counts %d online", n)
+	}
+	tabs := []*websocket.Conn{
+		dial(t, base+"/ws/presence", "jan:member"),
+		dial(t, base+"/ws/presence", "jan:member"),
+	}
+	dial(t, base+"/ws/presence", "sven:member")
+	eventually(t, "jan's two tabs and sven count as two riders", func() bool {
+		return h.OnlineCount() == 2
+	})
+
+	for _, c := range tabs {
+		_ = c.CloseNow()
+	}
+	eventually(t, "count drops when jan's last tab closes", func() bool {
+		return h.OnlineCount() == 1
+	})
+}

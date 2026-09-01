@@ -16,6 +16,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Added
+
+- The landing page carries two live numbers: how many riders are online right
+  now (it hides itself when nobody is), and the repo's real star count next to
+  the GitHub link.
+
 ## [2026.09.3] - 2026-09-01
 
 ### Added

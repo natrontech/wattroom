@@ -480,6 +480,19 @@ func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	return p
 }
 
+// OnlineCount is WhereIs without the who: how many distinct riders hold a
+// lobby socket right now. The landing page's one live number — a count only,
+// no identities, so it stays safe to serve to a signed-out visitor.
+func (h *Hub) OnlineCount() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := make(map[string]struct{}, len(h.lobby))
+	for _, id := range h.lobby {
+		seen[id] = struct{}{}
+	}
+	return len(seen)
+}
+
 // WhereIs answers the friends panel (ADR-0012): who is online, and which room
 // each of these users is connected to right now — live state only, persisted
 // nowhere. Present in the map = online (the lobby socket, #251 — Slack's green
