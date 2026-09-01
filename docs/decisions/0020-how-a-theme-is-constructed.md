@@ -60,6 +60,21 @@ monotonic lightness. The shipped Outrun ramp peaks in lightness at Z5 and
 descends into Z6/Z7 while chroma keeps climbing. That is what keeps the hot end
 vivid, and mistaking it for a defect is what caused #396.
 
+**The ramp is therefore shared by every theme, not themed.** Two reasons, and
+the second was discovered while implementing this:
+
+- Zone colour is *learned*. A rider reads "green is threshold" across the room;
+  rotating the scale per palette makes them relearn it for a cosmetic choice.
+  Coggan zones are closer to a standard than to branding.
+- The sRGB gamut does not rotate evenly. Outrun's ramp works partly because its
+  dark steps are violet and blue and its bright ones are cyan, green and amber
+  — hues that can hold chroma at those lightnesses. Rotating the same
+  lightness/chroma pairs onto another hue journey clamps them out of gamut,
+  which is exactly the washing-out this ADR exists to prevent.
+
+Themes own surfaces, chrome, accents and semantic colour. The data scale is
+fitted to each theme's surfaces for contrast, but keeps its hues.
+
 ### 5. Fatigue over a two-hour ride constrains the palette
 
 Not blue light — that evidence is thin. What matters:
