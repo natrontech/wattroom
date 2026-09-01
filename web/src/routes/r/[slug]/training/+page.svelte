@@ -65,7 +65,7 @@
 	</div>
 {:else}
 	<div
-		class="grid h-full min-h-0 grid-rows-[auto_1fr_auto_auto] overflow-hidden"
+		class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto] overflow-hidden"
 	>
 		<header class="flex items-end gap-6 px-6 pt-5 pb-4">
 			<div class="min-w-0">

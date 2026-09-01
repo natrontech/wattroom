@@ -17,7 +17,6 @@
 	const running = $derived(phase === 'running');
 	const paused = $derived(phase === 'paused');
 	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
-	const size = $derived(compact ? 'btn-xs' : '');
 </script>
 
 {#if room.canControl}
@@ -28,7 +27,7 @@
 			><Radio size={15} /> Start a session</button
 		>
 	{:else if phase === 'countdown'}
-		<button onclick={() => room.control('end')} class="btn btn-danger {size}"
+		<button onclick={() => room.control('end')} class="btn btn-danger"
 			><Square size={13} /> Cancel</button
 		>
 	{:else}
@@ -39,25 +38,41 @@
 				<button
 					onclick={() => room.control('sprint')}
 					disabled={!!room.sprint}
-					class="text-watt hover:bg-watt/10 flex items-center gap-1.5 rounded px-3 py-2 text-sm disabled:opacity-40"
-					><Zap size={14} /> Sprint</button
+					title="Sprint"
+					aria-label="arm a sprint"
+					class="text-watt hover:bg-watt/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
+						? 'h-11 w-11'
+						: 'px-3 py-2'}"
+					><Zap size={compact ? 18 : 14} />{#if !compact}Sprint{/if}</button
 				>
 				<button
 					onclick={() => room.control('pause')}
-					class="text-muted hover:text-ink flex items-center gap-1.5 rounded px-3 py-2 text-sm"
-					><Pause size={14} /> Pause</button
+					title="Pause"
+					aria-label="pause the session"
+					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
+						? 'h-11 w-11'
+						: 'px-3 py-2'}"
+					><Pause size={compact ? 18 : 14} />{#if !compact}Pause{/if}</button
 				>
 			{:else if paused}
 				<button
 					onclick={() => room.control('resume')}
-					class="hover:bg-surface-raised flex items-center gap-1.5 rounded px-3 py-2 text-sm"
-					><Play size={14} /> Resume</button
+					title="Resume"
+					aria-label="resume the session"
+					class="hover:bg-surface-raised flex items-center justify-center gap-1.5 rounded text-sm {compact
+						? 'h-11 w-11'
+						: 'px-3 py-2'}"
+					><Play size={compact ? 18 : 14} />{#if !compact}Resume{/if}</button
 				>
 			{/if}
 			<button
 				onclick={() => room.control('end')}
-				class="text-z6 hover:bg-z6/10 flex items-center gap-1.5 rounded px-3 py-2 text-sm"
-				><Square size={13} /> End</button
+				title="End"
+				aria-label="end the session"
+				class="text-z6 hover:bg-z6/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
+					? 'h-11 w-11'
+					: 'px-3 py-2'}"
+				><Square size={compact ? 16 : 13} />{#if !compact}End{/if}</button
 			>
 		</div>
 	{/if}
