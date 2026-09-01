@@ -207,6 +207,29 @@ desk distance between efforts. Column 3 during a session is read at three metres
 and obeys `ux.md` in full: huge tap targets, no precision gestures, no typing.
 The `.cave` scope already marks exactly that boundary, and it keeps doing so.
 
+## Amendments — riding the shipped shape (2026-09-01)
+
+Two rules that were not in the mock and only showed up in the real thing:
+
+- **One page width, anchored left.** Pages used to pick their own `max-w` and
+  centre it, so the content block moved around the column as you navigated —
+  that is what made them feel like separate sites inside one sidebar. `page`
+  bakes in one width and sits beside the sidebar; `page-wide` exists for the
+  editor's three panes and nothing else. A new route does not choose a width.
+- **The jukebox dock and a modal keep out of each other's way.** The dock is
+  above everything because RMF wants the player visible while media plays, so
+  a modal may not bury it — which put it straight over the session picker's
+  action bar. A modal counts itself open (`modals.svelte`); while one is, the
+  dock treats a covered stage as no seat and goes to its corner, and the modal
+  keeps a gutter above the dock's published height. Nothing hidden, nothing
+  overlaid. A new modal uses `Modal` or attaches `countModal`.
+
+Also recorded: the session picker opens for **one intent** — start, or plan —
+with the other a link away; starting and planning had been one modal with two
+stacked sections, which is how riders stopped finding either. And a YouTube
+link in the chat carries a Queue button: that is the reason a link lands in the
+chat during a ride at all.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so
