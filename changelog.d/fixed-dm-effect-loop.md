@@ -1,0 +1,1 @@
+- Opening a direct message no longer throws an update-depth error in the console on every visit.
