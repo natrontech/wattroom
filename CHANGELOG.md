@@ -30,13 +30,35 @@ not a second copy of `git log`.
 
 ## [2026.09.2] - 2026-09-01
 
+*Reconstructed 2026-09-01: this release originally listed only the first entry
+below. Six other changes shipped in it, three of them rider-visible, because
+the per-PR changelog rule landed mid-flight and nothing enforced it.*
+
 ### Added
 
 - What's new: the app shows the changelog of the version it is running, and
   says so once when a new version has landed — on the home screen, never
   during a ride.
+- The room's video plays *on* the stage instead of floating over it. The
+  player seats into the stage layout, and floats again — at the size and
+  position you gave it — when you leave the room or scroll the stage away.
+
+### Fixed
+
+- Live numbers are readable on rider tiles and in TV mode. Name, watts and the
+  bpm/rpm/w·kg row now sit on an edge scrim rather than on whatever the camera
+  is pointing at, and TV mode no longer greys out the number while
+  highlighting the unit.
+- Picking a rider for the stage no longer blanks their tile. A camera track is
+  deliberately mounted twice — tile and stage — and each mount was tearing the
+  other one down, so both went black for as long as the pick stood.
 
 ## [2026.09.1] - 2026-09-01
+
+*The first tagged release. WattRoom was built and deployed for months before
+releases existed, so this section describes what the alpha comprises rather
+than itemising the changes that got it there — those are the issue board and
+the git history.*
 
 ### Added
 
