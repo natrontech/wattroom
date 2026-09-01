@@ -102,6 +102,21 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": ids})
 }
 
+// devNames is what ?as= accepts: a display name, letters and spaces, short.
+// Anything else falls back to the one Dev Rider rather than 400ing a dev.
+var devNames = regexp.MustCompile(`^[A-Za-z][A-Za-z ]{0,23}$`)
+
+func devIdentity(as string) identity {
+	as = strings.TrimSpace(as)
+	if as == "" || !devNames.MatchString(as) || strings.EqualFold(as, "Dev Rider") {
+		return identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}
+	}
+	return identity{
+		ProviderUserID: "local-dev:" + strings.ToLower(strings.ReplaceAll(as, " ", "-")),
+		DisplayName:    as,
+	}
+}
+
 func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.providers[r.PathValue("provider")]
 	if !ok {
@@ -110,8 +125,12 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The dev provider skips OAuth entirely; same identity + session machinery.
+	// ?as=<name> mints a second dev rider — the only way to put two real
+	// riders in one room on a dev box, which the crew strip, the roster's
+	// execution bars and the sprint scoreboard had never been seen with.
+	// Still behind WATTROOM_DEV_LOGIN; production never opens that door.
 	if p.id == "dev" {
-		user, err := s.upsert(r, p, identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}, &oauth2.Token{})
+		user, err := s.upsert(r, p, devIdentity(r.URL.Query().Get("as")), &oauth2.Token{})
 		if err == nil {
 			err = s.startSession(w, r, user.ID)
 		}
