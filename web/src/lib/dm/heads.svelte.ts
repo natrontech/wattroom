@@ -4,6 +4,7 @@
  * a room — which is where riders actually are — not only on the two pages
  * that happened to mount the friends panel. Started once from the layout.
  */
+import { untrack } from 'svelte';
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
 import { notify } from '$lib/notify.svelte';
@@ -76,6 +77,9 @@ export const dmHeads = {
 	},
 	/** Call after opening/stamping a thread so badges re-evaluate. */
 	bump() {
-		seenBump += 1;
+		// Called from the thread page's effect: `+= 1` READS the counter too,
+		// which made that effect depend on the thing it writes — an infinite
+		// loop on every DM open (#414, same shape as #408).
+		untrack(() => (seenBump += 1));
 	},
 };
