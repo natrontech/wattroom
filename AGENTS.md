@@ -41,7 +41,7 @@ You will not run a deploy, but your change moves through this, so know the shape
 - **`:main` is built on every merge and never deployed.** Only tagged releases are.
 - **The VM converges on a pin.** A systemd timer reads the tag pinned in the homelab repo, refuses to deploy while riders are on the bike, `pg_dump`s, rolls forward, and retags to the previous release if the new one does not report its own tag and answer `/api/healthz`.
 - **Rollback is an image tag, never the database.** Nothing automated ever restores a dump — that would discard every ride recorded since it. Do not add anything that does.
-- **Every PR writes its own changelog line** into `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), under Added / Changed / Deprecated / Removed / Fixed / Security. One line, aimed at a person deciding whether to upgrade — not a copy of your commit subject, and not generated. A PR with no line makes the next release notes lie.
+- **Every PR writes its own changelog line** into `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), under Added / Changed / Deprecated / Removed / Fixed / Security. One line, aimed at a person deciding whether to upgrade — not a copy of your commit subject, and not generated. A PR with no line makes the next release notes lie — which already happened once, so CI now fails a PR touching `server/` or `web/src` without one (`no-changelog` labels the exceptions).
 - The expand/contract migration rule below is what makes the rollback safe. It is a correctness rule, not a style preference.
 
 ## Hard rules

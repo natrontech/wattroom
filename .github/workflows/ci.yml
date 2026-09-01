@@ -50,6 +50,40 @@ jobs:
           go tool tygo generate
           git diff --exit-code ../web/src/lib/protocol.ts
 
+  # Six of the seven changes in 2026.09.2 shipped with no changelog line, so
+  # the release notes described one of them. A rule nobody checks is not a
+  # rule — agents merge in parallel and none of them will notice.
+  changelog:
+    if: >-
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: a rider-visible change needs a changelog line
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if ! grep -qE '^(server/|web/src/)' <<<"$changed"; then
+            echo "No server/ or web/src change — nothing to announce."
+            exit 0
+          fi
+          if grep -qx 'CHANGELOG.md' <<<"$changed"; then
+            echo "Changelog line present."
+            exit 0
+          fi
+          cat >&2 <<'MSG'
+          This PR changes server/ or web/src but adds no CHANGELOG.md line.
+
+          Add one under ## [Unreleased], in the Keep a Changelog section that
+          fits, written for someone deciding whether to upgrade.
+
+          If the change genuinely cannot be seen by a rider — tooling, tests,
+          refactors — apply the `no-changelog` label instead.
+          MSG
+          exit 1
+
   vulncheck:
     runs-on: ubuntu-latest
     steps:
