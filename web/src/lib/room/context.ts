@@ -64,6 +64,8 @@ export interface RoomContext {
 	control(kind: string, payload?: unknown, id?: string): void;
 	openPicker(intent?: 'start' | 'plan'): void;
 	openTv(): void;
+	/** Disconnect and go Home — the sidebar's icon and the Lounge's button share it. */
+	leave(): void;
 
 	/** Stage sources and the active one — the lounge's shared-screen surface. */
 	readonly stageSources: RoomStageSource[];

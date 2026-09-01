@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { dev } from '$app/environment';
 	import { page } from '$app/state';
 	import {
@@ -360,6 +361,10 @@
 			setup = true;
 		},
 		openTv: () => (tv = true),
+		leave: () => {
+			roomConnection.leave();
+			void goto('/home', { replaceState: true });
+		},
 		get stageSources() {
 			return stageSources;
 		},
