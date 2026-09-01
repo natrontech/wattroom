@@ -1,0 +1,162 @@
+# ADR-0020: The app takes Discord's shape — one frame, one sidebar, no switchable layouts
+
+Date: 2026-09-01 · Status: proposed (#181)
+
+## Context
+
+WATTROOM.md calls the product "Discord for indoor cycling" and
+[ADR-0010](0010-room-first-positioning.md) locks room-first positioning: the
+room is a place you idle in, not a page a session happens on. The UI has been
+converging on that one issue at a time (#170 recomposition, #323 rail cleanup,
+#321 jukebox in the timeline, #325 sessions) without anyone deciding it.
+
+Two things block making it deliberate.
+
+**The locked line.** WATTROOM.md §"Room UX" specifies *user-switchable layouts —
+metrics-first, video-first, media-focus, plus TV mode*. That is a different
+answer to the same question a persistent structure answers: three shapes the
+rider picks between, versus one shape that always holds. Both cannot be true.
+
+**Two shells, not one.** Today the app renders two frames. Outside a room:
+rail | top-nav + content. Inside a room: rail | main | chat. The rail is the
+only thing they share, and the top nav — eight destinations in a horizontal
+strip — exists only in the first. So the room feels like somewhere you are and
+every other page feels like a website, in the same session, one click apart.
+
+The specific gaps #181 names all fall out of those two facts: the room's places
+are tabs inside the content instead of a column beside it; there is no member
+list because the right column is spent on chat; nothing signals a room you are
+not looking at; `RoomLive.svelte` is 1171 lines because one component holds a
+header, a tab strip, a stage, a grid and a session dashboard.
+
+The constraint that makes this non-obvious is `.claude/rules/ux.md`. Discord's
+density is designed for a mouse at a desk. Ours has to work at three metres
+with a heart rate of 160.
+
+## Decision
+
+**One frame for the whole app. Layout switching retires.**
+
+```
+┌────────────────┬────────────────────────┬───────────┐
+│ sidebar        │ content                │ people    │
+│                │                        │  + talk   │
+│  Home          │                        │           │
+│  Workouts      │                        │           │
+│  Rides         │                        │           │
+│  Progression   │                        │           │
+│                │                        │           │
+│  YOUR ROOMS    │                        │           │
+│ ● 🔥 Thursday   │                        │           │
+│   │ Lounge     │  ← the room you are    │           │
+│   │ Training   │    in opens in place   │           │
+│   │ Sessions   │                        │           │
+│   │ Members    │                        │           │
+│   │ Settings   │                        │           │
+│   🚴 mfw-5  12 │                        │           │
+│   🌄 Sunday    │                        │           │
+│                │                        │           │
+│ ┌────────────┐ │                        │           │
+│ │ you  🎙 📷 ⚙ │ │                        │           │
+└─┴────────────┴─┴────────────────────────┴───────────┘
+      240px              fluid                272px
+```
+
+**Discord's shape is two columns because Discord has forty servers of thirty
+channels. WattRoom has five rooms of five places.** Copying the two-strip rail
+literally was built first and rejected on sight in `/dev/shape`: it spends
+384 px of chrome to navigate nine things, and the eye has to work out which
+strip a click belongs to before it can aim. Two vertical navigations side by
+side read as confusion, not as structure. The tree fits in one column, so it
+gets one.
+
+What the merge does **not** give up — these were the whole point:
+
+1. **Places are permanent and beside the content** (#181 gap 1). The room you
+   are standing in expands in place: Lounge, Training, Sessions, Members,
+   Settings. The tab strip inside `RoomLive` retires into it, and **`TopNav`
+   and `MobileNav`'s destination list are deleted** — the sidebar is the app's
+   navigation on every screen, so a destination has exactly one home.
+2. **The you panel is pinned at the bottom** (#181 gap 2) — avatar, mic, cam,
+   voice status, cog. What leaves the rail is the per-rider mixer, the gate
+   slider and the theme cycle: desk settings that were living in a 208 px strip
+   you also navigate rooms with. They go behind the cog, with Profile, Sensors
+   and the ramp test.
+3. **Every room still carries its signal** (#181 gap 4) — live dot, unread
+   count, mention badge, "Sweet Spot 2×20, 12 min in", who is in voice. That is
+   ADR-0010's crew radar, and it is why rooms keep **names** rather than
+   becoming Discord's 48 px icons.
+4. **The top section is four entries, not nine.** Home, Workouts, Rides,
+   Progression. Ramp test, Sensors and Profile are occasional, so they sit
+   behind the cog. A sidebar that lists everything lists nothing.
+
+**Content is one column, one job, no tabs.** What was a tab is now a place with
+a URL.
+
+**People and talk** is the right-hand column, in a room only. Which shape it
+takes is the one question this ADR leaves open — see the consequences.
+
+The budget: 1280 − 240 − 272 = **768 px of content**, against 624 px for the
+two-column version. The ladder is by media query, never a setting (`ux.md`,
+the 95 % rule):
+
+| Viewport | Shape |
+| --- | --- |
+| ≥ 1280 | sidebar + content + people (240 / fluid / 272) |
+| < 1280 | people becomes the summonable sheet it already is below `xl` |
+| < 768 | the sidebar becomes a drawer; content is the screen |
+
+**Switchable layouts retire.** WATTROOM.md's "metrics-first / video-first /
+media-focus" is superseded. Metrics-first is the Training place, video-first is
+the Lounge with a rider focused, media-focus is the stage with a shared screen
+on it — three named layouts turn out to be three places, and a place you can
+link to beats a mode you have to remember you are in. **TV mode survives
+unchanged** as the only alternate render, because it is not a layout preference:
+it is a different viewing distance.
+
+**Discord's information architecture, not Discord's skin.**
+[ADR-0005](0005-synthwave-visual-identity.md) is untouched — Outrun palette,
+Chakra Petch over Barlow, `--color-watt` glows on live data only, `--color-neon`
+structural and never glowing. Nothing here adopts blurple, Discord's type or its
+iconography.
+
+**The density rule that keeps this honest: chrome is Discord-dense, the training
+surface is not.** Columns 1, 2 and 4 may be 11px and tight — they are read at
+desk distance between efforts. Column 3 during a session is read at three metres
+and obeys `ux.md` in full: huge tap targets, no precision gestures, no typing.
+The `.cave` scope already marks exactly that boundary, and it keeps doing so.
+
+## Consequences
+
+- **The room stops being a special page.** One shell renders every route, so
+  navigating out of a room is a column-3 swap rather than a different app. The
+  #181 complaint that it "still doesn't feel like a lounge" is largely this:
+  the lounge felt temporary because leaving it changed the furniture.
+- **`RoomLive.svelte` splits by construction.** Its header, tab strip, stage,
+  grid and training dashboard become the shell plus one component per place.
+  The 1171-line file is not refactored on purpose; it stops having a reason to
+  exist. Same for the top nav.
+- **A destination has exactly one home.** Today "Sessions" is a top-nav entry,
+  a room card and a modal inside the room. In the new shape it is a place in
+  column 2, and `/sessions` is the same place with no room selected.
+- **Phones lose the four columns and need their own answer.** Below `md` the
+  shape collapses to column 3 with columns 1+2 behind a drawer, which is what
+  Discord does. The existing `/r/[slug]/watch` spectator view is unaffected —
+  it is deliberately not this shell.
+- **Column count is a real budget**, and it is what killed the literal copy.
+  One sidebar leaves 768 px at 1280 px; two leave 624 px. That is also the
+  number the members question is decided against — members as a column of their
+  own takes content down to 530 px, which the mock shows is not survivable.
+- **Voice stays a state you carry, not a place you join.** #181 raises this and
+  the answer is no: a training room has one conversation, and making voice a
+  sub-room would put the crew in two of them. What was missing is not a voice
+  channel — it is a visible roster of who can hear you, which column 4 now is.
+- **Accepting:** the members column is unresolved until the mock is looked at,
+  and this ADR is `proposed` until then. `/dev/shape` carries three answers —
+  a roster stacked above chat in one column, a Chat/Members toggle, and members
+  as a column of their own — and the toggle for the rejected two-strip nav is
+  kept beside them, so the comparison stays reproducible rather than
+  remembered. Everything else above is independent of that answer.
+- **Revisit trigger:** if riders start using column 2 as a tab strip — clicking
+  back and forth mid-interval — the places are wrong, not the shape. That is
+  the signal to merge Lounge and Training rather than to bring switching back.

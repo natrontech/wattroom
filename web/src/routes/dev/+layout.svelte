@@ -16,6 +16,7 @@
 		{ href: '/dev/ramp', label: 'Ramp' },
 		{ href: '/dev/modes', label: 'Modes' },
 		{ href: '/dev/sound', label: 'Sound' },
+		{ href: '/dev/shape', label: 'Shape' },
 		{ href: '/dev/room', label: 'Room' },
 		{ href: '/dev/spectator', label: 'Spectator' },
 		{ href: '/dev/summary', label: 'Summary' },
@@ -23,7 +24,15 @@
 	];
 </script>
 
-<div class="cave bg-surface text-ink flex h-screen flex-col">
+<!-- Mocks are cave surfaces (ADR-0005) with one exception: /dev/shape has to
+     show desk screens too, and light-dark() cannot be un-resolved inside a
+     forced scheme — an ancestor .cave pins every token below it. -->
+<div
+	class="bg-surface text-ink flex h-screen flex-col {page.url.pathname ===
+	'/dev/shape'
+		? ''
+		: 'cave'}"
+>
 	<nav
 		class="border-muted/15 bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
 	>
