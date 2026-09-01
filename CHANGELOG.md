@@ -17,6 +17,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.6] - 2026-09-01
+
+### Changed
+
+- The whole app now sits in one frame. A single sidebar holds your places, your rooms, and — for the room you are standing in — the places inside it: Lounge, Training, Sessions, Members and Settings, each with its own link. The top bar and the phone tab bar are gone, and so are five destinations: Rooms, Sessions, Progression, Ramp test and Sensors have moved into the pages they belonged to. Rides now carries the charts that were on Progression; Home carries what is planned across every room, and the forms for opening and joining one.
+- Training is rebuilt around one question — am I on target. Your watts travel over a track marking the tolerance band, the interval graph runs along the bottom, and the whole crew is on screen with camera, watts, w/kg, rpm and bpm. When someone shares a screen the player takes over and your numbers move beneath it; when a sprint is armed or a game is running, that takes the screen and gives it back. The solo ride and the ramp test use the same instrument.
+- Direct messages and friends are places now, not a box in the corner — a conversation shows who you are talking to, whether they are riding, and a way to join them.
+- A room you are not looking at finally says so: an unread count on the rail, and the room name in bold, cleared when you open it.
+- "Riding now" stops being a pink dot that read like something was broken. It is the WattRoom mark's own equalizer bars, moving.
+- TV mode shows the same instrument as the training view, sized for the sofa: your watts travel over the tolerance band, so "am I on target" reads from three metres the way it reads from the saddle. One design at two distances instead of two designs.
+
+### Fixed
+
+- A solo ride or ramp test in light mode now darkens the whole frame, sidebar included — the ride is the cave whether or not anyone else is in it. Leaving either page mid-ride now really ends the session, so the trainer no longer keeps holding a target for a screen that is gone.
+- Training: the crew strip is a row of fixed-size thumbnails again, so one other rider no longer fills the column and squeezes your instrument; sprint standings are sized for the 3 m surface.
+
 ## [2026.09.5] - 2026-09-01
 
 ### Changed
@@ -167,7 +183,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.5...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.6...HEAD
+[2026.09.6]: https://github.com/natrontech/wattroom/compare/2026.09.5...2026.09.6
 [2026.09.5]: https://github.com/natrontech/wattroom/compare/2026.09.4...2026.09.5
 [2026.09.4]: https://github.com/natrontech/wattroom/compare/2026.09.3...2026.09.4
 [2026.09.3]: https://github.com/natrontech/wattroom/compare/2026.09.2...2026.09.3
