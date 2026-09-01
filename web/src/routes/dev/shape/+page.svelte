@@ -6,6 +6,7 @@
 	// least sure about: the members column (three answers, one has to win), the
 	// viewport ladder (does 1280 px survive four columns), and the scheme (the
 	// lounge is a desk surface, the ride is the cave — both have to hold).
+	import DmPlaces from './DmPlaces.svelte';
 	import EdgeScreens from './EdgeScreens.svelte';
 	import PeopleColumn from './PeopleColumn.svelte';
 	import PlacesColumn from './PlacesColumn.svelte';
@@ -179,6 +180,7 @@
 						<SidebarColumn
 							context={screen.context}
 							place={screen.place}
+							peer={screen.peer}
 							connectedSlug="thursday-sufferfest"
 							live={room.phase === 'live'}
 						/>
@@ -211,6 +213,8 @@
 								bias={room.bias}
 								countdown={room.countdown}
 							/>
+						{:else if screen.group === 'Messages'}
+							<DmPlaces screen={screen.id} />
 						{:else if ['home', 'rooms', 'sessions', 'workouts', 'editor'].includes(screen.id)}
 							<YourPlaces
 								screen={screen.id}

@@ -33,11 +33,13 @@
 		context,
 		connectedSlug = '',
 		live = false,
+		peer = '',
 	}: {
 		place?: string;
 		context: 'room' | 'you';
 		connectedSlug?: string;
 		live?: boolean;
+		peer?: string;
 	} = $props();
 
 	// Four, not nine. Sensors, Ramp test and Profile are things you set up or
@@ -196,12 +198,22 @@
 			{/each}
 		</ul>
 
-		<div class="eyebrow px-2 pt-4 pb-1">messages</div>
+		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+			messages
+			<a href="#friends" class="hover:text-ink ml-auto normal-case">friends</a>
+		</div>
 		<ul class="pb-2">
 			{#each DM_HEADS as head (head.name)}
+				{@const on = place === 'dm' && head.name === peer}
 				<li>
-					<button
-						class="text-muted hover:text-ink flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+					<a
+						href="#dm"
+						aria-current={on ? 'page' : undefined}
+						class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {on
+							? 'bg-surface-raised text-ink'
+							: head.unread
+								? 'text-ink font-semibold'
+								: 'text-muted hover:text-ink'}"
 					>
 						<Avatar name={head.name} size={20} />
 						<span class="truncate">{head.name}</span>
@@ -209,7 +221,7 @@
 							<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
 							></span>
 						{/if}
-					</button>
+					</a>
 				</li>
 			{/each}
 		</ul>

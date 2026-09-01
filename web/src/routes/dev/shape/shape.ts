@@ -19,6 +19,8 @@ export interface Screen {
 	label: string;
 	group: string;
 	context: Context;
+	/** Which DM head lights up, when the screen is a conversation. */
+	peer?: string;
 	/** Which column-2 entry lights up. */
 	place?: string;
 	/** The ride is the cave (ADR-0005 amended); the lounge is a desk surface. */
@@ -208,6 +210,24 @@ export const SCREENS: Screen[] = [
 		context: 'you',
 		place: 'home',
 		note: 'The changelog the running build shipped with.',
+	},
+
+	{
+		id: 'friends',
+		label: 'Friends',
+		group: 'Messages',
+		context: 'you',
+		place: 'friends',
+		note: 'Was a section at the bottom of /home, under your week\u2019s numbers.',
+	},
+	{
+		id: 'dm',
+		label: 'A conversation',
+		group: 'Messages',
+		context: 'you',
+		place: 'dm',
+		peer: 'Nina',
+		note: 'Was a 320\u00d7384 drawer pinned bottom-right, dodging the jukebox dock.',
 	},
 
 	{

@@ -91,7 +91,24 @@ What the merge does **not** give up — these were the whole point:
    behind the cog. A sidebar that lists everything lists nothing.
 
 **Content is one column, one job, no tabs.** What was a tab is now a place with
-a URL.
+a URL — and that includes the two surfaces that were neither a tab nor a page:
+
+- **A DM is a place, not a drawer.** `DmDrawer.svelte` retires. Today a
+  conversation is a 320 × 384 box pinned bottom-right, with a `right-[392px]`
+  in its class list so it does not land on the jukebox dock — it cannot show
+  who you are talking to, its scrollback is a thumbnail, and it is a mode you
+  have to remember you are in. That is the same argument this ADR makes against
+  switchable layouts, applied to a conversation. Nothing is lost by promoting
+  it: the room connection survives navigation (#191), so opening a thread does
+  not drop you out of the room or out of voice, and mid-ride you are in the
+  cave where typing is off the table anyway (`ux.md`).
+- **Friends is a place too.** It is currently a section at the bottom of
+  `/home`, under your week's numbers — which is where you look for numbers, not
+  for people. It becomes the `friends` entry beside the sidebar's messages
+  section, with online / all / requests and your code.
+
+The sidebar's messages section is already the DM list, so promoting both costs
+a destination each and no new chrome.
 
 **People and talk** is the right-hand column, in a room only. Which shape it
 takes is the one question this ADR leaves open — see the consequences.
@@ -132,13 +149,17 @@ The `.cave` scope already marks exactly that boundary, and it keeps doing so.
   navigating out of a room is a column-3 swap rather than a different app. The
   #181 complaint that it "still doesn't feel like a lounge" is largely this:
   the lounge felt temporary because leaving it changed the furniture.
+- **Three components stop having a reason to exist**, rather than being
+  refactored: `TopNav.svelte`, `MobileNav.svelte`'s destination list, and
+  `DmDrawer.svelte`. Each existed to give something a home the shape did not
+  otherwise provide.
 - **`RoomLive.svelte` splits by construction.** Its header, tab strip, stage,
   grid and training dashboard become the shell plus one component per place.
   The 1171-line file is not refactored on purpose; it stops having a reason to
   exist. Same for the top nav.
 - **A destination has exactly one home.** Today "Sessions" is a top-nav entry,
   a room card and a modal inside the room. In the new shape it is a place in
-  column 2, and `/sessions` is the same place with no room selected.
+  the sidebar, and `/sessions` is the same place with no room selected.
 - **Phones lose the four columns and need their own answer.** Below `md` the
   shape collapses to column 3 with columns 1+2 behind a drawer, which is what
   Discord does. The existing `/r/[slug]/watch` spectator view is unaffected —
