@@ -44,14 +44,14 @@
 	}
 </script>
 
-<section id="rooms" class="mt-8">
+<section id="rooms">
 	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
 		Your rooms
 	</h2>
 	{#if roomError}
 		<div class="mt-3"><Banner tone="error">{roomError}</Banner></div>
 	{/if}
-	<div class="mt-3 grid gap-3 sm:grid-cols-2">
+	<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 		<div class="panel p-5">
 			<h3 class="font-display font-bold">Open a room</h3>
 			<p class="text-muted mt-1 text-xs">
