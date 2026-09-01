@@ -12,6 +12,7 @@
 import { TOKENS, type Theme, type ThemeFamily } from './palette';
 import {
 	DEFAULT_CHOICE,
+	DEFAULT_IDENTITY,
 	parseChoice,
 	resolveTheme,
 	themeFor,
@@ -19,6 +20,8 @@ import {
 } from './themes';
 
 const KEY = 'wattroom.palette.v1';
+/** The last token block applied — app.html paints it before the bundle (#398). */
+const CSS_KEY = 'wattroom.palette.css.v1';
 const STYLE_ID = 'wattroom-theme';
 
 let choice = $state<ThemeChoice>(DEFAULT_CHOICE);
@@ -61,7 +64,18 @@ function apply() {
 		style.id = STYLE_ID;
 		document.head.append(style);
 	}
-	style.textContent = `${block(':root', active)}${block('.cave', cave)}`;
+	const css = `${block(':root', active)}${block('.cave', cave)}`;
+	style.textContent = css;
+	// Last in <head>, so it wins over the stylesheet: in dev, Vite injects
+	// app.css after the boot script's copy of this element.
+	document.head.append(style);
+	try {
+		if (choice.kind === 'preset' && choice.identity === DEFAULT_IDENTITY)
+			localStorage.removeItem(CSS_KEY);
+		else localStorage.setItem(CSS_KEY, css);
+	} catch {
+		/* fine — the next load flashes the default once */
+	}
 }
 apply();
 
