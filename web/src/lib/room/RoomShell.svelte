@@ -17,22 +17,18 @@
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
-	import { arbitrate } from '$lib/ble/arbitrate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { sensors } from '$lib/sensors.svelte';
 	import { formatClock, formatWhen } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { flatten, targetAt } from '$lib/workout/engine';
+	import { flatten } from '$lib/workout/engine';
 	import { buildShelf } from '$lib/workout/shelf';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage } from '$lib/room/stage';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
-	import { wireMetrics } from '$lib/room/wire';
-	import { describeBlock, type RoomRider } from '$lib/room/view';
+	import { createRiders } from '$lib/room/riders.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { toLocalInput } from '$lib/components/when';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
@@ -48,9 +44,12 @@
 	import Stage from '$lib/room/Stage.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import type { Medal } from '$lib/components/MedalCard.svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import { setRoomContext } from '$lib/room/context';
+	import { createRecording } from '$lib/room/recording.svelte';
+	import { createRide } from '$lib/room/ride.svelte';
+	import { createSummary } from '$lib/room/summary.svelte';
+	import { remindersFor } from '$lib/room/reminders';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
@@ -137,7 +136,7 @@
 		void av.join();
 	const profile = createProfileStore();
 	onDestroy(() => {
-		stopRiding();
+		rideCtl.stop();
 	});
 
 	// Space is push-to-talk while that mode is on — never while typing.
@@ -170,105 +169,51 @@
 	const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
 	const segments = $derived(parsed.segments);
 
-	// ── Riders: the one grid, fed by ticks ────────────────────────────────────
-	// Last-known metrics survive a missed tick so a blip shows a stale tile,
-	// never a zeroed one (the mock's `stale` state, real).
-	const lastKnown = new Map<
-		string,
-		{ watts: number; cadence: number; hr: number; at: number }
-	>();
-	let myTrace = $state<{ t: number; w: number }[]>([]);
-
-	const riders = $derived.by((): RoomRider[] => {
-		const tick = live.tick;
-		if (!tick) return [];
-		const now = tick.at;
-		return tick.roster.map((rider) => {
-			const metrics = tick.riders?.[rider.id];
-			if (metrics)
-				lastKnown.set(rider.id, {
-					watts: metrics.watts,
-					cadence: metrics.cadence ?? 0,
-					hr: metrics.hr ?? 0,
-					at: now,
-				});
-			const known = lastKnown.get(rider.id);
-			// The server drains its metrics map every tick, so a 1 Hz trainer
-			// misses a 1 Hz tick constantly — treating every gap as a fault
-			// flickered "no signal" and zeroed live watts between beats.
-			// Last-known values ride through the gap; only real silence reads
-			// as no signal.
-			const gap = known ? now - known.at : Infinity;
-			const held = !metrics && gap < 30_000 ? known : undefined;
-			const stale = !!held && gap >= 5_000;
-			const you = rider.id === account.me?.id;
-			const target = you
-				? myTarget
-				: running && segments.length > 0 && rider.ftpWatts > 0
-					? (targetAt(segments, rider.ftpWatts, shared?.elapsed ?? 0)
-							.targetWatts ?? 0)
-					: 0;
-			return {
-				id: rider.id,
-				name: rider.name,
-				ftp: rider.ftpWatts,
-				kg: rider.weightKg,
-				you,
-				coach: rider.role !== 'member',
-				cameraOn: !!av.videoOf[rider.id],
-				inVoice: rider.id in av.voice,
-				muted: av.voice[rider.id] === 'muted',
-				speaking: !!av.speaking[rider.id],
-				hue: [...rider.id].reduce(
-					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
-					7,
-				),
-				watts: metrics?.watts ?? held?.watts ?? 0,
-				cadence: metrics?.cadence ?? held?.cadence ?? 0,
-				hr: metrics?.hr ?? held?.hr ?? 0,
-				stale,
-				paused: false,
-				lateJoined: false,
-				target,
-				execution: tick.execution?.[rider.id] ?? 1,
-				trace: you ? myTrace : [],
-				eliminated: tick.game?.riders?.[rider.id]?.eliminated,
-			};
-		});
+	// ── Composed, not owned (code-quality.md): the ride, the recording it
+	// writes, the summary that reads it, and the reminders — each its own
+	// module, the shell wiring them to the socket and the profile. ──────────
+	const recording = createRecording();
+	const rideCtl = createRide({
+		live,
+		profile,
+		recording,
+		myId: () => account.me?.id,
+		shared: () => shared,
+		segments: () => segments,
 	});
-	const you = $derived(
-		riders.find((r) => r.you) ?? {
-			id: '',
-			name: account.me?.displayName ?? 'you',
+	const summary = createSummary({
+		slug: () => slug,
+		recording,
+		phase: () => shared?.phase,
+		myName: () => account.me?.displayName,
+		myExecution: () => you.execution,
+	});
+	const reminders = $derived(
+		remindersFor(upcoming, live.tick?.at ?? Date.now()),
+	);
+
+	// The roster with live numbers on it, plus you and the block you are in —
+	// one module, fed by ticks (riders.svelte.ts).
+	const roster = createRiders({
+		live,
+		av,
+		recording,
+		myId: () => account.me?.id,
+		myName: () => account.me?.displayName,
+		myTarget: () => rideCtl.target,
+		fallback: () => ({
 			ftp: profile.current.ftp,
 			kg: profile.current.kg,
-			you: true,
 			coach: canControl,
-			cameraOn: false,
-			muted: false,
-			speaking: false,
-			hue: 210,
-			watts: 0,
-			cadence: 0,
-			hr: 0,
-			stale: false,
-			paused: false,
-			lateJoined: false,
-			target: 0,
-			execution: 1,
-			trace: myTrace,
-		},
-	);
-	const block = $derived(
-		running && segments.length > 0
-			? describeBlock(
-					targetAt(segments, you.ftp, shared?.elapsed ?? 0),
-					segments,
-					parsed.workout,
-					you.ftp,
-				)
-			: null,
-	);
+		}),
+		running: () => running,
+		shared: () => shared,
+		segments: () => segments,
+		workout: () => parsed.workout,
+	});
+	const riders = $derived(roster.riders);
+	const you = $derived(roster.you);
+	const block = $derived(roster.block);
 
 	// ── One view, focus instead of layouts (#181 feedback) ───────────────────
 	// The Metrics/Video/Media tabs are gone: tiles always fuse camera and
@@ -302,8 +247,6 @@
 		})),
 	]);
 	const onStage = $derived(pickStage(stageSources, av.stagePick));
-	const focused = $derived(riders.find((rider) => rider.id === focusId));
-	const others = $derived(riders.filter((rider) => rider.id !== focusId));
 
 	// ── Sounds follow state (riders are not watching) ─────────────────────────
 	// Cue ducking + the music-aware gate threshold moved to the room
@@ -326,8 +269,7 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	function startWorkout(picked: import('$lib/workout/types').Workout) {
-		mySamples = [];
-		myTrace = [];
+		recording.reset();
 		const flat = flatten(picked);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -393,24 +335,24 @@
 			return live.tick?.game;
 		},
 		get bias() {
-			return bias;
+			return rideCtl.bias;
 		},
-		nudgeBias,
+		nudgeBias: rideCtl.nudgeBias,
 		get trainer() {
-			return trainer;
+			return rideCtl.trainer;
 		},
 		get hrSource() {
-			return hrSource;
+			return rideCtl.hrSource;
 		},
 		get rideError() {
-			return rideError;
+			return rideCtl.error;
 		},
-		pair: () => void ride(new FtmsTrainer()),
+		pair: () => void rideCtl.ride(new FtmsTrainer()),
 		pairSimulated: () =>
-			void ride(
+			void rideCtl.ride(
 				new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
 			),
-		unpair,
+		unpair: rideCtl.unpair,
 		control: (kind, payload, id) =>
 			live.control(kind as never, payload as never, id),
 		openPicker: (intent = 'start') => {
@@ -500,10 +442,6 @@
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
 	/** Startable a little early and through the grace the server keeps it visible. */
-	function due(iso: string): boolean {
-		const diff = new Date(iso).getTime() - Date.now();
-		return diff < 10 * 60 * 1000 && diff > -30 * 60 * 1000;
-	}
 	// A pasted image uploads first (#279); the line then carries only its id.
 	async function sendChatLine(text: string, image?: Blob) {
 		if (!image) {
@@ -532,13 +470,6 @@
 	}
 
 	// Moving a plan (#258): "move" folds a WhenPicker out under the card row.
-	let movingId = $state<string | null>(null);
-	let moveAt = $state('');
-	function openMove(entry: (typeof upcoming)[number]) {
-		movingId = movingId === entry.id ? null : entry.id;
-		moveAt = toLocalInput(new Date(entry.startsAt));
-	}
-
 	function startScheduled(entry: (typeof upcoming)[number]) {
 		const segments = parseSharedSegments(entry.workoutJson);
 		const total = segments.reduce(
@@ -546,112 +477,13 @@
 			0,
 		);
 		if (total === 0) return;
-		mySamples = [];
-		myTrace = [];
+		recording.reset();
 		live.control('pick', {
 			name: entry.workoutName,
 			json: entry.workoutJson,
 			totalSeconds: total,
 		});
 		live.control('start');
-	}
-
-	// ── Riding along ─────────────────────────────────────────────────────────
-	let trainer = $state<Trainer | null>(null);
-	let rideError = $state<string | null>(null);
-	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
-	let seq = 0;
-	let unsubscribe: (() => void) | undefined;
-
-	// Bias is personal: ±% on my own targets, the shared timeline untouched.
-	let bias = $state(1);
-	function nudgeBias(step: number) {
-		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
-	}
-
-	const myTarget = $derived.by(() => {
-		const game = live.tick?.game;
-		const mine = game?.riders?.[account.me?.id ?? ''];
-		if (game?.phase === 'running' && mine && mine.targetPct) {
-			return Math.round(mine.targetPct * profile.current.ftp);
-		}
-		if (!shared || shared.phase !== 'running' || segments.length === 0)
-			return 0;
-		const raw =
-			targetAt(segments, profile.current.ftp, shared.elapsed).targetWatts ?? 0;
-		return Math.round(raw * bias);
-	});
-
-	const sprintLive = $derived.by(() => {
-		const sprint = live.tick?.sprint;
-		if (!sprint) return false;
-		const at = live.tick?.at ?? Date.now();
-		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
-	});
-	let sprintMode = false;
-	$effect(() => {
-		if (!trainer) return;
-		if (sprintLive) {
-			if (!sprintMode) {
-				sprintMode = true;
-				if (profile.current.singleSpeed) {
-					void trainer.setTargetPower(profile.current.ftp * 2);
-				} else {
-					const grade = profile.current.sprintGrade;
-					void trainer.setSimulation(0);
-					setTimeout(() => {
-						if (sprintMode) void trainer?.setSimulation(grade);
-					}, 500);
-				}
-			}
-			return;
-		}
-		sprintMode = false;
-		void trainer.setTargetPower(myTarget);
-	});
-
-	async function ride(next: Trainer) {
-		rideError = null;
-		try {
-			await next.connect();
-			unsubscribe = next.onSample((sample) => {
-				const metrics = arbitrate(
-					{ trainer: sample, sensors: sensors.readings },
-					sample.at,
-				);
-				hrSource =
-					metrics.from.heartRate === 'heart-rate' ||
-					metrics.from.heartRate === 'trainer'
-						? metrics.from.heartRate
-						: null;
-				live.sendMetrics(wireMetrics(metrics, profile.current.shareHr, ++seq));
-				if (running) {
-					myTrace = [
-						...myTrace.slice(-898),
-						{ t: shared?.elapsed ?? 0, w: metrics.watts },
-					];
-					mySamples.push({ watts: Math.max(0, Math.round(metrics.watts)) });
-				}
-			});
-			trainer = next;
-		} catch (cause) {
-			rideError = cause instanceof Error ? cause.message : String(cause);
-		}
-	}
-	/** Re-pairing is one button (rider report): drop the trainer and release
-	 *  its subscription, keeping the ride buffer open so a fresh pair
-	 *  continues the same session. */
-	function unpair() {
-		unsubscribe?.();
-		unsubscribe = undefined;
-		void trainer?.setTargetPower(0);
-		void trainer?.disconnect();
-		trainer = null;
-		rideError = null;
-	}
-	function stopRiding() {
-		live.finish();
-		unpair();
 	}
 
 	// ── Connection fault + jukebox helpers ────────────────────────────────────
@@ -663,105 +495,7 @@
 	});
 	const currentTitle = $derived(live.tick?.jukebox?.current?.title ?? '');
 
-	// ── The main column is two places, not one scroll (#359) ─────────────────
-	// The stage sits in the middle of the room now, which pushed every number a
-	// session has below the fold. Room is the stage and the tiles; Training is
-	// the clock, the block, the target and the graph. The stage unmounts with
-	// the tab and the jukebox dock takes the picture back into its floating
-	// player, so the room keeps watching while you ride.
-	let view = $state<'room' | 'training'>('room');
-	// Riders are not watching the tab bar: a session starting takes you to your
-	// numbers (ux.md — state changes announce themselves). Leaving it is a
-	// click, and nothing drags you back.
-	let sawPhase: typeof phase = 'lounge';
-	$effect(() => {
-		if (phase !== 'lounge' && sawPhase === 'lounge') view = 'training';
-		sawPhase = phase;
-	});
-
-	// The one timeline line no server sends (#359): the hub does not know the
-	// schedule, so the reminder is derived here from the same list the plan
-	// card renders, off the tick's clock so it appears without a reload.
-	const REMINDER_LEAD_MS = 10 * 60_000;
-	const reminders = $derived.by((): RoomEvent[] => {
-		const now = live.tick?.at ?? Date.now();
-		return upcoming
-			.filter((entry) => {
-				const gap = new Date(entry.startsAt).getTime() - now;
-				return gap < REMINDER_LEAD_MS && gap > -30 * 60_000;
-			})
-			.map((entry) => {
-				const at = new Date(entry.startsAt).getTime();
-				return {
-					id: `due:${entry.id}`,
-					kind: 'session',
-					verb: 'due',
-					subject: entry.workoutName,
-					when: at,
-					count: 1,
-					// Pinned where it comes due, not where it was computed: the
-					// line must not walk down the log as the clock ticks.
-					at: at - REMINDER_LEAD_MS,
-				};
-			});
-	});
 	let chatSheet = $state(false);
-
-	// Session close (#39's summary design): my own samples this session become
-	// the summary, and my medal — if the room awarded one — comes back with the
-	// refreshed room payload a moment after the pipeline commits.
-	let mySamples = $state<{ watts: number }[]>([]);
-	let summaryDismissed = $state(false);
-	let myMedal = $state<Medal | undefined>(undefined);
-	let medalFetched = false;
-	const MEDAL_META: Record<string, { name: string; criterion: string }> = {
-		diesel: { name: 'Diesel', criterion: 'lowest power variability' },
-		metronome: { name: 'Metronome', criterion: 'best execution score' },
-		hammer: { name: 'Hammer', criterion: 'best 5 s w/kg' },
-		lanterne_rouge: {
-			name: 'Lanterne Rouge',
-			criterion: 'last on the podium metric, but finished',
-		},
-	};
-	$effect(() => {
-		if (shared?.phase === 'running') {
-			summaryDismissed = false;
-			medalFetched = false;
-			myMedal = undefined;
-		}
-		if (shared?.phase !== 'done' || medalFetched || mySamples.length < 60)
-			return;
-		medalFetched = true;
-		// The pipeline commits within a tick or two of the close.
-		setTimeout(() => {
-			void api<{
-				medals?: { kind: string; rider: string; awardedAt: string }[];
-			}>(`/api/rooms/${slug}`).then((res) => {
-				if (!res.ok) return;
-				const today = new Date().toISOString().slice(0, 10);
-				const mine = (res.data.medals ?? []).find(
-					(medal) =>
-						medal.rider === account.me?.displayName &&
-						medal.awardedAt === today,
-				);
-				if (mine) {
-					const meta = MEDAL_META[mine.kind];
-					const kjTotal = Math.round(
-						mySamples.reduce((sum, sample) => sum + sample.watts, 0) / 1000,
-					);
-					myMedal = {
-						name: meta?.name ?? mine.kind,
-						criterion: meta?.criterion ?? '',
-						rider: account.me?.displayName ?? 'You',
-						value: String(Math.round(you.execution * 100)),
-						unit: '%',
-						kj: kjTotal,
-						xp: 0,
-					};
-				}
-			});
-		}, 2500);
-	});
 </script>
 
 <svelte:window
@@ -817,27 +551,26 @@
 	/>
 {/if}
 
-{#if shared?.phase === 'done' && mySamples.length >= 60 && !summaryDismissed}
+{#if shared?.phase === 'done' && recording.samples.length >= 60 && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
 	     and nothing said so — a modal is the room telling you it is over. -->
 	<Modal
 		label="Session summary"
 		class="max-h-[88dvh] max-w-5xl overflow-y-auto"
-		onclose={() => (summaryDismissed = true)}
+		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
 			subtitle="{roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
-			samples={mySamples}
+			samples={recording.samples}
 			ftp={you.ftp}
 			execution={you.execution}
-			medal={myMedal}
+			medal={summary.medal}
 			{roomName}
 		>
 			{#snippet actions()}
-				<button
-					onclick={() => (summaryDismissed = true)}
-					class="btn btn-secondary">Back to the lounge</button
+				<button onclick={() => summary.dismiss()} class="btn btn-secondary"
+					>Back to the lounge</button
 				>
 			{/snippet}
 		</SessionSummary>
