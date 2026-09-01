@@ -22,6 +22,12 @@ not a second copy of `git log`.
   now (it hides itself when nobody is), and the repo's real star count next to
   the GitHub link.
 
+### Fixed
+
+- What's new no longer goes blank. Any release note that used the same code
+  span twice in one line — `deploy/` did, in 2026.09.3 — took the whole page
+  down with it.
+
 ## [2026.09.3] - 2026-09-01
 
 ### Added
