@@ -8,7 +8,8 @@
 # continuously to one VM, and "which month is this from" is the question a
 # version can actually answer here. What changed is the changelog's job.
 #
-# The changelog is promoted *before* the tag so the tag points at a tree whose
+# Entries live one-per-file in changelog.d/ so parallel PRs never touch the
+# same path; this collates them. The changelog is promoted *before* the tag so the tag points at a tree whose
 # CHANGELOG.md already describes that release — publish.yml then reads the
 # section back out for the GitHub Release body, and the two cannot disagree.
 #
@@ -26,10 +27,51 @@ cd "$(git rev-parse --show-toplevel)"
 	echo "working tree is dirty — commit or stash first" >&2
 	exit 1
 }
-# An empty Unreleased means nobody wrote down what changed, which is the whole
-# thing this is meant to prevent. Better to stop than to ship a blank release.
-if ! awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f && NF' CHANGELOG.md | grep -q .; then
-	echo "## [Unreleased] in CHANGELOG.md is empty — nothing to release" >&2
+# No fragments means nobody wrote down what changed, which is the whole thing
+# this is meant to prevent. Better to stop than to ship a blank release.
+shopt -s nullglob
+# Built by appending rather than by expanding a possibly-empty array: `set -u`
+# treats "${empty[@]}" as unbound on older bash, and the no-entries path is
+# exactly when that bites.
+fragments=()
+for f in changelog.d/*.md; do
+	[ "$(basename "$f")" = README.md ] || fragments+=("$f")
+done
+if [ ${#fragments[@]} -eq 0 ]; then
+	echo "no entries in changelog.d/ — nothing to release" >&2
+	echo "every rider-visible PR leaves one there; see changelog.d/README.md" >&2
+	exit 1
+fi
+
+# Collate: Keep a Changelog order, not filesystem order.
+notes=$(mktemp)
+for cat in added changed deprecated removed fixed security; do
+	files=(changelog.d/"$cat"-*.md)
+	[ ${#files[@]} -gt 0 ] || continue
+	heading="$(tr '[:lower:]' '[:upper:]' <<<"${cat:0:1}")${cat:1}"
+	printf '### %s\n\n' "$heading" >>"$notes"
+	for f in "${files[@]}"; do
+		# Trailing blank lines in a fragment must not become blank lines in the
+		# release notes; one newline after each, exactly.
+		awk 'NF {last = NR} {lines[NR] = $0} END {for (i = 1; i <= last; i++) print lines[i]}' "$f" >>"$notes"
+	done
+	printf '\n' >>"$notes"
+done
+
+# One trailing blank line, not two: each category appends one and the file the
+# section is spliced into already starts the next block with one.
+trimmed=$(mktemp)
+awk 'NF {last = NR} {lines[NR] = $0} END {for (i = 1; i <= last; i++) print lines[i]}' "$notes" >"$trimmed"
+mv "$trimmed" "$notes"
+
+# A fragment whose name does not start with a category is silently dropped by
+# the loop above, which would lose somebody's entry. Catch it here instead.
+counted=$(grep -c '^- ' "$notes" || true)
+written=$(cat "${fragments[@]}" | grep -c '^- ' || true)
+if [ "$counted" != "$written" ]; then
+	rm -f "$notes"
+	echo "some entries in changelog.d/ were not collated — check every filename starts with" >&2
+	echo "added-/changed-/deprecated-/removed-/fixed-/security- (see changelog.d/README.md)" >&2
 	exit 1
 fi
 
@@ -61,9 +103,11 @@ repo_url=https://github.com/natrontech/wattroom
 # Promote: the new heading slots in directly under [Unreleased], so everything
 # written there becomes this release and Unreleased is left empty.
 tmp=$(mktemp)
-if ! { awk -v v="$version" -v d="$today" -v prev="$prev" -v url="$repo_url" '
+if ! { awk -v v="$version" -v d="$today" -v prev="$prev" -v url="$repo_url" -v notes="$notes" '
 	/^## \[Unreleased\]/ {
-		print; print ""; print "## [" v "] - " d
+		print; print ""; print "## [" v "] - " d; print ""
+		while ((getline line < notes) > 0) print line
+		close(notes)
 		next
 	}
 	/^\[Unreleased\]:/ {
@@ -80,8 +124,11 @@ if ! { awk -v v="$version" -v d="$today" -v prev="$prev" -v url="$repo_url" '
 fi
 
 branch="release/$version"
+rm -f "$notes"
+
 git checkout -q -b "$branch"
 git add CHANGELOG.md
+git rm -q "${fragments[@]}"
 git commit -qm "docs: release $version"
 git push -q -u origin "$branch"
 

@@ -8,9 +8,10 @@ Versions are [CalVer](https://calver.org/) `YYYY.0M.MICRO` — `2026.09.1`, then
 release is from; whether it breaks anything for you is what the headings below
 are for, so read Changed and Removed rather than counting digits.
 
-Entries are written by whoever did the work, in the PR that did it, under
-`## [Unreleased]`. `make release VERSION=vX.Y.Z` promotes that section into a
-dated release and opens a fresh one. Nothing here is generated from commit
+Entries are written by whoever did the work, in the PR that did it, as a file
+in [`changelog.d/`](changelog.d/) — one per PR, so parallel work never collides
+on this file. `make release` collates them into a dated section and deletes
+them. Nothing here is generated from commit
 subjects on purpose: a changelog is for the person deciding whether to upgrade,
 not a second copy of `git log`.
 
