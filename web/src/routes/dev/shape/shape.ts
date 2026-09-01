@@ -82,6 +82,15 @@ export const SCREENS: Screen[] = [
 		note: 'The player takes the focus; your numbers collapse under it — never over it (RMF).',
 	},
 	{
+		id: 'room-training-fault',
+		label: 'Training · trainer dropped',
+		group: 'In a room',
+		context: 'room',
+		place: 'training',
+		caved: true,
+		note: 'errors.md: ride-critical faults are persistent status, never a toast.',
+	},
+	{
 		id: 'room-sessions',
 		label: 'Sessions',
 		group: 'In a room',
@@ -216,6 +225,22 @@ export const SCREENS: Screen[] = [
 	},
 
 	{
+		id: 'room-join',
+		label: 'The invite link',
+		group: 'In a room',
+		context: 'bare',
+		note: 'Someone opened a shared link. One decision, one button — the golden path.',
+	},
+	{
+		id: 'states',
+		label: 'Loading · empty · error',
+		group: 'In a room',
+		context: 'room',
+		place: 'sessions',
+		note: 'errors.md owes every screen four states. The mock was shipping one.',
+	},
+
+	{
 		id: 'tv',
 		label: 'TV mode',
 		group: 'Its own frame',
@@ -232,10 +257,10 @@ export const SCREENS: Screen[] = [
 	},
 	{
 		id: 'mobile',
-		label: 'Phone · the room',
+		label: 'Narrow window · the drawer',
 		group: 'Its own frame',
 		context: 'bare',
-		note: 'Columns 1+2 collapse into a drawer; column 3 is the screen.',
+		note: 'The sidebar becomes a drawer under 768 px. A PHONE gets the spectator view instead — WATTROOM.md scopes phones read-only.',
 	},
 	{
 		id: 'login',

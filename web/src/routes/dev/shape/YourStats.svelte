@@ -4,6 +4,8 @@
 	// cycle, and this is where they land — desk settings on a desk surface.
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
+	import Instrument from './Instrument.svelte';
+	import SecondaryRow from './SecondaryRow.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
@@ -243,46 +245,53 @@
 		</ul>
 	</div>
 {:else if screen === 'ramp' || screen === 'ride'}
-	<!-- Solo, but still a ride — so still the cave, and still the 3 m rules.
-	     The shape does not change when the room empties: same columns, one
-	     rider in them. -->
-	<div class="flex h-full min-h-0 flex-col gap-3 px-5 py-4">
-		<div class="flex shrink-0 items-baseline gap-4">
-			<span class="font-display text-4xl font-bold tabular-nums"
-				>{formatClock(elapsed)}</span
-			>
-			<span class="font-display ml-auto text-sm font-bold"
-				>{screen === 'ramp' ? 'Ramp test' : 'Sweet Spot 2×20'}</span
-			>
-		</div>
-		<div class="grid shrink-0 grid-cols-2 gap-3">
-			<div class="panel px-4 py-3">
-				<p class="eyebrow">watts</p>
-				<p
-					class="font-display text-watt glow-text-strong text-6xl font-bold tabular-nums"
-				>
-					{you.watts}
-				</p>
+	<!-- Solo, but still a ride — so still the cave, still the 3 m rules, and
+	     now literally the same instrument the room uses. These were a second
+	     design for one activity: two big number panels here, a needle over a
+	     tolerance band there. One activity, one instrument. -->
+	{@const ramp = screen === 'ramp'}
+	<div
+		class="grid h-full min-h-0 grid-rows-[auto_1fr_auto_auto] overflow-hidden"
+	>
+		<header class="flex items-end gap-6 px-6 pt-5 pb-4">
+			<div class="min-w-0">
+				<p class="eyebrow">{ramp ? 'step 7 of 20' : 'block 1 of 6'}</p>
+				<h2 class="font-display truncate text-3xl leading-none font-bold">
+					{ramp ? 'Ramp test' : 'Warm-up'}
+				</h2>
 			</div>
-			<div class="panel px-4 py-3">
-				<p class="eyebrow">{screen === 'ramp' ? 'step' : 'target'}</p>
-				<p class="font-display text-6xl font-bold tabular-nums">
-					{screen === 'ramp' ? 240 : you.target}
+			<p class="text-muted ml-auto shrink-0 text-sm tabular-nums">
+				{formatClock(elapsed)}
+				{#if !ramp}<span class="text-muted/50">/ {formatClock(total)}</span
+					>{/if}
+			</p>
+		</header>
+
+		<section class="grid min-h-0 content-center px-6">
+			<Instrument {you} targetLabel={ramp ? 'step' : 'target'} />
+		</section>
+
+		<div class="mt-4 px-6"><SecondaryRow {you} bias={1} /></div>
+
+		<div class="mt-4">
+			{#if ramp}
+				<!-- A ramp has no graph to sit on: the shape IS the test, and what
+				     matters is the step you are on and the one coming. -->
+				<p class="text-muted px-6 pb-4 text-xs">
+					Next step in 0:48 · 260 W. The test ends when you cannot hold the step
+					— it notices for you.
 				</p>
-			</div>
-		</div>
-		<div class="panel min-h-0 flex-1 p-3">
-			<IntervalGraph
-				{segments}
-				{total}
-				{elapsed}
-				ftp={you.ftp}
-				trace={you.trace}
-			/>
-		</div>
-		<div class="flex shrink-0 gap-2">
-			<button class="btn btn-secondary btn-lg flex-1">Pause</button>
-			<button class="btn btn-danger btn-lg flex-1">End</button>
+			{:else}
+				<div class="h-28">
+					<IntervalGraph
+						{segments}
+						{total}
+						{elapsed}
+						ftp={you.ftp}
+						trace={you.trace}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 {:else if screen === 'whats-new'}

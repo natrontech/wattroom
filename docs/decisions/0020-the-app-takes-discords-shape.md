@@ -123,6 +123,19 @@ Underneath the focus, always, the **crew**: a camera thumb and live watts,
 w/kg, rpm and bpm for every rider. A group-training surface that shows only
 your own numbers is a solo app with a chat window attached.
 
+**The jukebox is frame-level, not a place — and that is a licence term, not a
+preference.** WATTROOM.md's YouTube RMF rules require the player tile to be
+≥ 200 × 200, always visible while media plays, never overlaid, and never
+auto-advancing while offscreen. A place goes offscreen the moment you open
+another one, so the jukebox cannot be one. There is also exactly one player
+instance — moving an iframe between DOM parents remounts it and stops playback
+— so it cannot travel into the Training focus slot either. It docks bottom-
+right at 360 px (200 px tall at 16:9 needs 356 px, which is why it fits in
+neither the 240 px sidebar nor the 272 px people column) and it stays put.
+Content reserves that gutter rather than letting the player sit on top of live
+data. The Training focus slot is therefore for **shared screens**, not for the
+jukebox.
+
 **Content is one column, one job, no tabs.** What was a tab is now a place with
 a URL — and that includes the two surfaces that were neither a tab nor a page:
 
@@ -202,10 +215,20 @@ The `.cave` scope already marks exactly that boundary, and it keeps doing so.
 - **A destination has exactly one home.** Today "Sessions" is a top-nav entry,
   a room card and a modal inside the room. In the new shape it is a place in
   the sidebar, and `/sessions` is the same place with no room selected.
-- **Phones lose the four columns and need their own answer.** Below `md` the
-  shape collapses to column 3 with columns 1+2 behind a drawer, which is what
-  Discord does. The existing `/r/[slug]/watch` spectator view is unaffected —
-  it is deliberately not this shell.
+- **One instrument, everywhere you ride.** The group session, the solo ride and
+  the ramp test were three designs for one activity — two big number panels in
+  two of them, a needle over a tolerance band in the third. They share
+  `Instrument` now, with the ramp swapping the word "target" for "step".
+- **Every screen owes four states.** `errors.md` already required loading /
+  error / empty / content on every page and persistent (never toast) status for
+  ride-critical faults; the mock carries them, so the implementation has
+  something to copy rather than something to remember.
+- **A narrow window and a phone are different questions.** Below `md` the
+  sidebar becomes a drawer, which is what Discord does — that is the *window*
+  answer. The *phone* answer is unchanged and is not this shell at all:
+  WATTROOM.md scopes phones as read-only spectators, and `/r/[slug]` already
+  redirects them to `/r/[slug]/watch`. Do not let the drawer imply the room is
+  usable on a phone.
 - **Column count is a real budget**, and it is what killed the literal copy.
   One sidebar leaves 768 px at 1280 px; two leave 624 px. That is also the
   number the members question was decided against — members as a column of their

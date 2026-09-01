@@ -8,6 +8,7 @@
 	// members toggles are gone with the alternatives they compared.
 	import DmPlaces from './DmPlaces.svelte';
 	import EdgeScreens from './EdgeScreens.svelte';
+	import JukeboxDock from './JukeboxDock.svelte';
 	import PeopleColumn from './PeopleColumn.svelte';
 	import RoomPlaces from './RoomPlaces.svelte';
 	import SidebarColumn from './SidebarColumn.svelte';
@@ -26,6 +27,7 @@
 
 	let id = $state('room-lounge');
 	let width = $state(1600);
+	let playing = $state(false);
 	let scheme = $state<'dark' | 'light'>('dark');
 
 	const screen = $derived(SCREENS.find((s) => s.id === id)!);
@@ -85,6 +87,11 @@
 					</optgroup>
 				{/each}
 			</select>
+		</label>
+
+		<label class="flex items-center gap-1.5">
+			<input type="checkbox" bind:checked={playing} />
+			<span class="text-muted">jukebox playing</span>
 		</label>
 
 		<label class="flex items-center gap-1.5">
@@ -150,7 +157,10 @@
 						connectedSlug="thursday-sufferfest"
 						live={room.phase === 'live'}
 					/>
-					<main class="min-w-0 flex-1 overflow-hidden">
+					<!-- The dock floats bottom-right and RMF says it may not be
+					     covered, so the content reserves the gutter rather than
+					     letting a player sit on top of live data. -->
+					<main class="min-w-0 flex-1 overflow-hidden {playing ? 'pb-56' : ''}">
 						{#if screen.group === 'In a room'}
 							<RoomPlaces
 								screen={screen.id}
@@ -188,6 +198,9 @@
 						/>
 					{/if}
 					<!-- Overlays render over the frame they belong to. -->
+					{#if playing}
+						<JukeboxDock />
+					{/if}
 					{#if screen.id === 'room-picker' || screen.id === 'room-summary'}
 						<EdgeScreens
 							screen={screen.id}

@@ -186,6 +186,27 @@
 			</div>
 		</div>
 	</div>
+{:else if screen === 'room-join'}
+	<!-- Someone opened a shared link and is not a member yet. No sidebar: they
+	     have no rooms to switch between. One decision, one button. -->
+	<div class="grid h-full place-items-center px-6">
+		<div class="panel w-full max-w-md px-6 py-10 text-center">
+			<Logo size={40} />
+			<h2 class="font-display mt-5 text-2xl font-bold">
+				🔥 Thursday Sufferfest
+			</h2>
+			<p class="text-muted mt-2 text-sm">
+				Nina invited you to ride here. Six riders, most Thursdays at 20:00.
+			</p>
+			<button class="btn btn-primary btn-lg mt-6"
+				>Join Thursday Sufferfest</button
+			>
+			<p class="text-muted/70 mt-4 text-[11px]">
+				Your watts are visible to this room while you ride here, and nowhere
+				else.
+			</p>
+		</div>
+	</div>
 {:else if screen === 'room-picker'}
 	<!-- Still a modal after ADR-0020: picking a workout is a decision you make
 	     and come back from, not a place you go. -->
