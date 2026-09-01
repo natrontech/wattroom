@@ -7,7 +7,7 @@ Welcome — this project is built to be contributed to. Read this once and you s
 1. [WATTROOM.md](WATTROOM.md) — the founding document: vision, every locked decision, milestones. **Decisions in it are settled**; re-litigating them needs an ADR, not a PR comment.
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pieces fit and why the seams are where they are.
 3. [docs/SPEC.md](docs/SPEC.md) — the concrete product numbers: glossary, roles, workout JSON, stats formulas, game-mode parameters. Implement from here, don't invent values.
-4. [TODO.md](TODO.md) — the live work list per milestone. GitHub issues mirror the contributor-ready items.
+4. [The issue board](https://github.com/natrontech/wattroom/issues) — the live work list, grouped by milestone. Every item is an issue; `good-first-issue` marks the ones scoped for a first contribution.
 
 ## Dev setup
 
