@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.5] - 2026-09-01
+
+### Changed
+
+- Changelog entries are one file per pull request now, collated at release —
+  so parallel work stops colliding on a single file, and an entry can no longer
+  be lost in a rebase conflict.
+
 ## [2026.09.4] - 2026-09-01
 
 ### Added
@@ -159,7 +167,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.4...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.5...HEAD
+[2026.09.5]: https://github.com/natrontech/wattroom/compare/2026.09.4...2026.09.5
 [2026.09.4]: https://github.com/natrontech/wattroom/compare/2026.09.3...2026.09.4
 [2026.09.3]: https://github.com/natrontech/wattroom/compare/2026.09.2...2026.09.3
 [2026.09.2]: https://github.com/natrontech/wattroom/compare/2026.09.1...2026.09.2
