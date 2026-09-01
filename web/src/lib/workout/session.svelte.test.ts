@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
-import { createRideSession, DEFAULTS, toleranceBand } from './session.svelte';
+import {
+	createRideSession,
+	DEFAULTS,
+	soloRide,
+	toleranceBand,
+} from './session.svelte';
 import type { Workout } from './types';
 
 const workout: Workout = {
@@ -234,5 +239,22 @@ describe('sensor arbitration inside a ride', () => {
 
 		expect(session.state).toBe('autopaused');
 		session.stop();
+	});
+});
+
+describe('soloRide', () => {
+	it('is active from start until the ride ends, by stop or by the clock', async () => {
+		const stopped = ride();
+		await stopped.start();
+		expect(soloRide.active).toBe(true);
+		stopped.stop();
+		expect(soloRide.active).toBe(false);
+
+		const finished = ride();
+		await finished.start();
+		expect(soloRide.active).toBe(true);
+		pedal(finished, 200, 90, 120);
+		expect(finished.state).toBe('done');
+		expect(soloRide.active).toBe(false);
 	});
 });
