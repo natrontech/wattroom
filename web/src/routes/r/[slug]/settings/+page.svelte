@@ -147,22 +147,12 @@
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<p class="text-sm">Only {room.name}'s owner can change its settings.</p>
-			<a
-				href="/r/{room.slug}"
-				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to the room</a
-			>
 		</div>
 	</main>
 {:else if room}
-	<main class="page max-w-2xl">
-		<a href="/r/{room.slug}" class="text-muted hover:text-ink text-xs underline"
-			>← {room.name}</a
-		>
-		<h1 class="font-display mt-3 text-3xl font-bold tracking-tight">
-			Room settings
-		</h1>
-		<p class="text-muted mt-2 text-sm">
+	<main class="mx-auto w-full max-w-2xl px-5 py-6">
+		<h2 class="font-display text-xl font-bold">Room settings</h2>
+		<p class="text-muted mt-1 text-xs">
 			Owner only — coaches run sessions, owners shape the room.
 		</p>
 
@@ -172,7 +162,7 @@
 			</div>
 		{/if}
 
-		<section class="panel mt-8 p-6">
+		<section class="panel mt-5 p-6">
 			<label class="block">
 				<span class="eyebrow">room name</span>
 				<input

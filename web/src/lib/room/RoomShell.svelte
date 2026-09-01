@@ -47,10 +47,10 @@
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
-	import RoomAdmin from '$lib/room/RoomAdmin.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import type { Medal } from '$lib/components/MedalCard.svelte';
 	import type { RoomEvent } from '$lib/protocol';
+	import { setRoomContext } from '$lib/room/context';
 
 	interface AdminMember {
 		id: string;
@@ -63,6 +63,7 @@
 		awardedAt: string;
 	}
 	let {
+		children,
 		slug,
 		role,
 		roomName,
@@ -84,6 +85,8 @@
 		icsToken = '',
 		onRotateIcs,
 	}: {
+		/** The place standing in the content column. */
+		children: import('svelte').Snippet;
 		slug: string;
 		role: string;
 		roomName: string;
@@ -332,6 +335,127 @@
 		setup = false;
 	}
 
+	// ADR-0020: the shell keeps the state, the places render the surface.
+	setRoomContext({
+		get slug() {
+			return slug;
+		},
+		get roomName() {
+			return roomName;
+		},
+		get icon() {
+			return icon;
+		},
+		get code() {
+			return code;
+		},
+		get cheers() {
+			return cheers;
+		},
+		get riders() {
+			return riders;
+		},
+		get you() {
+			return you;
+		},
+		get block() {
+			return block;
+		},
+		get segments() {
+			return segments;
+		},
+		get workout() {
+			return parsed.workout;
+		},
+		get shared() {
+			return shared;
+		},
+		get phase() {
+			return phase;
+		},
+		get canControl() {
+			return canControl;
+		},
+		get myRole() {
+			return myRole;
+		},
+		get sprint() {
+			return live.tick?.sprint;
+		},
+		get game() {
+			return live.tick?.game;
+		},
+		get bias() {
+			return bias;
+		},
+		nudgeBias,
+		get trainer() {
+			return trainer;
+		},
+		get hrSource() {
+			return hrSource;
+		},
+		get rideError() {
+			return rideError;
+		},
+		pair: () => void ride(new FtmsTrainer()),
+		pairSimulated: () =>
+			void ride(
+				new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
+			),
+		unpair,
+		control: (kind, payload, id) =>
+			live.control(kind as never, payload as never, id),
+		openPicker: () => (setup = true),
+		openTv: () => (tv = true),
+		get stageSources() {
+			return stageSources;
+		},
+		get onStage() {
+			return onStage;
+		},
+		pickStage: (key) => av.setStage(key),
+		attachStage: (node, key) => av.attachStage(node, key),
+		attachVideo: (id, node) => av.attach(id, node),
+		videoOf: (id) => av.videoOf[id],
+		get focusId() {
+			return focusId;
+		},
+		setFocus: (id) => (focusId = id),
+		get upcoming() {
+			return upcoming;
+		},
+		get icsToken() {
+			return icsToken;
+		},
+		get streakWeeks() {
+			return streakWeeks;
+		},
+		get monthKj() {
+			return monthKj;
+		},
+		get adminBusy() {
+			return adminBusy;
+		},
+		get members() {
+			return members;
+		},
+		get medals() {
+			return medals;
+		},
+		schedule: (name, json, at) => onSchedule(name, json, at),
+		reschedule: (id, at) => onReschedule(id, at),
+		unschedule: (id) => onUnschedule(id),
+		rotateIcs: () => onRotateIcs(),
+		setRole: (userId, next) => onRole(userId, next),
+		removeMember: (userId) => onRemove(userId),
+		startScheduled,
+		copyIcsUrl,
+		get reminders() {
+			return reminders;
+		},
+	});
+
 	// ── Session setup (#115, redesigned as SessionPicker) ─────────────────────
 	let setup = $state(false);
 	const custom = createCustomStore();
@@ -565,7 +689,6 @@
 				};
 			});
 	});
-	let admin = $state(false);
 	let chatSheet = $state(false);
 
 	// Session close (#39's summary design): my own samples this session become
@@ -677,21 +800,6 @@
 	/>
 {/if}
 
-<RoomAdmin
-	bind:open={admin}
-	{slug}
-	{code}
-	{members}
-	{medals}
-	isOwner={role === 'owner'}
-	myId={account.me?.id}
-	{streakWeeks}
-	{monthKj}
-	busy={adminBusy}
-	{onRole}
-	{onRemove}
-/>
-
 {#if shared?.phase === 'done' && mySamples.length >= 60 && !summaryDismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
@@ -719,109 +827,17 @@
 	</Modal>
 {/if}
 
-<!-- The rail is the layout's (#191 — one instance across navigation);
-     this page is main | panel inside that frame. -->
+<!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
+     the room is content | people inside that frame. -->
 <div class="bg-surface text-ink flex h-full overflow-hidden">
-	<main
-		class="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 py-4"
-	>
+	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
 		<CheerLayer cheers={live.tick?.cheers} />
 
-		<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
-			<div>
-				<h1 class="font-display text-lg leading-tight font-bold">
-					{icon ? `${icon} ` : ''}{roomName}
-				</h1>
-				<p class="text-muted text-xs">
-					{riders.length} rider{riders.length === 1 ? '' : 's'} ·
-					{#if phase === 'lounge'}
-						{shared?.workoutName
-							? `${shared.workoutName} loaded`
-							: 'in the lounge'}
-					{:else}
-						{shared?.workoutName}
-					{/if}
-				</p>
-			</div>
-
-			<button
-				onclick={() => (tv = true)}
-				class="border-muted/20 text-muted hover:text-ink ml-auto inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
-				><Tv size={13} /> TV</button
-			>
-			<button
-				onclick={() => (admin = true)}
-				class="border-muted/20 text-muted hover:text-ink inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs"
-				aria-label="room settings"><Settings size={13} /> Room</button
-			>
-
-			{#if canControl && shared}
-				{#if shared.phase === 'idle' || shared.phase === 'done'}
-					<!-- Training-first (#115): one affordance; games live inside. -->
-					<button onclick={() => (setup = true)} class="btn btn-primary"
-						>Pick a workout</button
-					>
-				{:else}
-					<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-						{#if shared.phase === 'running'}
-							<button
-								onclick={() => live.control('sprint')}
-								class="text-watt rounded px-2.5 py-1 text-xs">⚡ Sprint</button
-							>
-							<button
-								onclick={() => live.control('pause')}
-								class="text-muted hover:text-ink rounded px-2.5 py-1 text-xs"
-								>Pause</button
-							>
-						{:else if shared.phase === 'paused'}
-							<button
-								onclick={() => live.control('resume')}
-								class="rounded px-2.5 py-1 text-xs">Resume</button
-							>
-						{/if}
-						<button
-							onclick={() => live.control('end')}
-							class="text-z6 rounded px-2.5 py-1 text-xs">End</button
-						>
-					</div>
-				{/if}
-			{/if}
-		</header>
-		<!-- Two places, not one scroll (#359). The stage is the room's middle
-		     now, so the session's own numbers get a tab of their own instead of
-		     a thousand pixels of scrollback under the tiles. -->
-		<!-- Sized for a sweating rider at arm's length (ux.md), not a desk: the
-		     one control you reach for mid-ride cannot be a 12px label. -->
-		<div class="border-ink/5 mb-3 flex items-center border-b">
-			{#each [{ id: 'room' as const, label: 'Room' }, { id: 'training' as const, label: 'Training' }] as tab (tab.id)}
-				<button
-					onclick={() => (view = tab.id)}
-					aria-current={view === tab.id ? 'page' : undefined}
-					class="-mb-px border-b-2 px-7 py-4 text-base font-medium {view ===
-					tab.id
-						? 'border-neon text-ink'
-						: 'text-muted hover:text-ink border-transparent'}"
-				>
-					{tab.label}
-					{#if tab.id === 'training' && phase !== 'lounge'}
-						<!-- Live data is the only thing that carries the accent (ADR-0005). -->
-						<span
-							class="bg-watt ml-1.5 inline-block h-2 w-2 animate-pulse rounded-full align-middle"
-						></span>
-					{/if}
-				</button>
-			{/each}
-			{#if phase === 'live' && shared}
-				<!-- The clock stays readable from the room tab: leaving your
-				     numbers should not mean losing the time. -->
-				<span class="font-display text-muted ml-auto pr-2 text-lg tabular-nums"
-					>{formatClock(shared.elapsed)}</span
-				>
-			{/if}
-		</div>
-
+		<!-- Room-level status belongs to the shell, not to a place: a dropped
+		     connection is true on every one of them, and errors.md wants it
+		     persistent rather than a toast the rider will not see. -->
 		{#if live.status !== 'live'}
-			<div class="mb-3">
+			<div class="shrink-0 px-5 pt-4">
 				<FaultBanner
 					fault={{ kind: 'room', state: 'reconnecting' }}
 					bufferedSeconds={droppedAt
@@ -831,9 +847,8 @@
 				/>
 			</div>
 		{:else if av.status === 'reconnecting'}
-			<!-- Media gapped while the SDK retries (#234) — the room banner
-			     above already covers voice when the whole connection is down. -->
-			<div class="mb-3">
+			<!-- Media gapped while the SDK retries (#234). -->
+			<div class="shrink-0 px-5 pt-4">
 				<FaultBanner
 					fault={{ kind: 'voice', state: 'reconnecting' }}
 					bufferedSeconds={0}
@@ -843,7 +858,7 @@
 		{/if}
 
 		{#if shared?.phase === 'paused'}
-			<div class="mb-3">
+			<div class="shrink-0 px-5 pt-4">
 				<Banner tone="warn">
 					<p class="flex items-center gap-3 text-xs">
 						<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"
@@ -859,269 +874,8 @@
 			</div>
 		{/if}
 
-		{#if view === 'room'}
-			{#if onStage}
-				<!-- The stage (#280): many people may share at once, so the picker
-			     below chooses; the frame zooms, pans, resizes and pops out. -->
-				<Stage
-					sources={stageSources}
-					activeKey={onStage.key}
-					trackKey={`${onStage.key}:${onStage.gen}`}
-					onPick={(key) => av.setStage(key)}
-					attach={(node) => av.attachStage(node, onStage.key)}
-				/>
-			{/if}
-
-			<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
-		     tap a tile to spotlight that rider, tap again to let go. -->
-			{#snippet tile(rider: RoomRider)}
-				<RiderTile
-					{rider}
-					{phase}
-					videoKey={av.videoOf[rider.id]}
-					videoAttach={av.videoOf[rider.id]
-						? (node) => av.attach(rider.id, node)
-						: undefined}
-				/>
-			{/snippet}
-			{#if focused}
-				<button
-					onclick={() => (focusId = null)}
-					class="block w-full max-w-3xl text-left"
-					title="tap to unfocus"
-				>
-					{@render tile(focused)}
-				</button>
-				{#if others.length > 0}
-					<div
-						class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-6"
-					>
-						{#each others as rider (rider.id)}
-							<button
-								onclick={() => (focusId = rider.id)}
-								class="block text-left"
-								title="focus {rider.name}"
-							>
-								{@render tile(rider)}
-							</button>
-						{/each}
-					</div>
-				{/if}
-			{:else}
-				<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-					{#each riders as rider (rider.id)}
-						<button
-							onclick={() => (focusId = rider.id)}
-							class="block text-left"
-							title="focus {rider.name}"
-						>
-							{@render tile(rider)}
-						</button>
-					{/each}
-				</div>
-			{/if}
-		{:else}
-			<RoomTraining
-				{phase}
-				workoutName={shared?.workoutName ?? ''}
-				countdown={shared?.countdownRemaining ?? 0}
-				elapsed={shared?.elapsed ?? 0}
-				total={shared?.totalSeconds ?? 0}
-				{segments}
-				{riders}
-				{you}
-				{block}
-				{bias}
-				onBias={trainer ? nudgeBias : undefined}
-				lthr={profile.current.lthr}
-				{hrSource}
-				shareHr={profile.current.shareHr}
-				onShareHr={(on) => profile.update({ shareHr: on })}
-				sprint={live.tick?.sprint}
-				game={live.tick?.game}
-				roster={live.tick?.roster ?? []}
-				{canControl}
-				onEndGame={() => live.control('game-end')}
-				onPick={() => (setup = true)}
-			/>
-		{/if}
-		<!-- Outside the tabs on purpose: what the room is doing next is the
-	     room's business on either of them (rider report). -->
-		{#if phase === 'lounge' && (upcoming.length > 0 || icsToken)}
-			<!-- The plan, phrased like a plan (#181 feedback): what, when, how
-		     long, whose idea — a card, not a floating row of monospace. The
-		     card also shows with nothing in it (#325): the subscribe link
-		     used to be hidden behind having a plan already. -->
-			<div
-				class="border-neon/30 bg-surface-raised mt-4 max-w-2xl rounded-lg border"
-			>
-				{#each upcoming as entry, i (entry.id)}
-					<div
-						class="border-ink/5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0"
-					>
-						<div class="min-w-0 flex-1">
-							<p class="eyebrow">
-								{i === 0 ? 'next session in this room' : 'after that'}
-							</p>
-							<p class="font-display truncate text-base font-bold">
-								{entry.workoutName}
-							</p>
-							<p class="text-muted mt-0.5 text-xs">
-								{formatWhen(entry.startsAt, true)} ·
-								{Math.round(
-									parseSharedSegments(entry.workoutJson).reduce(
-										(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
-										0,
-									) / 60,
-								)} min · planned by {entry.createdBy}
-							</p>
-						</div>
-						<span class="flex shrink-0 items-center gap-3">
-							{#if due(entry.startsAt)}
-								{#if canControl}
-									<button
-										onclick={() => startScheduled(entry)}
-										class="btn btn-primary">Start now</button
-									>
-								{:else}
-									<span class="text-watt glow-text text-xs">starting soon</span>
-								{/if}
-							{/if}
-							{#if canControl}
-								<button
-									onclick={() => openMove(entry)}
-									class="text-muted hover:text-ink text-[11px] underline"
-									>move</button
-								>
-								<button
-									onclick={() => onUnschedule(entry.id)}
-									class="text-muted hover:text-ink text-[11px] underline"
-									>remove</button
-								>
-							{/if}
-						</span>
-						{#if canControl && movingId === entry.id}
-							<div class="flex w-full flex-wrap items-center gap-2 pt-1">
-								<WhenPicker bind:value={moveAt} />
-								<button
-									onclick={() => {
-										onReschedule(entry.id, new Date(moveAt).toISOString());
-										movingId = null;
-									}}
-									disabled={adminBusy || !moveAt}
-									class="btn btn-secondary btn-xs disabled:opacity-40"
-									>Move</button
-								>
-							</div>
-						{/if}
-					</div>
-				{/each}
-				{#if upcoming.length === 0}
-					<p class="text-muted px-4 py-3 text-xs">
-						Nothing planned in this room yet — <em>Pick a workout</em>, then
-						plan it for later instead of starting it.
-					</p>
-				{/if}
-				{#if icsToken}
-					<div
-						class="border-ink/5 flex flex-wrap items-center gap-4 border-t px-4 py-2"
-					>
-						<a
-							href="/sessions"
-							class="text-muted hover:text-ink text-[11px] underline"
-							>all your sessions</a
-						>
-						<button
-							onclick={copyIcsUrl}
-							class="text-muted hover:text-ink text-[11px] underline"
-							>subscribe to this room</button
-						>
-						{#if role === 'owner'}
-							<button
-								onclick={() => {
-									onRotateIcs();
-									toasts.push(
-										'Calendar link reset — shared links stop working.',
-									);
-								}}
-								class="text-muted hover:text-ink text-[11px] underline"
-								>reset link</button
-							>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		{/if}
-		<!-- Pairing must never take voice and camera with it: this row stayed
-		     hidden for the whole ride once a trainer connected, which also left
-		     no way to re-pair one that dropped (rider report). -->
-		<div class="mt-3 flex flex-wrap items-center gap-2">
-			{#if !trainer}
-				<button
-					onclick={() => ride(new FtmsTrainer())}
-					disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
-					class="btn btn-primary">Pair trainer and ride</button
-				>
-				{#if dev}
-					<!-- Dev-only (#123): simulated watts in a live room would count for
-					     medals, XP and streaks — the fairness layer takes no fakes. -->
-					<button
-						onclick={() =>
-							ride(
-								new SimulatedTrainer({
-									baseWatts: profile.current.ftp * 0.75,
-								}),
-							)}
-						class="btn btn-secondary">Ride simulated</button
-					>
-				{/if}
-			{:else}
-				<button onclick={unpair} class="btn btn-secondary"
-					>Unpair trainer</button
-				>
-			{/if}
-
-			{#if !account.me?.avEnabled}
-				<!-- No LiveKit configured: voice is not a thing here, so no
-					     button that would 404 (#219, capability gating). -->
-			{:else if av.status === 'off' || av.status === 'failed'}
-				<button onclick={() => av.join()} class="btn btn-secondary"
-					>Join voice</button
-				>
-			{:else}
-				<!-- In voice: the controls live where you are (#181 feedback),
-					     not only off in the side navigation. -->
-				<button
-					onclick={() => av.toggleMic()}
-					class="rounded border px-4 py-2 text-sm {av.micOn
-						? 'border-z4/50 text-ink'
-						: 'border-z6/50 text-z6'}">{av.micOn ? 'Mute' : 'Unmute'}</button
-				>
-				<button onclick={() => av.toggleCam()} class="btn btn-secondary"
-					>{av.camOn ? 'Cam off' : 'Cam on'}</button
-				>
-				<button
-					onclick={() => void av.toggleShare()}
-					class="btn btn-secondary inline-flex items-center gap-1.5"
-				>
-					{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
-							size={14}
-						/> Share screen{/if}
-				</button>
-				<button
-					onclick={() => av.leave()}
-					class="border-muted/30 text-muted hover:border-muted/60 hover:text-ink rounded border px-4 py-2 text-sm"
-					>Leave voice</button
-				>
-			{/if}
-			{#if canControl && shared?.phase === 'idle' && !live.tick?.game && setupPicked}
-				<button
-					onclick={() => startWorkout(setupPicked.workout)}
-					class="btn btn-primary">Start {setupPicked.workout.name}</button
-				>
-				{#if av.error}<span class="text-muted text-xs">{av.error}</span>{/if}
-			{/if}
-			{#if rideError}<span class="text-z6 text-xs">{rideError}</span>{/if}
+		<div class="min-h-0 flex-1 overflow-y-auto">
+			{@render children()}
 		</div>
 	</main>
 
