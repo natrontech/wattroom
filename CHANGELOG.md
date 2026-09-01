@@ -42,6 +42,9 @@ not a second copy of `git log`.
 - The server rolls itself onto the newest published release instead of a tag
   pinned by hand, and pins itself back to the last good one when a deploy
   fails its health check. Set `WATTROOM_PIN` to hold a release deliberately.
+- The end-to-end smoke fixture is one minute of riding instead of two, which
+  halves the slowest job in CI. It is a test fixture — never listed, resolvable
+  by id only — so no workout anyone can pick changed length.
 
 ### Fixed
 
