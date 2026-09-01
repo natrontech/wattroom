@@ -24,8 +24,8 @@ services:
     environment:
       LIVEKIT_CONFIG: |
         rtc:
-          port_range_start: 50000
-          port_range_end: 50100
+          port_range_start: 51000
+          port_range_end: 51050
           use_external_ip: false
         webhook:
           api_key: devkey
@@ -34,7 +34,7 @@ services:
     ports:
       - '7880:7880' # WS signaling
       - '7881:7881' # WebRTC/TCP
-      - '50000-50100:50000-50100/udp' # media (narrow range for dev)
+      - '51000-51050:51000-51050/udp' # media (narrow range for dev)
 
 volumes:
   pgdata:
