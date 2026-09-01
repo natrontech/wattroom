@@ -2,6 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import { account } from '$lib/account.svelte';
+	import { presence } from '$lib/presence.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { play } from '$lib/sound/cues';
 
@@ -18,6 +22,7 @@
 		cheers?: string[];
 		soundPack?: string;
 		role?: string;
+		code?: string;
 		members?: Member[];
 	}
 
@@ -53,6 +58,41 @@
 			room = null;
 			error = res.error.message;
 		}
+	}
+
+	// Leaving a room you do not own (#415): the one thing a member can do on
+	// this page. Undo over confirm (errors.md) — the code gets you straight back.
+	async function leave() {
+		if (!room || !account.me) return;
+		const { slug: left, name: leftName, code } = room;
+		busy = true;
+		const res = await api(`/api/rooms/${left}/members/${account.me.id}`, {
+			method: 'DELETE',
+		});
+		busy = false;
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
+		roomConnection.leave();
+		presence.reload();
+		toasts.push(`You left ${leftName}.`, {
+			undo: code ? () => void rejoin(code) : undefined,
+		});
+		await goto('/home');
+	}
+
+	async function rejoin(code: string) {
+		const res = await api<{ slug: string }>('/api/rooms/join', {
+			method: 'POST',
+			json: { code },
+		});
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		presence.reload();
+		void goto(`/r/${res.data.slug}`);
 	}
 
 	async function save() {
@@ -143,11 +183,28 @@
 		</div>
 	</main>
 {:else if room && room.role !== 'owner'}
-	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click. -->
-	<main class="grid min-h-full place-items-center px-6">
-		<div class="text-center">
-			<p class="text-sm">Only {room.name}'s owner can change its settings.</p>
-		</div>
+	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click.
+	     What a member CAN do here is leave, which nothing offered after the
+	     rooms page retired into the sidebar (ADR-0020, rider report #415). -->
+	<main class="page">
+		<h2 class="font-display text-xl font-bold">{room.name}</h2>
+		<p class="text-muted mt-1 text-xs">
+			Only the owner can change a room's settings — coaches run sessions, owners
+			shape the room.
+		</p>
+		{#if error}
+			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
+		{/if}
+		<section class="border-muted/15 mt-6 rounded-lg border p-6">
+			<h2 class="font-display font-bold">Leave room</h2>
+			<p class="text-muted mt-1.5 text-xs">
+				You drop off the member list and the room leaves your sidebar. Rides you
+				rode here stay in your history, and the room's code gets you back in.
+			</p>
+			<button onclick={leave} disabled={busy} class="btn btn-danger mt-4"
+				>Leave room</button
+			>
+		</section>
 	</main>
 {:else if room}
 	<main class="page">
