@@ -175,7 +175,7 @@
 			</p>
 		</div>
 	</div>
-{:else if screen.startsWith('room-training')}
+{:else if screen.startsWith('room-training') || screen.startsWith('room-sprint') || screen === 'room-game'}
 	<TrainingPlace
 		{riders}
 		{you}
@@ -186,6 +186,14 @@
 		{bias}
 		media={screen === 'room-training-media'}
 		fault={screen === 'room-training-fault'}
+		sprint={screen === 'room-sprint-klaxon'
+			? 'klaxon'
+			: screen === 'room-sprint-live'
+				? 'live'
+				: screen === 'room-sprint-podium'
+					? 'podium'
+					: undefined}
+		game={screen === 'room-game'}
 	/>
 {:else if screen === 'room-sessions'}
 	<div class="mx-auto w-full max-w-3xl px-5 py-6">

@@ -14,10 +14,12 @@
 	// while the player is offscreen. Moving an iframe between parents remounts
 	// it and stops playback, so there is exactly one and it does not travel.
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
+	import GameFocus from './GameFocus.svelte';
 	import Instrument from './Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import RidingBars from './RidingBars.svelte';
 	import SecondaryRow from './SecondaryRow.svelte';
+	import SprintFocus from './SprintFocus.svelte';
 	import { formatClock, wkg } from '$lib/format';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import type { Segment } from '$lib/workout/types';
@@ -33,6 +35,8 @@
 		bias,
 		media = false,
 		fault = false,
+		sprint,
+		game = false,
 	}: {
 		riders: RoomRider[];
 		you: RoomRider;
@@ -45,7 +49,18 @@
 		media?: boolean;
 		/** Trainer dropped mid-interval. */
 		fault?: boolean;
+		/** A sprint window owns the focus while it runs. */
+		sprint?: 'klaxon' | 'live' | 'podium';
+		/** The session is a game mode rather than a workout. */
+		game?: boolean;
 	} = $props();
+
+	// The focus slot's priority order (ADR-0020): a sprint takes the screen and
+	// gives it back, a game replaces the workout, a shared screen replaces
+	// both, and your instrument is what returns.
+	const focus = $derived(
+		sprint ? 'sprint' : game ? 'game' : media ? 'media' : 'you',
+	);
 </script>
 
 <div class="grid h-full min-h-0 grid-rows-[auto_1fr_auto_auto] overflow-hidden">
@@ -87,7 +102,13 @@
 		</div>
 	{/if}
 
-	{#if media}
+	{#if focus === 'sprint'}
+		<section class="min-h-0 px-6">
+			<SprintFocus {riders} phase={sprint!} />
+		</section>
+	{:else if focus === 'game'}
+		<section class="min-h-0 px-6"><GameFocus {riders} /></section>
+	{:else if focus === 'media'}
 		<section class="grid min-h-0 place-items-center px-6">
 			<div
 				class="ring-neon/30 relative aspect-video max-h-full w-full overflow-hidden rounded-lg ring-1"
@@ -104,71 +125,78 @@
 		</section>
 	{/if}
 
-	<div class="mt-4 flex items-center gap-6 px-6">
-		{#if media}
-			<div class="min-w-0 flex-1"><Instrument {you} compact /></div>
-		{/if}
-		<SecondaryRow {you} {bias} small={media} />
-	</div>
-
-	<!-- The crew. A group-training surface that shows only your own numbers is
-	     a solo app with a chat window attached. -->
-	<div class="mt-4">
-		<div class="flex gap-2 px-6">
-			{#each riders.filter((r) => !r.you) as rider (rider.id)}
-				{@const zone = zoneOf(rider.watts, rider.ftp)}
-				<div class="min-w-0 flex-1">
-					<div
-						class="ring-ink/10 relative aspect-video overflow-hidden rounded ring-1"
-					>
-						{#if rider.cameraOn}
-							<div
-								class="h-full w-full"
-								style="background: radial-gradient(120% 100% at 40% 20%, oklch(0.45 0.13 {rider.hue}), oklch(0.16 0.05 {rider.hue}))"
-							></div>
-						{:else}
-							<div
-								class="bg-surface-raised grid h-full w-full place-items-center"
-							>
-								{#if rider.watts > 0}<RidingBars size={16} />{/if}
-							</div>
-						{/if}
-						<span
-							class="from-paper/85 absolute inset-x-0 bottom-0 flex items-baseline gap-1 bg-gradient-to-t to-transparent px-1.5 pt-4 pb-1"
-						>
-							<span
-								class="font-display {ZONE_TEXT[
-									zone
-								]} text-xl leading-none font-bold tabular-nums"
-								>{rider.watts}</span
-							>
-							<span class="text-muted text-[9px]">W</span>
-							<span class="text-muted ml-auto truncate text-[10px]"
-								>{rider.name}</span
-							>
-						</span>
-					</div>
-					<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
-						{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm · {rider.hr}
-						bpm
-					</p>
-				</div>
-			{/each}
+	{#if focus === 'sprint' || focus === 'game'}
+		<!-- Both carry their own standings; the crew strip below would be a
+		     third list of the same six people. -->
+		<div></div>
+		<div></div>
+	{:else}
+		<div class="mt-4 flex items-center gap-6 px-6">
+			{#if media}
+				<div class="min-w-0 flex-1"><Instrument {you} compact /></div>
+			{/if}
+			<SecondaryRow {you} {bias} small={media} />
 		</div>
 
-		{#if !media}
-			<!-- The horizon: the session is the ground the numbers stand on, not
+		<!-- The crew. A group-training surface that shows only your own numbers is
+	     a solo app with a chat window attached. -->
+		<div class="mt-4">
+			<div class="flex gap-2 px-6">
+				{#each riders.filter((r) => !r.you) as rider (rider.id)}
+					{@const zone = zoneOf(rider.watts, rider.ftp)}
+					<div class="min-w-0 flex-1">
+						<div
+							class="ring-ink/10 relative aspect-video overflow-hidden rounded ring-1"
+						>
+							{#if rider.cameraOn}
+								<div
+									class="h-full w-full"
+									style="background: radial-gradient(120% 100% at 40% 20%, oklch(0.45 0.13 {rider.hue}), oklch(0.16 0.05 {rider.hue}))"
+								></div>
+							{:else}
+								<div
+									class="bg-surface-raised grid h-full w-full place-items-center"
+								>
+									{#if rider.watts > 0}<RidingBars size={16} />{/if}
+								</div>
+							{/if}
+							<span
+								class="from-paper/85 absolute inset-x-0 bottom-0 flex items-baseline gap-1 bg-gradient-to-t to-transparent px-1.5 pt-4 pb-1"
+							>
+								<span
+									class="font-display {ZONE_TEXT[
+										zone
+									]} text-xl leading-none font-bold tabular-nums"
+									>{rider.watts}</span
+								>
+								<span class="text-muted text-[9px]">W</span>
+								<span class="text-muted ml-auto truncate text-[10px]"
+									>{rider.name}</span
+								>
+							</span>
+						</div>
+						<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
+							{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm · {rider.hr}
+							bpm
+						</p>
+					</div>
+				{/each}
+			</div>
+
+			{#if !media}
+				<!-- The horizon: the session is the ground the numbers stand on, not
 			     another card. It gives way to the player when media has the focus
 			     — two grounds is one too many. -->
-			<div class="mt-3 h-28">
-				<IntervalGraph
-					{segments}
-					{total}
-					{elapsed}
-					ftp={you.ftp}
-					trace={you.trace}
-				/>
-			</div>
-		{/if}
-	</div>
+				<div class="mt-3 h-28">
+					<IntervalGraph
+						{segments}
+						{total}
+						{elapsed}
+						ftp={you.ftp}
+						trace={you.trace}
+					/>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </div>
