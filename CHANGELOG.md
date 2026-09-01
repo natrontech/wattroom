@@ -35,6 +35,9 @@ not a second copy of `git log`.
 - Appearance themes now recolour the whole app — surfaces, text, accents, and
   power zones — with matching dark and daylight variants instead of changing
   only two accent colours.
+- The server rolls itself onto the newest published release instead of a tag
+  pinned by hand, and pins itself back to the last good one when a deploy
+  fails its health check. Set `WATTROOM_PIN` to hold a release deliberately.
 
 ### Fixed
 
