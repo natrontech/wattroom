@@ -96,9 +96,9 @@
 			<Logo size={40} />
 			<p class="mt-6 text-sm">{error}</p>
 			<a
-				href="/rooms"
+				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to rooms</a
+				>Back to your rooms</a
 			>
 		</div>
 	</main>

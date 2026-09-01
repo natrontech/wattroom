@@ -1,4 +1,7 @@
 <script lang="ts">
+	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
+	import { Gauge, Zap } from '@lucide/svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
@@ -102,6 +105,15 @@
 	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
+	// The AV chain only exists while you are in a room; the pickers say so
+	// rather than rendering controls that tune nothing.
+	const av = $derived(roomConnection.current?.av);
+	const mixRiders = $derived(
+		(roomConnection.current?.live.tick?.roster ?? [])
+			.filter((r) => r.id !== account.me?.id && av?.voice[r.id] === 'live')
+			.map((r) => ({ id: r.id, name: r.name })),
+	);
+
 	// null = no anchor set; saving null clears it (ADR-0014, device-local).
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
 	let sprintGrade = $state(profile.current.sprintGrade);
@@ -547,6 +559,95 @@
 		</section>
 
 		<!-- Privacy is architecture: say what is true, not what sounds good. -->
+		<!-- ADR-0020 moved these off the rail: device pickers, the voice gate and
+		     the per-rider mixer are set once at a desk, not reached for
+		     mid-interval, and they were living in a 208 px strip you also
+		     navigate rooms with. -->
+		<section class="panel mt-8 p-6">
+			<h2 class="font-display font-bold">Voice &amp; audio</h2>
+			{#if !account.me?.avEnabled}
+				<!-- Capability gating (ux.md): no LiveKit, no voice, so no controls
+				     that would tune something that cannot run. -->
+				<p class="text-muted mt-2 text-sm">
+					Voice and camera are not configured on this server, so there is
+					nothing to tune here yet.
+				</p>
+			{:else}
+				<p class="text-muted mt-1 mb-5 text-sm">
+					Which devices this machine uses, how you transmit, and how loud
+					everything sits under everything else.
+				</p>
+				{#if av}
+					<VoiceSettings
+						micOn={av.micOn}
+						micLevel={av.micLevel}
+						transmitting={av.transmitting}
+						voiceMode={av.mode}
+						gateThreshold={av.gateThreshold}
+						effectiveThreshold={av.effectiveGateThreshold}
+						onVoiceMode={(m) => av.setMode(m)}
+						onGateThreshold={(t) => av.setGateThreshold(t)}
+						micTesting={av.micTesting}
+						onMicTest={() => void av.toggleMicTest()}
+						{mixRiders}
+						onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
+						devices={{ mics: av.mics, cams: av.cams, outs: av.outs }}
+						micId={av.micId}
+						camId={av.camId}
+						outId={av.outId}
+						canPickOutput={av.canPickOutput}
+						onDevice={(kind, id) =>
+							kind === 'mic'
+								? void av.setMic(id)
+								: kind === 'cam'
+									? void av.setCam(id)
+									: av.setOut(id)}
+					/>
+				{:else}
+					<p class="text-muted mt-2 text-sm">
+						Open a room to pick devices and set your gate — the meter needs a
+						live mic to show you a level.
+					</p>
+				{/if}
+			{/if}
+		</section>
+
+		<!-- The rest of what the cog carries (ADR-0020): occasional things that
+		     were destinations of their own before the sidebar shrank to three. -->
+		<section class="panel mt-8 p-6">
+			<h2 class="font-display font-bold">Equipment &amp; measurement</h2>
+			<ul class="mt-4 grid gap-2 sm:grid-cols-2">
+				<li>
+					<a
+						href="/pair"
+						class="border-muted/15 hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
+					>
+						<Zap size={16} class="text-muted shrink-0" />
+						<span class="min-w-0">
+							<span class="block text-sm font-medium">Sensors</span>
+							<span class="text-muted block text-xs"
+								>Pair a trainer, heart rate strap or cadence sensor</span
+							>
+						</span>
+					</a>
+				</li>
+				<li>
+					<a
+						href="/ramp"
+						class="border-muted/15 hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
+					>
+						<Gauge size={16} class="text-muted shrink-0" />
+						<span class="min-w-0">
+							<span class="block text-sm font-medium">Ramp test</span>
+							<span class="text-muted block text-xs"
+								>Measure your FTP — about 20 minutes</span
+							>
+						</span>
+					</a>
+				</li>
+			</ul>
+		</section>
+
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Your data</h2>
 			<ul class="text-muted mt-3 space-y-1.5 text-xs">

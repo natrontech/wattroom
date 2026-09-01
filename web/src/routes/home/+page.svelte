@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ArrowRight, CalendarClock, Flame } from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
+	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
@@ -16,7 +17,8 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
-	// planned, your friends, your week. Rooms management stays on /rooms.
+	// planned, your friends, your week. ADR-0020 folded /sessions in here and
+	// retired /rooms — the sidebar is the room list.
 	interface RoomEntry {
 		slug: string;
 		name: string;
@@ -99,6 +101,53 @@
 			kj: Math.round(recent.reduce((sum, ride) => sum + ride.kj, 0)),
 		};
 	});
+
+	// ── Opening and joining, absorbed (ADR-0020) ─────────────────────────────
+	// /rooms retired into the sidebar, but its two real actions had to land
+	// somewhere: this is what the sidebar's + points at.
+	let newRoomName = $state('');
+	let joinCode = $state('');
+	let roomBusy = $state(false);
+	let roomError = $state<string | null>(null);
+
+	const invalidCode = $derived(
+		joinCode.length > 0 && !/^[A-Z0-9]{0,6}$/i.test(joinCode),
+	);
+	// docs/SPEC.md ownership cap: at 3 owned rooms the affordance disables with
+	// the reason, instead of a 409 on click (ux.md capability gating). The
+	// presence feed carries no role, so the count comes from the room list.
+	let ownedCount = $state(0);
+	$effect(() => {
+		presence.version;
+		if (!account.me) return;
+		void api<{ rooms: { role: string }[] }>('/api/rooms').then((res) => {
+			if (res.ok)
+				ownedCount = res.data.rooms.filter((r) => r.role === 'owner').length;
+		});
+	});
+	const ownedOut = $derived(ownedCount >= 3);
+
+	async function createRoom() {
+		roomBusy = true;
+		const res = await api<{ slug: string }>('/api/rooms', {
+			method: 'POST',
+			json: { name: newRoomName },
+		});
+		roomBusy = false;
+		if (res.ok) void goto(`/r/${res.data.slug}`);
+		else roomError = res.error.message;
+	}
+
+	async function joinByCode() {
+		roomBusy = true;
+		const res = await api<{ slug: string }>('/api/rooms/join', {
+			method: 'POST',
+			json: { code: joinCode },
+		});
+		roomBusy = false;
+		if (res.ok) void goto(`/r/${res.data.slug}`);
+		else roomError = res.error.message;
+	}
 </script>
 
 <main class="page max-w-4xl">
@@ -183,26 +232,94 @@
 				</div>
 			{:else}
 				<p class="text-muted mt-3 text-sm">
-					Nobody's around right now — <a
-						href="/rooms"
-						class="hover:text-ink underline">open a room</a
-					> and your crew gets a place to appear.
+					Nobody's around right now — open a room below and your crew gets a
+					place to appear.
 				</p>
 			{/if}
 		</section>
 
-		<!-- Planned: what is coming, across every room you are in. The next
-		     session per room — /sessions has the whole list and the planning. -->
-		<section class="mt-8">
+		<!-- Your rooms: the sidebar is the list, so this is only what the list
+		     cannot be — the two ways to get another one (ADR-0020). -->
+		<section id="rooms" class="mt-8">
+			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
+				Your rooms
+			</h2>
+			{#if roomError}
+				<div class="mt-3"><Banner tone="error">{roomError}</Banner></div>
+			{/if}
+			<div class="mt-3 grid gap-3 sm:grid-cols-2">
+				<div class="panel p-5">
+					<h3 class="font-display font-bold">Open a room</h3>
+					<p class="text-muted mt-1 text-xs">
+						Private by default. Share the link or the code with whoever you ride
+						with.
+					</p>
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							void createRoom();
+						}}
+					>
+						<input
+							bind:value={newRoomName}
+							maxlength="60"
+							class="input mt-3 w-full"
+							placeholder="Room name"
+						/>
+						<button
+							disabled={roomBusy || !newRoomName.trim() || ownedOut}
+							class="btn btn-primary mt-3 w-full">Open room</button
+						>
+						{#if ownedOut}
+							<p class="text-muted mt-2 text-xs">
+								You own 3 rooms — the cap. Delete one to open another.
+							</p>
+						{/if}
+					</form>
+				</div>
+
+				<div class="panel p-5">
+					<h3 class="font-display font-bold">Join with a code</h3>
+					<p class="text-muted mt-1 text-xs">
+						Six characters, from whoever invited you.
+					</p>
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							void joinByCode();
+						}}
+					>
+						<input
+							bind:value={joinCode}
+							maxlength="6"
+							class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
+								? 'border-z6/60'
+								: 'border-muted/25 focus:border-muted/60'}"
+							placeholder="Room code"
+						/>
+						{#if invalidCode}
+							<!-- Field-level validation lands under the field (errors.md). -->
+							<p class="text-z6 mt-1.5 text-xs">
+								Codes are letters and numbers only.
+							</p>
+						{/if}
+						<button
+							disabled={roomBusy || joinCode.length !== 6 || invalidCode}
+							class="btn btn-secondary mt-3 w-full">Join room</button
+						>
+					</form>
+				</div>
+			</div>
+		</section>
+
+		<!-- What's next: every room's plan, across every room you are in
+		     (ADR-0020 — /sessions retired into this). Planning itself happens in
+		     the room whose session it is. -->
+		<section id="sessions" class="mt-8">
 			<div class="flex items-baseline gap-3">
 				<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-					Planned
+					What's next
 				</h2>
-				<a
-					href="/sessions"
-					class="text-muted hover:text-ink ml-auto text-xs underline"
-					>All sessions →</a
-				>
 			</div>
 			{#if planned.length > 0}
 				<div class="panel mt-3">
@@ -225,10 +342,8 @@
 				</div>
 			{:else}
 				<p class="text-muted mt-3 text-sm">
-					Nothing on the calendar — <a
-						href="/sessions"
-						class="hover:text-ink underline">plan a session</a
-					> and it shows up here for everyone in the room.
+					Nothing on the calendar. Open a room's <em>Sessions</em> and plan one —
+					it shows up here, and in everyone's calendar.
 				</p>
 			{/if}
 		</section>
@@ -280,8 +395,6 @@
 			<p class="text-muted mt-2 text-xs">
 				FTP {account.me?.ftpWatts ?? '–'} W ·
 				<a href="/history" class="hover:text-ink underline">all rides</a> ·
-				<a href="/progression" class="hover:text-ink underline">progression</a>
-				·
 				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
 			</p>
 		</section>

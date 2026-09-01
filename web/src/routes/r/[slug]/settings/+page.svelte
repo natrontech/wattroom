@@ -136,9 +136,9 @@
 		<div class="text-center">
 			<p class="text-sm">{error}</p>
 			<a
-				href="/rooms"
+				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to rooms</a
+				>Back to your rooms</a
 			>
 		</div>
 	</main>
