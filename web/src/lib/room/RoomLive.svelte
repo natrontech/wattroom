@@ -790,12 +790,15 @@
 		<!-- Two places, not one scroll (#359). The stage is the room's middle
 		     now, so the session's own numbers get a tab of their own instead of
 		     a thousand pixels of scrollback under the tiles. -->
-		<div class="border-ink/5 mb-3 flex items-center gap-1 border-b">
+		<!-- Sized for a sweating rider at arm's length (ux.md), not a desk: the
+		     one control you reach for mid-ride cannot be a 12px label. -->
+		<div class="border-ink/5 mb-3 flex items-center border-b">
 			{#each [{ id: 'room' as const, label: 'Room' }, { id: 'training' as const, label: 'Training' }] as tab (tab.id)}
 				<button
 					onclick={() => (view = tab.id)}
 					aria-current={view === tab.id ? 'page' : undefined}
-					class="-mb-px border-b-2 px-3 py-2 text-xs {view === tab.id
+					class="-mb-px border-b-2 px-7 py-4 text-base font-medium {view ===
+					tab.id
 						? 'border-neon text-ink'
 						: 'text-muted hover:text-ink border-transparent'}"
 				>
@@ -803,7 +806,7 @@
 					{#if tab.id === 'training' && phase !== 'lounge'}
 						<!-- Live data is the only thing that carries the accent (ADR-0005). -->
 						<span
-							class="bg-watt ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full align-middle"
+							class="bg-watt ml-1.5 inline-block h-2 w-2 animate-pulse rounded-full align-middle"
 						></span>
 					{/if}
 				</button>
@@ -811,7 +814,7 @@
 			{#if phase === 'live' && shared}
 				<!-- The clock stays readable from the room tab: leaving your
 				     numbers should not mean losing the time. -->
-				<span class="font-display text-muted ml-auto text-sm tabular-nums"
+				<span class="font-display text-muted ml-auto pr-2 text-lg tabular-nums"
 					>{formatClock(shared.elapsed)}</span
 				>
 			{/if}
