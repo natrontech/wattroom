@@ -47,9 +47,16 @@ export function sameSeat(a: Seat | null, b: Seat | null): boolean {
 export function offerSeat(node: HTMLElement): () => void {
 	let visible = true;
 	let raf = 0;
+	// The first publish runs inside the stage's attachment, which is an
+	// effect: comparing against `stageSlot.seat` there would make that effect
+	// depend on the state it writes (#414's shape). The last seat is kept
+	// here instead, so the store is only ever written.
+	let last: Seat | null = null;
 	const publish = () => {
 		const next = seatOf(node.getBoundingClientRect(), visible);
-		if (!sameSeat(stageSlot.seat, next)) stageSlot.seat = next;
+		if (sameSeat(last, next)) return;
+		last = next;
+		stageSlot.seat = next;
 	};
 	const frame = () => {
 		publish();
