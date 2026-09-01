@@ -5,7 +5,6 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
-	import FriendsPanel from '$lib/friends/FriendsPanel.svelte';
 	import {
 		fetchProgression,
 		FORM_SENTENCES,
@@ -348,8 +347,20 @@
 			{/if}
 		</section>
 
-		<!-- Friends: presence, requests, DMs — the whole panel, reused. -->
-		<FriendsPanel />
+		<!-- Friends moved to its own place (ADR-0020) — a list of people does
+		     not belong under your week's kJ. -->
+		<section class="mt-8">
+			<div class="flex items-baseline gap-3">
+				<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
+					Friends
+				</h2>
+				<a
+					href="/friends"
+					class="text-muted hover:text-ink ml-auto text-xs underline"
+					>All friends →</a
+				>
+			</div>
+		</section>
 
 		<!-- Your week: enough numbers to feel momentum, not a dashboard farm. -->
 		<section class="mt-10">

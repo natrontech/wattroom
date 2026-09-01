@@ -212,17 +212,17 @@
 			</div>
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
+					{@const on = pathname === `/dm/${head.peerId}`}
 					<li>
-						<button
-							onclick={() => {
-								dm.show(head.peerId, head.peerName);
-								dmHeads.bump();
-							}}
-							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {dmHeads.unread(
-								head.peerId,
-							)
-								? 'text-ink font-semibold'
-								: 'text-muted hover:text-ink'}"
+						<a
+							href="/dm/{head.peerId}"
+							onclick={() => dm.show(head.peerId, head.peerName)}
+							aria-current={on ? 'page' : undefined}
+							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {on
+								? 'bg-surface-raised text-ink'
+								: dmHeads.unread(head.peerId)
+									? 'text-ink font-semibold'
+									: 'text-muted hover:text-ink'}"
 						>
 							<Avatar
 								name={head.peerName}
@@ -236,7 +236,7 @@
 								<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
 								></span>
 							{/if}
-						</button>
+						</a>
 					</li>
 				{/each}
 			</ul>

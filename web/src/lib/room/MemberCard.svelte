@@ -150,13 +150,13 @@
 	{#if friendState === 'pending'}
 		<p class="text-muted mt-4 text-center text-xs">friend request pending</p>
 	{:else if friendState === 'friends'}
-		<button
+		<a
+			href="/dm/{member.id}"
 			onclick={() => {
 				dm.show(member.id, member.displayName);
 				onClose();
 			}}
-			class="btn btn-primary mt-4 w-full"
-			><MessageCircle size={15} /> Message</button
+			class="btn btn-primary mt-4 w-full"><MessageCircle size={15} /> Message</a
 		>
 	{/if}
 </Modal>

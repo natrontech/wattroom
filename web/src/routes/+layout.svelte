@@ -22,7 +22,6 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
-	import DmDrawer from '$lib/dm/DmDrawer.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
@@ -228,11 +227,10 @@
 				{@render children()}
 			</div>
 		</div>
-		<!-- The DM drawer (#208) and the jukebox dock (#216) live on the
-		     frame: threads and music survive navigation the same way the
-		     room connection does. -->
+		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
+		     auto-advance while the player is offscreen, so it cannot be a place.
+		     Threads became places instead (ADR-0020) — /dm/[peer]. -->
 		<JukeboxDock />
-		<DmDrawer />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
 			<MemberCard
