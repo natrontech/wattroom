@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { countModal } from '$lib/modals.svelte';
 	import type { Snippet } from 'svelte';
 
 	// The one modal (#230). Call sites keep their {#if} — mounting IS opening.
@@ -54,7 +55,9 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
+	{@attach countModal}
 	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
+	style="padding-bottom: calc(1rem + var(--pane-jukebox-dock-h, 0px))"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<div

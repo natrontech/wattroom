@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { modals } from '$lib/modals.svelte';
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -65,7 +66,9 @@
 	// off: the room page has the transport in its side panel, and a seat with
 	// nothing over or beside the player is what keeps RMF satisfied. Lose the
 	// seat (leave the room, scroll it away) and it floats again.
-	const seat = $derived(stageSlot.seat);
+	// A modal covers the stage, so the seat under it is no seat: the dock
+	// goes to its corner and the modal keeps a gutter above it (modals.svelte).
+	const seat = $derived(modals.open > 0 ? null : stageSlot.seat);
 	$effect(() => {
 		const to = seat;
 		const node = shell;

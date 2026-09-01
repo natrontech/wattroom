@@ -14,6 +14,7 @@
 		type Suggestion,
 	} from '$lib/progression';
 	import Select from '$lib/components/Select.svelte';
+	import { countModal } from '$lib/modals.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
@@ -180,7 +181,9 @@
 	onclick={onClose}
 ></button>
 <div
-	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] bottom-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[46rem] md:-translate-x-1/2"
+	{@attach countModal}
+	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[46rem] md:-translate-x-1/2"
+	style="bottom: calc(6dvh + var(--pane-jukebox-dock-h, 0px))"
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
 		<h2 class="font-display text-lg font-bold">{title}</h2>
