@@ -70,8 +70,10 @@ select workout_name, starts_at from scheduled_sessions
 where room_id = $1 and starts_at > now() - interval '30 minutes'
 order by starts_at limit 1;
 
--- name: DeleteScheduledSession :execrows
-delete from scheduled_sessions where id = $1 and room_id = $2;
+-- name: DeleteScheduledSession :one
+-- Returns the name so the room's timeline can say which plan went (#359).
+delete from scheduled_sessions where id = $1 and room_id = $2
+returning workout_name;
 
 -- name: RescheduleSession :one
 update scheduled_sessions set starts_at = $3

@@ -203,3 +203,57 @@ func TestPendingEventsAreBounded(t *testing.T) {
 		t.Fatalf("pending events unbounded: %d", got)
 	}
 }
+
+// What the SESSION puts on the same timeline (#359). The deck was writing
+// there alone, so a room could plan, start and finish a workout and the chat
+// showed nothing but music.
+
+func TestSessionPhaseSpeaksOncePerCrossing(t *testing.T) {
+	rm := newRoom("test")
+	at := func(s int) time.Time { return time.Unix(int64(s), 0) }
+	rm.session.pick("Sweet Spot", `{"name":"S","steps":[{"type":"steady","seconds":60,"target":0.9}]}`, 60)
+
+	// Idle is not news: the first tick of a quiet room says nothing.
+	rm.sayPhaseLocked(rm.session.state(at(0)), at(0))
+	if got := rm.events.drain(); len(got) != 0 {
+		t.Fatalf("idle spoke: %+v", got)
+	}
+
+	rm.session.start(at(1))
+	rm.sayPhaseLocked(rm.session.state(at(1)), at(1))
+	got := rm.events.drain()
+	if len(got) != 1 || got[0].Kind != "session" || got[0].Verb != "started" ||
+		got[0].Subject != "Sweet Spot" || got[0].When != 0 {
+		t.Fatalf("started line: %+v", got)
+	}
+
+	// Every tick the countdown stays up must not stack another line.
+	rm.sayPhaseLocked(rm.session.state(at(2)), at(2))
+	rm.sayPhaseLocked(rm.session.state(at(3)), at(3))
+	if lines := rm.events.drain(); len(lines) != 0 {
+		t.Fatalf("countdown repeated itself: %+v", lines)
+	}
+
+	// The clock, not a coach, closes this one — the line lands all the same.
+	rm.sayPhaseLocked(rm.session.state(at(20)), at(20)) // countdown -> running
+	rm.events.drain()
+	rm.sayPhaseLocked(rm.session.state(at(200)), at(200)) // running -> done
+	got = rm.events.drain()
+	if len(got) != 1 || got[0].Verb != "ended" || got[0].Subject != "Sweet Spot" {
+		t.Fatalf("ended line: %+v", got)
+	}
+}
+
+func TestPlanLineCarriesTheTimeItIsFor(t *testing.T) {
+	now, starts := time.Unix(1000, 0), time.Unix(9000, 0)
+	got := sessionLine("planned", "Jan", "Recovery Spin", starts, now)
+	if got.Kind != "session" || got.Verb != "planned" || got.Actor != "Jan" ||
+		got.Subject != "Recovery Spin" || got.Count != 1 ||
+		got.At != now.UnixMilli() || got.When != starts.UnixMilli() {
+		t.Fatalf("planned line: %+v", got)
+	}
+	// A line about right now has no time of its own to render.
+	if got := sessionLine("cancelled", "Jan", "Recovery Spin", time.Time{}, now); got.When != 0 {
+		t.Fatalf("zero start leaked a time: %+v", got)
+	}
+}

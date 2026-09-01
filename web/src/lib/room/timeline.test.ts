@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
 import { eventText, roomTimeline, type TimelineMessage } from './timeline';
 
@@ -47,6 +48,62 @@ describe('eventText (#321)', () => {
 	it('renders nothing for a verb it has never heard of', () => {
 		// Vote outcomes land later (#269/#271); an old tab must not print junk.
 		expect(eventText(event({ verb: 'voted-out' }))).toBe('');
+	});
+});
+
+describe('eventText, session lines (#359)', () => {
+	const plan = (over: Partial<RoomEvent> = {}) =>
+		event({
+			kind: 'session',
+			verb: 'planned',
+			actor: 'Jan',
+			track: '',
+			subject: 'Sweet Spot 2×20',
+			// 2026-09-04T18:30 local, so the rendered time is the machine's.
+			when: new Date(2026, 8, 4, 18, 30).getTime(),
+			...over,
+		});
+
+	it('says who planned what, and when it is for', () => {
+		// The app has one wording for a planned moment; the chat line borrows
+		// it rather than inventing a second clock format.
+		const at = new Date(2026, 8, 4, 18, 30);
+		expect(eventText(plan())).toBe(
+			`Jan planned Sweet Spot 2×20 for ${formatWhen(at.toISOString(), true)}`,
+		);
+	});
+
+	it('words moving and cancelling as the plan changing, not a new one', () => {
+		expect(eventText(plan({ verb: 'moved' }))).toContain(
+			'Jan moved Sweet Spot 2×20 to',
+		);
+		// Nothing left to be for: a cancelled plan carries no time.
+		expect(eventText(plan({ verb: 'cancelled', when: 0 }))).toBe(
+			'Jan cancelled Sweet Spot 2×20',
+		);
+	});
+
+	it('names the workout, not a rider, when the timeline itself moves', () => {
+		// Nobody's name: the clock closes a session as readily as a coach.
+		expect(eventText(plan({ verb: 'started', actor: '', when: 0 }))).toBe(
+			'Sweet Spot 2×20 is starting',
+		);
+		expect(eventText(plan({ verb: 'ended', actor: '', when: 0 }))).toBe(
+			'Sweet Spot 2×20 ended',
+		);
+	});
+
+	it('renders the client-derived reminder', () => {
+		expect(eventText(plan({ verb: 'due', actor: '' }))).toContain(
+			'Sweet Spot 2×20 starts at',
+		);
+	});
+
+	it('survives a line missing the pieces it wants', () => {
+		// A newer server could send a plan line this client cannot fill in.
+		expect(eventText(plan({ subject: '', when: 0 }))).toBe(
+			'Jan planned a session',
+		);
 	});
 });
 

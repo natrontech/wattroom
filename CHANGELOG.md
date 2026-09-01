@@ -16,8 +16,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+### Added
+
+- The room's chat now carries what the room did with its plan: a session
+  planned, moved or cancelled, one starting and one finishing, and a reminder
+  ten minutes before a planned session is due.
+
 ### Changed
 
+- The room is two tabs instead of one long scroll: Room holds the shared
+  screen and the rider tiles, Training holds the clock, the interval, your
+  target and the graph — and a session starting takes you straight to it.
+- A finished session now opens its summary over the room instead of drawing it
+  below the fold, where riders watching the shared screen never saw it.
+- Planning a session from the Sessions page opens the room's own picker, so
+  you see the graph, the zones and the cadence bands before you commit a room
+  to a workout.
 - Appearance themes now recolour the whole app — surfaces, text, accents, and
   power zones — with matching dark and daylight variants instead of changing
   only two accent colours.
@@ -27,15 +41,43 @@ not a second copy of `git log`.
 - The page no longer scrolls by the height of the top nav: the room fills
   exactly what is left of the screen instead of one nav-bar too much.
 
+### Security
+
+- Corrected the 2026.09.1 note about the `/metrics` exposure: it claimed
+  nothing was exposed in practice, which was wrong. wattroom.ch was already
+  live, so the endpoint was public for as long as the site had been running.
+
 ## [2026.09.2] - 2026-09-01
+
+*Reconstructed 2026-09-01: this release originally listed only the first entry
+below. Six other changes shipped in it, three of them rider-visible, because
+the per-PR changelog rule landed mid-flight and nothing enforced it.*
 
 ### Added
 
 - What's new: the app shows the changelog of the version it is running, and
   says so once when a new version has landed — on the home screen, never
   during a ride.
+- The room's video plays *on* the stage instead of floating over it. The
+  player seats into the stage layout, and floats again — at the size and
+  position you gave it — when you leave the room or scroll the stage away.
+
+### Fixed
+
+- Live numbers are readable on rider tiles and in TV mode. Name, watts and the
+  bpm/rpm/w·kg row now sit on an edge scrim rather than on whatever the camera
+  is pointing at, and TV mode no longer greys out the number while
+  highlighting the unit.
+- Picking a rider for the stage no longer blanks their tile. A camera track is
+  deliberately mounted twice — tile and stage — and each mount was tearing the
+  other one down, so both went black for as long as the pick stood.
 
 ## [2026.09.1] - 2026-09-01
+
+*The first tagged release. WattRoom was built and deployed for months before
+releases existed, so this section describes what the alpha comprises rather
+than itemising the changes that got it there — those are the issue board and
+the git history.*
 
 ### Added
 
@@ -69,9 +111,15 @@ not a second copy of `git log`.
 
 ### Security
 
-- `/metrics` is no longer proxied to the public internet. The deploy config
-  would have served rider counts and Go runtime internals to anyone; caught
-  before wattroom.ch was ever deployed, so nothing was exposed in practice.
+- `/metrics` is no longer proxied to the public internet. Until this release
+  wattroom.ch served rider counts and Go runtime internals to anyone who asked
+  for them.
+
+  *Corrected 2026-09-01.* This entry first claimed the exposure was caught
+  before wattroom.ch was ever deployed and that nothing was exposed in
+  practice. That was wrong — the site was already live, so the endpoint was
+  reachable for as long as it had been running. The fix itself is unchanged;
+  only the claim about impact was false.
 
 [Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.2...HEAD
 [2026.09.2]: https://github.com/natrontech/wattroom/compare/2026.09.1...2026.09.2

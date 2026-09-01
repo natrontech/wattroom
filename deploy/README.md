@@ -36,18 +36,19 @@ hardcoded "ok":
 
 ## The VM deploys itself
 
-Rather than the three lines above, the VM converges on the tag pinned in the
-homelab repo (ADR-0019). Promotion is a one-line commit there; rollback is
-`git revert` of it. Install:
+Rather than the three lines above, the VM tracks the newest published release
+by itself (ADR-0019). Cutting a release *is* deploying it. Install:
 
     cp wattroom-update.sh /opt/wattroom/
     cp wattroom-update.service wattroom-update.timer /etc/systemd/system/
     cp wattroom-update.env.example /etc/wattroom-update.env   # then edit it
-    git clone <homelab-repo> /opt/wattroom-pin                # deploy key, read-only
     systemctl enable --now wattroom-update.timer
 
-Every five minutes it reads the pin and, if it differs from `WATTROOM_TAG` in
-`.env`:
+It reuses the credential `docker login ghcr.io` already stored, so there is no
+new secret and no repo to clone.
+
+Every five minutes it takes the highest CalVer tag in the registry and, if it
+differs from what is actually serving:
 
 1. **refuses to interrupt a ride** — a server that answers with riders on it
    defers to the next tick. A count it cannot read from a *responding* server
@@ -66,6 +67,12 @@ Every five minutes it reads the pin and, if it differs from `WATTROOM_TAG` in
 It never restores a dump. That would discard every ride recorded since the
 dump, which is worse than the bug being rolled back from — restoring is a
 break-glass path with a person present. Automated recovery stops at the image.
+
+**Rolling back on purpose**, or holding a version: put the tag in
+`WATTROOM_PIN` in `.env` and `up -d wattroom`. While that is set the updater
+leaves the box alone — without it, tracking would put the newest release
+straight back. A failed health gate sets the same field for you, so a bad
+release cannot be retried every five minutes overnight. Clear it to resume.
 
 Watch it with `journalctl -u wattroom-update -f`, or run it once by hand with
 `systemctl start wattroom-update`.
