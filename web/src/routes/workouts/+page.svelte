@@ -61,7 +61,7 @@
 				a copy — it lands on your account and follows you to any device.
 			</p>
 		{:else}
-			<ul class="mt-2 grid gap-2">
+			<ul class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
 				{#each custom.all as entry (entry.id)}
 					<li
 						class="panel flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3"
@@ -135,7 +135,7 @@
 		{/each}
 	</div>
 
-	<ul class="mt-4 grid gap-3">
+	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 		{#each shown as entry (entry.id)}
 			<li class="panel hover:border-muted/40 overflow-hidden transition-colors">
 				<!-- Not one big anchor: the card carries two actions, and nesting them

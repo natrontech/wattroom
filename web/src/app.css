@@ -195,15 +195,13 @@ body {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
 
-/* Page rhythm (ADR-0020). ONE width, anchored left beside the sidebar — pages
-   used to pick their own max-w and centre it, so the content block moved
-   around the column as you navigated. `page-wide` is for the editor's three
-   panes and nothing else. */
+/* Page rhythm (ADR-0020, amended in #417). Pages fill the content column:
+   one padding, no width cap. Pages used to pick their own max-w and centre
+   it; then one capped width anchored left — which on a wide screen read as a
+   page that never finished loading. A section that would stretch too far
+   goes multi-column at xl instead of the page narrowing. */
 @utility page {
-	@apply w-full max-w-3xl px-8 py-8;
-}
-@utility page-wide {
-	@apply w-full max-w-6xl px-8 py-8;
+	@apply w-full px-8 py-8;
 }
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's

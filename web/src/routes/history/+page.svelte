@@ -172,7 +172,7 @@
 			</span>
 		</div>
 
-		<div class="mt-3 grid gap-3">
+		<div class="mt-3 grid gap-3 xl:grid-cols-2">
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- Interpretation lives in the UI, not the rider's head: every
@@ -202,7 +202,7 @@
 			</div>
 			{#if progression.load && progression.load.series.length > 1}
 				{@const load = progression.load}
-				<div class="panel px-6 py-5">
+				<div class="panel px-6 py-5 xl:col-span-2">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 class="text-ink text-sm font-semibold">Training load</h2>
 						{#if load.building}
@@ -268,7 +268,7 @@
 			</EmptyState>
 		</div>
 	{:else}
-		<ul class="mt-8 grid gap-2">
+		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
 				{@render rideRow(ride, ride.room ? 'room' : undefined)}
 			{/each}
@@ -281,7 +281,7 @@
 			Saved while the server was unreachable — summaries only, so they can't
 			move to your account.
 		</p>
-		<ul class="mt-3 grid gap-2">
+		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
 				{@render rideRow(ride)}
 			{/each}
