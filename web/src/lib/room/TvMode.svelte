@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
-	import TargetWidget from '$lib/room/TargetWidget.svelte';
+	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import {
 		ZONE_BG,
@@ -86,9 +86,12 @@
 		</header>
 
 		<div class="mt-[3vh] flex flex-1 gap-[3vw]">
-			<!-- Yours: the number you read from across the room, plus how far off you are. -->
-			<section class="flex flex-1 flex-col justify-center">
-				<TargetWidget {you} variant="delta" />
+			<!-- Yours: the same instrument the arm's-length view uses, at 3 m —
+			     the number travels over the tolerance band, so "left or right of
+			     the bright slot" reads from the sofa the way it reads from the
+			     saddle. One design at two distances (ADR-0020). -->
+			<section class="flex min-w-0 flex-1 flex-col justify-center">
+				<Instrument watts={you.watts} target={you.target} ftp={you.ftp} tv />
 				<div class="mt-[2.5vh]">
 					<IntervalStrip
 						{block}
@@ -99,9 +102,6 @@
 					/>
 				</div>
 				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[2.4vh]">
-					<span class="text-muted"
-						>target <span class="text-ink">{you.target} W</span></span
-					>
 					<span class="text-ink"
 						>{you.cadence}
 						<span class="text-muted text-[1.6vh]">rpm</span></span

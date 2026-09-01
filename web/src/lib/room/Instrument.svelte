@@ -18,6 +18,7 @@
 		target,
 		ftp,
 		compact = false,
+		tv = false,
 		targetLabel = 'target',
 	}: {
 		watts: number;
@@ -25,6 +26,9 @@
 		ftp: number;
 		/** Collapsed to a single bar — what it becomes under a shared player. */
 		compact?: boolean;
+		/** TV mode: the same instrument sized in vh, so it holds at 3 m on any
+		 *  panel. One design at two distances, not two designs. */
+		tv?: boolean;
 		/** The ramp test prescribes a step, not a target. */
 		targetLabel?: string;
 	} = $props();
@@ -85,25 +89,34 @@
 		>
 	</div>
 {:else}
-	<div class="relative h-28">
+	<div class="relative {tv ? 'h-[22vh]' : 'h-28'}">
 		<div
 			class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-			style="left: clamp(5rem, {pct(watts)}%, calc(100% - 5rem))"
+			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(watts)}%, calc(100% - {tv
+				? '10vh'
+				: '5rem'}))"
 		>
 			<span
-				class="font-display text-watt glow-text-strong block text-[6.5rem] leading-[0.85] font-bold tabular-nums"
-				>{watts}</span
+				class="font-display text-watt glow-text-strong block leading-[0.85] font-bold tabular-nums {tv
+					? 'text-[16vh]'
+					: 'text-[6.5rem]'}">{watts}</span
 			>
-			<span class="eyebrow">watts</span>
+			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
 		</div>
 	</div>
 
-	<div class="mt-3">{@render track('h-12')}</div>
+	<div class={tv ? 'mt-[1.5vh]' : 'mt-3'}>
+		{@render track(tv ? 'h-[4vh]' : 'h-12')}
+	</div>
 
-	<div class="text-muted mt-2 flex items-baseline text-xs tabular-nums">
+	<div
+		class="text-muted flex items-baseline tabular-nums {tv
+			? 'mt-[1vh] text-[1.8vh]'
+			: 'mt-2 text-xs'}"
+	>
 		<span>0</span>
 		<span
-			class="mx-auto text-sm {state.inBand
+			class="mx-auto {tv ? 'text-[2.6vh]' : 'text-sm'} {state.inBand
 				? 'text-z4'
 				: state.delta > 0
 					? 'text-z5'
