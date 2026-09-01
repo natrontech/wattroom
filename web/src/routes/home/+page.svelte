@@ -1,6 +1,13 @@
 <script lang="ts">
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { ArrowRight, CalendarClock, Flame, Radio } from '@lucide/svelte';
+	import {
+		ArrowRight,
+		CalendarClock,
+		ChartColumn,
+		Flame,
+		Plus,
+		Radio,
+	} from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
@@ -109,6 +116,11 @@
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
+	// Planning happens in a room's own Sessions place; the first room you can
+	// run one in is where the button goes. None yet: open one first.
+	const firstRoom = $derived(
+		(rooms ?? []).find((r) => r.role === 'owner' || r.role === 'coach'),
+	);
 
 	const greeting = $derived.by(() => {
 		const h = new Date().getHours();
@@ -166,10 +178,29 @@
 	</h1>
 	{#if headline}
 		<p class="text-muted mt-1 text-sm">{headline.text}</p>
-		<a href="/r/{headline.slug}" class="btn btn-accent btn-lg mt-4"
-			><Radio size={15} /> {headline.cta}</a
-		>
 	{/if}
+	<!-- The things you actually come here to do, as buttons rather than as
+	     sections to scroll for. The hero is the ride that is on; the rest are
+	     always there. -->
+	<div class="mt-4 flex flex-wrap items-center gap-2">
+		{#if headline}
+			<a href="/r/{headline.slug}" class="btn btn-accent btn-lg"
+				><Radio size={15} /> {headline.cta}</a
+			>
+		{/if}
+		<a href="/workouts" class="btn btn-secondary {headline ? '' : 'btn-lg'}"
+			><ChartColumn size={15} /> Ride solo</a
+		>
+		{#if firstRoom}
+			<a href="/r/{firstRoom.slug}/sessions" class="btn btn-secondary"
+				><CalendarClock size={15} /> Plan a session</a
+			>
+		{:else}
+			<a href="#rooms" class="btn btn-secondary"
+				><Plus size={15} /> Open a room</a
+			>
+		{/if}
+	</div>
 
 	{#if error}
 		<div class="mt-6">

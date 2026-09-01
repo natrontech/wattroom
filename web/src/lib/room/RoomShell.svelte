@@ -484,11 +484,16 @@
 		});
 	});
 	const shelf = $derived(
-		buildShelf(custom.all).sort(
-			(a, b) =>
-				(recency.get(a.workout.name) ?? 999) -
-				(recency.get(b.workout.name) ?? 999),
-		),
+		buildShelf(custom.all)
+			.map((entry) => ({
+				...entry,
+				recent: recency.has(entry.workout.name),
+			}))
+			.sort(
+				(a, b) =>
+					(recency.get(a.workout.name) ?? 999) -
+					(recency.get(b.workout.name) ?? 999),
+			),
 	);
 	// The quick-start on the lounge floor offers the most recently ridden.
 	const setupPicked = $derived(shelf[0]);

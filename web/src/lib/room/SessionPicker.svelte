@@ -74,6 +74,27 @@
 				(e.focus ?? '').toLowerCase().includes(q),
 		);
 	});
+	// Grouped the way a rider thinks: what I rode lately, what today calls
+	// for, what I built, then the library. A flat list of 27 sorted by a
+	// recency number nobody can see reads as random.
+	const groups = $derived.by(() => {
+		const recent = shown.filter((e) => e.recent);
+		const today = shown.filter(
+			(e) => !e.recent && e.focus && suggested.includes(e.focus),
+		);
+		const yours = shown.filter(
+			(e) => !e.recent && e.yours && !today.includes(e),
+		);
+		const rest = shown.filter(
+			(e) => !recent.includes(e) && !today.includes(e) && !yours.includes(e),
+		);
+		return [
+			{ label: 'recently ridden', entries: recent },
+			{ label: 'suggested today', entries: today },
+			{ label: 'yours', entries: yours },
+			{ label: 'library', entries: rest },
+		].filter((g) => g.entries.length > 0);
+	});
 	// svelte-ignore state_referenced_locally
 	let roomSlug = $state(rooms[0]?.value ?? '');
 	$effect(() => {
@@ -220,29 +241,29 @@
 					/>
 				</div>
 				<ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-					{#each shown as entry (entry.id)}
-						<li>
-							<button
-								onclick={() => (pickedId = entry.id)}
-								class="w-full rounded px-3 py-2.5 text-left {picked?.id ===
-								entry.id
-									? 'bg-surface-raised text-ink'
-									: 'text-muted hover:text-ink'}"
-							>
-								<span class="block truncate text-sm font-medium"
-									>{entry.workout.name}</span
+					{#each groups as group (group.label)}
+						<li class="eyebrow px-3 pt-3 pb-1">{group.label}</li>
+						{#each group.entries as entry (entry.id)}
+							<li>
+								<button
+									onclick={() => (pickedId = entry.id)}
+									class="w-full rounded px-3 py-2.5 text-left {picked?.id ===
+									entry.id
+										? 'bg-surface-raised text-ink'
+										: 'text-muted hover:text-ink'}"
 								>
-								<span class="block font-mono text-[11px] tabular-nums"
-									>{formatClock(durationSeconds(entry.workout))}
-									<span class="text-muted/70 font-sans"
-										>· {entry.yours ? 'yours' : entry.focus}{entry.focus &&
-										suggested.includes(entry.focus)
-											? ' · suggested today'
-											: ''}</span
-									></span
-								>
-							</button>
-						</li>
+									<span class="block truncate text-sm font-medium"
+										>{entry.workout.name}</span
+									>
+									<span class="block font-mono text-[11px] tabular-nums"
+										>{formatClock(durationSeconds(entry.workout))}
+										<span class="text-muted/70 font-sans"
+											>· {entry.focus ?? (entry.yours ? 'yours' : '')}</span
+										></span
+									>
+								</button>
+							</li>
+						{/each}
 					{:else}
 						<li class="text-muted px-3 py-4 text-xs">
 							Nothing matches — try a zone name, like "threshold".
