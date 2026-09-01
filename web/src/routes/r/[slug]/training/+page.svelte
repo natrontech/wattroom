@@ -168,10 +168,12 @@
 			<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. -->
 			<div class="mt-4">
-				<div class="flex gap-2 px-6">
+				<!-- Thumbnails at a fixed width, scrolling past the edge: a tile that grows
+				     to fill turns one crewmate into a slab and starves the instrument. -->
+				<div class="flex gap-2 overflow-x-auto px-6">
 					{#each room.riders.filter((r) => !r.you) as rider (rider.id)}
 						{@const zone = zoneOf(rider.watts, rider.ftp)}
-						<div class="min-w-0 flex-1">
+						<div class="w-44 shrink-0">
 							<div
 								class="ring-ink/10 bg-surface-raised relative aspect-video overflow-hidden rounded ring-1"
 							>

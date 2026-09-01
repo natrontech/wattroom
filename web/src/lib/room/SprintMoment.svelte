@@ -118,21 +118,21 @@
 			<ol class="min-h-0 space-y-1.5 overflow-y-auto">
 				{#each ranked as rider, i (rider.id)}
 					<li
-						class="flex items-center gap-3 rounded px-3 py-2 {rider.you
+						class="flex items-center gap-3 rounded px-3 py-3 {rider.you
 							? 'bg-surface-raised'
 							: ''}"
 					>
 						<span
-							class="font-display text-muted w-6 shrink-0 text-lg font-bold tabular-nums"
+							class="font-display text-muted w-8 shrink-0 text-xl font-bold tabular-nums"
 							>{i + 1}</span
 						>
 						<span
-							class="min-w-0 flex-1 truncate text-sm {rider.you
+							class="min-w-0 flex-1 truncate text-lg {rider.you
 								? 'font-semibold'
 								: ''}">{rider.name}</span
 						>
 						<span
-							class="bg-surface hidden h-2 w-40 shrink-0 overflow-hidden rounded-full sm:block"
+							class="bg-surface hidden h-3 w-48 shrink-0 overflow-hidden rounded-full sm:block"
 						>
 							<span
 								class="bg-watt block h-full transition-[width] duration-300"
@@ -142,13 +142,13 @@
 							></span>
 						</span>
 						<span
-							class="font-display w-16 shrink-0 text-right text-lg font-bold tabular-nums {i ===
+							class="font-display w-24 shrink-0 text-right text-3xl font-bold tabular-nums {i ===
 							0
 								? 'text-watt glow-text'
 								: ''}">{wkg(rider.watts, rider.kg)}</span
 						>
 						<span
-							class="text-muted w-14 shrink-0 text-right text-xs tabular-nums"
+							class="text-muted w-16 shrink-0 text-right text-sm tabular-nums"
 							>{rider.watts} W</span
 						>
 					</li>
