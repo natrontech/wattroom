@@ -243,13 +243,13 @@
 								<button
 									onclick={() => onRemove(member.id)}
 									disabled={busy}
-									class="hover:text-z6 underline disabled:opacity-40"
+									class="hover:text-danger underline disabled:opacity-40"
 									>remove</button
 								>
 								<button
 									onclick={() => onRole(member.id, 'banned')}
 									disabled={busy}
-									class="hover:text-z6 underline disabled:opacity-40"
+									class="hover:text-danger underline disabled:opacity-40"
 									>ban</button
 								>
 							</span>

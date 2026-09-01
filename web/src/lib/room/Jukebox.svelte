@@ -217,7 +217,7 @@
 			aria-label="add to the queue"><Plus size={14} /></button
 		>
 	</form>
-	{#if addError}<p class="text-z6 text-xs">{addError}</p>{/if}
+	{#if addError}<p class="text-danger text-xs">{addError}</p>{/if}
 
 	{#if queue.length}
 		<div class="min-w-0">

@@ -77,7 +77,7 @@
 
 <section class="mt-6">
 	{#if error}
-		<p class="text-z6 mt-3 text-xs">{error}</p>
+		<p class="text-danger mt-3 text-xs">{error}</p>
 	{/if}
 
 	{#if friends !== null}
@@ -224,7 +224,7 @@
 			</form>
 		</div>
 		{#if codeError}
-			<p class="text-z6 mt-2 text-xs">{codeError}</p>
+			<p class="text-danger mt-2 text-xs">{codeError}</p>
 		{/if}
 	{/if}
 </section>

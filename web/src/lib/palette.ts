@@ -22,6 +22,7 @@ export const TOKENS = [
 	'neon',
 	'ink',
 	'paper',
+	'danger',
 	'z1',
 	'z2',
 	'z3',
@@ -91,6 +92,7 @@ const FAMILY: Record<
 		paper: Oklch;
 		watt: Oklch;
 		neon: Oklch;
+		danger: Oklch;
 		zones: Oklch[];
 	}
 > = {
@@ -102,6 +104,7 @@ const FAMILY: Record<
 		paper: { l: 0, c: 0, h: 0 },
 		watt: { l: 0.673, c: 0.233, h: 0 },
 		neon: { l: 0.56, c: 0.277, h: 0 },
+		danger: { l: 0.68, c: 0.2, h: 0 },
 		// The ramp ADR-0005 shipped, measured. Lightness peaks at Z5 and
 		// descends into the hot zones while chroma climbs — that shape is what
 		// keeps Z6/Z7 vivid, and replacing it with an even climb is what made
@@ -124,6 +127,7 @@ const FAMILY: Record<
 		paper: { l: 1, c: 0, h: 0 },
 		watt: { l: 0.611, c: 0.23, h: 0 },
 		neon: { l: 0.475, c: 0.243, h: 0 },
+		danger: { l: 0.52, c: 0.2, h: 0 },
 		zones: [
 			{ l: 0.459, c: 0.12, h: 292 },
 			{ l: 0.51, c: 0.196, h: 269 },
@@ -164,6 +168,13 @@ const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
  */
 const ZONE_CHROMA_FLOOR = 0.8;
 
+/**
+ * Danger is semantic, not data (#397): a destructive control must be the same
+ * colour whatever identity the rider picked, so its hue is pinned here and
+ * only lightness and chroma follow the family. Red-orange in OKLCH.
+ */
+export const DANGER_HUE = 25;
+
 export function deriveTheme(spec: ThemeSpec): Theme {
 	const f = FAMILY[spec.family];
 	const at = (base: Oklch, h: number) => oklchToHex({ ...base, h });
@@ -175,6 +186,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		neon: at(f.neon, spec.neonHue),
 		ink: at(f.ink, spec.surfaceHue),
 		paper: at(f.paper, spec.surfaceHue),
+		danger: '',
 		z1: '',
 		z2: '',
 		z3: '',
@@ -184,6 +196,15 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		z7: '',
 	};
 	const backgrounds = [tokens.surface, tokens['surface-raised']];
+	const away = spec.family === 'dark' ? 'lighter' : 'darker';
+	tokens.danger = oklchToHex(
+		fitContrast(
+			{ ...f.danger, h: DANGER_HUE },
+			backgrounds,
+			CONTRAST.accent,
+			away,
+		),
+	);
 	// The ramp is shared, not themed (ADR-0023 §4). It is still fitted against
 	// *this* theme's surfaces, because a blue-black room and a violet-black one
 	// are not the same background.
@@ -192,7 +213,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 			zone,
 			backgrounds,
 			ZONE_MIN_CONTRAST[spec.family],
-			spec.family === 'dark' ? 'lighter' : 'darker',
+			away,
 			zone.c * ZONE_CHROMA_FLOOR,
 		);
 		tokens[`z${i + 1}` as TokenName] = oklchToHex(fitted);

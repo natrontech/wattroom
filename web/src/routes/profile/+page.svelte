@@ -705,7 +705,7 @@
 
 			{#if confirmDelete}
 				<!-- Confirmation dialogs are for the genuinely destructive only. -->
-				<div class="border-z6/50 bg-z6/10 mt-4 rounded-lg border p-5">
+				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-5">
 					<p class="text-sm font-medium">
 						This deletes everything, permanently.
 					</p>

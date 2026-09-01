@@ -15,7 +15,7 @@
 	} = $props();
 
 	const tones = {
-		error: 'border-z6/40 bg-z6/10',
+		error: 'border-danger/40 bg-danger/10',
 		warn: 'border-z5/40 bg-z5/10',
 		ok: 'border-z4/40 bg-z4/10',
 	};

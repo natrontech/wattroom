@@ -11,7 +11,7 @@
 		<div
 			class="panel pointer-events-auto flex w-full items-center gap-3 px-4 py-3 text-sm shadow-lg {toast.tone ===
 			'error'
-				? 'border-z6/40'
+				? 'border-danger/40'
 				: ''}"
 		>
 			<span class="flex-1">{toast.text}</span>

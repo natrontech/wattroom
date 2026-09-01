@@ -27,6 +27,11 @@
 			use: 'horizons, grids, mark accents — structural, never glows',
 		},
 		{ name: 'watt', cls: 'bg-watt', use: 'live data only — never chrome' },
+		{
+			name: 'danger',
+			cls: 'bg-danger',
+			use: 'destructive controls, errors — fixed hue, never a zone',
+		},
 	];
 
 	// Swatches read their own resolved colour, so switching palette relabels them.
@@ -75,7 +80,7 @@
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
 		Surfaces &amp; accent
 	</h2>
-	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each surfaces as token, i (token.name)}
 			<div class="border-muted/15 overflow-hidden rounded-lg border">
 				<div class="h-20 {token.cls}" bind:this={swatches[i]}></div>
@@ -129,7 +134,7 @@
 							<div class="text-muted text-[10px] uppercase">live watts</div>
 						</div>
 						<div class="border-muted/20 rounded border p-3">
-							<div class="text-z6 text-[10px] font-semibold uppercase">
+							<div class="text-danger text-[10px] font-semibold uppercase">
 								Wrong
 							</div>
 							<div class="text-neon glow-text mt-2 text-4xl font-bold">
@@ -229,8 +234,8 @@
 				Live wattage glows. The button is flat and quiet.
 			</p>
 		</div>
-		<div class="border-z6/40 bg-surface-raised rounded-lg border p-6">
-			<div class="text-z6 text-xs font-medium tracking-wider uppercase">
+		<div class="border-danger/40 bg-surface-raised rounded-lg border p-6">
+			<div class="text-danger text-xs font-medium tracking-wider uppercase">
 				Wrong
 			</div>
 			<div class="mt-5 flex items-end gap-6">

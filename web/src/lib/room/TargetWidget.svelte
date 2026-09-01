@@ -81,7 +81,7 @@
 		<div
 			class="font-display rounded-lg px-[1.5vw] py-[0.6vh] text-[6vh] leading-none font-bold tabular-nums {state.inBand
 				? 'bg-z4/15 text-z4'
-				: 'bg-z6/15 text-z6'}"
+				: 'bg-danger/15 text-danger'}"
 		>
 			{state.has ? `${state.delta > 0 ? '+' : ''}${state.delta}` : '—'}
 		</div>
