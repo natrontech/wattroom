@@ -21,10 +21,6 @@ not a second copy of `git log`.
 - The room's chat now carries what the room did with its plan: a session
   planned, moved or cancelled, one starting and one finishing, and a reminder
   ten minutes before a planned session is due.
-- An installer for the release-tracking timer that checks the setup before it
-  switches anything on — a missing image tag, unreadable registry auth, or a
-  server still on `:main` with nothing to roll back to all surface in the
-  foreground, and the timer is enabled only after one convergence succeeds.
 
 ### Changed
 
@@ -39,12 +35,18 @@ not a second copy of `git log`.
 - Appearance themes now recolour the whole app — surfaces, text, accents, and
   power zones — with matching dark and daylight variants instead of changing
   only two accent colours.
-- The server rolls itself onto the newest published release instead of a tag
-  pinned by hand, and pins itself back to the last good one when a deploy
-  fails its health check. Set `WATTROOM_PIN` to hold a release deliberately.
 - The end-to-end smoke fixture is one minute of riding instead of two, which
   halves the slowest job in CI. It is a test fixture — never listed, resolvable
   by id only — so no workout anyone can pick changed length.
+
+### Removed
+
+- `deploy/` no longer ships an auto-updater: `wattroom-update.sh` and its
+  systemd unit and timer are gone. Deploying is the operator's job — for
+  wattroom.ch it lives in `janlauber/homelab` — and `deploy/` is the
+  self-hosting reference and the home of the alert rules, nothing more. Pin a
+  release tag in your own compose file and roll it forward however you already
+  roll anything else forward.
 
 ### Fixed
 
