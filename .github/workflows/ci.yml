@@ -122,6 +122,21 @@ jobs:
           work-dir: server
           go-version-file: server/go.mod
 
+  # Three ADRs once claimed 0019 at once (#379) — a duplicate number is a
+  # silent footgun (links and citations become ambiguous) that nothing else
+  # catches, so it gets its own gate.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: ADR numbers are unique
+        run: |
+          dupes=$(ls docs/decisions/ | cut -d- -f1 | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "Duplicate ADR number(s): $dupes" >&2
+            exit 1
+          fi
+
   web:
     runs-on: ubuntu-latest
     defaults:

@@ -1,4 +1,4 @@
-# ADR-0019: The calendar feed is addressed to the rider, not the room
+# ADR-0021: The calendar feed is addressed to the rider, not the room
 
 - Status: accepted
 - Date: 2026-08-31
