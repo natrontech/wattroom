@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -170,5 +172,47 @@ func TestSprintLifecycle(t *testing.T) {
 	rm.session.phase = "done"
 	if rm.armIfRunning(time.Unix(130, 0)) {
 		t.Fatal("armed outside a session")
+	}
+}
+
+// The deploy guard on the VM restarts the app when nobody is riding, and
+// "riding" has to mean pedalling rather than present — a room full of people
+// between sessions is the normal case, and it must not block a rollout.
+func TestRidingCountIsPedallingNotPresence(t *testing.T) {
+	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	now := time.Now()
+	h.now = func() time.Time { return now }
+
+	rm := newRoom("test")
+	rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
+	rm.seen["sven"] = protocol.Rider{ID: "sven", Name: "Sven"}
+	rm.lastMetric["jan"] = now.Add(-2 * time.Second)   // pedalling
+	rm.lastMetric["sven"] = now.Add(-60 * time.Second) // present, sample stale
+	h.rooms["test"] = rm
+
+	if got := h.ridingCount(); got != 1 {
+		t.Fatalf("ridingCount = %v, want 1 — sven is in the room but not riding", got)
+	}
+
+	// Everyone stops: the room is still occupied, and a deploy is now fine.
+	rm.lastMetric["jan"] = now.Add(-ridingWindow - time.Second)
+	if got := h.ridingCount(); got != 0 {
+		t.Fatalf("ridingCount = %v, want 0 once every sample is stale", got)
+	}
+}
+
+func TestRidingCountSumsRooms(t *testing.T) {
+	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	now := time.Now()
+	h.now = func() time.Time { return now }
+
+	for _, slug := range []string{"a", "b"} {
+		rm := newRoom(slug)
+		rm.seen[slug] = protocol.Rider{ID: slug, Name: slug}
+		rm.lastMetric[slug] = now
+		h.rooms[slug] = rm
+	}
+	if got := h.ridingCount(); got != 2 {
+		t.Fatalf("ridingCount = %v, want 2 across two rooms", got)
 	}
 }
