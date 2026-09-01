@@ -57,6 +57,12 @@
 		id: string;
 		displayName: string;
 		role: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
+		ftpWatts?: number;
+		weightKg?: number;
+		joinedAt?: string;
 	}
 	interface AdminMedal {
 		kind: string;
@@ -407,7 +413,10 @@
 		unpair,
 		control: (kind, payload, id) =>
 			live.control(kind as never, payload as never, id),
-		openPicker: () => (setup = true),
+		openPicker: (intent = 'start') => {
+			setupIntent = intent;
+			setup = true;
+		},
 		openTv: () => (tv = true),
 		get stageSources() {
 			return stageSources;
@@ -459,6 +468,7 @@
 
 	// ── Session setup (#115, redesigned as SessionPicker) ─────────────────────
 	let setup = $state(false);
+	let setupIntent = $state<'start' | 'plan'>('start');
 	const custom = createCustomStore();
 	// Recently ridden first: the rider's history ranks the shelf.
 	let recency = $state<Map<string, number>>(new Map());
@@ -785,6 +795,7 @@
 {#if setup}
 	<SessionPicker
 		{shelf}
+		intent={setupIntent}
 		ftp={profile.current.ftp}
 		busy={adminBusy}
 		gameRunning={!!live.tick?.game}
@@ -919,6 +930,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
+		onQueue={(url) => void addYouTubeUrl(url, live.jukebox)}
 		messages={live.chatLog}
 		events={[...live.roomEvents, ...reminders]}
 		reactions={live.chatReactions}

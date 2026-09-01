@@ -13,6 +13,39 @@
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
 	import { keepSize } from '$lib/pane';
+
+	// Drag the left edge to change the width. Pointer capture keeps the drag
+	// alive when the cursor outruns a 6 px strip; keepSize's observer saves
+	// the width once it differs from what the class authored.
+	function edgeResize(node: HTMLElement) {
+		const grip = node.querySelector<HTMLElement>('[data-grip]');
+		if (!grip) return;
+		let from: { x: number; w: number } | null = null;
+		const down = (e: PointerEvent) => {
+			from = { x: e.clientX, w: node.offsetWidth };
+			grip.setPointerCapture(e.pointerId);
+			e.preventDefault();
+		};
+		const move = (e: PointerEvent) => {
+			if (!from) return;
+			const style = getComputedStyle(node);
+			const min = parseFloat(style.minWidth) || 240;
+			const max = parseFloat(style.maxWidth) || window.innerWidth;
+			const w = from.w - (e.clientX - from.x);
+			node.style.width = `${Math.round(Math.max(min, Math.min(max, w)))}px`;
+		};
+		const up = () => (from = null);
+		grip.addEventListener('pointerdown', down);
+		grip.addEventListener('pointermove', move);
+		grip.addEventListener('pointerup', up);
+		grip.addEventListener('pointercancel', up);
+		return () => {
+			grip.removeEventListener('pointerdown', down);
+			grip.removeEventListener('pointermove', move);
+			grip.removeEventListener('pointerup', up);
+			grip.removeEventListener('pointercancel', up);
+		};
+	}
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
@@ -38,6 +71,7 @@
 		slug = undefined,
 		onCheer,
 		onChat,
+		onQueue,
 		reactions = {},
 		myReacts = {},
 		onReact,
@@ -48,6 +82,8 @@
 		riders?: RoomRider[];
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
+		/** A YouTube link in the chat is one tap from the jukebox. */
+		onQueue?: (url: string) => void;
 		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
 		messages?: TimelineMessage[];
 		/** What the room did (#321) — jukebox lines, interleaved with the talking. */
@@ -187,15 +223,24 @@
 	</li>
 {/snippet}
 
-<!-- Resizable (#280): `direction: rtl` puts the native resize grip on the
-     panel's LEFT border — the edge you actually want to drag on a right-hand
-     dock — and the inner wrapper puts writing direction back. -->
+<!-- Resizable (#280) from its left edge. The browser's own `resize` grip is a
+     corner of diagonal lines that belongs to no design; this is a 6 px strip
+     on the border that lights up on hover and drags. keepSize persists the
+     width it sets, the same way it did for the native grip. -->
 <aside
 	{@attach (node) => keepSize(node, 'side-panel')}
-	class="border-ink/5 h-full w-80 shrink-0 overflow-hidden border-l"
-	style="direction: rtl; resize: horizontal; min-width: 240px; max-width: 40vw"
+	{@attach edgeResize}
+	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
+	style="min-width: 240px; max-width: 40vw"
 >
-	<div class="flex h-full flex-col" style="direction: ltr">
+	<div
+		data-grip
+		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none transition-colors"
+		role="separator"
+		aria-orientation="vertical"
+		aria-label="resize the panel"
+	></div>
+	<div class="flex h-full flex-col">
 		{#if riders.length > 0}
 			<!-- Mid-ride the useful split is riding / not; in the lounge it is
 			     voice / not, and the heading says which question it answers. -->
@@ -304,7 +349,7 @@
 				     lone GIF link into the GIF itself. -->
 							{#if message.text}
 								<div class="text-ink/85 wrap-anywhere">
-									<MessageText text={message.text} />
+									<MessageText text={message.text} {onQueue} />
 								</div>
 							{/if}
 							{#if message.imageId && slug}

@@ -217,7 +217,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-6xl px-6 py-8">
+<main class="page-wide">
 	<header class="flex flex-wrap items-center gap-4">
 		<!-- A visible border: an input that looks like a title never gets renamed. -->
 		<input

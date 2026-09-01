@@ -195,9 +195,15 @@ body {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
 
-/* Page rhythm: pair with a max-w-* at the call site. */
+/* Page rhythm (ADR-0020). ONE width, anchored left beside the sidebar — pages
+   used to pick their own max-w and centre it, so the content block moved
+   around the column as you navigated. `page-wide` is for the editor's three
+   panes and nothing else. */
 @utility page {
-	@apply mx-auto px-6 py-10;
+	@apply w-full max-w-3xl px-8 py-8;
+}
+@utility page-wide {
+	@apply w-full max-w-6xl px-8 py-8;
 }
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's

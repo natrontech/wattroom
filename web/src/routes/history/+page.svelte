@@ -125,7 +125,7 @@
 	</li>
 {/snippet}
 
-<main class="page max-w-3xl">
+<main class="page">
 	<div class="flex flex-wrap items-center gap-3">
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>

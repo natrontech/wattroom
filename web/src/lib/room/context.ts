@@ -62,7 +62,7 @@ export interface RoomContext {
 	unpair(): void;
 
 	control(kind: string, payload?: unknown, id?: string): void;
-	openPicker(): void;
+	openPicker(intent?: 'start' | 'plan'): void;
 	openTv(): void;
 
 	/** Stage sources and the active one — the lounge's shared-screen surface. */
@@ -87,7 +87,17 @@ export interface RoomContext {
 	readonly streakWeeks: number;
 	readonly monthKj: number;
 	readonly adminBusy: boolean;
-	readonly members: { id: string; displayName: string; role: string }[];
+	readonly members: {
+		id: string;
+		displayName: string;
+		role: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
+		ftpWatts?: number;
+		weightKg?: number;
+		joinedAt?: string;
+	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
 	schedule(name: string, json: string, startsAt: string): void;
 	reschedule(id: string, startsAt: string): void;

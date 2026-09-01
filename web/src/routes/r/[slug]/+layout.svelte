@@ -10,7 +10,12 @@
 		id: string;
 		displayName: string;
 		avatarUrl?: string;
+		avatarPreset?: string;
 		role: string;
+		totalXp?: number;
+		ftpWatts?: number;
+		weightKg?: number;
+		joinedAt?: string;
 	}
 	interface Medal {
 		kind: string;

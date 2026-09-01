@@ -1,5 +1,6 @@
 <script lang="ts">
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import { levelFromXp } from '$lib/level';
 	import { Copy, MessageCircle } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -117,7 +118,16 @@
 								></span>
 							{/if}
 						</span>
-						<span class="text-sm font-medium">{friend.name}</span>
+						<span class="min-w-0">
+							<span class="flex items-center gap-1.5 text-sm font-medium">
+								{friend.name}
+								<!-- Lifetime level is friend-visible identity (#253);
+								     watts are not (ADR-0012). -->
+								<span class="text-muted/70 text-[10px] font-normal"
+									>lv {levelFromXp(friend.totalXp ?? 0)}</span
+								>
+							</span>
+						</span>
 						<span class="text-muted min-w-0 truncate text-xs">
 							{#if friend.roomName}
 								in {friend.roomName}

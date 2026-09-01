@@ -177,7 +177,7 @@
 	</header>
 
 	<div {@attach stickToBottom} class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-		<div class="mx-auto flex h-full max-w-2xl flex-col">
+		<div class="flex h-full max-w-3xl flex-col">
 			<div class="mt-auto space-y-2">
 				{#if messages.length === 0}
 					<div class="mb-4 text-center">
@@ -229,7 +229,7 @@
 	</div>
 
 	<div class="border-ink/5 shrink-0 border-t px-5 py-3">
-		<div class="mx-auto max-w-2xl">
+		<div class="max-w-3xl">
 			{#if error}
 				<div class="mb-2"><Banner tone="error">{error}</Banner></div>
 			{/if}

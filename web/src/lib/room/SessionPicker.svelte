@@ -21,7 +21,7 @@
 	let {
 		shelf,
 		ftp,
-		title = "Tonight's session",
+		intent = 'start',
 		busy = false,
 		gameRunning = false,
 		rooms = [],
@@ -32,7 +32,10 @@
 	}: {
 		shelf: ShelfEntry[];
 		ftp: number;
-		title?: string;
+		/** Which question opened it: ride now, or put it on the calendar. The
+		 *  old single modal answered both at once, in two stacked sections
+		 *  under the preview — which is how riders stopped finding either. */
+		intent?: 'start' | 'plan';
 		busy?: boolean;
 		gameRunning?: boolean;
 		/** Rooms this plan could land in (#359) — the cross-room surface passes
@@ -52,6 +55,24 @@
 	} = $props();
 
 	let tab = $state<'workouts' | 'games'>('workouts');
+	// svelte-ignore state_referenced_locally
+	let mode = $state<'start' | 'plan'>(onStart ? intent : 'plan');
+	const title = $derived(
+		mode === 'start' ? 'Start a session' : 'Plan a session',
+	);
+
+	// Find it by name or by what it trains — a shelf of 27 is a list, not a
+	// menu (#115 feedback).
+	let query = $state('');
+	const shown = $derived.by(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return shelf;
+		return shelf.filter(
+			(e) =>
+				e.workout.name.toLowerCase().includes(q) ||
+				(e.focus ?? '').toLowerCase().includes(q),
+		);
+	});
 	// svelte-ignore state_referenced_locally
 	let roomSlug = $state(rooms[0]?.value ?? '');
 	$effect(() => {
@@ -163,7 +184,7 @@
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
 		<h2 class="font-display text-lg font-bold">{title}</h2>
-		{#if onStartGame}
+		{#if mode === 'start' && onStartGame}
 			<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 				<button
 					onclick={() => (tab = 'workouts')}
@@ -184,34 +205,48 @@
 		>
 	</header>
 
-	{#if tab === 'workouts'}
+	{#if tab === 'workouts' || mode === 'plan'}
 		<div class="flex min-h-0 flex-1">
-			<ul class="border-ink/5 w-56 shrink-0 overflow-y-auto border-r p-2">
-				{#each shelf as entry (entry.id)}
-					<li>
-						<button
-							onclick={() => (pickedId = entry.id)}
-							class="w-full rounded px-3 py-2.5 text-left {picked?.id ===
-							entry.id
-								? 'bg-surface-raised text-ink'
-								: 'text-muted hover:text-ink'}"
-						>
-							<span class="block truncate text-sm font-medium"
-								>{entry.workout.name}</span
+			<div class="border-ink/5 flex w-60 shrink-0 flex-col border-r">
+				<div class="p-2">
+					<input
+						bind:value={query}
+						placeholder="Find a workout…"
+						class="input input-xs w-full"
+						aria-label="find a workout"
+					/>
+				</div>
+				<ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+					{#each shown as entry (entry.id)}
+						<li>
+							<button
+								onclick={() => (pickedId = entry.id)}
+								class="w-full rounded px-3 py-2.5 text-left {picked?.id ===
+								entry.id
+									? 'bg-surface-raised text-ink'
+									: 'text-muted hover:text-ink'}"
 							>
-							<span class="block font-mono text-[11px] tabular-nums"
-								>{formatClock(durationSeconds(entry.workout))}
-								<span class="text-muted/70 font-sans"
-									>· {entry.yours ? 'yours' : entry.focus}{entry.focus &&
-									suggested.includes(entry.focus)
-										? ' · suggested today'
-										: ''}</span
-								></span
-							>
-						</button>
-					</li>
-				{/each}
-			</ul>
+								<span class="block truncate text-sm font-medium"
+									>{entry.workout.name}</span
+								>
+								<span class="block font-mono text-[11px] tabular-nums"
+									>{formatClock(durationSeconds(entry.workout))}
+									<span class="text-muted/70 font-sans"
+										>· {entry.yours ? 'yours' : entry.focus}{entry.focus &&
+										suggested.includes(entry.focus)
+											? ' · suggested today'
+											: ''}</span
+									></span
+								>
+							</button>
+						</li>
+					{:else}
+						<li class="text-muted px-3 py-4 text-xs">
+							Nothing matches — try a zone name, like "threshold".
+						</li>
+					{/each}
+				</ul>
+			</div>
 
 			<div class="flex min-w-0 flex-1 flex-col overflow-y-auto p-4">
 				{#if picked}
@@ -241,52 +276,75 @@
 						{/each}
 					</div>
 
-					<!-- Two things you can do with a workout, weighted the same
-					     (#325). Planning used to read as "or plan it:" in muted
-					     grey under the real button, which is how riders stopped
-					     finding it. -->
-					{#if onStart}
-						<div
-							class="border-ink/5 mt-5 flex flex-wrap items-center gap-3 border-t pt-4"
-						>
-							<div class="min-w-0">
-								<p class="eyebrow">start now</p>
-								<p class="text-muted mt-1 text-xs">
-									Everyone in the lounge rides it with you.
-								</p>
+					<!-- ONE primary action, for the question that opened the picker.
+					     The other intent is a link, not a second section: two equal
+					     panels under the preview is what made this feel weird. -->
+					<div class="border-ink/5 mt-auto border-t pt-4">
+						{#if mode === 'start' && onStart}
+							<div class="flex flex-wrap items-center gap-3">
+								<div class="min-w-0 flex-1">
+									<p class="text-sm font-medium">
+										Everyone in the lounge rides it with you.
+									</p>
+									<p class="text-muted mt-0.5 text-xs">
+										A 10 s countdown, then the shared timeline starts.
+									</p>
+								</div>
+								<button
+									onclick={() => onStart(picked.workout)}
+									disabled={busy}
+									class="btn btn-accent btn-lg shrink-0"
+									>Start {picked.workout.name}</button
+								>
 							</div>
 							<button
-								onclick={() => onStart(picked.workout)}
-								class="btn btn-primary ml-auto"
-								>Start {picked.workout.name}</button
+								onclick={() => (mode = 'plan')}
+								class="text-muted hover:text-ink mt-3 text-xs underline"
+								>Plan it for later instead</button
 							>
-						</div>
-					{/if}
-					<div class="border-ink/5 mt-4 border-t pt-4">
-						<p class="eyebrow">plan for later</p>
-						<p class="text-muted mt-1 text-xs">
-							The room hears about it and it lands in every subscribed calendar.
-						</p>
-						<div class="mt-2 flex flex-wrap items-center gap-2">
-							{#if rooms.length > 0}
-								<div class="min-w-40 flex-1">
-									<Select options={rooms} bind:value={roomSlug} label="Room" />
+						{:else}
+							<div class="flex flex-wrap items-end gap-3">
+								{#if rooms.length > 0}
+									<div class="min-w-40 flex-1">
+										<span class="eyebrow">room</span>
+										<div class="mt-1">
+											<Select
+												options={rooms}
+												bind:value={roomSlug}
+												label="Room"
+											/>
+										</div>
+									</div>
+								{/if}
+								<div>
+									<span class="eyebrow">when</span>
+									<div class="mt-1"><WhenPicker bind:value={planAt} /></div>
 								</div>
+								<button
+									onclick={() =>
+										onPlan(
+											picked.workout.name,
+											JSON.stringify(picked.workout),
+											new Date(planAt).toISOString(),
+											roomSlug,
+										)}
+									disabled={busy || !planAt || (rooms.length > 0 && !roomSlug)}
+									class="btn btn-primary btn-lg ml-auto shrink-0 disabled:opacity-40"
+									>Plan it</button
+								>
+							</div>
+							<p class="text-muted mt-2 text-xs">
+								The room hears about it, and it lands in every subscribed
+								calendar.
+							</p>
+							{#if onStart}
+								<button
+									onclick={() => (mode = 'start')}
+									class="text-muted hover:text-ink mt-3 text-xs underline"
+									>Start it now instead</button
+								>
 							{/if}
-							<WhenPicker bind:value={planAt} />
-							<button
-								onclick={() =>
-									onPlan(
-										picked.workout.name,
-										JSON.stringify(picked.workout),
-										new Date(planAt).toISOString(),
-										roomSlug,
-									)}
-								disabled={busy || !planAt || (rooms.length > 0 && !roomSlug)}
-								class="btn btn-secondary ml-auto disabled:opacity-40"
-								>Plan session</button
-							>
-						</div>
+						{/if}
 					</div>
 				{/if}
 			</div>

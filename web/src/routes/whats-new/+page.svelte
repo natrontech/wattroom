@@ -12,7 +12,7 @@
 
 <svelte:head><title>What's new · WattRoom</title></svelte:head>
 
-<main class="page max-w-3xl">
+<main class="page">
 	<div class="flex flex-wrap items-center gap-3">
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">What's new</h1>

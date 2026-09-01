@@ -201,7 +201,7 @@
 	}
 </script>
 
-<main class="page max-w-2xl">
+<main class="page">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Profile</h1>
 	</div>

@@ -7,6 +7,8 @@
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { levelFromXp } from '$lib/level';
+	import { wkg } from '$lib/format';
 	import { Crown, Copy } from '@lucide/svelte';
 
 	const room = useRoom();
@@ -21,7 +23,7 @@
 	}
 </script>
 
-<div class="mx-auto w-full max-w-3xl px-5 py-6">
+<div class="page">
 	<h2 class="font-display mb-1 text-xl font-bold">
 		Who rides here — {room.members.length}
 	</h2>
@@ -33,7 +35,13 @@
 		{#each room.members as member (member.id)}
 			{@const medals = medalsOf(member.displayName)}
 			<li class="flex items-center gap-3 px-4 py-2.5">
-				<Avatar name={member.displayName} size={32} />
+				<Avatar
+					name={member.displayName}
+					avatarUrl={member.avatarUrl}
+					preset={member.avatarPreset}
+					xp={member.totalXp}
+					size={32}
+				/>
 				<span class="min-w-0 flex-1">
 					<span class="flex items-center gap-1.5">
 						<span class="truncate text-sm font-medium"
@@ -42,8 +50,26 @@
 						{#if member.role === 'owner'}
 							<Crown size={12} class="text-muted" />
 						{/if}
+						<span class="text-muted/70 text-[10px]"
+							>lv {levelFromXp(member.totalXp ?? 0)}</span
+						>
 					</span>
-					<span class="text-muted block text-[11px]">{member.role}</span>
+					<!-- Room-visible rider facts (#207): the same numbers the roster
+					     tiles show. Rides and history stay private. -->
+					<span class="text-muted block text-[11px] tabular-nums">
+						{member.role}
+						{#if member.ftpWatts}
+							· {member.ftpWatts} W
+							{#if member.weightKg}
+								· {wkg(member.ftpWatts, member.weightKg)} w/kg{/if}
+						{/if}
+						{#if member.joinedAt}
+							· since {new Date(member.joinedAt).toLocaleDateString(undefined, {
+								month: 'short',
+								year: 'numeric',
+							})}
+						{/if}
+					</span>
 				</span>
 				{#if medals > 0}
 					<span class="text-muted shrink-0 text-xs tabular-nums"

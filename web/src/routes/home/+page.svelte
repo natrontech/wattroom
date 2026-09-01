@@ -6,6 +6,9 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import {
 		fetchProgression,
 		FORM_SENTENCES,
@@ -66,6 +69,46 @@
 	});
 
 	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
+
+	// ── You, in numbers ───────────────────────────────────────────────────────
+	// FTP and level are the two numbers riders check on the way in; the level
+	// is lifetime, FTP is what tonight's targets scale from.
+	const xp = $derived(account.me?.totalXp ?? 0);
+	const level = $derived(levelFromXp(xp));
+	const toNext = $derived(Math.max(0, xpForLevel(level + 1) - xp));
+	const wkgNow = $derived(
+		account.me && account.me.weightKg > 0
+			? (account.me.ftpWatts / account.me.weightKg).toFixed(1)
+			: null,
+	);
+
+	// Friends who are around right now — a room list answers "where", this
+	// answers "who" (ADR-0012: presence, never watts).
+	interface FriendHead {
+		id: string;
+		name: string;
+		avatarUrl?: string;
+		avatarPreset?: string;
+		totalXp?: number;
+		status: string;
+		online?: boolean;
+		inRoom?: boolean;
+		room?: string;
+		roomName?: string;
+	}
+	let friends = $state<FriendHead[]>([]);
+	$effect(() => {
+		presence.version;
+		if (!account.me) return;
+		void api<{ friends: FriendHead[] }>('/api/friends').then((res) => {
+			if (res.ok) friends = res.data.friends;
+		});
+	});
+	const friendsOnline = $derived(
+		friends.filter((f) => f.status === 'friends' && f.online),
+	);
+
+	const recent = $derived((rides ?? []).slice(0, 3));
 
 	const greeting = $derived.by(() => {
 		const h = new Date().getHours();
@@ -155,7 +198,7 @@
 	}
 </script>
 
-<main class="page max-w-4xl">
+<main class="page">
 	<!-- The mock's header (ADR-0020): a greeting, one sentence on what is
 	     happening, and the one thing to do about it. Home is the between-
 	     rides surface, so the first thing it says is where the ride is. -->
@@ -198,6 +241,53 @@
 			</Banner>
 		</div>
 	{/if}
+
+	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
+	     level, w/kg and the week, one glance. Nothing here needs a click. -->
+	<section class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="panel px-4 py-3">
+			<p class="eyebrow">ftp</p>
+			<p class="font-display text-2xl font-bold tabular-nums">
+				{account.me?.ftpWatts ?? '–'}<span class="text-muted ml-1 text-sm"
+					>W</span
+				>
+			</p>
+			{#if wkgNow}
+				<p class="text-muted text-[11px] tabular-nums">{wkgNow} w/kg</p>
+			{/if}
+		</div>
+		<div class="panel px-4 py-3">
+			<p class="eyebrow">level</p>
+			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>
+			<div class="mt-1.5"><ProgressBar pct={levelProgress(xp) * 100} /></div>
+			<p class="text-muted mt-1 text-[11px] tabular-nums">
+				{toNext.toLocaleString()} XP to {level + 1}
+			</p>
+		</div>
+		<div class="panel px-4 py-3">
+			<p class="eyebrow">this week</p>
+			<p class="font-display text-2xl font-bold tabular-nums">
+				{week.count}<span class="text-muted ml-1 text-sm"
+					>ride{week.count === 1 ? '' : 's'}</span
+				>
+			</p>
+			<p class="text-muted text-[11px] tabular-nums">
+				{week.minutes} min · {week.kj.toLocaleString()} kJ
+			</p>
+		</div>
+		<div class="panel px-4 py-3">
+			<p class="eyebrow">form</p>
+			{#if form}
+				<p class="font-display text-2xl font-bold tabular-nums">
+					{form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%
+				</p>
+				<p class="text-muted text-[11px]">{form.zone}</p>
+			{:else}
+				<p class="font-display text-muted text-2xl font-bold">–</p>
+				<p class="text-muted text-[11px]">shows after your first month</p>
+			{/if}
+		</div>
+	</section>
 
 	{#if rooms === null}
 		<div class="mt-8 grid gap-3">
@@ -250,55 +340,72 @@
 					place to appear.
 				</p>
 			{/if}
+			{#if friendsOnline.length > 0}
+				<ul class="mt-3 flex flex-wrap gap-2">
+					{#each friendsOnline as friend (friend.id)}
+						<li>
+							<a
+								href={friend.room ? `/r/${friend.room}` : `/dm/${friend.id}`}
+								class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
+								title={friend.roomName ? `in ${friend.roomName}` : 'online'}
+							>
+								<Avatar
+									name={friend.name}
+									avatarUrl={friend.avatarUrl}
+									preset={friend.avatarPreset}
+									xp={friend.totalXp}
+									size={20}
+								/>
+								<span class="font-medium">{friend.name}</span>
+								{#if friend.inRoom}
+									<RidingBars size={9} />
+								{:else}
+									<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
+								{/if}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		</section>
 
-		<!-- Your week: enough numbers to feel momentum, not a dashboard farm. -->
-		<section class="mt-10">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Your week
-			</h2>
-			<div class="mt-3 grid grid-cols-3 gap-3">
-				<div class="panel px-4 py-3">
-					<p class="font-display text-2xl font-bold tabular-nums">
-						{rides === null ? '–' : week.count}
-					</p>
-					<p class="eyebrow">rides</p>
-				</div>
-				<div class="panel px-4 py-3">
-					<p class="font-display text-2xl font-bold tabular-nums">
-						{rides === null ? '–' : week.minutes}<span
-							class="text-muted ml-1 text-sm">min</span
-						>
-					</p>
-					<p class="eyebrow">in the saddle</p>
-				</div>
-				<div class="panel px-4 py-3">
-					<p
-						class="font-display inline-flex items-center gap-1.5 text-2xl font-bold tabular-nums"
+		<!-- The last few rides: what you did, one line each, the log a click away. -->
+		{#if recent.length > 0}
+			<section class="mt-8">
+				<div class="flex items-baseline gap-3">
+					<h2
+						class="text-muted text-xs font-semibold tracking-widest uppercase"
 					>
-						{rides === null ? '–' : week.kj}<span class="text-muted text-sm"
-							>kJ</span
-						>
-						{#if week.kj > 0}<Flame size={16} class="text-z5" />{/if}
-					</p>
-					<p class="eyebrow">work</p>
-				</div>
-			</div>
-			{#if form}
-				<p class="text-muted mt-2 text-xs">
-					<span class="text-ink font-display font-semibold"
-						>form {form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%</span
+						Recent rides
+					</h2>
+					<a
+						href="/history"
+						class="text-muted hover:text-ink ml-auto text-xs underline"
+						>All rides →</a
 					>
-					· {FORM_SENTENCES[form.zone] ?? form.zone} ·
-					<span class="text-[11px]">from your WattRoom rides</span>
-				</p>
-			{/if}
-			<p class="text-muted mt-2 text-xs">
-				FTP {account.me?.ftpWatts ?? '–'} W ·
-				<a href="/history" class="hover:text-ink underline">all rides</a> ·
-				<a href="/ramp" class="hover:text-ink underline">retest FTP</a>
-			</p>
-		</section>
+				</div>
+				<ul class="panel divide-ink/5 mt-3 divide-y">
+					{#each recent as ride (ride.id)}
+						<li>
+							<a
+								href="/history?ride={ride.id}"
+								class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+							>
+								<span class="text-muted w-24 shrink-0 text-xs"
+									>{formatWhen(ride.startedAt)}</span
+								>
+								<span class="min-w-0 flex-1 truncate">
+									{Math.round(ride.seconds / 60)} min
+								</span>
+								<span class="text-muted shrink-0 text-xs tabular-nums"
+									>{Math.round(ride.kj).toLocaleString()} kJ</span
+								>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 
 		<!-- Your rooms: the sidebar is the list, so this is only what the list
 		     cannot be — the two ways to get another one (ADR-0020). -->

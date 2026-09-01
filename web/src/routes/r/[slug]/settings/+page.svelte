@@ -150,7 +150,7 @@
 		</div>
 	</main>
 {:else if room}
-	<main class="mx-auto w-full max-w-2xl px-5 py-6">
+	<main class="page">
 		<h2 class="font-display text-xl font-bold">Room settings</h2>
 		<p class="text-muted mt-1 text-xs">
 			Owner only — coaches run sessions, owners shape the room.

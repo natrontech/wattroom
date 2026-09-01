@@ -29,12 +29,12 @@
 	const due = (iso: string) => Date.parse(iso) - Date.now() < 15 * 60_000;
 </script>
 
-<div class="mx-auto w-full max-w-3xl px-5 py-6">
+<div class="page">
 	<div class="mb-5 flex items-center gap-3">
 		<h2 class="font-display text-xl font-bold">What's planned here</h2>
 		{#if room.canControl}
 			<button
-				onclick={() => room.openPicker()}
+				onclick={() => room.openPicker('plan')}
 				class="btn btn-primary btn-xs ml-auto"
 				><Plus size={13} /> Plan a session</button
 			>
@@ -50,7 +50,7 @@
 				{#snippet cta()}
 					{#if room.canControl}
 						<button
-							onclick={() => room.openPicker()}
+							onclick={() => room.openPicker('plan')}
 							class="btn btn-primary btn-xs">Plan the first session</button
 						>
 					{/if}

@@ -62,7 +62,7 @@
 	}
 </script>
 
-<main class="page max-w-3xl">
+<main class="page">
 	<div class="flex items-center gap-3">
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Sensors</h1>

@@ -3,6 +3,7 @@
 		FastForward,
 		Pause,
 		Play,
+		Plus,
 		Rewind,
 		SkipForward,
 	} from '@lucide/svelte';
@@ -93,23 +94,29 @@
 	</div>
 
 	{#if current}
-		<div class="flex min-w-0 flex-col gap-2">
-			<div class="flex min-w-0 items-start gap-2.5">
+		<!-- Now playing, as a deck rather than a row: the art at the column's
+		     width, the title under it, the playhead under that, the transport
+		     under that. One thing per line reads at arm's length; a thumbnail
+		     beside a truncated title and four identical grey buttons did not. -->
+		<div class="flex min-w-0 flex-col gap-2.5">
+			<div
+				class="bg-surface relative aspect-video w-full overflow-hidden rounded-lg"
+			>
 				<img
 					src={thumbnailFor(current.videoId)}
 					alt=""
 					loading="lazy"
 					referrerpolicy="no-referrer"
-					class="bg-surface h-11 w-[78px] shrink-0 rounded object-cover"
+					class="h-full w-full object-cover"
 				/>
-				<div class="min-w-0 flex-1">
-					<p class="truncate text-sm leading-tight font-medium">
-						{current.title}
-					</p>
-					<p class="text-muted mt-0.5 truncate text-[10px]">
-						added by {current.addedBy}
-					</p>
-				</div>
+			</div>
+			<div class="min-w-0">
+				<p class="truncate text-sm leading-tight font-medium">
+					{current.title}
+				</p>
+				<p class="text-muted mt-0.5 truncate text-[11px]">
+					queued by {current.addedBy}
+				</p>
 			</div>
 
 			{#if streaming}
@@ -117,23 +124,23 @@
 					live · playing at the stream edge
 				</p>
 			{:else}
-				<div class="min-w-0">
+				<div class="group min-w-0">
 					<button
 						onclick={(e) => {
 							if (duration <= 0) return;
 							const box = e.currentTarget.getBoundingClientRect();
 							seekTo(((e.clientX - box.left) / box.width) * duration);
 						}}
-						class="block h-4 w-full cursor-pointer"
+						class="block w-full cursor-pointer py-1.5"
 						aria-label="seek the room's playhead"
 					>
-						<span class="bg-muted/20 mt-1.5 block h-1 rounded">
+						<span class="bg-muted/20 block h-1.5 rounded-full">
 							<span
-								class="bg-watt relative block h-full rounded transition-[width] duration-200"
+								class="bg-watt relative block h-full rounded-full transition-[width] duration-200"
 								style="width: {progress}%"
 							>
 								<span
-									class="bg-watt glow-stroke absolute top-1/2 -right-1 h-2 w-2 -translate-y-1/2 rounded-full"
+									class="bg-watt glow-stroke absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
 								></span>
 							</span>
 						</span>
@@ -147,50 +154,52 @@
 				</div>
 			{/if}
 
-			<!-- Mid-ride transport: big targets, no precision gestures. Every
-			     button commands the ROOM — the deck is shared. -->
-			<div class="flex min-w-0 items-center gap-1.5">
+			<!-- Mid-ride transport: big targets, no precision gestures. Play is the
+			     one filled control; the rest are quiet. Every button commands the
+			     ROOM — the deck is shared. -->
+			<div class="flex min-w-0 items-center justify-center gap-1">
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed - 30)}
-						class="btn btn-secondary btn-xs min-w-0 flex-1 py-2"
-						aria-label="back 30 seconds"><Rewind size={15} /></button
+						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						aria-label="back 30 seconds"><Rewind size={17} /></button
 					>
 				{/if}
 				<button
 					onclick={() => send({ action: jukebox?.playing ? 'pause' : 'play' })}
-					class="btn btn-secondary btn-xs min-w-0 flex-1 py-2"
+					class="bg-ink text-paper hover:bg-ink/90 grid h-11 w-11 place-items-center rounded-full"
 					aria-label={jukebox?.playing
 						? 'pause for the room'
 						: 'play for the room'}
 				>
-					{#if jukebox?.playing}<Pause size={15} />{:else}<Play
-							size={15}
+					{#if jukebox?.playing}<Pause size={18} />{:else}<Play
+							size={18}
+							class="translate-x-px"
 						/>{/if}
 				</button>
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed + 30)}
-						class="btn btn-secondary btn-xs min-w-0 flex-1 py-2"
-						aria-label="forward 30 seconds"><FastForward size={15} /></button
+						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						aria-label="forward 30 seconds"><FastForward size={17} /></button
 					>
 				{/if}
 				<button
 					onclick={() => send({ action: 'skip' })}
-					class="btn btn-secondary btn-xs min-w-0 flex-1 py-2"
-					aria-label="skip to the next track"><SkipForward size={15} /></button
+					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+					aria-label="skip to the next track"><SkipForward size={17} /></button
 				>
 			</div>
 		</div>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
-			Nothing is playing. Paste a YouTube link — everyone in the room hears it
-			on the same second.
+			Nothing is playing. Paste a YouTube link — or drop one in the chat and
+			queue it from there — and everyone hears it on the same second.
 		</p>
 	{/if}
 
 	<form
-		class="flex min-w-0 gap-2"
+		class="flex min-w-0 gap-1.5"
 		onsubmit={(e) => {
 			e.preventDefault();
 			void addFromUrl();
@@ -198,11 +207,14 @@
 	>
 		<input
 			bind:value={url}
-			placeholder="Paste a YouTube link"
+			placeholder="Add a YouTube link…"
 			class="input input-xs min-w-0 flex-1"
+			aria-label="add a track by link"
 		/>
-		<button disabled={!url.trim()} class="btn btn-primary btn-xs shrink-0"
-			>Add</button
+		<button
+			disabled={!url.trim()}
+			class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
+			aria-label="add to the queue"><Plus size={14} /></button
 		>
 	</form>
 	{#if addError}<p class="text-z6 text-xs">{addError}</p>{/if}

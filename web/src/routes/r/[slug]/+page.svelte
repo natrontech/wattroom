@@ -11,9 +11,16 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { formatWhen } from '$lib/format';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { MonitorUp, ScreenShare, ScreenShareOff } from '@lucide/svelte';
+	import {
+		CalendarClock,
+		MonitorUp,
+		ScreenShare,
+		ScreenShareOff,
+		UserPlus,
+	} from '@lucide/svelte';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
@@ -32,7 +39,7 @@
 	/>
 {/snippet}
 
-<div class="flex h-full flex-col px-5 py-4">
+<div class="flex h-full flex-col px-8 py-6">
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
@@ -135,9 +142,77 @@
 	{/if}
 
 	{#if room.phase === 'lounge'}
-		<p class="text-muted/70 mt-4 text-[11px]">
-			Nothing is running. The room is a place to be — the session starts when
-			someone starts it.
-		</p>
+		<!-- The room's dashboard, when nothing is running: what this room is
+		     adding up to and the three things you do to it. It lives on the
+		     Lounge rather than a sixth place — Discord's server home IS its
+		     first channel. -->
+		<section class="mt-6">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<div class="panel px-4 py-3">
+					<p class="eyebrow">riders</p>
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{room.members.length}
+					</p>
+					<p class="text-muted text-[11px]">
+						{room.riders.length} here now
+					</p>
+				</div>
+				<div class="panel px-4 py-3">
+					<p class="eyebrow">streak</p>
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{room.streakWeeks}<span class="text-muted ml-1 text-sm"
+							>wk{room.streakWeeks === 1 ? '' : 's'}</span
+						>
+					</p>
+					<p class="text-muted text-[11px]">a session every week</p>
+				</div>
+				<div class="panel px-4 py-3">
+					<p class="eyebrow">this month</p>
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{Math.round(room.monthKj).toLocaleString()}<span
+							class="text-muted ml-1 text-sm">kJ</span
+						>
+					</p>
+					<p class="text-muted text-[11px]">everyone, together</p>
+				</div>
+				<div class="panel px-4 py-3">
+					<p class="eyebrow">medals</p>
+					<p class="font-display text-2xl font-bold tabular-nums">
+						{room.medals.length}
+					</p>
+					<p class="text-muted text-[11px]">earned in this room</p>
+				</div>
+			</div>
+
+			<div class="mt-4 flex flex-wrap items-center gap-2">
+				{#if room.upcoming[0]}
+					{@const next = room.upcoming[0]}
+					<a
+						href="/r/{room.slug}/sessions"
+						class="panel hover:border-muted/40 flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+					>
+						<CalendarClock size={15} class="text-muted shrink-0" />
+						<span class="min-w-0">
+							<span class="eyebrow">next session</span>
+							<span class="block truncate text-sm font-medium"
+								>{next.workoutName}</span
+							>
+							<span class="text-muted block text-[11px]"
+								>{formatWhen(next.startsAt, true)} · planned by {next.createdBy}</span
+							>
+						</span>
+					</a>
+				{:else if room.canControl}
+					<button
+						onclick={() => room.openPicker('plan')}
+						class="btn btn-secondary"
+						><CalendarClock size={14} /> Plan a session</button
+					>
+				{/if}
+				<a href="/r/{room.slug}/members" class="btn btn-ghost"
+					><UserPlus size={14} /> Invite</a
+				>
+			</div>
+		</section>
 	{/if}
 </div>
