@@ -13,22 +13,18 @@
 		suggestedFocuses,
 		type Suggestion,
 	} from '$lib/progression';
+	import Select from '$lib/components/Select.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
+	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
-
-	interface ShelfEntry {
-		id: string;
-		yours: boolean;
-		focus?: string;
-		summary?: string;
-		workout: Workout;
-	}
 
 	let {
 		shelf,
 		ftp,
+		title = "Tonight's session",
 		busy = false,
 		gameRunning = false,
+		rooms = [],
 		onStart,
 		onPlan,
 		onStartGame,
@@ -36,15 +32,32 @@
 	}: {
 		shelf: ShelfEntry[];
 		ftp: number;
+		title?: string;
 		busy?: boolean;
 		gameRunning?: boolean;
-		onStart: (workout: Workout) => void;
-		onPlan: (name: string, json: string, startsAtIso: string) => void;
-		onStartGame: (id: string) => void;
+		/** Rooms this plan could land in (#359) — the cross-room surface passes
+		 *  them and gets a chooser; inside a room there is nothing to choose. */
+		rooms?: { value: string; label: string }[];
+		/** Absent when this picker only plans: no room to start anything in. */
+		onStart?: (workout: Workout) => void;
+		onPlan: (
+			name: string,
+			json: string,
+			startsAtIso: string,
+			roomSlug: string,
+		) => void;
+		/** Absent hides the Games tab — games are a room's, not a calendar's. */
+		onStartGame?: (id: string) => void;
 		onClose: () => void;
 	} = $props();
 
 	let tab = $state<'workouts' | 'games'>('workouts');
+	// svelte-ignore state_referenced_locally
+	let roomSlug = $state(rooms[0]?.value ?? '');
+	$effect(() => {
+		if (!rooms.some((room) => room.value === roomSlug))
+			roomSlug = rooms[0]?.value ?? '';
+	});
 
 	// SPEC's "suggested for today" marks matching shelf entries (#222) —
 	// a hint with its why; the recency ordering and every pick stay the rider's.
@@ -149,21 +162,23 @@
 	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] bottom-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[46rem] md:-translate-x-1/2"
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
-		<h2 class="font-display text-lg font-bold">Tonight's session</h2>
-		<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-			<button
-				onclick={() => (tab = 'workouts')}
-				class="rounded px-3 py-1 text-xs {tab === 'workouts'
-					? 'bg-surface-raised text-ink'
-					: 'text-muted hover:text-ink'}">Workouts</button
-			>
-			<button
-				onclick={() => (tab = 'games')}
-				class="rounded px-3 py-1 text-xs {tab === 'games'
-					? 'bg-surface-raised text-ink'
-					: 'text-muted hover:text-ink'}">Games</button
-			>
-		</div>
+		<h2 class="font-display text-lg font-bold">{title}</h2>
+		{#if onStartGame}
+			<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+				<button
+					onclick={() => (tab = 'workouts')}
+					class="rounded px-3 py-1 text-xs {tab === 'workouts'
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}">Workouts</button
+				>
+				<button
+					onclick={() => (tab = 'games')}
+					class="rounded px-3 py-1 text-xs {tab === 'games'
+						? 'bg-surface-raised text-ink'
+						: 'text-muted hover:text-ink'}">Games</button
+				>
+			</div>
+		{/if}
 		<button onclick={onClose} class="text-muted hover:text-ink ml-auto text-sm"
 			>Close</button
 		>
@@ -230,27 +245,34 @@
 					     (#325). Planning used to read as "or plan it:" in muted
 					     grey under the real button, which is how riders stopped
 					     finding it. -->
-					<div
-						class="border-ink/5 mt-5 flex flex-wrap items-center gap-3 border-t pt-4"
-					>
-						<div class="min-w-0">
-							<p class="eyebrow">start now</p>
-							<p class="text-muted mt-1 text-xs">
-								Everyone in the lounge rides it with you.
-							</p>
-						</div>
-						<button
-							onclick={() => onStart(picked.workout)}
-							class="btn btn-primary ml-auto"
-							>Start {picked.workout.name}</button
+					{#if onStart}
+						<div
+							class="border-ink/5 mt-5 flex flex-wrap items-center gap-3 border-t pt-4"
 						>
-					</div>
+							<div class="min-w-0">
+								<p class="eyebrow">start now</p>
+								<p class="text-muted mt-1 text-xs">
+									Everyone in the lounge rides it with you.
+								</p>
+							</div>
+							<button
+								onclick={() => onStart(picked.workout)}
+								class="btn btn-primary ml-auto"
+								>Start {picked.workout.name}</button
+							>
+						</div>
+					{/if}
 					<div class="border-ink/5 mt-4 border-t pt-4">
 						<p class="eyebrow">plan for later</p>
 						<p class="text-muted mt-1 text-xs">
 							The room hears about it and it lands in every subscribed calendar.
 						</p>
 						<div class="mt-2 flex flex-wrap items-center gap-2">
+							{#if rooms.length > 0}
+								<div class="min-w-40 flex-1">
+									<Select options={rooms} bind:value={roomSlug} label="Room" />
+								</div>
+							{/if}
 							<WhenPicker bind:value={planAt} />
 							<button
 								onclick={() =>
@@ -258,16 +280,18 @@
 										picked.workout.name,
 										JSON.stringify(picked.workout),
 										new Date(planAt).toISOString(),
+										roomSlug,
 									)}
-								disabled={busy || !planAt}
-								class="btn btn-secondary ml-auto">Plan session</button
+								disabled={busy || !planAt || (rooms.length > 0 && !roomSlug)}
+								class="btn btn-secondary ml-auto disabled:opacity-40"
+								>Plan session</button
 							>
 						</div>
 					</div>
 				{/if}
 			</div>
 		</div>
-	{:else}
+	{:else if onStartGame}
 		<div class="min-h-0 flex-1 overflow-y-auto p-4">
 			{#if gameRunning}
 				<p class="text-muted mb-3 text-xs">

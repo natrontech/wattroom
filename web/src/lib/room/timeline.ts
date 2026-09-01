@@ -1,3 +1,4 @@
+import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
 
 /**
@@ -27,6 +28,12 @@ export type TimelineEntry =
  */
 export function eventText(event: RoomEvent): string {
 	const track = event.track || 'a track';
+	const subject = event.subject || 'a session';
+	// One wording for a planned moment across the app: the chat line and the
+	// card in the lounge name the same time the same way.
+	const at = event.when
+		? formatWhen(new Date(event.when).toISOString(), true)
+		: '';
 	switch (event.verb) {
 		case 'queued':
 			// A burst is one line: "queued 8 tracks", never eight lines that
@@ -42,6 +49,26 @@ export function eventText(event: RoomEvent): string {
 			return event.queuedBy
 				? `now playing: ${track} — queued by ${event.queuedBy}`
 				: `now playing: ${track}`;
+		// The session's own half of the timeline (#359).
+		case 'planned':
+			return at
+				? `${event.actor} planned ${subject} for ${at}`
+				: `${event.actor} planned ${subject}`;
+		case 'moved':
+			return at
+				? `${event.actor} moved ${subject} to ${at}`
+				: `${event.actor} moved ${subject}`;
+		case 'cancelled':
+			return `${event.actor} cancelled ${subject}`;
+		case 'started':
+			return `${subject} is starting`;
+		case 'ended':
+			return `${subject} ended`;
+		// 'due' is the one line no server sends: the hub does not know the
+		// schedule, so each client derives the reminder from the same upcoming
+		// list the lounge card renders.
+		case 'due':
+			return `${subject} starts at ${at}`;
 		default:
 			return '';
 	}

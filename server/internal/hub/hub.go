@@ -150,6 +150,9 @@ type room struct {
 	// rider id → last live sample, for the rail's watt dot (#251). Entries go
 	// stale harmlessly; the map is bounded by riders ever seen.
 	lastMetric map[string]time.Time
+	// The phase the timeline last spoke a line about (#359) — a transition
+	// says it once, not every tick it stays there.
+	phaseSaid string
 	// Pings the lobby (#251) when the tick sees phase or the riding set change.
 	changed func()
 }
@@ -412,6 +415,23 @@ func (h *Hub) SetRole(slug, userID, role string) {
 // the rail (#39 design: the nav shows where the action is) — and now who,
 // so a rider can see their crew from any page. Riders, not sockets: a phone
 // spectator next to a desktop is one person. Lock, copy, unlock.
+// SessionAnnounce puts one plan line on a room's live timeline (#359).
+// Planning is an HTTP call, but the people standing in the room are the ones
+// it is about. Only a room that already exists gets the line: spinning one up
+// for a line nobody is there to read would leak a ticker per planned session.
+func (h *Hub) SessionAnnounce(slug, verb, actor, workout string, startsAt time.Time) {
+	h.mu.Lock()
+	rm, live := h.rooms[slug]
+	h.mu.Unlock()
+	if !live {
+		return
+	}
+	at := h.now()
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
+}
+
 func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]
@@ -678,10 +698,14 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		}
 		idsNow := rm.chatIDs
 		rm.chatIDs = nil
+		// Resolved before the drain so a transition's own line rides the tick
+		// that carries the transition, not the one after it.
+		state := rm.session.state(now())
+		rm.sayPhaseLocked(state, now())
 		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
 			At:            now().UnixMilli(),
-			State:         rm.session.state(now()),
+			State:         state,
 			Jukebox:       rm.music.snapshot(),
 			Cheers:        rm.cheers,
 			Chat:          chatNow,
@@ -754,6 +778,23 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			_ = wsjson.Write(ctx, c.conn, message)
 			cancel()
 		}
+	}
+}
+
+// sayPhaseLocked puts a line on the timeline when the session crosses into a
+// phase worth talking about (#359), once per crossing. The transition is the
+// trigger, never the control message: the clock closes a session as readily
+// as a coach does, and a rider staring at the stage hears about both.
+func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
+	if state.Phase == rm.phaseSaid {
+		return
+	}
+	rm.phaseSaid = state.Phase
+	switch state.Phase {
+	case "countdown":
+		rm.events.add(sessionLine("started", "", state.WorkoutName, time.Time{}, now), now)
+	case "done":
+		rm.events.add(sessionLine("ended", "", state.WorkoutName, time.Time{}, now), now)
 	}
 }
 

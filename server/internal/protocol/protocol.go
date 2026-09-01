@@ -158,13 +158,21 @@ type RoomEvent struct {
 	// Room-unique and stable across re-broadcasts: a growing burst re-sends
 	// the SAME id with a higher Count, and clients replace the line in place.
 	ID   string `json:"id"`
-	Kind string `json:"kind"` // "jukebox"
-	Verb string `json:"verb"` // "queued" | "removed" | "skipped" | "playing"
-	// Who did it. Empty when nobody did — the deck advancing on its own.
+	Kind string `json:"kind"` // "jukebox" | "session"
+	// jukebox: "queued" | "removed" | "skipped" | "playing"
+	// session: "planned" | "moved" | "cancelled" | "started" | "ended"
+	Verb string `json:"verb"`
+	// Who did it. Empty when nobody did — the deck advancing on its own, or
+	// a session the clock started.
 	Actor string `json:"actor,omitempty"`
 	// The title the dock shows, so both surfaces name the same track. Empty
 	// on a coalesced burst, which has no single title left to show.
 	Track string `json:"track,omitempty"`
+	// The workout a session line is about.
+	Subject string `json:"subject,omitempty"`
+	// When that session is planned for, server millis. 0 on a line with no
+	// time of its own ("started", "ended").
+	When int64 `json:"when,omitempty"`
 	// For "playing": who put this track in the queue.
 	QueuedBy string `json:"queuedBy,omitempty"`
 	// How many tracks this one line covers — 1 normally, more when a burst

@@ -206,10 +206,15 @@ export interface RoomEvent {
    * the SAME id with a higher Count, and clients replace the line in place.
    */
   id: string;
-  kind: string; // "jukebox"
-  verb: string; // "queued" | "removed" | "skipped" | "playing"
+  kind: string; // "jukebox" | "session"
   /**
-   * Who did it. Empty when nobody did — the deck advancing on its own.
+   * jukebox: "queued" | "removed" | "skipped" | "playing"
+   * session: "planned" | "moved" | "cancelled" | "started" | "ended"
+   */
+  verb: string;
+  /**
+   * Who did it. Empty when nobody did — the deck advancing on its own, or
+   * a session the clock started.
    */
   actor?: string;
   /**
@@ -217,6 +222,15 @@ export interface RoomEvent {
    * on a coalesced burst, which has no single title left to show.
    */
   track?: string;
+  /**
+   * The workout a session line is about.
+   */
+  subject?: string;
+  /**
+   * When that session is planned for, server millis. 0 on a line with no
+   * time of its own ("started", "ended").
+   */
+  when?: number /* int64 */;
   /**
    * For "playing": who put this track in the queue.
    */
