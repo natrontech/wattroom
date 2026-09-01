@@ -26,6 +26,12 @@ not a second copy of `git log`.
   Anyone automating deploys can use it to avoid restarting mid-interval — a
   room between sessions no longer looks like a ride in progress.
 
+### Fixed
+
+- What's new no longer goes blank. Any release note that used the same code
+  span twice in one line — `deploy/` did, in 2026.09.3 — took the whole page
+  down with it.
+
 ## [2026.09.3] - 2026-09-01
 
 ### Added

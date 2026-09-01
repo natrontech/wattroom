@@ -55,12 +55,15 @@
 							<span class="eyebrow text-neon">running now</span>
 						{/if}
 					</div>
-					{#each release.sections as section (section.heading)}
+					<!-- Unkeyed on purpose: these are render-only lists whose content repeats.
+					     Keying by text crashed the page when one entry used `deploy/`
+					     twice in one line (each_key_duplicate). -->
+					{#each release.sections as section}
 						<h3 class="eyebrow mt-4">{section.heading}</h3>
 						<ul class="mt-2 space-y-2">
-							{#each section.items as item (item)}
+							{#each section.items as item}
 								<li class="text-sm leading-relaxed">
-									{#each inlineParts(item) as part (part.text)}
+									{#each inlineParts(item) as part}
 										{#if part.code}<code
 												class="bg-z1/60 rounded px-1 py-0.5 text-xs"
 												>{part.text}</code
