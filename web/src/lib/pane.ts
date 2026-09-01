@@ -65,6 +65,14 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 				`--pane-${key}-w`,
 				`${node.offsetWidth}px`,
 			);
+		// Height too: the jukebox dock floats over the content column, and the
+		// training place reserves that much so the player never sits on the
+		// crew strip or the horizon (ADR-0020).
+		if (node.offsetHeight > 0)
+			document.documentElement.style.setProperty(
+				`--pane-${key}-h`,
+				`${node.offsetHeight}px`,
+			);
 	};
 	publish();
 	const observer = new ResizeObserver(() => {
@@ -82,6 +90,7 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	return () => {
 		observer.disconnect();
 		document.documentElement.style.removeProperty(`--pane-${key}-w`);
+		document.documentElement.style.removeProperty(`--pane-${key}-h`);
 	};
 }
 

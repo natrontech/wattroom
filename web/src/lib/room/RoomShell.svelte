@@ -51,6 +51,7 @@
 	import type { Medal } from '$lib/components/MedalCard.svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import { setRoomContext } from '$lib/room/context';
+	import { stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
 		id: string;
@@ -874,7 +875,16 @@
 			</div>
 		{/if}
 
-		<div class="min-h-0 flex-1 overflow-y-auto">
+		<!-- The jukebox dock floats over this column's bottom-right and RMF
+		     says nothing may cover the player — so the content reserves the
+		     dock's footprint rather than the player sitting on live data.
+		     Seated on the lounge's stage it is content, and needs no gutter. -->
+		<div
+			class="min-h-0 flex-1 overflow-y-auto"
+			style={live.tick?.jukebox?.current && !stageSlot.seat
+				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'
+				: ''}
+		>
 			{@render children()}
 		</div>
 	</main>
