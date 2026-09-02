@@ -4,6 +4,7 @@ import {
 	ChartColumn,
 	History,
 	House,
+	MessageSquare,
 	MessagesSquare,
 	Settings,
 	Users,
@@ -32,6 +33,12 @@ export const roomPlaces = [
 		label: 'Lounge',
 		icon: MessagesSquare,
 		hint: 'talk, tiles, the stage',
+	},
+	{
+		path: '/chat',
+		label: 'Chat',
+		icon: MessageSquare,
+		hint: 'the room talking, full width',
 	},
 	{
 		path: '/training',

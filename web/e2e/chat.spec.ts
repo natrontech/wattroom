@@ -8,8 +8,10 @@ import { signInTo } from './signin';
  * browser will scroll. Everything but the newest few lines was simply gone.
  *
  * So it needs a real browser with a real overflowing log: enough messages to
- * outgrow the panel, then proof that the oldest one is reachable and that
- * reading back is not undone by the next arrival.
+ * outgrow it, then proof that the oldest one is reachable and that reading
+ * back is not undone by the next arrival. The log moved out of the people
+ * column into the room's Chat place (#504); `stickToBottom` is the same, and
+ * this follows it there.
  */
 
 const LINES = 12;
@@ -17,11 +19,16 @@ const LINES = 12;
 /** The hub drops a second line within the same second (hub.go, 1/s per rider). */
 const RATE_LIMIT_MS = 1100;
 
-/** Long enough that a dozen of them cannot fit the panel at any viewport. */
-const say = (i: number) => `line ${i} ${'wattage '.repeat(20)}`.trim();
+/**
+ * Long enough that a dozen cannot fit the log — which is the content column
+ * now, not a 320 px panel, so each line has to be nearly the 500-char cap the
+ * composer allows to overflow a desk-sized window.
+ */
+const say = (i: number) => `line ${i} ${'wattage '.repeat(58)}`.trim();
 
 test('the room chat scrolls back to its oldest line', async ({ page }) => {
-	// Wide enough for the docked panel — below `xl` it is a sheet instead.
+	// A desk-sized window: the log is the content column at any width, but the
+	// people column beside it only exists from `xl`.
 	await page.setViewportSize({ width: 1440, height: 700 });
 	await signInTo(page, '/rooms');
 
@@ -34,8 +41,9 @@ test('the room chat scrolls back to its oldest line', async ({ page }) => {
 	const slug = page.url().split('/r/')[1];
 
 	try {
-		const log = page.getByTestId('chat-log');
-		const draft = page.getByPlaceholder('Say something…');
+		await page.goto(`/r/${slug}/chat`);
+		const log = page.getByTestId('thread-log');
+		const draft = page.getByPlaceholder(`Message ${name}…`);
 		await expect(draft).toBeVisible();
 
 		for (let i = 1; i <= LINES; i++) {
@@ -46,7 +54,7 @@ test('the room chat scrolls back to its oldest line', async ({ page }) => {
 		}
 		// Every line survived the trip; a rate-limited drop would fail here and
 		// quietly weaken everything below it.
-		await expect(log.locator('li')).toHaveCount(LINES);
+		await expect(log.getByTestId('thread-message')).toHaveCount(LINES);
 
 		// The log outgrew its box, and it is the newest line we are looking at.
 		const box = await log.evaluate((node) => ({

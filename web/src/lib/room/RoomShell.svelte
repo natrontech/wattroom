@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { MessageSquare } from '@lucide/svelte';
+	import { Users } from '@lucide/svelte';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -12,8 +13,6 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage } from '$lib/room/stage';
 	import { parseSharedSegments } from '$lib/room/workout';
-	import { addYouTubeUrl } from '$lib/room/jukebox-add';
-	import { uploadImage } from '$lib/chat/upload';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -26,6 +25,8 @@
 	import TvMode from '$lib/room/TvMode.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
+	import { activePlace } from '$lib/nav/pages';
+	import { missedSince } from '$lib/room/unread';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
@@ -102,11 +103,25 @@
 		onRotateIcs: () => void;
 	} = $props();
 
+	// The log lives on the Chat place now (#504, mock A), so the column shows
+	// what was said while you were elsewhere. The room's own unread cannot say
+	// it — standing in the room counts as reading it (#468) — so "seen" is
+	// the Chat place being open, and everything before you joined is history.
+	const chatPlace = $derived(activePlace(page.url.pathname, slug) === '/chat');
+
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
 	const connection = roomConnection.join(slug);
 	const live = connection.live;
+
+	let seenAt = $state(Date.now());
+	$effect(() => {
+		if (chatPlace) seenAt = live.chatLog.at(-1)?.at ?? Date.now();
+	});
+	const missed = $derived(
+		chatPlace ? null : missedSince(live.chatLog, seenAt, account.me?.id),
+	);
 	const av = connection.av;
 	// Owned by the connection, not by this component (#521): the trainer and
 	// what it has recorded outlive every navigation inside the room, and the
@@ -412,20 +427,6 @@
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
 	/** Startable a little early and through the grace the server keeps it visible. */
-	// A pasted image uploads first (#279); the line then carries only its id.
-	async function sendChatLine(text: string, image?: Blob) {
-		if (!image) {
-			live.chat(text);
-			return;
-		}
-		const up = await uploadImage(`/api/rooms/${slug}/chat/images`, image);
-		if (!up.ok) {
-			toasts.push(up.error.message, { tone: 'error' });
-			return;
-		}
-		live.chat(text, up.data.id);
-	}
-
 	function copyIcsUrl() {
 		void navigator.clipboard.writeText(
 			`${location.origin}/api/rooms/${slug}/calendar/${icsToken}.ics`,
@@ -460,7 +461,7 @@
 		if (live.status === 'live') droppedAt = null;
 	});
 
-	let chatSheet = $state(false);
+	let peopleSheet = $state(false);
 </script>
 
 <svelte:window
@@ -468,7 +469,7 @@
 		if (e.key === 'Escape') {
 			tv = false;
 			setup = false;
-			chatSheet = false;
+			peopleSheet = false;
 			focusId = null;
 		}
 	}}
@@ -635,26 +636,37 @@
 	</div>
 </div>
 
-<!-- Below xl the panel becomes a summonable sheet — the blips were firing
-     for a chat no laptop-sized window could open (#219). -->
+<!-- Below xl the panel becomes a summonable sheet — who is here, the deck,
+     and the line saying what you missed. The chat itself is a place now, so
+     the button no longer promises a log it cannot show (#219, #504). -->
 <button
-	onclick={() => (chatSheet = true)}
-	class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-40 grid h-12 w-12 place-items-center rounded-full shadow-lg ring-1 xl:hidden"
-	aria-label="open chat"
+	onclick={() => (peopleSheet = true)}
+	class="bg-surface-raised ring-ink/15 fixed right-4 z-40 grid h-12 w-12
+	place-items-center rounded-full shadow-lg ring-1 xl:hidden {chatPlace
+		? 'bottom-20'
+		: 'bottom-4'}"
+	aria-label="who is here"
 >
-	<MessageSquare size={18} />
+	<Users size={18} />
+	{#if missed}
+		<!-- The bar it opens is off screen here, so the dot is the whole
+		     signal: something was said. The count is on the bar itself. -->
+		<span
+			class="bg-neon ring-surface-raised absolute top-1 right-1 h-2.5 w-2.5 rounded-full ring-2"
+		></span>
+	{/if}
 </button>
-{#if chatSheet}
+{#if peopleSheet}
 	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
 	     sit inside the stage and TV mode, and a sheet the rider pulled open is
 	     the one surface that must still win — below xl it carries the jukebox
-	     transport, the people and the chat, and a video parked on top of it
-	     left nothing to press. RMF forbids OUR chrome over the player, never a
+	     transport, the people and the line saying what was said, and a video
+	     parked on top of it left nothing to press. RMF forbids OUR chrome over the player, never a
 	     drawer the rider opened. -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
-		onclick={(e) => e.target === e.currentTarget && (chatSheet = false)}
+		onclick={(e) => e.target === e.currentTarget && (peopleSheet = false)}
 	>
 		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">
 			{@render panel()}
@@ -666,15 +678,9 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
-		onQueue={(url) => void addYouTubeUrl(url, live.jukebox)}
-		messages={live.chatLog}
-		events={[...live.roomEvents, ...reminders]}
-		reactions={live.chatReactions}
-		myReacts={live.myReacts}
-		onReact={(id, emoji) => live.react(id, emoji)}
+		{missed}
+		onOpenChat={() => void goto(`/r/${slug}/chat`)}
 		onCheer={(emoji) => live.cheer(emoji)}
-		onChat={(text, image) => void sendChatLine(text, image)}
-		{slug}
 		{cheers}
 	>
 		{#snippet player()}

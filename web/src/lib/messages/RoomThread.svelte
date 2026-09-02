@@ -257,7 +257,10 @@
 								<span class="bg-neon/60 h-px flex-1"></span>
 							</div>
 						{/if}
-						<div class="group flex gap-2.5 {grouped ? '-mt-1' : ''}">
+						<div
+							data-testid="thread-message"
+							class="group flex gap-2.5 {grouped ? '-mt-1' : ''}"
+						>
 							<span class="w-7 shrink-0">
 								{#if !grouped}<Avatar name={message.from} size={28} />{/if}
 							</span>

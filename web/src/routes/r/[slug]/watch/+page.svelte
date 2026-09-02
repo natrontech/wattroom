@@ -12,6 +12,7 @@
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import { api } from '$lib/api';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import { MessageSquare } from '@lucide/svelte';
 	import { createRoomLive } from '$lib/room/live.svelte';
 	import { eventText, roomTimeline } from '$lib/room/timeline';
 	import { parseSharedSegments } from '$lib/room/workout';
@@ -171,6 +172,13 @@
 				>
 			{/each}
 		</div>
+		<!-- The other verb a phone has: typing. The Chat place needs no
+		     Bluetooth, so it is the one room place a phone stands in. -->
+		<a
+			href="/r/{page.params.slug}/chat"
+			class="btn btn-secondary mt-2 w-full py-3"
+			><MessageSquare size={16} /> Say something</a
+		>
 		<p class="text-muted mt-2 text-center text-[10px]">
 			Spectating — cheers land in the room. Bring a laptop to ride.
 			<a href="/r/{page.params.slug}?full=1" class="hover:text-ink underline"
