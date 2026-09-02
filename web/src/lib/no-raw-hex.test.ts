@@ -20,7 +20,6 @@ const ALLOWLIST: Record<string, string> = {
 	'routes/dev/':
 		'dev-only galleries: browser chrome and fake video frames, drawn in the colours the real thing has',
 	'lib/brand/icons.ts': "Google's mark — provider colours never follow a theme",
-	'routes/login/+page.svelte': "Strava's brand orange on the connect button",
 	'lib/room/Stage.svelte':
 		'the letterbox behind video is black on every palette',
 	'lib/room/JukeboxDock.svelte':

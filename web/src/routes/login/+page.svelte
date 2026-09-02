@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
-	import { GITHUB_MARK, GOOGLE_G, STRAVA_MARK } from '$lib/brand/icons';
+	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { rememberNext, takeNext } from '$lib/auth/next';
@@ -14,7 +14,7 @@
 		google: { label: 'Continue with Google' },
 		github: { label: 'Continue with GitHub' },
 		strava: {
-			label: 'Continue with Strava',
+			label: 'Connect with Strava',
 			note: 'also connects ride upload',
 		},
 		dev: { label: 'Dev sign-in (local only)' },
@@ -55,39 +55,50 @@
 			{:else if account.providers.length > 0}
 				<div class="mt-8 grid gap-2.5">
 					{#each account.providers as id (id)}
-						<button
-							onclick={() => start(id)}
-							class="border-muted/25 bg-surface/60 hover:border-neon/60 flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium"
-						>
-							{#if id === 'google'}
-								<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0">
-									{#each GOOGLE_G as seg (seg.fill)}
-										<path d={seg.d} fill={seg.fill} />
-									{/each}
-								</svg>
-							{:else if id === 'github'}
-								<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-current"
-									><path d={GITHUB_MARK} /></svg
+						{#if id === 'strava'}
+							<!-- Strava's brand guidelines: their asset, unaltered, at its own size. -->
+							<button onclick={() => start(id)} class="justify-self-center">
+								<img
+									src="/strava-connect.svg"
+									alt={providerLabels[id]?.label ?? id}
+									width="237"
+									height="48"
+								/>
+								<span class="text-muted mt-1 block text-[11px]"
+									>{providerLabels[id]?.note}</span
 								>
-							{:else if id === 'strava'}
-								<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="#FC4C02"
-									><path d={STRAVA_MARK} /></svg
-								>
-							{:else}
-								<span
-									class="font-display text-neon w-5 shrink-0 text-center text-xs font-bold"
-									>&gt;_</span
-								>
-							{/if}
-							<span class="min-w-0">
-								{providerLabels[id]?.label ?? id}
-								{#if providerLabels[id]?.note}
-									<span class="text-muted block text-[11px] font-normal"
-										>{providerLabels[id].note}</span
+							</button>
+						{:else}
+							<button
+								onclick={() => start(id)}
+								class="border-muted/25 bg-surface/60 hover:border-neon/60 flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium"
+							>
+								{#if id === 'google'}
+									<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0">
+										{#each GOOGLE_G as seg (seg.fill)}
+											<path d={seg.d} fill={seg.fill} />
+										{/each}
+									</svg>
+								{:else if id === 'github'}
+									<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-current"
+										><path d={GITHUB_MARK} /></svg
+									>
+								{:else}
+									<span
+										class="font-display text-neon w-5 shrink-0 text-center text-xs font-bold"
+										>&gt;_</span
 									>
 								{/if}
-							</span>
-						</button>
+								<span class="min-w-0">
+									{providerLabels[id]?.label ?? id}
+									{#if providerLabels[id]?.note}
+										<span class="text-muted block text-[11px] font-normal"
+											>{providerLabels[id].note}</span
+										>
+									{/if}
+								</span>
+							</button>
+						{/if}
 					{/each}
 				</div>
 				<p class="text-muted mt-6 text-[11px]">
