@@ -28,6 +28,14 @@
 	/* Semantic, not data (#397): destructive controls and errors. The hue is
 	 * fixed red-orange in every theme; only lightness follows the family. */
 	--color-danger: light-dark(#c21725, #fc5855);
+	/* The line around a raised thing (#505). Ink at a tenth is a whisper in
+	 * the cave and nothing at all on paper, where a white tile sits on a
+	 * near-white page — so the light family draws a real edge. Derived from
+	 * ink, so it follows whichever theme the rider picked. */
+	--color-edge: light-dark(
+		color-mix(in oklab, var(--color-ink) 22%, transparent),
+		color-mix(in oklab, var(--color-ink) 12%, transparent)
+	);
 
 	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
 	 * zone colour is learned and read across the room, and the sRGB gamut does
