@@ -1,3 +1,4 @@
+import { announce } from '$lib/messages/announce';
 import { fetchRailRooms } from '$lib/nav/rooms';
 import type { RailRoom } from '$lib/room/mockcompat';
 
@@ -15,10 +16,34 @@ let fallback: ReturnType<typeof setInterval> | null = null;
 let reconnect: ReturnType<typeof setTimeout> | null = null;
 let attempts = 0;
 let stopped = true;
+// The first answer is the state of the world, not a burst of arrivals.
+let announced = false;
 
 async function refresh() {
 	rooms = await fetchRailRooms();
 	version += 1;
+	if (!announced) {
+		announced = true;
+		return;
+	}
+	// A room you are NOT standing in reaches you the way a DM does (#568).
+	// Its unread count is the whole trigger: standing in a room reads it
+	// (#468), so a count above zero already means you are somewhere else.
+	// The tag is the room's own, shared with the in-room path — whichever
+	// path sees a line first announces it, and never both.
+	const here = location.pathname;
+	for (const room of rooms) {
+		const last = room.lastChat;
+		if (!last?.at || !room.unread) continue;
+		announce({
+			tag: `chat-${room.slug}`,
+			at: last.at,
+			title: `${last.from} · ${room.name}`,
+			body: last.text || (last.hasImage ? 'sent an image' : ''),
+			href: `/messages/r/${room.slug}`,
+			reading: !document.hidden && here === `/messages/r/${room.slug}`,
+		});
+	}
 }
 
 function connect() {
@@ -68,6 +93,9 @@ export const presence = {
 	},
 	stop() {
 		stopped = true;
+		// Signing out and back in starts the world over — the first list a new
+		// session sees must not blip once per room.
+		announced = false;
 		if (fallback) clearInterval(fallback);
 		if (reconnect) clearTimeout(reconnect);
 		socket?.close();

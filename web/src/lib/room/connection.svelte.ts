@@ -1,13 +1,15 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
+import { announce } from '$lib/messages/announce';
 import { notify } from '$lib/notify.svelte';
-import { shouldAnnounce } from '$lib/notify-once';
+import { presence } from '$lib/presence.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
 import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
+import { missedSince, type Missed } from '$lib/room/unread';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
 import type { SessionState } from '$lib/protocol';
@@ -33,6 +35,14 @@ type Connection = {
 	recording: ReturnType<typeof createRecording>;
 	/** The trainer, and the targets it holds. Lives here, not on a page (#521). */
 	ride: ReturnType<typeof createRide>;
+	/**
+	 * What was said while you were somewhere else (#504) — null while the
+	 * Chat place is open. It lives here, not on the room's shell: the log
+	 * does, and the sidebar marks the Chat place off the same answer (#568).
+	 */
+	missed: () => Missed | null;
+	/** The room's shell reports the Chat place; the router lives above this. */
+	readingChat: (open: boolean) => void;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -66,6 +76,11 @@ function connect(slug: string): Connection {
 	// the way index-tracking did (audit #219).
 	let lastChatAt = Date.now();
 	let lastPhase: string | null = null;
+	// Assigned in the root below: the Chat place being open is the one fact
+	// behind three answers — what you missed, whether the sidebar marks Chat,
+	// and whether an arriving line is worth announcing.
+	let missedOf!: () => Missed | null;
+	let readingChat!: (open: boolean) => void;
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
@@ -92,6 +107,19 @@ function connect(slug: string): Connection {
 		$effect(() => {
 			if (account.me) pullProfile(profile);
 		});
+
+		// "Seen" is the Chat place having been open — standing in the room
+		// counts as reading it (#468), so the room's own unread cannot say it.
+		let chatOpen = $state(false);
+		let chatSeenAt = $state(Date.now());
+		$effect(() => {
+			if (chatOpen) chatSeenAt = live.chatLog.at(-1)?.at ?? Date.now();
+		});
+		const missed = $derived(
+			chatOpen ? null : missedSince(live.chatLog, chatSeenAt, account.me?.id),
+		);
+		missedOf = () => missed;
+		readingChat = (open: boolean) => (chatOpen = open);
 
 		const shared = $derived(live.tick?.state);
 		const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
@@ -131,20 +159,30 @@ function connect(slug: string): Connection {
 			}
 		});
 
-		// Chat lands audibly (#202) — a soft blip, never for your own lines.
+		// Chat lands audibly (#202), and visibly off the Chat place (#568) —
+		// never for your own lines.
 		$effect(() => {
 			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
 			if (fresh.length === 0) return;
 			lastChatAt = fresh[fresh.length - 1].at;
+			const where =
+				presence.rooms.find((room) => room.slug === slug)?.name ?? slug;
 			for (const line of fresh) {
-				// Ids beat display names — a namesake must not be muted (#219);
-				// and only one TAB announces a given line.
+				// Ids beat display names — a namesake must not be muted (#219).
 				const mine = line.fromId
 					? line.fromId === account.me?.id
 					: line.from === account.me?.displayName;
-				if (mine || !shouldAnnounce(`chat-${slug}`, line.at)) continue;
-				play('chat');
-				notify.push(`${line.from} · ${slug}`, line.text, `chat-${slug}`);
+				if (mine) continue;
+				// The same tag the presence feed uses for this room: whichever
+				// sees the line first announces it, and never both (#568).
+				announce({
+					tag: `chat-${slug}`,
+					at: line.at,
+					title: `${line.from} · ${where}`,
+					body: line.text || (line.imageId ? 'sent an image' : ''),
+					href: `/r/${slug}/chat`,
+					reading: chatOpen && !document.hidden,
+				});
 			}
 		});
 
@@ -249,6 +287,8 @@ function connect(slug: string): Connection {
 		profile,
 		recording,
 		ride,
+		missed: missedOf,
+		readingChat,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,

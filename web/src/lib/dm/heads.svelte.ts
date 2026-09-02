@@ -7,9 +7,7 @@
 import { untrack } from 'svelte';
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
-import { notify } from '$lib/notify.svelte';
-import { play } from '$lib/sound/cues';
-import { shouldAnnounce } from '$lib/notify-once';
+import { announce } from '$lib/messages/announce';
 
 export interface DmHead {
 	peerId: string;
@@ -27,7 +25,7 @@ export interface DmHead {
 /** What a conversation's latest line reads as; an image has no words. */
 export function headPreview(head: DmHead): string {
 	if (head.text) return head.text;
-	return head.hasImage ? 'Sent an image' : '';
+	return head.hasImage ? 'sent an image' : '';
 }
 
 let heads = $state<DmHead[]>([]);
@@ -48,13 +46,16 @@ async function poll() {
 		const known = next[head.peerId] ?? 0;
 		if (head.at <= known) continue;
 		next[head.peerId] = head.at;
-		// A NEW inbound line: blip + hidden-tab alert — unless that thread is
-		// open in a visible tab right now.
-		const reading = dm.open?.id === head.peerId && !document.hidden;
-		if (!first && !reading && shouldAnnounce(`dm-${head.peerId}`, head.at)) {
-			play('chat');
-			notify.push(head.peerName, headPreview(head), `dm-${head.peerId}`);
-		}
+		// A NEW inbound line, announced the one way every message is (#568).
+		if (first) continue;
+		announce({
+			tag: `dm-${head.peerId}`,
+			at: head.at,
+			title: head.peerName,
+			body: headPreview(head),
+			href: `/messages/dm/${head.peerId}`,
+			reading: dm.open?.id === head.peerId && !document.hidden,
+		});
 	}
 	inbound = next;
 	first = false;

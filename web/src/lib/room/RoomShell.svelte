@@ -26,7 +26,6 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
 	import { activePlace } from '$lib/nav/pages';
-	import { missedSince } from '$lib/room/unread';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
@@ -115,13 +114,15 @@
 	const connection = roomConnection.join(slug);
 	const live = connection.live;
 
-	let seenAt = $state(Date.now());
+	// The connection owns the log and what you have not seen of it (#568) —
+	// this only reports where the router is standing, which is the one thing
+	// a store above the router cannot know. Leaving the room's pages hands
+	// the answer back: the sidebar's Chat place marks it from here on.
 	$effect(() => {
-		if (chatPlace) seenAt = live.chatLog.at(-1)?.at ?? Date.now();
+		connection.readingChat(chatPlace);
+		return () => connection.readingChat(false);
 	});
-	const missed = $derived(
-		chatPlace ? null : missedSince(live.chatLog, seenAt, account.me?.id),
-	);
+	const missed = $derived(connection.missed());
 	const av = connection.av;
 	// Owned by the connection, not by this component (#521): the trainer and
 	// what it has recorded outlive every navigation inside the room, and the
