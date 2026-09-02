@@ -12,6 +12,7 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
@@ -118,9 +119,17 @@
 	const recent = $derived((rides ?? []).slice(0, 3));
 	// Planning happens in a room's own Sessions place; the first room you can
 	// run one in is where the button goes. None yet: open one first.
-	const firstRoom = $derived(
-		(rooms ?? []).find((r) => r.role === 'owner' || r.role === 'coach'),
-	);
+	const plannable = $derived.by(() => {
+		const mine = (rooms ?? []).filter(
+			(r) => r.role === 'owner' || r.role === 'coach',
+		);
+		// The room you are standing in comes first (#435).
+		const here = roomConnection.current?.slug;
+		return mine.sort((a, b) =>
+			a.slug === here ? -1 : b.slug === here ? 1 : 0,
+		);
+	});
+	const firstRoom = $derived(plannable[0]);
 
 	const greeting = $derived.by(() => {
 		const h = new Date().getHours();
@@ -191,7 +200,34 @@
 		<a href="/workouts" class="btn btn-secondary {headline ? '' : 'btn-lg'}"
 			><ChartColumn size={15} /> Ride solo</a
 		>
-		{#if firstRoom}
+		{#if plannable.length > 1}
+			<!-- More than one room to plan in: ask, never guess (#435). -->
+			<details class="relative">
+				<summary
+					class="btn btn-secondary cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+					><CalendarClock size={15} /> Plan a session</summary
+				>
+				<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
+					{#each plannable as room (room.slug)}
+						<li>
+							<a
+								href="/r/{room.slug}/sessions"
+								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
+							>
+								<span class="truncate"
+									>{room.icon ? `${room.icon} ` : ''}{room.name}</span
+								>
+								{#if room.slug === roomConnection.current?.slug}
+									<span class="text-muted ml-auto shrink-0 text-[10px]"
+										>you are here</span
+									>
+								{/if}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</details>
+		{:else if firstRoom}
 			<a href="/r/{firstRoom.slug}/sessions" class="btn btn-secondary"
 				><CalendarClock size={15} /> Plan a session</a
 			>
