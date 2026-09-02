@@ -68,6 +68,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import type { RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
@@ -185,8 +186,10 @@
 </script>
 
 {#snippet person(rider: RoomRider)}
+	<!-- 44 px rows (#463): the speaker at the end is tapped from a bike, and
+	     the slider it opens wraps onto a line of its own under the name. -->
 	<li
-		class="flex items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
 	>
@@ -241,6 +244,9 @@
 				</span>
 			{/if}
 		</span>
+		{#if rider.inVoice && !rider.you}
+			<RiderVolume id={rider.id} name={rider.name} />
+		{/if}
 	</li>
 {/snippet}
 

@@ -893,12 +893,21 @@ export function createRoomAv(slug: string) {
 		setMusicPlaying(playing: boolean) {
 			musicPlaying = playing;
 		},
-		/** Applies the mixer's per-rider gain live (#179). */
-		setRiderGain(id: string, v: number) {
-			mixer.setRiderGain(id, v);
-			// One fader per rider, however many tabs they are connected from.
+		/**
+		 * Applies the mixer's per-rider gain live (#179, #463). One fader per
+		 * rider, however many tabs they are connected from; a short ramp, so a
+		 * dragged slider does not zipper.
+		 */
+		setRiderGain(id: string, v: number, name?: string) {
+			mixer.setRiderGain(id, v, name);
+			if (!outCtx) return;
 			for (const [identity, gain] of riderGains)
-				if (riderOf(identity) === id) gain.gain.value = mixer.riderGain(id);
+				if (riderOf(identity) === id)
+					gain.gain.setTargetAtTime(
+						mixer.riderGain(id),
+						outCtx.currentTime,
+						0.02,
+					);
 		},
 		join,
 		async toggleMic() {
