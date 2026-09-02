@@ -100,7 +100,7 @@
 				{formatClock(elapsed)}
 				<span class="text-muted/50">/ {formatClock(total)}</span>
 			</p>
-			<TrainerButton compact />
+			{#if !room.trainer}<TrainerButton compact />{/if}
 			<SessionControls compact />
 		</header>
 
