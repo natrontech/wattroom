@@ -151,7 +151,7 @@
 		<p class="text-muted mt-4 text-center text-xs">friend request pending</p>
 	{:else if friendState === 'friends'}
 		<a
-			href="/dm/{member.id}"
+			href="/messages/dm/{member.id}"
 			onclick={() => {
 				dm.show(member.id, member.displayName);
 				onClose();

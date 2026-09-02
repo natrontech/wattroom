@@ -382,7 +382,7 @@
 									<a
 										href={friend.room
 											? `/r/${friend.room}`
-											: `/dm/${friend.id}`}
+											: `/messages/dm/${friend.id}`}
 										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
 										title={friend.roomName ? `in ${friend.roomName}` : 'online'}
 									>

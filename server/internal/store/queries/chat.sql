@@ -43,16 +43,17 @@ where cm.room_id = $1 and cm.id not in (
 
 -- name: ListRoomChat :many
 -- Newest $2, oldest-first for rendering; a deleted author's rows are gone
--- (cascade), so the join never dangles.
+-- (cascade), so the join never dangles. The id breaks a same-millisecond
+-- tie, so two polls of the same log agree on the order (#468).
 select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
 from (
     select * from chat_messages
     where room_id = $1
-    order by created_at desc
+    order by created_at desc, id desc
     limit $2
 ) m
 join users u on u.id = m.user_id
-order by m.created_at;
+order by m.created_at, m.id;
 
 -- name: ListChatReactions :many
 -- Counts per message+emoji for the backlog, plus whether the viewer is in.
@@ -100,3 +101,18 @@ left join room_reads r on r.room_id = m.room_id and r.user_id = $2
 where m.room_id = $1
   and m.user_id != $2
   and (r.read_at is null or m.created_at > r.read_at);
+
+-- name: GetRoomReadAt :one
+-- Where the "N new" divider goes when a room's chat is read from outside
+-- the room (#468). No row = never opened: everything is new.
+select read_at from room_reads where room_id = $1 and user_id = $2;
+
+-- name: LastRoomChat :one
+-- The rooms list's one-line preview (#468): who said the last thing, and
+-- when — what makes a room sortable next to a DM by recency.
+select m.text, m.image_id, m.created_at, u.display_name
+from chat_messages m
+join users u on u.id = m.user_id
+where m.room_id = $1
+order by m.created_at desc
+limit 1;

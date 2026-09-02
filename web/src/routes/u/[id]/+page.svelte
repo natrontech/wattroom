@@ -194,7 +194,7 @@
 					>
 				{:else if rider.friend === 'accepted'}
 					<a
-						href="/dm/{rider.id}"
+						href="/messages/dm/{rider.id}"
 						onclick={() => dm.show(rider!.id, rider!.displayName)}
 						class="btn btn-secondary"><MessageSquare size={15} /> Message</a
 					>

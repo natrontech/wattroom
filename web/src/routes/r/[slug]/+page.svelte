@@ -46,7 +46,7 @@
 			{
 				label: 'Message',
 				icon: MessageSquare,
-				onSelect: () => void goto(`/dm/${rider.id}`),
+				onSelect: () => void goto(`/messages/dm/${rider.id}`),
 				disabled: rider.you,
 			},
 		]);

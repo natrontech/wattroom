@@ -16,7 +16,6 @@
 		SmilePlus,
 		Video,
 		VideoOff,
-		X,
 	} from '@lucide/svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import {
@@ -26,9 +25,12 @@
 	} from '$lib/room/timeline';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import Reactions from '$lib/chat/Reactions.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { formatTime } from '$lib/format';
 	import { STOCK_CHEERS } from '$lib/icons';
-	import { compressImage } from '$lib/chat/media';
+	import ImageChip from '$lib/chat/ImageChip.svelte';
+	import { createPendingImage } from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
@@ -168,12 +170,6 @@
 	// only after a gap, like every messenger.
 	const GROUP_GAP_MS = 5 * 60_000;
 
-	const clock = (at: number) =>
-		new Date(at).toLocaleTimeString(undefined, {
-			hour: '2-digit',
-			minute: '2-digit',
-		});
-
 	async function copy(text: string) {
 		try {
 			await navigator.clipboard.writeText(text);
@@ -186,36 +182,15 @@
 	let draft = $state('');
 	// A pasted image waiting on the send button (#279) — Discord's flow:
 	// Ctrl+V, see the chip, hit Enter.
-	let pendingImage = $state<{ blob: Blob; preview: string } | null>(null);
-
-	function clearPending() {
-		if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
-		pendingImage = null;
-	}
-
-	async function pasteImage(e: ClipboardEvent) {
-		const file = Array.from(e.clipboardData?.items ?? [])
-			.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
-			?.getAsFile();
-		if (!file) return; // text pastes stay the input's business
-		e.preventDefault();
-		const blob = await compressImage(file);
-		if (!blob) {
-			toasts.push('That image cannot be sent — GIFs are capped at 2 MB.', {
-				tone: 'error',
-			});
-			return;
-		}
-		clearPending();
-		pendingImage = { blob, preview: URL.createObjectURL(blob) };
-	}
+	const pending = createPendingImage((refusal) =>
+		toasts.push(refusal, { tone: 'error' }),
+	);
 
 	function sendChat() {
 		const text = draft.trim();
-		if (!text && !pendingImage) return;
-		onChat?.(text, pendingImage?.blob);
+		if (!text && !pending.current) return;
+		onChat?.(text, pending.take());
 		draft = '';
-		clearPending();
 	}
 </script>
 
@@ -233,7 +208,7 @@
 						{
 							label: 'Message',
 							icon: MessageSquare,
-							onSelect: () => void goto(`/dm/${rider.id}`),
+							onSelect: () => void goto(`/messages/dm/${rider.id}`),
 						},
 					],
 		)}
@@ -428,7 +403,7 @@
 							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
 							>
 							<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
-								>{clock(entry.at)}</span
+								>{formatTime(entry.at)}</span
 							>
 						</li>
 					{:else}
@@ -448,7 +423,7 @@
 										>{message.from}</span
 									>
 									<span class="text-muted/40 shrink-0 font-mono text-[10px]"
-										>{clock(message.at)}</span
+										>{formatTime(message.at)}</span
 									>
 								{/if}
 								<span
@@ -487,40 +462,17 @@
 							{/if}
 							{#if message.id && onReact}
 								{@const id = message.id}
-								{#if reactingTo === id}
-									<span
-										class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
-									>
-										{#each cheers as cheer (cheer)}
-											<button
-												onclick={() => {
-													onReact(id, cheer);
-													reactingTo = null;
-												}}
-												aria-label={cheer}
-												title={cheer}
-												class="px-0.5 py-0.5 hover:scale-125"
-												><CheerIcon {cheer} size={16} /></button
-											>
-										{/each}
-									</span>
-								{/if}
-								{#if reactions[id]}
-									<span class="mt-0.5 flex flex-wrap gap-1">
-										{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [cheer, count] (cheer)}
-											<button
-												onclick={() => onReact(id, cheer)}
-												aria-label="{cheer} {count}"
-												class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
-													`${id}:${cheer}`
-												]
-													? 'ring-neon bg-neon/15'
-													: 'ring-ink/10 bg-surface-raised'}"
-												><CheerIcon {cheer} size={12} />{count}</button
-											>
-										{/each}
-									</span>
-								{/if}
+								<Reactions
+									{id}
+									counts={reactions[id]}
+									{myReacts}
+									{cheers}
+									picking={reactingTo === id}
+									onReact={(cheer) => {
+										onReact(id, cheer);
+										reactingTo = null;
+									}}
+								/>
 							{/if}
 						</li>
 					{/if}
@@ -536,20 +488,7 @@
 		<div class="border-ink/5 border-t p-3">
 			{#if !live}
 				<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
-				{#if pendingImage}
-					<div class="relative mb-2 inline-block">
-						<img
-							src={pendingImage.preview}
-							alt="Ready to send"
-							class="ring-ink/10 max-h-24 rounded ring-1"
-						/>
-						<button
-							onclick={clearPending}
-							class="bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-1.5 -right-1.5 rounded-full p-0.5 ring-1"
-							aria-label="Remove image"><X size={12} /></button
-						>
-					</div>
-				{/if}
+				<ImageChip image={pending.current} onClear={pending.clear} />
 				<form
 					class="mb-2 flex gap-1.5"
 					onsubmit={(e) => {
@@ -559,13 +498,13 @@
 				>
 					<input
 						bind:value={draft}
-						onpaste={pasteImage}
+						onpaste={pending.paste}
 						maxlength="500"
 						placeholder="Say something…"
 						class="input input-xs min-w-0 flex-1"
 					/>
 					<button
-						disabled={!draft.trim() && !pendingImage}
+						disabled={!draft.trim() && !pending.current}
 						class="btn btn-secondary btn-xs">Send</button
 					>
 				</form>

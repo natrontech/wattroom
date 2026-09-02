@@ -124,6 +124,9 @@ func main() {
 		chatService := chat.New(st, authService, log)
 		chatService.Register(mux)
 		h.SetChatKeeper(chatService)
+		// And back: a line posted over HTTP from outside the room (#468)
+		// reaches the riders inside it on their next tick.
+		chatService.SetLive(h)
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)

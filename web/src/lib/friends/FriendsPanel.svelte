@@ -142,7 +142,7 @@
 						</span>
 						<span class="ml-auto flex shrink-0 items-center gap-3">
 							<a
-								href="/dm/{friend.id}"
+								href="/messages/dm/{friend.id}"
 								onclick={() => dm.show(friend.id, friend.name)}
 								class="text-muted hover:text-ink relative"
 								title="message {friend.name}"

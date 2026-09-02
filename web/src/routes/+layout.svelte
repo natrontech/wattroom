@@ -108,6 +108,13 @@
 		}),
 	);
 
+	// The room whose pages you are on opens in the sidebar — only under /r/:
+	// a room's thread on /messages carries the same slug param and is
+	// deliberately not standing in the room (#468).
+	const roomSlug = $derived(
+		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
+	);
+
 	// The member popout (#207): a rail click fetches the room's member list
 	// (member-gated server-side) and shows who that rider is.
 	interface PopoutMember {
@@ -244,7 +251,7 @@
 				<Sidebar
 					pathname={page.url.pathname}
 					rooms={shownRooms}
-					activeSlug={page.params?.slug ?? ''}
+					activeSlug={roomSlug}
 					connectedSlug={roomConnection.current.slug}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
 					onLeave={leaveRoom}
@@ -261,7 +268,7 @@
 				<Sidebar
 					pathname={page.url.pathname}
 					rooms={shownRooms}
-					activeSlug={page.params?.slug ?? ''}
+					activeSlug={roomSlug}
 				/>
 			{/if}
 		</div>
@@ -290,7 +297,7 @@
 		</div>
 		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
 		     auto-advance while the player is offscreen, so it cannot be a place.
-		     Threads became places instead (ADR-0020) — /dm/[peer]. -->
+		     Threads became places instead (ADR-0020) — /messages (#468). -->
 		<JukeboxDock />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
