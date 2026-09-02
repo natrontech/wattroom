@@ -154,6 +154,12 @@ type Session struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
+type SessionRsvp struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
 type User struct {
 	ID            pgtype.UUID
 	DisplayName   string

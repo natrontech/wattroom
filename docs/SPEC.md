@@ -18,6 +18,7 @@
 | **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube playlist on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
 | **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
 | **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
+| **Planned session** | A session put on a room's calendar for a time (#116). Members **RSVP**: in, or not in — there is no maybe. It is not a second kind of object, and it is not a *room event*, which is the chat line above. |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
@@ -30,6 +31,8 @@
 | Remove / ban / unban member (#223) | ✓ | – | – | – |
 | Pick workout / mode, start countdown, pause/end session | ✓ | ✓ | – | – |
 | Arm sprint moments | ✓ | ✓ | – | – |
+| Plan / move / cancel a session (#116) | ✓ | ✓ | – | – |
+| Say you are in for a planned session (#450) | ✓ | ✓ | ✓ | – |
 | Add to jukebox queue | ✓ | ✓ | ✓ | – |
 | Jukebox play/pause/skip/seek | ✓ | ✓ | ✓ (default — tune in alpha) | – |
 | Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |

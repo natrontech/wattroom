@@ -24,6 +24,14 @@ type scheduledJSON struct {
 	WorkoutJSON string `json:"workoutJson"`
 	StartsAt    string `json:"startsAt"` // RFC 3339
 	CreatedBy   string `json:"createdBy"`
+	// Who said they are in (#450), first to say so first. A plan with an
+	// RSVP is what this repo calls an event — there is no second object.
+	Going []goingJSON `json:"going,omitempty"`
+}
+
+type goingJSON struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
 }
 
 // plannedJSON is a scheduled session seen from outside its room — the
@@ -68,6 +76,55 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"sessions": sessions, "icsToken": user.IcsToken,
 	})
+}
+
+// handleRsvp records that the caller is in for a planned session, and
+// DELETE takes it back. Any member, not just the coach: turning up is not a
+// role. There is no "maybe" — you are in or you are not (ux.md's 95% rule).
+func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	room, ok := s.roomBySlug(w, r)
+	if !ok {
+		return
+	}
+	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	}); err != nil || m.Role == "banned" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to say you are in.")
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	}
+	if _, err := s.store.Queries.SessionInRoom(r.Context(), db.SessionInRoomParams{
+		ID: id, RoomID: room.ID,
+	}); errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	} else if err != nil {
+		s.log.Error("rsvp lookup failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		return
+	}
+	if r.Method == http.MethodDelete {
+		err = s.store.Queries.ClearRsvp(r.Context(), db.ClearRsvpParams{SessionID: id, UserID: user.ID})
+	} else {
+		err = s.store.Queries.SetRsvp(r.Context(), db.SetRsvpParams{SessionID: id, UserID: user.ID})
+	}
+	if err != nil {
+		s.log.Error("rsvp failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		return
+	}
+	// ponytail: no live push — the room reloads after its own action, and
+	// everyone else sees the list when they next open the place. Wire it to
+	// the hub the day a room watches an RSVP land.
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // requireControl is requireRole for "coach or owner" — the pair the matrix

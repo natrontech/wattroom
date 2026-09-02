@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearRsvp = `-- name: ClearRsvp :exec
+delete from session_rsvps where session_id = $1 and user_id = $2
+`
+
+type ClearRsvpParams struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+}
+
+func (q *Queries) ClearRsvp(ctx context.Context, arg ClearRsvpParams) error {
+	_, err := q.db.Exec(ctx, clearRsvp, arg.SessionID, arg.UserID)
+	return err
+}
+
 const countOwnedRooms = `-- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1
 `
@@ -346,6 +360,43 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 	return items, nil
 }
 
+const listRoomRsvps = `-- name: ListRoomRsvps :many
+select r.session_id, r.user_id, u.display_name
+from session_rsvps r
+join users u on u.id = r.user_id
+join scheduled_sessions s on s.id = r.session_id
+where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
+order by r.created_at
+`
+
+type ListRoomRsvpsRow struct {
+	SessionID   pgtype.UUID
+	UserID      pgtype.UUID
+	DisplayName string
+}
+
+// Who is in, for everything ListRoomUpcoming returns. Ordered by when they
+// said yes, so the first names in the line are the ones who committed first.
+func (q *Queries) ListRoomRsvps(ctx context.Context, roomID pgtype.UUID) ([]ListRoomRsvpsRow, error) {
+	rows, err := q.db.Query(ctx, listRoomRsvps, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomRsvpsRow
+	for rows.Next() {
+		var i ListRoomRsvpsRow
+		if err := rows.Scan(&i.SessionID, &i.UserID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoomUpcoming = `-- name: ListRoomUpcoming :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
 from scheduled_sessions s
@@ -566,6 +617,39 @@ func (q *Queries) RotateRoomIcsToken(ctx context.Context, id pgtype.UUID) (strin
 	var ics_token string
 	err := row.Scan(&ics_token)
 	return ics_token, err
+}
+
+const sessionInRoom = `-- name: SessionInRoom :one
+select id from scheduled_sessions where id = $1 and room_id = $2
+`
+
+type SessionInRoomParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+// A plan belongs to the room in its URL — an RSVP cannot reach across rooms.
+func (q *Queries) SessionInRoom(ctx context.Context, arg SessionInRoomParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, sessionInRoom, arg.ID, arg.RoomID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const setRsvp = `-- name: SetRsvp :exec
+insert into session_rsvps (session_id, user_id) values ($1, $2)
+on conflict do nothing
+`
+
+type SetRsvpParams struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+}
+
+// Room events (#450). Saying yes twice is saying yes.
+func (q *Queries) SetRsvp(ctx context.Context, arg SetRsvpParams) error {
+	_, err := q.db.Exec(ctx, setRsvp, arg.SessionID, arg.UserID)
+	return err
 }
 
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec

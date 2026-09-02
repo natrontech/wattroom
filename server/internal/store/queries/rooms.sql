@@ -110,3 +110,25 @@ join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'ba
 join users u on u.id = s.created_by
 where s.starts_at > $2
 order by s.starts_at;
+
+-- name: SetRsvp :exec
+-- Room events (#450). Saying yes twice is saying yes.
+insert into session_rsvps (session_id, user_id) values ($1, $2)
+on conflict do nothing;
+
+-- name: ClearRsvp :exec
+delete from session_rsvps where session_id = $1 and user_id = $2;
+
+-- name: SessionInRoom :one
+-- A plan belongs to the room in its URL — an RSVP cannot reach across rooms.
+select id from scheduled_sessions where id = $1 and room_id = $2;
+
+-- name: ListRoomRsvps :many
+-- Who is in, for everything ListRoomUpcoming returns. Ordered by when they
+-- said yes, so the first names in the line are the ones who committed first.
+select r.session_id, r.user_id, u.display_name
+from session_rsvps r
+join users u on u.id = r.user_id
+join scheduled_sessions s on s.id = r.session_id
+where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
+order by r.created_at;

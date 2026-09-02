@@ -66,6 +66,7 @@
 		onSchedule,
 		onReschedule,
 		onUnschedule,
+		onRsvp,
 		icsToken = '',
 		onRotateIcs,
 	}: {
@@ -97,6 +98,7 @@
 		onSchedule: (name: string, json: string, startsAt: string) => void;
 		onReschedule: (id: string, startsAt: string) => void;
 		onUnschedule: (id: string) => void;
+		onRsvp: (id: string, going: boolean) => void;
 		/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
 		icsToken?: string;
 		onRotateIcs: () => void;
@@ -385,6 +387,7 @@
 		schedule: (name, json, at) => onSchedule(name, json, at),
 		reschedule: (id, at) => onReschedule(id, at),
 		unschedule: (id) => onUnschedule(id),
+		rsvp: (id, going) => onRsvp(id, going),
 		rotateIcs: () => onRotateIcs(),
 		setRole: (userId, next) => onRole(userId, next),
 		removeMember: (userId) => onRemove(userId),

@@ -27,6 +27,12 @@
 
 	/** Due enough to offer "start now" — the same window the card always used. */
 	const due = (iso: string) => Date.parse(iso) - Date.now() < 15 * 60_000;
+
+	/** A plan with an RSVP is what #450 calls an event; no second object. */
+	const going = (entry: { going?: { id: string; displayName: string }[] }) =>
+		entry.going ?? [];
+	const youAreIn = (entry: { going?: { id: string; displayName: string }[] }) =>
+		going(entry).some((who) => who.id === room.you.id);
 </script>
 
 <div class="page">
@@ -101,6 +107,27 @@
 									class="text-muted hover:text-ink text-[11px] underline"
 									>remove</button
 								>
+							{/if}
+						</span>
+					</div>
+					<!-- Being there is not a role (#450): every member says yes for
+					     themselves, and there is no maybe. -->
+					<div class="mt-2 flex flex-wrap items-center gap-3">
+						<button
+							onclick={() => room.rsvp(entry.id, !youAreIn(entry))}
+							disabled={room.adminBusy}
+							class="btn btn-xs disabled:opacity-40 {youAreIn(entry)
+								? 'btn-secondary'
+								: 'btn-primary'}"
+							>{youAreIn(entry) ? "You're in" : "I'm in"}</button
+						>
+						<span class="text-muted text-xs">
+							{#if going(entry).length}
+								{going(entry)
+									.map((who) => who.displayName)
+									.join(', ')} · {going(entry).length} in
+							{:else}
+								nobody has said yes yet
 							{/if}
 						</span>
 					</div>

@@ -201,6 +201,10 @@
 					})}
 				onUnschedule={(id: string) =>
 					act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
+				onRsvp={(id: string, going: boolean) =>
+					act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
+						method: going ? 'PUT' : 'DELETE',
+					})}
 				icsToken={room.icsToken ?? ''}
 				onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
 				adminBusy={busy}

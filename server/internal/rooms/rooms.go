@@ -138,6 +138,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms/{slug}/schedule", s.handleSchedule)
 	mux.HandleFunc("PATCH /api/rooms/{slug}/schedule/{id}", s.handleReschedule)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}", s.handleUnschedule)
+	mux.HandleFunc("PUT /api/rooms/{slug}/schedule/{id}/rsvp", s.handleRsvp)
+	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}/rsvp", s.handleRsvp)
 	mux.HandleFunc("GET /api/rooms/{slug}/calendar/{token}", s.handleCalendar)
 	mux.HandleFunc("POST /api/rooms/{slug}/calendar/rotate", s.handleRotateIcs)
 	mux.HandleFunc("GET /api/schedule", s.handleMySchedule)
@@ -366,11 +368,26 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			response.Cheers = cheerSet(room.Cheers)
 			response.IcsToken = room.IcsToken
 			if rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID); err == nil {
+				// Who is in, for every plan at once (#450) — one query, not
+				// one per session.
+				going := map[string][]goingJSON{}
+				if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
+					for _, row := range yes {
+						id := store.UUIDString(row.SessionID)
+						going[id] = append(going[id], goingJSON{
+							ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
+						})
+					}
+				} else {
+					s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
+				}
 				for _, row := range rows {
+					id := store.UUIDString(row.ID)
 					response.Upcoming = append(response.Upcoming, scheduledJSON{
-						ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+						ID: id, WorkoutName: row.WorkoutName,
 						WorkoutJSON: string(row.WorkoutJson),
 						StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+						Going: going[id],
 					})
 				}
 			}
