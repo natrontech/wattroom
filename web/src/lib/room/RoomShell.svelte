@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { MessageSquare } from '@lucide/svelte';
-	import { onDestroy } from 'svelte';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { createProfileStore } from '$lib/profile.svelte';
 	import { flatten } from '$lib/workout/engine';
 	import { buildShelf } from '$lib/workout/shelf';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage } from '$lib/room/stage';
-	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
+	import { parseSharedSegments } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { uploadImage } from '$lib/chat/upload';
 	import { createRiders } from '$lib/room/riders.svelte';
@@ -28,8 +26,6 @@
 	import TvMode from '$lib/room/TvMode.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
-	import { createRecording } from '$lib/room/recording.svelte';
-	import { createRide } from '$lib/room/ride.svelte';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
@@ -112,14 +108,16 @@
 	const connection = roomConnection.join(slug);
 	const live = connection.live;
 	const av = connection.av;
+	// Owned by the connection, not by this component (#521): the trainer and
+	// what it has recorded outlive every navigation inside the room, and the
+	// ride's metrics keep one seq stream for the whole session (#522).
+	const profile = connection.profile;
+	const recording = connection.recording;
+	const rideCtl = connection.ride;
 	// The rail's "voice is busy" link lands you IN the channel, not next to it
 	// (#251): ?voice=1 auto-joins once on mount; join() is idempotent.
 	if (page.url.searchParams.has('voice') && account.me?.avEnabled)
 		void av.join();
-	const profile = createProfileStore();
-	onDestroy(() => {
-		rideCtl.stop();
-	});
 
 	// Space is push-to-talk while that mode is on — never while typing.
 
@@ -139,7 +137,7 @@
 			role,
 	);
 	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
-	const shared = $derived(live.tick?.state);
+	const shared = $derived(connection.shared());
 	const running = $derived(shared?.phase === 'running');
 	const phase = $derived(
 		shared?.phase === 'countdown'
@@ -148,21 +146,11 @@
 				? ('live' as const)
 				: ('lounge' as const),
 	);
-	const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
-	const segments = $derived(parsed.segments);
+	const segments = $derived(connection.segments());
 
-	// ── Composed, not owned (code-quality.md): the ride, the recording it
-	// writes, the summary that reads it, and the reminders — each its own
-	// module, the shell wiring them to the socket and the profile. ──────────
-	const recording = createRecording();
-	const rideCtl = createRide({
-		live,
-		profile,
-		recording,
-		myId: () => account.me?.id,
-		shared: () => shared,
-		segments: () => segments,
-	});
+	// ── Composed, not owned (code-quality.md): the summary that reads the
+	// recording, the roster, and the reminders — each its own module, the
+	// shell wiring them to the connection. ─────────────────────────────────
 	const summary = createSummary({
 		slug: () => slug,
 		recording,
@@ -191,7 +179,7 @@
 		running: () => running,
 		shared: () => shared,
 		segments: () => segments,
-		workout: () => parsed.workout,
+		workout: () => connection.workout(),
 	});
 	const riders = $derived(roster.riders);
 	const you = $derived(roster.you);
@@ -297,7 +285,7 @@
 			return segments;
 		},
 		get workout() {
-			return parsed.workout;
+			return connection.workout();
 		},
 		get shared() {
 			return shared;
@@ -582,6 +570,22 @@
 						? Math.round((Date.now() - droppedAt) / 1000)
 						: 0}
 					onRecover={() => location.reload()}
+				/>
+			</div>
+		{:else if rideCtl.fault}
+			<!-- The trainer's own state, which the room never showed (#520): the
+			     mock has simulated this banner since #39 and the product could
+			     not reach it, so "Unpair trainer" was the only thing a rider
+			     with no watts had to go on. Ranked above voice — a ride with no
+			     power is broken; a ride with no talking is not. -->
+			<div class="shrink-0 px-5 pt-4">
+				<FaultBanner
+					fault={{ kind: 'trainer', state: rideCtl.fault }}
+					bufferedSeconds={0}
+					onRecover={() => {
+						rideCtl.unpair();
+						void rideCtl.ride(new FtmsTrainer());
+					}}
 				/>
 			</div>
 		{:else if av.status === 'reconnecting'}

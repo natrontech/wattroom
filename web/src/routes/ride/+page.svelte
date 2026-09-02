@@ -2,6 +2,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -114,6 +115,10 @@
 
 	async function begin(trainer: Trainer) {
 		error = null;
+		// One trainer, one rider (#521): the room now holds its BLE connection
+		// for as long as you stand in it, so a solo ride has to take it back
+		// rather than open a second control channel to the same hardware.
+		roomConnection.current?.ride.unpair();
 		try {
 			// Crash safety (#19): every recorded sample also lands in IndexedDB,
 			// so a browser crash at minute 55 still has a ride to export.

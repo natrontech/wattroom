@@ -2,9 +2,16 @@ import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import { notify } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
+import { createProfileStore } from '$lib/profile.svelte';
+import { pullProfile } from '$lib/profile-sync.svelte';
 import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
+import { createRecording } from '$lib/room/recording.svelte';
+import { createRide } from '$lib/room/ride.svelte';
+import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
+import type { SessionState } from '$lib/protocol';
+import type { Segment, Workout } from '$lib/workout/types';
 
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
@@ -20,6 +27,16 @@ type Connection = {
 	slug: string;
 	live: ReturnType<typeof createRoomLive>;
 	av: ReturnType<typeof createRoomAv>;
+	/** The rider's FTP/weight cache, pulled from the account (ADR-0009). */
+	profile: ReturnType<typeof createProfileStore>;
+	/** What you rode this session — the ride writes it, the summary reads it. */
+	recording: ReturnType<typeof createRecording>;
+	/** The trainer, and the targets it holds. Lives here, not on a page (#521). */
+	ride: ReturnType<typeof createRide>;
+	/** The shared session and its workout, parsed once per connection. */
+	shared: () => SessionState | undefined;
+	segments: () => Segment[];
+	workout: () => Workout | null;
 	dispose: () => void;
 };
 
@@ -49,7 +66,48 @@ function connect(slug: string): Connection {
 	// the way index-tracking did (audit #219).
 	let lastChatAt = Date.now();
 	let lastPhase: string | null = null;
+	// Assigned inside the root below, which runs synchronously.
+	let profile!: ReturnType<typeof createProfileStore>;
+	let recording!: ReturnType<typeof createRecording>;
+	let ride!: ReturnType<typeof createRide>;
+	let sharedOf!: () => SessionState | undefined;
+	let segmentsOf!: () => Segment[];
+	let workoutOf!: () => Workout | null;
 	const dispose = $effect.root(() => {
+		// The trainer belongs to the connection, not to a page (#521). It is a
+		// property of standing in the room, exactly like the socket and the
+		// voice channel — and the room's shell unmounting on the way to
+		// /workouts used to disconnect it while you were still in the room.
+		//
+		// It also gives the metrics stream one `seq` per session (#522): a
+		// per-mount counter restarted at 1, and the server's ride record
+		// dedupes by seq, so every sample after a return to the room was
+		// dropped as a duplicate. The tiles kept moving, which is why it read
+		// as half-working; the execution meter and the saved ride did not.
+		profile = createProfileStore();
+		recording = createRecording();
+		// The account is the truth for FTP and weight (ADR-0009). The root
+		// layout pulls on boot; a connection that outlives many pages has to
+		// pull too, or a ramp-measured FTP never reaches the room's targets.
+		$effect(() => {
+			if (account.me) pullProfile(profile);
+		});
+
+		const shared = $derived(live.tick?.state);
+		const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
+		sharedOf = () => shared;
+		segmentsOf = () => parsed.segments;
+		workoutOf = () => parsed.workout;
+
+		ride = createRide({
+			live,
+			profile,
+			recording,
+			myId: () => account.me?.id,
+			shared: () => shared,
+			segments: () => parsed.segments,
+		});
+
 		$effect(() => {
 			const roster = live.tick?.roster ?? [];
 			const ids = new Set(roster.map((rider) => rider.id));
@@ -184,7 +242,18 @@ function connect(slug: string): Connection {
 			}
 		});
 	});
-	return { slug, live, av, dispose };
+	return {
+		slug,
+		live,
+		av,
+		profile,
+		recording,
+		ride,
+		shared: sharedOf,
+		segments: segmentsOf,
+		workout: workoutOf,
+		dispose,
+	};
 }
 
 export const roomConnection = {
@@ -198,9 +267,12 @@ export const roomConnection = {
 		current = connect(slug);
 		return current;
 	},
-	/** The explicit act. Closes the socket, hangs up voice. */
+	/** The explicit act. Ends the ride, closes the socket, hangs up voice. */
 	leave() {
 		if (!current) return;
+		// Before dispose: stop() closes the ride buffer and releases the
+		// trainer, and both need the reactive scope the root is about to end.
+		current.ride.stop();
 		current.dispose();
 		current.live.close();
 		current.av.leave();
