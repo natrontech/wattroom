@@ -9,6 +9,12 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import {
+		MARK_SURFACE,
+		MUTED_MARK,
+		tileFrame,
+		VOICE_DOT,
+	} from '$lib/room/presence-marks';
 	import { STRIP_MAX, orderBySpoke } from './room-strip';
 	import { MicOff } from '@lucide/svelte';
 
@@ -53,15 +59,16 @@
 				{@const video = av.videoOf[rider.id]}
 				{@const riding = (metrics[rider.id]?.watts ?? 0) > 0}
 				<!-- A tile is the way back to the Lounge — and at the sidebar's
-				     width it is already a thumb-sized target (ux.md). Voice is
-				     green here as it is on the you-panel and the roster. -->
+				     width it is already a thumb-sized target (ux.md). The marks
+				     are the Lounge tile's own (presence-marks.ts, #505): one way
+				     to say speaking, in voice, muted and riding, at half the
+				     size. -->
 				<a
 					href="/r/{conn.slug}"
 					title="{rider.name} · back to the Lounge"
-					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {av
-						.speaking[rider.id]
-						? 'ring-z4 ring-2'
-						: 'ring-ink/10 ring-1'}"
+					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
+						!!av.speaking[rider.id],
+					)}"
 				>
 					{#if video}
 						{#key video}
@@ -76,17 +83,23 @@
 						</div>
 					{/if}
 					<span
-						class="bg-paper/70 text-ink absolute inset-x-0 bottom-0 flex items-center gap-1 px-1 py-px text-[9px]"
+						class="{MARK_SURFACE} absolute inset-x-0 bottom-0 flex items-center gap-1 px-1 py-px text-[9px]"
 					>
 						<span class="truncate">{rider.name}</span>
 						{#if av.voice[rider.id] === 'muted'}
-							<MicOff size={10} class="text-muted shrink-0" />
+							<MicOff size={10} class={MUTED_MARK} />
+						{:else if av.voice[rider.id] === 'live'}
+							<span
+								class="{VOICE_DOT} ml-auto"
+								title="in voice"
+								aria-label="in voice"
+							></span>
 						{/if}
 					</span>
 					{#if riding}
 						<!-- Riding is motion, never a dot (ADR-0020). -->
 						<span
-							class="bg-surface/80 absolute top-1 right-1 rounded-full px-1 py-0.5"
+							class="{MARK_SURFACE} absolute top-1 right-1 rounded-full px-1 py-0.5"
 						>
 							<RidingBars size={8} />
 						</span>

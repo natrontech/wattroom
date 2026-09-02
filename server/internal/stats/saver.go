@@ -224,6 +224,24 @@ func BuildRideRow(
 	}, nil
 }
 
+// DecodeSamples reads a blob BuildRideRow wrote, and is the only place that
+// knows the format on the way back — the norm backfill, the Strava upload and
+// the ride detail endpoint all come through here rather than each opening
+// their own gzip reader.
+func DecodeSamples(blob []byte) ([]protocol.RiderMetrics, error) {
+	zr, err := gzip.NewReader(bytes.NewReader(blob))
+	if err != nil {
+		return nil, fmt.Errorf("stats: sample blob: %w", err)
+	}
+	defer func() { _ = zr.Close() }()
+	var samples []protocol.RiderMetrics
+	// The blob was written by us and is size-bounded at write time.
+	if err := json.NewDecoder(zr).Decode(&samples); err != nil {
+		return nil, fmt.Errorf("stats: sample blob: %w", err)
+	}
+	return samples, nil
+}
+
 // StreakXP is the SPEC XP streak term, deferred from #25: the rider's own
 // consecutive-week streak, read before this ride lands so this week only
 // counts if already ridden — then this ride extends it next time. A read

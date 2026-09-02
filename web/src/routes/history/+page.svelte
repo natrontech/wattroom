@@ -19,9 +19,11 @@
 	import {
 		contextMenu,
 		MENU_HINT,
+		type MenuEntry,
 		type MenuItem,
 	} from '$lib/context-menu.svelte';
-	import { Lock, Users } from '@lucide/svelte';
+	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
+	import { Lock, Trash2, Users } from '@lucide/svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
@@ -59,13 +61,27 @@
 		);
 	}
 
-	// The row's one verb, as a menu item too (#486). A device-only ride has no
-	// server to flip, so its row offers nothing and keeps the browser's menu.
-	const shareItem = (ride: ServerRide): MenuItem => ({
-		label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
-		icon: ride.sharedWithFriends ? Lock : Users,
-		onSelect: () => void setShared(ride, !ride.sharedWithFriends),
-	});
+	// The ride the confirm is asking about; null while nothing is being deleted.
+	let deleting = $state<ServerRide | null>(null);
+
+	// The row's verbs, as menu items too (#486). A device-only ride has no
+	// server to flip or delete, so its row offers nothing and keeps the
+	// browser's menu. Delete opens the confirm rather than acting: unlike
+	// sharing, it cannot be handed back by an undo toast (errors.md).
+	const rowMenu = (ride: ServerRide): MenuEntry[] => [
+		{
+			label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
+			icon: ride.sharedWithFriends ? Lock : Users,
+			onSelect: () => void setShared(ride, !ride.sharedWithFriends),
+		} satisfies MenuItem,
+		'separator',
+		{
+			label: 'Delete ride',
+			icon: Trash2,
+			danger: true,
+			onSelect: () => (deleting = ride),
+		} satisfies MenuItem,
+	];
 
 	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -142,12 +158,23 @@
 	<li
 		id="ride-{ride.id}"
 		title={server ? MENU_HINT : undefined}
-		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
+		class="panel relative flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
 		ride.id
 			? 'ring-z2/70 ring-1'
 			: ''}"
-		{@attach contextMenu(() => (server ? [shareItem(server)] : []))}
+		{@attach contextMenu(() => (server ? rowMenu(server) : []))}
 	>
+		{#if server}
+			<!-- The whole row opens the ride (#503): a tap target the size of the
+			     row, which is what a rider off the bike reaches for. Overlaid
+			     rather than wrapping, so the share button stays its own control. -->
+			<a
+				href="/history/{ride.id}"
+				class="focus-visible:ring-neon/60 absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+			>
+				<span class="sr-only">Open {ride.workoutName}</span>
+			</a>
+		{/if}
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
 			<span class="eyebrow">{badge}</span>
@@ -167,7 +194,7 @@
 			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->
 			<button
 				onclick={() => void setShared(server, !server.sharedWithFriends)}
-				class="btn btn-ghost btn-xs -my-1 -mr-2"
+				class="btn btn-ghost btn-xs relative -my-1 -mr-2"
 				title={server.sharedWithFriends
 					? 'Friends see this ride on your page — make it private'
 					: 'Only you see this ride — share it with your friends'}
@@ -346,5 +373,19 @@
 		<button onclick={() => device.clear()} class="btn btn-danger mt-4"
 			>Clear device rides</button
 		>
+	{/if}
+
+	{#if deleting}
+		{@const gone = deleting}
+		<DeleteRideDialog
+			ride={gone}
+			onclose={() => (deleting = null)}
+			ondeleted={() => {
+				rides = rides?.filter((ride) => ride.id !== gone.id) ?? null;
+				deleting = null;
+				// The charts count this ride — they have to be asked again.
+				void loadProgression();
+			}}
+		/>
 	{/if}
 </main>

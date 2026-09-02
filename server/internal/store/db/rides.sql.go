@@ -147,6 +147,25 @@ func (q *Queries) CurveBests(ctx context.Context, userID pgtype.UUID) (CurveBest
 	return i, err
 }
 
+const deleteRide = `-- name: DeleteRide :execrows
+delete from rides where id = $1 and user_id = $2
+`
+
+type DeleteRideParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Owner-only by the where clause. The medals awarded for this ride go with
+// it through medals.ride_id's on-delete-cascade — no cleanup pass to forget.
+func (q *Queries) DeleteRide(ctx context.Context, arg DeleteRideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRide, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteUser = `-- name: DeleteUser :exec
 delete from users where id = $1
 `
@@ -157,7 +176,12 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getRide = `-- name: GetRide :one
-select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp, norm_watts from rides where id = $1 and user_id = $2
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts,
+       coalesce(rm.slug, '')::text as room_slug,
+       coalesce(rm.name, '')::text as room_name
+from rides r
+left join rooms rm on rm.id = r.room_id
+where r.id = $1 and r.user_id = $2
 `
 
 type GetRideParams struct {
@@ -165,9 +189,34 @@ type GetRideParams struct {
 	UserID pgtype.UUID
 }
 
-func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) {
+type GetRideRow struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	RoomID      pgtype.UUID
+	WorkoutName string
+	StartedAt   pgtype.Timestamptz
+	Seconds     int32
+	AvgWatts    int16
+	Kj          int32
+	Execution   float32
+	FtpWatts    int16
+	Samples     []byte
+	SharedAt    pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	Curve       []byte
+	Xp          int32
+	NormWatts   *int16
+	RoomSlug    string
+	RoomName    string
+}
+
+// The one per-ride blob read ADR-0016 allows: a rider opening a single ride
+// is exactly what the samples are kept for. Owner-scoped, so someone else's
+// ride reads as absent rather than as forbidden. The room comes along because
+// the detail page names it — empty strings for a solo ride.
+func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, error) {
 	row := q.db.QueryRow(ctx, getRide, arg.ID, arg.UserID)
-	var i Ride
+	var i GetRideRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -185,6 +234,8 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (Ride, error) 
 		&i.Curve,
 		&i.Xp,
 		&i.NormWatts,
+		&i.RoomSlug,
+		&i.RoomName,
 	)
 	return i, err
 }
@@ -217,6 +268,42 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 		&i.StravaUpload,
 	)
 	return i, err
+}
+
+const listRideMedals = `-- name: ListRideMedals :many
+select m.kind, m.awarded_at, rm.name as room_name
+from medals m
+join rooms rm on rm.id = m.room_id
+where m.ride_id = $1
+order by m.kind
+`
+
+type ListRideMedalsRow struct {
+	Kind      string
+	AwardedAt pgtype.Timestamptz
+	RoomName  string
+}
+
+// What one ride won. A medal is always a room's, so the room names itself
+// here rather than being looked up a second time.
+func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]ListRideMedalsRow, error) {
+	rows, err := q.db.Query(ctx, listRideMedals, rideID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRideMedalsRow
+	for rows.Next() {
+		var i ListRideMedalsRow
+		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.RoomName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRidesMissingNorm = `-- name: ListRidesMissingNorm :many

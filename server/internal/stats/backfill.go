@@ -1,13 +1,9 @@
 package stats
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/json"
 	"log/slog"
 
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -45,17 +41,11 @@ func BackfillNormWatts(ctx context.Context, st *store.Store, log *slog.Logger) {
 	}
 }
 
-// normFromBlob decodes the gzip-JSON sample blob (BuildRideRow's format). An
-// unreadable blob yields 0 — stored, so the row leaves the backfill queue
-// instead of erroring forever.
+// normFromBlob scores one stored sample blob. An unreadable blob yields 0 —
+// stored, so the row leaves the backfill queue instead of erroring forever.
 func normFromBlob(blob []byte) int {
-	zr, err := gzip.NewReader(bytes.NewReader(blob))
+	samples, err := DecodeSamples(blob)
 	if err != nil {
-		return 0
-	}
-	defer func() { _ = zr.Close() }()
-	var samples []protocol.RiderMetrics
-	if err := json.NewDecoder(zr).Decode(&samples); err != nil {
 		return 0
 	}
 	watts := make([]int, len(samples))

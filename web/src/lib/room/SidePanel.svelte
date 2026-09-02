@@ -2,7 +2,6 @@
 	import type { Snippet } from 'svelte';
 	import {
 		ListPlus,
-		MessageSquare,
 		CalendarClock,
 		Copy,
 		Crown,
@@ -34,6 +33,7 @@
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -75,6 +75,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RiderVolume from '$lib/room/RiderVolume.svelte';
+	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import type { RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
@@ -201,17 +202,7 @@
 		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
-		{@attach contextMenu(() =>
-			rider.you
-				? []
-				: [
-						{
-							label: 'Message',
-							icon: MessageSquare,
-							onSelect: () => void goto(`/messages/dm/${rider.id}`),
-						},
-					],
-		)}
+		{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
 	>
 		<span class="relative shrink-0">
 			<Avatar name={rider.name} size={22} />
@@ -354,6 +345,8 @@
 								title="leave voice"><LogOut size={13} /> Leave voice</button
 							>
 						{/if}
+						<!-- The mix and the gate, without leaving the room (#477). -->
+						<QuickAudio />
 					</div>
 				{/if}
 				<ul class="px-1">

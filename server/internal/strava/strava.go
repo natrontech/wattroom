@@ -6,7 +6,6 @@ package strava
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/fitexport"
-	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -151,12 +150,8 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 }
 
 func (s *Service) encode(ride db.GetRideForUploadRow) ([]byte, error) {
-	zr, err := gzip.NewReader(bytes.NewReader(ride.Samples))
+	metrics, err := stats.DecodeSamples(ride.Samples)
 	if err != nil {
-		return nil, err
-	}
-	var metrics []protocol.RiderMetrics
-	if err := json.NewDecoder(zr).Decode(&metrics); err != nil {
 		return nil, err
 	}
 	samples := make([]fitexport.Sample, len(metrics))

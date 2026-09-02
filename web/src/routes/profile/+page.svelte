@@ -570,10 +570,11 @@
 		</section>
 
 		<!-- Privacy is architecture: say what is true, not what sounds good. -->
-		<!-- ADR-0020 moved these off the rail: device pickers, the voice gate and
-		     the per-rider mixer are set once at a desk, not reached for
-		     mid-interval, and they were living in a 208 px strip you also
-		     navigate rooms with. -->
+		<!-- ADR-0020 moved these off the rail — they were living in a 208 px
+		     strip you also navigate rooms with. The gate and the mix turned out
+		     to be reached for mid-ride after all (#477), so the room carries a
+		     Sound panel with the same GateTune and MixFaders on it. This page
+		     stays the whole thing: the panel is the shortcut, not the home. -->
 		<section class="panel mt-8 p-6">
 			<h2 class="font-display font-bold">Voice &amp; audio</h2>
 			{#if !account.me?.avEnabled}

@@ -6,9 +6,9 @@
 	// stage above it only when someone is actually sharing. Tapping a tile
 	// focuses that rider: what "video-first" used to be a whole layout for,
 	// as a tap rather than a mode you have to remember you are in.
-	import { dev } from '$app/environment';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
+	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
@@ -16,10 +16,10 @@
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import {
 		Focus,
-		MessageSquare,
 		CalendarClock,
 		Columns2,
 		LayoutGrid,
@@ -33,21 +33,20 @@
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
 
-	// The tile's right-click (#465): focus is the click, the rest lives here.
-	function tileMenu(rider: (typeof room.riders)[number]) {
+	// The tile's right-click (#465): focus is the click, the rest is what
+	// every person in WattRoom offers — their page, the DM, the friend ask.
+	// Read the rider lazily: the roster is a new object every server tick, and
+	// an eager read re-attaches (and closed) the menu once a second (#529).
+	function tileMenu(rider: () => (typeof room.riders)[number]) {
 		return contextMenu(() => [
 			{
-				label: rider.id === room.focusId ? 'Unfocus' : `Focus ${rider.name}`,
+				label:
+					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
 				icon: Focus,
 				onSelect: () =>
-					room.setFocus(rider.id === room.focusId ? null : rider.id),
+					room.setFocus(rider().id === room.focusId ? null : rider().id),
 			},
-			{
-				label: 'Message',
-				icon: MessageSquare,
-				onSelect: () => void goto(`/messages/dm/${rider.id}`),
-				disabled: rider.you,
-			},
+			...personMenu(rider().id, goto, { you: rider().you }),
 		]);
 	}
 
@@ -154,25 +153,7 @@
 					/> Share screen{/if}
 			</button>
 		{/if}
-		{#if !room.trainer}
-			<button
-				onclick={() => room.pair()}
-				disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
-				class="btn btn-secondary">Pair trainer</button
-			>
-			{#if dev}
-				<!-- Dev-only (#123): simulated watts in a live room would count for
-				     medals, XP and streaks — the fairness layer takes no fakes. -->
-				<button
-					onclick={() => room.pairSimulated()}
-					class="btn btn-ghost btn-xs">Ride simulated</button
-				>
-			{/if}
-		{:else}
-			<button onclick={() => room.unpair()} class="btn btn-ghost btn-xs"
-				>Unpair trainer</button
-			>
-		{/if}
+		<TrainerButton />
 		{#if room.onStage}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
@@ -198,10 +179,6 @@
 			><MonitorUp size={13} /> TV</button
 		>
 	</div>
-
-	{#if room.rideError}
-		<p class="text-danger mb-3 text-xs">{room.rideError}</p>
-	{/if}
 
 	<div class={wrap}>
 		{#if room.onStage}
@@ -234,7 +211,7 @@
 							onclick={() => room.setFocus(null)}
 							class="block w-full text-left"
 							title="tap to unfocus"
-							{@attach tileMenu(focused)}>{@render tile(focused)}</button
+							{@attach tileMenu(() => focused!)}>{@render tile(focused)}</button
 						>
 						<p class="text-muted mt-2 text-xs">
 							<span class="text-ink font-medium">{focused.name}</span> is focused
@@ -247,7 +224,7 @@
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}"
-								{@attach tileMenu(rider)}>{@render tile(rider)}</button
+								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
 							>
 						{/each}
 					</div>
@@ -264,10 +241,10 @@
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}"
-								{@attach tileMenu(rider)}>{@render tile(rider)}</button
+								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
 							>
 						{:else}
-							<div {@attach tileMenu(rider)}>{@render tile(rider)}</div>
+							<div {@attach tileMenu(() => rider)}>{@render tile(rider)}</div>
 						{/if}
 					{/each}
 				</div>
