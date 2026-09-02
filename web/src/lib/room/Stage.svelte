@@ -11,7 +11,7 @@
 		ZoomOut,
 	} from '@lucide/svelte';
 	import { dragPane, keepSize } from '$lib/pane';
-	import { offerSeat } from '$lib/room/stage-slot.svelte';
+	import { offerSeat, STAGE_SEAT } from '$lib/room/stage-slot.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import {
 		FIT,
@@ -214,7 +214,10 @@
 			<!-- The player itself flies here (#316). Nothing may be drawn over
 			     it — YouTube RMF — so the frame stays empty and the chrome
 			     below is suppressed while it is seated. -->
-			<div class="h-full w-full" {@attach (node) => offerSeat(node, 2)}></div>
+			<div
+				class="h-full w-full"
+				{@attach (node) => offerSeat(node, STAGE_SEAT)}
+			></div>
 		{:else}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div

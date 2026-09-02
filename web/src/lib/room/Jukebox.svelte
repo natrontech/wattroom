@@ -16,7 +16,12 @@
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
-	import { offerSeat, setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
+	import {
+		COLUMN_SEAT,
+		offerSeat,
+		setPopped,
+		stageSlot,
+	} from '$lib/room/stage-slot.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -95,6 +100,19 @@
 	// Three lines of queue, the rest on request; history folded (#461): the
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
+	// The picture belongs to whichever surface actually holds the player
+	// (#489). The stage and TV mode outrank this column, and a popped-out
+	// player has its own window — in both cases the deck showed a box the
+	// size of a video with nothing in it, or a still of what was already on
+	// screen elsewhere. Then it is words and buttons only, and it says where
+	// the picture went.
+	const elsewhere = $derived(
+		stageSlot.popped
+			? 'in the floating window'
+			: (stageSlot.ownerPriority ?? COLUMN_SEAT) > COLUMN_SEAT
+				? 'on the stage'
+				: null,
+	);
 	let showAllQueue = $state(false);
 	let url = $state('');
 	let addError = $state<string | null>(null);
@@ -150,26 +168,20 @@
 		     under that. One thing per line reads at arm's length; a thumbnail
 		     beside a truncated title and four identical grey buttons did not. -->
 		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
-			{#if stageSlot.popped}
-				<div
-					class="bg-surface relative aspect-video w-full overflow-hidden rounded-lg"
-				>
-					<img
-						src={thumbnailFor(current.videoId)}
-						alt=""
-						loading="lazy"
-						referrerpolicy="no-referrer"
-						class="h-full w-full object-cover"
-					/>
-				</div>
+			{#if elsewhere}
+				<p class="text-muted text-[11px]">Playing {elsewhere}.</p>
 			{:else}
 				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
 				     the player clears RMF's 200×200 at the column's width; the stage
 				     outranks it when the jukebox is on stage. -->
+				<!-- The seat. Its height is clamped rather than tied to the panel's
+				     width: a dragged-wide panel gave a 16:10 picture 300 px of
+				     height and left the chat a sliver (rider report). Still ≥200 px
+				     tall and wider than that, so RMF's floor holds. -->
 				<div
 					class="bg-surface w-full overflow-hidden rounded-lg"
-					style="min-height: 200px; aspect-ratio: 16 / 10"
-					{@attach (node) => offerSeat(node, 1)}
+					style="height: clamp(200px, 24vh, 240px)"
+					{@attach (node) => offerSeat(node, COLUMN_SEAT)}
 				></div>
 			{/if}
 			<!-- The hint sits on the words, never over the player (RMF). -->

@@ -10,6 +10,14 @@
  * on it (#316), which outranks the column. No offer means the dock floats,
  * which is also how RMF's visible-while-playing rule holds off the room page.
  */
+/**
+ * Who may hold the player, weakest first. The highest live offer wins, so a
+ * shared screen on the stage and TV mode both take it off the people column.
+ */
+export const COLUMN_SEAT = 1;
+export const STAGE_SEAT = 2;
+export const TV_SEAT = 3;
+
 export interface Seat {
 	x: number;
 	y: number;
@@ -28,9 +36,20 @@ function readPopped(): boolean {
 	}
 }
 
-export const stageSlot = $state<{ seat: Seat | null; popped: boolean }>({
+export const stageSlot = $state<{
+	seat: Seat | null;
+	popped: boolean;
+	/**
+	 * The priority of the surface currently holding the player, or null when
+	 * nobody is. A surface reads this to know whether the picture is ITS to
+	 * draw (#489): the jukebox deck must not reserve a video box while the
+	 * stage or TV mode has the player, or the column keeps an empty hole.
+	 */
+	ownerPriority: number | null;
+}>({
 	seat: null,
 	popped: readPopped(),
+	ownerPriority: null,
 });
 
 export function setPopped(popped: boolean): void {
@@ -65,20 +84,29 @@ const offers = new Map<HTMLElement, { priority: number; seat: Seat | null }>();
 let last: Seat | null = null;
 
 /** The highest-priority live offer wins; ties go to whoever offered last. */
-export function bestOffer(
+export function winningOffer(
 	all: Iterable<{ priority: number; seat: Seat | null }>,
-): Seat | null {
+): { priority: number; seat: Seat } | null {
 	let best: { priority: number; seat: Seat } | undefined;
 	for (const offer of all) {
 		if (!offer.seat) continue;
 		if (!best || offer.priority >= best.priority)
 			best = { priority: offer.priority, seat: offer.seat };
 	}
-	return best?.seat ?? null;
+	return best ?? null;
+}
+
+export function bestOffer(
+	all: Iterable<{ priority: number; seat: Seat | null }>,
+): Seat | null {
+	return winningOffer(all)?.seat ?? null;
 }
 
 function settle() {
-	const next = bestOffer(offers.values());
+	const best = winningOffer(offers.values());
+	const next = best?.seat ?? null;
+	if (stageSlot.ownerPriority !== (best?.priority ?? null))
+		stageSlot.ownerPriority = best?.priority ?? null;
 	if (sameSeat(last, next)) return;
 	last = next;
 	stageSlot.seat = next;
