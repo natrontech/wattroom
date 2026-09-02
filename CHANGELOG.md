@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.10] - 2026-09-02
+
+### Fixed
+
+- Fixed a bug from the last release: with a video on the stage, moving between a room's places changed the address but left the page where it was. The jukebox panel keeps a picture-sized box while the stage has the video — that comes back once the underlying fault is fixed — but it no longer grows with the panel and takes the chat's room.
+
 ## [2026.09.9] - 2026-09-02
 
 ### Added
@@ -265,7 +271,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.9...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.10...HEAD
+[2026.09.10]: https://github.com/natrontech/wattroom/compare/2026.09.9...2026.09.10
 [2026.09.9]: https://github.com/natrontech/wattroom/compare/2026.09.8...2026.09.9
 [2026.09.8]: https://github.com/natrontech/wattroom/compare/2026.09.7...2026.09.8
 [2026.09.7]: https://github.com/natrontech/wattroom/compare/2026.09.6...2026.09.7
