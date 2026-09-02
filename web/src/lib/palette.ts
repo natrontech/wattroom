@@ -12,7 +12,7 @@
  *
  * Pure: the DOM lives in palette.svelte.ts, so every rule here is testable.
  */
-import { fitContrast, normalizeHue, oklchToHex, type Oklch } from './color';
+import { fitContrast, oklchToHex, type Oklch } from './color';
 
 export const TOKENS = [
 	'surface',

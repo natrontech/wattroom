@@ -4,7 +4,6 @@
 		ArrowRight,
 		CalendarClock,
 		ChartColumn,
-		Flame,
 		Plus,
 		Radio,
 	} from '@lucide/svelte';
@@ -18,11 +17,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
-	import {
-		fetchProgression,
-		FORM_SENTENCES,
-		type LoadSummary,
-	} from '$lib/progression';
+	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
 	import { summarize } from '$lib/changelog';
@@ -31,17 +26,6 @@
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here and
 	// retired /rooms — the sidebar is the room list.
-	interface RoomEntry {
-		slug: string;
-		name: string;
-		icon?: string;
-		connected?: number;
-		riders?: string[];
-		voice?: string[];
-		phase?: string;
-		memberCount?: number;
-		nextSession?: { workoutName: string; startsAt: string };
-	}
 	interface Ride {
 		id: string;
 		workoutName: string;

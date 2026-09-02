@@ -39,11 +39,6 @@
 	const kj = $derived(
 		Math.round(samples.reduce((sum, s) => sum + s.watts, 0) / 1000),
 	);
-	const avgWatts = $derived(
-		seconds > 0
-			? Math.round(samples.reduce((sum, s) => sum + s.watts, 0) / seconds)
-			: 0,
-	);
 	const np = $derived(normalizedPower(samples));
 	const zones = $derived(zoneSeconds(samples, ftp));
 	const totalZoneSeconds = $derived(zones.reduce((a, b) => a + b, 0));

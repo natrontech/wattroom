@@ -17,7 +17,6 @@
 		Rocket,
 		Skull,
 		Sunrise,
-		Trophy,
 		Users,
 		Zap,
 	} from '@lucide/svelte';

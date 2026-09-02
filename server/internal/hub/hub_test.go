@@ -107,6 +107,80 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 }
 
+func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
+	// #522: a client's seq counter restarts whenever the client does — a
+	// reload, or a re-paired trainer. Deduping on seq alone then dropped
+	// every sample after the restart, and silently: the live tiles never
+	// consult the record, so the only symptoms were a frozen execution meter
+	// and a saved ride that stopped mid-session.
+	const sent = 100
+	live := func(seqs ...int) []protocol.RiderMetrics {
+		out := make([]protocol.RiderMetrics, 0, len(seqs))
+		for _, seq := range seqs {
+			out = append(out, protocol.RiderMetrics{Watts: 200, Seq: seq})
+		}
+		return out
+	}
+
+	tests := []struct {
+		name   string
+		after  []protocol.RiderMetrics // live, after seqs 1..100
+		replay []protocol.RiderMetrics // then a reconnect's backfill
+		want   int
+	}{
+		{
+			name:  "a re-paired trainer starting over at 1 keeps recording",
+			after: live(1, 2, 3),
+			want:  sent + 3,
+		},
+		{
+			name:  "a stream that simply carries on is not a restart",
+			after: live(101, 102),
+			want:  sent + 2,
+		},
+		{
+			name:   "a replay still dedupes against what it already sent",
+			replay: live(99, 100, 101),
+			want:   sent + 1,
+		},
+		{
+			name:   "a replay after a restart dedupes on the new stream",
+			after:  live(1, 2, 3),
+			replay: live(2, 3, 4),
+			want:   sent + 4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rm := newRoom("test")
+			rm.session.pick("Openers", "{}", 3600)
+			// Started "now" so the timeline cannot run itself out from under
+			// the samples — state() closes a session whose total has elapsed.
+			now := time.Now()
+			rm.session.start(now)
+			rm.session.state(now.Add(countdownSeconds * time.Second))
+
+			for seq := 1; seq <= sent; seq++ {
+				rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200, Seq: seq})
+			}
+			if got := rm.record.count("jan"); got != sent {
+				t.Fatalf("setup recorded %d samples, want %d", got, sent)
+			}
+
+			for _, m := range tt.after {
+				rm.setMetrics(protocol.Rider{ID: "jan"}, m)
+			}
+			if len(tt.replay) > 0 {
+				rm.backfill(protocol.Rider{ID: "jan"}, tt.replay)
+			}
+			if got := rm.record.count("jan"); got != tt.want {
+				t.Errorf("record holds %d samples, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 	// After a server restart the room comes back idle; the reconnect replay
 	// must still land — dropping it there is exactly the loss #19 prevents.

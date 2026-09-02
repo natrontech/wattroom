@@ -45,6 +45,12 @@ export function createRoomLive(slug: string) {
 	// socket comes back, everything since the drop replays as a backfill — the
 	// server dedupes by seq, so the overlap costs nothing.
 	let buffer: RideBuffer | null = null;
+	// The seq stream belongs HERE, beside the buffer that replays it and the
+	// gap marker the replay starts from (#522) — not to whoever happens to
+	// hold the trainer. One socket session, one stream: that is the unit the
+	// server's ride record dedupes against, and the client's counter must not
+	// be able to restart inside it.
+	let seq = 0;
 	let lastSeq = 0;
 	let gapSeq: number | null = null;
 	void openRideBuffer({
@@ -207,7 +213,9 @@ export function createRoomLive(slug: string) {
 		get refusal() {
 			return refusal;
 		},
-		sendMetrics(metrics: RiderMetrics) {
+		/** Stamps the sample with this session's next seq, then sends it. */
+		sendMetrics(sample: Omit<RiderMetrics, 'seq'>) {
+			const metrics: RiderMetrics = { ...sample, seq: ++seq };
 			lastSeq = metrics.seq;
 			buffer?.append({
 				seq: metrics.seq,

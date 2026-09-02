@@ -81,30 +81,6 @@ export { targetState } from '$lib/room/view';
 import type { RoomRider } from '$lib/room/view';
 
 // Legacy shape retained for reference only.
-interface LegacyMockRider {
-	name: string;
-	ftp: number;
-	kg: number;
-	you: boolean;
-	coach: boolean;
-	cameraOn: boolean;
-	muted: boolean;
-	speaking: boolean;
-	/** stand-in for a camera feed's dominant colour, so the grid isn't uniformly dark */
-	hue: number;
-	watts: number;
-	cadence: number;
-	hr: number;
-	/** their trainer stopped reporting — their numbers are last-known, not live */
-	stale: boolean;
-	/** they stopped pedalling: their own targets pause, the shared timeline does not wait */
-	paused: boolean;
-	/** joined after the timeline started and was synced to the current position */
-	lateJoined: boolean;
-	target: number;
-	execution: number;
-	trace: { t: number; w: number }[];
-}
 
 interface RiderSeed {
 	id: string;
