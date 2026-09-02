@@ -23,6 +23,7 @@
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
+	import { roomNavState } from './room-state';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -129,15 +130,27 @@
 		</div>
 		<ul class="space-y-0.5">
 			{#each rooms as room (room.slug)}
-				{@const here = room.slug === connectedSlug}
-				<!-- Opened: the room whose pages you are on, AND the one you are
-				     standing in — reading a DM or Home while connected must not
-				     fold Training two clicks away (rider report, #416). -->
-				{@const open = room.slug === activeSlug || here}
-				<!-- Reading its chat from outside (#484) marks the row too, so the
-				     sidebar always says where you are. -->
+				<!-- Connected and browsing-only are separate visual states. An active
+				     room still opens into its places in either state. -->
 				{@const reading = pathname === `/messages/r/${room.slug}`}
+				{@const state = roomNavState(
+					room.slug,
+					activeSlug,
+					connectedSlug,
+					reading,
+				)}
+				{@const here = state === 'connected'}
+				{@const browsing = state === 'browsing'}
+				<!-- Opened: the room whose pages you are on, AND the one you are
+					     standing in — reading a DM or Home while connected must not
+					     fold Training two clicks away (rider report, #416). -->
+				{@const open = room.slug === activeSlug || here}
 				<li
+					class="rounded-md border-l-2 {here
+						? 'border-neon/70 bg-neon/10'
+						: browsing
+							? 'border-neon/35 bg-neon/5'
+							: 'border-transparent'}"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = roomPlaces.map((place) => ({
 							label: place.label,
@@ -164,9 +177,11 @@
 				>
 					<a
 						href="/r/{room.slug}"
-						class="block rounded px-2 py-1.5 {open || reading
+						class="block rounded px-2 py-1.5 {here
 							? 'text-ink'
-							: 'text-muted hover:text-ink'}"
+							: browsing
+								? 'text-ink/90'
+								: 'text-muted/70 hover:text-ink'}"
 					>
 						<span class="flex items-center gap-2">
 							{#if here}
@@ -177,11 +192,13 @@
 							{/if}
 							<RoomIcon icon={room.icon} size={14} />
 							<span
-								class="truncate text-sm {open || reading
-									? 'font-semibold'
-									: room.unread
-										? 'text-ink font-semibold'
-										: ''}">{room.name}</span
+								class="truncate {here
+									? 'font-display text-ink text-base font-semibold'
+									: browsing
+										? 'font-display text-ink/90 text-[15px] font-medium'
+										: room.unread
+											? 'text-ink/80 text-sm font-medium'
+											: 'text-muted/70 text-sm'}">{room.name}</span
 							>
 							{#if here && onLeave}
 								<button
@@ -270,7 +287,7 @@
 										href="/r/{room.slug}{entry.path}"
 										aria-current={on ? 'page' : undefined}
 										class="flex items-center gap-2 rounded px-2 py-1.5 text-[13px] {on
-											? 'bg-surface-raised text-ink'
+											? 'bg-ink/5 text-ink'
 											: 'text-muted hover:text-ink'}"
 									>
 										<entry.icon size={14} class="shrink-0" />
