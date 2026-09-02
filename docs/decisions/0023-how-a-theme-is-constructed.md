@@ -116,7 +116,7 @@ fallback, and that headroom is how a vivid Z7 stays inside a contrast floor.
 
 ## Notes
 
-Three ADRs are currently numbered 0019 (#379); this one takes 0020 and does not
+The three 0019s were renumbered in #422 and 0020 is the Discord-shape ADR; this one takes 0023 and does not
 add to that collision.
 
 Background reading for the harmony section: Agustina Feijóo, *Comprehensive
