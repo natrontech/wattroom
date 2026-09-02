@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import {
+	bestOffer,
 	offerSeat,
 	sameSeat,
 	seatOf,
+	setPopped,
 	stageSlot,
 } from '$lib/room/stage-slot.svelte';
 
@@ -26,6 +28,13 @@ class FakeIntersectionObserver {
 	disconnect = vi.fn();
 }
 vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+// happy-dom exposes no storage here; the pop-out preference needs one.
+const stored = new Map<string, string>();
+vi.stubGlobal('localStorage', {
+	getItem: (k: string) => stored.get(k) ?? null,
+	setItem: (k: string, v: string) => void stored.set(k, v),
+	removeItem: (k: string) => void stored.delete(k),
+});
 
 function tick() {
 	const due = frames;
@@ -104,5 +113,38 @@ describe('offerSeat', () => {
 		intersect(1);
 		expect(stageSlot.seat).not.toBeNull();
 		stop();
+	});
+});
+
+describe('two surfaces offering', () => {
+	it('seats the player in the higher-priority hole, and falls back when it goes', () => {
+		const column = hole({ left: 0, top: 0, width: 248, height: 200 });
+		const stage = hole({ left: 300, top: 50, width: 900, height: 500 });
+		const stopColumn = offerSeat(column.node, 1);
+		expect(stageSlot.seat?.w).toBe(248);
+		const stopStage = offerSeat(stage.node, 2);
+		expect(stageSlot.seat?.w).toBe(900);
+		stopStage();
+		expect(stageSlot.seat?.w).toBe(248);
+		stopColumn();
+		expect(stageSlot.seat).toBeNull();
+	});
+
+	it('bestOffer ignores withdrawn offers and prefers priority', () => {
+		const a = { priority: 1, seat: { x: 0, y: 0, w: 1, h: 1 } };
+		const b = { priority: 2, seat: null };
+		expect(bestOffer([a, b])?.w).toBe(1);
+		expect(bestOffer([])).toBeNull();
+	});
+});
+
+describe('popping out', () => {
+	it('is remembered per device and cleared on put-back', () => {
+		setPopped(true);
+		expect(stageSlot.popped).toBe(true);
+		expect(localStorage.getItem('wattroom.jukebox.popout.v1')).toBe('1');
+		setPopped(false);
+		expect(stageSlot.popped).toBe(false);
+		expect(localStorage.getItem('wattroom.jukebox.popout.v1')).toBeNull();
 	});
 });

@@ -195,7 +195,7 @@
 			<!-- The player itself flies here (#316). Nothing may be drawn over
 			     it — YouTube RMF — so the frame stays empty and the chrome
 			     below is suppressed while it is seated. -->
-			<div class="h-full w-full" {@attach offerSeat}></div>
+			<div class="h-full w-full" {@attach (node) => offerSeat(node, 2)}></div>
 		{:else}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
