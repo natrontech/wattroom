@@ -167,7 +167,13 @@
 	{#if room.medals.length > 0}
 		<h3 class="eyebrow mt-8">medal history</h3>
 		<ul class="divide-ink/5 panel mt-2 divide-y">
-			{#each room.medals.slice(0, 12) as medal (medal.awardedAt + medal.rider)}
+			<!-- Unkeyed on purpose: a read-only snapshot of at most twelve rows
+			     with no per-row state. `awardedAt` is a date, and one session
+			     hands out four medals, so day+rider collided the moment anyone
+			     took two in a day — and Svelte's each_key_duplicate left the
+			     whole place unrenderable (#567). kind+rider+day is no safer:
+			     two sessions in one day can award the same medal twice. -->
+			{#each room.medals.slice(0, 12) as medal}
 				<li class="flex items-center gap-3 px-4 py-2 text-xs">
 					<span class="shrink-0">🏅</span>
 					<span class="min-w-0 flex-1 truncate">{medal.rider}</span>
