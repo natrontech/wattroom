@@ -10,7 +10,7 @@
 		ZoomIn,
 		ZoomOut,
 	} from '@lucide/svelte';
-	import { dragPane, keepSize } from '$lib/pane';
+	import { dragPane } from '$lib/pane';
 	import { offerSeat, STAGE_SEAT } from '$lib/room/stage-slot.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import {
@@ -27,8 +27,10 @@
 	 * zoom, because a 1440p screenshare letterboxed into a room panel is
 	 * unreadable exactly when it matters (a chart, a route, a settings dialog).
 	 *
-	 * Width is dragged natively (CSS `resize`) and remembered per device;
-	 * height is the picture's own, never a fixed box (#335 follow-up).
+	 * The frame is never resized from itself (#427). Either it fills the
+	 * column it was given, or the place hands it a `height` and it takes the
+	 * picture's own shape at that height, centred — the lounge's divider
+	 * between the stage and the crew is what moves that number.
 	 */
 	interface StageSource {
 		key: string;
@@ -40,6 +42,8 @@
 		sources,
 		activeKey,
 		trackKey,
+		height,
+		onFit,
 		onPick,
 		attach,
 	}: {
@@ -48,13 +52,23 @@
 		/** `pictureKey` of the active source — activeKey plus the track
 		 *  generation. Remounts the video, and refits the zoom, on a fresh track. */
 		trackKey: string;
+		/**
+		 * Frame height in px, from the place's divider. Absent = fill the
+		 * column, which is what the side-by-side layouts want.
+		 */
+		height?: number;
+		/**
+		 * The height at which the column, not the divider, becomes the limit.
+		 * The place clamps its divider to it, so dragging past the column's
+		 * edge moves a number nothing renders.
+		 */
+		onFit?: (maxHeight: number) => void;
 		onPick: (key: string) => void;
 		/** Mounts the active source's video into the surface. */
 		attach: (node: HTMLElement) => void;
 	} = $props();
 
-	/** Position and dragged width live under one key; the old one held a
-	 *  height that an aspect-ratio frame must not accept. */
+	/** Where a popped-out stage was left; nothing about its size. */
 	const PANE = 'stage-v2';
 
 	const active = $derived(sources.find((source) => source.key === activeKey));
@@ -141,6 +155,16 @@
 		return () => node.removeEventListener('wheel', onWheel);
 	}
 
+	/** How tall this picture can get before the column caps its width. */
+	function fit(node: HTMLElement) {
+		const shape = ratio; // re-attaches when the picture changes shape
+		const observer = new ResizeObserver(() =>
+			onFit?.(Math.floor(node.clientWidth / shape)),
+		);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}
+
 	/** Shrinking the frame while zoomed would strand the picture off-centre. */
 	function reclamp(node: HTMLElement) {
 		const observer = new ResizeObserver(() => {
@@ -151,8 +175,13 @@
 	}
 
 	/** Popped out (#280): the stage leaves the column and floats, Discord's
-	 * stream popout. Ephemeral like the source pick — a glance, not a setting. */
+	 * stream popout. Ephemeral like the source pick — a glance, not a setting.
+	 * Never for the jukebox: the room's video has one home per window width
+	 * and a floating window is not one of them (#427). */
 	let popped = $state(false);
+	$effect(() => {
+		if (seated) popped = false;
+	});
 
 	let dragging = $state(false);
 	function startPan(event: PointerEvent) {
@@ -174,6 +203,7 @@
 
 <div
 	data-pane={PANE}
+	{@attach fit}
 	class={popped
 		? 'bg-surface ring-ink/15 fixed top-24 left-24 z-[55] rounded-lg p-1.5 shadow-2xl ring-1'
 		: 'mb-3'}
@@ -193,18 +223,18 @@
 	{/if}
 	<div
 		bind:this={frame}
-		{@attach (node) => keepSize(node, PANE)}
 		{@attach contextMenu(() => [
 			{
 				label: 'Fit to frame',
 				icon: RotateCcw,
 				onSelect: () => (view = FIT),
-				disabled: view.zoom === 1,
+				disabled: view.zoom === 1 || seated,
 			},
 			{
 				label: popped ? 'Dock the stage' : 'Pop the stage out',
 				icon: PictureInPicture2,
 				onSelect: () => (popped = !popped),
+				disabled: seated,
 			},
 			{
 				label: 'Fullscreen',
@@ -217,9 +247,16 @@
 		{@attach aspect}
 		class="ring-neon/40 relative overflow-hidden rounded-lg bg-black ring-1 {popped
 			? 'w-[720px] max-w-[90vw]'
-			: 'w-full max-w-full'}"
+			: height
+				? 'mx-auto'
+				: 'w-full max-w-full'}"
 		style="aspect-ratio: {ratio}; min-width: 320px; min-height: 200px;
-			max-height: 70vh; resize: horizontal"
+			{popped || !height
+			? 'max-height: 70vh'
+			: // The WIDTH carries the dragged height, so the aspect ratio
+				// always has the last word: a frame given both a height and a
+				// max-width ends up taller than its picture, black bands and all.
+				`width: min(${Math.round(height * ratio)}px, 100%)`}"
 	>
 		{#if seated}
 			<!-- The player itself flies here (#316). Nothing may be drawn over
@@ -311,8 +348,8 @@
 		{/each}
 		<span class="text-muted/70 ml-auto text-[10px]"
 			>{seated
-				? 'the room is watching together · drag the edge to resize'
-				: 'scroll to zoom · drag to pan · drag the edge to resize'}{popped
+				? 'the room is watching together'
+				: 'scroll to zoom · drag to pan'}{popped
 				? ' · drag the bar to move'
 				: ''}</span
 		>

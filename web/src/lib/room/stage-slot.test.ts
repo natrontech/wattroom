@@ -2,12 +2,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	bestOffer,
+	COLUMN_SEAT,
 	offerSeat,
 	onSeat,
+	RAIL_SEAT,
 	sameSeat,
 	seatOf,
-	setPopped,
 	stageSlot,
+	STAGE_SEAT,
+	TV_SEAT,
 } from '$lib/room/stage-slot.svelte';
 
 // happy-dom lays nothing out: the hole's rect is scripted, and the
@@ -29,14 +32,6 @@ class FakeIntersectionObserver {
 	disconnect = vi.fn();
 }
 vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
-// happy-dom exposes no storage here; the pop-out preference needs one.
-const stored = new Map<string, string>();
-vi.stubGlobal('localStorage', {
-	getItem: (k: string) => stored.get(k) ?? null,
-	setItem: (k: string, v: string) => void stored.set(k, v),
-	removeItem: (k: string) => void stored.delete(k),
-});
-
 let seen: { x: number; y: number; w: number; h: number } | null = null;
 onSeat((s) => (seen = s));
 
@@ -122,14 +117,35 @@ describe('two surfaces offering', () => {
 	it('seats the player in the higher-priority hole, and falls back when it goes', () => {
 		const column = hole({ left: 0, top: 0, width: 248, height: 200 });
 		const stage = hole({ left: 300, top: 50, width: 900, height: 500 });
-		const stopColumn = offerSeat(column.node, 1);
+		const stopColumn = offerSeat(column.node, COLUMN_SEAT);
 		expect(seen?.w).toBe(248);
-		const stopStage = offerSeat(stage.node, 2);
+		const stopStage = offerSeat(stage.node, STAGE_SEAT);
 		expect(seen?.w).toBe(900);
 		stopStage();
 		expect(seen?.w).toBe(248);
 		stopColumn();
 		expect(seen).toBeNull();
+	});
+
+	// #427: the rail is on every framed page and offers whenever a track is
+	// playing, so it must lose to every surface that only exists when there is
+	// somewhere better for the video to be.
+	it('lets the people column take the player off the rail', () => {
+		const rail = hole({ left: 0, top: 300, width: 216, height: 200 });
+		const column = hole({ left: 1000, top: 0, width: 248, height: 200 });
+		const stopRail = offerSeat(rail.node, RAIL_SEAT);
+		expect(seen?.w).toBe(216);
+		const stopColumn = offerSeat(column.node, COLUMN_SEAT);
+		expect(seen?.w).toBe(248);
+		stopColumn();
+		expect(seen?.w).toBe(216);
+		stopRail();
+	});
+
+	it('ranks rail below column below stage below TV', () => {
+		expect(RAIL_SEAT).toBeLessThan(COLUMN_SEAT);
+		expect(COLUMN_SEAT).toBeLessThan(STAGE_SEAT);
+		expect(STAGE_SEAT).toBeLessThan(TV_SEAT);
 	});
 
 	it('bestOffer ignores withdrawn offers and prefers priority', () => {
@@ -140,22 +156,11 @@ describe('two surfaces offering', () => {
 	});
 });
 
-describe('popping out', () => {
-	it('is remembered per device and cleared on put-back', () => {
-		setPopped(true);
-		expect(stageSlot.popped).toBe(true);
-		expect(localStorage.getItem('wattroom.jukebox.popout.v1')).toBe('1');
-		setPopped(false);
-		expect(stageSlot.popped).toBe(false);
-		expect(localStorage.getItem('wattroom.jukebox.popout.v1')).toBeNull();
-	});
-});
-
 describe('reactivity', () => {
 	it('keeps the rect out of state and only flips a boolean (#494)', () => {
 		const box = hole({ left: 0, top: 0, width: 300, height: 200 });
 		expect(stageSlot.seated).toBe(false);
-		const stop = offerSeat(box.node, 1);
+		const stop = offerSeat(box.node, COLUMN_SEAT);
 		expect(stageSlot.seated).toBe(true);
 		// The rect moving must not touch state — only the listener hears it.
 		box.box.top = 400;
@@ -165,19 +170,5 @@ describe('reactivity', () => {
 		expect('seat' in stageSlot).toBe(false);
 		stop();
 		expect(stageSlot.seated).toBe(false);
-	});
-});
-
-describe('popping out', () => {
-	it('takes the player off every surface, not just the column', () => {
-		const stage = hole({ left: 0, top: 0, width: 900, height: 500 });
-		const stop = offerSeat(stage.node, 2);
-		expect(seen?.w).toBe(900);
-		setPopped(true);
-		expect(seen).toBeNull();
-		expect(stageSlot.seated).toBe(false);
-		setPopped(false);
-		expect(seen?.w).toBe(900);
-		stop();
 	});
 });

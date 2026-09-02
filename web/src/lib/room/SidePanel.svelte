@@ -38,38 +38,27 @@
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
+	import { clampSize, dividerDrag } from '$lib/divider';
 
-	// Drag the left edge to change the width. Pointer capture keeps the drag
-	// alive when the cursor outruns a 6 px strip; keepSize's observer saves
-	// the width once it differs from what the class authored.
-	function edgeResize(node: HTMLElement) {
-		const grip = node.querySelector<HTMLElement>('[data-grip]');
-		if (!grip) return;
-		let from: { x: number; w: number } | null = null;
-		const down = (e: PointerEvent) => {
-			from = { x: e.clientX, w: node.offsetWidth };
-			grip.setPointerCapture(e.pointerId);
-			e.preventDefault();
-		};
-		const move = (e: PointerEvent) => {
-			if (!from) return;
-			const style = getComputedStyle(node);
-			const min = parseFloat(style.minWidth) || 240;
-			const max = parseFloat(style.maxWidth) || window.innerWidth;
-			const w = from.w - (e.clientX - from.x);
-			node.style.width = `${Math.round(Math.max(min, Math.min(max, w)))}px`;
-		};
-		const up = () => (from = null);
-		grip.addEventListener('pointerdown', down);
-		grip.addEventListener('pointermove', move);
-		grip.addEventListener('pointerup', up);
-		grip.addEventListener('pointercancel', up);
-		return () => {
-			grip.removeEventListener('pointerdown', down);
-			grip.removeEventListener('pointermove', move);
-			grip.removeEventListener('pointerup', up);
-			grip.removeEventListener('pointercancel', up);
-		};
+	// The divider between the room and this column. keepSize's observer saves
+	// the width it writes, the same way it did for the native `resize` grip.
+	function edgeResize(grip: HTMLElement) {
+		const panel = grip.parentElement;
+		if (!panel) return;
+		return dividerDrag(grip, {
+			axis: 'x',
+			// The panel is right of its divider: pulling left makes it wider.
+			sign: -1,
+			from: () => panel.offsetWidth,
+			to: (width) => {
+				const style = getComputedStyle(panel);
+				panel.style.width = `${clampSize(
+					width,
+					parseFloat(style.minWidth) || 240,
+					parseFloat(style.maxWidth) || window.innerWidth,
+				)}px`;
+			},
+		});
 	}
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
@@ -267,12 +256,11 @@
      width it sets, the same way it did for the native grip. -->
 <aside
 	{@attach (node) => keepSize(node, 'side-panel')}
-	{@attach edgeResize}
 	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
 	style="min-width: 240px; max-width: 40vw"
 >
 	<div
-		data-grip
+		{@attach edgeResize}
 		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none transition-colors"
 		role="separator"
 		aria-orientation="vertical"

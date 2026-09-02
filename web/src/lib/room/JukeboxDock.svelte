@@ -2,34 +2,15 @@
 	import { modals } from '$lib/modals.svelte';
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
-	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { chase, playheadAt } from '$lib/room/playhead';
+	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { MUSIC_FADER } from '$lib/sound/fader';
-	import {
-		centrePane,
-		dragPane,
-		keepSize,
-		resizePane,
-		restorePane,
-	} from '$lib/pane';
-	import { onSeat, setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
-	import {
-		VolumeX,
-		FastForward,
-		GripHorizontal,
-		Minimize2,
-		Pause,
-		PictureInPicture2,
-		Play,
-		Rewind,
-		SkipForward,
-		Volume2,
-	} from '@lucide/svelte';
+	import { keepSize } from '$lib/pane';
+	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
+	import { VolumeX } from '@lucide/svelte';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the
@@ -37,9 +18,12 @@
 	// works wherever you are. YouTube RMF: ≥200×200, visible while media
 	// plays, nothing overlaid — a dock satisfies that on every page.
 	//
-	// The dock is placed by the rider (rider report: "stuck bottom right, can
-	// never be centred"): drag the handle, drag any edge or corner to resize,
-	// and both survive navigation and reload.
+	// The rider never places it any more (#427). It flies to whichever seat
+	// the app offers — the people column, the rail, the stage, TV mode — and
+	// every one of those surfaces carries the transport beside it. The corner
+	// below is not a window: it is the last resort for a viewport that offers
+	// no seat at all (the rail is a closed drawer below md), and RMF still
+	// wants the player on screen while it plays.
 
 	const conn = $derived(roomConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
@@ -54,23 +38,20 @@
 	let shell = $state<HTMLDivElement | null>(null);
 
 	// ── Placement ─────────────────────────────────────────────────────────────
-	// Drag, resize and remember are the shared pane helpers ($lib/pane) — the
-	// stage's popped-out window works the same way. Min size is the RMF floor
-	// plus the two chrome strips, enforced in CSS, so the player itself can
-	// never be dragged below 200×200.
+	// The corner it falls back to, comfortably clear of RMF's 200×200 even
+	// with the autoplay-blocked strip taking a bite out of the bottom.
 	const PANE = 'jukebox-dock';
-	const CHROME = 56;
-	const FLOATING = { w: 380, h: 252 + CHROME };
+	const CORNER = { w: 360, h: 240 };
 
-	// ── Seated in the room's stage (#316) ─────────────────────────────────────
+	// ── Seated (#316, #427) ───────────────────────────────────────────────────
 	// The iframe never moves — reparenting it reloads it, and playback, the
-	// player object and the room's `ended` reporting die with it. The stage
-	// publishes the rect of the hole it left and the dock flies there, chrome
-	// off: the room page has the transport in its side panel, and a seat with
-	// nothing over or beside the player is what keeps RMF satisfied. Lose the
-	// seat (leave the room, scroll it away) and it floats again.
-	// A modal covers the stage, so the seat under it is no seat: the dock
-	// goes to its corner and the modal keeps a gutter above it (modals.svelte).
+	// player object and the room's `ended` reporting die with it. A surface
+	// publishes the rect of the hole it left and the dock flies there: the
+	// transport belongs to that surface, and a seat with nothing over or
+	// beside the player is what keeps RMF satisfied.
+	// A modal covers whatever is under it, so the seat under it is no seat:
+	// the dock goes to its corner and the modal keeps a gutter above it
+	// (modals.svelte).
 	// Whether the dock is seated — a boolean, for the chrome. The RECT never
 	// passes through here: it arrives frame by frame on `onSeat` and is
 	// written straight to the node, so per-frame geometry never enters the
@@ -78,8 +59,6 @@
 	const seat = $derived(modals.open === 0 && stageSlot.seated);
 	$effect(() => {
 		const node = shell;
-		// A modal covers the stage, so the seat under it is no seat: the dock
-		// goes to its corner and the modal keeps clear of it (modals.svelte).
 		const blocked = modals.open > 0;
 		if (!node) return;
 		return onSeat((to) => {
@@ -89,11 +68,13 @@
 				node.style.right = node.style.bottom = 'auto';
 				node.style.width = `${to.w}px`;
 				node.style.height = `${to.h}px`;
-				node.style.minWidth = node.style.minHeight = '0';
 			} else {
-				node.style.minWidth = '260px';
-				node.style.minHeight = `${200 + CHROME}px`;
-				restorePane(node, PANE, FLOATING);
+				// Back to the corner its CSS docks it to; the inline rect the
+				// seat wrote has to be cleared for those classes to bite.
+				node.style.left = node.style.top = '';
+				node.style.right = node.style.bottom = '';
+				node.style.width = `${CORNER.w}px`;
+				node.style.height = `${CORNER.h}px`;
 			}
 		});
 	});
@@ -427,120 +408,37 @@
 		player?.playVideo?.();
 	}
 
-	// ── Who is talking, while you are somewhere else ──────────────────────────
-	// Off the room page there are no tiles, so the dock carries one face: the
-	// last person to speak, beside the music (rider report).
-	let lastSpeaker = $state<string | null>(null);
-	$effect(() => {
-		const speaking = conn?.av.speaking ?? {};
-		const other = Object.keys(speaking).find(
-			(id) => speaking[id] && id !== account.me?.id,
-		);
-		if (other) lastSpeaker = other;
-	});
-	const offRoom = $derived(!page.url.pathname.startsWith('/r/'));
-	const speaker = $derived(
-		offRoom && lastSpeaker
-			? (conn?.live.tick?.roster.find((r) => r.id === lastSpeaker) ?? null)
-			: null,
-	);
-	const speakerVideo = $derived(
-		speaker ? conn?.av.videoOf[speaker.id] : undefined,
-	);
-
-	// The transport belongs on the frame too (rider report): off the room page
-	// the side panel is gone, and the dock was the only thing left playing with
-	// nothing to press. Every button commands the ROOM — the deck is shared.
-	function transport(action: string) {
-		conn?.live.jukebox({ action });
-	}
-	function nudge(seconds: number) {
-		if (!jukebox?.current) return;
-		conn?.live.jukebox({
-			action: 'seek',
-			positionSec: clampSeek(
-				playheadAt(jukebox, serverNow(), playerInfo.duration) + seconds,
-				playerInfo.duration,
-			),
-		});
-	}
-
-	// Proof the room is together, on the frame that is always on screen.
-	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
-
 	const showPlayer = $derived(!!jukebox?.current);
-	const title = $derived(jukebox?.current?.title ?? speaker?.name ?? '');
 </script>
 
 {#if conn}
-	<!-- Until it is dragged the dock sits in the corner, clear of the side
-	     panel at whatever width the rider left it, and above the chat button
-	     below xl (#219). Stacking (#395): floating, it sits BELOW dialogs,
-	     drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over the
-	     player, not a dialog the rider opened over it. Seated, it has to clear
-	     the stage it sits in, and a popped-out stage is z-[55] — but not the
-	     chat sheet, which is a drawer the rider opened and passes above at
-	     z-[60] (#483). -->
+	<!-- With no seat on offer the dock sits in the corner, above the chat
+	     button below xl (#219). Stacking (#483): floating, it sits BELOW
+	     dialogs, drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over
+	     the player, not a dialog the rider opened over it. Seated, it has to
+	     clear the surface it sits in — a popped-out stage is z-[55] — but not
+	     the chat sheet, which is a drawer the rider opened and passes above at
+	     z-[60]. -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
 		data-seated={seat ? '' : undefined}
 		{@attach (node) => keepSize(node, PANE)}
-		{@attach (node) => (seat ? undefined : resizePane(node, PANE))}
 		class="bg-surface fixed {seat
 			? 'z-[56]'
 			: 'z-30'} flex flex-col overflow-hidden rounded-lg {seat
 			? ''
-			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer || speaker
+			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer
 			? ''
 			: 'hidden'} {page.url.pathname.startsWith('/r/')
 			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
-		style="width: {FLOATING.w}px; height: {FLOATING.h}px; min-width: 260px;
-			min-height: {200 + CHROME}px; max-width: 96vw; max-height: 90vh"
+		style="width: {CORNER.w}px; height: {CORNER.h}px; max-width: 96vw;
+			max-height: 90vh"
 	>
-		<!-- Drag handle. Chrome only — never over the player (RMF), and gone
-		     entirely once the stage is holding the seat. -->
-		{#if !seat}
-			<div
-				{@attach dragPane}
-				class="border-ink/10 text-muted flex h-6 shrink-0 cursor-grab touch-none items-center gap-1.5 border-b px-2 active:cursor-grabbing"
-			>
-				<GripHorizontal size={12} class="shrink-0" />
-				{#if showPlayer && jukebox?.playing && !playerInfo.live}
-					<span
-						class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
-							? 'bg-watt glow-stroke'
-							: 'bg-muted animate-pulse'}"
-						title={inSync
-							? 'in sync with the room'
-							: "catching up to the room's playhead"}
-					></span>
-				{/if}
-				<span class="truncate text-[10px]">{title}</span>
-				<button
-					onclick={() => shell && centrePane(shell, PANE)}
-					class="hover:text-ink ml-auto shrink-0"
-					title="centre the dock"
-					aria-label="centre the dock"><Minimize2 size={12} /></button
-				>
-				{#if stageSlot.popped}
-					<!-- Back into the people column's deck (#445); takes effect
-					     the moment a room page offers the seat again. -->
-					<button
-						onclick={() => setPopped(false)}
-						class="hover:text-ink shrink-0"
-						title="put the player back in the panel"
-						aria-label="put the player back in the panel"
-						><PictureInPicture2 size={12} /></button
-					>
-				{/if}
-			</div>
-		{/if}
-
 		<div class="flex min-h-0 flex-1 bg-black">
 			<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
-			<div class="relative min-w-0 flex-1 {showPlayer ? '' : 'hidden'}">
+			<div class="relative min-w-0 flex-1">
 				<div bind:this={container} class="h-full w-full"></div>
 				{#if apiFailed}
 					<div
@@ -569,62 +467,6 @@
 					onclick={startPlayback}
 					class="btn btn-secondary btn-xs shrink-0">Play</button
 				>
-			</div>
-		{/if}
-
-		{#if showPlayer && !seat}
-			<!-- Transport for the room, then your own ears (#179): the same fader
-			     as the rail's mixer, where the music actually is. Below the tile —
-			     RMF forbids overlays. Seated in the stage this goes away: the room
-			     page has the same transport in its side panel, and a seat with
-			     nothing beside the player is a seat the picture fits exactly. -->
-			<div
-				class="border-ink/10 text-muted flex h-8 shrink-0 items-center gap-1 border-t px-1.5"
-			>
-				<button
-					onclick={() => transport(jukebox?.playing ? 'pause' : 'play')}
-					class="hover:text-ink shrink-0 rounded p-1"
-					aria-label={jukebox?.playing
-						? 'pause for the room'
-						: 'play for the room'}
-					title={jukebox?.playing ? 'pause for the room' : 'play for the room'}
-				>
-					{#if jukebox?.playing}<Pause size={13} />{:else}<Play
-							size={13}
-						/>{/if}
-				</button>
-				{#if !playerInfo.live}
-					<!-- A livestream has no timeline to jump around in. -->
-					<button
-						onclick={() => nudge(-30)}
-						class="hover:text-ink shrink-0 rounded p-1"
-						aria-label="back 30 seconds"
-						title="back 30 seconds"><Rewind size={13} /></button
-					>
-					<button
-						onclick={() => nudge(30)}
-						class="hover:text-ink shrink-0 rounded p-1"
-						aria-label="forward 30 seconds"
-						title="forward 30 seconds"><FastForward size={13} /></button
-					>
-				{/if}
-				<button
-					onclick={() => transport('skip')}
-					class="hover:text-ink shrink-0 rounded p-1"
-					aria-label="skip for the room"
-					title="skip for the room"><SkipForward size={13} /></button
-				>
-				<span class="bg-ink/10 mx-1 h-4 w-px shrink-0"></span>
-				<Volume2 size={12} class="shrink-0" />
-				<input
-					type="range"
-					{...MUSIC_FADER}
-					value={mixer.music}
-					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
-					class="min-w-0 flex-1"
-					aria-label="music volume, {mixer.music}%"
-					title="music volume — {mixer.music}%"
-				/>
 			</div>
 		{/if}
 	</div>

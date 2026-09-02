@@ -5,35 +5,30 @@
  * navigation (#216), and moving an iframe in the DOM reloads it — playback
  * and the YT player object die with it. So nothing adopts the player: a
  * surface measures the hole it left and offers the rect, and the fixed dock
- * flies to the best offer. Two surfaces offer today — the people column's
- * jukebox deck (the default seat, #445) and the stage when the jukebox is
- * on it (#316), which outranks the column. No offer means the dock floats,
- * which is also how RMF's visible-while-playing rule holds off the room page.
+ * flies to the best offer.
+ *
+ * The player is never a window the rider drags around any more (#427). It
+ * lives in the people column, drops to the nav rail on a window too narrow
+ * for that column, and rises to the stage or TV mode when the room is
+ * watching together. Four surfaces offer, and the highest live offer wins;
+ * the fixed corner is only what is left when a viewport offers nothing at
+ * all, which is also how RMF's visible-while-playing rule holds.
  */
 /**
- * Who may hold the player, weakest first. The highest live offer wins, so a
- * shared screen on the stage and TV mode both take it off the people column.
+ * Who may hold the player, weakest first. The rail is the floor because it is
+ * on every framed page: the people column outranks it wherever that column is
+ * on screen, and a shared surface outranks both.
  */
-export const COLUMN_SEAT = 1;
-export const STAGE_SEAT = 2;
-export const TV_SEAT = 3;
+export const RAIL_SEAT = 1;
+export const COLUMN_SEAT = 2;
+export const STAGE_SEAT = 3;
+export const TV_SEAT = 4;
 
 export interface Seat {
 	x: number;
 	y: number;
 	w: number;
 	h: number;
-}
-
-/** Popped out (#445): the rider chose the floating dock over the column's seat. */
-const POP_KEY = 'wattroom.jukebox.popout.v1';
-
-function readPopped(): boolean {
-	try {
-		return localStorage.getItem(POP_KEY) === '1';
-	} catch {
-		return false;
-	}
 }
 
 export const stageSlot = $state<{
@@ -53,22 +48,9 @@ export const stageSlot = $state<{
 	 * dock through `onSeat` instead, a plain callback, outside reactivity.
 	 */
 	seated: boolean;
-	popped: boolean;
 }>({
 	seated: false,
-	popped: readPopped(),
 });
-
-export function setPopped(popped: boolean): void {
-	stageSlot.popped = popped;
-	settle();
-	try {
-		if (popped) localStorage.setItem(POP_KEY, '1');
-		else localStorage.removeItem(POP_KEY);
-	} catch {
-		/* desk-only preference; losing it costs one click */
-	}
-}
 
 /** Below this much of a surface on screen, its offer is withdrawn. */
 const ENOUGH_VISIBLE = 0.5;
@@ -124,10 +106,7 @@ export function onSeat(cb: (seat: Seat | null) => void): () => void {
 }
 
 function settle() {
-	// Popped out is the rider saying "I want the window", so no surface holds
-	// the player while it is set — the column stopped offering, but the stage
-	// went on winning and the button did nothing with a video on the stage.
-	const next = stageSlot.popped ? null : bestOffer(offers.values());
+	const next = bestOffer(offers.values());
 	if (sameSeat(last, next)) return;
 	last = next;
 	// The boolean is the only reactive part, and it changes when a surface

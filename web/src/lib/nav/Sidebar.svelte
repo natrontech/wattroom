@@ -12,6 +12,7 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import RoomStrip from './RoomStrip.svelte';
+	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
 	import { account } from '$lib/account.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
@@ -317,6 +318,12 @@
 			</ul>
 		{/if}
 	</div>
+
+	<!-- The video, wherever the people column is not (#427): below xl the room
+	     has no column, and off the room pages there is none at all. -->
+	{#if connectedSlug}
+		<JukeboxRail />
+	{/if}
 
 	<!-- Who is in the room with you, while you are looking elsewhere (#446).
 	     Above you, like Discord's voice panel; off the Lounge, which already
