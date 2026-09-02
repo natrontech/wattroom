@@ -16,6 +16,12 @@
 	import { account } from '$lib/account.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
+	import {
+		UNREAD_COUNT,
+		UNREAD_DOT,
+		unreadCount,
+	} from '$lib/messages/unread-marks';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
 	import {
 		contextMenu,
@@ -32,10 +38,13 @@
 		Mic,
 		MicOff,
 		Plus,
+		ScreenShare,
+		ScreenShareOff,
 		Settings,
 		Video,
 		VideoOff,
 	} from '@lucide/svelte';
+	import QuickAudio from '$lib/room/QuickAudio.svelte';
 
 	let {
 		pathname,
@@ -48,8 +57,11 @@
 		voiceStatus = 'off',
 		micOn = false,
 		camOn = false,
+		sharing = false,
 		onMic,
 		onCam,
+		onShare,
+		onLeaveVoice,
 		handedOff = false,
 		onTakeOver,
 	}: {
@@ -63,8 +75,11 @@
 		voiceStatus?: 'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 		micOn?: boolean;
 		camOn?: boolean;
+		sharing?: boolean;
 		onMic?: () => void;
 		onCam?: () => void;
+		onShare?: () => void;
+		onLeaveVoice?: () => void;
 		handedOff?: boolean;
 		onTakeOver?: () => void;
 	} = $props();
@@ -180,13 +195,11 @@
 								>
 							{:else if room.unread}
 								<!-- The strongest reason a chat app stays open in a
-								     background window. Quiet by design: the count is
-								     chrome, so it takes the muted surface — the live hue
-								     is for live data (ADR-0005). -->
+								     background window. -->
 								<span
-									class="bg-muted/25 text-ink ml-auto shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+									class="{UNREAD_COUNT} ml-auto"
 									title="{room.unread} new since you were last here"
-									>{room.unread > 99 ? '99+' : room.unread}</span
+									>{unreadCount(room.unread)}</span
 								>
 							{:else if (room.connected ?? 0) > 0}
 								<span class="ml-auto flex shrink-0 items-center gap-1">
@@ -236,6 +249,14 @@
 					</a>
 
 					{#if open}
+						<!-- What was said while you were in another place (#568): the
+						     room's own unread cannot say it — standing in the room
+						     reads it — so this is the connection's answer, the same one
+						     the people column's bar shows. -->
+						{@const missed =
+							roomConnection.current?.slug === room.slug
+								? roomConnection.current.missed()
+								: null}
 						<!-- The room you are standing in opens. This is Discord's
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
@@ -256,6 +277,12 @@
 										<span class="truncate">{entry.label}</span>
 										{#if entry.path === '/training' && live}
 											<span class="ml-auto"><RidingBars size={10} /></span>
+										{:else if entry.path === '/chat' && missed}
+											<span
+												class="{UNREAD_COUNT} ml-auto"
+												title="{missed.count} said while you were elsewhere"
+												>{unreadCount(missed.count)}</span
+											>
 										{/if}
 									</a>
 								</li>
@@ -309,8 +336,7 @@
 							/>
 							<span class="truncate">{head.peerName}</span>
 							{#if dmHeads.unread(head.peerId)}
-								<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
-								></span>
+								<span class="{UNREAD_DOT} ml-auto"></span>
 							{/if}
 						</a>
 					</li>
@@ -332,8 +358,11 @@
 		<RoomStrip {pathname} />
 	{/if}
 
-	<!-- You, pinned. ONE row whatever the connection state — the nav above
-	     never jumps (rider report: the height flicker read as broken). -->
+	<!-- You, pinned. The same shape whatever the CONNECTION state — the nav
+	     above never jumps (rider report: the height flicker read as broken).
+	     In a room the AV controls get a row of their own: six icons crowded in
+	     beside a name left a 240 px column nothing to put the name in, and
+	     these are tapped from a bike (ux.md). -->
 	<div class="border-ink/5 border-t px-3 py-2.5">
 		<div class="flex items-center gap-2">
 			<!-- Your own rider page (#575). Everywhere else in the app an avatar
@@ -374,38 +403,6 @@
 					{/if}
 				</span>
 			</a>
-			{#if showAv}
-				<button
-					onclick={() => onMic?.()}
-					class="rounded p-1 {inVoice
-						? micOn
-							? 'text-z4'
-							: 'text-danger'
-						: 'text-muted/50 hover:text-muted'}"
-					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
-					aria-label={inVoice
-						? micOn
-							? 'mute microphone'
-							: 'unmute microphone'
-						: 'join voice'}
-				>
-					{#if inVoice && micOn}<Mic size={14} />{:else}<MicOff
-							size={14}
-						/>{/if}
-				</button>
-				<button
-					onclick={() => onCam?.()}
-					class="rounded p-1 {inVoice && camOn
-						? 'text-z4'
-						: 'text-muted/50 hover:text-muted'}"
-					title={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
-					aria-label={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
-				>
-					{#if inVoice && camOn}<Video size={14} />{:else}<VideoOff
-							size={14}
-						/>{/if}
-				</button>
-			{/if}
 			<!-- Everything that is a setting rather than a destination: profile,
 			     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 			<a
@@ -418,6 +415,68 @@
 				aria-label="settings"><Settings size={14} /></a
 			>
 		</div>
+		{#if showAv}
+			<!-- Voice, camera, screen, sound and the way out — here and nowhere
+			     else. The people column and the lounge header each drew their own
+			     copy of a row the rider already has pinned in front of them. -->
+			<div class="mt-2 flex items-center gap-1">
+				<button
+					onclick={() => onMic?.()}
+					class="flex flex-1 justify-center rounded py-1.5 {inVoice
+						? micOn
+							? 'text-z4'
+							: 'text-danger'
+						: 'text-muted/50 hover:text-muted'}"
+					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
+					aria-label={inVoice
+						? micOn
+							? 'mute microphone'
+							: 'unmute microphone'
+						: 'join voice'}
+				>
+					{#if inVoice && micOn}<Mic size={16} />{:else}<MicOff
+							size={16}
+						/>{/if}
+				</button>
+				<button
+					onclick={() => onCam?.()}
+					class="flex flex-1 justify-center rounded py-1.5 {inVoice && camOn
+						? 'text-z4'
+						: 'text-muted/50 hover:text-muted'}"
+					title={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
+					aria-label={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
+				>
+					{#if inVoice && camOn}<Video size={16} />{:else}<VideoOff
+							size={16}
+						/>{/if}
+				</button>
+				{#if inVoice}
+					<button
+						onclick={() => onShare?.()}
+						class="flex flex-1 justify-center rounded py-1.5 {sharing
+							? 'text-z4'
+							: 'text-muted/50 hover:text-muted'}"
+						title={sharing ? 'stop sharing your screen' : 'share your screen'}
+						aria-label={sharing
+							? 'stop sharing your screen'
+							: 'share your screen'}
+					>
+						{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
+								size={16}
+							/>{/if}
+					</button>
+				{/if}
+				<QuickAudio compact />
+				{#if inVoice}
+					<button
+						onclick={() => onLeaveVoice?.()}
+						class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
+						title="leave voice"
+						aria-label="leave voice"><LogOut size={16} /></button
+					>
+				{/if}
+			</div>
+		{/if}
 		{#if showAv && handedOff}
 			<!-- Not a toast: the rider went quiet and needs to still be able to
 			     read why a minute later, mid-interval (errors.md). -->

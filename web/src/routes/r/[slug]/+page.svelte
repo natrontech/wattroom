@@ -13,7 +13,6 @@
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
-	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -26,8 +25,6 @@
 		MonitorPlay,
 		MonitorUp,
 		PanelRight,
-		ScreenShare,
-		ScreenShareOff,
 		UserPlus,
 	} from '@lucide/svelte';
 
@@ -199,18 +196,9 @@
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
 		<SessionControls />
-		<!-- Join voice lives in one place, the people column (#462); the
-		     lounge only offers the share, once you are in. -->
-		{#if av && account.me?.avEnabled && av.status === 'live'}
-			<button
-				onclick={() => void av.toggleShare()}
-				class="btn btn-secondary inline-flex items-center gap-1.5"
-			>
-				{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
-						size={14}
-					/> Share screen{/if}
-			</button>
-		{/if}
+		<!-- Voice, camera and the share live in the you-panel, bottom left, and
+		     nowhere else — the header had a second copy of a control the rider
+		     already has pinned. -->
 		<TrainerButton />
 		{#if room.stageSources.length > 0}
 			<div

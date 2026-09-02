@@ -6,6 +6,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -150,8 +151,7 @@
 							>
 								<MessageCircle size={15} />
 								{#if dmHeads.unread(friend.id)}
-									<span
-										class="bg-watt absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
+									<span class="{UNREAD_DOT} absolute -top-0.5 -right-0.5"
 									></span>
 								{/if}
 							</a>

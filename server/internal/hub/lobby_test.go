@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // The lobby socket (#251): holding it is being online, every presence change
@@ -117,4 +120,67 @@ func TestOnlineCount(t *testing.T) {
 	eventually(t, "count drops when jan's last tab closes", func() bool {
 		return h.OnlineCount() == 1
 	})
+}
+
+// A line said in a room pings the lobby (#568): a rider who is NOT standing
+// in that room announces it off the unread count the ping tells them to
+// re-fetch, and before this only phase and riding changes woke the lobby —
+// so a message waited on the client's 60 s fallback poll.
+func TestChatPingsTheLobby(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	h.SetLobbyAuth(func(r *http.Request) (string, bool) {
+		name, _, _ := strings.Cut(r.Header.Get("X-Rider"), ":")
+		return name, name != ""
+	})
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	// Jan is in the lobby and nowhere else; sven is in the room talking.
+	lobby := dial(t, base+"/ws/presence", "jan:member")
+	sven := dial(t, base+"/ws/rooms/velvet", "sven:member")
+	readTick(t, sven)
+
+	// Pings coalesce into a one-deep channel, so counting the ones the
+	// arrivals cause proves nothing. Read them off the socket in the
+	// background and wait for the lobby to fall QUIET instead — a room that
+	// is idle and nobody riding pings on nothing else.
+	pings := make(chan struct{}, 16)
+	go func() {
+		defer close(pings)
+		for {
+			if _, _, err := lobby.Read(context.Background()); err != nil {
+				return
+			}
+			pings <- struct{}{}
+		}
+	}()
+	for quiet := false; !quiet; {
+		select {
+		case _, open := <-pings:
+			if !open {
+				t.Fatal("lobby socket closed while the arrivals settled")
+			}
+		case <-time.After(500 * time.Millisecond):
+			quiet = true
+		}
+	}
+
+	if err := wsjson.Write(t.Context(), sven, protocol.ClientMessage{
+		Chat: &protocol.ChatLine{Text: "queue this one"},
+	}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	select {
+	case _, open := <-pings:
+		if !open {
+			t.Fatal("lobby socket closed")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a line said in velvet never pinged the lobby")
+	}
 }

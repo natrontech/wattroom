@@ -14,7 +14,17 @@
 				? 'border-danger/40'
 				: ''}"
 		>
-			<span class="flex-1">{toast.text}</span>
+			{#if toast.href}
+				<!-- A message toast IS the way to the thread (#568) — a plain
+				     anchor, so the router does the navigating. -->
+				<a
+					href={toast.href}
+					onclick={() => toasts.dismiss(toast.id)}
+					class="min-w-0 flex-1 truncate hover:underline">{toast.text}</a
+				>
+			{:else}
+				<span class="flex-1">{toast.text}</span>
+			{/if}
 			{#if toast.undo}
 				<button
 					class="btn btn-secondary btn-xs shrink-0"

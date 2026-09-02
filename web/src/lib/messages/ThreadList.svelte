@@ -10,6 +10,11 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
+	import {
+		UNREAD_COUNT,
+		UNREAD_DOT,
+		unreadCount,
+	} from '$lib/messages/unread-marks';
 	import { presence } from '$lib/presence.svelte';
 	import { Headphones, Search, Users } from '@lucide/svelte';
 
@@ -103,18 +108,14 @@
 									: 'text-muted'}">{t.preview}</span
 							>
 							{#if t.kind === 'room' && t.unread}
-								<!-- Quiet by design: the count is chrome, so it takes the
-								     muted surface — the live hue is for live data (ADR-0005). -->
 								<span
-									class="bg-muted/25 text-ink shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+									class={UNREAD_COUNT}
 									title="{t.unread} new since you were last here"
-									>{t.unread > 99 ? '99+' : t.unread}</span
+									>{unreadCount(t.unread)}</span
 								>
 							{:else if t.unread}
 								<!-- A DM knows only that something is new, not how much. -->
-								<span
-									class="bg-muted/60 h-2 w-2 shrink-0 rounded-full"
-									title="new since you last read it"
+								<span class={UNREAD_DOT} title="new since you last read it"
 								></span>
 							{/if}
 						</span>

@@ -19,7 +19,9 @@ built by [Natron](https://natron.io)
 
 ⭐ **Like the idea? [Star the repo](https://github.com/natrontech/wattroom/stargazers)** — it helps other pain-cave dwellers find it.
 
-<img src="docs/assets/room-live.png" alt="A live WattRoom session: six riders' watts and heart rate on one dashboard, ERG target, interval timeline and execution scores" width="100%" />
+<img src="docs/assets/room-live.png" alt="A live WattRoom session: six riders on a threshold block, each rider's watts, w/kg and execution score on one dashboard next to the interval timeline and the room's chat" width="100%" />
+
+<sub>Six riders, one timeline. Every target scales to the rider's own FTP, so the crew rides together whatever their numbers are.</sub>
 
 </div>
 
@@ -32,17 +34,24 @@ other, you share music. A group ride for pain caves.
 
 ## What's inside
 
-|                                                                                        |                                                                                 |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 🚴 **Rooms** — live watts, HR and cadence on one dashboard, voice & camera always there | 📈 **Structured workouts** — library + editor, precise ERG control over BLE FTMS |
-| 🎮 **Seven game modes** — sprint klaxons, eliminations, Watt Golf, Backyard Ramp, …     | 🎵 **Shared jukebox** — one synced YouTube soundtrack per room                   |
-| 🔒 **Private by default** — metrics stay in the room, AV never recorded                 | 🆓 **Free & open source** — AGPL, self-hostable as a single binary               |
+|                                                                                            |                                                                                          |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 🚴 **Rooms** — live watts, HR and cadence on one dashboard, voice & camera always there    | 📈 **Structured workouts** — curated library + editor, precise ERG control over BLE FTMS |
+| 🎮 **Seven game modes** — sprint klaxons, eliminations, Watt Golf, Backyard Ramp, …        | 🎵 **Shared jukebox** — one synced YouTube soundtrack per room                           |
+| 🏅 **Rides that count** — every session saved, `.fit` export, Strava upload, XP & trophies | 🔒 **Private by default** — metrics room-scoped, AV never recorded                       |
 
 ## Screens
 
-| The landing                                                     | On your phone                                                             |
-| :-------------------------------------------------------------: | :-----------------------------------------------------------------------: |
-| <img src="docs/assets/landing.png" alt="WattRoom landing page" /> | <img src="docs/assets/landing-mobile.png" alt="WattRoom on mobile" width="280" /> |
+|                                   The sprint moment                                    |                                        The workout library                                        |
+| :------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+| <img src="docs/assets/sprint.png" alt="A sprint moment: riders ranked live by w/kg" /> | <img src="docs/assets/workouts.png" alt="The workout library, every target scaled to your FTP" /> |
+
+The way in — on a desk, and on the phone that lives on the bars:
+
+<p align="center">
+  <img src="docs/assets/landing.png" alt="WattRoom landing page" width="560" />
+  <img src="docs/assets/landing-mobile.png" alt="WattRoom on a phone" width="180" />
+</p>
 
 ## Quick start (dev)
 

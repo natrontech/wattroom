@@ -498,6 +498,11 @@ func (h *Hub) PostChat(slug string, line protocol.ChatLine) {
 	if rm := h.occupied(slug); rm != nil {
 		rm.chatLine(line)
 	}
+	// Everyone's unread count for this room just changed (#568). A room
+	// nobody holds open never ticks, so this is the only ping it will get;
+	// when the room IS live the tick pings too and the lobby coalesces the
+	// pair — one ping is enough either way.
+	h.PresenceChanged()
 }
 
 // PostReaction is PostChat for a reaction toggled over HTTP (#468).
@@ -924,8 +929,13 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			}
 		}
 		ridingKey := strings.Join(rm.ridingLocked(now()), "\n")
+		spoke := len(tick.Chat) > 0
 		rm.mu.Unlock()
-		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding) {
+		// Someone spoke: every sidebar's unread count for this room just went
+		// stale, and a rider who is NOT standing in the room announces the
+		// line off that count (#568). Without this it waited for the lobby's
+		// 60 s fallback poll.
+		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding || spoke) {
 			lastPhase, lastRiding = tick.State.Phase, ridingKey
 			rm.changed()
 		}
