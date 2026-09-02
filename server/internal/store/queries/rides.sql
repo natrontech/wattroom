@@ -15,7 +15,30 @@ order by started_at desc
 limit $2;
 
 -- name: GetRide :one
-select * from rides where id = $1 and user_id = $2;
+-- The one per-ride blob read ADR-0016 allows: a rider opening a single ride
+-- is exactly what the samples are kept for. Owner-scoped, so someone else's
+-- ride reads as absent rather than as forbidden. The room comes along because
+-- the detail page names it — empty strings for a solo ride.
+select r.*,
+       coalesce(rm.slug, '')::text as room_slug,
+       coalesce(rm.name, '')::text as room_name
+from rides r
+left join rooms rm on rm.id = r.room_id
+where r.id = $1 and r.user_id = $2;
+
+-- name: DeleteRide :execrows
+-- Owner-only by the where clause. The medals awarded for this ride go with
+-- it through medals.ride_id's on-delete-cascade — no cleanup pass to forget.
+delete from rides where id = $1 and user_id = $2;
+
+-- name: ListRideMedals :many
+-- What one ride won. A medal is always a room's, so the room names itself
+-- here rather than being looked up a second time.
+select m.kind, m.awarded_at, rm.name as room_name
+from medals m
+join rooms rm on rm.id = m.room_id
+where m.ride_id = $1
+order by m.kind;
 
 -- name: CreateMedal :exec
 insert into medals (room_id, user_id, ride_id, kind)

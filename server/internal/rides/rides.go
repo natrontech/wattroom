@@ -63,7 +63,9 @@ func (s *Service) SetRideKeeper(k stats.RideKeeper) { s.keeper = k }
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides", s.handleList)
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
+	mux.HandleFunc("GET /api/rides/{id}", s.handleGet)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
+	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }
 
 type sampleJSON struct {
