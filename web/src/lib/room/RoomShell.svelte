@@ -50,7 +50,7 @@
 	import { createRide } from '$lib/room/ride.svelte';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
-	import { stageSlot } from '$lib/room/stage-slot.svelte';
+	import { offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
 		id: string;
@@ -512,6 +512,17 @@
 {#if tv}
 	<!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
 	<div class="cave bg-surface fixed inset-0 z-50">
+		{#if live.tick?.jukebox?.current}
+			<!-- The player takes the TV's top-right corner (#460): the dock
+			     outranks this overlay and used to land wherever it was, over the
+			     numbers. A seat here makes it part of the layout — ≥200×200 for
+			     RMF, and it outranks the column's and the stage's seats. -->
+			<div
+				class="absolute top-[3vh] right-[3vw] z-10 aspect-video w-[24vw] min-w-[240px]"
+				style="min-height: 200px"
+				{@attach (node) => offerSeat(node, 3)}
+			></div>
+		{/if}
 		<button
 			onclick={() => (tv = false)}
 			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
