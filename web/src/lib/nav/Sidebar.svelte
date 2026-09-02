@@ -16,6 +16,12 @@
 	import { account } from '$lib/account.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
+	import {
+		UNREAD_COUNT,
+		UNREAD_DOT,
+		unreadCount,
+	} from '$lib/messages/unread-marks';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
 	import {
 		contextMenu,
@@ -180,13 +186,11 @@
 								>
 							{:else if room.unread}
 								<!-- The strongest reason a chat app stays open in a
-								     background window. Quiet by design: the count is
-								     chrome, so it takes the muted surface — the live hue
-								     is for live data (ADR-0005). -->
+								     background window. -->
 								<span
-									class="bg-muted/25 text-ink ml-auto shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+									class="{UNREAD_COUNT} ml-auto"
 									title="{room.unread} new since you were last here"
-									>{room.unread > 99 ? '99+' : room.unread}</span
+									>{unreadCount(room.unread)}</span
 								>
 							{:else if (room.connected ?? 0) > 0}
 								<span class="ml-auto flex shrink-0 items-center gap-1">
@@ -236,6 +240,14 @@
 					</a>
 
 					{#if open}
+						<!-- What was said while you were in another place (#568): the
+						     room's own unread cannot say it — standing in the room
+						     reads it — so this is the connection's answer, the same one
+						     the people column's bar shows. -->
+						{@const missed =
+							roomConnection.current?.slug === room.slug
+								? roomConnection.current.missed()
+								: null}
 						<!-- The room you are standing in opens. This is Discord's
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
@@ -256,6 +268,12 @@
 										<span class="truncate">{entry.label}</span>
 										{#if entry.path === '/training' && live}
 											<span class="ml-auto"><RidingBars size={10} /></span>
+										{:else if entry.path === '/chat' && missed}
+											<span
+												class="{UNREAD_COUNT} ml-auto"
+												title="{missed.count} said while you were elsewhere"
+												>{unreadCount(missed.count)}</span
+											>
 										{/if}
 									</a>
 								</li>
@@ -309,8 +327,7 @@
 							/>
 							<span class="truncate">{head.peerName}</span>
 							{#if dmHeads.unread(head.peerId)}
-								<span class="bg-watt ml-auto h-2 w-2 shrink-0 rounded-full"
-								></span>
+								<span class="{UNREAD_DOT} ml-auto"></span>
 							{/if}
 						</a>
 					</li>

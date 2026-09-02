@@ -11,6 +11,8 @@ export interface Toast {
 	tone: 'info' | 'error';
 	/** Present ⇒ the action already ran and this reverses it. */
 	undo?: () => void;
+	/** Present ⇒ the toast is a link to what it is about (#568). */
+	href?: string;
 }
 
 let items = $state<Toast[]>([]);
@@ -27,10 +29,21 @@ export const toasts = {
 	/** Undo toasts linger longer — the rider has to spot them first. */
 	push(
 		text: string,
-		opts?: { tone?: 'info' | 'error'; undo?: () => void; seconds?: number },
+		opts?: {
+			tone?: 'info' | 'error';
+			undo?: () => void;
+			href?: string;
+			seconds?: number;
+		},
 	) {
 		const id = ++seq;
-		items.push({ id, text, tone: opts?.tone ?? 'info', undo: opts?.undo });
+		items.push({
+			id,
+			text,
+			tone: opts?.tone ?? 'info',
+			undo: opts?.undo,
+			href: opts?.href,
+		});
 		setTimeout(
 			() => dismiss(id),
 			(opts?.seconds ?? (opts?.undo ? 8 : 4)) * 1000,
