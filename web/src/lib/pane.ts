@@ -2,20 +2,13 @@
  * Panes that stay where you put them (#280): dragged size, dragged position,
  * remembered per device — a pane layout is a desk, not account state.
  *
- * Size needs no drag code at all: CSS `resize` writes the dragged width and
- * height as inline styles, so `keepSize` only restores those two numbers and
- * writes them back. Position does need code, but only for floating panes —
- * `dragPane` moves the nearest `[data-pane]` ancestor, whose value is the key.
+ * `keepSize` restores the width and height a divider last wrote and publishes
+ * them as CSS variables, so fixed neighbours can get out of the way.
+ * `dragPane` moves the nearest `[data-pane]` ancestor, whose value is the key
+ * — the popped-out stage is the one surface the rider still positions by
+ * hand. Resizing is a divider now ($lib/divider), never a grip on the pane.
  */
-import {
-	CURSOR,
-	EDGES,
-	type Edge,
-	gripStyle,
-	type Guides,
-	resizeRect,
-	snapSpan,
-} from '$lib/pane-snap';
+import { type Guides, snapSpan } from '$lib/pane-snap';
 
 interface Spot {
 	w?: number;
@@ -94,27 +87,6 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	};
 }
 
-/**
- * Put a pane back the way the rider left it, after something else borrowed
- * its rect (#316). `fallback` is the size the component authors, which the
- * borrower overwrote — inline styles have no memory of what they replaced.
- */
-export function restorePane(
-	node: HTMLElement,
-	key: string,
-	fallback: { w: number; h: number },
-): void {
-	const { w, h, x, y } = load(key);
-	node.style.width = `${w || fallback.w}px`;
-	node.style.height = `${h || fallback.h}px`;
-	if (x !== undefined && y !== undefined) place(node, x, y);
-	else {
-		// Never dragged: back to the corner its CSS docks it to.
-		node.style.left = node.style.top = '';
-		node.style.right = node.style.bottom = '';
-	}
-}
-
 /** Enough pane left on screen to grab it again after a viewport change. */
 const KEEP_VISIBLE = 80;
 
@@ -130,19 +102,6 @@ function place(pane: HTMLElement, x: number, y: number) {
 	// The pane's CSS docks it to a corner; a dragged one is placed instead.
 	pane.style.right = 'auto';
 	pane.style.bottom = 'auto';
-}
-
-/** Put a floating pane in the middle of the viewport, and remember it. */
-export function centrePane(node: HTMLElement, key: string): void {
-	place(
-		node,
-		(window.innerWidth - node.offsetWidth) / 2,
-		(window.innerHeight - node.offsetHeight) / 2,
-	);
-	save(key, {
-		x: parseInt(node.style.left, 10) || 0,
-		y: parseInt(node.style.top, 10) || 0,
-	});
 }
 
 /**
@@ -221,80 +180,5 @@ function guides(): Guides {
 	return {
 		x: [0, window.innerWidth / 2, gutter, window.innerWidth],
 		y: [0, window.innerHeight / 2, window.innerHeight],
-	};
-}
-
-/**
- * Resize a floating pane from any edge or corner, with soft guides (#316).
- * Replaces CSS `resize` on panes that need to be tucked somewhere precise;
- * the grips are transparent and sit in the pane's own margin of chrome, so
- * nothing is drawn over the picture.
- */
-export function resizePane(node: HTMLElement, key: string): () => void {
-	const grips = EDGES.map((edge) => {
-		const grip = document.createElement('div');
-		grip.dataset.resize = edge;
-		grip.style.cssText =
-			`position:absolute;z-index:2;touch-action:none;` +
-			`cursor:${CURSOR[edge]}-resize;${gripStyle(edge)}`;
-		node.appendChild(grip);
-		return grip;
-	});
-
-	let from: { edge: Edge; x: number; y: number; rect: DOMRect } | null = null;
-	const down = (event: PointerEvent) => {
-		const edge = (event.target as HTMLElement).dataset?.resize as
-			Edge | undefined;
-		if (!edge) return;
-		from = {
-			edge,
-			x: event.clientX,
-			y: event.clientY,
-			rect: node.getBoundingClientRect(),
-		};
-		(event.target as HTMLElement).setPointerCapture(event.pointerId);
-		event.preventDefault(); // no text selection while dragging
-	};
-	const move = (event: PointerEvent) => {
-		if (!from) return;
-		const style = getComputedStyle(node);
-		const next = resizeRect(
-			from.rect,
-			from.edge,
-			event.clientX - from.x,
-			event.clientY - from.y,
-			{
-				minW: parseFloat(style.minWidth) || 0,
-				minH: parseFloat(style.minHeight) || 0,
-				maxW: parseFloat(style.maxWidth) || window.innerWidth,
-				maxH: parseFloat(style.maxHeight) || window.innerHeight,
-			},
-			guides(),
-		);
-		node.style.width = `${next.width}px`;
-		node.style.height = `${next.height}px`;
-		place(node, next.left, next.top);
-	};
-	const up = () => {
-		if (!from) return;
-		from = null;
-		save(key, {
-			w: parseInt(node.style.width, 10) || 0,
-			h: parseInt(node.style.height, 10) || 0,
-			x: parseInt(node.style.left, 10) || 0,
-			y: parseInt(node.style.top, 10) || 0,
-		});
-	};
-
-	node.addEventListener('pointerdown', down);
-	node.addEventListener('pointermove', move);
-	node.addEventListener('pointerup', up);
-	node.addEventListener('pointercancel', up);
-	return () => {
-		node.removeEventListener('pointerdown', down);
-		node.removeEventListener('pointermove', move);
-		node.removeEventListener('pointerup', up);
-		node.removeEventListener('pointercancel', up);
-		for (const grip of grips) grip.remove();
 	};
 }

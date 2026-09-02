@@ -10,21 +10,22 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
-	import { pictureKey } from '$lib/room/stage';
+	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
+	import { clampSize, dividerDrag } from '$lib/divider';
 	import { goto } from '$app/navigation';
 	import {
 		Focus,
 		CalendarClock,
 		Columns2,
-		LayoutGrid,
 		MonitorPlay,
 		MonitorUp,
+		PanelRight,
 		ScreenShare,
 		ScreenShareOff,
 		UserPlus,
@@ -50,11 +51,11 @@
 		]);
 	}
 
-	// Quick layouts for watching together (#464): what deserves the room
-	// differs per rider — the picture for some, the cams for others — and the
-	// frame's edge-drag was neither obvious nor quick. Three presets, one tap,
-	// remembered per device; the drag stays for fine-tuning.
-	type Layout = 'stage' | 'split' | 'crew';
+	// Quick layouts for watching together (#464, reworked #427): what deserves
+	// the room differs per rider — the picture for some, the cams for others,
+	// and for a third the video belongs in the people column where it plays on
+	// every other page anyway. Three presets, one tap, remembered per device.
+	type Layout = 'stage' | 'split' | 'sidebar';
 	const LAYOUT_KEY = 'wattroom.lounge.layout.v1';
 	const LAYOUTS: {
 		id: Layout;
@@ -75,16 +76,16 @@
 			icon: Columns2,
 		},
 		{
-			id: 'crew',
-			label: 'Crew',
-			hint: 'the crew big, the picture beside',
-			icon: LayoutGrid,
+			id: 'sidebar',
+			label: 'Sidebar',
+			hint: 'the video plays in the people column only',
+			icon: PanelRight,
 		},
 	];
 	let layout = $state<Layout>('stage');
 	try {
 		const saved = localStorage.getItem(LAYOUT_KEY);
-		if (saved === 'split' || saved === 'crew') layout = saved;
+		if (saved === 'split' || saved === 'sidebar') layout = saved;
 	} catch {
 		/* desk preference; the default is fine */
 	}
@@ -97,28 +98,85 @@
 			/* fine — the choice just won't survive a reload */
 		}
 	}
-	const wrap = $derived(
-		!room.onStage || layout === 'stage'
-			? ''
-			: layout === 'split'
-				? // The frame has a 320 px floor (RMF's 200×200 with chrome): the
-					// stage column must never shrink below it, or it runs under the
-					// people column.
-					'grid items-start gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,1fr)]'
-				: 'grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]',
+	// Sidebar is only a choice while there IS a video to send there; a shared
+	// screen cannot play in a 240 px column and never moves.
+	const options = $derived(
+		LAYOUTS.filter(
+			(option) =>
+				option.id !== 'sidebar' ||
+				room.stageSources.some((source) => source.kind === 'jukebox'),
+		),
 	);
+
+	// The lounge's own stage, not the shell's: in the Sidebar layout the video
+	// is simply not a source here, so a shared screen takes the surface and
+	// with nothing shared the lounge is all crew.
+	const sources = $derived(
+		layout === 'sidebar'
+			? room.stageSources.filter((source) => source.kind !== 'jukebox')
+			: room.stageSources,
+	);
+	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
+	/** Stage above, crew below — the shape both Stage and Sidebar draw. */
+	const stacked = $derived(layout !== 'split');
+	const wrap = $derived(
+		!onStage || stacked
+			? ''
+			: // The frame has a 320 px floor (RMF's 200×200 with chrome): the
+				// stage column must never shrink below it, or it runs under the
+				// people column.
+				'grid items-start gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,1fr)]',
+	);
+
+	// How tall the picture is, in the one layout where there is room to argue
+	// about it (#427). It is a divider between the stage and the crew, not a
+	// grip on the frame: the frame keeps the picture's own shape at whatever
+	// height this is, centred in the column.
+	const STAGE_H_KEY = 'wattroom.lounge.stage-h.v1';
+	/** RMF's floor, and the frame's own min-height. */
+	const STAGE_H_MIN = 200;
+	function storedHeight() {
+		try {
+			const saved = Number(localStorage.getItem(STAGE_H_KEY));
+			if (saved >= STAGE_H_MIN) return saved;
+		} catch {
+			/* desk preference */
+		}
+		return 420;
+	}
+	let stageH = $state(storedHeight());
+	/** What the frame reports it can reach before its column caps the width. */
+	let stageFit = $state(Infinity);
+	/** Never so tall that the crew is pushed off the bottom entirely. */
+	function tallest() {
+		return Math.max(STAGE_H_MIN, Math.min(stageFit, window.innerHeight - 260));
+	}
+	function stageDivider(grip: HTMLElement) {
+		return dividerDrag(grip, {
+			axis: 'y',
+			from: () => stageH,
+			to: (h) => (stageH = clampSize(h, STAGE_H_MIN, tallest())),
+			done: () => {
+				try {
+					localStorage.setItem(STAGE_H_KEY, String(stageH));
+				} catch {
+					/* fine — the drag just won't survive a reload */
+				}
+			},
+		});
+	}
 
 	// Whoever's camera is ON the stage is not also a tile (#506): the room
 	// showed the same person twice, big and small, which reads as a bug the
 	// moment the tiles are a grid rather than a strip under the picture.
 	const staged = $derived(
-		room.onStage?.kind === 'cam' ? room.onStage.riderId : undefined,
+		onStage?.kind === 'cam' ? onStage.riderId : undefined,
 	);
 	const tiles = $derived(room.riders.filter((r) => r.id !== staged));
 	// Focus belongs to the Stage layout, where there IS a big slot to focus
 	// into. Side by side and the grid already show everyone at one size, so a
 	// focused rider there was a third size for no reason.
-	const focusable = $derived(!room.onStage || layout === 'stage');
+	const focusable = $derived(!onStage || stacked);
 	const focused = $derived(
 		focusable ? tiles.find((r) => r.id === room.focusId) : undefined,
 	);
@@ -154,13 +212,13 @@
 			</button>
 		{/if}
 		<TrainerButton />
-		{#if room.onStage}
+		{#if room.stageSources.length > 0}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
 				role="group"
 				aria-label="layout"
 			>
-				{#each LAYOUTS as option (option.id)}
+				{#each options as option (option.id)}
 					<button
 						onclick={() => setLayout(option.id)}
 						aria-pressed={layout === option.id}
@@ -175,29 +233,50 @@
 		{/if}
 		<button
 			onclick={() => room.openTv()}
-			class="btn btn-ghost btn-xs {room.onStage ? '' : 'ml-auto'}"
+			class="btn btn-ghost btn-xs {room.stageSources.length ? '' : 'ml-auto'}"
 			><MonitorUp size={13} /> TV</button
 		>
 	</div>
 
 	<div class={wrap}>
-		{#if room.onStage}
+		{#if onStage}
 			<!-- The stage (#280): many people may share at once, so the picker
-			     chooses; the frame zooms, pans, resizes and pops out. In the crew
-			     layout it moves beside the tiles (#464). -->
-			<div
-				class="min-w-0 shrink-0 {layout === 'stage' || !room.onStage
-					? 'mb-3'
-					: ''} {layout === 'crew' ? 'lg:order-last' : ''}"
-			>
+			     chooses; the frame zooms and pans. Stacked it takes the height
+			     the divider below sets and centres itself at the picture's own
+			     shape; side by side it simply fills its column (#427). -->
+			<div class="min-w-0 shrink-0">
 				<Stage
-					sources={room.stageSources}
-					activeKey={room.onStage.key}
-					trackKey={pictureKey(room.onStage)}
+					{sources}
+					activeKey={onStage.key}
+					trackKey={pictureKey(onStage)}
+					height={stacked
+						? clampSize(stageH, STAGE_H_MIN, tallest())
+						: undefined}
+					onFit={(max) => (stageFit = max)}
 					onPick={(key) => room.pickStage(key)}
-					attach={(node) => room.attachStage(node, room.onStage!.key)}
+					attach={(node) => room.attachStage(node, onStage!.key)}
 				/>
 			</div>
+			{#if stacked}
+				<!-- The one way the picture is resized (#427): the seam between it
+				     and the crew, dragged. There is no grip on the frame itself —
+				     a corner of diagonal lines nobody could find, and one that
+				     RMF would not let us draw over the player anyway. -->
+				<div
+					{@attach stageDivider}
+					class="group mb-3 flex h-4 w-full cursor-row-resize touch-none items-center justify-center"
+					role="separator"
+					aria-orientation="horizontal"
+					aria-label="resize the stage"
+					title="drag to resize the picture"
+				>
+					<!-- The strip is the target; the pill is what says so. Chrome, so
+					     it takes the structural accent and never glows (ADR-0005). -->
+					<span
+						class="bg-muted/30 group-hover:bg-neon group-active:bg-neon h-1 w-16 rounded-full transition-colors"
+					></span>
+				</div>
+			{/if}
 		{/if}
 		<div class="min-w-0">
 			{#if focused}
@@ -231,7 +310,7 @@
 				</div>
 			{:else}
 				<div
-					class="grid shrink-0 gap-3 {room.onStage && layout !== 'stage'
+					class="grid shrink-0 gap-3 {onStage && !stacked
 						? 'grid-cols-2'
 						: 'sm:grid-cols-2 2xl:grid-cols-3'}"
 				>

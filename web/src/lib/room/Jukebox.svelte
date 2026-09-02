@@ -2,7 +2,6 @@
 	import {
 		FastForward,
 		Pause,
-		PictureInPicture2,
 		Play,
 		Plus,
 		Rewind,
@@ -16,12 +15,7 @@
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
-	import {
-		COLUMN_SEAT,
-		offerSeat,
-		setPopped,
-		stageSlot,
-	} from '$lib/room/stage-slot.svelte';
+	import { COLUMN_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -87,12 +81,6 @@
 				icon: SkipForward,
 				onSelect: () => send({ action: 'skip' }),
 			},
-			'separator',
-			{
-				label: stageSlot.popped ? 'Put the player back' : 'Pop the player out',
-				icon: PictureInPicture2,
-				onSelect: () => setPopped(!stageSlot.popped),
-			},
 		];
 	}
 
@@ -116,22 +104,6 @@
 <section class="flex min-w-0 flex-col gap-3">
 	<div class="flex min-w-0 items-center justify-between gap-2">
 		<span class="eyebrow">jukebox</span>
-		{#if current}
-			<!-- The player sits in this deck by default (#445); popping it out is
-			     the option, remembered per device. Chrome beside the player, never
-			     over it (RMF). -->
-			<button
-				onclick={() => setPopped(!stageSlot.popped)}
-				class="text-muted hover:text-ink ml-auto shrink-0 rounded p-1"
-				title={stageSlot.popped
-					? 'put the player back here'
-					: 'pop the player out'}
-				aria-label={stageSlot.popped
-					? 'put the player back in the panel'
-					: 'pop the player out into a floating window'}
-				aria-pressed={stageSlot.popped}><PictureInPicture2 size={13} /></button
-			>
-		{/if}
 		{#if current && jukebox?.playing && !streaming}
 			<!-- Proof the room is together, in the one place riders look for it. -->
 			<span
@@ -155,51 +127,37 @@
 		     under that. One thing per line reads at arm's length; a thumbnail
 		     beside a truncated title and four identical grey buttons did not. -->
 		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
-			{#if stageSlot.popped}
-				<div
-					class="bg-surface relative aspect-video w-full overflow-hidden rounded-lg"
+			<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
+			     the player clears RMF's 200×200 at the column's width, and the
+			     height is clamped rather than tied to the panel's width — a
+			     dragged-wide panel gave the picture 300 px and left the chat a
+			     sliver (rider report).
+
+			     The hole is ALWAYS offered, never mounted conditionally: the
+			     stage taking the player and giving it back would then mount and
+			     unmount this offer, which is what turned a pre-existing effect
+			     loop fatal in 2026.09.9 (#494). So when the stage outranks the
+			     column, the dock leaves and this box would stand empty — a big
+			     blank panel (rider report). It carries the track's own art
+			     underneath instead: covered by the player when the player is
+			     here, and something to look at when it is not. -->
+			<div
+				class="bg-surface relative w-full overflow-hidden rounded-lg"
+				style="height: clamp(200px, 24vh, 240px)"
+				{@attach (node) => offerSeat(node, COLUMN_SEAT)}
+			>
+				<img
+					src={thumbnailFor(current.videoId)}
+					alt=""
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					class="h-full w-full object-cover opacity-60"
+				/>
+				<span
+					class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
+					>The player docks here.</span
 				>
-					<img
-						src={thumbnailFor(current.videoId)}
-						alt=""
-						loading="lazy"
-						referrerpolicy="no-referrer"
-						class="h-full w-full object-cover"
-					/>
-				</div>
-			{:else}
-				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
-				     the player clears RMF's 200×200 at the column's width, and the
-				     height is clamped rather than tied to the panel's width — a
-				     dragged-wide panel gave the picture 300 px and left the chat a
-				     sliver (rider report).
-				
-				     The hole is ALWAYS offered, never mounted conditionally: the
-				     stage taking the player and giving it back would then mount and
-				     unmount this offer, which is what turned a pre-existing effect
-				     loop fatal in 2026.09.9 (#494). So when the stage outranks the
-				     column, the dock leaves and this box would stand empty — a big
-				     blank panel (rider report). It carries the track's own art
-				     underneath instead: covered by the player when the player is
-				     here, and something to look at when it is not. -->
-				<div
-					class="bg-surface relative w-full overflow-hidden rounded-lg"
-					style="height: clamp(200px, 24vh, 240px)"
-					{@attach (node) => offerSeat(node, COLUMN_SEAT)}
-				>
-					<img
-						src={thumbnailFor(current.videoId)}
-						alt=""
-						loading="lazy"
-						referrerpolicy="no-referrer"
-						class="h-full w-full object-cover opacity-60"
-					/>
-					<span
-						class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
-						>The player docks here.</span
-					>
-				</div>
-			{/if}
+			</div>
 			<!-- The hint sits on the words, never over the player (RMF). -->
 			<div class="min-w-0" title={MENU_HINT}>
 				<p class="truncate text-sm leading-tight font-medium">
