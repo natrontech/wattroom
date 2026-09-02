@@ -17,6 +17,10 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { deviceOptions } from '$lib/room/device-options';
 
+	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
+	// the mic and the camera it belongs with.
+	let { compact = false }: { compact?: boolean } = $props();
+
 	let open = $state(false);
 	const av = $derived(roomConnection.current?.av);
 </script>
@@ -25,9 +29,12 @@
 	<button
 		onclick={() => (open = true)}
 		aria-expanded={open}
-		class="btn btn-secondary btn-xs"
+		class={compact
+			? 'text-muted/50 hover:text-muted flex flex-1 justify-center rounded py-1.5'
+			: 'btn btn-secondary btn-xs'}
 		title="the mix, the gate and your devices"
-		><Sliders size={13} /> Sound</button
+		aria-label="sound — the mix, the gate and your devices"
+		>{#if compact}<Sliders size={16} />{:else}<Sliders size={13} /> Sound{/if}</button
 	>
 {/if}
 
