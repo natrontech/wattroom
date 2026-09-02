@@ -14,7 +14,22 @@
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
+
+	// A stand-in screenshot, deliberately bigger than any window: fit-to-window
+	// and full size are two different pictures, which is the whole point of the
+	// viewer (#510).
+	const screenshot =
+		'data:image/svg+xml;utf8,' +
+		encodeURIComponent(
+			`<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000">
+				<rect width="1600" height="1000" fill="#12121a"/>
+				<rect x="60" y="60" width="1480" height="880" fill="#1b1b26" stroke="#8b5cf6" stroke-width="4"/>
+				<text x="800" y="470" fill="#e879f9" font-family="monospace" font-size="72" text-anchor="middle">1600 × 1000</text>
+				<text x="800" y="560" fill="#a1a1aa" font-family="monospace" font-size="36" text-anchor="middle">click to zoom · Esc to close</text>
+			</svg>`,
+		);
 
 	// The sprint demos anchor to mount time so the first one runs its real
 	// klaxon → window → podium lifecycle in front of you.
@@ -198,6 +213,20 @@
 			>
 		</div>
 	</div>
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Chat image & viewer
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		A picture in a message is capped so it cannot push the conversation off
+		screen. Clicking it opens the app's own viewer (#510) — never a browser tab,
+		which takes the room with it. Click the picture again for full size, Escape
+		or the backdrop to come back; right-click the thumbnail for the new tab and
+		the link.
+	</p>
+	<div class="mt-4">
+		<ChatImage src={screenshot} alt="Sent by Sara" />
+	</div>
+
 	{#if demoModal}
 		<Modal label="Demo modal" onclose={() => (demoModal = false)}>
 			<p class="font-display font-bold">One modal, everywhere</p>
