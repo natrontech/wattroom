@@ -1,0 +1,1 @@
+- The Strava sign-in button on the login screen is now Strava's own "Connect with Strava" button, as their brand guidelines require. Nothing about signing in changes — the button just looks the way Strava says it must, which is a precondition for raising how many riders can connect their Strava account.
