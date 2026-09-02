@@ -15,6 +15,8 @@
 	import { api } from '$lib/api';
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
+	import { toasts } from '$lib/toast.svelte';
+	import { Lock, Users } from '@lucide/svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
@@ -24,9 +26,33 @@
 	interface ServerRide extends RideRecord {
 		xp: number;
 		room?: boolean;
+		/** The per-ride opt-in (ADR-0024): friends see it on your page. */
+		sharedWithFriends: boolean;
 	}
 	let rides = $state<ServerRide[] | null>(null);
 	let error = $state<string | null>(null);
+
+	// Undo over confirm (errors.md): the flip lands at once, the toast takes
+	// it back. A refused flip reverts the row and says why.
+	async function setShared(ride: ServerRide, shared: boolean, undoable = true) {
+		const before = ride.sharedWithFriends;
+		ride.sharedWithFriends = shared;
+		const res = await api(`/api/rides/${ride.id}`, {
+			method: 'PATCH',
+			json: { sharedWithFriends: shared },
+		});
+		if (!res.ok) {
+			ride.sharedWithFriends = before;
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push(
+			shared ? 'Shared with your friends.' : 'Private again.',
+			undoable
+				? { undo: () => void setShared(ride, !shared, false) }
+				: undefined,
+		);
+	}
 
 	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -99,7 +125,7 @@
 	}
 </script>
 
-{#snippet rideRow(ride: RideRecord, badge?: string)}
+{#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
 	<li
 		id="ride-{ride.id}"
 		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
@@ -122,6 +148,22 @@
 		<span class="font-display text-sm font-semibold tabular-nums"
 			>{Math.round(ride.execution * 100)}%</span
 		>
+		{#if server}
+			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->
+			<button
+				onclick={() => void setShared(server, !server.sharedWithFriends)}
+				class="btn btn-ghost btn-xs -my-1 -mr-2"
+				title={server.sharedWithFriends
+					? 'Friends see this ride on your page — make it private'
+					: 'Only you see this ride — share it with your friends'}
+			>
+				{#if server.sharedWithFriends}
+					<Users size={13} /> shared
+				{:else}
+					<Lock size={13} /> private
+				{/if}
+			</button>
+		{/if}
 	</li>
 {/snippet}
 
@@ -130,7 +172,7 @@
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>
 			<p class="text-muted text-xs">
-				Private by default — visible to you, and nobody else.
+				Private by default — share one with your friends from its row.
 			</p>
 		</div>
 	</div>
@@ -270,7 +312,7 @@
 	{:else}
 		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
-				{@render rideRow(ride, ride.room ? 'room' : undefined)}
+				{@render rideRow(ride, ride.room ? 'room' : undefined, ride)}
 			{/each}
 		</ul>
 	{/if}

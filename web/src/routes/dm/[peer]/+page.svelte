@@ -163,7 +163,11 @@
 			{/if}
 		</span>
 		<span class="min-w-0">
-			<span class="block truncate text-sm font-medium">{peerName}</span>
+			<a
+				href="/u/{peerId}"
+				class="block truncate text-sm font-medium hover:underline"
+				title="{peerName}'s page">{peerName}</a
+			>
 			<span class="text-muted block truncate text-[11px]">
 				{#if riding}riding in {inRoom?.name}{:else if inRoom}in {inRoom.name}{:else}not
 					in a room{/if}

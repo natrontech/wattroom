@@ -528,6 +528,28 @@ func (q *Queries) SetRideNormWatts(ctx context.Context, arg SetRideNormWattsPara
 	return err
 }
 
+const setRideShared = `-- name: SetRideShared :execrows
+update rides
+set shared_at = case when $1::boolean then coalesce(shared_at, now()) else null end
+where id = $2 and user_id = $3
+`
+
+type SetRideSharedParams struct {
+	Shared bool
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Per-ride opt-in (WATTROOM.md privacy): the owner flips it, the timestamp
+// remembers when; unsharing clears it. Owner-only by the where clause.
+func (q *Queries) SetRideShared(ctx context.Context, arg SetRideSharedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRideShared, arg.Shared, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const userTotalXp = `-- name: UserTotalXp :one
 select coalesce(sum(xp), 0)::bigint from rides where user_id = $1
 `

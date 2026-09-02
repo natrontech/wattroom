@@ -1,16 +1,7 @@
 import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
+import { MEDAL_META } from '$lib/medals';
 import type { createRecording } from '$lib/room/recording.svelte';
-
-const MEDAL_META: Record<string, { name: string; criterion: string }> = {
-	diesel: { name: 'Diesel', criterion: 'lowest power variability' },
-	metronome: { name: 'Metronome', criterion: 'best execution score' },
-	hammer: { name: 'Hammer', criterion: 'best 5 s w/kg' },
-	lanterne_rouge: {
-		name: 'Lanterne Rouge',
-		criterion: 'last on the podium metric, but finished',
-	},
-};
 
 /** A session is worth a summary once it has a minute of your riding in it. */
 export const SUMMARY_MIN_SAMPLES = 60;
