@@ -6,6 +6,7 @@
 	// instrument. A sprint takes the screen and gives it back, a game replaces
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
+	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import GamePanel from '$lib/room/GamePanel.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -168,6 +169,23 @@
 					small={focus === 'media'}
 					onBias={room.trainer ? (step) => room.nudgeBias(step) : undefined}
 				/>
+
+				<!-- The live half of the execution score (WATTROOM.md: "live on the
+				     group dashboard during sessions"). The server has sent it per
+				     rider since #27 and only the render site was missing (#543).
+				     It rides in the secondary row's spare width rather than beside
+				     the crew: the strip is presence, this is the contest, and a
+				     second full-width list of the same people is what the sprint
+				     and game branches below already refuse to draw.
+				     Alone it is not a leaderboard, so solo rides do not show it. -->
+				{#if room.riders.length > 1 && focus !== 'media'}
+					<!-- Not while a screen has the focus: this row already picks up
+					     the compact instrument there, and the player's own floor
+					     (RMF) is what the width is for. -->
+					<div class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto">
+						<ExecutionMeter riders={room.riders} />
+					</div>
+				{/if}
 			</div>
 
 			<!-- The crew. A group-training surface that shows only your own
