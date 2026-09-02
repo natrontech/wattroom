@@ -279,7 +279,7 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 
 const listRoomMembers = `-- name: ListRoomMembers :many
 select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, u.accent_palette, u.color_scheme, m.role, m.joined_at,
-    (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1

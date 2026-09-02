@@ -282,14 +282,20 @@
 				<p class="text-muted text-[11px] tabular-nums">{wkgNow} w/kg</p>
 			{/if}
 		</div>
-		<div class="panel px-4 py-3">
-			<p class="eyebrow">level</p>
+		<!-- The one tile that opens: the level's receipts live in the trophy
+		     case (#467). -->
+		<a
+			href="/trophies"
+			class="panel hover:border-muted/40 block px-4 py-3"
+			title="Trophy case: medals, achievements, where your XP comes from"
+		>
+			<p class="eyebrow">level · trophies</p>
 			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>
 			<div class="mt-1.5"><ProgressBar pct={levelProgress(xp) * 100} /></div>
 			<p class="text-muted mt-1 text-[11px] tabular-nums">
 				{toNext.toLocaleString()} XP to {level + 1}
 			</p>
-		</div>
+		</a>
 		<div class="panel px-4 py-3">
 			<p class="eyebrow">this week</p>
 			<p class="font-display text-2xl font-bold tabular-nums">

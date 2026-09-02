@@ -8,6 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Achievement struct {
+	UserID   pgtype.UUID
+	Key      string
+	EarnedAt pgtype.Timestamptz
+}
+
 type ApiToken struct {
 	ID         pgtype.UUID
 	UserID     pgtype.UUID
@@ -173,4 +179,13 @@ type Workout struct {
 	Author     string
 	Definition []byte
 	CreatedAt  pgtype.Timestamptz
+}
+
+type XpEvent struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+	Source string
+	Amount int32
+	Ref    string
+	At     pgtype.Timestamptz
 }

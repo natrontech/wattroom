@@ -22,7 +22,7 @@ where (requester_id = $1 and addressee_id = $2)
 -- All rows involving me, resolved to the other person. Avatar + lifetime XP
 -- ride along for the friend rows' avatars (#253).
 select f.status, f.requester_id, u.id, u.display_name, u.avatar_url, u.avatar_preset,
-    (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1

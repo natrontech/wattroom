@@ -47,6 +47,7 @@ type Service struct {
 	users    UserSource
 	log      *slog.Logger
 	uploader RideUploader
+	keeper   stats.RideKeeper
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
@@ -54,6 +55,10 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 }
 
 func (s *Service) SetUploader(u RideUploader) { s.uploader = u }
+
+// SetRideKeeper wires the trophy case in (#467): a solo ride earns its
+// achievements the same way a room session's does.
+func (s *Service) SetRideKeeper(k stats.RideKeeper) { s.keeper = k }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides", s.handleList)
@@ -226,6 +231,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.uploader != nil {
 		s.uploader.RideSaved(id)
+	}
+	if s.keeper != nil {
+		watts := make([]int, len(samples))
+		for i, sample := range samples {
+			watts[i] = sample.Watts
+		}
+		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)
 	httpx.WriteJSON(w, http.StatusCreated, rideJSON{

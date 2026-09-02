@@ -551,12 +551,13 @@ func (q *Queries) SetRideShared(ctx context.Context, arg SetRideSharedParams) (i
 }
 
 const userTotalXp = `-- name: UserTotalXp :one
-select coalesce(sum(xp), 0)::bigint from rides where user_id = $1
+select user_total_xp($1)::bigint
 `
 
 // #253: lifetime XP → level (docs/SPEC.md thresholds, computed client-side).
-func (q *Queries) UserTotalXp(ctx context.Context, userID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, userTotalXp, userID)
+// Rides plus the off-bike ledger (#467) — user_total_xp is the one definition.
+func (q *Queries) UserTotalXp(ctx context.Context, uid pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, userTotalXp, uid)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err

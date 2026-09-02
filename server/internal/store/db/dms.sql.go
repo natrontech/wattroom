@@ -40,7 +40,7 @@ func (q *Queries) GetDmImage(ctx context.Context, arg GetDmImageParams) (GetDmIm
 const listDmHeads = `-- name: ListDmHeads :many
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url, peer.avatar_preset,
-    (select coalesce(sum(xp), 0) from rides r where r.user_id = peer.id)::bigint as total_xp,
+    user_total_xp(peer.id)::bigint as total_xp,
     m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m
 join users peer
