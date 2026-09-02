@@ -16,7 +16,12 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import {
@@ -279,7 +284,12 @@
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
 					{@const on = pathname === `/messages/dm/${head.peerId}`}
-					<li>
+					<li
+						title={MENU_HINT}
+						{@attach contextMenu(() =>
+							personMenu(head.peerId, goto, { conversation: true }),
+						)}
+					>
 						<a
 							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}

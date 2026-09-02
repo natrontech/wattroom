@@ -16,6 +16,11 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuItem,
+	} from '$lib/context-menu.svelte';
 	import { Lock, Users } from '@lucide/svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
@@ -53,6 +58,14 @@
 				: undefined,
 		);
 	}
+
+	// The row's one verb, as a menu item too (#486). A device-only ride has no
+	// server to flip, so its row offers nothing and keeps the browser's menu.
+	const shareItem = (ride: ServerRide): MenuItem => ({
+		label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
+		icon: ride.sharedWithFriends ? Lock : Users,
+		onSelect: () => void setShared(ride, !ride.sharedWithFriends),
+	});
 
 	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -128,10 +141,12 @@
 {#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
 	<li
 		id="ride-{ride.id}"
+		title={server ? MENU_HINT : undefined}
 		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
 		ride.id
 			? 'ring-z2/70 ring-1'
 			: ''}"
+		{@attach contextMenu(() => (server ? [shareItem(server)] : []))}
 	>
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
