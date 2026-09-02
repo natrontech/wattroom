@@ -1,1 +1,0 @@
-- The start / plan a session window is wider, so the workout list and the preview stop fighting for room.

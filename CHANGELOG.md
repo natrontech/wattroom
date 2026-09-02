@@ -17,6 +17,52 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.8] - 2026-09-02
+
+### Added
+
+- Right-click a person in the people column to message them, or a chat line to react, copy it, or queue the YouTube link in it.
+- Right-click (or long-press) a room in the sidebar, a rider's tile, the stage or a track in the queue for its actions: the places of a room and leaving it, focus and message, fit / pop out / fullscreen, vote / move / remove.
+- Watching together has three one-tap layouts on the Lounge — Stage, Split, Crew — so the picture or the cams get the room, remembered per device. Dragging the frame's edge still works for fine-tuning.
+- Messages is a place now: every room's chat and your DMs in one list, unread
+  first, and you can read and write in a room without joining it — whoever is
+  in the room sees your line as if you had typed it there, and a "N new" line
+  marks where you left off.
+- Each rider in voice has their own volume now — from their row in the people
+  column or on Members — and Join voice lives in one place, the people column.
+- While you are in a room but not on its Lounge — Training, Home, a message — the sidebar shows who is with you above your own panel: cameras when they are on, who is talking, who is riding, the last to speak first.
+- The sidebar names who is in each of your rooms under the room, not just how many, so you can see where your friends are before you go in.
+- Every member and friend has a page now: level, energy, medals from rooms
+  you share, and the rides they chose to share. Add a friend from it. Rides
+  stay private until you flip one to "shared" in Rides.
+- A trophy case at `/trophies`, one tap from the level tile on Home: your
+  medals, ten achievements with how far along each is, where every XP came
+  from, and the energy your legs have put into the trainer. XP now also
+  arrives off the bike — 1 XP per five minutes in a lounge's voice channel
+  (24 a day at most), 5 XP for a group session you were on the call for, and
+  100–500 XP once per achievement. Riding still pays best by a wide margin.
+
+### Changed
+
+- A room's calendar-link reset moved under Advanced on Sessions, with a line explaining what it is for: the link carries a private key, and resetting it is for when that key leaked.
+- The jukebox video plays inside the people column by default, where the deck is, instead of floating over the page; a pop-out button turns it into the draggable window when you want that, and the window has a button to put it back.
+- Room icons and reactions are drawn icons now, picked from a set in Room
+  settings, instead of emoji — they render the same on every device and in
+  every theme. A room that already had an emoji icon or reaction keeps
+  showing it as the matching drawn icon.
+
+### Removed
+
+- The Lounge's Leave button is gone again: the sidebar's leave icon on the room row disconnects you, and leaving a room's membership stays in its Settings.
+
+### Fixed
+
+- Home's "Plan a session" asks which room when you can plan in more than one, with the room you are in listed first, instead of quietly opening the first one.
+- The jukebox no longer crowds the chat out of the people column: the deck is capped at under half the column, the queue shows three lines with a "+n more", and "just played" is folded until you open it.
+- The start / plan a session window is wider, so the workout list and the preview stop fighting for room.
+- TV mode with a video playing: the player sits in the TV's top-right corner instead of floating over the numbers.
+- Joining voice, muting, turning your camera on, sharing your screen and leaving voice now sit at the top of the people column in every room, labelled — not two grey icons at the bottom of the sidebar.
+
 ## [2026.09.7] - 2026-09-02
 
 ### Added
@@ -206,7 +252,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.7...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.8...HEAD
+[2026.09.8]: https://github.com/natrontech/wattroom/compare/2026.09.7...2026.09.8
 [2026.09.7]: https://github.com/natrontech/wattroom/compare/2026.09.6...2026.09.7
 [2026.09.6]: https://github.com/natrontech/wattroom/compare/2026.09.5...2026.09.6
 [2026.09.5]: https://github.com/natrontech/wattroom/compare/2026.09.4...2026.09.5
