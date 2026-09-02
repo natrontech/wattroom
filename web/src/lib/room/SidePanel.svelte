@@ -1,6 +1,21 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { CalendarClock, Copy, Music, SmilePlus, X } from '@lucide/svelte';
+	import {
+		CalendarClock,
+		Copy,
+		Crown,
+		Headphones,
+		LogOut,
+		Mic,
+		MicOff,
+		Music,
+		ScreenShare,
+		ScreenShareOff,
+		SmilePlus,
+		Video,
+		VideoOff,
+		X,
+	} from '@lucide/svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import {
 		eventText,
@@ -12,6 +27,8 @@
 	import { compressImage } from '$lib/chat/media';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
+	import { account } from '$lib/account.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
 
 	// Drag the left edge to change the width. Pointer capture keeps the drag
@@ -50,7 +67,6 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import type { RoomRider } from '$lib/room/view';
-	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
 	// right column is WHO IS HERE; ours was chat alone, so the roster was
@@ -101,6 +117,9 @@
 		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
 		cheers?: string[];
 	} = $props();
+
+	// The way into voice, where the people are (#437).
+	const av = $derived(roomConnection.current?.av);
 
 	let reactingTo = $state<string | null>(null);
 
@@ -259,6 +278,56 @@
 						? `holding target — ${here.length}`
 						: `in voice — ${here.length}`}
 				</div>
+				{#if av && account.me?.avEnabled}
+					<!-- Labelled and big enough for a bike: two grey icons in the
+					     you-panel did not read as the way into voice (#437). -->
+					<div class="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+						{#if av.status === 'off' || av.status === 'failed'}
+							<button
+								onclick={() => void av.join()}
+								class="btn btn-primary btn-xs"
+								><Headphones size={13} /> Join voice</button
+							>
+							<span class="text-muted text-[10px]"
+								>camera and screen once you are in</span
+							>
+						{:else if av.status === 'connecting' || av.status === 'reconnecting'}
+							<span class="text-muted text-xs"
+								>{av.status === 'connecting'
+									? 'joining voice…'
+									: 'voice reconnecting…'}</span
+							>
+						{:else}
+							<button
+								onclick={() => av.toggleMic()}
+								aria-pressed={av.micOn}
+								class="btn btn-xs {av.micOn ? 'btn-secondary' : 'btn-danger'}"
+								>{#if av.micOn}<Mic size={13} /> Mic{:else}<MicOff size={13} /> Muted{/if}</button
+							>
+							<button
+								onclick={() => av.toggleCam()}
+								aria-pressed={av.camOn}
+								class="btn btn-secondary btn-xs"
+								>{#if av.camOn}<Video size={13} /> Camera on{:else}<VideoOff
+										size={13}
+									/> Camera{/if}</button
+							>
+							<button
+								onclick={() => void av.toggleShare()}
+								aria-pressed={av.sharing}
+								class="btn btn-secondary btn-xs"
+								>{#if av.sharing}<ScreenShareOff size={13} /> Stop sharing{:else}<ScreenShare
+										size={13}
+									/> Share{/if}</button
+							>
+							<button
+								onclick={() => av.leave()}
+								class="btn btn-ghost btn-xs"
+								title="leave voice"><LogOut size={13} /> Leave voice</button
+							>
+						{/if}
+					</div>
+				{/if}
 				<ul class="px-1">
 					{#each here as rider (rider.id)}{@render person(rider)}{/each}
 				</ul>
