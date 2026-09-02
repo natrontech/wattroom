@@ -253,7 +253,7 @@
 			<Skeleton class="mt-2 h-3 w-20" />
 			<p class="text-muted mt-4 text-[11px]">loading</p>
 		</div>
-		<div class="border-z6/40 bg-z6/10 rounded-lg border p-4">
+		<div class="border-danger/40 bg-danger/10 rounded-lg border p-4">
 			<p class="text-sm">Couldn't load your rooms</p>
 			<button class="border-muted/30 mt-3 rounded border px-3 py-1.5 text-xs"
 				>Retry</button

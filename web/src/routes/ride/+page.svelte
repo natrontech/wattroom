@@ -492,7 +492,7 @@
 			{/if}
 
 			{#if error}
-				<p class="text-z6 mt-4 text-sm">{error}</p>
+				<p class="text-danger mt-4 text-sm">{error}</p>
 			{/if}
 
 			<div class="mt-6 grid gap-2">
@@ -747,7 +747,7 @@
 							>
 						</div>
 						{#if error}
-							<p class="text-z6 mt-2 text-xs">{error}</p>
+							<p class="text-danger mt-2 text-xs">{error}</p>
 						{/if}
 
 						{#if recorder.flags.length > sentFlags}

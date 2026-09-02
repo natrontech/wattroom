@@ -308,7 +308,7 @@
 						onclick={() => removeCheer(emoji)}
 						disabled={busy}
 						title="remove {emoji}"
-						class="border-muted/25 hover:border-z6/60 rounded-full border px-3 py-1.5 text-base"
+						class="border-muted/25 hover:border-danger/60 rounded-full border px-3 py-1.5 text-base"
 						>{emoji}</button
 					>
 				{/each}
@@ -394,7 +394,7 @@
 				Rides already ridden stay in each rider's own history.
 			</p>
 			{#if confirmDelete}
-				<div class="border-z6/50 bg-z6/10 mt-4 rounded-lg border p-4">
+				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-4">
 					<p class="text-xs">
 						Delete “{room.name}” for all {room.members?.length ?? 0} members? This
 						can't be undone.

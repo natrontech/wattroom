@@ -92,7 +92,7 @@
 	</div>
 
 	{#if room.rideError}
-		<p class="text-z6 mb-3 text-xs">{room.rideError}</p>
+		<p class="text-danger mb-3 text-xs">{room.rideError}</p>
 	{/if}
 
 	{#if room.onStage}

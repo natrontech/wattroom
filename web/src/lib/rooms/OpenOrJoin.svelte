@@ -99,13 +99,13 @@
 					bind:value={joinCode}
 					maxlength="6"
 					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
-						? 'border-z6/60'
+						? 'border-danger/60'
 						: 'border-muted/25 focus:border-muted/60'}"
 					placeholder="Room code"
 				/>
 				{#if invalidCode}
 					<!-- Field-level validation lands under the field (errors.md). -->
-					<p class="text-z6 mt-1.5 text-xs">
+					<p class="text-danger mt-1.5 text-xs">
 						Codes are letters and numbers only.
 					</p>
 				{/if}

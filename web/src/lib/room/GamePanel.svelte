@@ -166,7 +166,7 @@
 			{#each riderRows as [id, rider] (id)}
 				<span
 					class="rounded-full border px-2.5 py-1 text-xs {rider.eliminated
-						? 'border-z6/40 text-z6 line-through'
+						? 'border-danger/40 text-danger line-through'
 						: 'border-muted/20'}"
 				>
 					{name(id)} · {'♥'.repeat(Math.max(0, rider.lives ?? 0))}

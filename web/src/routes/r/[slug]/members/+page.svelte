@@ -90,7 +90,8 @@
 					<button
 						onclick={() => room.removeMember(member.id)}
 						disabled={room.adminBusy}
-						class="text-muted hover:text-z6 shrink-0 text-[11px]">remove</button
+						class="text-muted hover:text-danger shrink-0 text-[11px]"
+						>remove</button
 					>
 				{/if}
 			</li>

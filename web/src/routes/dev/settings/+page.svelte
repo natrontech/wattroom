@@ -122,14 +122,12 @@
 			Rides already ridden stay in each rider's own history.
 		</p>
 		{#if confirmDelete}
-			<div class="border-z6/50 bg-z6/10 mt-4 rounded-lg border p-4">
+			<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-4">
 				<p class="text-xs">
 					Delete “{name}” for all 6 members? This can't be undone.
 				</p>
 				<div class="mt-3 flex gap-2">
-					<button class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold"
-						>Delete room</button
-					>
+					<button class="btn btn-danger-solid">Delete room</button>
 					<button
 						onclick={() => (confirmDelete = false)}
 						class="border-muted/30 rounded border px-4 py-2 text-sm"
@@ -140,7 +138,7 @@
 		{:else}
 			<button
 				onclick={() => (confirmDelete = true)}
-				class="border-z6/40 text-z6 hover:bg-z6/10 mt-4 rounded border px-4 py-2 text-sm"
+				class="border-danger/40 text-danger hover:bg-danger/10 mt-4 rounded border px-4 py-2 text-sm"
 				>Delete room</button
 			>
 		{/if}

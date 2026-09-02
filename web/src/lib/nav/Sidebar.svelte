@@ -284,7 +284,7 @@
 						{:else if voiceStatus === 'reconnecting'}
 							<span class="text-z5">voice reconnecting…</span>
 						{:else if voiceStatus === 'failed'}
-							<span class="text-z6">voice failed</span>
+							<span class="text-danger">voice failed</span>
 						{:else}
 							<span class="text-muted">not in voice</span>
 						{/if}
@@ -297,7 +297,7 @@
 					class="rounded p-1 {inVoice
 						? micOn
 							? 'text-z4'
-							: 'text-z6'
+							: 'text-danger'
 						: 'text-muted/50 hover:text-muted'}"
 					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
 					aria-label={inVoice

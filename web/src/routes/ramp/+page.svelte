@@ -138,7 +138,7 @@
 			</p>
 
 			{#if error}
-				<p class="text-z6 mt-4 text-sm">{error}</p>
+				<p class="text-danger mt-4 text-sm">{error}</p>
 			{/if}
 
 			<div class="mt-6 flex justify-center gap-2">
@@ -252,7 +252,7 @@
 			</p>
 
 			{#if error}
-				<p class="text-z6 mt-4 text-sm">{error}</p>
+				<p class="text-danger mt-4 text-sm">{error}</p>
 			{/if}
 
 			{#if saved}

@@ -56,7 +56,7 @@
 				<p class="text-muted mt-1 text-sm">Connecting…</p>
 			{:else if state === 'failed'}
 				<!-- What went wrong, why, and what to do — never "something went wrong". -->
-				<p class="text-z6 mt-1 text-sm">Couldn't connect</p>
+				<p class="text-danger mt-1 text-sm">Couldn't connect</p>
 				<p class="text-muted mt-0.5 text-xs">
 					The device stopped responding after pairing. Wake it up — spin the
 					cranks or press its button — then try again. If it's paired to another

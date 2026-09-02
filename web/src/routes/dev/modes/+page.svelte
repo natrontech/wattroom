@@ -127,7 +127,7 @@
 					>
 						<span class="w-16 truncate">{rider.name}</span>
 						{#if rider.out}
-							<span class="text-z6 text-xs"
+							<span class="text-danger text-xs"
 								>out — round {rider.name === 'Tobi' ? 3 : 2}</span
 							>
 							<span class="text-muted ml-auto text-[11px]"
@@ -174,7 +174,7 @@
 							{#each { length: 3 } as _, i (i)}
 								<span
 									class="h-2.5 w-2.5 rounded-full {i < rider.lives
-										? 'bg-z6'
+										? 'bg-danger'
 										: 'bg-muted/20'}"
 								></span>
 							{/each}

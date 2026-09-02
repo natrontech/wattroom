@@ -95,7 +95,7 @@
 			<button
 				onclick={onRemove}
 				aria-label="remove from the queue"
-				class="text-muted hover:text-z6 grid h-6 w-6 place-items-center"
+				class="text-muted hover:text-danger grid h-6 w-6 place-items-center"
 				><X size={13} /></button
 			>
 		{/if}

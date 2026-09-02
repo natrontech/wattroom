@@ -25,6 +25,9 @@
 	 * scrims). Components never say white/black — these flip with the scheme. */
 	--color-ink: light-dark(#180a2e, #ffffff);
 	--color-paper: light-dark(#ffffff, #000000);
+	/* Semantic, not data (#397): destructive controls and errors. The hue is
+	 * fixed red-orange in every theme; only lightness follows the family. */
+	--color-danger: light-dark(#c21725, #fc5855);
 
 	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
 	 * zone colour is learned and read across the room, and the sRGB gamut does
@@ -162,10 +165,12 @@ body {
 	@apply text-muted hover:text-ink;
 }
 @utility btn-danger {
-	@apply border-z6/40 text-z6 hover:bg-z6/10 border;
+	@apply border-danger/40 text-danger hover:bg-danger/10 border;
 }
+/* Paper, not ink: the fill sits mid-lightness in both families, so only the
+ * inverse of the text colour clears 4.5:1 on it (gated in palette.test.ts). */
 @utility btn-danger-solid {
-	@apply bg-z6 text-ink hover:bg-z6/90;
+	@apply bg-danger text-paper hover:bg-danger/90;
 }
 /* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
  * that *creates* live data (start ride, go live). Border only, never a fill. */

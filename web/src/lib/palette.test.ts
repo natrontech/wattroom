@@ -10,6 +10,7 @@ import {
 } from './color';
 import {
 	CONTRAST,
+	DANGER_HUE,
 	DARK_SURFACE_MAX_L,
 	TOKENS,
 	WHITE_SURFACE_MIN_L,
@@ -81,7 +82,7 @@ function expectLegible(theme: Theme, label: string) {
 			CONTRAST.text,
 		);
 	}
-	for (const token of ['watt', 'neon'] as TokenName[]) {
+	for (const token of ['watt', 'neon', 'danger'] as TokenName[]) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			CONTRAST.accent,
 		);
@@ -105,6 +106,19 @@ function expectLegible(theme: Theme, label: string) {
 		contrast(theme.tokens.paper, theme.tokens.ink),
 		`${label} paper on ink`,
 	).toBeGreaterThanOrEqual(CONTRAST.text);
+	// btn-danger-solid (app.css) sets paper on a danger fill.
+	expect(
+		contrast(theme.tokens.paper, theme.tokens.danger),
+		`${label} paper on danger`,
+	).toBeGreaterThanOrEqual(CONTRAST.text);
+}
+
+/** A theme cannot rotate danger: the hue is the meaning (#397). */
+function expectDangerFixed(theme: Theme, label: string) {
+	expect(
+		hueDistance(hexToOklch(theme.tokens.danger).h, DANGER_HUE),
+		`${label} danger hue`,
+	).toBeLessThanOrEqual(15);
 }
 
 describe('colour maths', () => {
@@ -166,6 +180,10 @@ describe('the catalogue', () => {
 describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	it('clears every text and graphics contrast gate', () => {
 		expectLegible(theme, theme.name);
+	});
+
+	it('keeps danger on the danger hue', () => {
+		expectDangerFixed(theme, theme.name);
 	});
 
 	it('is as dark or as light as its family claims', () => {
@@ -237,6 +255,7 @@ describe('custom themes', () => {
 		for (const family of ['dark', 'white'] as const) {
 			const theme = customTheme(hue, family);
 			expectLegible(theme, `custom ${family} ${hue}°`);
+			expectDangerFixed(theme, `custom ${family} ${hue}°`);
 			expect(
 				hueDistance(
 					hexToOklch(theme.tokens.watt).h,

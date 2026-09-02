@@ -126,7 +126,7 @@
 				>
 				<button
 					onclick={() => (confirmDelete = true)}
-					class="border-z6/40 text-z6 hover:bg-z6/10 rounded border px-4 py-2 text-sm"
+					class="border-danger/40 text-danger hover:bg-danger/10 rounded border px-4 py-2 text-sm"
 					>Delete account</button
 				>
 			</div>
@@ -136,7 +136,7 @@
 					Confirmation dialogs are for the genuinely destructive only
 					(.claude/rules/errors.md) — everything else gets undo. This qualifies.
 				-->
-				<div class="border-z6/50 bg-z6/10 mt-4 rounded-lg border p-5">
+				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-5">
 					<p class="text-sm font-medium">
 						This deletes everything, permanently.
 					</p>
@@ -156,8 +156,7 @@
 					<div class="mt-3 flex gap-2">
 						<button
 							disabled={deleteConfirmation !== 'DELETE'}
-							class="bg-z6 text-ink rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-							>Delete my account</button
+							class="btn btn-danger-solid">Delete my account</button
 						>
 						<button
 							onclick={() => (
