@@ -6,9 +6,9 @@
 	// stage above it only when someone is actually sharing. Tapping a tile
 	// focuses that rider: what "video-first" used to be a whole layout for,
 	// as a tap rather than a mode you have to remember you are in.
-	import { dev } from '$app/environment';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
+	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
@@ -60,33 +60,11 @@
 				</button>
 			{/if}
 		{/if}
-		{#if !room.trainer}
-			<button
-				onclick={() => room.pair()}
-				disabled={typeof navigator === 'undefined' || !navigator.bluetooth}
-				class="btn btn-secondary">Pair trainer</button
-			>
-			{#if dev}
-				<!-- Dev-only (#123): simulated watts in a live room would count for
-				     medals, XP and streaks — the fairness layer takes no fakes. -->
-				<button
-					onclick={() => room.pairSimulated()}
-					class="btn btn-ghost btn-xs">Ride simulated</button
-				>
-			{/if}
-		{:else}
-			<button onclick={() => room.unpair()} class="btn btn-ghost btn-xs"
-				>Unpair trainer</button
-			>
-		{/if}
+		<TrainerButton />
 		<button onclick={() => room.openTv()} class="btn btn-ghost btn-xs ml-auto"
 			><MonitorUp size={13} /> TV</button
 		>
 	</div>
-
-	{#if room.rideError}
-		<p class="text-z6 mb-3 text-xs">{room.rideError}</p>
-	{/if}
 
 	{#if room.onStage}
 		<!-- The stage (#280): many people may share at once, so the picker
