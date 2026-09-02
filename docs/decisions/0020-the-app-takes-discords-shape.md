@@ -79,9 +79,17 @@ What the merge does **not** give up — these were the whole point:
    navigation on every screen, so a destination has exactly one home.
 2. **The you panel is pinned at the bottom** (#181 gap 2) — avatar, mic, cam,
    voice status, cog. What leaves the rail is the per-rider mixer, the gate
-   slider and the theme cycle: desk settings that were living in a 208 px strip
-   you also navigate rooms with. They go behind the cog, with Profile, Sensors
-   and the ramp test.
+   slider and the theme cycle: they were living in a 208 px strip you also
+   navigate rooms with, and the rail is navigation. The theme cycle goes behind
+   the cog, with Profile, Sensors and the ramp test.
+
+   **Leaving the rail is not the same as leaving the room.** The mixer and the
+   gate are ridden with, not set up once — see the
+   [2026-09-02 amendment](#amendment--the-mix-and-the-gate-come-back-into-the-room-2026-09-02),
+   which supersedes this point's original reading and gives them a home in the
+   room's own people column. A control you only need *before* you ride belongs
+   behind the cog; a control you discover is wrong *while* riding gets a
+   shortcut where you are standing.
 3. **Every room still carries its signal** (#181 gap 4) — live dot, unread
    count, mention badge, "Sweet Spot 2×20, 12 min in", who is in voice. That is
    ADR-0010's crew radar, and it is why rooms keep **names** rather than
@@ -251,10 +259,11 @@ chat during a ride at all.
 
 ## Amendment — the mix and the gate come back into the room (2026-09-02)
 
-The decision above sends "the per-rider mixer, the gate slider and the theme
-cycle" behind the cog, on the grounds that they are *desk settings* — set once,
-not reached for mid-interval. Ridden, half of that is wrong (#477), and the
-rule it was standing on needed sharpening rather than an exception:
+Decision point 2 originally sent "the per-rider mixer, the gate slider and the
+theme cycle" behind the cog together, on the grounds that all three are *desk
+settings* — set once, not reached for mid-interval. Ridden, half of that is
+wrong (#477). This amendment is the authority for the mixer and the gate; the
+point above now carries the rule it was missing, which is this one:
 
 > A control is a desk setting when you only need it **before** you ride. A
 > control you discover is wrong **while** riding needs a shortcut inside the
