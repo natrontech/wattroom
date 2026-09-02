@@ -15,22 +15,10 @@
 	import GateTune from '$lib/room/GateTune.svelte';
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { deviceOptions } from '$lib/room/device-options';
 
 	let open = $state(false);
 	const av = $derived(roomConnection.current?.av);
-
-	const deviceOptions = (
-		list: { deviceId: string; label: string }[],
-		kind: string,
-	) => [
-		{ value: '', label: 'System default' },
-		...list
-			.filter((d) => d.deviceId && d.deviceId !== 'default')
-			.map((d, i) => ({
-				value: d.deviceId,
-				label: d.label || `${kind} ${i + 1}`,
-			})),
-	];
 </script>
 
 {#if av}
