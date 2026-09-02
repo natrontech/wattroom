@@ -96,7 +96,7 @@
 		slug: string;
 		role: string;
 		roomName: string;
-		/** Owner-set emoji identity mark (#223). */
+		/** Owner-set identity mark (#223) — an icon key (#447). */
 		icon?: string;
 		/** The room's reaction palette (#223); absent = SidePanel's base set. */
 		cheers?: string[];

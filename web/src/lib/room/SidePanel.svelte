@@ -24,6 +24,8 @@
 	} from '$lib/room/timeline';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { STOCK_CHEERS } from '$lib/icons';
 	import { compressImage } from '$lib/chat/media';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
@@ -91,7 +93,7 @@
 		reactions = {},
 		myReacts = {},
 		onReact,
-		cheers = ['🔥', '💪', '👏', '💀', '🚀', '🧊'],
+		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster sits above the chat. */
@@ -114,7 +116,7 @@
 		onCheer?: (emoji: string) => void;
 		/** A pasted image rides along as a blob; the parent owns the upload. */
 		onChat?: (text: string, image?: Blob) => void;
-		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
+		/** The room's one reaction vocabulary (#223), icon keys (#447) — cheers thrown, reactions attached. */
 		cheers?: string[];
 	} = $props();
 
@@ -433,28 +435,32 @@
 									<span
 										class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
 									>
-										{#each cheers as emoji (emoji)}
+										{#each cheers as cheer (cheer)}
 											<button
 												onclick={() => {
-													onReact(id, emoji);
+													onReact(id, cheer);
 													reactingTo = null;
 												}}
-												class="px-0.5 hover:scale-125">{emoji}</button
+												aria-label={cheer}
+												title={cheer}
+												class="px-0.5 py-0.5 hover:scale-125"
+												><CheerIcon {cheer} size={16} /></button
 											>
 										{/each}
 									</span>
 								{/if}
 								{#if reactions[id]}
 									<span class="mt-0.5 flex flex-wrap gap-1">
-										{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [emoji, count] (emoji)}
+										{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [cheer, count] (cheer)}
 											<button
-												onclick={() => onReact(id, emoji)}
-												class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
-													`${id}:${emoji}`
+												onclick={() => onReact(id, cheer)}
+												aria-label="{cheer} {count}"
+												class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
+													`${id}:${cheer}`
 												]
 													? 'ring-neon bg-neon/15'
 													: 'ring-ink/10 bg-surface-raised'}"
-												>{emoji} {count}</button
+												><CheerIcon {cheer} size={12} />{count}</button
 											>
 										{/each}
 									</span>
@@ -510,11 +516,13 @@
 			{/if}
 			<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
 			<div class="flex gap-1.5">
-				{#each cheers.slice(0, 4) as emoji (emoji)}
+				{#each cheers.slice(0, 4) as cheer (cheer)}
 					<button
-						onclick={() => onCheer?.(emoji)}
-						class="border-muted/20 hover:border-muted/50 flex-1 rounded border py-2 text-base"
-						>{emoji}</button
+						onclick={() => onCheer?.(cheer)}
+						aria-label={cheer}
+						title={cheer}
+						class="border-muted/20 hover:border-muted/50 flex flex-1 items-center justify-center rounded border py-2"
+						><CheerIcon {cheer} size={18} /></button
 					>
 				{/each}
 			</div>

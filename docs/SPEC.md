@@ -35,14 +35,18 @@
 | Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | – |
-| Emoji cheers | ✓ | ✓ | ✓ | ✓ |
+| Cheers | ✓ | ✓ | ✓ | ✓ |
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
 Membership is uncapped; deleting a room frees a slot.
 
-Room identity & vocabulary (#223): the icon is **one emoji or none**; the
-reaction set is **up to 8 emoji** (base set: 🔥 💪 👏 💀 🚀 🧊) and is the
-palette for cheers and chat reactions alike. A **ban** is a membership state:
+Room identity & vocabulary (#223, #447): the icon is **one drawn icon from a
+curated set, or none**, stored as its lucide key; the reaction set is **up to
+8 icons** from a second curated set (base set: flame, biceps-flexed,
+party-popper, skull, rocket, snowflake) and is the palette for cheers and chat
+reactions alike. The server checks a key's shape, not the vocabulary, and still
+accepts one emoji so rooms and clients from before #447 keep working — the
+client draws a known emoji as its icon. A **ban** is a membership state:
 it survives rejoin via link or code, severs the live socket and voice on the
 spot, and only the owner sees the ban list. Unban restores plain membership.
 

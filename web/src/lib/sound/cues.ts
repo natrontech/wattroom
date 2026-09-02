@@ -200,7 +200,7 @@ export const CUES: Record<CueId, Cue> = {
 	cheer: {
 		id: 'cheer',
 		label: 'Cheer',
-		hint: 'A spectator emoji landing on your dashboard. Deliberately tiny — these arrive in bursts.',
+		hint: "A spectator's cheer landing on your dashboard. Deliberately tiny — these arrive in bursts.",
 		voices: [
 			{
 				type: 'sine',
@@ -216,7 +216,7 @@ export const CUES: Record<CueId, Cue> = {
 	reaction: {
 		id: 'reaction',
 		label: 'Rider reaction',
-		hint: 'A 🔥 or 💀 from someone too gassed to talk. Softer than a cheer — it comes from inside the room.',
+		hint: 'A flame or a skull from someone too gassed to talk. Softer than a cheer — it comes from inside the room.',
 		voices: [
 			{
 				type: 'triangle',

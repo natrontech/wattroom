@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+
 	let { cheers }: { cheers: { id: number; emoji: string; from: string }[] } =
 		$props();
 </script>
@@ -16,7 +18,7 @@
 				class="text-muted bg-surface/80 rounded-full px-2 py-0.5 text-[11px]"
 				>{cheer.from}</span
 			>
-			<span class="text-3xl">{cheer.emoji}</span>
+			<CheerIcon cheer={cheer.emoji} size={28} class="text-ink" />
 		</div>
 	{/each}
 </div>
