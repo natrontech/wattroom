@@ -1,6 +1,11 @@
 <script lang="ts">
 	const screens = [
 		{
+			href: '/dev/panel',
+			label: 'The room panel',
+			hint: 'Four ways to fit members, jukebox and chat in one column (#504)',
+		},
+		{
 			href: '/dev/profile',
 			label: 'Social profile',
 			hint: "A rider's page: level, shelf, shared rides, what shows to whom (#449)",

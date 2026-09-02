@@ -49,6 +49,28 @@ describe('contextMenu', () => {
 		detach();
 	});
 
+	// The roster is rebuilt from every server tick, so the attachment on a
+	// rider's row is torn down and re-created about once a second. That is the
+	// row re-rendering, not the rider leaving — and it was shutting the menu a
+	// second after it opened (#529).
+	it('survives the row re-rendering under it', () => {
+		const node = document.createElement('div');
+		document.body.append(node);
+		const items = [{ label: 'Message', onSelect: () => {} }];
+		let detach = contextMenu(() => items)(node);
+		rightClick(node);
+		expect(menu.items).toHaveLength(1);
+
+		detach(); // a tick: same row, new rider object
+		detach = contextMenu(() => items)(node);
+		expect(menu.items).toHaveLength(1);
+
+		// The rider actually leaving does take the menu with it.
+		node.remove();
+		detach();
+		expect(menu.items).toHaveLength(0);
+	});
+
 	// An object with nothing to offer used to swallow the right-click and draw
 	// nothing, which is exactly what "the menu doesn't work" looks like (#486).
 	it('leaves the browser its own menu when there is nothing to offer', () => {

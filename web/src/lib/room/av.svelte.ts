@@ -8,6 +8,14 @@ import {
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { GATE_DEFAULT, clampThreshold } from '$lib/room/gate-scale';
+import {
+	GATE_ATTACK_MS,
+	GATE_RELEASE_MS,
+	GATE_SHUT,
+	type GateState,
+	gateStep,
+} from '$lib/room/gate';
+import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
 import { mountTrack } from '$lib/room/mount-track';
 import {
 	type Claim,
@@ -161,19 +169,23 @@ export function createRoomAv(slug: string) {
 		ctx: AudioContext;
 		raw: MediaStream;
 		gain: GainNode;
-		analyser: AnalyserNode;
+		meter: MicMeter;
 		track: MediaStreamTrack;
 	} | null = null;
-	let meterTimer: ReturnType<typeof setInterval> | undefined;
-	let lastLoud = 0;
+	let gate: GateState = GATE_SHUT;
 
 	/** The capture constraints, honouring the chosen mic; an unplugged choice
 	 * falls back to the default instead of failing the join. */
 	async function captureMic(): Promise<MediaStream> {
+		// AGC off (#514): the gate compares the level against a fixed mark on a
+		// dBFS axis, and an automatic gain stage spends its life moving what
+		// dBFS means — it lifts room tone the moment nobody talks, which is the
+		// meter dancing in a silent room. A rider who lands quiet is what the
+		// per-rider faders are for (#463).
 		const base = {
 			noiseSuppression: true,
 			echoCancellation: true,
-			autoGainControl: true,
+			autoGainControl: false,
 		};
 		if (micId) {
 			try {
@@ -188,43 +200,52 @@ export function createRoomAv(slug: string) {
 		return navigator.mediaDevices.getUserMedia({ audio: base });
 	}
 
-	async function openMic() {
-		if (mic) closeMic(); // a mic test or stale chain must not orphan a stream
+	/** Every level the audio thread reports: the meter's number and the gate's. */
+	function onLevel(level: number) {
+		micLevel = level;
+		runGate();
+	}
+
+	/** capture → level → gate gain. Whoever calls it connects the gain to
+	 *  wherever the audio is going: the room, or your own ears. */
+	async function buildChain() {
 		const raw = await captureMic();
 		const ctx = new AudioContext();
 		const source = ctx.createMediaStreamSource(raw);
-		const analyser = ctx.createAnalyser();
-		analyser.fftSize = 512;
 		const gain = ctx.createGain();
 		gain.gain.value = 0; // closed until the gate opens
+		const meter = await createMicMeter(ctx, source, onLevel);
+		meter.out.connect(gain);
+		gate = GATE_SHUT;
+		return { ctx, raw, gain, meter };
+	}
+
+	async function openMic() {
+		if (mic) closeMic(); // a mic test or stale chain must not orphan a stream
+		const { ctx, raw, gain, meter } = await buildChain();
 		const dest = ctx.createMediaStreamDestination();
-		source.connect(analyser);
-		source.connect(gain);
 		gain.connect(dest);
 		const track = dest.stream.getAudioTracks()[0];
-		mic = { ctx, raw, gain, analyser, track };
+		mic = { ctx, raw, gain, meter, track };
 		await room?.localParticipant.publishTrack(track, {
 			source: Track.Source.Microphone,
 		});
-		const bins = new Uint8Array(analyser.frequencyBinCount);
-		meterTimer = setInterval(() => {
-			if (!mic) return;
-			mic.analyser.getByteTimeDomainData(bins);
-			let sum = 0;
-			for (const v of bins) {
-				const centred = (v - 128) / 128;
-				sum += centred * centred;
-			}
-			micLevel = Math.sqrt(sum / bins.length);
-			runGate();
-		}, 120);
 	}
 
 	function setGate(openNow: boolean) {
 		if (!mic) return;
 		transmitting = openNow;
-		// 5 ms ramps (SPEC): no clicks, no zipper noise.
-		mic.gain.gain.setTargetAtTime(openNow ? 1 : 0, mic.ctx.currentTime, 0.005);
+		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
+		// first syllable, and a close that fades is one the room forgives —
+		// it reads as a breath ending rather than a cut, and re-opening inside
+		// the fade is inaudible. setTargetAtTime's tau is a third of the ramp
+		// it reads as, since that is where it has all but arrived.
+		const ms = openNow ? GATE_ATTACK_MS : GATE_RELEASE_MS;
+		mic.gain.gain.setTargetAtTime(
+			openNow ? 1 : 0,
+			mic.ctx.currentTime,
+			ms / 3000,
+		);
 	}
 
 	/**
@@ -236,27 +257,18 @@ export function createRoomAv(slug: string) {
 		return musicPlaying ? gateThreshold * 2 : gateThreshold;
 	}
 
-	let lastTick = 0;
 	function runGate() {
 		if (!mic || (!micOn && !testing)) return;
 		if (mode === 'ptt') {
 			setGate(pttHeld);
 			return;
 		}
-		const threshold = effectiveThreshold();
-		const now = performance.now();
-		// Hidden tabs clamp timers to ~1 s (#214): with a fixed 800 ms hold the
-		// gate chopped speech at 1 Hz in the background. Hold at least two real
-		// intervals, whatever the browser is actually giving us.
-		const dt = lastTick > 0 ? now - lastTick : 120;
-		lastTick = now;
-		const hold = Math.max(800, 2.5 * dt);
-		if (micLevel >= threshold) {
-			lastLoud = now;
-			if (!transmitting) setGate(true);
-		} else if (transmitting && now - lastLoud > hold) {
-			setGate(false);
-		}
+		// The hold no longer chases the timer that fed it (#214's fix): the
+		// level arrives from the audio thread, at the same rate whether this
+		// tab is in front or behind another window.
+		const was = gate.open;
+		gate = gateStep(gate, micLevel, effectiveThreshold(), performance.now());
+		if (gate.open !== was) setGate(gate.open);
 	}
 
 	/** Mic test (#178): hear yourself through the gate before anyone else
@@ -266,31 +278,11 @@ export function createRoomAv(slug: string) {
 	let testing = $state(false);
 	async function startMicTest() {
 		if (mic || testing) return;
-		const raw = await captureMic();
-		const ctx = new AudioContext();
-		const source = ctx.createMediaStreamSource(raw);
-		const analyser = ctx.createAnalyser();
-		analyser.fftSize = 512;
-		const gain = ctx.createGain();
-		gain.gain.value = 0;
-		source.connect(analyser);
-		source.connect(gain);
+		const { ctx, raw, gain, meter } = await buildChain();
 		gain.connect(ctx.destination); // your own ears, not the room
 		const dest = ctx.createMediaStreamDestination();
-		mic = { ctx, raw, gain, analyser, track: dest.stream.getAudioTracks()[0] };
+		mic = { ctx, raw, gain, meter, track: dest.stream.getAudioTracks()[0] };
 		testing = true;
-		const bins = new Uint8Array(analyser.frequencyBinCount);
-		meterTimer = setInterval(() => {
-			if (!mic) return;
-			mic.analyser.getByteTimeDomainData(bins);
-			let sum = 0;
-			for (const v of bins) {
-				const centred = (v - 128) / 128;
-				sum += centred * centred;
-			}
-			micLevel = Math.sqrt(sum / bins.length);
-			runGate();
-		}, 120);
 	}
 
 	function stopMicTest() {
@@ -300,14 +292,15 @@ export function createRoomAv(slug: string) {
 	}
 
 	function closeMic() {
-		clearInterval(meterTimer);
 		if (mic) {
 			const { ctx, raw, track } = mic;
+			mic.meter.stop();
 			room?.localParticipant.unpublishTrack(track);
 			for (const t of raw.getTracks()) t.stop();
 			void ctx.close();
 		}
 		mic = null;
+		gate = GATE_SHUT;
 		micLevel = 0;
 		transmitting = false;
 		testing = false;
@@ -807,7 +800,7 @@ export function createRoomAv(slug: string) {
 		setMode(next: 'gate' | 'ptt') {
 			mode = next;
 			persistVoice();
-			if (next === 'gate') lastLoud = 0;
+			if (next === 'gate') gate = GATE_SHUT;
 			runGate();
 		},
 		setGateThreshold(next: number) {

@@ -45,7 +45,8 @@
 	}: {
 		sources: StageSource[];
 		activeKey: string;
-		/** activeKey plus the track generation — remounts on a fresh track. */
+		/** `pictureKey` of the active source — activeKey plus the track
+		 *  generation. Remounts the video, and refits the zoom, on a fresh track. */
 		trackKey: string;
 		onPick: (key: string) => void;
 		/** Mounts the active source's video into the surface. */
@@ -70,11 +71,21 @@
 	const DEFAULT_RATIO = 16 / 9;
 	let ratio = $state(DEFAULT_RATIO);
 
-	// A new source is a new picture: inherited zoom would land you staring at
-	// a corner of someone else's screen, and an inherited shape would letterbox
+	// A new picture — another source, or the same sharer's screen back on a
+	// fresh track — starts at fit: inherited zoom would land you staring at a
+	// corner of someone else's screen, and an inherited shape would letterbox
 	// it until the first frame arrives.
+	//
+	// The guard is the point (#523). `trackKey` reaches us as a getter over a
+	// derived that the room rebuilds on every tick, so this effect re-runs
+	// about once a second — four times a second inside a sprint window — with
+	// the picture unchanged. Resetting on each of those runs zoomed a reading
+	// rider back out half a second after they zoomed in. Plain `let`: only the
+	// effect touches it, and making it state would re-trigger the effect.
+	let shown: string | null = null;
 	$effect(() => {
-		activeKey;
+		if (trackKey === shown) return;
+		shown = trackKey;
 		view = FIT;
 		ratio = DEFAULT_RATIO;
 	});

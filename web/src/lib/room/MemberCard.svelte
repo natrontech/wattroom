@@ -60,7 +60,8 @@
 	});
 
 	// Friendship state decides the one action this card offers (ADR-0012).
-	// Requests form only by friend code — the card never offers "add".
+	// Asking is the right-click menu's job (personMenu) and their page's —
+	// the card only reports where the two of you stand.
 	let friendState = $state<'unknown' | 'pending' | 'friends' | 'self'>(
 		'unknown',
 	);

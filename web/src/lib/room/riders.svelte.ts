@@ -42,6 +42,12 @@ export function createRiders(deps: RiderDeps) {
 		const tick = deps.live.tick;
 		if (!tick) return [];
 		const now = tick.at;
+		// LiveKit only tells this client who is in voice once IT has joined,
+		// so before you press Join voice av.voice is empty and the roster read
+		// "in voice - 0" with everyone below it. The server watches the same
+		// channel through webhooks and says so in every tick; that is the
+		// truth until our own connection has one.
+		const serverVoice = new Set(tick.voice ?? []);
 		return tick.roster.map((rider) => {
 			const metrics = tick.riders?.[rider.id];
 			if (metrics)
@@ -78,7 +84,7 @@ export function createRiders(deps: RiderDeps) {
 				you,
 				coach: rider.role !== 'member',
 				cameraOn: !!deps.av.videoOf[rider.id],
-				inVoice: rider.id in deps.av.voice,
+				inVoice: rider.id in deps.av.voice || serverVoice.has(rider.id),
 				muted: deps.av.voice[rider.id] === 'muted',
 				speaking: !!deps.av.speaking[rider.id],
 				hue: [...rider.id].reduce(

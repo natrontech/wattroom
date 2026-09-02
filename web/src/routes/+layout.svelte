@@ -33,6 +33,7 @@
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
+	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 
 	let { children } = $props();
 
@@ -315,6 +316,8 @@
 	{@render children()}
 {/if}
 
-<!-- App-wide, framed or not — a toast must be able to land anywhere. -->
+<!-- App-wide, framed or not — a toast must be able to land anywhere, and a
+     picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
 <Toasts />
+<ImageViewer />
 <ContextMenuHost />

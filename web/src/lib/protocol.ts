@@ -380,6 +380,13 @@ export interface ServerTick {
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
   execution?: { [key: string]: number /* float64 */};
+  /**
+   * Who the LiveKit webhooks say is in voice (#467), by rider id. A client
+   * learns this from LiveKit only once it has joined itself, so without the
+   * server's answer an empty voice roster is indistinguishable from a full
+   * one you have not entered yet.
+   */
+  voice?: string[];
   roster: Rider[];
   riders: { [key: string]: RiderMetrics};
 }

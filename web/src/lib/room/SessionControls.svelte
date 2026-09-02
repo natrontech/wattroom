@@ -6,7 +6,10 @@
 	// coach stands during a session — from one definition.
 	//
 	// Thumb-sized (ux.md): the one control you reach for at 160 bpm cannot be
-	// a 12 px label.
+	// a 12 px label — which is exactly why End asks first. A stray thumb on a
+	// 44 px target ends the ride for the whole room, and there is no undo to
+	// offer (errors.md's confirm exception), so it confirms the way the solo
+	// ride does. Cancelling a countdown loses nothing and does not ask.
 	import { useRoom } from '$lib/room/context';
 	import { Pause, Play, Radio, Square, Zap } from '@lucide/svelte';
 
@@ -17,6 +20,17 @@
 	const running = $derived(phase === 'running');
 	const paused = $derived(phase === 'paused');
 	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
+
+	function endSession() {
+		const n = room.riders.length;
+		if (
+			confirm(
+				`End the session for ${n} rider${n === 1 ? '' : 's'}? The ride stops for everyone and cannot be resumed.`,
+			)
+		) {
+			room.control('end');
+		}
+	}
 </script>
 
 {#if room.canControl}
@@ -66,7 +80,7 @@
 				>
 			{/if}
 			<button
-				onclick={() => room.control('end')}
+				onclick={endSession}
 				title="End"
 				aria-label="end the session"
 				class="text-danger hover:bg-danger/10 flex items-center justify-center gap-1.5 rounded text-sm {compact

@@ -26,6 +26,8 @@ const OP_RESPONSE = 0x80;
 const RESULT_SUCCESS = 0x01;
 /** Fitness Machine Status: control permission lost — we have to ask again. */
 const STATUS_CONTROL_LOST = 0xff;
+/** A unit that has not indicated by now is not going to; give the queue back. */
+const CONTROL_POINT_TIMEOUT_MS = 3000;
 
 export interface PowerRange {
 	minWatts: number;
@@ -150,6 +152,8 @@ export class FtmsTrainer implements Trainer {
 	#queue: Promise<void> = Promise.resolve();
 	#pending?: { resolve: () => void; reject: (e: Error) => void; timer: number };
 	#range: PowerRange = DEFAULT_POWER_RANGE;
+	/** Scopes one attach's characteristic listeners, so a reattach drops them. */
+	#attachment?: AbortController;
 
 	get status() {
 		return this.#status;
@@ -178,8 +182,7 @@ export class FtmsTrainer implements Trainer {
 		// dropout re-attaches with backoff — the rider is three meters away and
 		// mid-interval, not at the keyboard.
 		this.#device.addEventListener('gattserverdisconnected', () => {
-			this.#pending?.reject(new Error('trainer disconnected'));
-			this.#pending = undefined;
+			this.#settlePending(new Error('trainer disconnected'));
 			if (this.#closed) {
 				this.#setStatus('disconnected');
 				return;
@@ -201,57 +204,72 @@ export class FtmsTrainer implements Trainer {
 	}
 
 	async #attach(): Promise<void> {
+		// A reattach resolves the same characteristic objects again, so without
+		// dropping the previous pass's listeners every retry stacks another copy
+		// of each handler and one frame arrives as two samples, then three.
+		this.#attachment?.abort();
+		const { signal } = (this.#attachment = new AbortController());
+
 		const server = await this.#device!.gatt!.connect();
 		const service = await server.getPrimaryService(FTMS_SERVICE);
 
 		const bikeData = await service.getCharacteristic(INDOOR_BIKE_DATA);
 		await bikeData.startNotifications();
-		bikeData.addEventListener('characteristicvaluechanged', (event) => {
-			const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
-			if (!view) return;
-			const data = parseIndoorBikeData(view);
-			this.lastFrame = data;
-			this.frames += 1;
-			if (data.watts === undefined) return;
-			this.poweredFrames += 1;
-			for (const cb of this.#sampleCbs) {
-				cb({
-					watts: data.watts,
-					cadence: Math.round(data.cadence ?? 0),
-					// Already parsed out of Indoor Bike Data; it used to stop here (#44).
-					heartRate: data.heartRate,
-					at: Date.now(),
-				});
-			}
-		});
+		bikeData.addEventListener(
+			'characteristicvaluechanged',
+			(event) => {
+				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
+				if (!view) return;
+				const data = parseIndoorBikeData(view);
+				this.lastFrame = data;
+				this.frames += 1;
+				if (data.watts === undefined) return;
+				this.poweredFrames += 1;
+				for (const cb of this.#sampleCbs) {
+					cb({
+						watts: data.watts,
+						cadence: Math.round(data.cadence ?? 0),
+						// Already parsed out of Indoor Bike Data; it used to stop here (#44).
+						heartRate: data.heartRate,
+						at: Date.now(),
+					});
+				}
+			},
+			{ signal },
+		);
 
 		this.#control = await service.getCharacteristic(CONTROL_POINT);
 		await this.#control.startNotifications();
-		this.#control.addEventListener('characteristicvaluechanged', (event) => {
-			const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
-			if (!view || view.getUint8(0) !== OP_RESPONSE) return;
-			const result = view.getUint8(2);
-			const pending = this.#pending;
-			this.#pending = undefined;
-			if (!pending) return;
-			clearTimeout(pending.timer);
-			if (result === RESULT_SUCCESS) pending.resolve();
-			else
-				pending.reject(
-					new Error(`FTMS op rejected, result 0x${result.toString(16)}`),
+		this.#control.addEventListener(
+			'characteristicvaluechanged',
+			(event) => {
+				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
+				if (!view || view.getUint8(0) !== OP_RESPONSE) return;
+				const result = view.getUint8(2);
+				this.#settlePending(
+					result === RESULT_SUCCESS
+						? undefined
+						: new Error(`FTMS op rejected, result 0x${result.toString(16)}`),
 				);
-		});
+			},
+			{ signal },
+		);
 
 		// Machine Status tells us when the trainer takes control back (0xFF).
 		try {
 			const status = await service.getCharacteristic(MACHINE_STATUS);
 			await status.startNotifications();
-			status.addEventListener('characteristicvaluechanged', (event) => {
-				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
-				if (view?.getUint8(0) === STATUS_CONTROL_LOST) {
-					void this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
-				}
-			});
+			status.addEventListener(
+				'characteristicvaluechanged',
+				(event) => {
+					const view = (event.target as BluetoothRemoteGATTCharacteristic)
+						.value;
+					if (view?.getUint8(0) === STATUS_CONTROL_LOST) {
+						void this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
+					}
+				},
+				{ signal },
+			);
 		} catch {
 			// Optional characteristic; a unit without it just cannot report lost control.
 		}
@@ -273,6 +291,7 @@ export class FtmsTrainer implements Trainer {
 	async disconnect(): Promise<void> {
 		this.#closed = true;
 		this.#device?.gatt?.disconnect();
+		this.#attachment?.abort();
 		this.#setStatus('disconnected');
 	}
 
@@ -311,39 +330,58 @@ export class FtmsTrainer implements Trainer {
 		return () => this.#statusCbs.delete(cb);
 	}
 
-	/** Serialised: each write resolves only once its indication lands. */
+	/**
+	 * Serialised: each write resolves only once its indication lands.
+	 *
+	 * The promise the queue keeps is deliberately NOT the one the caller gets. A
+	 * rejected promise's `.then(cb)` never runs `cb` and stays rejected, so
+	 * chaining the next write onto a failed one poisons the tail for the rest of
+	 * the session: after a single timeout no ERG target ever reaches the trainer
+	 * again, and a dropout can never re-grant control (#518). So the tail only
+	 * ever carries a caught, always-settling promise, while the rejection goes to
+	 * the caller alone. Do not collapse these two back into one.
+	 */
 	#write(bytes: ArrayBuffer): Promise<void> {
-		const run = this.#queue.then(async () => {
-			if (!this.#control) throw new Error('not connected');
-			const sentAt = performance.now();
-			const done = new Promise<void>((resolve, reject) => {
-				// A trainer that never indicates would otherwise wedge the queue forever.
-				const timer = setTimeout(() => {
-					this.#pending = undefined;
-					reject(new Error('FTMS control point timed out'));
-				}, 3000) as unknown as number;
-				this.#pending = { resolve, reject, timer };
-			});
-			try {
-				await this.#control.writeValueWithResponse(bytes);
-				await done;
-			} finally {
-				// A write that failed at the ATT layer leaves its pending entry
-				// armed; the next indication would otherwise resolve the wrong one.
-				if (this.#pending) {
-					clearTimeout(this.#pending.timer);
-					this.#pending = undefined;
-				}
-			}
-			const ms = Math.round(performance.now() - sentAt);
-			for (const cb of this.#logCbs) cb('control point acknowledged', ms);
+		const run = this.#queue.then(() => this.#send(bytes));
+		this.#queue = run.catch((err: unknown) => {
+			// Most callers void this promise (ride.svelte.ts), so without a word
+			// here a dying control point is invisible until #520 gives it a status.
+			console.warn('[ftms] control-point write failed', err);
 		});
-		// The tail must never carry a rejection (#518): `.then` on a rejected
-		// promise skips its callback and stays rejected, so one control-point
-		// timeout used to silently end ERG for the session, and left the
-		// reattach unable to re-request control. The caller still gets `run`.
-		this.#queue = run.catch(() => {});
 		return run;
+	}
+
+	/** One control-point round trip: the write, then its 0x80 indication. */
+	async #send(bytes: ArrayBuffer): Promise<void> {
+		if (!this.#control) throw new Error('not connected');
+		const sentAt = performance.now();
+		const done = new Promise<void>((resolve, reject) => {
+			// A trainer that never indicates would otherwise wedge the queue forever.
+			const timer = setTimeout(
+				() => this.#settlePending(new Error('FTMS control point timed out')),
+				CONTROL_POINT_TIMEOUT_MS,
+			) as unknown as number;
+			this.#pending = { resolve, reject, timer };
+		});
+		// A failed write reports through `done` too, so the slot and its timer are
+		// always cleared — a stale timer would otherwise fire into the *next*
+		// write's slot and fail a round trip that had actually succeeded.
+		void this.#control
+			.writeValueWithResponse(bytes)
+			.catch((err: unknown) => this.#settlePending(err as Error));
+		await done;
+		const ms = Math.round(performance.now() - sentAt);
+		for (const cb of this.#logCbs) cb('control point acknowledged', ms);
+	}
+
+	/** Settle the in-flight write exactly once, and disarm its timeout. */
+	#settlePending(err?: Error): void {
+		const pending = this.#pending;
+		if (!pending) return;
+		this.#pending = undefined;
+		clearTimeout(pending.timer);
+		if (err) pending.reject(err);
+		else pending.resolve();
 	}
 
 	#setStatus(next: TrainerStatus): void {

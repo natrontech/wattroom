@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -388,4 +389,54 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 		}
 	}
 	t.Fatal("the promoted rider's control was still refused")
+}
+
+// The voice roster has to reach a client that has NOT joined voice: LiveKit
+// tells a browser who is in the channel only once that browser is in it too,
+// so before then the panel read "in voice - 0" with the whole room listed
+// below it. The webhooks know better, and the tick carries their answer.
+func TestVoiceRidesTheTickBeforeYouJoin(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/quiet"
+
+	conn := dial(t, url, "jan:owner")
+	readTick(t, conn)
+	if tick := readTick(t, conn); len(tick.Voice) != 0 {
+		t.Fatalf("voice = %v before anyone joined, want none", tick.Voice)
+	}
+
+	// Two tabs of one rider, as LiveKit identifies them.
+	h.VoiceJoined("quiet", "sven#aaa", "Sven")
+	h.VoiceJoined("quiet", "sven#bbb", "Sven")
+	h.VoiceJoined("quiet", "david#ccc", "David")
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		tick := readTick(t, conn)
+		if len(tick.Voice) > 0 {
+			if want := []string{"david", "sven"}; !slices.Equal(tick.Voice, want) {
+				t.Fatalf("voice = %v, want %v", tick.Voice, want)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("voice never reached the tick")
+		}
+	}
+
+	h.VoiceLeft("quiet", "sven#aaa")
+	h.VoiceLeft("quiet", "sven#bbb")
+	for {
+		tick := readTick(t, conn)
+		if slices.Equal(tick.Voice, []string{"david"}) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("leaving never reached the tick, voice = %v", tick.Voice)
+		}
+	}
 }

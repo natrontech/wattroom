@@ -13,7 +13,9 @@
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
+	import { pictureKey } from '$lib/room/stage';
 	import { formatClock, wkg } from '$lib/format';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { useRoom } from '$lib/room/context';
@@ -42,7 +44,10 @@
 				Nothing is running yet. Training is where your numbers live once someone
 				starts a session.
 			</p>
-			<div class="mt-4 flex justify-center"><SessionControls /></div>
+			<div class="mt-4 flex flex-wrap justify-center gap-2">
+				<SessionControls />
+				<TrainerButton />
+			</div>
 		</div>
 	</div>
 {:else if room.phase === 'countdown'}
@@ -96,6 +101,7 @@
 				{formatClock(elapsed)}
 				<span class="text-muted/50">/ {formatClock(total)}</span>
 			</p>
+			{#if !room.trainer}<TrainerButton compact />{/if}
 			<SessionControls compact />
 		</header>
 
@@ -121,7 +127,7 @@
 				<Stage
 					sources={room.stageSources}
 					activeKey={share.key}
-					trackKey={`${share.key}:${share.gen}`}
+					trackKey={pictureKey(share)}
 					onPick={(key) => room.pickStage(key)}
 					attach={(node) => room.attachStage(node, share.key)}
 				/>
