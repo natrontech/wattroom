@@ -126,6 +126,7 @@ export function fitContrast(
 	backgrounds: string[],
 	target: number,
 	direction: 'lighter' | 'darker',
+	minChroma = 0,
 ): Oklch {
 	const step = direction === 'lighter' ? 0.01 : -0.01;
 	let candidate = { ...colour };
@@ -135,7 +136,76 @@ export function fitContrast(
 			return candidate;
 		const next = candidate.l + step;
 		if (next <= 0.02 || next >= 0.99) break;
+		// Chroma is a floor, not slack (ADR-0023). Past the point where the hue
+		// can no longer hold its saturation in gamut, nudging lightness buys
+		// contrast by draining the colour — which is how Z7 became pale pink.
+		if (minChroma > 0 && maxChroma({ ...candidate, l: next }) < minChroma)
+			break;
 		candidate = { ...candidate, l: next };
 	}
 	return candidate;
+}
+
+/** The most chroma this lightness and hue can hold inside sRGB. */
+export function maxChroma(colour: Oklch): number {
+	let c = colour.c;
+	while (c > 0 && !inGamut({ ...colour, c })) c -= 0.002;
+	return Math.max(0, c);
+}
+
+/**
+ * Perceptual distance in OKLab. Unlike contrast — which only ever compares a
+ * colour to its background — this answers "can these two be told apart", which
+ * is the question the zone ramp actually asks (ADR-0023).
+ */
+export function perceptualDistance(a: string, b: string): number {
+	const [x, y] = [hexToOklch(a), hexToOklch(b)];
+	const rad = (h: number) => (h * Math.PI) / 180;
+	const ax = x.c * Math.cos(rad(x.h));
+	const ay = x.c * Math.sin(rad(x.h));
+	const bx = y.c * Math.cos(rad(y.h));
+	const by = y.c * Math.sin(rad(y.h));
+	return Math.hypot(x.l - y.l, ax - bx, ay - by);
+}
+
+export type ColourVision = 'deuteranopia' | 'protanopia';
+
+/**
+ * Viénot/Brettel/Mollon dichromat projection, applied in **linear light**.
+ * Running the matrix on gamma-encoded sRGB — as the first version of this gate
+ * did — skews the simulation and flatters the palette.
+ */
+export function simulate(
+	hex: string,
+	kind: ColourVision,
+): [number, number, number] {
+	const n = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) =>
+		ungamma(v / 255),
+	);
+	// sRGB -> LMS
+	const l = 17.8824 * r + 43.5161 * g + 4.11935 * b;
+	const m = 3.45565 * r + 27.1554 * g + 3.86714 * b;
+	const s = 0.0299566 * r + 0.184309 * g + 1.46709 * b;
+	const [l2, m2, s2] =
+		kind === 'deuteranopia'
+			? [l, 0.494207 * l + 1.24827 * s, s]
+			: [2.02344 * m - 2.52581 * s, m, s];
+	// LMS -> sRGB
+	return [
+		0.080944 * l2 - 0.130504 * m2 + 0.116721 * s2,
+		-0.0102485 * l2 + 0.0540194 * m2 - 0.113615 * s2,
+		-0.000365294 * l2 - 0.00412163 * m2 + 0.693513 * s2,
+	];
+}
+
+/** How far apart two colours remain for a dichromat, in linear-light space. */
+export function dichromatDistance(
+	a: string,
+	b: string,
+	kind: ColourVision,
+): number {
+	const left = simulate(a, kind);
+	const right = simulate(b, kind);
+	return Math.hypot(...left.map((v, i) => v - right[i]));
 }

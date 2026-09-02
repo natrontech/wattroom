@@ -26,15 +26,17 @@
 	--color-ink: light-dark(#180a2e, #ffffff);
 	--color-paper: light-dark(#ffffff, #000000);
 
-	/* Coggan 7-zone ramp: monotonic in OKLCH lightness and contrast-gated
-	 * against both surfaces. Light variants descend as dark ones ascend. */
-	--color-z1: light-dark(#8172c2, #7d6eb1);
-	--color-z2: light-dark(#3f64e2, #597cff);
-	--color-z3: light-dark(#026f84, #0ea9cb);
-	--color-z4: light-dark(#056549, #05c595);
-	--color-z5: light-dark(#683b03, #fc9f2b);
-	--color-z6: light-dark(#710124, #ffaeb3);
-	--color-z7: light-dark(#59002b, #ffc5d4);
+	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
+	 * zone colour is learned and read across the room, and the sRGB gamut does
+	 * not rotate evenly. Lightness peaks at Z5 and descends while chroma
+	 * climbs, which is what keeps the hard efforts vivid (#396). */
+	--color-z1: light-dark(#5b4894, #4a3a78);
+	--color-z2: light-dark(#3a56d4, #4361ee);
+	--color-z3: light-dark(#0090ad, #00b4d8);
+	--color-z4: light-dark(#04a37c, #06d6a0);
+	--color-z5: light-dark(#d97e00, #ffa62b);
+	--color-z6: light-dark(#e63c5b, #ff4d6d);
+	--color-z7: light-dark(#d9186f, #ff2e88);
 }
 
 /*

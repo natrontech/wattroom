@@ -91,7 +91,7 @@ const FAMILY: Record<
 		paper: Oklch;
 		watt: Oklch;
 		neon: Oklch;
-		zones: [number, number][];
+		zones: Oklch[];
 	}
 > = {
 	dark: {
@@ -102,14 +102,18 @@ const FAMILY: Record<
 		paper: { l: 0, c: 0, h: 0 },
 		watt: { l: 0.673, c: 0.233, h: 0 },
 		neon: { l: 0.56, c: 0.277, h: 0 },
+		// The ramp ADR-0005 shipped, measured. Lightness peaks at Z5 and
+		// descends into the hot zones while chroma climbs — that shape is what
+		// keeps Z6/Z7 vivid, and replacing it with an even climb is what made
+		// them pale (#396, ADR-0023 §4).
 		zones: [
-			[0.58, 0.102],
-			[0.63, 0.214],
-			[0.68, 0.129],
-			[0.73, 0.16],
-			[0.78, 0.162],
-			[0.83, 0.213],
-			[0.88, 0.244],
+			{ l: 0.397, c: 0.102, h: 293 },
+			{ l: 0.556, c: 0.214, h: 269 },
+			{ l: 0.711, c: 0.129, h: 219 },
+			{ l: 0.777, c: 0.16, h: 167 },
+			{ l: 0.796, c: 0.162, h: 68 },
+			{ l: 0.679, c: 0.213, h: 15 },
+			{ l: 0.662, c: 0.244, h: 2 },
 		],
 	},
 	white: {
@@ -121,24 +125,16 @@ const FAMILY: Record<
 		watt: { l: 0.611, c: 0.23, h: 0 },
 		neon: { l: 0.475, c: 0.243, h: 0 },
 		zones: [
-			[0.6, 0.12],
-			[0.55, 0.196],
-			[0.5, 0.109],
-			[0.45, 0.128],
-			[0.4, 0.155],
-			[0.35, 0.205],
-			[0.3, 0.223],
+			{ l: 0.459, c: 0.12, h: 292 },
+			{ l: 0.51, c: 0.196, h: 269 },
+			{ l: 0.604, c: 0.109, h: 219 },
+			{ l: 0.636, c: 0.128, h: 168 },
+			{ l: 0.678, c: 0.155, h: 63 },
+			{ l: 0.618, c: 0.205, h: 16 },
+			{ l: 0.578, c: 0.223, h: 2 },
 		],
 	},
 };
-
-/**
- * Where each zone sits along the neon→watt arc, measured off the shipped ramp.
- * The spacing is not even because the ramp is perceptual, not arithmetic: the
- * long stretch between Z4 and Z5 is the green-to-amber crossing where a rider
- * most needs to tell two zones apart.
- */
-const ZONE_T = [0.011, 0.092, 0.262, 0.437, 0.784, 0.955, 1];
 
 /** Absolute WCAG contrast floors for text and meaning-carrying graphics. */
 export const CONTRAST = { text: 4.5, accent: 3 } as const;
@@ -148,39 +144,25 @@ export const DARK_SURFACE_MAX_L = 0.3;
 export const WHITE_SURFACE_MIN_L = 0.9;
 
 /**
- * Zone bars are graphical objects, so WCAG 2.2 gives both families the same
- * 3:1 floor. A generated hue is nudged away from its surfaces until it clears.
+ * The contrast a zone fill is fitted to, measured off the reference ramp
+ * rather than taken from WCAG's 3:1 for graphical objects. Outrun's own Z1
+ * sits at 1.9 because recovery is meant to recede, and holding derived themes
+ * to a floor the reference does not meet brightens their Z1 into Z2 — the
+ * ramp stops being the ramp (ADR-0023 §3). Zone bars carry length as well as
+ * colour, and #401 tracks giving them a non-colour channel outright.
  */
 const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
-	dark: CONTRAST.accent,
-	white: CONTRAST.accent,
+	dark: 1.8,
+	white: 2.6,
 };
 
-/** Keep rounding and gamut reduction from flattening adjacent ramp steps. */
-const ZONE_LIGHTNESS_STEP = 0.05;
-
 /**
- * How far the ramp travels around the hue circle. Measured off the shipped
- * ramp, which runs 294° from Z1 to Z7 — enough room for violet, blue, cyan,
- * green, amber, red and magenta to stay seven distinct things.
+ * The share of its designed chroma a zone must keep (ADR-0023 §2). Apparent
+ * intensity comes from chroma as much as lightness, so the fitter may not buy
+ * contrast by draining the colour — that is exactly how Z7 lost 72% of its
+ * chroma and became the palest thing on screen.
  */
-const RAMP_ARC = 294;
-
-/**
- * The ramp is anchored at its *hot* end: Z7 is maximum effort and lands on the
- * live-data hue, and the rest of the ramp runs back from there.
- *
- * It is tempting to anchor the cold end to neon as well — Outrun's Z1 does sit
- * on its chrome hue — but that is a coincidence of Outrun's accents being 66°
- * apart. Anchoring both ends makes the arc as short as the accents are close,
- * and a theme with near-complementary accents (Miami's coral and teal are 177°
- * apart) ends up with seven zones crammed into half a circle, where Z6 and Z7
- * are the same colour. Fixing the travel keeps every theme's ramp as legible
- * as the one that shipped.
- */
-function zoneHue(spec: ThemeSpec, t: number): number {
-	return normalizeHue(spec.wattHue + RAMP_ARC * (1 - t));
-}
+const ZONE_CHROMA_FLOOR = 0.8;
 
 export function deriveTheme(spec: ThemeSpec): Theme {
 	const f = FAMILY[spec.family];
@@ -202,22 +184,17 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		z7: '',
 	};
 	const backgrounds = [tokens.surface, tokens['surface-raised']];
-	let previousZoneLightness: number | undefined;
-	f.zones.forEach(([baseLightness, c], i) => {
-		let l = baseLightness;
-		if (previousZoneLightness !== undefined) {
-			l =
-				spec.family === 'dark'
-					? Math.max(l, previousZoneLightness + ZONE_LIGHTNESS_STEP)
-					: Math.min(l, previousZoneLightness - ZONE_LIGHTNESS_STEP);
-		}
+	// The ramp is shared, not themed (ADR-0023 §4). It is still fitted against
+	// *this* theme's surfaces, because a blue-black room and a violet-black one
+	// are not the same background.
+	f.zones.forEach((zone, i) => {
 		const fitted = fitContrast(
-			{ l, c, h: zoneHue(spec, ZONE_T[i]) },
+			zone,
 			backgrounds,
 			ZONE_MIN_CONTRAST[spec.family],
 			spec.family === 'dark' ? 'lighter' : 'darker',
+			zone.c * ZONE_CHROMA_FLOOR,
 		);
-		previousZoneLightness = fitted.l;
 		tokens[`z${i + 1}` as TokenName] = oklchToHex(fitted);
 	});
 	return {

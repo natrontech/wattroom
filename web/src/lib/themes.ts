@@ -40,6 +40,16 @@ const SPECS: ThemeSpec[] = [
 			neon: '#8b2bff',
 			ink: '#ffffff',
 			paper: '#000000',
+			// Pinned, not derived. Outrun is the reference every other theme is
+			// measured against, and between #331 and #396 a derivation change
+			// moved it without a decision (ADR-0023, consequences).
+			z1: '#4a3a78',
+			z2: '#4361ee',
+			z3: '#00b4d8',
+			z4: '#06d6a0',
+			z5: '#ffa62b',
+			z6: '#ff4d6d',
+			z7: '#ff2e88',
 		},
 	},
 	{
@@ -91,6 +101,13 @@ const SPECS: ThemeSpec[] = [
 			neon: '#6f1ad1',
 			ink: '#180a2e',
 			paper: '#ffffff',
+			z1: '#5b4894',
+			z2: '#3a56d4',
+			z3: '#0090ad',
+			z4: '#04a37c',
+			z5: '#d97e00',
+			z6: '#e63c5b',
+			z7: '#d9186f',
 		},
 	},
 	{
