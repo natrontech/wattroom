@@ -1,5 +1,5 @@
 import { arbitrate } from '$lib/ble/arbitrate';
-import type { Trainer } from '$lib/ble/trainer';
+import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
 import { targetAt } from '$lib/workout/engine';
@@ -43,8 +43,28 @@ export function createRide(deps: RideDeps) {
 	let trainer = $state<Trainer | null>(null);
 	let error = $state<string | null>(null);
 	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
+	let status = $state<TrainerStatus>('disconnected');
+	let lastSampleAt = $state(0);
 	let seq = 0;
-	let unsubscribe: (() => void) | undefined;
+	let unsubscribe: (() => void)[] = [];
+
+	/**
+	 * What the trainer is actually doing (#520). "Paired" used to be the only
+	 * state the room could show, so a trainer that dropped, that reattached in
+	 * a loop, or that delivered not one watt all read as working.
+	 *
+	 * Silence is judged against the wall clock; the tick is read purely to
+	 * re-run this once a second, since a sample that never arrives cannot
+	 * invalidate anything by itself.
+	 */
+	const fault = $derived.by((): 'reconnecting' | 'silent' | null => {
+		if (!trainer) return null;
+		if (status !== 'connected') return 'reconnecting';
+		void deps.live.tick?.at;
+		// Counted from the connect, not the first sample: a trainer that never
+		// sends one is the reported failure, and exempting it would hide it.
+		return Date.now() - lastSampleAt > 10_000 ? 'silent' : null;
+	});
 
 	// Bias is personal: ±% on my own targets, the shared timeline untouched.
 	let bias = $state(1);
@@ -98,40 +118,52 @@ export function createRide(deps: RideDeps) {
 
 	async function ride(next: Trainer) {
 		error = null;
+		lastSampleAt = 0;
+		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
 			await next.connect();
-			unsubscribe = next.onSample((sample) => {
-				const metrics = arbitrate(
-					{ trainer: sample, sensors: sensors.readings },
-					sample.at,
-				);
-				hrSource =
-					metrics.from.heartRate === 'heart-rate' ||
-					metrics.from.heartRate === 'trainer'
-						? metrics.from.heartRate
-						: null;
-				deps.live.sendMetrics(
-					wireMetrics(metrics, deps.profile.current.shareHr, ++seq),
-				);
-				const shared = deps.shared();
-				if (shared?.phase === 'running')
-					deps.recording.record(shared.elapsed, metrics.watts);
-			});
+			status = next.status;
+			// t0 for the silence check above; the first frame should be ~1 s away.
+			lastSampleAt = Date.now();
+			unsubscribe.push(
+				next.onSample((sample) => {
+					lastSampleAt = sample.at;
+					const metrics = arbitrate(
+						{ trainer: sample, sensors: sensors.readings },
+						sample.at,
+					);
+					hrSource =
+						metrics.from.heartRate === 'heart-rate' ||
+						metrics.from.heartRate === 'trainer'
+							? metrics.from.heartRate
+							: null;
+					deps.live.sendMetrics(
+						wireMetrics(metrics, deps.profile.current.shareHr, ++seq),
+					);
+					const shared = deps.shared();
+					if (shared?.phase === 'running')
+						deps.recording.record(shared.elapsed, metrics.watts);
+				}),
+			);
 			trainer = next;
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
+			for (const off of unsubscribe) off();
+			unsubscribe = [];
 		}
 	}
 	/** Re-pairing is one button (rider report): drop the trainer and release
 	 *  its subscription, keeping the ride buffer open so a fresh pair
 	 *  continues the same session. */
 	function unpair() {
-		unsubscribe?.();
-		unsubscribe = undefined;
+		for (const off of unsubscribe) off();
+		unsubscribe = [];
 		void trainer?.setTargetPower(0);
 		void trainer?.disconnect();
 		trainer = null;
 		error = null;
+		status = 'disconnected';
+		lastSampleAt = 0;
 	}
 	function stop() {
 		deps.live.finish();
@@ -147,6 +179,10 @@ export function createRide(deps: RideDeps) {
 		},
 		get hrSource() {
 			return hrSource;
+		},
+		/** null while it is behaving; the room renders the rest (#520). */
+		get fault() {
+			return fault;
 		},
 		get bias() {
 			return bias;

@@ -135,6 +135,13 @@ export class FtmsTrainer implements Trainer {
 	#logCbs = new Set<(text: string, ms?: number) => void>();
 	/** Latest full frame, including fields the Trainer interface does not carry. */
 	lastFrame: IndoorBikeData = {};
+	/**
+	 * Raw Indoor Bike Data notifications seen, and how many carried instantaneous
+	 * power (#520). A unit that streams frames with no power field delivers no
+	 * samples at all — indistinguishable from a silent one unless both are counted.
+	 */
+	frames = 0;
+	poweredFrames = 0;
 	#statusCbs = new Set<(s: TrainerStatus) => void>();
 
 	/**
@@ -215,7 +222,9 @@ export class FtmsTrainer implements Trainer {
 				if (!view) return;
 				const data = parseIndoorBikeData(view);
 				this.lastFrame = data;
+				this.frames += 1;
 				if (data.watts === undefined) return;
+				this.poweredFrames += 1;
 				for (const cb of this.#sampleCbs) {
 					cb({
 						watts: data.watts,
