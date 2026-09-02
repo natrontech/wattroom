@@ -5,6 +5,7 @@
 	import { dev } from '$app/environment';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -39,6 +40,10 @@
 		done = false;
 		saved = false;
 		lthrSaved = false;
+		// One trainer, one rider (#521): the room now holds its BLE connection
+		// for as long as you stand in it, so a solo ride has to take it back
+		// rather than open a second control channel to the same hardware.
+		roomConnection.current?.ride.unpair();
 		try {
 			const next = createRideSession({
 				trainer,
