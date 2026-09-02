@@ -638,7 +638,7 @@
 		     Seated on the lounge's stage it is content, and needs no gutter. -->
 		<div
 			class="min-h-0 flex-1 overflow-y-auto"
-			style={live.tick?.jukebox?.current && !stageSlot.seat
+			style={live.tick?.jukebox?.current && !stageSlot.seated
 				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'
 				: ''}
 		>
