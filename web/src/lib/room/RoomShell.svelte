@@ -661,9 +661,15 @@
 	<MessageSquare size={18} />
 </button>
 {#if chatSheet}
+	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
+	     sit inside the stage and TV mode, and a sheet the rider pulled open is
+	     the one surface that must still win — below xl it carries the jukebox
+	     transport, the people and the chat, and a video parked on top of it
+	     left nothing to press. RMF forbids OUR chrome over the player, never a
+	     drawer the rider opened. -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
-		class="bg-paper/50 fixed inset-0 z-50 xl:hidden"
+		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
 		onclick={(e) => e.target === e.currentTarget && (chatSheet = false)}
 	>
 		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">
