@@ -1,6 +1,21 @@
 <script lang="ts">
 	const screens = [
 		{
+			href: '/dev/profile',
+			label: 'Social profile',
+			hint: "A rider's page: level, shelf, shared rides, what shows to whom (#449)",
+		},
+		{
+			href: '/dev/trophies',
+			label: 'Trophy case',
+			hint: 'Achievements, XP sources, a room event (#450)',
+		},
+		{
+			href: '/dev/chat',
+			label: 'Chat as a place',
+			hint: 'Rooms and DMs together, unread first, read a room from outside (#451)',
+		},
+		{
 			href: '/dev/brand',
 			label: 'Brand',
 			hint: 'Mark, wordmark and type directions to choose from',
