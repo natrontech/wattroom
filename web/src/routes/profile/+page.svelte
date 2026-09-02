@@ -2,7 +2,6 @@
 	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { Monitor, Moon, Sun, Gauge, Zap } from '@lucide/svelte';
-	import Logo from '$lib/brand/Logo.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
@@ -90,16 +89,6 @@
 		release = tag && tag !== 'dev' ? tag : null;
 	});
 
-	// WATTROOM.md: social OAuth only — no passwords, ever.
-	const providerLabels: Record<string, { label: string; note?: string }> = {
-		google: { label: 'Continue with Google' },
-		github: { label: 'Continue with GitHub' },
-		strava: {
-			label: 'Continue with Strava',
-			note: 'also connects ride upload',
-		},
-		dev: { label: 'Dev sign-in (local only)' },
-	};
 	const providerName: Record<string, string> = {
 		google: 'Google',
 		github: 'GitHub',

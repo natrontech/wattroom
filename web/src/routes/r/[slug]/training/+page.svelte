@@ -21,7 +21,6 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	const room = useRoom();
-	const av = $derived(roomConnection.current?.av);
 	const total = $derived(room.shared?.totalSeconds ?? 0);
 	const elapsed = $derived(room.shared?.elapsed ?? 0);
 	// A shared SCREEN takes the focus; the jukebox never does — it has one

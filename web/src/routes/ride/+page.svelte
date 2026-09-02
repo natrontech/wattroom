@@ -8,12 +8,7 @@
 	import { hrZoneOf, ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import {
-		createRideSession,
-		DEFAULTS,
-		toleranceBand,
-	} from '$lib/workout/session.svelte';
-	import type { Workout } from '$lib/workout/types';
+	import { createRideSession, DEFAULTS } from '$lib/workout/session.svelte';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
@@ -346,9 +341,6 @@
 	const watts = $derived(session?.sample?.watts ?? 0);
 	const target = $derived(session?.target ?? 0);
 	const zone = $derived(zoneOf(watts, ftp));
-	const band = $derived(target > 0 ? toleranceBand(target) : 0);
-	const pct = (value: number) =>
-		Math.min(100, Math.max(0, (value / ftp / 1.5) * 100));
 	const remaining = $derived(session ? session.total - session.elapsed : 0);
 
 	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */

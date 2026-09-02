@@ -1,25 +1,12 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { page } from '$app/state';
-	import {
-		LogOut as LeaveIcon,
-		MessageSquare,
-		Mic,
-		MicOff,
-		ScreenShare,
-		ScreenShareOff,
-		Settings,
-		Tv,
-		Video as VideoIcon,
-		VideoOff,
-	} from '@lucide/svelte';
+	import { MessageSquare } from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { formatClock, formatWhen } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { flatten } from '$lib/workout/engine';
 	import { buildShelf } from '$lib/workout/shelf';
@@ -30,22 +17,16 @@
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import { uploadImage } from '$lib/chat/upload';
 	import { createRiders } from '$lib/room/riders.svelte';
-	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { toLocalInput } from '$lib/components/when';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
-	import RiderTile from '$lib/room/RiderTile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import RoomTraining from '$lib/room/RoomTraining.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
-	import Stage from '$lib/room/Stage.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import type { RoomEvent } from '$lib/protocol';
 	import { setRoomContext } from '$lib/room/context';
 	import { createRecording } from '$lib/room/recording.svelte';
 	import { createRide } from '$lib/room/ride.svelte';
@@ -440,7 +421,6 @@
 			),
 	);
 	// The quick-start on the lounge floor offers the most recently ridden.
-	const setupPicked = $derived(shelf[0]);
 
 	// ── Planned rides (#116) ──────────────────────────────────────────────────
 	/** Startable a little early and through the grace the server keeps it visible. */
@@ -491,7 +471,6 @@
 			droppedAt = Date.now();
 		if (live.status === 'live') droppedAt = null;
 	});
-	const currentTitle = $derived(live.tick?.jukebox?.current?.title ?? '');
 
 	let chatSheet = $state(false);
 </script>
