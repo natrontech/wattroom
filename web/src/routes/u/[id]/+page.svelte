@@ -31,6 +31,7 @@
 		MessageSquare,
 		Pencil,
 		Radio,
+		Trophy,
 		UserPlus,
 		Users,
 	} from '@lucide/svelte';
@@ -193,6 +194,11 @@
 			</div>
 			<div class="flex shrink-0 flex-col gap-2">
 				{#if rider.friend === 'self'}
+					<!-- Your own page is where you look for your trophies (#575);
+					     Home's level tile was the only way in. -->
+					<a href="/trophies" class="btn btn-secondary"
+						><Trophy size={15} /> Trophy case</a
+					>
 					<a href="/profile" class="btn btn-secondary"
 						><Pencil size={15} /> Edit profile</a
 					>
@@ -219,7 +225,9 @@
 						class="btn btn-primary"><UserPlus size={15} /> Add friend</button
 					>
 				{/if}
-				{#if rider.presence.room}
+				{#if rider.presence.room && rider.friend !== 'self'}
+					<!-- Your own page reached the app in #575; "Join them" on it
+					     offered to join the room you are already standing in. -->
 					<a href="/r/{rider.presence.room.slug}" class="btn btn-accent"
 						><Radio size={15} /> Join them</a
 					>
