@@ -1,44 +1,27 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import {
-		ListPlus,
-		CalendarClock,
-		Copy,
+		ChevronRight,
 		Crown,
 		Headphones,
 		LogOut,
 		Mic,
 		MicOff,
-		Music,
 		ScreenShare,
 		ScreenShareOff,
-		SmilePlus,
 		Video,
 		VideoOff,
 	} from '@lucide/svelte';
-	import type { RoomEvent } from '$lib/protocol';
-	import {
-		eventText,
-		roomTimeline,
-		type TimelineMessage,
-	} from '$lib/room/timeline';
-	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import Reactions from '$lib/chat/Reactions.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { formatTime } from '$lib/format';
 	import { STOCK_CHEERS } from '$lib/icons';
-	import ImageChip from '$lib/chat/ImageChip.svelte';
-	import { createPendingImage } from '$lib/chat/pending-image.svelte';
-	import { stickToBottom } from '$lib/chat/stick-to-bottom';
-	import { toasts } from '$lib/toast.svelte';
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
 	import { clampSize, dividerDrag } from '$lib/divider';
+	import type { Missed } from '$lib/room/unread';
 
 	// The divider between the room and this column. keepSize's observer saves
 	// the width it writes, the same way it did for the native `resize` grip.
@@ -77,115 +60,34 @@
 	// tile grid does not survive.
 	//
 	// Plus one slot: the jukebox playlist owns the whole queue surface (#286).
+	//
+	// The log itself left for the Chat place (#504, mock A): three surfaces
+	// were sharing this height and none of them had enough. What stays behind
+	// is one line saying what you missed.
 	let {
 		live,
 		riders = [],
-		log = true,
 		player,
-		messages = [],
-		events = [],
-		slug = undefined,
+		missed = null,
+		onOpenChat,
 		onCheer,
-		onChat,
-		onQueue,
-		reactions = {},
-		myReacts = {},
-		onReact,
 		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
-		/** Who is here (ADR-0020, #181 gap 3) — the roster sits above the chat. */
+		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: RoomRider[];
-		/** The chat log. False on the Chat place, which gives the same log the
-		 * content column — the live log twice on one screen is a mirror. */
-		log?: boolean;
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
-		/** A YouTube link in the chat is one tap from the jukebox. */
-		onQueue?: (url: string) => void;
-		/** Room chat — a bounded log since ADR-0010's amendment (#201). */
-		messages?: TimelineMessage[];
-		/** What the room did (#321) — jukebox lines, interleaved with the talking. */
-		events?: RoomEvent[];
-		/** Needed to address pasted images (#279); absent = text-only chat. */
-		slug?: string;
-		/** messageId → emoji → count (shared truth). */
-		reactions?: Record<string, Record<string, number>>;
-		/** "id:emoji" → I pressed it. */
-		myReacts?: Record<string, boolean>;
-		onReact?: (messageId: string, emoji: string) => void;
+		/** What was said while you were elsewhere; null when nothing was. */
+		missed?: Missed | null;
+		onOpenChat?: () => void;
 		onCheer?: (emoji: string) => void;
-		/** A pasted image rides along as a blob; the parent owns the upload. */
-		onChat?: (text: string, image?: Blob) => void;
-		/** The room's one reaction vocabulary (#223), icon keys (#447) — cheers thrown, reactions attached. */
+		/** The room's one reaction vocabulary (#223), icon keys (#447). */
 		cheers?: string[];
 	} = $props();
 
 	// The way into voice, where the people are (#437).
 	const av = $derived(roomConnection.current?.av);
-
-	let reactingTo = $state<string | null>(null);
-
-	// A message's right-click (#465): react, copy, queue the link it carries.
-	const YOUTUBE = /https?:\/\/[^\s]*(?:youtube\.com|youtu\.be)[^\s]*/;
-	function messageMenu(message: { id?: string; text: string }): MenuEntry[] {
-		const entries: MenuEntry[] = [];
-		if (message.id && onReact) {
-			const id = message.id;
-			entries.push({
-				label: 'React',
-				icon: SmilePlus,
-				onSelect: () => (reactingTo = id),
-			});
-		}
-		if (message.text)
-			entries.push({
-				label: 'Copy text',
-				icon: Copy,
-				onSelect: () => void navigator.clipboard?.writeText(message.text),
-			});
-		const link = message.text.match(YOUTUBE)?.[0];
-		if (link && onQueue) {
-			const url = link;
-			entries.push({
-				label: 'Queue on the jukebox',
-				icon: ListPlus,
-				onSelect: () => onQueue(url),
-			});
-		}
-		return entries;
-	}
-
-	// Chat is the room's timeline (#321): what riders typed and what the room
-	// did, in one chronological list.
-	const timeline = $derived(roomTimeline(messages, events));
-
-	// Consecutive lines from one rider read as one turn — the header repeats
-	// only after a gap, like every messenger.
-	const GROUP_GAP_MS = 5 * 60_000;
-
-	async function copy(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			toasts.push('Message copied');
-		} catch {
-			toasts.push('Copy needs clipboard permission', { tone: 'error' });
-		}
-	}
-
-	let draft = $state('');
-	// A pasted image waiting on the send button (#279) — Discord's flow:
-	// Ctrl+V, see the chip, hit Enter.
-	const pending = createPendingImage((refusal) =>
-		toasts.push(refusal, { tone: 'error' }),
-	);
-
-	function sendChat() {
-		const text = draft.trim();
-		if (!text && !pending.current) return;
-		onChat?.(text, pending.take());
-		draft = '';
-	}
 </script>
 
 {#snippet person(rider: RoomRider)}
@@ -278,15 +180,7 @@
 				? riders.filter((r) => r.watts > 0)
 				: riders.filter((r) => r.inVoice)}
 			{@const away = riders.filter((r) => !here.includes(r))}
-			<!-- Capped, so the chat below keeps its share; on the Chat place
-			     there is no chat below and the roster takes the column. -->
-			<div
-				class="border-ink/5 min-h-0 overflow-y-auto border-b {log
-					? live
-						? 'max-h-[45%] shrink-0'
-						: 'max-h-56 shrink-0'
-					: 'flex-1'}"
-			>
+			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
 				<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 					{#if !live}<Headphones size={10} />{/if}
 					{live
@@ -368,142 +262,26 @@
 			</div>
 		{/if}
 
-		{#if log}
-			<div class="eyebrow px-4 pt-3 pb-1">chat</div>
-			<!-- `mt-auto` on the list, not `justify-end` on the box (#291): the
-			     spare room goes above the oldest line, so overflow spills off the
-			     END edge and scrollback is reachable. -->
-			<div
-				{@attach stickToBottom}
-				data-testid="chat-log"
-				class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-2"
+		{#if missed}
+			<!-- What the chat left behind (#504, mock A): one line of what was
+			     said while you were elsewhere, and the way to the rest of it.
+			     Quiet — the count is chrome, and chrome does not glow. -->
+			<button
+				onclick={onOpenChat}
+				class="border-ink/5 bg-surface-raised hover:bg-surface-raised/70 flex shrink-0 items-center gap-2 border-t px-3 py-3 text-left"
 			>
-				<ul class="mt-auto space-y-2">
-					{#each timeline as entry, i (entry.key)}
-						{#if entry.kind === 'event'}
-							<!-- An event, not a message: no avatar, no reactions, nothing to
-						     copy. The room talking about itself stays quieter than the
-						     people in it. -->
-							{@const Mark =
-								entry.event.kind === 'session' ? CalendarClock : Music}
-							<li
-								class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
-							>
-								<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
-								<span class="min-w-0 wrap-anywhere"
-									>{eventText(entry.event)}</span
-								>
-								<span
-									class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
-									>{formatTime(entry.at)}</span
-								>
-							</li>
-						{:else}
-							{@const message = entry.message}
-							{@const prev = timeline[i - 1]}
-							{@const grouped =
-								prev?.kind === 'message' &&
-								prev.message.from === message.from &&
-								message.at - prev.at < GROUP_GAP_MS}
-							<li
-								class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}"
-								{@attach contextMenu(() => messageMenu(message))}
-							>
-								<div class="flex items-baseline gap-1.5">
-									{#if !grouped}
-										<span class="text-muted min-w-0 truncate font-medium"
-											>{message.from}</span
-										>
-										<span class="text-muted/40 shrink-0 font-mono text-[10px]"
-											>{formatTime(message.at)}</span
-										>
-									{/if}
-									<span
-										class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-									>
-										{#if message.text}
-											<button
-												onclick={() => copy(message.text)}
-												class="text-muted/60 hover:text-ink"
-												aria-label="copy message"><Copy size={12} /></button
-											>
-										{/if}
-										{#if message.id && onReact}
-											{@const id = message.id}
-											<button
-												onclick={() =>
-													(reactingTo = reactingTo === id ? null : id)}
-												class="text-muted/60 hover:text-ink"
-												aria-label="react"><SmilePlus size={13} /></button
-											>
-										{/if}
-									</span>
-								</div>
-								<!-- An image-only line has no text to render; MessageText turns a
-					     lone GIF link into the GIF itself. -->
-								{#if message.text}
-									<div class="text-ink/85 wrap-anywhere">
-										<MessageText text={message.text} {onQueue} />
-									</div>
-								{/if}
-								{#if message.imageId && slug}
-									<ChatImage
-										src="/api/rooms/{slug}/chat/images/{message.imageId}"
-										alt="Sent by {message.from}"
-										menu={() => messageMenu(message)}
-									/>
-								{/if}
-								{#if message.id && onReact}
-									{@const id = message.id}
-									<Reactions
-										{id}
-										counts={reactions[id]}
-										{myReacts}
-										{cheers}
-										picking={reactingTo === id}
-										onReact={(cheer) => {
-											onReact(id, cheer);
-											reactingTo = null;
-										}}
-									/>
-								{/if}
-							</li>
-						{/if}
-					{:else}
-						<li class="text-muted/60 text-xs">
-							Warm-up talk lands here — the room keeps the recent history. Voice
-							stays the main channel.
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
-
-		<div class="border-ink/5 border-t p-3">
-			{#if !live && log}
-				<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
-				<ImageChip image={pending.current} onClear={pending.clear} />
-				<form
-					class="mb-2 flex gap-1.5"
-					onsubmit={(e) => {
-						e.preventDefault();
-						sendChat();
-					}}
+				<span class="bg-neon h-2 w-2 shrink-0 rounded-full"></span>
+				<span class="min-w-0 flex-1 truncate text-xs"
+					><span class="text-muted">{missed.from}:</span>
+					{missed.preview}</span
 				>
-					<input
-						bind:value={draft}
-						onpaste={pending.paste}
-						maxlength="500"
-						placeholder="Say something…"
-						class="input input-xs min-w-0 flex-1"
-					/>
-					<button
-						disabled={!draft.trim() && !pending.current}
-						class="btn btn-secondary btn-xs">Send</button
-					>
-				</form>
-			{/if}
-			<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
+				<span class="text-muted shrink-0 text-[10px]">{missed.count} new</span>
+				<ChevronRight size={13} class="text-muted shrink-0" />
+			</button>
+		{/if}
+		<div class="border-ink/5 border-t p-3">
+			<!-- The room's reactions. Typing lives on the Chat place now, and
+			     mid-ride it was never on the table anyway (ux.md). -->
 			<div class="flex gap-1.5">
 				{#each cheers.slice(0, 4) as cheer (cheer)}
 					<button
