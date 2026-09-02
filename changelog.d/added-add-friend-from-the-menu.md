@@ -1,1 +1,0 @@
-- Add friend is now one right-click away from anyone you ride with — a tile in the lounge, a row in the people column, a name on the members page. Their page keeps its button; you no longer have to go there. The people column's menu also gained View profile, which it was missing.

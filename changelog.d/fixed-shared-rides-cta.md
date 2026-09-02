@@ -1,1 +1,0 @@
-The "Open Rides" button now appears on your own profile when you haven't shared a ride yet. It was written but never rendered, so the empty state explained how to share a ride without giving you the way there.

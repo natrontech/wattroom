@@ -1,1 +1,0 @@
-- Voice activation no longer cuts you off mid-sentence, and the mic meter no longer dances in a silent room. The level is now measured continuously on the audio thread instead of sampled nine times a second, the gate opens fast and closes slowly (and fades instead of cutting), and automatic gain control is off — it was raising your room's noise the moment you stopped talking.
