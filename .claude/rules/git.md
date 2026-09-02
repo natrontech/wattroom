@@ -2,6 +2,8 @@
 
 ## When to commit (Claude decides — don't ask)
 
+Commit with explicit pathspecs, never `git add -A`: the tree may hold a neighbour's uncommitted work, and a wildcard add makes it yours.
+
 Commit automatically when a logical unit of work is complete. One commit = one coherent change that could be reverted independently: a feature slice, a bug fix, a config/tooling change, a refactor of one area, tests for existing code. Never batch unrelated changes; never leave finished work uncommitted at the end of a turn.
 
 ## Conventional commits
@@ -23,7 +25,7 @@ docs: ADR-0003 …
 
 ## When to push / branch / PR (multi-contributor phase — humans + Claude + Codex in parallel)
 
-- **Branch + PR is the default for all feature work.** Branch `feat/<slug>` or `fix/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
+- **A worktree, a branch and a draft PR are the default for all work** — created before the first edit, not before the first commit (AGENTS.md, "Working on the issue board", has the sequence and the reason a bare branch is not isolation). `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
 - **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works. `make release` goes through a PR for the same reason.
 - **Every PR adds its changelog entry as its own file**: `changelog.d/<category>-<slug>.md`, category being added / changed / deprecated / removed / fixed / security. Never edit `CHANGELOG.md` directly — eight agents appending to the same section conflicted constantly, and a conflict resolved carelessly during a rebase drops somebody's entry. `make release` collates the files and deletes them. CI fails a PR touching `server/` or `web/src` without one; the `no-changelog` label is the escape for work a rider cannot see. Write it for someone deciding whether to upgrade, not as a second copy of the PR title.
 - **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them), or cut a release by hand — `make release` is the only path (it computes the CalVer number itself), and it refuses when `## [Unreleased]` is empty.
