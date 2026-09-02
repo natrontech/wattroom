@@ -10,7 +10,6 @@
 	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
 	import { takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
 	// Side-effect imports: both apply their stored choice to :root the moment
@@ -30,7 +29,6 @@
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
-	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
@@ -115,47 +113,6 @@
 	const roomSlug = $derived(
 		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
 	);
-
-	// The member popout (#207): a rail click fetches the room's member list
-	// (member-gated server-side) and shows who that rider is.
-	interface PopoutMember {
-		id: string;
-		displayName: string;
-		avatarUrl?: string;
-		avatarPreset?: string;
-		totalXp?: number;
-		role: string;
-		ftpWatts: number;
-		weightKg: number;
-		joinedAt: string;
-	}
-	interface PopoutMedal {
-		kind: string;
-		rider: string;
-		awardedAt: string;
-	}
-	let popout = $state<{
-		member: PopoutMember;
-		roomName: string;
-		slug: string;
-		medals: PopoutMedal[];
-	} | null>(null);
-	async function openMember(slug: string, name: string) {
-		const res = await api<{
-			name?: string;
-			members?: PopoutMember[];
-			medals?: PopoutMedal[];
-		}>(`/api/rooms/${slug}`);
-		if (!res.ok) return;
-		const member = res.data.members?.find((m) => m.displayName === name);
-		if (member)
-			popout = {
-				member,
-				roomName: res.data.name ?? slug,
-				slug,
-				medals: res.data.medals ?? [],
-			};
-	}
 
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
@@ -300,17 +257,6 @@
 		     auto-advance while the player is offscreen, so it cannot be a place.
 		     Threads became places instead (ADR-0020) — /messages (#468). -->
 		<JukeboxDock />
-		{#if popout}
-			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
-			<MemberCard
-				member={popout.member}
-				roomName={popout.roomName}
-				medals={popout.medals}
-				online={room?.riders?.includes(popout.member.displayName) ?? false}
-				inVoice={room?.voice?.includes(popout.member.displayName) ?? false}
-				onClose={() => (popout = null)}
-			/>
-		{/if}
 	</div>
 {:else}
 	{@render children()}
