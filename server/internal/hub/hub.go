@@ -885,6 +885,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 				}
 				return out
 			}(),
+			Voice:  rm.voiceIDsLocked(),
 			Riders: rm.metrics,
 			Roster: make([]protocol.Rider, 0, len(rm.clients)),
 		}
@@ -1152,6 +1153,20 @@ func (rm *room) setVoice(riders map[string]struct{}) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.voiceNow = riders
+}
+
+// voiceIDsLocked is who the hub says is in the channel, in the shape the tick
+// carries it. Sorted so a tick does not churn on map order. Caller holds rm.mu.
+func (rm *room) voiceIDsLocked() []string {
+	if len(rm.voiceNow) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(rm.voiceNow))
+	for id := range rm.voiceNow {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // accrueVoiceLocked adds one tick's worth of voice time to everyone in the
