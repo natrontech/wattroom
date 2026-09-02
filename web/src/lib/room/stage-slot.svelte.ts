@@ -48,8 +48,22 @@ export const stageSlot = $state<{
 	 * dock through `onSeat` instead, a plain callback, outside reactivity.
 	 */
 	seated: boolean;
+	/**
+	 * Whether a surface ABOVE the people column is offering a seat — the stage,
+	 * or TV mode. The column's deck collapses its 200 px hole when one is,
+	 * because the hole is then a placeholder for a video already playing
+	 * elsewhere on the same screen (#504).
+	 *
+	 * Deliberately not "who holds the player": that answer depends on the
+	 * column's own offer, and the column resizes itself from the answer. Hide
+	 * the hole, its offer is withdrawn, the holder changes, the hole comes
+	 * back. This counts only offers the column cannot influence, so the cycle
+	 * has no edge back.
+	 */
+	outranked: boolean;
 }>({
 	seated: false,
+	outranked: false,
 });
 
 /** Below this much of a surface on screen, its offer is withdrawn. */
@@ -75,6 +89,13 @@ const offers = new Map<HTMLElement, { priority: number; seat: Seat | null }>();
 // the first publish runs inside a surface's attachment (an effect), and an
 // effect must never depend on the state it writes.
 let last: Seat | null = null;
+// ...and the flags too. Reading `stageSlot.seated` or `.outranked` to decide
+// whether to write it registers the caller as a dependent, and the caller is
+// sometimes a surface's attachment — which then re-runs on every flip:
+// teardown, re-register, publish. That mount churn is what #494 died of, so
+// every comparison below is against a plain mirror.
+let lastSeated = false;
+let lastOutranked = false;
 
 /** The highest-priority live offer wins; ties go to whoever offered last. */
 export function bestOffer(
@@ -87,6 +108,18 @@ export function bestOffer(
 			best = { priority: offer.priority, seat: offer.seat };
 	}
 	return best?.seat ?? null;
+}
+
+/**
+ * Is a surface above the people column offering? Read by the column's deck,
+ * so it must never count the column's own offer — see `outranked`.
+ */
+export function outranksColumn(
+	all: Iterable<{ priority: number; seat: Seat | null }>,
+): boolean {
+	for (const offer of all)
+		if (offer.seat && offer.priority > COLUMN_SEAT) return true;
+	return false;
 }
 
 /**
@@ -107,11 +140,21 @@ export function onSeat(cb: (seat: Seat | null) => void): () => void {
 
 function settle() {
 	const next = bestOffer(offers.values());
+	// Settled before the rect's early return: a surface above the column can
+	// appear or go without moving the winning seat by a pixel.
+	const outranked = outranksColumn(offers.values());
+	if (lastOutranked !== outranked) {
+		lastOutranked = outranked;
+		stageSlot.outranked = outranked;
+	}
 	if (sameSeat(last, next)) return;
 	last = next;
-	// The boolean is the only reactive part, and it changes when a surface
+	// The booleans are the only reactive part, and they change when a surface
 	// takes or gives up the seat — never with the rect.
-	if (stageSlot.seated !== !!next) stageSlot.seated = !!next;
+	if (lastSeated !== !!next) {
+		lastSeated = !!next;
+		stageSlot.seated = !!next;
+	}
 	listener?.(next);
 }
 
