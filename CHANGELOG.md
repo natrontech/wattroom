@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.14] - 2026-09-02
+
+### Fixed
+
+- Volume faders move smoothly. Music, cues, the duck under a voice and another
+  rider's level jumped in 5 % notches — a step you cannot hear near full
+  volume, and a 6 dB leap down where you set a track under someone talking.
+  They now move a percent at a time, and the mixer reads out where it sits.
+- Joining voice or switching your camera on and off no longer makes the room's video stutter, the floating player carries only the video instead of a face beside it, and turning your camera off hands the camera back to your machine so other apps can use it again.
+
 ## [2026.09.13] - 2026-09-02
 
 ### Fixed
@@ -291,7 +301,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.13...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.14...HEAD
+[2026.09.14]: https://github.com/natrontech/wattroom/compare/2026.09.13...2026.09.14
 [2026.09.13]: https://github.com/natrontech/wattroom/compare/2026.09.12...2026.09.13
 [2026.09.12]: https://github.com/natrontech/wattroom/compare/2026.09.11...2026.09.12
 [2026.09.11]: https://github.com/natrontech/wattroom/compare/2026.09.10...2026.09.11
