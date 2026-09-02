@@ -1,0 +1,1 @@
+- Clicking a picture in a room's chat or a DM opens it big in WattRoom itself, instead of handing it to a new browser tab that took the room with it. Click it again for full size, Escape or the backdrop to come back — and the new tab is still there on right-click.

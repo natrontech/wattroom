@@ -458,6 +458,7 @@
 								<ChatImage
 									src="/api/rooms/{slug}/chat/images/{message.imageId}"
 									alt="Sent by {message.from}"
+									menu={() => messageMenu(message)}
 								/>
 							{/if}
 							{#if message.id && onReact}

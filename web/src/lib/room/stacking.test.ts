@@ -57,4 +57,16 @@ describe('room stacking (#483)', () => {
 		expect(floatingPlayer).toBeLessThan(tvMode);
 		expect(floatingPlayer).toBeLessThan(poppedStage);
 	});
+
+	it('opens a clicked picture over the sheet that sent it', () => {
+		// The viewer is opened from a chat line (#510), and below xl that chat
+		// IS the sheet — a picture drawn under it would be invisible, with the
+		// room frozen behind a backdrop nobody can see to dismiss.
+		const imageViewer = layer(
+			'lib/chat/ImageViewer.svelte',
+			/cave bg-paper\/95 fixed inset-0 z-\[(\d+)\]/,
+		);
+		expect(imageViewer).toBeGreaterThan(chatSheet);
+		expect(imageViewer).toBeGreaterThan(seatedPlayer);
+	});
 });
