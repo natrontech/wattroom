@@ -28,7 +28,8 @@ export type Phase = 'lounge' | 'countdown' | 'live';
 
 export interface Fault {
 	kind: 'trainer' | 'room' | 'voice';
-	state: 'reconnecting' | 'lost';
+	/** 'silent' is trainer-only: connected, and delivering nothing (#520). */
+	state: 'reconnecting' | 'lost' | 'silent';
 }
 
 /** RoomRail's room list entry. */

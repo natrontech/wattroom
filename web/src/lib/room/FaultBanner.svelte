@@ -11,6 +11,12 @@
 	// What went wrong, why it matters, what happens next — never "something went wrong".
 	const copy = $derived.by(() => {
 		if (fault.kind === 'trainer') {
+			if (fault.state === 'silent')
+				return {
+					title: 'Trainer is connected but sending nothing',
+					detail:
+						'No data has arrived over Bluetooth. Spin the cranks to wake it — and close anything else holding the trainer (Zwift, the Wahoo app, another tab), since it only accepts one connection.',
+				};
 			return fault.state === 'reconnecting'
 				? {
 						title: 'Trainer disconnected',

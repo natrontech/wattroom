@@ -605,6 +605,22 @@
 					onRecover={() => location.reload()}
 				/>
 			</div>
+		{:else if rideCtl.fault}
+			<!-- The trainer's own state, which the room never showed (#520): the
+			     mock has simulated this banner since #39 and the product could
+			     not reach it, so "Unpair trainer" was the only thing a rider
+			     with no watts had to go on. Ranked above voice — a ride with no
+			     power is broken; a ride with no talking is not. -->
+			<div class="shrink-0 px-5 pt-4">
+				<FaultBanner
+					fault={{ kind: 'trainer', state: rideCtl.fault }}
+					bufferedSeconds={0}
+					onRecover={() => {
+						rideCtl.unpair();
+						void rideCtl.ride(new FtmsTrainer());
+					}}
+				/>
+			</div>
 		{:else if av.status === 'reconnecting'}
 			<!-- Media gapped while the SDK retries (#234). -->
 			<div class="shrink-0 px-5 pt-4">

@@ -16,6 +16,10 @@
 	let sample = $state<TrainerSample | null>(null);
 	let target = $state(150);
 	let samples = $state(0);
+	// Raw notifications, polled because a frame with no power field fires no
+	// callback to hook (#520) — and "talking, but never about watts" is exactly
+	// the failure that used to look identical to a silent trainer.
+	let frames = $state(0);
 	let speed = $state<number | null>(null);
 	let lastAck = $state<number | null>(null);
 	let log = $state<{ at: string; text: string; bad?: boolean }[]>([]);
@@ -30,6 +34,16 @@
 
 	// A reload no longer hides that a reload happened.
 	$effect(() => hwlog('page-loaded', { ua: navigator.userAgent }));
+
+	$effect(() => {
+		if (status !== 'connected') return;
+		const id = setInterval(() => {
+			if (!trainer || trainer.frames === frames) return;
+			frames = trainer.frames;
+			hwlog('frames', { frames, powered: trainer.poweredFrames });
+		}, 1000);
+		return () => clearInterval(id);
+	});
 
 	async function pair() {
 		started = Date.now();
@@ -272,7 +286,28 @@
 				samples
 			</div>
 		</div>
+		<div>
+			<div
+				class="font-display text-3xl leading-none font-semibold tabular-nums {frames >
+					0 && samples === 0
+					? 'text-danger'
+					: ''}"
+			>
+				{frames}
+			</div>
+			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
+				frames
+			</div>
+		</div>
 	</div>
+	{#if frames > 0 && samples === 0}
+		<p class="text-danger mt-3 text-xs">
+			The trainer is streaming Indoor Bike Data, but no frame carries
+			instantaneous power — so nothing reaches the ride. Post the log on the
+			issue; this unit needs a driver that reads power from the Cycling Power
+			Service instead.
+		</p>
+	{/if}
 
 	<div class="border-muted/15 mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">ERG</h2>
