@@ -17,6 +17,9 @@
 	import {
 		Headphones,
 		CalendarClock,
+		Columns2,
+		LayoutGrid,
+		MonitorPlay,
 		MonitorUp,
 		ScreenShare,
 		ScreenShareOff,
@@ -27,6 +30,64 @@
 	const av = $derived(roomConnection.current?.av);
 	const focused = $derived(room.riders.find((r) => r.id === room.focusId));
 	const others = $derived(room.riders.filter((r) => r.id !== room.focusId));
+
+	// Quick layouts for watching together (#464): what deserves the room
+	// differs per rider — the picture for some, the cams for others — and the
+	// frame's edge-drag was neither obvious nor quick. Three presets, one tap,
+	// remembered per device; the drag stays for fine-tuning.
+	type Layout = 'stage' | 'split' | 'crew';
+	const LAYOUT_KEY = 'wattroom.lounge.layout.v1';
+	const LAYOUTS: {
+		id: Layout;
+		label: string;
+		hint: string;
+		icon: typeof MonitorPlay;
+	}[] = [
+		{
+			id: 'stage',
+			label: 'Stage',
+			hint: 'the picture big, the crew below',
+			icon: MonitorPlay,
+		},
+		{
+			id: 'split',
+			label: 'Split',
+			hint: 'picture and crew side by side',
+			icon: Columns2,
+		},
+		{
+			id: 'crew',
+			label: 'Crew',
+			hint: 'the crew big, the picture beside',
+			icon: LayoutGrid,
+		},
+	];
+	let layout = $state<Layout>('stage');
+	try {
+		const saved = localStorage.getItem(LAYOUT_KEY);
+		if (saved === 'split' || saved === 'crew') layout = saved;
+	} catch {
+		/* desk preference; the default is fine */
+	}
+	function setLayout(next: Layout) {
+		layout = next;
+		try {
+			if (next === 'stage') localStorage.removeItem(LAYOUT_KEY);
+			else localStorage.setItem(LAYOUT_KEY, next);
+		} catch {
+			/* fine — the choice just won't survive a reload */
+		}
+	}
+	const wrap = $derived(
+		!room.onStage || layout === 'stage'
+			? ''
+			: layout === 'split'
+				? // The frame has a 320 px floor (RMF's 200×200 with chrome): the
+					// stage column must never shrink below it, or it runs under the
+					// people column.
+					'grid items-start gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,1fr)]'
+				: 'grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]',
+	);
 </script>
 
 {#snippet tile(rider: (typeof room.riders)[number])}
@@ -80,7 +141,28 @@
 				>Unpair trainer</button
 			>
 		{/if}
-		<button onclick={() => room.openTv()} class="btn btn-ghost btn-xs ml-auto"
+		{#if room.onStage}
+			<div
+				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
+				role="group"
+				aria-label="layout"
+			>
+				{#each LAYOUTS as option (option.id)}
+					<button
+						onclick={() => setLayout(option.id)}
+						aria-pressed={layout === option.id}
+						title="{option.label} — {option.hint}"
+						aria-label="{option.label} layout"
+						class="rounded px-2 py-1 {layout === option.id
+							? 'bg-surface-raised text-ink'
+							: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
+					>
+				{/each}
+			</div>
+		{/if}
+		<button
+			onclick={() => room.openTv()}
+			class="btn btn-ghost btn-xs {room.onStage ? '' : 'ml-auto'}"
 			><MonitorUp size={13} /> TV</button
 		>
 	</div>
@@ -89,58 +171,70 @@
 		<p class="text-danger mb-3 text-xs">{room.rideError}</p>
 	{/if}
 
-	{#if room.onStage}
-		<!-- The stage (#280): many people may share at once, so the picker
-		     chooses; the frame zooms, pans, resizes and pops out. -->
-		<div class="mb-3 shrink-0">
-			<Stage
-				sources={room.stageSources}
-				activeKey={room.onStage.key}
-				trackKey={`${room.onStage.key}:${room.onStage.gen}`}
-				onPick={(key) => room.pickStage(key)}
-				attach={(node) => room.attachStage(node, room.onStage!.key)}
-			/>
-		</div>
-	{/if}
-
-	{#if focused}
-		<!-- Focus narrows what you are looking at; it does not empty the room,
+	<div class={wrap}>
+		{#if room.onStage}
+			<!-- The stage (#280): many people may share at once, so the picker
+			     chooses; the frame zooms, pans, resizes and pops out. In the crew
+			     layout it moves beside the tiles (#464). -->
+			<div
+				class="min-w-0 shrink-0 {layout === 'stage' || !room.onStage
+					? 'mb-3'
+					: ''} {layout === 'crew' ? 'lg:order-last' : ''}"
+			>
+				<Stage
+					sources={room.stageSources}
+					activeKey={room.onStage.key}
+					trackKey={`${room.onStage.key}:${room.onStage.gen}`}
+					onPick={(key) => room.pickStage(key)}
+					attach={(node) => room.attachStage(node, room.onStage!.key)}
+				/>
+			</div>
+		{/if}
+		<div class="min-w-0">
+			{#if focused}
+				<!-- Focus narrows what you are looking at; it does not empty the room,
 		     so everyone else stays beside them. -->
-		<div
-			class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
-		>
-			<div>
-				<button
-					onclick={() => room.setFocus(null)}
-					class="block w-full text-left"
-					title="tap to unfocus">{@render tile(focused)}</button
+				<div
+					class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
 				>
-				<p class="text-muted mt-2 text-xs">
-					<span class="text-ink font-medium">{focused.name}</span> is focused — tap
-					again to let go.
-				</p>
-			</div>
-			<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
-				{#each others as rider (rider.id)}
-					<button
-						onclick={() => room.setFocus(rider.id)}
-						class="block text-left"
-						title="focus {rider.name}">{@render tile(rider)}</button
-					>
-				{/each}
-			</div>
-		</div>
-	{:else}
-		<div class="grid shrink-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-			{#each room.riders as rider (rider.id)}
-				<button
-					onclick={() => room.setFocus(rider.id)}
-					class="block text-left"
-					title="focus {rider.name}">{@render tile(rider)}</button
+					<div>
+						<button
+							onclick={() => room.setFocus(null)}
+							class="block w-full text-left"
+							title="tap to unfocus">{@render tile(focused)}</button
+						>
+						<p class="text-muted mt-2 text-xs">
+							<span class="text-ink font-medium">{focused.name}</span> is focused
+							— tap again to let go.
+						</p>
+					</div>
+					<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
+						{#each others as rider (rider.id)}
+							<button
+								onclick={() => room.setFocus(rider.id)}
+								class="block text-left"
+								title="focus {rider.name}">{@render tile(rider)}</button
+							>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<div
+					class="grid shrink-0 gap-3 {room.onStage && layout !== 'stage'
+						? 'grid-cols-2'
+						: 'sm:grid-cols-2 2xl:grid-cols-3'}"
 				>
-			{/each}
+					{#each room.riders as rider (rider.id)}
+						<button
+							onclick={() => room.setFocus(rider.id)}
+							class="block text-left"
+							title="focus {rider.name}">{@render tile(rider)}</button
+						>
+					{/each}
+				</div>
+			{/if}
 		</div>
-	{/if}
+	</div>
 
 	{#if room.phase === 'lounge'}
 		<!-- The room's dashboard, when nothing is running: what this room is
