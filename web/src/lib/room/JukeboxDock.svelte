@@ -16,12 +16,13 @@
 		resizePane,
 		restorePane,
 	} from '$lib/pane';
-	import { stageSlot } from '$lib/room/stage-slot.svelte';
+	import { setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
 	import {
 		FastForward,
 		GripHorizontal,
 		Minimize2,
 		Pause,
+		PictureInPicture2,
 		Play,
 		Rewind,
 		SkipForward,
@@ -511,6 +512,17 @@
 					title="centre the dock"
 					aria-label="centre the dock"><Minimize2 size={12} /></button
 				>
+				{#if stageSlot.popped}
+					<!-- Back into the people column's deck (#445); takes effect
+					     the moment a room page offers the seat again. -->
+					<button
+						onclick={() => setPopped(false)}
+						class="hover:text-ink shrink-0"
+						title="put the player back in the panel"
+						aria-label="put the player back in the panel"
+						><PictureInPicture2 size={12} /></button
+					>
+				{/if}
 			</div>
 		{/if}
 
