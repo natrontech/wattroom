@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import type { Cheer } from '$lib/protocol';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
 
 	// The reaction layer (#74): cheers arrive on the tick, float up, announce
 	// with sound — riders don't watch the screen (.claude/rules/ux.md).
@@ -36,7 +37,8 @@
 <div class="pointer-events-none fixed inset-x-0 bottom-16 z-40">
 	{#each floating as item (item.key)}
 		<div class="cheer absolute bottom-0 text-center" style="left: {item.left}%">
-			<span class="text-4xl">{item.emoji}</span>
+			<!-- Ink, not the live hue: a cheer is a person, not a number (ADR-0005). -->
+			<CheerIcon cheer={item.emoji} size={36} class="text-ink mx-auto" />
 			<span class="text-muted block text-[10px]">{item.from}</span>
 		</div>
 	{/each}

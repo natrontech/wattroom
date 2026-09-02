@@ -184,7 +184,7 @@
 					<button
 						onclick={() => (
 							play('cheer'),
-							room.cheer('🔥', 'Ana (spectating)')
+							room.cheer('flame', 'Ana (spectating)')
 						)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Cheer</button

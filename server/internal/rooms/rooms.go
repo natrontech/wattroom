@@ -40,8 +40,9 @@ const maxOwnedRooms = 3
 const maxCheers = 8
 
 // baseCheers is the stock reaction set (WATTROOM.md feel layer) — what a
-// room speaks until its owner curates their own.
-var baseCheers = []string{"🔥", "💪", "👏", "💀", "🚀", "🧊"}
+// room speaks until its owner curates their own. Icon keys since #447; the
+// client draws them.
+var baseCheers = []string{"flame", "biceps-flexed", "party-popper", "skull", "rocket", "snowflake"}
 
 // cheerSet parses the stored space-joined palette; ” means the base set.
 func cheerSet(stored string) []string {
@@ -491,9 +492,11 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	icon := room.Icon
 	if req.Icon != nil {
 		icon = strings.TrimSpace(*req.Icon)
-		if icon != "" && !protocol.IsEmoji(icon) {
+		// An icon key (#447) — or an emoji, still accepted so rooms saved and
+		// clients built before #447 keep working.
+		if icon != "" && !protocol.IsIconOrEmoji(icon) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A room icon is one emoji, or none.", "icon")
+				"A room icon is one from the set, or none.", "icon")
 			return
 		}
 	}
@@ -506,17 +509,18 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		deduped := make([]string, 0, len(*req.Cheers))
 		seen := map[string]struct{}{}
-		for _, emoji := range *req.Cheers {
-			if !protocol.IsEmoji(emoji) {
+		for _, cheer := range *req.Cheers {
+			// Same compat rule as the icon: keys now, emoji from before #447 too.
+			if !protocol.IsIconOrEmoji(cheer) {
 				httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-					"Reactions are single emoji.", "cheers")
+					"Reactions are icons from the set.", "cheers")
 				return
 			}
-			if _, dup := seen[emoji]; dup {
+			if _, dup := seen[cheer]; dup {
 				continue
 			}
-			seen[emoji] = struct{}{}
-			deduped = append(deduped, emoji)
+			seen[cheer] = struct{}{}
+			deduped = append(deduped, cheer)
 		}
 		cheers = strings.Join(deduped, " ") // "" = back to the base set
 	}
