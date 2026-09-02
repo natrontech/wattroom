@@ -944,8 +944,13 @@ export function createRoomAv(slug: string) {
 				if (camOn && track) {
 					videoTracks.set(me, { owner: myIdentity, track });
 					bumpVideo(me);
-				} else if (dropOwned(videoTracks, me, myIdentity)) {
-					dropVideo(me);
+				} else {
+					// Hand the device back to the machine. Unpublishing alone can
+					// leave the capture open, and then the camera is "in use" for
+					// every other tab and app until the page is closed (rider
+					// report: the camera stopped working in Chrome).
+					track?.mediaStreamTrack?.stop();
+					if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
 				}
 			} catch {
 				camOn = false;
@@ -1003,6 +1008,11 @@ export function createRoomAv(slug: string) {
 			mountTrack(container, videoTracks.get(riderId)?.track, 'cover');
 		},
 		leave() {
+			// Same for leaving: every local capture goes back to the machine.
+			for (const kind of [Track.Source.Camera, Track.Source.ScreenShare]) {
+				const pub = room?.localParticipant.getTrackPublication(kind);
+				pub?.videoTrack?.mediaStreamTrack?.stop();
+			}
 			closeMic();
 			void room?.disconnect();
 			room = null;

@@ -10,15 +10,15 @@ import {
 	stageSlot,
 } from '$lib/room/stage-slot.svelte';
 
-// happy-dom lays nothing out: the hole's rect is scripted, and animation
-// frames are stepped by hand — `tick()` runs whatever a frame would.
-let frames: FrameRequestCallback[] = [];
-vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-	frames.push(cb);
-	return frames.length;
+// happy-dom lays nothing out: the hole's rect is scripted, and the
+// re-measure timer is stepped by hand — `tick()` runs one of its rounds.
+let timers: (() => void)[] = [];
+vi.stubGlobal('setInterval', (cb: () => void) => {
+	timers.push(cb);
+	return timers.length;
 });
-vi.stubGlobal('cancelAnimationFrame', () => {
-	frames = [];
+vi.stubGlobal('clearInterval', (id: number) => {
+	if (typeof id === 'number') timers = timers.filter((_, i) => i + 1 !== id);
 });
 let intersect: (ratio: number) => void = () => {};
 class FakeIntersectionObserver {
@@ -41,9 +41,7 @@ let seen: { x: number; y: number; w: number; h: number } | null = null;
 onSeat((s) => (seen = s));
 
 function tick() {
-	const due = frames;
-	frames = [];
-	for (const cb of due) cb(0);
+	for (const cb of [...timers]) cb();
 }
 
 function rect(box: {
