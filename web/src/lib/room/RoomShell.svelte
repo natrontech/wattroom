@@ -28,6 +28,7 @@
 	import { pickStage } from '$lib/room/stage';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
+	import { uploadImage } from '$lib/chat/upload';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { toLocalInput } from '$lib/components/when';
@@ -50,7 +51,7 @@
 	import { createRide } from '$lib/room/ride.svelte';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
-	import { stageSlot } from '$lib/room/stage-slot.svelte';
+	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
 		id: string;
@@ -96,7 +97,7 @@
 		slug: string;
 		role: string;
 		roomName: string;
-		/** Owner-set emoji identity mark (#223). */
+		/** Owner-set identity mark (#223) — an icon key (#447). */
 		icon?: string;
 		/** The room's reaction palette (#223); absent = SidePanel's base set. */
 		cheers?: string[];
@@ -240,6 +241,7 @@
 		...av.stageSources.map((source) => ({
 			key: source.key,
 			kind: source.kind,
+			riderId: source.id,
 			gen: String(source.gen),
 			label:
 				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
@@ -448,11 +450,7 @@
 			live.chat(text);
 			return;
 		}
-		const up = await api<{ id: string }>(`/api/rooms/${slug}/chat/images`, {
-			method: 'POST',
-			body: image,
-			headers: { 'content-type': image.type },
-		});
+		const up = await uploadImage(`/api/rooms/${slug}/chat/images`, image);
 		if (!up.ok) {
 			toasts.push(up.error.message, { tone: 'error' });
 			return;
@@ -512,6 +510,17 @@
 {#if tv}
 	<!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
 	<div class="cave bg-surface fixed inset-0 z-50">
+		{#if live.tick?.jukebox?.current}
+			<!-- The player takes the TV's top-right corner (#460): the dock
+			     outranks this overlay and used to land wherever it was, over the
+			     numbers. A seat here makes it part of the layout — ≥200×200 for
+			     RMF, and it outranks the column's and the stage's seats. -->
+			<div
+				class="absolute top-[3vh] right-[3vw] z-10 aspect-video w-[24vw] min-w-[240px]"
+				style="min-height: 200px"
+				{@attach (node) => offerSeat(node, TV_SEAT)}
+			></div>
+		{/if}
 		<button
 			onclick={() => (tv = false)}
 			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
@@ -630,7 +639,7 @@
 		     Seated on the lounge's stage it is content, and needs no gutter. -->
 		<div
 			class="min-h-0 flex-1 overflow-y-auto"
-			style={live.tick?.jukebox?.current && !stageSlot.seat
+			style={live.tick?.jukebox?.current && !stageSlot.seated
 				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'
 				: ''}
 		>
@@ -653,9 +662,15 @@
 	<MessageSquare size={18} />
 </button>
 {#if chatSheet}
+	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
+	     sit inside the stage and TV mode, and a sheet the rider pulled open is
+	     the one surface that must still win — below xl it carries the jukebox
+	     transport, the people and the chat, and a video parked on top of it
+	     left nothing to press. RMF forbids OUR chrome over the player, never a
+	     drawer the rider opened. -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
-		class="bg-paper/50 fixed inset-0 z-50 xl:hidden"
+		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
 		onclick={(e) => e.target === e.currentTarget && (chatSheet = false)}
 	>
 		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">

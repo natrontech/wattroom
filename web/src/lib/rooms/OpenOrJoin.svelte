@@ -44,14 +44,14 @@
 	}
 </script>
 
-<section id="rooms" class="mt-8">
+<section id="rooms">
 	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
 		Your rooms
 	</h2>
 	{#if roomError}
 		<div class="mt-3"><Banner tone="error">{roomError}</Banner></div>
 	{/if}
-	<div class="mt-3 grid gap-3 sm:grid-cols-2">
+	<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 		<div class="panel p-5">
 			<h3 class="font-display font-bold">Open a room</h3>
 			<p class="text-muted mt-1 text-xs">
@@ -99,13 +99,13 @@
 					bind:value={joinCode}
 					maxlength="6"
 					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
-						? 'border-z6/60'
+						? 'border-danger/60'
 						: 'border-muted/25 focus:border-muted/60'}"
 					placeholder="Room code"
 				/>
 				{#if invalidCode}
 					<!-- Field-level validation lands under the field (errors.md). -->
-					<p class="text-z6 mt-1.5 text-xs">
+					<p class="text-danger mt-1.5 text-xs">
 						Codes are letters and numbers only.
 					</p>
 				{/if}

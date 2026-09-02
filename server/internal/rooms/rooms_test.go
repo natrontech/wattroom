@@ -482,12 +482,19 @@ func TestIconAndCheers(t *testing.T) {
 		t.Errorf("fresh room palette: %v", body["cheers"])
 	}
 
-	// Icon: one emoji or none; text refused.
-	if status, body := patch(`{"name":"Icon Cave","icon":"not-an-emoji"}`); status != http.StatusBadRequest {
-		t.Errorf("text icon accepted: %d %v", status, body)
+	// Icon: an icon key (#447) or none; junk refused; an emoji from before
+	// #447 still lands so old rooms and clients keep working.
+	if status, body := patch(`{"name":"Icon Cave","icon":"not an icon!"}`); status != http.StatusBadRequest {
+		t.Errorf("junk icon accepted: %d %v", status, body)
+	}
+	if status, body := patch(`{"name":"Icon Cave","icon":"<script>"}`); status != http.StatusBadRequest {
+		t.Errorf("markup icon accepted: %d %v", status, body)
+	}
+	if status, body := patch(`{"name":"Icon Cave","icon":"bike"}`); status != http.StatusOK || body["icon"] != "bike" {
+		t.Errorf("key icon: %d %v", status, body)
 	}
 	if status, body := patch(`{"name":"Icon Cave","icon":"🦖"}`); status != http.StatusOK || body["icon"] != "🦖" {
-		t.Errorf("icon: %d %v", status, body)
+		t.Errorf("emoji icon (compat): %d %v", status, body)
 	}
 	// Absent field keeps it; empty clears it.
 	if status, body := patch(`{"name":"Icon Cave"}`); status != http.StatusOK || body["icon"] != "🦖" {
@@ -497,16 +504,22 @@ func TestIconAndCheers(t *testing.T) {
 		t.Errorf("empty icon did not clear: %d %v", status, body)
 	}
 
-	// Cheers: owner curates, dupes collapse, text refused, cap enforced.
-	if status, body := patch(`{"name":"Icon Cave","cheers":["🦖","🌵","🦖"]}`); status != http.StatusOK {
+	// Cheers: owner curates, dupes collapse, junk refused, cap enforced.
+	if status, body := patch(`{"name":"Icon Cave","cheers":["heart","zap","heart"]}`); status != http.StatusOK {
 		t.Fatalf("cheers: %d %v", status, body)
-	} else if cheers, _ := body["cheers"].([]any); len(cheers) != 2 || cheers[0] != "🦖" {
+	} else if cheers, _ := body["cheers"].([]any); len(cheers) != 2 || cheers[0] != "heart" {
 		t.Errorf("palette: %v", body["cheers"])
 	}
-	if status, _ := patch(`{"name":"Icon Cave","cheers":["gg"]}`); status != http.StatusBadRequest {
+	if status, body := patch(`{"name":"Icon Cave","cheers":["🦖","🌵"]}`); status != http.StatusOK {
+		t.Errorf("emoji reactions (compat): %d %v", status, body)
+	}
+	if status, _ := patch(`{"name":"Icon Cave","cheers":["gg!"]}`); status != http.StatusBadRequest {
 		t.Errorf("text reaction accepted: %d", status)
 	}
-	if status, _ := patch(`{"name":"Icon Cave","cheers":["🔥","💪","👏","💀","🚀","🧊","🦖","🌵","😤"]}`); status != http.StatusBadRequest {
+	if status, _ := patch(`{"name":"Icon Cave","cheers":["Flame"]}`); status != http.StatusBadRequest {
+		t.Errorf("uppercase reaction accepted: %d", status)
+	}
+	if status, _ := patch(`{"name":"Icon Cave","cheers":["flame","biceps-flexed","party-popper","skull","rocket","snowflake","heart","zap","trophy"]}`); status != http.StatusBadRequest {
 		t.Errorf("nine reactions accepted: %d", status)
 	}
 	// Empty resets to the base set.

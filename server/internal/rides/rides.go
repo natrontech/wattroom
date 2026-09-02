@@ -47,6 +47,7 @@ type Service struct {
 	users    UserSource
 	log      *slog.Logger
 	uploader RideUploader
+	keeper   stats.RideKeeper
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
@@ -55,9 +56,14 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 
 func (s *Service) SetUploader(u RideUploader) { s.uploader = u }
 
+// SetRideKeeper wires the trophy case in (#467): a solo ride earns its
+// achievements the same way a room session's does.
+func (s *Service) SetRideKeeper(k stats.RideKeeper) { s.keeper = k }
+
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides", s.handleList)
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
+	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
 }
 
 type sampleJSON struct {
@@ -85,6 +91,9 @@ type rideJSON struct {
 	Xp          int     `json:"xp"`
 	// True for rides ridden in a room — the list marks them.
 	Room bool `json:"room,omitempty"`
+	// The per-ride opt-in (WATTROOM.md privacy, ADR-0024): friends see this
+	// ride on the rider's page. Off by default, flipped by PATCH.
+	SharedWithFriends bool `json:"sharedWithFriends"`
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
@@ -107,10 +116,48 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 			Execution: float64(row.Execution), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-			Room: row.RoomID.Valid,
+			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rides": out})
+}
+
+// handleShare flips one ride's friends-visibility (ADR-0024). Owner-only:
+// the update's where clause carries the user, so someone else's ride reads
+// as absent rather than as forbidden.
+func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a ride id.")
+		return
+	}
+	var body struct {
+		SharedWithFriends *bool `json:"sharedWithFriends"`
+	}
+	if err := httpx.DecodeStrict(r, &body); err != nil || body.SharedWithFriends == nil {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"Send sharedWithFriends as true or false.", "sharedWithFriends")
+		return
+	}
+	n, err := s.store.Queries.SetRideShared(r.Context(), db.SetRideSharedParams{
+		Shared: *body.SharedWithFriends, ID: id, UserID: user.ID,
+	})
+	if err != nil {
+		s.log.Error("ride share failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be updated.")
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"id": store.UUIDString(id), "sharedWithFriends": *body.SharedWithFriends,
+	})
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -184,6 +231,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.uploader != nil {
 		s.uploader.RideSaved(id)
+	}
+	if s.keeper != nil {
+		watts := make([]int, len(samples))
+		for i, sample := range samples {
+			watts[i] = sample.Watts
+		}
+		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)
 	httpx.WriteJSON(w, http.StatusCreated, rideJSON{

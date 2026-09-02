@@ -101,7 +101,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 
 	// A new session is a new ride.
-	rm.control(protocol.Control{Action: "start"}, time.Unix(100, 0))
+	rm.control(protocol.Control{Action: "start"}, "jan", time.Unix(100, 0))
 	if got := rm.record.count("jan"); got != 0 {
 		t.Fatalf("record survived a session restart: %d", got)
 	}
@@ -125,12 +125,13 @@ func TestCheerShapeAndBound(t *testing.T) {
 	if len(rm.cheers) != 32 {
 		t.Fatalf("cheer buffer unbounded: %d", len(rm.cheers))
 	}
-	// The wire gate is the emoji shape check — IsEmoji has its own table
-	// test; this pins that the hub actually consults it.
-	if !protocol.IsEmoji("🔥") {
-		t.Fatal("shape check missing the obvious one")
+	// The wire gate is the shape check — IsIconOrEmoji has its own table
+	// test; this pins that the hub actually consults it, for a key (#447)
+	// and for the emoji an older client still throws.
+	if !protocol.IsIconOrEmoji("flame") || !protocol.IsIconOrEmoji("🔥") {
+		t.Fatal("shape check missing the obvious ones")
 	}
-	if protocol.IsEmoji("<script>") {
+	if protocol.IsIconOrEmoji("<script>") {
 		t.Fatal("shape check lets text through")
 	}
 }

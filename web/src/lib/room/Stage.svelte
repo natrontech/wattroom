@@ -11,7 +11,8 @@
 		ZoomOut,
 	} from '@lucide/svelte';
 	import { dragPane, keepSize } from '$lib/pane';
-	import { offerSeat } from '$lib/room/stage-slot.svelte';
+	import { offerSeat, STAGE_SEAT } from '$lib/room/stage-slot.svelte';
+	import { contextMenu } from '$lib/context-menu.svelte';
 	import {
 		FIT,
 		MAX_ZOOM,
@@ -44,7 +45,8 @@
 	}: {
 		sources: StageSource[];
 		activeKey: string;
-		/** activeKey plus the track generation — remounts on a fresh track. */
+		/** `pictureKey` of the active source — activeKey plus the track
+		 *  generation. Remounts the video, and refits the zoom, on a fresh track. */
 		trackKey: string;
 		onPick: (key: string) => void;
 		/** Mounts the active source's video into the surface. */
@@ -69,11 +71,21 @@
 	const DEFAULT_RATIO = 16 / 9;
 	let ratio = $state(DEFAULT_RATIO);
 
-	// A new source is a new picture: inherited zoom would land you staring at
-	// a corner of someone else's screen, and an inherited shape would letterbox
+	// A new picture — another source, or the same sharer's screen back on a
+	// fresh track — starts at fit: inherited zoom would land you staring at a
+	// corner of someone else's screen, and an inherited shape would letterbox
 	// it until the first frame arrives.
+	//
+	// The guard is the point (#523). `trackKey` reaches us as a getter over a
+	// derived that the room rebuilds on every tick, so this effect re-runs
+	// about once a second — four times a second inside a sprint window — with
+	// the picture unchanged. Resetting on each of those runs zoomed a reading
+	// rider back out half a second after they zoomed in. Plain `let`: only the
+	// effect touches it, and making it state would re-trigger the effect.
+	let shown: string | null = null;
 	$effect(() => {
-		activeKey;
+		if (trackKey === shown) return;
+		shown = trackKey;
 		view = FIT;
 		ratio = DEFAULT_RATIO;
 	});
@@ -182,6 +194,24 @@
 	<div
 		bind:this={frame}
 		{@attach (node) => keepSize(node, PANE)}
+		{@attach contextMenu(() => [
+			{
+				label: 'Fit to frame',
+				icon: RotateCcw,
+				onSelect: () => (view = FIT),
+				disabled: view.zoom === 1,
+			},
+			{
+				label: popped ? 'Dock the stage' : 'Pop the stage out',
+				icon: PictureInPicture2,
+				onSelect: () => (popped = !popped),
+			},
+			{
+				label: 'Fullscreen',
+				icon: Maximize,
+				onSelect: () => void frame?.requestFullscreen?.(),
+			},
+		])}
 		{@attach wheelZoom}
 		{@attach reclamp}
 		{@attach aspect}
@@ -195,7 +225,10 @@
 			<!-- The player itself flies here (#316). Nothing may be drawn over
 			     it — YouTube RMF — so the frame stays empty and the chrome
 			     below is suppressed while it is seated. -->
-			<div class="h-full w-full" {@attach offerSeat}></div>
+			<div
+				class="h-full w-full"
+				{@attach (node) => offerSeat(node, STAGE_SEAT)}
+			></div>
 		{:else}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div

@@ -8,6 +8,7 @@
 		setVolume,
 		type CueId,
 	} from '$lib/sound/cues';
+	import { UNIT_FADER } from '$lib/sound/fader';
 
 	let volume = $state(0.7);
 	let muted = $state(false);
@@ -50,7 +51,7 @@
 		<label class="flex items-center gap-3">
 			<span class="text-muted text-[10px] tracking-wider uppercase">volume</span
 			>
-			<input type="range" min="0" max="1" step="0.05" bind:value={volume} />
+			<input type="range" {...UNIT_FADER} bind:value={volume} />
 			<span class="w-8 font-mono text-xs tabular-nums"
 				>{Math.round(volume * 100)}</span
 			>

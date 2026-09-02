@@ -40,8 +40,9 @@ const maxOwnedRooms = 3
 const maxCheers = 8
 
 // baseCheers is the stock reaction set (WATTROOM.md feel layer) — what a
-// room speaks until its owner curates their own.
-var baseCheers = []string{"🔥", "💪", "👏", "💀", "🚀", "🧊"}
+// room speaks until its owner curates their own. Icon keys since #447; the
+// client draws them.
+var baseCheers = []string{"flame", "biceps-flexed", "party-popper", "skull", "rocket", "snowflake"}
 
 // cheerSet parses the stored space-joined palette; ” means the base set.
 func cheerSet(stored string) []string {
@@ -190,7 +191,18 @@ type roomJSON struct {
 	// rail's whole argument for spending width on a room you are not looking
 	// at. Per-rider, so it does not belong in RoomPresence.
 	Unread int `json:"unread,omitempty"`
+	// The last thing said here (#468) — the one-line preview and the
+	// recency that lets a room sort next to a DM in the messages list.
+	LastChat *lastChatJSON `json:"lastChat,omitempty"`
 	protocol.RoomPresence
+}
+
+type lastChatJSON struct {
+	From string `json:"from"`
+	Text string `json:"text"`
+	// The line was an image (#279) — it has no text to preview.
+	HasImage bool  `json:"hasImage,omitempty"`
+	At       int64 `json:"at"`
 }
 
 // --- handlers ---
@@ -272,7 +284,11 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]roomJSON, 0, len(roomsList))
 	for _, room := range roomsList {
-		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role}
+		// The palette rides the list (#468): a thread read from outside the
+		// room reacts in the room's own vocabulary without opening the room —
+		// which handleGet would count as reading it.
+		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
+			Cheers: cheerSet(room.Cheers)}
 		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
 			entry.MemberCount = int(count)
 		}
@@ -293,6 +309,12 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.NextSession = &nextJSON{
 				WorkoutName: next.WorkoutName,
 				StartsAt:    next.StartsAt.Time.Format(time.RFC3339),
+			}
+		}
+		if last, err := s.store.Queries.LastRoomChat(r.Context(), room.ID); err == nil {
+			entry.LastChat = &lastChatJSON{
+				From: last.DisplayName, Text: last.Text, HasImage: last.ImageID.Valid,
+				At: last.CreatedAt.Time.UnixMilli(),
 			}
 		}
 		out = append(out, entry)
@@ -491,9 +513,11 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	icon := room.Icon
 	if req.Icon != nil {
 		icon = strings.TrimSpace(*req.Icon)
-		if icon != "" && !protocol.IsEmoji(icon) {
+		// An icon key (#447) — or an emoji, still accepted so rooms saved and
+		// clients built before #447 keep working.
+		if icon != "" && !protocol.IsIconOrEmoji(icon) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A room icon is one emoji, or none.", "icon")
+				"A room icon is one from the set, or none.", "icon")
 			return
 		}
 	}
@@ -506,17 +530,18 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		deduped := make([]string, 0, len(*req.Cheers))
 		seen := map[string]struct{}{}
-		for _, emoji := range *req.Cheers {
-			if !protocol.IsEmoji(emoji) {
+		for _, cheer := range *req.Cheers {
+			// Same compat rule as the icon: keys now, emoji from before #447 too.
+			if !protocol.IsIconOrEmoji(cheer) {
 				httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-					"Reactions are single emoji.", "cheers")
+					"Reactions are icons from the set.", "cheers")
 				return
 			}
-			if _, dup := seen[emoji]; dup {
+			if _, dup := seen[cheer]; dup {
 				continue
 			}
-			seen[emoji] = struct{}{}
-			deduped = append(deduped, emoji)
+			seen[cheer] = struct{}{}
+			deduped = append(deduped, cheer)
 		}
 		cheers = strings.Join(deduped, " ") // "" = back to the base set
 	}

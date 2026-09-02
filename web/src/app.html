@@ -5,6 +5,23 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
 		%sveltekit.head%
+		<script>
+			// The rider's theme before the bundle runs (#398): palette.svelte.ts
+			// caches the token block it last applied, and painting that here beats
+			// first paint. The module takes the element over as soon as it loads.
+			try {
+				var theme = localStorage.getItem('wattroom.theme.v1');
+				if (theme === 'dark' || theme === 'light')
+					document.documentElement.dataset.theme = theme;
+				var css = localStorage.getItem('wattroom.palette.css.v1');
+				if (css) {
+					var style = document.createElement('style');
+					style.id = 'wattroom-theme';
+					style.textContent = css;
+					document.head.append(style);
+				}
+			} catch (e) {}
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>

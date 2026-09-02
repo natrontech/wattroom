@@ -19,10 +19,16 @@
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
-[ "$(git branch --show-current)" = main ] || {
-	echo "releases are cut from main; you are on $(git branch --show-current)" >&2
+# Cut from main's tip, wherever that is checked out: the primary checkout on
+# main, or a worktree detached at origin/main. main is usually checked out in
+# another worktree — the reason the rest of this script never checks it out —
+# so the guard is the commit, not the branch name.
+git fetch -q origin main
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+	echo "releases are cut from origin/main's tip; HEAD is $(git rev-parse --short HEAD), origin/main is $(git rev-parse --short FETCH_HEAD)" >&2
+	echo "on main: git pull --ff-only; in a worktree: git checkout --detach origin/main — then run this again" >&2
 	exit 1
-}
+fi
 [ -z "$(git status --porcelain)" ] || {
 	echo "working tree is dirty — commit or stash first" >&2
 	exit 1

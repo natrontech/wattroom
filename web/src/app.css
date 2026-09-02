@@ -25,16 +25,21 @@
 	 * scrims). Components never say white/black — these flip with the scheme. */
 	--color-ink: light-dark(#180a2e, #ffffff);
 	--color-paper: light-dark(#ffffff, #000000);
+	/* Semantic, not data (#397): destructive controls and errors. The hue is
+	 * fixed red-orange in every theme; only lightness follows the family. */
+	--color-danger: light-dark(#c21725, #fc5855);
 
-	/* Coggan 7-zone ramp: monotonic in OKLCH lightness and contrast-gated
-	 * against both surfaces. Light variants descend as dark ones ascend. */
-	--color-z1: light-dark(#8172c2, #7d6eb1);
-	--color-z2: light-dark(#3f64e2, #597cff);
-	--color-z3: light-dark(#026f84, #0ea9cb);
-	--color-z4: light-dark(#056549, #05c595);
-	--color-z5: light-dark(#683b03, #fc9f2b);
-	--color-z6: light-dark(#710124, #ffaeb3);
-	--color-z7: light-dark(#59002b, #ffc5d4);
+	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
+	 * zone colour is learned and read across the room, and the sRGB gamut does
+	 * not rotate evenly. Lightness peaks at Z5 and descends while chroma
+	 * climbs, which is what keeps the hard efforts vivid (#396). */
+	--color-z1: light-dark(#5b4894, #4a3a78);
+	--color-z2: light-dark(#3a56d4, #4361ee);
+	--color-z3: light-dark(#0090ad, #00b4d8);
+	--color-z4: light-dark(#04a37c, #06d6a0);
+	--color-z5: light-dark(#d97e00, #ffa62b);
+	--color-z6: light-dark(#e63c5b, #ff4d6d);
+	--color-z7: light-dark(#d9186f, #ff2e88);
 }
 
 /*
@@ -160,10 +165,12 @@ body {
 	@apply text-muted hover:text-ink;
 }
 @utility btn-danger {
-	@apply border-z6/40 text-z6 hover:bg-z6/10 border;
+	@apply border-danger/40 text-danger hover:bg-danger/10 border;
 }
+/* Paper, not ink: the fill sits mid-lightness in both families, so only the
+ * inverse of the text colour clears 4.5:1 on it (gated in palette.test.ts). */
 @utility btn-danger-solid {
-	@apply bg-z6 text-ink hover:bg-z6/90;
+	@apply bg-danger text-paper hover:bg-danger/90;
 }
 /* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
  * that *creates* live data (start ride, go live). Border only, never a fill. */
@@ -195,15 +202,13 @@ body {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
 
-/* Page rhythm (ADR-0020). ONE width, anchored left beside the sidebar — pages
-   used to pick their own max-w and centre it, so the content block moved
-   around the column as you navigated. `page-wide` is for the editor's three
-   panes and nothing else. */
+/* Page rhythm (ADR-0020, amended in #417). Pages fill the content column:
+   one padding, no width cap. Pages used to pick their own max-w and centre
+   it; then one capped width anchored left — which on a wide screen read as a
+   page that never finished loading. A section that would stretch too far
+   goes multi-column at xl instead of the page narrowing. */
 @utility page {
-	@apply w-full max-w-3xl px-8 py-8;
-}
-@utility page-wide {
-	@apply w-full max-w-6xl px-8 py-8;
+	@apply w-full px-8 py-8;
 }
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's

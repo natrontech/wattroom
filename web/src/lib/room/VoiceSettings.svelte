@@ -7,6 +7,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
+	import { MUSIC_FADER, UNIT_FADER } from '$lib/sound/fader';
 
 	let {
 		micOn = false,
@@ -19,7 +20,6 @@
 		onGateThreshold,
 		micTesting = false,
 		onMicTest,
-		mixRiders = [],
 		onRiderGain,
 		devices = { mics: [], cams: [], outs: [] },
 		micId = '',
@@ -38,7 +38,7 @@
 		onGateThreshold?: (threshold: number) => void;
 		micTesting?: boolean;
 		onMicTest?: () => void;
-		mixRiders?: { id: string; name: string }[];
+		/** Resets go through av, so a rider still in voice hears the change. */
 		onRiderGain?: (id: string, gain: number) => void;
 		devices?: {
 			mics: { deviceId: string; label: string }[];
@@ -53,6 +53,10 @@
 	} = $props();
 
 	const gateNow = $derived(effectiveThreshold || gateThreshold);
+	// Back to unity — through av when there is one, so a rider still in
+	// voice is heard at 100 % the moment you press it.
+	const resetRider = (id: string) =>
+		onRiderGain ? onRiderGain(id, 1) : mixer.setRiderGain(id, 1);
 	const metering = $derived(micOn || micTesting);
 	const deviceOptions = (
 		list: { deviceId: string; label: string }[],
@@ -187,24 +191,27 @@
 <div class="border-ink/5 mt-5 border-t pt-4">
 	<span class="eyebrow">mixer</span>
 	<label class="mt-2 block text-xs">
-		<span class="text-muted">music</span>
+		<span class="text-muted"
+			>music · <span class="font-display tabular-nums">{mixer.music}%</span
+			></span
+		>
 		<input
 			type="range"
-			min="0"
-			max="100"
-			step="5"
+			{...MUSIC_FADER}
 			value={mixer.music}
 			oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
 			class="mt-0.5 w-full"
 		/>
 	</label>
 	<label class="mt-2 block text-xs">
-		<span class="text-muted">cues</span>
+		<span class="text-muted"
+			>cues · <span class="font-display tabular-nums"
+				>{Math.round(mixer.cues * 100)}%</span
+			></span
+		>
 		<input
 			type="range"
-			min="0"
-			max="1"
-			step="0.05"
+			{...UNIT_FADER}
 			value={mixer.cues}
 			oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
 			onchange={() => play('block')}
@@ -219,9 +226,7 @@
 		>
 		<input
 			type="range"
-			min="0"
-			max="1"
-			step="0.05"
+			{...UNIT_FADER}
 			value={mixer.duck}
 			oninput={(e) => mixer.setDuck(Number(e.currentTarget.value))}
 			onchange={() => play('block')}
@@ -229,18 +234,31 @@
 			aria-label="how far music and cues dip under a voice"
 		/>
 	</label>
-	{#each mixRiders as rider (rider.id)}
-		<label class="mt-2 block text-xs">
-			<span class="text-muted">{rider.name}</span>
-			<input
-				type="range"
-				min="0"
-				max="2"
-				step="0.1"
-				value={mixer.riderGain(rider.id)}
-				oninput={(e) => onRiderGain?.(rider.id, Number(e.currentTarget.value))}
-				class="mt-0.5 w-full"
-			/>
-		</label>
-	{/each}
+	<!-- Riders are mixed from their own row (#463) — the speaker in the
+	     people column or on Members. This lists what you have set, to undo. -->
+	<div class="mt-3">
+		<span class="text-muted text-xs">riders</span>
+		{#if mixer.mixedRiders.length > 0}
+			<ul class="mt-1 space-y-1">
+				{#each mixer.mixedRiders as rider (rider.id)}
+					<li class="flex items-center gap-2 text-xs">
+						<span class="min-w-0 flex-1 truncate">{rider.name}</span>
+						<span class="font-display shrink-0 tabular-nums"
+							>{Math.round(rider.gain * 100)}%</span
+						>
+						<button
+							onclick={() => resetRider(rider.id)}
+							class="btn btn-ghost btn-xs shrink-0"
+							aria-label="reset {rider.name}'s volume">Reset</button
+						>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="text-muted/70 mt-0.5 text-[11px] leading-snug">
+				Everyone at 100 %. Each rider in voice has a volume of their own — the
+				speaker on their row in the people column.
+			</p>
+		{/if}
+	</div>
 </div>

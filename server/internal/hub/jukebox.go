@@ -67,13 +67,27 @@ type jukebox struct {
 	// Entry ids are per-room and monotonic: unique is all they must be, and
 	// a counter is unique without a random source (which tests would fight).
 	nextID int
+	// Entry id → rider id of whoever queued it (#467). AddedBy on the wire
+	// is a display name; the DJ achievement needs the account. Bounded by
+	// the queue plus the deck; an entry leaving takes its owner with it.
+	owners map[string]string
+	// The track the last command let finish, for the room to credit once
+	// the lock is released; nil otherwise.
+	finished *playedTrack
+}
+
+// playedTrack is a track that reached its natural end (#467): who queued it
+// and a ref unique to that play within the room.
+type playedTrack struct {
+	riderID string
+	ref     string
 }
 
 func newJukebox() *jukebox {
 	return &jukebox{state: protocol.JukeboxState{
 		Queue:   []protocol.JukeboxEntry{},
 		History: []protocol.JukeboxEntry{},
-	}}
+	}, owners: make(map[string]string)}
 }
 
 // snapshot renders the state at now. The slices are CLONED: the caller
@@ -116,6 +130,9 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			ID: strconv.Itoa(j.nextID), VideoID: cmd.VideoID, Title: title,
 			AddedBy: addedBy, StartSec: clampSec(cmd.PositionSec),
 		}
+		if riderID != "" {
+			j.owners[entry.ID] = riderID
+		}
 		if j.state.Current == nil {
 			// An empty deck plays immediately — adding the first song IS
 			// pressing play, and one action gets one line: the now-playing
@@ -133,6 +150,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		}
 		removed := j.state.Queue[i]
 		j.state.Queue = append(j.state.Queue[:i], j.state.Queue[i+1:]...)
+		delete(j.owners, removed.ID)
 		return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true
 
 	case "vote":
@@ -220,6 +238,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			return nil, false
 		}
 		skipped := *j.state.Current
+		delete(j.owners, skipped.ID)
 		j.advance(now)
 		events := []protocol.RoomEvent{deckLine("skipped", addedBy, skipped.Title, now)}
 		if j.state.Current != nil {
@@ -235,6 +254,15 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			cmd.AnchorMs != j.state.AnchorMs {
 			return nil, false
 		}
+		// Played through, not skipped: the DJ's credit (#467). The anchor
+		// makes the ref unique to this play of this entry.
+		if owner := j.owners[j.state.Current.ID]; owner != "" {
+			j.finished = &playedTrack{
+				riderID: owner,
+				ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
+			}
+		}
+		delete(j.owners, j.state.Current.ID)
 		j.advance(now)
 		if j.state.Current == nil {
 			return nil, true // the queue ran dry; silence says that already

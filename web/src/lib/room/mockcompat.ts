@@ -34,7 +34,7 @@ export interface Fault {
 /** RoomRail's room list entry. */
 export interface RailRoom {
 	name: string;
-	/** Owner-set emoji identity mark (#223); '' = none. */
+	/** Owner-set identity mark (#223), an icon key (#447); '' = none. */
 	icon?: string;
 	slug: string;
 	live: boolean;
@@ -55,6 +55,11 @@ export interface RailRoom {
 	next?: { workoutName: string; startsAt: string };
 	/** Lines from other people since you last opened it (#389). */
 	unread?: number;
+	/** The last thing said here (#468) — the messages list's preview and
+	 * the recency a room sorts by next to a DM. */
+	lastChat?: { from: string; text: string; hasImage?: boolean; at: number };
+	/** The room's reaction palette (#223), icon keys — read from outside too. */
+	cheers?: string[];
 	/** owner | coach | member — the ownership cap counts against it. */
 	role?: string;
 }

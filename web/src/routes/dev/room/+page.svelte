@@ -184,7 +184,7 @@
 					<button
 						onclick={() => (
 							play('cheer'),
-							room.cheer('🔥', 'Ana (spectating)')
+							room.cheer('flame', 'Ana (spectating)')
 						)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Cheer</button
@@ -222,7 +222,7 @@
 						>
 						<button
 							onclick={() => room.endSession()}
-							class="text-z6 rounded px-2.5 py-1 text-xs">End</button
+							class="text-danger rounded px-2.5 py-1 text-xs">End</button
 						>
 					</div>
 					<div class="text-right">

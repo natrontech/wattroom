@@ -104,6 +104,54 @@ func (q *Queries) GetChatImage(ctx context.Context, arg GetChatImageParams) (Get
 	return i, err
 }
 
+const getRoomReadAt = `-- name: GetRoomReadAt :one
+select read_at from room_reads where room_id = $1 and user_id = $2
+`
+
+type GetRoomReadAtParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Where the "N new" divider goes when a room's chat is read from outside
+// the room (#468). No row = never opened: everything is new.
+func (q *Queries) GetRoomReadAt(ctx context.Context, arg GetRoomReadAtParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getRoomReadAt, arg.RoomID, arg.UserID)
+	var read_at pgtype.Timestamptz
+	err := row.Scan(&read_at)
+	return read_at, err
+}
+
+const lastRoomChat = `-- name: LastRoomChat :one
+select m.text, m.image_id, m.created_at, u.display_name
+from chat_messages m
+join users u on u.id = m.user_id
+where m.room_id = $1
+order by m.created_at desc
+limit 1
+`
+
+type LastRoomChatRow struct {
+	Text        string
+	ImageID     pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	DisplayName string
+}
+
+// The rooms list's one-line preview (#468): who said the last thing, and
+// when — what makes a room sortable next to a DM by recency.
+func (q *Queries) LastRoomChat(ctx context.Context, roomID pgtype.UUID) (LastRoomChatRow, error) {
+	row := q.db.QueryRow(ctx, lastRoomChat, roomID)
+	var i LastRoomChatRow
+	err := row.Scan(
+		&i.Text,
+		&i.ImageID,
+		&i.CreatedAt,
+		&i.DisplayName,
+	)
+	return i, err
+}
+
 const listChatReactions = `-- name: ListChatReactions :many
 select r.message_id, r.emoji,
        count(*) as total,
@@ -157,11 +205,11 @@ select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
 from (
     select id, room_id, user_id, text, created_at, image_id from chat_messages
     where room_id = $1
-    order by created_at desc
+    order by created_at desc, id desc
     limit $2
 ) m
 join users u on u.id = m.user_id
-order by m.created_at
+order by m.created_at, m.id
 `
 
 type ListRoomChatParams struct {
@@ -179,7 +227,8 @@ type ListRoomChatRow struct {
 }
 
 // Newest $2, oldest-first for rendering; a deleted author's rows are gone
-// (cascade), so the join never dangles.
+// (cascade), so the join never dangles. The id breaks a same-millisecond
+// tie, so two polls of the same log agree on the order (#468).
 func (q *Queries) ListRoomChat(ctx context.Context, arg ListRoomChatParams) ([]ListRoomChatRow, error) {
 	rows, err := q.db.Query(ctx, listRoomChat, arg.RoomID, arg.Limit)
 	if err != nil {

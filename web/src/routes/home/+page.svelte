@@ -12,10 +12,12 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import {
 		fetchProgression,
 		FORM_SENTENCES,
@@ -118,9 +120,17 @@
 	const recent = $derived((rides ?? []).slice(0, 3));
 	// Planning happens in a room's own Sessions place; the first room you can
 	// run one in is where the button goes. None yet: open one first.
-	const firstRoom = $derived(
-		(rooms ?? []).find((r) => r.role === 'owner' || r.role === 'coach'),
-	);
+	const plannable = $derived.by(() => {
+		const mine = (rooms ?? []).filter(
+			(r) => r.role === 'owner' || r.role === 'coach',
+		);
+		// The room you are standing in comes first (#435).
+		const here = roomConnection.current?.slug;
+		return mine.sort((a, b) =>
+			a.slug === here ? -1 : b.slug === here ? 1 : 0,
+		);
+	});
+	const firstRoom = $derived(plannable[0]);
 
 	const greeting = $derived.by(() => {
 		const h = new Date().getHours();
@@ -191,7 +201,33 @@
 		<a href="/workouts" class="btn btn-secondary {headline ? '' : 'btn-lg'}"
 			><ChartColumn size={15} /> Ride solo</a
 		>
-		{#if firstRoom}
+		{#if plannable.length > 1}
+			<!-- More than one room to plan in: ask, never guess (#435). -->
+			<details class="relative">
+				<summary
+					class="btn btn-secondary cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+					><CalendarClock size={15} /> Plan a session</summary
+				>
+				<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
+					{#each plannable as room (room.slug)}
+						<li>
+							<a
+								href="/r/{room.slug}/sessions"
+								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
+							>
+								<RoomIcon icon={room.icon} size={14} />
+								<span class="truncate">{room.name}</span>
+								{#if room.slug === roomConnection.current?.slug}
+									<span class="text-muted ml-auto shrink-0 text-[10px]"
+										>you are here</span
+									>
+								{/if}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</details>
+		{:else if firstRoom}
 			<a href="/r/{firstRoom.slug}/sessions" class="btn btn-secondary"
 				><CalendarClock size={15} /> Plan a session</a
 			>
@@ -246,14 +282,20 @@
 				<p class="text-muted text-[11px] tabular-nums">{wkgNow} w/kg</p>
 			{/if}
 		</div>
-		<div class="panel px-4 py-3">
-			<p class="eyebrow">level</p>
+		<!-- The one tile that opens: the level's receipts live in the trophy
+		     case (#467). -->
+		<a
+			href="/trophies"
+			class="panel hover:border-muted/40 block px-4 py-3"
+			title="Trophy case: medals, achievements, where your XP comes from"
+		>
+			<p class="eyebrow">level · trophies</p>
 			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>
 			<div class="mt-1.5"><ProgressBar pct={levelProgress(xp) * 100} /></div>
 			<p class="text-muted mt-1 text-[11px] tabular-nums">
 				{toNext.toLocaleString()} XP to {level + 1}
 			</p>
-		</div>
+		</a>
 		<div class="panel px-4 py-3">
 			<p class="eyebrow">this week</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
@@ -289,165 +331,183 @@
 			{/each}
 		</div>
 	{:else}
-		<!-- Around right now: the reason to open the app — people. -->
-		<section class="mt-8">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Around right now
-			</h2>
-			{#if busy.length > 0}
-				<div class="mt-3 grid gap-3">
-					{#each busy as room (room.slug)}
-						<a
-							href="/r/{room.slug}"
-							class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
-						>
-							{#if room.live}
-								<RidingBars size={12} />
-							{:else}
-								<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"></span>
-							{/if}
-							<div class="min-w-0">
-								<p class="font-display font-bold">
-									{room.icon ? `${room.icon} ` : ''}{room.name}
-								</p>
-								<p class="text-muted mt-0.5 text-xs">
-									{(room.riders ?? []).join(', ')}
-									{#if room.live}
-										· riding now{:else}
-										· in the lounge{/if}
-								</p>
-							</div>
-							<span
-								class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
-								>Join <ArrowRight size={13} /></span
-							>
-						</a>
-					{/each}
-				</div>
-			{:else}
-				<p class="text-muted mt-3 text-sm">
-					Nobody's around right now — open a room below and your crew gets a
-					place to appear.
-				</p>
-			{/if}
-			{#if friendsOnline.length > 0}
-				<ul class="mt-3 flex flex-wrap gap-2">
-					{#each friendsOnline as friend (friend.id)}
-						<li>
-							<a
-								href={friend.room ? `/r/${friend.room}` : `/dm/${friend.id}`}
-								class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
-								title={friend.roomName ? `in ${friend.roomName}` : 'online'}
-							>
-								<Avatar
-									name={friend.name}
-									avatarUrl={friend.avatarUrl}
-									preset={friend.avatarPreset}
-									xp={friend.totalXp}
-									size={20}
-								/>
-								<span class="font-medium">{friend.name}</span>
-								{#if friend.inRoom}
-									<RidingBars size={9} />
-								{:else}
-									<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-								{/if}
-							</a>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
-
-		<!-- The last few rides: what you did, one line each, the log a click away. -->
-		{#if recent.length > 0}
-			<section class="mt-8">
-				<div class="flex items-baseline gap-3">
+		<!-- Two columns on a wide screen (#417): what is happening on the left,
+		     what you can open or plan on the right — the page fills the column
+		     instead of stopping at 48rem. -->
+		<div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+			<div class="min-w-0 space-y-8">
+				<!-- Around right now: the reason to open the app — people. -->
+				<section>
 					<h2
 						class="text-muted text-xs font-semibold tracking-widest uppercase"
 					>
-						Recent rides
+						Around right now
 					</h2>
-					<a
-						href="/history"
-						class="text-muted hover:text-ink ml-auto text-xs underline"
-						>All rides →</a
-					>
-				</div>
-				<ul class="panel divide-ink/5 mt-3 divide-y">
-					{#each recent as ride (ride.id)}
-						<li>
-							<a
-								href="/history?ride={ride.id}"
-								class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+					{#if busy.length > 0}
+						<div class="mt-3 grid gap-3">
+							{#each busy as room (room.slug)}
+								<a
+									href="/r/{room.slug}"
+									class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
+								>
+									{#if room.live}
+										<RidingBars size={12} />
+									{:else}
+										<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"
+										></span>
+									{/if}
+									<div class="min-w-0">
+										<p class="font-display flex items-center gap-1.5 font-bold">
+											<RoomIcon icon={room.icon} size={16} />
+											<span class="truncate">{room.name}</span>
+										</p>
+										<p class="text-muted mt-0.5 text-xs">
+											{(room.riders ?? []).join(', ')}
+											{#if room.live}
+												· riding now{:else}
+												· in the lounge{/if}
+										</p>
+									</div>
+									<span
+										class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
+										>Join <ArrowRight size={13} /></span
+									>
+								</a>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted mt-3 text-sm">
+							Nobody's around right now — open a room below and your crew gets a
+							place to appear.
+						</p>
+					{/if}
+					{#if friendsOnline.length > 0}
+						<ul class="mt-3 flex flex-wrap gap-2">
+							{#each friendsOnline as friend (friend.id)}
+								<li>
+									<a
+										href={friend.room
+											? `/r/${friend.room}`
+											: `/messages/dm/${friend.id}`}
+										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
+										title={friend.roomName ? `in ${friend.roomName}` : 'online'}
+									>
+										<Avatar
+											name={friend.name}
+											avatarUrl={friend.avatarUrl}
+											preset={friend.avatarPreset}
+											xp={friend.totalXp}
+											size={20}
+										/>
+										<span class="font-medium">{friend.name}</span>
+										{#if friend.inRoom}
+											<RidingBars size={9} />
+										{:else}
+											<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
+										{/if}
+									</a>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</section>
+
+				<!-- The last few rides: what you did, one line each, the log a click away. -->
+				{#if recent.length > 0}
+					<section>
+						<div class="flex items-baseline gap-3">
+							<h2
+								class="text-muted text-xs font-semibold tracking-widest uppercase"
 							>
-								<span class="text-muted w-24 shrink-0 text-xs"
-									>{formatWhen(ride.startedAt)}</span
-								>
-								<span class="min-w-0 flex-1 truncate">
-									{Math.round(ride.seconds / 60)} min
-								</span>
-								<span class="text-muted shrink-0 text-xs tabular-nums"
-									>{Math.round(ride.kj).toLocaleString()} kJ</span
-								>
-							</a>
-						</li>
-					{/each}
-				</ul>
-			</section>
-		{/if}
+								Recent rides
+							</h2>
+							<a
+								href="/history"
+								class="text-muted hover:text-ink ml-auto text-xs underline"
+								>All rides →</a
+							>
+						</div>
+						<ul class="panel divide-ink/5 mt-3 divide-y">
+							{#each recent as ride (ride.id)}
+								<li>
+									<a
+										href="/history?ride={ride.id}"
+										class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+									>
+										<span class="text-muted w-24 shrink-0 text-xs"
+											>{formatWhen(ride.startedAt)}</span
+										>
+										<span class="min-w-0 flex-1 truncate">
+											{Math.round(ride.seconds / 60)} min
+										</span>
+										<span class="text-muted shrink-0 text-xs tabular-nums"
+											>{Math.round(ride.kj).toLocaleString()} kJ</span
+										>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					</section>
+				{/if}
 
-		<OpenOrJoin />
-
-		<!-- What's next: every room's plan, across every room you are in
+				<!-- What's next: every room's plan, across every room you are in
 		     (ADR-0020 — /sessions retired into this). Planning itself happens in
 		     the room whose session it is. -->
-		<section id="sessions" class="mt-8">
-			<div class="flex items-baseline gap-3">
-				<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-					What's next
-				</h2>
-			</div>
-			{#if planned.length > 0}
-				<div class="panel mt-3">
-					{#each planned as room (room.slug)}
-						<a
-							href="/r/{room.slug}"
-							class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
+				<section id="sessions">
+					<div class="flex items-baseline gap-3">
+						<h2
+							class="text-muted text-xs font-semibold tracking-widest uppercase"
 						>
-							<CalendarClock size={15} class="text-muted shrink-0" />
-							<div class="min-w-0">
-								<p class="truncate text-sm font-medium">
-									{room.next?.workoutName}
-								</p>
-								<p class="text-muted text-xs">
-									{formatWhen(room.next?.startsAt ?? '')} · {room.name}
-								</p>
-							</div>
-						</a>
-					{/each}
-				</div>
-			{:else}
-				<p class="text-muted mt-3 text-sm">
-					Nothing on the calendar. Open a room's <em>Sessions</em> and plan one —
-					it shows up here, and in everyone's calendar.
-				</p>
-			{/if}
-		</section>
-
-		<!-- Friends moved to its own place (ADR-0020) — a list of people does
-		     not belong under your week's kJ. -->
-		<section class="mt-8">
-			<div class="flex items-baseline gap-3">
-				<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-					Friends
-				</h2>
-				<a
-					href="/friends"
-					class="text-muted hover:text-ink ml-auto text-xs underline"
-					>All friends →</a
-				>
+							What's next
+						</h2>
+					</div>
+					{#if planned.length > 0}
+						<div class="panel mt-3">
+							{#each planned as room (room.slug)}
+								<a
+									href="/r/{room.slug}"
+									class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
+								>
+									<CalendarClock size={15} class="text-muted shrink-0" />
+									<div class="min-w-0">
+										<p class="truncate text-sm font-medium">
+											{room.next?.workoutName}
+										</p>
+										<p class="text-muted text-xs">
+											{formatWhen(room.next?.startsAt ?? '')} · {room.name}
+										</p>
+									</div>
+								</a>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted mt-3 text-sm">
+							Nothing on the calendar. Open a room's <em>Sessions</em> and plan one
+							— it shows up here, and in everyone's calendar.
+						</p>
+					{/if}
+				</section>
 			</div>
-		</section>
+			<aside class="min-w-0 space-y-8">
+				<OpenOrJoin />
+
+				<!-- Friends moved to its own place (ADR-0020) — a list of people does
+		     not belong under your week's kJ. -->
+				<section>
+					<div class="flex items-baseline gap-3">
+						<h2
+							class="text-muted text-xs font-semibold tracking-widest uppercase"
+						>
+							Friends
+						</h2>
+						<a
+							href="/friends"
+							class="text-muted hover:text-ink ml-auto text-xs underline"
+							>All friends →</a
+						>
+					</div>
+				</section>
+			</aside>
+		</div>
 	{/if}
 </main>

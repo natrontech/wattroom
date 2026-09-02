@@ -15,6 +15,13 @@
 	import { api } from '$lib/api';
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
+	import { toasts } from '$lib/toast.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuItem,
+	} from '$lib/context-menu.svelte';
+	import { Lock, Users } from '@lucide/svelte';
 
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
@@ -24,9 +31,41 @@
 	interface ServerRide extends RideRecord {
 		xp: number;
 		room?: boolean;
+		/** The per-ride opt-in (ADR-0024): friends see it on your page. */
+		sharedWithFriends: boolean;
 	}
 	let rides = $state<ServerRide[] | null>(null);
 	let error = $state<string | null>(null);
+
+	// Undo over confirm (errors.md): the flip lands at once, the toast takes
+	// it back. A refused flip reverts the row and says why.
+	async function setShared(ride: ServerRide, shared: boolean, undoable = true) {
+		const before = ride.sharedWithFriends;
+		ride.sharedWithFriends = shared;
+		const res = await api(`/api/rides/${ride.id}`, {
+			method: 'PATCH',
+			json: { sharedWithFriends: shared },
+		});
+		if (!res.ok) {
+			ride.sharedWithFriends = before;
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push(
+			shared ? 'Shared with your friends.' : 'Private again.',
+			undoable
+				? { undo: () => void setShared(ride, !shared, false) }
+				: undefined,
+		);
+	}
+
+	// The row's one verb, as a menu item too (#486). A device-only ride has no
+	// server to flip, so its row offers nothing and keeps the browser's menu.
+	const shareItem = (ride: ServerRide): MenuItem => ({
+		label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
+		icon: ride.sharedWithFriends ? Lock : Users,
+		onSelect: () => void setShared(ride, !ride.sharedWithFriends),
+	});
 
 	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -99,13 +138,15 @@
 	}
 </script>
 
-{#snippet rideRow(ride: RideRecord, badge?: string)}
+{#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
 	<li
 		id="ride-{ride.id}"
+		title={server ? MENU_HINT : undefined}
 		class="panel flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4 {highlightId ===
 		ride.id
 			? 'ring-z2/70 ring-1'
 			: ''}"
+		{@attach contextMenu(() => (server ? [shareItem(server)] : []))}
 	>
 		<span class="font-display font-bold">{ride.workoutName}</span>
 		{#if badge}
@@ -122,6 +163,22 @@
 		<span class="font-display text-sm font-semibold tabular-nums"
 			>{Math.round(ride.execution * 100)}%</span
 		>
+		{#if server}
+			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->
+			<button
+				onclick={() => void setShared(server, !server.sharedWithFriends)}
+				class="btn btn-ghost btn-xs -my-1 -mr-2"
+				title={server.sharedWithFriends
+					? 'Friends see this ride on your page — make it private'
+					: 'Only you see this ride — share it with your friends'}
+			>
+				{#if server.sharedWithFriends}
+					<Users size={13} /> shared
+				{:else}
+					<Lock size={13} /> private
+				{/if}
+			</button>
+		{/if}
 	</li>
 {/snippet}
 
@@ -130,7 +187,7 @@
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>
 			<p class="text-muted text-xs">
-				Private by default — visible to you, and nobody else.
+				Private by default — share one with your friends from its row.
 			</p>
 		</div>
 	</div>
@@ -172,7 +229,7 @@
 			</span>
 		</div>
 
-		<div class="mt-3 grid gap-3">
+		<div class="mt-3 grid gap-3 xl:grid-cols-2">
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- Interpretation lives in the UI, not the rider's head: every
@@ -202,7 +259,7 @@
 			</div>
 			{#if progression.load && progression.load.series.length > 1}
 				{@const load = progression.load}
-				<div class="panel px-6 py-5">
+				<div class="panel px-6 py-5 xl:col-span-2">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 class="text-ink text-sm font-semibold">Training load</h2>
 						{#if load.building}
@@ -268,9 +325,9 @@
 			</EmptyState>
 		</div>
 	{:else}
-		<ul class="mt-8 grid gap-2">
+		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
-				{@render rideRow(ride, ride.room ? 'room' : undefined)}
+				{@render rideRow(ride, ride.room ? 'room' : undefined, ride)}
 			{/each}
 		</ul>
 	{/if}
@@ -281,7 +338,7 @@
 			Saved while the server was unreachable — summaries only, so they can't
 			move to your account.
 		</p>
-		<ul class="mt-3 grid gap-2">
+		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
 				{@render rideRow(ride)}
 			{/each}

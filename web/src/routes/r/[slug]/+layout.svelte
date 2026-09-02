@@ -119,7 +119,7 @@
 				disabled={busy}
 				class="btn btn-primary btn-lg mt-6">Join {room.name}</button
 			>
-			{#if error}<p class="text-z6 mt-4 text-sm">{error}</p>{/if}
+			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			<!-- Privacy is architecture (WATTROOM.md): say what the room sees
 			     before the button, not in a policy page after it. -->
 			<p class="text-muted/70 mt-4 text-[11px]">
@@ -144,7 +144,7 @@
 		<!-- The places carry no visible room title — the sidebar names the room
 		     you are standing in (ADR-0020) — so the page's heading is for
 		     assistive tech: which room this is. -->
-		<h1 class="sr-only">{room.icon ? `${room.icon} ` : ''}{room.name}</h1>
+		<h1 class="sr-only">{room.name}</h1>
 		{#if phoneSpectator}
 			<!-- redirecting to the watch view -->
 		{:else}

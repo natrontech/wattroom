@@ -292,7 +292,7 @@
 						>
 						<button
 							onclick={() => remove(selected!)}
-							class="border-z6/40 text-z6 hover:bg-z6/10 ml-auto rounded border px-3 py-1.5 text-xs"
+							class="border-danger/40 text-danger hover:bg-danger/10 ml-auto rounded border px-3 py-1.5 text-xs"
 							>Delete</button
 						>
 					</div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { countModal } from '$lib/modals.svelte';
+	import { focusTrap } from './focus-trap';
 	import type { Snippet } from 'svelte';
 
 	// The one modal (#230). Call sites keep their {#if} — mounting IS opening.
@@ -17,38 +18,6 @@
 		class?: string;
 		children: Snippet;
 	} = $props();
-
-	function trap(node: HTMLElement) {
-		const prev = document.activeElement as HTMLElement | null;
-		const focusables = () =>
-			Array.from(
-				node.querySelectorAll<HTMLElement>(
-					'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
-				),
-			);
-		(focusables()[0] ?? node).focus();
-		function onKeydown(event: KeyboardEvent) {
-			if (event.key !== 'Tab') return;
-			const items = focusables();
-			if (!items.length) return;
-			const first = items[0];
-			const last = items[items.length - 1];
-			if (event.shiftKey && document.activeElement === first) {
-				last.focus();
-				event.preventDefault();
-			} else if (!event.shiftKey && document.activeElement === last) {
-				first.focus();
-				event.preventDefault();
-			}
-		}
-		node.addEventListener('keydown', onKeydown);
-		return {
-			destroy() {
-				node.removeEventListener('keydown', onKeydown);
-				prev?.focus();
-			},
-		};
-	}
 </script>
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && onclose()} />
@@ -57,7 +26,6 @@
 <div
 	{@attach countModal}
 	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
-	style="padding-bottom: calc(1rem + var(--pane-jukebox-dock-h, 0px))"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<div
@@ -66,7 +34,7 @@
 		aria-modal="true"
 		aria-label={label}
 		tabindex="-1"
-		use:trap
+		use:focusTrap
 	>
 		{@render children()}
 	</div>

@@ -17,7 +17,7 @@
 | **Sprint moment** | Coach- or workout-armed 15 s all-out window; trainer flips ERG→slope. |
 | **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube playlist on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
 | **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
-| **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0019](decisions/0019-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
+| **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
@@ -35,14 +35,18 @@
 | Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | – |
-| Emoji cheers | ✓ | ✓ | ✓ | ✓ |
+| Cheers | ✓ | ✓ | ✓ | ✓ |
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
 Membership is uncapped; deleting a room frees a slot.
 
-Room identity & vocabulary (#223): the icon is **one emoji or none**; the
-reaction set is **up to 8 emoji** (base set: 🔥 💪 👏 💀 🚀 🧊) and is the
-palette for cheers and chat reactions alike. A **ban** is a membership state:
+Room identity & vocabulary (#223, #447): the icon is **one drawn icon from a
+curated set, or none**, stored as its lucide key; the reaction set is **up to
+8 icons** from a second curated set (base set: flame, biceps-flexed,
+party-popper, skull, rocket, snowflake) and is the palette for cheers and chat
+reactions alike. The server checks a key's shape, not the vocabulary, and still
+accepts one emoji so rooms and clients from before #447 keep working — the
+client draws a known emoji as its icon. A **ban** is a membership state:
 it survives rejoin via link or code, severs the live socket and voice on the
 spot, and only the owner sees the ban list. Unban restores plain membership.
 
@@ -132,6 +136,51 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 - **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary).
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
+
+## XP sources (defaults — tune in alpha)
+
+Riding earns XP as above. Everything else a rider earns lives in the `xp_events`
+ledger (#467), and `user_total_xp` = rides + ledger is the one lifetime number
+every level derives from. **Fairness rule**: no non-riding source out-earns a
+typical ride — 45 min ≈ 600 kJ ≈ 650 XP — so the lounge caps at 24 a day, a
+session bonus is 5, and achievements pay once.
+
+| Source | Rule |
+|---|---|
+| **Riding** | `1 kJ = 1 XP` + execution bonus + streak bonus (Stats formulas above). |
+| **Lounge presence** | **1 XP per 5 full minutes in voice**, capped at **24 XP per rider per UTC day**. Leaving resets the five-minute count. Presence is what LiveKit's join/leave webhooks say — the server cannot hear who talks (mute state is client-reported), so "talking" is measured as being on the call, and every surface says "in voice", never "talking". Blocks past the cap are recorded at 0 XP so lounge hours keep counting toward Lounge Lizard. |
+| **Session voice bonus** | **5 XP per group session** the rider was in voice for **at least half of** the running timeline (pauses excluded). A group session has **≥ 2 saved rides** and **≥ 10 min** of timeline. Riders and listeners alike — a coach without a trainer on the call earns it. |
+| **Achievements** | One-time **100 (easy) / 250 (medium) / 500 (hard)** XP, paid the day the shelf gets the trophy. |
+
+### Achievements
+
+Only what the server can verify on its own is in the catalogue
+(`server/internal/gamify/catalogue.go`; the client's copy is held to it by a
+test). Clock times use the **server's local zone** (its `TZ`; UTC when unset)
+and say so. Ride achievements are judged per ride at save time from the samples
+in hand — rides store no zone seconds — so they show no partial progress.
+
+| Key | Name | Earned by | Tier |
+|---|---|---|---|
+| `sunrise-club` | Sunrise Club | 5 rides started before 07:00 | easy |
+| `night-shift` | Night Shift | 5 rides ended after 23:00 (a ride that runs past midnight counts) | easy |
+| `200-rides` | 200 Rides | 200 rides | hard |
+| `sufferfest-survivor` | Sufferfest Survivor | ≥ 45 min at or above FTP in one ride | hard |
+| `hot-end` | Hot End | ≥ 3 min in Z6 or above (≥ 121 % FTP) in one ride | medium |
+| `espresso-ride` | Espresso Ride | a ride under 25 min with ≥ 80 % of its seconds above sweet spot (> 94 % FTP; sweet spot is 88–94 %) | medium |
+| `lounge-lizard` | Lounge Lizard | 10 h of voice presence (120 five-minute blocks) | medium |
+| `dj` | DJ | 50 queued tracks the room played to the end — a skip does not count, the "ended" report does | medium |
+| `crew-chief` | Crew Chief | pressed start on 20 sessions with ≥ 3 saved rides (the medal minimum) | hard |
+| `sprint-snob` | Sprint Snob | first on the w/kg podium of 10 sprint moments with **≥ 2** riders scored — a podium of one is not a win | medium |
+
+Not in the catalogue, because the server cannot verify them: **The Quiet
+Type** (10 sessions in voice without unmuting — mute is client-reported) and
+**Never Gonna Give You Up** (riding through a track queued "as a joke" — a joke
+is not a fact the server holds). Client-reported claims never earn trophies.
+
+Visibility: `/api/me/trophies` is yours; `/api/riders/{id}/trophies` shows a
+rider's case to the people who could already watch them ride — room-mates and
+friends — and is a 404 to everyone else.
 
 ## Training load (defaults — tune in alpha; model rationale ADR-0016, research RESEARCH.md §13)
 
@@ -240,7 +289,7 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 
 ## Room audio defaults (defaults — tune in alpha; rationale RESEARCH.md §12)
 
-- Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation + autoGainControl on). Gate numbers: open at level **≥ 0.02** (analyser RMS, 0–1), hold open **800 ms** after dropping below, **5 ms** gain ramps (no clicks); while the jukebox plays the threshold **doubles** (defaults — tune in alpha). The gate rides a local gain stage, never the track's mute — mute state shown to others is only ever the rider's own toggle. Push-to-talk is the alternative, not the default: it suits the desk spectator, and says so where offered.
+- Mic default: **voice-activity gating** (browser noiseSuppression + echoCancellation; **autoGainControl off** — a threshold fixed on a dBFS axis means nothing while a gain stage keeps moving what dBFS is, and AGC lifts room tone precisely when nobody is talking). The level is a **continuous envelope taken on the audio thread** (5 ms attack, 150 ms release), never a window sampled by a timer. Gate numbers: open at level **≥ 0.02** (RMS, 0–1), hold open while it stays within **6 dB** under that, shut **1200 ms** after it falls below, ramps **5 ms up / 150 ms down**; while the jukebox plays the threshold **doubles** (defaults — tune in alpha). The asymmetry is the point: opening late clips a word, closing late costs a moment of fan and breathing, and on a bike the first is worse. The gate rides a local gain stage, never the track's mute — mute state shown to others is only ever the rider's own toggle. Push-to-talk is the alternative, not the default: it suits the desk spectator, and says so where offered.
 - Joining a room with music playing and mic open → one-line **headphone nudge** (dismissible, never blocking). Echo cancellation is treated as best-effort — the defaults must work without it.
 - The jukebox is the room's **only** music surface (ADR-0018). Jukebox audio is always local per rider (own iframe, own volume) and never enters the voice path. Ducking (#24/#152): dip to **25 %** of the rider's own volume with a **150 ms** attack ramp; release after a **600 ms** hold with a **400 ms** ramp — never a snap in either direction (defaults — tune in alpha).
 - Ride-critical timers (ERG targets, tick handling) run in a **Web Worker** with Wake Lock held — main-thread timers throttle in hidden tabs (an active call exempts the tab, solo rides are not exempt).

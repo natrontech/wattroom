@@ -58,14 +58,14 @@
 <div
 	class="flex items-center gap-4 rounded-lg border px-5 py-3 {recovering
 		? 'border-z5/40 bg-z5/10'
-		: 'border-z6/50 bg-z6/10'}"
+		: 'border-danger/50 bg-danger/10'}"
 	role="status"
 	aria-live="polite"
 >
 	<span
 		class="h-2.5 w-2.5 shrink-0 rounded-full {recovering
 			? 'bg-z5 animate-pulse'
-			: 'bg-z6'}"
+			: 'bg-danger'}"
 	></span>
 	<div class="min-w-0">
 		<p class="text-sm font-medium">{copy.title}</p>

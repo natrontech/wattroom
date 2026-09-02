@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
 	contrast,
+	dichromatDistance,
 	hexToOklch,
 	hueDistance,
 	inGamut,
 	oklchToHex,
+	perceptualDistance,
 } from './color';
 import {
 	CONTRAST,
+	DANGER_HUE,
 	DARK_SURFACE_MAX_L,
 	TOKENS,
 	WHITE_SURFACE_MIN_L,
@@ -18,34 +21,19 @@ import {
 	CUSTOM_ID,
 	DEFAULT_CHOICE,
 	DEFAULT_DARK_ID,
+	DEFAULT_WHITE_ID,
 	HUE_SEPARATION,
 	THEMES,
 	customTheme,
 	parseChoice,
 	resolveTheme,
+	serializeChoice,
 	themeById,
 	themesFor,
 } from './themes';
 
 const ZONES: TokenName[] = ['z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7'];
 const each = THEMES.map((t) => [t.name, t] as const);
-
-/** Viénot/Brettel/Mollon deuteranopia projection for an accessibility gate. */
-function deuteranopia(hex: string): [number, number, number] {
-	const n = parseInt(hex.slice(1), 16);
-	const [r, g, b] = [
-		((n >> 16) & 255) / 255,
-		((n >> 8) & 255) / 255,
-		(n & 255) / 255,
-	];
-	return [0.625 * r + 0.375 * g, 0.7 * r + 0.3 * g, 0.3 * g + 0.7 * b];
-}
-
-function rgbDistance(a: string, b: string): number {
-	const left = deuteranopia(a);
-	const right = deuteranopia(b);
-	return Math.hypot(...left.map((value, i) => value - right[i]));
-}
 
 /** Worst contrast this token scores against the theme's own two surfaces. */
 function worst(theme: Theme, token: TokenName): number {
@@ -55,6 +43,38 @@ function worst(theme: Theme, token: TokenName): number {
 	);
 }
 
+/** The identity every other theme is measured against (ADR-0023). */
+function reference(family: Theme['family']): Theme {
+	return themeById(family === 'dark' ? DEFAULT_DARK_ID : DEFAULT_WHITE_ID)!;
+}
+
+/**
+ * Zones are graphical objects, so 3:1 — except where the reference is
+ * deliberately lower. Outrun's Z1 sits at 1.9 because recovery is meant to
+ * recede, and a gate that fails the design known to work at three metres is
+ * the wrong gate (ADR-0023 §3).
+ */
+function zoneFloor(theme: Theme, token: TokenName): number {
+	return Math.min(
+		CONTRAST.accent,
+		worst(reference(theme.family), token) * 0.95,
+	);
+}
+
+/**
+ * Adjacent-zone separation is held to the reference pair at the same position,
+ * not to a number someone picked. Outrun's own Z6→Z7 gap is the tightest in
+ * the ramp; a floor invented above it would fail the design ADR-0005 shipped.
+ */
+function adjacentFloor(
+	theme: Theme,
+	index: number,
+	measure: (a: string, b: string) => number,
+): number {
+	const ref = reference(theme.family).tokens;
+	return measure(ref[ZONES[index]], ref[ZONES[index + 1]]) * 0.9;
+}
+
 /** The issue gate, applied to catalogue entries and the full custom hue wheel. */
 function expectLegible(theme: Theme, label: string) {
 	for (const token of ['ink', 'muted'] as TokenName[]) {
@@ -62,15 +82,43 @@ function expectLegible(theme: Theme, label: string) {
 			CONTRAST.text,
 		);
 	}
-	for (const token of ['watt', 'neon', ...ZONES] as TokenName[]) {
+	for (const token of ['watt', 'neon', 'danger'] as TokenName[]) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			CONTRAST.accent,
+		);
+	}
+	for (const token of ZONES) {
+		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
+			zoneFloor(theme, token),
+		);
+	}
+	// Apparent intensity is chroma as much as lightness (ADR-0023 §2): a zone
+	// that keeps its contrast by going pale has not passed, it has faded.
+	for (const token of ZONES) {
+		expect(
+			hexToOklch(theme.tokens[token]).c,
+			`${label} ${token} chroma`,
+		).toBeGreaterThanOrEqual(
+			hexToOklch(reference(theme.family).tokens[token]).c * 0.8,
 		);
 	}
 	expect(
 		contrast(theme.tokens.paper, theme.tokens.ink),
 		`${label} paper on ink`,
 	).toBeGreaterThanOrEqual(CONTRAST.text);
+	// btn-danger-solid (app.css) sets paper on a danger fill.
+	expect(
+		contrast(theme.tokens.paper, theme.tokens.danger),
+		`${label} paper on danger`,
+	).toBeGreaterThanOrEqual(CONTRAST.text);
+}
+
+/** A theme cannot rotate danger: the hue is the meaning (#397). */
+function expectDangerFixed(theme: Theme, label: string) {
+	expect(
+		hueDistance(hexToOklch(theme.tokens.danger).h, DANGER_HUE),
+		`${label} danger hue`,
+	).toBeLessThanOrEqual(15);
 }
 
 describe('colour maths', () => {
@@ -134,6 +182,10 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 		expectLegible(theme, theme.name);
 	});
 
+	it('keeps danger on the danger hue', () => {
+		expectDangerFixed(theme, theme.name);
+	});
+
 	it('is as dark or as light as its family claims', () => {
 		const l = hexToOklch(theme.tokens.surface).l;
 		if (theme.family === 'dark')
@@ -151,35 +203,48 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 		).toBeGreaterThanOrEqual(30);
 	});
 
-	it('keeps adjacent zones tellable apart and monotonic in lightness', () => {
-		for (let i = 0; i < ZONES.length - 1; i++) {
-			const a = hexToOklch(theme.tokens[ZONES[i]]);
-			const b = hexToOklch(theme.tokens[ZONES[i + 1]]);
-			const apart = hueDistance(a.h, b.h) >= 10 || Math.abs(a.l - b.l) >= 0.06;
-			expect(apart, `${ZONES[i]} vs ${ZONES[i + 1]}`).toBe(true);
-			if (theme.family === 'dark') expect(b.l - a.l).toBeGreaterThan(0.015);
-			else expect(a.l - b.l).toBeGreaterThan(0.015);
-		}
-	});
-
-	it('keeps adjacent zones distinct under deuteranopia simulation', () => {
+	// Not monotonic in lightness on purpose: the ramp peaks at Z5 and descends
+	// while chroma climbs, which is what keeps the hot end vivid (ADR-0023 §4).
+	it('keeps adjacent zones perceptually apart', () => {
 		for (let i = 0; i < ZONES.length - 1; i++) {
 			expect(
-				rgbDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
+				perceptualDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
 				`${ZONES[i]} vs ${ZONES[i + 1]}`,
-			).toBeGreaterThanOrEqual(0.02);
+			).toBeGreaterThanOrEqual(adjacentFloor(theme, i, perceptualDistance));
 		}
 	});
 
-	it('ends its ramp on the live-data hue', () => {
-		// Z7 is maximum effort, so the ramp arrives at the colour that means
-		// "live" — the property the shipped Outrun ramp already had.
-		expect(
-			hueDistance(
-				hexToOklch(theme.tokens.z7).h,
-				hexToOklch(theme.tokens.watt).h,
-			),
-		).toBeLessThan(15);
+	it.each(['deuteranopia', 'protanopia'] as const)(
+		'keeps adjacent zones apart under %s',
+		(kind) => {
+			// Zones encode how hard you are riding; colour is the only channel
+			// the bar has, so the ramp has to survive the ~8% who see it
+			// differently (#401).
+			for (let i = 0; i < ZONES.length - 1; i++) {
+				const measure = (a: string, b: string) => dichromatDistance(a, b, kind);
+				expect(
+					measure(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
+					`${ZONES[i]} vs ${ZONES[i + 1]}`,
+				).toBeGreaterThanOrEqual(adjacentFloor(theme, i, measure));
+			}
+		},
+	);
+
+	it('shares the reference ramp — zones are a scale, not branding', () => {
+		// Zone colour is learned ("green is threshold") and is read across the
+		// room. Rotating it per theme would make a rider relearn the scale for
+		// a palette choice, and the sRGB gamut does not rotate evenly anyway
+		// (ADR-0023 §4).
+		const ref = reference(theme.family).tokens;
+		for (const token of ZONES) {
+			expect(
+				hueDistance(
+					hexToOklch(theme.tokens[token]).h,
+					hexToOklch(ref[token]).h,
+				),
+				`${theme.id} ${token} hue`,
+			).toBeLessThan(8);
+		}
 	});
 });
 
@@ -190,6 +255,7 @@ describe('custom themes', () => {
 		for (const family of ['dark', 'white'] as const) {
 			const theme = customTheme(hue, family);
 			expectLegible(theme, `custom ${family} ${hue}°`);
+			expectDangerFixed(theme, `custom ${family} ${hue}°`);
 			expect(
 				hueDistance(
 					hexToOklch(theme.tokens.watt).h,
@@ -197,14 +263,20 @@ describe('custom themes', () => {
 				),
 			).toBeGreaterThanOrEqual(30);
 			for (let i = 0; i < ZONES.length - 1; i++) {
-				const current = hexToOklch(theme.tokens[ZONES[i]]);
-				const next = hexToOklch(theme.tokens[ZONES[i + 1]]);
-				if (family === 'dark')
-					expect(next.l - current.l).toBeGreaterThan(0.015);
-				else expect(current.l - next.l).toBeGreaterThan(0.015);
+				const a = theme.tokens[ZONES[i]];
+				const b = theme.tokens[ZONES[i + 1]];
 				expect(
-					rgbDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
-				).toBeGreaterThanOrEqual(0.02);
+					perceptualDistance(a, b),
+					`custom ${family} ${hue}° ${ZONES[i]}`,
+				).toBeGreaterThanOrEqual(adjacentFloor(theme, i, perceptualDistance));
+				for (const kind of ['deuteranopia', 'protanopia'] as const) {
+					const measure = (x: string, y: string) =>
+						dichromatDistance(x, y, kind);
+					expect(
+						measure(a, b),
+						`custom ${family} ${hue}° ${ZONES[i]} ${kind}`,
+					).toBeGreaterThanOrEqual(adjacentFloor(theme, i, measure));
+				}
 			}
 		}
 	});
@@ -247,6 +319,16 @@ describe('choice parsing', () => {
 		expect(parseChoice('{"kind":"custom","hue":-40}')).toEqual({
 			kind: 'custom',
 			hue: 320,
+		});
+	});
+
+	it('serialises the default as "" and round-trips the rest (#326)', () => {
+		expect(serializeChoice(DEFAULT_CHOICE)).toBe('');
+		const tron = { kind: 'preset', identity: 'tron' } as const;
+		expect(parseChoice(serializeChoice(tron))).toEqual(tron);
+		expect(parseChoice(serializeChoice({ kind: 'custom', hue: 200 }))).toEqual({
+			kind: 'custom',
+			hue: 200,
 		});
 	});
 

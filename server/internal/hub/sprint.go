@@ -14,6 +14,9 @@ const (
 	sprintWindow = 15 * time.Second
 	sprintLinger = 30 * time.Second
 	burstTick    = 250 * time.Millisecond
+	// A podium of one is not a win (docs/SPEC.md Sprint Snob, default —
+	// tune in alpha): someone else has to have sprinted.
+	minSprintField = 2
 )
 
 // sprint is one armed sprint moment. Samples land here as they arrive during

@@ -52,6 +52,10 @@ export const presence = {
 	get version() {
 		return version;
 	},
+	/** Re-fetch now — after leaving or joining a room, ahead of the next ping. */
+	reload() {
+		void refresh();
+	},
 	/** Idempotent; the layout starts it once signed-in and framed. */
 	start() {
 		if (!stopped) return;

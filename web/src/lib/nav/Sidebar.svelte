@@ -10,13 +10,22 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import RoomStrip from './RoomStrip.svelte';
 	import { account } from '$lib/account.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
+	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import {
+		MessageSquare,
 		Headphones,
 		LogOut,
 		Mic,
@@ -105,11 +114,41 @@
 		<ul class="space-y-0.5">
 			{#each rooms as room (room.slug)}
 				{@const here = room.slug === connectedSlug}
-				{@const open = room.slug === activeSlug}
-				<li>
+				<!-- Opened: the room whose pages you are on, AND the one you are
+				     standing in — reading a DM or Home while connected must not
+				     fold Training two clicks away (rider report, #416). -->
+				{@const open = room.slug === activeSlug || here}
+				<!-- Reading its chat from outside (#484) marks the row too, so the
+				     sidebar always says where you are. -->
+				{@const reading = pathname === `/messages/r/${room.slug}`}
+				<li
+					{@attach contextMenu(() => {
+						const entries: MenuEntry[] = roomPlaces.map((place) => ({
+							label: place.label,
+							icon: place.icon,
+							onSelect: () => void goto(`/r/${room.slug}${place.path}`),
+						}));
+						// The way in without going in (#484): the list lives here now,
+						// so the way to a room's chat from outside lives here too.
+						entries.push('separator', {
+							label: 'Read the chat',
+							icon: MessageSquare,
+							hint: room.unread ? `${room.unread} new` : undefined,
+							onSelect: () => void goto(`/messages/r/${room.slug}`),
+						});
+						if (here && onLeave)
+							entries.push('separator', {
+								label: 'Leave the room',
+								icon: LogOut,
+								onSelect: onLeave,
+								danger: true,
+							});
+						return entries;
+					})}
+				>
 					<a
 						href="/r/{room.slug}"
-						class="block rounded px-2 py-1.5 {open
+						class="block rounded px-2 py-1.5 {open || reading
 							? 'text-ink'
 							: 'text-muted hover:text-ink'}"
 					>
@@ -120,12 +159,13 @@
 									title="you are in this room"
 								></span>
 							{/if}
+							<RoomIcon icon={room.icon} size={14} />
 							<span
-								class="truncate text-sm {open
+								class="truncate text-sm {open || reading
 									? 'font-semibold'
 									: room.unread
 										? 'text-ink font-semibold'
-										: ''}">{room.icon ? `${room.icon} ` : ''}{room.name}</span
+										: ''}">{room.name}</span
 							>
 							{#if here && onLeave}
 								<button
@@ -171,19 +211,26 @@
 									? 'starting'
 									: `${Math.round(room.session.elapsedSec / 60)} min in`}
 							</span>
+						{:else if !open && room.riders?.length}
+							<!-- Who is in there, without going in (#438): Discord lists
+							     the people under a voice channel; the row does the same. -->
+							<span
+								class="text-muted/80 mt-0.5 flex items-center gap-1 truncate text-[10px]"
+							>
+								{#if room.voice?.length}<Headphones
+										size={9}
+										class="shrink-0"
+									/>{/if}
+								{room.riders.slice(0, 3).join(', ')}{room.riders.length > 3
+									? ` +${room.riders.length - 3}`
+									: ''}
+							</span>
 						{:else if !open && room.next}
 							<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
 								>next: {room.next.workoutName} · {formatWhen(
 									room.next.startsAt,
 								)}</span
 							>
-						{:else if !open && room.voice?.length}
-							<span
-								class="text-muted/70 mt-0.5 flex items-center gap-1 truncate text-[10px]"
-							>
-								<Headphones size={9} class="shrink-0" />
-								{room.voice.join(', ')}
-							</span>
 						{/if}
 					</a>
 
@@ -195,7 +242,7 @@
 							class="border-ink/10 mt-0.5 mb-1 ml-3 space-y-0.5 border-l pl-2"
 						>
 							{#each roomPlaces as entry (entry.path)}
-								{@const on = place === entry.path}
+								{@const on = room.slug === activeSlug && place === entry.path}
 								<li>
 									<a
 										href="/r/{room.slug}{entry.path}"
@@ -218,19 +265,33 @@
 			{/each}
 		</ul>
 
+		<!-- Messages is a place (#468): every room's chat and every DM, one
+		     list. The heading is the way in; the DMs below open straight into
+		     their thread. Rooms are already listed above, so they are not
+		     repeated here — their unread count is the way in for them. -->
+		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+			<a
+				href="/messages"
+				aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
+				class="hover:text-ink {pathname.startsWith('/messages')
+					? 'text-ink'
+					: ''}"
+				title="every room's chat and your DMs, in one place">messages</a
+			>
+			<a href="/friends" class="hover:text-ink ml-auto normal-case">friends</a>
+		</div>
 		{#if dmHeads.heads.length > 0}
-			<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-				messages
-				<a href="/friends" class="hover:text-ink ml-auto normal-case">friends</a
-				>
-			</div>
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
-					{@const on = pathname === `/dm/${head.peerId}`}
-					<li>
+					{@const on = pathname === `/messages/dm/${head.peerId}`}
+					<li
+						title={MENU_HINT}
+						{@attach contextMenu(() =>
+							personMenu(head.peerId, goto, { conversation: true }),
+						)}
+					>
 						<a
-							href="/dm/{head.peerId}"
-							onclick={() => dm.show(head.peerId, head.peerName)}
+							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}
 							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {on
 								? 'bg-surface-raised text-ink'
@@ -257,6 +318,13 @@
 		{/if}
 	</div>
 
+	<!-- Who is in the room with you, while you are looking elsewhere (#446).
+	     Above you, like Discord's voice panel; off the Lounge, which already
+	     shows everyone in tiles. -->
+	{#if connectedSlug}
+		<RoomStrip {pathname} />
+	{/if}
+
 	<!-- You, pinned. ONE row whatever the connection state — the nav above
 	     never jumps (rider report: the height flicker read as broken). -->
 	<div class="border-ink/5 border-t px-3 py-2.5">
@@ -281,7 +349,7 @@
 						{:else if voiceStatus === 'reconnecting'}
 							<span class="text-z5">voice reconnecting…</span>
 						{:else if voiceStatus === 'failed'}
-							<span class="text-z6">voice failed</span>
+							<span class="text-danger">voice failed</span>
 						{:else}
 							<span class="text-muted">not in voice</span>
 						{/if}
@@ -294,7 +362,7 @@
 					class="rounded p-1 {inVoice
 						? micOn
 							? 'text-z4'
-							: 'text-z6'
+							: 'text-danger'
 						: 'text-muted/50 hover:text-muted'}"
 					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
 					aria-label={inVoice

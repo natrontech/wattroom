@@ -249,3 +249,43 @@ func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 		t.Fatalf("cara sees %v", got)
 	}
 }
+
+// requestByID asks by rider id — the rider's page's path (ADR-0024).
+func requestByID(t *testing.T, mux *http.ServeMux, user, id string) int {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/friends",
+		strings.NewReader(`{"userId":"`+id+`"}`))
+	req.Header.Set("X-Test-User", user)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	return w.Code
+}
+
+func TestASharedRoomIsTheOtherDoor(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "pain-cave", "alice", "bob")
+	id := func(name string) string { return store.UUIDString(users.byToken[name].ID) }
+
+	tests := []struct {
+		name string
+		user string
+		id   string
+		want int
+	}{
+		{"malformed id", "alice", "nope", http.StatusBadRequest},
+		{"yourself", "alice", id("alice"), http.StatusBadRequest},
+		{"no room in common", "alice", id("cara"), http.StatusNotFound},
+		{"room-mate", "alice", id("bob"), http.StatusOK},
+		{"already asked, mirrored", "bob", id("alice"), http.StatusConflict},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if code := requestByID(t, mux, tt.user, tt.id); code != tt.want {
+				t.Fatalf("status %d, want %d", code, tt.want)
+			}
+		})
+	}
+	if got := friendsOf(t, mux, "bob")[0]["status"]; got != "pending_in" {
+		t.Fatalf("bob sees %v", got)
+	}
+}

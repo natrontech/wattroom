@@ -47,16 +47,18 @@ func setup(t *testing.T) *http.ServeMux {
 	t.Cleanup(st.Close)
 
 	users := &fakeUsers{byToken: map[string]db.User{}}
-	u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
-		DisplayName: "alice", FtpWatts: 250, WeightKg: 70,
-	})
-	if err != nil {
-		t.Fatalf("create user: %v", err)
+	for _, name := range []string{"alice", "bob"} {
+		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
+			DisplayName: name, FtpWatts: 250, WeightKg: 70,
+		})
+		if err != nil {
+			t.Fatalf("create user: %v", err)
+		}
+		users.byToken[name] = u
+		t.Cleanup(func() {
+			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
+		})
 	}
-	users.byToken["alice"] = u
-	t.Cleanup(func() {
-		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
-	})
 	mux := http.NewServeMux()
 	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
 	return mux
@@ -124,5 +126,58 @@ func TestSoloRideSaveAndList(t *testing.T) {
 	bad := strings.Replace(rideBody(60, 200), `"watts":200`, `"watts":9000`, 1)
 	if status, body = call(t, mux, "alice", http.MethodPost, "/api/rides", bad); status != http.StatusBadRequest || body["field"] != "samples" {
 		t.Fatalf("bad watts: %d %v", status, body)
+	}
+}
+
+func TestShareWithFriends(t *testing.T) {
+	mux := setup(t)
+	status, body := call(t, mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, body)
+	}
+	id, _ := body["id"].(string)
+	path := "/api/rides/" + id
+
+	shared := func() any {
+		_, body := call(t, mux, "alice", http.MethodGet, "/api/rides", "")
+		rides, _ := body["rides"].([]any)
+		first, _ := rides[0].(map[string]any)
+		return first["sharedWithFriends"]
+	}
+	// Private by default.
+	if shared() != false {
+		t.Fatalf("new ride not private")
+	}
+
+	tests := []struct {
+		name string
+		user string
+		path string
+		body string
+		want int
+	}{
+		{"signed out", "", path, `{"sharedWithFriends":true}`, http.StatusUnauthorized},
+		{"missing flag", "alice", path, `{}`, http.StatusBadRequest},
+		{"unknown field", "alice", path, `{"shared":true}`, http.StatusBadRequest},
+		{"malformed id", "alice", "/api/rides/nope", `{"sharedWithFriends":true}`, http.StatusBadRequest},
+		{"not the owner", "bob", path, `{"sharedWithFriends":true}`, http.StatusNotFound},
+		{"owner shares", "alice", path, `{"sharedWithFriends":true}`, http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if status, body := call(t, mux, tt.user, http.MethodPatch, tt.path, tt.body); status != tt.want {
+				t.Fatalf("status %d, want %d: %v", status, tt.want, body)
+			}
+		})
+	}
+	if shared() != true {
+		t.Fatalf("share did not stick")
+	}
+	// And back — the undo path.
+	if status, _ := call(t, mux, "alice", http.MethodPatch, path, `{"sharedWithFriends":false}`); status != http.StatusOK {
+		t.Fatalf("unshare: %d", status)
+	}
+	if shared() != false {
+		t.Fatalf("unshare did not stick")
 	}
 }

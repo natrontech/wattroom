@@ -83,7 +83,7 @@
 				onclick={endSession}
 				title="End"
 				aria-label="end the session"
-				class="text-z6 hover:bg-z6/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
+				class="text-danger hover:bg-danger/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
 					? 'h-11 w-11'
 					: 'px-3 py-2'}"
 				><Square size={compact ? 16 : 13} />{#if !compact}End{/if}</button

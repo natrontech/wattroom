@@ -203,8 +203,8 @@
 ></button>
 <div
 	{@attach countModal}
-	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[46rem] md:-translate-x-1/2"
-	style="bottom: calc(6dvh + var(--pane-jukebox-dock-h, 0px))"
+	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
+	style="bottom: 6dvh"
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
 		<h2 class="font-display text-lg font-bold">{title}</h2>
@@ -231,7 +231,7 @@
 
 	{#if tab === 'workouts' || mode === 'plan'}
 		<div class="flex min-h-0 flex-1">
-			<div class="border-ink/5 flex w-60 shrink-0 flex-col border-r">
+			<div class="border-ink/5 flex w-72 shrink-0 flex-col border-r">
 				<div class="p-2">
 					<!-- Focused on open: the fastest way through 27 workouts is to
 					     start typing, and nobody should have to click into the box

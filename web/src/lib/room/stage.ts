@@ -28,6 +28,18 @@ export function pickStage<T extends StageSource>(
 	);
 }
 
+/**
+ * Which picture the stage is showing: the source plus the generation of its
+ * track. Zoom belongs to a picture, so this is what the stage resets to fit
+ * on — another source, or the same sharer's screen back on a fresh track
+ * (#523). Nothing else may reset it: the room rebuilds the source objects on
+ * every tick, and a reset keyed on those pulled a reading rider back to 1x
+ * half a second after they zoomed in.
+ */
+export function pictureKey(source: { key: string; gen: string | number }) {
+	return `${source.key}:${source.gen}`;
+}
+
 /** Pan offset and scale of the picture inside the frame; origin = centre. */
 export interface StageView {
 	zoom: number;

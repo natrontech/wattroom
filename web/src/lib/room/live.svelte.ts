@@ -117,7 +117,14 @@ export function createRoomLive(slug: string) {
 					roomEvents = next.slice(-100);
 				}
 				if (msg.tick.chat?.length) {
-					chatLog = [...chatLog, ...msg.tick.chat].slice(-200);
+					// A line posted from outside the room (#468) arrives with its
+					// id already on it — and may already be here from a backlog
+					// fetch that raced the tick. One line, once.
+					const have = new Set(chatLog.map((line) => line.id).filter(Boolean));
+					const fresh = msg.tick.chat.filter(
+						(line) => !line.id || !have.has(line.id),
+					);
+					if (fresh.length > 0) chatLog = [...chatLog, ...fresh].slice(-200);
 				}
 				if (Object.keys(pendingIds).length > 0) {
 					chatLog = chatLog.map((line) => {

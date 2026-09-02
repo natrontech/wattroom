@@ -4,18 +4,60 @@
 	// who is holding target. This is roles, medals and the invite, which is
 	// what /rooms used to carry.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { wkg } from '$lib/format';
-	import { Crown, Copy } from '@lucide/svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
+	import { goto } from '$app/navigation';
+	import { Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
 
 	const medalsOf = (name: string) =>
 		room.medals.filter((m) => m.rider === name).length;
+
+	type Member = (typeof room.members)[number];
+	/** Owner paperwork, one place: the row's buttons and its menu run these. */
+	const canAdmin = (member: Member) =>
+		isOwner && member.id !== account.me?.id && !room.adminBusy;
+	const toggleRole = (member: Member) =>
+		room.setRole(member.id, member.role === 'coach' ? 'member' : 'coach');
+	const roleLabel = (member: Member) =>
+		member.role === 'coach' ? 'Make member' : 'Make coach';
+
+	// Their page and their DM on every member (#486), plus the paperwork the
+	// row already offers an owner — remove last, after a separator.
+	function memberMenu(member: Member): MenuEntry[] {
+		const entries: MenuEntry[] = personMenu(member.id, goto, {
+			you: member.id === account.me?.id,
+		});
+		if (canAdmin(member)) {
+			entries.push(
+				{
+					label: roleLabel(member),
+					icon: member.role === 'coach' ? UserMinus : Crown,
+					onSelect: () => toggleRole(member),
+				},
+				'separator',
+				{
+					label: 'Remove from the room',
+					icon: UserX,
+					onSelect: () => room.removeMember(member.id),
+					danger: true,
+				},
+			);
+		}
+		return entries;
+	}
 
 	async function copyInvite() {
 		await navigator.clipboard.writeText(`${location.origin}/r/${room.slug}`);
@@ -34,18 +76,29 @@
 	<ul class="divide-ink/5 panel divide-y">
 		{#each room.members as member (member.id)}
 			{@const medals = medalsOf(member.displayName)}
-			<li class="flex items-center gap-3 px-4 py-2.5">
-				<Avatar
-					name={member.displayName}
-					avatarUrl={member.avatarUrl}
-					preset={member.avatarPreset}
-					xp={member.totalXp}
-					size={32}
-				/>
+			{@const here = room.riders.find((r) => r.id === member.id)}
+			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
+			<li
+				class="flex flex-wrap items-center gap-3 px-4 py-2.5"
+				title={MENU_HINT}
+				{@attach contextMenu(() => memberMenu(member))}
+			>
+				<!-- A member is clickable (#448): their page, and add-friend on it. -->
+				<a href="/u/{member.id}" class="shrink-0">
+					<Avatar
+						name={member.displayName}
+						avatarUrl={member.avatarUrl}
+						preset={member.avatarPreset}
+						xp={member.totalXp}
+						size={32}
+					/>
+				</a>
 				<span class="min-w-0 flex-1">
 					<span class="flex items-center gap-1.5">
-						<span class="truncate text-sm font-medium"
-							>{member.displayName}</span
+						<a
+							href="/u/{member.id}"
+							class="hover:text-ink truncate text-sm font-medium hover:underline"
+							>{member.displayName}</a
 						>
 						{#if member.role === 'owner'}
 							<Crown size={12} class="text-muted" />
@@ -76,21 +129,22 @@
 						>🏅 {medals}</span
 					>
 				{/if}
+				{#if here?.inVoice && !here.you}
+					<!-- Their volume, the same control as their row in the people
+					     column — here for the member you came to look up. -->
+					<RiderVolume id={member.id} name={member.displayName} />
+				{/if}
 				{#if isOwner && member.id !== account.me?.id}
 					<button
-						onclick={() =>
-							room.setRole(
-								member.id,
-								member.role === 'coach' ? 'member' : 'coach',
-							)}
+						onclick={() => toggleRole(member)}
 						disabled={room.adminBusy}
-						class="btn btn-ghost btn-xs shrink-0"
-						>{member.role === 'coach' ? 'Make member' : 'Make coach'}</button
+						class="btn btn-ghost btn-xs shrink-0">{roleLabel(member)}</button
 					>
 					<button
 						onclick={() => room.removeMember(member.id)}
 						disabled={room.adminBusy}
-						class="text-muted hover:text-z6 shrink-0 text-[11px]">remove</button
+						class="text-muted hover:text-danger shrink-0 text-[11px]"
+						>remove</button
 					>
 				{/if}
 			</li>

@@ -1,6 +1,22 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { CalendarClock, Copy, Music, SmilePlus, X } from '@lucide/svelte';
+	import {
+		ListPlus,
+		MessageSquare,
+		CalendarClock,
+		Copy,
+		Crown,
+		Headphones,
+		LogOut,
+		Mic,
+		MicOff,
+		Music,
+		ScreenShare,
+		ScreenShareOff,
+		SmilePlus,
+		Video,
+		VideoOff,
+	} from '@lucide/svelte';
 	import type { RoomEvent } from '$lib/protocol';
 	import {
 		eventText,
@@ -9,9 +25,18 @@
 	} from '$lib/room/timeline';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
-	import { compressImage } from '$lib/chat/media';
+	import Reactions from '$lib/chat/Reactions.svelte';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { formatTime } from '$lib/format';
+	import { STOCK_CHEERS } from '$lib/icons';
+	import ImageChip from '$lib/chat/ImageChip.svelte';
+	import { createPendingImage } from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
+	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { goto } from '$app/navigation';
+	import { account } from '$lib/account.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
 
 	// Drag the left edge to change the width. Pointer capture keeps the drag
@@ -49,8 +74,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import type { RoomRider } from '$lib/room/view';
-	import { Crown, Headphones, Mic, MicOff, Video } from '@lucide/svelte';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
 	// right column is WHO IS HERE; ours was chat alone, so the roster was
@@ -75,7 +100,7 @@
 		reactions = {},
 		myReacts = {},
 		onReact,
-		cheers = ['🔥', '💪', '👏', '💀', '🚀', '🧊'],
+		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster sits above the chat. */
@@ -98,11 +123,44 @@
 		onCheer?: (emoji: string) => void;
 		/** A pasted image rides along as a blob; the parent owns the upload. */
 		onChat?: (text: string, image?: Blob) => void;
-		/** The room's one emoji vocabulary (#223) — cheers thrown, reactions attached. */
+		/** The room's one reaction vocabulary (#223), icon keys (#447) — cheers thrown, reactions attached. */
 		cheers?: string[];
 	} = $props();
 
+	// The way into voice, where the people are (#437).
+	const av = $derived(roomConnection.current?.av);
+
 	let reactingTo = $state<string | null>(null);
+
+	// A message's right-click (#465): react, copy, queue the link it carries.
+	const YOUTUBE = /https?:\/\/[^\s]*(?:youtube\.com|youtu\.be)[^\s]*/;
+	function messageMenu(message: { id?: string; text: string }): MenuEntry[] {
+		const entries: MenuEntry[] = [];
+		if (message.id && onReact) {
+			const id = message.id;
+			entries.push({
+				label: 'React',
+				icon: SmilePlus,
+				onSelect: () => (reactingTo = id),
+			});
+		}
+		if (message.text)
+			entries.push({
+				label: 'Copy text',
+				icon: Copy,
+				onSelect: () => void navigator.clipboard?.writeText(message.text),
+			});
+		const link = message.text.match(YOUTUBE)?.[0];
+		if (link && onQueue) {
+			const url = link;
+			entries.push({
+				label: 'Queue on the jukebox',
+				icon: ListPlus,
+				onSelect: () => onQueue(url),
+			});
+		}
+		return entries;
+	}
 
 	// Chat is the room's timeline (#321): what riders typed and what the room
 	// did, in one chronological list.
@@ -111,12 +169,6 @@
 	// Consecutive lines from one rider read as one turn — the header repeats
 	// only after a gap, like every messenger.
 	const GROUP_GAP_MS = 5 * 60_000;
-
-	const clock = (at: number) =>
-		new Date(at).toLocaleTimeString(undefined, {
-			hour: '2-digit',
-			minute: '2-digit',
-		});
 
 	async function copy(text: string) {
 		try {
@@ -130,44 +182,36 @@
 	let draft = $state('');
 	// A pasted image waiting on the send button (#279) — Discord's flow:
 	// Ctrl+V, see the chip, hit Enter.
-	let pendingImage = $state<{ blob: Blob; preview: string } | null>(null);
-
-	function clearPending() {
-		if (pendingImage) URL.revokeObjectURL(pendingImage.preview);
-		pendingImage = null;
-	}
-
-	async function pasteImage(e: ClipboardEvent) {
-		const file = Array.from(e.clipboardData?.items ?? [])
-			.find((item) => item.kind === 'file' && item.type.startsWith('image/'))
-			?.getAsFile();
-		if (!file) return; // text pastes stay the input's business
-		e.preventDefault();
-		const blob = await compressImage(file);
-		if (!blob) {
-			toasts.push('That image cannot be sent — GIFs are capped at 2 MB.', {
-				tone: 'error',
-			});
-			return;
-		}
-		clearPending();
-		pendingImage = { blob, preview: URL.createObjectURL(blob) };
-	}
+	const pending = createPendingImage((refusal) =>
+		toasts.push(refusal, { tone: 'error' }),
+	);
 
 	function sendChat() {
 		const text = draft.trim();
-		if (!text && !pendingImage) return;
-		onChat?.(text, pendingImage?.blob);
+		if (!text && !pending.current) return;
+		onChat?.(text, pending.take());
 		draft = '';
-		clearPending();
 	}
 </script>
 
 {#snippet person(rider: RoomRider)}
+	<!-- 44 px rows (#463): the speaker at the end is tapped from a bike, and
+	     the slider it opens wraps onto a line of its own under the name. -->
 	<li
-		class="flex items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
+		{@attach contextMenu(() =>
+			rider.you
+				? []
+				: [
+						{
+							label: 'Message',
+							icon: MessageSquare,
+							onSelect: () => void goto(`/messages/dm/${rider.id}`),
+						},
+					],
+		)}
 	>
 		<span class="relative shrink-0">
 			<Avatar name={rider.name} size={22} />
@@ -220,6 +264,9 @@
 				</span>
 			{/if}
 		</span>
+		{#if rider.inVoice && !rider.you}
+			<RiderVolume id={rider.id} name={rider.name} />
+		{/if}
 	</li>
 {/snippet}
 
@@ -259,6 +306,56 @@
 						? `holding target — ${here.length}`
 						: `in voice — ${here.length}`}
 				</div>
+				{#if av && account.me?.avEnabled}
+					<!-- Labelled and big enough for a bike: two grey icons in the
+					     you-panel did not read as the way into voice (#437). -->
+					<div class="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+						{#if av.status === 'off' || av.status === 'failed'}
+							<button
+								onclick={() => void av.join()}
+								class="btn btn-primary btn-xs"
+								><Headphones size={13} /> Join voice</button
+							>
+							<span class="text-muted text-[10px]"
+								>camera and screen once you are in</span
+							>
+						{:else if av.status === 'connecting' || av.status === 'reconnecting'}
+							<span class="text-muted text-xs"
+								>{av.status === 'connecting'
+									? 'joining voice…'
+									: 'voice reconnecting…'}</span
+							>
+						{:else}
+							<button
+								onclick={() => av.toggleMic()}
+								aria-pressed={av.micOn}
+								class="btn btn-xs {av.micOn ? 'btn-secondary' : 'btn-danger'}"
+								>{#if av.micOn}<Mic size={13} /> Mic{:else}<MicOff size={13} /> Muted{/if}</button
+							>
+							<button
+								onclick={() => av.toggleCam()}
+								aria-pressed={av.camOn}
+								class="btn btn-secondary btn-xs"
+								>{#if av.camOn}<Video size={13} /> Camera on{:else}<VideoOff
+										size={13}
+									/> Camera{/if}</button
+							>
+							<button
+								onclick={() => void av.toggleShare()}
+								aria-pressed={av.sharing}
+								class="btn btn-secondary btn-xs"
+								>{#if av.sharing}<ScreenShareOff size={13} /> Stop sharing{:else}<ScreenShare
+										size={13}
+									/> Share{/if}</button
+							>
+							<button
+								onclick={() => av.leave()}
+								class="btn btn-ghost btn-xs"
+								title="leave voice"><LogOut size={13} /> Leave voice</button
+							>
+						{/if}
+					</div>
+				{/if}
 				<ul class="px-1">
 					{#each here as rider (rider.id)}{@render person(rider)}{/each}
 				</ul>
@@ -275,7 +372,9 @@
 			</div>
 		{/if}
 		{#if player}
-			<div class="border-ink/5 max-h-[62%] overflow-y-auto border-b p-4">
+			<!-- The deck, capped: with a seated player plus queue and history it
+			     grew until the chat was a sliver (#461). Its own scroll past 45%. -->
+			<div class="border-ink/5 max-h-[45%] overflow-y-auto border-b p-4">
 				{@render player()}
 			</div>
 		{/if}
@@ -304,7 +403,7 @@
 							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
 							>
 							<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
-								>{clock(entry.at)}</span
+								>{formatTime(entry.at)}</span
 							>
 						</li>
 					{:else}
@@ -314,14 +413,17 @@
 							prev?.kind === 'message' &&
 							prev.message.from === message.from &&
 							message.at - prev.at < GROUP_GAP_MS}
-						<li class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}">
+						<li
+							class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}"
+							{@attach contextMenu(() => messageMenu(message))}
+						>
 							<div class="flex items-baseline gap-1.5">
 								{#if !grouped}
 									<span class="text-muted min-w-0 truncate font-medium"
 										>{message.from}</span
 									>
 									<span class="text-muted/40 shrink-0 font-mono text-[10px]"
-										>{clock(message.at)}</span
+										>{formatTime(message.at)}</span
 									>
 								{/if}
 								<span
@@ -356,40 +458,22 @@
 								<ChatImage
 									src="/api/rooms/{slug}/chat/images/{message.imageId}"
 									alt="Sent by {message.from}"
+									menu={() => messageMenu(message)}
 								/>
 							{/if}
 							{#if message.id && onReact}
 								{@const id = message.id}
-								{#if reactingTo === id}
-									<span
-										class="bg-surface-raised ring-ink/10 mt-1 inline-flex gap-0.5 rounded-full px-1.5 py-0.5 ring-1"
-									>
-										{#each cheers as emoji (emoji)}
-											<button
-												onclick={() => {
-													onReact(id, emoji);
-													reactingTo = null;
-												}}
-												class="px-0.5 hover:scale-125">{emoji}</button
-											>
-										{/each}
-									</span>
-								{/if}
-								{#if reactions[id]}
-									<span class="mt-0.5 flex flex-wrap gap-1">
-										{#each Object.entries(reactions[id]).filter(([, n]) => n > 0) as [emoji, count] (emoji)}
-											<button
-												onclick={() => onReact(id, emoji)}
-												class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
-													`${id}:${emoji}`
-												]
-													? 'ring-neon bg-neon/15'
-													: 'ring-ink/10 bg-surface-raised'}"
-												>{emoji} {count}</button
-											>
-										{/each}
-									</span>
-								{/if}
+								<Reactions
+									{id}
+									counts={reactions[id]}
+									{myReacts}
+									{cheers}
+									picking={reactingTo === id}
+									onReact={(cheer) => {
+										onReact(id, cheer);
+										reactingTo = null;
+									}}
+								/>
 							{/if}
 						</li>
 					{/if}
@@ -405,20 +489,7 @@
 		<div class="border-ink/5 border-t p-3">
 			{#if !live}
 				<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
-				{#if pendingImage}
-					<div class="relative mb-2 inline-block">
-						<img
-							src={pendingImage.preview}
-							alt="Ready to send"
-							class="ring-ink/10 max-h-24 rounded ring-1"
-						/>
-						<button
-							onclick={clearPending}
-							class="bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-1.5 -right-1.5 rounded-full p-0.5 ring-1"
-							aria-label="Remove image"><X size={12} /></button
-						>
-					</div>
-				{/if}
+				<ImageChip image={pending.current} onClear={pending.clear} />
 				<form
 					class="mb-2 flex gap-1.5"
 					onsubmit={(e) => {
@@ -428,24 +499,26 @@
 				>
 					<input
 						bind:value={draft}
-						onpaste={pasteImage}
+						onpaste={pending.paste}
 						maxlength="500"
 						placeholder="Say something…"
 						class="input input-xs min-w-0 flex-1"
 					/>
 					<button
-						disabled={!draft.trim() && !pendingImage}
+						disabled={!draft.trim() && !pending.current}
 						class="btn btn-secondary btn-xs">Send</button
 					>
 				</form>
 			{/if}
 			<!-- Mid-ride: typing is off the table, so the affordance is reactions, not a text field. -->
 			<div class="flex gap-1.5">
-				{#each cheers.slice(0, 4) as emoji (emoji)}
+				{#each cheers.slice(0, 4) as cheer (cheer)}
 					<button
-						onclick={() => onCheer?.(emoji)}
-						class="border-muted/20 hover:border-muted/50 flex-1 rounded border py-2 text-base"
-						>{emoji}</button
+						onclick={() => onCheer?.(cheer)}
+						aria-label={cheer}
+						title={cheer}
+						class="border-muted/20 hover:border-muted/50 flex flex-1 items-center justify-center rounded border py-2"
+						><CheerIcon {cheer} size={18} /></button
 					>
 				{/each}
 			</div>

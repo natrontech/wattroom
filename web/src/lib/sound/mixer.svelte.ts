@@ -8,22 +8,38 @@ import { setDuckLevel, setVolume as setCueVolume } from '$lib/sound/cues';
  */
 const KEY = 'wattroom.mixer.v1';
 
+/** A rider's fader, 0–2 — above 1 is the "make them louder" ask (#463). */
+const RIDER_GAIN_MAX = 2;
+
 function load(): {
 	music: number;
 	cues: number;
 	duck: number;
 	riders: Record<string, number>;
+	names: Record<string, string>;
 } {
 	try {
 		const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+		const riders: Record<string, number> = {};
+		const names: Record<string, string> = {};
+		for (const [id, gain] of Object.entries(raw.riders ?? {})) {
+			// Unity is the default, so an entry AT unity is a leftover, not a
+			// mix — and junk falls back to unity, which is the same thing.
+			const g = clamp(gain, 0, RIDER_GAIN_MAX, 1);
+			if (g === 1) continue;
+			riders[id] = g;
+			const name = raw.names?.[id];
+			if (typeof name === 'string' && name) names[id] = name;
+		}
 		return {
 			music: clamp(raw.music, 0, 100, 70),
 			cues: clamp(raw.cues, 0, 1, 0.7),
 			duck: clamp(raw.duck, 0, 1, 0.3),
-			riders: typeof raw.riders === 'object' && raw.riders ? raw.riders : {},
+			riders,
+			names,
 		};
 	} catch {
-		return { music: 70, cues: 0.7, duck: 0.3, riders: {} };
+		return { music: 70, cues: 0.7, duck: 0.3, riders: {}, names: {} };
 	}
 }
 
@@ -35,17 +51,24 @@ let music = $state(70);
 let cues = $state(0.7);
 let duck = $state(0.3);
 let riders = $state<Record<string, number>>({});
+// Who a stored fader belongs to, so the profile mixer can name a rider who
+// is not in the room right now.
+let names = $state<Record<string, string>>({});
 const initial = load();
 music = initial.music;
 cues = initial.cues;
 duck = initial.duck;
 riders = initial.riders;
+names = initial.names;
 setCueVolume(cues);
 setDuckLevel(duck);
 
 function persist() {
 	try {
-		localStorage.setItem(KEY, JSON.stringify({ music, cues, duck, riders }));
+		localStorage.setItem(
+			KEY,
+			JSON.stringify({ music, cues, duck, riders, names }),
+		);
 	} catch {
 		// ears-only preference; losing it costs one adjustment
 	}
@@ -82,15 +105,36 @@ export const mixer = {
 		setDuckLevel(duck);
 		persist();
 	},
-	/** Per-rider voice gain, 0–2 — above 1 is the "make them louder" ask. */
+	/** Per-rider voice gain, 0–2; 1 (unity) for anyone never adjusted. */
 	riderGain(id: string): number {
 		return riders[id] ?? 1;
 	},
-	setRiderGain(id: string, v: number) {
-		riders = { ...riders, [id]: Math.min(2, Math.max(0, v)) };
+	/**
+	 * Unity is the default, so setting a rider back to 1 forgets them — the
+	 * "riders you have adjusted" list is exactly what is stored. The name
+	 * rides along so that list can say who, after they have left.
+	 */
+	setRiderGain(id: string, v: number, name?: string) {
+		const gain = Math.min(RIDER_GAIN_MAX, Math.max(0, v));
+		const nextRiders = { ...riders };
+		const nextNames = { ...names };
+		if (gain === 1) {
+			delete nextRiders[id];
+			delete nextNames[id];
+		} else {
+			nextRiders[id] = gain;
+			if (name) nextNames[id] = name;
+		}
+		riders = nextRiders;
+		names = nextNames;
 		persist();
 	},
-	get riders() {
-		return riders;
+	/** Every rider set away from unity (#463), for the profile mixer to reset. */
+	get mixedRiders(): { id: string; name: string; gain: number }[] {
+		return Object.entries(riders).map(([id, gain]) => ({
+			id,
+			name: names[id] ?? 'a rider who has left',
+			gain,
+		}));
 	},
 };

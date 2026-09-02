@@ -11,6 +11,8 @@ import type { StageSource } from '$lib/room/stage';
 export interface RoomStageSource extends StageSource {
 	gen: string;
 	label: string;
+	/** Whose camera or screen this is — absent for the jukebox (#506). */
+	riderId?: string;
 }
 
 /**

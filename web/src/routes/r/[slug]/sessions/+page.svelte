@@ -138,17 +138,29 @@
 				class="text-muted hover:text-ink text-[11px] underline"
 				>subscribe to this room</button
 			>
-			{#if room.myRole === 'owner'}
+		</div>
+		{#if room.myRole === 'owner'}
+			<!-- The feed URL carries a private token (ADR-0021). Rotating it is
+			     for a leaked link, which 95% of owners never need (ux.md) — so
+			     it lives folded, with the one line that says what it does. -->
+			<details class="mt-2">
+				<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+					>Advanced</summary
+				>
+				<p class="text-muted mt-2 max-w-md text-xs">
+					The calendar link carries a private key for this room. If it ever
+					leaks, reset it: every calendar that has the old link stops updating
+					until it subscribes again.
+				</p>
 				<button
 					onclick={() => {
 						room.rotateIcs();
 						toasts.push('Calendar link reset — shared links stop working.');
 					}}
-					class="text-muted hover:text-ink text-[11px] underline"
-					>reset link</button
+					class="btn btn-secondary btn-xs mt-2">Reset calendar link</button
 				>
-			{/if}
-		</div>
+			</details>
+		{/if}
 	{/if}
 
 	<h3 class="eyebrow mt-8">this room, this month</h3>

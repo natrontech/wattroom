@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import { STOCK_CHEERS } from '$lib/icons';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import {
 		ZONE_BG,
@@ -34,12 +36,12 @@
 	);
 
 	// Spectators can only cheer (docs/SPEC.md roles matrix) — no riding, no voice, no jukebox.
-	const cheers = ['🔥', '💪', '👏', '💀'];
+	const cheers = STOCK_CHEERS.slice(0, 4);
 	let sent = $state<string | null>(null);
 
-	function cheer(emoji: string) {
+	function cheer(key: string) {
 		play('cheer');
-		sent = emoji;
+		sent = key;
 		setTimeout(() => (sent = null), 1200);
 	}
 </script>
@@ -124,11 +126,12 @@
 	<!-- Huge tap targets: this is used one-handed, often standing up. -->
 	<div class="border-ink/5 relative border-t p-3">
 		<div class="flex gap-2">
-			{#each cheers as emoji (emoji)}
+			{#each cheers as key (key)}
 				<button
-					onclick={() => cheer(emoji)}
-					class="border-muted/20 active:bg-surface-raised flex-1 rounded-lg border py-4 text-2xl"
-					>{emoji}</button
+					onclick={() => cheer(key)}
+					aria-label={key}
+					class="border-muted/20 active:bg-surface-raised flex flex-1 items-center justify-center rounded-lg border py-4"
+					><CheerIcon cheer={key} size={28} /></button
 				>
 			{/each}
 		</div>
@@ -137,9 +140,9 @@
 		</p>
 		{#if sent}
 			<div
-				class="text-watt glow-text pointer-events-none absolute inset-x-0 -top-6 text-center text-3xl"
+				class="text-ink pointer-events-none absolute inset-x-0 -top-6 text-center"
 			>
-				{sent}
+				<CheerIcon cheer={sent} size={28} class="mx-auto" />
 			</div>
 		{/if}
 	</div>

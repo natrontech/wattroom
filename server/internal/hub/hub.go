@@ -45,6 +45,44 @@ type ChatKeeper interface {
 	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
+// MinRideSamples is the saver's threshold: fewer than a minute of samples is
+// a misclick, not a ride — the same rule the client's crash recovery uses.
+const MinRideSamples = 60
+
+// XpKeeper hears what a room did that earns XP or counts toward an
+// achievement (#467). Defined here, where it is consumed; the gamify service
+// implements it. Every call happens outside the hub's locks and must return
+// at once — the keeper queues its own I/O. Nil means no gamification.
+type XpKeeper interface {
+	// The podium's first place, once per scored sprint moment.
+	SprintWon(slug, riderID string, at time.Time)
+	// A queued track reached its natural end; ref is unique to that play.
+	TrackPlayed(slug, riderID, ref string, at time.Time)
+	SessionClosed(ev SessionClosed)
+}
+
+// SessionClosed is one closed session as the keeper sees it: who rode, who
+// was in voice for how long, and who pressed start.
+type SessionClosed struct {
+	Slug string
+	// Rider id of whoever pressed start; empty when the room came back from
+	// a restart with the session already running.
+	StartedBy string
+	// The timeline's running seconds — pauses excluded, like Elapsed.
+	Seconds int
+	At      time.Time
+	Riders  []SessionRider
+}
+
+// SessionRider is one person the session saw — on a bike, in voice, or both.
+type SessionRider struct {
+	ID string
+	// At least MinRideSamples samples: a ride the saver keeps.
+	Rode bool
+	// Seconds in the voice channel while the timeline ran.
+	VoiceSeconds int
+}
+
 // Access is what the hub needs from the durable side: who is this request,
 // and are they in this room. Defined here, where it is consumed; implemented
 // by rooms.Service. The hub itself never touches the database — membership is
@@ -64,6 +102,7 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
+	xp    XpKeeper
 	// The lobby (#251): every signed-in client holds one socket here; holding
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
@@ -99,6 +138,10 @@ type voiceEntry struct {
 // SetChatKeeper wires persistence in after construction, like SetPresence's
 // mirror on the rooms side — nil stays valid (ephemeral chat).
 func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
+
+// SetXpKeeper wires the trophy case in (#467) — before the first room
+// opens, since rooms capture it at creation. Nil stays valid.
+func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
@@ -156,6 +199,15 @@ type room struct {
 	phaseSaid string
 	// Pings the lobby (#251) when the tick sees phase or the riding set change.
 	changed func()
+	// Voice (#467): who is in the channel now, folded to rider ids by the
+	// hub from LiveKit's state, and how long each of them was in it while
+	// the timeline ran — the session voice bonus's input. Bounded by the
+	// channel's participants; reset on start.
+	voiceNow map[string]struct{}
+	voiceMs  map[string]int64
+	// Who pressed start — the coach of record for Crew Chief.
+	startedBy string
+	xp        XpKeeper
 }
 
 // ridingWindow is how recent a sample must be to count as "riding now".
@@ -200,6 +252,8 @@ func newRoom(slug string) *room {
 		music:      newJukebox(),
 		seen:       make(map[string]protocol.Rider),
 		lastMetric: make(map[string]time.Time),
+		voiceNow:   make(map[string]struct{}),
+		voiceMs:    make(map[string]int64),
 	}
 }
 
@@ -208,10 +262,10 @@ type client struct {
 	conn  *websocket.Conn
 }
 
-// Cheers and chat reactions are shape-checked (protocol.IsEmoji — one emoji,
-// never text), not allowlisted: which emoji a room speaks is its owner's
-// palette now (#223), enforced client-side. The wire only guarantees a
-// reaction can't smuggle chat.
+// Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
+// icon key, or one emoji from a client built before #447; never text), not
+// allowlisted: which reactions a room speaks is its owner's palette (#223),
+// enforced client-side. The wire only guarantees a reaction can't smuggle chat.
 
 // canControl is the SPEC roles matrix row "pick workout / start / pause / end".
 func canControl(role string) bool { return role == "owner" || role == "coach" }
@@ -290,7 +344,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.ChatReact != nil && h.chat != nil {
-			if protocol.IsEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
+			if protocol.IsIconOrEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
 				if count, added, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
 						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
@@ -300,7 +354,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Cheer != nil {
-			if protocol.IsEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			if protocol.IsIconOrEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}
@@ -308,7 +362,9 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// Any member; the jukebox validates its own input. Throttled like
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
-				rm.jukebox(*msg.Jukebox, rider.ID, rider.Name, h.now())
+				if played, _ := rm.jukebox(*msg.Jukebox, rider.ID, rider.Name, h.now()); played != nil && h.xp != nil {
+					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
+				}
 			}
 		}
 		if msg.Backfill != nil {
@@ -347,7 +403,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(ctx, c, "invalid_request", "Sprints arm during a running session.")
 				continue
 			}
-			if !rm.control(*msg.Control, h.now()) {
+			if !rm.control(*msg.Control, rider.ID, h.now()) {
 				h.writeError(ctx, c, "invalid_request", "That does not work right now — the session is in another phase.")
 			}
 		}
@@ -431,6 +487,41 @@ func (h *Hub) SessionAnnounce(slug, verb, actor, workout string, startsAt time.T
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
+}
+
+// PostChat hands a line that arrived over HTTP (#468) to whoever is
+// connected: it rides the next tick exactly like a socket line. The hub
+// lock finds the room, the room lock queues it — never both at once. A room
+// nobody holds open gets nothing: its riders will read the backlog when
+// they arrive, and a line parked in an empty room's queue would land twice.
+func (h *Hub) PostChat(slug string, line protocol.ChatLine) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.chatLine(line)
+	}
+}
+
+// PostReaction is PostChat for a reaction toggled over HTTP (#468).
+func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.reactionChanged(change)
+	}
+}
+
+// occupied is the room at slug if anyone is connected to it — never creating
+// one, unlike room(): an HTTP post must not start a ticker for nobody.
+func (h *Hub) occupied(slug string) *room {
+	h.mu.Lock()
+	rm, ok := h.rooms[slug]
+	h.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.clients) == 0 {
+		return nil
+	}
+	return rm
 }
 
 func (h *Hub) Presence(slug string) protocol.RoomPresence {
@@ -535,7 +626,6 @@ func (h *Hub) WhereIs(userIDs []string) map[string]string {
 // hub-owned like every other piece of live state.
 func (h *Hub) VoiceJoined(slug, identity, name string) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	if h.voice[slug] == nil {
 		h.voice[slug] = make(map[string]voiceEntry, 4)
 	}
@@ -548,17 +638,62 @@ func (h *Hub) VoiceJoined(slug, identity, name string) {
 		entry.joinedAt = h.now()
 	}
 	h.voice[slug][identity] = entry
-	h.pingLobbyLocked()
+	after := h.voiceChangedLocked(slug)
+	h.mu.Unlock()
+	after()
 }
 
 func (h *Hub) VoiceLeft(slug, identity string) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	delete(h.voice[slug], identity)
 	if len(h.voice[slug]) == 0 {
 		delete(h.voice, slug)
 	}
+	after := h.voiceChangedLocked(slug)
+	h.mu.Unlock()
+	after()
+}
+
+// voiceRidersLocked folds a room's voice entries to rider ids — two tabs are
+// one rider. The caller holds h.mu.
+func (h *Hub) voiceRidersLocked(slug string) map[string]struct{} {
+	riders := make(map[string]struct{}, len(h.voice[slug]))
+	for _, entry := range h.voice[slug] {
+		riders[entry.rider] = struct{}{}
+	}
+	return riders
+}
+
+// voiceChangedLocked pings the lobby and hands back what to do once h.mu is
+// released: tell the live room who is in voice now (#467). The room lock is
+// never taken under the hub lock — same discipline as Presence.
+func (h *Hub) voiceChangedLocked(slug string) func() {
 	h.pingLobbyLocked()
+	rm, live := h.rooms[slug]
+	if !live {
+		return func() {}
+	}
+	riders := h.voiceRidersLocked(slug)
+	return func() { rm.setVoice(riders) }
+}
+
+// VoiceRiderIDs is every rider in any voice channel right now, once each —
+// the lounge-XP ticker's input (#467). Lock, copy, unlock.
+func (h *Hub) VoiceRiderIDs() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := make(map[string]struct{})
+	for _, entries := range h.voice {
+		for _, entry := range entries {
+			seen[entry.rider] = struct{}{}
+		}
+	}
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // VoiceCamera flips one participant's camera flag (#251) — track_published /
@@ -566,9 +701,9 @@ func (h *Hub) VoiceLeft(slug, identity string) {
 // a live camera implies presence in the voice room anyway.
 func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	entry, ok := h.voice[slug][identity]
 	if !ok && !on {
+		h.mu.Unlock()
 		return
 	}
 	if !ok {
@@ -579,15 +714,18 @@ func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
 		h.voice[slug] = make(map[string]voiceEntry, 4)
 	}
 	h.voice[slug][identity] = entry
-	h.pingLobbyLocked()
+	after := h.voiceChangedLocked(slug)
+	h.mu.Unlock()
+	after()
 }
 
 // VoiceRoomClosed clears a whole room's voice state (room_finished).
 func (h *Hub) VoiceRoomClosed(slug string) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	delete(h.voice, slug)
-	h.pingLobbyLocked()
+	after := h.voiceChangedLocked(slug)
+	h.mu.Unlock()
+	after()
 }
 
 // VoiceRooms lists the rooms the radar currently shows anyone in — the
@@ -608,7 +746,8 @@ func (h *Hub) VoiceRooms() []string {
 // and anyone a lost webhook missed is added.
 func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	after := func() {}
+	defer func() { h.mu.Unlock(); after() }()
 	changed := false
 	for identity, entry := range h.voice[slug] {
 		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
@@ -630,7 +769,7 @@ func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time)
 		delete(h.voice, slug)
 	}
 	if changed {
-		h.pingLobbyLocked()
+		after = h.voiceChangedLocked(slug)
 	}
 }
 
@@ -649,6 +788,10 @@ func (h *Hub) room(slug string) *room {
 	if !ok {
 		rm = newRoom(slug)
 		rm.changed = h.PresenceChanged
+		rm.xp = h.xp
+		// Voice can be live before the first socket opens the room — seed
+		// it, unlocked: nobody else can hold this room yet.
+		rm.voiceNow = h.voiceRidersLocked(slug)
 		h.rooms[slug] = rm
 		go rm.run(h.now, h.saver)
 	}
@@ -669,8 +812,13 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 	// rail shows for rooms you are NOT in — ping the lobby only when one of
 	// them changes between ticks, never per tick.
 	lastPhase, lastRiding := "", ""
+	lastTick := now()
 	for range timer.C {
 		rm.mu.Lock()
+		// Wall time since the previous tick — the voice clock's step, which a
+		// sprint's 4 Hz burst must not quadruple.
+		dt := now().Sub(lastTick)
+		lastTick = now()
 		interval := tickInterval
 		if sp := rm.sprint; sp != nil {
 			t := now()
@@ -716,6 +864,8 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		// that carries the transition, not the one after it.
 		state := rm.session.state(now())
 		rm.sayPhaseLocked(state, now())
+		rm.accrueVoiceLocked(state.Phase, dt)
+		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
 			At:            now().UnixMilli(),
@@ -726,7 +876,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			ChatReactions: reactsNow,
 			ChatIDs:       idsNow,
 			Events:        eventsNow,
-			Sprint:        rm.sprint.state(now(), rm.seen),
+			Sprint:        sprintNow,
 			Game:          rm.lastGame,
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
@@ -745,13 +895,19 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		// no I/O while holding a room mutex).
 		var closing []RiderRecord
 		var closingMeta protocol.SessionState
-		if saver != nil && tick.State.Phase == "done" && !rm.saved {
+		var closed *SessionClosed
+		if tick.State.Phase == "done" && !rm.saved {
 			rm.saved = true
 			closingMeta = tick.State
-			for _, id := range rm.seenOrder {
-				if record, ok := rm.record.byRider[id]; ok {
-					closing = append(closing, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
+			if saver != nil {
+				for _, id := range rm.seenOrder {
+					if record, ok := rm.record.byRider[id]; ok {
+						closing = append(closing, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
+					}
 				}
+			}
+			if rm.xp != nil {
+				closed = rm.closedLocked(tick.State, now())
 			}
 		}
 		clients := make([]*client, 0, len(rm.clients))
@@ -782,6 +938,14 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			go saver.SaveSession(context.Background(), rm.slug,
 				closingMeta.WorkoutName, closingMeta.WorkoutJSON,
 				time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
+		}
+		// The keeper returns at once (it queues its own I/O) — still outside
+		// the lock, like every other hand-off.
+		if closed != nil {
+			rm.xp.SessionClosed(*closed)
+		}
+		if sprintWinner != "" && rm.xp != nil {
+			rm.xp.SprintWon(rm.slug, sprintWinner, now())
 		}
 
 		metricTicks.Inc()
@@ -922,14 +1086,19 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 	}
 }
 
-func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) bool {
+// jukebox runs one deck command and hands back the track it finished, if
+// this command was the one that ended it (#467) — for the caller to credit
+// outside the lock.
+func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	events, ok := rm.music.apply(cmd, riderID, addedBy, now)
 	for _, ev := range events {
 		rm.events.add(ev, now)
 	}
-	return ok
+	played := rm.music.finished
+	rm.music.finished = nil
+	return played, ok
 }
 
 // startGame begins a mode; refused while another runs (end it first).
@@ -963,7 +1132,7 @@ func (rm *room) armIfRunning(now time.Time) bool {
 	return true
 }
 
-func (rm *room) control(c protocol.Control, now time.Time) bool {
+func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	// A new start is a new ride: the record must not blend two sessions.
@@ -972,6 +1141,62 @@ func (rm *room) control(c protocol.Control, now time.Time) bool {
 		rm.seen = make(map[string]protocol.Rider)
 		rm.seenOrder = nil
 		rm.saved = false
+		rm.voiceMs = make(map[string]int64)
+		rm.startedBy = riderID
 	}
 	return rm.session.apply(c, now)
+}
+
+// setVoice replaces who the hub says is in the channel (#467).
+func (rm *room) setVoice(riders map[string]struct{}) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	rm.voiceNow = riders
+}
+
+// accrueVoiceLocked adds one tick's worth of voice time to everyone in the
+// channel while the timeline runs (#467). Caller holds rm.mu.
+func (rm *room) accrueVoiceLocked(phase string, dt time.Duration) {
+	if phase != "running" {
+		return
+	}
+	for id := range rm.voiceNow {
+		rm.voiceMs[id] += dt.Milliseconds()
+	}
+}
+
+// scoreSprintLocked renders the sprint for the tick and names the winner on
+// the one tick that scores it (#467). Caller holds rm.mu.
+func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
+	scoredBefore := rm.sprint != nil && rm.sprint.scored
+	state := rm.sprint.state(now, rm.seen)
+	if scoredBefore || rm.sprint == nil || !rm.sprint.scored || len(rm.sprint.results) < minSprintField {
+		return state, ""
+	}
+	return state, rm.sprint.results[0].RiderID
+}
+
+// closedLocked is the session as the XpKeeper hears it (#467): everyone who
+// rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
+func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
+	ev := &SessionClosed{Slug: rm.slug, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	for _, id := range rm.seenOrder {
+		ev.Riders = append(ev.Riders, SessionRider{
+			ID: id, Rode: rm.record.count(id) >= MinRideSamples,
+			VoiceSeconds: int(rm.voiceMs[id] / 1000),
+		})
+	}
+	// Voice-only people — a coach without a trainer, a spectator on the
+	// call — in a stable order, since the map has none.
+	var listeners []string
+	for id := range rm.voiceMs {
+		if _, rode := rm.seen[id]; !rode {
+			listeners = append(listeners, id)
+		}
+	}
+	sort.Strings(listeners)
+	for _, id := range listeners {
+		ev.Riders = append(ev.Riders, SessionRider{ID: id, VoiceSeconds: int(rm.voiceMs[id] / 1000)})
+	}
+	return ev
 }

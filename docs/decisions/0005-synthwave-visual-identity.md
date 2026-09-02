@@ -121,3 +121,21 @@ adjacent zones to remain distinguishable while moving monotonically in
 lightness. Outrun remains the default identity, but its old low-contrast zone
 ramp is replaced by the generated, gated ramp. The restraint rule is unchanged:
 only live data uses `--color-watt` and glow; `--color-neon` remains flat chrome.
+
+## Amendment — semantic status leaves the data ramp (2026-09-01, #397)
+
+`btn-danger` took its colour from `--color-z6`, so "delete room" was whatever
+Coggan zone 6 happened to be in the active theme — pastel pink under Outrun's
+gated ramp, and something else again under any theme whose ramp runs elsewhere.
+Zone colours are *data* encoding and rotate with the identity; a destructive
+control must not.
+
+`--color-danger` is a semantic token outside the ramp. Its hue is fixed at 25°
+(OKLCH red-orange) in every theme; only its lightness and chroma follow the
+family, contrast-fitted against both surfaces and gated at 3:1 like the
+accents, so a rider learns one colour for delete and keeps it after picking
+Tron Ice. The corollary is the rule from here on: zone tokens carry zone
+readings and nothing else. Errors, failed states, eliminations and destructive
+affordances say `danger`. `positive` and `warning` will join it the same way —
+fixed hue, family lightness — when something needs them; until then the z4/z5
+tones in Banner and the fault surfaces are the call sites waiting for them.

@@ -9,6 +9,7 @@
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { MUSIC_FADER } from '$lib/sound/fader';
 	import {
 		centrePane,
 		dragPane,
@@ -16,12 +17,14 @@
 		resizePane,
 		restorePane,
 	} from '$lib/pane';
-	import { stageSlot } from '$lib/room/stage-slot.svelte';
+	import { onSeat, setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
 	import {
+		VolumeX,
 		FastForward,
 		GripHorizontal,
 		Minimize2,
 		Pause,
+		PictureInPicture2,
 		Play,
 		Rewind,
 		SkipForward,
@@ -68,23 +71,31 @@
 	// seat (leave the room, scroll it away) and it floats again.
 	// A modal covers the stage, so the seat under it is no seat: the dock
 	// goes to its corner and the modal keeps a gutter above it (modals.svelte).
-	const seat = $derived(modals.open > 0 ? null : stageSlot.seat);
+	// Whether the dock is seated — a boolean, for the chrome. The RECT never
+	// passes through here: it arrives frame by frame on `onSeat` and is
+	// written straight to the node, so per-frame geometry never enters the
+	// effect graph (#494).
+	const seat = $derived(modals.open === 0 && stageSlot.seated);
 	$effect(() => {
-		const to = seat;
 		const node = shell;
+		// A modal covers the stage, so the seat under it is no seat: the dock
+		// goes to its corner and the modal keeps clear of it (modals.svelte).
+		const blocked = modals.open > 0;
 		if (!node) return;
-		if (to) {
-			node.style.left = `${to.x}px`;
-			node.style.top = `${to.y}px`;
-			node.style.right = node.style.bottom = 'auto';
-			node.style.width = `${to.w}px`;
-			node.style.height = `${to.h}px`;
-			node.style.minWidth = node.style.minHeight = '0';
-		} else {
-			node.style.minWidth = '260px';
-			node.style.minHeight = `${200 + CHROME}px`;
-			restorePane(node, PANE, FLOATING);
-		}
+		return onSeat((to) => {
+			if (to && !blocked) {
+				node.style.left = `${to.x}px`;
+				node.style.top = `${to.y}px`;
+				node.style.right = node.style.bottom = 'auto';
+				node.style.width = `${to.w}px`;
+				node.style.height = `${to.h}px`;
+				node.style.minWidth = node.style.minHeight = '0';
+			} else {
+				node.style.minWidth = '260px';
+				node.style.minHeight = `${200 + CHROME}px`;
+				restorePane(node, PANE, FLOATING);
+			}
+		});
 	});
 
 	// ── YouTube IFrame API ────────────────────────────────────────────────────
@@ -274,8 +285,27 @@
 		}
 	}
 
+	// Fullscreen draws only the fullscreen element's subtree: a fixed dock
+	// outside it is not rendered at all while the music plays on — the exact
+	// RMF condition the dock exists to satisfy (#395). Pause this client's
+	// player for the duration; on exit the chase re-seeks and resumes.
+	let hiddenByFullscreen = $state(false);
+	$effect(() => {
+		const check = () => {
+			const full = document.fullscreenElement;
+			hiddenByFullscreen = !!full && !!shell && !full.contains(shell);
+			if (!hiddenByFullscreen) tickChase();
+		};
+		document.addEventListener('fullscreenchange', check);
+		return () => document.removeEventListener('fullscreenchange', check);
+	});
+
 	function tickChase() {
 		if (!player || !playerReady) return;
+		if (hiddenByFullscreen) {
+			if (player.getPlayerState?.() === PLAYING) player.pauseVideo?.();
+			return;
+		}
 		const live = conn?.live;
 		const deck = live?.tick?.jukebox;
 		if (live?.status !== 'live' || !deck) {
@@ -445,14 +475,21 @@
 {#if conn}
 	<!-- Until it is dragged the dock sits in the corner, clear of the side
 	     panel at whatever width the rider left it, and above the chat button
-	     the z-[60] dock would otherwise bury below xl (#219). -->
+	     below xl (#219). Stacking (#395): floating, it sits BELOW dialogs,
+	     drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over the
+	     player, not a dialog the rider opened over it. Seated, it has to clear
+	     the stage it sits in, and a popped-out stage is z-[55] — but not the
+	     chat sheet, which is a drawer the rider opened and passes above at
+	     z-[60] (#483). -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
 		data-seated={seat ? '' : undefined}
 		{@attach (node) => keepSize(node, PANE)}
 		{@attach (node) => (seat ? undefined : resizePane(node, PANE))}
-		class="bg-surface fixed z-[60] flex flex-col overflow-hidden rounded-lg {seat
+		class="bg-surface fixed {seat
+			? 'z-[56]'
+			: 'z-30'} flex flex-col overflow-hidden rounded-lg {seat
 			? ''
 			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer || speaker
 			? ''
@@ -487,31 +524,21 @@
 					title="centre the dock"
 					aria-label="centre the dock"><Minimize2 size={12} /></button
 				>
+				{#if stageSlot.popped}
+					<!-- Back into the people column's deck (#445); takes effect
+					     the moment a room page offers the seat again. -->
+					<button
+						onclick={() => setPopped(false)}
+						class="hover:text-ink shrink-0"
+						title="put the player back in the panel"
+						aria-label="put the player back in the panel"
+						><PictureInPicture2 size={12} /></button
+					>
+				{/if}
 			</div>
 		{/if}
 
 		<div class="flex min-h-0 flex-1 bg-black">
-			{#if speaker && !seat}
-				{@const id = speaker.id}
-				<div class="border-ink/10 relative w-24 shrink-0 border-r">
-					{#if speakerVideo}
-						{#key speakerVideo}
-							<div
-								class="h-full w-full"
-								{@attach (node) => conn?.av.attach(id, node)}
-							></div>
-						{/key}
-					{:else}
-						<div class="bg-surface-raised grid h-full place-items-center">
-							<Avatar name={speaker.name} size={32} />
-						</div>
-					{/if}
-					<span
-						class="bg-paper/70 text-ink absolute inset-x-0 bottom-0 truncate px-1 text-[9px]"
-						>{speaker.name}</span
-					>
-				</div>
-			{/if}
 			<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 			<div class="relative min-w-0 flex-1 {showPlayer ? '' : 'hidden'}">
 				<div bind:this={container} class="h-full w-full"></div>
@@ -528,13 +555,21 @@
 
 		{#if showPlayer && playerInfo.blocked}
 			<!-- The browser refused to start audio with no gesture behind it.
-			     One tap fixes it for the rest of the session. Beside the
-			     player, never over it (RMF). -->
-			<button
-				onclick={startPlayback}
-				class="btn btn-accent shrink-0 justify-center rounded-none py-2 text-xs"
-				>Tap to hear the room's music</button
+			     One press fixes it for the session. Beside the player, never
+			     over it (RMF) — and quiet: this is chrome, and magenta means
+			     live data (ADR-0005). A full-width accent bar read as an
+			     error (#485). -->
+			<div
+				class="border-ink/10 text-muted flex shrink-0 items-center gap-2 border-t px-2 py-1.5 text-[11px]"
 			>
+				<VolumeX size={13} class="shrink-0" />
+				<span class="min-w-0 flex-1 truncate">Your browser muted this tab.</span
+				>
+				<button
+					onclick={startPlayback}
+					class="btn btn-secondary btn-xs shrink-0">Play</button
+				>
+			</div>
 		{/if}
 
 		{#if showPlayer && !seat}
@@ -583,13 +618,12 @@
 				<Volume2 size={12} class="shrink-0" />
 				<input
 					type="range"
-					min="0"
-					max="100"
-					step="5"
+					{...MUSIC_FADER}
 					value={mixer.music}
 					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
 					class="min-w-0 flex-1"
-					aria-label="music volume"
+					aria-label="music volume, {mixer.music}%"
+					title="music volume — {mixer.music}%"
 				/>
 			</div>
 		{/if}

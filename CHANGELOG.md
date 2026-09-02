@@ -17,6 +17,124 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.14] - 2026-09-02
+
+### Fixed
+
+- Volume faders move smoothly. Music, cues, the duck under a voice and another
+  rider's level jumped in 5 % notches — a step you cannot hear near full
+  volume, and a 6 dB leap down where you set a track under someone talking.
+  They now move a percent at a time, and the mixer reads out where it sits.
+- Joining voice or switching your camera on and off no longer makes the room's video stutter, the floating player carries only the video instead of a face beside it, and turning your camera off hands the camera back to your machine so other apps can use it again.
+
+## [2026.09.13] - 2026-09-02
+
+### Fixed
+
+- A right-click menu stays open until you use it: it no longer shuts itself about a second after opening, when the room's chat scrolled to its newest line.
+- Someone whose camera is on the stage is no longer drawn a second time in the tile grid, and focusing a rider is a Stage-layout thing now — in side-by-side and the grid, everyone stays one size.
+
+## [2026.09.12] - 2026-09-02
+
+### Fixed
+
+- Fixed the fault behind several odd behaviours in a room with a video playing: the player's position was fed back into the app's update cycle every frame, which could stop the room updating at all — navigating a place then changed the address without changing the page. Popping the player out also works now when the video is on the stage, where the button used to do nothing.
+- On a laptop-sized window, the chat and people sheet now opens over the video on the stage instead of under it — the jukebox transport, the chat and the room's people are reachable again while something is playing.
+
+## [2026.09.11] - 2026-09-02
+
+### Fixed
+
+- The jukebox panel no longer shows a blank box while the video plays on the stage: the slot the player docks into carries the track's own artwork.
+
+## [2026.09.10] - 2026-09-02
+
+### Fixed
+
+- Fixed a bug from the last release: with a video on the stage, moving between a room's places changed the address but left the page where it was. The jukebox panel keeps a picture-sized box while the stage has the video — that comes back once the underlying fault is fixed — but it no longer grows with the panel and takes the chat's room.
+
+## [2026.09.9] - 2026-09-02
+
+### Added
+
+Right-click now works where you would expect it: a friend in the sidebar, a member, a ride, a workout, the jukebox deck — not just a room row. Objects with nothing to offer hand the right-click back to your browser instead of swallowing it.
+
+### Fixed
+
+- When a browser mutes the room's music until you press play, it says so in a quiet line under the player instead of a wide magenta bar that looked like an error.
+- The jukebox panel no longer keeps an empty video box when the picture is on the stage or in the popped-out window — it says where the video is and gives the room back to the chat. When the panel does hold the player, the picture keeps a sane height instead of growing with the panel.
+- Messages no longer shows a second list beside the sidebar: the page is the conversation, and the sidebar you already have is the list. Right-click one of your rooms to read its chat without going in.
+- The start / plan a session window uses the height of your screen again instead of stopping short above the music player.
+
+## [2026.09.8] - 2026-09-02
+
+### Added
+
+- Right-click a person in the people column to message them, or a chat line to react, copy it, or queue the YouTube link in it.
+- Right-click (or long-press) a room in the sidebar, a rider's tile, the stage or a track in the queue for its actions: the places of a room and leaving it, focus and message, fit / pop out / fullscreen, vote / move / remove.
+- Watching together has three one-tap layouts on the Lounge — Stage, Split, Crew — so the picture or the cams get the room, remembered per device. Dragging the frame's edge still works for fine-tuning.
+- Messages is a place now: every room's chat and your DMs in one list, unread
+  first, and you can read and write in a room without joining it — whoever is
+  in the room sees your line as if you had typed it there, and a "N new" line
+  marks where you left off.
+- Each rider in voice has their own volume now — from their row in the people
+  column or on Members — and Join voice lives in one place, the people column.
+- While you are in a room but not on its Lounge — Training, Home, a message — the sidebar shows who is with you above your own panel: cameras when they are on, who is talking, who is riding, the last to speak first.
+- The sidebar names who is in each of your rooms under the room, not just how many, so you can see where your friends are before you go in.
+- Every member and friend has a page now: level, energy, medals from rooms
+  you share, and the rides they chose to share. Add a friend from it. Rides
+  stay private until you flip one to "shared" in Rides.
+- A trophy case at `/trophies`, one tap from the level tile on Home: your
+  medals, ten achievements with how far along each is, where every XP came
+  from, and the energy your legs have put into the trainer. XP now also
+  arrives off the bike — 1 XP per five minutes in a lounge's voice channel
+  (24 a day at most), 5 XP for a group session you were on the call for, and
+  100–500 XP once per achievement. Riding still pays best by a wide margin.
+
+### Changed
+
+- A room's calendar-link reset moved under Advanced on Sessions, with a line explaining what it is for: the link carries a private key, and resetting it is for when that key leaked.
+- The jukebox video plays inside the people column by default, where the deck is, instead of floating over the page; a pop-out button turns it into the draggable window when you want that, and the window has a button to put it back.
+- Room icons and reactions are drawn icons now, picked from a set in Room
+  settings, instead of emoji — they render the same on every device and in
+  every theme. A room that already had an emoji icon or reaction keeps
+  showing it as the matching drawn icon.
+
+### Removed
+
+- The Lounge's Leave button is gone again: the sidebar's leave icon on the room row disconnects you, and leaving a room's membership stays in its Settings.
+
+### Fixed
+
+- Home's "Plan a session" asks which room when you can plan in more than one, with the room you are in listed first, instead of quietly opening the first one.
+- The jukebox no longer crowds the chat out of the people column: the deck is capped at under half the column, the queue shows three lines with a "+n more", and "just played" is folded until you open it.
+- The start / plan a session window is wider, so the workout list and the preview stop fighting for room.
+- TV mode with a video playing: the player sits in the TV's top-right corner instead of floating over the numbers.
+- Joining voice, muting, turning your camera on, sharing your screen and leaving voice now sit at the top of the people column in every room, labelled — not two grey icons at the bottom of the sidebar.
+
+## [2026.09.7] - 2026-09-02
+
+### Added
+
+- Your theme and light/dark choice now follow your account: pick Tron Ice on the laptop and the TV shows Tron Ice too. The light/dark/auto switch is back, on your profile next to the palette — it had gone missing with the old room rail.
+
+### Changed
+
+- Every page uses the full width of the window instead of a narrow column on the left: Home gets a right rail for opening rooms and what's next, workouts sit in a grid, and the ride charts sit side by side on a wide screen.
+- The landing's claymation riders draw their tyres, bars and hubs in the room's own dark instead of Outrun's violet, so they sit right on Tron Ice and Miami Nights too — and a test now keeps every other colour on the theme's tokens, so a palette you pick reaches all of it.
+
+### Fixed
+
+- Delete and other destructive buttons are the same red in every theme instead
+  of borrowing zone 6's colour, which had turned them pastel pink. Error text,
+  failed-state banners and "eliminated" markers moved with them.
+- Opening a direct message no longer throws an update-depth error in the console on every visit.
+- The jukebox player no longer sits on top of every dialog and menu: floating, it stays under them. On the stage it now follows the stage the same frame something appears above it, and while something else is fullscreen it pauses for you instead of playing on unseen.
+- You can leave a room again: a member finds "Leave room" in the room's Settings (with an undo), and the Lounge has a Leave button that disconnects you next to the TV button.
+- The room you are in stays opened in the sidebar while you read a message or visit Home, so Training is one click away again instead of two.
+- A theme other than Outrun no longer flashes Outrun on every page load: the last applied theme is painted before the app bundle runs.
+Training zones are vivid again at the hard end. Zone 6 and 7 had faded to pale pink, so the hardest efforts were the palest thing on screen; the ramp now keeps its saturation, and every theme's zones are checked for colour-blind legibility as well as contrast.
+
 ## [2026.09.6] - 2026-09-01
 
 ### Changed
@@ -183,7 +301,15 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.6...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.14...HEAD
+[2026.09.14]: https://github.com/natrontech/wattroom/compare/2026.09.13...2026.09.14
+[2026.09.13]: https://github.com/natrontech/wattroom/compare/2026.09.12...2026.09.13
+[2026.09.12]: https://github.com/natrontech/wattroom/compare/2026.09.11...2026.09.12
+[2026.09.11]: https://github.com/natrontech/wattroom/compare/2026.09.10...2026.09.11
+[2026.09.10]: https://github.com/natrontech/wattroom/compare/2026.09.9...2026.09.10
+[2026.09.9]: https://github.com/natrontech/wattroom/compare/2026.09.8...2026.09.9
+[2026.09.8]: https://github.com/natrontech/wattroom/compare/2026.09.7...2026.09.8
+[2026.09.7]: https://github.com/natrontech/wattroom/compare/2026.09.6...2026.09.7
 [2026.09.6]: https://github.com/natrontech/wattroom/compare/2026.09.5...2026.09.6
 [2026.09.5]: https://github.com/natrontech/wattroom/compare/2026.09.4...2026.09.5
 [2026.09.4]: https://github.com/natrontech/wattroom/compare/2026.09.3...2026.09.4

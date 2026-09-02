@@ -44,6 +44,6 @@
 		>
 	{/if}
 	{#if room.rideError}
-		<p class="text-z6 text-xs">{room.rideError}</p>
+		<p class="text-danger text-xs">{room.rideError}</p>
 	{/if}
 </div>

@@ -163,7 +163,7 @@
 				<span
 					class="rounded px-2 py-0.5 text-xs {dump.hasFtms
 						? 'bg-z4/20 text-z4'
-						: 'bg-z6/20 text-z6'}"
+						: 'bg-danger/20 text-danger'}"
 					>FTMS {dump.hasFtms ? 'present' : 'absent'}</span
 				>
 				<span
@@ -193,7 +193,9 @@
 							<span class="text-muted"> · {service.uuid}</span>
 						</p>
 						{#if service.error}
-							<p class="text-z6 mt-1 font-mono text-[11px]">{service.error}</p>
+							<p class="text-danger mt-1 font-mono text-[11px]">
+								{service.error}
+							</p>
 						{/if}
 						<ul class="mt-1.5 space-y-1">
 							{#each service.characteristics as char (char.uuid)}
@@ -327,7 +329,9 @@
 			{#each log as entry, i (i)}
 				<li class="flex gap-3">
 					<span class="text-muted/60 tabular-nums">{entry.at}</span>
-					<span class={entry.bad ? 'text-z6' : 'text-muted'}>{entry.text}</span>
+					<span class={entry.bad ? 'text-danger' : 'text-muted'}
+						>{entry.text}</span
+					>
 				</li>
 			{:else}
 				<li class="text-muted">Nothing yet — hit Pair.</li>

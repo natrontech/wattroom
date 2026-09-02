@@ -89,7 +89,7 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 }
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token from users where friend_code = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme from users where friend_code = $1
 `
 
 // The formation gate (ADR-0012 amendment): knowing the code IS the permission
@@ -111,13 +111,15 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 		&i.FriendCode,
 		&i.AvatarPreset,
 		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
 	)
 	return i, err
 }
 
 const listFriendships = `-- name: ListFriendships :many
 select f.status, f.requester_id, u.id, u.display_name, u.avatar_url, u.avatar_preset,
-    (select coalesce(sum(xp), 0) from rides r where r.user_id = u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1

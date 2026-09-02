@@ -25,10 +25,19 @@ type RideUploader interface {
 	RideSaved(rideID pgtype.UUID)
 }
 
+// RideKeeper hears about every saved ride (#467): the trophy case judges ride
+// achievements from the samples in hand, because rides store no zone seconds.
+// Defined here, where it is consumed; nil means no gamification. Called after
+// the commit and expected to return at once — the keeper queues its own I/O.
+type RideKeeper interface {
+	RideSaved(userID pgtype.UUID, facts RideFacts)
+}
+
 type Saver struct {
 	store    *store.Store
 	log      *slog.Logger
 	uploader RideUploader
+	keeper   RideKeeper
 }
 
 func NewSaver(st *store.Store, log *slog.Logger) *Saver {
@@ -38,6 +47,15 @@ func NewSaver(st *store.Store, log *slog.Logger) *Saver {
 // SetUploader wires the worker in after construction (nil-safe: never store
 // a typed-nil in the interface).
 func (s *Saver) SetUploader(u RideUploader) { s.uploader = u }
+
+// SetRideKeeper wires the trophy case in the same way.
+func (s *Saver) SetRideKeeper(k RideKeeper) { s.keeper = k }
+
+// savedRide is one ride the keeper hears about once the transaction holds.
+type savedRide struct {
+	userID pgtype.UUID
+	facts  RideFacts
+}
 
 // save persists every rider's ride in one transaction (docs/SPEC.md:
 // stats compute on completion, in-process, <100 ms of math). Riders with
@@ -65,8 +83,9 @@ func (s *Saver) save(
 	saved := 0
 	results := make([]RiderResult, 0, len(riders))
 	rideIDs := make(map[string]pgtype.UUID)
+	kept := make([]savedRide, 0, len(riders))
 	for join, rider := range riders {
-		if len(rider.Samples) < 60 {
+		if len(rider.Samples) < hub.MinRideSamples {
 			continue
 		}
 		row, err := s.rideRow(room.ID, workoutName, workoutJSON, startedAt, rider)
@@ -87,6 +106,9 @@ func (s *Saver) save(
 		for i, sample := range rider.Samples {
 			watts[i] = sample.Watts
 		}
+		kept = append(kept, savedRide{
+			userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+		})
 		curve := PowerCurve(watts)
 		wkg := 0.0
 		if rider.Rider.WeightKg > 0 {
@@ -121,6 +143,11 @@ func (s *Saver) save(
 	if s.uploader != nil {
 		for _, id := range rideIDs {
 			s.uploader.RideSaved(id)
+		}
+	}
+	if s.keeper != nil {
+		for _, ride := range kept {
+			s.keeper.RideSaved(ride.userID, ride.facts)
 		}
 	}
 	s.log.Info("session saved", "room", roomSlug, "rides", saved)

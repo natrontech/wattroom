@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import '../app.css';
 	import '@fontsource/barlow/400.css';
 	import '@fontsource/barlow/600.css';
@@ -18,7 +19,8 @@
 	// /dev/components before this (#329); the scheme was correct only because
 	// RoomRail imports it and the shell renders RoomRail.
 	import '$lib/palette.svelte';
-	import '$lib/theme.svelte';
+	import { theme } from '$lib/theme.svelte';
+	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -30,6 +32,8 @@
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
+	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
+	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 
 	let { children } = $props();
 
@@ -45,6 +49,18 @@
 	const profile = createProfileStore();
 	$effect(() => {
 		if (account.me) pullProfile(profile);
+	});
+
+	// Appearance follows the account (#326): the server's choice wins over
+	// this device's; a device that chose first pushes its choice up. Untracked:
+	// adopting writes the stores it reads, and this effect is about `me`.
+	$effect(() => {
+		const me = account.me;
+		if (!me) return;
+		untrack(() => {
+			palette.adopt(me.accentPalette);
+			theme.adopt(me.colorScheme);
+		});
 	});
 
 	// ADR-0009: everything behind sign-in. /login is the only public route;
@@ -91,6 +107,13 @@
 				riders: roster.map((r) => r.name),
 			};
 		}),
+	);
+
+	// The room whose pages you are on opens in the sidebar — only under /r/:
+	// a room's thread on /messages carries the same slug param and is
+	// deliberately not standing in the room (#468).
+	const roomSlug = $derived(
+		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
 	);
 
 	// The member popout (#207): a rail click fetches the room's member list
@@ -229,7 +252,7 @@
 				<Sidebar
 					pathname={page.url.pathname}
 					rooms={shownRooms}
-					activeSlug={page.params?.slug ?? ''}
+					activeSlug={roomSlug}
 					connectedSlug={roomConnection.current.slug}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
 					onLeave={leaveRoom}
@@ -246,7 +269,7 @@
 				<Sidebar
 					pathname={page.url.pathname}
 					rooms={shownRooms}
-					activeSlug={page.params?.slug ?? ''}
+					activeSlug={roomSlug}
 				/>
 			{/if}
 		</div>
@@ -275,7 +298,7 @@
 		</div>
 		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
 		     auto-advance while the player is offscreen, so it cannot be a place.
-		     Threads became places instead (ADR-0020) — /dm/[peer]. -->
+		     Threads became places instead (ADR-0020) — /messages (#468). -->
 		<JukeboxDock />
 		{#if popout}
 			{@const room = shownRooms.find((r) => r.slug === popout?.slug)}
@@ -293,5 +316,8 @@
 	{@render children()}
 {/if}
 
-<!-- App-wide, framed or not — a toast must be able to land anywhere. -->
+<!-- App-wide, framed or not — a toast must be able to land anywhere, and a
+     picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
 <Toasts />
+<ImageViewer />
+<ContextMenuHost />

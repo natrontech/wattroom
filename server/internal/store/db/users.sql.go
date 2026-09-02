@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 insert into users (display_name, avatar_url, ftp_watts, weight_kg)
 values ($1, $2, $3, $4)
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
 `
 
 type CreateUserParams struct {
@@ -46,12 +46,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.FriendCode,
 		&i.AvatarPreset,
 		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -71,12 +73,14 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.FriendCode,
 		&i.AvatarPreset,
 		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
 	)
 	return i, err
 }
 
 const getUserByIcsToken = `-- name: GetUserByIcsToken :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token from users where ics_token = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme from users where ics_token = $1
 `
 
 func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User, error) {
@@ -96,6 +100,8 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.FriendCode,
 		&i.AvatarPreset,
 		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
 	)
 	return i, err
 }
@@ -168,12 +174,45 @@ func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlanned
 	return result.RowsAffected(), nil
 }
 
+const updateUserAppearance = `-- name: UpdateUserAppearance :one
+update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
+`
+
+type UpdateUserAppearanceParams struct {
+	ID            pgtype.UUID
+	AccentPalette *string
+	ColorScheme   *string
+}
+
+func (q *Queries) UpdateUserAppearance(ctx context.Context, arg UpdateUserAppearanceParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserAppearance, arg.ID, arg.AccentPalette, arg.ColorScheme)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+	)
+	return i, err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
     email = $6, notify_planned = $7, avatar_preset = $8
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
 `
 
 type UpdateUserProfileParams struct {
@@ -213,6 +252,8 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.FriendCode,
 		&i.AvatarPreset,
 		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
 	)
 	return i, err
 }

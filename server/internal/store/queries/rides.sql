@@ -107,4 +107,12 @@ where r.id = $1;
 
 -- name: UserTotalXp :one
 -- #253: lifetime XP → level (docs/SPEC.md thresholds, computed client-side).
-select coalesce(sum(xp), 0)::bigint from rides where user_id = $1;
+-- Rides plus the off-bike ledger (#467) — user_total_xp is the one definition.
+select user_total_xp($1)::bigint;
+
+-- name: SetRideShared :execrows
+-- Per-ride opt-in (WATTROOM.md privacy): the owner flips it, the timestamp
+-- remembers when; unsharing clears it. Owner-only by the where clause.
+update rides
+set shared_at = case when sqlc.arg(shared)::boolean then coalesce(shared_at, now()) else null end
+where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
