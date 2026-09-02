@@ -241,6 +241,7 @@
 		...av.stageSources.map((source) => ({
 			key: source.key,
 			kind: source.kind,
+			riderId: source.id,
 			gen: String(source.gen),
 			label:
 				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +

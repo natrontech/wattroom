@@ -31,8 +31,6 @@
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
-	const focused = $derived(room.riders.find((r) => r.id === room.focusId));
-	const others = $derived(room.riders.filter((r) => r.id !== room.focusId));
 
 	// The tile's right-click (#465): focus is the click, the rest lives here.
 	function tileMenu(rider: (typeof room.riders)[number]) {
@@ -109,6 +107,22 @@
 					'grid items-start gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,1fr)]'
 				: 'grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]',
 	);
+
+	// Whoever's camera is ON the stage is not also a tile (#506): the room
+	// showed the same person twice, big and small, which reads as a bug the
+	// moment the tiles are a grid rather than a strip under the picture.
+	const staged = $derived(
+		room.onStage?.kind === 'cam' ? room.onStage.riderId : undefined,
+	);
+	const tiles = $derived(room.riders.filter((r) => r.id !== staged));
+	// Focus belongs to the Stage layout, where there IS a big slot to focus
+	// into. Side by side and the grid already show everyone at one size, so a
+	// focused rider there was a third size for no reason.
+	const focusable = $derived(!room.onStage || layout === 'stage');
+	const focused = $derived(
+		focusable ? tiles.find((r) => r.id === room.focusId) : undefined,
+	);
+	const others = $derived(tiles.filter((r) => r.id !== focused?.id));
 </script>
 
 {#snippet tile(rider: (typeof room.riders)[number])}
@@ -243,13 +257,17 @@
 						? 'grid-cols-2'
 						: 'sm:grid-cols-2 2xl:grid-cols-3'}"
 				>
-					{#each room.riders as rider (rider.id)}
-						<button
-							onclick={() => room.setFocus(rider.id)}
-							class="block text-left"
-							title="focus {rider.name}"
-							{@attach tileMenu(rider)}>{@render tile(rider)}</button
-						>
+					{#each tiles as rider (rider.id)}
+						{#if focusable}
+							<button
+								onclick={() => room.setFocus(rider.id)}
+								class="block text-left"
+								title="focus {rider.name}"
+								{@attach tileMenu(rider)}>{@render tile(rider)}</button
+							>
+						{:else}
+							<div {@attach tileMenu(rider)}>{@render tile(rider)}</div>
+						{/if}
 					{/each}
 				</div>
 			{/if}
