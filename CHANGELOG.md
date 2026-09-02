@@ -17,6 +17,37 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.18] - 2026-09-02
+
+### Added
+
+- Planned sessions take an RSVP. Any member of a room can say they are in for
+  one, take it back, and see who else has committed — the Sessions place lists
+  them in the order they said yes. There is no maybe: you are in or you are
+  not.
+
+### Changed
+
+- The room's right column gives its height to whatever you are actually using. The jukebox folds its picture away while the video is playing on the stage — it was a 200 px placeholder for something already on your screen — and the people list folds to a row of faces you can open, which it does by itself mid-ride where the execution bars matter. Whichever one you leave open takes the space the other gives back.
+- A message now reaches you the same way wherever it comes from: a room you are standing in, a room you are not, or a DM. With the tab in front of you it arrives as a toast you can click to open the thread; behind another window it is still the browser notification. Chat in a room you have not joined used to announce nothing at all.
+- Unread marks read the same everywhere — the sidebar's DM dot no longer takes the live-data accent, and a room's Chat place carries a count of what was said while you were in another place.
+- Unread counts and the sidebar update the moment somebody speaks, instead of waiting up to a minute for the next refresh.
+- Voice, camera, screen share, sound and leave now live in one place: the you-panel at the bottom of the sidebar, on a row of their own. The duplicate set in the people column and the lounge header's Share screen button are gone.
+
+### Fixed
+
+The Members place opens again in rooms where a rider has collected more than one medal in a day. It used to leave you standing in the previous place with the address bar already moved, and a shared link to it never finished loading.
+- Your own rider page has a way in. Clicking yourself at the bottom of the
+  sidebar opens `/u/<you>` — the level, medals and shared rides other riders
+  see — the way clicking anyone else's avatar already did. The gear beside it
+  still goes to settings, and your page now links to the trophy case.
+- A session someone else plans now appears in the room's Sessions place and on
+  everyone's Home the moment it is planned, instead of on the next reload.
+  Moving or cancelling one, a role change, and a member joining or leaving
+  land the same way — the room you are standing in no longer only updates for
+  the person who changed it.
+- The Sensors page shows your trainer. Pairing happens in a room, and the page you open to check your equipment used to list every strap and sensor except the one device the ride depends on — it now names your trainer, says when it has dropped or has gone quiet, and lets you re-pair or forget it from there. The bias buttons also say why they are dead when nothing is paired, instead of just not responding.
+
 ## [2026.09.17] - 2026-09-02
 
 ### Added
@@ -374,7 +405,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.17...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.18...HEAD
+[2026.09.18]: https://github.com/natrontech/wattroom/compare/2026.09.17...2026.09.18
 [2026.09.17]: https://github.com/natrontech/wattroom/compare/2026.09.16...2026.09.17
 [2026.09.16]: https://github.com/natrontech/wattroom/compare/2026.09.15...2026.09.16
 [2026.09.15]: https://github.com/natrontech/wattroom/compare/2026.09.14...2026.09.15
