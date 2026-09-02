@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.9] - 2026-09-02
+
+### Added
+
+Right-click now works where you would expect it: a friend in the sidebar, a member, a ride, a workout, the jukebox deck — not just a room row. Objects with nothing to offer hand the right-click back to your browser instead of swallowing it.
+
+### Fixed
+
+- When a browser mutes the room's music until you press play, it says so in a quiet line under the player instead of a wide magenta bar that looked like an error.
+- The jukebox panel no longer keeps an empty video box when the picture is on the stage or in the popped-out window — it says where the video is and gives the room back to the chat. When the panel does hold the player, the picture keeps a sane height instead of growing with the panel.
+- Messages no longer shows a second list beside the sidebar: the page is the conversation, and the sidebar you already have is the list. Right-click one of your rooms to read its chat without going in.
+- The start / plan a session window uses the height of your screen again instead of stopping short above the music player.
+
 ## [2026.09.8] - 2026-09-02
 
 ### Added
@@ -252,7 +265,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.8...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.9...HEAD
+[2026.09.9]: https://github.com/natrontech/wattroom/compare/2026.09.8...2026.09.9
 [2026.09.8]: https://github.com/natrontech/wattroom/compare/2026.09.7...2026.09.8
 [2026.09.7]: https://github.com/natrontech/wattroom/compare/2026.09.6...2026.09.7
 [2026.09.6]: https://github.com/natrontech/wattroom/compare/2026.09.5...2026.09.6
