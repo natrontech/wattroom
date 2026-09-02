@@ -4,6 +4,7 @@ import {
 	bestOffer,
 	COLUMN_SEAT,
 	offerSeat,
+	outranksColumn,
 	onSeat,
 	RAIL_SEAT,
 	sameSeat,
@@ -153,6 +154,35 @@ describe('two surfaces offering', () => {
 		const b = { priority: 2, seat: null };
 		expect(bestOffer([a, b])?.w).toBe(1);
 		expect(bestOffer([])).toBeNull();
+	});
+
+	// The deck collapses its 200 px hole when the stage has the player (#504),
+	// and this is the flag it reads. It must answer only about surfaces ABOVE
+	// the column: the column hides its hole from the answer, so counting the
+	// column's own offer would close a loop — hidden, withdrawn, shown again.
+	it('says when a surface above the column is offering, ignoring the column', () => {
+		const column = hole({ left: 0, top: 0, width: 248, height: 200 });
+		const stage = hole({ left: 300, top: 50, width: 900, height: 500 });
+		expect(stageSlot.outranked).toBe(false);
+		const stopColumn = offerSeat(column.node, COLUMN_SEAT);
+		expect(stageSlot.outranked).toBe(false);
+		const stopStage = offerSeat(stage.node, STAGE_SEAT);
+		expect(stageSlot.outranked).toBe(true);
+		// The column withdrawing — which is what hiding the hole does — must
+		// not change the answer, or the deck flaps.
+		stopColumn();
+		expect(stageSlot.outranked).toBe(true);
+		stopStage();
+		expect(stageSlot.outranked).toBe(false);
+	});
+
+	it('outranksColumn counts only live offers above the column', () => {
+		const live = { priority: TV_SEAT, seat: { x: 0, y: 0, w: 1, h: 1 } };
+		const withdrawn = { priority: STAGE_SEAT, seat: null };
+		const mine = { priority: COLUMN_SEAT, seat: { x: 0, y: 0, w: 1, h: 1 } };
+		expect(outranksColumn([mine])).toBe(false);
+		expect(outranksColumn([mine, withdrawn])).toBe(false);
+		expect(outranksColumn([mine, live])).toBe(true);
 	});
 });
 
