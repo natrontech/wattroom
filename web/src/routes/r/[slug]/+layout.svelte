@@ -4,6 +4,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { activePlace } from '$lib/nav/pages';
 	import RoomShell from '$lib/room/RoomShell.svelte';
 
 	interface Member {
@@ -89,8 +90,20 @@
 		typeof window !== 'undefined' &&
 		!page.url.searchParams.has('full') &&
 		matchMedia('(max-width: 767px)').matches;
+	// The watch view is its own frame — the root layout unframes it and the
+	// page owns its own room feed. It is also the destination below, so it
+	// renders outside the shell rather than behind the gate that sends a
+	// phone to it, which had been swallowing the one view a phone is for.
+	const watching = $derived(page.url.pathname === `/r/${slug}/watch`);
+	// The Chat place is the exception to the redirect: what a phone cannot do
+	// is the cockpit — pair and ride want Web Bluetooth — and talking wants
+	// none of it. The watch view has no way to say anything back, and a phone
+	// in the room to talk is why the room is open on a phone at all.
+	const spectate = $derived(
+		phoneSpectator && activePlace(page.url.pathname, slug ?? '') !== '/chat',
+	);
 	$effect(() => {
-		if (!room || !isMember || !phoneSpectator) return;
+		if (!room || !isMember || !spectate || watching) return;
 		void goto(`/r/${room.slug}/watch`, { replaceState: true });
 	});
 </script>
@@ -128,6 +141,8 @@
 			</p>
 		</div>
 	</main>
+{:else if room && isMember && watching}
+	{@render children()}
 {:else if !room}
 	<!-- Loading: a page never renders blank (.claude/rules/errors.md) — a cold
 	     server takes seconds and the void read as broken. -->
@@ -145,7 +160,7 @@
 		     you are standing in (ADR-0020) — so the page's heading is for
 		     assistive tech: which room this is. -->
 		<h1 class="sr-only">{room.name}</h1>
-		{#if phoneSpectator}
+		{#if spectate}
 			<!-- redirecting to the watch view -->
 		{:else}
 			<RoomShell

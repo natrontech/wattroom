@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { MessageSquare } from '@lucide/svelte';
+	import { MessageSquare, Users } from '@lucide/svelte';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -102,6 +102,10 @@
 		icsToken?: string;
 		onRotateIcs: () => void;
 	} = $props();
+
+	// The Chat place gives the room's log the content column, so the panel
+	// keeps the people and the sheet becomes the way to them.
+	const chatPlace = $derived(activePlace(page.url.pathname, slug) === '/chat');
 
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
@@ -640,10 +644,13 @@
      for a chat no laptop-sized window could open (#219). -->
 <button
 	onclick={() => (chatSheet = true)}
-	class="bg-surface-raised ring-ink/15 fixed right-4 bottom-4 z-40 grid h-12 w-12 place-items-center rounded-full shadow-lg ring-1 xl:hidden"
-	aria-label="open chat"
+	class="bg-surface-raised ring-ink/15 fixed right-4 z-40 grid h-12 w-12
+	place-items-center rounded-full shadow-lg ring-1 xl:hidden {chatPlace
+		? 'bottom-20'
+		: 'bottom-4'}"
+	aria-label={chatPlace ? 'who is here' : 'open chat'}
 >
-	<MessageSquare size={18} />
+	{#if chatPlace}<Users size={18} />{:else}<MessageSquare size={18} />{/if}
 </button>
 {#if chatSheet}
 	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
@@ -667,7 +674,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
-		log={activePlace(page.url.pathname, slug) !== '/chat'}
+		log={!chatPlace}
 		onQueue={(url) => void addYouTubeUrl(url, live.jukebox)}
 		messages={live.chatLog}
 		events={[...live.roomEvents, ...reminders]}
