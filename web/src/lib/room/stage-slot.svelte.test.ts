@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+// `tick` here steps the fake re-measure timer; Svelte's is the effect flush.
+import { tick as flushEffects } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	bestOffer,
@@ -169,6 +171,28 @@ describe('reactivity', () => {
 		expect(stageSlot.seated).toBe(true);
 		expect('seat' in stageSlot).toBe(false);
 		stop();
+		expect(stageSlot.seated).toBe(false);
+	});
+
+	// The first publish runs inside a surface's `{@attach}` — an effect. An
+	// effect that READS the state it writes is invalidated by its own write,
+	// so the attachment tears down, re-attaches, publishes again, and Svelte
+	// stops the whole tree with effect_update_depth_exceeded (#502). The
+	// guard on `seated` was that read; the room wedged whenever a place
+	// offered the only seat, which is the Training place with a track playing.
+	it('offers a seat from inside an effect without re-running it (#502)', async () => {
+		const { node } = hole({ left: 0, top: 0, width: 300, height: 200 });
+		let runs = 0;
+		const dispose = $effect.root(() => {
+			$effect(() => {
+				runs++;
+				return offerSeat(node, 1);
+			});
+		});
+		await flushEffects();
+		expect(runs).toBe(1);
+		expect(stageSlot.seated).toBe(true);
+		dispose();
 		expect(stageSlot.seated).toBe(false);
 	});
 });

@@ -110,8 +110,13 @@ function settle() {
 	if (sameSeat(last, next)) return;
 	last = next;
 	// The boolean is the only reactive part, and it changes when a surface
-	// takes or gives up the seat — never with the rect.
-	if (stageSlot.seated !== !!next) stageSlot.seated = !!next;
+	// takes or gives up the seat — never with the rect. Assigned flat, never
+	// guarded by a read of itself: this runs inside a surface's attachment,
+	// and an effect that reads what it writes is invalidated by its own
+	// write — which tore the attachment down, re-attached it, published
+	// again, and wedged the room (#502). An unchanged boolean notifies
+	// nobody, so the guard only ever saved a no-op.
+	stageSlot.seated = !!next;
 	listener?.(next);
 }
 
