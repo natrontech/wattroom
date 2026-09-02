@@ -336,33 +336,44 @@
 	     never jumps (rider report: the height flicker read as broken). -->
 	<div class="border-ink/5 border-t px-3 py-2.5">
 		<div class="flex items-center gap-2">
-			<Avatar
-				name={account.me?.displayName ?? ''}
-				avatarUrl={account.me?.avatarUrl}
-				preset={account.me?.avatarPreset}
-				xp={account.me?.totalXp}
-				size={26}
-			/>
-			<span class="mr-auto min-w-0">
-				<span class="block truncate text-xs font-medium"
-					>{account.me?.displayName ?? ''}</span
-				>
-				{#if showAv}
-					<span class="block truncate text-[10px]">
-						{#if voiceStatus === 'live'}
-							<span class="text-z4">in voice</span>{camOn ? ' · camera on' : ''}
-						{:else if voiceStatus === 'connecting'}
-							<span class="text-muted">joining voice…</span>
-						{:else if voiceStatus === 'reconnecting'}
-							<span class="text-z5">voice reconnecting…</span>
-						{:else if voiceStatus === 'failed'}
-							<span class="text-danger">voice failed</span>
-						{:else}
-							<span class="text-muted">not in voice</span>
-						{/if}
-					</span>
-				{/if}
-			</span>
+			<!-- Your own rider page (#575). Everywhere else in the app an avatar
+			     opens /u/<id>; yours was the one that did not, and the gear
+			     beside it goes to settings — which are titled "Profile". -->
+			<a
+				href={account.me ? `/u/${account.me.id}` : undefined}
+				class="mr-auto flex min-w-0 items-center gap-2"
+				title="your rider page"
+			>
+				<Avatar
+					name={account.me?.displayName ?? ''}
+					avatarUrl={account.me?.avatarUrl}
+					preset={account.me?.avatarPreset}
+					xp={account.me?.totalXp}
+					size={26}
+				/>
+				<span class="min-w-0">
+					<span class="block truncate text-xs font-medium"
+						>{account.me?.displayName ?? ''}</span
+					>
+					{#if showAv}
+						<span class="block truncate text-[10px]">
+							{#if voiceStatus === 'live'}
+								<span class="text-z4">in voice</span>{camOn
+									? ' · camera on'
+									: ''}
+							{:else if voiceStatus === 'connecting'}
+								<span class="text-muted">joining voice…</span>
+							{:else if voiceStatus === 'reconnecting'}
+								<span class="text-z5">voice reconnecting…</span>
+							{:else if voiceStatus === 'failed'}
+								<span class="text-danger">voice failed</span>
+							{:else}
+								<span class="text-muted">not in voice</span>
+							{/if}
+						</span>
+					{/if}
+				</span>
+			</a>
 			{#if showAv}
 				<button
 					onclick={() => onMic?.()}
