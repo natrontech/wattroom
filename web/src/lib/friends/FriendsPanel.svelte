@@ -120,7 +120,10 @@
 						</span>
 						<span class="min-w-0">
 							<span class="flex items-center gap-1.5 text-sm font-medium">
-								{friend.name}
+								<!-- Their page (ADR-0024): shared rides, medals, the month. -->
+								<a href="/u/{friend.id}" class="hover:underline"
+									>{friend.name}</a
+								>
 								<!-- Lifetime level is friend-visible identity (#253);
 								     watts are not (ADR-0012). -->
 								<span class="text-muted/70 text-[10px] font-normal"
@@ -168,7 +171,15 @@
 					<div
 						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
 					>
-						<span class="text-sm font-medium">{friend.name}</span>
+						{#if friend.status === 'pending_in'}
+							<!-- Someone asking you gets a page: see who before you accept. -->
+							<a
+								href="/u/{friend.id}"
+								class="text-sm font-medium hover:underline">{friend.name}</a
+							>
+						{:else}
+							<span class="text-sm font-medium">{friend.name}</span>
+						{/if}
 						{#if friend.status === 'pending_in'}
 							<span class="text-muted text-xs">wants to be friends</span>
 							<span class="ml-auto flex shrink-0 items-center gap-3">

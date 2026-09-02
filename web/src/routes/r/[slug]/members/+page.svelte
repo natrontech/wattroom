@@ -38,17 +38,22 @@
 			{@const here = room.riders.find((r) => r.id === member.id)}
 			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
 			<li class="flex flex-wrap items-center gap-3 px-4 py-2.5">
-				<Avatar
-					name={member.displayName}
-					avatarUrl={member.avatarUrl}
-					preset={member.avatarPreset}
-					xp={member.totalXp}
-					size={32}
-				/>
+				<!-- A member is clickable (#448): their page, and add-friend on it. -->
+				<a href="/u/{member.id}" class="shrink-0">
+					<Avatar
+						name={member.displayName}
+						avatarUrl={member.avatarUrl}
+						preset={member.avatarPreset}
+						xp={member.totalXp}
+						size={32}
+					/>
+				</a>
 				<span class="min-w-0 flex-1">
 					<span class="flex items-center gap-1.5">
-						<span class="truncate text-sm font-medium"
-							>{member.displayName}</span
+						<a
+							href="/u/{member.id}"
+							class="hover:text-ink truncate text-sm font-medium hover:underline"
+							>{member.displayName}</a
 						>
 						{#if member.role === 'owner'}
 							<Crown size={12} class="text-muted" />

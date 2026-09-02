@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatClockLong, formatWhen, wkg } from './format';
+import {
+	formatClock,
+	formatClockLong,
+	formatDuration,
+	formatWhen,
+	wkg,
+} from './format';
+
+describe('formatDuration', () => {
+	it('says minutes under an hour and h mm past it', () => {
+		expect(formatDuration(0)).toBe('0 min');
+		expect(formatDuration(48 * 60 + 20)).toBe('48 min');
+		expect(formatDuration(3600)).toBe('1 h 00');
+		expect(formatDuration(9 * 3600 + 40 * 60)).toBe('9 h 40');
+		expect(formatDuration(-5)).toBe('0 min');
+	});
+});
 
 describe('formatClock', () => {
 	it('renders m:ss with unbounded minutes (editor round-trip shape)', () => {

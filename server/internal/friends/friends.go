@@ -130,29 +130,54 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Code string `json:"code"`
+		// A rider's page (ADR-0024) asks by id — allowed only across a
+		// shared room, so the code itself never has to travel.
+		UserID string `json:"userId"`
 	}
 	if err := httpx.DecodeStrict(r, &body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Send a JSON body with a friend code.")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "Send a JSON body with a friend code or a rider id.")
 		return
 	}
-	// The formation gate (ADR-0012 amendment): knowing someone's code IS the
-	// permission to ask them.
-	code := strings.ToUpper(strings.TrimSpace(body.Code))
-	if code == "" {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Enter a friend code.", "code")
-		return
+	var target pgtype.UUID
+	if body.UserID != "" {
+		id, err := store.ParseUUID(body.UserID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a rider id.")
+			return
+		}
+		if id == me.ID {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That would be you.")
+			return
+		}
+		// The room is the formation gate here (ADR-0012's original rule): no
+		// room in common, no request — and no confirmation that the id exists.
+		shared, err := s.store.Queries.ListRoomsInCommon(r.Context(), db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
+		if err != nil || len(shared) == 0 {
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider there that you share a room with — ask them for their code instead.")
+			return
+		}
+		target = id
+	} else {
+		// The formation gate (ADR-0012 amendment): knowing someone's code IS
+		// the permission to ask them.
+		code := strings.ToUpper(strings.TrimSpace(body.Code))
+		if code == "" {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Enter a friend code.", "code")
+			return
+		}
+		user, err := s.store.Queries.GetUserByFriendCode(r.Context(), code)
+		if err != nil {
+			httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No rider has that code — double-check it with them.", "code")
+			return
+		}
+		if user.ID == me.ID {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "invalid_request", "That is your own code.", "code")
+			return
+		}
+		target = user.ID
 	}
-	target, err := s.store.Queries.GetUserByFriendCode(r.Context(), code)
-	if err != nil {
-		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No rider has that code — double-check it with them.", "code")
-		return
-	}
-	if target.ID == me.ID {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "invalid_request", "That is your own code.", "code")
-		return
-	}
-	err = s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
-		RequesterID: me.ID, AddresseeID: target.ID,
+	err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
+		RequesterID: me.ID, AddresseeID: target,
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {

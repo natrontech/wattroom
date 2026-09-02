@@ -32,6 +32,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/progression"
+	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -124,6 +125,7 @@ func main() {
 		chatService.Register(mux)
 		h.SetChatKeeper(chatService)
 		friends.New(st, authService, h, log).Register(mux)
+		riders.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// The lobby socket (#251): held by every signed-in client — online for

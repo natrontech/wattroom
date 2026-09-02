@@ -19,6 +19,13 @@ export function formatClockLong(sec: number): string {
 	return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
 }
 
+/** Ride-length prose: "48 min" under an hour, "9 h 40" past it. */
+export function formatDuration(seconds: number): string {
+	const minutes = Math.max(0, Math.round(seconds / 60));
+	if (minutes < 60) return `${minutes} min`;
+	return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+}
+
 /** Session times: "Thu 18:30", with day/month when the date matters. */
 export function formatWhen(iso: string, withDate = false): string {
 	return new Date(iso).toLocaleString(undefined, {
