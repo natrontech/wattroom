@@ -17,6 +17,45 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.15] - 2026-09-02
+
+### Added
+
+- Add friend is now one right-click away from anyone you ride with — a tile in the lounge, a row in the people column, a name on the members page. Their page keeps its button; you no longer have to go there. The people column's menu also gained View profile, which it was missing.
+- The mix and the voice gate are reachable from inside a room again: a **Sound** button beside Join voice opens the music, cue and duck faders, your gate on its meter, the riders you have turned up or down, and the mic and speaker pickers — without leaving the ride for the profile page.
+- Open any past ride to see how it went — the graph with your trace, time in
+  zone, the numbers and any medals — and delete one you don't want to keep.
+
+### Fixed
+
+- A trainer that misses one command keeps working — before, a single timeout or a Bluetooth blip could silently end ERG control for the rest of the ride, and the trainer just held its last resistance.
+- Clicking a picture in a room's chat or a DM opens it big in WattRoom itself, instead of handing it to a new browser tab that took the room with it. Click it again for full size, Escape or the backdrop to come back — and the new tab is still there on right-click.
+The rider tiles are legible in the light theme instead of washed out, and the small tiles in the sidebar say who is speaking, riding or muted exactly the way the big ones do.
+- A right-click menu on a rider stays open. It was closing itself about a second after it opened — the room rebuilds the people it shows on every update from the server, and the menu was going away with the row it was drawn on.
+Pair a trainer from Training, not just the Lounge. Riders who opened Training with nothing paired saw an instrument stuck at 0 W and had to go back a place to fix it.
+Ending a session now asks first. The coach's End control ran on the first tap, and a stray thumb on a 44 px target stopped the ride for everyone in the room with no way back.
+The "Open Rides" button now appears on your own profile when you haven't shared a ride yet. It was written but never rendered, so the empty state explained how to share a ride without giving you the way there.
+- Zooming into a screenshare stays zoomed. The stage snapped back to 1× about
+  half a second after every zoom — once per room tick — which made reading a
+  chart or a settings dialog on someone else's screen impossible. The zoom now
+  belongs to the picture: it returns to fit when you pick another source, or
+  when the sharer stops and shares again.
+- Your trainer stays paired while you browse. Opening your workouts, your
+  profile or anything else outside the room quietly disconnected it, even
+  though you were still standing in the room — and pairing again made the
+  server treat the rest of your ride as duplicates, so the session summary and
+  the execution meter stopped counting a ride you were still doing. The
+  trainer now belongs to the room you are in, and is released when you leave
+  it or start a solo ride.
+- A paired trainer that stops delivering now says so. "Unpair trainer" used to
+  be the only thing the room could show, so a trainer that dropped, that
+  reconnected in a loop, or that never sent a single watt looked exactly like
+  one that was working. The room now carries the same persistent banner it
+  already had for a lost connection or a dropped call, with a button to pair
+  again.
+- Voice activation no longer cuts you off mid-sentence, and the mic meter no longer dances in a silent room. The level is now measured continuously on the audio thread instead of sampled nine times a second, the gate opens fast and closes slowly (and fades instead of cutting), and automatic gain control is off — it was raising your room's noise the moment you stopped talking.
+- The room now shows who is in voice before you are. Walking into a room where three people were already talking used to read "in voice, 0", listing all of them under "in the room" instead, until you pressed Join voice yourself.
+
 ## [2026.09.14] - 2026-09-02
 
 ### Fixed
@@ -301,7 +340,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.14...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.15...HEAD
+[2026.09.15]: https://github.com/natrontech/wattroom/compare/2026.09.14...2026.09.15
 [2026.09.14]: https://github.com/natrontech/wattroom/compare/2026.09.13...2026.09.14
 [2026.09.13]: https://github.com/natrontech/wattroom/compare/2026.09.12...2026.09.13
 [2026.09.12]: https://github.com/natrontech/wattroom/compare/2026.09.11...2026.09.12
