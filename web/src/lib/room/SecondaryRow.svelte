@@ -24,6 +24,10 @@
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
 		onBias?: (step: number) => void;
 	} = $props();
+
+	// A dead control with no reason reads as a broken feature — riders report
+	// "bias does nothing" when what is missing is the trainer it trims (#565).
+	const NO_TRAINER = 'Pair a trainer — bias trims the target it holds';
 </script>
 
 <div class="flex items-center gap-6">
@@ -41,6 +45,7 @@
 		<button
 			onclick={() => onBias?.(-0.01)}
 			disabled={!onBias}
+			title={onBias ? 'Ease the target by one percent' : NO_TRAINER}
 			class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 			aria-label="ease the target by one percent">−</button
 		>
@@ -54,6 +59,7 @@
 		<button
 			onclick={() => onBias?.(0.01)}
 			disabled={!onBias}
+			title={onBias ? 'Raise the target by one percent' : NO_TRAINER}
 			class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 			aria-label="raise the target by one percent">+</button
 		>

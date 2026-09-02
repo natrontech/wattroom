@@ -2,7 +2,14 @@
 	import { dev } from '$app/environment';
 	import DeviceSlot, { type Slot } from '$lib/components/DeviceSlot.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
+	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import { sensors } from '$lib/sensors.svelte';
+
+	// The trainer is paired in a ROOM (#521) and this page could not see it, so
+	// the one screen a rider opens to check their equipment was silent about the
+	// only device the ride depends on (#565).
+	const ride = $derived(roomConnection.current?.ride);
 
 	// What each sensor buys the rider. Capability gating needs a reason, not a shrug
 	// (.claude/rules/ux.md) — and for two of these the honest answer is "probably
@@ -31,10 +38,38 @@
 		},
 	};
 
+	const trainerSlot: Slot = {
+		id: 'trainer',
+		label: 'Trainer',
+		need: 'Pairing lives in the room — open one and pair from the Lounge or the Training place.',
+		required: true,
+		protocol: 'FTMS · 0x1826',
+	};
+
 	const kinds = Object.keys(slots) as SensorKind[];
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
-	let pairing = $state<SensorKind | null>(null);
+	let pairing = $state<SensorKind | 'trainer' | null>(null);
+
+	/** #520's fault states, said in words a rider can act on. */
+	const trainerState = $derived(
+		pairing === 'trainer'
+			? ('connecting' as const)
+			: ride?.trainer
+				? ride.fault === 'reconnecting'
+					? ('connecting' as const)
+					: ('connected' as const)
+				: ride?.error
+					? ('failed' as const)
+					: ('idle' as const),
+	);
+
+	async function pairTrainer() {
+		if (!ride) return;
+		pairing = 'trainer';
+		await ride.ride(new FtmsTrainer());
+		pairing = null;
+	}
 
 	async function pair(kind: SensorKind, simulated = false) {
 		pairing = kind;
@@ -67,7 +102,8 @@
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Sensors</h1>
 			<p class="text-muted text-xs">
-				All optional. Your trainer is paired when you start a ride.
+				Your trainer, and whatever else you strap on. Everything below it is
+				optional.
 			</p>
 		</div>
 	</div>
@@ -82,6 +118,26 @@
 	{/if}
 
 	<div class="mt-8 grid gap-3">
+		<DeviceSlot
+			slot={{
+				...trainerSlot,
+				device: ride?.trainer?.name,
+				// Paired but silent is not working (#520) — say so where the rider
+				// is looking, rather than reading as a healthy trainer.
+				protocol:
+					ride?.fault === 'silent'
+						? 'FTMS · 0x1826 · no watts yet — turn the cranks'
+						: trainerSlot.protocol,
+			}}
+			state={trainerState}
+			supported={supported && !!ride}
+			onPair={() => void pairTrainer()}
+			onForget={() => ride?.unpair()}
+		/>
+		{#if ride?.error && pairing !== 'trainer'}
+			<p class="text-muted -mt-1 px-5 text-xs">{ride.error}</p>
+		{/if}
+
 		{#each kinds as kind (kind)}
 			{@const slot = sensors.slot(kind)}
 			<DeviceSlot
