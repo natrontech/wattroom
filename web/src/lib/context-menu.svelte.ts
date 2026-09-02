@@ -131,7 +131,12 @@ export function contextMenu(
 			node.removeEventListener('pointerup', cancel);
 			node.removeEventListener('pointermove', cancel);
 			node.removeEventListener('pointercancel', cancel);
-			if (menu.anchor === node) closeMenu();
+			// Only a row that actually WENT AWAY takes its menu with it. A live
+			// row re-renders under an open menu constantly — the roster is
+			// rebuilt from every server tick, so `{@attach tileMenu(rider)}`
+			// re-runs about once a second — and that teardown is the same node
+			// coming straight back, not the rider leaving (#529).
+			if (menu.anchor === node && !node.isConnected) closeMenu();
 		};
 	};
 }
