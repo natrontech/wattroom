@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.16] - 2026-09-02
+
+### Changed
+
+- The Strava sign-in button on the login screen is now Strava's own "Connect with Strava" button, as their brand guidelines require. Nothing about signing in changes — the button just looks the way Strava says it must, which is a precondition for raising how many riders can connect their Strava account.
+
+### Fixed
+
+Your ride record keeps every watt after a re-pair or a mid-session page reload — the trainer's numbers used to reach the room's tiles but vanish from the saved ride. Signing out now releases the trainer too.
+
 ## [2026.09.15] - 2026-09-02
 
 ### Added
@@ -340,7 +350,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.15...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.16...HEAD
+[2026.09.16]: https://github.com/natrontech/wattroom/compare/2026.09.15...2026.09.16
 [2026.09.15]: https://github.com/natrontech/wattroom/compare/2026.09.14...2026.09.15
 [2026.09.14]: https://github.com/natrontech/wattroom/compare/2026.09.13...2026.09.14
 [2026.09.13]: https://github.com/natrontech/wattroom/compare/2026.09.12...2026.09.13

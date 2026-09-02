@@ -5,6 +5,12 @@ description: Verify a WattRoom change end-to-end by running the real app, not ju
 
 # Verify a change in the running app
 
+**Mute first.** Anything you queue plays out of the operator's speakers. Before
+starting playback, set `music` to 0 (and `cues` to 0 if the flow rings any) in
+`wattroom.mixer.v1` in the browser's localStorage — the store reads it on load,
+so do it before the room page mounts, or reload after. Skip this only when the
+audio is what you are verifying. See AGENTS.md, Hard rules.
+
 1. `make test && make lint` — baseline. Race detector is on; flaky-under-race means broken.
 2. Static path (fastest full-stack check):
    - `make build` (embeds the frontend), run `./bin/wattroom-server`

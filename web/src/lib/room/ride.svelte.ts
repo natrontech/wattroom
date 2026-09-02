@@ -45,7 +45,6 @@ export function createRide(deps: RideDeps) {
 	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
 	let status = $state<TrainerStatus>('disconnected');
 	let lastSampleAt = $state(0);
-	let seq = 0;
 	let unsubscribe: (() => void)[] = [];
 
 	/**
@@ -138,7 +137,7 @@ export function createRide(deps: RideDeps) {
 							? metrics.from.heartRate
 							: null;
 					deps.live.sendMetrics(
-						wireMetrics(metrics, deps.profile.current.shareHr, ++seq),
+						wireMetrics(metrics, deps.profile.current.shareHr),
 					);
 					const shared = deps.shared();
 					if (shared?.phase === 'running')
