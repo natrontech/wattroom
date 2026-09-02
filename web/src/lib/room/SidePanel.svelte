@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import {
+		ListPlus,
+		MessageSquare,
 		CalendarClock,
 		Copy,
 		Crown,
@@ -29,6 +31,8 @@
 	import { compressImage } from '$lib/chat/media';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
+	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
@@ -126,6 +130,36 @@
 
 	let reactingTo = $state<string | null>(null);
 
+	// A message's right-click (#465): react, copy, queue the link it carries.
+	const YOUTUBE = /https?:\/\/[^\s]*(?:youtube\.com|youtu\.be)[^\s]*/;
+	function messageMenu(message: { id?: string; text: string }): MenuEntry[] {
+		const entries: MenuEntry[] = [];
+		if (message.id && onReact) {
+			const id = message.id;
+			entries.push({
+				label: 'React',
+				icon: SmilePlus,
+				onSelect: () => (reactingTo = id),
+			});
+		}
+		if (message.text)
+			entries.push({
+				label: 'Copy text',
+				icon: Copy,
+				onSelect: () => void navigator.clipboard?.writeText(message.text),
+			});
+		const link = message.text.match(YOUTUBE)?.[0];
+		if (link && onQueue) {
+			const url = link;
+			entries.push({
+				label: 'Queue on the jukebox',
+				icon: ListPlus,
+				onSelect: () => onQueue(url),
+			});
+		}
+		return entries;
+	}
+
 	// Chat is the room's timeline (#321): what riders typed and what the room
 	// did, in one chronological list.
 	const timeline = $derived(roomTimeline(messages, events));
@@ -192,6 +226,17 @@
 		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
+		{@attach contextMenu(() =>
+			rider.you
+				? []
+				: [
+						{
+							label: 'Message',
+							icon: MessageSquare,
+							onSelect: () => void goto(`/dm/${rider.id}`),
+						},
+					],
+		)}
 	>
 		<span class="relative shrink-0">
 			<Avatar name={rider.name} size={22} />
@@ -393,7 +438,10 @@
 							prev?.kind === 'message' &&
 							prev.message.from === message.from &&
 							message.at - prev.at < GROUP_GAP_MS}
-						<li class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}">
+						<li
+							class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}"
+							{@attach contextMenu(() => messageMenu(message))}
+						>
 							<div class="flex items-baseline gap-1.5">
 								{#if !grouped}
 									<span class="text-muted min-w-0 truncate font-medium"

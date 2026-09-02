@@ -1,0 +1,1 @@
+- Right-click a person in the people column to message them, or a chat line to react, copy it, or queue the YouTube link in it.
