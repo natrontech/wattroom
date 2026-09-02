@@ -15,6 +15,7 @@
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import {
+		Headphones,
 		LogOut,
 		CalendarClock,
 		MonitorUp,
@@ -47,8 +48,8 @@
 		<SessionControls />
 		{#if av && account.me?.avEnabled}
 			{#if av.status === 'off' || av.status === 'failed'}
-				<button onclick={() => void av.join()} class="btn btn-secondary"
-					>Join voice</button
+				<button onclick={() => void av.join()} class="btn btn-primary"
+					><Headphones size={14} /> Join voice</button
 				>
 			{:else}
 				<button
