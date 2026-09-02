@@ -38,6 +38,7 @@ type harness struct {
 	mux   *http.ServeMux
 	store *store.Store
 	users *fakeUsers
+	svc   *Service
 }
 
 func setup(t *testing.T) *harness {
@@ -69,8 +70,9 @@ func setup(t *testing.T) *harness {
 	}
 
 	mux := http.NewServeMux()
-	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
-	return &harness{mux: mux, store: st, users: users}
+	svc := New(st, users, slog.New(slog.DiscardHandler))
+	svc.Register(mux)
+	return &harness{mux: mux, store: st, users: users, svc: svc}
 }
 
 // call runs one request as a user ("" = signed out) and decodes the JSON body.

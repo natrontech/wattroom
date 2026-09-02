@@ -91,14 +91,17 @@ func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Roo
 	return room, user, true
 }
 
-// announce puts one plan line on the room's live timeline (#359). Silent
-// without a hub — planning still works, the room just hears about it when
-// someone reloads.
+// announce puts one plan line on the room's live timeline (#359) and pings
+// every lobby socket so the Sessions place and Home re-fetch the plan they
+// show (#570) — the line says it happened, the ping is what makes the list
+// agree. Silent without a hub: planning still works, the room just hears
+// about it when someone reloads.
 func (s *Service) announce(room db.Room, verb, actor, workout string, startsAt time.Time) {
 	if s.presence == nil {
 		return
 	}
 	s.presence.SessionAnnounce(room.Slug, verb, actor, workout, startsAt)
+	s.presence.PresenceChanged()
 }
 
 func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
