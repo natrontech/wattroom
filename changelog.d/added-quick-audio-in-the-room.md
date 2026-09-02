@@ -1,0 +1,1 @@
+- The mix and the voice gate are reachable from inside a room again: a **Sound** button beside Join voice opens the music, cue and duck faders, your gate on its meter, the riders you have turned up or down, and the mic and speaker pickers — without leaving the ride for the profile page.

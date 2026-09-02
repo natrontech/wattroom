@@ -79,9 +79,17 @@ What the merge does **not** give up — these were the whole point:
    navigation on every screen, so a destination has exactly one home.
 2. **The you panel is pinned at the bottom** (#181 gap 2) — avatar, mic, cam,
    voice status, cog. What leaves the rail is the per-rider mixer, the gate
-   slider and the theme cycle: desk settings that were living in a 208 px strip
-   you also navigate rooms with. They go behind the cog, with Profile, Sensors
-   and the ramp test.
+   slider and the theme cycle: they were living in a 208 px strip you also
+   navigate rooms with, and the rail is navigation. The theme cycle goes behind
+   the cog, with Profile, Sensors and the ramp test.
+
+   **Leaving the rail is not the same as leaving the room.** The mixer and the
+   gate are ridden with, not set up once — see the
+   [2026-09-02 amendment](#amendment--the-mix-and-the-gate-come-back-into-the-room-2026-09-02),
+   which supersedes this point's original reading and gives them a home in the
+   room's own people column. A control you only need *before* you ride belongs
+   behind the cog; a control you discover is wrong *while* riding gets a
+   shortcut where you are standing.
 3. **Every room still carries its signal** (#181 gap 4) — live dot, unread
    count, mention badge, "Sweet Spot 2×20, 12 min in", who is in voice. That is
    ADR-0010's crew radar, and it is why rooms keep **names** rather than
@@ -248,6 +256,49 @@ with the other a link away; starting and planning had been one modal with two
 stacked sections, which is how riders stopped finding either. And a YouTube
 link in the chat carries a Queue button: that is the reason a link lands in the
 chat during a ride at all.
+
+## Amendment — the mix and the gate come back into the room (2026-09-02)
+
+Decision point 2 originally sent "the per-rider mixer, the gate slider and the
+theme cycle" behind the cog together, on the grounds that all three are *desk
+settings* — set once, not reached for mid-interval. Ridden, half of that is
+wrong (#477). This amendment is the authority for the mixer and the gate; the
+point above now carries the rule it was missing, which is this one:
+
+> A control is a desk setting when you only need it **before** you ride. A
+> control you discover is wrong **while** riding needs a shortcut inside the
+> room, whatever it costs in chrome.
+
+The gate and the mix are the second kind, and they are the second kind for the
+same reason: you cannot tell they are wrong from a desk. The gate is right
+until the fan comes on. The mix is right until someone talks over music you
+then cannot hear them through — which is the moment you need the music fader,
+the duck depth and that rider's volume, and the moment the cog was asking you
+to navigate out of the room onto a page that also holds FTP, sensors and the
+theme. Riding is exactly when the levels are wrong.
+
+So the room gets a **Sound** panel, opened from the people column beside
+Join voice / Mic / Camera (`QuickAudio.svelte`): gate mode and the gate on the
+shared dB axis, music, cues and duck, the riders set off unity with a reset
+each, and the mic and speaker pickers. Big targets and no precision gestures
+(`ux.md`) — a modal rather than a popover, because 272 px of column is not
+where you drag a fader at 160 bpm, and `Modal` already keeps the jukebox dock
+out of its own way.
+
+What does not change:
+
+- **`/profile` keeps the whole page.** The room's panel is a shortcut, never
+  the only way in — the same rule `ux.md` states for the context menu. The
+  camera picker, push-to-talk's explanation and the mic test's full context
+  stay there.
+- **One implementation, two surfaces.** `GateTune` and `MixFaders` were lifted
+  out of `VoiceSettings` and are rendered by both. A second copy of a fader
+  block is how the two homes drift apart.
+- **The theme cycle stays behind the cog.** Nobody re-themes mid-interval; it
+  was correctly classified.
+- **The rail is still not where this lives.** What the original decision was
+  actually right about is that these do not belong in a 208 px strip you also
+  navigate rooms with. They live in the room, not in the navigation.
 
 ## Consequences
 
