@@ -1,4 +1,4 @@
-# 0020 — How a theme is constructed
+# 0023 — How a theme is constructed
 
 - Status: accepted
 - Date: 2026-09-01

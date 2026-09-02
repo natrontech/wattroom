@@ -42,7 +42,7 @@ const SPECS: ThemeSpec[] = [
 			paper: '#000000',
 			// Pinned, not derived. Outrun is the reference every other theme is
 			// measured against, and between #331 and #396 a derivation change
-			// moved it without a decision (ADR-0020, consequences).
+			// moved it without a decision (ADR-0023, consequences).
 			z1: '#4a3a78',
 			z2: '#4361ee',
 			z3: '#00b4d8',
