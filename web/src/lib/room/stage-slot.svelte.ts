@@ -104,10 +104,16 @@ export function sameSeat(a: Seat | null, b: Seat | null): boolean {
 }
 
 const offers = new Map<HTMLElement, { priority: number; seat: Seat | null }>();
-// The last seat published, kept here rather than read back from the store:
+// What was last published, kept here rather than read back from the store:
 // the first publish runs inside a surface's attachment (an effect), and an
-// effect must never depend on the state it writes.
+// effect must never depend on the state it writes. Reading `stageSlot.seated`
+// or `.outranked` to decide whether to write it registers exactly that
+// dependency, and the offer's own attachment then re-runs — teardown,
+// re-register, publish — every time the flag flips. That is the mount churn
+// #494 died of, so every comparison below is against these plain mirrors.
 let last: Seat | null = null;
+let lastSeated = false;
+let lastOutranked = false;
 
 /** The highest-priority live offer wins; ties go to whoever offered last. */
 export function bestOffer(
@@ -158,12 +164,18 @@ function settle() {
 	// Settled before the rect's early return: a surface above the column can
 	// appear or go without moving the winning seat by a pixel.
 	const outranked = outranksColumn(offers.values());
-	if (stageSlot.outranked !== outranked) stageSlot.outranked = outranked;
+	if (lastOutranked !== outranked) {
+		lastOutranked = outranked;
+		stageSlot.outranked = outranked;
+	}
 	if (sameSeat(last, next)) return;
 	last = next;
 	// The booleans are the only reactive part, and they change when a surface
 	// takes or gives up the seat — never with the rect.
-	if (stageSlot.seated !== !!next) stageSlot.seated = !!next;
+	if (lastSeated !== !!next) {
+		lastSeated = !!next;
+		stageSlot.seated = !!next;
+	}
 	listener?.(next);
 }
 
