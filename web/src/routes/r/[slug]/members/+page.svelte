@@ -10,13 +10,54 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { wkg } from '$lib/format';
-	import { Crown, Copy } from '@lucide/svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
+	import { goto } from '$app/navigation';
+	import { Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
 
 	const medalsOf = (name: string) =>
 		room.medals.filter((m) => m.rider === name).length;
+
+	type Member = (typeof room.members)[number];
+	/** Owner paperwork, one place: the row's buttons and its menu run these. */
+	const canAdmin = (member: Member) =>
+		isOwner && member.id !== account.me?.id && !room.adminBusy;
+	const toggleRole = (member: Member) =>
+		room.setRole(member.id, member.role === 'coach' ? 'member' : 'coach');
+	const roleLabel = (member: Member) =>
+		member.role === 'coach' ? 'Make member' : 'Make coach';
+
+	// Their page and their DM on every member (#486), plus the paperwork the
+	// row already offers an owner — remove last, after a separator.
+	function memberMenu(member: Member): MenuEntry[] {
+		const entries: MenuEntry[] = personMenu(member.id, goto, {
+			you: member.id === account.me?.id,
+		});
+		if (canAdmin(member)) {
+			entries.push(
+				{
+					label: roleLabel(member),
+					icon: member.role === 'coach' ? UserMinus : Crown,
+					onSelect: () => toggleRole(member),
+				},
+				'separator',
+				{
+					label: 'Remove from the room',
+					icon: UserX,
+					onSelect: () => room.removeMember(member.id),
+					danger: true,
+				},
+			);
+		}
+		return entries;
+	}
 
 	async function copyInvite() {
 		await navigator.clipboard.writeText(`${location.origin}/r/${room.slug}`);
@@ -37,7 +78,11 @@
 			{@const medals = medalsOf(member.displayName)}
 			{@const here = room.riders.find((r) => r.id === member.id)}
 			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
-			<li class="flex flex-wrap items-center gap-3 px-4 py-2.5">
+			<li
+				class="flex flex-wrap items-center gap-3 px-4 py-2.5"
+				title={MENU_HINT}
+				{@attach contextMenu(() => memberMenu(member))}
+			>
 				<!-- A member is clickable (#448): their page, and add-friend on it. -->
 				<a href="/u/{member.id}" class="shrink-0">
 					<Avatar
@@ -91,14 +136,9 @@
 				{/if}
 				{#if isOwner && member.id !== account.me?.id}
 					<button
-						onclick={() =>
-							room.setRole(
-								member.id,
-								member.role === 'coach' ? 'member' : 'coach',
-							)}
+						onclick={() => toggleRole(member)}
 						disabled={room.adminBusy}
-						class="btn btn-ghost btn-xs shrink-0"
-						>{member.role === 'coach' ? 'Make member' : 'Make coach'}</button
+						class="btn btn-ghost btn-xs shrink-0">{roleLabel(member)}</button
 					>
 					<button
 						onclick={() => room.removeMember(member.id)}

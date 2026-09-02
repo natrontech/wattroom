@@ -1,10 +1,19 @@
 <script lang="ts">
-	import { Gauge } from '@lucide/svelte';
+	import { Copy, Gauge, Pencil, Play, Trash2 } from '@lucide/svelte';
+	import { goto } from '$app/navigation';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock } from '$lib/format';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
-	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import {
+		createCustomStore,
+		type CustomWorkout,
+	} from '$lib/workout/custom.svelte';
 	import type { Workout } from '$lib/workout/types';
 	import { toasts } from '$lib/toast.svelte';
 	import {
@@ -26,6 +35,49 @@
 		if (r.ok) suggestion = r.data?.load?.suggestion ?? null;
 	});
 	const suggested = $derived(suggestedFocuses(suggestion));
+
+	// Undo over confirm (errors.md): delete now, offer the way back. Shared by
+	// the card's Delete and its menu.
+	function removeCustom(entry: CustomWorkout) {
+		const workout = $state.snapshot(entry.workout) as Workout;
+		void custom.remove(entry.id).then((err) => {
+			if (err) toasts.push(err, { tone: 'error' });
+			else
+				toasts.push(`Deleted “${workout.name}”.`, {
+					undo: () => void custom.save(workout),
+				});
+		});
+	}
+
+	// A card's verbs, as a menu (#486) — the same buttons the card carries.
+	const rideItem = (id: string) => ({
+		label: 'Ride',
+		icon: Play,
+		onSelect: () => void goto(`/ride?w=${id}`),
+	});
+	const libraryMenu = (id: string): MenuEntry[] => [
+		rideItem(id),
+		{
+			label: 'Save a copy',
+			icon: Copy,
+			onSelect: () => void goto(`/workouts/edit?from=${id}`),
+		},
+	];
+	const customMenu = (entry: CustomWorkout): MenuEntry[] => [
+		rideItem(entry.id),
+		{
+			label: 'Edit',
+			icon: Pencil,
+			onSelect: () => void goto(`/workouts/edit?w=${entry.id}`),
+		},
+		'separator',
+		{
+			label: 'Delete',
+			icon: Trash2,
+			onSelect: () => removeCustom(entry),
+			danger: true,
+		},
+	];
 	const shown = $derived(
 		active === 'All'
 			? [...library].sort(
@@ -65,6 +117,8 @@
 				{#each custom.all as entry (entry.id)}
 					<li
 						class="panel flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3"
+						title={MENU_HINT}
+						{@attach contextMenu(() => customMenu(entry))}
 					>
 						<a
 							href="/ride?w={entry.id}"
@@ -79,17 +133,7 @@
 							class="text-muted hover:text-ink ml-auto text-xs">Edit</a
 						>
 						<button
-							onclick={() => {
-								// Undo over confirm (errors.md): delete now, offer the way back.
-								const workout = $state.snapshot(entry.workout) as Workout;
-								void custom.remove(entry.id).then((err) => {
-									if (err) toasts.push(err, { tone: 'error' });
-									else
-										toasts.push(`Deleted “${workout.name}”.`, {
-											undo: () => void custom.save(workout),
-										});
-								});
-							}}
+							onclick={() => removeCustom(entry)}
 							class="text-muted hover:text-ink text-xs">Delete</button
 						>
 					</li>
@@ -137,7 +181,11 @@
 
 	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 		{#each shown as entry (entry.id)}
-			<li class="panel hover:border-muted/40 overflow-hidden transition-colors">
+			<li
+				class="panel hover:border-muted/40 overflow-hidden transition-colors"
+				title={MENU_HINT}
+				{@attach contextMenu(() => libraryMenu(entry.id))}
+			>
 				<!-- Not one big anchor: the card carries two actions, and nesting them
 				     inside a link is invalid and unreachable by keyboard. -->
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pt-4">

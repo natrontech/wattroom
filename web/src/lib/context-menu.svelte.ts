@@ -18,6 +18,13 @@ export interface MenuItem {
 }
 export type MenuEntry = MenuItem | 'separator';
 
+/**
+ * What a menu-bearing object says on hover. The feature gets no icon and no
+ * chevron — noise on a bike — so this one tooltip is its whole advertisement
+ * (#486). One string, so every object words it the same.
+ */
+export const MENU_HINT = 'right-click for more';
+
 export const menu = $state<{
 	items: MenuEntry[];
 	x: number;
@@ -80,6 +87,10 @@ export function contextMenu(
 			openMenu(list, x, y, node);
 		};
 		const onContext = (event: MouseEvent) => {
+			// Nothing to offer (your own row, a ride the server never saw): leave
+			// the browser's own menu alone rather than swallowing the click into
+			// nothing, which is precisely what "it doesn't work" looks like.
+			if (items().length === 0) return;
 			event.preventDefault();
 			event.stopPropagation();
 			open(event.clientX, event.clientY);

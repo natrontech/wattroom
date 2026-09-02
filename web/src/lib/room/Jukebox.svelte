@@ -17,6 +17,11 @@
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
 	import { offerSeat, setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 
 	// The jukebox PLAYLIST (#23, #216, #286): what's on, what's next, what
 	// just played, and every verb for changing it. The player itself is
@@ -60,6 +65,30 @@
 	}
 	function move(entryId: string, from: number, by: number) {
 		send({ action: 'move', entryId, index: from + by });
+	}
+
+	// The deck's own transport, as a menu (#486) — every verb still has its
+	// button below. Seek stays out: it needs a position, not a click.
+	function deckMenu(): MenuEntry[] {
+		const playing = !!jukebox?.playing;
+		return [
+			{
+				label: playing ? 'Pause' : 'Play',
+				icon: playing ? Pause : Play,
+				onSelect: () => send({ action: playing ? 'pause' : 'play' }),
+			},
+			{
+				label: 'Skip',
+				icon: SkipForward,
+				onSelect: () => send({ action: 'skip' }),
+			},
+			'separator',
+			{
+				label: stageSlot.popped ? 'Put the player back' : 'Pop the player out',
+				icon: PictureInPicture2,
+				onSelect: () => setPopped(!stageSlot.popped),
+			},
+		];
 	}
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
@@ -120,7 +149,7 @@
 		     width, the title under it, the playhead under that, the transport
 		     under that. One thing per line reads at arm's length; a thumbnail
 		     beside a truncated title and four identical grey buttons did not. -->
-		<div class="flex min-w-0 flex-col gap-2.5">
+		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
 			{#if stageSlot.popped}
 				<div
 					class="bg-surface relative aspect-video w-full overflow-hidden rounded-lg"
@@ -143,7 +172,8 @@
 					{@attach (node) => offerSeat(node, 1)}
 				></div>
 			{/if}
-			<div class="min-w-0">
+			<!-- The hint sits on the words, never over the player (RMF). -->
+			<div class="min-w-0" title={MENU_HINT}>
 				<p class="truncate text-sm leading-tight font-medium">
 					{current.title}
 				</p>
