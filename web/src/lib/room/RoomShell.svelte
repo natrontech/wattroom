@@ -51,7 +51,7 @@
 	import { createRide } from '$lib/room/ride.svelte';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
-	import { offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
+	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
 		id: string;
@@ -517,7 +517,7 @@
 			<div
 				class="absolute top-[3vh] right-[3vw] z-10 aspect-video w-[24vw] min-w-[240px]"
 				style="min-height: 200px"
-				{@attach (node) => offerSeat(node, 3)}
+				{@attach (node) => offerSeat(node, TV_SEAT)}
 			></div>
 		{/if}
 		<button

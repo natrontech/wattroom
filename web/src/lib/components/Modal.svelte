@@ -57,7 +57,6 @@
 <div
 	{@attach countModal}
 	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
-	style="padding-bottom: calc(1rem + var(--pane-jukebox-dock-h, 0px))"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<div

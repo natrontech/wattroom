@@ -1,0 +1,1 @@
+- The start / plan a session window uses the height of your screen again instead of stopping short above the music player.
