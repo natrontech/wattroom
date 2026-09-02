@@ -14,6 +14,7 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import Stage from '$lib/room/Stage.svelte';
+	import { pictureKey } from '$lib/room/stage';
 	import { formatClock, wkg } from '$lib/format';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { useRoom } from '$lib/room/context';
@@ -121,7 +122,7 @@
 				<Stage
 					sources={room.stageSources}
 					activeKey={share.key}
-					trackKey={`${share.key}:${share.gen}`}
+					trackKey={pictureKey(share)}
 					onPick={(key) => room.pickStage(key)}
 					attach={(node) => room.attachStage(node, share.key)}
 				/>
