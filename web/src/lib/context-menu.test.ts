@@ -5,6 +5,7 @@ import {
 	contextMenu,
 	menu,
 	placeMenu,
+	scrollClosesMenu,
 } from '$lib/context-menu.svelte';
 
 describe('placeMenu', () => {
@@ -57,5 +58,26 @@ describe('contextMenu', () => {
 		expect(event.defaultPrevented).toBe(false);
 		expect(menu.items).toHaveLength(0);
 		detach();
+	});
+});
+
+describe('scrollClosesMenu', () => {
+	it('closes for a scroll that moves the anchor, ignores every other pane (#500)', () => {
+		const page = document.createElement('div');
+		const chat = document.createElement('div');
+		const row = document.createElement('button');
+		page.append(row);
+		document.body.append(page, chat);
+
+		// The chat sticking to its newest line must not shut a menu opened on
+		// a sidebar row — that is the once-a-second close riders saw.
+		expect(scrollClosesMenu(chat, row)).toBe(false);
+		// Its own scroller, and the page itself, do move it.
+		expect(scrollClosesMenu(page, row)).toBe(true);
+		expect(scrollClosesMenu(document, row)).toBe(true);
+		expect(scrollClosesMenu(chat, null)).toBe(true);
+
+		page.remove();
+		chat.remove();
 	});
 });

@@ -1,7 +1,12 @@
 <script lang="ts">
 	// The one menu (#465). Fixed, above dialogs and the dock; keyboard walks
 	// it; Escape, a click anywhere else, a scroll or a resize close it.
-	import { closeMenu, menu, placeMenu } from '$lib/context-menu.svelte';
+	import {
+		closeMenu,
+		menu,
+		placeMenu,
+		scrollClosesMenu,
+	} from '$lib/context-menu.svelte';
 
 	let box = $state<HTMLDivElement | null>(null);
 	let pos = $state({ left: 0, top: 0 });
@@ -22,16 +27,25 @@
 		node
 			.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
 			?.focus();
+		// The press that opened the menu is still travelling: on some inputs
+		// the pointerdown lands after the contextmenu event, and listening for
+		// it right away closed the menu in the same gesture that opened it.
+		let armed = false;
+		const arm = setTimeout(() => (armed = true), 0);
 		const away = (event: Event) => {
-			if (!node.contains(event.target as Node)) closeMenu();
+			if (armed && !node.contains(event.target as Node)) closeMenu();
+		};
+		const scrolled = (event: Event) => {
+			if (scrollClosesMenu(event.target, menu.anchor)) closeMenu();
 		};
 		const dismiss = () => closeMenu();
 		document.addEventListener('pointerdown', away, true);
-		window.addEventListener('scroll', dismiss, true);
+		window.addEventListener('scroll', scrolled, true);
 		window.addEventListener('resize', dismiss);
 		return () => {
+			clearTimeout(arm);
 			document.removeEventListener('pointerdown', away, true);
-			window.removeEventListener('scroll', dismiss, true);
+			window.removeEventListener('scroll', scrolled, true);
 			window.removeEventListener('resize', dismiss);
 		};
 	});
