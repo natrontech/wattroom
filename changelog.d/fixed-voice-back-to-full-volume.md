@@ -1,1 +1,0 @@
-- Voices are back to their normal loudness, and the music dips again when somebody talks. The previous release turned off the browser's automatic gain control, which quietly took both with it.

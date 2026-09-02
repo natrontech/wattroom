@@ -17,6 +17,30 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.17] - 2026-09-02
+
+### Added
+
+The execution meter is live during a session. Training now shows how cleanly everyone is riding their own workout, ranked and updating as you go, instead of only telling you afterwards.
+- A room's chat is now a place of its own — Chat, in the sidebar under the room you are in, beside Lounge and Training. It is the same live conversation, with the whole width for reading back a session's worth of talk, room-sized reactions, and the pictures people paste; on a screen too narrow for the people column it is the chat without summoning anything.
+
+### Changed
+
+- The people column has handed the chat over to that place and kept what only it can do: who is here, who is in voice, the deck, and the room's reactions. Where the log used to be there is now one line — who spoke while you were elsewhere and how much you missed — that opens the chat. Three surfaces had been splitting that column's height and none of them had enough; the roster and the queue get it back.
+- The room's video has one home instead of a window you had to park: it plays
+  in the people column, drops into the nav rail on a window too narrow for that
+  column and on every page outside the room, and rises to the stage or TV mode
+  when the room is watching together — so the transport is always beside it.
+  The floating pop-out is gone. In the Lounge a third layout, **Sidebar**,
+  keeps the video in the people column and gives the whole room back to the
+  crew; the picture in the other two is centred and no longer carries a corner
+  grip — drag the divider between it and the crew instead.
+
+### Fixed
+
+- Opening a room on a phone showed an empty screen: the redirect that hands a phone the spectator view was also hiding the view it lands on, so the one room screen a phone is meant to get rendered nothing. It is back — and it now carries a Say something button into the room's Chat place, which a phone can stand in and type in, since talking needs none of the Bluetooth a phone browser lacks.
+- Voices are back to their normal loudness, and the music dips again when somebody talks. The previous release turned off the browser's automatic gain control, which quietly took both with it.
+
 ## [2026.09.16] - 2026-09-02
 
 ### Changed
@@ -350,7 +374,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.16...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.17...HEAD
+[2026.09.17]: https://github.com/natrontech/wattroom/compare/2026.09.16...2026.09.17
 [2026.09.16]: https://github.com/natrontech/wattroom/compare/2026.09.15...2026.09.16
 [2026.09.15]: https://github.com/natrontech/wattroom/compare/2026.09.14...2026.09.15
 [2026.09.14]: https://github.com/natrontech/wattroom/compare/2026.09.13...2026.09.14
