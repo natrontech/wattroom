@@ -10,6 +10,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import { account } from '$lib/account.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
@@ -124,12 +125,13 @@
 									title="you are in this room"
 								></span>
 							{/if}
+							<RoomIcon icon={room.icon} size={14} />
 							<span
 								class="truncate text-sm {open
 									? 'font-semibold'
 									: room.unread
 										? 'text-ink font-semibold'
-										: ''}">{room.icon ? `${room.icon} ` : ''}{room.name}</span
+										: ''}">{room.name}</span
 							>
 							{#if here && onLeave}
 								<button

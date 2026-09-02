@@ -208,10 +208,10 @@ type client struct {
 	conn  *websocket.Conn
 }
 
-// Cheers and chat reactions are shape-checked (protocol.IsEmoji — one emoji,
-// never text), not allowlisted: which emoji a room speaks is its owner's
-// palette now (#223), enforced client-side. The wire only guarantees a
-// reaction can't smuggle chat.
+// Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
+// icon key, or one emoji from a client built before #447; never text), not
+// allowlisted: which reactions a room speaks is its owner's palette (#223),
+// enforced client-side. The wire only guarantees a reaction can't smuggle chat.
 
 // canControl is the SPEC roles matrix row "pick workout / start / pause / end".
 func canControl(role string) bool { return role == "owner" || role == "coach" }
@@ -290,7 +290,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.ChatReact != nil && h.chat != nil {
-			if protocol.IsEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
+			if protocol.IsIconOrEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
 				if count, added, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
 						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
@@ -300,7 +300,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Cheer != nil {
-			if protocol.IsEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			if protocol.IsIconOrEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}

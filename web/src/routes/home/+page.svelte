@@ -17,6 +17,7 @@
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import {
 		fetchProgression,
 		FORM_SENTENCES,
@@ -214,9 +215,8 @@
 								href="/r/{room.slug}/sessions"
 								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
 							>
-								<span class="truncate"
-									>{room.icon ? `${room.icon} ` : ''}{room.name}</span
-								>
+								<RoomIcon icon={room.icon} size={14} />
+								<span class="truncate">{room.name}</span>
 								{#if room.slug === roomConnection.current?.slug}
 									<span class="text-muted ml-auto shrink-0 text-[10px]"
 										>you are here</span
@@ -351,8 +351,9 @@
 										></span>
 									{/if}
 									<div class="min-w-0">
-										<p class="font-display font-bold">
-											{room.icon ? `${room.icon} ` : ''}{room.name}
+										<p class="font-display flex items-center gap-1.5 font-bold">
+											<RoomIcon icon={room.icon} size={16} />
+											<span class="truncate">{room.name}</span>
 										</p>
 										<p class="text-muted mt-0.5 text-xs">
 											{(room.riders ?? []).join(', ')}
