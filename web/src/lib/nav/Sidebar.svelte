@@ -10,6 +10,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import RoomStrip from './RoomStrip.svelte';
 	import { account } from '$lib/account.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -266,6 +267,13 @@
 			</ul>
 		{/if}
 	</div>
+
+	<!-- Who is in the room with you, while you are looking elsewhere (#446).
+	     Above you, like Discord's voice panel; off the Lounge, which already
+	     shows everyone in tiles. -->
+	{#if connectedSlug}
+		<RoomStrip {pathname} />
+	{/if}
 
 	<!-- You, pinned. ONE row whatever the connection state — the nav above
 	     never jumps (rider report: the height flicker read as broken). -->
