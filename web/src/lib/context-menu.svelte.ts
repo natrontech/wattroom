@@ -52,6 +52,22 @@ export function closeMenu(): void {
 	back?.focus?.({ preventScroll: true });
 }
 
+/**
+ * Does this scroll invalidate the menu? Only one that moves the thing you
+ * right-clicked. The room scrolls its own panes constantly — the chat sticks
+ * to its newest line on every tick — and closing on ANY scroll shut the menu
+ * about a second after it opened, wherever you had opened it (#500).
+ */
+export function scrollClosesMenu(
+	target: EventTarget | null,
+	anchor: HTMLElement | null,
+): boolean {
+	if (!anchor) return true;
+	const scroller =
+		target instanceof Element ? target : document.documentElement;
+	return scroller.contains(anchor);
+}
+
 /** Keep the menu on screen: flip left of the pointer and above it when it would overflow. */
 export function placeMenu(
 	x: number,
