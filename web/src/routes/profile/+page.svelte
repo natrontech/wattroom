@@ -115,11 +115,6 @@
 	// The AV chain only exists while you are in a room; the pickers say so
 	// rather than rendering controls that tune nothing.
 	const av = $derived(roomConnection.current?.av);
-	const mixRiders = $derived(
-		(roomConnection.current?.live.tick?.roster ?? [])
-			.filter((r) => r.id !== account.me?.id && av?.voice[r.id] === 'live')
-			.map((r) => ({ id: r.id, name: r.name })),
-	);
 
 	// null = no anchor set; saving null clears it (ADR-0014, device-local).
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
@@ -616,7 +611,6 @@
 						onGateThreshold={(t) => av.setGateThreshold(t)}
 						micTesting={av.micTesting}
 						onMicTest={() => void av.toggleMicTest()}
-						{mixRiders}
 						onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
 						devices={{ mics: av.mics, cams: av.cams, outs: av.outs }}
 						micId={av.micId}

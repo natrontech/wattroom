@@ -4,6 +4,7 @@
 	// who is holding target. This is roles, medals and the invite, which is
 	// what /rooms used to carry.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
@@ -34,7 +35,9 @@
 	<ul class="divide-ink/5 panel divide-y">
 		{#each room.members as member (member.id)}
 			{@const medals = medalsOf(member.displayName)}
-			<li class="flex items-center gap-3 px-4 py-2.5">
+			{@const here = room.riders.find((r) => r.id === member.id)}
+			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
+			<li class="flex flex-wrap items-center gap-3 px-4 py-2.5">
 				<Avatar
 					name={member.displayName}
 					avatarUrl={member.avatarUrl}
@@ -75,6 +78,11 @@
 					<span class="text-muted shrink-0 text-xs tabular-nums"
 						>🏅 {medals}</span
 					>
+				{/if}
+				{#if here?.inVoice && !here.you}
+					<!-- Their volume, the same control as their row in the people
+					     column — here for the member you came to look up. -->
+					<RiderVolume id={member.id} name={member.displayName} />
 				{/if}
 				{#if isOwner && member.id !== account.me?.id}
 					<button

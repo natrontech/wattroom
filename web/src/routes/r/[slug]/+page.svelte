@@ -19,7 +19,6 @@
 	import {
 		Focus,
 		MessageSquare,
-		Headphones,
 		CalendarClock,
 		Columns2,
 		LayoutGrid,
@@ -128,21 +127,17 @@
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
 		<SessionControls />
-		{#if av && account.me?.avEnabled}
-			{#if av.status === 'off' || av.status === 'failed'}
-				<button onclick={() => void av.join()} class="btn btn-primary"
-					><Headphones size={14} /> Join voice</button
-				>
-			{:else}
-				<button
-					onclick={() => void av.toggleShare()}
-					class="btn btn-secondary inline-flex items-center gap-1.5"
-				>
-					{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
-							size={14}
-						/> Share screen{/if}
-				</button>
-			{/if}
+		<!-- Join voice lives in one place, the people column (#462); the
+		     lounge only offers the share, once you are in. -->
+		{#if av && account.me?.avEnabled && av.status === 'live'}
+			<button
+				onclick={() => void av.toggleShare()}
+				class="btn btn-secondary inline-flex items-center gap-1.5"
+			>
+				{#if av.sharing}<ScreenShareOff size={14} /> Stop sharing{:else}<ScreenShare
+						size={14}
+					/> Share screen{/if}
+			</button>
 		{/if}
 		{#if !room.trainer}
 			<button
