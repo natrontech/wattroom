@@ -225,7 +225,9 @@
 						class="btn btn-primary"><UserPlus size={15} /> Add friend</button
 					>
 				{/if}
-				{#if rider.presence.room}
+				{#if rider.presence.room && rider.friend !== 'self'}
+					<!-- Your own page reached the app in #575; "Join them" on it
+					     offered to join the room you are already standing in. -->
 					<a href="/r/{rider.presence.room.slug}" class="btn btn-accent"
 						><Radio size={15} /> Join them</a
 					>
