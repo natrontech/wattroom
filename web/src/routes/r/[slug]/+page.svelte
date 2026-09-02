@@ -10,6 +10,7 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import Stage from '$lib/room/Stage.svelte';
+	import { pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
 	import { account } from '$lib/account.svelte';
@@ -215,7 +216,7 @@
 				<Stage
 					sources={room.stageSources}
 					activeKey={room.onStage.key}
-					trackKey={`${room.onStage.key}:${room.onStage.gen}`}
+					trackKey={pictureKey(room.onStage)}
 					onPick={(key) => room.pickStage(key)}
 					attach={(node) => room.attachStage(node, room.onStage!.key)}
 				/>

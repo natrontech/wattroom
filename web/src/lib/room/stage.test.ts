@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FIT, panBy, pickStage, zoomAbout } from './stage';
+import { FIT, panBy, pickStage, pictureKey, zoomAbout } from './stage';
 
 const screens = [
 	{ key: 'screen:a', kind: 'screen' as const },
@@ -30,6 +30,21 @@ describe('pickStage (#280)', () => {
 		expect(pickStage([...screens, jukebox], 'screen:a')?.key).toBe('screen:a');
 		// The track ended mid-pick: the stage falls back rather than blanking.
 		expect(pickStage([...screens], 'jukebox')?.key).toBe('screen:b');
+	});
+});
+
+// #523: the rider zoomed into a chart and got pulled back out half a second
+// later, because the stage reset on the props themselves — and the room
+// rebuilds those on every tick. What the reset may key on is the picture.
+describe('pictureKey (#523)', () => {
+	it('is the same picture across a re-tick, a new one on a restart', () => {
+		const shown = pictureKey({ key: 'screen:ada', gen: 3 });
+		// A tick later: fresh objects, same numbers, same picture.
+		expect(pictureKey({ key: 'screen:ada', gen: 3 })).toBe(shown);
+		// Ada stopped and shared again — a fresh track, so back to fit.
+		expect(pictureKey({ key: 'screen:ada', gen: 4 })).not.toBe(shown);
+		// Someone else's screen is someone else's zoom.
+		expect(pictureKey({ key: 'screen:bob', gen: 3 })).not.toBe(shown);
 	});
 });
 
