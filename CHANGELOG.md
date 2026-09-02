@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.12] - 2026-09-02
+
+### Fixed
+
+- Fixed the fault behind several odd behaviours in a room with a video playing: the player's position was fed back into the app's update cycle every frame, which could stop the room updating at all — navigating a place then changed the address without changing the page. Popping the player out also works now when the video is on the stage, where the button used to do nothing.
+- On a laptop-sized window, the chat and people sheet now opens over the video on the stage instead of under it — the jukebox transport, the chat and the room's people are reachable again while something is playing.
+
 ## [2026.09.11] - 2026-09-02
 
 ### Fixed
@@ -277,7 +284,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.11...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.12...HEAD
+[2026.09.12]: https://github.com/natrontech/wattroom/compare/2026.09.11...2026.09.12
 [2026.09.11]: https://github.com/natrontech/wattroom/compare/2026.09.10...2026.09.11
 [2026.09.10]: https://github.com/natrontech/wattroom/compare/2026.09.9...2026.09.10
 [2026.09.9]: https://github.com/natrontech/wattroom/compare/2026.09.8...2026.09.9
