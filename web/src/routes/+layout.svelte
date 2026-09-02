@@ -74,6 +74,13 @@
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
 
+	// Signing out leaves the room. The connection holds the socket, the voice
+	// channel and — since #521 — the trainer, and a signed-out session must
+	// hold none of them: the room's pages are gone, so nothing else would.
+	$effect(() => {
+		if (account.loaded && !account.me) roomConnection.leave();
+	});
+
 	// ONE rail, owned here, on every page — the room included (#191): navigating
 	// out of a room must not swap rail instances. Only the spectator view and
 	// login are their own frame.

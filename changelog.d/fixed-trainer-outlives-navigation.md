@@ -1,0 +1,1 @@
+Your ride record keeps every watt after a re-pair or a mid-session page reload — the trainer's numbers used to reach the room's tiles but vanish from the saved ride. Signing out now releases the trainer too.
