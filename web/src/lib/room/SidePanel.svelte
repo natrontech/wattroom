@@ -80,6 +80,7 @@
 	let {
 		live,
 		riders = [],
+		log = true,
 		player,
 		messages = [],
 		events = [],
@@ -95,6 +96,9 @@
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster sits above the chat. */
 		riders?: RoomRider[];
+		/** The chat log. False on the Chat place, which gives the same log the
+		 * content column — the live log twice on one screen is a mirror. */
+		log?: boolean;
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
 		/** A YouTube link in the chat is one tap from the jukebox. */
@@ -274,10 +278,14 @@
 				? riders.filter((r) => r.watts > 0)
 				: riders.filter((r) => r.inVoice)}
 			{@const away = riders.filter((r) => !here.includes(r))}
+			<!-- Capped, so the chat below keeps its share; on the Chat place
+			     there is no chat below and the roster takes the column. -->
 			<div
-				class="border-ink/5 min-h-0 shrink-0 overflow-y-auto border-b {live
-					? 'max-h-[45%]'
-					: 'max-h-56'}"
+				class="border-ink/5 min-h-0 overflow-y-auto border-b {log
+					? live
+						? 'max-h-[45%] shrink-0'
+						: 'max-h-56 shrink-0'
+					: 'flex-1'}"
 			>
 				<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
 					{#if !live}<Headphones size={10} />{/if}
@@ -360,115 +368,119 @@
 			</div>
 		{/if}
 
-		<div class="eyebrow px-4 pt-3 pb-1">chat</div>
-		<!-- `mt-auto` on the list, not `justify-end` on the box (#291): the
-		     spare room goes above the oldest line, so overflow spills off the
-		     END edge and scrollback is reachable. -->
-		<div
-			{@attach stickToBottom}
-			data-testid="chat-log"
-			class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-2"
-		>
-			<ul class="mt-auto space-y-2">
-				{#each timeline as entry, i (entry.key)}
-					{#if entry.kind === 'event'}
-						<!-- An event, not a message: no avatar, no reactions, nothing to
-					     copy. The room talking about itself stays quieter than the
-					     people in it. -->
-						{@const Mark =
-							entry.event.kind === 'session' ? CalendarClock : Music}
-						<li
-							class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
-						>
-							<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
-							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
+		{#if log}
+			<div class="eyebrow px-4 pt-3 pb-1">chat</div>
+			<!-- `mt-auto` on the list, not `justify-end` on the box (#291): the
+			     spare room goes above the oldest line, so overflow spills off the
+			     END edge and scrollback is reachable. -->
+			<div
+				{@attach stickToBottom}
+				data-testid="chat-log"
+				class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-2"
+			>
+				<ul class="mt-auto space-y-2">
+					{#each timeline as entry, i (entry.key)}
+						{#if entry.kind === 'event'}
+							<!-- An event, not a message: no avatar, no reactions, nothing to
+						     copy. The room talking about itself stays quieter than the
+						     people in it. -->
+							{@const Mark =
+								entry.event.kind === 'session' ? CalendarClock : Music}
+							<li
+								class="text-muted/60 flex items-baseline gap-1.5 text-[11px] leading-snug"
 							>
-							<span class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
-								>{formatTime(entry.at)}</span
-							>
-						</li>
-					{:else}
-						{@const message = entry.message}
-						{@const prev = timeline[i - 1]}
-						{@const grouped =
-							prev?.kind === 'message' &&
-							prev.message.from === message.from &&
-							message.at - prev.at < GROUP_GAP_MS}
-						<li
-							class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}"
-							{@attach contextMenu(() => messageMenu(message))}
-						>
-							<div class="flex items-baseline gap-1.5">
-								{#if !grouped}
-									<span class="text-muted min-w-0 truncate font-medium"
-										>{message.from}</span
-									>
-									<span class="text-muted/40 shrink-0 font-mono text-[10px]"
-										>{formatTime(message.at)}</span
-									>
-								{/if}
-								<span
-									class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+								<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
+								<span class="min-w-0 wrap-anywhere"
+									>{eventText(entry.event)}</span
 								>
-									{#if message.text}
-										<button
-											onclick={() => copy(message.text)}
-											class="text-muted/60 hover:text-ink"
-											aria-label="copy message"><Copy size={12} /></button
+								<span
+									class="text-muted/40 ml-auto shrink-0 font-mono text-[10px]"
+									>{formatTime(entry.at)}</span
+								>
+							</li>
+						{:else}
+							{@const message = entry.message}
+							{@const prev = timeline[i - 1]}
+							{@const grouped =
+								prev?.kind === 'message' &&
+								prev.message.from === message.from &&
+								message.at - prev.at < GROUP_GAP_MS}
+							<li
+								class="group text-xs leading-snug {grouped ? '-mt-1.5' : ''}"
+								{@attach contextMenu(() => messageMenu(message))}
+							>
+								<div class="flex items-baseline gap-1.5">
+									{#if !grouped}
+										<span class="text-muted min-w-0 truncate font-medium"
+											>{message.from}</span
+										>
+										<span class="text-muted/40 shrink-0 font-mono text-[10px]"
+											>{formatTime(message.at)}</span
 										>
 									{/if}
-									{#if message.id && onReact}
-										{@const id = message.id}
-										<button
-											onclick={() =>
-												(reactingTo = reactingTo === id ? null : id)}
-											class="text-muted/60 hover:text-ink"
-											aria-label="react"><SmilePlus size={13} /></button
-										>
-									{/if}
-								</span>
-							</div>
-							<!-- An image-only line has no text to render; MessageText turns a
-				     lone GIF link into the GIF itself. -->
-							{#if message.text}
-								<div class="text-ink/85 wrap-anywhere">
-									<MessageText text={message.text} {onQueue} />
+									<span
+										class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+									>
+										{#if message.text}
+											<button
+												onclick={() => copy(message.text)}
+												class="text-muted/60 hover:text-ink"
+												aria-label="copy message"><Copy size={12} /></button
+											>
+										{/if}
+										{#if message.id && onReact}
+											{@const id = message.id}
+											<button
+												onclick={() =>
+													(reactingTo = reactingTo === id ? null : id)}
+												class="text-muted/60 hover:text-ink"
+												aria-label="react"><SmilePlus size={13} /></button
+											>
+										{/if}
+									</span>
 								</div>
-							{/if}
-							{#if message.imageId && slug}
-								<ChatImage
-									src="/api/rooms/{slug}/chat/images/{message.imageId}"
-									alt="Sent by {message.from}"
-									menu={() => messageMenu(message)}
-								/>
-							{/if}
-							{#if message.id && onReact}
-								{@const id = message.id}
-								<Reactions
-									{id}
-									counts={reactions[id]}
-									{myReacts}
-									{cheers}
-									picking={reactingTo === id}
-									onReact={(cheer) => {
-										onReact(id, cheer);
-										reactingTo = null;
-									}}
-								/>
-							{/if}
+								<!-- An image-only line has no text to render; MessageText turns a
+					     lone GIF link into the GIF itself. -->
+								{#if message.text}
+									<div class="text-ink/85 wrap-anywhere">
+										<MessageText text={message.text} {onQueue} />
+									</div>
+								{/if}
+								{#if message.imageId && slug}
+									<ChatImage
+										src="/api/rooms/{slug}/chat/images/{message.imageId}"
+										alt="Sent by {message.from}"
+										menu={() => messageMenu(message)}
+									/>
+								{/if}
+								{#if message.id && onReact}
+									{@const id = message.id}
+									<Reactions
+										{id}
+										counts={reactions[id]}
+										{myReacts}
+										{cheers}
+										picking={reactingTo === id}
+										onReact={(cheer) => {
+											onReact(id, cheer);
+											reactingTo = null;
+										}}
+									/>
+								{/if}
+							</li>
+						{/if}
+					{:else}
+						<li class="text-muted/60 text-xs">
+							Warm-up talk lands here — the room keeps the recent history. Voice
+							stays the main channel.
 						</li>
-					{/if}
-				{:else}
-					<li class="text-muted/60 text-xs">
-						Warm-up talk lands here — the room keeps the recent history. Voice
-						stays the main channel.
-					</li>
-				{/each}
-			</ul>
-		</div>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 
 		<div class="border-ink/5 border-t p-3">
-			{#if !live}
+			{#if !live && log}
 				<!-- Typing is a lounge activity; mid-ride it collapses to reactions. -->
 				<ImageChip image={pending.current} onClear={pending.clear} />
 				<form

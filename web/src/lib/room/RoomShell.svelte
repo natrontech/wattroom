@@ -26,6 +26,7 @@
 	import TvMode from '$lib/room/TvMode.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
+	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
@@ -666,6 +667,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
+		log={activePlace(page.url.pathname, slug) !== '/chat'}
 		onQueue={(url) => void addYouTubeUrl(url, live.jukebox)}
 		messages={live.chatLog}
 		events={[...live.roomEvents, ...reminders]}
