@@ -469,7 +469,9 @@
 	     below xl (#219). Stacking (#395): floating, it sits BELOW dialogs,
 	     drawers and toasts (z-40/z-50) — RMF forbids OUR chrome over the
 	     player, not a dialog the rider opened over it. Seated, it has to clear
-	     the stage it sits in, and a popped-out stage is z-[55]. -->
+	     the stage it sits in, and a popped-out stage is z-[55] — but not the
+	     chat sheet, which is a drawer the rider opened and passes above at
+	     z-[60] (#483). -->
 	<div
 		bind:this={shell}
 		data-pane={PANE}
