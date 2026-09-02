@@ -33,6 +33,13 @@
 	const focus = $derived(
 		room.sprint ? 'sprint' : room.game ? 'game' : share ? 'media' : 'you',
 	);
+	// Only people actually turning the pedals are ranked. The server scores
+	// nothing for a rider with no samples and returns 1 for them, which is
+	// right for "before the first hard block" and absurd on a leaderboard:
+	// a spectator sitting in the room reads 100% and beats everyone riding.
+	// `watts > 0` is the same predicate SidePanel already uses to split
+	// "here" from "not pedalling", so the two agree about who is riding.
+	const riding = $derived(room.riders.filter((r) => r.watts > 0));
 </script>
 
 {#if room.phase === 'lounge'}
@@ -178,12 +185,12 @@
 				     second full-width list of the same people is what the sprint
 				     and game branches below already refuse to draw.
 				     Alone it is not a leaderboard, so solo rides do not show it. -->
-				{#if room.riders.length > 1 && focus !== 'media'}
+				{#if riding.length > 1 && focus !== 'media'}
 					<!-- Not while a screen has the focus: this row already picks up
 					     the compact instrument there, and the player's own floor
 					     (RMF) is what the width is for. -->
 					<div class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto">
-						<ExecutionMeter riders={room.riders} />
+						<ExecutionMeter riders={riding} />
 					</div>
 				{/if}
 			</div>
