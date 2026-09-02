@@ -41,6 +41,16 @@
 		send: (command: JukeboxCommand) => void;
 	} = $props();
 
+	// A stable attachment: a fresh arrow every render would tear the offer
+	// down and re-register it on updates the seat has nothing to do with.
+	const seat = (node: HTMLElement) => offerSeat(node, COLUMN_SEAT);
+
+	// Something above the column is holding the player — the stage in the
+	// lounge, or TV mode. The deck's picture is then a placeholder for a video
+	// playing elsewhere on screen, and the column has three things fighting
+	// for its height (#504), so it stands down to the words and the transport.
+	const elsewhere = $derived(stageSlot.outranked);
+
 	const current = $derived(jukebox?.current);
 	const queue = $derived(jukebox?.queue ?? []);
 	const history = $derived(jukebox?.history ?? []);
@@ -173,19 +183,30 @@
 				     height is clamped rather than tied to the panel's width — a
 				     dragged-wide panel gave the picture 300 px and left the chat a
 				     sliver (rider report).
-				
-				     The hole is ALWAYS offered, never mounted conditionally: the
+
+				     The hole is ALWAYS MOUNTED, never rendered conditionally: the
 				     stage taking the player and giving it back would then mount and
 				     unmount this offer, which is what turned a pre-existing effect
-				     loop fatal in 2026.09.9 (#494). So when the stage outranks the
-				     column, the dock leaves and this box would stand empty — a big
-				     blank panel (rider report). It carries the track's own art
-				     underneath instead: covered by the player when the player is
-				     here, and something to look at when it is not. -->
+				     loop fatal in 2026.09.9 (#494). When the stage or TV outranks
+				     the column it is hidden instead — display:none, so the element
+				     and its offer stay put while the box stops costing the column
+				     200 px it was spending on a picture of a video playing four
+				     inches away (#504).
+
+				     Hiding withdraws the offer, because a zero rect is not a seat.
+				     That is wanted — the seat must never be won at zero height, or
+				     the dock flies into a sliver — but it is also why `elsewhere`
+				     asks whether a HIGHER surface is offering rather than who holds
+				     the player. Hiding changes who holds it, so deciding by holder
+				     closes the loop: hidden, withdrawn, holder changes, shown
+				     again. Measured, that is effect_update_depth_exceeded within a
+				     second of the stage appearing. -->
 				<div
-					class="bg-surface relative w-full overflow-hidden rounded-lg"
+					class="bg-surface relative w-full overflow-hidden rounded-lg {elsewhere
+						? 'hidden'
+						: ''}"
 					style="height: clamp(200px, 24vh, 240px)"
-					{@attach (node) => offerSeat(node, COLUMN_SEAT)}
+					{@attach seat}
 				>
 					<img
 						src={thumbnailFor(current.videoId)}

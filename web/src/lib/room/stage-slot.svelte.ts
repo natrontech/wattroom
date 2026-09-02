@@ -53,9 +53,24 @@ export const stageSlot = $state<{
 	 * dock through `onSeat` instead, a plain callback, outside reactivity.
 	 */
 	seated: boolean;
+	/**
+	 * Whether a surface ABOVE the column is offering a seat — the stage, or TV
+	 * mode. The column's deck collapses its 200 px hole when one is, because
+	 * the hole is then a placeholder for a video playing elsewhere on the same
+	 * screen (#504).
+	 *
+	 * Deliberately not "who holds the player": that answer depends on the
+	 * column's own offer, and the column resizes itself from the answer. Hide
+	 * the hole, its offer is withdrawn, the holder changes, the hole comes
+	 * back — a closed loop through the effect graph, and
+	 * effect_update_depth_exceeded again (#494). This counts only offers the
+	 * column cannot influence, so the cycle has no edge back.
+	 */
+	outranked: boolean;
 	popped: boolean;
 }>({
 	seated: false,
+	outranked: false,
 	popped: readPopped(),
 });
 
@@ -108,6 +123,18 @@ export function bestOffer(
 }
 
 /**
+ * Is a surface above the people column offering? Read by the column's deck,
+ * so it must never count the column's own offer — see `outranked`.
+ */
+export function outranksColumn(
+	all: Iterable<{ priority: number; seat: Seat | null }>,
+): boolean {
+	for (const offer of all)
+		if (offer.seat && offer.priority > COLUMN_SEAT) return true;
+	return false;
+}
+
+/**
  * The dock's geometry, handed over directly. One listener — there is one
  * player — called with the winning rect, or null when nobody is holding it.
  * Registering hands over the seat as it stands, so a dock that mounts late
@@ -128,9 +155,13 @@ function settle() {
 	// the player while it is set — the column stopped offering, but the stage
 	// went on winning and the button did nothing with a video on the stage.
 	const next = stageSlot.popped ? null : bestOffer(offers.values());
+	// Settled before the rect's early return: a surface above the column can
+	// appear or go without moving the winning seat by a pixel.
+	const outranked = outranksColumn(offers.values());
+	if (stageSlot.outranked !== outranked) stageSlot.outranked = outranked;
 	if (sameSeat(last, next)) return;
 	last = next;
-	// The boolean is the only reactive part, and it changes when a surface
+	// The booleans are the only reactive part, and they change when a surface
 	// takes or gives up the seat — never with the rect.
 	if (stageSlot.seated !== !!next) stageSlot.seated = !!next;
 	listener?.(next);

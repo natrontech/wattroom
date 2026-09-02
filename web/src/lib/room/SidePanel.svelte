@@ -3,6 +3,8 @@
 	import {
 		ListPlus,
 		CalendarClock,
+		ChevronDown,
+		ChevronRight,
 		Copy,
 		Crown,
 		Headphones,
@@ -130,6 +132,31 @@
 
 	// The way into voice, where the people are (#437).
 	const av = $derived(roomConnection.current?.av);
+
+	// Three things share this column and it never had the height for all of
+	// them (#504). The roster folds to a wrap of faces; mid-ride it starts
+	// open, because that is where the execution bars are, and a rider's own
+	// choice outranks both. The voice controls never fold — they are the way
+	// in, and a way in you have to unfold is not one (ux.md).
+	const PEOPLE_KEY = 'wattroom.room.people.v1';
+	function readChoice(): boolean | null {
+		try {
+			const stored = localStorage.getItem(PEOPLE_KEY);
+			return stored === null ? null : stored === '1';
+		} catch {
+			return null;
+		}
+	}
+	let choice = $state<boolean | null>(readChoice());
+	const peopleOpen = $derived(choice ?? live);
+	function togglePeople() {
+		choice = !peopleOpen;
+		try {
+			localStorage.setItem(PEOPLE_KEY, choice ? '1' : '0');
+		} catch {
+			/* desk-only preference; losing it costs one tap */
+		}
+	}
 
 	let reactingTo = $state<string | null>(null);
 
@@ -287,16 +314,54 @@
 				: riders.filter((r) => r.inVoice)}
 			{@const away = riders.filter((r) => !here.includes(r))}
 			<div
-				class="border-ink/5 min-h-0 shrink-0 overflow-y-auto border-b {live
+				class="border-ink/5 min-h-0 shrink-0 overflow-y-auto border-b {peopleOpen &&
+				live
 					? 'max-h-[45%]'
-					: 'max-h-56'}"
+					: peopleOpen
+						? 'max-h-56'
+						: ''}"
 			>
-				<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
-					{#if !live}<Headphones size={10} />{/if}
-					{live
-						? `holding target — ${here.length}`
-						: `in voice — ${here.length}`}
-				</div>
+				<!-- Closed, the roster is still the "this room is populated" read
+				     (ADR-0020) — the faces stay, the rows go. That is what buys the
+				     chat its height back (#504), and it is why this is a wrap of
+				     avatars and not a disclosure triangle over nothing. -->
+				<button
+					onclick={togglePeople}
+					aria-expanded={peopleOpen}
+					class="flex w-full items-center gap-2 px-3 pt-3 pb-1 text-left"
+				>
+					{#if peopleOpen}
+						<span class="eyebrow flex flex-1 items-center gap-1.5">
+							{#if !live}<Headphones size={10} />{/if}
+							{live
+								? `holding target — ${here.length}`
+								: `in voice — ${here.length}`}
+						</span>
+					{:else}
+						<span class="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+							{#each riders.slice(0, 8) as rider (rider.id)}
+								<span
+									class={rider.speaking ? 'ring-z4 rounded-full ring-2' : ''}
+									title={rider.name}
+								>
+									<Avatar name={rider.name} size={22} />
+								</span>
+							{/each}
+							{#if riders.length > 8}
+								<span class="text-muted text-[10px]">+{riders.length - 8}</span>
+							{/if}
+						</span>
+						<span class="text-muted shrink-0 text-[10px] tabular-nums"
+							>{riders.length} · {live
+								? `${here.length} riding`
+								: `${here.length} in voice`}</span
+						>
+					{/if}
+					{#if peopleOpen}<ChevronDown
+							size={13}
+							class="text-muted shrink-0"
+						/>{:else}<ChevronRight size={13} class="text-muted shrink-0" />{/if}
+				</button>
 				{#if av && account.me?.avEnabled}
 					<!-- Labelled and big enough for a bike: two grey icons in the
 					     you-panel did not read as the way into voice (#437). -->
@@ -349,18 +414,20 @@
 						<QuickAudio />
 					</div>
 				{/if}
-				<ul class="px-1">
-					{#each here as rider (rider.id)}{@render person(rider)}{/each}
-				</ul>
-				{#if away.length > 0}
-					<div class="eyebrow px-3 pt-3 pb-1">
-						{live
-							? `not pedalling — ${away.length}`
-							: `in the room — ${away.length}`}
-					</div>
-					<ul class="px-1 pb-2">
-						{#each away as rider (rider.id)}{@render person(rider)}{/each}
+				{#if peopleOpen}
+					<ul class="px-1">
+						{#each here as rider (rider.id)}{@render person(rider)}{/each}
 					</ul>
+					{#if away.length > 0}
+						<div class="eyebrow px-3 pt-3 pb-1">
+							{live
+								? `not pedalling — ${away.length}`
+								: `in the room — ${away.length}`}
+						</div>
+						<ul class="px-1 pb-2">
+							{#each away as rider (rider.id)}{@render person(rider)}{/each}
+						</ul>
+					{/if}
 				{/if}
 			</div>
 		{/if}
