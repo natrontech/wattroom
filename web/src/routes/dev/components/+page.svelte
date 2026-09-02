@@ -15,6 +15,7 @@
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
+	import { Copy, SmilePlus } from '@lucide/svelte';
 	import type { MockRider } from '../room/mockRoom.svelte';
 
 	// A stand-in screenshot, deliberately bigger than any window: fit-to-window
@@ -220,11 +221,19 @@
 		A picture in a message is capped so it cannot push the conversation off
 		screen. Clicking it opens the app's own viewer (#510) — never a browser tab,
 		which takes the room with it. Click the picture again for full size, Escape
-		or the backdrop to come back; right-click the thumbnail for the new tab and
-		the link.
+		or the backdrop to come back. Right-click the thumbnail for the new tab and
+		the link, then whatever the message around it offers — the room panel
+		passes its own message menu down, so reacting to a picture still works.
 	</p>
 	<div class="mt-4">
-		<ChatImage src={screenshot} alt="Sent by Sara" />
+		<ChatImage
+			src={screenshot}
+			alt="Sent by Sara"
+			menu={() => [
+				{ label: 'React', icon: SmilePlus, onSelect: () => {} },
+				{ label: 'Copy text', icon: Copy, onSelect: () => {} },
+			]}
+		/>
 	</div>
 
 	{#if demoModal}
