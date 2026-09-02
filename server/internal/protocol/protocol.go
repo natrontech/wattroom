@@ -282,9 +282,14 @@ type ServerTick struct {
 	// Running game mode (#31/#32), replacing the workout timeline while on.
 	Game *GameState `json:"game,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
-	Execution map[string]float64      `json:"execution,omitempty"`
-	Roster    []Rider                 `json:"roster"`
-	Riders    map[string]RiderMetrics `json:"riders"`
+	Execution map[string]float64 `json:"execution,omitempty"`
+	// Who the LiveKit webhooks say is in voice (#467), by rider id. A client
+	// learns this from LiveKit only once it has joined itself, so without the
+	// server's answer an empty voice roster is indistinguishable from a full
+	// one you have not entered yet.
+	Voice  []string                `json:"voice,omitempty"`
+	Roster []Rider                 `json:"roster"`
+	Riders map[string]RiderMetrics `json:"riders"`
 }
 
 // RoomPresence is the hub's live answer for one room (#251): the rooms list,
