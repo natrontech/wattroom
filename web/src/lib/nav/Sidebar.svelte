@@ -174,19 +174,26 @@
 									? 'starting'
 									: `${Math.round(room.session.elapsedSec / 60)} min in`}
 							</span>
+						{:else if !open && room.riders?.length}
+							<!-- Who is in there, without going in (#438): Discord lists
+							     the people under a voice channel; the row does the same. -->
+							<span
+								class="text-muted/80 mt-0.5 flex items-center gap-1 truncate text-[10px]"
+							>
+								{#if room.voice?.length}<Headphones
+										size={9}
+										class="shrink-0"
+									/>{/if}
+								{room.riders.slice(0, 3).join(', ')}{room.riders.length > 3
+									? ` +${room.riders.length - 3}`
+									: ''}
+							</span>
 						{:else if !open && room.next}
 							<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
 								>next: {room.next.workoutName} · {formatWhen(
 									room.next.startsAt,
 								)}</span
 							>
-						{:else if !open && room.voice?.length}
-							<span
-								class="text-muted/70 mt-0.5 flex items-center gap-1 truncate text-[10px]"
-							>
-								<Headphones size={9} class="shrink-0" />
-								{room.voice.join(', ')}
-							</span>
 						{/if}
 					</a>
 

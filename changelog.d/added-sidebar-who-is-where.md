@@ -1,0 +1,1 @@
+- The sidebar names who is in each of your rooms under the room, not just how many, so you can see where your friends are before you go in.
