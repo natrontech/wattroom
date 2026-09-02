@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	FtmsTrainer,
 	parseIndoorBikeData,
 	clampTarget,
 	DEFAULT_POWER_RANGE,
@@ -107,5 +108,95 @@ describe('clampTarget', () => {
 	it('rounds onto a coarser increment grid', () => {
 		// A trainer advertising 10 W steps: 253 is not a writable target.
 		expect(clampTarget(253, { ...core, incrementWatts: 10 })).toBe(250);
+	});
+});
+
+/**
+ * The write queue (#518). The class had no test at all, which is how a
+ * rejected queue tail survived: `.then` on a rejected promise skips its
+ * callback and stays rejected, so one control-point timeout silently ended
+ * ERG for the session and left the reattach unable to re-request control.
+ */
+class FakeChar extends EventTarget {
+	value?: DataView;
+	writes: Uint8Array[] = [];
+	ack = true;
+	constructor(private readonly bytes?: number[]) {
+		super();
+	}
+	async startNotifications() {
+		return this;
+	}
+	async readValue() {
+		return new DataView(Uint8Array.from(this.bytes ?? []).buffer);
+	}
+	async writeValueWithResponse(buffer: ArrayBuffer) {
+		const bytes = new Uint8Array(buffer);
+		this.writes.push(bytes);
+		if (!this.ack) return;
+		// 0x80 <op> <result>: the indication every write waits on.
+		this.value = new DataView(Uint8Array.of(0x80, bytes[0], 0x01).buffer);
+		this.dispatchEvent(new Event('characteristicvaluechanged'));
+	}
+}
+
+function fakeTrainer() {
+	const control = new FakeChar();
+	const chars: Record<number, FakeChar> = {
+		0x2ad2: new FakeChar(),
+		0x2ad9: control,
+		0x2ad8: new FakeChar([0x00, 0x00, 0xd0, 0x07, 0x01, 0x00]),
+		0x2ada: new FakeChar(),
+	};
+	const device = {
+		name: 'Fake Core',
+		addEventListener() {},
+		gatt: {
+			connect: async () => ({
+				getPrimaryService: async () => ({
+					getCharacteristic: async (id: number) => {
+						const char = chars[id];
+						if (!char) throw new Error('no such characteristic');
+						return char;
+					},
+				}),
+			}),
+		},
+	};
+	vi.stubGlobal('navigator', {
+		bluetooth: { requestDevice: async () => device },
+	});
+	return control;
+}
+
+describe('FtmsTrainer control-point queue', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('keeps writing after one write times out', async () => {
+		vi.useFakeTimers();
+		const control = fakeTrainer();
+		const trainer = new FtmsTrainer();
+		await trainer.connect();
+		expect(control.writes).toHaveLength(1); // the control grant
+
+		// The expectation is attached before the clock moves, or the rejection
+		// is briefly unhandled and node warns about it.
+		control.ack = false;
+		const stalled = expect(trainer.setTargetPower(200)).rejects.toThrow(
+			/timed out/,
+		);
+		await vi.advanceTimersByTimeAsync(3000);
+		await stalled;
+
+		// The whole point: the queue is still usable.
+		control.ack = true;
+		await trainer.setTargetPower(250);
+		await trainer.setSimulation(3);
+		expect(control.writes).toHaveLength(4);
+		expect(control.writes[2][0]).toBe(0x05); // set target power
+		expect(control.writes[3][0]).toBe(0x11); // set simulation
 	});
 });

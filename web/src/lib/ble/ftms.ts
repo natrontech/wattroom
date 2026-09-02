@@ -133,6 +133,13 @@ export class FtmsTrainer implements Trainer {
 	#logCbs = new Set<(text: string, ms?: number) => void>();
 	/** Latest full frame, including fields the Trainer interface does not carry. */
 	lastFrame: IndoorBikeData = {};
+	/**
+	 * Raw Indoor Bike Data notifications seen, and how many carried instantaneous
+	 * power (#520). A unit that streams frames with no power field delivers no
+	 * samples at all — indistinguishable from a silent one unless both are counted.
+	 */
+	frames = 0;
+	poweredFrames = 0;
 	#statusCbs = new Set<(s: TrainerStatus) => void>();
 
 	/**
@@ -204,7 +211,9 @@ export class FtmsTrainer implements Trainer {
 			if (!view) return;
 			const data = parseIndoorBikeData(view);
 			this.lastFrame = data;
+			this.frames += 1;
 			if (data.watts === undefined) return;
+			this.poweredFrames += 1;
 			for (const cb of this.#sampleCbs) {
 				cb({
 					watts: data.watts,
@@ -304,7 +313,7 @@ export class FtmsTrainer implements Trainer {
 
 	/** Serialised: each write resolves only once its indication lands. */
 	#write(bytes: ArrayBuffer): Promise<void> {
-		this.#queue = this.#queue.then(async () => {
+		const run = this.#queue.then(async () => {
 			if (!this.#control) throw new Error('not connected');
 			const sentAt = performance.now();
 			const done = new Promise<void>((resolve, reject) => {
@@ -315,12 +324,26 @@ export class FtmsTrainer implements Trainer {
 				}, 3000) as unknown as number;
 				this.#pending = { resolve, reject, timer };
 			});
-			await this.#control.writeValueWithResponse(bytes);
-			await done;
+			try {
+				await this.#control.writeValueWithResponse(bytes);
+				await done;
+			} finally {
+				// A write that failed at the ATT layer leaves its pending entry
+				// armed; the next indication would otherwise resolve the wrong one.
+				if (this.#pending) {
+					clearTimeout(this.#pending.timer);
+					this.#pending = undefined;
+				}
+			}
 			const ms = Math.round(performance.now() - sentAt);
 			for (const cb of this.#logCbs) cb('control point acknowledged', ms);
 		});
-		return this.#queue;
+		// The tail must never carry a rejection (#518): `.then` on a rejected
+		// promise skips its callback and stays rejected, so one control-point
+		// timeout used to silently end ERG for the session, and left the
+		// reattach unable to re-request control. The caller still gets `run`.
+		this.#queue = run.catch(() => {});
+		return run;
 	}
 
 	#setStatus(next: TrainerStatus): void {
