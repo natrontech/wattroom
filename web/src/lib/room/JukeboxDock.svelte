@@ -18,6 +18,7 @@
 	} from '$lib/pane';
 	import { setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
 	import {
+		VolumeX,
 		FastForward,
 		GripHorizontal,
 		Minimize2,
@@ -564,13 +565,21 @@
 
 		{#if showPlayer && playerInfo.blocked}
 			<!-- The browser refused to start audio with no gesture behind it.
-			     One tap fixes it for the rest of the session. Beside the
-			     player, never over it (RMF). -->
-			<button
-				onclick={startPlayback}
-				class="btn btn-accent shrink-0 justify-center rounded-none py-2 text-xs"
-				>Tap to hear the room's music</button
+			     One press fixes it for the session. Beside the player, never
+			     over it (RMF) — and quiet: this is chrome, and magenta means
+			     live data (ADR-0005). A full-width accent bar read as an
+			     error (#485). -->
+			<div
+				class="border-ink/10 text-muted flex shrink-0 items-center gap-2 border-t px-2 py-1.5 text-[11px]"
 			>
+				<VolumeX size={13} class="shrink-0" />
+				<span class="min-w-0 flex-1 truncate">Your browser muted this tab.</span
+				>
+				<button
+					onclick={startPlayback}
+					class="btn btn-secondary btn-xs shrink-0">Play</button
+				>
+			</div>
 		{/if}
 
 		{#if showPlayer && !seat}

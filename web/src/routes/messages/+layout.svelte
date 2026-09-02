@@ -1,7 +1,9 @@
 <script lang="ts">
-	// Messages is a place (#468, ADR-0020): the list on the left, the thread
-	// on the right — a room's chat and a DM in the same two columns. Below
-	// md the two take turns: the list, or the thread with a way back.
+	// Messages is a place (#468, ADR-0020) — and ADR-0020 allows ONE list.
+	// The app sidebar already names every room and every friend, so a second
+	// column beside it repeated the same names on the same screen (#484).
+	// Above md the page is the thread alone and the sidebar is the list;
+	// below md the sidebar is a drawer, so the list column stands in for it.
 	import { page } from '$app/state';
 	import ThreadList from '$lib/messages/ThreadList.svelte';
 
@@ -10,12 +12,8 @@
 	const open = $derived(page.url.pathname !== '/messages');
 </script>
 
-<div class="grid h-full min-h-0 grid-cols-1 md:grid-cols-[18rem_minmax(0,1fr)]">
-	<aside
-		class="border-ink/5 min-h-0 flex-col border-r {open
-			? 'hidden md:flex'
-			: 'flex'}"
-	>
+<div class="grid h-full min-h-0 grid-cols-1">
+	<aside class="min-h-0 flex-col md:hidden {open ? 'hidden' : 'flex'}">
 		<ThreadList active={page.url.pathname} />
 	</aside>
 	<section class="min-h-0 flex-col {open ? 'flex' : 'hidden md:flex'}">
