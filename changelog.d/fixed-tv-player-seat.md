@@ -1,1 +1,0 @@
-- TV mode with a video playing: the player sits in the TV's top-right corner instead of floating over the numbers.
