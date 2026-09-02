@@ -1,1 +1,0 @@
-- A theme other than Outrun no longer flashes Outrun on every page load: the last applied theme is painted before the app bundle runs.

@@ -17,6 +17,29 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.7] - 2026-09-02
+
+### Added
+
+- Your theme and light/dark choice now follow your account: pick Tron Ice on the laptop and the TV shows Tron Ice too. The light/dark/auto switch is back, on your profile next to the palette — it had gone missing with the old room rail.
+
+### Changed
+
+- Every page uses the full width of the window instead of a narrow column on the left: Home gets a right rail for opening rooms and what's next, workouts sit in a grid, and the ride charts sit side by side on a wide screen.
+- The landing's claymation riders draw their tyres, bars and hubs in the room's own dark instead of Outrun's violet, so they sit right on Tron Ice and Miami Nights too — and a test now keeps every other colour on the theme's tokens, so a palette you pick reaches all of it.
+
+### Fixed
+
+- Delete and other destructive buttons are the same red in every theme instead
+  of borrowing zone 6's colour, which had turned them pastel pink. Error text,
+  failed-state banners and "eliminated" markers moved with them.
+- Opening a direct message no longer throws an update-depth error in the console on every visit.
+- The jukebox player no longer sits on top of every dialog and menu: floating, it stays under them. On the stage it now follows the stage the same frame something appears above it, and while something else is fullscreen it pauses for you instead of playing on unseen.
+- You can leave a room again: a member finds "Leave room" in the room's Settings (with an undo), and the Lounge has a Leave button that disconnects you next to the TV button.
+- The room you are in stays opened in the sidebar while you read a message or visit Home, so Training is one click away again instead of two.
+- A theme other than Outrun no longer flashes Outrun on every page load: the last applied theme is painted before the app bundle runs.
+Training zones are vivid again at the hard end. Zone 6 and 7 had faded to pale pink, so the hardest efforts were the palest thing on screen; the ramp now keeps its saturation, and every theme's zones are checked for colour-blind legibility as well as contrast.
+
 ## [2026.09.6] - 2026-09-01
 
 ### Changed
@@ -183,7 +206,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.6...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.7...HEAD
+[2026.09.7]: https://github.com/natrontech/wattroom/compare/2026.09.6...2026.09.7
 [2026.09.6]: https://github.com/natrontech/wattroom/compare/2026.09.5...2026.09.6
 [2026.09.5]: https://github.com/natrontech/wattroom/compare/2026.09.4...2026.09.5
 [2026.09.4]: https://github.com/natrontech/wattroom/compare/2026.09.3...2026.09.4
