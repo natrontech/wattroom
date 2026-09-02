@@ -2,7 +2,6 @@
 	import { modals } from '$lib/modals.svelte';
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
@@ -443,9 +442,6 @@
 		offRoom && lastSpeaker
 			? (conn?.live.tick?.roster.find((r) => r.id === lastSpeaker) ?? null)
 			: null,
-	);
-	const speakerVideo = $derived(
-		speaker ? conn?.av.videoOf[speaker.id] : undefined,
 	);
 
 	// The transport belongs on the frame too (rider report): off the room page

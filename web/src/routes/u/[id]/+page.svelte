@@ -126,6 +126,10 @@
 	><title>{rider ? rider.displayName : 'Rider'} · WattRoom</title></svelte:head
 >
 
+{#snippet openRides()}
+	<a href="/history" class="btn btn-secondary btn-xs">Open Rides</a>
+{/snippet}
+
 <main class="page">
 	{#if error}
 		<Banner tone="error">
@@ -256,18 +260,18 @@
 						</div>
 						{#if rider.sharedRides.length === 0}
 							<div class="mt-3">
-								<EmptyState>
+								<!-- The cta snippet is EmptyState's PROP, so it has to be a direct
+								     child of the component — declared inside the {#if} it was just a
+								     local in the children scope and the button never rendered. -->
+								<EmptyState
+									cta={rider.friend === 'self' ? openRides : undefined}
+								>
 									{#if rider.friend === 'self'}
 										<p class="text-ink text-sm">Nothing shared yet.</p>
 										<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
 											Rides are private by default. Flip one to "shared" in
 											Rides and your friends see it here.
 										</p>
-										{#snippet cta()}
-											<a href="/history" class="btn btn-secondary btn-xs"
-												>Open Rides</a
-											>
-										{/snippet}
 									{:else}
 										<p class="text-ink text-sm">
 											{rider.displayName} hasn't shared a ride yet.
