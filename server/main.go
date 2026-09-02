@@ -27,6 +27,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/friends"
+	"github.com/natrontech/wattroom/server/internal/gamify"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
@@ -127,6 +128,15 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		// The trophy case (#467): XP off the bike and achievements. It hears
+		// about rides from both savers, about sprints, tracks and sessions
+		// from the hub, and about voice minutes from its own ticker.
+		trophies := gamify.New(st, readAuth, log)
+		trophies.Register(mux)
+		saver.SetRideKeeper(trophies)
+		ridesService.SetRideKeeper(trophies)
+		h.SetXpKeeper(trophies)
+		trophies.AccrueVoice(context.Background(), h)
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)

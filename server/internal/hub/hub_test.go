@@ -101,7 +101,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 
 	// A new session is a new ride.
-	rm.control(protocol.Control{Action: "start"}, time.Unix(100, 0))
+	rm.control(protocol.Control{Action: "start"}, "jan", time.Unix(100, 0))
 	if got := rm.record.count("jan"); got != 0 {
 		t.Fatalf("record survived a session restart: %d", got)
 	}
