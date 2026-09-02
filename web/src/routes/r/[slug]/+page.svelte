@@ -16,10 +16,10 @@
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import {
 		Focus,
-		MessageSquare,
 		CalendarClock,
 		Columns2,
 		LayoutGrid,
@@ -33,21 +33,20 @@
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
 
-	// The tile's right-click (#465): focus is the click, the rest lives here.
-	function tileMenu(rider: (typeof room.riders)[number]) {
+	// The tile's right-click (#465): focus is the click, the rest is what
+	// every person in WattRoom offers — their page, the DM, the friend ask.
+	// Read the rider lazily: the roster is a new object every server tick, and
+	// an eager read re-attaches (and closed) the menu once a second (#529).
+	function tileMenu(rider: () => (typeof room.riders)[number]) {
 		return contextMenu(() => [
 			{
-				label: rider.id === room.focusId ? 'Unfocus' : `Focus ${rider.name}`,
+				label:
+					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
 				icon: Focus,
 				onSelect: () =>
-					room.setFocus(rider.id === room.focusId ? null : rider.id),
+					room.setFocus(rider().id === room.focusId ? null : rider().id),
 			},
-			{
-				label: 'Message',
-				icon: MessageSquare,
-				onSelect: () => void goto(`/messages/dm/${rider.id}`),
-				disabled: rider.you,
-			},
+			...personMenu(rider().id, goto, { you: rider().you }),
 		]);
 	}
 
@@ -234,7 +233,7 @@
 							onclick={() => room.setFocus(null)}
 							class="block w-full text-left"
 							title="tap to unfocus"
-							{@attach tileMenu(focused)}>{@render tile(focused)}</button
+							{@attach tileMenu(() => focused!)}>{@render tile(focused)}</button
 						>
 						<p class="text-muted mt-2 text-xs">
 							<span class="text-ink font-medium">{focused.name}</span> is focused
@@ -247,7 +246,7 @@
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}"
-								{@attach tileMenu(rider)}>{@render tile(rider)}</button
+								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
 							>
 						{/each}
 					</div>
@@ -264,10 +263,10 @@
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}"
-								{@attach tileMenu(rider)}>{@render tile(rider)}</button
+								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
 							>
 						{:else}
-							<div {@attach tileMenu(rider)}>{@render tile(rider)}</div>
+							<div {@attach tileMenu(() => rider)}>{@render tile(rider)}</div>
 						{/if}
 					{/each}
 				</div>

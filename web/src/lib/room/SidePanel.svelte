@@ -2,7 +2,6 @@
 	import type { Snippet } from 'svelte';
 	import {
 		ListPlus,
-		MessageSquare,
 		CalendarClock,
 		Copy,
 		Crown,
@@ -34,6 +33,7 @@
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { toasts } from '$lib/toast.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -201,17 +201,7 @@
 		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
-		{@attach contextMenu(() =>
-			rider.you
-				? []
-				: [
-						{
-							label: 'Message',
-							icon: MessageSquare,
-							onSelect: () => void goto(`/messages/dm/${rider.id}`),
-						},
-					],
-		)}
+		{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
 	>
 		<span class="relative shrink-0">
 			<Avatar name={rider.name} size={22} />
