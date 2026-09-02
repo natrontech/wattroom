@@ -531,3 +531,76 @@ func TestIconAndCheers(t *testing.T) {
 		}
 	}
 }
+
+// A planned session with an RSVP is what #450 calls an event: any member can
+// say they are in, the room shows who, and saying it twice says it once.
+func TestSessionRsvp(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Event Room")
+	if status, body := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob join: %d %v", status, body)
+	}
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+		fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`,
+			workout, time.Now().Add(2*time.Hour).UTC().Format(time.RFC3339)))
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	planID, _ := body["id"].(string)
+	rsvp := "/api/rooms/" + slug + "/schedule/" + planID + "/rsvp"
+
+	// Signed out, a stranger, and an unknown plan all bounce.
+	if status, _ := h.call(t, "", http.MethodPut, rsvp, ""); status != http.StatusUnauthorized {
+		t.Fatalf("signed out rsvp: %d", status)
+	}
+	if status, _ := h.call(t, "carol", http.MethodPut, rsvp, ""); status != http.StatusForbidden {
+		t.Fatalf("stranger rsvp: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPut,
+		"/api/rooms/"+slug+"/schedule/00000000-0000-0000-0000-000000000000/rsvp", ""); status != http.StatusNotFound {
+		t.Fatalf("unknown plan rsvp: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/schedule/not-a-uuid/rsvp", ""); status != http.StatusNotFound {
+		t.Fatalf("malformed plan rsvp: %d", status)
+	}
+
+	// Bob is in, twice — and the room says so once.
+	for range 2 {
+		if status, _ := h.call(t, "bob", http.MethodPut, rsvp, ""); status != http.StatusNoContent {
+			t.Fatalf("rsvp: %d", status)
+		}
+	}
+	going := h.going(t, slug)
+	if len(going) != 1 {
+		t.Fatalf("going after rsvp: %v", going)
+	}
+	who, _ := going[0].(map[string]any)
+	if who["id"] != h.userID(t, "bob") || who["displayName"] == "" {
+		t.Fatalf("going names the wrong rider: %v", who)
+	}
+
+	// Taking it back empties the list; taking it back twice is not an error.
+	for range 2 {
+		if status, _ := h.call(t, "bob", http.MethodDelete, rsvp, ""); status != http.StatusNoContent {
+			t.Fatalf("un-rsvp: %d", status)
+		}
+	}
+	if going := h.going(t, slug); len(going) != 0 {
+		t.Fatalf("going after cancel: %v", going)
+	}
+}
+
+// going is the RSVP list on the room's one upcoming session.
+func (h *harness) going(t *testing.T, slug string) []any {
+	t.Helper()
+	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	upcoming, _ := body["upcoming"].([]any)
+	if status != http.StatusOK || len(upcoming) != 1 {
+		t.Fatalf("upcoming: %d %v", status, body)
+	}
+	entry, _ := upcoming[0].(map[string]any)
+	list, _ := entry["going"].([]any)
+	return list
+}

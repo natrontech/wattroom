@@ -84,6 +84,8 @@ export interface RoomContext {
 		workoutJson: string;
 		startsAt: string;
 		createdBy: string;
+		/** Who said they are in (#450), first to say so first. */
+		going?: { id: string; displayName: string }[];
 	}[];
 	readonly icsToken: string;
 	readonly streakWeeks: number;
@@ -104,6 +106,8 @@ export interface RoomContext {
 	schedule(name: string, json: string, startsAt: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
+	/** Say you are in for a planned session, or take it back (#450). */
+	rsvp(id: string, going: boolean): void;
 	rotateIcs(): void;
 	setRole(userId: string, role: string): void;
 	removeMember(userId: string): void;
