@@ -20,6 +20,7 @@
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import {
+		MessageSquare,
 		Headphones,
 		LogOut,
 		Mic,
@@ -112,6 +113,9 @@
 				     standing in — reading a DM or Home while connected must not
 				     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
+				<!-- Reading its chat from outside (#484) marks the row too, so the
+				     sidebar always says where you are. -->
+				{@const reading = pathname === `/messages/r/${room.slug}`}
 				<li
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = roomPlaces.map((place) => ({
@@ -119,6 +123,14 @@
 							icon: place.icon,
 							onSelect: () => void goto(`/r/${room.slug}${place.path}`),
 						}));
+						// The way in without going in (#484): the list lives here now,
+						// so the way to a room's chat from outside lives here too.
+						entries.push('separator', {
+							label: 'Read the chat',
+							icon: MessageSquare,
+							hint: room.unread ? `${room.unread} new` : undefined,
+							onSelect: () => void goto(`/messages/r/${room.slug}`),
+						});
 						if (here && onLeave)
 							entries.push('separator', {
 								label: 'Leave the room',
@@ -131,7 +143,7 @@
 				>
 					<a
 						href="/r/{room.slug}"
-						class="block rounded px-2 py-1.5 {open
+						class="block rounded px-2 py-1.5 {open || reading
 							? 'text-ink'
 							: 'text-muted hover:text-ink'}"
 					>
@@ -144,7 +156,7 @@
 							{/if}
 							<RoomIcon icon={room.icon} size={14} />
 							<span
-								class="truncate text-sm {open
+								class="truncate text-sm {open || reading
 									? 'font-semibold'
 									: room.unread
 										? 'text-ink font-semibold'
