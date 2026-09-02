@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.11] - 2026-09-02
+
+### Fixed
+
+- The jukebox panel no longer shows a blank box while the video plays on the stage: the slot the player docks into carries the track's own artwork.
+
 ## [2026.09.10] - 2026-09-02
 
 ### Fixed
@@ -271,7 +277,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.10...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.11...HEAD
+[2026.09.11]: https://github.com/natrontech/wattroom/compare/2026.09.10...2026.09.11
 [2026.09.10]: https://github.com/natrontech/wattroom/compare/2026.09.9...2026.09.10
 [2026.09.9]: https://github.com/natrontech/wattroom/compare/2026.09.8...2026.09.9
 [2026.09.8]: https://github.com/natrontech/wattroom/compare/2026.09.7...2026.09.8
