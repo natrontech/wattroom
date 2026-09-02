@@ -7,6 +7,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
+	import { MUSIC_FADER, UNIT_FADER } from '$lib/sound/fader';
 
 	let {
 		micOn = false,
@@ -190,24 +191,27 @@
 <div class="border-ink/5 mt-5 border-t pt-4">
 	<span class="eyebrow">mixer</span>
 	<label class="mt-2 block text-xs">
-		<span class="text-muted">music</span>
+		<span class="text-muted"
+			>music · <span class="font-display tabular-nums">{mixer.music}%</span
+			></span
+		>
 		<input
 			type="range"
-			min="0"
-			max="100"
-			step="5"
+			{...MUSIC_FADER}
 			value={mixer.music}
 			oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
 			class="mt-0.5 w-full"
 		/>
 	</label>
 	<label class="mt-2 block text-xs">
-		<span class="text-muted">cues</span>
+		<span class="text-muted"
+			>cues · <span class="font-display tabular-nums"
+				>{Math.round(mixer.cues * 100)}%</span
+			></span
+		>
 		<input
 			type="range"
-			min="0"
-			max="1"
-			step="0.05"
+			{...UNIT_FADER}
 			value={mixer.cues}
 			oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
 			onchange={() => play('block')}
@@ -222,9 +226,7 @@
 		>
 		<input
 			type="range"
-			min="0"
-			max="1"
-			step="0.05"
+			{...UNIT_FADER}
 			value={mixer.duck}
 			oninput={(e) => mixer.setDuck(Number(e.currentTarget.value))}
 			onchange={() => play('block')}

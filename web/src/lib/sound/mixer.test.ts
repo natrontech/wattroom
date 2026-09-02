@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	MUSIC_FADER,
+	RIDER_FADER,
+	UNIT_FADER,
+	type Fader,
+} from '$lib/sound/fader';
 
 // The cue engine opens an AudioContext on first use; the mixer only needs
 // its setters to exist.
@@ -25,6 +31,19 @@ async function freshMixer() {
 }
 
 const stored = () => JSON.parse(store.get(KEY) ?? '{}');
+
+/**
+ * Every position a fader can be dragged to, as its range input emits it:
+ * rounded to the step's own precision, or 0.01 steps accumulate float dust
+ * (0.07 becoming 0.07000000000000001) that no `<input>` ever produces.
+ */
+function positions({ min, max, step }: Fader): number[] {
+	const digits = Math.max(0, -Math.floor(Math.log10(step)));
+	const out: number[] = [];
+	for (let v = min; v <= max + step / 2; v += step)
+		out.push(Number(v.toFixed(digits)));
+	return out;
+}
 
 describe('mixer rider gain (#463)', () => {
 	beforeEach(() => store.clear());
@@ -100,5 +119,57 @@ describe('mixer rider gain (#463)', () => {
 		expect(mixer.mixedRiders).toEqual([
 			{ id: 'ben', name: 'a rider who has left', gain: 1.2 },
 		]);
+	});
+});
+
+describe('fader resolution (#509)', () => {
+	beforeEach(() => store.clear());
+
+	it('gives every fader 1 % of travel — no 5 % notches to settle between', () => {
+		expect(positions(MUSIC_FADER)).toHaveLength(101);
+		expect(positions(RIDER_FADER)).toHaveLength(201);
+		expect(positions(UNIT_FADER)).toHaveLength(101);
+	});
+
+	it('keeps every music position the fader can emit', async () => {
+		const mixer = await freshMixer();
+		for (const v of positions(MUSIC_FADER)) {
+			mixer.setMusic(v);
+			expect(mixer.music).toBe(v);
+		}
+	});
+
+	it('keeps every cue and duck position the fader can emit', async () => {
+		const mixer = await freshMixer();
+		for (const v of positions(UNIT_FADER)) {
+			mixer.setCues(v);
+			mixer.setDuck(v);
+			expect(mixer.cues).toBe(v);
+			expect(mixer.duck).toBe(v);
+		}
+	});
+
+	it('keeps every rider position, and still forgets the one at unity', async () => {
+		const mixer = await freshMixer();
+		for (const pct of positions(RIDER_FADER)) {
+			mixer.setRiderGain('anna', pct / 100, 'Anna');
+			// The fader reads back the percent it was dragged to (RiderVolume).
+			expect(Math.round(mixer.riderGain('anna') * 100)).toBe(pct);
+			expect(mixer.mixedRiders).toHaveLength(pct === 100 ? 0 : 1);
+		}
+	});
+
+	it('carries a level set between two old notches through a reload', async () => {
+		const mixer = await freshMixer();
+		mixer.setMusic(43);
+		mixer.setCues(0.63);
+		mixer.setDuck(0.17);
+		mixer.setRiderGain('anna', 1.37, 'Anna');
+
+		const reloaded = await freshMixer();
+		expect(reloaded.music).toBe(43);
+		expect(reloaded.cues).toBe(0.63);
+		expect(reloaded.duck).toBe(0.17);
+		expect(reloaded.riderGain('anna')).toBe(1.37);
 	});
 });
