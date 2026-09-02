@@ -18,3 +18,9 @@ Before adding any setting/toggle: would 95% of riders pick the same value? Then 
 - Data (watts, graphs) gets the glow; chrome stays quiet. `--color-watt` = live data only.
 - Capability gating: features needing an absent precondition (no trainer paired, LiveKit down, not embeddable) render disabled with a one-line hint, or hide — never fail on click.
 - Vocabulary is docs/SPEC.md's glossary — rooms, coach, session, sprint moments. Don't invent synonyms per screen.
+
+## Right-click
+
+- Every object with more than one action gets a context menu (`contextMenu` from `$lib/context-menu.svelte`, drawn by `ContextMenuHost`): a room in the sidebar, a rider's tile, a track in the queue, the stage, a message. Right-click on a desk, long-press on touch.
+- The primary action stays on click; the menu holds the rest. Nothing lives *only* in a menu — it is a shortcut, never the sole way, so mid-ride targets stay huge and discoverable.
+- Items say what happens ("Leave the room", "Remove"); destructive ones take the danger token and sit last after a separator.

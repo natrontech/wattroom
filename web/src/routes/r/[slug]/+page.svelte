@@ -14,7 +14,11 @@
 	import { formatWhen } from '$lib/format';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { contextMenu } from '$lib/context-menu.svelte';
+	import { goto } from '$app/navigation';
 	import {
+		Focus,
+		MessageSquare,
 		Headphones,
 		CalendarClock,
 		Columns2,
@@ -30,6 +34,24 @@
 	const av = $derived(roomConnection.current?.av);
 	const focused = $derived(room.riders.find((r) => r.id === room.focusId));
 	const others = $derived(room.riders.filter((r) => r.id !== room.focusId));
+
+	// The tile's right-click (#465): focus is the click, the rest lives here.
+	function tileMenu(rider: (typeof room.riders)[number]) {
+		return contextMenu(() => [
+			{
+				label: rider.id === room.focusId ? 'Unfocus' : `Focus ${rider.name}`,
+				icon: Focus,
+				onSelect: () =>
+					room.setFocus(rider.id === room.focusId ? null : rider.id),
+			},
+			{
+				label: 'Message',
+				icon: MessageSquare,
+				onSelect: () => void goto(`/dm/${rider.id}`),
+				disabled: rider.you,
+			},
+		]);
+	}
 
 	// Quick layouts for watching together (#464): what deserves the room
 	// differs per rider — the picture for some, the cams for others — and the
@@ -201,7 +223,8 @@
 						<button
 							onclick={() => room.setFocus(null)}
 							class="block w-full text-left"
-							title="tap to unfocus">{@render tile(focused)}</button
+							title="tap to unfocus"
+							{@attach tileMenu(focused)}>{@render tile(focused)}</button
 						>
 						<p class="text-muted mt-2 text-xs">
 							<span class="text-ink font-medium">{focused.name}</span> is focused
@@ -213,7 +236,8 @@
 							<button
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
-								title="focus {rider.name}">{@render tile(rider)}</button
+								title="focus {rider.name}"
+								{@attach tileMenu(rider)}>{@render tile(rider)}</button
 							>
 						{/each}
 					</div>
@@ -228,7 +252,8 @@
 						<button
 							onclick={() => room.setFocus(rider.id)}
 							class="block text-left"
-							title="focus {rider.name}">{@render tile(rider)}</button
+							title="focus {rider.name}"
+							{@attach tileMenu(rider)}>{@render tile(rider)}</button
 						>
 					{/each}
 				</div>

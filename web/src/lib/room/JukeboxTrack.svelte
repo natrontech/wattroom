@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { ChevronDown, ChevronUp, RotateCcw, X } from '@lucide/svelte';
+	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import {
+		ArrowDown,
+		ArrowUp,
+		ThumbsUp,
+		Trash2,
+		ChevronDown,
+		ChevronUp,
+		RotateCcw,
+		X,
+	} from '@lucide/svelte';
 	import type { JukeboxEntry } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 
@@ -29,7 +39,34 @@
 	const mine = $derived(!!myId && !!entry.voters?.includes(myId));
 </script>
 
-<li class="group flex items-center gap-2">
+<li
+	class="group flex items-center gap-2"
+	{@attach contextMenu(() => {
+		const entries: MenuEntry[] = [];
+		if (onVote)
+			entries.push({ label: 'Vote it up', icon: ThumbsUp, onSelect: onVote });
+		if (onMove) {
+			entries.push(
+				{ label: 'Move up', icon: ArrowUp, onSelect: () => onMove(-1) },
+				{ label: 'Move down', icon: ArrowDown, onSelect: () => onMove(1) },
+			);
+		}
+		if (onRequeue)
+			entries.push({
+				label: 'Play again',
+				icon: RotateCcw,
+				onSelect: onRequeue,
+			});
+		if (onRemove)
+			entries.push('separator', {
+				label: 'Remove',
+				icon: Trash2,
+				onSelect: onRemove,
+				danger: true,
+			});
+		return entries;
+	})}
+>
 	<div class="relative shrink-0">
 		<img
 			src={thumbnailFor(entry.videoId)}
