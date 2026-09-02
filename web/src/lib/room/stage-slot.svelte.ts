@@ -36,20 +36,9 @@ function readPopped(): boolean {
 	}
 }
 
-export const stageSlot = $state<{
-	seat: Seat | null;
-	popped: boolean;
-	/**
-	 * The priority of the surface currently holding the player, or null when
-	 * nobody is. A surface reads this to know whether the picture is ITS to
-	 * draw (#489): the jukebox deck must not reserve a video box while the
-	 * stage or TV mode has the player, or the column keeps an empty hole.
-	 */
-	ownerPriority: number | null;
-}>({
+export const stageSlot = $state<{ seat: Seat | null; popped: boolean }>({
 	seat: null,
 	popped: readPopped(),
-	ownerPriority: null,
 });
 
 export function setPopped(popped: boolean): void {
@@ -84,29 +73,20 @@ const offers = new Map<HTMLElement, { priority: number; seat: Seat | null }>();
 let last: Seat | null = null;
 
 /** The highest-priority live offer wins; ties go to whoever offered last. */
-export function winningOffer(
+export function bestOffer(
 	all: Iterable<{ priority: number; seat: Seat | null }>,
-): { priority: number; seat: Seat } | null {
+): Seat | null {
 	let best: { priority: number; seat: Seat } | undefined;
 	for (const offer of all) {
 		if (!offer.seat) continue;
 		if (!best || offer.priority >= best.priority)
 			best = { priority: offer.priority, seat: offer.seat };
 	}
-	return best ?? null;
-}
-
-export function bestOffer(
-	all: Iterable<{ priority: number; seat: Seat | null }>,
-): Seat | null {
-	return winningOffer(all)?.seat ?? null;
+	return best?.seat ?? null;
 }
 
 function settle() {
-	const best = winningOffer(offers.values());
-	const next = best?.seat ?? null;
-	if (stageSlot.ownerPriority !== (best?.priority ?? null))
-		stageSlot.ownerPriority = best?.priority ?? null;
+	const next = bestOffer(offers.values());
 	if (sameSeat(last, next)) return;
 	last = next;
 	stageSlot.seat = next;
