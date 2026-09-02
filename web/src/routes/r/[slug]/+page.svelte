@@ -16,7 +16,6 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import {
 		Headphones,
-		LogOut,
 		CalendarClock,
 		MonitorUp,
 		ScreenShare,
@@ -83,12 +82,6 @@
 		{/if}
 		<button onclick={() => room.openTv()} class="btn btn-ghost btn-xs ml-auto"
 			><MonitorUp size={13} /> TV</button
-		>
-		<!-- The way out, where the way in was (rider report #415). -->
-		<button
-			onclick={() => room.leave()}
-			class="btn btn-ghost btn-xs"
-			title="disconnect from the room"><LogOut size={13} /> Leave</button
 		>
 	</div>
 
