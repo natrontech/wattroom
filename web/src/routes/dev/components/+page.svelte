@@ -222,8 +222,8 @@
 		screen. Clicking it opens the app's own viewer (#510) — never a browser tab,
 		which takes the room with it. Click the picture again for full size, Escape
 		or the backdrop to come back. Right-click the thumbnail for the new tab and
-		the link, then whatever the message around it offers — the room panel
-		passes its own message menu down, so reacting to a picture still works.
+		the link, then whatever the message around it offers — the room panel passes
+		its own message menu down, so reacting to a picture still works.
 	</p>
 	<div class="mt-4">
 		<ChatImage
