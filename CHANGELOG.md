@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.13] - 2026-09-02
+
+### Fixed
+
+- A right-click menu stays open until you use it: it no longer shuts itself about a second after opening, when the room's chat scrolled to its newest line.
+- Someone whose camera is on the stage is no longer drawn a second time in the tile grid, and focusing a rider is a Stage-layout thing now — in side-by-side and the grid, everyone stays one size.
+
 ## [2026.09.12] - 2026-09-02
 
 ### Fixed
@@ -284,7 +291,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.12...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.13...HEAD
+[2026.09.13]: https://github.com/natrontech/wattroom/compare/2026.09.12...2026.09.13
 [2026.09.12]: https://github.com/natrontech/wattroom/compare/2026.09.11...2026.09.12
 [2026.09.11]: https://github.com/natrontech/wattroom/compare/2026.09.10...2026.09.11
 [2026.09.10]: https://github.com/natrontech/wattroom/compare/2026.09.9...2026.09.10
