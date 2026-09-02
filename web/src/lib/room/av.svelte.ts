@@ -15,6 +15,7 @@ import {
 	type GateState,
 	gateStep,
 } from '$lib/room/gate';
+import { MIC_CONSTRAINTS } from '$lib/room/capture';
 import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
 import { mountTrack } from '$lib/room/mount-track';
 import {
@@ -177,16 +178,7 @@ export function createRoomAv(slug: string) {
 	/** The capture constraints, honouring the chosen mic; an unplugged choice
 	 * falls back to the default instead of failing the join. */
 	async function captureMic(): Promise<MediaStream> {
-		// AGC off (#514): the gate compares the level against a fixed mark on a
-		// dBFS axis, and an automatic gain stage spends its life moving what
-		// dBFS means — it lifts room tone the moment nobody talks, which is the
-		// meter dancing in a silent room. A rider who lands quiet is what the
-		// per-rider faders are for (#463).
-		const base = {
-			noiseSuppression: true,
-			echoCancellation: true,
-			autoGainControl: false,
-		};
+		const base = MIC_CONSTRAINTS;
 		if (micId) {
 			try {
 				return await navigator.mediaDevices.getUserMedia({
