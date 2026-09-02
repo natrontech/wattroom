@@ -225,8 +225,9 @@
 					micOn={av.micOn}
 					camOn={av.camOn}
 					sharing={av.sharing}
-					onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
-					onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
+					onJoin={() => void av.join()}
+					onMic={() => av.toggleMic()}
+					onCam={() => av.toggleCam()}
 					onShare={() => void av.toggleShare()}
 					onLeaveVoice={() => av.leave()}
 					handedOff={av.handedOff}

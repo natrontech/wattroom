@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import {
-		ChevronDown,
 		ChevronRight,
 		Crown,
 		Headphones,
@@ -15,7 +14,6 @@
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { keepSize } from '$lib/pane';
-	import { stageSlot } from '$lib/room/stage-slot.svelte';
 	import { clampSize, dividerDrag } from '$lib/divider';
 	import type { Missed } from '$lib/room/unread';
 
@@ -43,7 +41,8 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RiderVolume from '$lib/room/RiderVolume.svelte';
-	import type { RoomRider } from '$lib/room/view';
+	import { rosterGroups } from '$lib/room/roster';
+	import type { RoomMember, RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
 	// right column is WHO IS HERE; ours was chat alone, so the roster was
@@ -62,6 +61,7 @@
 	let {
 		live,
 		riders = [],
+		members = [],
 		player,
 		missed = null,
 		onOpenChat,
@@ -71,6 +71,12 @@
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: RoomRider[];
+		/**
+		 * Everyone in the room, connected or not. The tick's roster carries no
+		 * avatar and knows nothing of the members who are away, so the faces and
+		 * the offline group both come from here.
+		 */
+		members?: RoomMember[];
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
 		/** What was said while you were elsewhere; null when nothing was. */
@@ -81,28 +87,11 @@
 		cheers?: string[];
 	} = $props();
 
-	// Three things share this column and it never had the height for all of
-	// them (#504). The roster folds to a wrap of faces; mid-ride it starts
-	// open, because that is where the execution bars are, and a rider's own
-	const PEOPLE_KEY = 'wattroom.room.people.v1';
-	function readChoice(): boolean | null {
-		try {
-			const stored = localStorage.getItem(PEOPLE_KEY);
-			return stored === null ? null : stored === '1';
-		} catch {
-			return null;
-		}
-	}
-	let choice = $state<boolean | null>(readChoice());
-	const peopleOpen = $derived(choice ?? live);
-	function togglePeople() {
-		choice = !peopleOpen;
-		try {
-			localStorage.setItem(PEOPLE_KEY, choice ? '1' : '0');
-		} catch {
-			/* desk-only preference; losing it costs one tap */
-		}
-	}
+	const avatarOf = $derived(new Map(members.map((m) => [m.id, m])));
+	// Discord's offline half of the member list: the room is the same room when
+	// nobody is in it, and a column that says "in the room — 1" and stops there
+	// hides the six people you ride with (roster.ts).
+	const groups = $derived(rosterGroups(live, riders, members));
 </script>
 
 {#snippet person(rider: RoomRider)}
@@ -115,7 +104,12 @@
 		{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
 	>
 		<span class="relative shrink-0">
-			<Avatar name={rider.name} size={22} />
+			<Avatar
+				name={rider.name}
+				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
+				preset={avatarOf.get(rider.id)?.avatarPreset}
+				size={22}
+			/>
 			{#if rider.watts > 0}
 				<!-- Riding is motion, not a red-adjacent dot (ADR-0020). -->
 				<span
@@ -171,6 +165,23 @@
 	</li>
 {/snippet}
 
+{#snippet absent(member: RoomMember)}
+	<li
+		class="text-ink/35 flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
+		{@attach contextMenu(() => personMenu(member.id, goto))}
+	>
+		<span class="shrink-0 opacity-50">
+			<Avatar
+				name={member.displayName}
+				avatarUrl={member.avatarUrl}
+				preset={member.avatarPreset}
+				size={22}
+			/>
+		</span>
+		<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+	</li>
+{/snippet}
+
 <!-- Resizable (#280) from its left edge. The browser's own `resize` grip is a
      corner of diagonal lines that belongs to no design; this is a 6 px strip
      on the border that lights up on hover and drags. keepSize persists the
@@ -188,88 +199,50 @@
 		aria-label="resize the panel"
 	></div>
 	<div class="flex h-full flex-col">
-		{#if riders.length > 0}
-			<!-- Mid-ride the useful split is riding / not; in the lounge it is
-			     voice / not, and the heading says which question it answers. -->
-			{@const here = live
-				? riders.filter((r) => r.watts > 0)
-				: riders.filter((r) => r.inVoice)}
-			{@const away = riders.filter((r) => !here.includes(r))}
-			<div
-				class="border-ink/5 min-h-0 overflow-y-auto border-b {peopleOpen
-					? 'flex-1'
-					: 'shrink-0'}"
-			>
-				<!-- Closed, the roster is still the "this room is populated" read
-				     (ADR-0020) — the faces stay, the rows go. That is what buys the
-				     chat its height back (#504), and it is why this is a wrap of
-				     avatars and not a disclosure triangle over nothing. -->
-				<button
-					onclick={togglePeople}
-					aria-expanded={peopleOpen}
-					class="flex w-full items-center gap-2 px-3 pt-3 pb-1 text-left"
-				>
-					{#if peopleOpen}
-						<span class="eyebrow flex flex-1 items-center gap-1.5">
-							{#if !live}<Headphones size={10} />{/if}
-							{live
-								? `holding target — ${here.length}`
-								: `in voice — ${here.length}`}
-						</span>
-						<ChevronDown size={13} class="text-muted shrink-0" />
-					{:else}
-						<span class="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-							{#each riders.slice(0, 8) as rider (rider.id)}
-								<span
-									class={rider.speaking ? 'ring-z4 rounded-full ring-2' : ''}
-									title={rider.name}
-								>
-									<Avatar name={rider.name} size={22} />
-								</span>
-							{/each}
-							{#if riders.length > 8}
-								<span class="text-muted text-[10px]">+{riders.length - 8}</span>
-							{/if}
-						</span>
-						<span class="text-muted shrink-0 text-[10px] tabular-nums"
-							>{riders.length} · {live
-								? `${here.length} riding`
-								: `${here.length} in voice`}</span
-						>
-						<ChevronRight size={13} class="text-muted shrink-0" />
-					{/if}
-				</button>
-				{#if peopleOpen}
+		{#if riders.length > 0 || groups.offline.length > 0}
+			<!-- Everyone the room HAS, in the three groups roster.ts decides. The
+			     headings say which question the split answers, and the ones who
+			     are not connected sit last, greyed. -->
+			{@const { here, away, offline } = groups}
+			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
+				{#if here.length > 0}
+					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
+						{#if !live}<Headphones size={10} />{/if}
+						{live
+							? `holding target — ${here.length}`
+							: `in voice — ${here.length}`}
+					</div>
 					<ul class="px-1">
 						{#each here as rider (rider.id)}{@render person(rider)}{/each}
 					</ul>
-					{#if away.length > 0}
-						<div class="eyebrow px-3 pt-3 pb-1">
-							{live
-								? `not pedalling — ${away.length}`
-								: `in the room — ${away.length}`}
-						</div>
-						<ul class="px-1 pb-2">
-							{#each away as rider (rider.id)}{@render person(rider)}{/each}
-						</ul>
-					{/if}
+				{/if}
+				{#if away.length > 0}
+					<div class="eyebrow px-3 pt-3 pb-1">
+						{live
+							? `not pedalling — ${away.length}`
+							: `in the room — ${away.length}`}
+					</div>
+					<ul class="px-1">
+						{#each away as rider (rider.id)}{@render person(rider)}{/each}
+					</ul>
+				{/if}
+				{#if offline.length > 0}
+					<div class="eyebrow px-3 pt-3 pb-1">offline — {offline.length}</div>
+					<ul class="px-1 pb-2">
+						{#each offline as member (member.id)}{@render absent(member)}{/each}
+					</ul>
 				{/if}
 			</div>
 		{/if}
 		{#if player}
 			<!-- The deck, capped: with a seated player plus queue and history it
 			     grew until the chat was a sliver (#461). Its own scroll past 45%.
-			     While the stage or TV has the player the deck hides its 200 px
-			     hole, so the cap comes down with it — otherwise the queue simply
-			     spreads into the freed space and nothing is better off (#504).
-			     With the roster folded away the deck takes the column instead:
-			     whatever you have open gets the height, which is the whole idea. -->
+			     The cap is never tighter than the transport row — a deck shorter
+			     than its own controls scrolls the play button off the bottom,
+			     which is what the 160 px cap did whenever the stage held the
+			     video. -->
 			<div
-				class="border-ink/5 min-h-0 overflow-y-auto border-b p-4 {!peopleOpen
-					? 'flex-1'
-					: stageSlot.outranked
-						? 'max-h-40'
-						: 'max-h-[45%]'}"
+				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-4"
 			>
 				{@render player()}
 			</div>

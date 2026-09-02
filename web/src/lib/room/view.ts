@@ -34,6 +34,19 @@ export interface RoomRider {
 	eliminated?: boolean;
 }
 
+/**
+ * A room's member as the room's own screens render them. The tick's roster is
+ * the live truth and carries no faces; this is who the room HAS, which is also
+ * the only way to know who is not here.
+ */
+export interface RoomMember {
+	id: string;
+	displayName: string;
+	avatarUrl?: string;
+	avatarPreset?: string;
+	totalXp?: number;
+}
+
 export type TileMetric = 'hr' | 'cadence' | 'wkg';
 export const TILE_METRICS: { id: TileMetric; label: string }[] = [
 	{ id: 'hr', label: 'bpm' },

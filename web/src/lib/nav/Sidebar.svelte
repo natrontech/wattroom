@@ -59,6 +59,7 @@
 		micOn = false,
 		camOn = false,
 		sharing = false,
+		onJoin,
 		onMic,
 		onCam,
 		onShare,
@@ -77,6 +78,8 @@
 		micOn?: boolean;
 		camOn?: boolean;
 		sharing?: boolean;
+		/** The way into voice; mic and camera only appear once you are in. */
+		onJoin?: () => void;
 		onMic?: () => void;
 		onCam?: () => void;
 		onShare?: () => void;
@@ -432,66 +435,76 @@
 				aria-label="settings"><Settings size={14} /></a
 			>
 		</div>
-		{#if showAv}
+		{#if showAv && !inVoice}
+			<!-- The way in is a labelled button, not two greyed icons that only
+			     LOOK like a mic and a camera: a control that does something else
+			     than it draws is not a control (#437, ux.md). Mic, camera and
+			     screen appear once you are in, because that is when they work. -->
+			<div class="mt-2 flex items-center gap-1">
+				{#if voiceStatus === 'connecting' || voiceStatus === 'reconnecting'}
+					<span class="text-muted flex-1 px-1 text-[11px]"
+						>{voiceStatus === 'connecting'
+							? 'joining voice…'
+							: 'reconnecting…'}</span
+					>
+				{:else}
+					<button
+						onclick={() => onJoin?.()}
+						class="btn btn-primary btn-xs flex-1"
+						><Headphones size={13} />
+						{voiceStatus === 'failed'
+							? 'Try voice again'
+							: 'Join voice'}</button
+					>
+				{/if}
+				<QuickAudio compact />
+			</div>
+		{:else if showAv}
 			<!-- Voice, camera, screen, sound and the way out — here and nowhere
 			     else. The people column and the lounge header each drew their own
 			     copy of a row the rider already has pinned in front of them. -->
 			<div class="mt-2 flex items-center gap-1">
 				<button
 					onclick={() => onMic?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {inVoice
-						? micOn
-							? 'text-z4'
-							: 'text-danger'
-						: 'text-muted/50 hover:text-muted'}"
-					title={inVoice ? (micOn ? 'mute' : 'unmute') : 'join voice'}
-					aria-label={inVoice
-						? micOn
-							? 'mute microphone'
-							: 'unmute microphone'
-						: 'join voice'}
+					class="flex flex-1 justify-center rounded py-1.5 {micOn
+						? 'text-z4'
+						: 'text-danger'}"
+					title={micOn ? 'mute' : 'unmute'}
+					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
 				>
-					{#if inVoice && micOn}<Mic size={16} />{:else}<MicOff
-							size={16}
-						/>{/if}
+					{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
 				</button>
 				<button
 					onclick={() => onCam?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {inVoice && camOn
+					class="flex flex-1 justify-center rounded py-1.5 {camOn
 						? 'text-z4'
 						: 'text-muted/50 hover:text-muted'}"
-					title={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
-					aria-label={inVoice && camOn ? 'turn camera off' : 'turn camera on'}
+					title={camOn ? 'turn camera off' : 'turn camera on'}
+					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
 				>
-					{#if inVoice && camOn}<Video size={16} />{:else}<VideoOff
+					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
+				</button>
+				<button
+					onclick={() => onShare?.()}
+					class="flex flex-1 justify-center rounded py-1.5 {sharing
+						? 'text-z4'
+						: 'text-muted/50 hover:text-muted'}"
+					title={sharing ? 'stop sharing your screen' : 'share your screen'}
+					aria-label={sharing
+						? 'stop sharing your screen'
+						: 'share your screen'}
+				>
+					{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
 							size={16}
 						/>{/if}
 				</button>
-				{#if inVoice}
-					<button
-						onclick={() => onShare?.()}
-						class="flex flex-1 justify-center rounded py-1.5 {sharing
-							? 'text-z4'
-							: 'text-muted/50 hover:text-muted'}"
-						title={sharing ? 'stop sharing your screen' : 'share your screen'}
-						aria-label={sharing
-							? 'stop sharing your screen'
-							: 'share your screen'}
-					>
-						{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
-								size={16}
-							/>{/if}
-					</button>
-				{/if}
 				<QuickAudio compact />
-				{#if inVoice}
-					<button
-						onclick={() => onLeaveVoice?.()}
-						class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
-						title="leave voice"
-						aria-label="leave voice"><LogOut size={16} /></button
-					>
-				{/if}
+				<button
+					onclick={() => onLeaveVoice?.()}
+					class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
+					title="leave voice"
+					aria-label="leave voice"><LogOut size={16} /></button
+				>
 			</div>
 		{/if}
 		{#if showAv && handedOff}
