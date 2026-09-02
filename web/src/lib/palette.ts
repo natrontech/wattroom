@@ -105,7 +105,7 @@ const FAMILY: Record<
 		// The ramp ADR-0005 shipped, measured. Lightness peaks at Z5 and
 		// descends into the hot zones while chroma climbs — that shape is what
 		// keeps Z6/Z7 vivid, and replacing it with an even climb is what made
-		// them pale (#396, ADR-0020 §4).
+		// them pale (#396, ADR-0023 §4).
 		zones: [
 			{ l: 0.397, c: 0.102, h: 293 },
 			{ l: 0.556, c: 0.214, h: 269 },
@@ -148,7 +148,7 @@ export const WHITE_SURFACE_MIN_L = 0.9;
  * rather than taken from WCAG's 3:1 for graphical objects. Outrun's own Z1
  * sits at 1.9 because recovery is meant to recede, and holding derived themes
  * to a floor the reference does not meet brightens their Z1 into Z2 — the
- * ramp stops being the ramp (ADR-0020 §3). Zone bars carry length as well as
+ * ramp stops being the ramp (ADR-0023 §3). Zone bars carry length as well as
  * colour, and #401 tracks giving them a non-colour channel outright.
  */
 const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
@@ -157,7 +157,7 @@ const ZONE_MIN_CONTRAST: Record<ThemeFamily, number> = {
 };
 
 /**
- * The share of its designed chroma a zone must keep (ADR-0020 §2). Apparent
+ * The share of its designed chroma a zone must keep (ADR-0023 §2). Apparent
  * intensity comes from chroma as much as lightness, so the fitter may not buy
  * contrast by draining the colour — that is exactly how Z7 lost 72% of its
  * chroma and became the palest thing on screen.
@@ -184,7 +184,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		z7: '',
 	};
 	const backgrounds = [tokens.surface, tokens['surface-raised']];
-	// The ramp is shared, not themed (ADR-0020 §4). It is still fitted against
+	// The ramp is shared, not themed (ADR-0023 §4). It is still fitted against
 	// *this* theme's surfaces, because a blue-black room and a violet-black one
 	// are not the same background.
 	f.zones.forEach((zone, i) => {

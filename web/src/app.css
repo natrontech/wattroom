@@ -26,7 +26,7 @@
 	--color-ink: light-dark(#180a2e, #ffffff);
 	--color-paper: light-dark(#ffffff, #000000);
 
-	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0020 §4):
+	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
 	 * zone colour is learned and read across the room, and the sRGB gamut does
 	 * not rotate evenly. Lightness peaks at Z5 and descends while chroma
 	 * climbs, which is what keeps the hard efforts vivid (#396). */

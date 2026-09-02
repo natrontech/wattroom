@@ -41,7 +41,7 @@ function worst(theme: Theme, token: TokenName): number {
 	);
 }
 
-/** The identity every other theme is measured against (ADR-0020). */
+/** The identity every other theme is measured against (ADR-0023). */
 function reference(family: Theme['family']): Theme {
 	return themeById(family === 'dark' ? DEFAULT_DARK_ID : DEFAULT_WHITE_ID)!;
 }
@@ -50,7 +50,7 @@ function reference(family: Theme['family']): Theme {
  * Zones are graphical objects, so 3:1 — except where the reference is
  * deliberately lower. Outrun's Z1 sits at 1.9 because recovery is meant to
  * recede, and a gate that fails the design known to work at three metres is
- * the wrong gate (ADR-0020 §3).
+ * the wrong gate (ADR-0023 §3).
  */
 function zoneFloor(theme: Theme, token: TokenName): number {
 	return Math.min(
@@ -90,7 +90,7 @@ function expectLegible(theme: Theme, label: string) {
 			zoneFloor(theme, token),
 		);
 	}
-	// Apparent intensity is chroma as much as lightness (ADR-0020 §2): a zone
+	// Apparent intensity is chroma as much as lightness (ADR-0023 §2): a zone
 	// that keeps its contrast by going pale has not passed, it has faded.
 	for (const token of ZONES) {
 		expect(
@@ -185,7 +185,7 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	});
 
 	// Not monotonic in lightness on purpose: the ramp peaks at Z5 and descends
-	// while chroma climbs, which is what keeps the hot end vivid (ADR-0020 §4).
+	// while chroma climbs, which is what keeps the hot end vivid (ADR-0023 §4).
 	it('keeps adjacent zones perceptually apart', () => {
 		for (let i = 0; i < ZONES.length - 1; i++) {
 			expect(
@@ -215,7 +215,7 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 		// Zone colour is learned ("green is threshold") and is read across the
 		// room. Rotating it per theme would make a rider relearn the scale for
 		// a palette choice, and the sRGB gamut does not rotate evenly anyway
-		// (ADR-0020 §4).
+		// (ADR-0023 §4).
 		const ref = reference(theme.family).tokens;
 		for (const token of ZONES) {
 			expect(

@@ -136,7 +136,7 @@ export function fitContrast(
 			return candidate;
 		const next = candidate.l + step;
 		if (next <= 0.02 || next >= 0.99) break;
-		// Chroma is a floor, not slack (ADR-0020). Past the point where the hue
+		// Chroma is a floor, not slack (ADR-0023). Past the point where the hue
 		// can no longer hold its saturation in gamut, nudging lightness buys
 		// contrast by draining the colour — which is how Z7 became pale pink.
 		if (minChroma > 0 && maxChroma({ ...candidate, l: next }) < minChroma)
@@ -156,7 +156,7 @@ export function maxChroma(colour: Oklch): number {
 /**
  * Perceptual distance in OKLab. Unlike contrast — which only ever compares a
  * colour to its background — this answers "can these two be told apart", which
- * is the question the zone ramp actually asks (ADR-0020).
+ * is the question the zone ramp actually asks (ADR-0023).
  */
 export function perceptualDistance(a: string, b: string): number {
 	const [x, y] = [hexToOklch(a), hexToOklch(b)];
