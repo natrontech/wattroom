@@ -16,7 +16,7 @@
 		resizePane,
 		restorePane,
 	} from '$lib/pane';
-	import { setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
+	import { onSeat, setPopped, stageSlot } from '$lib/room/stage-slot.svelte';
 	import {
 		VolumeX,
 		FastForward,
@@ -70,23 +70,31 @@
 	// seat (leave the room, scroll it away) and it floats again.
 	// A modal covers the stage, so the seat under it is no seat: the dock
 	// goes to its corner and the modal keeps a gutter above it (modals.svelte).
-	const seat = $derived(modals.open > 0 ? null : stageSlot.seat);
+	// Whether the dock is seated — a boolean, for the chrome. The RECT never
+	// passes through here: it arrives frame by frame on `onSeat` and is
+	// written straight to the node, so per-frame geometry never enters the
+	// effect graph (#494).
+	const seat = $derived(modals.open === 0 && stageSlot.seated);
 	$effect(() => {
-		const to = seat;
 		const node = shell;
+		// A modal covers the stage, so the seat under it is no seat: the dock
+		// goes to its corner and the modal keeps clear of it (modals.svelte).
+		const blocked = modals.open > 0;
 		if (!node) return;
-		if (to) {
-			node.style.left = `${to.x}px`;
-			node.style.top = `${to.y}px`;
-			node.style.right = node.style.bottom = 'auto';
-			node.style.width = `${to.w}px`;
-			node.style.height = `${to.h}px`;
-			node.style.minWidth = node.style.minHeight = '0';
-		} else {
-			node.style.minWidth = '260px';
-			node.style.minHeight = `${200 + CHROME}px`;
-			restorePane(node, PANE, FLOATING);
-		}
+		return onSeat((to) => {
+			if (to && !blocked) {
+				node.style.left = `${to.x}px`;
+				node.style.top = `${to.y}px`;
+				node.style.right = node.style.bottom = 'auto';
+				node.style.width = `${to.w}px`;
+				node.style.height = `${to.h}px`;
+				node.style.minWidth = node.style.minHeight = '0';
+			} else {
+				node.style.minWidth = '260px';
+				node.style.minHeight = `${200 + CHROME}px`;
+				restorePane(node, PANE, FLOATING);
+			}
+		});
 	});
 
 	// ── YouTube IFrame API ────────────────────────────────────────────────────

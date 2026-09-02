@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	bestOffer,
 	offerSeat,
+	onSeat,
 	sameSeat,
 	seatOf,
 	setPopped,
@@ -35,6 +36,9 @@ vi.stubGlobal('localStorage', {
 	setItem: (k: string, v: string) => void stored.set(k, v),
 	removeItem: (k: string) => void stored.delete(k),
 });
+
+let seen: { x: number; y: number; w: number; h: number } | null = null;
+onSeat((s) => (seen = s));
 
 function tick() {
 	const due = frames;
@@ -95,23 +99,23 @@ describe('offerSeat', () => {
 	it('publishes at once and follows a move that resized nothing', () => {
 		const { node, box } = hole({ left: 10, top: 20, width: 300, height: 200 });
 		const stop = offerSeat(node);
-		expect({ ...stageSlot.seat }).toEqual({ x: 10, y: 20, w: 300, h: 200 });
+		expect(seen).toEqual({ x: 10, y: 20, w: 300, h: 200 });
 		// A banner appeared above the stage: same size, new place — the case
 		// no observer fires for (#395).
 		box.top = 80;
 		tick();
-		expect(stageSlot.seat?.y).toBe(80);
+		expect(seen?.y).toBe(80);
 		stop();
-		expect(stageSlot.seat).toBeNull();
+		expect(seen).toBeNull();
 	});
 
 	it('withdraws the seat while the stage is mostly off screen', () => {
 		const { node } = hole({ left: 0, top: 0, width: 300, height: 200 });
 		const stop = offerSeat(node);
 		intersect(0.2);
-		expect(stageSlot.seat).toBeNull();
+		expect(seen).toBeNull();
 		intersect(1);
-		expect(stageSlot.seat).not.toBeNull();
+		expect(seen).not.toBeNull();
 		stop();
 	});
 });
@@ -121,13 +125,13 @@ describe('two surfaces offering', () => {
 		const column = hole({ left: 0, top: 0, width: 248, height: 200 });
 		const stage = hole({ left: 300, top: 50, width: 900, height: 500 });
 		const stopColumn = offerSeat(column.node, 1);
-		expect(stageSlot.seat?.w).toBe(248);
+		expect(seen?.w).toBe(248);
 		const stopStage = offerSeat(stage.node, 2);
-		expect(stageSlot.seat?.w).toBe(900);
+		expect(seen?.w).toBe(900);
 		stopStage();
-		expect(stageSlot.seat?.w).toBe(248);
+		expect(seen?.w).toBe(248);
 		stopColumn();
-		expect(stageSlot.seat).toBeNull();
+		expect(seen).toBeNull();
 	});
 
 	it('bestOffer ignores withdrawn offers and prefers priority', () => {
@@ -146,5 +150,36 @@ describe('popping out', () => {
 		setPopped(false);
 		expect(stageSlot.popped).toBe(false);
 		expect(localStorage.getItem('wattroom.jukebox.popout.v1')).toBeNull();
+	});
+});
+
+describe('reactivity', () => {
+	it('keeps the rect out of state and only flips a boolean (#494)', () => {
+		const box = hole({ left: 0, top: 0, width: 300, height: 200 });
+		expect(stageSlot.seated).toBe(false);
+		const stop = offerSeat(box.node, 1);
+		expect(stageSlot.seated).toBe(true);
+		// The rect moving must not touch state — only the listener hears it.
+		box.box.top = 400;
+		tick();
+		expect(seen?.y).toBe(400);
+		expect(stageSlot.seated).toBe(true);
+		expect('seat' in stageSlot).toBe(false);
+		stop();
+		expect(stageSlot.seated).toBe(false);
+	});
+});
+
+describe('popping out', () => {
+	it('takes the player off every surface, not just the column', () => {
+		const stage = hole({ left: 0, top: 0, width: 900, height: 500 });
+		const stop = offerSeat(stage.node, 2);
+		expect(seen?.w).toBe(900);
+		setPopped(true);
+		expect(seen).toBeNull();
+		expect(stageSlot.seated).toBe(false);
+		setPopped(false);
+		expect(seen?.w).toBe(900);
+		stop();
 	});
 });

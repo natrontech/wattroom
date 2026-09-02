@@ -36,13 +36,32 @@ function readPopped(): boolean {
 	}
 }
 
-export const stageSlot = $state<{ seat: Seat | null; popped: boolean }>({
-	seat: null,
+export const stageSlot = $state<{
+	/**
+	 * Whether ANY surface is holding the player right now. A boolean, not the
+	 * rect: it flips when a surface takes the seat or gives it up, a handful
+	 * of times a session, and it is the only thing about the seat that render
+	 * is allowed to read.
+	 *
+	 * The rect does NOT live in state (#494). It is measured every animation
+	 * frame, and a per-frame value in state means a per-frame pass through
+	 * Svelte's effect graph: measure, write state, run the effect that moves
+	 * the player, which changes layout, which the next frame measures. Svelte
+	 * counts those as nested updates and stops the tree with
+	 * effect_update_depth_exceeded — after which the room silently stops
+	 * re-rendering and navigating a place does nothing. Geometry goes to the
+	 * dock through `onSeat` instead, a plain callback, outside reactivity.
+	 */
+	seated: boolean;
+	popped: boolean;
+}>({
+	seated: false,
 	popped: readPopped(),
 });
 
 export function setPopped(popped: boolean): void {
 	stageSlot.popped = popped;
+	settle();
 	try {
 		if (popped) localStorage.setItem(POP_KEY, '1');
 		else localStorage.removeItem(POP_KEY);
@@ -85,11 +104,33 @@ export function bestOffer(
 	return best?.seat ?? null;
 }
 
+/**
+ * The dock's geometry, handed over directly. One listener — there is one
+ * player — called with the winning rect, or null when nobody is holding it.
+ * Registering hands over the seat as it stands, so a dock that mounts late
+ * lands in the right place.
+ */
+let listener: ((seat: Seat | null) => void) | null = null;
+
+export function onSeat(cb: (seat: Seat | null) => void): () => void {
+	listener = cb;
+	cb(last);
+	return () => {
+		if (listener === cb) listener = null;
+	};
+}
+
 function settle() {
-	const next = bestOffer(offers.values());
+	// Popped out is the rider saying "I want the window", so no surface holds
+	// the player while it is set — the column stopped offering, but the stage
+	// went on winning and the button did nothing with a video on the stage.
+	const next = stageSlot.popped ? null : bestOffer(offers.values());
 	if (sameSeat(last, next)) return;
 	last = next;
-	stageSlot.seat = next;
+	// The boolean is the only reactive part, and it changes when a surface
+	// takes or gives up the seat — never with the rect.
+	if (stageSlot.seated !== !!next) stageSlot.seated = !!next;
+	listener?.(next);
 }
 
 /**
