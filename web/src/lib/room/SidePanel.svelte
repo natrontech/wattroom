@@ -5,21 +5,15 @@
 		ChevronRight,
 		Crown,
 		Headphones,
-		LogOut,
 		Mic,
 		MicOff,
-		ScreenShare,
-		ScreenShareOff,
 		Video,
-		VideoOff,
 	} from '@lucide/svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
 	import { keepSize } from '$lib/pane';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
 	import { clampSize, dividerDrag } from '$lib/divider';
@@ -49,7 +43,6 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RiderVolume from '$lib/room/RiderVolume.svelte';
-	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import type { RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
@@ -91,8 +84,6 @@
 	// Three things share this column and it never had the height for all of
 	// them (#504). The roster folds to a wrap of faces; mid-ride it starts
 	// open, because that is where the execution bars are, and a rider's own
-	// choice outranks both. The voice controls never fold — they are the way
-	// in, and a way in you have to unfold is not one (ux.md).
 	const PEOPLE_KEY = 'wattroom.room.people.v1';
 	function readChoice(): boolean | null {
 		try {
@@ -112,9 +103,6 @@
 			/* desk-only preference; losing it costs one tap */
 		}
 	}
-
-	// The way into voice, where the people are (#437).
-	const av = $derived(roomConnection.current?.av);
 </script>
 
 {#snippet person(rider: RoomRider)}
@@ -251,58 +239,6 @@
 						<ChevronRight size={13} class="text-muted shrink-0" />
 					{/if}
 				</button>
-				{#if av && account.me?.avEnabled}
-					<!-- Labelled and big enough for a bike: two grey icons in the
-					     you-panel did not read as the way into voice (#437). -->
-					<div class="flex flex-wrap items-center gap-1.5 px-3 pb-2">
-						{#if av.status === 'off' || av.status === 'failed'}
-							<button
-								onclick={() => void av.join()}
-								class="btn btn-primary btn-xs"
-								><Headphones size={13} /> Join voice</button
-							>
-							<span class="text-muted text-[10px]"
-								>camera and screen once you are in</span
-							>
-						{:else if av.status === 'connecting' || av.status === 'reconnecting'}
-							<span class="text-muted text-xs"
-								>{av.status === 'connecting'
-									? 'joining voice…'
-									: 'voice reconnecting…'}</span
-							>
-						{:else}
-							<button
-								onclick={() => av.toggleMic()}
-								aria-pressed={av.micOn}
-								class="btn btn-xs {av.micOn ? 'btn-secondary' : 'btn-danger'}"
-								>{#if av.micOn}<Mic size={13} /> Mic{:else}<MicOff size={13} /> Muted{/if}</button
-							>
-							<button
-								onclick={() => av.toggleCam()}
-								aria-pressed={av.camOn}
-								class="btn btn-secondary btn-xs"
-								>{#if av.camOn}<Video size={13} /> Camera on{:else}<VideoOff
-										size={13}
-									/> Camera{/if}</button
-							>
-							<button
-								onclick={() => void av.toggleShare()}
-								aria-pressed={av.sharing}
-								class="btn btn-secondary btn-xs"
-								>{#if av.sharing}<ScreenShareOff size={13} /> Stop sharing{:else}<ScreenShare
-										size={13}
-									/> Share{/if}</button
-							>
-							<button
-								onclick={() => av.leave()}
-								class="btn btn-ghost btn-xs"
-								title="leave voice"><LogOut size={13} /> Leave voice</button
-							>
-						{/if}
-						<!-- The mix and the gate, without leaving the room (#477). -->
-						<QuickAudio />
-					</div>
-				{/if}
 				{#if peopleOpen}
 					<ul class="px-1">
 						{#each here as rider (rider.id)}{@render person(rider)}{/each}

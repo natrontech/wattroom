@@ -224,8 +224,11 @@
 					voiceStatus={av.status}
 					micOn={av.micOn}
 					camOn={av.camOn}
+					sharing={av.sharing}
 					onMic={() => (av.status === 'live' ? av.toggleMic() : av.join())}
 					onCam={() => (av.status === 'live' ? av.toggleCam() : av.join())}
+					onShare={() => void av.toggleShare()}
+					onLeaveVoice={() => av.leave()}
 					handedOff={av.handedOff}
 					onTakeOver={() => av.takeOver()}
 				/>
