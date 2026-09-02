@@ -36,6 +36,14 @@ export function formatWhen(iso: string, withDate = false): string {
 	});
 }
 
+/** A message's wall-clock time, "23:33" — the stamp beside every chat line. */
+export function formatTime(ms: number): string {
+	return new Date(ms).toLocaleTimeString(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+}
+
 /** One decimal, or an en dash while weight is unknown — never `Infinity`. */
 export function wkg(watts: number, kg: number | null | undefined): string {
 	return kg && kg > 0 ? (watts / kg).toFixed(1) : '–';

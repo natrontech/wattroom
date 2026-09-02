@@ -191,7 +191,18 @@ type roomJSON struct {
 	// rail's whole argument for spending width on a room you are not looking
 	// at. Per-rider, so it does not belong in RoomPresence.
 	Unread int `json:"unread,omitempty"`
+	// The last thing said here (#468) — the one-line preview and the
+	// recency that lets a room sort next to a DM in the messages list.
+	LastChat *lastChatJSON `json:"lastChat,omitempty"`
 	protocol.RoomPresence
+}
+
+type lastChatJSON struct {
+	From string `json:"from"`
+	Text string `json:"text"`
+	// The line was an image (#279) — it has no text to preview.
+	HasImage bool  `json:"hasImage,omitempty"`
+	At       int64 `json:"at"`
 }
 
 // --- handlers ---
@@ -273,7 +284,11 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]roomJSON, 0, len(roomsList))
 	for _, room := range roomsList {
-		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role}
+		// The palette rides the list (#468): a thread read from outside the
+		// room reacts in the room's own vocabulary without opening the room —
+		// which handleGet would count as reading it.
+		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
+			Cheers: cheerSet(room.Cheers)}
 		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
 			entry.MemberCount = int(count)
 		}
@@ -294,6 +309,12 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.NextSession = &nextJSON{
 				WorkoutName: next.WorkoutName,
 				StartsAt:    next.StartsAt.Time.Format(time.RFC3339),
+			}
+		}
+		if last, err := s.store.Queries.LastRoomChat(r.Context(), room.ID); err == nil {
+			entry.LastChat = &lastChatJSON{
+				From: last.DisplayName, Text: last.Text, HasImage: last.ImageID.Valid,
+				At: last.CreatedAt.Time.UnixMilli(),
 			}
 		}
 		out = append(out, entry)

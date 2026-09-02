@@ -13,7 +13,6 @@
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import { account } from '$lib/account.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
@@ -249,19 +248,28 @@
 			{/each}
 		</ul>
 
+		<!-- Messages is a place (#468): every room's chat and every DM, one
+		     list. The heading is the way in; the DMs below open straight into
+		     their thread. Rooms are already listed above, so they are not
+		     repeated here — their unread count is the way in for them. -->
+		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+			<a
+				href="/messages"
+				aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
+				class="hover:text-ink {pathname.startsWith('/messages')
+					? 'text-ink'
+					: ''}"
+				title="every room's chat and your DMs, in one place">messages</a
+			>
+			<a href="/friends" class="hover:text-ink ml-auto normal-case">friends</a>
+		</div>
 		{#if dmHeads.heads.length > 0}
-			<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-				messages
-				<a href="/friends" class="hover:text-ink ml-auto normal-case">friends</a
-				>
-			</div>
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
-					{@const on = pathname === `/dm/${head.peerId}`}
+					{@const on = pathname === `/messages/dm/${head.peerId}`}
 					<li>
 						<a
-							href="/dm/{head.peerId}"
-							onclick={() => dm.show(head.peerId, head.peerName)}
+							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}
 							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {on
 								? 'bg-surface-raised text-ink'

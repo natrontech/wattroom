@@ -97,7 +97,7 @@
 		</div>
 		<div class="flex shrink-0 flex-col gap-2">
 			{#if rider.friend}
-				<a href="/dm/x" class="btn btn-secondary"
+				<a href="/messages/dm/x" class="btn btn-secondary"
 					><MessageSquare size={15} /> Message</a
 				>
 			{:else}

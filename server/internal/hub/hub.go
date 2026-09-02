@@ -433,6 +433,41 @@ func (h *Hub) SessionAnnounce(slug, verb, actor, workout string, startsAt time.T
 	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
 }
 
+// PostChat hands a line that arrived over HTTP (#468) to whoever is
+// connected: it rides the next tick exactly like a socket line. The hub
+// lock finds the room, the room lock queues it — never both at once. A room
+// nobody holds open gets nothing: its riders will read the backlog when
+// they arrive, and a line parked in an empty room's queue would land twice.
+func (h *Hub) PostChat(slug string, line protocol.ChatLine) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.chatLine(line)
+	}
+}
+
+// PostReaction is PostChat for a reaction toggled over HTTP (#468).
+func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.reactionChanged(change)
+	}
+}
+
+// occupied is the room at slug if anyone is connected to it — never creating
+// one, unlike room(): an HTTP post must not start a ticker for nobody.
+func (h *Hub) occupied(slug string) *room {
+	h.mu.Lock()
+	rm, ok := h.rooms[slug]
+	h.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.clients) == 0 {
+		return nil
+	}
+	return rm
+}
+
 func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[slug]

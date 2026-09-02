@@ -10,6 +10,8 @@ interface RoomEntry extends RoomPresence {
 	unread?: number;
 	role?: string;
 	nextSession?: { workoutName: string; startsAt: string };
+	lastChat?: RailRoom['lastChat'];
+	cheers?: string[];
 }
 
 /**
@@ -35,6 +37,8 @@ export async function fetchRailRooms(): Promise<RailRoom[]> {
 			: undefined,
 		next: room.nextSession,
 		unread: room.unread ?? 0,
+		lastChat: room.lastChat,
+		cheers: room.cheers,
 		role: room.role,
 	}));
 }

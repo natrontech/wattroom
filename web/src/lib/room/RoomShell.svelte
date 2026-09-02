@@ -28,6 +28,7 @@
 	import { pickStage } from '$lib/room/stage';
 	import { parseSharedSegments, parseSharedWorkout } from '$lib/room/workout';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
+	import { uploadImage } from '$lib/chat/upload';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { toLocalInput } from '$lib/components/when';
@@ -448,11 +449,7 @@
 			live.chat(text);
 			return;
 		}
-		const up = await api<{ id: string }>(`/api/rooms/${slug}/chat/images`, {
-			method: 'POST',
-			body: image,
-			headers: { 'content-type': image.type },
-		});
+		const up = await uploadImage(`/api/rooms/${slug}/chat/images`, image);
 		if (!up.ok) {
 			toasts.push(up.error.message, { tone: 'error' });
 			return;
