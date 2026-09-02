@@ -1043,8 +1043,10 @@ func (rm *room) backfill(rider protocol.Rider, samples []protocol.RiderMetrics) 
 	for _, m := range samples {
 		if validMetrics(m) {
 			// Backfilled samples have no known timeline second — recorded, not
-			// live-scored; the save-time score is the authoritative one.
-			rm.record.add(rider.ID, m, nil, 0, 0)
+			// live-scored; the save-time score is the authoritative one. They
+			// are also the one place a seq goes backwards on purpose, so they
+			// stay on the stream that sent them (#522).
+			rm.record.replay(rider.ID, m)
 		}
 	}
 }
