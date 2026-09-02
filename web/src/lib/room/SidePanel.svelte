@@ -346,7 +346,9 @@
 			</div>
 		{/if}
 		{#if player}
-			<div class="border-ink/5 max-h-[62%] overflow-y-auto border-b p-4">
+			<!-- The deck, capped: with a seated player plus queue and history it
+			     grew until the chat was a sliver (#461). Its own scroll past 45%. -->
+			<div class="border-ink/5 max-h-[45%] overflow-y-auto border-b p-4">
 				{@render player()}
 			</div>
 		{/if}
