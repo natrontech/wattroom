@@ -538,27 +538,6 @@
 		{/if}
 
 		<div class="flex min-h-0 flex-1 bg-black">
-			{#if speaker && !seat}
-				{@const id = speaker.id}
-				<div class="border-ink/10 relative w-24 shrink-0 border-r">
-					{#if speakerVideo}
-						{#key speakerVideo}
-							<div
-								class="h-full w-full"
-								{@attach (node) => conn?.av.attach(id, node)}
-							></div>
-						{/key}
-					{:else}
-						<div class="bg-surface-raised grid h-full place-items-center">
-							<Avatar name={speaker.name} size={32} />
-						</div>
-					{/if}
-					<span
-						class="bg-paper/70 text-ink absolute inset-x-0 bottom-0 truncate px-1 text-[9px]"
-						>{speaker.name}</span
-					>
-				</div>
-			{/if}
 			<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 			<div class="relative min-w-0 flex-1 {showPlayer ? '' : 'hidden'}">
 				<div bind:this={container} class="h-full w-full"></div>

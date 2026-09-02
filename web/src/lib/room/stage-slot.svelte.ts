@@ -73,6 +73,9 @@ export function setPopped(popped: boolean): void {
 /** Below this much of a surface on screen, its offer is withdrawn. */
 const ENOUGH_VISIBLE = 0.5;
 
+/** How often the offered hole is re-measured while it is on screen. */
+const MEASURE_MS = 100;
+
 /** The seat a hole's rect amounts to; none while hidden or not laid out. */
 export function seatOf(rect: DOMRectReadOnly, visible: boolean): Seat | null {
 	return visible && rect.width > 0
@@ -146,16 +149,20 @@ function settle() {
  */
 export function offerSeat(node: HTMLElement, priority = 0): () => void {
 	let visible = true;
-	let raf = 0;
+	let raf: number = 0;
 	const offer = { priority, seat: null as Seat | null };
 	offers.set(node, offer);
 	const publish = () => {
 		offer.seat = seatOf(node.getBoundingClientRect(), visible);
 		settle();
 	};
+	// Every 100 ms, not every frame. Each publish is a getBoundingClientRect,
+	// which forces layout; sixty of those a second next to a playing video and
+	// a voice call is enough to make the video stutter (rider report). A box
+	// that follows a moved hole a tenth of a second later is not noticeable;
+	// dropped frames in the video are.
 	const frame = () => {
 		publish();
-		raf = requestAnimationFrame(frame);
 	};
 	const intersect = new IntersectionObserver(
 		([entry]) => {
@@ -165,9 +172,10 @@ export function offerSeat(node: HTMLElement, priority = 0): () => void {
 		{ threshold: [0, ENOUGH_VISIBLE, 1] },
 	);
 	intersect.observe(node);
-	frame();
+	publish();
+	raf = setInterval(frame, MEASURE_MS) as unknown as number;
 	return () => {
-		cancelAnimationFrame(raf);
+		clearInterval(raf);
 		intersect.disconnect();
 		offers.delete(node);
 		settle();
