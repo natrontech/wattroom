@@ -75,6 +75,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RiderVolume from '$lib/room/RiderVolume.svelte';
+	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import type { RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
@@ -354,6 +355,8 @@
 								title="leave voice"><LogOut size={13} /> Leave voice</button
 							>
 						{/if}
+						<!-- The mix and the gate, without leaving the room (#477). -->
+						<QuickAudio />
 					</div>
 				{/if}
 				<ul class="px-1">

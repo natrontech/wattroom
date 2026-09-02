@@ -249,6 +249,48 @@ stacked sections, which is how riders stopped finding either. And a YouTube
 link in the chat carries a Queue button: that is the reason a link lands in the
 chat during a ride at all.
 
+## Amendment — the mix and the gate come back into the room (2026-09-02)
+
+The decision above sends "the per-rider mixer, the gate slider and the theme
+cycle" behind the cog, on the grounds that they are *desk settings* — set once,
+not reached for mid-interval. Ridden, half of that is wrong (#477), and the
+rule it was standing on needed sharpening rather than an exception:
+
+> A control is a desk setting when you only need it **before** you ride. A
+> control you discover is wrong **while** riding needs a shortcut inside the
+> room, whatever it costs in chrome.
+
+The gate and the mix are the second kind, and they are the second kind for the
+same reason: you cannot tell they are wrong from a desk. The gate is right
+until the fan comes on. The mix is right until someone talks over music you
+then cannot hear them through — which is the moment you need the music fader,
+the duck depth and that rider's volume, and the moment the cog was asking you
+to navigate out of the room onto a page that also holds FTP, sensors and the
+theme. Riding is exactly when the levels are wrong.
+
+So the room gets a **Sound** panel, opened from the people column beside
+Join voice / Mic / Camera (`QuickAudio.svelte`): gate mode and the gate on the
+shared dB axis, music, cues and duck, the riders set off unity with a reset
+each, and the mic and speaker pickers. Big targets and no precision gestures
+(`ux.md`) — a modal rather than a popover, because 272 px of column is not
+where you drag a fader at 160 bpm, and `Modal` already keeps the jukebox dock
+out of its own way.
+
+What does not change:
+
+- **`/profile` keeps the whole page.** The room's panel is a shortcut, never
+  the only way in — the same rule `ux.md` states for the context menu. The
+  camera picker, push-to-talk's explanation and the mic test's full context
+  stay there.
+- **One implementation, two surfaces.** `GateTune` and `MixFaders` were lifted
+  out of `VoiceSettings` and are rendered by both. A second copy of a fader
+  block is how the two homes drift apart.
+- **The theme cycle stays behind the cog.** Nobody re-themes mid-interval; it
+  was correctly classified.
+- **The rail is still not where this lives.** What the original decision was
+  actually right about is that these do not belong in a 208 px strip you also
+  navigate rooms with. They live in the room, not in the navigation.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so
