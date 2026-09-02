@@ -63,6 +63,10 @@
 	}
 
 	// ── Adding: paste a URL, the golden path ──────────────────────────────────
+	// Three lines of queue, the rest on request; history folded (#461): the
+	// column is shared with the chat, and the chat loses every time.
+	const QUEUE_PEEK = 3;
+	let showAllQueue = $state(false);
 	let url = $state('');
 	let addError = $state<string | null>(null);
 	async function addFromUrl() {
@@ -255,7 +259,7 @@
 				<span class="font-mono">{queue.length}</span>
 			</p>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
-				{#each queue as entry, i (entry.id)}
+				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}
 					<JukeboxTrack
 						{entry}
 						position={i + 1}
@@ -268,6 +272,15 @@
 					/>
 				{/each}
 			</ul>
+			{#if queue.length > QUEUE_PEEK}
+				<button
+					onclick={() => (showAllQueue = !showAllQueue)}
+					class="text-muted hover:text-ink mt-1.5 text-[11px] underline"
+					>{showAllQueue
+						? 'fewer'
+						: `+${queue.length - QUEUE_PEEK} more`}</button
+				>
+			{/if}
 			<p class="text-muted/70 mt-1.5 text-[10px]">
 				Votes float a track up the queue.
 			</p>
@@ -275,8 +288,10 @@
 	{/if}
 
 	{#if history.length}
-		<div class="min-w-0">
-			<p class="eyebrow">just played</p>
+		<details class="min-w-0">
+			<summary class="eyebrow cursor-pointer select-none"
+				>just played · {history.length}</summary
+			>
 			<ul class="mt-1.5 flex flex-col gap-1.5 opacity-70">
 				{#each history as entry (entry.id)}
 					<JukeboxTrack
@@ -290,6 +305,6 @@
 					/>
 				{/each}
 			</ul>
-		</div>
+		</details>
 	{/if}
 </section>
