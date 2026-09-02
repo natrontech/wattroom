@@ -64,6 +64,9 @@ type Presence interface {
 	// The plan is something the room did (#359): planning over HTTP has to
 	// reach the timeline of the people standing in the room right now.
 	SessionAnnounce(slug, verb, actor, workout string, startsAt time.Time)
+	// A room changes because somebody else changed it (#570) — the lobby
+	// ping is how every other client hears, and re-fetches.
+	PresenceChanged()
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
@@ -103,6 +106,18 @@ func (s *Service) evict(slug, userID string) {
 	}
 	if s.voice != nil {
 		s.voice.Eject(slug, userID)
+	}
+}
+
+// changed pings every lobby socket: something durable about a room moved —
+// its plan, its members, their roles, its name — and the clients showing it
+// re-fetch (#251, #570). The ping carries no data, so it costs a room
+// mutation nothing to be honest about it.
+// ponytail: one ping for every room, not just this room's members — the
+// lobby has no per-room routing, and a room mutation is a rare event.
+func (s *Service) changed() {
+	if s.presence != nil {
+		s.presence.PresenceChanged()
 	}
 }
 
@@ -428,6 +443,7 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
 		return
 	}
+	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -475,6 +491,7 @@ func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
 		return
 	}
+	s.changed()
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"slug": room.Slug})
 }
 
@@ -554,6 +571,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be saved.")
 		return
 	}
+	s.changed()
 	httpx.WriteJSON(w, http.StatusOK, roomJSON{
 		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Icon: updated.Icon,
 		Listed: updated.Listed, SoundPack: updated.SoundPack,
@@ -576,6 +594,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("room deleted", "room", room.Slug)
+	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -623,6 +642,7 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 	} else if s.presence != nil {
 		s.presence.SetRole(room.Slug, req.UserID, req.Role)
 	}
+	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -667,6 +687,7 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	// Leaving or being removed ends the live connection too — a socket whose
 	// membership is gone must not keep streaming until it happens to close.
 	s.evict(room.Slug, store.UUIDString(target))
+	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
 

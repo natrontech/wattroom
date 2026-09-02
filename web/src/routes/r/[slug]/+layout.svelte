@@ -5,6 +5,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { activePlace } from '$lib/nav/pages';
+	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
 
 	interface Member {
@@ -56,6 +57,11 @@
 	let busy = $state(false);
 
 	$effect(() => {
+		// Re-fetch on every lobby ping (#251, #570): the plan, the members and
+		// their roles change because someone ELSE changed them, and the ping is
+		// how this client hears. Without it the shell showed the room as it
+		// stood when you opened it until you reloaded.
+		presence.version;
 		if (slug) void load(slug);
 	});
 
@@ -64,7 +70,11 @@
 		if (res.ok) {
 			room = res.data;
 			error = null;
-		} else {
+		} else if (room?.slug !== current) {
+			// Only the FIRST load of a room may fail loudly. Once the shell is
+			// up this runs on every lobby ping, and one hiccup blanking the room
+			// you are standing in mid-ride would be far worse than a stale list.
+			// Being removed severs the socket, which is the signal that matters.
 			room = null;
 			error = res.error.message;
 		}
