@@ -32,6 +32,7 @@
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import MemberCard from '$lib/room/MemberCard.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
+	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 
 	let { children } = $props();
 
@@ -309,3 +310,4 @@
 
 <!-- App-wide, framed or not — a toast must be able to land anywhere. -->
 <Toasts />
+<ContextMenuHost />

@@ -12,6 +12,7 @@
 	} from '@lucide/svelte';
 	import { dragPane, keepSize } from '$lib/pane';
 	import { offerSeat } from '$lib/room/stage-slot.svelte';
+	import { contextMenu } from '$lib/context-menu.svelte';
 	import {
 		FIT,
 		MAX_ZOOM,
@@ -182,6 +183,24 @@
 	<div
 		bind:this={frame}
 		{@attach (node) => keepSize(node, PANE)}
+		{@attach contextMenu(() => [
+			{
+				label: 'Fit to frame',
+				icon: RotateCcw,
+				onSelect: () => (view = FIT),
+				disabled: view.zoom === 1,
+			},
+			{
+				label: popped ? 'Dock the stage' : 'Pop the stage out',
+				icon: PictureInPicture2,
+				onSelect: () => (popped = !popped),
+			},
+			{
+				label: 'Fullscreen',
+				icon: Maximize,
+				onSelect: () => void frame?.requestFullscreen?.(),
+			},
+		])}
 		{@attach wheelZoom}
 		{@attach reclamp}
 		{@attach aspect}

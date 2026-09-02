@@ -17,6 +17,8 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
+	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import {
 		Headphones,
@@ -111,7 +113,23 @@
 				     standing in — reading a DM or Home while connected must not
 				     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
-				<li>
+				<li
+					{@attach contextMenu(() => {
+						const entries: MenuEntry[] = roomPlaces.map((place) => ({
+							label: place.label,
+							icon: place.icon,
+							onSelect: () => void goto(`/r/${room.slug}${place.path}`),
+						}));
+						if (here && onLeave)
+							entries.push('separator', {
+								label: 'Leave the room',
+								icon: LogOut,
+								onSelect: onLeave,
+								danger: true,
+							});
+						return entries;
+					})}
+				>
 					<a
 						href="/r/{room.slug}"
 						class="block rounded px-2 py-1.5 {open
