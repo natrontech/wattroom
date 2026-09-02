@@ -169,17 +169,36 @@
 				</div>
 			{:else}
 				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
-				     the player clears RMF's 200×200 at the column's width; the stage
-				     outranks it when the jukebox is on stage. -->
-				<!-- The seat. Its height is clamped rather than tied to the panel's
-				     width: a dragged-wide panel gave a 16:10 picture 300 px of
-				     height and left the chat a sliver (rider report). Still ≥200 px
-				     tall and wider than that, so RMF's floor holds. -->
+				     the player clears RMF's 200×200 at the column's width, and the
+				     height is clamped rather than tied to the panel's width — a
+				     dragged-wide panel gave the picture 300 px and left the chat a
+				     sliver (rider report).
+				
+				     The hole is ALWAYS offered, never mounted conditionally: the
+				     stage taking the player and giving it back would then mount and
+				     unmount this offer, which is what turned a pre-existing effect
+				     loop fatal in 2026.09.9 (#494). So when the stage outranks the
+				     column, the dock leaves and this box would stand empty — a big
+				     blank panel (rider report). It carries the track's own art
+				     underneath instead: covered by the player when the player is
+				     here, and something to look at when it is not. -->
 				<div
-					class="bg-surface w-full overflow-hidden rounded-lg"
+					class="bg-surface relative w-full overflow-hidden rounded-lg"
 					style="height: clamp(200px, 24vh, 240px)"
 					{@attach (node) => offerSeat(node, COLUMN_SEAT)}
-				></div>
+				>
+					<img
+						src={thumbnailFor(current.videoId)}
+						alt=""
+						loading="lazy"
+						referrerpolicy="no-referrer"
+						class="h-full w-full object-cover opacity-60"
+					/>
+					<span
+						class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
+						>The player docks here.</span
+					>
+				</div>
 			{/if}
 			<!-- The hint sits on the words, never over the player (RMF). -->
 			<div class="min-w-0" title={MENU_HINT}>
