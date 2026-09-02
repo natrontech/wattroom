@@ -9,6 +9,7 @@
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { MUSIC_FADER } from '$lib/sound/fader';
 	import {
 		centrePane,
 		dragPane,
@@ -638,13 +639,12 @@
 				<Volume2 size={12} class="shrink-0" />
 				<input
 					type="range"
-					min="0"
-					max="100"
-					step="5"
+					{...MUSIC_FADER}
 					value={mixer.music}
 					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
 					class="min-w-0 flex-1"
-					aria-label="music volume"
+					aria-label="music volume, {mixer.music}%"
+					title="music volume — {mixer.music}%"
 				/>
 			</div>
 		{/if}

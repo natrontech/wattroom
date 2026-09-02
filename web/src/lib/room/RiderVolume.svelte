@@ -9,6 +9,7 @@
 	// row's wrapping flex), so the name stays readable while you drag.
 	import { Volume1, Volume2, VolumeX } from '@lucide/svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import { RIDER_FADER } from '$lib/sound/fader';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	let { id, name }: { id: string; name: string } = $props();
@@ -40,9 +41,7 @@
 	<label class="flex basis-full items-center gap-2 pb-1">
 		<input
 			type="range"
-			min="0"
-			max="200"
-			step="5"
+			{...RIDER_FADER}
 			value={pct}
 			oninput={(e) => set(Number(e.currentTarget.value))}
 			aria-label="{name}'s volume"
