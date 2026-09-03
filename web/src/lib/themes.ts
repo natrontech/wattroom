@@ -154,6 +154,11 @@ export function themeById(id: string): Theme | undefined {
 	return THEMES.find((t) => t.id === id);
 }
 
+/** The spec behind a catalogue theme — hues and overrides, not derived tokens. */
+export function specById(id: string): ThemeSpec | undefined {
+	return SPECS.find((s) => s.id === id);
+}
+
 /** The half of an identity that belongs to this family. */
 export function themeFor(identity: string, family: ThemeFamily): Theme {
 	return (
