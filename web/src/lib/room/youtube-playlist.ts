@@ -73,7 +73,10 @@ function playlistIds(playlistId: string): Promise<string[]> {
 		};
 
 		// A playlist that never answers must not leave the add box spinning.
-		const timeout = setTimeout(() => finish(null, 'timeout'), 12_000);
+		// An id that is not a playlist fires NO onError — measured — so this
+		// timeout is the only signal it will ever give. Real lists answer in
+		// well under a second (183 ids in ~450 ms), so 8 s is already slack.
+		const timeout = setTimeout(() => finish(null, 'timeout'), 8_000);
 
 		withYouTubeApi(() => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any

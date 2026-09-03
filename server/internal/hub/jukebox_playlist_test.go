@@ -178,6 +178,30 @@ func TestHistoryRemembersTracksNotPlaylists(t *testing.T) {
 	}
 }
 
+// Playing one track of a set twice must not put two history rows under one
+// id: the client's history list is keyed by it and threw on the duplicate,
+// which a browser found and the table tests had not (#615).
+func TestReplayingATrackGetsItsOwnHistoryRow(t *testing.T) {
+	j := newJukebox()
+	addPlaylist(j, 3, jat(0))
+	accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(1))
+	// Back at the start of track 2 steps to track 1, which then plays again.
+	accepted(j, protocol.JukeboxCommand{Action: "back"}, "r-jan", "jan", jat(2))
+	accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(3))
+
+	h := j.snapshot().History
+	seen := map[string]bool{}
+	for _, entry := range h {
+		if seen[entry.ID] {
+			t.Fatalf("two history rows share the id %q: %+v", entry.ID, h)
+		}
+		seen[entry.ID] = true
+	}
+	if len(h) != 2 || h[0].VideoID != h[1].VideoID {
+		t.Fatalf("the same track played twice is not two rows of it: %+v", h)
+	}
+}
+
 // Every track played through is its own credit — the owner leaves with the
 // entry, not with the first track of it (#467).
 func TestEveryPlaylistTrackCreditsTheRiderWhoQueuedIt(t *testing.T) {

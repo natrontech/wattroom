@@ -481,10 +481,13 @@ func (j *jukebox) remember() {
 	}
 	played := *cur
 	if isPlaylist(*cur) {
-		// Its own id, so re-queueing one track out of a playlist queues the
-		// track — and so two tracks of one set are two history rows.
+		// Unique per PLAY, not per track: stepping back and playing track 4
+		// again put a second row under the same id, and the keyed history
+		// list threw rather than rendering it. The anchor is what the DJ
+		// credit already uses to tell two plays of one entry apart.
 		played = protocol.JukeboxEntry{
-			ID:      cur.ID + "#" + strconv.Itoa(cur.Index),
+			ID: cur.ID + "#" + strconv.Itoa(cur.Index) +
+				"@" + strconv.FormatInt(j.state.AnchorMs, 10),
 			VideoID: cur.VideoID, Title: cur.Title, AddedBy: cur.AddedBy,
 		}
 	}
