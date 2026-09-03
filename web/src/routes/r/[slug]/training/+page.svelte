@@ -12,7 +12,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TrainerButton from '$lib/room/TrainerButton.svelte';
@@ -62,7 +62,7 @@
 				{/if}
 			</p>
 			<div class="mt-5">
-				<SensorOverview />
+				<RoomSensorOverview />
 			</div>
 			<div class="mt-5 flex flex-wrap justify-center gap-2">
 				<SessionControls />
