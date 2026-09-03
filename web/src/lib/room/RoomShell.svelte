@@ -715,7 +715,7 @@
 		{cheers}
 	>
 		{#snippet player()}
-			<Jukebox jukebox={live.tick?.jukebox} send={live.jukebox} />
+			<Jukebox jukebox={live.tick?.jukebox} send={live.jukebox} {slug} />
 		{/snippet}
 	</SidePanel>
 {/snippet}
