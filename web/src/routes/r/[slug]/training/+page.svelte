@@ -203,7 +203,7 @@
 				<div class="flex gap-2 overflow-x-auto px-6">
 					{#each room.riders.filter((r) => !r.you) as rider (rider.id)}
 						{@const zone = zoneOf(rider.watts, rider.ftp)}
-						<div class="w-44 shrink-0">
+						<div class="w-44 shrink-0" data-testid="crew-tile">
 							<div
 								class="ring-ink/10 bg-surface-raised relative aspect-video overflow-hidden rounded ring-1"
 							>
@@ -226,11 +226,12 @@
 										class="font-display {ZONE_TEXT[
 											zone
 										]} text-xl leading-none font-bold tabular-nums"
-										>{rider.watts}</span
+										data-testid="crew-watts">{rider.watts}</span
 									>
 									<span class="text-muted text-[9px]">W</span>
-									<span class="text-muted ml-auto truncate text-[10px]"
-										>{rider.name}</span
+									<span
+										class="text-muted ml-auto truncate text-[10px]"
+										data-testid="crew-name">{rider.name}</span
 									>
 								</span>
 							</div>
