@@ -162,29 +162,26 @@ function settle() {
  * Offer `node` as the player's seat for as long as it is attached and mostly
  * on screen. Returns the teardown, so it drops straight into an attachment.
  *
- * The hole is re-measured every animation frame while offered (#395): a
- * banner above it, a message landing, a tab switch — anything that moves the
- * hole without resizing it — fires no observer, and a scroll listener paints
- * a frame behind. One getBoundingClientRect per frame, a publish only when
- * the numbers changed.
- * ponytail: a rAF poll of one rect, not a MutationObserver over every ancestor.
+ * The hole is re-measured on a timer while offered (#395): a banner above it,
+ * a message landing, a tab switch — anything that moves the hole without
+ * resizing it — fires no observer, and a scroll listener paints a frame
+ * behind. One getBoundingClientRect per tick, a publish only when the numbers
+ * changed.
+ *
+ * Every MEASURE_MS, not every frame (#513): each publish forces layout, and
+ * sixty of those a second next to a playing video and a voice call was enough
+ * to make the video stutter (#512). A box that follows a moved hole a tenth of
+ * a second later is not noticeable; dropped frames in the video are.
+ * ponytail: a timed poll of one rect, not a MutationObserver over every ancestor.
  */
 export function offerSeat(node: HTMLElement, priority = 0): () => void {
 	let visible = true;
-	let raf: number = 0;
+	let measure: number = 0;
 	const offer = { priority, seat: null as Seat | null };
 	offers.set(node, offer);
 	const publish = () => {
 		offer.seat = seatOf(node.getBoundingClientRect(), visible);
 		settle();
-	};
-	// Every 100 ms, not every frame. Each publish is a getBoundingClientRect,
-	// which forces layout; sixty of those a second next to a playing video and
-	// a voice call is enough to make the video stutter (rider report). A box
-	// that follows a moved hole a tenth of a second later is not noticeable;
-	// dropped frames in the video are.
-	const frame = () => {
-		publish();
 	};
 	const intersect = new IntersectionObserver(
 		([entry]) => {
@@ -195,9 +192,9 @@ export function offerSeat(node: HTMLElement, priority = 0): () => void {
 	);
 	intersect.observe(node);
 	publish();
-	raf = setInterval(frame, MEASURE_MS) as unknown as number;
+	measure = setInterval(publish, MEASURE_MS) as unknown as number;
 	return () => {
-		clearInterval(raf);
+		clearInterval(measure);
 		intersect.disconnect();
 		offers.delete(node);
 		settle();

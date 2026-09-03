@@ -2,8 +2,8 @@
 	// Discord's voice-connected panel (#446): you are standing in a room but
 	// looking at something else — Training, Home, a message — and the people
 	// with you stay bottom-left, above you. The Lounge already shows everyone
-	// in tiles, so the strip stays off it; the jukebox dock carries one face
-	// off-room, this is the whole crew.
+	// in tiles, so the strip stays off it; everywhere else this is the only
+	// place a face appears off-room, and it carries the whole crew.
 	import { SvelteMap } from 'svelte/reactivity';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
