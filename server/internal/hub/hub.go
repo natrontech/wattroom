@@ -167,7 +167,11 @@ func (h *Hub) saveWorker() {
 }
 
 type room struct {
-	slug    string
+	slug string
+	// Closed when the room is deleted (#618) — the tick goroutine is the
+	// only reader, and it returns rather than ticking for a room nobody
+	// can reach any more.
+	stop    chan struct{}
 	mu      sync.Mutex
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
@@ -252,6 +256,7 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 func newRoom(slug string) *room {
 	return &room{
 		slug:       slug,
+		stop:       make(chan struct{}),
 		clients:    make(map[*client]struct{}),
 		metrics:    make(map[string]protocol.RiderMetrics),
 		session:    newSession(),
@@ -454,6 +459,42 @@ func (h *Hub) Kick(slug, userID string) {
 	if len(conns) > 0 {
 		h.log.Info("rider kicked", "room", slug, "rider", userID, "sockets", len(conns))
 	}
+}
+
+// CloseRoom forgets everything live about a room, for a room that has been
+// deleted (#618). Deleting the durable row freed the slug, and the hub went on
+// holding the room's jukebox queue, chat buffer, session and roster — so the
+// next room created under the same name opened carrying the dead room's state.
+// Its members need not be the old room's members, which makes the inheritance
+// a privacy-shaped surprise as well as a bug.
+//
+// Sever the sockets, stop the ticker, drop both maps keyed by the slug. A room
+// re-created later starts from newRoom, and only HandleWS can bring one back —
+// which authorizes against the database first, so a deleted slug cannot.
+func (h *Hub) CloseRoom(slug string) {
+	h.mu.Lock()
+	rm := h.rooms[slug]
+	delete(h.rooms, slug)
+	// Voice is keyed by the same slug and outlives the sockets (#149); left
+	// behind, it seeds the next room's roster from voiceRidersLocked.
+	delete(h.voice, slug)
+	h.mu.Unlock()
+	if rm == nil {
+		return
+	}
+	rm.mu.Lock()
+	conns := make([]*websocket.Conn, 0, len(rm.clients))
+	for c := range rm.clients {
+		conns = append(conns, c.conn)
+	}
+	// Safe exactly once: the map delete above happened under h.mu, so a
+	// second CloseRoom for this slug reads a nil room and returns.
+	close(rm.stop)
+	rm.mu.Unlock()
+	for _, conn := range conns {
+		_ = conn.CloseNow()
+	}
+	h.log.Info("room closed", "room", slug, "sockets", len(conns))
 }
 
 // roleOf reads a client's current role under the room lock — SetRole can
@@ -838,7 +879,14 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 	// them changes between ticks, never per tick.
 	lastPhase, lastRiding := "", ""
 	lastTick := now()
-	for range timer.C {
+	for {
+		select {
+		case <-rm.stop:
+			// The room was deleted: no tick, and no session save — the
+			// durable row it would reference is already gone.
+			return
+		case <-timer.C:
+		}
 		rm.mu.Lock()
 		// Wall time since the previous tick — the voice clock's step, which a
 		// sprint's 4 Hz burst must not quadruple.

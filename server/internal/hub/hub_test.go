@@ -298,3 +298,54 @@ func TestRidingCountSumsRooms(t *testing.T) {
 		t.Fatalf("ridingCount = %v, want 2 across two rooms", got)
 	}
 }
+
+// Deleting a room frees its slug, so the next room of the same name takes it —
+// and used to open holding the deleted room's jukebox queue, because nothing
+// ever removed the room from the hub (#618). The durable row and the live
+// state have to go together.
+func TestCloseRoomForgetsLiveState(t *testing.T) {
+	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	rm := h.room("reverify")
+	rm.mu.Lock()
+	rm.music.state.Queue = []protocol.JukeboxEntry{{ID: "1", VideoID: "abc", Title: "Left behind"}}
+	rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
+	rm.mu.Unlock()
+	h.voice["reverify"] = map[string]voiceEntry{"jan": {}}
+
+	h.CloseRoom("reverify")
+
+	h.mu.Lock()
+	_, stillThere := h.rooms["reverify"]
+	_, voiceThere := h.voice["reverify"]
+	h.mu.Unlock()
+	if stillThere || voiceThere {
+		t.Fatalf("deleted room still in the hub: room=%v voice=%v", stillThere, voiceThere)
+	}
+
+	// A new room on the freed slug is a new room, not the old one.
+	fresh := h.room("reverify")
+	if fresh == rm {
+		t.Fatal("the recreated room is the deleted room")
+	}
+	fresh.mu.Lock()
+	defer fresh.mu.Unlock()
+	if len(fresh.music.state.Queue) != 0 {
+		t.Fatalf("inherited the deleted room's queue: %v", fresh.music.state.Queue)
+	}
+	if len(fresh.seen) != 0 {
+		t.Fatalf("inherited the deleted room's riders: %v", fresh.seen)
+	}
+}
+
+// The tick goroutine has to end with the room, or every deleted room leaves a
+// ticker running for the life of the process.
+func TestCloseRoomStopsTheTicker(t *testing.T) {
+	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	rm := h.room("stopper")
+	h.CloseRoom("stopper")
+	select {
+	case <-rm.stop:
+	default:
+		t.Fatal("the room was never told to stop ticking")
+	}
+}
