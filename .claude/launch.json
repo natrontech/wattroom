@@ -5,41 +5,25 @@
 			"name": "server",
 			"runtimeExecutable": "make",
 			"runtimeArgs": ["dev-server"],
+			"autoPort": true,
 			"port": 8080
+		},
+		{
+			"name": "web",
+			"runtimeExecutable": "make",
+			"runtimeArgs": ["dev-web"],
+			"autoPort": true,
+			"port": 5174
 		},
 		{
 			"name": "server-verify",
 			"runtimeExecutable": "sh",
 			"runtimeArgs": [
 				"-c",
-				"WATTROOM_ADDR=:8082 WATTROOM_DB='postgres://wattroom:wattroom@localhost:5432/wattroom' WATTROOM_DEV_LOGIN=1 WATTROOM_BASE_URL='http://localhost:8082' ./bin/wattroom-server"
+				"eval \"$(scripts/dev-env.sh print)\"; scripts/dev-env.sh ensure-db; scripts/dev-env.sh banner verify; WATTROOM_ADDR=\":$WATTROOM_DEV_VERIFY_PORT\" WATTROOM_BASE_URL=\"http://localhost:$WATTROOM_DEV_VERIFY_PORT\" WATTROOM_DB=\"$WATTROOM_DEV_DSN\" WATTROOM_DEV_LOGIN=1 ./bin/wattroom-server"
 			],
-			"port": 8082
-		},
-		{
-			"name": "web",
-			"runtimeExecutable": "pnpm",
-			"runtimeArgs": ["--dir", "web", "dev"],
 			"autoPort": true,
-			"port": 5174
-		},
-		{
-			"name": "server-worktree",
-			"runtimeExecutable": "sh",
-			"runtimeArgs": [
-				"-c",
-				"cd server && WATTROOM_ADDR=:8199 WATTROOM_DB='postgres://wattroom:wattroom@localhost:5432/wattroom' WATTROOM_DEV_LOGIN=1 go run ."
-			],
-			"port": 8199
-		},
-		{
-			"name": "web-worktree",
-			"runtimeExecutable": "sh",
-			"runtimeArgs": [
-				"-c",
-				"WATTROOM_API=http://localhost:8199 pnpm --dir web dev --port 5199 --strictPort"
-			],
-			"port": 5199
+			"port": 8082
 		}
 	]
 }

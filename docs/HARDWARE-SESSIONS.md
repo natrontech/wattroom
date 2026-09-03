@@ -23,7 +23,7 @@ Nothing here needs the person running it to write code.
 make dev-web
 ```
 
-Open <http://localhost:5173/dev/hardware>.
+Open <http://localhost:5174/dev/hardware> (`make dev-web` prints the port it took — a worktree gets its own).
 
 Everything is logged to `web/.hwlog/session.jsonl` as it happens. That file survives
 page reloads and browser restarts, and it is the deliverable — you do not need to

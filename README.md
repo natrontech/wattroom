@@ -60,7 +60,7 @@ Requirements: Go 1.26+, Node 22+, pnpm, Docker.
 ```sh
 make infra        # Postgres + LiveKit (dev mode) in containers
 make dev-server   # terminal 1: Go server with hot reload on :8080
-make dev-web      # terminal 2: Vite dev server on :5173 (proxies /api + /ws)
+make dev-web      # terminal 2: Vite dev server on :5174 (proxies /api + /ws)
 ```
 
 No smart trainer needed — the simulated trainer covers development, and
