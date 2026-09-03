@@ -6,19 +6,20 @@
 	// instrument. A sprint takes the screen and gives it back, a game replaces
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
+	import CrewStrip from '$lib/room/CrewStrip.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import GamePanel from '$lib/room/GamePanel.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
+	import TrainingPhone from '$lib/room/TrainingPhone.svelte';
+	import { device } from '$lib/device.svelte';
 	import { pictureKey } from '$lib/room/stage';
-	import { formatClock, wkg } from '$lib/format';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
 	import { useRoom } from '$lib/room/context';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
@@ -48,8 +49,16 @@
 	<div class="grid h-full place-items-center px-6">
 		<div class="max-w-sm text-center">
 			<p class="text-muted text-sm">
-				Nothing is running yet. Training is where your numbers live once someone
-				starts a session.
+				{#if device.spectator}
+					<!-- A phone has no trainer to pair and no session to start, so
+					     the empty state teaches what it IS for rather than listing
+					     controls that are correctly absent (ux.md). -->
+					Nothing is running yet. This is where the room's numbers appear the moment
+					someone starts the session — follow any rider from the crew strip.
+				{:else}
+					Nothing is running yet. Training is where your numbers live once
+					someone starts a session.
+				{/if}
 			</p>
 			<div class="mt-4 flex flex-wrap justify-center gap-2">
 				<SessionControls />
@@ -75,6 +84,9 @@
 			<div class="mt-4 flex justify-center"><SessionControls compact /></div>
 		</div>
 	</div>
+{:else if device.narrow}
+	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
+	<TrainingPhone />
 {:else}
 	<div
 		class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto] overflow-hidden"
@@ -198,50 +210,7 @@
 			<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. -->
 			<div class="mt-4">
-				<!-- Thumbnails at a fixed width, scrolling past the edge: a tile that grows
-				     to fill turns one crewmate into a slab and starves the instrument. -->
-				<div class="flex gap-2 overflow-x-auto px-6">
-					{#each room.riders.filter((r) => !r.you) as rider (rider.id)}
-						{@const zone = zoneOf(rider.watts, rider.ftp)}
-						<div class="w-44 shrink-0" data-testid="crew-tile">
-							<div
-								class="ring-ink/10 bg-surface-raised relative aspect-video overflow-hidden rounded ring-1"
-							>
-								{#if room.videoOf(rider.id)}
-									{#key room.videoOf(rider.id)}
-										<div
-											class="absolute inset-0"
-											{@attach (node) => room.attachVideo(rider.id, node)}
-										></div>
-									{/key}
-								{:else}
-									<div class="grid h-full w-full place-items-center">
-										{#if rider.watts > 0}<RidingBars size={16} />{/if}
-									</div>
-								{/if}
-								<span
-									class="from-paper/85 absolute inset-x-0 bottom-0 flex items-baseline gap-1 bg-gradient-to-t to-transparent px-1.5 pt-4 pb-1"
-								>
-									<span
-										class="font-display {ZONE_TEXT[
-											zone
-										]} text-xl leading-none font-bold tabular-nums"
-										data-testid="crew-watts">{rider.watts}</span
-									>
-									<span class="text-muted text-[9px]">W</span>
-									<span
-										class="text-muted ml-auto truncate text-[10px]"
-										data-testid="crew-name">{rider.name}</span
-									>
-								</span>
-							</div>
-							<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
-								{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm · {rider.hr}
-								bpm
-							</p>
-						</div>
-					{/each}
-				</div>
+				<CrewStrip riders={room.riders.filter((r) => !r.you)} />
 
 				{#if focus !== 'media'}
 					<!-- The horizon: the session is the ground the numbers stand on,

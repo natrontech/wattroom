@@ -14,6 +14,7 @@
 	// click.
 	import { dev } from '$app/environment';
 	import { account } from '$lib/account.svelte';
+	import { device } from '$lib/device.svelte';
 	import { useRoom } from '$lib/room/context';
 
 	let { compact = false }: { compact?: boolean } = $props();
@@ -32,27 +33,36 @@
 	const canSimulate = $derived(dev || account.providers.includes('dev'));
 </script>
 
-<div class="flex flex-wrap items-center gap-2">
-	{#if !room.trainer}
-		<button
-			onclick={() => room.pair()}
-			disabled={!supported}
-			title={supported ? 'Pair trainer' : 'Web Bluetooth needs Chrome or Edge'}
-			class="btn btn-secondary {compact ? 'btn-xs' : ''}">Pair trainer</button
-		>
-		{#if canSimulate}
-			<!-- Dev-only (#123): simulated watts in a live room would count for
-			     medals, XP and streaks — the fairness layer takes no fakes. -->
-			<button onclick={() => room.pairSimulated()} class="btn btn-ghost btn-xs"
-				>Ride simulated</button
+<!-- Phones are spectators (WATTROOM.md, locked) — there is no trainer to
+     pair and no reason to draw the question. Gated HERE rather than at each
+     call site, so the Lounge, Training and whatever comes next all inherit it
+     (#412). -->
+{#if !device.spectator}
+	<div class="flex flex-wrap items-center gap-2">
+		{#if !room.trainer}
+			<button
+				onclick={() => room.pair()}
+				disabled={!supported}
+				title={supported
+					? 'Pair trainer'
+					: 'Web Bluetooth needs Chrome or Edge'}
+				class="btn btn-secondary {compact ? 'btn-xs' : ''}">Pair trainer</button
+			>
+			{#if canSimulate}
+				<!-- Dev-only (#123): simulated watts in a live room would count for
+				     medals, XP and streaks — the fairness layer takes no fakes. -->
+				<button
+					onclick={() => room.pairSimulated()}
+					class="btn btn-ghost btn-xs">Ride simulated</button
+				>
+			{/if}
+		{:else}
+			<button onclick={() => room.unpair()} class="btn btn-ghost btn-xs"
+				>Unpair trainer</button
 			>
 		{/if}
-	{:else}
-		<button onclick={() => room.unpair()} class="btn btn-ghost btn-xs"
-			>Unpair trainer</button
-		>
-	{/if}
-	{#if room.rideError}
-		<p class="text-danger text-xs">{room.rideError}</p>
-	{/if}
-</div>
+		{#if room.rideError}
+			<p class="text-danger text-xs">{room.rideError}</p>
+		{/if}
+	</div>
+{/if}

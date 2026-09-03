@@ -1,10 +1,8 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
-	import { activePlace } from '$lib/nav/pages';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
 
@@ -90,32 +88,17 @@
 
 	const isMember = $derived(!!room?.role);
 
-	// WATTROOM.md scopes phones as read-only spectators, and the cockpit's
-	// core (pair + ride) needs Web Bluetooth a phone browser doesn't have —
-	// so a member opening the share link on a phone lands on the watch view
-	// (#124). ?full=1 is the escape hatch, linked from the watch footer.
-	// Decided SYNCHRONOUSLY: rendering RoomLive first opened a second,
-	// unleavable socket before the redirect landed (#219).
-	const phoneSpectator =
-		typeof window !== 'undefined' &&
-		!page.url.searchParams.has('full') &&
-		matchMedia('(max-width: 767px)').matches;
-	// The watch view is its own frame — the root layout unframes it and the
-	// page owns its own room feed. It is also the destination below, so it
-	// renders outside the shell rather than behind the gate that sends a
-	// phone to it, which had been swallowing the one view a phone is for.
-	const watching = $derived(page.url.pathname === `/r/${slug}/watch`);
-	// The Chat place is the exception to the redirect: what a phone cannot do
-	// is the cockpit — pair and ride want Web Bluetooth — and talking wants
-	// none of it. The watch view has no way to say anything back, and a phone
-	// in the room to talk is why the room is open on a phone at all.
-	const spectate = $derived(
-		phoneSpectator && activePlace(page.url.pathname, slug ?? '') !== '/chat',
-	);
-	$effect(() => {
-		if (!room || !isMember || !spectate || watching) return;
-		void goto(`/r/${room.slug}/watch`, { replaceState: true });
-	});
+	// A phone gets the real room now (#412). It used to be bounced to
+	// /r/<slug>/watch — a read-only page the ADR-0020 redesign never touched,
+	// so every desktop width got the new shape and the one device most likely
+	// to be propped at arm's length got the old one. The shell already has the
+	// answers a narrow screen needs: the sidebar is a drawer below md, the
+	// people column is a summonable sheet below xl, and the affordances a
+	// phone cannot honour gate themselves ($lib/device.svelte).
+	//
+	// What was the redirect's escape hatch — ?full=1 — still means "give this
+	// device the cockpit anyway"; it spends that on the spectator gate now
+	// rather than on a redirect that no longer happens.
 </script>
 
 {#if error && !room}
@@ -151,8 +134,6 @@
 			</p>
 		</div>
 	</main>
-{:else if room && isMember && watching}
-	{@render children()}
 {:else if !room}
 	<!-- Loading: a page never renders blank (.claude/rules/errors.md) — a cold
 	     server takes seconds and the void read as broken. -->
@@ -170,55 +151,51 @@
 		     you are standing in (ADR-0020) — so the page's heading is for
 		     assistive tech: which room this is. -->
 		<h1 class="sr-only">{room.name}</h1>
-		{#if spectate}
-			<!-- redirecting to the watch view -->
-		{:else}
-			<RoomShell
-				slug={room.slug}
-				role={room.role ?? 'member'}
-				roomName={room.name}
-				icon={room.icon ?? ''}
-				cheers={room.cheers}
-				code={room.code ?? ''}
-				soundPack={room.soundPack ?? 'base'}
-				members={room.members ?? []}
-				medals={room.medals ?? []}
-				streakWeeks={room.streakWeeks ?? 0}
-				monthKj={room.monthKj ?? 0}
-				upcoming={room.upcoming ?? []}
-				onSchedule={(
-					workoutName: string,
-					workoutJson: string,
-					startsAt: string,
-				) =>
-					act(`/api/rooms/${room?.slug}/schedule`, {
-						json: { workoutName, workoutJson, startsAt },
-					})}
-				onReschedule={(id: string, startsAt: string) =>
-					act(`/api/rooms/${room?.slug}/schedule/${id}`, {
-						method: 'PATCH',
-						json: { startsAt },
-					})}
-				onUnschedule={(id: string) =>
-					act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
-				onRsvp={(id: string, going: boolean) =>
-					act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
-						method: going ? 'PUT' : 'DELETE',
-					})}
-				icsToken={room.icsToken ?? ''}
-				onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
-				adminBusy={busy}
-				onRole={(userId: string, nextRole: string) =>
-					act(`/api/rooms/${room?.slug}/role`, {
-						json: { userId, role: nextRole },
-					})}
-				onRemove={(userId: string) =>
-					act(`/api/rooms/${room?.slug}/members/${userId}`, {
-						method: 'DELETE',
-					})}
-			>
-				{@render children()}
-			</RoomShell>
-		{/if}
+		<RoomShell
+			slug={room.slug}
+			role={room.role ?? 'member'}
+			roomName={room.name}
+			icon={room.icon ?? ''}
+			cheers={room.cheers}
+			code={room.code ?? ''}
+			soundPack={room.soundPack ?? 'base'}
+			members={room.members ?? []}
+			medals={room.medals ?? []}
+			streakWeeks={room.streakWeeks ?? 0}
+			monthKj={room.monthKj ?? 0}
+			upcoming={room.upcoming ?? []}
+			onSchedule={(
+				workoutName: string,
+				workoutJson: string,
+				startsAt: string,
+			) =>
+				act(`/api/rooms/${room?.slug}/schedule`, {
+					json: { workoutName, workoutJson, startsAt },
+				})}
+			onReschedule={(id: string, startsAt: string) =>
+				act(`/api/rooms/${room?.slug}/schedule/${id}`, {
+					method: 'PATCH',
+					json: { startsAt },
+				})}
+			onUnschedule={(id: string) =>
+				act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
+			onRsvp={(id: string, going: boolean) =>
+				act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
+					method: going ? 'PUT' : 'DELETE',
+				})}
+			icsToken={room.icsToken ?? ''}
+			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
+			adminBusy={busy}
+			onRole={(userId: string, nextRole: string) =>
+				act(`/api/rooms/${room?.slug}/role`, {
+					json: { userId, role: nextRole },
+				})}
+			onRemove={(userId: string) =>
+				act(`/api/rooms/${room?.slug}/members/${userId}`, {
+					method: 'DELETE',
+				})}
+		>
+			{@render children()}
+		</RoomShell>
 	{/key}
 {/if}

@@ -27,6 +27,7 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
+	import { activePlace } from '$lib/nav/pages';
 	import { openMember } from '$lib/nav/open-member';
 	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
@@ -84,13 +85,11 @@
 	});
 
 	// ONE rail, owned here, on every page — the room included (#191): navigating
-	// out of a room must not swap rail instances. Only the spectator view and
-	// login are their own frame.
+	// out of a room must not swap rail instances. Only login is its own frame:
+	// the spectator view used to be the other one, and a phone stands in the
+	// framed room itself now (#412).
 	const framed = $derived(
-		!!account.me &&
-			!publicPath &&
-			!page.url.pathname.endsWith('/watch') &&
-			page.url.pathname !== '/login',
+		!!account.me && !publicPath && page.url.pathname !== '/login',
 	);
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store
@@ -127,6 +126,15 @@
 			name: presence.rooms.find((room) => room.slug === conn.slug)?.name,
 		};
 	});
+
+	// The chat's composer owns the bottom edge, so the drawer button steps up
+	// over it — the same lift the room's people button takes there. Both are
+	// thumb targets in the same corner strip and neither may land on the one
+	// input a phone rider is actually typing into.
+	const overComposer = $derived(
+		page.url.pathname.startsWith('/r/') &&
+			activePlace(page.url.pathname, page.params?.slug ?? '') === '/chat',
+	);
 
 	// The room whose pages you are on opens in the sidebar — only under /r/:
 	// a room's thread on /messages carries the same slug param and is
@@ -266,7 +274,9 @@
 		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 			{#if !caved}
 				<!-- The only chrome the drawer needs. It goes with the lights: the
-				     ride owns the whole screen (#113). -->
+				     ride owns the whole screen (#113) — below md the button
+				     reappears in the thumb zone instead (see the FAB below), or a
+				     phone would have no navigation at all once a session starts. -->
 				<div
 					class="border-ink/5 flex shrink-0 items-center gap-2 border-b px-3 py-2 md:hidden"
 				>
@@ -298,6 +308,22 @@
 				{@render children()}
 			</div>
 		</div>
+		{#if caved}
+			<!-- The ride took the top bar, so the way back to the drawer is where
+			     a thumb already is: bottom left, mirroring the room's people
+			     button bottom right. Below md only — every wider window still has
+			     the sidebar standing there (#412). -->
+			<button
+				onclick={() => (drawer = true)}
+				class="bg-surface-raised ring-ink/15 fixed left-4 z-40 grid h-12 w-12
+				place-items-center rounded-full shadow-lg ring-1 md:hidden {overComposer
+					? 'bottom-20'
+					: 'bottom-4'}"
+				aria-label="open navigation"
+			>
+				<Menu size={20} />
+			</button>
+		{/if}
 		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
 		     auto-advance while the player is offscreen, so it cannot be a place.
 		     Threads became places instead (ADR-0020) — /messages (#468). -->

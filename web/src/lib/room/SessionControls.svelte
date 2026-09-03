@@ -10,6 +10,7 @@
 	// 44 px target ends the ride for the whole room, and there is no undo to
 	// offer (errors.md's confirm exception), so it confirms the way the solo
 	// ride does. Cancelling a countdown loses nothing and does not ask.
+	import { device } from '$lib/device.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { Pause, Play, Radio, Square, Zap } from '@lucide/svelte';
 
@@ -33,7 +34,11 @@
 	}
 </script>
 
-{#if room.canControl}
+<!-- A phone is a spectator, and the roles matrix gives a spectator none of
+     these (docs/SPEC.md): picking a workout, starting, pausing, arming a
+     sprint and ending all belong to the device the coach is riding on. Gated
+     with the pairing button, in one place each (#412). -->
+{#if room.canControl && !device.spectator}
 	{#if idle}
 		<button
 			onclick={() => room.openPicker()}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeHref, activePlace, pages, roomPlaces } from './pages';
+import { activeHref, activePlace, pages, placesFor, roomPlaces } from './pages';
 
 describe('activeHref', () => {
 	it('lights up the destination a path belongs to', () => {
@@ -45,5 +45,26 @@ describe('activePlace', () => {
 
 	it('ignores a slug that looks like a place', () => {
 		expect(activePlace('/r/training', 'training')).toBe('');
+	});
+});
+
+describe('placesFor', () => {
+	it('offers a wide screen every place', () => {
+		expect(placesFor(false)).toEqual(roomPlaces);
+	});
+
+	// A phone gets the room, not a trimmed second app: the only place it is
+	// not offered is the owner-only settings form (#412).
+	it('drops only Settings below md', () => {
+		const narrow = placesFor(true).map((p) => p.path);
+		expect(narrow).toEqual(['', '/chat', '/training', '/sessions', '/members']);
+		expect(narrow).not.toContain('/settings');
+	});
+
+	it('offers a place the drawer can actually resolve', () => {
+		for (const place of placesFor(true))
+			expect(
+				activePlace(`/r/velvet-hammer${place.path}`, 'velvet-hammer'),
+			).toBe(place.path);
 	});
 });

@@ -19,7 +19,9 @@
 		hr: number;
 		watts: number;
 		kg: number;
-		bias: number;
+		/** The ERG trim. Absent where there is no target to trim — a phone
+		 *  spectator reads someone else's numbers and rides nothing (#412). */
+		bias?: number;
 		small?: boolean;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
 		onBias?: (step: number) => void;
@@ -41,27 +43,29 @@
 			<span class="eyebrow">{stat.label}</span>
 		</div>
 	{/each}
-	<div class="ml-auto flex shrink-0 items-center gap-2">
-		<button
-			onclick={() => onBias?.(-0.01)}
-			disabled={!onBias}
-			title={onBias ? 'Ease the target by one percent' : NO_TRAINER}
-			class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
-			aria-label="ease the target by one percent">−</button
-		>
-		<span class="text-center">
-			<span
-				class="font-display block text-lg leading-none font-bold tabular-nums"
-				>{Math.round(bias * 100)}%</span
+	{#if bias !== undefined}
+		<div class="ml-auto flex shrink-0 items-center gap-2">
+			<button
+				onclick={() => onBias?.(-0.01)}
+				disabled={!onBias}
+				title={onBias ? 'Ease the target by one percent' : NO_TRAINER}
+				class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
+				aria-label="ease the target by one percent">−</button
 			>
-			<span class="eyebrow">bias</span>
-		</span>
-		<button
-			onclick={() => onBias?.(0.01)}
-			disabled={!onBias}
-			title={onBias ? 'Raise the target by one percent' : NO_TRAINER}
-			class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
-			aria-label="raise the target by one percent">+</button
-		>
-	</div>
+			<span class="text-center">
+				<span
+					class="font-display block text-lg leading-none font-bold tabular-nums"
+					>{Math.round(bias * 100)}%</span
+				>
+				<span class="eyebrow">bias</span>
+			</span>
+			<button
+				onclick={() => onBias?.(0.01)}
+				disabled={!onBias}
+				title={onBias ? 'Raise the target by one percent' : NO_TRAINER}
+				class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
+				aria-label="raise the target by one percent">+</button
+			>
+		</div>
+	{/if}
 </div>

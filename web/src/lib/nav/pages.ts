@@ -61,6 +61,17 @@ export const roomPlaces = [
 	},
 ];
 
+/**
+ * The places a viewport is offered. Settings is the one place a phone is not:
+ * it is a set-up-once, owner-only form — the 95% rule (`ux.md`) says nobody
+ * renames a room from a bike, and a drawer that lists everything lists
+ * nothing. It stays a URL and still renders, so a bookmark works and the page
+ * says it is laid out for a wider screen; it simply is not offered here.
+ */
+export function placesFor(narrow: boolean) {
+	return narrow ? roomPlaces.filter((p) => p.path !== '/settings') : roomPlaces;
+}
+
 /** Which destination a path lights up. */
 export function activeHref(pathname: string): string | undefined {
 	return pages.find((p) => pathname.startsWith(p.href))?.href;
