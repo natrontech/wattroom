@@ -643,7 +643,7 @@
 						flagNotice = true;
 						setTimeout(() => (flagNotice = false), 4000);
 					}}
-					class="border-watt/40 text-watt hover:bg-watt/10 grid h-11 w-14 place-items-center rounded border"
+					class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 place-items-center rounded border"
 					aria-label="Flag a problem"><Flag size={18} /></button
 				>
 			</div>
