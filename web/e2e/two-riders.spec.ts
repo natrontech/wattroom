@@ -85,8 +85,13 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 
 	// A is the owner, so A is the coach: A picks the workout and starts it.
 	await a.getByRole('button', { name: 'Start a session' }).click();
-	await a.getByRole('textbox', { name: 'find a workout' }).fill('Recovery Spin');
-	await a.getByRole('button', { name: /Recovery Spin/ }).first().click();
+	await a
+		.getByRole('textbox', { name: 'find a workout' })
+		.fill('Recovery Spin');
+	await a
+		.getByRole('button', { name: /Recovery Spin/ })
+		.first()
+		.click();
 	await a.getByRole('button', { name: 'Start Recovery Spin' }).click();
 
 	// --- B is in A's crew strip, and pedalling ------------------------------
@@ -97,15 +102,18 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	).toHaveCount(1, { timeout: COUNTDOWN_MS + SETTLE_MS });
 	await expect(
 		tiles.getByTestId('crew-name'),
-		"the crew tile is somebody other than the rider who joined",
+		'the crew tile is somebody other than the rider who joined',
 	).toHaveText(B);
 	// Live watts, polled: the strip paints the moment the tick names B, and a
 	// single read catches it a tick before B's first sample lands (#537).
 	await expect
-		.poll(async () => Number(await tiles.getByTestId('crew-watts').innerText()), {
-			message: `${B} is in A's crew strip but reading 0 W — the second rider's samples are not reaching the first`,
-			timeout: SETTLE_MS,
-		})
+		.poll(
+			async () => Number(await tiles.getByTestId('crew-watts').innerText()),
+			{
+				message: `${B} is in A's crew strip but reading 0 W — the second rider's samples are not reaching the first`,
+				timeout: SETTLE_MS,
+			},
+		)
 		.toBeGreaterThan(0);
 
 	// --- both roster rows carry an execution bar ----------------------------
@@ -118,21 +126,17 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	await expect
 		.poll(
 			() =>
-				a
-					.getByTestId('execution-row')
-					.evaluateAll((rows) =>
-						rows
-							.map((row) => ({
-								name: row.firstElementChild?.textContent?.trim() ?? '',
-								width:
-									row
-										.querySelector<HTMLElement>(
-											'[data-testid="execution-bar"] [style*="width"]',
-										)
-										?.style.width ?? '',
-							}))
-							.sort((x, y) => x.name.localeCompare(y.name)),
-					),
+				a.getByTestId('execution-row').evaluateAll((rows) =>
+					rows
+						.map((row) => ({
+							name: row.firstElementChild?.textContent?.trim() ?? '',
+							width:
+								row.querySelector<HTMLElement>(
+									'[data-testid="execution-bar"] [style*="width"]',
+								)?.style.width ?? '',
+						}))
+						.sort((x, y) => x.name.localeCompare(y.name)),
+				),
 			{
 				message: `both rows of A's execution meter should name a rider and draw a bar`,
 				timeout: SETTLE_MS,
