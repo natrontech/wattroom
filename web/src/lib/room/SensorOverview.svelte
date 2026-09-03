@@ -1,67 +1,53 @@
+<script module lang="ts">
+	import type { PairState } from '$lib/room/sensor-status';
+
+	/**
+	 * The trainer card's view-model, injected by whoever owns the trainer.
+	 *
+	 * Two owners, and they are not alike (#611): a room holds its connection
+	 * for as long as you stand in it (`RoomSensorOverview`), while a solo
+	 * pre-ride screen pairs one it has not started riding yet
+	 * (`lib/ride/solo-trainer.svelte.ts`). The three read-only sensors below
+	 * the trainer are the same singleton on every screen, so they stay wired
+	 * inside this component.
+	 */
+	export interface TrainerSlot {
+		state: PairState;
+		device?: string;
+		/** Live watts and cadence — the honest confirmation, not just a name. */
+		reading?: string;
+		/** One line under the reading when it is paired but not well (#520). */
+		hint?: string;
+		/** Why the last pair attempt failed; shown under the grid. */
+		error?: string | null;
+		onPair: () => void;
+		onForget: () => void;
+		/** A simulated trainer, when the caller is allowed to offer one (#123). */
+		onSimulate?: () => void;
+	}
+</script>
+
 <script lang="ts">
-	// The Training place's own "get set up" screen (#606) — one card per
-	// sensor, Zwift's "Paired Devices" shape, so a rider sees what is and
-	// isn't connected before they ever look for a "Pair trainer" button.
-	// Replaces the bare TrainerButton in Training's idle state; the compact
-	// header TrainerButton shown once a session is running is unchanged.
-	//
-	// Reads the room's connection directly rather than through RoomContext
-	// (like /pair does, #565): the context's `trainer` is typed `unknown` and
-	// carries none of #520's fault detail ("paired but silent"), which is
-	// exactly the state a rider getting set up most needs to see.
-	import { dev } from '$app/environment';
-	import { account } from '$lib/account.svelte';
+	// The "get set up" grid — one card per sensor, Zwift's "Paired Devices"
+	// shape, so a rider sees what is and isn't connected before they ever look
+	// for a "Pair trainer" button (#606). It is the Training place's idle
+	// state and both solo pre-ride screens (#611); the compact header
+	// TrainerButton shown once a session is running is unchanged.
 	import { device } from '$lib/device.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import { useRoom } from '$lib/room/context';
 	import {
 		type Pairing,
-		type PairState,
 		sensorReading,
 		sensorState,
-		trainerState,
 	} from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import { Bike, HeartPulse, RotateCw, Zap } from '@lucide/svelte';
 
-	const room = useRoom();
-	const ride = $derived(roomConnection.current?.ride);
+	let { trainer }: { trainer: TrainerSlot } = $props();
+
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-	// Same gate as #123's SimulatedTrainer everywhere else: real watts only,
-	// unless this is a dev server or a dev-provider sign-in.
-	const canSimulate = dev || account.providers.includes('dev');
 
 	let pairing = $state<Pairing>(null);
-
-	const trainerSlotState = $derived(
-		trainerState(
-			{
-				trainer: ride?.trainer ?? null,
-				fault: ride?.fault ?? null,
-				error: ride?.error ?? null,
-			},
-			pairing,
-		),
-	);
-
-	async function pairTrainer() {
-		if (!ride) return;
-		pairing = 'trainer';
-		await ride.ride(new FtmsTrainer());
-		pairing = null;
-	}
-
-	async function pairSimulatedTrainer() {
-		if (!ride) return;
-		pairing = 'trainer';
-		const baseWatts =
-			(roomConnection.current?.profile.current.ftp ?? 200) * 0.75;
-		await ride.ride(new SimulatedTrainer({ baseWatts }));
-		pairing = null;
-	}
 
 	async function pairSensor(kind: SensorKind) {
 		pairing = kind;
@@ -149,16 +135,12 @@
 			label: 'Trainer',
 			icon: Bike,
 			required: true,
-			state: trainerSlotState,
-			device: ride?.trainer?.name,
-			reading:
-				trainerSlotState === 'connected'
-					? `${room.you.watts} W · ${room.you.cadence} rpm`
-					: undefined,
-			hint:
-				ride?.fault === 'silent' ? 'no watts yet — turn the cranks' : undefined,
-			onPair: () => void pairTrainer(),
-			onForget: () => ride?.unpair(),
+			state: trainer.state,
+			device: trainer.device,
+			reading: trainer.state === 'connected' ? trainer.reading : undefined,
+			hint: trainer.hint,
+			onPair: trainer.onPair,
+			onForget: trainer.onForget,
 		})}
 		{#each SENSORS as sensor (sensor.kind)}
 			{@const slot = sensors.slot(sensor.kind)}
@@ -179,15 +161,14 @@
 			This browser has no Web Bluetooth, so nothing here can pair. Chrome or
 			Edge on desktop or Android will work.
 		</p>
-	{:else if ride?.error && pairing !== 'trainer'}
-		<p class="text-muted mt-2 text-xs">{ride.error}</p>
+	{:else if trainer.error && trainer.state !== 'connecting'}
+		<p class="text-muted mt-2 text-xs">{trainer.error}</p>
 	{/if}
-	{#if canSimulate}
+	{#if trainer.onSimulate}
 		<!-- Dev-only (#123): simulated watts in a live room would count for
 		     medals, XP and streaks — the fairness layer takes no fakes. -->
-		<button
-			onclick={() => void pairSimulatedTrainer()}
-			class="btn btn-ghost btn-xs mt-2">Ride simulated</button
+		<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs mt-2"
+			>Ride simulated</button
 		>
 	{/if}
 {/if}

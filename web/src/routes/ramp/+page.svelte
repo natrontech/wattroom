@@ -5,6 +5,9 @@
 	import { dev } from '$app/environment';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
@@ -29,7 +32,9 @@
 	let saved = $state(false);
 	let lthrSaved = $state(false);
 
-	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+	// Paired before the test, not by starting it (#611): the paired-devices
+	// grid owns the trainer until Start hands it to the session.
+	const solo = createSoloTrainer();
 
 	// FTP is irrelevant to the test itself — the steps are absolute watts — but the
 	// session needs one, so it gets the current profile value.
@@ -40,8 +45,11 @@
 		lthrSaved = false;
 		// One trainer, one rider (#521): the room now holds its BLE connection
 		// for as long as you stand in it, so a solo ride has to take it back
-		// rather than open a second control channel to the same hardware.
+		// rather than open a second control channel to the same hardware. A
+		// trainer paired in the grid and then left for a simulated run is the
+		// same conflict on this page.
 		roomConnection.current?.ride.unpair();
+		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
 			const next = createRideSession({
 				trainer,
@@ -131,7 +139,7 @@
 	</p>
 
 	{#if !session}
-		<div class="panel mt-8 p-8 text-center">
+		<div class="panel mt-8 max-w-2xl p-8 text-center">
 			<p class="text-sm">
 				About 12–18 minutes, and the last two are unpleasant.
 			</p>
@@ -139,31 +147,64 @@
 				Ride each minute at the number shown. When you can't hold it any more,
 				stop pedalling — stopping is the measurement, not a failure.
 			</p>
-
-			{#if error}
-				<p class="text-danger mt-4 text-sm">{error}</p>
-			{/if}
-
-			<div class="mt-6 flex justify-center gap-2">
-				<button
-					onclick={() => begin(new FtmsTrainer())}
-					disabled={!supported}
-					class="btn btn-primary btn-lg">Start ramp test</button
-				>
-				{#if dev}
-					<button
-						onclick={() => begin(new SimulatedTrainer({ baseWatts: 150 }))}
-						class="btn btn-secondary btn-lg">Run simulated</button
-					>
-				{/if}
-			</div>
-			{#if !supported}
-				<p class="text-muted mt-3 text-xs">
-					This browser has no Web Bluetooth — use Chrome or Edge to pair a real
-					trainer.
-				</p>
-			{/if}
 		</div>
+
+		<!-- The same paired-devices grid the room's Training place draws
+		     (#611), outside the panel because the cards are panels themselves.
+		     A ramp is the one test whose number you keep, so seeing the trainer
+		     report watts before it starts matters more here than anywhere. -->
+		<div class="mt-4 max-w-2xl">
+			<SensorOverview
+				trainer={{
+					state: solo.state,
+					device: solo.trainer?.name,
+					reading: solo.reading,
+					hint:
+						solo.fault === 'silent'
+							? 'no watts yet — turn the cranks'
+							: undefined,
+					error: solo.error,
+					onPair: () => void solo.pair(new FtmsTrainer()),
+					onForget: () => solo.forget(),
+					// Simulated watts pair like any other trainer rather than
+					// starting the test outright: the card is where a rider sees
+					// a trainer reporting before Start.
+					onSimulate: dev
+						? () => void solo.pair(new SimulatedTrainer({ baseWatts: 150 }))
+						: undefined,
+				}}
+			/>
+		</div>
+
+		{#if error}
+			<p class="text-danger mt-4 text-sm">{error}</p>
+		{/if}
+
+		<div class="mt-6 flex gap-2">
+			<!-- Never render a button that will fail (errors.md): with no
+				     trainer there is no step to hold. -->
+			<button
+				onclick={() => {
+					const trainer = solo.handOff();
+					if (trainer) void begin(trainer);
+				}}
+				disabled={!solo.trainer}
+				class="btn btn-primary btn-lg">Start ramp test</button
+			>
+		</div>
+		{#if device.spectator}
+			<!-- The grid above is hidden on a spectator device, so the disabled
+			     button needs its own reason (errors.md). -->
+			<p class="text-muted mt-3 text-xs">
+				This device can't reach a trainer — its browser has no Web Bluetooth.
+				Test from a desktop, or Chrome on Android.
+			</p>
+		{:else if !solo.trainer}
+			<p class="text-muted mt-3 text-xs">
+				Pair your trainer above to start — the test's steps need something to
+				hold them.
+			</p>
+		{/if}
 	{:else if !done}
 		<div class="panel mt-8 p-8">
 			<!-- The same instrument the room and the solo ride use (ADR-0020,

@@ -17,7 +17,13 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	await expect(
 		page.getByRole('heading', { name: 'Smoke Test' }),
 	).toBeVisible();
+	// Pairing and starting are two steps now (#611): the simulated trainer lands
+	// in the paired-devices grid, which has to show it reporting watts before
+	// Start is enabled at all.
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	const trainerCard = page.getByText('Simulated Trainer').locator('..');
+	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Start the ride' }).click();
 
 	// The ride is live once power is arriving.
 	const watts = page.locator('.text-watt.glow-text-strong').first();

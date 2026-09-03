@@ -3,6 +3,9 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -65,8 +68,6 @@
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
 
-	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
 	// rider's.
@@ -114,12 +115,19 @@
 	}
 	let trainerName = $state('simulated');
 
+	// Paired before the ride, not by starting it (#611): the paired-devices
+	// grid below owns the trainer until Start hands it to the session.
+	const solo = createSoloTrainer();
+
 	async function begin(trainer: Trainer) {
 		error = null;
 		// One trainer, one rider (#521): the room now holds its BLE connection
 		// for as long as you stand in it, so a solo ride has to take it back
-		// rather than open a second control channel to the same hardware.
+		// rather than open a second control channel to the same hardware. A
+		// trainer paired in the grid and then left for a simulated ride is the
+		// same conflict on this page.
 		roomConnection.current?.ride.unpair();
+		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
 			// Crash safety (#19): every recorded sample also lands in IndexedDB,
 			// so a browser crash at minute 55 still has a ride to export.
@@ -262,10 +270,6 @@
 		await discardRide(rideId);
 		recoverable = recoverable.filter((r) => r.rideId !== rideId);
 	}
-
-	const pairedCount = $derived(
-		sensors.all.filter((s) => s.status === 'connected').length,
-	);
 
 	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
 	// cell is worse than no cell: it reads as a broken strap rather than no strap.
@@ -410,7 +414,7 @@
 <main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
 	{#if !session}
 		<!-- Pre-ride: pick your effort level and how you are getting power in. -->
-		<div class="m-auto w-full max-w-md text-center">
+		<div class="m-auto w-full max-w-2xl text-center">
 			<Logo size={56} />
 			<h1 class="font-display mt-6 text-2xl font-bold">{workout.name}</h1>
 			<p class="text-muted mt-2 text-sm">
@@ -435,7 +439,74 @@
 				>Choose a different workout</a
 			>
 
-			<label class="mt-6 block text-left">
+			<!-- The same paired-devices grid the room's Training place draws
+			     (#611). Pairing lives here, so Start does one thing — and the
+			     trainer reports watts before the ride rather than after. -->
+			<div class="mt-6">
+				<SensorOverview
+					trainer={{
+						state: solo.state,
+						device: solo.trainer?.name,
+						reading: solo.reading,
+						hint:
+							solo.fault === 'silent'
+								? 'no watts yet — turn the cranks'
+								: undefined,
+						error: solo.error,
+						onPair: () => void solo.pair(new FtmsTrainer()),
+						onForget: () => solo.forget(),
+						// Simulated watts pair like any other trainer rather than
+						// starting the ride outright: the card is where a rider
+						// (and the e2e) sees a trainer reporting before Start.
+						onSimulate: simAllowed
+							? () =>
+									void solo.pair(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))
+							: undefined,
+					}}
+				/>
+			</div>
+
+			{#if error}
+				<p class="text-danger mt-4 text-sm">{error}</p>
+			{/if}
+
+			<div class="mt-6 grid gap-2">
+				<!-- Never render a button that will fail (errors.md): with no
+				     trainer there is nothing to hold a target. -->
+				<button
+					onclick={() => {
+						const trainer = solo.handOff();
+						if (trainer) void begin(trainer);
+					}}
+					disabled={!solo.trainer}
+					class="btn btn-primary btn-lg">Start the ride</button
+				>
+				{#if replayName}
+					<button
+						onclick={beginReplay}
+						data-testid="ride-replay"
+						class="btn btn-accent btn-lg">Replay {replayName}</button
+					>
+				{/if}
+			</div>
+			{#if device.spectator}
+				<!-- The grid above is hidden on a spectator device, so the
+				     disabled button needs its own reason (errors.md). -->
+				<p class="text-muted mt-3 text-xs">
+					This device can't reach a trainer — its browser has no Web Bluetooth.
+					Ride from a desktop, or Chrome on Android.
+				</p>
+			{:else if !solo.trainer}
+				<p class="text-muted mt-3 text-xs">
+					Pair your trainer above to start — the workout's targets need
+					something to hold them.
+				</p>
+			{/if}
+
+			<!-- Below Start on purpose: the grid made this column taller than a
+			     laptop window, and FTP is a number you correct once in a month
+			     while Start is what you came for. -->
+			<label class="mt-8 block text-left">
 				<span class="eyebrow">your FTP (watts)</span>
 				<input
 					type="number"
@@ -455,13 +526,6 @@
 				href="/ramp"
 				class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
 				>Measure it with a ramp test</a
-			>
-			<a
-				href="/pair"
-				class="text-muted hover:text-ink mt-2 block text-xs underline"
-				>{pairedCount > 0
-					? `${pairedCount} sensor${pairedCount > 1 ? 's' : ''} paired`
-					: 'Pair a heart rate strap or power meter'}</a
 			>
 
 			{#if recoverable.length > 0}
@@ -487,38 +551,6 @@
 						</div>
 					</div>
 				{/each}
-			{/if}
-
-			{#if error}
-				<p class="text-danger mt-4 text-sm">{error}</p>
-			{/if}
-
-			<div class="mt-6 grid gap-2">
-				<button
-					onclick={() => begin(new FtmsTrainer())}
-					disabled={!supported}
-					class="btn btn-primary btn-lg">Pair trainer and start</button
-				>
-				{#if replayName}
-					<button
-						onclick={beginReplay}
-						data-testid="ride-replay"
-						class="btn btn-accent btn-lg">Replay {replayName}</button
-					>
-				{/if}
-				{#if simAllowed}
-					<button
-						onclick={() =>
-							begin(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))}
-						class="btn btn-secondary btn-lg">Ride simulated</button
-					>
-				{/if}
-			</div>
-			{#if !supported}
-				<p class="text-muted mt-3 text-xs">
-					This browser has no Web Bluetooth — use Chrome or Edge to pair a real
-					trainer.
-				</p>
 			{/if}
 		</div>
 	{:else if session.state !== 'done'}
