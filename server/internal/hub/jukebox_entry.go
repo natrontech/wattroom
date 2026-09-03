@@ -28,6 +28,17 @@ var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 // lists is a message the paster must read, which makes it the client's job.
 var playlistIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`)
 
+// ValidVideoID and ValidYouTubePlaylistID are exported so the playlists
+// package (#627) can reject an unsaveable track at write time — the same
+// shape check a live "add" applies, so a saved entry is never a promise the
+// live queue later refuses to keep.
+func ValidVideoID(s string) bool           { return videoIDPattern.MatchString(s) }
+func ValidYouTubePlaylistID(s string) bool { return playlistIDPattern.MatchString(s) }
+
+// MaxPlaylistTracks bounds one queued-whole YouTube playlist (#615) —
+// exported so a playlist saved offline is capped the same as a live paste.
+const MaxPlaylistTracks = maxPlaylistTracks
+
 // isPlaylist: an entry is a playlist exactly when it carries tracks. There is
 // no second flag to keep in sync with the list it describes.
 func isPlaylist(e protocol.JukeboxEntry) bool { return len(e.Tracks) > 0 }

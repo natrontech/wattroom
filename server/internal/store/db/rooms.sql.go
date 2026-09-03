@@ -67,7 +67,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 const createRoom = `-- name: CreateRoom :one
 insert into rooms (code, slug, name, owner_id)
 values ($1, $2, $3, $4)
-returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token
+returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title
 `
 
 type CreateRoomParams struct {
@@ -97,6 +97,11 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 		&i.Icon,
 		&i.Cheers,
 		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
 	)
 	return i, err
 }
@@ -199,7 +204,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token from rooms where code = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title from rooms where code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
@@ -217,12 +222,17 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) 
 		&i.Icon,
 		&i.Cheers,
 		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
 	)
 	return i, err
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token from rooms where slug = $1
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -240,6 +250,11 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 		&i.Icon,
 		&i.Cheers,
 		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
 	)
 	return i, err
 }
@@ -506,7 +521,7 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, m.role
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, m.role
 from memberships m
 join rooms r on r.id = m.room_id
 where m.user_id = $1 and m.role != 'banned'
@@ -514,18 +529,23 @@ order by m.joined_at desc
 `
 
 type ListUserRoomsRow struct {
-	ID        pgtype.UUID
-	Code      string
-	Slug      string
-	Name      string
-	OwnerID   pgtype.UUID
-	Listed    bool
-	CreatedAt pgtype.Timestamptz
-	SoundPack string
-	Icon      string
-	Cheers    string
-	IcsToken  string
-	Role      string
+	ID                      pgtype.UUID
+	Code                    string
+	Slug                    string
+	Name                    string
+	OwnerID                 pgtype.UUID
+	Listed                  bool
+	CreatedAt               pgtype.Timestamptz
+	SoundPack               string
+	Icon                    string
+	Cheers                  string
+	IcsToken                string
+	AutoplayEnabled         bool
+	AutoplayOrder           string
+	AutoplayPlaylistID      pgtype.UUID
+	AutoplayFixedVideoID    string
+	AutoplayFixedVideoTitle string
+	Role                    string
 }
 
 // Banned members keep their row (the ban IS the row) but the room vanishes
@@ -551,6 +571,11 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.Icon,
 			&i.Cheers,
 			&i.IcsToken,
+			&i.AutoplayEnabled,
+			&i.AutoplayOrder,
+			&i.AutoplayPlaylistID,
+			&i.AutoplayFixedVideoID,
+			&i.AutoplayFixedVideoTitle,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -669,7 +694,7 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 
 const updateRoom = `-- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
-where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token
+where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title
 `
 
 type UpdateRoomParams struct {
@@ -703,6 +728,11 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		&i.Icon,
 		&i.Cheers,
 		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
 	)
 	return i, err
 }

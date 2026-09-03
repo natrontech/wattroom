@@ -45,6 +45,18 @@ type ChatKeeper interface {
 	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
+// AutoplaySource answers what a room's autoplay should draw from (#627),
+// read once per trigger — a rider joining an idle deck — and always outside
+// the room's lock (server/AGENTS.md: DB I/O never happens while holding a
+// room mutex). Defined here, where it is consumed; the playlists service
+// implements it. Nil, or ok=false, means nothing to play: autoplay stays
+// silent. fixed, if non-nil, is queued before tracks — tracks already
+// carries whatever order (list order or shuffled) the caller's autoplay
+// setting currently means.
+type AutoplaySource interface {
+	Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
+}
+
 // MinRideSamples is the saver's threshold: fewer than a minute of samples is
 // a misclick, not a ride — the same rule the client's crash recovery uses.
 const MinRideSamples = 60
@@ -109,6 +121,17 @@ type Hub struct {
 	lobbyAuth func(*http.Request) (userID string, ok bool)
 	// Chat persistence queue (#219): read loops enqueue, one worker saves.
 	saves chan chatSave
+	// Autoplay source and its trigger queue (#627): a join enqueues, one
+	// worker reads the room's active playlist and seeds the deck.
+	playlists AutoplaySource
+	autoplays chan autoplayJob
+}
+
+// autoplayJob is one idle deck worth checking — enough to read the room's
+// autoplay plan and hand it back to the room that asked.
+type autoplayJob struct {
+	rm   *room
+	slug string
 }
 
 // chatSave is one line awaiting persistence — enough to save it and to
@@ -143,12 +166,17 @@ func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
 // opens, since rooms capture it at creation. Nil stays valid.
 func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
 
+// SetPlaylistSource wires autoplay's read side in (#627), like SetChatKeeper.
+// Nil stays valid — autoplay just never fires.
+func (h *Hub) SetPlaylistSource(k AutoplaySource) { h.playlists = k }
+
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
 		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
 		lobby: make(map[*lobbyClient]string),
-		saves: make(chan chatSave, 256)}
+		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
 	go h.saveWorker()
+	go h.autoplayWorker()
 	h.registerRidingMetric()
 	return h
 }
@@ -163,6 +191,41 @@ func (h *Hub) saveWorker() {
 		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text, job.imageID); ok {
 			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
 		}
+	}
+}
+
+// autoplayWorker drains the autoplay-trigger queue (#627): a stalled
+// database backs up this queue, never a joining rider's upgrade or any tick.
+// Exits when the process does, like saveWorker.
+// ponytail: one worker for the whole hub, same call as chat's.
+func (h *Hub) autoplayWorker() {
+	for job := range h.autoplays {
+		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug)
+		job.rm.applyAutoplay(fixed, tracks, ok, h.now())
+	}
+}
+
+// triggerAutoplay checks a just-joined room's deck and, if it is idle,
+// enqueues the DB read that decides what autoplay puts on it (#627). The
+// check-then-enqueue happens outside any I/O; the worker re-checks idle
+// under the room's lock before seeding, so two riders joining the same
+// instant cannot double-queue the room's playlist.
+func (h *Hub) triggerAutoplay(rm *room, slug string) {
+	if h.playlists == nil {
+		return
+	}
+	rm.mu.Lock()
+	idle := rm.music.state.Current == nil
+	rm.mu.Unlock()
+	if !idle {
+		return
+	}
+	select {
+	case h.autoplays <- autoplayJob{rm: rm, slug: slug}:
+	default:
+		// Full queue: the room just stays idle until the next join, which
+		// will try again — better than a joining rider's upgrade blocking.
+		h.log.Warn("autoplay queue full, skipping", "room", slug)
 	}
 }
 
@@ -303,6 +366,10 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	rm.join(c)
 	h.PresenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
+	// Autoplay (#627): a rider joining an idle deck may be the room coming
+	// back to life. The check is async — never block this rider's upgrade on
+	// a database read.
+	h.triggerAutoplay(rm, slug)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
@@ -530,6 +597,28 @@ func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
 	if rm := h.occupied(slug); rm != nil {
 		rm.reactionChanged(change)
 	}
+}
+
+// QueuePlaylist appends a saved playlist's tracks onto a room's live queue
+// (#627) — a rider pressed "queue" from the playlists panel, which is a plain
+// HTTP call like PostChat, not a WS command. Returns false when nobody is
+// connected to seed a deck for; the caller (who is presumably looking at
+// this room's jukebox right now) should not normally see that. addedCount is
+// how many tracks actually landed, for the response — the queue's own caps
+// (jukebox.go's maxQueue/maxQueuedTracks) can stop it short.
+func (h *Hub) QueuePlaylist(slug, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool) {
+	rm := h.occupied(slug)
+	if rm == nil {
+		return 0, false
+	}
+	now := h.now()
+	for _, cmd := range tracks {
+		if _, added := rm.jukebox(cmd, riderID, addedBy, now); !added {
+			break // cap hit or a bad entry slipped through — stop, don't skip holes
+		}
+		addedCount++
+	}
+	return addedCount, true
 }
 
 // occupied is the room at slug if anyone is connected to it — never creating
@@ -1156,6 +1245,37 @@ func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 	played := rm.music.finished
 	rm.music.finished = nil
 	return played, ok
+}
+
+// autoplayActor is the AddedBy/riderID this feature's own additions carry —
+// nobody queued them, the room did, so they earn no DJ credit (#467) and the
+// deck's "queued by" line says what actually happened.
+const autoplayActor = "Autoplay"
+
+// applyAutoplay seeds the queue from what triggerAutoplay's DB read found
+// (#627). Re-checks idle under the lock: the read ran outside it, so a
+// manual add — or another join's own trigger racing this one — may have
+// already filled the deck by the time this runs, and the last one to the
+// lock backs off rather than doubling the queue.
+func (rm *room) applyAutoplay(fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool, now time.Time) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if !ok || rm.music.state.Current != nil {
+		return
+	}
+	cmds := tracks
+	if fixed != nil {
+		cmds = append([]protocol.JukeboxCommand{*fixed}, tracks...)
+	}
+	for _, cmd := range cmds {
+		events, added := rm.music.apply(cmd, "", autoplayActor, now)
+		if !added {
+			break
+		}
+		for _, ev := range events {
+			rm.events.add(ev, now)
+		}
+	}
 }
 
 // startGame begins a mode; refused while another runs (end it first).

@@ -32,6 +32,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
+	"github.com/natrontech/wattroom/server/internal/playlists"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
@@ -128,6 +129,10 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		playlistsService := playlists.New(st, authService, log)
+		playlistsService.Register(mux)
+		h.SetPlaylistSource(playlistsService)
+		playlistsService.SetLive(h) // #627
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.

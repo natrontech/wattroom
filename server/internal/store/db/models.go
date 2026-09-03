@@ -98,6 +98,27 @@ type Membership struct {
 	JoinedAt pgtype.Timestamptz
 }
 
+type Playlist struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type PlaylistTrack struct {
+	ID              pgtype.UUID
+	PlaylistID      pgtype.UUID
+	Position        int32
+	VideoID         string
+	Title           string
+	StartSec        float32
+	YtPlaylistID    string
+	YtPlaylistTitle string
+	Tracks          []byte
+}
+
 type Ride struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
@@ -118,17 +139,22 @@ type Ride struct {
 }
 
 type Room struct {
-	ID        pgtype.UUID
-	Code      string
-	Slug      string
-	Name      string
-	OwnerID   pgtype.UUID
-	Listed    bool
-	CreatedAt pgtype.Timestamptz
-	SoundPack string
-	Icon      string
-	Cheers    string
-	IcsToken  string
+	ID                      pgtype.UUID
+	Code                    string
+	Slug                    string
+	Name                    string
+	OwnerID                 pgtype.UUID
+	Listed                  bool
+	CreatedAt               pgtype.Timestamptz
+	SoundPack               string
+	Icon                    string
+	Cheers                  string
+	IcsToken                string
+	AutoplayEnabled         bool
+	AutoplayOrder           string
+	AutoplayPlaylistID      pgtype.UUID
+	AutoplayFixedVideoID    string
+	AutoplayFixedVideoTitle string
 }
 
 type RoomRead struct {
