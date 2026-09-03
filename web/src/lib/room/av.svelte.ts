@@ -24,6 +24,12 @@ import {
 	riderOf,
 	yieldsTo,
 } from '$lib/room/tabs';
+import {
+	REJOIN_HEARTBEAT_MS,
+	clearNote,
+	tabId,
+	writeNote,
+} from '$lib/room/rejoin';
 
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
@@ -427,7 +433,32 @@ export function createRoomAv(slug: string) {
 		})),
 	];
 
-	async function join() {
+	// ── "I was in voice here" (#480) ─────────────────────────────────────────
+	// A refresh kills the page and the LiveKit room with it. The note this
+	// tab leaves behind is what lets the next page walk back in; it is
+	// restamped while the call is live, so an hour of riding still reads as a
+	// refresh, and torn up the moment the rider hangs up.
+	const tab = tabId();
+	let heartbeat: ReturnType<typeof setInterval> | null = null;
+	function noteVoice() {
+		writeNote(tab, { slug, at: Date.now(), mic: micOn });
+	}
+	function startNote() {
+		noteVoice();
+		heartbeat ??= setInterval(noteVoice, REJOIN_HEARTBEAT_MS);
+	}
+	function stopNote() {
+		if (heartbeat !== null) clearInterval(heartbeat);
+		heartbeat = null;
+	}
+
+	/**
+	 * Join the room's call. `mic: false` arrives listening only — the #480
+	 * rejoin comes back in the state the rider left, and a rider who was
+	 * muted stays muted. Nothing else passes it: the rail's button and the
+	 * drop-rejoin (#219) keep the SPEC default of a mic already open.
+	 */
+	async function join({ mic: wantMic = true }: { mic?: boolean } = {}) {
 		// Double-click or an impatient rail tap must not build a second
 		// participant with the same identity (audit #219) — nor race the
 		// SDK's own retry while it is reconnecting (#234).
@@ -473,14 +504,20 @@ export function createRoomAv(slug: string) {
 				const pub = p.getTrackPublication(Track.Source.Microphone);
 				setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 			}
-			try {
-				await openMic();
-				micOn = true;
-				setVoice(me, 'live');
-			} catch {
+			if (wantMic) {
+				try {
+					await openMic();
+					micOn = true;
+					setVoice(me, 'live');
+				} catch {
+					micOn = false;
+					setVoice(me, 'muted');
+				}
+			} else {
 				micOn = false;
 				setVoice(me, 'muted');
 			}
+			startNote();
 		} catch (cause) {
 			status = 'failed';
 			error = cause instanceof Error ? cause.message : String(cause);
@@ -579,6 +616,7 @@ export function createRoomAv(slug: string) {
 			}
 			setVoice(me, micOn ? 'live' : 'muted');
 		}
+		noteVoice();
 	}
 
 	/** Another tab of yours took over: drop the mic and camera, keep listening. */
@@ -590,6 +628,8 @@ export function createRoomAv(slug: string) {
 			closeMic();
 			micOn = false;
 		}
+		// The note stops vetoing a rejoin in the tab that now holds the mic.
+		noteVoice();
 		if (camOn && room) {
 			camOn = false;
 			await room.localParticipant.setCameraEnabled(false).catch(() => {});
@@ -744,6 +784,13 @@ export function createRoomAv(slug: string) {
 			room = null;
 			closeMic();
 			if (unexpected) {
+				// Stop restamping, but leave the note behind: a refresh during
+				// the drop-rejoin window is still a refresh (#219, #480). Only
+				// on an unexpected drop — a clean disconnect is either leave(),
+				// which tears the note up itself, or join() clearing a stale
+				// room, whose late event must not stop the heartbeat that join
+				// is about to start.
+				stopNote();
 				status = 'off';
 				dropped += 1;
 			}
@@ -929,6 +976,7 @@ export function createRoomAv(slug: string) {
 				}
 			}
 			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
+			noteVoice();
 		},
 		async toggleCam() {
 			if (!room) return;
@@ -1005,6 +1053,10 @@ export function createRoomAv(slug: string) {
 			mountTrack(container, videoTracks.get(riderId)?.track, 'cover');
 		},
 		leave() {
+			// Hanging up is the rider saying so: leaving and then reloading
+			// must not drag them back in (#480).
+			stopNote();
+			clearNote(tab);
 			// Same for leaving: every local capture goes back to the machine.
 			for (const kind of [Track.Source.Camera, Track.Source.ScreenShare]) {
 				const pub = room?.localParticipant.getTrackPublication(kind);

@@ -28,6 +28,7 @@
 	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
+	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
 	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
@@ -136,6 +137,27 @@
 	// (#251): ?voice=1 auto-joins once on mount; join() is idempotent.
 	if (page.url.searchParams.has('voice') && account.me?.avEnabled)
 		void av.join();
+
+	// A refresh puts you back in voice, and nothing else does (#480). The
+	// note this tab left behind says which room and how recently; rejoin.ts
+	// decides, and the mic comes back exactly as the rider left it — the
+	// camera does not, because nothing here opens a capture device that was
+	// already shut. Waits for the account: a reload is precisely the cold
+	// start where avEnabled is not known yet at init.
+	let rejoinAsked = false;
+	$effect(() => {
+		if (rejoinAsked || !account.loaded) return;
+		rejoinAsked = true;
+		if (page.url.searchParams.has('voice')) return; // that mount is spoken for
+		const back = shouldRejoinVoice({
+			notes: readNotes(),
+			tab: tabId(),
+			slug,
+			avEnabled: !!account.me?.avEnabled,
+			now: Date.now(),
+		});
+		if (back) void av.join({ mic: back.mic });
+	});
 
 	// Space is push-to-talk while that mode is on — never while typing.
 
