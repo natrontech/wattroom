@@ -82,9 +82,15 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "seek" | "ended"
+	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
+	// For "add": queue a whole YouTube playlist as one entry (#615). The
+	// client resolves the tracks — the server still knows nothing about
+	// YouTube, it just holds the list the paste produced.
+	PlaylistID    string         `json:"playlistId,omitempty"`
+	PlaylistTitle string         `json:"playlistTitle,omitempty"`
+	Tracks        []JukeboxTrack `json:"tracks,omitempty"`
 	// For "remove" | "vote" | "move": which queue entry (#286). Video ids
 	// are not unique — the same track queued twice is two entries, and
 	// addressing by video used to hit the wrong one.
@@ -251,9 +257,20 @@ type SessionState struct {
 	TotalSeconds       int    `json:"totalSeconds,omitempty"`
 }
 
+// JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
+// both ride the wire: the client resolves them once when the playlist is
+// pasted, and the server needs the title for the now-playing timeline line.
+type JukeboxTrack struct {
+	VideoID string `json:"videoId"`
+	Title   string `json:"title"`
+}
+
 type JukeboxEntry struct {
 	// Room-unique, server-assigned: what remove/vote/move address (#286).
-	ID      string `json:"id"`
+	ID string `json:"id"`
+	// What is on the deck RIGHT NOW. For a playlist entry (#615) this is
+	// Tracks[Index] and changes as the entry plays through — which is why
+	// the whole client playback path needed no playlist branch of its own.
 	VideoID string `json:"videoId"`
 	Title   string `json:"title"`
 	AddedBy string `json:"addedBy"`
@@ -264,6 +281,18 @@ type JukeboxEntry struct {
 	// the only way a client renders "you voted" from truth, not from its
 	// own click. The count is len(voters); nothing to keep in sync.
 	Voters []string `json:"voters,omitempty"`
+	// Set when the entry is a whole YouTube playlist queued as one thing
+	// (#615) — a playlist takes ONE queue slot, so a paste cannot own the
+	// room's 50 and the vote order keeps meaning something.
+	PlaylistID    string `json:"playlistId,omitempty"`
+	PlaylistTitle string `json:"playlistTitle,omitempty"`
+	// The playlist in order, resolved by the client that pasted it. Empty
+	// for a single video: len(Tracks) > 0 is what makes an entry a playlist.
+	Tracks []JukeboxTrack `json:"tracks,omitempty"`
+	// Which track is on the deck. Only ever moves within [0, len(Tracks)):
+	// running off the end advances to the next QUEUE entry rather than
+	// wrapping — a playlist plays once through and never restarts itself.
+	Index int `json:"index,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the

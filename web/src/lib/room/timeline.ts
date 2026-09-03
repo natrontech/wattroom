@@ -41,10 +41,18 @@ export function eventText(event: RoomEvent): string {
 			return event.count > 1
 				? `${event.actor} queued ${event.count} tracks`
 				: `${event.actor} queued ${track}`;
+		case 'queuedPlaylist':
+			// A set is one line naming the set — fifty lines naming its tracks
+			// is the same mistake the burst rule already fixed for adds.
+			return `${event.actor} queued the playlist ${track} · ${event.count} tracks`;
 		case 'removed':
 			return `${event.actor} removed ${track}`;
 		case 'skipped':
 			return `${event.actor} skipped ${track}`;
+		case 'skippedPlaylist':
+			return event.count > 0
+				? `${event.actor} skipped the rest of ${track} · ${event.count} tracks`
+				: `${event.actor} skipped the playlist ${track}`;
 		case 'playing':
 			return event.queuedBy
 				? `now playing: ${track} — queued by ${event.queuedBy}`

@@ -6,6 +6,7 @@
 	import { chase, playheadAt } from '$lib/room/playhead';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
+	import { withYouTubeApi } from '$lib/room/youtube-api';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { keepSize } from '$lib/pane';
@@ -107,22 +108,6 @@
 			});
 	}
 
-	function withApi(cb: () => void) {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const w = window as any;
-		if (w.YT?.Player) return cb();
-		const existing = w.onYouTubeIframeAPIReady;
-		w.onYouTubeIframeAPIReady = () => {
-			existing?.();
-			cb();
-		};
-		if (!document.querySelector('script[src*="iframe_api"]')) {
-			const tag = document.createElement('script');
-			tag.src = 'https://www.youtube.com/iframe_api';
-			document.head.appendChild(tag);
-		}
-	}
-
 	$effect(() => {
 		const node = container;
 		if (!node || player) return;
@@ -131,7 +116,7 @@
 		const failTimer = setTimeout(() => {
 			if (!playerReady) apiFailed = true;
 		}, 8_000);
-		withApi(() => {
+		withYouTubeApi(() => {
 			clearTimeout(failTimer);
 			if (player) return; // two queued callbacks must not build twice
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any

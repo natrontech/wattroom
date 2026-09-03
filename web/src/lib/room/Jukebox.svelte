@@ -1,16 +1,18 @@
 <script lang="ts">
 	import {
 		FastForward,
+		ListX,
 		Pause,
 		Play,
-		Plus,
 		Rewind,
+		SkipBack,
 		SkipForward,
 	} from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
-	import { addYouTubeUrl, thumbnailFor } from '$lib/room/jukebox-add';
+	import { thumbnailFor } from '$lib/room/jukebox-add';
+	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
@@ -53,6 +55,11 @@
 	const queue = $derived(jukebox?.queue ?? []);
 	const history = $derived(jukebox?.history ?? []);
 
+	// A playlist on the deck (#615) — an entry is one exactly when it carries
+	// tracks, and it walks them without ever leaving its queue slot.
+	const setTracks = $derived(current?.tracks?.length ?? 0);
+	const setPosition = $derived((current?.index ?? 0) + 1);
+
 	// ── The transport row (#114): the room's playhead, on server time. ───────
 	let nowMs = $state(serverNow());
 	$effect(() => {
@@ -91,28 +98,32 @@
 				onSelect: () => send({ action: playing ? 'pause' : 'play' }),
 			},
 			{
-				label: 'Skip',
+				label: 'Back',
+				icon: SkipBack,
+				onSelect: () => send({ action: 'back' }),
+			},
+			{
+				label: setTracks ? 'Skip this track' : 'Skip',
 				icon: SkipForward,
 				onSelect: () => send({ action: 'skip' }),
 			},
+			...(setTracks
+				? [
+						{
+							label: 'Skip the whole playlist',
+							icon: ListX,
+							onSelect: () => send({ action: 'skipPlaylist' }),
+						} satisfies MenuEntry,
+					]
+				: []),
 		];
 	}
 
-	// ── Adding: paste a URL, the golden path ──────────────────────────────────
+	// ── How much of the queue is on screen ───────────────────────────────────
 	// Three lines of queue, the rest on request; history folded (#461): the
 	// column is shared with the chat, and the chat loses every time.
 	const QUEUE_PEEK = 3;
 	let showAllQueue = $state(false);
-	let url = $state('');
-	let addError = $state<string | null>(null);
-	async function addFromUrl() {
-		addError = null;
-		if (!(await addYouTubeUrl(url, send))) {
-			addError = 'That does not look like a YouTube link or video id.';
-			return;
-		}
-		url = '';
-	}
 </script>
 
 <section class="flex min-w-0 flex-col gap-3">
@@ -184,11 +195,30 @@
 			</div>
 			<!-- The hint sits on the words, never over the player (RMF). -->
 			<div class="min-w-0" title={MENU_HINT}>
+				{#if setTracks}
+					<!-- Where the room is inside the set, before the track's own
+					     name: the playlist is the thing that is on. -->
+					<div class="mb-1 min-w-0">
+						<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
+							<span class="truncate">{current.playlistTitle}</span>
+							<span class="shrink-0 font-mono tabular-nums"
+								>{setPosition}/{setTracks}</span
+							>
+						</p>
+						<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
+							<span
+								class="bg-neon block h-full rounded-full"
+								style="width: {(setPosition / setTracks) * 100}%"
+							></span>
+						</span>
+					</div>
+				{/if}
 				<p class="truncate text-sm leading-tight font-medium">
 					{current.title}
 				</p>
 				<p class="text-muted mt-0.5 truncate text-[11px]">
-					queued by {current.addedBy}
+					{setTracks ? 'playlist queued by' : 'queued by'}
+					{current.addedBy}
 				</p>
 			</div>
 
@@ -230,7 +260,14 @@
 			<!-- Mid-ride transport: big targets, no precision gestures. Play is the
 			     one filled control; the rest are quiet. Every button commands the
 			     ROOM — the deck is shared. -->
-			<div class="flex min-w-0 items-center justify-center gap-1">
+			<div class="flex min-w-0 flex-wrap items-center justify-center gap-1">
+				<button
+					onclick={() => send({ action: 'back' })}
+					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+					aria-label={setTracks
+						? 'start this track over, or step back through the playlist'
+						: 'start this track over'}><SkipBack size={17} /></button
+				>
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed - 30)}
@@ -260,8 +297,20 @@
 				<button
 					onclick={() => send({ action: 'skip' })}
 					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
-					aria-label="skip to the next track"><SkipForward size={17} /></button
+					aria-label={setTracks
+						? 'skip to the next track in the playlist'
+						: 'skip to the next track'}><SkipForward size={17} /></button
 				>
+				{#if setTracks}
+					<!-- The escape hatch that makes a long playlist safe to queue:
+					     drop the rest of it and move the room on. Only rendered
+					     when there is a playlist to leave (ux.md). -->
+					<button
+						onclick={() => send({ action: 'skipPlaylist' })}
+						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						aria-label="skip the whole playlist"><ListX size={17} /></button
+					>
+				{/if}
 			</div>
 		</div>
 	{:else}
@@ -271,26 +320,7 @@
 		</p>
 	{/if}
 
-	<form
-		class="flex min-w-0 gap-1.5"
-		onsubmit={(e) => {
-			e.preventDefault();
-			void addFromUrl();
-		}}
-	>
-		<input
-			bind:value={url}
-			placeholder="Add a YouTube link…"
-			class="input input-xs min-w-0 flex-1"
-			aria-label="add a track by link"
-		/>
-		<button
-			disabled={!url.trim()}
-			class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
-			aria-label="add to the queue"><Plus size={14} /></button
-		>
-	</form>
-	{#if addError}<p class="text-danger text-xs">{addError}</p>{/if}
+	<JukeboxAdd {send} />
 
 	{#if queue.length}
 		<div class="min-w-0">

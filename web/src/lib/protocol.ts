@@ -110,9 +110,17 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "seek" | "ended"
+  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended"
   videoId?: string;
   title?: string;
+  /**
+   * For "add": queue a whole YouTube playlist as one entry (#615). The
+   * client resolves the tracks — the server still knows nothing about
+   * YouTube, it just holds the list the paste produced.
+   */
+  playlistId?: string;
+  playlistTitle?: string;
+  tracks?: JukeboxTrack[];
   /**
    * For "remove" | "vote" | "move": which queue entry (#286). Video ids
    * are not unique — the same track queued twice is two entries, and
@@ -330,11 +338,25 @@ export interface SessionState {
   workoutJson?: string;
   totalSeconds?: number /* int */;
 }
+/**
+ * JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
+ * both ride the wire: the client resolves them once when the playlist is
+ * pasted, and the server needs the title for the now-playing timeline line.
+ */
+export interface JukeboxTrack {
+  videoId: string;
+  title: string;
+}
 export interface JukeboxEntry {
   /**
    * Room-unique, server-assigned: what remove/vote/move address (#286).
    */
   id: string;
+  /**
+   * What is on the deck RIGHT NOW. For a playlist entry (#615) this is
+   * Tracks[Index] and changes as the entry plays through — which is why
+   * the whole client playback path needed no playlist branch of its own.
+   */
   videoId: string;
   title: string;
   addedBy: string;
@@ -349,6 +371,24 @@ export interface JukeboxEntry {
    * own click. The count is len(voters); nothing to keep in sync.
    */
   voters?: string[];
+  /**
+   * Set when the entry is a whole YouTube playlist queued as one thing
+   * (#615) — a playlist takes ONE queue slot, so a paste cannot own the
+   * room's 50 and the vote order keeps meaning something.
+   */
+  playlistId?: string;
+  playlistTitle?: string;
+  /**
+   * The playlist in order, resolved by the client that pasted it. Empty
+   * for a single video: len(Tracks) > 0 is what makes an entry a playlist.
+   */
+  tracks?: JukeboxTrack[];
+  /**
+   * Which track is on the deck. Only ever moves within [0, len(Tracks)):
+   * running off the end advances to the next QUEUE entry rather than
+   * wrapping — a playlist plays once through and never restarts itself.
+   */
+  index?: number /* int */;
 }
 /**
  * JukeboxState is the server's truth about what plays where. Clients chase the

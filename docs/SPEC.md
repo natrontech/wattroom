@@ -15,7 +15,8 @@
 | **Level** | XP-based, only goes up, earned by work done. |
 | **Category** | Fitness tier D–A from your 90-day w/kg power curve. Moves both directions. |
 | **Sprint moment** | Coach- or workout-armed 15 s all-out window; trainer flips ERG→slope. |
-| **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube playlist on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
+| **Jukebox** | The room's one music surface (ADR-0018): a shared YouTube queue on a server-owned playhead. **Deck** = what is playing, **up next** = the queue, **just played** = the last 5, kept in the tick. |
+| **Playlist** | A YouTube playlist queued whole ([ADR-0026](decisions/0026-a-playlist-is-one-queue-entry.md), #615) — **one** queue entry holding up to 50 tracks, not 50 entries, so a paste cannot own the room's queue or its vote order. It plays once through and never restarts; skip and back move *inside* it, and a separate control drops the rest of it. The word means this and only this: the queue is the queue, and the library playlists of the self-hosted pool (#268) are a different object. |
 | **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
 | **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Planned session** | A session put on a room's calendar for a time (#116). Members **RSVP**: in, or not in — there is no maybe. It is not a second kind of object, and it is not a *room event*, which is the chat line above. |
@@ -34,7 +35,8 @@
 | Plan / move / cancel a session (#116) | ✓ | ✓ | – | – |
 | Say you are in for a planned session (#450) | ✓ | ✓ | ✓ | – |
 | Add to jukebox queue | ✓ | ✓ | ✓ | – |
-| Jukebox play/pause/skip/seek | ✓ | ✓ | ✓ (default — tune in alpha) | – |
+| Jukebox play/pause/skip/back/seek | ✓ | ✓ | ✓ (default — tune in alpha) | – |
+| Skip the rest of a queued playlist (#615) | ✓ | ✓ | ✓ | – |
 | Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | – |

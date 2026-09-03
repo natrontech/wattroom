@@ -1,7 +1,6 @@
 package hub
 
 import (
-	"regexp"
 	"strconv"
 	"time"
 
@@ -20,6 +19,10 @@ const maxHistory = 5
 // A video longer than six hours is not a party track; the clamp bounds the
 // untrusted playhead the same way metrics are bounded.
 const maxSeekSec = 6 * 3600
+
+// How far into a track "back" stops meaning "start this one over" and starts
+// meaning "the one before it" — the idiom every music player already taught.
+const backRestartSec = 3.0
 
 func clampSec(v float64) float64 {
 	if v < 0 || v != v { // NaN guards itself
@@ -52,8 +55,6 @@ func nowPlaying(entry protocol.JukeboxEntry, now time.Time) protocol.RoomEvent {
 		QueuedBy: entry.AddedBy, Count: 1, At: now.UnixMilli(),
 	}
 }
-
-var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
 // jukebox is the server's half of the synced player (#23): it owns the queue
 // and the playback anchor, and knows nothing about YouTube itself — clients
@@ -93,6 +94,10 @@ func newJukebox() *jukebox {
 // snapshot renders the state at now. The slices are CLONED: the caller
 // marshals outside the room lock, and remove() shifts the backing array in
 // place — sharing it was a data race (audit #219).
+//
+// Current is NOT cloned: it goes out by pointer, which is safe only because
+// an entry never changes once it reaches the deck. Walking a playlist builds
+// a new entry (withIndex) rather than moving the index on the published one.
 func (j *jukebox) snapshot() protocol.JukeboxState {
 	out := j.state
 	// Non-nil even when empty — nil marshals as null and the wire type
@@ -118,17 +123,9 @@ func (j *jukebox) positionAt(now time.Time) float64 {
 func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool) {
 	switch cmd.Action {
 	case "add":
-		if !videoIDPattern.MatchString(cmd.VideoID) || len(j.state.Queue) >= maxQueue {
+		entry, ok := j.newEntry(cmd, addedBy)
+		if !ok {
 			return nil, false
-		}
-		title := cmd.Title
-		if len(title) > 200 {
-			title = title[:200]
-		}
-		j.nextID++
-		entry := protocol.JukeboxEntry{
-			ID: strconv.Itoa(j.nextID), VideoID: cmd.VideoID, Title: title,
-			AddedBy: addedBy, StartSec: clampSec(cmd.PositionSec),
 		}
 		if riderID != "" {
 			j.owners[entry.ID] = riderID
@@ -138,9 +135,16 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			// pressing play, and one action gets one line: the now-playing
 			// one, which names who queued it anyway.
 			j.play(entry, now)
-			return []protocol.RoomEvent{nowPlaying(entry, now)}, true
+			return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
 		}
 		j.state.Queue = append(j.state.Queue, entry)
+		if isPlaylist(entry) {
+			// A playlist earns one line naming the set, not fifty naming
+			// its tracks — the burst rule #321 already applies to adds.
+			line := deckLine("queuedPlaylist", addedBy, entry.PlaylistTitle, now)
+			line.Count = len(entry.Tracks)
+			return []protocol.RoomEvent{line}, true
+		}
 		return []protocol.RoomEvent{deckLine("queued", addedBy, entry.Title, now)}, true
 
 	case "remove":
@@ -238,9 +242,52 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			return nil, false
 		}
 		skipped := *j.state.Current
-		delete(j.owners, skipped.ID)
+		// Skipping a track INSIDE a playlist leaves the entry on the deck,
+		// so its owner outlives the track — dropping the credit here cost
+		// the DJ every track after the first (#467, #615).
+		if j.leavingEntry() {
+			delete(j.owners, skipped.ID)
+		}
 		j.advance(now)
 		events := []protocol.RoomEvent{deckLine("skipped", addedBy, skipped.Title, now)}
+		if j.state.Current != nil {
+			events = append(events, nowPlaying(*j.state.Current, now))
+		}
+		return events, true
+
+	case "back":
+		// The idiom every music player already taught: a little way in, back
+		// starts this track over; at its start it steps to the one before.
+		// Walking a playlist backwards BY HAND is fine — what never repeats
+		// is the auto-advance, which only ever moves forward (#615).
+		// Outside a playlist there is nothing before the deck, so back
+		// always restarts: stepping across queue entries would mean putting
+		// history back at the head, which is its own feature.
+		if j.state.Current == nil {
+			return nil, false
+		}
+		if j.positionAt(now)-j.trackStart() > backRestartSec || j.state.Current.Index == 0 {
+			j.state.PositionSec = j.trackStart()
+			j.state.AnchorMs = now.UnixMilli()
+			return nil, true
+		}
+		j.play(withIndex(*j.state.Current, j.state.Current.Index-1), now)
+		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
+
+	case "skipPlaylist":
+		// The escape hatch that makes a long playlist safe to queue: one tap
+		// drops the rest of it and moves the room on. Every member may —
+		// nobody should have to sit through another rider's two hours.
+		if j.state.Current == nil || !isPlaylist(*j.state.Current) {
+			return nil, false
+		}
+		skipped := *j.state.Current
+		delete(j.owners, skipped.ID)
+		j.remember()
+		j.advanceEntry(now)
+		line := deckLine("skippedPlaylist", addedBy, skipped.PlaylistTitle, now)
+		line.Count = len(skipped.Tracks) - skipped.Index - 1
+		events := []protocol.RoomEvent{line}
 		if j.state.Current != nil {
 			events = append(events, nowPlaying(*j.state.Current, now))
 		}
@@ -262,7 +309,11 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 				ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
 			}
 		}
-		delete(j.owners, j.state.Current.ID)
+		// Every track of a playlist played through is its own credit; the
+		// owner only leaves when the ENTRY does (#615).
+		if j.leavingEntry() {
+			delete(j.owners, j.state.Current.ID)
+		}
 		j.advance(now)
 		if j.state.Current == nil {
 			return nil, true // the queue ran dry; silence says that already
@@ -295,20 +346,57 @@ func (j *jukebox) float(i int) {
 }
 
 func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
+	if len(entry.Tracks) > 0 {
+		entry = withIndex(entry, entry.Index)
+	}
 	j.state.Current = &entry
 	j.state.Playing = true
 	j.state.PositionSec = entry.StartSec
 	j.state.AnchorMs = now.UnixMilli()
 }
 
-func (j *jukebox) advance(now time.Time) {
-	if j.state.Current != nil {
-		// Newest first, capped: the deck's memory, not a play log.
-		j.state.History = append([]protocol.JukeboxEntry{*j.state.Current}, j.state.History...)
-		if len(j.state.History) > maxHistory {
-			j.state.History = j.state.History[:maxHistory]
+// remember puts what the deck just played at the head of the short history.
+// TRACKS, never playlists: "just played" is there so somebody can put a song
+// on again, and a playlist's name was never a song.
+func (j *jukebox) remember() {
+	cur := j.state.Current
+	if cur == nil {
+		return
+	}
+	played := *cur
+	if isPlaylist(*cur) {
+		// Unique per PLAY, not per track: stepping back and playing track 4
+		// again put a second row under the same id, and the keyed history
+		// list threw rather than rendering it. The anchor is what the DJ
+		// credit already uses to tell two plays of one entry apart.
+		played = protocol.JukeboxEntry{
+			ID: cur.ID + "#" + strconv.Itoa(cur.Index) +
+				"@" + strconv.FormatInt(j.state.AnchorMs, 10),
+			VideoID: cur.VideoID, Title: cur.Title, AddedBy: cur.AddedBy,
 		}
 	}
+	// Newest first, capped: the deck's memory, not a play log.
+	j.state.History = append([]protocol.JukeboxEntry{played}, j.state.History...)
+	if len(j.state.History) > maxHistory {
+		j.state.History = j.state.History[:maxHistory]
+	}
+}
+
+// advance moves the deck on by one track: to the next track of the playlist
+// on the deck if it has one, otherwise to the next queue entry. It only ever
+// moves FORWARD — a playlist runs once through and never restarts itself.
+func (j *jukebox) advance(now time.Time) {
+	j.remember()
+	if cur := j.state.Current; cur != nil && cur.Index+1 < len(cur.Tracks) {
+		j.play(withIndex(*cur, cur.Index+1), now)
+		return
+	}
+	j.advanceEntry(now)
+}
+
+// advanceEntry leaves the current entry behind — a playlist's remaining
+// tracks with it — and starts the next thing in the queue.
+func (j *jukebox) advanceEntry(now time.Time) {
 	if len(j.state.Queue) == 0 {
 		j.state.Current = nil
 		j.state.Playing = false
