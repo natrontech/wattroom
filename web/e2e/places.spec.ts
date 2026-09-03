@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { signInTo } from './signin';
+import { expect, test } from './room';
+import { signInAs } from './signin';
 
 /**
  * Every place a room opens into, walked in one go (#502, #567).
@@ -14,19 +14,14 @@ import { signInTo } from './signin';
  */
 test('every place in a room renders, and none of them throws', async ({
 	page,
+	rooms,
 }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
-	await signInTo(page, '/rooms');
-	const name = `Places Walk ${Date.now() % 100000}`;
-	await page.locator('#open-room-name').fill(name);
-	await page.getByRole('button', { name: 'Open room' }).click();
-	await expect(page.getByRole('heading', { name })).toBeVisible({
-		timeout: 15_000,
-	});
+	await signInAs(page, 'Places Walker', '/rooms');
+	const { slug } = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
 
-	const slug = page.url().split('/r/')[1];
 	const links = page.locator(`a[href^="/r/${slug}"]`);
 	const hrefs = [
 		...new Set(
@@ -50,14 +45,4 @@ test('every place in a room renders, and none of them throws', async ({
 	expect(errors, `console errors while walking ${places.join(', ')}`).toEqual(
 		[],
 	);
-
-	// Leave the world as found.
-	const status = await page.evaluate(
-		(roomSlug) =>
-			fetch(`/api/rooms/${roomSlug}`, { method: 'DELETE' }).then(
-				(res) => res.status,
-			),
-		slug,
-	);
-	expect(status).toBe(204);
 });

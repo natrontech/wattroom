@@ -29,7 +29,9 @@ export interface RoomOwner {
  *
  * `rooms` takes `riders` as a dependency purely for ordering: Playwright tears
  * fixtures down in reverse setup order, so the contexts the deletes are issued
- * from are guaranteed to still be open when they run.
+ * from are guaranteed to still be open when they run. A spec opening on the
+ * built-in `page` gets the same guarantee by destructuring it FIRST —
+ * `{ page, rooms }` — since that is the order they are set up in.
  */
 export const test = base.extend<{
 	riders: (as?: string) => Promise<Page>;
