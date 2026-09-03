@@ -17,6 +17,44 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.20] - 2026-09-03
+
+### Added
+
+- The list of who is in a room, under its name in the sidebar, is now a way in
+  rather than a caption: clicking it opens that room's Members place — so the
+  "+2" finally shows you the two it was hiding — and right-clicking it opens
+  each rider it named straight on their own page.
+
+### Changed
+
+- The last emoji in the app are drawn icons now: medals on a room's members
+  page, the sprint and game podiums, a Floor-is-Lava rider's remaining lives,
+  the flag-a-problem button on the ride screen, and a mark of its own for each
+  of the seven game modes. They keep their shape and weight on every device
+  and follow your theme, instead of whatever your platform's emoji font
+  decided — and a screen reader now reads the ones that used to be a bare
+  glyph.
+
+### Fixed
+
+- The flag-a-problem button on the ride screen no longer wears the same
+  magenta as your live watts, so the numbers keep the colour that makes them
+  findable at arm's length.
+- Refreshing the page no longer drops you out of voice. Reload while you are in
+  a room's call and you come straight back into it, muted if you were muted —
+  the mic is never opened for you, and the camera stays off. Only a reload does
+  this: opening the room fresh, coming back after a break, or hanging up first
+  all leave you out, and a rejoin never takes the mic off another tab of yours.
+- Sharing your screen is now impossible to miss: a persistent red status
+  strip sits above every page while your screen is live, naming the room it
+  is going to and offering one big Stop, the sidebar's share button turns red
+  while it is on, and the stage labels your own share "Your screen".
+- Your mic no longer stops opening when a track starts. The gate still lifts
+  a little while the jukebox plays, but it can never rise past the top of the
+  meter, and it only lifts for riders who actually hear the music — turn your
+  music down to zero and you keep the gate you set.
+
 ## [2026.09.19] - 2026-09-03
 
 ### Fixed
@@ -413,7 +451,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.19...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.20...HEAD
+[2026.09.20]: https://github.com/natrontech/wattroom/compare/2026.09.19...2026.09.20
 [2026.09.19]: https://github.com/natrontech/wattroom/compare/2026.09.18...2026.09.19
 [2026.09.18]: https://github.com/natrontech/wattroom/compare/2026.09.17...2026.09.18
 [2026.09.17]: https://github.com/natrontech/wattroom/compare/2026.09.16...2026.09.17
