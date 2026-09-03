@@ -31,6 +31,7 @@
 		type RideBuffer,
 	} from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
+	import { Flag } from '@lucide/svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
@@ -642,8 +643,8 @@
 						flagNotice = true;
 						setTimeout(() => (flagNotice = false), 4000);
 					}}
-					class="border-watt/40 text-watt hover:bg-watt/10 h-11 rounded border px-5 text-lg"
-					aria-label="Flag a problem">⚑</button
+					class="border-watt/40 text-watt hover:bg-watt/10 grid h-11 w-14 place-items-center rounded border"
+					aria-label="Flag a problem"><Flag size={18} /></button
 				>
 			</div>
 			{#if signalLost}

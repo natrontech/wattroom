@@ -17,7 +17,7 @@
 	} from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import { Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
+	import { Award, Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
@@ -125,9 +125,13 @@
 					</span>
 				</span>
 				{#if medals > 0}
-					<span class="text-muted shrink-0 text-xs tabular-nums"
-						>🏅 {medals}</span
+					<span
+						class="text-muted flex shrink-0 items-center gap-1 text-xs tabular-nums"
 					>
+						<Award size={13} class="text-neon" />
+						{medals}
+						<span class="sr-only">{medals === 1 ? 'medal' : 'medals'}</span>
+					</span>
 				{/if}
 				{#if here?.inVoice && !here.you}
 					<!-- Their volume, the same control as their row in the people
@@ -175,7 +179,7 @@
 			     two sessions in one day can award the same medal twice. -->
 			{#each room.medals.slice(0, 12) as medal}
 				<li class="flex items-center gap-3 px-4 py-2 text-xs">
-					<span class="shrink-0">🏅</span>
+					<Award size={13} class="text-neon shrink-0" aria-label="Medal" />
 					<span class="min-w-0 flex-1 truncate">{medal.rider}</span>
 					<span class="text-muted truncate">{medal.kind}</span>
 					<span class="text-muted/60 shrink-0 tabular-nums"

@@ -15,6 +15,7 @@
 	} from '$lib/progression';
 	import Select from '$lib/components/Select.svelte';
 	import { countModal } from '$lib/modals.svelte';
+	import { GAME_MODES } from '$lib/room/modes';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { ShelfEntry } from '$lib/workout/shelf';
 	import type { Workout } from '$lib/workout/types';
@@ -149,51 +150,6 @@
 	});
 
 	let planAt = $state(nextHourInput());
-
-	// One line each, straight from docs/SPEC.md's parameter table.
-	const GAMES = [
-		{
-			id: 'backyard-ramp',
-			label: 'Backyard Ramp',
-			blurb:
-				'Survive the ramp — every 3-min round adds 5 % FTP. Last rider standing.',
-		},
-		{
-			id: 'collective-ramp',
-			label: 'Collective Ramp',
-			blurb: 'The same ramp, held by the room average — you survive together.',
-		},
-		{
-			id: 'floor-is-lava',
-			label: 'Floor is Lava',
-			blurb:
-				'Stay in the called zone. More than 5 s outside burns a life; three lives.',
-		},
-		{
-			id: 'watt-golf',
-			label: 'Watt Golf',
-			blurb:
-				'Hit the called watts with the meter hidden — lowest deviation wins the hole.',
-		},
-		{
-			id: 'sprint-roulette',
-			label: 'Sprint Roulette',
-			blurb:
-				'A klaxon, 3 s warning, then 10–15 s flat out. Best 5 s w/kg takes it.',
-		},
-		{
-			id: 'points-race',
-			label: 'Points Race',
-			blurb:
-				'Sprint points, execution points, zone-streak points — most points wins.',
-		},
-		{
-			id: 'team-relay',
-			label: 'Team Relay',
-			blurb:
-				'One rider on front at 110 % FTP, the rest sit in — rotate, rack up distance.',
-		},
-	];
 </script>
 
 <button
@@ -385,11 +341,14 @@
 				</p>
 			{/if}
 			<div class="grid gap-2 sm:grid-cols-2">
-				{#each GAMES as game (game.id)}
+				{#each GAME_MODES as game (game.id)}
 					<div
 						class="border-muted/15 flex flex-col rounded-lg border px-4 py-3"
 					>
-						<p class="font-display text-sm font-bold">{game.label}</p>
+						<p class="font-display flex items-center gap-2 text-sm font-bold">
+							<game.icon size={15} class="text-neon shrink-0" />
+							{game.label}
+						</p>
 						<p class="text-muted mt-1 flex-1 text-xs leading-relaxed">
 							{game.blurb}
 						</p>
