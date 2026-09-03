@@ -484,10 +484,14 @@
 				>
 					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
 				</button>
+				<!-- Sharing takes the danger token, like the mic does when it is
+				     muted (#563): a state you might not have noticed, and the one
+				     that can put a private tab on the stage. Chrome, so the token
+				     and not a glow — ADR-0005 keeps those for live data. -->
 				<button
 					onclick={() => onShare?.()}
 					class="flex flex-1 justify-center rounded py-1.5 {sharing
-						? 'text-z4'
+						? 'border-danger/40 bg-danger/10 text-danger border'
 						: 'text-muted/50 hover:text-muted'}"
 					title={sharing ? 'stop sharing your screen' : 'share your screen'}
 					aria-label={sharing

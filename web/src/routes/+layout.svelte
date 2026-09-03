@@ -29,6 +29,7 @@
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
+	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
@@ -113,6 +114,18 @@
 			};
 		}),
 	);
+
+	// The room your screen is going to (#563). Named, because the notice has
+	// to say where — the connection outlives the room's pages, so a rider can
+	// be three screens away while their desktop is still on the stage.
+	const sharingRoom = $derived.by(() => {
+		const conn = roomConnection.current;
+		if (!conn) return null;
+		return {
+			slug: conn.slug,
+			name: presence.rooms.find((room) => room.slug === conn.slug)?.name,
+		};
+	});
 
 	// The room whose pages you are on opens in the sidebar — only under /r/:
 	// a room's thread on /messages carries the same slug param and is
@@ -259,6 +272,18 @@
 					/>
 					<span class="font-display truncate text-sm font-bold">WattRoom</span>
 				</div>
+			{/if}
+			<!-- Persistent, above whatever page you are on and outside its
+			     scroll: your screen being live is ride-critical status, and the
+			     one AV state that can leak a private tab (#563, errors.md). -->
+			{#if roomConnection.current}
+				{@const av = roomConnection.current.av}
+				<ScreenShareNotice
+					sharing={av.sharing}
+					room={sharingRoom}
+					pathname={page.url.pathname}
+					onStop={() => void av.toggleShare()}
+				/>
 			{/if}
 			<div class="min-h-0 flex-1 overflow-y-auto">
 				{@render children()}

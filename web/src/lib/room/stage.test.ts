@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FIT, panBy, pickStage, pictureKey, zoomAbout } from './stage';
+import {
+	FIT,
+	panBy,
+	pickStage,
+	pictureKey,
+	sourceLabel,
+	zoomAbout,
+} from './stage';
 
 const screens = [
 	{ key: 'screen:a', kind: 'screen' as const },
@@ -30,6 +37,24 @@ describe('pickStage (#280)', () => {
 		expect(pickStage([...screens, jukebox], 'screen:a')?.key).toBe('screen:a');
 		// The track ended mid-pick: the stage falls back rather than blanking.
 		expect(pickStage([...screens], 'jukebox')?.key).toBe('screen:b');
+	});
+});
+
+describe('sourceLabel (#563)', () => {
+	it('names your own share as yours', () => {
+		expect(sourceLabel('screen', 'Sven', true)).toBe('Your screen');
+		expect(sourceLabel('cam', 'Sven', true)).toBe('You');
+	});
+
+	it("keeps everyone else's by name", () => {
+		expect(sourceLabel('screen', 'Ada')).toBe("Ada's screen");
+		expect(sourceLabel('cam', 'Ada')).toBe('Ada');
+	});
+
+	// A track can outrun the roster by a tick — the chip still needs a word.
+	it('falls back to someone rather than an empty chip', () => {
+		expect(sourceLabel('screen', undefined)).toBe("someone's screen");
+		expect(sourceLabel('cam', '')).toBe('someone');
 	});
 });
 
