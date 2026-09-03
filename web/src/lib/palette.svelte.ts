@@ -10,7 +10,7 @@
  * "follow the OS" and the choice survives the flip.
  */
 import { syncAppearance } from './appearance';
-import { TOKENS, type Theme, type ThemeFamily } from './palette';
+import { tokenDeclarations, type Theme, type ThemeFamily } from './palette';
 import {
 	DEFAULT_CHOICE,
 	DEFAULT_IDENTITY,
@@ -46,8 +46,7 @@ function activeFamily(): ThemeFamily {
 let family = $state<ThemeFamily>(activeFamily());
 
 function block(selector: string, theme: Theme): string {
-	const body = TOKENS.map((t) => `--color-${t}: ${theme.tokens[t]};`).join('');
-	return `${selector}{${body}}`;
+	return `${selector}{${tokenDeclarations(theme)}}`;
 }
 
 function apply() {

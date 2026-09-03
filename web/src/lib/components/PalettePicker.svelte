@@ -5,7 +5,7 @@
 	is made by looking rather than by reading colour names.
 -->
 <script lang="ts">
-	import { TOKENS, type Theme } from '$lib/palette';
+	import { tokenDeclarations } from '$lib/palette';
 	import {
 		CUSTOM_ID,
 		DEFAULT_CHOICE,
@@ -34,12 +34,6 @@
 	);
 	const custom = $derived(customTheme(hue, palette.family));
 
-	/** Theme the whole swatch without changing the surrounding profile page. */
-	function swatch(theme: Theme): string {
-		return TOKENS.map(
-			(token) => `--color-${token}: ${theme.tokens[token]}`,
-		).join(';');
-	}
 </script>
 
 {#snippet chip()}
@@ -73,7 +67,7 @@
 				preset.identity
 					? 'border-ink/60'
 					: 'border-muted/20 hover:border-muted/50'}"
-				style={swatch(preset)}
+				style={tokenDeclarations(preset)}
 				onclick={() =>
 					palette.select({ kind: 'preset', identity: preset.identity })}
 			>
@@ -92,7 +86,7 @@
 		CUSTOM_ID
 			? 'border-ink/60'
 			: 'border-muted/20 hover:border-muted/50'}"
-		style={swatch(custom)}
+		style={tokenDeclarations(custom)}
 		onclick={() => palette.select({ kind: 'custom', hue })}
 	>
 		{@render chip()}
