@@ -67,6 +67,42 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      # An entry that does not begin with "- " is not a list item, so Markdown
+      # folds it into the bullet above it: four fixes in 2026.09.15's notes
+      # were hidden inside other fixes that way (#546). `make release`
+      # normalises now, but the file is what its author reads back, so it
+      # should be a bullet on the page too.
+      - name: a changelog entry is a list item
+        run: |
+          bad=()
+          while IFS= read -r f; do
+            [ "$f" = changelog.d/README.md ] && continue
+            case "$(awk 'NF {print; exit}' "$f")" in
+              '- '*) ;;
+              *) bad+=("$f") ;;
+            esac
+          done < <(git diff --name-only --diff-filter=ACMR "origin/${{ github.base_ref }}...HEAD" -- 'changelog.d/*.md')
+
+          if [ ${#bad[@]} -gt 0 ]; then
+            printf 'This changelog entry does not start with "- ":\n\n' >&2
+            printf '    %s\n' "${bad[@]}" >&2
+            cat >&2 <<'MSG'
+
+          The release notes are a list, so an entry without its leading dash
+          gets folded into the bullet above it and the change disappears
+          inside somebody else's. Start the file with "- " and indent
+          continuation lines by two spaces:
+
+              - What's new no longer goes blank. Any release note that used
+                the same code span twice took the whole page down with it.
+
+          See changelog.d/README.md.
+          MSG
+            exit 1
+          fi
+          echo "Changelog entries are list items."
+
       - name: a rider-visible change needs a changelog line
         run: |
           changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
