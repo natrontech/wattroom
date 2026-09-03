@@ -116,6 +116,10 @@ func newJukebox() *jukebox {
 // snapshot renders the state at now. The slices are CLONED: the caller
 // marshals outside the room lock, and remove() shifts the backing array in
 // place — sharing it was a data race (audit #219).
+//
+// Current is NOT cloned: it goes out by pointer, which is safe only because
+// an entry never changes once it reaches the deck. Walking a playlist builds
+// a new entry (withIndex) rather than moving the index on the published one.
 func (j *jukebox) snapshot() protocol.JukeboxState {
 	out := j.state
 	// Non-nil even when empty — nil marshals as null and the wire type
@@ -289,8 +293,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			j.state.AnchorMs = now.UnixMilli()
 			return nil, true
 		}
-		j.state.Current.Index--
-		j.playTrack(now)
+		j.play(withIndex(*j.state.Current, j.state.Current.Index-1), now)
 		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
 
 	case "skipPlaylist":
@@ -443,31 +446,32 @@ func (j *jukebox) trackStart() float64 {
 	return 0
 }
 
-// syncTrack points VideoID/Title at the entry's current track. Every client
-// path — the loader, the drift chase, the ended epoch, the timeline line —
-// reads those two fields, so a playlist needed no branch in any of them.
-func (j *jukebox) syncTrack() {
-	cur := j.state.Current
-	if cur == nil || cur.Index < 0 || cur.Index >= len(cur.Tracks) {
-		return
+// withIndex is the entry pointed at track i, as a NEW value. Stepping through
+// a playlist has to build a fresh entry rather than move the index on the one
+// already on the deck: snapshot() hands Current out BY POINTER and the caller
+// marshals it outside the room lock, so an entry is immutable the moment it
+// reaches the deck (the same rule the Queue clone enforces, audit #219).
+// VideoID/Title come along, because they are what every client path reads to
+// learn what is playing — which is why a playlist needed no branch in any.
+func withIndex(entry protocol.JukeboxEntry, i int) protocol.JukeboxEntry {
+	if i < 0 || i >= len(entry.Tracks) {
+		return entry
 	}
-	cur.VideoID, cur.Title = cur.Tracks[cur.Index].VideoID, cur.Tracks[cur.Index].Title
+	entry.Index = i
+	entry.VideoID, entry.Title = entry.Tracks[i].VideoID, entry.Tracks[i].Title
+	// Only the pasted single video carries a ?t=; track four was never the
+	// good part of anything.
+	entry.StartSec = 0
+	return entry
 }
 
 func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
+	if len(entry.Tracks) > 0 {
+		entry = withIndex(entry, entry.Index)
+	}
 	j.state.Current = &entry
-	j.syncTrack()
 	j.state.Playing = true
 	j.state.PositionSec = entry.StartSec
-	j.state.AnchorMs = now.UnixMilli()
-}
-
-// playTrack starts the track the index now points at. The fresh anchor is
-// also what makes the outgoing track's "ended" echoes no-ops.
-func (j *jukebox) playTrack(now time.Time) {
-	j.syncTrack()
-	j.state.Playing = true
-	j.state.PositionSec = 0
 	j.state.AnchorMs = now.UnixMilli()
 }
 
@@ -504,8 +508,7 @@ func (j *jukebox) remember() {
 func (j *jukebox) advance(now time.Time) {
 	j.remember()
 	if cur := j.state.Current; cur != nil && cur.Index+1 < len(cur.Tracks) {
-		cur.Index++
-		j.playTrack(now)
+		j.play(withIndex(*cur, cur.Index+1), now)
 		return
 	}
 	j.advanceEntry(now)

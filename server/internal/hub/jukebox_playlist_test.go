@@ -1,7 +1,9 @@
 package hub
 
 import (
+	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -214,6 +216,40 @@ func TestEveryPlaylistTrackCreditsTheRiderWhoQueuedIt(t *testing.T) {
 		}
 		j.finished = nil // the room drains it each command
 	}
+}
+
+// snapshot() hands Current out BY POINTER and the room marshals it outside
+// the lock, so walking a playlist must build a new entry rather than move the
+// index on the one already on the deck. Under -race, stepping in place fails
+// here; single-threaded table tests never saw it (audit #219, #615).
+func TestWalkingAPlaylistDoesNotRaceTheMarshal(t *testing.T) {
+	j := newJukebox()
+	var mu sync.Mutex
+	addPlaylist(j, 20, jat(0))
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { // the room tick: snapshot under the lock, marshal outside it
+		defer wg.Done()
+		for range 200 {
+			mu.Lock()
+			snap := j.snapshot()
+			mu.Unlock()
+			if _, err := json.Marshal(snap); err != nil {
+				t.Errorf("marshal: %v", err)
+				return
+			}
+		}
+	}()
+	go func() { // a rider walking the set
+		defer wg.Done()
+		for i := range 200 {
+			mu.Lock()
+			j.apply(protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(100+i))
+			mu.Unlock()
+		}
+	}()
+	wg.Wait()
 }
 
 func TestPlaylistCapsAreEnforced(t *testing.T) {
