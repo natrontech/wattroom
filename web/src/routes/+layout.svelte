@@ -27,6 +27,7 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
+	import { activePlace } from '$lib/nav/pages';
 	import { openMember } from '$lib/nav/open-member';
 	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
@@ -125,6 +126,15 @@
 			name: presence.rooms.find((room) => room.slug === conn.slug)?.name,
 		};
 	});
+
+	// The chat's composer owns the bottom edge, so the drawer button steps up
+	// over it — the same lift the room's people button takes there. Both are
+	// thumb targets in the same corner strip and neither may land on the one
+	// input a phone rider is actually typing into.
+	const overComposer = $derived(
+		page.url.pathname.startsWith('/r/') &&
+			activePlace(page.url.pathname, page.params?.slug ?? '') === '/chat',
+	);
 
 	// The room whose pages you are on opens in the sidebar — only under /r/:
 	// a room's thread on /messages carries the same slug param and is
@@ -305,8 +315,10 @@
 			     the sidebar standing there (#412). -->
 			<button
 				onclick={() => (drawer = true)}
-				class="bg-surface-raised ring-ink/15 fixed bottom-4 left-4 z-40 grid
-				h-12 w-12 place-items-center rounded-full shadow-lg ring-1 md:hidden"
+				class="bg-surface-raised ring-ink/15 fixed left-4 z-40 grid h-12 w-12
+				place-items-center rounded-full shadow-lg ring-1 md:hidden {overComposer
+					? 'bottom-20'
+					: 'bottom-4'}"
 				aria-label="open navigation"
 			>
 				<Menu size={20} />

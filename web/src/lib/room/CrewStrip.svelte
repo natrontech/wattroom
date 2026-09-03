@@ -63,9 +63,10 @@
 				data-testid="crew-watts">{rider.watts}</span
 			>
 			<span class="text-muted text-[9px]">W</span>
-			<span class="text-muted ml-auto truncate text-[10px]" data-testid="crew-name"
-			>{rider.name}</span
-		>
+			<span
+				class="text-muted ml-auto truncate text-[10px]"
+				data-testid="crew-name">{rider.name}</span
+			>
 		</span>
 	</div>
 	<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
