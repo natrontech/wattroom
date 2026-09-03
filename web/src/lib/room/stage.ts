@@ -29,6 +29,22 @@ export function pickStage<T extends StageSource>(
 }
 
 /**
+ * What the chip under the stage calls a source. Yours is named as yours
+ * (#563): "Sven's screen" among five other names does not read as *your*
+ * desktop on the shared surface, which is the one case where being wrong
+ * about whose screen it is leaks something.
+ */
+export function sourceLabel(
+	kind: 'screen' | 'cam',
+	name: string | undefined,
+	you = false,
+): string {
+	if (you) return kind === 'screen' ? 'Your screen' : 'You';
+	const who = name || 'someone';
+	return kind === 'screen' ? `${who}'s screen` : who;
+}
+
+/**
  * Which picture the stage is showing: the source plus the generation of its
  * track. Zoom belongs to a picture, so this is what the stage resets to fit
  * on — another source, or the same sharer's screen back on a fresh track

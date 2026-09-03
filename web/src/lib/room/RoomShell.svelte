@@ -11,7 +11,7 @@
 	import { buildShelf } from '$lib/workout/shelf';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { pickStage } from '$lib/room/stage';
+	import { pickStage, sourceLabel } from '$lib/room/stage';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
@@ -225,15 +225,16 @@
 					},
 				]
 			: []),
-		...av.stageSources.map((source) => ({
-			key: source.key,
-			kind: source.kind,
-			riderId: source.id,
-			gen: String(source.gen),
-			label:
-				(riders.find((rider) => rider.id === source.id)?.name ?? 'someone') +
-				(source.kind === 'screen' ? "'s screen" : ''),
-		})),
+		...av.stageSources.map((source) => {
+			const rider = riders.find((candidate) => candidate.id === source.id);
+			return {
+				key: source.key,
+				kind: source.kind,
+				riderId: source.id,
+				gen: String(source.gen),
+				label: sourceLabel(source.kind, rider?.name, rider?.you),
+			};
+		}),
 	]);
 	const onStage = $derived(pickStage(stageSources, av.stagePick));
 
