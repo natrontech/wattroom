@@ -96,7 +96,17 @@
 		ENDED = 0,
 		PLAYING = 1,
 		PAUSED = 2,
-		BUFFERING = 3;
+		BUFFERING = 3,
+		CUED = 5;
+
+	// A rider's browser can carry its own "always show captions" YouTube
+	// preference, applied across every embed regardless of the video — and
+	// with the player's own chrome hidden (RMF: nothing overlaid), there is
+	// no CC button in here to turn it back off. Force the module off instead
+	// of exposing one. It resets per video, so this re-fires on every load.
+	function disableCaptions() {
+		player?.unloadModule?.('captions');
+	}
 
 	/** Report the end against the anchor we were playing — never the newest one. */
 	function reportEnded() {
@@ -131,6 +141,7 @@
 					onReady: () => {
 						playerReady = true;
 						player.setVolume?.(Math.round(mixer.music));
+						disableCaptions();
 					},
 					onStateChange: (e: { data: number }) => {
 						// A state the browser granted means autoplay was not refused.
@@ -139,6 +150,11 @@
 						// Ended: report it WITH the play epoch — the server
 						// advances exactly once per (video, epoch).
 						if (e.data === ENDED) reportEnded();
+						// The caption module attaches once the video's own data
+						// lands, asynchronously after cue/load — CUED and PLAYING
+						// bracket that, so unloading here catches it even when the
+						// call right after cue/loadVideoById was too early.
+						if (e.data === CUED || e.data === PLAYING) disableCaptions();
 					},
 					onError: (e: { data: number }) => {
 						// Non-embeddable or broken: skip for everyone rather than
@@ -249,6 +265,7 @@
 			player.cueVideoById(videoId, at);
 			wantedPlayAt = 0;
 		}
+		disableCaptions();
 	}
 
 	// Fullscreen draws only the fullscreen element's subtree: a fixed dock
