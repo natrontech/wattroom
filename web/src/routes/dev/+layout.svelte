@@ -7,6 +7,7 @@
 		{ href: '/dev/brand', label: 'Brand' },
 		{ href: '/dev/styleguide', label: 'Styleguide' },
 		{ href: '/dev/themes', label: 'Themes' },
+		{ href: '/dev/theme-editor', label: 'Theme Editor' },
 		{ href: '/dev/components', label: 'Components' },
 		{ href: '/dev/account', label: 'Account' },
 		{ href: '/dev/rooms', label: 'Rooms' },

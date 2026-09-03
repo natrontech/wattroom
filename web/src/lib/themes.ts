@@ -85,6 +85,34 @@ const SPECS: ThemeSpec[] = [
 		wattLc: { l: 0.85, c: 0.19 },
 	},
 	{
+		id: 'monokai',
+		identity: 'monokai',
+		name: 'Monokai',
+		note: 'Editor-gray cave, cyan-violet chrome, magenta on the numbers.',
+		family: 'dark',
+		wattHue: 200,
+		neonHue: 276,
+		surfaceHue: 270,
+		exact: {
+			// Raised is deliberately the darker of the two here — Monokai's own
+			// choice, not the "raised = lighter" convention every other theme
+			// follows; kept exactly as picked. Surface came in lighter (#333333)
+			// than either the family's own ceiling or the shared Z1-Z7 ramp can
+			// clear against — the ramp is the binding one: with raised held fixed,
+			// #1f1f1f is the darkest surface the recovery/endurance zones can
+			// still be told apart against (contrast, ΔE, and both simulated
+			// colour-vision deficiencies), which also happens to satisfy the
+			// brightness ceiling, so no gate exemption was needed after all.
+			surface: '#1f1f1f',
+			'surface-raised': '#171717',
+			muted: '#edff9c',
+			watt: '#ff00dd',
+			neon: '#66bcff',
+			ink: '#ffffff',
+			paper: '#000000',
+		},
+	},
+	{
 		id: DEFAULT_WHITE_ID,
 		identity: 'outrun',
 		name: 'Outrun Day',
@@ -142,6 +170,16 @@ const SPECS: ThemeSpec[] = [
 		surfaceHue: 301,
 		wattLc: { l: 0.6, c: 0.13 },
 	},
+	{
+		id: 'monokai-day',
+		identity: 'monokai',
+		name: 'Monokai Day',
+		note: 'The desk half — formula-derived, not hand-tuned like the cave.',
+		family: 'white',
+		wattHue: 200,
+		neonHue: 276,
+		surfaceHue: 270,
+	},
 ];
 
 export const THEMES: Theme[] = SPECS.map(deriveTheme);
@@ -152,6 +190,11 @@ export function themesFor(family: ThemeFamily): Theme[] {
 
 export function themeById(id: string): Theme | undefined {
 	return THEMES.find((t) => t.id === id);
+}
+
+/** The spec behind a catalogue theme — hues and overrides, not derived tokens. */
+export function specById(id: string): ThemeSpec | undefined {
+	return SPECS.find((s) => s.id === id);
 }
 
 /** The half of an identity that belongs to this family. */

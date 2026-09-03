@@ -17,11 +17,11 @@ import {
 	type Theme,
 	type TokenName,
 } from './palette';
+import { ZONES, adjacentFloor, reference, worst, zoneFloor } from './gate';
 import {
 	CUSTOM_ID,
 	DEFAULT_CHOICE,
 	DEFAULT_DARK_ID,
-	DEFAULT_WHITE_ID,
 	HUE_SEPARATION,
 	THEMES,
 	customTheme,
@@ -32,51 +32,11 @@ import {
 	themesFor,
 } from './themes';
 
-const ZONES: TokenName[] = ['z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7'];
 const each = THEMES.map((t) => [t.name, t] as const);
-
-/** Worst contrast this token scores against the theme's own two surfaces. */
-function worst(theme: Theme, token: TokenName): number {
-	return Math.min(
-		contrast(theme.tokens[token], theme.tokens.surface),
-		contrast(theme.tokens[token], theme.tokens['surface-raised']),
-	);
-}
-
-/** The identity every other theme is measured against (ADR-0023). */
-function reference(family: Theme['family']): Theme {
-	return themeById(family === 'dark' ? DEFAULT_DARK_ID : DEFAULT_WHITE_ID)!;
-}
-
-/**
- * Zones are graphical objects, so 3:1 — except where the reference is
- * deliberately lower. Outrun's Z1 sits at 1.9 because recovery is meant to
- * recede, and a gate that fails the design known to work at three metres is
- * the wrong gate (ADR-0023 §3).
- */
-function zoneFloor(theme: Theme, token: TokenName): number {
-	return Math.min(
-		CONTRAST.accent,
-		worst(reference(theme.family), token) * 0.95,
-	);
-}
-
-/**
- * Adjacent-zone separation is held to the reference pair at the same position,
- * not to a number someone picked. Outrun's own Z6→Z7 gap is the tightest in
- * the ramp; a floor invented above it would fail the design ADR-0005 shipped.
- */
-function adjacentFloor(
-	theme: Theme,
-	index: number,
-	measure: (a: string, b: string) => number,
-): number {
-	const ref = reference(theme.family).tokens;
-	return measure(ref[ZONES[index]], ref[ZONES[index + 1]]) * 0.9;
-}
 
 /** The issue gate, applied to catalogue entries and the full custom hue wheel. */
 function expectLegible(theme: Theme, label: string) {
+	const ref = reference(theme.family, THEMES);
 	for (const token of ['ink', 'muted'] as TokenName[]) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			CONTRAST.text,
@@ -89,7 +49,7 @@ function expectLegible(theme: Theme, label: string) {
 	}
 	for (const token of ZONES) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
-			zoneFloor(theme, token),
+			zoneFloor(token, ref),
 		);
 	}
 	// Apparent intensity is chroma as much as lightness (ADR-0023 §2): a zone
@@ -98,9 +58,7 @@ function expectLegible(theme: Theme, label: string) {
 		expect(
 			hexToOklch(theme.tokens[token]).c,
 			`${label} ${token} chroma`,
-		).toBeGreaterThanOrEqual(
-			hexToOklch(reference(theme.family).tokens[token]).c * 0.8,
-		);
+		).toBeGreaterThanOrEqual(hexToOklch(ref.tokens[token]).c * 0.8);
 	}
 	expect(
 		contrast(theme.tokens.paper, theme.tokens.ink),
@@ -206,11 +164,12 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	// Not monotonic in lightness on purpose: the ramp peaks at Z5 and descends
 	// while chroma climbs, which is what keeps the hot end vivid (ADR-0023 §4).
 	it('keeps adjacent zones perceptually apart', () => {
+		const ref = reference(theme.family, THEMES);
 		for (let i = 0; i < ZONES.length - 1; i++) {
 			expect(
 				perceptualDistance(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
 				`${ZONES[i]} vs ${ZONES[i + 1]}`,
-			).toBeGreaterThanOrEqual(adjacentFloor(theme, i, perceptualDistance));
+			).toBeGreaterThanOrEqual(adjacentFloor(ref, i, perceptualDistance));
 		}
 	});
 
@@ -220,12 +179,13 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 			// Zones encode how hard you are riding; colour is the only channel
 			// the bar has, so the ramp has to survive the ~8% who see it
 			// differently (#401).
+			const ref = reference(theme.family, THEMES);
 			for (let i = 0; i < ZONES.length - 1; i++) {
 				const measure = (a: string, b: string) => dichromatDistance(a, b, kind);
 				expect(
 					measure(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),
 					`${ZONES[i]} vs ${ZONES[i + 1]}`,
-				).toBeGreaterThanOrEqual(adjacentFloor(theme, i, measure));
+				).toBeGreaterThanOrEqual(adjacentFloor(ref, i, measure));
 			}
 		},
 	);
@@ -235,7 +195,7 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 		// room. Rotating it per theme would make a rider relearn the scale for
 		// a palette choice, and the sRGB gamut does not rotate evenly anyway
 		// (ADR-0023 §4).
-		const ref = reference(theme.family).tokens;
+		const ref = reference(theme.family, THEMES).tokens;
 		for (const token of ZONES) {
 			expect(
 				hueDistance(
@@ -262,20 +222,21 @@ describe('custom themes', () => {
 					hexToOklch(theme.tokens.neon).h,
 				),
 			).toBeGreaterThanOrEqual(30);
+			const ref = reference(family, THEMES);
 			for (let i = 0; i < ZONES.length - 1; i++) {
 				const a = theme.tokens[ZONES[i]];
 				const b = theme.tokens[ZONES[i + 1]];
 				expect(
 					perceptualDistance(a, b),
 					`custom ${family} ${hue}° ${ZONES[i]}`,
-				).toBeGreaterThanOrEqual(adjacentFloor(theme, i, perceptualDistance));
+				).toBeGreaterThanOrEqual(adjacentFloor(ref, i, perceptualDistance));
 				for (const kind of ['deuteranopia', 'protanopia'] as const) {
 					const measure = (x: string, y: string) =>
 						dichromatDistance(x, y, kind);
 					expect(
 						measure(a, b),
 						`custom ${family} ${hue}° ${ZONES[i]} ${kind}`,
-					).toBeGreaterThanOrEqual(adjacentFloor(theme, i, measure));
+					).toBeGreaterThanOrEqual(adjacentFloor(ref, i, measure));
 				}
 			}
 		}
