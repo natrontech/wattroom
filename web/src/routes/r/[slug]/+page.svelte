@@ -7,8 +7,6 @@
 	// focuses that rider: what "video-first" used to be a whole layout for,
 	// as a tap rather than a mode you have to remember you are in.
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import SessionControls from '$lib/room/SessionControls.svelte';
-	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
@@ -195,11 +193,6 @@
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
-		<SessionControls />
-		<!-- Voice, camera and the share live in the you-panel, bottom left, and
-		     nowhere else — the header had a second copy of a control the rider
-		     already has pinned. -->
-		<TrainerButton />
 		{#if room.stageSources.length > 0}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
