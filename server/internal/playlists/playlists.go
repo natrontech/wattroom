@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
@@ -211,7 +212,9 @@ type nameRequest struct {
 }
 
 func checkName(name string) (code, message string) {
-	if name == "" || len(name) > 80 {
+	// Runes, not bytes (audit #219, hub.go's chat length check): counting
+	// bytes cuts a non-Latin name off at half the advertised limit.
+	if n := utf8.RuneCountInString(name); n == 0 || n > 80 {
 		return "validation_error", "A playlist name has to be 1-80 characters."
 	}
 	return "", ""
