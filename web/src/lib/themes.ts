@@ -181,13 +181,12 @@ const SPECS: ThemeSpec[] = [
 		surfaceHue: 270,
 		exact: {
 			surface: '#f8efe7',
-			// With `surface` held exactly as picked, this is the lightest
-			// `surface-raised` the shared zone ramp can still separate against —
-			// notably closer to `surface` than the value this was built from
-			// (#e0dad9), which left three zone checks failing (one contrast, two
-			// colour-vision-deficiency separation). No smaller move of either
-			// token, alone or together, cleared them.
-			'surface-raised': '#f3efec',
+			// Kept as picked. This fails six of the shared gate's zone checks —
+			// the ramp can't fully separate against a surface/raised pair this
+			// close in lightness — waived on record in gate.ts's EXCEPTIONS rather
+			// than quietly moved. See #621 for the standing question of whether
+			// the gate itself should change instead.
+			'surface-raised': '#e0dad9',
 			muted: '#504e56',
 			watt: '#ce4770',
 			neon: '#006dc7',

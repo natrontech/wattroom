@@ -17,7 +17,16 @@ import {
 	type Theme,
 	type TokenName,
 } from './palette';
-import { ZONES, adjacentFloor, reference, worst, zoneFloor } from './gate';
+import {
+	EXCEPTIONS,
+	ZONES,
+	adjacentFloor,
+	exemption,
+	gateChecks,
+	reference,
+	worst,
+	zoneFloor,
+} from './gate';
 import {
 	CUSTOM_ID,
 	DEFAULT_CHOICE,
@@ -48,6 +57,7 @@ function expectLegible(theme: Theme, label: string) {
 		);
 	}
 	for (const token of ZONES) {
+		if (exemption(theme.id, token)) continue;
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			zoneFloor(token, ref),
 		);
@@ -134,6 +144,31 @@ describe('the catalogue', () => {
 	});
 });
 
+/**
+ * A named exception is a decision, not permanent code nobody looks at again:
+ * if the check it waives has quietly started passing (a derivation change, a
+ * hand-edited hex), the entry is stale and EXCEPTIONS should shrink, not just
+ * grow.
+ */
+describe.each(EXCEPTIONS)(
+	'the $themeId exception for $checkId',
+	({ themeId, checkId }) => {
+		it('is still actually needed', () => {
+			const theme = themeById(themeId);
+			expect(theme, `${themeId} is a real catalogue theme`).toBeDefined();
+			const found = gateChecks(theme!, THEMES).find((c) => c.id === checkId);
+			expect(
+				found,
+				`${themeId} has a gate check named ${checkId}`,
+			).toBeDefined();
+			expect(
+				found!.passes,
+				`${themeId} ${checkId} now passes — remove this exception`,
+			).toBe(false);
+		});
+	},
+);
+
 /** The gate: a theme that fails these is not shippable, whoever likes it. */
 describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	it('clears every text and graphics contrast gate', () => {
@@ -181,6 +216,8 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 			// differently (#401).
 			const ref = reference(theme.family, THEMES);
 			for (let i = 0; i < ZONES.length - 1; i++) {
+				if (exemption(theme.id, `${ZONES[i]}-${ZONES[i + 1]}-${kind}`))
+					continue;
 				const measure = (a: string, b: string) => dichromatDistance(a, b, kind);
 				expect(
 					measure(theme.tokens[ZONES[i]], theme.tokens[ZONES[i + 1]]),

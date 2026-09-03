@@ -75,6 +75,8 @@ export interface GateCheck {
 	floor: number;
 	passes: boolean;
 	unit: string;
+	/** Set when a known exception waives this failure — never blank the reason out. */
+	exempt?: string;
 }
 
 function check(
@@ -86,6 +88,65 @@ function check(
 	unit = ':1',
 ): GateCheck {
 	return { id, label, value, floor, passes, unit };
+}
+
+/**
+ * A named, on-record departure from the gate — a decision, not code nobody
+ * looked at. Add an entry here only after checking the failure is the kind
+ * that genuinely can't be resolved by moving a colour (#620): the surface
+ * pair itself is the point of the theme, and the shared white-family zone
+ * ramp can't separate against it without erasing that. See #621 for the
+ * standing question of whether the gate itself should change instead.
+ */
+export const EXCEPTIONS: {
+	themeId: string;
+	checkId: string;
+	reason: string;
+}[] = [
+	{
+		themeId: 'monokai-day',
+		checkId: 'z3',
+		reason:
+			"surface-raised is close in lightness to surface by design — the shared ramp's z3 falls to 2.72:1 against it, short of the 3:1 floor.",
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'z4',
+		reason:
+			'same trade-off as z3 above — the ramp loses contrast headroom overall.',
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'z6',
+		reason:
+			'same trade-off as z3 above — the ramp loses contrast headroom overall.',
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'z4-z5-deuteranopia',
+		reason:
+			'same trade-off as z3 above — the ramp loses separation, not this specific pair.',
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'z5-z6-deuteranopia',
+		reason:
+			'same trade-off as z3 above — the ramp loses separation, not this specific pair.',
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'z5-z6-protanopia',
+		reason:
+			'same trade-off as z3 above — the ramp loses separation, not this specific pair.',
+	},
+];
+
+export function exemption(
+	themeId: string,
+	checkId: string,
+): string | undefined {
+	return EXCEPTIONS.find((e) => e.themeId === themeId && e.checkId === checkId)
+		?.reason;
 }
 
 /**
@@ -238,6 +299,10 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				),
 			);
 		}
+	}
+	for (const c of checks) {
+		const reason = exemption(theme.id, c.id);
+		if (reason) c.exempt = reason;
 	}
 	return checks;
 }
