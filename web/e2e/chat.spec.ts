@@ -1,5 +1,5 @@
 import { expect, test } from './room';
-import { signInTo } from './signin';
+import { signInAs } from './signin';
 
 /**
  * Room chat scrolls back (#291). This is a layout bug no unit test can reach:
@@ -33,7 +33,7 @@ test('the room chat scrolls back to its oldest line', async ({
 	// A desk-sized window: the log is the content column at any width, but the
 	// people column beside it only exists from `xl`.
 	await page.setViewportSize({ width: 1440, height: 700 });
-	await signInTo(page, '/rooms');
+	await signInAs(page, 'Chat Scrollback', '/rooms');
 
 	const name = `Chat Scrollback ${Date.now() % 100000}`;
 	const { slug } = await rooms.open(page, name);

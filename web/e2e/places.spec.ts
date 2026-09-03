@@ -1,5 +1,5 @@
 import { expect, test } from './room';
-import { signInTo } from './signin';
+import { signInAs } from './signin';
 
 /**
  * Every place a room opens into, walked in one go (#502, #567).
@@ -19,7 +19,7 @@ test('every place in a room renders, and none of them throws', async ({
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
-	await signInTo(page, '/rooms');
+	await signInAs(page, 'Places Walker', '/rooms');
 	const { slug } = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
 
 	const links = page.locator(`a[href^="/r/${slug}"]`);
