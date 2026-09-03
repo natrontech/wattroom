@@ -10,6 +10,7 @@ import type { RailRoom } from '$lib/room/mockcompat';
  * makes YOU read as online to your friends.
  */
 let rooms = $state<RailRoom[]>([]);
+let maxOwned = $state(0);
 let version = $state(0);
 let socket: WebSocket | null = null;
 let fallback: ReturnType<typeof setInterval> | null = null;
@@ -20,7 +21,9 @@ let stopped = true;
 let announced = false;
 
 async function refresh() {
-	rooms = await fetchRailRooms();
+	const list = await fetchRailRooms();
+	rooms = list.rooms;
+	maxOwned = list.maxOwned;
 	version += 1;
 	if (!announced) {
 		announced = true;
@@ -69,6 +72,10 @@ export const presence = {
 	get rooms() {
 		return rooms;
 	},
+	/** docs/SPEC.md's owned-room cap, as the server enforces it; 0 until known. */
+	get maxOwned() {
+		return maxOwned;
+	},
 	/** False until the first answer lands — a skeleton, not an empty list. */
 	get loaded() {
 		return version > 0;
@@ -101,5 +108,6 @@ export const presence = {
 		socket?.close();
 		socket = null;
 		rooms = [];
+		maxOwned = 0;
 	},
 };
