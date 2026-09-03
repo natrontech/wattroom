@@ -190,7 +190,7 @@ function connect(slug: string): Connection {
 		// threshold doubles while the jukebox plays, and cues duck under a
 		// voice — wherever in the app you are standing.
 		$effect(() => {
-			av.setMusicPlaying(!!live.tick?.jukebox?.playing);
+			av.setDeckPlaying(!!live.tick?.jukebox?.playing);
 		});
 		$effect(() => {
 			setDucked(

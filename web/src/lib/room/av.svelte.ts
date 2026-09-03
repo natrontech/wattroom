@@ -83,7 +83,7 @@ export function createRoomAv(slug: string) {
 	let gateThreshold = $state(GATE_DEFAULT);
 	let pttHeld = $state(false);
 	/** Reactive: the rail draws the EFFECTIVE threshold, and music moves it. */
-	let musicPlaying = $state(false);
+	let deckPlaying = $state(false);
 
 	const VOICE_KEY = 'wattroom.voice.v1';
 	try {
@@ -244,9 +244,17 @@ export function createRoomAv(slug: string) {
 	 * SPEC: while the jukebox plays the threshold doubles. The gate reads it
 	 * here and the meter's marker reads the same function, so the mark can
 	 * never claim a gate the rider is not actually being held to (#289).
+	 *
+	 * Two things the doubling has to respect (#478). It pays for speaker
+	 * bleed, so it applies only to ears that hear the deck: a rider with
+	 * music at zero has no bleed to gate out and stays on what they set. And
+	 * doubling is +6 dB, which walks off the top of the axis from a gate as
+	 * low as half GATE_CEIL — unclamped, the meter pins its mark at 100% and
+	 * the mic can stop opening at all the moment a track starts.
 	 */
 	function effectiveThreshold() {
-		return musicPlaying ? gateThreshold * 2 : gateThreshold;
+		const bleed = deckPlaying && mixer.music > 0;
+		return bleed ? clampThreshold(gateThreshold * 2) : gateThreshold;
 	}
 
 	function runGate() {
@@ -874,9 +882,13 @@ export function createRoomAv(slug: string) {
 			pttHeld = held;
 			runGate();
 		},
-		/** SPEC: while the jukebox plays the gate threshold doubles. */
-		setMusicPlaying(playing: boolean) {
-			musicPlaying = playing;
+		/**
+		 * The room's deck, as the tick reports it. Whether it raises this
+		 * rider's gate is effectiveThreshold's call — their own music level
+		 * decides whether there is any bleed to gate out (#478).
+		 */
+		setDeckPlaying(playing: boolean) {
+			deckPlaying = playing;
 		},
 		/**
 		 * Applies the mixer's per-rider gain live (#179, #463). One fader per
