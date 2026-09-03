@@ -13,6 +13,7 @@
 	// only, so the button is disabled with a reason rather than failing on
 	// click.
 	import { dev } from '$app/environment';
+	import { account } from '$lib/account.svelte';
 	import { useRoom } from '$lib/room/context';
 
 	let { compact = false }: { compact?: boolean } = $props();
@@ -21,6 +22,14 @@
 	const supported = $derived(
 		typeof navigator !== 'undefined' && !!navigator.bluetooth,
 	);
+	// Dev-only (#123): simulated watts in a live room would count for medals,
+	// XP and streaks, and the fairness layer takes no fakes. `dev` alone also
+	// kept it out of the two-rider e2e (#418), which rides a production BUILD
+	// — so the gate is the server instead: one that offers the dev sign-in
+	// door (WATTROOM_DEV_LOGIN) is a dev server. Production never opens that
+	// door, which makes this stricter than the `?sim=1` escape the solo ride
+	// screen carries — that one any rider can type.
+	const canSimulate = $derived(dev || account.providers.includes('dev'));
 </script>
 
 <div class="flex flex-wrap items-center gap-2">
@@ -31,7 +40,7 @@
 			title={supported ? 'Pair trainer' : 'Web Bluetooth needs Chrome or Edge'}
 			class="btn btn-secondary {compact ? 'btn-xs' : ''}">Pair trainer</button
 		>
-		{#if dev}
+		{#if canSimulate}
 			<!-- Dev-only (#123): simulated watts in a live room would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. -->
 			<button onclick={() => room.pairSimulated()} class="btn btn-ghost btn-xs"

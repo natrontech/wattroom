@@ -25,20 +25,21 @@
 	<p class="eyebrow">execution</p>
 	<ul class="mt-3 space-y-1.5">
 		{#each ranked as entry (entry.name)}
-			<li class="flex items-center gap-2.5">
+			<li class="flex items-center gap-2.5" data-testid="execution-row">
 				<span
 					class="w-12 shrink-0 truncate text-[11px] {entry.you
 						? 'text-ink'
 						: 'text-muted'}">{entry.name}</span
 				>
-				<ProgressBar
-					pct={entry.pct}
-					track="bg-surface"
-					fill="{entry.you
-						? 'bg-watt'
-						: 'bg-neon/60'} transition-[width] duration-500"
-					class="flex-1"
-				/>
+				<div class="flex-1" data-testid="execution-bar">
+					<ProgressBar
+						pct={entry.pct}
+						track="bg-surface"
+						fill="{entry.you
+							? 'bg-watt'
+							: 'bg-neon/60'} transition-[width] duration-500"
+					/>
+				</div>
 				<!-- A dot for whether they are inside the band right now, not just cumulatively. -->
 				<span
 					class="h-1.5 w-1.5 shrink-0 rounded-full {entry.inBand

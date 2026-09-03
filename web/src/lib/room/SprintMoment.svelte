@@ -122,6 +122,7 @@
 						class="flex items-center gap-3 rounded px-3 py-3 {rider.you
 							? 'bg-surface-raised'
 							: ''}"
+						data-testid="sprint-standing"
 					>
 						<span
 							class="font-display text-muted w-8 shrink-0 text-xl font-bold tabular-nums"
@@ -130,7 +131,8 @@
 						<span
 							class="min-w-0 flex-1 truncate text-lg {rider.you
 								? 'font-semibold'
-								: ''}">{rider.name}</span
+								: ''}"
+							data-testid="sprint-name">{rider.name}</span
 						>
 						<span
 							class="bg-surface hidden h-3 w-48 shrink-0 overflow-hidden rounded-full sm:block"
@@ -146,7 +148,8 @@
 							class="font-display w-24 shrink-0 text-right text-3xl font-bold tabular-nums {i ===
 							0
 								? 'text-watt glow-text'
-								: ''}">{wkg(rider.watts, rider.kg)}</span
+								: ''}"
+							data-testid="sprint-wkg">{wkg(rider.watts, rider.kg)}</span
 						>
 						<span
 							class="text-muted w-16 shrink-0 text-right text-sm tabular-nums"
