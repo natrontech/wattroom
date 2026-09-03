@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.23] - 2026-09-03
+
+### Added
+
+- A fifth theme: Monokai, alongside Outrun, Tron Ice, Miami Nights and Laser
+  Yellow on the profile page. Editor-gray cave with cyan-violet chrome and
+  magenta on the numbers at night; a warm paper desk with the same chrome and
+  data colours by day.
+
 ## [2026.09.22] - 2026-09-03
 
 ### Added
@@ -504,7 +513,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.22...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.23...HEAD
+[2026.09.23]: https://github.com/natrontech/wattroom/compare/2026.09.22...2026.09.23
 [2026.09.22]: https://github.com/natrontech/wattroom/compare/2026.09.21...2026.09.22
 [2026.09.21]: https://github.com/natrontech/wattroom/compare/2026.09.20...2026.09.21
 [2026.09.20]: https://github.com/natrontech/wattroom/compare/2026.09.19...2026.09.20
