@@ -22,7 +22,7 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { activeHref, activePlace, pages, roomPlaces } from './pages';
+	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
@@ -47,6 +47,7 @@
 		VideoOff,
 	} from '@lucide/svelte';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
+	import { device } from '$lib/device.svelte';
 
 	let {
 		pathname,
@@ -93,6 +94,10 @@
 	} = $props();
 
 	const destination = $derived(activeHref(pathname));
+	// Below md the drawer IS the room's index, and Settings is not offered
+	// there (#412 — an owner-only form nobody fills in from a bike). One
+	// answer, used by the list and by the room's context menu alike.
+	const places = $derived(placesFor(device.narrow));
 	const place = $derived(activeSlug ? activePlace(pathname, activeSlug) : '');
 	const inVoice = $derived(voiceStatus === 'live');
 </script>
@@ -160,7 +165,7 @@
 							? 'border-neon/35 bg-neon/5'
 							: 'border-transparent'}"
 					{@attach contextMenu(() => {
-						const entries: MenuEntry[] = roomPlaces.map((place) => ({
+						const entries: MenuEntry[] = places.map((place) => ({
 							label: place.label,
 							icon: place.icon,
 							onSelect: () => void goto(`/r/${room.slug}${place.path}`),
@@ -305,7 +310,7 @@
 						<ul
 							class="border-ink/10 mt-0.5 mb-1 ml-3 space-y-0.5 border-l pl-2"
 						>
-							{#each roomPlaces as entry (entry.path)}
+							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
 								<li>
 									<a

@@ -10,6 +10,7 @@
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { CHEER_ICONS, keyFor, ROOM_ICONS } from '$lib/icons';
 	import { play } from '$lib/sound/cues';
+	import { device } from '$lib/device.svelte';
 
 	interface Member {
 		id: string;
@@ -220,6 +221,14 @@
 		<p class="text-muted mt-1 text-xs">
 			Owner only — coaches run sessions, owners shape the room.
 		</p>
+		{#if device.narrow}
+			<!-- Not offered in the phone's drawer (#412), so anyone standing here
+			     arrived by link or bookmark. Say so rather than let the forms
+			     imply this is where the job gets done. -->
+			<p class="text-muted/70 mt-2 text-[11px]">
+				Laid out for a wider screen — this is a desk job, not a mid-ride one.
+			</p>
+		{/if}
 
 		{#if error}
 			<div class="mt-4">
