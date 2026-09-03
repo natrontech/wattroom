@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.25] - 2026-09-04
+
+### Added
+
+- The "what's new" notice on Home now tells you what actually changed instead
+  of counting entries, and a release can hang a one-tap action off it. The
+  first one offers the Monokai theme — it names the half your light/dark
+  setting will actually render, and one tap applies it. If several releases
+  landed since you were last here, the notice announces the newest and says
+  how many you missed, with the link to the rest.
+
 ## [2026.09.24] - 2026-09-04
 
 ### Added
@@ -540,7 +551,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.24...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.25...HEAD
+[2026.09.25]: https://github.com/natrontech/wattroom/compare/2026.09.24...2026.09.25
 [2026.09.24]: https://github.com/natrontech/wattroom/compare/2026.09.23...2026.09.24
 [2026.09.23]: https://github.com/natrontech/wattroom/compare/2026.09.22...2026.09.23
 [2026.09.22]: https://github.com/natrontech/wattroom/compare/2026.09.21...2026.09.22
