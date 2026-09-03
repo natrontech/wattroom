@@ -13,6 +13,7 @@
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
+	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
@@ -36,9 +37,11 @@
 	let {
 		jukebox,
 		send,
+		slug,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (command: JukeboxCommand) => void;
+		slug: string;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -321,6 +324,8 @@
 	{/if}
 
 	<JukeboxAdd {send} />
+
+	<JukeboxPlaylists {slug} />
 
 	{#if queue.length}
 		<div class="min-w-0">
