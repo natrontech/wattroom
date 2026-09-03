@@ -49,10 +49,16 @@ export interface AutoplaySettings {
 export function createPlaylistStore(base: string) {
 	let entries = $state<SavedPlaylist[]>([]);
 	let loaded = $state(false);
+	let error = $state<string | null>(null);
 
 	async function refresh(): Promise<void> {
 		const res = await api<{ playlists: SavedPlaylist[] }>(base);
-		if (res.ok) entries = res.data?.playlists ?? [];
+		if (res.ok) {
+			entries = res.data?.playlists ?? [];
+			error = null;
+		} else {
+			error = res.error.message;
+		}
 		loaded = true;
 	}
 	void refresh();
@@ -61,10 +67,14 @@ export function createPlaylistStore(base: string) {
 		get loaded(): boolean {
 			return loaded;
 		},
+		/** Set when the list itself failed to load — distinct from empty. */
+		get error(): string | null {
+			return error;
+		},
+		refresh,
 		get all(): SavedPlaylist[] {
 			return entries;
 		},
-		refresh,
 		detail(id: string) {
 			return api<SavedPlaylistDetail>(`${base}/${id}`);
 		},

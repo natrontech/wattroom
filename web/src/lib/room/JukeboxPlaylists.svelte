@@ -55,7 +55,13 @@
 
 	async function loadAutoplay() {
 		const res = await getAutoplay(slug);
-		autoplay = res.ok ? (res.data ?? null) : null;
+		if (res.ok) {
+			autoplay = res.data ?? null;
+			autoplayError = null;
+		} else {
+			autoplay = null;
+			autoplayError = res.error.message;
+		}
 	}
 
 	async function saveAutoplay(next: Partial<AutoplaySettings>) {
@@ -112,7 +118,14 @@
 		>
 	</div>
 
-	{#if tab === 'room' && autoplay}
+	{#if tab === 'room' && !autoplay && autoplayError}
+		<p class="text-danger mt-2 text-[11px] leading-relaxed">
+			{autoplayError}
+			<button onclick={() => void loadAutoplay()} class="ml-1 underline"
+				>Retry</button
+			>
+		</p>
+	{:else if tab === 'room' && autoplay}
 		<div class="border-muted/15 mt-2 min-w-0 rounded-lg border p-2.5">
 			<div class="flex items-center justify-between gap-2">
 				<span class="text-xs font-medium">Autoplay</span>
@@ -189,6 +202,13 @@
 	<div class="mt-2 min-w-0">
 		{#if !store.loaded}
 			<Skeleton class="h-9" rows={2} />
+		{:else if store.error}
+			<p class="text-danger text-[11px] leading-relaxed">
+				{store.error}
+				<button onclick={() => store.refresh()} class="ml-1 underline"
+					>Retry</button
+				>
+			</p>
 		{:else if store.all.length === 0}
 			<p class="text-muted text-[11px] leading-relaxed">
 				{tab === 'room'

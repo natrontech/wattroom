@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -238,7 +239,7 @@ func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), r.PathValue("slug"))
+	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(r.PathValue("slug")))
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No room lives at this link.")
 		return
