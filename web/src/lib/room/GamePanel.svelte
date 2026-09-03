@@ -5,6 +5,9 @@
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
+	import { gameMode } from '$lib/room/modes';
+	import { PLACES } from '$lib/room/podium';
+	import { Heart } from '@lucide/svelte';
 	import type { GameState, Rider } from '$lib/protocol';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;
@@ -22,15 +25,7 @@
 	} = $props();
 
 	const profile = createProfileStore();
-	const MODE_LABEL: Record<string, string> = {
-		'backyard-ramp': 'Backyard Ramp',
-		'collective-ramp': 'Collective Ramp',
-		'floor-is-lava': 'Floor is Lava',
-		'watt-golf': 'Watt Golf',
-		'sprint-roulette': 'Sprint Roulette',
-		'points-race': 'Points Race',
-		'team-relay': 'Team Relay',
-	};
+	const mode = $derived(gameMode(game.mode));
 
 	let now = $state(Date.now());
 	$effect(() => {
@@ -81,9 +76,10 @@
 
 <div class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5">
 	<div class="flex items-center gap-3">
-		<span class="font-display font-bold"
-			>{MODE_LABEL[game.mode] ?? game.mode}</span
-		>
+		<span class="font-display flex items-center gap-2 font-bold">
+			{#if mode}<mode.icon size={16} class="text-neon shrink-0" />{/if}
+			{mode?.label ?? game.mode}
+		</span>
 		{#if game.round && game.mode !== 'watt-golf'}
 			<span class="text-muted text-xs">round {game.round}</span>
 		{/if}
@@ -102,10 +98,19 @@
 	{#if game.phase === 'done' && game.podium}
 		<ol class="mt-4 grid gap-1.5">
 			{#each game.podium.slice(0, 6) as score, i (score.riderId)}
-				<li class="flex items-baseline gap-2 text-sm">
-					<span class="text-muted w-6"
-						>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`}</span
-					>
+				{@const place = PLACES[i]}
+				<li class="flex items-center gap-2 text-sm">
+					<span class="text-muted w-6 shrink-0 tabular-nums">
+						{#if place}
+							<place.icon
+								size={16}
+								class={place.tone}
+								aria-label={place.label}
+							/>
+						{:else}
+							{i + 1}.
+						{/if}
+					</span>
 					<span class="font-medium">{score.name}</span>
 					{#if game.mode === 'sprint-roulette'}
 						<span class="font-display ml-auto font-bold tabular-nums"
@@ -164,12 +169,21 @@
 		</div>
 		<div class="mt-3 flex flex-wrap gap-2">
 			{#each riderRows as [id, rider] (id)}
+				{@const lives = Math.max(0, rider.lives ?? 0)}
 				<span
-					class="rounded-full border px-2.5 py-1 text-xs {rider.eliminated
+					class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs {rider.eliminated
 						? 'border-danger/40 text-danger line-through'
 						: 'border-muted/20'}"
 				>
-					{name(id)} · {'♥'.repeat(Math.max(0, rider.lives ?? 0))}
+					{name(id)}
+					<span
+						class="inline-flex items-center gap-0.5"
+						aria-label="{lives} {lives === 1 ? 'life' : 'lives'} left"
+					>
+						{#each { length: lives } as _, life (life)}
+							<Heart size={12} class="text-neon fill-current" />
+						{/each}
+					</span>
 				</span>
 			{/each}
 		</div>

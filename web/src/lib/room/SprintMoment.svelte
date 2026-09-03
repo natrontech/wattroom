@@ -2,6 +2,7 @@
 	import { play, playCountdownTick } from '$lib/sound/cues';
 	import type { SprintState } from '$lib/protocol';
 	import type { RoomRider } from '$lib/room/view';
+	import { PLACES } from '$lib/room/podium';
 	import { wkg } from '$lib/format';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
@@ -162,12 +163,17 @@
 			<p class="eyebrow">sprint podium</p>
 			<ol class="mt-4 space-y-2">
 				{#each sprint.results.slice(0, 3) as score, i (score.riderId)}
+					{@const place = PLACES[i]}
 					<li
 						class="flex items-center gap-3 rounded-lg px-4 py-3 {i === 0
 							? 'border-watt/40 border-2'
 							: 'bg-surface-raised'}"
 					>
-						<span class="shrink-0 text-2xl">{['🥇', '🥈', '🥉'][i]}</span>
+						<place.icon
+							size={28}
+							class="shrink-0 {place.tone}"
+							aria-label={place.label}
+						/>
 						<span class="flex-1 truncate text-left font-medium"
 							>{score.name}</span
 						>
