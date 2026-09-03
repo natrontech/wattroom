@@ -9,15 +9,19 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// countingPresence is the hub seen from rooms: it only has to say how often
-// the lobby was told to re-fetch (#570).
-type countingPresence struct{ pings int }
+// countingPresence is the hub seen from rooms: how often the lobby was told
+// to re-fetch (#570), and which rooms it was told to forget (#618).
+type countingPresence struct {
+	pings  int
+	closed []string
+}
 
 func (p *countingPresence) Presence(string) protocol.RoomPresence                     { return protocol.RoomPresence{} }
 func (p *countingPresence) Kick(string, string)                                       {}
 func (p *countingPresence) SetRole(string, string, string)                            {}
 func (p *countingPresence) SessionAnnounce(string, string, string, string, time.Time) {}
 func (p *countingPresence) PresenceChanged()                                          { p.pings++ }
+func (p *countingPresence) CloseRoom(slug string)                                     { p.closed = append(p.closed, slug) }
 
 // A room changes for everyone in it, not just for whoever changed it: every
 // durable mutation has to ping the lobby, or the other clients keep showing
@@ -56,5 +60,20 @@ func TestRoomMutationsPingTheLobby(t *testing.T) {
 				t.Errorf("%s did not ping the lobby — everyone else stays stale until they reload", tc.name)
 			}
 		})
+	}
+}
+
+// Deleting a room has to reach the hub, or the live state outlives the durable
+// row and the next room on the freed slug inherits it (#618).
+func TestDeleteClosesTheLiveRoom(t *testing.T) {
+	h := setup(t)
+	presence := &countingPresence{}
+	h.svc.SetPresence(presence)
+	slug, _ := h.createRoom(t, "alice", "Doomed Room")
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
+		t.Fatalf("delete: %d", status)
+	}
+	if len(presence.closed) != 1 || presence.closed[0] != slug {
+		t.Fatalf("hub never told to forget %q: %v", slug, presence.closed)
 	}
 }

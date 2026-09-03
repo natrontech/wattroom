@@ -67,6 +67,10 @@ type Presence interface {
 	// A room changes because somebody else changed it (#570) — the lobby
 	// ping is how every other client hears, and re-fetches.
 	PresenceChanged()
+	// A deleted room's live state has to die with it (#618): the slug is
+	// freed by the delete, and the next room to take it would otherwise
+	// open holding the old room's queue, chat and session.
+	CloseRoom(slug string)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
@@ -609,6 +613,10 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("room delete failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be deleted. Try again.")
 		return
+	}
+	// Durable row gone; the hub still holds everything live about it (#618).
+	if s.presence != nil {
+		s.presence.CloseRoom(room.Slug)
 	}
 	s.log.Info("room deleted", "room", room.Slug)
 	s.changed()
