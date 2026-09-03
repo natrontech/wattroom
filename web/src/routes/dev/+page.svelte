@@ -21,6 +21,11 @@
 			hint: 'Rooms and DMs together, unread first, read a room from outside (#451)',
 		},
 		{
+			href: '/dev/themes',
+			label: 'Theme gallery',
+			hint: 'Every theme against the surfaces that carry colour, cave and desk (#399)',
+		},
+		{
 			href: '/dev/brand',
 			label: 'Brand',
 			hint: 'Mark, wordmark and type directions to choose from',

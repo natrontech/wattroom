@@ -33,7 +33,6 @@
 		),
 	);
 	const custom = $derived(customTheme(hue, palette.family));
-
 </script>
 
 {#snippet chip()}

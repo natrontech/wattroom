@@ -67,9 +67,7 @@ describe('the contrast numbers beside each theme', () => {
 			'danger',
 		]);
 		expect(report.find((r) => r.token === 'ink')?.floor).toBe(CONTRAST.text);
-		expect(report.find((r) => r.token === 'watt')?.floor).toBe(
-			CONTRAST.accent,
-		);
+		expect(report.find((r) => r.token === 'watt')?.floor).toBe(CONTRAST.accent);
 	});
 
 	it('agrees with the build contract every theme already passes', () => {

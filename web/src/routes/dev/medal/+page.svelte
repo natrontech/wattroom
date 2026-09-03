@@ -1,46 +1,6 @@
 <script lang="ts">
-	import { ROOM_NAME } from '../room/mockRoom.svelte';
-	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
-
-	// Criteria are docs/SPEC.md's, verbatim — medals are a fixed set, not a design choice.
-	const medals: Medal[] = [
-		{
-			name: 'Metronome',
-			criterion: 'best execution score',
-			rider: 'Sara',
-			value: '94',
-			unit: '%',
-			kj: 812,
-			xp: 959,
-		},
-		{
-			name: 'Diesel',
-			criterion: 'steadiest power',
-			rider: 'Nina',
-			value: '3.1',
-			unit: '% CV',
-			kj: 704,
-			xp: 838,
-		},
-		{
-			name: 'Hammer',
-			criterion: 'biggest 5 s w/kg',
-			rider: 'Ruben',
-			value: '14.2',
-			unit: 'w/kg',
-			kj: 968,
-			xp: 1103,
-		},
-		{
-			name: 'Lanterne Rouge',
-			criterion: 'last on the sprint, finished anyway',
-			rider: 'Milo',
-			value: '61',
-			unit: 'min',
-			kj: 502,
-			xp: 611,
-		},
-	];
+	import { medals, ROOM_NAME } from '../room/mockRoom.svelte';
+	import MedalCard from '$lib/components/MedalCard.svelte';
 </script>
 
 <main class="mx-auto max-w-4xl px-6 py-10">
