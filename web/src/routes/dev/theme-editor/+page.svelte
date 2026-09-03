@@ -25,6 +25,7 @@
 		OVERRIDABLE_TOKENS,
 		type EditorState,
 	} from './EditorControls.svelte';
+	import GateReport from './GateReport.svelte';
 
 	const room = createRoom();
 	onMount(() => {
@@ -58,6 +59,7 @@
 		{ label: 'Tron', dark: 'tron-ice', white: 'tron-day' },
 		{ label: 'Miami', dark: 'miami-nights', white: 'miami-day' },
 		{ label: 'Laser', dark: 'laser-yellow', white: 'laser-day' },
+		{ label: 'Monokai', dark: 'monokai', white: 'monokai-day' },
 	];
 
 	let dark = $state(stateFromSpec('tron-ice', 'Draft'));
@@ -164,6 +166,9 @@
 					{medal}
 				/>
 			</div>
+			<div class="mt-4">
+				<GateReport theme={darkTheme} />
+			</div>
 			<div class="mt-3">
 				<pre
 					class="bg-surface-raised border-edge overflow-x-auto rounded-lg border p-3 text-[11px] leading-relaxed">{exportCode(
@@ -194,6 +199,9 @@
 					{rooms}
 					{medal}
 				/>
+			</div>
+			<div class="mt-4">
+				<GateReport theme={whiteTheme} />
 			</div>
 			<div class="mt-3">
 				<pre

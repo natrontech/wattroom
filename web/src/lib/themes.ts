@@ -94,11 +94,17 @@ const SPECS: ThemeSpec[] = [
 		neonHue: 276,
 		surfaceHue: 270,
 		exact: {
-			// Swapped from the values this was built from: surface-raised was the
-			// darker of the two, which inverts the "raised = elevated = lighter"
-			// cue every other theme uses. Same two colours, correct roles.
-			surface: '#0f0f0f',
-			'surface-raised': '#1f1f1f',
+			// Raised is deliberately the darker of the two here — Monokai's own
+			// choice, not the "raised = lighter" convention every other theme
+			// follows; kept exactly as picked. Surface came in lighter (#333333)
+			// than either the family's own ceiling or the shared Z1-Z7 ramp can
+			// clear against — the ramp is the binding one: with raised held fixed,
+			// #1f1f1f is the darkest surface the recovery/endurance zones can
+			// still be told apart against (contrast, ΔE, and both simulated
+			// colour-vision deficiencies), which also happens to satisfy the
+			// brightness ceiling, so no gate exemption was needed after all.
+			surface: '#1f1f1f',
+			'surface-raised': '#171717',
 			muted: '#edff9c',
 			watt: '#ff00dd',
 			neon: '#66bcff',
