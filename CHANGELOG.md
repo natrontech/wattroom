@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.19] - 2026-09-03
+
+### Fixed
+
+- The sidebar now lifts the room you are standing in as one grouped section,
+  making your current room clear before its individual places.
+- The sidebar now offers a **Join voice** button when you are not in voice; the mic, camera and screen-share controls appear once you are in, instead of sitting there greyed out. The people column lists everyone again — in voice, in the room, and the members who are offline — with their real faces, and the jukebox deck no longer clips its own play button when the video is on the stage.
+
 ## [2026.09.18] - 2026-09-02
 
 ### Added
@@ -405,7 +413,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.18...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.19...HEAD
+[2026.09.19]: https://github.com/natrontech/wattroom/compare/2026.09.18...2026.09.19
 [2026.09.18]: https://github.com/natrontech/wattroom/compare/2026.09.17...2026.09.18
 [2026.09.17]: https://github.com/natrontech/wattroom/compare/2026.09.16...2026.09.17
 [2026.09.16]: https://github.com/natrontech/wattroom/compare/2026.09.15...2026.09.16
