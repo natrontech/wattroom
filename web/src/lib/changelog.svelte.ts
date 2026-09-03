@@ -7,14 +7,21 @@
  * - silent on "dev" builds, which are not releases (ADR-0019)
  * - silent when the running version has no changelog section
  * The caller decides *where* it appears; ux.md decides it is never mid-ride.
+ *
+ * Several releases can land between two visits (#631). The newest is announced
+ * in full; the rest are counted, and their actions still apply — otherwise
+ * whatever a missed release offered is never offered at all.
  */
 import { api } from './api';
 import {
+	actionsFor,
 	parseChangelog,
 	releasedOnly,
 	releaseToAnnounce,
+	skippedReleases,
 	type Release,
 } from './changelog';
+import { RELEASE_ACTIONS, type ReleaseAction } from './release-actions';
 
 const SEEN = 'wattroom.seen-version.v1';
 
@@ -38,6 +45,8 @@ let releases = $state<Release[] | null>(null);
 let failed = $state(false);
 let version = $state<string | null>(null);
 let unseen = $state<Release | null>(null);
+let skipped = $state<Release[]>([]);
+let actions = $state<ReleaseAction[]>([]);
 let loading = false;
 
 export const changelog = {
@@ -52,6 +61,14 @@ export const changelog = {
 	/** The release to announce, if this load is the first to see it. */
 	get unseen() {
 		return unseen;
+	},
+	/** Releases that landed between the announced one and the rider's last visit. */
+	get skipped() {
+		return skipped;
+	},
+	/** One-tap offers from the announced release and the skipped ones. */
+	get actions() {
+		return actions;
 	},
 	get failed() {
 		return failed;
@@ -77,6 +94,15 @@ export const changelog = {
 			// A first visit records where the rider came in and says nothing.
 			if (seen === null && version) writeSeen(version);
 			unseen = releaseToAnnounce(version, seen, releases);
+			skipped = skippedReleases(version, seen, releases);
+			// Availability is read once, here. A rider already on the theme an
+			// action offers never sees that button; one who taps it keeps it,
+			// disabled, instead of watching it vanish under their finger.
+			actions = unseen
+				? actionsFor(unseen, skipped, RELEASE_ACTIONS).filter((a) =>
+						a.available(),
+					)
+				: [];
 		} catch {
 			failed = true;
 		} finally {
@@ -88,5 +114,7 @@ export const changelog = {
 	dismiss() {
 		if (version) writeSeen(version);
 		unseen = null;
+		skipped = [];
+		actions = [];
 	},
 };

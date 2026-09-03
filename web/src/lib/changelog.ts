@@ -84,17 +84,89 @@ export function releaseToAnnounce(
 	return releases.find((r) => r.version === current) ?? null;
 }
 
-/** "8 added · 1 changed · 1 security" — enough for a glance from a bike. */
-export function summarize(release: Release): string {
-	return release.sections
-		.map((s) => `${s.items.length} ${s.heading.toLowerCase()}`)
-		.join(' · ');
-}
-
 /** Split on backticks so a call site can render the odd runs as code. */
 export function inlineParts(text: string): { code: boolean; text: string }[] {
 	return text
 		.split('`')
 		.map((part, i) => ({ code: i % 2 === 1, text: part }))
 		.filter((part) => part.text !== '');
+}
+
+/**
+ * The releases a rider never got a notice for — everything between the one
+ * being announced and the last one they saw (#631). WattRoom ships
+ * continuously, so someone who rides once a fortnight comes back across
+ * several tags; the notice announces the newest and counts these.
+ *
+ * The list is newest-first, so "between" is an index span. A stored version
+ * the changelog does not know, and a stored version *newer* than the running
+ * one (a rollback — ADR-0019 makes that an image tag away), both yield
+ * nothing rather than a guess.
+ */
+export function skippedReleases(
+	current: string | null,
+	seen: string | null,
+	releases: Release[],
+): Release[] {
+	if (current === null || seen === null || seen === current) return [];
+	const announced = releases.findIndex((r) => r.version === current);
+	const last = releases.findIndex((r) => r.version === seen);
+	if (announced === -1 || last === -1 || last <= announced) return [];
+	return releases.slice(announced + 1, last);
+}
+
+/**
+ * The actions a notice carries: those introduced by the release being
+ * announced, plus any from the releases the rider skipped past. Without the
+ * second half, whatever a missed release shipped is never offered at all.
+ */
+export function actionsFor<T extends { version: string }>(
+	announced: Release,
+	skipped: Release[],
+	actions: T[],
+): T[] {
+	const news = new Set([announced.version, ...skipped.map((r) => r.version)]);
+	return actions.filter((a) => news.has(a.version));
+}
+
+/**
+ * A period only ends a sentence when whitespace follows it and it is not
+ * inside a backtick run — `.fit` and `deploy/` are why. The floor keeps an
+ * abbreviation ("e.g. ") from truncating an entry to three words.
+ */
+const SENTENCE_FLOOR = 30;
+
+/** The first sentence of an entry — the notice has room for one line each. */
+export function headline(item: string): string {
+	let code = false;
+	for (let i = 0; i < item.length; i++) {
+		if (item[i] === '`') code = !code;
+		if (code || item[i] !== '.' || i < SENTENCE_FLOOR) continue;
+		const next = item[i + 1];
+		if (next === undefined) return item;
+		if (/\s/.test(next)) return item.slice(0, i + 1);
+	}
+	return item;
+}
+
+export interface Highlight {
+	/** The section it came from — "Added", "Fixed". */
+	heading: string;
+	text: string;
+}
+
+/**
+ * What the release says, short enough to read from a bike: the opening
+ * sentence of each entry in changelog order (Added first), capped, with the
+ * remainder counted so the link to the rest is an offer rather than a
+ * surprise.
+ */
+export function highlights(
+	release: Release,
+	limit: number,
+): { lines: Highlight[]; more: number } {
+	const all = release.sections.flatMap((s) =>
+		s.items.map((item) => ({ heading: s.heading, text: headline(item) })),
+	);
+	return { lines: all.slice(0, limit), more: Math.max(0, all.length - limit) };
 }
