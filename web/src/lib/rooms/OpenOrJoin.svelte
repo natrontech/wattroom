@@ -15,10 +15,16 @@
 	const invalidCode = $derived(
 		joinCode.length > 0 && !/^[A-Z0-9]{0,6}$/i.test(joinCode),
 	);
-	// docs/SPEC.md ownership cap: at 3 owned rooms the affordance disables with
-	// the reason, instead of a 409 on click (ux.md capability gating).
+	// docs/SPEC.md ownership cap: at the cap the affordance disables with the
+	// reason, instead of a 409 on click (ux.md capability gating). The number
+	// is the server's, carried on the room list (#603) — nothing here may
+	// disagree with what POST /api/rooms would actually do. 0 means the list
+	// has not landed yet: gate open, and the 409 still backs it up.
+	const owned = $derived(
+		presence.rooms.filter((room) => room.role === 'owner').length,
+	);
 	const ownedOut = $derived(
-		presence.rooms.filter((room) => room.role === 'owner').length >= 3,
+		presence.maxOwned > 0 && owned >= presence.maxOwned,
 	);
 
 	async function createRoom() {
@@ -77,7 +83,7 @@
 				>
 				{#if ownedOut}
 					<p class="text-muted mt-2 text-xs">
-						You own 3 rooms — the cap. Delete one to open another.
+						You own {owned} rooms — the cap. Delete one to open another.
 					</p>
 				{/if}
 			</form>

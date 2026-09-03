@@ -246,7 +246,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// deleting a room frees the slot. 409 — the state, not the request, refuses.
 	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), user.ID); err == nil && owned >= maxOwnedRooms {
 		httpx.WriteError(w, http.StatusConflict, "conflict",
-			"You already own 3 rooms — delete one to open another.")
+			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
 		return
 	}
 
@@ -336,7 +336,10 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, entry)
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out})
+	// maxOwned rides the list so the frontend gates on the server's number
+	// instead of its own copy (#603) — a hint that disagrees with what the
+	// POST will do is worse than no hint.
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out, "maxOwned": maxOwnedRooms})
 }
 
 // handleGet renders differently by membership: members get everything (the

@@ -388,6 +388,11 @@ func TestOwnedRoomsCap(t *testing.T) {
 	if first["role"] != "owner" {
 		t.Fatalf("list entry missing role: %v", first)
 	}
+	// The frontend disables "Open room" on this number and phrases the hint
+	// from it (#603) — without it the cap is a literal in two codebases.
+	if owned, _ := body["maxOwned"].(float64); int(owned) != maxOwnedRooms {
+		t.Fatalf("list missing the cap the frontend gates on: %v", body["maxOwned"])
+	}
 	slug, _ := first["slug"].(string)
 	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
 		t.Fatalf("delete: %d", status)

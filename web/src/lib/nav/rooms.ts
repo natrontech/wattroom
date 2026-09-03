@@ -14,14 +14,23 @@ interface RoomEntry extends RoomPresence {
 	cheers?: string[];
 }
 
+/** The rail's rooms, and the ownership cap they are counted against. */
+export interface RailRoomList {
+	rooms: RailRoom[];
+	/** docs/SPEC.md's owned-room cap, as the server enforces it; 0 = unknown. */
+	maxOwned: number;
+}
+
 /**
  * The rail's room list with live presence — one fetch shape for the app
  * shell and the in-room rail (consolidated when the shell landed).
  */
-export async function fetchRailRooms(): Promise<RailRoom[]> {
-	const res = await api<{ rooms: RoomEntry[] }>('/api/rooms');
-	if (!res.ok) return [];
-	return res.data.rooms.map((room) => ({
+export async function fetchRailRooms(): Promise<RailRoomList> {
+	const res = await api<{ rooms: RoomEntry[]; maxOwned?: number }>(
+		'/api/rooms',
+	);
+	if (!res.ok) return { rooms: [], maxOwned: 0 };
+	const rooms = res.data.rooms.map((room) => ({
 		name: room.name,
 		icon: room.icon,
 		slug: room.slug,
@@ -41,4 +50,5 @@ export async function fetchRailRooms(): Promise<RailRoom[]> {
 		cheers: room.cheers,
 		role: room.role,
 	}));
+	return { rooms, maxOwned: res.data.maxOwned ?? 0 };
 }
