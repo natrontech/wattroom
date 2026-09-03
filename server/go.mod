@@ -13,6 +13,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/gzuidhof/tygo v0.2.21 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect

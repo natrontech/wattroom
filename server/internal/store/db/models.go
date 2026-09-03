@@ -98,6 +98,20 @@ type Membership struct {
 	JoinedAt pgtype.Timestamptz
 }
 
+type Playlist struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type PlaylistTrack struct {
+	PlaylistID pgtype.UUID
+	TrackID    pgtype.UUID
+	Position   int32
+}
+
 type Ride struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
@@ -158,6 +172,22 @@ type SessionRsvp struct {
 	SessionID pgtype.UUID
 	UserID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+}
+
+type Track struct {
+	ID          pgtype.UUID
+	Sha256      string
+	UploaderID  pgtype.UUID
+	SizeBytes   int64
+	DurationSec int32
+	Title       string
+	Artist      string
+	Album       string
+	Tags        []string
+	Year        *int32
+	Bpm         *int32
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type User struct {
