@@ -491,7 +491,7 @@
 				<button
 					onclick={() => onShare?.()}
 					class="flex flex-1 justify-center rounded py-1.5 {sharing
-						? 'border-danger/40 bg-danger/10 text-danger border'
+						? 'bg-danger/15 text-danger'
 						: 'text-muted/50 hover:text-muted'}"
 					title={sharing ? 'stop sharing your screen' : 'share your screen'}
 					aria-label={sharing
