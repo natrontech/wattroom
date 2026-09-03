@@ -1,16 +1,28 @@
 <script lang="ts">
 	import {
 		FastForward,
+		ListX,
 		Pause,
 		Play,
 		Plus,
 		Rewind,
+		SkipBack,
 		SkipForward,
 	} from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
-	import { addYouTubeUrl, thumbnailFor } from '$lib/room/jukebox-add';
+	import {
+		queueResolvedPlaylist,
+		queueVideo,
+		readLink,
+		thumbnailFor,
+		type PastedLink,
+	} from '$lib/room/jukebox-add';
+	import {
+		resolvePlaylist,
+		type ResolvedPlaylist,
+	} from '$lib/room/youtube-playlist';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
@@ -53,6 +65,11 @@
 	const queue = $derived(jukebox?.queue ?? []);
 	const history = $derived(jukebox?.history ?? []);
 
+	// A playlist on the deck (#615) — an entry is one exactly when it carries
+	// tracks, and it walks them without ever leaving its queue slot.
+	const setTracks = $derived(current?.tracks?.length ?? 0);
+	const setPosition = $derived((current?.index ?? 0) + 1);
+
 	// ── The transport row (#114): the room's playhead, on server time. ───────
 	let nowMs = $state(serverNow());
 	$effect(() => {
@@ -91,10 +108,24 @@
 				onSelect: () => send({ action: playing ? 'pause' : 'play' }),
 			},
 			{
-				label: 'Skip',
+				label: 'Back',
+				icon: SkipBack,
+				onSelect: () => send({ action: 'back' }),
+			},
+			{
+				label: setTracks ? 'Skip this track' : 'Skip',
 				icon: SkipForward,
 				onSelect: () => send({ action: 'skip' }),
 			},
+			...(setTracks
+				? [
+						{
+							label: 'Skip the whole playlist',
+							icon: ListX,
+							onSelect: () => send({ action: 'skipPlaylist' }),
+						} satisfies MenuEntry,
+					]
+				: []),
 		];
 	}
 
@@ -105,13 +136,92 @@
 	let showAllQueue = $state(false);
 	let url = $state('');
 	let addError = $state<string | null>(null);
+	let addNote = $state<string | null>(null);
+
+	// A link that names a video AND the playlist it sits in (#615): only the
+	// person who pasted it knows which they meant, so ask. There is no 95 %
+	// answer here, which is what makes this a question and not a setting.
+	let asking = $state<Extract<PastedLink, { kind: 'both' }> | null>(null);
+	let set = $state<ResolvedPlaylist | null>(null);
+	let setError = $state<string | null>(null);
+	let busy = $state(false);
+
+	function reset() {
+		url = '';
+		asking = null;
+		set = null;
+		setError = null;
+	}
+
+	/** Read the playlist the moment one is in play, so the choice can say how
+	 *  long it is — "the whole playlist" is not a decision until you know. */
+	async function readSet(playlistId: string): Promise<ResolvedPlaylist | null> {
+		setError = null;
+		try {
+			const resolved = await resolvePlaylist(playlistId);
+			if (!resolved.tracks.length) throw new Error('empty');
+			return resolved;
+		} catch {
+			setError =
+				'That playlist could not be read — it may be private, unlisted or empty.';
+			return null;
+		}
+	}
+
+	function queueSet(resolved: ResolvedPlaylist) {
+		queueResolvedPlaylist(resolved, send);
+		addNote = resolved.truncated
+			? `Queued the first ${resolved.tracks.length} tracks — the player reads no further into a playlist.`
+			: null;
+		reset();
+	}
+
 	async function addFromUrl() {
 		addError = null;
-		if (!(await addYouTubeUrl(url, send))) {
-			addError = 'That does not look like a YouTube link or video id.';
+		addNote = null;
+		const link = readLink(url);
+		if (link.kind === 'error') {
+			addError = link.message;
 			return;
 		}
-		url = '';
+		if (link.kind === 'video') {
+			await queueVideo(link.videoId, link.startSec, send);
+			reset();
+			return;
+		}
+		if (link.kind === 'both') {
+			// Ask, and start reading the playlist behind the question.
+			asking = link;
+			set = null;
+			void readSet(link.playlistId).then((r) => {
+				if (asking?.playlistId === link.playlistId) set = r;
+			});
+			return;
+		}
+		busy = true;
+		const resolved = await readSet(link.playlistId);
+		busy = false;
+		if (!resolved) {
+			addError = setError;
+			return;
+		}
+		queueSet(resolved);
+	}
+
+	/** The paster picked the playlist — it may still be resolving. */
+	async function chooseSet() {
+		if (!asking) return;
+		if (set) return queueSet(set);
+		busy = true;
+		const resolved = await readSet(asking.playlistId);
+		busy = false;
+		if (resolved) queueSet(resolved);
+	}
+
+	async function chooseVideo() {
+		if (!asking) return;
+		await queueVideo(asking.videoId, asking.startSec, send);
+		reset();
 	}
 </script>
 
@@ -184,11 +294,30 @@
 			</div>
 			<!-- The hint sits on the words, never over the player (RMF). -->
 			<div class="min-w-0" title={MENU_HINT}>
+				{#if setTracks}
+					<!-- Where the room is inside the set, before the track's own
+					     name: the playlist is the thing that is on. -->
+					<div class="mb-1 min-w-0">
+						<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
+							<span class="truncate">{current.playlistTitle}</span>
+							<span class="shrink-0 font-mono tabular-nums"
+								>{setPosition}/{setTracks}</span
+							>
+						</p>
+						<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
+							<span
+								class="bg-neon block h-full rounded-full"
+								style="width: {(setPosition / setTracks) * 100}%"
+							></span>
+						</span>
+					</div>
+				{/if}
 				<p class="truncate text-sm leading-tight font-medium">
 					{current.title}
 				</p>
 				<p class="text-muted mt-0.5 truncate text-[11px]">
-					queued by {current.addedBy}
+					{setTracks ? 'playlist queued by' : 'queued by'}
+					{current.addedBy}
 				</p>
 			</div>
 
@@ -230,7 +359,14 @@
 			<!-- Mid-ride transport: big targets, no precision gestures. Play is the
 			     one filled control; the rest are quiet. Every button commands the
 			     ROOM — the deck is shared. -->
-			<div class="flex min-w-0 items-center justify-center gap-1">
+			<div class="flex min-w-0 flex-wrap items-center justify-center gap-1">
+				<button
+					onclick={() => send({ action: 'back' })}
+					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+					aria-label={setTracks
+						? 'start this track over, or step back through the playlist'
+						: 'start this track over'}><SkipBack size={17} /></button
+				>
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed - 30)}
@@ -260,8 +396,20 @@
 				<button
 					onclick={() => send({ action: 'skip' })}
 					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
-					aria-label="skip to the next track"><SkipForward size={17} /></button
+					aria-label={setTracks
+						? 'skip to the next track in the playlist'
+						: 'skip to the next track'}><SkipForward size={17} /></button
 				>
+				{#if setTracks}
+					<!-- The escape hatch that makes a long playlist safe to queue:
+					     drop the rest of it and move the room on. Only rendered
+					     when there is a playlist to leave (ux.md). -->
+					<button
+						onclick={() => send({ action: 'skipPlaylist' })}
+						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						aria-label="skip the whole playlist"><ListX size={17} /></button
+					>
+				{/if}
 			</div>
 		</div>
 	{:else}
@@ -285,12 +433,44 @@
 			aria-label="add a track by link"
 		/>
 		<button
-			disabled={!url.trim()}
+			disabled={!url.trim() || busy}
 			class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
 			aria-label="add to the queue"><Plus size={14} /></button
 		>
 	</form>
+
+	{#if asking}
+		<!-- Two big targets, inline: a modal mid-ride is a precision gesture
+		     with extra steps. The playlist reads itself behind the question so
+		     the button can say how much you would be queueing. -->
+		<div class="border-neon/30 bg-surface min-w-0 rounded-lg border p-2">
+			<p class="text-muted mb-2 text-[11px] leading-snug">
+				That link sits inside a playlist.
+			</p>
+			<div class="flex min-w-0 gap-1.5">
+				<button
+					onclick={chooseVideo}
+					disabled={busy}
+					class="btn btn-secondary btn-xs min-w-0 flex-1 disabled:opacity-40"
+					>Just this video</button
+				>
+				<button
+					onclick={chooseSet}
+					disabled={busy || !!setError}
+					class="btn btn-secondary btn-xs min-w-0 flex-1 disabled:opacity-40"
+				>
+					{#if setError}The playlist{:else if set}The whole playlist · {set
+							.tracks.length}{:else}The whole playlist…{/if}
+				</button>
+			</div>
+			{#if setError}
+				<p class="text-danger mt-1.5 text-[11px] leading-snug">{setError}</p>
+			{/if}
+		</div>
+	{/if}
+
 	{#if addError}<p class="text-danger text-xs">{addError}</p>{/if}
+	{#if addNote}<p class="text-muted text-[11px] leading-snug">{addNote}</p>{/if}
 
 	{#if queue.length}
 		<div class="min-w-0">
