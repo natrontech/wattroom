@@ -27,6 +27,7 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
+	import { openMember } from '$lib/nav/open-member';
 	import { Menu } from '@lucide/svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
@@ -134,6 +135,12 @@
 		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
 	);
 
+	// A rider named in a room's people line (#540). The rail knows the name and
+	// the slug; the id — and so their page — comes from the room's member list,
+	// which is member-gated server-side.
+	const showMember = (slug: string, name: string) =>
+		void openMember(slug, name, (href) => void goto(href));
+
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
@@ -233,6 +240,7 @@
 					connectedSlug={roomConnection.current.slug}
 					live={roomConnection.current.live.tick?.state.phase === 'running'}
 					onLeave={leaveRoom}
+					onMember={showMember}
 					showAv={!!account.me?.avEnabled}
 					voiceStatus={av.status}
 					micOn={av.micOn}
@@ -251,6 +259,7 @@
 					pathname={page.url.pathname}
 					rooms={shownRooms}
 					activeSlug={roomSlug}
+					onMember={showMember}
 				/>
 			{/if}
 		</div>
