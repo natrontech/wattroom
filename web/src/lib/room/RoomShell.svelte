@@ -682,6 +682,7 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
+		{members}
 		{missed}
 		onOpenChat={() => void goto(`/r/${slug}/chat`)}
 		onCheer={(emoji) => live.cheer(emoji)}
