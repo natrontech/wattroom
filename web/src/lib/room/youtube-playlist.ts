@@ -9,7 +9,7 @@ import { withYouTubeApi, type YTPlayer } from '$lib/room/youtube-api';
  * the ids via `getPlaylist()`. That keeps the server knowing nothing about
  * YouTube (docs/ARCHITECTURE.md's seam), costs no API key and no quota, and
  * works the same for a self-hoster as for wattroom.ch. `playlistItems.list`
- * stays the documented upgrade if this ever proves flaky (ADR-0025).
+ * stays the documented upgrade if this ever proves flaky (ADR-0026).
  */
 
 /** The player loads at most this many of a playlist's videos. */

@@ -1,4 +1,4 @@
-# ADR-0025: A YouTube playlist is one queue entry, resolved by the client
+# ADR-0026: A YouTube playlist is one queue entry, resolved by the client
 
 - Status: accepted
 - Date: 2026-09-03
