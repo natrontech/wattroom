@@ -174,11 +174,25 @@ const SPECS: ThemeSpec[] = [
 		id: 'monokai-day',
 		identity: 'monokai',
 		name: 'Monokai Day',
-		note: 'The desk half — formula-derived, not hand-tuned like the cave.',
+		note: 'Warm paper, cyan-violet chrome, magenta on the numbers.',
 		family: 'white',
 		wattHue: 200,
 		neonHue: 276,
 		surfaceHue: 270,
+		exact: {
+			surface: '#f8efe7',
+			// With `surface` held exactly as picked, this is the lightest
+			// `surface-raised` the shared zone ramp can still separate against —
+			// notably closer to `surface` than the value this was built from
+			// (#e0dad9), which left three zone checks failing (one contrast, two
+			// colour-vision-deficiency separation). No smaller move of either
+			// token, alone or together, cleared them.
+			'surface-raised': '#f3efec',
+			muted: '#504e56',
+			watt: '#ce4770',
+			neon: '#006dc7',
+			ink: '#000000',
+		},
 	},
 ];
 
