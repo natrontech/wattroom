@@ -17,10 +17,10 @@ Requirements: Go 1.26+, Node 22+, pnpm, Docker.
 git clone https://github.com/natrontech/wattroom && cd wattroom
 make infra        # Postgres + LiveKit dev containers
 make dev-server   # terminal 1: Go with hot reload (air) on :8080
-make dev-web      # terminal 2: Vite on :5173, proxying /api and /ws to :8080
+make dev-web      # terminal 2: Vite on :5174, proxying /api and /ws to :8080
 ```
 
-Open http://localhost:5173. No smart trainer required — use the simulated trainer (dev flag; lands in M0). If you own an FTMS trainer, real-hardware testing is gold: note your trainer model in PRs that touch the BLE layer.
+Open http://localhost:5174. (Working in a `git worktree`? Ports and the dev database are derived from the worktree path so parallel checkouts don't collide — both commands print theirs on the first line, and `make dev-env` prints them without starting anything.) No smart trainer required — use the simulated trainer (dev flag; lands in M0). If you own an FTMS trainer, real-hardware testing is gold: note your trainer model in PRs that touch the BLE layer.
 
 On Windows/WSL, `make infra` can fail with `Ports are not available … bind: An attempt was made to access a socket in a way forbidden by its access permissions` for a UDP port. That is Windows reserving port ranges for Hyper-V/WSL at boot, and the reservation landing on LiveKit's media range — it varies per machine and per reboot, so it looks like a flaky Docker problem when it is a port one. `netsh int ipv4 show excludedportrange protocol=udp` lists the reserved ranges; if 51000–51050 is among them on your machine, shift the range in docker-compose.yml's three places (`port_range_start`, `port_range_end`, and the `ports:` mapping) to one that is free.
 

@@ -17,7 +17,7 @@ audio is what you are verifying. See AGENTS.md, Hard rules.
    - `curl localhost:8080/api/healthz` → `ok`
    - Open `http://localhost:8080` — the page loads and "ping server" returns ok (proves SPA embed + API wiring)
    - SPA fallback: `curl -s localhost:8080/anything` returns index.html
-3. Dev path (for iterating on the change): `make infra` once, then `make dev-server` + `make dev-web`, exercise the changed flow at `http://localhost:5173`.
+3. Dev path (for iterating on the change): `make infra` once, then `make dev-server` + `make dev-web`, exercise the changed flow at the URL `make dev-web` prints on its first line (`http://localhost:5174` in the main clone; a worktree derives its own port and its own database — `make dev-env`).
 4. WS/room changes: open two browser tabs on the same room route and confirm both receive ticks; kill one tab and confirm the server logs the leave and the other tab keeps ticking.
 5. Protocol changes: `make protocol` then `git diff --exit-code web/src/lib/protocol.ts` must show the regenerated file was committed.
 6. BLE-layer changes: run with the simulated trainer (dev flag). Real-hardware verification (Kickr Core) is required before merge only if the FTMS/WCPS encoding itself changed — say so in the PR either way.
