@@ -43,6 +43,16 @@ test('the room chat scrolls back to its oldest line', async ({ page }) => {
 	try {
 		await page.goto(`/r/${slug}/chat`);
 		const log = page.getByTestId('thread-log');
+		// Read live and polled, never sampled once: messages land in a burst — a
+		// whole history at reload — so the newest line paints while
+		// `stickToBottom` is still chasing the growing content, and a single read
+		// catches the log a line short of the bottom it does reach (#537).
+		const overflow = () =>
+			log.evaluate((node) => node.scrollHeight - node.clientHeight);
+		const fromBottom = () =>
+			log.evaluate(
+				(node) => node.scrollHeight - node.clientHeight - node.scrollTop,
+			);
 		const draft = page.getByPlaceholder(`Message ${name}…`);
 		await expect(draft).toBeVisible();
 
@@ -57,12 +67,8 @@ test('the room chat scrolls back to its oldest line', async ({ page }) => {
 		await expect(log.getByTestId('thread-message')).toHaveCount(LINES);
 
 		// The log outgrew its box, and it is the newest line we are looking at.
-		const box = await log.evaluate((node) => ({
-			scrollTop: node.scrollTop,
-			overflow: node.scrollHeight - node.clientHeight,
-		}));
-		expect(box.overflow).toBeGreaterThan(0);
-		expect(box.scrollTop).toBe(box.overflow);
+		await expect.poll(overflow).toBeGreaterThan(0);
+		await expect.poll(fromBottom).toBe(0);
 
 		// The bug in one assertion: scrolling up reaches the first line.
 		await log.evaluate((node) => (node.scrollTop = 0));
@@ -79,12 +85,8 @@ test('the room chat scrolls back to its oldest line', async ({ page }) => {
 		// tick, which is the case a live-only check never exercises.
 		await page.reload();
 		await expect(page.getByText(say(LINES), { exact: true })).toBeVisible();
-		const reloaded = await log.evaluate((node) => ({
-			scrollTop: node.scrollTop,
-			overflow: node.scrollHeight - node.clientHeight,
-		}));
-		expect(reloaded.overflow).toBeGreaterThan(0);
-		expect(reloaded.scrollTop).toBe(reloaded.overflow);
+		await expect.poll(overflow).toBeGreaterThan(0);
+		await expect.poll(fromBottom).toBe(0);
 		await log.evaluate((node) => (node.scrollTop = 0));
 		await expect(page.getByText(say(1), { exact: true })).toBeInViewport();
 	} finally {
