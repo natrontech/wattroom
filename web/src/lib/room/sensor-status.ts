@@ -2,7 +2,7 @@ import type { SlotState } from '$lib/components/DeviceSlot.svelte';
 import type { SensorKind } from '$lib/ble/sensor';
 import type { SensorPairing } from '$lib/protocol';
 import type { createRide } from '$lib/room/ride.svelte';
-import { sensors } from '$lib/sensors.svelte';
+import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
 
 /**
  * The pairing state machine, in one place: `/pair` and the Training place's
@@ -59,6 +59,26 @@ export function pairedElsewhere(
 	const where = pairing?.elsewhere?.[kind];
 	if (!where) return undefined;
 	return where === here ? 'in another tab' : `on your ${where}`;
+}
+
+/**
+ * Every kind the rider holds on another screen, ready to render (#610) —
+ * what the paired-devices grid takes, so the grid itself needs to know
+ * nothing about sockets or claims.
+ *
+ * Empty when there is no room connection, which is how the solo `/ride` and
+ * `/ramp` screens keep their pair buttons.
+ */
+export function pairedElsewhereAll(
+	pairing: SensorPairing | undefined,
+	here: string,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const kind of ['trainer', ...SENSOR_KINDS] as const) {
+		const where = pairedElsewhere(kind, pairing, here);
+		if (where) out[kind] = where;
+	}
+	return out;
 }
 
 /** Live-ness is the honest confirmation: paired but silent is not working. */
