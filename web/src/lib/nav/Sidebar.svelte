@@ -158,11 +158,15 @@
 					     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
 				{@const subline = railSubline(room, open)}
+				<!-- Neutral, not neon: neon is chrome, and the room you're standing
+				     in is a selection state, not structure. Matches the identical
+				     job one indent in (the open place's row, below) — ink was
+				     already the answer there. -->
 				<li
 					class="rounded-md border-l-2 {here
-						? 'border-neon/70 bg-neon/10'
+						? 'border-ink/40 bg-ink/5'
 						: browsing
-							? 'border-neon/35 bg-neon/5'
+							? 'border-ink/15'
 							: 'border-transparent'}"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = places.map((place) => ({
