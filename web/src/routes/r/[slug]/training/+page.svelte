@@ -12,6 +12,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TrainerButton from '$lib/room/TrainerButton.svelte';
@@ -47,7 +48,7 @@
 	<!-- Capability gating (ux.md): nothing to render until a session runs, so
 	     teach rather than show an empty instrument. -->
 	<div class="grid h-full place-items-center px-6">
-		<div class="max-w-sm text-center">
+		<div class="w-full max-w-2xl text-center">
 			<p class="text-muted text-sm">
 				{#if device.spectator}
 					<!-- A phone has no trainer to pair and no session to start, so
@@ -56,13 +57,15 @@
 					Nothing is running yet. This is where the room's numbers appear the moment
 					someone starts the session — follow any rider from the crew strip.
 				{:else}
-					Nothing is running yet. Training is where your numbers live once
-					someone starts a session.
+					Nothing is running yet. Get your equipment paired below, then start
+					when you're ready.
 				{/if}
 			</p>
-			<div class="mt-4 flex flex-wrap justify-center gap-2">
+			<div class="mt-5">
+				<SensorOverview />
+			</div>
+			<div class="mt-5 flex flex-wrap justify-center gap-2">
 				<SessionControls />
-				<TrainerButton />
 			</div>
 		</div>
 	</div>

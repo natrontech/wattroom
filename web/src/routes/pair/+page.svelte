@@ -4,6 +4,12 @@
 	import type { SensorKind } from '$lib/ble/sensor';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import {
+		type Pairing,
+		sensorReading,
+		sensorState,
+		trainerState,
+	} from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 
 	// The trainer is paired in a ROOM (#521) and this page could not see it, so
@@ -49,19 +55,18 @@
 	const kinds = Object.keys(slots) as SensorKind[];
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
-	let pairing = $state<SensorKind | 'trainer' | null>(null);
+	let pairing = $state<Pairing>(null);
 
 	/** #520's fault states, said in words a rider can act on. */
-	const trainerState = $derived(
-		pairing === 'trainer'
-			? ('connecting' as const)
-			: ride?.trainer
-				? ride.fault === 'reconnecting'
-					? ('connecting' as const)
-					: ('connected' as const)
-				: ride?.error
-					? ('failed' as const)
-					: ('idle' as const),
+	const trainerSlotState = $derived(
+		trainerState(
+			{
+				trainer: ride?.trainer ?? null,
+				fault: ride?.fault ?? null,
+				error: ride?.error ?? null,
+			},
+			pairing,
+		),
 	);
 
 	async function pairTrainer() {
@@ -75,25 +80,6 @@
 		pairing = kind;
 		await sensors.pair(kind, simulated);
 		pairing = null;
-	}
-
-	function slotState(kind: SensorKind) {
-		if (pairing === kind) return 'connecting' as const;
-		const slot = sensors.slot(kind);
-		if (slot.status === 'connected') return 'connected' as const;
-		if (slot.error) return 'failed' as const;
-		return 'idle' as const;
-	}
-
-	/** Live-ness is the honest confirmation: paired but silent is not working. */
-	function reading(kind: SensorKind): string | undefined {
-		const latest = sensors.slot(kind).latest;
-		if (!latest) return undefined;
-		if (latest.heartRate !== undefined) return `${latest.heartRate} bpm`;
-		if (latest.watts !== undefined)
-			return `${latest.watts} W · ${latest.cadence ?? 0} rpm`;
-		if (latest.cadence !== undefined) return `${latest.cadence} rpm`;
-		return undefined;
 	}
 </script>
 
@@ -129,7 +115,7 @@
 						? 'FTMS · 0x1826 · no watts yet — turn the cranks'
 						: trainerSlot.protocol,
 			}}
-			state={trainerState}
+			state={trainerSlotState}
 			supported={supported && !!ride}
 			onPair={() => void pairTrainer()}
 			onForget={() => ride?.unpair()}
@@ -145,9 +131,9 @@
 					...slots[kind],
 					device: slot.name,
 					// Once it is live, the number matters more than the protocol.
-					protocol: reading(kind) ?? slots[kind].protocol,
+					protocol: sensorReading(kind) ?? slots[kind].protocol,
 				}}
-				state={slotState(kind)}
+				state={sensorState(kind, pairing)}
 				{supported}
 				onPair={() => pair(kind)}
 				onForget={() => sensors.forget(kind)}
