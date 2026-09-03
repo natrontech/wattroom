@@ -17,6 +17,6 @@ export interface Place {
 
 export const PLACES: Place[] = [
 	{ icon: Trophy, tone: 'text-neon', label: 'First place' },
-	{ icon: Medal, tone: 'text-neon/75', label: 'Second place' },
-	{ icon: Award, tone: 'text-neon/50', label: 'Third place' },
+	{ icon: Medal, tone: 'text-neon/80', label: 'Second place' },
+	{ icon: Award, tone: 'text-neon/60', label: 'Third place' },
 ];

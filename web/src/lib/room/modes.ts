@@ -3,7 +3,7 @@ import {
 	Flame,
 	Target,
 	TrendingUp,
-	Trophy,
+	Star,
 	Users,
 	Zap,
 } from '@lucide/svelte';
@@ -62,7 +62,7 @@ export const GAME_MODES: GameMode[] = [
 		label: 'Points Race',
 		blurb:
 			'Sprint points, execution points, zone-streak points — most points wins.',
-		icon: Trophy,
+		icon: Star,
 	},
 	{
 		id: 'team-relay',
