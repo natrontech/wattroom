@@ -4,7 +4,9 @@
 	import type { SensorKind } from '$lib/ble/sensor';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { deviceWord } from '$lib/room/sensor-claim';
 	import {
+		pairedElsewhere,
 		type Pairing,
 		sensorReading,
 		sensorState,
@@ -16,6 +18,11 @@
 	// the one screen a rider opens to check their equipment was silent about the
 	// only device the ride depends on (#565).
 	const ride = $derived(roomConnection.current?.ride);
+	// And what the rider's OTHER screens hold (#610) — this is the screen they
+	// open to ask "what am I actually paired to", so answering only for this
+	// tab would be the same half-truth #565 fixed.
+	const pairing = $derived(roomConnection.current?.live.pairing);
+	const here = $derived(deviceWord());
 
 	// What each sensor buys the rider. Capability gating needs a reason, not a shrug
 	// (.claude/rules/ux.md) — and for two of these the honest answer is "probably
@@ -55,7 +62,7 @@
 	const kinds = Object.keys(slots) as SensorKind[];
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
-	let pairing = $state<Pairing>(null);
+	let busy = $state<Pairing>(null);
 
 	/** #520's fault states, said in words a rider can act on. */
 	const trainerSlotState = $derived(
@@ -65,21 +72,21 @@
 				fault: ride?.fault ?? null,
 				error: ride?.error ?? null,
 			},
-			pairing,
+			busy,
 		),
 	);
 
 	async function pairTrainer() {
 		if (!ride) return;
-		pairing = 'trainer';
+		busy = 'trainer';
 		await ride.ride(new FtmsTrainer());
-		pairing = null;
+		busy = null;
 	}
 
 	async function pair(kind: SensorKind, simulated = false) {
-		pairing = kind;
+		busy = kind;
 		await sensors.pair(kind, simulated);
-		pairing = null;
+		busy = null;
 	}
 </script>
 
@@ -117,10 +124,11 @@
 			}}
 			state={trainerSlotState}
 			supported={supported && !!ride}
+			elsewhere={pairedElsewhere('trainer', pairing, here)}
 			onPair={() => void pairTrainer()}
 			onForget={() => ride?.unpair()}
 		/>
-		{#if ride?.error && pairing !== 'trainer'}
+		{#if ride?.error && busy !== 'trainer'}
 			<p class="text-muted -mt-1 px-5 text-xs">{ride.error}</p>
 		{/if}
 
@@ -133,12 +141,13 @@
 					// Once it is live, the number matters more than the protocol.
 					protocol: sensorReading(kind) ?? slots[kind].protocol,
 				}}
-				state={sensorState(kind, pairing)}
+				state={sensorState(kind, busy)}
 				{supported}
+				elsewhere={pairedElsewhere(kind, pairing, here)}
 				onPair={() => pair(kind)}
 				onForget={() => sensors.forget(kind)}
 			/>
-			{#if slot.error && pairing !== kind}
+			{#if slot.error && busy !== kind}
 				<p class="text-muted -mt-1 px-5 text-xs">{slot.error}</p>
 			{/if}
 		{/each}

@@ -1,7 +1,12 @@
 import { getContext, setContext } from 'svelte';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
-import type { GameState, RoomEvent, SprintState } from '$lib/protocol';
+import type {
+	GameState,
+	RoomEvent,
+	SensorPairing,
+	SprintState,
+} from '$lib/protocol';
 import type { StageSource } from '$lib/room/stage';
 
 /**
@@ -59,6 +64,12 @@ export interface RoomContext {
 	readonly trainer: unknown;
 	readonly hrSource: 'heart-rate' | 'trainer' | null;
 	readonly rideError: string | null;
+	/**
+	 * Which sensors this tab holds, and where the rider's other screens hold
+	 * the rest (#610). Server truth — a place renders "paired on your phone"
+	 * from this, never from its own click.
+	 */
+	readonly pairing: SensorPairing | undefined;
 	pair(): void;
 	pairSimulated(): void;
 	unpair(): void;

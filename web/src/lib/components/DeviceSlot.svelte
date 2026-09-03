@@ -19,17 +19,27 @@
 		slot,
 		state,
 		supported,
+		elsewhere,
 		onPair,
 		onForget,
 	}: {
 		slot: Slot;
 		state: SlotState;
 		supported: boolean;
+		/**
+		 * Set when one of the rider's OTHER screens holds this sensor (#610),
+		 * to the phrase naming it — "on your phone". It takes the pair
+		 * button's place: the hub grants one screen per sensor, so pairing
+		 * here would connect and then be ignored.
+		 */
+		elsewhere?: string;
 		onPair: () => void;
 		onForget: () => void;
 	} = $props();
 
 	const busy = $derived(state === 'requesting' || state === 'connecting');
+	/** Only while this screen has nothing of its own to show. */
+	const taken = $derived(!!elsewhere && state !== 'connected');
 </script>
 
 <div class="panel p-5">
@@ -47,6 +57,14 @@
 				<p class="text-muted mt-0.5 font-mono text-[11px]">
 					{slot.protocol}{#if slot.battery}
 						· battery {slot.battery}%{/if}
+				</p>
+			{:else if taken}
+				<!-- Not an error and not an empty slot: the rider's kit is
+				     connected, just not to this screen. -->
+				<p class="mt-1 text-sm">Paired {elsewhere}</p>
+				<p class="text-muted mt-0.5 text-xs">
+					One screen at a time holds a sensor, so its watts can only ever come
+					from one place. Forget it there to pair it here.
 				</p>
 			{:else if state === 'requesting'}
 				<p class="text-muted mt-1 text-sm">
@@ -77,6 +95,9 @@
 						>Forget</button
 					>
 				</div>
+			{:else if taken}
+				<!-- Nothing to press: the sensor is held, and not by this screen. -->
+				<span class="bg-muted/40 h-2 w-2 rounded-full"></span>
 			{:else}
 				<!-- Never render a button that will fail: no Web Bluetooth, no live control. -->
 				<button

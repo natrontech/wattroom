@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { tick } from 'svelte';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 
 vi.mock('$lib/api', () => ({ api: async () => ({ ok: false }) }));
@@ -31,6 +32,13 @@ const fakeLive = {
 	chatReactions: {},
 	myReacts: {},
 	refusal: null,
+	// The connection claims this tab's sensors whenever the set changes
+	// (#610); recorded so a test can assert what the hub would be told.
+	claims: [] as { held: string[] }[],
+	pairing: {},
+	claimSensors(claim: { held: string[] }) {
+		this.claims.push(claim);
+	},
 	seedChat() {},
 	chat() {},
 	react() {},
@@ -108,6 +116,20 @@ describe('roomConnection', () => {
 
 		// A fresh join is a fresh ride — a different room is a different session.
 		expect(roomConnection.join('lounge').ride).not.toBe(connection.ride);
+	});
+
+	it('claims the trainer for this tab, and releases it on unpair', async () => {
+		// The claim is what stops a second screen pairing the same trainer and
+		// feeding a second stream of watts into one ride record (#610).
+		fakeLive.claims = [];
+		const connection = roomConnection.join('lounge');
+		await connection.ride.ride(new FakeTrainer());
+		await tick();
+		expect(fakeLive.claims.at(-1)?.held).toContain('trainer');
+
+		connection.ride.unpair();
+		await tick();
+		expect(fakeLive.claims.at(-1)?.held).not.toContain('trainer');
 	});
 });
 

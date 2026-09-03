@@ -9,6 +9,13 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
+// sock is one of a rider's screens. Metrics arrive from a socket rather than
+// from a bare rider id (#610): which screen holds the trainer claim decides
+// whose samples the room takes.
+func sock(riderID string) *client {
+	return &client{rider: protocol.Rider{ID: riderID}}
+}
+
 func TestRoomMetricsCoalescing(t *testing.T) {
 	rm := newRoom("test")
 
@@ -39,7 +46,7 @@ func TestRoomMetricsCoalescing(t *testing.T) {
 			rm.metrics = make(map[string]protocol.RiderMetrics)
 			for rider, samples := range tt.samples {
 				for _, s := range samples {
-					rm.setMetrics(protocol.Rider{ID: rider}, s)
+					rm.setMetrics(sock(rider), s)
 				}
 			}
 			for rider, watts := range tt.want {
@@ -55,7 +62,7 @@ func TestLeaveRemovesMetrics(t *testing.T) {
 	rm := newRoom("test")
 	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
-	rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200})
+	rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200})
 	rm.leave(c)
 	if _, ok := rm.metrics["jan"]; ok {
 		t.Error("metrics for departed rider should be removed")
@@ -83,7 +90,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	rm.session.state(time.Unix(20, 0)) // roll countdown into running
 
 	for seq := 1; seq <= 3; seq++ {
-		rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200, Seq: seq})
+		rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: seq})
 	}
 	// The socket dropped after seq 3; the client replays 2..6 from its buffer.
 	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{
@@ -162,14 +169,14 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 			rm.session.state(now.Add(countdownSeconds * time.Second))
 
 			for seq := 1; seq <= sent; seq++ {
-				rm.setMetrics(protocol.Rider{ID: "jan"}, protocol.RiderMetrics{Watts: 200, Seq: seq})
+				rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: seq})
 			}
 			if got := rm.record.count("jan"); got != sent {
 				t.Fatalf("setup recorded %d samples, want %d", got, sent)
 			}
 
 			for _, m := range tt.after {
-				rm.setMetrics(protocol.Rider{ID: "jan"}, m)
+				rm.setMetrics(sock("jan"), m)
 			}
 			if len(tt.replay) > 0 {
 				rm.backfill(protocol.Rider{ID: "jan"}, tt.replay)

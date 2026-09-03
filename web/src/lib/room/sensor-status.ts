@@ -1,5 +1,6 @@
 import type { SlotState } from '$lib/components/DeviceSlot.svelte';
 import type { SensorKind } from '$lib/ble/sensor';
+import type { SensorPairing } from '$lib/protocol';
 import type { createRide } from '$lib/room/ride.svelte';
 import { sensors } from '$lib/sensors.svelte';
 
@@ -35,6 +36,29 @@ export function sensorState(kind: SensorKind, pairing: Pairing): PairState {
 	if (slot.status === 'connected') return 'connected';
 	if (slot.error) return 'failed';
 	return 'idle';
+}
+
+/**
+ * The phrase for a sensor one of the rider's OTHER screens holds (#610), or
+ * undefined when this screen is free to pair it — "on your phone", "in
+ * another tab".
+ *
+ * Server truth, not a guess: the hub arbitrates the claim, so a tab that lost
+ * the race says so rather than showing a trainer it never got. Undefined
+ * whenever there is no room connection at all, which is why the solo `/ride`
+ * and `/ramp` screens keep behaving exactly as they always did.
+ *
+ * `here` is this screen's own word, because "paired on your desktop" while
+ * you are sitting at the desktop is a riddle rather than an answer.
+ */
+export function pairedElsewhere(
+	kind: SensorKind | 'trainer',
+	pairing: SensorPairing | undefined,
+	here: string,
+): string | undefined {
+	const where = pairing?.elsewhere?.[kind];
+	if (!where) return undefined;
+	return where === here ? 'in another tab' : `on your ${where}`;
 }
 
 /** Live-ness is the honest confirmation: paired but silent is not working. */
