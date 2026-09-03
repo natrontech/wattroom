@@ -85,6 +85,28 @@ const SPECS: ThemeSpec[] = [
 		wattLc: { l: 0.85, c: 0.19 },
 	},
 	{
+		id: 'monokai',
+		identity: 'monokai',
+		name: 'Monokai',
+		note: 'Editor-gray cave, cyan-violet chrome, magenta on the numbers.',
+		family: 'dark',
+		wattHue: 200,
+		neonHue: 276,
+		surfaceHue: 270,
+		exact: {
+			// Swapped from the values this was built from: surface-raised was the
+			// darker of the two, which inverts the "raised = elevated = lighter"
+			// cue every other theme uses. Same two colours, correct roles.
+			surface: '#0f0f0f',
+			'surface-raised': '#1f1f1f',
+			muted: '#edff9c',
+			watt: '#ff00dd',
+			neon: '#66bcff',
+			ink: '#ffffff',
+			paper: '#000000',
+		},
+	},
+	{
 		id: DEFAULT_WHITE_ID,
 		identity: 'outrun',
 		name: 'Outrun Day',
@@ -141,6 +163,16 @@ const SPECS: ThemeSpec[] = [
 		neonHue: 296,
 		surfaceHue: 301,
 		wattLc: { l: 0.6, c: 0.13 },
+	},
+	{
+		id: 'monokai-day',
+		identity: 'monokai',
+		name: 'Monokai Day',
+		note: 'The desk half — formula-derived, not hand-tuned like the cave.',
+		family: 'white',
+		wattHue: 200,
+		neonHue: 276,
+		surfaceHue: 270,
 	},
 ];
 

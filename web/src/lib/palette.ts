@@ -208,6 +208,16 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		z6: '',
 		z7: '',
 	};
+	// A theme that pins its own surfaces via `exact` (Outrun; any theme built
+	// mostly from real hex rather than hue rotation) must fit the zone ramp and
+	// danger against those actual surfaces, not the hue-derived ones every spec
+	// computes above — otherwise the fit targets a background the rider never
+	// sees. Harmless for Outrun (it also pins the ramp itself, so this fitted
+	// value is discarded at the final merge below), but load-bearing for a
+	// theme that pins surfaces without pinning the ramp.
+	if (spec.exact?.surface) tokens.surface = spec.exact.surface;
+	if (spec.exact?.['surface-raised'])
+		tokens['surface-raised'] = spec.exact['surface-raised'];
 	const backgrounds = [tokens.surface, tokens['surface-raised']];
 	const away = spec.family === 'dark' ? 'lighter' : 'darker';
 	tokens.danger = oklchToHex(
