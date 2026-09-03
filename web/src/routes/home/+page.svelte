@@ -20,7 +20,7 @@
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
-	import { summarize } from '$lib/changelog';
+	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -237,19 +237,7 @@
 	{/if}
 
 	{#if changelog.unseen}
-		<div class="mt-6">
-			<Banner tone="ok">
-				<span class="font-display font-bold">{changelog.unseen.version}</span>
-				is running — {summarize(changelog.unseen)}.
-				<a href="/whats-new" class="underline">See what changed</a>
-				{#snippet action()}
-					<button
-						onclick={() => changelog.dismiss()}
-						class="text-muted hover:text-ink text-xs underline">Dismiss</button
-					>
-				{/snippet}
-			</Banner>
-		</div>
+		<div class="mt-6"><WhatsNewNotice /></div>
 	{/if}
 
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
