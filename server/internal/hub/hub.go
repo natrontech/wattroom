@@ -205,6 +205,13 @@ type room struct {
 	// channel's participants; reset on start.
 	voiceNow map[string]struct{}
 	voiceMs  map[string]int64
+	// Sensor claims (#610): rider id → kind → the screen holding it. Bounded
+	// by riders present times the four kinds; see pairing.go for why the hub
+	// arbitrates something the browser owns.
+	claims map[string]map[string]holder
+	// Claim answers waiting for the tick goroutine to write them — the only
+	// writer per socket.
+	pendingPairing map[*client]protocol.SensorPairing
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
 	xp        XpKeeper
@@ -260,6 +267,11 @@ func newRoom(slug string) *room {
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
+	// Which tab this socket is, and the word its rider's other screens
+	// render for it (#610). Both arrive with the first sensor claim and are
+	// read under rm.mu like the rest of the socket's room state.
+	tab    string
+	device string
 }
 
 // Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
@@ -304,9 +316,17 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if err := wsjson.Read(ctx, conn, &msg); err != nil {
 			return
 		}
+		if msg.Sensors != nil {
+			// Claims are per rider and cost one comparison per kind, so they
+			// need no rate limit of their own — a client repeating itself
+			// changes nothing and queues nothing.
+			if rm.claimSensors(c, *msg.Sensors) {
+				rm.announcePairing(rider.ID)
+			}
+		}
 		if msg.Metrics != nil {
 			if m := *msg.Metrics; validMetrics(m) {
-				rm.setMetrics(rider, m)
+				rm.setMetrics(c, m)
 			}
 		}
 		if msg.Chat != nil {
@@ -930,6 +950,9 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		}
 		ridingKey := strings.Join(rm.ridingLocked(now()), "\n")
 		spoke := len(tick.Chat) > 0
+		// Claim answers ride out with this tick but not IN it (#610): a
+		// rider's device inventory is theirs, and the tick goes to the room.
+		pairing := rm.drainPairingLocked()
 		rm.mu.Unlock()
 		// Someone spoke: every sidebar's unread count for this room just went
 		// stale, and a rider who is NOT standing in the room announces the
@@ -965,6 +988,12 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			ctx, cancel := context.WithTimeout(context.Background(), tickInterval)
 			// ponytail: slow consumers just miss ticks; per-client send queues when it matters
 			_ = wsjson.Write(ctx, c.conn, message)
+			// Addressed to this socket alone, so it cannot be folded into the
+			// tick — and written here because this goroutine is the socket's
+			// only writer.
+			if answer, ok := pairing[c]; ok {
+				_ = wsjson.Write(ctx, c.conn, protocol.ServerMessage{Pairing: &answer})
+			}
 			cancel()
 		}
 	}
@@ -998,6 +1027,12 @@ func (rm *room) leave(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
+	delete(rm.pendingPairing, c)
+	// Closing a tab frees its sensors, so the rider's other screens can pair
+	// (#610). Queued after the delete above, so the leaver is not told.
+	if rm.releaseSensorsLocked(c) {
+		rm.queuePairingLocked(c.rider.ID)
+	}
 	// A phone spectator closing must not blank the desktop's tile: metrics
 	// go only when the rider's LAST socket does (#219).
 	last := true
@@ -1020,9 +1055,18 @@ func validMetrics(m protocol.RiderMetrics) bool {
 		m.Cadence >= 0 && m.Cadence <= 250
 }
 
-func (rm *room) setMetrics(rider protocol.Rider, m protocol.RiderMetrics) {
+func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
+	rider := c.rider
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// One stream per rider (#610). Two paired screens do not merely overwrite
+	// each other here — their per-session `seq` counters interleave, which
+	// reads to the accumulator as a fresh stream and lands BOTH sets of
+	// samples in the one ride record. So the screen holding the trainer claim
+	// is the only one that speaks; a rider with no claim at all is unaffected.
+	if !rm.ownsTrainerLocked(c) {
+		return
+	}
 	rm.metrics[rider.ID] = m
 	rm.lastMetric[rider.ID] = time.Now()
 	if _, known := rm.seen[rider.ID]; !known {

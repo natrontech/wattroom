@@ -17,10 +17,19 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { useRoom } from '$lib/room/context';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import { type Pairing, trainerState } from '$lib/room/sensor-status';
+	import { deviceWord } from '$lib/room/sensor-claim';
+	import {
+		type Pairing,
+		pairedElsewhereAll,
+		trainerState,
+	} from '$lib/room/sensor-status';
 
 	const room = useRoom();
 	const ride = $derived(roomConnection.current?.ride);
+	// What the rider's OTHER screens hold (#610). Only a room knows this — the
+	// socket is what arbitrates — which is why it enters here rather than in
+	// the grid the solo pre-ride screens share.
+	const elsewhere = $derived(pairedElsewhereAll(room.pairing, deviceWord()));
 	// Same gate as #123's SimulatedTrainer everywhere else: real watts only,
 	// unless this is a dev server or a dev-provider sign-in.
 	const canSimulate = dev || account.providers.includes('dev');
@@ -45,6 +54,7 @@
 </script>
 
 <SensorOverview
+	{elsewhere}
 	trainer={{
 		state: trainerState(
 			{

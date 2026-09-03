@@ -3,6 +3,8 @@ import type {
 	ClientMessage,
 	RiderMetrics,
 	RoomEvent,
+	SensorClaim,
+	SensorPairing,
 	ServerMessage,
 	ServerTick,
 } from '$lib/protocol';
@@ -32,6 +34,14 @@ export function createRoomLive(slug: string) {
 	let myReacts = $state<Record<string, boolean>>({});
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
+	// What the hub says this tab holds, and where the rider's other screens
+	// hold the rest (#610). Server truth: a tab learns here that its claim
+	// was refused, so nothing renders "paired" off its own click alone.
+	let pairing = $state<SensorPairing>({});
+	// The last claim sent, replayed on every reconnect — a fresh socket is a
+	// fresh claim as far as the hub is concerned, and a trainer that stays
+	// connected through a drop must not come back as somebody else's.
+	let claim: SensorClaim | null = null;
 	// Ids the async save assigned (#219), keyed fromId:at, waiting for their
 	// line — usually applied the moment they arrive, kept only when a flood
 	// carries the line to a later tick than its id.
@@ -78,6 +88,9 @@ export function createRoomLive(slug: string) {
 			const queued = pending;
 			pending = [];
 			for (const message of queued) send(message);
+			// Before the backfill: the replay below is metrics, and the hub
+			// only takes metrics from the screen holding the trainer.
+			if (claim) send({ sensors: claim });
 			if (gapSeq !== null) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -98,6 +111,11 @@ export function createRoomLive(slug: string) {
 		};
 		socket.onmessage = (event) => {
 			const msg = JSON.parse(event.data) as ServerMessage;
+			if (msg.pairing) {
+				// Off the tick by design (#610) — it is addressed to this
+				// rider's sockets, not to the room.
+				pairing = msg.pairing;
+			}
 			if (msg.tick) {
 				// Before anything reads it: the tick's own timestamp is what
 				// keeps the jukebox playhead on server time (#286).
@@ -212,6 +230,25 @@ export function createRoomLive(slug: string) {
 		},
 		get refusal() {
 			return refusal;
+		},
+		/** What this tab holds and what its rider's other screens hold (#610). */
+		get pairing() {
+			return pairing;
+		},
+		/**
+		 * Tell the hub which sensors this tab has connected. Idempotent: the
+		 * whole set every time, so a release is just a shorter list, and the
+		 * same set twice sends nothing.
+		 */
+		claimSensors(next: SensorClaim) {
+			const same =
+				claim !== null &&
+				claim.tab === next.tab &&
+				claim.device === next.device &&
+				claim.held.length === next.held.length &&
+				claim.held.every((kind, i) => kind === next.held[i]);
+			claim = next;
+			if (!same) send({ sensors: next });
 		},
 		/** Stamps the sample with this session's next seq, then sends it. */
 		sendMetrics(sample: Omit<RiderMetrics, 'seq'>) {

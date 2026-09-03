@@ -16,10 +16,19 @@
 	import { account } from '$lib/account.svelte';
 	import { device } from '$lib/device.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { deviceWord } from '$lib/room/sensor-claim';
+	import { pairedElsewhere } from '$lib/room/sensor-status';
 
 	let { compact = false }: { compact?: boolean } = $props();
 
 	const room = useRoom();
+	// Another of this rider's screens holds the trainer (#610). Pairing a
+	// second one here would connect and then be ignored — the hub takes
+	// samples only from the screen holding the claim — so the button gives way
+	// to the reason (ux.md: say why, never a dead click).
+	const elsewhere = $derived(
+		pairedElsewhere('trainer', room.pairing, deviceWord()),
+	);
 	const supported = $derived(
 		typeof navigator !== 'undefined' && !!navigator.bluetooth,
 	);
@@ -39,7 +48,13 @@
      (#412). -->
 {#if !device.spectator}
 	<div class="flex flex-wrap items-center gap-2">
-		{#if !room.trainer}
+		{#if elsewhere && !room.trainer}
+			<!-- The rider's own equipment, on their own other screen: say which
+			     one rather than offering a pairing the hub would refuse. -->
+			<p class="text-muted text-xs">
+				Trainer paired {elsewhere}
+			</p>
+		{:else if !room.trainer}
 			<button
 				onclick={() => room.pair()}
 				disabled={!supported}

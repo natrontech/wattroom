@@ -9,6 +9,7 @@ import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
 import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
+import { sensorClaim } from '$lib/room/sensor-claim';
 import { missedSince, type Missed } from '$lib/room/unread';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
@@ -134,6 +135,14 @@ function connect(slug: string): Connection {
 			myId: () => account.me?.id,
 			shared: () => shared,
 			segments: () => parsed.segments,
+		});
+
+		// One sensor, one screen (#610). The claim belongs to the CONNECTION
+		// for the same reason the trainer does: it has to survive the room's
+		// shell unmounting on the way to another page, or a walk to /workouts
+		// would hand the rider's own trainer back to their phone.
+		$effect(() => {
+			live.claimSensors(sensorClaim(ride.trainer !== null));
 		});
 
 		$effect(() => {

@@ -359,6 +359,9 @@
 		get rideError() {
 			return rideCtl.error;
 		},
+		get pairing() {
+			return live.pairing;
+		},
 		pair: () => void rideCtl.ride(new FtmsTrainer()),
 		pairSimulated: () =>
 			void rideCtl.ride(

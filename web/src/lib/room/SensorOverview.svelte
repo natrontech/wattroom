@@ -43,7 +43,20 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { Bike, HeartPulse, RotateCw, Zap } from '@lucide/svelte';
 
-	let { trainer }: { trainer: TrainerSlot } = $props();
+	let {
+		trainer,
+		elsewhere = {},
+	}: {
+		trainer: TrainerSlot;
+		/**
+		 * Kinds one of the rider's OTHER screens holds, as the phrase naming
+		 * it — "on your phone" (#610). A card with one shows that instead of
+		 * a pair button: the hub grants one screen per sensor and would
+		 * refuse a second. Empty on the solo pre-ride screens, which hold no
+		 * room socket and so have nothing to arbitrate.
+		 */
+		elsewhere?: Record<string, string>;
+	} = $props();
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
@@ -70,15 +83,19 @@
 	device?: string;
 	reading?: string;
 	hint?: string;
+	/** Held by another of the rider's screens: the phrase naming it (#610). */
+	elsewhere?: string;
 	onPair: () => void;
 	onForget: () => void;
 })}
+	{@const taken = !!args.elsewhere && args.state !== 'connected'}
 	<div
 		class="panel flex min-w-0 flex-col items-center gap-2 px-4 py-5 text-center"
 	>
 		<args.icon
 			size={28}
 			class={args.state === 'connected' ? 'text-z4' : 'text-muted'}
+			opacity={taken ? 0.5 : 1}
 		/>
 		<div class="min-w-0">
 			<p class="font-display text-sm font-bold">
@@ -95,6 +112,10 @@
 				{#if args.hint}
 					<p class="text-danger mt-0.5 text-[11px]">{args.hint}</p>
 				{/if}
+			{:else if taken}
+				<!-- The rider's own kit, on the rider's own other screen: not an
+				     empty slot and not an error. -->
+				<p class="text-muted mt-0.5 text-xs">Paired {args.elsewhere}</p>
 			{:else if args.state === 'connecting'}
 				<p class="text-muted mt-0.5 text-xs">Connecting…</p>
 			{:else if args.state === 'failed'}
@@ -109,6 +130,11 @@
 				class="border-muted/25 hover:border-muted/60 rounded border px-3 py-1.5 text-xs"
 				>Forget</button
 			>
+		{:else if taken}
+			<!-- Nothing to press: the sensor is held, and not by this screen.
+			     Forgetting it there is what frees it (ux.md: say why, never a
+			     button that fails). -->
+			<p class="text-muted text-[11px]">Forget it there to move it</p>
 		{:else}
 			<!-- Never render a button that will fail: no Web Bluetooth, no live control. -->
 			<button
@@ -139,6 +165,7 @@
 			device: trainer.device,
 			reading: trainer.state === 'connected' ? trainer.reading : undefined,
 			hint: trainer.hint,
+			elsewhere: elsewhere.trainer,
 			onPair: trainer.onPair,
 			onForget: trainer.onForget,
 		})}
@@ -151,6 +178,7 @@
 				state: sensorState(sensor.kind, pairing),
 				device: slot.name,
 				reading: sensorReading(sensor.kind),
+				elsewhere: elsewhere[sensor.kind],
 				onPair: () => void pairSensor(sensor.kind),
 				onForget: () => void sensors.forget(sensor.kind),
 			})}
@@ -164,9 +192,11 @@
 	{:else if trainer.error && trainer.state !== 'connecting'}
 		<p class="text-muted mt-2 text-xs">{trainer.error}</p>
 	{/if}
-	{#if trainer.onSimulate}
+	{#if trainer.onSimulate && !elsewhere.trainer}
 		<!-- Dev-only (#123): simulated watts in a live room would count for
-		     medals, XP and streaks — the fairness layer takes no fakes. -->
+		     medals, XP and streaks — the fairness layer takes no fakes. Gone
+		     while another screen holds the trainer: the hub would take no
+		     samples from this one anyway (#610). -->
 		<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs mt-2"
 			>Ride simulated</button
 		>
