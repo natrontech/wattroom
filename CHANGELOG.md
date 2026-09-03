@@ -17,6 +17,35 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.22] - 2026-09-03
+
+### Added
+
+- Paste a YouTube playlist into the jukebox and the whole thing queues as one
+  entry, playing straight through once. Paste a link to a video that sits
+  inside a playlist and the room asks which you meant, naming how many tracks
+  the playlist holds. Skip and the new back button move within a playlist; a
+  separate button drops the rest of it and moves the room on, and every member
+  can press it. A playlist takes one slot in the queue rather than fifty, so
+  one paste no longer buries everyone else's tracks or the votes on them.
+  Previously a playlist link was either ignored in favour of the single video
+  or refused as "not a YouTube link".
+- Starting a workout on your own now shows the same paired-devices overview as
+  a room's Training place. `/ride` and the ramp test draw a card each for your
+  trainer, heart rate, power meter and cadence, with the device's name and its
+  live reading — so you pair everything, watch the watts arrive, and only then
+  press Start. Pairing has moved off the start button: it used to connect and
+  start the ride in one click, which left no moment at which you could see
+  whether your trainer was actually reporting anything.
+
+### Fixed
+
+- A sensor now belongs to one screen at a time. With your trainer paired on
+  your phone, the desktop says "Trainer paired on your phone" instead of
+  offering to pair a second one — and your ride record no longer counts two
+  streams of watts when you had two tabs open, which quietly inflated the
+  execution score. Whichever screen paired keeps it; Forget there to move it.
+
 ## [2026.09.21] - 2026-09-03
 
 ### Added
@@ -475,7 +504,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.21...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.22...HEAD
+[2026.09.22]: https://github.com/natrontech/wattroom/compare/2026.09.21...2026.09.22
 [2026.09.21]: https://github.com/natrontech/wattroom/compare/2026.09.20...2026.09.21
 [2026.09.20]: https://github.com/natrontech/wattroom/compare/2026.09.19...2026.09.20
 [2026.09.19]: https://github.com/natrontech/wattroom/compare/2026.09.18...2026.09.19
