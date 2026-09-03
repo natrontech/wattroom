@@ -23,6 +23,7 @@
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { activeHref, activePlace, pages, roomPlaces } from './pages';
+	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
 		contextMenu,
@@ -54,6 +55,7 @@
 		connectedSlug = '',
 		live = false,
 		onLeave,
+		onMember,
 		showAv = false,
 		voiceStatus = 'off',
 		micOn = false,
@@ -73,6 +75,8 @@
 		connectedSlug?: string;
 		live?: boolean;
 		onLeave?: () => void;
+		/** A rider named in a room's people line — the layout resolves them. */
+		onMember?: (slug: string, name: string) => void;
 		showAv?: boolean;
 		voiceStatus?: 'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 		micOn?: boolean;
@@ -148,6 +152,7 @@
 					     standing in — reading a DM or Home while connected must not
 					     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
+				{@const subline = railSubline(room, open)}
 				<li
 					class="rounded-md border-l-2 {here
 						? 'border-neon/70 bg-neon/10'
@@ -180,7 +185,9 @@
 				>
 					<a
 						href="/r/{room.slug}"
-						class="block rounded px-2 py-1.5 {here
+						class="block rounded px-2 pt-1.5 {subline === 'people'
+							? 'pb-0'
+							: 'pb-1.5'} {here
 							? 'text-ink'
 							: browsing
 								? 'text-ink/90'
@@ -235,7 +242,7 @@
 								>
 							{/if}
 						</span>
-						{#if !open && room.session}
+						{#if subline === 'session' && room.session}
 							<!-- The late-join radar: what is on, and how far in. -->
 							<span
 								class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
@@ -245,21 +252,7 @@
 									? 'starting'
 									: `${Math.round(room.session.elapsedSec / 60)} min in`}
 							</span>
-						{:else if !open && room.riders?.length}
-							<!-- Who is in there, without going in (#438): Discord lists
-							     the people under a voice channel; the row does the same. -->
-							<span
-								class="text-muted/80 mt-0.5 flex items-center gap-1 truncate text-[10px]"
-							>
-								{#if room.voice?.length}<Headphones
-										size={9}
-										class="shrink-0"
-									/>{/if}
-								{room.riders.slice(0, 3).join(', ')}{room.riders.length > 3
-									? ` +${room.riders.length - 3}`
-									: ''}
-							</span>
-						{:else if !open && room.next}
+						{:else if subline === 'next' && room.next}
 							<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
 								>next: {room.next.workoutName} · {formatWhen(
 									room.next.startsAt,
@@ -267,6 +260,35 @@
 							>
 						{/if}
 					</a>
+
+					{#if subline === 'people'}
+						{@const people = railPeople(room.riders)}
+						<!-- Who is in there, without going in (#438): Discord lists the
+						     people under a voice channel. It sits OUTSIDE the room's
+						     link — a target of its own, the rail's full width, opening
+						     the roster where each of them has a row (#540). The names
+						     it printed are one right-click away, individually; three
+						     buttons inside a 10 px line would be precision targets on
+						     a bike (ux.md). -->
+						<a
+							href="/r/{room.slug}/members"
+							title="who is here · {MENU_HINT}"
+							class="text-muted/80 hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
+							{@attach contextMenu(() =>
+								railPeopleMenu(
+									room.riders,
+									onMember && ((name) => onMember(room.slug, name)),
+									() => void goto(`/r/${room.slug}/members`),
+								),
+							)}
+						>
+							{#if room.voice?.length}<Headphones
+									size={9}
+									class="shrink-0"
+								/>{/if}
+							<span class="truncate">{people.label}</span>
+						</a>
+					{/if}
 
 					{#if open}
 						<!-- What was said while you were in another place (#568): the
