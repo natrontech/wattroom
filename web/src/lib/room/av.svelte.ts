@@ -783,10 +783,14 @@ export function createRoomAv(slug: string) {
 			myClaim = null;
 			room = null;
 			closeMic();
-			// Stop restamping, but leave the note: a refresh during the
-			// drop-rejoin window is still a refresh (#219, #480).
-			stopNote();
 			if (unexpected) {
+				// Stop restamping, but leave the note behind: a refresh during
+				// the drop-rejoin window is still a refresh (#219, #480). Only
+				// on an unexpected drop — a clean disconnect is either leave(),
+				// which tears the note up itself, or join() clearing a stale
+				// room, whose late event must not stop the heartbeat that join
+				// is about to start.
+				stopNote();
 				status = 'off';
 				dropped += 1;
 			}

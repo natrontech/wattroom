@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	REJOIN_WINDOW_MS,
-	type VoiceNotes,
-	shouldRejoinVoice,
-} from './rejoin';
+import { REJOIN_WINDOW_MS, type VoiceNotes, shouldRejoinVoice } from './rejoin';
 
 const NOW = 1_700_000_000_000;
 const mine = 'tab-a';
