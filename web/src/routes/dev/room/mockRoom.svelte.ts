@@ -1,4 +1,6 @@
 import { SimulatedTrainer } from '$lib/ble/simulated';
+import type { Medal } from '$lib/components/MedalCard.svelte';
+import type { RailRoom } from '$lib/room/mockcompat';
 import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 // Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
@@ -172,11 +174,89 @@ const SEEDS: RiderSeed[] = [
 	},
 ];
 
-export const rooms = [
-	{ name: 'Thursday Sufferfest', members: 6, live: true },
-	{ name: 'Sunday Long Ride', members: 2, live: false },
-	{ name: 'Natron Lunch Crew', members: 0, live: false },
-	{ name: 'Winter Base Camp', members: 4, live: false },
+/**
+ * The crew's rooms as the rail reads them (#399): full RailRoom entries, so a
+ * mock that needs the sidebar and one that needs the rooms list draw the same
+ * four rooms rather than keeping two lists that drift.
+ */
+export const rooms: RailRoom[] = [
+	{
+		name: 'Thursday Sufferfest',
+		slug: 'thursday-sufferfest',
+		icon: 'flame',
+		members: 6,
+		connected: 5,
+		live: true,
+		riders: ['Nina', 'Ruben', 'Milo', 'Sara'],
+		voice: ['Nina', 'Ruben'],
+		session: { workoutName: 'Sweet Spot 2×20', elapsedSec: 720 },
+	},
+	{
+		name: 'Sunday Long Ride',
+		slug: 'sunday-long-ride',
+		icon: 'mountain',
+		members: 2,
+		connected: 2,
+		live: false,
+		riders: ['Tobi', 'Sara'],
+		unread: 3,
+	},
+	{
+		name: 'Natron Lunch Crew',
+		slug: 'natron-lunch-crew',
+		members: 0,
+		live: false,
+	},
+	{
+		name: 'Winter Base Camp',
+		slug: 'winter-base-camp',
+		members: 4,
+		live: false,
+	},
+];
+
+/**
+ * The four medals, criteria verbatim from docs/SPEC.md — a fixed set, never a
+ * design choice. Here rather than in the medal mock because /dev/themes needs
+ * one too, and two fixtures for a fixed set is one too many.
+ */
+export const medals: Medal[] = [
+	{
+		name: 'Metronome',
+		criterion: 'best execution score',
+		rider: 'Sara',
+		value: '94',
+		unit: '%',
+		kj: 812,
+		xp: 959,
+	},
+	{
+		name: 'Diesel',
+		criterion: 'steadiest power',
+		rider: 'Nina',
+		value: '3.1',
+		unit: '% CV',
+		kj: 704,
+		xp: 838,
+	},
+	{
+		name: 'Hammer',
+		criterion: 'biggest 5 s w/kg',
+		rider: 'Ruben',
+		value: '14.2',
+		unit: 'w/kg',
+		kj: 968,
+		xp: 1103,
+	},
+	{
+		name: 'Lanterne Rouge',
+		criterion: 'last on the sprint, finished anyway',
+		rider: 'Milo',
+		value: '61',
+		unit: 'min',
+		kj: 502,
+		xp: 611,
+	},
 ];
 
 /** Scripted so the panel feels inhabited. Text chat is a fast-follow (WATTROOM.md), mocked here to prove the layout. */

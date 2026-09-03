@@ -35,6 +35,19 @@ export const TOKENS = [
 export type TokenName = (typeof TOKENS)[number];
 export type Tokens = Record<TokenName, string>;
 
+/**
+ * A theme's tokens as CSS declarations. Rendering a theme is nothing but
+ * writing these somewhere they inherit from — `:root` and `.cave` for the app,
+ * a `style` attribute for a container that shows a theme it has not adopted
+ * (the picker's swatches, /dev/themes). One spelling, so a token added to
+ * TOKENS reaches every surface that paints a theme.
+ */
+export function tokenDeclarations(theme: Theme): string {
+	return TOKENS.map(
+		(token) => `--color-${token}: ${theme.tokens[token]};`,
+	).join('');
+}
+
 /** Dark themes are offered under the dark scheme, white ones under light. */
 export type ThemeFamily = 'dark' | 'white';
 
