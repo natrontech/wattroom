@@ -17,6 +17,33 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.24] - 2026-09-04
+
+### Added
+
+- The jukebox panel now has saved playlists: a room can keep several,
+  editable by any member, with one marked active; you can also build your own
+  personal playlists and queue them into any room you're in. A room can turn
+  on autoplay — ordered or shuffled, with an optional pinned "always play
+  this first" track — so the active room playlist starts itself when someone
+  joins an idle deck.
+
+### Fixed
+
+- Deleting a room now clears everything live about it. The slug a delete frees
+  can be taken by the next room of the same name, and that room used to open
+  carrying the deleted room's jukebox queue, chat and session — visible to
+  members who were never in the old room. Deleted rooms also stop holding
+  memory and a timer for the life of the server.
+- Jukebox videos no longer play with closed captions burned in when your
+  browser has YouTube's "always show captions" preference on. The player has
+  no on-screen controls to turn them off, so WattRoom now forces captions off
+  itself.
+- The three-room ownership cap now reaches the browser from the server, so the
+  hint under a disabled "Open room" always names the number the server will
+  actually enforce. It had been written out by hand in four places, and a
+  future change to the cap would have left the app saying the old one.
+
 ## [2026.09.23] - 2026-09-03
 
 ### Added
@@ -513,7 +540,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.23...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.24...HEAD
+[2026.09.24]: https://github.com/natrontech/wattroom/compare/2026.09.23...2026.09.24
 [2026.09.23]: https://github.com/natrontech/wattroom/compare/2026.09.22...2026.09.23
 [2026.09.22]: https://github.com/natrontech/wattroom/compare/2026.09.21...2026.09.22
 [2026.09.21]: https://github.com/natrontech/wattroom/compare/2026.09.20...2026.09.21
