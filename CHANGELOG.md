@@ -17,6 +17,30 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.21] - 2026-09-03
+
+### Added
+
+- Training now shows a Zwift-style "paired devices" overview before a session
+  starts: one card each for your trainer, heart rate strap, power meter and
+  cadence sensor, with an icon and live connection state, so you can see
+  what's actually paired instead of guessing from a single "Pair trainer"
+  button.
+
+### Changed
+
+- The Lounge no longer shows "Pair trainer" or session controls (Start,
+  Sprint, Pause, End) — that's Training's job now. The Lounge stays the
+  room's social home; get set up and run the session from Training instead.
+- Your phone now gets the real room instead of the old read-only watch page:
+  the same places as every other screen, reached through the same drawer, with
+  the crew's live watts, the reactions and the chat one thumb away. Training
+  follows a rider — tap anyone in the crew strip — since a phone has no trainer
+  of its own. Pairing, ERG and session control stay off a phone, where they
+  could only fail; add `?full=1` to the room's link to get them back on a
+  narrow screen that can actually use them. `/r/<room>/watch` now opens the
+  room.
+
 ## [2026.09.20] - 2026-09-03
 
 ### Added
@@ -451,7 +475,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.20...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.21...HEAD
+[2026.09.21]: https://github.com/natrontech/wattroom/compare/2026.09.20...2026.09.21
 [2026.09.20]: https://github.com/natrontech/wattroom/compare/2026.09.19...2026.09.20
 [2026.09.19]: https://github.com/natrontech/wattroom/compare/2026.09.18...2026.09.19
 [2026.09.18]: https://github.com/natrontech/wattroom/compare/2026.09.17...2026.09.18
