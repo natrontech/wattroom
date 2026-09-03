@@ -36,7 +36,9 @@ dev-db-drop: ## drop this worktree's database (nothing removes it on `git worktr
 changelog: ## stage CHANGELOG.md as a static asset (#345)
 	@# The SPA serves it at /changelog.md, so what a rider reads is the file
 	@# the running build shipped with. Gitignored — it is a build artifact.
-	cp CHANGELOG.md web/static/changelog.md
+	@# Silent: `make dev-web` depends on it, and the port/database banner has
+	@# to be the first line an agent sees (#552).
+	@cp CHANGELOG.md web/static/changelog.md
 
 web: changelog ## build frontend and embed it into the server
 	cd web && pnpm install --frozen-lockfile && pnpm build
