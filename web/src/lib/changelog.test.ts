@@ -8,7 +8,6 @@ import {
 	releasedOnly,
 	releaseToAnnounce,
 	skippedReleases,
-	summarize,
 } from './changelog';
 
 // The shape the real CHANGELOG.md has, including the parts that have already
@@ -111,18 +110,6 @@ describe('inlineParts', () => {
 
 	it('leaves plain text alone', () => {
 		expect(inlineParts('Rooms.')).toEqual([{ code: false, text: 'Rooms.' }]);
-	});
-});
-
-describe('summarize', () => {
-	const [, , first] = parseChangelog(SAMPLE);
-
-	it('counts each section for a glance', () => {
-		expect(summarize(first)).toBe('2 added · 1 security');
-	});
-
-	it('is empty for a release with no sections', () => {
-		expect(summarize({ version: 'x', date: null, sections: [] })).toBe('');
 	});
 });
 

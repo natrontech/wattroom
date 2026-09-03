@@ -84,13 +84,6 @@ export function releaseToAnnounce(
 	return releases.find((r) => r.version === current) ?? null;
 }
 
-/** "8 added · 1 changed · 1 security" — enough for a glance from a bike. */
-export function summarize(release: Release): string {
-	return release.sections
-		.map((s) => `${s.items.length} ${s.heading.toLowerCase()}`)
-		.join(' · ');
-}
-
 /** Split on backticks so a call site can render the odd runs as code. */
 export function inlineParts(text: string): { code: boolean; text: string }[] {
 	return text
