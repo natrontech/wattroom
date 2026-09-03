@@ -62,6 +62,29 @@ if awk '/^## \[Unreleased\]/{f=1;next} /^## \[/ || /^\[[^]]+\]:/{f=0} f && NF' C
 	exit 1
 fi
 
+# A fragment is a list item, whatever its author typed. Four entries in
+# 2026.09.15 were written without their leading "- ", so Markdown folded each
+# into the bullet above it and hid whole fixes inside other fixes (#546).
+# Normalising here fixes the notes no matter how the file was written: the
+# first line becomes a bullet, later lines are indented under it, and trailing
+# blank lines never reach the release notes.
+normalize_fragment() {
+	awk '
+		NF { last = NR }
+		{ lines[NR] = $0 }
+		END {
+			for (i = 1; i <= last; i++) {
+				line = lines[i]
+				if (line ~ /^- /) { bulleted = 1; print line }
+				else if (line == "") print line
+				else if (!bulleted) { bulleted = 1; print "- " line }
+				else if (line ~ /^[ \t]/) print line
+				else print "  " line
+			}
+		}
+	' "$1"
+}
+
 # Collate: Keep a Changelog order, not filesystem order.
 notes=$(mktemp)
 for cat in added changed deprecated removed fixed security; do
@@ -70,9 +93,7 @@ for cat in added changed deprecated removed fixed security; do
 	heading="$(tr '[:lower:]' '[:upper:]' <<<"${cat:0:1}")${cat:1}"
 	printf '### %s\n\n' "$heading" >>"$notes"
 	for f in "${files[@]}"; do
-		# Trailing blank lines in a fragment must not become blank lines in the
-		# release notes; one newline after each, exactly.
-		awk 'NF {last = NR} {lines[NR] = $0} END {for (i = 1; i <= last; i++) print lines[i]}' "$f" >>"$notes"
+		normalize_fragment "$f" >>"$notes"
 	done
 	printf '\n' >>"$notes"
 done
@@ -86,7 +107,7 @@ mv "$trimmed" "$notes"
 # A fragment whose name does not start with a category is silently dropped by
 # the loop above, which would lose somebody's entry. Catch it here instead.
 counted=$(grep -c '^- ' "$notes" || true)
-written=$(cat "${fragments[@]}" | grep -c '^- ' || true)
+written=$(for f in "${fragments[@]}"; do normalize_fragment "$f"; done | grep -c '^- ' || true)
 if [ "$counted" != "$written" ]; then
 	rm -f "$notes"
 	echo "some entries in changelog.d/ were not collated — check every filename starts with" >&2

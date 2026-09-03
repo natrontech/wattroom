@@ -16,6 +16,12 @@ Write it for someone deciding whether to upgrade — not as a second copy of the
 PR title. Wrap at 80 and indent continuation lines by two spaces, like the
 entries already in `CHANGELOG.md`.
 
+**Start the file with `- `.** The release notes are a list, so an entry that
+does not is not a list item: Markdown folds it into the bullet above it and the
+change disappears inside somebody else's. That hid four fixes in 2026.09.15,
+so CI now fails a PR whose entry does not begin with `- ` (`make release`
+normalises too, but the file is what you read back).
+
 ## Why not just edit CHANGELOG.md
 
 Because eight agents work here at once and they all appended to the same few
