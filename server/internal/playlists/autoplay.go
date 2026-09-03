@@ -124,7 +124,9 @@ func (s *Service) Autoplay(ctx context.Context, slug string) (fixed *protocol.Ju
 		if rows, err := s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err == nil {
 			tracks = commandsFromTracks(rows)
 			if room.AutoplayOrder == "shuffled" {
-				rand.Shuffle(len(tracks), func(i, j int) { tracks[i], tracks[j] = tracks[j], tracks[i] })
+				// A party-playlist shuffle, not a security control — crypto/rand
+				// would cost a syscall per swap for no one keeping score.
+				rand.Shuffle(len(tracks), func(i, j int) { tracks[i], tracks[j] = tracks[j], tracks[i] }) //nolint:gosec
 			}
 		}
 	}
