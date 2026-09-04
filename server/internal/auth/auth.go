@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -43,6 +44,10 @@ const (
 	stateCookie   = "wattroom_oauth_state"
 	sessionTTL    = 30 * 24 * time.Hour
 	stateTTL      = 10 * time.Minute
+	// Marks a state as belonging to a link flow rather than a sign-in (#719).
+	// A dot cannot occur in randomToken's base64url alphabet, so the prefix is
+	// unambiguous.
+	linkStatePrefix = "link."
 )
 
 type Service struct {
@@ -125,13 +130,31 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			"That sign-in provider is not configured on this server.")
 		return
 	}
+
+	// ?link=1 is "attach this provider to the account I am already in",
+	// not "sign me in" (#719). The intent must be explicit: linking off an
+	// ambient session would silently bind whoever completes the provider flow
+	// to whoever happens to be signed in on this browser.
+	linking := r.URL.Query().Get("link") == "1"
+	var linkTo db.User
+	if linking {
+		if linkTo, ok = s.RequireUser(w, r, "Sign in before connecting another provider."); !ok {
+			return
+		}
+	}
+
 	// The dev provider skips OAuth entirely; same identity + session machinery.
 	// ?as=<name> mints a second dev rider — the only way to put two real
 	// riders in one room on a dev box, which the crew strip, the roster's
 	// execution bars and the sprint scoreboard had never been seen with.
 	// Still behind WATTROOM_DEV_LOGIN; production never opens that door.
 	if p.id == "dev" {
-		user, err := s.upsert(r, p, devIdentity(r.URL.Query().Get("as")), &oauth2.Token{})
+		ident := devIdentity(r.URL.Query().Get("as"))
+		if linking {
+			s.finishLink(w, r, p, ident, &oauth2.Token{}, linkTo)
+			return
+		}
+		user, err := s.upsert(r, p, ident, &oauth2.Token{})
 		if err == nil {
 			err = s.startSession(w, r, user.ID)
 		}
@@ -144,7 +167,13 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The intent rides in the state itself: the callback already has to match
+	// it against the HttpOnly cookie byte for byte, so the prefix inherits that
+	// proof and needs no second cookie. randomToken is base64url, never a dot.
 	state := randomToken()
+	if linking {
+		state = linkStatePrefix + state
+	}
 	s.setCookie(w, stateCookie, state, stateTTL)
 	http.Redirect(w, r, p.config.AuthCodeURL(state), http.StatusFound)
 }
@@ -205,6 +234,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 			"This sign-in link is stale or was not started here. Start again from the sign-in page.")
 		return
 	}
+	linking := strings.HasPrefix(cookie.Value, linkStatePrefix)
 	s.clearCookie(w, stateCookie)
 
 	ctx := r.Context()
@@ -220,6 +250,17 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("identity fetch failed", "provider", p.id, "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"Signing in worked but reading your profile did not. Try again.")
+		return
+	}
+
+	// Linking never mints a session: the rider is already in one, and the
+	// point is to leave them in it with one more way back.
+	if linking {
+		linkTo, ok := s.RequireUser(w, r, "Sign in before connecting another provider.")
+		if !ok {
+			return
+		}
+		s.finishLink(w, r, p, ident, tok, linkTo)
 		return
 	}
 
@@ -304,6 +345,84 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 		return db.User{}, err
 	}
 	return user, nil
+}
+
+// errIdentityTaken: the provider account is already somebody else's way in.
+// Reassigning the row would hand this rider that account, so linking refuses
+// and writes nothing (#719). Merging two accounts is a separate problem.
+var errIdentityTaken = errors.New("identity belongs to another account")
+
+// link attaches ident to userID. Unlike upsert it never creates a user and
+// never touches the session — the rider stays signed in as who they were.
+func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.Token, userID pgtype.UUID) error {
+	ctx := r.Context()
+	q := s.store.Queries
+
+	existing, err := q.GetIdentity(ctx, db.GetIdentityParams{
+		Provider: p.id, ProviderUserID: ident.ProviderUserID,
+	})
+	switch {
+	case err == nil:
+		if existing.UserID != userID {
+			return errIdentityTaken
+		}
+		// Already linked here: nothing to add, but a fresh Strava grant is
+		// worth keeping — this is how a rider re-authorizes after a revoke.
+		if p.keepTokens {
+			return q.UpdateIdentityTokens(ctx, tokenParams(p, ident, tok))
+		}
+		return nil
+	case errors.Is(err, pgx.ErrNoRows):
+		// fall through to create
+	default:
+		return err
+	}
+
+	create := db.CreateIdentityParams{
+		Provider: p.id, ProviderUserID: ident.ProviderUserID, UserID: userID,
+	}
+	if p.keepTokens {
+		tp := tokenParams(p, ident, tok)
+		create.AccessToken, create.RefreshToken, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshToken, tp.TokenExpiresAt
+	}
+	if err := q.CreateIdentity(ctx, create); err != nil {
+		// Someone claimed this identity between the lookup and the insert —
+		// the same race upsert guards against. Whoever won decides the answer.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			winner, lookupErr := q.GetIdentity(ctx, db.GetIdentityParams{
+				Provider: p.id, ProviderUserID: ident.ProviderUserID,
+			})
+			if lookupErr != nil {
+				return lookupErr
+			}
+			if winner.UserID != userID {
+				return errIdentityTaken
+			}
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// finishLink runs the link and sends the rider back to the profile, which
+// reads ?link= and says what happened. The callback is a top-level browser
+// navigation, so a JSON error body would land as raw text in the address bar —
+// the banner is the error surface here (.claude/rules/errors.md).
+func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider, ident identity, tok *oauth2.Token, to db.User) {
+	outcome := "connected"
+	switch err := s.link(r, p, ident, tok, to.ID); {
+	case err == nil:
+	case errors.Is(err, errIdentityTaken):
+		s.log.Warn("link refused: identity already linked elsewhere", "provider", p.id)
+		outcome = "taken"
+	default:
+		s.log.Error("link failed", "provider", p.id, "err", err)
+		outcome = "failed"
+	}
+	http.Redirect(w, r, "/profile?link="+outcome+"&provider="+url.QueryEscape(p.id), http.StatusFound)
 }
 
 func tokenParams(p provider, ident identity, tok *oauth2.Token) db.UpdateIdentityTokensParams {
@@ -412,7 +531,8 @@ type meResponse struct {
 	AvEnabled bool `json:"avEnabled"`
 	// The evidence behind the suggestion, for the prompt's copy.
 	Best20m int `json:"best20m,omitempty"`
-	// Which providers this account signs in with — profile-screen copy only.
+	// Which providers this account signs in with. Drives the profile's
+	// connect rows (#719), so an absent one is an offer, not just copy.
 	Providers []string `json:"providers,omitempty"`
 	// Auto-upload rides to the rider's own Strava (#34, default true).
 	StravaUpload bool `json:"stravaUpload"`

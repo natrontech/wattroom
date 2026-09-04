@@ -2,8 +2,10 @@ package auth
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -604,5 +606,194 @@ func TestRequireUserTellsOutageFromSignedOut(t *testing.T) {
 				t.Fatalf("error code = %q, want %q", body.Error, tt.wantCode)
 			}
 		})
+	}
+}
+
+// --- provider linking (#719) ---
+
+// devLink drives the link flow through the dev provider, which reaches the
+// same finishLink/link path a real callback does without an OAuth round trip.
+func devLink(t *testing.T, s *Service, session *http.Cookie, as string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"/api/auth/dev/start?link=1&as="+as, nil)
+	req.SetPathValue("provider", "dev")
+	if session != nil {
+		req.AddCookie(session)
+	}
+	w := httptest.NewRecorder()
+	s.handleStart(w, req)
+	return w
+}
+
+func devSignIn(t *testing.T, s *Service, as string) *http.Cookie {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start?as="+as, nil)
+	req.SetPathValue("provider", "dev")
+	w := httptest.NewRecorder()
+	s.handleStart(w, req)
+	if w.Code != http.StatusFound {
+		t.Fatalf("dev sign-in as %q: %d %s", as, w.Code, w.Body.String())
+	}
+	return w.Result().Cookies()[0]
+}
+
+func devIdentityOwners(t *testing.T, s *Service) map[string]string {
+	t.Helper()
+	rows, err := s.store.Pool.Query(context.Background(),
+		"select provider_user_id, user_id::text from identities where provider = 'dev'")
+	if err != nil {
+		t.Fatalf("query identities: %v", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var pid, uid string
+		if err := rows.Scan(&pid, &uid); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out[pid] = uid
+	}
+	return out
+}
+
+func linkOutcome(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	if w.Code != http.StatusFound {
+		t.Fatalf("expected a redirect, got %d %s", w.Code, w.Body.String())
+	}
+	u, err := url.Parse(w.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("bad Location %q: %v", w.Header().Get("Location"), err)
+	}
+	return u.Query().Get("link")
+}
+
+func devLinkService(t *testing.T) *Service {
+	t.Helper()
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	s := testService(t)
+	s.providers = providersFromEnv("http://localhost:8080")
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(),
+			"delete from users where id in (select user_id from identities where provider = 'dev')")
+	})
+	return s
+}
+
+func TestLinkAttachesToTheSignedInUser(t *testing.T) {
+	s := devLinkService(t)
+	session := devSignIn(t, s, "")
+
+	me := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+	me.AddCookie(session)
+	before, ok := s.User(me)
+	if !ok {
+		t.Fatal("dev sign-in did not resolve")
+	}
+
+	w := devLink(t, s, session, "Nina")
+	if got := linkOutcome(t, w); got != "connected" {
+		t.Fatalf("link outcome = %q, want connected", got)
+	}
+	// Linking must not re-issue a session: the rider stays who they were.
+	for _, c := range w.Result().Cookies() {
+		if c.Name == sessionCookie {
+			t.Fatalf("link minted a session cookie")
+		}
+	}
+	after, ok := s.User(me)
+	if !ok || after.ID != before.ID {
+		t.Fatalf("session changed identity across a link (ok=%v)", ok)
+	}
+
+	owners := devIdentityOwners(t, s)
+	if len(owners) != 2 {
+		t.Fatalf("expected two dev identities, got %d: %v", len(owners), owners)
+	}
+	if owners["local-dev"] != owners["local-dev:nina"] {
+		t.Fatalf("link created a second account instead of attaching: %v", owners)
+	}
+}
+
+func TestLinkRefusesAnIdentityOwnedByAnotherAccount(t *testing.T) {
+	s := devLinkService(t)
+	// Nina signs up first, so her identity belongs to her account.
+	devSignIn(t, s, "Nina")
+	session := devSignIn(t, s, "")
+	beforeOwners := devIdentityOwners(t, s)
+
+	w := devLink(t, s, session, "Nina")
+	if got := linkOutcome(t, w); got != "taken" {
+		t.Fatalf("link outcome = %q, want taken", got)
+	}
+	// Nothing moved: stealing the row would hand this rider Nina's account.
+	if got := devIdentityOwners(t, s); !maps.Equal(got, beforeOwners) {
+		t.Fatalf("refused link still wrote: before %v, after %v", beforeOwners, got)
+	}
+}
+
+func TestLinkIsIdempotent(t *testing.T) {
+	s := devLinkService(t)
+	session := devSignIn(t, s, "")
+	before := devIdentityOwners(t, s)
+
+	if got := linkOutcome(t, devLink(t, s, session, "")); got != "connected" {
+		t.Fatalf("re-linking an owned identity = %q, want connected", got)
+	}
+	if got := devIdentityOwners(t, s); !maps.Equal(got, before) {
+		t.Fatalf("re-link changed rows: before %v, after %v", before, got)
+	}
+}
+
+func TestLinkWithoutASessionIsRefused(t *testing.T) {
+	s := devLinkService(t)
+	w := devLink(t, s, nil, "Nina")
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous link: %d %s", w.Code, w.Body.String())
+	}
+	if owners := devIdentityOwners(t, s); len(owners) != 0 {
+		t.Fatalf("anonymous link wrote identities: %v", owners)
+	}
+}
+
+func TestLinkIntentRidesInTheState(t *testing.T) {
+	t.Setenv("WATTROOM_OAUTH_GITHUB_ID", "id")
+	t.Setenv("WATTROOM_OAUTH_GITHUB_SECRET", "secret")
+	s := testService(t)
+	s.providers = providersFromEnv("http://localhost:8080")
+	user := testUser(t, s)
+
+	sess := httptest.NewRecorder()
+	seed := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	if err := s.startSession(sess, seed, user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	session := sess.Result().Cookies()[0]
+
+	start := func(query string) string {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/github/start"+query, nil)
+		req.SetPathValue("provider", "github")
+		req.AddCookie(session)
+		w := httptest.NewRecorder()
+		s.handleStart(w, req)
+		if w.Code != http.StatusFound {
+			t.Fatalf("start%s: %d %s", query, w.Code, w.Body.String())
+		}
+		for _, c := range w.Result().Cookies() {
+			if c.Name == stateCookie {
+				return c.Value
+			}
+		}
+		t.Fatalf("start%s set no state cookie", query)
+		return ""
+	}
+
+	if state := start("?link=1"); !strings.HasPrefix(state, linkStatePrefix) {
+		t.Fatalf("link start did not mark the state: %q", state)
+	}
+	// A plain sign-in must never be read back as a link.
+	if state := start(""); strings.HasPrefix(state, linkStatePrefix) {
+		t.Fatalf("sign-in state carries the link prefix: %q", state)
 	}
 }
