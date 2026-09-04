@@ -17,6 +17,52 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.26] - 2026-09-04
+
+### Added
+
+- A room's Members place now shows what its crew has done: each rider's badges
+  beside the medals they won in that room, and the list can be ordered by
+  joined, level or badges. Comparison stays inside the room — there is no
+  ranking of riders anywhere else, and nobody sees progress toward a badge
+  someone has not earned yet.
+- A rider's page now shows the badges they have earned, so a level finally has
+  its receipts: who coaches, who DJs, who turns up before seven. Room-mates and
+  friends see the badges themselves — never how far along someone is on the
+  ones they have not earned, and never a completion score.
+
+### Fixed
+
+- A rider's face in a room's people column now opens their page on a click.
+  It took a right-click or a long-press before — a menu was the only way in,
+  on the one surface you sit on while riding. The sidebar's video tiles still
+  go back to the Lounge on a click, and offer the rider on a right-click.
+- A rider's profile page now counts all the XP they have earned. It summed
+  rides only, so everything the ledger pays for — lounge time, voice sessions
+  and achievements — was missing there, and the profile showed a lower level
+  than the sidebar, the room and your messages showed for the same person.
+- The level bar has a visible track again. It sat on a card of its own colour,
+  so the unfilled part vanished and a quarter-full bar did not read as a
+  quarter; it now shares the ring's track, and the two agree at a glance.
+- The faces in a room wear their level ring — the people column and the video
+  strip, which showed a bare avatar while every other surface showed the ring.
+- The workout picker is usable on a phone. Its two panes stacked side by side
+  whatever the screen, which left the description and the interval graph a
+  53-pixel column reading one word per line; below tablet width they now sit
+  one above the other at full width.
+- A room's empty chat no longer prints its "nothing said here yet" line
+  underneath the floating navigation and people buttons.
+- The drawer's controls are thumb-sized. Leaving a room was a 12-pixel target,
+  opening one 13; those and every navigation row are now at least 44 pixels on
+  a phone, unchanged on a desk.
+
+### Security
+
+- Fixed: a rider's trophy case handed your progress toward every unearned badge
+  to anyone who could open your page — "3 of 5 rides before 07:00" and the
+  like. Progress is now yours alone, on your own trophy case; the earned badges
+  are what other people see.
+
 ## [2026.09.25] - 2026-09-04
 
 ### Added
@@ -551,7 +597,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.25...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.26...HEAD
+[2026.09.26]: https://github.com/natrontech/wattroom/compare/2026.09.25...2026.09.26
 [2026.09.25]: https://github.com/natrontech/wattroom/compare/2026.09.24...2026.09.25
 [2026.09.24]: https://github.com/natrontech/wattroom/compare/2026.09.23...2026.09.24
 [2026.09.23]: https://github.com/natrontech/wattroom/compare/2026.09.22...2026.09.23

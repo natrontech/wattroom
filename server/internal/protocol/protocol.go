@@ -229,6 +229,17 @@ type Poke struct {
 	At     int64  `json:"at,omitempty"`
 }
 
+// AwayState is a rider stepping out (#706) — the Lounge's button, never a
+// timer: being off the bike is not being away, and a coach watching the stage
+// is present and not pedalling.
+//
+// The whole state every time rather than a toggle, for the reason SensorClaim
+// carries its whole set: a message lost to a reconnect can then never strand a
+// rider away on everyone else's screen.
+type AwayState struct {
+	Away bool `json:"away"`
+}
+
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
 	Chat      *ChatLine       `json:"chat,omitempty"`
@@ -240,6 +251,7 @@ type ClientMessage struct {
 	Jukebox   *JukeboxCommand `json:"jukebox,omitempty"`
 	Sensors   *SensorClaim    `json:"sensors,omitempty"`
 	Poke      *Poke           `json:"poke,omitempty"`
+	Away      *AwayState      `json:"away,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard
@@ -257,6 +269,10 @@ type Rider struct {
 	// app already shows (#690). Room-visible identity, the same rule the
 	// member list has followed since #253 — rides stay private.
 	TotalXp int64 `json:"totalXp"`
+	// Stepped out (#706). Presence, not a metric: the rider said so with the
+	// Lounge's button, and every screen renders the mark instead of leaving
+	// an open mic over an empty trainer.
+	Away bool `json:"away,omitempty"`
 }
 
 // SessionState is the shared timeline, server-owned. Late joiners need no

@@ -1,0 +1,1 @@
+- Step away without leaving: one button in the Lounge mutes your microphone, stops your camera and marks you away on every screen in the room. Pressing it again brings back exactly what was live before.

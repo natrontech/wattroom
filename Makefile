@@ -6,15 +6,25 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol sqlc seed build test lint check ci release
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol sqlc seed build test lint check ci release print-golangci-version
 
 DEV_ENV := scripts/dev-env.sh
 
 # The Go version CI lints with (go-version-file: server/go.mod); see lint.
 GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
 
+# The linter version, defined ONCE and read by CI (#716). It used to be a
+# literal here while ci.yml passed no version at all, so the action took
+# `latest` — and a release nearly went out over a PR that passed `make ci`
+# and failed CI on findings only the newer linter could see. Bump this and
+# both move together; `make print-golangci-version` is what the workflow reads.
+GOLANGCI_VERSION := v2.13.2
+
 infra: ## start Postgres + LiveKit containers
 	docker compose up -d
+
+print-golangci-version: ## the linter version make lint and CI both use (#716)
+	@echo $(GOLANGCI_VERSION)
 
 dev-env: ## print this checkout's dev ports and database
 	@$(DEV_ENV) banner dev
@@ -73,7 +83,7 @@ lint:
 	@# local Go panics in buildir. go.mod's go line is only a minimum under GOTOOLCHAIN=auto
 	@# (a toolchain line equal to it is not even allowed), so this env var alone makes
 	@# `make lint` run the exact Go CI lints with (#334).
-	cd server && GOTOOLCHAIN=go$(GO_VERSION) GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
+	cd server && GOTOOLCHAIN=go$(GO_VERSION) GOLANGCI_LINT_CACHE=$(CURDIR)/server/tmp/golangci go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION) run
 	cd web && pnpm run check
 	cd web && pnpm run format:check
 

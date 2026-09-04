@@ -38,9 +38,15 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+      # One version for both gates (#716): the Makefile defines it, this
+      # reads it. Without it the action takes `latest`, so `make lint`
+      # passed on findings CI then rejected.
+      - id: linter
+        run: echo "version=$(make -s print-golangci-version)" >> "$GITHUB_OUTPUT"
       - uses: golangci/golangci-lint-action@v9
         with:
           working-directory: server
+          version: ${{ steps.linter.outputs.version }}
       - run: go build ./...
       - run: go test -race ./...
         env:

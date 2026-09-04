@@ -303,6 +303,17 @@ export interface Poke {
   at?: number /* int64 */;
 }
 /**
+ * AwayState is a rider stepping out (#706) — the Lounge's button, never a
+ * timer: being off the bike is not being away, and a coach watching the stage
+ * is present and not pedalling.
+ * The whole state every time rather than a toggle, for the reason SensorClaim
+ * carries its whole set: a message lost to a reconnect can then never strand a
+ * rider away on everyone else's screen.
+ */
+export interface AwayState {
+  away: boolean;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
@@ -315,6 +326,7 @@ export interface ClientMessage {
   jukebox?: JukeboxCommand;
   sensors?: SensorClaim;
   poke?: Poke;
+  away?: AwayState;
 }
 /**
  * Rider is presence: who is in the room right now, with what the dashboard
@@ -337,6 +349,12 @@ export interface Rider {
    * member list has followed since #253 — rides stay private.
    */
   totalXp: number /* int64 */;
+  /**
+   * Stepped out (#706). Presence, not a metric: the rider said so with the
+   * Lounge's button, and every screen renders the mark instead of leaving
+   * an open mic over an empty trainer.
+   */
+  away?: boolean;
 }
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no

@@ -282,6 +282,12 @@ type room struct {
 	// Pokes waiting for the same writer. A slice preserves simultaneous pokes
 	// from different riders instead of letting the last one erase the first.
 	pendingPokes map[*client][]protocol.Poke
+	// Who has stepped out (#706). Keyed by rider, not by socket: the same
+	// person on a desktop and a phone is one presence, and a rider is away
+	// because they said so on one of their screens, not because one of them
+	// happened to be the socket that asked. Emptied as the rider's last
+	// socket goes, so away never outlives being in the room.
+	away map[string]struct{}
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
 	xp        XpKeeper
@@ -336,6 +342,7 @@ func newRoom(slug string) *room {
 		lastMetric: make(map[string]time.Time),
 		voiceNow:   make(map[string]struct{}),
 		voiceMs:    make(map[string]int64),
+		away:       make(map[string]struct{}),
 	}
 }
 
@@ -426,6 +433,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}) {
 				h.writeError(ctx, c, "invalid_request", "That rider is no longer in the room.")
 			}
+		}
+		if msg.Away != nil {
+			// Unlimited like a sensor claim, and for the same reason: it is
+			// one map write per rider, so a client repeating itself changes
+			// nothing and queues nothing. The state rides the next tick.
+			rm.setAway(rider.ID, msg.Away.Away)
 		}
 		if msg.Metrics != nil {
 			if m := *msg.Metrics; validMetrics(m) {
@@ -1113,7 +1126,11 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			clients = append(clients, c)
 			if _, dup := seen[c.rider.ID]; !dup {
 				seen[c.rider.ID] = struct{}{}
-				tick.Roster = append(tick.Roster, c.rider)
+				// The socket's captured rider plus the room's live view of
+				// them: away is room state, not something a socket carries.
+				rider := c.rider
+				_, rider.Away = rm.away[c.rider.ID]
+				tick.Roster = append(tick.Roster, rider)
 			}
 		}
 		ridingKey := strings.Join(rm.ridingLocked(now()), "\n")
@@ -1218,6 +1235,9 @@ func (rm *room) leave(c *client) {
 	}
 	if last {
 		delete(rm.metrics, c.rider.ID)
+		// Away is presence, and the rider is no longer present (#706).
+		// Left behind, it would greet them as away on the next join.
+		delete(rm.away, c.rider.ID)
 	}
 	metricRiders.Dec()
 }
@@ -1407,6 +1427,19 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 		rm.startedBy = riderID
 	}
 	return rm.session.apply(c, now)
+}
+
+// setAway records a rider stepping out or coming back (#706). Per rider: it
+// reaches every screen they hold, which is what makes pressing the button on
+// the desktop clear the mark the phone is also drawing.
+func (rm *room) setAway(riderID string, away bool) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if away {
+		rm.away[riderID] = struct{}{}
+		return
+	}
+	delete(rm.away, riderID)
 }
 
 // setVoice replaces who the hub says is in the channel (#467).

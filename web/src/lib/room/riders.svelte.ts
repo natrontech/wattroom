@@ -87,6 +87,7 @@ export function createRiders(deps: RiderDeps) {
 				inVoice: rider.id in deps.av.voice || serverVoice.has(rider.id),
 				muted: deps.av.voice[rider.id] === 'muted',
 				speaking: !!deps.av.speaking[rider.id],
+				away: !!rider.away,
 				hue: [...rider.id].reduce(
 					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
 					7,
@@ -115,6 +116,7 @@ export function createRiders(deps: RiderDeps) {
 			cameraOn: false,
 			muted: false,
 			speaking: false,
+			away: false,
 			hue: 210,
 			watts: 0,
 			cadence: 0,

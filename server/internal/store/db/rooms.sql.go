@@ -308,7 +308,9 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 
 const listRoomMembers = `-- name: ListRoomMembers :many
 select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, u.accent_palette, u.color_scheme, m.role, m.joined_at,
-    user_total_xp(u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp,
+    coalesce((select array_agg(a.key order by a.earned_at)
+              from achievements a where a.user_id = u.id), '{}')::text[] as badges
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -334,8 +336,13 @@ type ListRoomMembersRow struct {
 	Role          string
 	JoinedAt      pgtype.Timestamptz
 	TotalXp       int64
+	Badges        []string
 }
 
+// Badges ride along (#703): the room's own page is where a crew compares
+// itself, which is the only comparison WATTROOM.md allows. Earned keys
+// only — the achievements table holds nothing else, so there is no
+// progress here to leak (ADR-0027).
 func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]ListRoomMembersRow, error) {
 	rows, err := q.db.Query(ctx, listRoomMembers, roomID)
 	if err != nil {
@@ -364,6 +371,7 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.Role,
 			&i.JoinedAt,
 			&i.TotalXp,
+			&i.Badges,
 		); err != nil {
 			return nil, err
 		}

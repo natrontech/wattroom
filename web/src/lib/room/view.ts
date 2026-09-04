@@ -18,6 +18,8 @@ export interface RoomRider {
 	inVoice?: boolean;
 	muted: boolean;
 	speaking: boolean;
+	/** The rider explicitly stepped out; presence, never inferred from watts. */
+	away?: boolean;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;

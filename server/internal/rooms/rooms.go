@@ -169,6 +169,10 @@ type memberJSON struct {
 	FtpWatts int16  `json:"ftpWatts"`
 	WeightKg int16  `json:"weightKg"`
 	JoinedAt string `json:"joinedAt"`
+	// The badges this rider has earned (#703, ADR-0027) — the keys only, so
+	// the room's page can show the crew what each other have done. Earned is
+	// all there is: progress never leaves its owner.
+	Badges []string `json:"badges,omitempty"`
 }
 
 type medalJSON struct {
@@ -416,6 +420,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					Role: member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
+					Badges: member.Badges,
 				})
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {

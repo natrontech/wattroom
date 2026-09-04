@@ -3,6 +3,7 @@
 	import { wkg } from '$lib/format';
 	import { MicOff } from '@lucide/svelte';
 	import {
+		AWAY_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
 		tileFrame,
@@ -70,6 +71,7 @@
 		? 'h-full'
 		: 'aspect-video'} transition-shadow duration-200 {tileFrame(
 		rider.speaking,
+		rider.away,
 	)}"
 >
 	{#if rider.cameraOn && videoAttach}
@@ -149,6 +151,12 @@
 					: 'text-ink'}">{rider.watts}</span
 			>
 			<span class="text-ink/80 text-xs font-medium">W</span>
+		</div>
+	{/if}
+
+	{#if rider.away}
+		<div class="pointer-events-none absolute inset-0 grid place-items-center">
+			<span class={AWAY_MARK}>away</span>
 		</div>
 	{/if}
 

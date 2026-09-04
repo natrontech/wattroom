@@ -111,12 +111,33 @@ func TestTrophies(t *testing.T) {
 		if body.EnergyKj != 720 {
 			t.Fatalf("friend saw energy %d", body.EnergyKj)
 		}
+		// ADR-0027: an earned badge travels, progress toward an unearned one
+		// does not. Alice has a ride and a lounge block, so her OWN case
+		// carries progress on both — this endpoint handed all of it to any
+		// room-mate or friend until #701. Assert the absence, not a count.
+		for _, a := range body.Achievements {
+			if a.Progress != nil {
+				t.Fatalf("a friend saw progress toward %s: %+v", a.Key, a.Progress)
+			}
+		}
 	})
 
 	t.Run("your own id is you", func(t *testing.T) {
 		rec, _ := get(t, mux, "/api/riders/"+store.UUIDString(bob.ID)+"/trophies", "bob")
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status %d: %s", rec.Code, rec.Body)
+		}
+		// And the strip does not over-apply: asking for your own case by id
+		// still answers with your progress, the same as /api/me/trophies.
+		_, mine := get(t, mux, "/api/riders/"+store.UUIDString(alice.ID)+"/trophies", "alice")
+		var seen bool
+		for _, a := range mine.Achievements {
+			if a.Progress != nil {
+				seen = true
+			}
+		}
+		if !seen {
+			t.Fatal("a rider lost their own progress on the rider path")
 		}
 	})
 }
