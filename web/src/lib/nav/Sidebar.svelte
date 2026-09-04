@@ -118,7 +118,7 @@
 					<a
 						href={entry.href}
 						aria-current={on ? 'page' : undefined}
-						class="flex items-center gap-2 rounded px-2 py-1.5 text-sm {on
+						class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
 							? 'bg-surface-raised text-ink'
 							: 'text-muted hover:text-ink'}"
 					>
@@ -135,9 +135,9 @@
 			     a code (ADR-0020). -->
 			<a
 				href="/home#rooms"
-				class="hover:text-ink ml-auto"
+				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title="open a room or join with a code"
-				aria-label="open a room or join with a code"><Plus size={13} /></a
+				aria-label="open a room or join with a code"><Plus size={16} /></a
 			>
 		</div>
 		<ul class="space-y-0.5">
@@ -225,9 +225,9 @@
 										e.preventDefault();
 										onLeave();
 									}}
-									class="text-muted hover:text-ink ml-auto shrink-0"
+									class="text-muted hover:text-ink -my-2 ml-auto grid h-11 w-11 shrink-0 place-items-center md:h-6 md:w-6"
 									title="leave the room"
-									aria-label="leave the room"><LogOut size={12} /></button
+									aria-label="leave the room"><LogOut size={16} /></button
 								>
 							{:else if room.unread}
 								<!-- The strongest reason a chat app stays open in a
@@ -320,7 +320,7 @@
 									<a
 										href="/r/{room.slug}{entry.path}"
 										aria-current={on ? 'page' : undefined}
-										class="flex items-center gap-2 rounded px-2 py-1.5 text-[13px] {on
+										class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
 											? 'bg-ink/5 text-ink'
 											: 'text-muted hover:text-ink'}"
 									>
@@ -372,7 +372,7 @@
 						<a
 							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}
-							class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm {on
+							class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {on
 								? 'bg-surface-raised text-ink'
 								: dmHeads.unread(head.peerId)
 									? 'text-ink font-semibold'
@@ -458,12 +458,12 @@
 			     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 			<a
 				href="/profile"
-				class="rounded p-1 {destination === undefined &&
-				pathname.startsWith('/profile')
+				class="grid h-11 w-11 place-items-center rounded md:h-7 md:w-7 {destination ===
+					undefined && pathname.startsWith('/profile')
 					? 'text-ink'
 					: 'text-muted hover:text-ink'}"
 				title="settings"
-				aria-label="settings"><Settings size={14} /></a
+				aria-label="settings"><Settings size={16} /></a
 			>
 		</div>
 		{#if showAv && !inVoice}
