@@ -672,8 +672,16 @@ func TestMembersCarryEarnedBadges(t *testing.T) {
 			}
 			continue
 		}
-		for _, b := range m["badges"].([]any) {
-			seen = append(seen, b.(string))
+		badges, ok := m["badges"].([]any)
+		if !ok {
+			t.Fatalf("bob carries no badges field: %v", m)
+		}
+		for _, b := range badges {
+			key, ok := b.(string)
+			if !ok {
+				t.Fatalf("badge %v is not a key", b)
+			}
+			seen = append(seen, key)
 		}
 	}
 	if len(seen) != 2 {
