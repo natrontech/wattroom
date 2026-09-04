@@ -112,6 +112,8 @@ export interface RoomContext {
 		ftpWatts?: number;
 		weightKg?: number;
 		joinedAt?: string;
+		/** Earned achievement keys (#703). Never progress — ADR-0027. */
+		badges?: string[];
 	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
 	schedule(name: string, json: string, startsAt: string): void;

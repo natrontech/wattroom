@@ -15,8 +15,14 @@ values ($1, $2, $3)
 on conflict (room_id, user_id) do nothing;
 
 -- name: ListRoomMembers :many
+-- Badges ride along (#703): the room's own page is where a crew compares
+-- itself, which is the only comparison WATTROOM.md allows. Earned keys
+-- only — the achievements table holds nothing else, so there is no
+-- progress here to leak (ADR-0027).
 select u.*, m.role, m.joined_at,
-    user_total_xp(u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp,
+    coalesce((select array_agg(a.key order by a.earned_at)
+              from achievements a where a.user_id = u.id), '{}')::text[] as badges
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
