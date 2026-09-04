@@ -5,6 +5,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
+	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
 	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -88,13 +89,6 @@
 		const tag = r.data?.version;
 		release = tag && tag !== 'dev' ? tag : null;
 	});
-
-	const providerName: Record<string, string> = {
-		google: 'Google',
-		github: 'GitHub',
-		strava: 'Strava',
-		dev: 'Dev',
-	};
 
 	let name = $state('');
 	let email = $state('');
@@ -280,37 +274,15 @@
 					<span class="eyebrow">display name</span>
 					<input bind:value={name} maxlength="60" class="input mt-1 w-full" />
 				</label>
-				<div>
-					<span class="eyebrow">signed in with</span>
-					<p class="mt-2 text-sm">
-						{(account.me?.providers ?? [])
-							.map((p) => providerName[p] ?? p)
-							.join(', ') || '—'}
-					</p>
-					{#if account.me?.providers?.includes('strava')}
-						<label class="mt-3 flex items-start gap-2">
-							<input
-								type="checkbox"
-								checked={account.me?.stravaUpload ?? true}
-								onchange={(e) =>
-									void account.save({
-										displayName: name || (account.me?.displayName ?? ''),
-										ftpWatts: ftp,
-										weightKg: kg,
-										stravaUpload: e.currentTarget.checked,
-									})}
-								class="mt-0.5"
-							/>
-							<span class="text-xs">
-								Auto-upload rides to Strava
-								<span class="text-muted block text-[11px]">
-									Your rides, your Strava, as Virtual Rides. Upload only —
-									nothing is ever pulled back.
-								</span>
-							</span>
-						</label>
-					{/if}
-				</div>
+				<ProviderConnections
+					onUploadToggle={(on) =>
+						void account.save({
+							displayName: name || (account.me?.displayName ?? ''),
+							ftpWatts: ftp,
+							weightKg: kg,
+							stravaUpload: on,
+						})}
+				/>
 				<label class="block">
 					<span class="eyebrow">FTP (W)</span>
 					<input

@@ -352,6 +352,12 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 // and writes nothing (#719). Merging two accounts is a separate problem.
 var errIdentityTaken = errors.New("identity belongs to another account")
 
+// errProviderAlreadyLinked: this account already has an identity with this
+// provider. One per provider per account is not tidiness — GetUserIdentity is
+// a :one query, so a second Strava row would make the upload worker's choice
+// of grant arbitrary (server/internal/strava/strava.go).
+var errProviderAlreadyLinked = errors.New("provider already linked to this account")
+
 // link attaches ident to userID. Unlike upsert it never creates a user and
 // never touches the session — the rider stays signed in as who they were.
 func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.Token, userID pgtype.UUID) error {
@@ -376,6 +382,21 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 		// fall through to create
 	default:
 		return err
+	}
+
+	// One identity per provider per account. The dev provider is exempt: it is
+	// the local stand-in for several different people on one box (?as=), and
+	// production never configures it.
+	if p.id != "dev" {
+		switch _, err := q.GetUserIdentity(ctx, db.GetUserIdentityParams{
+			UserID: userID, Provider: p.id,
+		}); {
+		case err == nil:
+			return errProviderAlreadyLinked
+		case errors.Is(err, pgx.ErrNoRows):
+		default:
+			return err
+		}
 	}
 
 	create := db.CreateIdentityParams{
@@ -418,6 +439,8 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 	case errors.Is(err, errIdentityTaken):
 		s.log.Warn("link refused: identity already linked elsewhere", "provider", p.id)
 		outcome = "taken"
+	case errors.Is(err, errProviderAlreadyLinked):
+		outcome = "duplicate"
 	default:
 		s.log.Error("link failed", "provider", p.id, "err", err)
 		outcome = "failed"

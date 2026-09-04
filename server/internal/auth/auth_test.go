@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/oauth2"
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -795,5 +798,38 @@ func TestLinkIntentRidesInTheState(t *testing.T) {
 	// A plain sign-in must never be read back as a link.
 	if state := start(""); strings.HasPrefix(state, linkStatePrefix) {
 		t.Fatalf("sign-in state carries the link prefix: %q", state)
+	}
+}
+
+func TestLinkRefusesASecondIdentityForTheSameProvider(t *testing.T) {
+	// GetUserIdentity is a :one query, so two Strava rows on one account would
+	// leave the upload worker picking a grant arbitrarily. Linking is what
+	// makes that reachable, so linking is what has to refuse it.
+	s := testService(t)
+	user := testUser(t, s)
+	p := provider{id: "github"}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(),
+			"delete from identities where user_id = $1", user.ID)
+	})
+
+	first := identity{ProviderUserID: "gh-1", DisplayName: "First"}
+	if err := s.link(req, p, first, &oauth2.Token{}, user.ID); err != nil {
+		t.Fatalf("first link: %v", err)
+	}
+	second := identity{ProviderUserID: "gh-2", DisplayName: "Second"}
+	if err := s.link(req, p, second, &oauth2.Token{}, user.ID); !errors.Is(err, errProviderAlreadyLinked) {
+		t.Fatalf("second github link = %v, want errProviderAlreadyLinked", err)
+	}
+	var count int
+	_ = s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from identities where user_id = $1", user.ID).Scan(&count)
+	if count != 1 {
+		t.Fatalf("refused link still wrote: %d identities", count)
+	}
+	// Re-authorizing the one it already has stays a no-op, not a duplicate.
+	if err := s.link(req, p, first, &oauth2.Token{}, user.ID); err != nil {
+		t.Fatalf("re-link of the owned identity: %v", err)
 	}
 }
