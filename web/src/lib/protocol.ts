@@ -292,6 +292,17 @@ export interface SensorClaim {
   device?: string;
 }
 /**
+ * Poke is one rider asking for another rider's attention. The client sends
+ * only To; the hub replaces every sender field from authenticated presence
+ * before routing it to the addressed rider's sockets.
+ */
+export interface Poke {
+  to?: string;
+  fromId?: string;
+  from?: string;
+  at?: number /* int64 */;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
@@ -303,6 +314,7 @@ export interface ClientMessage {
   backfill?: Backfill;
   jukebox?: JukeboxCommand;
   sensors?: SensorClaim;
+  poke?: Poke;
 }
 /**
  * Rider is presence: who is in the room right now, with what the dashboard
@@ -533,4 +545,5 @@ export interface ServerMessage {
   tick?: ServerTick;
   error?: Error;
   pairing?: SensorPairing;
+  poke?: Poke;
 }

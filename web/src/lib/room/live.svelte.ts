@@ -1,6 +1,7 @@
 import { account } from '$lib/account.svelte';
 import type {
 	ClientMessage,
+	Poke,
 	RiderMetrics,
 	RoomEvent,
 	SensorClaim,
@@ -38,6 +39,9 @@ export function createRoomLive(slug: string) {
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
 	let pairing = $state<SensorPairing>({});
+	// Addressed off the tick like pairing: every update is one new request for
+	// this rider's attention, carrying the authenticated sender and server time.
+	let lastPoke = $state<Poke | null>(null);
 	// The last claim sent, replayed on every reconnect — a fresh socket is a
 	// fresh claim as far as the hub is concerned, and a trainer that stays
 	// connected through a drop must not come back as somebody else's.
@@ -111,6 +115,7 @@ export function createRoomLive(slug: string) {
 		};
 		socket.onmessage = (event) => {
 			const msg = JSON.parse(event.data) as ServerMessage;
+			if (msg.poke) lastPoke = msg.poke;
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
 				// rider's sockets, not to the room.
@@ -235,6 +240,9 @@ export function createRoomLive(slug: string) {
 		get pairing() {
 			return pairing;
 		},
+		get lastPoke() {
+			return lastPoke;
+		},
 		/**
 		 * Tell the hub which sensors this tab has connected. Idempotent: the
 		 * whole set every time, so a release is just a shorter list, and the
@@ -269,6 +277,9 @@ export function createRoomLive(slug: string) {
 		},
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
+		},
+		poke(to: string) {
+			send({ poke: { to } });
 		},
 		get chatLog() {
 			return chatLog;

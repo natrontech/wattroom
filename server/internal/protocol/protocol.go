@@ -219,6 +219,16 @@ type SensorClaim struct {
 	Device string `json:"device,omitempty"`
 }
 
+// Poke is one rider asking for another rider's attention. The client sends
+// only To; the hub replaces every sender field from authenticated presence
+// before routing it to the addressed rider's sockets.
+type Poke struct {
+	To     string `json:"to,omitempty"`
+	FromID string `json:"fromId,omitempty"`
+	From   string `json:"from,omitempty"`
+	At     int64  `json:"at,omitempty"`
+}
+
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
 	Chat      *ChatLine       `json:"chat,omitempty"`
@@ -229,6 +239,7 @@ type ClientMessage struct {
 	Backfill  *Backfill       `json:"backfill,omitempty"`
 	Jukebox   *JukeboxCommand `json:"jukebox,omitempty"`
 	Sensors   *SensorClaim    `json:"sensors,omitempty"`
+	Poke      *Poke           `json:"poke,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard
@@ -398,4 +409,5 @@ type ServerMessage struct {
 	Tick    *ServerTick    `json:"tick,omitempty"`
 	Error   *Error         `json:"error,omitempty"`
 	Pairing *SensorPairing `json:"pairing,omitempty"`
+	Poke    *Poke          `json:"poke,omitempty"`
 }

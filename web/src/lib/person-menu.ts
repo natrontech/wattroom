@@ -3,7 +3,7 @@
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a room say the same words in the same order (#486).
  */
-import { MessageSquare, User, UserPlus } from '@lucide/svelte';
+import { BellRing, MessageSquare, User, UserPlus } from '@lucide/svelte';
 import { api } from '$lib/api';
 import type { MenuItem } from '$lib/context-menu.svelte';
 import { toasts } from '$lib/toast.svelte';
@@ -32,6 +32,12 @@ export function personMenu(
 		conversation?: boolean;
 		/** You: there is no DM to yourself, and no friending yourself. */
 		you?: boolean;
+		/** Present only on a room surface; disabled explains why it cannot land. */
+		poke?: {
+			onSelect: () => void;
+			disabled?: boolean;
+			hint?: string;
+		};
 	} = {},
 ): MenuItem[] {
 	const profile: MenuItem = {
@@ -51,8 +57,17 @@ export function personMenu(
 		onSelect: () => void askToBeFriends(id),
 		disabled: options.you,
 	};
+	const poke: MenuItem | undefined = options.poke && {
+		label: 'Poke',
+		icon: BellRing,
+		onSelect: options.poke.onSelect,
+		disabled: options.you || options.poke.disabled,
+		hint: options.you ? "that's you" : options.poke.hint,
+	};
 	// The menu leads with what a click on the object already does.
-	return options.conversation
+	const items = options.conversation
 		? [message, profile, friend]
 		: [profile, message, friend];
+	if (poke) items.splice(2, 0, poke);
+	return items;
 }

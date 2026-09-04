@@ -27,6 +27,7 @@
 	const ordered: CueId[] = [
 		'countdown',
 		'go',
+		'poke',
 		'klaxon',
 		'elimination',
 		'fanfare',

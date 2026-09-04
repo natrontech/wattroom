@@ -73,7 +73,11 @@
 				<a
 					href="/r/{conn.slug}"
 					title="{rider.name} · back to the Lounge"
-					{@attach contextMenu(() => personMenu(rider.id, goto))}
+					{@attach contextMenu(() =>
+						personMenu(rider.id, goto, {
+							poke: { onSelect: () => conn.live.poke(rider.id) },
+						}),
+					)}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
 						!!av.speaking[rider.id],
 					)}"

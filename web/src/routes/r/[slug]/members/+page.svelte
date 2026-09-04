@@ -37,8 +37,14 @@
 	// Their page and their DM on every member (#486), plus the paperwork the
 	// row already offers an owner — remove last, after a separator.
 	function memberMenu(member: Member): MenuEntry[] {
+		const here = room.riders.some((rider) => rider.id === member.id);
 		const entries: MenuEntry[] = personMenu(member.id, goto, {
 			you: member.id === account.me?.id,
+			poke: {
+				onSelect: () => room.poke(member.id),
+				disabled: !here,
+				hint: here ? undefined : 'not in the room',
+			},
 		});
 		if (canAdmin(member)) {
 			entries.push(

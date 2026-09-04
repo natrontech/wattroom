@@ -11,6 +11,7 @@ import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
 import { sensorClaim } from '$lib/room/sensor-claim';
 import { missedSince, type Missed } from '$lib/room/unread';
+import { announcePoke } from '$lib/room/poke';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
 import type { SessionState } from '$lib/protocol';
@@ -193,6 +194,18 @@ function connect(slug: string): Connection {
 					reading: chatOpen && !document.hidden,
 				});
 			}
+		});
+
+		// A poke is delivered to every socket of this rider. localStorage picks
+		// one tab on each device to make the sound/notification, while each
+		// device still receives it independently. play() keeps the receiver's
+		// cue fader authoritative; notify.push() keeps their permission and the
+		// hidden-tab gate authoritative.
+		$effect(() => {
+			const poke = live.lastPoke;
+			const where =
+				presence.rooms.find((room) => room.slug === slug)?.name ?? slug;
+			announcePoke(poke, slug, where);
 		});
 
 		// Room audio follows the connection, not the page (#216): the gate

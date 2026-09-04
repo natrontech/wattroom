@@ -42,7 +42,12 @@
 				onSelect: () =>
 					room.setFocus(rider().id === room.focusId ? null : rider().id),
 			},
-			...personMenu(rider().id, goto, { you: rider().you }),
+			...personMenu(rider().id, goto, {
+				you: rider().you,
+				poke: {
+					onSelect: () => room.poke(rider().id),
+				},
+			}),
 		]);
 	}
 

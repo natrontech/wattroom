@@ -88,6 +88,8 @@ export interface RoomContext {
 
 	readonly focusId: string | null;
 	setFocus(id: string | null): void;
+	/** Ask one connected rider's own screens for their attention. */
+	poke(id: string): void;
 
 	readonly upcoming: {
 		id: string;

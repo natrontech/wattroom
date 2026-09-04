@@ -279,6 +279,9 @@ type room struct {
 	// Claim answers waiting for the tick goroutine to write them — the only
 	// writer per socket.
 	pendingPairing map[*client]protocol.SensorPairing
+	// Pokes waiting for the same writer. A slice preserves simultaneous pokes
+	// from different riders instead of letting the last one erase the first.
+	pendingPokes map[*client][]protocol.Poke
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
 	xp        XpKeeper
@@ -286,6 +289,10 @@ type room struct {
 
 // ridingWindow is how recent a sample must be to count as "riding now".
 const ridingWindow = 10 * time.Second
+
+// A poke is deliberately harder to repeat than chat or a cheer: it asks one
+// person's machine for attention and must not become a harassment button.
+const pokeCooldown = 10 * time.Second
 
 // ridingLocked names riders with a live sample inside ridingWindow — the
 // caller holds rm.mu.
@@ -394,6 +401,30 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// changes nothing and queues nothing.
 			if rm.claimSensors(c, *msg.Sensors) {
 				rm.announcePairing(rider.ID)
+			}
+		}
+		if msg.Poke != nil {
+			to := strings.TrimSpace(msg.Poke.To)
+			if to == "" || to == rider.ID {
+				h.writeError(ctx, c, "validation_error", "Choose another rider to poke.")
+				continue
+			}
+			if !rm.hasRider(to) {
+				h.writeError(ctx, c, "invalid_request", "That rider is no longer in the room.")
+				continue
+			}
+			// The target is part of the rate-limit key: one rider cannot evade
+			// the cooldown with another tab, but may still poke somebody else.
+			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
+				// A cooldown that drops in silence reads as a broken button,
+				// and the sender pokes again (errors.md).
+				h.writeError(ctx, c, "conflict", "You just poked them — give them a moment to notice.")
+				continue
+			}
+			if !rm.queuePoke(to, protocol.Poke{
+				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
+			}) {
+				h.writeError(ctx, c, "invalid_request", "That rider is no longer in the room.")
 			}
 		}
 		if msg.Metrics != nil {
@@ -1090,6 +1121,7 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 		// Claim answers ride out with this tick but not IN it (#610): a
 		// rider's device inventory is theirs, and the tick goes to the room.
 		pairing := rm.drainPairingLocked()
+		pokes := rm.drainPokesLocked()
 		rm.mu.Unlock()
 		// Someone spoke: every sidebar's unread count for this room just went
 		// stale, and a rider who is NOT standing in the room announces the
@@ -1131,6 +1163,10 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			if answer, ok := pairing[c]; ok {
 				_ = wsjson.Write(ctx, c.conn, protocol.ServerMessage{Pairing: &answer})
 			}
+			for _, pending := range pokes[c] {
+				poke := pending
+				_ = wsjson.Write(ctx, c.conn, protocol.ServerMessage{Poke: &poke})
+			}
 			cancel()
 		}
 	}
@@ -1165,6 +1201,7 @@ func (rm *room) leave(c *client) {
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
 	delete(rm.pendingPairing, c)
+	delete(rm.pendingPokes, c)
 	// Closing a tab frees its sensors, so the rider's other screens can pair
 	// (#610). Queued after the delete above, so the leaver is not told.
 	if rm.releaseSensorsLocked(c) {
