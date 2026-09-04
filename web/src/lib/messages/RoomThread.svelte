@@ -216,7 +216,10 @@
 					{/snippet}
 				</Banner>
 			{:else if timeline.length === 0}
-				<div class="mb-4 text-center">
+				<!-- Below md the nav and people buttons float in this band, 48x48 in
+				     each bottom corner (#634) — the empty state was rendering under
+				     both. Keep it clear of them; above md there are no floats. -->
+				<div class="mb-4 px-16 text-center md:px-0">
 					<p class="font-display text-base font-bold">{name}</p>
 					<p class="text-muted mt-0.5 text-xs">
 						Nothing said here yet. Say something — the room keeps its last 500

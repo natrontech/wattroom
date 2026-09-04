@@ -186,8 +186,15 @@
 	</header>
 
 	{#if tab === 'workouts' || mode === 'plan'}
-		<div class="flex min-h-0 flex-1">
-			<div class="border-ink/5 flex w-72 shrink-0 flex-col border-r">
+		<!-- Two panes side by side is a desk layout: at 375px the dialog is
+		     343px wide, so a fixed w-72 list left the detail 53px and one word
+		     per line (#634). Below md they stack — list first, since picking is
+		     what the phone came for, and the detail reads at full width under
+		     it. The list gives up height so the detail is never off-screen. -->
+		<div class="flex min-h-0 flex-1 flex-col md:flex-row">
+			<div
+				class="border-ink/5 flex max-h-[38dvh] w-full shrink-0 flex-col border-b md:max-h-none md:w-72 md:border-r md:border-b-0"
+			>
 				<div class="p-2">
 					<!-- Focused on open: the fastest way through 27 workouts is to
 					     start typing, and nobody should have to click into the box

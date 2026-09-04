@@ -282,7 +282,7 @@
 				>
 					<button
 						onclick={() => (drawer = true)}
-						class="text-muted hover:text-ink rounded p-1"
+						class="text-muted hover:text-ink -m-1 grid h-11 w-11 place-items-center rounded"
 						aria-label="open navigation"><Menu size={20} /></button
 					>
 					<Logo
