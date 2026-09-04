@@ -5,6 +5,9 @@
 	// in tiles, so the strip stays off it; everywhere else this is the only
 	// place a face appears off-room, and it carries the whole crew.
 	import { SvelteMap } from 'svelte/reactivity';
+	import { goto } from '$app/navigation';
+	import { contextMenu } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
@@ -64,9 +67,14 @@
 				     are the Lounge tile's own (presence-marks.ts, #505): one way
 				     to say speaking, in voice, muted and riding, at half the
 				     size. -->
+				<!-- The click stays the Lounge: mid-ride, away from it, that is
+				     what a tile is for. The rider behind the tile is the menu's
+				     job (#702) — a shortcut, never the only way, because the
+				     people column offers the same page on click. -->
 				<a
 					href="/r/{conn.slug}"
 					title="{rider.name} · back to the Lounge"
+					{@attach contextMenu(() => personMenu(rider.id, goto))}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
 						!!av.speaking[rider.id],
 						!!rider.away,

@@ -104,66 +104,81 @@
 			: 'text-ink/70'}"
 		{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
 	>
-		<span class="relative shrink-0">
-			<Avatar
-				name={rider.name}
-				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
-				preset={avatarOf.get(rider.id)?.avatarPreset}
-				xp={avatarOf.get(rider.id)?.totalXp}
-				size={22}
-			/>
-			{#if rider.watts > 0}
-				<!-- Riding is motion, not a red-adjacent dot (ADR-0020). -->
-				<span
-					class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
-				>
-					<RidingBars size={8} />
-				</span>
-			{:else}
-				<span
-					class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"
-				></span>
-			{/if}
-		</span>
-		<span class="min-w-0 flex-1">
-			<span class="flex items-center gap-1.5">
-				<span
-					class="min-w-0 flex-1 truncate {rider.speaking ? 'font-medium' : ''}"
-					>{rider.name}</span
-				>
-				{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
-				{#if rider.cameraOn}<Video size={11} class="text-muted shrink-0" />{/if}
-				{#if rider.away}
-					<Coffee size={11} class="text-muted shrink-0" aria-label="away" />
-				{/if}
-				{#if rider.speaking}
-					<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
-				{:else if rider.muted}
-					<MicOff size={11} class="text-muted/50 shrink-0" />
-				{/if}
-				{#if live && rider.watts > 0}
-					<span class="text-muted shrink-0 text-[10px] tabular-nums"
-						>{Math.round(rider.execution * 100)}%</span
+		<!-- Opening a rider was right-click only here, while the members list,
+		     the friends list and DM heads all linked to the page (#702) —
+		     ux.md: the primary action stays on click, nothing lives ONLY in a
+		     menu. The link takes the face and the name, not the row: the row
+		     ends in RiderVolume, and a slider cannot sit inside an anchor. -->
+		<a
+			href="/u/{rider.id}"
+			class="-my-1 flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-2 py-1"
+			title="{rider.name} — open their page"
+		>
+			<span class="relative shrink-0">
+				<Avatar
+					name={rider.name}
+					avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
+					preset={avatarOf.get(rider.id)?.avatarPreset}
+					xp={avatarOf.get(rider.id)?.totalXp}
+					size={22}
+				/>
+				{#if rider.watts > 0}
+					<!-- Riding is motion, not a red-adjacent dot (ADR-0020). -->
+					<span
+						class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
 					>
+						<RidingBars size={8} />
+					</span>
+				{:else}
+					<span
+						class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"
+					></span>
 				{/if}
 			</span>
-			{#if live && rider.watts > 0}
-				<!-- Execution moved off the training surface (ADR-0020): how well
+			<span class="min-w-0 flex-1">
+				<span class="flex items-center gap-1.5">
+					<span
+						class="min-w-0 flex-1 truncate {rider.speaking
+							? 'font-medium'
+							: ''}">{rider.name}</span
+					>
+					{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
+					{#if rider.cameraOn}<Video
+							size={11}
+							class="text-muted shrink-0"
+						/>{/if}
+					{#if rider.away}
+						<Coffee size={11} class="text-muted shrink-0" aria-label="away" />
+					{/if}
+					{#if rider.speaking}
+						<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
+					{:else if rider.muted}
+						<MicOff size={11} class="text-muted/50 shrink-0" />
+					{/if}
+					{#if live && rider.watts > 0}
+						<span class="text-muted shrink-0 text-[10px] tabular-nums"
+							>{Math.round(rider.execution * 100)}%</span
+						>
+					{/if}
+				</span>
+				{#if live && rider.watts > 0}
+					<!-- Execution moved off the training surface (ADR-0020): how well
 				     everyone is holding target is roster data, and this is the
 				     roster. It also gives the column a job mid-ride, when nobody
 				     is typing. -->
-				<span class="mt-1 block">
-					<ProgressBar
-						pct={rider.execution * 100}
-						h="h-1"
-						fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
-						title="{rider.name} is holding target {Math.round(
-							rider.execution * 100,
-						)}% of the time"
-					/>
-				</span>
-			{/if}
-		</span>
+					<span class="mt-1 block">
+						<ProgressBar
+							pct={rider.execution * 100}
+							h="h-1"
+							fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
+							title="{rider.name} is holding target {Math.round(
+								rider.execution * 100,
+							)}% of the time"
+						/>
+					</span>
+				{/if}
+			</span>
+		</a>
 		{#if rider.inVoice && !rider.you}
 			<RiderVolume id={rider.id} name={rider.name} />
 		{/if}
@@ -175,16 +190,22 @@
 		class="text-ink/35 flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() => personMenu(member.id, goto))}
 	>
-		<span class="shrink-0 opacity-50">
-			<Avatar
-				name={member.displayName}
-				avatarUrl={member.avatarUrl}
-				preset={member.avatarPreset}
-				xp={member.totalXp}
-				size={22}
-			/>
-		</span>
-		<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+		<a
+			href="/u/{member.id}"
+			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
+			title="{member.displayName} — open their page"
+		>
+			<span class="shrink-0 opacity-50">
+				<Avatar
+					name={member.displayName}
+					avatarUrl={member.avatarUrl}
+					preset={member.avatarPreset}
+					xp={member.totalXp}
+					size={22}
+				/>
+			</span>
+			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+		</a>
 	</li>
 {/snippet}
 
