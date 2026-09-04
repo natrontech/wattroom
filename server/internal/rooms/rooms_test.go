@@ -639,3 +639,44 @@ func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
 		t.Fatalf("rider.TotalXp = %d, want 240 — the roster cannot ring without it", rider.TotalXp)
 	}
 }
+
+// The room's member list carries each rider's earned badges (#703): the
+// Members place is the one surface ADR-0027 lets a crew compare itself on, and
+// it has no other source. Earned keys only — the achievements table holds
+// nothing else, so there is no progress here to leak.
+func TestMembersCarryEarnedBadges(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Badge Crew")
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatal("bob could not join")
+	}
+	for _, key := range []string{"lounge-lizard", "dj"} {
+		if _, err := h.store.Queries.AwardAchievement(t.Context(), db.AwardAchievementParams{
+			UserID: h.users.byToken["bob"].ID, Key: key,
+			EarnedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		}); err != nil {
+			t.Fatalf("award %s: %v", key, err)
+		}
+	}
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	members, _ := body["members"].([]any)
+	var seen []string
+	for _, raw := range members {
+		m, _ := raw.(map[string]any)
+		if m["displayName"] != "bob" {
+			// A rider with no badges carries none — omitempty, not an empty list.
+			if _, present := m["badges"]; present {
+				t.Fatalf("%v carries a badges field with nothing in it", m["displayName"])
+			}
+			continue
+		}
+		for _, b := range m["badges"].([]any) {
+			seen = append(seen, b.(string))
+		}
+	}
+	if len(seen) != 2 {
+		t.Fatalf("bob's badges = %v, want the two he earned", seen)
+	}
+}

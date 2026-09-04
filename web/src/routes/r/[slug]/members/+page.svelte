@@ -18,12 +18,40 @@
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { Award, Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
+	import { ACHIEVEMENTS } from '$lib/trophies/catalogue';
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
 
 	const medalsOf = (name: string) =>
 		room.medals.filter((m) => m.rider === name).length;
+
+	// A room's own crew comparing itself is the ONE ladder WATTROOM.md
+	// allows — "your crew's ladder, not the internet's" — and ADR-0027
+	// keeps it here: no ordering by badges on Home, the friends list, or
+	// any surface that is not one room. Deliberately not exported.
+	type Order = 'joined' | 'level' | 'badges';
+	let order = $state<Order>('joined');
+	const ORDERS: { id: Order; label: string }[] = [
+		{ id: 'joined', label: 'Joined' },
+		{ id: 'level', label: 'Level' },
+		{ id: 'badges', label: 'Badges' },
+	];
+
+	const badgeMeta = new Map(ACHIEVEMENTS.map((a) => [a.key, a]));
+	/** Earned keys the client can draw — an unknown key is a newer server. */
+	const badgesOf = (member: Member) =>
+		(member.badges ?? []).flatMap((key) => badgeMeta.get(key) ?? []);
+
+	const ordered = $derived(
+		order === 'joined'
+			? room.members
+			: [...room.members].sort((a, b) =>
+					order === 'level'
+						? (b.totalXp ?? 0) - (a.totalXp ?? 0)
+						: (b.badges?.length ?? 0) - (a.badges?.length ?? 0),
+				),
+	);
 
 	type Member = (typeof room.members)[number];
 	/** Owner paperwork, one place: the row's buttons and its menu run these. */
@@ -69,13 +97,28 @@
 	<h2 class="font-display mb-1 text-xl font-bold">
 		Who rides here — {room.members.length}
 	</h2>
-	<p class="text-muted mb-5 text-xs">
+	<p class="text-muted mb-3 text-xs">
 		The people column is the live read; this is the paperwork.
 	</p>
 
+	<!-- Ordering the crew is room-scoped on purpose (ADR-0027). -->
+	<div class="mb-5 flex items-center gap-1.5">
+		<span class="text-muted/70 mr-1 text-[11px]">by</span>
+		{#each ORDERS as option (option.id)}
+			<button
+				onclick={() => (order = option.id)}
+				class="min-h-9 rounded px-2.5 py-1 text-xs {order === option.id
+					? 'bg-surface-raised text-ink'
+					: 'text-muted hover:text-ink'}"
+				aria-pressed={order === option.id}>{option.label}</button
+			>
+		{/each}
+	</div>
+
 	<ul class="divide-ink/5 panel divide-y">
-		{#each room.members as member (member.id)}
+		{#each ordered as member (member.id)}
 			{@const medals = medalsOf(member.displayName)}
+			{@const badges = badgesOf(member)}
 			{@const here = room.riders.find((r) => r.id === member.id)}
 			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
 			<li
@@ -124,6 +167,27 @@
 						{/if}
 					</span>
 				</span>
+				<!-- What they have done, beside what they won here (#703): the
+				     badges are lifetime and earned-only, the medals are this
+				     room's. No progress and no "n of 10" — ADR-0027. -->
+				{#if badges.length > 0}
+					<span
+						class="text-muted flex shrink-0 items-center gap-1"
+						title={badges.map((b) => b.name).join(', ')}
+					>
+						{#each badges.slice(0, 4) as badge (badge.key)}
+							<badge.icon size={13} class="text-neon" />
+						{/each}
+						{#if badges.length > 4}
+							<span class="text-[11px] tabular-nums">+{badges.length - 4}</span>
+						{/if}
+						<span class="sr-only"
+							>{badges.length === 1
+								? '1 badge'
+								: `${badges.length} badges`}</span
+						>
+					</span>
+				{/if}
 				{#if medals > 0}
 					<span
 						class="text-muted flex shrink-0 items-center gap-1 text-xs tabular-nums"
