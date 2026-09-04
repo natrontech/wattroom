@@ -46,3 +46,29 @@ test('every place in a room renders, and none of them throws', async ({
 		[],
 	);
 });
+
+/**
+ * A face in the room's people column opens that rider (#702). Opening a rider
+ * there was right-click only, which `.claude/rules/ux.md` forbids — the
+ * primary action stays on click, and nothing lives ONLY in a menu. One rider
+ * is enough: the column always lists you, so your own face is the target.
+ */
+test('a face in the people column opens that rider’s page', async ({
+	page,
+	rooms,
+}) => {
+	await signInAs(page, 'Face Clicker', '/rooms');
+	await rooms.open(page, `Face Click ${Date.now() % 100000}`);
+
+	// The column lists the people, not the nav: a rider link inside a list row.
+	const face = page.locator('li a[href^="/u/"]').first();
+	await expect(face).toBeVisible();
+	const href = await face.getAttribute('href');
+
+	// A thumb finds this mid-ride, so the row's whole height is the target.
+	expect((await face.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+	await face.click();
+	await expect(page).toHaveURL(new RegExp(`${href}$`));
+	await expect(page.locator('h1')).toBeVisible();
+});
