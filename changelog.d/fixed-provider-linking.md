@@ -1,0 +1,1 @@
+- Connecting a second sign-in provider now attaches it to the account you are already in, instead of quietly creating a second account with its own, separate ride history. Your profile gained a Connections section to do it from, and connecting Strava there is what turns on automatic ride upload.
