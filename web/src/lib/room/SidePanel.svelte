@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import {
 		ChevronRight,
+		Coffee,
 		Crown,
 		Headphones,
 		Mic,
@@ -146,6 +147,9 @@
 							size={11}
 							class="text-muted shrink-0"
 						/>{/if}
+					{#if rider.away}
+						<Coffee size={11} class="text-muted shrink-0" aria-label="away" />
+					{/if}
 					{#if rider.speaking}
 						<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
 					{:else if rider.muted}

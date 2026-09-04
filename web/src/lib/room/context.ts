@@ -54,6 +54,9 @@ export interface RoomContext {
 	readonly phase: 'lounge' | 'countdown' | 'live';
 	readonly canControl: boolean;
 	readonly myRole: string;
+	/** Explicit presence state (#706), shared across all of this rider's tabs. */
+	readonly away: boolean;
+	setAway(away: boolean): void;
 
 	/** A sprint window or a game owns the focus while it runs (ADR-0020). */
 	readonly sprint: SprintState | undefined;

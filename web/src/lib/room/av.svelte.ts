@@ -49,6 +49,12 @@ export function createRoomAv(slug: string) {
 	let status = $state<AvStatus>('off');
 	let micOn = $state(false);
 	let camOn = $state(false);
+	// Stepped out (#706). What was live when the rider pressed the button, so
+	// coming back restores exactly that and not a default: someone who was
+	// listening with the camera off does not return with it on.
+	let away = $state(false);
+	let micBeforeAway = false;
+	let camBeforeAway = false;
 	let sharing = $state(false);
 	let error = $state<string | null>(null);
 	/** Rider ids with a live camera track — bumped to retrigger attach. */
@@ -504,7 +510,10 @@ export function createRoomAv(slug: string) {
 				const pub = p.getTrackPublication(Track.Source.Microphone);
 				setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 			}
-			if (wantMic) {
+			// Away follows the rider across their screens (#706). A voice
+			// reconnect or a second tab joining while the rider is away must not
+			// quietly reopen a microphone the away button just closed.
+			if (wantMic && !away) {
 				try {
 					await openMic();
 					micOn = true;
@@ -619,6 +628,87 @@ export function createRoomAv(slug: string) {
 		noteVoice();
 	}
 
+	/**
+	 * Publish the camera. Trust the publication rather than the intent: a
+	 * device the browser refuses would otherwise leave camOn lying, and the
+	 * tile draws a frame that never arrives.
+	 */
+	async function openCam() {
+		if (camOn || !room) return;
+		camOn = true;
+		try {
+			await room.localParticipant.setCameraEnabled(true);
+			const track = room.localParticipant.getTrackPublication(
+				Track.Source.Camera,
+			)?.videoTrack;
+			if (track) {
+				videoTracks.set(me, { owner: myIdentity, track });
+				bumpVideo(me);
+			} else {
+				await closeCam();
+			}
+		} catch {
+			camOn = false;
+		}
+	}
+
+	/**
+	 * Step out, or come back (#706). Deliberately not standDown(): that says
+	 * "the mic lives in another tab of yours", which is what the rail renders
+	 * and what the mic button then acts on. Away is the rider being elsewhere,
+	 * and their own mic button still means what it says.
+	 */
+	async function setAway(next: boolean) {
+		if (next === away) return;
+		away = next;
+		// A rider can step away without joining voice. Keep the state so a
+		// later voice join stays listen-only; there is no capture to change yet.
+		if (!room) return;
+		if (away) {
+			micBeforeAway = micOn;
+			camBeforeAway = camOn;
+			if (micOn) {
+				closeMic();
+				micOn = false;
+			}
+			setVoice(me, 'muted');
+			noteVoice();
+			await closeCam();
+			return;
+		}
+		if (micBeforeAway && !micOn) {
+			try {
+				await openMic();
+				micOn = true;
+			} catch {
+				micOn = false;
+			}
+			setVoice(me, micOn ? 'live' : 'muted');
+			noteVoice();
+		}
+		if (camBeforeAway && !camOn) {
+			await openCam();
+		}
+	}
+
+	/**
+	 * Put the camera down and hand the device back to the machine. Three
+	 * callers now (the button, a handoff, stepping away in #706), and
+	 * unpublishing alone is not enough: it can leave the capture open, and
+	 * then the camera reads as "in use" to every other tab and app until the
+	 * page closes (rider report: the camera stopped working in Chrome).
+	 */
+	async function closeCam() {
+		if (!camOn || !room) return;
+		camOn = false;
+		const track = room.localParticipant.getTrackPublication(
+			Track.Source.Camera,
+		)?.videoTrack;
+		await room.localParticipant.setCameraEnabled(false).catch(() => {});
+		track?.mediaStreamTrack?.stop();
+		if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
+	}
+
 	/** Another tab of yours took over: drop the mic and camera, keep listening. */
 	async function standDown() {
 		if (handedOff) return;
@@ -630,11 +720,7 @@ export function createRoomAv(slug: string) {
 		}
 		// The note stops vetoing a rejoin in the tab that now holds the mic.
 		noteVoice();
-		if (camOn && room) {
-			camOn = false;
-			await room.localParticipant.setCameraEnabled(false).catch(() => {});
-			if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
-		}
+		await closeCam();
 		// Screenshare deliberately stays. Sharing a laptop screen while riding
 		// from the tablet is a real thing to want, and unlike a mic two shares
 		// do not fight — they are silent. `screenTracks` keys by rider though,
@@ -810,6 +896,11 @@ export function createRoomAv(slug: string) {
 		get camOn() {
 			return camOn;
 		},
+		/** Stepped out (#706) — the mic and camera are held down until back. */
+		get away() {
+			return away;
+		},
+		setAway,
 		get sharing() {
 			return sharing;
 		},
@@ -980,26 +1071,11 @@ export function createRoomAv(slug: string) {
 		},
 		async toggleCam() {
 			if (!room) return;
-			camOn = !camOn;
-			try {
-				await room.localParticipant.setCameraEnabled(camOn);
-				const track = room.localParticipant.getTrackPublication(
-					Track.Source.Camera,
-				)?.videoTrack;
-				if (camOn && track) {
-					videoTracks.set(me, { owner: myIdentity, track });
-					bumpVideo(me);
-				} else {
-					// Hand the device back to the machine. Unpublishing alone can
-					// leave the capture open, and then the camera is "in use" for
-					// every other tab and app until the page is closed (rider
-					// report: the camera stopped working in Chrome).
-					track?.mediaStreamTrack?.stop();
-					if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
-				}
-			} catch {
-				camOn = false;
+			if (camOn) {
+				await closeCam();
+				return;
 			}
+			await openCam();
 		},
 		async toggleShare() {
 			if (!room) return;
@@ -1066,7 +1142,7 @@ export function createRoomAv(slug: string) {
 			void room?.disconnect();
 			room = null;
 			status = 'off';
-			micOn = camOn = sharing = false;
+			micOn = camOn = sharing = away = false;
 			voice = {};
 			speaking = {};
 			// This av instance dies with the connection: audio graph and

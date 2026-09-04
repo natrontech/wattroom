@@ -91,6 +91,10 @@ export function createRoomLive(slug: string) {
 			// Before the backfill: the replay below is metrics, and the hub
 			// only takes metrics from the screen holding the trainer.
 			if (claim) send({ sensors: claim });
+			// The hub drops away with the rider's last socket (#706), and a
+			// reconnect is a new socket. Re-declare it, or a rider who stepped
+			// out quietly comes back on everyone else's screen but their own.
+			if (away) send({ away: { away } });
 			if (gapSeq !== null) {
 				const since = gapSeq;
 				gapSeq = null;
@@ -213,6 +217,10 @@ export function createRoomLive(slug: string) {
 	// line must never silently vanish (audit #219). Metrics are continuous
 	// and never queued; stale watts help nobody.
 	let pending: ClientMessage[] = [];
+	// This socket's view of its rider being away (#706), kept so a reconnect
+	// can re-declare it. Not $state: nothing renders from here — the roster
+	// on the tick is what every screen draws, this rider's tile included.
+	let away = false;
 	function send(message: ClientMessage) {
 		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
@@ -269,6 +277,15 @@ export function createRoomLive(slug: string) {
 		},
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
+		},
+		/**
+		 * Step out, or come back (#706). The whole state, never a toggle: the
+		 * hub cannot then be left holding the opposite of what the rider sees
+		 * because one message went missing.
+		 */
+		setAway(next: boolean) {
+			away = next;
+			send({ away: { away: next } });
 		},
 		get chatLog() {
 			return chatLog;

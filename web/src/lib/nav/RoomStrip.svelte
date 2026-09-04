@@ -13,6 +13,7 @@
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import {
+		AWAY_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
 		tileFrame,
@@ -76,6 +77,7 @@
 					{@attach contextMenu(() => personMenu(rider.id, goto))}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
 						!!av.speaking[rider.id],
+						!!rider.away,
 					)}"
 				>
 					{#if video}
@@ -111,6 +113,9 @@
 						>
 							<RidingBars size={8} />
 						</span>
+					{/if}
+					{#if rider.away}
+						<span class="{AWAY_MARK} absolute top-1 right-1">away</span>
 					{/if}
 				</a>
 			{/each}
