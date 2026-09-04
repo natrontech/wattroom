@@ -292,6 +292,17 @@ export interface SensorClaim {
   device?: string;
 }
 /**
+ * Poke is one rider asking for another rider's attention. The client sends
+ * only To; the hub replaces every sender field from authenticated presence
+ * before routing it to the addressed rider's sockets.
+ */
+export interface Poke {
+  to?: string;
+  fromId?: string;
+  from?: string;
+  at?: number /* int64 */;
+}
+/**
  * AwayState is a rider stepping out (#706) — the Lounge's button, never a
  * timer: being off the bike is not being away, and a coach watching the stage
  * is present and not pedalling.
@@ -314,6 +325,7 @@ export interface ClientMessage {
   backfill?: Backfill;
   jukebox?: JukeboxCommand;
   sensors?: SensorClaim;
+  poke?: Poke;
   away?: AwayState;
 }
 /**
@@ -551,4 +563,5 @@ export interface ServerMessage {
   tick?: ServerTick;
   error?: Error;
   pairing?: SensorPairing;
+  poke?: Poke;
 }

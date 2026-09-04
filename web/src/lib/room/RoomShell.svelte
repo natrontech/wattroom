@@ -398,6 +398,7 @@
 			return focusId;
 		},
 		setFocus: (id) => (focusId = id),
+		poke: (id) => live.poke(id),
 		get upcoming() {
 			return upcoming;
 		},
@@ -721,6 +722,7 @@
 		{missed}
 		onOpenChat={() => void goto(`/r/${slug}/chat`)}
 		onCheer={(emoji) => live.cheer(emoji)}
+		onPoke={(id) => live.poke(id)}
 		{cheers}
 	>
 		{#snippet player()}

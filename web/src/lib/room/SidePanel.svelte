@@ -67,6 +67,7 @@
 		missed = null,
 		onOpenChat,
 		onCheer,
+		onPoke,
 		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
@@ -84,6 +85,7 @@
 		missed?: Missed | null;
 		onOpenChat?: () => void;
 		onCheer?: (emoji: string) => void;
+		onPoke?: (id: string) => void;
 		/** The room's one reaction vocabulary (#223), icon keys (#447). */
 		cheers?: string[];
 	} = $props();
@@ -102,7 +104,13 @@
 		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
-		{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
+		{@attach contextMenu(() =>
+			rider.you
+				? []
+				: personMenu(rider.id, goto, {
+						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+					}),
+		)}
 	>
 		<!-- Opening a rider was right-click only here, while the members list,
 		     the friends list and DM heads all linked to the page (#702) —
@@ -188,7 +196,17 @@
 {#snippet absent(member: RoomMember)}
 	<li
 		class="text-ink/35 flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
-		{@attach contextMenu(() => personMenu(member.id, goto))}
+		{@attach contextMenu(() =>
+			personMenu(member.id, goto, {
+				poke: onPoke
+					? {
+							onSelect: () => onPoke(member.id),
+							disabled: true,
+							hint: 'not in the room',
+						}
+					: undefined,
+			}),
+		)}
 	>
 		<a
 			href="/u/{member.id}"

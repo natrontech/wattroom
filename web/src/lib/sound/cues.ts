@@ -36,6 +36,7 @@ export interface Cue {
 export type CueId =
 	| 'countdown'
 	| 'go'
+	| 'poke'
 	| 'klaxon'
 	| 'elimination'
 	| 'fanfare'
@@ -91,6 +92,17 @@ export const CUES: Record<CueId, Cue> = {
 				gain: 0.24,
 				filter: { from: 900 },
 			},
+		],
+	},
+
+	poke: {
+		id: 'poke',
+		label: 'Poke',
+		hint: 'One rider is asking for your attention. Clearer than presence, gentler than the sprint klaxon.',
+		voices: [
+			{ type: 'triangle', freq: note(2), at: 0, dur: 0.12, gain: 0.28 },
+			{ type: 'triangle', freq: note(9), at: 0.14, dur: 0.12, gain: 0.3 },
+			{ type: 'square', freq: note(14), at: 0.28, dur: 0.22, gain: 0.2 },
 		],
 	},
 

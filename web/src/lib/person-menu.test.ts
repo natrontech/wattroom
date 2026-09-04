@@ -29,6 +29,25 @@ describe('personMenu (#486)', () => {
 		expect(theirFriend.disabled).toBeFalsy();
 	});
 
+	it('offers a capability-gated room poke', () => {
+		const poke = vi.fn();
+		const items = personMenu('u1', () => {}, {
+			poke: { onSelect: poke, disabled: true, hint: 'not in the room' },
+		});
+		expect(items.map((item) => item.label)).toEqual([
+			'View profile',
+			'Message',
+			'Poke',
+			'Add friend',
+		]);
+		expect(items[2]).toMatchObject({
+			disabled: true,
+			hint: 'not in the room',
+		});
+		items[2].onSelect();
+		expect(poke).toHaveBeenCalledOnce();
+	});
+
 	// The menu never asks who is already a friend — the server's own refusal
 	// is the answer, and it is a sentence worth showing (#532).
 	it('asks the server to be friends, by id', async () => {
