@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -608,4 +610,32 @@ func (h *harness) going(t *testing.T, slug string) []any {
 	entry, _ := upcoming[0].(map[string]any)
 	list, _ := entry["going"].([]any)
 	return list
+}
+
+// The roster carries the level (#690): the room's faces wear the same ring the
+// sidebar, the member list and DM heads already showed, and the strip's tiles
+// have no other source for it. Authorize is where a socket's rider is built.
+func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Ring Room")
+	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
+		UserID: h.users.byToken["alice"].ID,
+		Source: "lounge",
+		Amount: 240,
+		Ref:    "roster-test",
+		At:     pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("xp event: %v", err)
+	}
+
+	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
+	req.Header.Set("X-Test-User", "alice")
+	rider, err := svc.Authorize(req, slug)
+	if err != nil {
+		t.Fatalf("authorize: %v", err)
+	}
+	if rider.TotalXp != 240 {
+		t.Fatalf("rider.TotalXp = %d, want 240 — the roster cannot ring without it", rider.TotalXp)
+	}
 }

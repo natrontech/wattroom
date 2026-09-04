@@ -14,9 +14,13 @@ order by r.name;
 -- name: RiderTotals :one
 -- Lifetime: XP (level), energy (kJ) and the ride count. Sums only — no
 -- watts, no heart rate, nothing per ride.
+-- XP is user_total_xp, never sum(rides.xp) (#690): the ledger (#467) pays
+-- for lounge time, voice sessions and achievements, and summing rides
+-- alone showed a rider's own profile a lower level than the sidebar,
+-- the room and their DMs — the one page that is ABOUT the level.
 select count(*)::bigint as rides,
        coalesce(sum(kj), 0)::bigint as total_kj,
-       coalesce(sum(xp), 0)::bigint as total_xp
+       user_total_xp($1)::bigint as total_xp
 from rides where user_id = $1;
 
 -- name: RiderMonth :one

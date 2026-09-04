@@ -807,12 +807,22 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error
 	if err != nil || m.Role == "banned" {
 		return protocol.Rider{}, errNotMember
 	}
+	// The level rides along with the rest of the room-visible identity
+	// (#690). Authorize runs once per socket, not per tick, so the extra
+	// read costs a join; a rider whose XP cannot be read joins at zero
+	// rather than failing to join at all.
+	xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID)
+	if err != nil {
+		s.log.Warn("total xp unavailable for roster", "err", err, "room", slug)
+		xp = 0
+	}
 	return protocol.Rider{
 		ID:       store.UUIDString(user.ID),
 		Name:     user.DisplayName,
 		Role:     m.Role,
 		FtpWatts: int(user.FtpWatts),
 		WeightKg: int(user.WeightKg),
+		TotalXp:  xp,
 	}, nil
 }
 

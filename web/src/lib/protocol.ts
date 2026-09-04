@@ -319,6 +319,12 @@ export interface Rider {
    * every contest in docs/SPEC.md is scored on it.
    */
   weightKg: number /* int */;
+  /**
+   * Lifetime XP, so the roster's faces wear the level ring the rest of the
+   * app already shows (#690). Room-visible identity, the same rule the
+   * member list has followed since #253 — rides stay private.
+   */
+  totalXp: number /* int64 */;
 }
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no

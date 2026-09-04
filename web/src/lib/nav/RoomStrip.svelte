@@ -79,7 +79,7 @@
 						{/key}
 					{:else}
 						<div class="absolute inset-0 grid place-items-center pb-3">
-							<Avatar name={rider.name} size={28} />
+							<Avatar name={rider.name} xp={rider.totalXp} size={28} />
 						</div>
 					{/if}
 					<span
