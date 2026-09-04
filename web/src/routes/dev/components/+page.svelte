@@ -54,6 +54,7 @@
 			cameraOn: true,
 			muted: false,
 			speaking: false,
+			away: false,
 			hue: 330,
 			watts: 262,
 			cadence: 91,
@@ -105,7 +106,7 @@
 		when the camera is off, greys out when the trainer stops reporting.
 	</p>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		{#each [{ label: 'riding', r: rider() }, { label: 'speaking', r: rider( { speaking: true } ) }, { label: 'no camera', r: rider( { name: 'Milo', cameraOn: false, muted: true, watts: 168, ftp: 195 } ) }, { label: 'signal lost', r: rider( { stale: true } ) }] as sample (sample.label)}
+		{#each [{ label: 'riding', r: rider() }, { label: 'speaking', r: rider( { speaking: true } ) }, { label: 'away', r: rider( { away: true, cameraOn: false, watts: 0 } ) }, { label: 'no camera', r: rider( { name: 'Milo', cameraOn: false, muted: true, watts: 168, ftp: 195 } ) }, { label: 'signal lost', r: rider( { stale: true } ) }] as sample (sample.label)}
 			<div>
 				<RiderTile rider={sample.r} phase="live" metrics={['hr']} />
 				<p class="text-muted mt-1.5 text-[11px]">{sample.label}</p>

@@ -100,10 +100,16 @@ func TestAwayIsPerRiderNotPerSocket(t *testing.T) {
 
 	// One of two screens closes. Kim is still in the room, so still away.
 	_ = desktop.CloseNow()
-	sendAway(t, phone, true)
 	awaitRoster(t, watcher, "kim still away on the phone", func(roster []protocol.Rider) bool {
 		away, ok := awayOf(roster, "kim")
 		return ok && away
+	})
+
+	// Either screen owns the rider state, so the phone can bring Kim back.
+	sendAway(t, phone, false)
+	awaitRoster(t, watcher, "kim back from the phone", func(roster []protocol.Rider) bool {
+		away, ok := awayOf(roster, "kim")
+		return ok && !away
 	})
 }
 

@@ -145,6 +145,18 @@ function connect(slug: string): Connection {
 			live.claimSensors(sensorClaim(ride.trainer !== null));
 		});
 
+		// Away is per rider in the hub (#706), so every one of that rider's
+		// screens follows the roster truth. The tab that pressed the button
+		// updates itself immediately in RoomShell; this is what also mutes the
+		// desktop when the phone pressed it, and restores each tab to what that
+		// tab had live before.
+		$effect(() => {
+			const mine = live.tick?.roster.find(
+				(rider) => rider.id === account.me?.id,
+			);
+			if (mine) void av.setAway(!!mine.away);
+		});
+
 		$effect(() => {
 			const roster = live.tick?.roster ?? [];
 			const ids = new Set(roster.map((rider) => rider.id));

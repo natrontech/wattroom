@@ -19,10 +19,19 @@ describe('presence marks (#505)', () => {
 		expect(tileFrame(false)).toContain('ring-edge');
 	});
 
+	it('makes away a third quiet presence state, never live data', () => {
+		expect(tileFrame(true, true)).toContain('ring-edge');
+		expect(tileFrame(true, true)).toContain('opacity-60');
+		expect(tileFrame(true, true)).not.toMatch(/watt|glow|ring-z4/);
+	});
+
 	it('draws the strip and the Lounge tile from the one vocabulary', () => {
 		for (const tile of TILES) {
 			const source = readFileSync(join(SRC, tile), 'utf8');
 			expect(source, `${tile} hand-rolls its frame`).toContain('tileFrame(');
+			expect(source, `${tile} omits the shared away mark`).toContain(
+				'AWAY_MARK',
+			);
 			// A ring spelled out at the call site is how the two drifted apart.
 			expect(source.match(/ring-(?:z4|neon|ink)/), tile).toBeNull();
 		}
