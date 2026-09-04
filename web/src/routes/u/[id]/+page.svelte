@@ -23,6 +23,8 @@
 		type Rider,
 	} from '$lib/rider';
 	import { toasts } from '$lib/toast.svelte';
+	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
+	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
 	import {
 		Award,
 		Check,
@@ -38,6 +40,10 @@
 
 	const id = $derived(page.params.id ?? '');
 	let rider = $state<Rider | null>(null);
+	// The badges behind the level (#701, ADR-0027). Same audience as the
+	// page — the endpoint's own gate is SharesRoomOrFriends — so a failure
+	// here is a rider with nothing to show, never a reason to fail the page.
+	let trophies = $state<Trophies | null>(null);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -49,11 +55,14 @@
 		}
 		error = null;
 		rider = res.data;
+		const shelf = await fetchTrophies(who);
+		trophies = shelf.ok ? shelf.data : null;
 	}
 
 	$effect(() => {
 		const who = id;
 		rider = null;
+		trophies = null;
 		error = null;
 		if (who) void load(who);
 	});
@@ -318,6 +327,16 @@
 							</ul>
 						{/if}
 					</section>
+				{/if}
+
+				<!-- The receipts behind the level (#701): what this rider has
+				     actually done, which "level 4" on its own never says. Earned
+				     badges only, no progress and no completion score — ADR-0027,
+				     and the same on your own page, which is how a room-mate sees
+				     it (ADR-0024's honest preview). Your progress bars live on
+				     /trophies. -->
+				{#if trophies}
+					<BadgeGrid achievements={trophies.achievements} mine={false} />
 				{/if}
 			</div>
 
