@@ -39,7 +39,7 @@ The database is created on demand by `make dev-server` (the server migrates at b
 
 Still shared, and not fixable by hashing: **one Postgres server** (separate databases inside it), and **one LiveKit** — two agents joining voice land in the same SFU, so say so when you verify audio.
 
-Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
+Labels: `ble` `rooms` `workouts` `game-modes` `infra` `docs` `blocked` (waiting on another issue — the body names which) `backlog` (parked — ask first) `needs-human-input` (a decision a contributor must make — **do not implement what the issue says**; it usually records one person's opening position and wants push-back). Commit style: conventional commits, scopes `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` (full rules in `.claude/rules/git.md`).
 
 ## Releasing & deploying
 
