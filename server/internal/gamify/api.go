@@ -93,7 +93,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
-	s.write(w, r, user.ID)
+	s.write(w, r, user.ID, true)
 }
 
 // handleRider shows another rider's case to the people who could already see
@@ -123,15 +123,25 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.write(w, r, rider)
+	s.write(w, r, rider, rider == viewer.ID)
 }
 
-func (s *Service) write(w http.ResponseWriter, r *http.Request, userID pgtype.UUID) {
+// write renders a trophy case. self says whether the viewer IS the rider:
+// progress toward an unearned badge is the rider's own business (ADR-0027),
+// and this endpoint used to hand "3 of 5 rides before 07:00" to any
+// room-mate. An earned badge is a fact about a rider and travels; how far
+// along they are on the rest is their current week, and does not.
+func (s *Service) write(w http.ResponseWriter, r *http.Request, userID pgtype.UUID, self bool) {
 	out, err := s.Trophies(r.Context(), userID)
 	if err != nil {
 		s.log.Error("trophies failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
 		return
+	}
+	if !self {
+		for i := range out.Achievements {
+			out.Achievements[i].Progress = nil
+		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

@@ -13,7 +13,11 @@ export interface TrophyProgress {
 export interface TrophyAchievement {
 	key: string;
 	earnedAt?: string;
-	/** Absent once earned, and for the ride achievements, which have no count. */
+	/**
+	 * Absent once earned, for the ride achievements, which have no count —
+	 * and for every entry when the case belongs to someone else: progress is
+	 * the rider's own business (ADR-0027).
+	 */
 	progress?: TrophyProgress;
 }
 
@@ -35,7 +39,10 @@ export interface Trophies {
 	achievements: TrophyAchievement[];
 }
 
-/** Your own case, or a rider's — the server decides who may look. */
+/**
+ * Your own case, or a rider's — the server decides who may look, and answers
+ * a rider's with the earned badges only (ADR-0027).
+ */
 export function fetchTrophies(riderId?: string) {
 	return api<Trophies>(
 		riderId
