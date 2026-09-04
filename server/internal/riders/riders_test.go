@@ -316,3 +316,32 @@ func TestSelfSeesOwnPage(t *testing.T) {
 		t.Fatalf("own shared rides: %v", body["sharedRides"])
 	}
 }
+
+// A rider's page is the page ABOUT their level, and it read sum(rides.xp) —
+// so every XP the ledger paid for lounge time, voice sessions and achievements
+// (#467) was missing there while the sidebar, the room and DM heads showed it.
+// One rider, two numbers, and the profile was the one that looked wrong (#690).
+func TestProfileXpCountsTheLedgerNotJustRides(t *testing.T) {
+	h := setup(t)
+	room := h.room(t, "ledger", "alice", "bob")
+	h.ride(t, "bob", room.ID, 400, false)
+	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
+		UserID: h.users.byToken["bob"].ID,
+		Source: "lounge",
+		Amount: 180,
+		Ref:    "test-bucket",
+		At:     pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("xp event: %v", err)
+	}
+
+	status, body := h.get(t, "alice", "/api/riders/"+h.id("bob"))
+	if status != http.StatusOK {
+		t.Fatalf("rider page: %d", status)
+	}
+	// 400 from the ride plus 180 off the bike — what user_total_xp says, and
+	// what every other surface shows for the same rider.
+	if body["totalXp"] != float64(580) {
+		t.Fatalf("totalXp = %v, want 580 (400 ride + 180 ledger)", body["totalXp"])
+	}
+}

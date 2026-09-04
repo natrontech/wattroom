@@ -242,6 +242,10 @@ type Rider struct {
 	// For w/kg on room screens — room-scoped like FTP, and for the same reason:
 	// every contest in docs/SPEC.md is scored on it.
 	WeightKg int `json:"weightKg"`
+	// Lifetime XP, so the roster's faces wear the level ring the rest of the
+	// app already shows (#690). Room-visible identity, the same rule the
+	// member list has followed since #253 — rides stay private.
+	TotalXp int64 `json:"totalXp"`
 }
 
 // SessionState is the shared timeline, server-owned. Late joiners need no

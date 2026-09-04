@@ -6,7 +6,12 @@
 		pct,
 		fill = 'bg-neon',
 		h = 'h-1.5',
-		track = 'bg-surface-raised',
+		// The bar lives inside .panel, which IS bg-surface-raised — the old
+		// default made the unfilled remainder invisible, so a quarter-full bar
+		// read as a floating stub that disagreed with the level ring beside it
+		// (#690). This is the ring's own track token (Avatar.svelte), so the two
+		// shapes of one number now share a bed.
+		track = 'bg-muted/20',
 		class: cls = '',
 		title,
 	}: {

@@ -108,6 +108,7 @@
 				name={rider.name}
 				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
 				preset={avatarOf.get(rider.id)?.avatarPreset}
+				xp={avatarOf.get(rider.id)?.totalXp}
 				size={22}
 			/>
 			{#if rider.watts > 0}
@@ -175,6 +176,7 @@
 				name={member.displayName}
 				avatarUrl={member.avatarUrl}
 				preset={member.avatarPreset}
+				xp={member.totalXp}
 				size={22}
 			/>
 		</span>

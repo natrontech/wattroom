@@ -187,7 +187,7 @@ func (q *Queries) RiderMonth(ctx context.Context, userID pgtype.UUID) (RiderMont
 const riderTotals = `-- name: RiderTotals :one
 select count(*)::bigint as rides,
        coalesce(sum(kj), 0)::bigint as total_kj,
-       coalesce(sum(xp), 0)::bigint as total_xp
+       user_total_xp($1)::bigint as total_xp
 from rides where user_id = $1
 `
 
@@ -199,8 +199,12 @@ type RiderTotalsRow struct {
 
 // Lifetime: XP (level), energy (kJ) and the ride count. Sums only — no
 // watts, no heart rate, nothing per ride.
-func (q *Queries) RiderTotals(ctx context.Context, userID pgtype.UUID) (RiderTotalsRow, error) {
-	row := q.db.QueryRow(ctx, riderTotals, userID)
+// XP is user_total_xp, never sum(rides.xp) (#690): the ledger (#467) pays
+// for lounge time, voice sessions and achievements, and summing rides
+// alone showed a rider's own profile a lower level than the sidebar,
+// the room and their DMs — the one page that is ABOUT the level.
+func (q *Queries) RiderTotals(ctx context.Context, uid pgtype.UUID) (RiderTotalsRow, error) {
+	row := q.db.QueryRow(ctx, riderTotals, uid)
 	var i RiderTotalsRow
 	err := row.Scan(&i.Rides, &i.TotalKj, &i.TotalXp)
 	return i, err
