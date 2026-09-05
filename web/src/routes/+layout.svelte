@@ -225,8 +225,10 @@
 		     (#191). Below md it slides in as a drawer — same instance, same
 		     order: a small window gets the shape, not a different app (#391).
 		     A PHONE is a different question and already has its answer —
-		     WATTROOM.md scopes phones read-only and /r/[slug] redirects them to
-		     the spectator view. -->
+		     the room reaches a phone directly (#412), with $lib/device.svelte's
+		     capability gating hiding affordances that need a trainer instead of
+		     redirecting to a separate spectator view (ADR-0020 amendment,
+		     2026-09-05). -->
 		{#if drawer}
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div
