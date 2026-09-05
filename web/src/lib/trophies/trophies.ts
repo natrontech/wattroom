@@ -3,7 +3,7 @@
  * and for a rider's you share a room or a friendship with; docs/SPEC.md "XP
  * sources" is the vocabulary — presence is "in voice", never "talking".
  */
-import { api } from '$lib/api';
+import { api, loadApi } from '$lib/api';
 
 export interface TrophyProgress {
 	have: number;
@@ -43,12 +43,11 @@ export interface Trophies {
  * Your own case, or a rider's — the server decides who may look, and answers
  * a rider's with the earned badges only (ADR-0027).
  */
-export function fetchTrophies(riderId?: string) {
-	return api<Trophies>(
-		riderId
-			? `/api/riders/${encodeURIComponent(riderId)}/trophies`
-			: '/api/me/trophies',
-	);
+export function fetchTrophies(riderId?: string, fetcher?: typeof fetch) {
+	const path = riderId
+		? `/api/riders/${encodeURIComponent(riderId)}/trophies`
+		: '/api/me/trophies';
+	return fetcher ? loadApi<Trophies>(fetcher, path) : api<Trophies>(path);
 }
 
 /** docs/SPEC.md "XP sources", one row per ledger line the case shows. */

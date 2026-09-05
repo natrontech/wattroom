@@ -16,7 +16,11 @@
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
-	import { fetchProgression, type TrendRide } from '$lib/progression';
+	import type { PageData } from './$types';
+	import type { ApiToken } from './+page';
+	import { untrack } from 'svelte';
+
+	let { data }: { data: PageData } = $props();
 
 	const SCHEMES: { value: ThemeChoice; label: string; icon: typeof Monitor }[] =
 		[
@@ -25,24 +29,14 @@
 			{ value: 'light', label: 'Light', icon: Sun },
 		];
 	const profile = createProfileStore();
-	void account.load();
 
 	// The FTP number's story (#222) — decorative context under the field, so
 	// on failure it simply doesn't render.
-	let trend = $state<TrendRide[]>([]);
-	void fetchProgression().then((r) => {
-		if (r.ok) trend = r.data?.rides ?? [];
-	});
+	let trend = $state(untrack(() => data.trend));
 
 	// Coach access tokens (ADR-0017). The secret exists client-side only in
 	// freshToken, until the rider hides it.
-	interface ApiToken {
-		id: string;
-		name: string;
-		createdAt: string;
-		lastUsedAt?: string;
-	}
-	let apiTokens = $state<ApiToken[]>([]);
+	let apiTokens = $state<ApiToken[]>(untrack(() => data.tokens));
 	let tokenName = $state('');
 	let freshToken = $state<string | null>(null);
 	let tokenError = $state<string | null>(null);
@@ -50,7 +44,6 @@
 		const res = await api<{ tokens: ApiToken[] }>('/api/tokens');
 		if (res.ok) apiTokens = res.data?.tokens ?? [];
 	}
-	void loadTokens();
 	async function createToken() {
 		const res = await api<ApiToken & { token: string }>('/api/tokens', {
 			method: 'POST',
@@ -80,15 +73,8 @@
 	// Decorative footer, not ride data: on failure it simply doesn't render.
 	// The release tag is the useful half now (#345); the commit stays for the
 	// case where a build is not a release and reports "dev".
-	let version = $state<string | null>(null);
-	let release = $state<string | null>(null);
-	void api<{ commit: string; version?: string }>('/api/version').then((r) => {
-		// ?. guards an old server answering with the SPA fallback (data: null).
-		if (!r.ok) return;
-		version = r.data?.commit ?? null;
-		const tag = r.data?.version;
-		release = tag && tag !== 'dev' ? tag : null;
-	});
+	let version = $state<string | null>(untrack(() => data.version));
+	let release = $state<string | null>(untrack(() => data.release));
 
 	let name = $state('');
 	let email = $state('');

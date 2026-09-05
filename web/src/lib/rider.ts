@@ -3,7 +3,7 @@
  * page makes of it. The numbers here are sums a room already shows —
  * never live watts, heart rate, weight or FTP.
  */
-import { api } from '$lib/api';
+import { api, loadApi } from '$lib/api';
 import { formatDuration } from '$lib/format';
 
 export interface RoomRef {
@@ -50,8 +50,9 @@ export interface Rider {
 	sharedRides: SharedRide[] | null;
 }
 
-export function fetchRider(id: string) {
-	return api<Rider>(`/api/riders/${id}`);
+export function fetchRider(id: string, fetcher?: typeof fetch) {
+	const path = `/api/riders/${id}`;
+	return fetcher ? loadApi<Rider>(fetcher, path) : api<Rider>(path);
 }
 
 /** "48 min · 612 kJ · 96% on target" — one line per shared ride. */

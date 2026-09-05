@@ -23,21 +23,19 @@
 		type MenuItem,
 	} from '$lib/context-menu.svelte';
 	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
+	import { untrack } from 'svelte';
 	import { Lock, Trash2, Users } from '@lucide/svelte';
+	import type { PageData } from './$types';
+	import type { ServerRide } from './+page';
 
+	let { data }: { data: PageData } = $props();
 	// Device-only leftovers: summaries saved while the server was unreachable
 	// (or from before #110). They have no samples, so they cannot become
 	// account rides — they stay listed here until cleared.
 	const device = createHistoryStore();
 
-	interface ServerRide extends RideRecord {
-		xp: number;
-		room?: boolean;
-		/** The per-ride opt-in (ADR-0024): friends see it on your page. */
-		sharedWithFriends: boolean;
-	}
-	let rides = $state<ServerRide[] | null>(null);
-	let error = $state<string | null>(null);
+	let rides = $state<ServerRide[] | null>(untrack(() => data.rides));
+	let error = $state<string | null>(untrack(() => data.ridesError));
 
 	// Undo over confirm (errors.md): the flip lands at once, the toast takes
 	// it back. A refused flip reverts the row and says why.
@@ -113,13 +111,14 @@
 			error = res.error.message;
 		}
 	}
-	void load();
 
 	// ── Progression, absorbed (ADR-0020) ─────────────────────────────────────
 	// The charts and the rides they are drawn from were two pages, and every
 	// drilldown was a navigation between them.
-	let progression = $state<Progression | null>(null);
-	let progressionError = $state<string | null>(null);
+	let progression = $state<Progression | null>(untrack(() => data.progression));
+	let progressionError = $state<string | null>(
+		untrack(() => data.progressionError),
+	);
 	async function loadProgression() {
 		const res = await fetchProgression();
 		if (res.ok) {
@@ -129,7 +128,6 @@
 			progressionError = res.error.message;
 		}
 	}
-	void loadProgression();
 
 	// The drilldowns stay put now: the ride they point at is further down this
 	// same page, so they ring it instead of navigating.

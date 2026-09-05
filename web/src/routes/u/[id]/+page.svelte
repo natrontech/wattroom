@@ -37,15 +37,20 @@
 		UserPlus,
 		Users,
 	} from '@lucide/svelte';
+	import { untrack } from 'svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const id = $derived(page.params.id ?? '');
-	let rider = $state<Rider | null>(null);
+	let rider = $state<Rider | null>(untrack(() => data.rider));
 	// The badges behind the level (#701, ADR-0027). Same audience as the
 	// page — the endpoint's own gate is SharesRoomOrFriends — so a failure
 	// here is a rider with nothing to show, never a reason to fail the page.
-	let trophies = $state<Trophies | null>(null);
-	let error = $state<string | null>(null);
+	let trophies = $state<Trophies | null>(untrack(() => data.trophies));
+	let error = $state<string | null>(untrack(() => data.riderError));
 	let busy = $state(false);
+	let loadedId = $state<string | null>(untrack(() => data.id));
 
 	async function load(who: string) {
 		const res = await fetchRider(who);
@@ -61,10 +66,19 @@
 
 	$effect(() => {
 		const who = id;
+		if (!who || loadedId === who) return;
+		if (data.id === who) {
+			rider = data.rider;
+			trophies = data.trophies;
+			error = data.riderError;
+			loadedId = who;
+			return;
+		}
+		loadedId = who;
 		rider = null;
 		trophies = null;
 		error = null;
-		if (who) void load(who);
+		void load(who);
 	});
 	$effect(() => {
 		// Presence pings (#251) re-fetch: they walked into a room, or out.
