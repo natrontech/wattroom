@@ -132,6 +132,77 @@ func TestRemoveTakesTheEntryNotTheVideo(t *testing.T) {
 	}
 }
 
+func TestRestoreUndoesARemoval(t *testing.T) {
+	j := newJukebox()
+	add(j, "dQw4w9WgXcQ", jat(0)) // deck
+	add(j, "aaaaaaaaaaa", jat(1))
+	add(j, "bbbbbbbbbbb", jat(2)) // the one we'll drop and undo
+	add(j, "ccccccccccc", jat(3))
+	before := j.snapshot().Queue
+	dropped := before[1] // "bbb..." at slot 1
+
+	if !accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: dropped.ID}, "r-jan", "jan", jat(4)) {
+		t.Fatal("remove refused")
+	}
+	if len(j.snapshot().Queue) != 2 {
+		t.Fatalf("remove did not shrink the queue: %+v", j.snapshot().Queue)
+	}
+
+	if !accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(5)) {
+		t.Fatal("restore refused within the grace window")
+	}
+	after := j.snapshot().Queue
+	if len(after) != len(before) {
+		t.Fatalf("restore left the queue at %d entries, want %d", len(after), len(before))
+	}
+	if after[1].ID != dropped.ID {
+		t.Fatalf("restore did not put the entry back at its old slot: %+v", after)
+	}
+
+	// The pending drop is consumed — a second restore has nothing to redo.
+	if accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(6)) {
+		t.Fatal("restore accepted with nothing pending")
+	}
+}
+
+func TestRestoreExpiresAfterTheGraceWindow(t *testing.T) {
+	j := newJukebox()
+	add(j, "dQw4w9WgXcQ", jat(0))
+	add(j, "aaaaaaaaaaa", jat(1))
+	entryID := j.snapshot().Queue[0].ID
+
+	accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: entryID}, "r-jan", "jan", jat(2))
+	if accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(2+int(undoWindow/time.Second)+1)) {
+		t.Fatal("restore accepted after its grace window closed")
+	}
+}
+
+func TestRemoveDropIsSupersededByTheNextOne(t *testing.T) {
+	// Only the latest drop is undoable — a second remove while the first
+	// toast is still up must not let a later restore resurrect the first.
+	j := newJukebox()
+	add(j, "dQw4w9WgXcQ", jat(0))
+	add(j, "aaaaaaaaaaa", jat(1))
+	add(j, "bbbbbbbbbbb", jat(2))
+	q := j.snapshot().Queue
+	first, second := q[0].ID, q[1].ID
+
+	accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: first}, "r-jan", "jan", jat(3))
+	accepted(j, protocol.JukeboxCommand{Action: "remove", EntryID: second}, "r-jan", "jan", jat(4))
+	accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(5))
+
+	ids := map[string]bool{}
+	for _, e := range j.snapshot().Queue {
+		ids[e.ID] = true
+	}
+	if !ids[second] {
+		t.Fatal("restore did not bring back the most recent drop")
+	}
+	if ids[first] {
+		t.Fatal("restore resurrected a superseded drop")
+	}
+}
+
 func TestVotesFloatAndToggle(t *testing.T) {
 	j := newJukebox()
 	add(j, "dQw4w9WgXcQ", jat(0)) // deck

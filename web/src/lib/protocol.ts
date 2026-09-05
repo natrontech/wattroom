@@ -110,7 +110,7 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended"
+  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "restore"
   videoId?: string;
   title?: string;
   /**
@@ -216,7 +216,7 @@ export interface RoomEvent {
   id: string;
   kind: string; // "jukebox" | "session"
   /**
-   * jukebox: "queued" | "removed" | "skipped" | "playing"
+   * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
    * session: "planned" | "moved" | "cancelled" | "started" | "ended"
    */
   verb: string;

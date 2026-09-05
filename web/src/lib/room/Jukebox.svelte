@@ -11,6 +11,7 @@
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
+	import { toasts } from '$lib/toast.svelte';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
@@ -90,6 +91,28 @@
 		send({ action: 'move', entryId, index: from + by });
 	}
 
+	// Every destructive deck verb below is reversible for ~10s (#660, errors.md
+	// prefers undo over confirm): the server keeps what it just dropped, and
+	// `restore` puts it back exactly where it left off. The toast IS the
+	// confirmation — nobody has to answer a dialog before the room moves on.
+	function removeEntry(entry: {
+		id: string;
+		title: string;
+		playlistTitle?: string;
+	}) {
+		send({ action: 'remove', entryId: entry.id });
+		toasts.push(`Removed "${entry.playlistTitle ?? entry.title}".`, {
+			undo: () => send({ action: 'restore' }),
+		});
+	}
+	function skipPlaylist() {
+		const title = current?.playlistTitle;
+		send({ action: 'skipPlaylist' });
+		toasts.push(`Skipped the rest of "${title}".`, {
+			undo: () => send({ action: 'restore' }),
+		});
+	}
+
 	// The deck's own transport, as a menu (#486) — every verb still has its
 	// button below. Seek stays out: it needs a position, not a click.
 	function deckMenu(): MenuEntry[] {
@@ -115,7 +138,7 @@
 						{
 							label: 'Skip the whole playlist',
 							icon: ListX,
-							onSelect: () => send({ action: 'skipPlaylist' }),
+							onSelect: skipPlaylist,
 						} satisfies MenuEntry,
 					]
 				: []),
@@ -309,7 +332,7 @@
 					     drop the rest of it and move the room on. Only rendered
 					     when there is a playlist to leave (ux.md). -->
 					<button
-						onclick={() => send({ action: 'skipPlaylist' })}
+						onclick={skipPlaylist}
 						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
 						aria-label="skip the whole playlist"><ListX size={17} /></button
 					>
@@ -343,7 +366,7 @@
 						onMove={queue.length > 1
 							? (by) => move(entry.id, i, by)
 							: undefined}
-						onRemove={() => send({ action: 'remove', entryId: entry.id })}
+						onRemove={() => removeEntry(entry)}
 					/>
 				{/each}
 			</ul>
