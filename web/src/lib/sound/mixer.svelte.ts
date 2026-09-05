@@ -1,4 +1,5 @@
 import { setDuckLevel, setVolume as setCueVolume } from '$lib/sound/cues';
+import { DUCK_DEFAULT } from '$lib/sound/fader';
 
 /**
  * The mix has one owner (#179, #152): music, cues, and each rider's voice
@@ -34,12 +35,12 @@ function load(): {
 		return {
 			music: clamp(raw.music, 0, 100, 70),
 			cues: clamp(raw.cues, 0, 1, 0.7),
-			duck: clamp(raw.duck, 0, 1, 0.3),
+			duck: clamp(raw.duck, 0, 1, DUCK_DEFAULT),
 			riders,
 			names,
 		};
 	} catch {
-		return { music: 70, cues: 0.7, duck: 0.3, riders: {}, names: {} };
+		return { music: 70, cues: 0.7, duck: DUCK_DEFAULT, riders: {}, names: {} };
 	}
 }
 
@@ -49,7 +50,7 @@ function clamp(v: unknown, lo: number, hi: number, fallback: number): number {
 
 let music = $state(70);
 let cues = $state(0.7);
-let duck = $state(0.3);
+let duck = $state(DUCK_DEFAULT);
 let riders = $state<Record<string, number>>({});
 // Who a stored fader belongs to, so the profile mixer can name a rider who
 // is not in the room right now.

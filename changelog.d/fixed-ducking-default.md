@@ -1,0 +1,1 @@
+- Voice ducking now dips the music to the specced 25 % of its own volume while someone is talking, instead of 30 %.
