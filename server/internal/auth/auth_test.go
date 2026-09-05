@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -90,6 +91,46 @@ func TestSessionRoundTrip(t *testing.T) {
 	s.handleLogout(httptest.NewRecorder(), logout)
 	if _, ok := s.User(authed); ok {
 		t.Fatalf("session survived logout — revocation is broken")
+	}
+}
+
+// The query behind the daily sweep (#673) had no test at all — sessions were
+// written on every sign-in and never deleted. This pins the one thing that
+// matters: an expired row is gone, a live one is untouched.
+func TestExpiredSessionsAreSwept(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+
+	expired := db.CreateSessionParams{
+		TokenHash: hash("expired-token"),
+		UserID:    user.ID,
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+	}
+	live := db.CreateSessionParams{
+		TokenHash: hash("live-token"),
+		UserID:    user.ID,
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(sessionTTL), Valid: true},
+	}
+	for _, p := range []db.CreateSessionParams{expired, live} {
+		if err := s.store.Queries.CreateSession(t.Context(), p); err != nil {
+			t.Fatalf("create session: %v", err)
+		}
+	}
+
+	if err := s.store.Queries.DeleteExpiredSessions(t.Context()); err != nil {
+		t.Fatalf("delete expired sessions: %v", err)
+	}
+
+	var count int
+	err := s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from sessions where token_hash = $1", expired.TokenHash).Scan(&count)
+	if err != nil || count != 0 {
+		t.Fatalf("expired session survived the sweep (err %v, count %d)", err, count)
+	}
+	err = s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from sessions where token_hash = $1", live.TokenHash).Scan(&count)
+	if err != nil || count != 1 {
+		t.Fatalf("live session was swept too (err %v, count %d)", err, count)
 	}
 }
 
