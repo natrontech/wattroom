@@ -39,10 +39,12 @@
 		jukebox,
 		send,
 		slug,
+		refusal = null,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (command: JukeboxCommand) => void;
 		slug: string;
+		refusal?: string | null;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -346,7 +348,7 @@
 		</p>
 	{/if}
 
-	<JukeboxAdd {send} />
+	<JukeboxAdd {send} {refusal} />
 
 	<JukeboxPlaylists {slug} />
 

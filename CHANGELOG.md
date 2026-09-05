@@ -17,6 +17,100 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.27] - 2026-09-05
+
+### Added
+
+- Step away without leaving: one button in the Lounge mutes your microphone, stops your camera and marks you away on every screen in the room. Pressing it again brings back exactly what was live before.
+- DMs now have a file-picker button for images, not just paste.
+- Poke one rider from their room menu when chat is too easy to miss; their own cue volume and notification settings remain in control.
+
+### Changed
+
+- Clarified how playlists, themes, jukebox playback and frequent releases work.
+- Clarified that phones can use room lounge and chat surfaces while trainer controls stay desktop-only.
+
+### Removed
+
+- The free custom-hue theme picker is gone; pick from the ten curated themes
+  instead. Anyone previously on a custom hue is moved to the closest preset
+  automatically.
+
+### Fixed
+
+- Autoplay keeps the music going: when the last track of the active room
+  playlist ends, the deck refills from the playlist again instead of falling
+  silent until somebody rejoins. Turn autoplay off in the room's playlists to
+  stop after one pass.
+- A chat line typed while the room is reconnecting no longer vanishes once
+  sixteen are already waiting to be sent. The text comes back into the box
+  with a note to try again in a moment, instead of disappearing without a word.
+- Rider tiles, chat messages and friend rows now have a right-click/long-press menu, not just hover-only buttons — reachable on a phone or from three metres away.
+- The `/dev/sound` debug page now moves the cue volume through the mixer
+  instead of a level nothing else could reach, so its slider matches what you
+  hear and survives navigating away and back.
+- Voice ducking now dips the music to the specced 25 % of its own volume while someone is talking, instead of 30 %.
+- Cue sounds now glide under a talking rider over the same 150 ms attack /
+  600 ms hold / 400 ms release the music already used, and to the same 25 %
+  the mixer knob names — a countdown or cheer that is sounding when someone
+  speaks no longer takes an audible click in either direction. One module owns
+  every ducking number, so the mixer, the cue bus and the jukebox can never
+  disagree about how deep or how fast.
+- The friends list no longer runs two extra database queries per online
+  friend — loading it now costs a small, constant number of queries no matter
+  how many friends are online.
+- Removing a track from the jukebox queue, or skipping a whole playlist, now
+  offers an undo toast for a few seconds instead of dropping it for good.
+- The LiveKit voice, camera and screenshare client now loads only when a rider joins AV, keeping login and other non-AV routes lighter.
+- fixed: opening the people list on a phone or tablet no longer hides the playing jukebox video behind the panel — it now drops to its usual floating corner instead.
+- Connecting a second sign-in provider now attaches it to the account you are already in, instead of quietly creating a second account with its own, separate ride history. Your profile gained a Connections section to do it from, and connecting Strava there is what turns on automatic ride upload.
+- Removing a track from the queue is now a bike-sized button, the same 40 px
+  the transport uses, instead of a 24 px cross you had to aim for at arm's
+  length. The tiny move up/down arrows are gone from the row — they never fit
+  beside a readable title on a phone — and live in the track's right-click or
+  long-press menu; votes remain the one-tap way to float a track up. "Queue
+  this again" in the just-played list grew to the same size.
+- The README no longer claims Wahoo legacy (pre-FTMS) trainer support — that
+  driver was never built and stays backlogged (#4); the Hardware & browsers
+  section now says so instead of implying a Kickr v2 will pair.
+- A voice drop no longer un-mutes you. When LiveKit loses the connection and
+  the room rejoins on its own two seconds later, you come back the way you
+  left: muted if you were muted, open if you were talking. Before, the rejoin
+  always opened the microphone — silently, mid-phone-call, while you were not
+  looking at the screen.
+- A room link typed with different capitalisation now lands you in the same
+  live room as everyone else. Before, `/rooms/MyRoom` and `/rooms/myroom`
+  opened two separate rooms on the server — riders could not see each other,
+  a kick or a room close only reached one of them, and the spare copy was
+  never cleaned up.
+- Scrubbing a paused jukebox deck now moves the video, not just the time readout — the picture used to hold the old frame until you pressed play.
+- Expired sign-in sessions are now swept from the database daily instead of
+  accumulating forever.
+- Removing a friend, unscheduling a session or banning a rider now says so and offers Undo — a mis-tap used to fire silently with no way back. Removing a member from a room has no inverse call, so it asks first instead; the friends list also shows "Loading friends…" instead of a blank panel while it fetches.
+
+### Security
+
+- A ban now holds at every door. A banned rider could delete their own
+  membership row by "leaving" the room and rejoin as a fresh member, and could
+  still read the chat backlog, post lines and upload images over HTTP while
+  banned. Leaving is refused for banned riders, the row can no longer be deleted
+  through that path, and every chat endpoint now refuses banned members the
+  same way the room socket, playlists and RSVPs already did.
+- Every mutating API endpoint now enforces the Origin check the docs already
+  promised, not just three. Cross-site requests were already blocked in
+  practice by the session cookie's SameSite=Lax setting; this closes the gap
+  between that and what the auth package's own comment claimed.
+- A ⚑ flag report never carries your heart rate. The two-minute recording
+  that goes out with a report kept watts, cadence and heart rate; heart rate
+  is health data and now stays out of it on your side and is stripped again
+  on the server before anything is filed. The same recording also captures
+  rejected promises now, so a broken page outside a ride leaves a trace.
+- A banned rider's voice and camera access now expires within 30 minutes
+  instead of staying valid for up to six hours. Ejecting a rider from the
+  LiveKit call removes them from that session, but it never revoked the
+  access token already in their browser; the token's own lifetime is what
+  actually bounded a stale token's reach, and it was six hours.
+
 ## [2026.09.26] - 2026-09-04
 
 ### Added
@@ -597,7 +691,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.26...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.27...HEAD
+[2026.09.27]: https://github.com/natrontech/wattroom/compare/2026.09.26...2026.09.27
 [2026.09.26]: https://github.com/natrontech/wattroom/compare/2026.09.25...2026.09.26
 [2026.09.25]: https://github.com/natrontech/wattroom/compare/2026.09.24...2026.09.25
 [2026.09.24]: https://github.com/natrontech/wattroom/compare/2026.09.23...2026.09.24

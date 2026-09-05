@@ -220,7 +220,7 @@ func (s *Service) handleAddPersonalTrack(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Service) handleDeleteRoomTrack(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
+	if sc, ok := s.roomModeratorScope(w, r); ok {
 		s.deleteTrack(w, r, sc)
 	}
 }

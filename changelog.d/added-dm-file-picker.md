@@ -1,1 +1,0 @@
-- DMs now have a file-picker button for images, not just paste.

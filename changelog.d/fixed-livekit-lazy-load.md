@@ -1,1 +1,0 @@
-- The LiveKit voice, camera and screenshare client now loads only when a rider joins AV, keeping login and other non-AV routes lighter.

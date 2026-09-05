@@ -47,18 +47,52 @@ func isPlaylist(e protocol.JukeboxEntry) bool { return len(e.Tracks) > 0 }
 // whole playlist as ONE entry. A playlist taking one queue slot is the point:
 // fifty flattened tracks would own the room's fifty and leave the vote order
 // describing one rider's taste (#615).
-func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protocol.JukeboxEntry, bool) {
+type jukeboxRefusal string
+
+const (
+	refusalQueueFull       jukeboxRefusal = "queue_full"
+	refusalTrackCap        jukeboxRefusal = "track_cap"
+	refusalInvalidVideo    jukeboxRefusal = "invalid_video"
+	refusalInvalidPlaylist jukeboxRefusal = "invalid_playlist"
+	refusalPlaylistLarge   jukeboxRefusal = "playlist_too_large"
+	refusalInvalidTrack    jukeboxRefusal = "invalid_playlist_track"
+)
+
+func (r jukeboxRefusal) message() string {
+	switch r {
+	case refusalQueueFull:
+		return "The jukebox queue is full — remove a track or wait for one to finish, then try again."
+	case refusalTrackCap:
+		return "The jukebox has reached its track limit — remove a track or wait for one to finish, then try again."
+	case refusalInvalidVideo:
+		return "That video link is not playable here — paste a YouTube video link and try again."
+	case refusalInvalidPlaylist:
+		return "That playlist link is not valid — paste a YouTube playlist link and try again."
+	case refusalPlaylistLarge:
+		return "That playlist is too large — choose a shorter playlist and try again."
+	case refusalInvalidTrack:
+		return "That playlist contains a video this jukebox cannot play — choose another playlist or video."
+	default:
+		return "That track could not be added — check the link and try again."
+	}
+}
+
+func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protocol.JukeboxEntry, bool, jukeboxRefusal) {
 	if len(j.state.Queue) >= maxQueue {
-		return protocol.JukeboxEntry{}, false
+		return protocol.JukeboxEntry{}, false, refusalQueueFull
 	}
 	j.nextID++
 	entry := protocol.JukeboxEntry{ID: strconv.Itoa(j.nextID), AddedBy: addedBy}
 
 	if len(cmd.Tracks) > 0 {
-		if !playlistIDPattern.MatchString(cmd.PlaylistID) ||
-			len(cmd.Tracks) > maxPlaylistTracks ||
-			j.queuedTracks()+len(cmd.Tracks) > maxQueuedTracks {
-			return protocol.JukeboxEntry{}, false
+		if !playlistIDPattern.MatchString(cmd.PlaylistID) {
+			return protocol.JukeboxEntry{}, false, refusalInvalidPlaylist
+		}
+		if len(cmd.Tracks) > maxPlaylistTracks {
+			return protocol.JukeboxEntry{}, false, refusalPlaylistLarge
+		}
+		if j.queuedTracks()+len(cmd.Tracks) > maxQueuedTracks {
+			return protocol.JukeboxEntry{}, false, refusalTrackCap
 		}
 		tracks := make([]protocol.JukeboxTrack, 0, len(cmd.Tracks))
 		for _, t := range cmd.Tracks {
@@ -66,7 +100,7 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 			// set — a playlist missing track 7 for no stated reason is the
 			// kind of thing nobody ever debugs.
 			if !videoIDPattern.MatchString(t.VideoID) {
-				return protocol.JukeboxEntry{}, false
+				return protocol.JukeboxEntry{}, false, refusalInvalidTrack
 			}
 			tracks = append(tracks, protocol.JukeboxTrack{VideoID: t.VideoID, Title: clip(t.Title, 200)})
 		}
@@ -78,15 +112,18 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		// ?t= is not carried over: it belongs to the single video somebody
 		// pasted, and track four of a set was never the good part of one.
 		entry.VideoID, entry.Title = tracks[0].VideoID, tracks[0].Title
-		return entry, true
+		return entry, true, ""
 	}
 
-	if !videoIDPattern.MatchString(cmd.VideoID) || j.queuedTracks() >= maxQueuedTracks {
-		return protocol.JukeboxEntry{}, false
+	if !videoIDPattern.MatchString(cmd.VideoID) {
+		return protocol.JukeboxEntry{}, false, refusalInvalidVideo
+	}
+	if j.queuedTracks() >= maxQueuedTracks {
+		return protocol.JukeboxEntry{}, false, refusalTrackCap
 	}
 	entry.VideoID, entry.Title = cmd.VideoID, clip(cmd.Title, 200)
 	entry.StartSec = clampSec(cmd.PositionSec)
-	return entry, true
+	return entry, true, ""
 }
 
 func clip(s string, n int) string {

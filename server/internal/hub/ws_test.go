@@ -177,6 +177,56 @@ func TestWebSocketRoom(t *testing.T) {
 	}
 }
 
+func TestJukeboxRefusalReachesOnlyTheRiderWhoAddedIt(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+
+	sender := dial(t, url, "jan:member")
+	other := dial(t, url, "ada:member")
+	if err := wsjson.Write(t.Context(), sender, protocol.ClientMessage{
+		Jukebox: &protocol.JukeboxCommand{Action: "add", VideoID: "not-a-video!"},
+	}); err != nil {
+		t.Fatalf("send jukebox command: %v", err)
+	}
+
+	readCtx, readCancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer readCancel()
+	var refused protocol.ServerMessage
+	for {
+		if err := wsjson.Read(readCtx, sender, &refused); err != nil {
+			t.Fatalf("read refusal: %v", err)
+		}
+		if refused.Error != nil {
+			break
+		}
+	}
+	if refused.Error.Code != "jukebox_invalid_video" {
+		t.Fatalf("sender refusal: %+v", refused.Error)
+	}
+	if refused.Error.Message == "" {
+		t.Fatal("sender refusal has no actionable message")
+	}
+
+	otherCtx, otherCancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer otherCancel()
+	for {
+		var msg protocol.ServerMessage
+		if err := wsjson.Read(otherCtx, other, &msg); err != nil {
+			if otherCtx.Err() != nil {
+				return
+			}
+			t.Fatalf("read other rider: %v", err)
+		}
+		if msg.Error != nil {
+			t.Fatalf("other rider received refusal: %+v", msg.Error)
+		}
+	}
+}
+
 func TestRosterDeduplicatesRiders(t *testing.T) {
 	// The same rider on two devices is one presence: duplicate roster ids are
 	// poison to keyed rendering, and this crashed the dashboard before it was

@@ -147,17 +147,26 @@ func (j *jukebox) positionAt(now time.Time) float64 {
 	return j.state.PositionSec + float64(now.UnixMilli()-j.state.AnchorMs)/1000
 }
 
-// apply runs one member command; returns false for junk, plus the room-timeline
-// lines the command earned (#321) — the deck knows what happened, the room
-// decides who hears about it. Every member may do all of this (docs/SPEC.md
-// matrix: jukebox controls default to members). riderID identifies the voter;
-// addedBy is the display name entries carry.
+// apply keeps the deck's existing test and internal-call shape for commands
+// whose rejection is intentionally quiet. The hub uses applyWithRefusal for
+// rider-visible add failures.
 func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool) {
+	events, ok, _ := j.applyWithRefusal(cmd, riderID, addedBy, now)
+	return events, ok
+}
+
+// applyWithRefusal runs one member command; returns false for junk, plus the
+// room-timeline lines the command earned (#321) and a reason for rider-visible
+// add failures. The deck knows what happened, the room decides who hears
+// about it. Every member may do all of this (docs/SPEC.md matrix: jukebox
+// controls default to members). riderID identifies the voter; addedBy is the
+// display name entries carry.
+func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
 	switch cmd.Action {
 	case "add":
-		entry, ok := j.newEntry(cmd, addedBy)
+		entry, ok, refusal := j.newEntry(cmd, addedBy)
 		if !ok {
-			return nil, false
+			return nil, false, refusal
 		}
 		if riderID != "" {
 			j.owners[entry.ID] = riderID
@@ -167,7 +176,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			// pressing play, and one action gets one line: the now-playing
 			// one, which names who queued it anyway.
 			j.play(entry, now)
-			return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
+			return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
 		}
 		j.state.Queue = append(j.state.Queue, entry)
 		if isPlaylist(entry) {
@@ -175,14 +184,14 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			// its tracks — the burst rule #321 already applies to adds.
 			line := deckLine("queuedPlaylist", addedBy, entry.PlaylistTitle, now)
 			line.Count = len(entry.Tracks)
-			return []protocol.RoomEvent{line}, true
+			return []protocol.RoomEvent{line}, true, ""
 		}
-		return []protocol.RoomEvent{deckLine("queued", addedBy, entry.Title, now)}, true
+		return []protocol.RoomEvent{deckLine("queued", addedBy, entry.Title, now)}, true, ""
 
 	case "remove":
 		i := j.indexOf(cmd.EntryID)
 		if i < 0 {
-			return nil, false
+			return nil, false, ""
 		}
 		removed := j.state.Queue[i]
 		owner := j.owners[removed.ID]
@@ -192,7 +201,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			entry: removed, ownerID: owner, fromQueue: true, queueIndex: i,
 			expiresAt: now.Add(undoWindow),
 		}
-		return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true
+		return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true, ""
 
 	case "restore":
 		// Puts back exactly what remove/skipPlaylist last dropped, within the
@@ -202,7 +211,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		p := j.pending
 		j.pending = nil
 		if p == nil || now.After(p.expiresAt) {
-			return nil, false
+			return nil, false, ""
 		}
 		if p.fromQueue {
 			i := min(p.queueIndex, len(j.state.Queue))
@@ -214,7 +223,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			if p.ownerID != "" {
 				j.owners[p.entry.ID] = p.ownerID
 			}
-			return []protocol.RoomEvent{deckLine("restored", addedBy, p.entry.Title, now)}, true
+			return []protocol.RoomEvent{deckLine("restored", addedBy, p.entry.Title, now)}, true, ""
 		}
 		// A skipped playlist: give the deck back what it was doing, and put
 		// whatever took its place at the front of the queue rather than
@@ -235,7 +244,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		if len(j.state.History) > 0 {
 			j.state.History = j.state.History[1:]
 		}
-		return []protocol.RoomEvent{deckLine("restored", addedBy, restored.PlaylistTitle, now)}, true
+		return []protocol.RoomEvent{deckLine("restored", addedBy, restored.PlaylistTitle, now)}, true, ""
 
 	case "vote":
 		// One vote per rider, toggled — and a vote that lands FLOATS the
@@ -243,7 +252,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// point of upvoting a party queue.
 		i := j.indexOf(cmd.EntryID)
 		if i < 0 || riderID == "" {
-			return nil, false
+			return nil, false, ""
 		}
 		// Rebuilt, never mutated in place: the snapshot clone shares these
 		// backing arrays with a marshal running outside the room lock (#219).
@@ -264,18 +273,18 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		if !voted {
 			j.float(i)
 		}
-		return nil, true
+		return nil, true, ""
 
 	case "move":
 		// Hand-reordering wins over vote order until the next vote — the
 		// queue slice IS the order, so there is nothing to re-sort.
 		from := j.indexOf(cmd.EntryID)
 		if from < 0 {
-			return nil, false
+			return nil, false, ""
 		}
 		to := min(max(cmd.Index, 0), len(j.state.Queue)-1)
 		if to == from {
-			return nil, false
+			return nil, false, ""
 		}
 		next := make([]protocol.JukeboxEntry, 0, len(j.state.Queue))
 		for i, entry := range j.state.Queue {
@@ -288,38 +297,38 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		copy(next[to+1:], next[to:])
 		next[to] = j.state.Queue[from]
 		j.state.Queue = next
-		return nil, true
+		return nil, true, ""
 
 	case "play":
 		if j.state.Current == nil || j.state.Playing {
-			return nil, false
+			return nil, false, ""
 		}
 		j.state.Playing = true
 		j.state.AnchorMs = now.UnixMilli()
-		return nil, true
+		return nil, true, ""
 
 	case "pause":
 		if j.state.Current == nil || !j.state.Playing {
-			return nil, false
+			return nil, false, ""
 		}
 		j.state.PositionSec = j.positionAt(now)
 		j.state.Playing = false
-		return nil, true
+		return nil, true, ""
 
 	case "seek":
 		// Moving the anchor IS the whole feature (#114): clients converge
 		// through the same drift-chase play/pause already use. Works paused
 		// too — the playhead moves, the deck stays stopped.
 		if j.state.Current == nil {
-			return nil, false
+			return nil, false, ""
 		}
 		j.state.PositionSec = clampSec(cmd.PositionSec)
 		j.state.AnchorMs = now.UnixMilli()
-		return nil, true
+		return nil, true, ""
 
 	case "skip":
 		if j.state.Current == nil {
-			return nil, false
+			return nil, false, ""
 		}
 		skipped := *j.state.Current
 		// Skipping a track INSIDE a playlist leaves the entry on the deck,
@@ -333,7 +342,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		if j.state.Current != nil {
 			events = append(events, nowPlaying(*j.state.Current, now))
 		}
-		return events, true
+		return events, true, ""
 
 	case "back":
 		// The idiom every music player already taught: a little way in, back
@@ -344,22 +353,22 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// always restarts: stepping across queue entries would mean putting
 		// history back at the head, which is its own feature.
 		if j.state.Current == nil {
-			return nil, false
+			return nil, false, ""
 		}
 		if j.positionAt(now)-j.trackStart() > backRestartSec || j.state.Current.Index == 0 {
 			j.state.PositionSec = j.trackStart()
 			j.state.AnchorMs = now.UnixMilli()
-			return nil, true
+			return nil, true, ""
 		}
 		j.play(withIndex(*j.state.Current, j.state.Current.Index-1), now)
-		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
+		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
 
 	case "skipPlaylist":
 		// The escape hatch that makes a long playlist safe to queue: one tap
 		// drops the rest of it and moves the room on. Every member may —
 		// nobody should have to sit through another rider's two hours.
 		if j.state.Current == nil || !isPlaylist(*j.state.Current) {
-			return nil, false
+			return nil, false, ""
 		}
 		skipped := *j.state.Current
 		owner := j.owners[skipped.ID]
@@ -377,7 +386,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		if j.state.Current != nil {
 			events = append(events, nowPlaying(*j.state.Current, now))
 		}
-		return events, true
+		return events, true, ""
 
 	case "ended":
 		// Every client reports the end; the (video, epoch) pair makes the
@@ -385,7 +394,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// used to be eaten by its own echoes (audit #219).
 		if j.state.Current == nil || j.state.Current.VideoID != cmd.VideoID ||
 			cmd.AnchorMs != j.state.AnchorMs {
-			return nil, false
+			return nil, false, ""
 		}
 		// Played through, not skipped: the DJ's credit (#467). The anchor
 		// makes the ref unique to this play of this entry.
@@ -402,12 +411,12 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		}
 		j.advance(now)
 		if j.state.Current == nil {
-			return nil, true // the queue ran dry; silence says that already
+			return nil, true, "" // the queue ran dry; silence says that already
 		}
-		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true
+		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
 
 	default:
-		return nil, false
+		return nil, false, ""
 	}
 }
 

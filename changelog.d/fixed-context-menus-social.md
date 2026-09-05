@@ -1,1 +1,0 @@
-- Rider tiles, chat messages and friend rows now have a right-click/long-press menu, not just hover-only buttons — reachable on a phone or from three metres away.

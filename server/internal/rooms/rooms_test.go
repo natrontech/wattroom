@@ -113,8 +113,8 @@ func TestCreateAndJoinFlow(t *testing.T) {
 	h := setup(t)
 	slug, code := h.createRoom(t, "alice", "Velvet Hammer Test")
 
-	if !strings.HasPrefix(slug, "velvet-hammer-test") {
-		t.Errorf("slug %q does not come from the name", slug)
+	if !strings.HasPrefix(slug, "velvet-hammer-test-") {
+		t.Errorf("slug %q does not come from the name plus a random suffix", slug)
 	}
 	if len(code) != 6 {
 		t.Errorf("code %q is not 6 chars", code)
@@ -228,6 +228,43 @@ func TestSlugAndCodeHelpers(t *testing.T) {
 		if strings.ContainsRune("0O1IL", c) {
 			t.Errorf("code %q contains a read-aloud-ambiguous character", code)
 		}
+	}
+}
+
+// TestSlugSuffixUnguessable covers #694: a room's slug is not just its name,
+// so two rooms sharing a name land on different, unguessable URLs, and
+// renaming never regenerates or drops the suffix a shared link depends on.
+func TestSlugSuffixUnguessable(t *testing.T) {
+	h := setup(t)
+	slugA, _ := h.createRoom(t, "alice", "Thursday Crew")
+	slugB, _ := h.createRoom(t, "bob", "Thursday Crew")
+
+	if slugA == slugB {
+		t.Fatalf("two rooms with the same name got the same slug: %q", slugA)
+	}
+	const prefix = "thursday-crew-"
+	if !strings.HasPrefix(slugA, prefix) || !strings.HasPrefix(slugB, prefix) {
+		t.Fatalf("slugs missing the name prefix: %q, %q", slugA, slugB)
+	}
+	suffixA := strings.TrimPrefix(slugA, prefix)
+	suffixB := strings.TrimPrefix(slugB, prefix)
+	if suffixA == "" || suffixB == "" || suffixA == suffixB {
+		t.Fatalf("suffixes are not distinct random strings: %q, %q", suffixA, suffixB)
+	}
+
+	// Renaming the room must not touch the slug — the suffix (and the whole
+	// slug) is fixed at creation so a shared link keeps working.
+	status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slugA,
+		`{"name":"Friday Crew","listed":false}`)
+	if status != http.StatusOK {
+		t.Fatalf("rename: %d %v", status, body)
+	}
+	if got := body["slug"]; got != slugA {
+		t.Fatalf("rename changed the slug: %q -> %v", slugA, got)
+	}
+	status, body = h.call(t, "alice", http.MethodGet, "/api/rooms/"+slugA, "")
+	if status != http.StatusOK || body["name"] != "Friday Crew" {
+		t.Fatalf("renamed room not reachable at its old slug: %d %v", status, body)
 	}
 }
 

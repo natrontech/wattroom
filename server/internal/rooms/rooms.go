@@ -182,9 +182,9 @@ type medalJSON struct {
 }
 
 type roomJSON struct {
-	Slug   string `json:"slug"`
-	Code   string `json:"code,omitempty"` // members only — the code IS the invite
-	Name   string `json:"name"`
+	Slug string `json:"slug"`
+	Code string `json:"code,omitempty"` // members only — the code IS the invite
+	Name string `json:"name"`
 	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
 	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing
 	// surface offers the toggle until the directory exists.
@@ -262,13 +262,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Slug and code both need uniqueness; retry on collision rather than
-	// checking first — the constraint is the check.
+	// checking first — the constraint is the check. Every new room's slug
+	// carries a random suffix (#694): the name alone must not be enough to
+	// guess a room's URL, since a successful join grants membership. Existing
+	// rooms keep their bare-name slugs — link stability matters more than
+	// retrofitting them, and rename (handleUpdate) never touches Slug, so the
+	// suffix stays fixed for the room's lifetime.
 	var room db.Room
 	for attempt := 0; ; attempt++ {
-		slug := slugify(req.Name)
-		if attempt > 0 {
-			slug += "-" + randomCode(4)
-		}
+		slug := slugify(req.Name) + "-" + randomCode(4)
 		created, err := s.store.Queries.CreateRoom(r.Context(), db.CreateRoomParams{
 			Code: randomCode(6), Slug: strings.ToLower(slug), Name: req.Name, OwnerID: user.ID,
 		})
@@ -423,7 +425,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					Role: member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
-					Badges: member.Badges,
+					Badges:   member.Badges,
 				})
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
@@ -790,6 +792,30 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 		RoomID: room.ID, UserID: user.ID,
 	})
 	if err != nil || m.Role == "banned" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
+		return db.Room{}, db.User{}, false
+	}
+	return room, user, true
+}
+
+// RequireModerator loads the room and refuses unless the caller is its owner
+// or coach — the gate the genuinely destructive room-state verbs stand
+// behind (#695): joining from a link makes you a member, and a member can
+// use the room's shared jukebox and timeline but not tear either down.
+// refusal is the 403 copy, phrased for the surface asking.
+func (s *Service) RequireModerator(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	room, ok := s.roomBySlug(w, r)
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
+	if err != nil || (m.Role != "owner" && m.Role != "coach") {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
 	}
