@@ -1,0 +1,1 @@
+- Clarified that phones can use room lounge and chat surfaces while trainer controls stay desktop-only.
