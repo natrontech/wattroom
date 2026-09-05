@@ -12,9 +12,10 @@
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { contextMenu } from '$lib/context-menu.svelte';
+	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
+	import { toasts } from '$lib/toast.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		Focus,
@@ -24,32 +25,56 @@
 		MonitorPlay,
 		MonitorUp,
 		PanelRight,
+		ShieldBan,
 		UserPlus,
 	} from '@lucide/svelte';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
+	const isOwner = $derived(room.myRole === 'owner');
+
+	// Banning is reversible (Unban sets the role right back), so it gets an
+	// undo toast rather than a confirm dialog (errors.md) — same pattern as
+	// the Members page and settings' ban list (#666).
+	function ban(id: string, name: string) {
+		const previousRole =
+			room.members.find((m) => m.id === id)?.role ?? 'member';
+		room.setRole(id, 'banned');
+		toasts.push(`Banned ${name}.`, {
+			undo: () => room.setRole(id, previousRole),
+		});
+	}
 
 	// The tile's right-click (#465): focus is the click, the rest is what
-	// every person in WattRoom offers — their page, the DM, the friend ask.
-	// Read the rider lazily: the roster is a new object every server tick, and
-	// an eager read re-attaches (and closed) the menu once a second (#529).
+	// every person in WattRoom offers — their page, the DM, the friend ask,
+	// and — for the owner — the ban a griefer needs met where they are, not
+	// three screens away in Settings (#666).
 	function tileMenu(rider: () => (typeof room.riders)[number]) {
-		return contextMenu(() => [
-			{
-				label:
-					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
-				icon: Focus,
-				onSelect: () =>
-					room.setFocus(rider().id === room.focusId ? null : rider().id),
-			},
-			...personMenu(rider().id, goto, {
-				you: rider().you,
-				poke: {
-					onSelect: () => room.poke(rider().id),
+		return contextMenu(() => {
+			const entries: MenuEntry[] = [
+				{
+					label:
+						rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
+					icon: Focus,
+					onSelect: () =>
+						room.setFocus(rider().id === room.focusId ? null : rider().id),
 				},
-			}),
-		]);
+				...personMenu(rider().id, goto, {
+					you: rider().you,
+					poke: {
+						onSelect: () => room.poke(rider().id),
+					},
+				}),
+			];
+			if (isOwner && !rider().you)
+				entries.push('separator', {
+					label: 'Ban from the room',
+					icon: ShieldBan,
+					onSelect: () => ban(rider().id, rider().name),
+					danger: true,
+				});
+			return entries;
+		});
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves

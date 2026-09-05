@@ -17,7 +17,14 @@
 	} from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import { Award, Crown, Copy, UserMinus, UserX } from '@lucide/svelte';
+	import {
+		Award,
+		Crown,
+		Copy,
+		ShieldBan,
+		UserMinus,
+		UserX,
+	} from '@lucide/svelte';
 	import { ACHIEVEMENTS } from '$lib/trophies/catalogue';
 
 	const room = useRoom();
@@ -73,8 +80,22 @@
 			room.removeMember(member.id);
 	}
 
+	// Banning is reversible (Unban sets the role right back), so it gets an
+	// undo toast rather than a confirm dialog (errors.md) — the same pattern
+	// settings/+page.svelte's ban list already uses (#666).
+	function ban(member: Member) {
+		const { id, displayName, role: previousRole } = member;
+		room.setRole(id, 'banned');
+		toasts.push(`Banned ${displayName}.`, {
+			undo: () => room.setRole(id, previousRole),
+		});
+	}
+	const unban = (member: Member) => room.setRole(member.id, 'member');
+
 	// Their page and their DM on every member (#486), plus the paperwork the
-	// row already offers an owner — remove last, after a separator.
+	// row already offers an owner — remove above ban, ban last, both after a
+	// separator (#666: ban belongs where the griefer is met, not three
+	// screens away in Settings).
 	function memberMenu(member: Member): MenuEntry[] {
 		const here = room.riders.some((rider) => rider.id === member.id);
 		const entries: MenuEntry[] = personMenu(member.id, goto, {
@@ -85,6 +106,15 @@
 				hint: here ? undefined : 'not in the room',
 			},
 		});
+		if (member.role === 'banned') {
+			if (canAdmin(member))
+				entries.push('separator', {
+					label: 'Unban',
+					icon: ShieldBan,
+					onSelect: () => unban(member),
+				});
+			return entries;
+		}
 		if (canAdmin(member)) {
 			entries.push(
 				{
@@ -97,6 +127,12 @@
 					label: 'Remove from the room',
 					icon: UserX,
 					onSelect: () => confirmRemove(member),
+					danger: true,
+				},
+				{
+					label: 'Ban from the room',
+					icon: ShieldBan,
+					onSelect: () => ban(member),
 					danger: true,
 				},
 			);
@@ -219,7 +255,13 @@
 					     column — here for the member you came to look up. -->
 					<RiderVolume id={member.id} name={member.displayName} />
 				{/if}
-				{#if isOwner && member.id !== account.me?.id}
+				{#if member.role === 'banned' && canAdmin(member)}
+					<button
+						onclick={() => unban(member)}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0">Unban</button
+					>
+				{:else if isOwner && member.id !== account.me?.id}
 					<button
 						onclick={() => toggleRole(member)}
 						disabled={room.adminBusy}
