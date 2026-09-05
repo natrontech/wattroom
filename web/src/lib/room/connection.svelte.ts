@@ -232,7 +232,7 @@ function connect(slug: string): Connection {
 					([id, active]) => active && id !== account.me?.id,
 				),
 			);
-			// Leaving mid-sentence must not park every cue at 35% forever.
+			// Leaving mid-sentence must not park every cue ducked forever.
 			return () => setDucked(false);
 		});
 

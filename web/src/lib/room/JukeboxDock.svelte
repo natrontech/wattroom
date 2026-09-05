@@ -9,6 +9,11 @@
 	import { withYouTubeApi } from '$lib/room/youtube-api';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
+	import {
+		DUCK_ATTACK_MS,
+		DUCK_HOLD_MS,
+		DUCK_RELEASE_MS,
+	} from '$lib/sound/ducking';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 	import { VolumeX } from '@lucide/svelte';
@@ -212,11 +217,14 @@
 		if (ducked) {
 			wasDucked = true;
 			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * mixer.duck), 150);
+			rampTo(Math.round(baseVolume * mixer.duck), DUCK_ATTACK_MS);
 		} else if (wasDucked) {
 			// The SPEC release: hold, then ramp back up.
 			wasDucked = false;
-			releaseTimer = setTimeout(() => rampTo(baseVolume, 400), 600);
+			releaseTimer = setTimeout(
+				() => rampTo(baseVolume, DUCK_RELEASE_MS),
+				DUCK_HOLD_MS,
+			);
 		} else {
 			// A fader move must act NOW — routing it through the release hold
 			// made the slider feel dead (audit #219).

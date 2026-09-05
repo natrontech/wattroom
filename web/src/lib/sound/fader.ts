@@ -28,10 +28,3 @@ export const RIDER_FADER: Fader = { min: 0, max: 200, step: 1 };
 
 /** Cue level and duck depth, both plain 0–1 gains. */
 export const UNIT_FADER: Fader = { min: 0, max: 1, step: 0.01 };
-
-/**
- * How hard voice ducking dips the music, out of the box (SPEC.md: "to 25 %
- * of the rider's own volume"). One constant so the mixer's persisted default
- * and the cue engine's own fallback can't drift apart the way they did (#677).
- */
-export const DUCK_DEFAULT = 0.25;

@@ -1,3 +1,11 @@
+import {
+	DUCK_ATTACK_MS,
+	DUCK_DEFAULT,
+	DUCK_HOLD_MS,
+	DUCK_RELEASE_MS,
+} from '$lib/sound/ducking';
+import { glideTo } from '$lib/sound/glide';
+
 /**
  * Session sound design (WATTROOM.md feel layer, #33).
  *
@@ -6,8 +14,6 @@
  * per-room pack becomes a parameter set rather than an asset bundle when that
  * fast-follow arrives.
  */
-
-import { DUCK_DEFAULT } from '$lib/sound/fader';
 
 export interface Voice {
 	type: OscillatorType;
@@ -303,6 +309,25 @@ let muted = false;
 let duck = 1;
 /** How hard that dip goes — the mixer's knob (#280); 1 = no ducking at all. */
 let duckLevel = DUCK_DEFAULT;
+/** The SPEC hold between a voice stopping and the cues coming back up. */
+let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Where the master belongs right now; every setter converges on it. */
+function level(): number {
+	return muted ? 0 : volume * duck;
+}
+
+/**
+ * Moves the master to `level()` over `ms` — 0 acts now, the way a fader must
+ * (audit #219). Ducking glides (#675): a cue already sounding when someone
+ * starts talking used to take a step in gain, an audible click on the very
+ * bus the limiter is there to keep clean, and another one coming back.
+ */
+function settle(ms: number): void {
+	if (!master || !ctx) return;
+	if (ms === 0) master.gain.setValueAtTime(level(), ctx.currentTime);
+	else glideTo(master.gain, level(), ctx.currentTime, ms);
+}
 
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	if (typeof window === 'undefined') return null;
@@ -321,33 +346,52 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 		limiter.release.value = 0.25;
 		master.connect(limiter);
 		limiter.connect(ctx.destination);
+		master.gain.value = level();
 	}
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
 	if (ctx.state === 'suspended') void ctx.resume();
-	master!.gain.value = muted ? 0 : volume * duck;
 	return { ctx, master: master! };
 }
 
 export function setVolume(next: number): void {
 	volume = Math.min(1, Math.max(0, next));
-	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+	settle(0);
 }
 
 export function setMuted(next: boolean): void {
 	muted = next;
-	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+	settle(0);
 }
 
-/** Ride-critical cues still get through; this only pulls them down under a voice. */
+/**
+ * Ride-critical cues still get through; this only pulls them down under a
+ * voice — with the SPEC ballistics: attack now, release after a hold, never
+ * a snap in either direction (docs/SPEC.md, #152).
+ */
 export function setDucked(next: boolean): void {
-	duck = next ? duckLevel : 1;
-	if (master && ctx) master.gain.value = muted ? 0 : volume * duck;
+	clearTimeout(releaseTimer);
+	if (next) {
+		duck = duckLevel;
+		settle(DUCK_ATTACK_MS);
+		return;
+	}
+	if (duck === 1) return;
+	releaseTimer = setTimeout(() => {
+		duck = 1;
+		settle(DUCK_RELEASE_MS);
+	}, DUCK_HOLD_MS);
 }
 
-/** Duck depth, 0 (silence under a voice) … 1 (never duck). Mixer-owned. */
+/**
+ * Duck depth, 0 (silence under a voice) … 1 (never duck). Mixer-owned. A knob
+ * turned mid-duck re-aims the dip without touching a release already waiting.
+ */
 export function setDuckLevel(next: number): void {
 	duckLevel = Math.min(1, Math.max(0, next));
-	if (duck !== 1) setDucked(true);
+	if (duck !== 1) {
+		duck = duckLevel;
+		settle(DUCK_ATTACK_MS);
+	}
 }
 
 export function play(id: CueId, semitonesUp = 0): void {

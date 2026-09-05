@@ -1,5 +1,6 @@
 import { setDuckLevel, setVolume as setCueVolume } from '$lib/sound/cues';
-import { DUCK_DEFAULT } from '$lib/sound/fader';
+import { DUCK_DEFAULT } from '$lib/sound/ducking';
+import { mixerStorage } from '$lib/sound/mixer-storage';
 
 /**
  * The mix has one owner (#179, #152): music, cues, and each rider's voice
@@ -7,7 +8,6 @@ import { DUCK_DEFAULT } from '$lib/sound/fader';
  * music level — the mixer sets the ceiling, the ducker dips under it.
  * Per-device, persisted: a mix is ears, not account state.
  */
-const KEY = 'wattroom.mixer.v1';
 
 /** A rider's fader, 0–2 — above 1 is the "make them louder" ask (#463). */
 const RIDER_GAIN_MAX = 2;
@@ -20,7 +20,7 @@ function load(): {
 	names: Record<string, string>;
 } {
 	try {
-		const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+		const raw = JSON.parse(mixerStorage.read() ?? '{}');
 		const riders: Record<string, number> = {};
 		const names: Record<string, string> = {};
 		for (const [id, gain] of Object.entries(raw.riders ?? {})) {
@@ -65,14 +65,7 @@ setCueVolume(cues);
 setDuckLevel(duck);
 
 function persist() {
-	try {
-		localStorage.setItem(
-			KEY,
-			JSON.stringify({ music, cues, duck, riders, names }),
-		);
-	} catch {
-		// ears-only preference; losing it costs one adjustment
-	}
+	mixerStorage.write(JSON.stringify({ music, cues, duck, riders, names }));
 }
 
 export const mixer = {

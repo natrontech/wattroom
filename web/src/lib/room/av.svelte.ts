@@ -7,6 +7,7 @@ import {
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { glideTo } from '$lib/sound/glide';
 import { GATE_DEFAULT, clampThreshold } from '$lib/room/gate-scale';
 import {
 	GATE_ATTACK_MS,
@@ -242,13 +243,12 @@ export function createRoomAv(slug: string) {
 		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
 		// first syllable, and a close that fades is one the room forgives —
 		// it reads as a breath ending rather than a cut, and re-opening inside
-		// the fade is inaudible. setTargetAtTime's tau is a third of the ramp
-		// it reads as, since that is where it has all but arrived.
-		const ms = openNow ? GATE_ATTACK_MS : GATE_RELEASE_MS;
-		mic.gain.gain.setTargetAtTime(
+		// the fade is inaudible.
+		glideTo(
+			mic.gain.gain,
 			openNow ? 1 : 0,
 			mic.ctx.currentTime,
-			ms / 3000,
+			openNow ? GATE_ATTACK_MS : GATE_RELEASE_MS,
 		);
 	}
 
