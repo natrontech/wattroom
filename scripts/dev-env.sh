@@ -20,11 +20,14 @@
 set -eu
 
 # Ports live above everything the repo already pins: :8080 and :8082 (server and
-# the verify config), :5174 (Vite), :7880/:7881 (LiveKit), :4173/:8081 (e2e).
+# the verify config), :5174 (Vite), :7880/:7881 (LiveKit), :4173 (e2e) — and
+# clear of :5432 (Postgres). The Vite range used to start at 5300, which put
+# 5432 inside it: the worktree hashing there had Vite quietly rebind to 5433
+# while `make dev-env` kept advertising the database's port (#712).
 # One offset drives all three ports, so a worktree's Vite, dev server and verify
 # server always pair up.
 SERVER_PORT_BASE=8100
-WEB_PORT_BASE=5300
+WEB_PORT_BASE=5500
 VERIFY_PORT_BASE=8500
 PORT_SPAN=200
 
@@ -65,6 +68,18 @@ else
 fi
 
 dsn="$PG_DSN_PREFIX/$db_name"
+
+# The arithmetic above is checked, not trusted: no port this script hands out
+# may be the one the database answers on, or whoever follows `make dev-env`
+# talks to Postgres and gets wire-protocol bytes back instead of a refusal.
+pg_port=${PG_DSN_PREFIX##*:}
+case $pg_port in *[!0-9]* | '') pg_port=5432 ;; esac
+for port in "$server_port" "$web_port" "$verify_port"; do
+	if [ "$port" = "$pg_port" ]; then
+		echo "dev-env.sh: refusing to hand worktree '$worktree_name' port $port — that is Postgres ($PG_DSN_PREFIX); move the *_PORT_BASE ranges off it" >&2
+		exit 1
+	fi
+done
 
 case ${1:-print} in
 print)
