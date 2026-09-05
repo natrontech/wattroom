@@ -87,6 +87,49 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	where := s.presence.WhereIs(accepted)
 
+	// Hoisted out of the per-friend loop (#687): collect every distinct room
+	// slug an online friend is in, resolve them all in one query, then check
+	// the viewer's membership in every one of those rooms in a second query.
+	// 1 + 2N queries becomes 3, regardless of how many friends are online.
+	slugSet := make(map[string]struct{}, len(where))
+	for _, slug := range where {
+		if slug != "" {
+			slugSet[slug] = struct{}{}
+		}
+	}
+	roomsBySlug := make(map[string]db.Room, len(slugSet))
+	memberOf := make(map[pgtype.UUID]struct{}, len(slugSet))
+	if len(slugSet) > 0 {
+		slugs := make([]string, 0, len(slugSet))
+		for slug := range slugSet {
+			slugs = append(slugs, slug)
+		}
+		roomList, err := s.store.Queries.GetRoomsBySlugs(r.Context(), slugs)
+		if err != nil {
+			s.log.Error("get rooms by slugs", "err", err, "user", store.UUIDString(me.ID))
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+			return
+		}
+		roomIDs := make([]pgtype.UUID, 0, len(roomList))
+		for _, room := range roomList {
+			roomsBySlug[room.Slug] = room
+			roomIDs = append(roomIDs, room.ID)
+		}
+		if len(roomIDs) > 0 {
+			memberships, err := s.store.Queries.ListMembershipsForUser(r.Context(), db.ListMembershipsForUserParams{
+				UserID: me.ID, RoomIds: roomIDs,
+			})
+			if err != nil {
+				s.log.Error("list memberships for user", "err", err, "user", store.UUIDString(me.ID))
+				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+				return
+			}
+			for _, m := range memberships {
+				memberOf[m.RoomID] = struct{}{}
+			}
+		}
+	}
+
 	friends := make([]friendJSON, 0, len(rows))
 	for _, row := range rows {
 		entry := friendJSON{
@@ -103,10 +146,8 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			entry.InRoom = slug != ""
 			if slug != "" {
 				// The room is named only for its own members — the boundary holds.
-				if room, err := s.store.Queries.GetRoomBySlug(r.Context(), slug); err == nil {
-					if _, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-						RoomID: room.ID, UserID: me.ID,
-					}); err == nil {
+				if room, ok := roomsBySlug[slug]; ok {
+					if _, ok := memberOf[room.ID]; ok {
 						entry.Room = slug
 						entry.RoomName = room.Name
 					}

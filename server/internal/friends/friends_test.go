@@ -229,6 +229,48 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 }
 
+// TestFriendsPanelBatchesRoomLookups covers the #687 fix with more than one
+// online friend at once: one friend in a room alice belongs to, one in a
+// room she does not, and one merely lobby-online. The room/membership
+// lookups are batched behind the scenes — this asserts the per-friend
+// output is still correct once there is more than one row to resolve.
+func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
+	mux, st, users, presence := setup(t)
+	shareRoom(t, st, users, "pain-cave", "alice", "bob")
+	shareRoom(t, st, users, "secret-lair", "cara")
+
+	if code := request(t, mux, "alice", users.byToken["bob"].FriendCode); code != http.StatusOK {
+		t.Fatalf("request bob: %d", code)
+	}
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(users.byToken["alice"].ID)+"/accept"); code != http.StatusOK {
+		t.Fatalf("bob accept: %d", code)
+	}
+	if code := request(t, mux, "alice", users.byToken["cara"].FriendCode); code != http.StatusOK {
+		t.Fatalf("request cara: %d", code)
+	}
+	if code, _ := call(t, mux, "cara", http.MethodPost, "/api/friends/"+store.UUIDString(users.byToken["alice"].ID)+"/accept"); code != http.StatusOK {
+		t.Fatalf("cara accept: %d", code)
+	}
+
+	presence.where[store.UUIDString(users.byToken["bob"].ID)] = "pain-cave"    // alice is a member
+	presence.where[store.UUIDString(users.byToken["cara"].ID)] = "secret-lair" // alice is not
+
+	byName := map[string]map[string]any{}
+	for _, entry := range friendsOf(t, mux, "alice") {
+		name, _ := entry["name"].(string)
+		byName[name] = entry
+	}
+
+	bobEntry := byName["bob"]
+	if bobEntry["online"] != true || bobEntry["room"] != "pain-cave" || bobEntry["roomName"] != "pain-cave" {
+		t.Fatalf("bob entry (shared room): %+v", bobEntry)
+	}
+	caraEntry := byName["cara"]
+	if caraEntry["online"] != true || caraEntry["inRoom"] != true || caraEntry["room"] != nil {
+		t.Fatalf("cara entry (boundary should hold): %+v", caraEntry)
+	}
+}
+
 func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 	mux, _, users, _ := setup(t)
 

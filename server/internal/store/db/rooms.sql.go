@@ -260,6 +260,85 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 	return i, err
 }
 
+const getRoomsBySlugs = `-- name: GetRoomsBySlugs :many
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title from rooms where slug = any($1::text[])
+`
+
+// Batched sibling of GetRoomBySlug (#687): the friends panel resolves every
+// online friend's room in one query instead of one per friend.
+func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, error) {
+	rows, err := q.db.Query(ctx, getRoomsBySlugs, slugs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Room
+	for rows.Next() {
+		var i Room
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Slug,
+			&i.Name,
+			&i.OwnerID,
+			&i.Listed,
+			&i.CreatedAt,
+			&i.SoundPack,
+			&i.Icon,
+			&i.Cheers,
+			&i.IcsToken,
+			&i.AutoplayEnabled,
+			&i.AutoplayOrder,
+			&i.AutoplayPlaylistID,
+			&i.AutoplayFixedVideoID,
+			&i.AutoplayFixedVideoTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMembershipsForUser = `-- name: ListMembershipsForUser :many
+select room_id, user_id, role, joined_at from memberships where user_id = $1 and room_id = any($2::uuid[])
+`
+
+type ListMembershipsForUserParams struct {
+	UserID  pgtype.UUID
+	RoomIds []pgtype.UUID
+}
+
+// Batched sibling of GetMembership (#687): one query for every room a
+// viewer's online friends are in, instead of one membership check per friend.
+func (q *Queries) ListMembershipsForUser(ctx context.Context, arg ListMembershipsForUserParams) ([]Membership, error) {
+	rows, err := q.db.Query(ctx, listMembershipsForUser, arg.UserID, arg.RoomIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Membership
+	for rows.Next() {
+		var i Membership
+		if err := rows.Scan(
+			&i.RoomID,
+			&i.UserID,
+			&i.Role,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoomCalendar = `-- name: ListRoomCalendar :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by
