@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/natrontech/wattroom/server/internal/safego"
 )
 
 type lobbyClient struct {
@@ -59,7 +61,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	done := make(chan struct{})
-	go func() {
+	safego.Go(h.log, "lobby writer", func() {
 		// Writer: exits when the reader below returns (done) or a write fails.
 		for {
 			select {
@@ -74,7 +76,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-	}()
+	})
 	// Reader: clients send nothing — this blocks until the socket closes.
 	for {
 		if _, _, err := conn.Read(r.Context()); err != nil {

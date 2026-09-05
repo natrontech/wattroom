@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/safego"
 )
 
 // The voice radar is fed by LiveKit webhooks alone, and a hard-crashed
@@ -17,7 +19,7 @@ import (
 // StartReconciler runs the sweep until ctx ends.
 // ponytail: process-lifetime goroutine — the server has no shutdown context.
 func (s *Service) StartReconciler(ctx context.Context) {
-	go func() { // exits on ctx.Done
+	safego.Supervise(s.log, time.Now, "livekit reconciler", ctx.Done(), func() { // exits on ctx.Done
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
 		for {
@@ -28,7 +30,7 @@ func (s *Service) StartReconciler(ctx context.Context) {
 				s.reconcile(ctx)
 			}
 		}
-	}()
+	})
 }
 
 func (s *Service) reconcile(ctx context.Context) {
