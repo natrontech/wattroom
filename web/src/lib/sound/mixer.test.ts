@@ -1,5 +1,5 @@
-// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DUCK_DEFAULT } from '$lib/sound/ducking';
 import {
 	MUSIC_FADER,
 	RIDER_FADER,
@@ -14,23 +14,25 @@ vi.mock('$lib/sound/cues', () => ({
 	setVolume: vi.fn(),
 }));
 
-const store = new Map<string, string>();
-vi.stubGlobal('localStorage', {
-	getItem: (k: string) => store.get(k) ?? null,
-	setItem: (k: string, v: string) => void store.set(k, v),
-	removeItem: (k: string) => void store.delete(k),
-	clear: () => store.clear(),
-});
+// The device, as a Map: the mixer reaches storage only through this module
+// (#713), so no platform `localStorage` — happy-dom's, or the one Node now
+// ships — can stand in for it and carry state between tests.
+const store = { value: null as string | null };
+vi.mock('$lib/sound/mixer-storage', () => ({
+	mixerStorage: {
+		read: () => store.value,
+		write: (json: string) => void (store.value = json),
+	},
+}));
 
-const KEY = 'wattroom.mixer.v1';
-
-/** The module reads localStorage once at import — a fresh import is a reload. */
+/** The module reads storage once at import — a fresh import is a reload. */
 async function freshMixer() {
 	vi.resetModules();
 	return (await import('./mixer.svelte')).mixer;
 }
 
-const stored = () => JSON.parse(store.get(KEY) ?? '{}');
+const stored = () => JSON.parse(store.value ?? '{}');
+const seed = (mix: object) => void (store.value = JSON.stringify(mix));
 
 /**
  * Every position a fader can be dragged to, as its range input emits it:
@@ -45,8 +47,25 @@ function positions({ min, max, step }: Fader): number[] {
 	return out;
 }
 
+describe('mixer defaults', () => {
+	beforeEach(() => (store.value = null));
+
+	it('ducks to the SPEC depth, and only to it (#677)', async () => {
+		const mixer = await freshMixer();
+		expect(mixer.duck).toBe(DUCK_DEFAULT);
+		expect(DUCK_DEFAULT).toBe(0.25);
+	});
+
+	it('falls back to the SPEC depth when the stored one is junk', async () => {
+		seed({ duck: 'loud' });
+		expect((await freshMixer()).duck).toBe(DUCK_DEFAULT);
+		store.value = '{not json';
+		expect((await freshMixer()).duck).toBe(DUCK_DEFAULT);
+	});
+});
+
 describe('mixer rider gain (#463)', () => {
-	beforeEach(() => store.clear());
+	beforeEach(() => (store.value = null));
 
 	it('is unity for anyone never adjusted, and lists nobody', async () => {
 		const mixer = await freshMixer();
@@ -104,13 +123,10 @@ describe('mixer rider gain (#463)', () => {
 	});
 
 	it('drops leftover unity entries and junk from an older store', async () => {
-		store.set(
-			KEY,
-			JSON.stringify({
-				music: 40,
-				riders: { anna: 1, ben: 1.2, junk: 'loud', high: 7 },
-			}),
-		);
+		seed({
+			music: 40,
+			riders: { anna: 1, ben: 1.2, junk: 'loud', high: 7 },
+		});
 		const mixer = await freshMixer();
 		expect(mixer.music).toBe(40);
 		expect(mixer.riderGain('anna')).toBe(1);
@@ -123,7 +139,7 @@ describe('mixer rider gain (#463)', () => {
 });
 
 describe('fader resolution (#509)', () => {
-	beforeEach(() => store.clear());
+	beforeEach(() => (store.value = null));
 
 	it('gives every fader 1 % of travel — no 5 % notches to settle between', () => {
 		expect(positions(MUSIC_FADER)).toHaveLength(101);
