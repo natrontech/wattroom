@@ -85,6 +85,15 @@ decision is recorded in [WATTROOM.md](WATTROOM.md) and
 [docs/decisions/](docs/decisions/); the research behind them in
 [docs/RESEARCH.md](docs/RESEARCH.md).
 
+## Releases
+
+WattRoom ships several times a day: cutting a release is cheap, not because
+every change is urgent. A release only ever adds a small, already-merged
+change, and rolling one back is just repointing the running image at the
+previous tag — the database is never touched. See
+[ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)
+for the full mechanism.
+
 ## License
 
 [AGPL-3.0](LICENSE) — © [Natron](https://natron.io)
