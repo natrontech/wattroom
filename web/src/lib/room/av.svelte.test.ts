@@ -20,6 +20,7 @@ vi.mock('livekit-client', () => {
 				shared = on;
 			},
 			getTrackPublication: () => (shared ? { videoTrack: {} } : undefined),
+			async publishTrack() {},
 			unpublishTrack() {},
 		};
 		on(event: string, handler: (...args: unknown[]) => void) {
@@ -41,6 +42,11 @@ vi.mock('livekit-client', () => {
 				source: 'screen_share',
 			});
 		},
+		// The server closing the connection under us: the SDK gives up and
+		// says so once, with nothing else attached.
+		dropNatively() {
+			joined?.handlers.get('Disconnected')?.();
+		},
 		// Every RoomEvent.X is just its own name to the wiring under test.
 		RoomEvent: new Proxy({}, { get: (_, key) => key }),
 		Track: {
@@ -58,10 +64,51 @@ interface FakeRoom {
 	handlers: Map<string, (...args: unknown[]) => void>;
 }
 
+// The mic chain wants a real AudioContext; the meter is the one piece of it
+// with a worker behind it, so it is the one piece that has to be faked.
+vi.mock('$lib/room/mic-level', () => ({
+	createMicMeter: async () => ({ out: { connect() {} }, stop() {} }),
+}));
+
 const { createRoomAv } = await import('./av.svelte');
-const { stopSharingNatively } = (await import('livekit-client')) as unknown as {
-	stopSharingNatively: () => void;
-};
+const { stopSharingNatively, dropNatively } =
+	(await import('livekit-client')) as unknown as {
+		stopSharingNatively: () => void;
+		dropNatively: () => void;
+	};
+
+/** Enough of Web Audio and getUserMedia for `openMic` to succeed. */
+function withMicHardware<T>(run: () => Promise<T>): Promise<T> {
+	class FakeAudioContext {
+		currentTime = 0;
+		createMediaStreamSource() {
+			return {};
+		}
+		createGain() {
+			return { gain: { value: 0, setTargetAtTime() {} }, connect() {} };
+		}
+		createMediaStreamDestination() {
+			return { stream: { getAudioTracks: () => [{ stop() {} }] } };
+		}
+		async close() {}
+	}
+	vi.stubGlobal('AudioContext', FakeAudioContext);
+	const had = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+	Object.defineProperty(navigator, 'mediaDevices', {
+		configurable: true,
+		value: {
+			getUserMedia: async () => ({ getTracks: () => [] }),
+			enumerateDevices: async () => [],
+			addEventListener() {},
+			removeEventListener() {},
+		},
+	});
+	return run().finally(() => {
+		vi.unstubAllGlobals();
+		if (had) Object.defineProperty(navigator, 'mediaDevices', had);
+		else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+	});
+}
 
 describe('createRoomAv', () => {
 	// #173: the connection outlives the page that opened it. A $derived built
@@ -102,6 +149,51 @@ describe('createRoomAv', () => {
 
 		expect(av.sharing).toBe(false);
 		expect(av.stageSources).toEqual([]);
+		dispose();
+	});
+
+	// #641: LiveKit dropping the connection gets one automatic rejoin, and it
+	// used to call join() bare — the SPEC default of an open mic — after the
+	// Disconnected handler had already cleared micOn. A rider who muted for a
+	// phone call came back publishing, with nothing to announce it. The drop
+	// is a resume, like the #480 refresh: it keeps what the rider had.
+	describe.each([
+		{ what: 'a rider who was talking comes back talking', mute: false },
+		{ what: 'a rider who muted comes back muted', mute: true },
+	])('what the drop-rejoin is told about the mic', ({ what, mute }) => {
+		it(what, async () => {
+			await withMicHardware(async () => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.join();
+				expect(av.micOn).toBe(true);
+				if (mute) await av.toggleMic();
+				expect(av.micOn).toBe(!mute);
+
+				dropNatively();
+
+				expect(av.dropped).toBe(1);
+				expect(av.micOn).toBe(false);
+				expect(av.micBeforeDrop).toBe(!mute);
+				dispose();
+			});
+		});
+	});
+
+	it('rejoins listening only when the mic never opened', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		// No audio hardware here: the join downgrades to listen-only.
+		await av.join();
+		expect(av.micOn).toBe(false);
+
+		dropNatively();
+
+		expect(av.micBeforeDrop).toBe(false);
 		dispose();
 	});
 
