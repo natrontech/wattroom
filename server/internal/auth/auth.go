@@ -683,7 +683,8 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // maxPaletteChoice bounds the stored palette choice: the client's own JSON
-// ({"kind":"custom","hue":200}) is under 40 bytes; anything near this is junk.
+// ({"kind":"preset","identity":"tron"}) is under 40 bytes; anything near this
+// is junk.
 const maxPaletteChoice = 120
 
 // handleUpdateAppearance stores the theme identity and the scheme toggle on

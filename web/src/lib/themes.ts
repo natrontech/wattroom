@@ -6,7 +6,7 @@
  * Outrun pins the surfaces, text, and accents that shipped. Its old zone ramp
  * is regenerated because it did not clear #331's contrast/ordering gates.
  */
-import { normalizeHue } from './color';
+import { hueDistance, normalizeHue } from './color';
 import {
 	deriveTheme,
 	type Theme,
@@ -17,10 +17,6 @@ import {
 export const DEFAULT_DARK_ID = 'outrun';
 export const DEFAULT_WHITE_ID = 'outrun-day';
 export const DEFAULT_IDENTITY = 'outrun';
-export const CUSTOM_ID = 'custom';
-
-/** Degrees the chrome hue sits behind the live-data hue, as Outrun ships. */
-export const HUE_SEPARATION = 65;
 
 const SPECS: ThemeSpec[] = [
 	{
@@ -219,32 +215,31 @@ export function themeFor(identity: string, family: ThemeFamily): Theme {
 }
 
 /**
- * A custom theme from one hue: chrome trails HUE_SEPARATION behind it and the
- * surfaces take the chrome hue, so the room, its grid and its numbers all come
- * from a single choice.
+ * The preset whose shipped watt hue sits closest to an abandoned custom hue
+ * (#692's migration): riders who had picked a hue keep landing near the
+ * colour they chose rather than being bounced straight to Outrun.
  */
-export function customTheme(hue: number, family: ThemeFamily): Theme {
-	const wattHue = normalizeHue(hue);
-	const chrome = normalizeHue(hue - HUE_SEPARATION);
-	return deriveTheme({
-		id: CUSTOM_ID,
-		identity: CUSTOM_ID,
-		name: 'Custom',
-		note: `data ${Math.round(wattHue)}° · chrome ${Math.round(chrome)}°`,
-		family,
-		wattHue,
-		neonHue: chrome,
-		surfaceHue: chrome,
-	});
+function nearestPresetIdentity(hue: number): string {
+	const target = normalizeHue(hue);
+	let best = DEFAULT_IDENTITY;
+	let bestDistance = Infinity;
+	for (const spec of SPECS) {
+		if (spec.family !== 'dark') continue;
+		const distance = hueDistance(target, spec.wattHue);
+		if (distance < bestDistance) {
+			bestDistance = distance;
+			best = spec.identity;
+		}
+	}
+	return best;
 }
 
 /**
- * What the rider chose — an identity or a hue, never a family. The family
- * comes from the scheme setting at apply time, so the existing auto/dark/light
- * toggle keeps working and following the OS still means something.
+ * What the rider chose — always an identity. The family comes from the
+ * scheme setting at apply time, so the existing auto/dark/light toggle keeps
+ * working and following the OS still means something.
  */
-export type ThemeChoice =
-	{ kind: 'preset'; identity: string } | { kind: 'custom'; hue: number };
+export type ThemeChoice = { kind: 'preset'; identity: string };
 
 export const DEFAULT_CHOICE: ThemeChoice = {
 	kind: 'preset',
@@ -253,7 +248,6 @@ export const DEFAULT_CHOICE: ThemeChoice = {
 
 /** The theme a choice names, in the family currently in force. */
 export function resolveTheme(choice: ThemeChoice, family: ThemeFamily): Theme {
-	if (choice.kind === 'custom') return customTheme(choice.hue, family);
 	return themeFor(choice.identity, family);
 }
 
@@ -261,6 +255,10 @@ export function resolveTheme(choice: ThemeChoice, family: ThemeFamily): Theme {
  * Stored choices are untrusted like any other input: a hand-edited or stale
  * entry falls back to the default rather than painting the app with whatever
  * it found.
+ *
+ * A rider still holding a pre-#692 `custom` choice migrates to the preset
+ * nearest their old hue rather than landing on a broken theme — the caller
+ * re-persists whatever this returns, so the migration is one-time per device.
  */
 export function parseChoice(raw: string | null): ThemeChoice {
 	if (!raw) return DEFAULT_CHOICE;
@@ -278,7 +276,7 @@ export function parseChoice(raw: string | null): ThemeChoice {
 			typeof v.hue === 'number' &&
 			Number.isFinite(v.hue)
 		) {
-			return { kind: 'custom', hue: normalizeHue(v.hue) };
+			return { kind: 'preset', identity: nearestPresetIdentity(v.hue) };
 		}
 		if (v.kind === 'preset' && typeof v.identity === 'string') {
 			const known = THEMES.some((t) => t.identity === v.identity);

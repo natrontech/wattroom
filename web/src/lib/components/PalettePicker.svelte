@@ -6,33 +6,12 @@
 -->
 <script lang="ts">
 	import { tokenDeclarations } from '$lib/palette';
-	import {
-		CUSTOM_ID,
-		DEFAULT_CHOICE,
-		DEFAULT_IDENTITY,
-		HUE_SEPARATION,
-		customTheme,
-		themesFor,
-	} from '$lib/themes';
+	import { DEFAULT_CHOICE, DEFAULT_IDENTITY, themesFor } from '$lib/themes';
 	import { palette } from '$lib/palette.svelte';
-	import { untrack } from 'svelte';
 
 	const choice = $derived(palette.choice);
-	const selectedId = $derived(
-		choice.kind === 'custom' ? CUSTOM_ID : choice.identity,
-	);
+	const selectedId = $derived(choice.identity);
 	const presets = $derived(themesFor(palette.family));
-
-	// The slider keeps its own hue so the custom card previews a colour before
-	// it is chosen, and remembers it across a hop to a preset and back. Seeded
-	// once and untracked on purpose: from here it is the slider's value, not a
-	// mirror of the stored choice.
-	let hue = $state(
-		untrack(() =>
-			palette.choice.kind === 'custom' ? palette.choice.hue : 320,
-		),
-	);
-	const custom = $derived(customTheme(hue, palette.family));
 </script>
 
 {#snippet chip()}
@@ -78,39 +57,6 @@
 			</button>
 		{/each}
 	</div>
-
-	<button
-		type="button"
-		class="mt-2 flex w-full items-center gap-3 rounded-lg border p-3 text-left {selectedId ===
-		CUSTOM_ID
-			? 'border-ink/60'
-			: 'border-muted/20 hover:border-muted/50'}"
-		style={tokenDeclarations(custom)}
-		onclick={() => palette.select({ kind: 'custom', hue })}
-	>
-		{@render chip()}
-		<span class="min-w-0">
-			<span class="block text-sm font-medium">Custom</span>
-			<span class="text-muted block text-[11px]">
-				One hue — chrome follows {HUE_SEPARATION}° behind it, at the shipped
-				brightness.
-			</span>
-		</span>
-	</button>
-
-	{#if selectedId === CUSTOM_ID}
-		<label class="mt-2 block">
-			<span class="eyebrow">hue · {Math.round(hue)}°</span>
-			<input
-				type="range"
-				min="0"
-				max="359"
-				bind:value={hue}
-				oninput={() => palette.select({ kind: 'custom', hue })}
-				class="mt-1 w-full"
-			/>
-		</label>
-	{/if}
 
 	{#if selectedId !== DEFAULT_IDENTITY}
 		<button
