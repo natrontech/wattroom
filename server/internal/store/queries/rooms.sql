@@ -9,6 +9,11 @@ select * from rooms where code = $1;
 -- name: GetRoomBySlug :one
 select * from rooms where slug = $1;
 
+-- name: GetRoomsBySlugs :many
+-- Batched sibling of GetRoomBySlug (#687): the friends panel resolves every
+-- online friend's room in one query instead of one per friend.
+select * from rooms where slug = any(sqlc.arg(slugs)::text[]);
+
 -- name: CreateMembership :exec
 insert into memberships (room_id, user_id, role)
 values ($1, $2, $3)
@@ -39,6 +44,11 @@ order by m.joined_at desc;
 
 -- name: GetMembership :one
 select * from memberships where room_id = $1 and user_id = $2;
+
+-- name: ListMembershipsForUser :many
+-- Batched sibling of GetMembership (#687): one query for every room a
+-- viewer's online friends are in, instead of one membership check per friend.
+select * from memberships where user_id = sqlc.arg(user_id) and room_id = any(sqlc.arg(room_ids)::uuid[]);
 
 -- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
