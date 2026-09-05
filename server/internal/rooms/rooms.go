@@ -185,7 +185,10 @@ type roomJSON struct {
 	Slug   string `json:"slug"`
 	Code   string `json:"code,omitempty"` // members only — the code IS the invite
 	Name   string `json:"name"`
-	Listed bool   `json:"listed"`
+	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
+	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing
+	// surface offers the toggle until the directory exists.
+	Listed bool `json:"listed"`
 	// Emoji identity mark (#223) — public like the name.
 	Icon string `json:"icon,omitempty"`
 	// Owner-set cue set ('base' | 'silent') — members only, like the code.
