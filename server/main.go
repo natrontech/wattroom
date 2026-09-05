@@ -123,13 +123,13 @@ func main() {
 		}
 		h := hub.New(log, roomsService, saver)
 		roomsService.SetPresence(h)
-		chatService := chat.New(st, authService, log)
+		chatService := chat.New(st, roomsService, log)
 		chatService.Register(mux)
 		h.SetChatKeeper(chatService)
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
-		playlistsService := playlists.New(st, authService, log)
+		playlistsService := playlists.New(st, authService, roomsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)
 		playlistsService.SetLive(h) // #627

@@ -141,7 +141,7 @@ func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateSchedule
 }
 
 const deleteMembership = `-- name: DeleteMembership :exec
-delete from memberships where room_id = $1 and user_id = $2
+delete from memberships where room_id = $1 and user_id = $2 and role != 'banned'
 `
 
 type DeleteMembershipParams struct {
@@ -149,6 +149,7 @@ type DeleteMembershipParams struct {
 	UserID pgtype.UUID
 }
 
+// A banned row is the ban (#637): leaving must never delete it, whoever asks.
 func (q *Queries) DeleteMembership(ctx context.Context, arg DeleteMembershipParams) error {
 	_, err := q.db.Exec(ctx, deleteMembership, arg.RoomID, arg.UserID)
 	return err

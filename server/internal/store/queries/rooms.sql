@@ -52,7 +52,8 @@ delete from rooms where id = $1;
 update memberships set role = $3 where room_id = $1 and user_id = $2;
 
 -- name: DeleteMembership :exec
-delete from memberships where room_id = $1 and user_id = $2;
+-- A banned row is the ban (#637): leaving must never delete it, whoever asks.
+delete from memberships where room_id = $1 and user_id = $2 and role != 'banned';
 
 -- name: CountRoomMembers :one
 select count(*) from memberships where room_id = $1 and role != 'banned';

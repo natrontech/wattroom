@@ -82,18 +82,8 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 // DELETE takes it back. Any member, not just the coach: turning up is not a
 // role. There is no "maybe" — you are in or you are not (ux.md's 95% rule).
 func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	room, user, ok := s.RequireMember(w, r, "Join the room to say you are in.")
 	if !ok {
-		return
-	}
-	room, ok := s.roomBySlug(w, r)
-	if !ok {
-		return
-	}
-	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: user.ID,
-	}); err != nil || m.Role == "banned" {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to say you are in.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
