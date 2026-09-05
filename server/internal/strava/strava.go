@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/fitexport"
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -60,13 +61,13 @@ func New(st *store.Store, log *slog.Logger) *Service {
 // Strava outage must cost nothing but a log line. The goroutine exits when
 // the upload settles or the 90 s budget runs out.
 func (s *Service) RideSaved(rideID pgtype.UUID) {
-	go func() {
+	safego.Go(s.log, "strava upload", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 		if err := s.upload(ctx, rideID); err != nil {
 			s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
 		}
-	}()
+	})
 }
 
 func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) error {

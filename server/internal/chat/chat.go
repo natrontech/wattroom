@@ -18,6 +18,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -96,7 +97,8 @@ func (s *Service) pruneSampled(roomID pgtype.UUID, slug string) {
 	if time.Now().UnixNano()%16 != 0 {
 		return
 	}
-	go func() { //nolint:gosec // the prune must outlive the request — deliberate detachment, bounded below
+	// The prune must outlive the request — deliberate detachment, bounded below.
+	safego.Go(s.log, "chat prune "+slug, func() {
 		pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := s.store.Queries.PruneChat(pctx, roomID); err != nil {
@@ -107,7 +109,7 @@ func (s *Service) pruneSampled(roomID pgtype.UUID, slug string) {
 		if err := s.store.Queries.PruneChatImages(pctx, roomID); err != nil {
 			s.log.Warn("prune chat images", "err", err, "room", slug)
 		}
-	}()
+	})
 }
 
 // ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
