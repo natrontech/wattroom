@@ -222,16 +222,25 @@ export function createRoomLive(slug: string) {
 	// line must never silently vanish (audit #219). Metrics are continuous
 	// and never queued; stale watts help nobody.
 	let pending: ClientMessage[] = [];
+	// A long reconnect under a talkative rider fills this; past it, send()
+	// refuses rather than drops, so the caller can hand the words back (#650).
+	const PENDING_LIMIT = 16;
 	// This socket's view of its rider being away (#706), kept so a reconnect
 	// can re-declare it. Not $state: nothing renders from here — the roster
 	// on the tick is what every screen draws, this rider's tile included.
 	let away = false;
-	function send(message: ClientMessage) {
+	/** True once the message is on the wire or waiting for it; false when the
+	 * queue is full and the words are still the caller's to keep. Metrics are
+	 * never queued and never refused: the next sample supersedes a lost one. */
+	function send(message: ClientMessage): boolean {
 		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
-		} else if (!message.metrics && pending.length < 16) {
-			pending.push(message);
+			return true;
 		}
+		if (message.metrics) return true;
+		if (pending.length >= PENDING_LIMIT) return false;
+		pending.push(message);
+		return true;
 	}
 
 	return {
@@ -353,8 +362,10 @@ export function createRoomLive(slug: string) {
 			chatReactions = counts;
 			myReacts = pressed;
 		},
-		chat(text: string, imageId?: string) {
-			send({ chat: { from: '', text, imageId, at: 0 } });
+		/** False when a reconnect queue too full to take the line refused it —
+		 * the caller still holds the words and must say so. */
+		chat(text: string, imageId?: string): boolean {
+			return send({ chat: { from: '', text, imageId, at: 0 } });
 		},
 		/** Toggle my emoji on a message — optimistic; the tick corrects counts. */
 		react(messageId: string, emoji: string) {
