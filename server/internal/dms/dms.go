@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -38,6 +39,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/dms", s.handleHeads)
 	mux.HandleFunc("GET /api/dms/{id}", s.handleThread)
 	mux.HandleFunc("POST /api/dms/{id}", s.handleSend)
+	mux.HandleFunc("POST /api/dms/{id}/reactions", s.handleReact)
 	// Four segments, so neither collides with the thread routes above.
 	mux.HandleFunc("POST /api/dms/{id}/images", s.handleImageUpload)
 	mux.HandleFunc("GET /api/dms/images/{id}", s.handleImage)
@@ -168,6 +170,67 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleReact toggles the caller's reaction on a message in this thread
+// (#777, follow-up from #672) — the DM twin of chat's handleReact. Unlike a
+// room, a DM has no live tick to ride: the change is only ever picked up by
+// the peer's next poll (thread.svelte.ts refreshes reactions every load).
+func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
+	me, peer, ok := s.peer(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		MessageID string `json:"messageId"`
+		Emoji     string `json:"emoji"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	if !protocol.IsIconOrEmoji(req.Emoji) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"That is not a reaction this thread speaks.", "emoji")
+		return
+	}
+	mid, err := store.ParseUUID(req.MessageID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	added, err := s.store.Queries.AddDmReaction(r.Context(), db.AddDmReactionParams{
+		MessageID: mid, UserID: me.ID, Emoji: req.Emoji, Column4: me.ID, Column5: peer,
+	})
+	if err != nil {
+		s.log.Warn("add dm reaction", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+		return
+	}
+	isAdd := added > 0
+	if !isAdd {
+		removed, err := s.store.Queries.RemoveDmReaction(r.Context(), db.RemoveDmReactionParams{
+			MessageID: mid, UserID: me.ID, Emoji: req.Emoji, Column4: me.ID, Column5: peer,
+		})
+		if err != nil || removed == 0 {
+			// Neither added nor removed: the message is not in this pair's
+			// thread — same 404 the insert's own scoping would produce.
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+			return
+		}
+	}
+	count, err := s.store.Queries.CountDmReaction(r.Context(), db.CountDmReactionParams{
+		MessageID: mid, Emoji: req.Emoji,
+	})
+	if err != nil {
+		s.log.Error("count dm reaction", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, protocol.ChatReactionCount{
+		MessageID: req.MessageID, Emoji: req.Emoji, Count: int(count),
+		By: store.UUIDString(me.ID), Added: isAdd,
+	})
+}
+
 func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
 	if !ok {
@@ -188,6 +251,31 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
 		return
 	}
+	// The full pair's reactions, independent of `after`: a reaction on a
+	// message already loaded on the client must still surface on the next
+	// poll, which the incremental message fetch above would otherwise miss
+	// if reactions rode along on individual message rows instead. Returned
+	// at the top level and replaced wholesale by the client on every poll.
+	reactionRows, err := s.store.Queries.ListDmReactions(r.Context(), db.ListDmReactionsParams{
+		Column1: me.ID, Column2: peer, UserID: me.ID,
+	})
+	if err != nil {
+		s.log.Error("list dm reactions", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		return
+	}
+	counts := map[string]map[string]int{}
+	mine := map[string][]string{}
+	for _, row := range reactionRows {
+		id := store.UUIDString(row.MessageID)
+		if counts[id] == nil {
+			counts[id] = map[string]int{}
+		}
+		counts[id][row.Emoji] = int(row.Total)
+		if row.Mine {
+			mine[id] = append(mine[id], row.Emoji)
+		}
+	}
 	type messageJSON struct {
 		ID   string `json:"id"`
 		Mine bool   `json:"mine"`
@@ -204,7 +292,9 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 			At: row.CreatedAt.Time.UnixMilli(),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"messages": out})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"messages": out, "reactions": counts, "myReacts": mine,
+	})
 }
 
 func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {

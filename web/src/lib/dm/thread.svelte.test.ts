@@ -17,12 +17,13 @@ vi.mock('$lib/dm/heads.svelte', () => ({
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me-1' } } }));
 
 let responses: unknown[] = [];
+let postResponses: unknown[] = [];
 const posted: unknown[] = [];
 vi.mock('$lib/api', () => ({
 	api: async (path: string, init?: { method?: string; json?: unknown }) => {
 		if (init?.method === 'POST') {
 			posted.push({ path, json: init.json });
-			return { ok: true, data: { id: 'sent-1' } };
+			return postResponses.shift() ?? { ok: true, data: { id: 'sent-1' } };
 		}
 		const next = responses.shift();
 		return next ?? { ok: false, error: { error: 'network', message: 'down' } };
@@ -33,6 +34,7 @@ const { createDmThread } = await import('./thread.svelte');
 
 afterEach(() => {
 	responses = [];
+	postResponses = [];
 	posted.length = 0;
 	stamped.length = 0;
 	bumped = 0;
@@ -148,6 +150,67 @@ describe('createDmThread (#672)', () => {
 		expect(posted).toEqual([
 			{ path: '/api/dms/sven', json: { text: 'yo', imageId: undefined } },
 		]);
+		thread.close();
+	});
+});
+
+describe('createDmThread reactions (#777)', () => {
+	it('loads the pair-wide reaction map alongside the backlog', async () => {
+		responses.push({
+			ok: true,
+			data: {
+				messages: [{ id: 'a', mine: false, text: 'hey', at: 1 }],
+				reactions: { a: { '🔥': 2 } },
+				myReacts: { a: ['🔥'] },
+			},
+		});
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(thread.reactions).toEqual({ a: { '🔥': 2 } });
+		expect(thread.myReacts).toEqual({ 'a:🔥': true });
+		thread.close();
+	});
+
+	it('react() is optimistic and corrects from the server answer', async () => {
+		responses.push({ ok: true, data: { messages: [] } });
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		postResponses.push({
+			ok: true,
+			data: { messageId: 'a', emoji: '🔥', count: 1, added: true },
+		});
+		const reactPromise = thread.react('a', '🔥');
+		// Optimistic flip lands before the response resolves.
+		expect(thread.myReacts['a:🔥']).toBe(true);
+		const refusal = await reactPromise;
+		expect(refusal).toBeNull();
+		expect(thread.reactions).toEqual({ a: { '🔥': 1 } });
+		expect(posted).toContainEqual({
+			path: '/api/dms/sven/reactions',
+			json: { messageId: 'a', emoji: '🔥' },
+		});
+		thread.close();
+	});
+
+	it('react() rolls back the optimistic flip on failure', async () => {
+		responses.push({ ok: true, data: { messages: [] } });
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		postResponses.push({
+			ok: false,
+			error: { error: 'not_found', message: 'No such message.' },
+		});
+		const refusal = await thread.react('a', '🔥');
+		expect(refusal).toBe('No such message.');
+		expect(thread.myReacts['a:🔥']).toBeFalsy();
 		thread.close();
 	});
 });

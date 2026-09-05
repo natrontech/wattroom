@@ -276,3 +276,99 @@ func TestDmImageFromAnotherPairIsRefused(t *testing.T) {
 		t.Fatalf("cross-pair image accepted: %d", code)
 	}
 }
+
+func TestDmReactions(t *testing.T) {
+	mux, _, users := setup(t)
+	alice := store.UUIDString(users.byToken["alice"].ID)
+	bob := store.UUIDString(users.byToken["bob"].ID)
+
+	// No auth.
+	if code, _ := call(t, mux, "", http.MethodPost, "/api/dms/"+bob+"/reactions",
+		`{"messageId":"00000000-0000-0000-0000-000000000000","emoji":"🔥"}`); code != http.StatusUnauthorized {
+		t.Fatalf("unauthed react: %d", code)
+	}
+
+	_, sent := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"ride at 7?"}`)
+	id, _ := sent["id"].(string)
+	if id == "" {
+		t.Fatalf("send: %v", sent)
+	}
+
+	// Validation: junk emoji is a field-level 400.
+	code, body := call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/reactions",
+		`{"messageId":"`+id+`","emoji":"NOT_a_valid_reaction!!"}`)
+	if code != http.StatusBadRequest || body["field"] != "emoji" {
+		t.Fatalf("bad emoji: %d %v", code, body)
+	}
+
+	// Not found: a message id that does not exist in this pair's thread.
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/reactions",
+		`{"messageId":"00000000-0000-0000-0000-000000000000","emoji":"🔥"}`); code != http.StatusNotFound {
+		t.Fatalf("missing message: %d", code)
+	}
+
+	// Happy path: bob reacts to alice's message — added, count 1.
+	code, body = call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/reactions",
+		`{"messageId":"`+id+`","emoji":"🔥"}`)
+	if code != http.StatusOK || body["added"] != true || body["count"] != float64(1) {
+		t.Fatalf("react: %d %v", code, body)
+	}
+
+	// The thread response carries the count at the top level, for both
+	// sides of the pair — and which emoji the caller themselves pressed.
+	_, thread := call(t, mux, "alice", http.MethodGet, "/api/dms/"+bob, "")
+	reactions, _ := thread["reactions"].(map[string]any)
+	byMessage, _ := reactions[id].(map[string]any)
+	if byMessage["🔥"] != float64(1) {
+		t.Fatalf("thread reactions: %v", thread)
+	}
+	_, bobThread := call(t, mux, "bob", http.MethodGet, "/api/dms/"+alice, "")
+	bobMyReacts, _ := bobThread["myReacts"].(map[string]any)
+	mine, _ := bobMyReacts[id].([]any)
+	if len(mine) != 1 || mine[0] != "🔥" {
+		t.Fatalf("bob's myReacts: %v", bobThread)
+	}
+
+	// Toggling again removes it — added false, count 0.
+	code, body = call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/reactions",
+		`{"messageId":"`+id+`","emoji":"🔥"}`)
+	if code != http.StatusOK || body["added"] != false || body["count"] != float64(0) {
+		t.Fatalf("un-react: %d %v", code, body)
+	}
+}
+
+func TestDmReactionRefusedAcrossPairs(t *testing.T) {
+	mux, st, users := setup(t)
+	alice := store.UUIDString(users.byToken["alice"].ID)
+	bob := store.UUIDString(users.byToken["bob"].ID)
+
+	_, sent := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"ride at 7?"}`)
+	id, _ := sent["id"].(string)
+	if id == "" {
+		t.Fatalf("send: %v", sent)
+	}
+
+	// cara is friendless with alice — she has no thread with alice at all,
+	// so alice's message is not in "her" pair either way.
+	if code, _ := call(t, mux, "cara", http.MethodPost, "/api/dms/"+alice+"/reactions",
+		`{"messageId":"`+id+`","emoji":"🔥"}`); code != http.StatusNotFound {
+		t.Fatalf("cross-pair reaction accepted: %d", code)
+	}
+
+	// bob ↔ cara become friends and talk; cara must not react to alice and
+	// bob's message by addressing it through her own thread with bob.
+	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{
+		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := call(t, mux, "cara", http.MethodPost, "/api/dms/"+bob+"/reactions",
+		`{"messageId":"`+id+`","emoji":"🔥"}`); code != http.StatusNotFound {
+		t.Fatalf("cross-pair reaction via bob accepted: %d", code)
+	}
+}

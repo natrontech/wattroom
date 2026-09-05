@@ -11,6 +11,60 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addDmReaction = `-- name: AddDmReaction :execrows
+insert into dm_reactions (message_id, user_id, emoji)
+select $1, $2, $3
+where exists (
+    select 1 from dm_messages
+    where id = $1
+      and least(sender_id, recipient_id) = least($4::uuid, $5::uuid)
+      and greatest(sender_id, recipient_id) = greatest($4::uuid, $5::uuid)
+)
+on conflict do nothing
+`
+
+type AddDmReactionParams struct {
+	MessageID pgtype.UUID
+	UserID    pgtype.UUID
+	Emoji     string
+	Column4   pgtype.UUID
+	Column5   pgtype.UUID
+}
+
+// Toggle half 1: no-op when already reacted (the conflict), so the caller
+// knows to remove instead. Scoped to the message's own pair — no separate
+// friendship recheck, same as viewing a delivered image (GetDmImage):
+// unfriending ends new sends, it does not black out reacting to history.
+func (q *Queries) AddDmReaction(ctx context.Context, arg AddDmReactionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addDmReaction,
+		arg.MessageID,
+		arg.UserID,
+		arg.Emoji,
+		arg.Column4,
+		arg.Column5,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const countDmReaction = `-- name: CountDmReaction :one
+select count(*) from dm_reactions where message_id = $1 and emoji = $2
+`
+
+type CountDmReactionParams struct {
+	MessageID pgtype.UUID
+	Emoji     string
+}
+
+func (q *Queries) CountDmReaction(ctx context.Context, arg CountDmReactionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countDmReaction, arg.MessageID, arg.Emoji)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getDmImage = `-- name: GetDmImage :one
 select mime, bytes from dm_images
 where id = $1
@@ -81,6 +135,58 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.ImageID,
 			&i.SenderID,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDmReactions = `-- name: ListDmReactions :many
+select r.message_id, r.emoji,
+       count(*) as total,
+       bool_or(r.user_id = $3) as mine
+from dm_reactions r
+join dm_messages m on m.id = r.message_id
+where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
+group by r.message_id, r.emoji
+`
+
+type ListDmReactionsParams struct {
+	Column1 pgtype.UUID
+	Column2 pgtype.UUID
+	UserID  pgtype.UUID
+}
+
+type ListDmReactionsRow struct {
+	MessageID pgtype.UUID
+	Emoji     string
+	Total     int64
+	Mine      bool
+}
+
+// Counts per message+emoji for the whole pair, plus whether the viewer is
+// in — like ListChatReactions, but pair-scoped instead of room-scoped since
+// a DM message already carries its own two participants.
+func (q *Queries) ListDmReactions(ctx context.Context, arg ListDmReactionsParams) ([]ListDmReactionsRow, error) {
+	rows, err := q.db.Query(ctx, listDmReactions, arg.Column1, arg.Column2, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDmReactionsRow
+	for rows.Next() {
+		var i ListDmReactionsRow
+		if err := rows.Scan(
+			&i.MessageID,
+			&i.Emoji,
+			&i.Total,
+			&i.Mine,
 		); err != nil {
 			return nil, err
 		}
@@ -189,6 +295,38 @@ type PruneDmsParams struct {
 func (q *Queries) PruneDms(ctx context.Context, arg PruneDmsParams) error {
 	_, err := q.db.Exec(ctx, pruneDms, arg.Column1, arg.Column2)
 	return err
+}
+
+const removeDmReaction = `-- name: RemoveDmReaction :execrows
+delete from dm_reactions r
+using dm_messages m
+where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
+  and m.id = r.message_id
+  and least(m.sender_id, m.recipient_id) = least($4::uuid, $5::uuid)
+  and greatest(m.sender_id, m.recipient_id) = greatest($4::uuid, $5::uuid)
+`
+
+type RemoveDmReactionParams struct {
+	MessageID pgtype.UUID
+	UserID    pgtype.UUID
+	Emoji     string
+	Column4   pgtype.UUID
+	Column5   pgtype.UUID
+}
+
+// Pair-scoped like the insert.
+func (q *Queries) RemoveDmReaction(ctx context.Context, arg RemoveDmReactionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeDmReaction,
+		arg.MessageID,
+		arg.UserID,
+		arg.Emoji,
+		arg.Column4,
+		arg.Column5,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const saveDmImage = `-- name: SaveDmImage :one
