@@ -28,7 +28,7 @@ file that does not exist.
 | [0010](0010-room-first-positioning.md) | Room-first — WattRoom replaces the voice app, not just the trainer app | accepted, amended (#201: chat keeps a bounded history) | Chat rule amended by [0022](0022-room-events-are-ephemeral.md); the shape it implies: [0020](0020-the-app-takes-discords-shape.md) |
 | [0011](0011-audio-profiles.md) | Two audio profiles — voice is processed, music never is | accepted | — |
 | [0012](0012-friends-presence.md) | Friends — mutual only, formed in rooms, presence stays room-bounded | accepted, amended twice (friend code only; DMs #208) | Formation rule amended again by [0024](0024-social-profiles.md) — a shared room is a path beside the code |
-| [0013](0013-room-identity-and-moderation.md) | Room identity is an emoji; a ban is a membership role | accepted | Icon and reaction set moved to curated lucide keys in #447; the amendment recording it is #679 |
+| [0013](0013-room-identity-and-moderation.md) | Room identity is an emoji; a ban is a membership role | accepted, amended 2026-09-05 (#447: icon and reaction palette are lucide keys, not emoji) | The emoji shape check survives only to read pre-#447 rows |
 | [0014](0014-heart-rate-zones.md) | Heart-rate zones anchor on LTHR, derived like power zones from FTP | accepted | Retention of the bpm they colour: [0008](0008-heart-rate-retention.md) |
 | [0015](0015-self-hosted-music-pool.md) | Self-hosted music pool — uploaded MP3s join the jukebox | accepted, not yet built (#264, #268) | Amends WATTROOM.md's Jukebox row. Library playlists vs. a pasted one: [0026](0026-a-playlist-is-one-queue-entry.md) |
 | [0016](0016-training-load-model.md) | Training load: Coggan math, trademark-safe names, nudges never gates | accepted | — |
