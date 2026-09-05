@@ -19,6 +19,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/safego"
 )
 
 const tickInterval = time.Second
@@ -178,8 +179,10 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
 		lobby: make(map[*lobbyClient]string),
 		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
-	go h.saveWorker()
-	go h.autoplayWorker()
+	// Supervised (#651): a poison job costs one log line and is skipped, not
+	// the rest of the process's chat history or autoplay.
+	safego.Supervise(log, h.now, "hub chat saver", nil, h.saveWorker)
+	safego.Supervise(log, h.now, "hub autoplay worker", nil, h.autoplayWorker)
 	h.registerRidingMetric()
 	return h
 }
@@ -994,9 +997,17 @@ func (h *Hub) room(slug string) *room {
 		// it, unlocked: nobody else can hold this room yet.
 		rm.voiceNow = h.voiceRidersLocked(slug)
 		h.rooms[slug] = rm
-		go rm.run(h.now, h.saver)
+		h.launchRoom(rm)
 	}
 	return rm
+}
+
+// launchRoom starts the room's tick loop under supervision (#651): a panic
+// in one tick — game mode, jukebox, session close — is logged with its stack
+// and the loop relaunched, so the clock never stays dead on the riders'
+// screens while every other room rides on. Bounded by safego's budget.
+func (h *Hub) launchRoom(rm *room) {
+	safego.Supervise(h.log, h.now, "room "+rm.slug, rm.stop, func() { rm.run(h.log, h.now, h.saver) })
 }
 
 // run broadcasts one tick per interval while anyone is connected. The tick
@@ -1004,7 +1015,7 @@ func (h *Hub) room(slug string) *room {
 // screens even when nobody is pedalling yet.
 // ponytail: the ticker runs while the room is empty; rooms are cheap and few,
 // stop-on-empty can land with room GC if it ever shows up in a profile.
-func (rm *room) run(now func() time.Time, saver SessionSaver) {
+func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
 	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
 	// is live (SPEC) and returns to 1 Hz after.
 	timer := time.NewTimer(tickInterval)
@@ -1157,9 +1168,11 @@ func (rm *room) run(now func() time.Time, saver SessionSaver) {
 			// Fire and hand off: the tick loop never blocks on the database.
 			// The saver owns timeouts and retries (#235); the goroutine exits
 			// when its bounded retry policy returns — minutes at worst.
-			go saver.SaveSession(context.Background(), rm.slug,
-				closingMeta.WorkoutName, closingMeta.WorkoutJSON,
-				time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
+			safego.Go(log, "session save "+rm.slug, func() {
+				saver.SaveSession(context.Background(), rm.slug,
+					closingMeta.WorkoutName, closingMeta.WorkoutJSON,
+					time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
+			})
 		}
 		// The keeper returns at once (it queues its own I/O) — still outside
 		// the lock, like every other hand-off.
