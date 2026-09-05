@@ -4,7 +4,6 @@
 
 	// docs/SPEC.md roles matrix: editing the room and assigning coach are owner-only.
 	let name = $state(ROOM_NAME);
-	let listed = $state(false);
 	let pack = $state('base');
 	let confirmDelete = $state(false);
 
@@ -47,17 +46,6 @@
 				bind:value={name}
 				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
 			/>
-		</label>
-
-		<label class="mt-5 flex items-start gap-3">
-			<input type="checkbox" bind:checked={listed} class="mt-0.5" />
-			<span>
-				<span class="block text-sm">List this room publicly</span>
-				<span class="text-muted block text-xs">
-					Off by default. Listing shows the name and rider count — metrics stay
-					visible only to people who actually join.
-				</span>
-			</span>
 		</label>
 	</section>
 
