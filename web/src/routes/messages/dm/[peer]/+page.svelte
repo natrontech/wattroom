@@ -18,7 +18,12 @@
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatTime } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
-	import { ChevronLeft, Radio, RotateCw } from '@lucide/svelte';
+	import {
+		ChevronLeft,
+		Image as ImageIcon,
+		Radio,
+		RotateCw,
+	} from '@lucide/svelte';
 
 	interface Message {
 		id: string;
@@ -42,6 +47,7 @@
 	let draft = $state('');
 	let error = $state<string | null>(null);
 	const pending = createPendingImage((refusal) => (error = refusal));
+	let filePicker = $state<HTMLInputElement | null>(null);
 
 	async function load(id: string, after: number) {
 		const res = await api<{ messages: Message[] }>(
@@ -236,12 +242,29 @@
 	{/if}
 	<ImageChip image={pending.current} onClear={pending.clear} />
 	<form
-		class="flex gap-2"
+		class="flex items-center gap-2"
 		onsubmit={(e) => {
 			e.preventDefault();
 			void send();
 		}}
 	>
+		<input
+			bind:this={filePicker}
+			type="file"
+			accept="image/*"
+			class="hidden"
+			onchange={(e) => {
+				pending.pick(e.currentTarget.files?.[0]);
+				e.currentTarget.value = '';
+			}}
+		/>
+		<button
+			type="button"
+			onclick={() => filePicker?.click()}
+			class="text-muted hover:text-ink rounded p-1"
+			aria-label="attach an image"
+			title="attach an image (or paste one)"><ImageIcon size={16} /></button
+		>
 		<input
 			bind:value={draft}
 			onpaste={pending.paste}
