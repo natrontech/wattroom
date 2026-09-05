@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DUCK_DEPTH } from '$lib/sound/ducking';
+import { DUCK_DEFAULT } from '$lib/sound/ducking';
 import {
 	MUSIC_FADER,
 	RIDER_FADER,
@@ -52,15 +52,15 @@ describe('mixer defaults', () => {
 
 	it('ducks to the SPEC depth, and only to it (#677)', async () => {
 		const mixer = await freshMixer();
-		expect(mixer.duck).toBe(DUCK_DEPTH);
-		expect(DUCK_DEPTH).toBe(0.25);
+		expect(mixer.duck).toBe(DUCK_DEFAULT);
+		expect(DUCK_DEFAULT).toBe(0.25);
 	});
 
 	it('falls back to the SPEC depth when the stored one is junk', async () => {
 		seed({ duck: 'loud' });
-		expect((await freshMixer()).duck).toBe(DUCK_DEPTH);
+		expect((await freshMixer()).duck).toBe(DUCK_DEFAULT);
 		store.value = '{not json';
-		expect((await freshMixer()).duck).toBe(DUCK_DEPTH);
+		expect((await freshMixer()).duck).toBe(DUCK_DEFAULT);
 	});
 });
 
