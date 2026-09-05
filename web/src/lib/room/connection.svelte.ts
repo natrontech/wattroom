@@ -282,14 +282,17 @@ function connect(slug: string): Connection {
 		});
 
 		// LiveKit dropping us while live gets ONE automatic rejoin with a
-		// fresh token — covers the 6h expiry and transient drops (#219).
+		// fresh token — covers the 6h expiry and transient drops (#219). It is
+		// a resume, not a fresh join: the mic comes back the way it was, and
+		// a rider who muted for a phone call stays muted (#641).
 		let seenDrops = 0;
 		$effect(() => {
 			const drops = av.dropped;
 			if (drops > seenDrops) {
 				seenDrops = drops;
 				setTimeout(() => {
-					if (roomConnection.current?.slug === slug) void av.join();
+					if (roomConnection.current?.slug === slug)
+						void av.join({ mic: av.micBeforeDrop });
 				}, 2_000);
 			}
 		});

@@ -459,10 +459,10 @@ export function createRoomAv(slug: string) {
 	}
 
 	/**
-	 * Join the room's call. `mic: false` arrives listening only — the #480
-	 * rejoin comes back in the state the rider left, and a rider who was
-	 * muted stays muted. Nothing else passes it: the rail's button and the
-	 * drop-rejoin (#219) keep the SPEC default of a mic already open.
+	 * Join the room's call. `mic: false` arrives listening only. The rail's
+	 * button passes nothing and gets the SPEC default of a mic already open;
+	 * the two resumes — the #480 refresh and the #219 drop-rejoin — pass the
+	 * state the rider left in, so a rider who was muted stays muted (#641).
 	 */
 	async function join({ mic: wantMic = true }: { mic?: boolean } = {}) {
 		// Double-click or an impatient rail tap must not build a second
@@ -547,6 +547,12 @@ export function createRoomAv(slug: string) {
 	let myClaim: Claim | null = null;
 	/** Whether the mic was open when this tab handed over, for taking it back. */
 	let micBeforeHandoff = false;
+	/**
+	 * Whether the mic was open when LiveKit dropped us, for the rejoin (#641).
+	 * The Disconnected handler clears `micOn` before the rejoin fires, and a
+	 * rider who muted for a phone call must not come back publishing.
+	 */
+	let micBeforeDrop = false;
 
 	function claimOf(p: { identity: string; joinedAt?: Date }): Claim {
 		return { identity: p.identity, at: p.joinedAt?.getTime() ?? Date.now() };
@@ -863,6 +869,7 @@ export function createRoomAv(slug: string) {
 			// camOn, sharing and micOn all lied about dead tracks (#219, #354).
 			speaking = {};
 			camOn = false;
+			micBeforeDrop = micOn;
 			micOn = false;
 			sharing = false;
 			handedOff = false;
@@ -886,6 +893,10 @@ export function createRoomAv(slug: string) {
 	return {
 		get dropped() {
 			return dropped;
+		},
+		/** What the drop-rejoin should do with the mic: what the rider had. */
+		get micBeforeDrop() {
+			return micBeforeDrop;
 		},
 		get status() {
 			return status;
