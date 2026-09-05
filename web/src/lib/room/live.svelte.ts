@@ -35,6 +35,8 @@ export function createRoomLive(slug: string) {
 	let myReacts = $state<Record<string, boolean>>({});
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
+	let jukeboxRefusal = $state<string | null>(null);
+	let jukeboxRefusalAt = 0;
 	// What the hub says this tab holds, and where the rider's other screens
 	// hold the rest (#610). Server truth: a tab learns here that its claim
 	// was refused, so nothing renders "paired" off its own click alone.
@@ -196,10 +198,18 @@ export function createRoomLive(slug: string) {
 			// enough to read (ticks arrive every second; clearing on each one
 			// made refusals subliminal — audit #219).
 			if (msg.error) {
-				refusal = msg.error.message;
-				refusalAt = Date.now();
-			} else if (refusal && Date.now() - refusalAt > 6_000) {
-				refusal = null;
+				if (msg.error.code.startsWith('jukebox_')) {
+					jukeboxRefusal = msg.error.message;
+					jukeboxRefusalAt = Date.now();
+				} else {
+					refusal = msg.error.message;
+					refusalAt = Date.now();
+				}
+			} else {
+				const now = Date.now();
+				if (refusal && now - refusalAt > 6_000) refusal = null;
+				if (jukeboxRefusal && now - jukeboxRefusalAt > 6_000)
+					jukeboxRefusal = null;
 			}
 		};
 		socket.onclose = () => {
@@ -252,6 +262,9 @@ export function createRoomLive(slug: string) {
 		},
 		get refusal() {
 			return refusal;
+		},
+		get jukeboxRefusal() {
+			return jukeboxRefusal;
 		},
 		/** What this tab holds and what its rider's other screens hold (#610). */
 		get pairing() {
@@ -379,6 +392,7 @@ export function createRoomLive(slug: string) {
 		 * positional optionals were a bug waiting to be passed in the wrong
 		 * order, and two of them already had been. */
 		jukebox(command: import('$lib/protocol').JukeboxCommand) {
+			jukeboxRefusal = null;
 			send({ jukebox: command });
 		},
 		control(

@@ -1,0 +1,1 @@
+- Riders now see an actionable message when a YouTube track or playlist cannot be added to a full or invalid jukebox queue.
