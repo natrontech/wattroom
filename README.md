@@ -72,7 +72,9 @@ A smart trainer speaking **BLE FTMS** (pre-FTMS Wahoo units are backlog, #4), ta
 from the browser via Web Bluetooth — which is Chromium-only: **Chrome/Edge on
 desktop and Android**. No iOS path (Safari won't implement Web Bluetooth — a
 [researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md),
-not an oversight); the read-only spectator view works in any browser.
+not an oversight); the room itself opens in any browser, with the
+affordances that need a trainer gated off rather than a separate read-only
+page.
 
 ## Stack
 

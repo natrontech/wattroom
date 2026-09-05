@@ -300,6 +300,45 @@ What does not change:
   actually right about is that these do not belong in a 208 px strip you also
   navigate rooms with. They live in the room, not in the navigation.
 
+## Amendment — a phone reaches the room directly (2026-09-05, #412)
+
+The Decision above answered the *phone* question by scoping it out: a phone
+is read-only, and gets a separate spectator page rather than this shell. #412
+shipped a different answer, and this amendment records it rather than leaving
+the Decision's text as the thing riders are told.
+
+**What actually shipped.** A phone loads `/r/[slug]` like every other width —
+the same sidebar-drawer, crew strip, places and Chat this ADR describes for a
+narrow window — and `$lib/device.svelte`'s capability detection gates the
+affordances that need something a phone does not have, rather than routing
+the phone away from the shell entirely. There is no separate read-only
+dashboard: `/r/[slug]/watch` is now a redirect *into* `/r/[slug]` (it kept its
+URL because it had been linked from the old view's footer and bookmarked
+since #124), not the destination a phone lands on.
+
+**Why this reads as better, not just different.** A phone still cannot pair a
+trainer (BLE FTMS needs Web Bluetooth, iOS-Safari-only per
+[ADR-0004](0004-chrome-first-with-native-escape-hatch.md)), so the rider is
+still a spectator in the sense that matters — but they get the room's crew
+strip, chat and reactions live rather than a stripped-down dashboard
+maintained as a second surface. One shell with gated affordances beats a
+parallel read-only page for the same reason switchable layouts lost earlier
+in this ADR: a second surface is a second design every later change has to
+keep in sync, and #383/#412 already show what happens when it does not
+(`/r/[slug]/watch` drifted behind the real room and was retired).
+
+**What does not change.** The phone still is not treated as a first-class
+riding surface — this ADR's shell is still designed for a desk, and a phone
+never gets the sidebar's own places re-laid-out for a thumb. `ux.md`'s huge
+targets and no-precision-gesture rules still apply below `md` regardless of
+device. What changes is the *mechanism*: capability gating on one shell,
+not a redirect to a second one.
+
+This amendment does not touch WATTROOM.md's phone/iOS wording — that is a
+separate, still-open question ([#656](https://github.com/natrontech/wattroom/issues/656)) about how a locked founding
+document records a divergence from itself. This amendment is scoped to what
+this ADR itself asserted about the mechanism, which #412 made false.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so
@@ -331,10 +370,11 @@ What does not change:
   something to copy rather than something to remember.
 - **A narrow window and a phone are different questions.** Below `md` the
   sidebar becomes a drawer, which is what Discord does — that is the *window*
-  answer. The *phone* answer is unchanged and is not this shell at all:
-  WATTROOM.md scopes phones as read-only spectators, and `/r/[slug]` already
-  redirects them to `/r/[slug]/watch`. Do not let the drawer imply the room is
-  usable on a phone.
+  answer. The *phone* answer is not this shell at all — see the
+  [2026-09-05 amendment](#amendment--a-phone-reaches-the-room-directly-2026-09-05),
+  which supersedes this bullet's original reading (a redirect to a separate
+  spectator page). Do not let the drawer imply the phone gets the desk shell
+  unmodified.
 - **Column count is a real budget**, and it is what killed the literal copy.
   One sidebar leaves 768 px at 1280 px; two leave 624 px. That is also the
   number the members question was decided against — members as a column of their
