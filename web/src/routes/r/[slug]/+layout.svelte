@@ -5,7 +5,7 @@
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
-	import type { Room } from '$lib/room/room-data';
+	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
 
 	let { children } = $props();
@@ -13,8 +13,7 @@
 	void account.load();
 
 	const slug = $derived(page.params.slug);
-	type RoomPageData = { room?: Room | null; roomError?: string | null };
-	const pageData = $derived(page.data as RoomPageData);
+	const pageData = $derived(page.data as RoomLoadData);
 	let room = $state<Room | null>(null);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
@@ -25,7 +24,11 @@
 		void ping;
 		const current = slug;
 		const seed = pageData.room;
-		if (current && seededSlug !== current && seed?.slug === current) {
+		if (
+			current &&
+			seededSlug !== current &&
+			(seed?.slug === current || pageData.roomError)
+		) {
 			room = seed;
 			error = pageData.roomError ?? null;
 			seededSlug = current;

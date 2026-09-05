@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-	load as loadHistory,
-	type HistoryPageData,
-} from './history/+page';
+import { load as loadHistory, type HistoryPageData } from './history/+page';
 import { load as loadProfile, type ProfilePageData } from './profile/+page';
-import { load as loadRoom, type RoomPageData } from './r/[slug]/+page';
+import { load as loadRoom } from './r/[slug]/+layout';
 import { load as loadRider, type RiderPageData } from './u/[id]/+page';
+import type { RoomLoadData } from '$lib/room/room-data';
 
 function fetchMap(
 	responses: Record<string, unknown>,
@@ -46,11 +44,7 @@ describe('route page loads', () => {
 		});
 		const data = (await loadProfile({ fetch } as never)) as ProfilePageData;
 
-		expect(calls).toEqual([
-			'/api/progression',
-			'/api/tokens',
-			'/api/version',
-		]);
+		expect(calls).toEqual(['/api/progression', '/api/tokens', '/api/version']);
 		expect(data.trend).toEqual([]);
 		expect(data.tokens).toEqual([]);
 		expect(data.version).toBe('abc123');
@@ -63,7 +57,7 @@ describe('route page loads', () => {
 		const data = (await loadRoom({
 			fetch,
 			params: { slug: 'mfw' },
-		} as never)) as RoomPageData;
+		} as never)) as RoomLoadData;
 
 		expect(calls).toEqual(['/api/rooms/mfw']);
 		expect(data.room).toEqual(room);

@@ -38,3 +38,5 @@ export interface Room {
 	}[];
 	icsToken?: string;
 }
+
+export type RoomLoadData = { room: Room | null; roomError: string | null };
