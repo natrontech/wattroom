@@ -28,6 +28,11 @@ function send(path: string, init?: RequestInit & { json?: unknown }) {
 	});
 }
 
+type Fetcher = (
+	input: RequestInfo | URL,
+	init?: RequestInit,
+) => Promise<Response>;
+
 async function failure(res: Response): Promise<{ ok: false; error: ApiError }> {
 	const body = await res.json().catch(() => null);
 	return {
@@ -41,18 +46,50 @@ async function failure(res: Response): Promise<{ ok: false; error: ApiError }> {
 	};
 }
 
-export async function api<T>(
+async function request<T>(
+	fetcher: Fetcher,
 	path: string,
 	init?: RequestInit & { json?: unknown },
 ): Promise<ApiResult<T>> {
 	try {
-		const res = await send(path, init);
+		const res = await fetcher(path, init);
 		if (res.status === 204) return { ok: true, data: undefined as T };
 		if (!res.ok) return failure(res);
 		return { ok: true, data: (await res.json().catch(() => null)) as T };
 	} catch {
 		return { ok: false, error: NETWORK };
 	}
+}
+
+export async function api<T>(
+	path: string,
+	init?: RequestInit & { json?: unknown },
+): Promise<ApiResult<T>> {
+	return request<T>(
+		(input, requestInit) => send(String(input), requestInit),
+		path,
+		init,
+	);
+}
+
+/** Use SvelteKit's navigation-aware fetch from a route load function. */
+export async function loadApi<T>(
+	fetcher: Fetcher,
+	path: string,
+	init?: RequestInit & { json?: unknown },
+): Promise<ApiResult<T>> {
+	const { json, ...rest } = init ?? {};
+	return request<T>(
+		fetcher,
+		path,
+		json === undefined
+			? rest
+			: {
+					...rest,
+					headers: { 'content-type': 'application/json', ...rest.headers },
+					body: JSON.stringify(json),
+				},
+	);
 }
 
 /** Same contract for binary responses (.fit exports) — api() assumes JSON. */

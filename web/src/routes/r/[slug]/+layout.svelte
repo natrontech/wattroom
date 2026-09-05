@@ -5,63 +5,40 @@
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
+	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
-
-	interface Member {
-		id: string;
-		displayName: string;
-		avatarUrl?: string;
-		avatarPreset?: string;
-		role: string;
-		totalXp?: number;
-		ftpWatts?: number;
-		weightKg?: number;
-		joinedAt?: string;
-	}
-	interface Medal {
-		kind: string;
-		rider: string;
-		awardedAt: string;
-	}
-	interface Room {
-		slug: string;
-		name: string;
-		listed: boolean;
-		icon?: string;
-		cheers?: string[];
-		soundPack?: string;
-		code?: string;
-		role?: string;
-		members?: Member[];
-		medals?: Medal[];
-		streakWeeks?: number;
-		monthKj?: number;
-		upcoming?: {
-			id: string;
-			workoutName: string;
-			workoutJson: string;
-			startsAt: string;
-			createdBy: string;
-		}[];
-		icsToken?: string;
-	}
 
 	let { children } = $props();
 
 	void account.load();
 
 	const slug = $derived(page.params.slug);
+	const pageData = $derived(page.data as RoomLoadData);
 	let room = $state<Room | null>(null);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	let seededSlug = $state<string | null>(null);
 
 	$effect(() => {
+		const ping = presence.version;
+		void ping;
+		const current = slug;
+		const seed = pageData.room;
+		if (
+			current &&
+			seededSlug !== current &&
+			(seed?.slug === current || pageData.roomError)
+		) {
+			room = seed;
+			error = pageData.roomError ?? null;
+			seededSlug = current;
+			return;
+		}
 		// Re-fetch on every lobby ping (#251, #570): the plan, the members and
 		// their roles change because someone ELSE changed them, and the ping is
 		// how this client hears. Without it the shell showed the room as it
 		// stood when you opened it until you reloaded.
-		presence.version;
-		if (slug) void load(slug);
+		if (current) void load(current);
 	});
 
 	async function load(current: string) {

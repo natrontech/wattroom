@@ -3,7 +3,7 @@
  * (#222). One fetch, one vocabulary — zone sentences describe the day, never
  * the rider (ADR-0016's tone rule), and every claim is WattRoom-rides-only.
  */
-import { api } from './api';
+import { api, loadApi } from './api';
 import type { Focus } from './workout/library';
 
 export interface Curve {
@@ -72,4 +72,7 @@ const INTENT_FOCUSES: Record<string, Focus[]> = {
 export const suggestedFocuses = (s: Suggestion | undefined | null): Focus[] =>
 	s ? (INTENT_FOCUSES[s.intent] ?? []) : [];
 
-export const fetchProgression = () => api<Progression>('/api/progression');
+export const fetchProgression = (fetcher?: typeof fetch) =>
+	fetcher
+		? loadApi<Progression>(fetcher, '/api/progression')
+		: api<Progression>('/api/progression');
