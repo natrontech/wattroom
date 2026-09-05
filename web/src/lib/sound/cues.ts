@@ -7,6 +7,8 @@
  * fast-follow arrives.
  */
 
+import { DUCK_DEFAULT } from '$lib/sound/fader';
+
 export interface Voice {
 	type: OscillatorType;
 	/** start frequency in Hz */
@@ -300,7 +302,7 @@ let muted = false;
 /** Multiplier applied while someone is speaking, so cues never talk over a person. */
 let duck = 1;
 /** How hard that dip goes — the mixer's knob (#280); 1 = no ducking at all. */
-let duckLevel = 0.3;
+let duckLevel = DUCK_DEFAULT;
 
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	if (typeof window === 'undefined') return null;
