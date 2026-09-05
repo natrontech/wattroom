@@ -145,7 +145,11 @@
 				if (up.ok) imageId = up.data.id;
 				else refused = up.error.message;
 			}
-			if (!refused) conn.live.chat(text, imageId);
+			// A reconnect queue that is already full refuses the line (#650);
+			// the words come back to the box like any other refusal.
+			if (!refused && !conn.live.chat(text, imageId))
+				refused =
+					"Still reconnecting — that one didn't go. Try again in a moment.";
 		} else {
 			refused = (await outside?.send(text, image)) ?? null;
 		}
