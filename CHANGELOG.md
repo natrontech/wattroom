@@ -15,13 +15,6 @@ them. Nothing here is generated from commit
 subjects on purpose: a changelog is for the person deciding whether to upgrade,
 not a second copy of `git log`.
 
-Releases land several times a day because cutting one is cheap, not because
-every change is urgent: a release only ever adds a small, already-merged
-change, and rolling one back is just repointing the running image at the
-previous tag — the database is never touched. See
-[ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)
-for the full mechanism.
-
 ## [Unreleased]
 
 ## [2026.09.26] - 2026-09-04
