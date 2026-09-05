@@ -68,7 +68,7 @@ No smart trainer needed — the simulated trainer covers development, and
 
 ## Hardware & browsers
 
-A smart trainer speaking **BLE FTMS** (plus Wahoo legacy), talked to directly
+A smart trainer speaking **BLE FTMS** (pre-FTMS Wahoo units are backlog, #4), talked to directly
 from the browser via Web Bluetooth — which is Chromium-only: **Chrome/Edge on
 desktop and Android**. No iOS path (Safari won't implement Web Bluetooth — a
 [researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md),

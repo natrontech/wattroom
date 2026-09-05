@@ -19,8 +19,9 @@ export interface TrainerSample {
 
 /**
  * The only boundary to trainer hardware. Implementations: SimulatedTrainer (dev/CI),
- * FtmsTrainer (Kickr Core+), WcpsTrainer (Kickr v2) — never call navigator.bluetooth
- * outside implementations of this interface.
+ * FtmsTrainer (Kickr Core+). WcpsTrainer (pre-FTMS Kickr v2) is planned but not
+ * built — backlog, see #4. Never call navigator.bluetooth outside implementations
+ * of this interface.
  */
 export interface Trainer {
 	readonly name: string;
