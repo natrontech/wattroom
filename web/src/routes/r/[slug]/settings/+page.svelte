@@ -154,15 +154,29 @@
 		void goto('/rooms');
 	}
 
-	async function setRole(userId: string, role: string) {
+	async function setRole(userId: string, role: string): Promise<boolean> {
 		busy = true;
 		const res = await api(`/api/rooms/${slug}/role`, {
 			method: 'POST',
 			json: { userId, role },
 		});
 		busy = false;
-		if (!res.ok) error = res.error.message;
-		else if (slug) void load(slug);
+		if (!res.ok) {
+			error = res.error.message;
+			return false;
+		}
+		if (slug) void load(slug);
+		return true;
+	}
+
+	// Banning is reversible (Unban sets the role right back), so it gets an
+	// undo toast rather than a confirm dialog (errors.md).
+	async function ban(member: Member) {
+		const { id, displayName, role: previousRole } = member;
+		if (await setRole(id, 'banned'))
+			toasts.push(`Banned ${displayName}.`, {
+				undo: () => void setRole(id, previousRole),
+			});
 	}
 
 	// Packs are parameter sets, not downloads — custom ones are a fast-follow (WATTROOM.md).
@@ -390,7 +404,7 @@
 										: 'Make coach'}</button
 								>
 								<button
-									onclick={() => setRole(member.id, 'banned')}
+									onclick={() => ban(member)}
 									disabled={busy}
 									class="btn btn-danger btn-xs">Ban</button
 								>

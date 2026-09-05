@@ -69,10 +69,42 @@
 		void load();
 	});
 
-	async function act(path: string, method: 'POST' | 'DELETE') {
+	async function act(
+		path: string,
+		method: 'POST' | 'DELETE',
+		toast?: { message: string; undo?: () => void },
+	) {
 		const res = await api(path, { method });
-		if (!res.ok) error = res.error.message;
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
 		await load();
+		if (toast) toasts.push(toast.message, { undo: toast.undo });
+	}
+
+	// Removal is silent and immediate (ADR-0012), so a mis-click gets an
+	// undo toast rather than a confirm dialog (errors.md). The undo can only
+	// re-send a request — acceptance needs the other side again — so it says
+	// that rather than implying the friendship snaps straight back.
+	async function undoRemove(id: string, name: string) {
+		const res = await api('/api/friends', {
+			method: 'POST',
+			json: { userId: id },
+		});
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push(`Sent ${name} a new friend request.`);
+		await load();
+	}
+
+	function removeFriend(friend: Friend) {
+		void act(`/api/friends/${friend.id}`, 'DELETE', {
+			message: `Removed ${friend.name} as a friend.`,
+			undo: () => void undoRemove(friend.id, friend.name),
+		});
 	}
 
 	// Same person, same menu (person-menu.ts) — minus "Add friend", which
@@ -92,7 +124,7 @@
 		entries.push({
 			label: 'Remove friend',
 			icon: UserX,
-			onSelect: () => void act(`/api/friends/${friend.id}`, 'DELETE'),
+			onSelect: () => removeFriend(friend),
 			danger: true,
 		});
 		return entries;
@@ -111,7 +143,10 @@
 		<p class="text-danger mt-3 text-xs">{error}</p>
 	{/if}
 
-	{#if friends !== null}
+	{#if friends === null}
+		<!-- errors.md: never blank while a fetch is in flight. -->
+		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading friends…</p>
+	{:else}
 		{#if friends.length === 0}
 			<!-- Nobody yet: teach the formation rule (ADR-0012 amendment). -->
 			<p class="text-muted mt-3 text-sm">
@@ -193,8 +228,8 @@
 								>
 							{/if}
 							<button
-								onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-								class="text-muted hover:text-ink text-xs">remove</button
+								onclick={() => removeFriend(friend)}
+								class="text-muted hover:text-danger text-xs">remove</button
 							>
 						</span>
 					</div>

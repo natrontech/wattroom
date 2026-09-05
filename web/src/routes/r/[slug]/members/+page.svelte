@@ -61,6 +61,17 @@
 		room.setRole(member.id, member.role === 'coach' ? 'member' : 'coach');
 	const roleLabel = (member: Member) =>
 		member.role === 'coach' ? 'Make member' : 'Make coach';
+	// Removing a member has no inverse call — rejoining takes the invite
+	// link, not an undo this app can fire on its own — so it confirms
+	// instead of promising an undo it can't deliver (errors.md).
+	function confirmRemove(member: Member) {
+		if (
+			confirm(
+				`Remove ${member.displayName} from ${room.roomName}? They can rejoin with the room's invite link.`,
+			)
+		)
+			room.removeMember(member.id);
+	}
 
 	// Their page and their DM on every member (#486), plus the paperwork the
 	// row already offers an owner — remove last, after a separator.
@@ -85,7 +96,7 @@
 				{
 					label: 'Remove from the room',
 					icon: UserX,
-					onSelect: () => room.removeMember(member.id),
+					onSelect: () => confirmRemove(member),
 					danger: true,
 				},
 			);
@@ -215,7 +226,7 @@
 						class="btn btn-ghost btn-xs shrink-0">{roleLabel(member)}</button
 					>
 					<button
-						onclick={() => room.removeMember(member.id)}
+						onclick={() => confirmRemove(member)}
 						disabled={room.adminBusy}
 						class="text-muted hover:text-danger shrink-0 text-[11px]"
 						>remove</button
