@@ -19,14 +19,14 @@ import (
 
 type allowAll struct{}
 
-func (allowAll) Authorize(*http.Request, string) (protocol.Rider, error) {
-	return protocol.Rider{ID: "jan-id", Name: "Jan", Role: "owner"}, nil
+func (allowAll) Authorize(_ *http.Request, slug string) (protocol.Rider, string, error) {
+	return protocol.Rider{ID: "jan-id", Name: "Jan", Role: "owner"}, strings.ToLower(slug), nil
 }
 
 type denyAll struct{}
 
-func (denyAll) Authorize(*http.Request, string) (protocol.Rider, error) {
-	return protocol.Rider{}, errors.New("no")
+func (denyAll) Authorize(*http.Request, string) (protocol.Rider, string, error) {
+	return protocol.Rider{}, "", errors.New("no")
 }
 
 func service(access Access) *Service {
@@ -112,6 +112,34 @@ func TestTwoTabsGetTwoIdentities(t *testing.T) {
 	}
 	if RiderID(first) != RiderID(second) {
 		t.Fatalf("same rider read as %q and %q", RiderID(first), RiderID(second))
+	}
+}
+
+// The LiveKit room is named after the canonical slug (#639): a token minted
+// for `/api/rooms/VeLvEt/av-token` must put the rider in the same call as
+// everyone who typed the link in lowercase.
+func TestTokenNamesTheCanonicalRoom(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/VeLvEt/av-token", nil)
+	req.SetPathValue("slug", "VeLvEt")
+	w := httptest.NewRecorder()
+	service(allowAll{}).handleToken(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("token: %d %s", w.Code, w.Body.String())
+	}
+	var res struct{ Token string }
+	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(strings.Split(res.Token, ".")[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got claims
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Video.Room != "velvet" {
+		t.Fatalf("grant names room %q, want the canonical \"velvet\"", got.Video.Room)
 	}
 }
 

@@ -22,9 +22,11 @@ import (
 )
 
 // Access is the same authorization the hub consumes — one membership door for
-// metrics and AV alike.
+// metrics and AV alike. The LiveKit room is named after the canonical slug it
+// returns, so the voice radar and the hub's room agree on the name whatever
+// casing the link carried (#639).
 type Access interface {
-	Authorize(r *http.Request, slug string) (protocol.Rider, error)
+	Authorize(r *http.Request, slug string) (rider protocol.Rider, canonical string, err error)
 }
 
 type Config struct {
@@ -62,8 +64,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	rider, err := s.access.Authorize(r, slug)
+	rider, slug, err := s.access.Authorize(r, r.PathValue("slug"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden",
 			"Voice and camera are for the room's members.")

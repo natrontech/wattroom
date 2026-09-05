@@ -19,16 +19,17 @@ import (
 )
 
 // fakeAccess admits riders by an X-Rider header: "name:role", refusing others —
-// standing in for rooms.Service so this tests the hub, not the database.
+// standing in for rooms.Service so this tests the hub, not the database. Like
+// the real thing it hands back the canonical (lowercase) slug, not the path.
 type fakeAccess struct{}
 
-func (fakeAccess) Authorize(r *http.Request, _ string) (protocol.Rider, error) {
+func (fakeAccess) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
 	v := r.Header.Get("X-Rider")
 	if v == "" {
-		return protocol.Rider{}, errors.New("no rider")
+		return protocol.Rider{}, "", errors.New("no rider")
 	}
 	name, role, _ := strings.Cut(v, ":")
-	return protocol.Rider{ID: name, Name: name, Role: role, FtpWatts: 250}, nil
+	return protocol.Rider{ID: name, Name: name, Role: role, FtpWatts: 250}, strings.ToLower(slug), nil
 }
 
 func dial(t *testing.T, url, rider string) *websocket.Conn {
@@ -199,6 +200,38 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	p := h.Presence("dupes")
 	if p.Connected != 1 || p.Phase != "idle" || len(p.Riders) != 1 || p.Riders[0] != "jan" {
 		t.Fatalf("presence: %+v", p)
+	}
+}
+
+// A link typed with different capitalisation is the same room (#639). The
+// live room is keyed on the canonical slug Authorize returns, not on the
+// request path — otherwise `Velvet` and `velvet` fork two rooms with two
+// rosters, and a kick or a close addressed to the canonical one leaves the
+// other running forever.
+func TestMixedCaseSlugSharesRoom(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/"
+
+	lower := dial(t, base+"velvet", "jan:owner")
+	dial(t, base+"VeLvEt", "sven:member")
+
+	eventually(t, "both riders in one roster", func() bool {
+		return len(h.Presence("velvet").Riders) == 2
+	})
+	h.mu.Lock()
+	n := len(h.rooms)
+	_, canonical := h.rooms["velvet"]
+	h.mu.Unlock()
+	if n != 1 || !canonical {
+		t.Fatalf("live rooms = %d (canonical present: %v), want exactly one keyed \"velvet\"", n, canonical)
+	}
+	tick := readTick(t, lower)
+	if len(tick.Roster) != 2 {
+		t.Fatalf("roster over the lowercase socket: %+v — the other casing landed elsewhere", tick.Roster)
 	}
 }
 

@@ -794,23 +794,27 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-// Authorize implements hub.Access: resolve the request's session to a user,
-// then require membership in the slug's room. Checked once at connect — the
-// hub never touches the database after that.
-func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error) {
+// Authorize implements hub.Access (and av.Access): resolve the request's
+// session to a user, then require membership in the slug's room. Checked once
+// at connect — the hub never touches the database after that. It hands back the
+// room's canonical slug alongside the rider: the request slug is matched
+// case-insensitively, so callers key live state on the returned slug, never on
+// the string they passed in — otherwise `MyRoom` and `myroom` fork two live
+// rooms that Kick and CloseRoom cannot both reach (#639).
+func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
 	user, ok := s.users.User(r)
 	if !ok {
-		return protocol.Rider{}, errNotMember
+		return protocol.Rider{}, "", errNotMember
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(slug))
 	if err != nil {
-		return protocol.Rider{}, fmt.Errorf("rooms: authorize: %w", err)
+		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize: %w", err)
 	}
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
 	if err != nil || m.Role == "banned" {
-		return protocol.Rider{}, errNotMember
+		return protocol.Rider{}, "", errNotMember
 	}
 	// The level rides along with the rest of the room-visible identity
 	// (#690). Authorize runs once per socket, not per tick, so the extra
@@ -818,7 +822,7 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error
 	// rather than failing to join at all.
 	xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID)
 	if err != nil {
-		s.log.Warn("total xp unavailable for roster", "err", err, "room", slug)
+		s.log.Warn("total xp unavailable for roster", "err", err, "room", room.Slug)
 		xp = 0
 	}
 	return protocol.Rider{
@@ -828,7 +832,7 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, error
 		FtpWatts: int(user.FtpWatts),
 		WeightKg: int(user.WeightKg),
 		TotalXp:  xp,
-	}, nil
+	}, room.Slug, nil
 }
 
 var errNotMember = errors.New("rooms: not a member")

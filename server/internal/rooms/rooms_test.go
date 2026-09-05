@@ -434,7 +434,7 @@ func TestBanFlow(t *testing.T) {
 	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
 	wsReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
 	wsReq.Header.Set("X-Test-User", "bob")
-	if _, err := svc.Authorize(wsReq, slug); err == nil {
+	if _, _, err := svc.Authorize(wsReq, slug); err == nil {
 		t.Error("banned rider authorized for the room socket")
 	}
 
@@ -472,7 +472,7 @@ func TestBanFlow(t *testing.T) {
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", unban); status != http.StatusNoContent {
 		t.Fatalf("unban: %d", status)
 	}
-	if _, err := svc.Authorize(wsReq, slug); err != nil {
+	if _, _, err := svc.Authorize(wsReq, slug); err != nil {
 		t.Errorf("unbanned rider still refused: %v", err)
 	}
 }
@@ -631,12 +631,31 @@ func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
 	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
 	req.Header.Set("X-Test-User", "alice")
-	rider, err := svc.Authorize(req, slug)
+	rider, _, err := svc.Authorize(req, slug)
 	if err != nil {
 		t.Fatalf("authorize: %v", err)
 	}
 	if rider.TotalXp != 240 {
 		t.Fatalf("rider.TotalXp = %d, want 240 — the roster cannot ring without it", rider.TotalXp)
+	}
+}
+
+// Authorize hands back the room's canonical slug, whatever casing the link
+// carried (#639): the hub and the AV token key live state on that, so a
+// mixed-case link cannot fork a second live room.
+func TestAuthorizeReturnsTheCanonicalSlug(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Velvet Crew")
+	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
+	shouted := strings.ToUpper(slug)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+shouted, nil)
+	req.Header.Set("X-Test-User", "alice")
+	_, canonical, err := svc.Authorize(req, shouted)
+	if err != nil {
+		t.Fatalf("authorize %q: %v", shouted, err)
+	}
+	if canonical != slug {
+		t.Fatalf("canonical slug = %q, want %q", canonical, slug)
 	}
 }
 

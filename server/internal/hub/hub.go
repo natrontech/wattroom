@@ -96,11 +96,14 @@ type SessionRider struct {
 }
 
 // Access is what the hub needs from the durable side: who is this request,
-// and are they in this room. Defined here, where it is consumed; implemented
-// by rooms.Service. The hub itself never touches the database — membership is
-// checked once at connect, not per message.
+// are they in this room, and what is the room actually called. Defined here,
+// where it is consumed; implemented by rooms.Service. The hub itself never
+// touches the database — membership is checked once at connect, not per
+// message. The returned slug is the room's canonical one: the request path is
+// matched case-insensitively, and live state is keyed on the canonical slug so
+// every casing of a link lands in the same room (#639).
 type Access interface {
-	Authorize(r *http.Request, slug string) (protocol.Rider, error)
+	Authorize(r *http.Request, slug string) (rider protocol.Rider, canonical string, err error)
 }
 
 type Hub struct {
@@ -368,8 +371,7 @@ func canControl(role string) bool { return role == "owner" || role == "coach" }
 // Membership is the price of entry: metrics are room-scoped (privacy is
 // architecture), so an unauthorized socket never reaches a room at all.
 func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	rider, err := h.access.Authorize(r, slug)
+	rider, slug, err := h.access.Authorize(r, r.PathValue("slug"))
 	if err != nil {
 		// Before the upgrade: a plain 403 is clearer to debug than a WS close code.
 		http.Error(w, "not a member of this room", http.StatusForbidden)
