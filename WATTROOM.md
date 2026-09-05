@@ -71,7 +71,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 | FTP | **All three sources.** Manual entry (the fallback, MVP), **built-in ramp test** (special workout on the existing engine, FTP = 75% of best 1-min), **auto-detect** (server *prompts* when the 90-day curve outgrows the setting — never silently changes it, FTP moves every workout's difficulty). |
 | Sprint physics | **Auto-switch to slope mode.** ERG pins you at target watts, so when a sprint arms the client flips the trainer FTMS ERG→slope (fixed gradient) for the window, then back. Real sprint feel; mode-switch robustness is shared with reconnect handling. |
 | Hosting | ~~Existing Natron k8s infra~~ **Superseded by [ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)**: any single VM (Natron-provided or a cheap cloud VM; pick at deploy time — a Swiss provider stays open for the data-residency story). |
-| Feel layer | **Session sound design** (countdown beeps, sprint klaxon, elimination sting, medal fanfare — synthwave-coherent, mixed under voice), **spectator emoji cheers** that pop on rider dashboards, **rider quick-reactions** (🔥 💀 🤮 — for when you're too gassed to talk). Sounds and reaction sets are **swappable/extensible per room** (insider memes, custom packs) — base set MVP, custom packs fast-follow. |
+| Feel layer | **Session sound design** (countdown beeps, sprint klaxon, elimination sting, medal fanfare — synthwave-coherent, mixed under voice), **spectator emoji cheers** that pop on rider dashboards, **rider quick-reactions** (curated icon set — for when you're too gassed to talk). Sounds and reaction sets are **swappable/extensible per room** (insider memes, custom packs) — base set MVP, custom packs fast-follow. |
 
 ---
 
