@@ -336,19 +336,71 @@ func TestUnknownProviderIs404(t *testing.T) {
 	}
 }
 
+// TestRequireUserRejectsCrossOriginMutation is the shared-boundary test for
+// #678: RequireUser is what every mutating handler across every package
+// (rooms, chat, dms, friends, playlists, tokens, customworkouts, rides,
+// account) resolves auth through, so this is also what now protects
+// endpoints that had no Origin check of their own — DELETE /api/me, the
+// account purge, being the sharpest example.
+func TestRequireUserRejectsCrossOriginMutation(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+
+	rec := httptest.NewRecorder()
+	base := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	if err := s.startSession(rec, base, user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	cookie := rec.Result().Cookies()[0]
+
+	// A mismatched Origin on a mutating method is refused before the session
+	// is even resolved — this is the endpoint DELETE /api/me stands in for.
+	cross := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "http://localhost:8080/api/me", nil)
+	cross.AddCookie(cookie)
+	cross.Header.Set("Origin", "https://evil.example")
+	w := httptest.NewRecorder()
+	if _, ok := s.RequireUser(w, cross, "Sign in first."); ok {
+		t.Fatalf("cross-origin DELETE was allowed through RequireUser")
+	}
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for cross-origin mutation, got %d", w.Code)
+	}
+
+	// The same request with a same-origin Origin still resolves normally —
+	// legitimate same-origin mutations are unaffected.
+	same := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "http://localhost:8080/api/me", nil)
+	same.AddCookie(cookie)
+	same.Header.Set("Origin", "http://localhost:8080")
+	w2 := httptest.NewRecorder()
+	got, ok := s.RequireUser(w2, same, "Sign in first.")
+	if !ok || got.ID != user.ID {
+		t.Fatalf("same-origin DELETE was refused (ok=%v, code=%d)", ok, w2.Code)
+	}
+
+	// A GET carrying the same mismatched Origin is untouched — the check is
+	// mutating-method-only, so read paths never trip it.
+	get := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost:8080/api/me", nil)
+	get.AddCookie(cookie)
+	get.Header.Set("Origin", "https://evil.example")
+	w3 := httptest.NewRecorder()
+	if _, ok := s.RequireUser(w3, get, "Sign in first."); !ok {
+		t.Fatalf("cross-origin GET was refused — the Origin check must not apply to reads")
+	}
+}
+
 func TestSameOriginRefusesCrossSite(t *testing.T) {
 	s := bareService()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost:8080/api/auth/logout", nil)
 	req.Header.Set("Origin", "https://evil.example")
-	if s.sameOrigin(req) {
+	if s.SameOrigin(req) {
 		t.Fatalf("cross-origin request passed the origin check")
 	}
 	req.Header.Set("Origin", "http://"+req.Host)
-	if !s.sameOrigin(req) {
+	if !s.SameOrigin(req) {
 		t.Fatalf("same-origin request was refused")
 	}
 	req.Header.Del("Origin")
-	if !s.sameOrigin(req) {
+	if !s.SameOrigin(req) {
 		t.Fatalf("originless (non-browser) request was refused")
 	}
 }

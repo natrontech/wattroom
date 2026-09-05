@@ -7,9 +7,11 @@
 // Sessions are server-side rows: the cookie carries 32 random bytes, the
 // database only their SHA-256, so a leaked table cannot mint cookies and a
 // session can be revoked by deleting a row. CSRF: the session cookie is
-// SameSite=Lax, and every mutating endpoint additionally rejects a mismatched
-// Origin header — Lax covers navigations, the Origin check covers everything
-// a hostile page can still send.
+// SameSite=Lax, and RequireUser — the one entry point every mutating handler
+// in this package and every other (rooms, chat, dms, friends, playlists,
+// tokens, customworkouts, rides, account) resolves auth through — rejects a
+// mismatched Origin header on POST/PUT/PATCH/DELETE. Lax covers navigations,
+// the Origin check covers everything a hostile page can still send.
 package auth
 
 import (
@@ -504,8 +506,16 @@ func (s *Service) User(r *http.Request) (db.User, bool) {
 
 // RequireUser is the mandatory-auth User: it resolves the session or writes
 // the refusal — 401 with signInMessage when there is no valid session, 500
-// when the lookup itself failed (.claude/rules/errors.md, #236).
+// when the lookup itself failed (.claude/rules/errors.md, #236). It is also
+// the CSRF boundary: every package's mutating handlers reach the session
+// through this one method (directly, or via a wrapper like rooms.RequireMember),
+// so refusing a mismatched Origin here covers all of them without a check at
+// each of the ~50 call sites (#678).
 func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	if isMutatingMethod(r.Method) && !s.SameOrigin(r) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
+		return db.User{}, false
+	}
 	user, err := s.lookup(r)
 	switch {
 	case err == nil:
@@ -521,7 +531,9 @@ func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMess
 }
 
 func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if !s.sameOrigin(r) {
+	// Logout has to work even without a valid session (a stale cookie still
+	// clears), so it cannot route through RequireUser — it checks Origin itself.
+	if !s.SameOrigin(r) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
 		return
 	}
@@ -580,10 +592,6 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
-	if !s.sameOrigin(r) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
-		return
-	}
 	user, ok := s.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
@@ -685,10 +693,6 @@ const maxPaletteChoice = 120
 // is the default chosen on purpose, distinct from never chosen (null), which
 // the client reads as "push what this device has".
 func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request) {
-	if !s.sameOrigin(r) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
-		return
-	}
 	user, ok := s.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
@@ -782,10 +786,13 @@ var validPreset = regexp.MustCompile(`^[a-z0-9-]{1,32}$`).MatchString
 
 // --- plumbing ---
 
-// sameOrigin refuses mutating requests whose Origin disagrees with the Host.
-// An absent Origin passes: non-browser clients send none, and a cross-site
-// browser request always carries one.
-func (s *Service) sameOrigin(r *http.Request) bool {
+// SameOrigin reports whether the request's Origin agrees with the Host it
+// was sent to. An absent Origin passes: non-browser clients (curl, the read
+// tokens in package tokens) send none, and a cross-site browser request
+// always carries one. Exported so RequireUser can enforce it as the shared
+// CSRF boundary (#678) and so a handler that cannot route through RequireUser
+// — logout works without a valid session — can still check it directly.
+func (s *Service) SameOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true
@@ -795,6 +802,19 @@ func (s *Service) sameOrigin(r *http.Request) bool {
 		scheme = "http"
 	}
 	return origin == scheme+"://"+r.Host
+}
+
+// isMutatingMethod is RequireUser's CSRF gate: GET/HEAD/OPTIONS never carry
+// side effects here (the one pre-existing exception, GET /api/rooms/{slug}
+// marking the room read, is tracked separately — #678), so only these verbs
+// need the Origin check on top of the SameSite=Lax cookie.
+func isMutatingMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) setCookie(w http.ResponseWriter, name, value string, ttl time.Duration) {
