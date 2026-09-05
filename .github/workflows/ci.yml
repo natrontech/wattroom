@@ -166,7 +166,9 @@ jobs:
 
   # Three ADRs once claimed 0019 at once (#379) — a duplicate number is a
   # silent footgun (links and citations become ambiguous) that nothing else
-  # catches, so it gets its own gate.
+  # catches, so it gets its own gate. The index and link checks (#674) guard
+  # the other way the chain breaks: an ADR nobody can find, or an amendment
+  # pointer at a file that never existed.
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -176,6 +178,29 @@ jobs:
           dupes=$(ls docs/decisions/ | cut -d- -f1 | sort | uniq -d)
           if [ -n "$dupes" ]; then
             echo "Duplicate ADR number(s): $dupes" >&2
+            exit 1
+          fi
+      - name: Every ADR is listed in docs/decisions/README.md
+        run: |
+          missing=""
+          for f in docs/decisions/[0-9]*.md; do
+            name=$(basename "$f")
+            grep -qF "($name)" docs/decisions/README.md || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "ADR file(s) missing from docs/decisions/README.md:$missing" >&2
+            exit 1
+          fi
+      - name: Relative links in docs/decisions resolve
+        run: |
+          broken=""
+          for f in docs/decisions/*.md; do
+            for target in $(grep -oE '\]\([^)]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//; s/[ #].*$//' | grep -vE '^([a-z]+:|$)'); do
+              [ -e "$(dirname "$f")/$target" ] || broken="$broken $f->$target"
+            done
+          done
+          if [ -n "$broken" ]; then
+            echo "Broken relative link(s) in docs/decisions:$broken" >&2
             exit 1
           fi
 

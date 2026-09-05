@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-09-02
-- Amends: [ADR-0012](0012-friends-mutual-only-room-formed.md) — a shared room is a formation path again, beside the code
+- Amends: [ADR-0012](0012-friends-presence.md) — a shared room is a formation path again, beside the code
 
 ## Context
 
