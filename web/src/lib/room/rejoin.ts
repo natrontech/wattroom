@@ -25,7 +25,7 @@ export type VoiceNotes = Record<string, VoiceNote>;
 
 /**
  * Older than this and it is not a refresh, it is coming back after lunch —
- * the issue's own figure, not a SPEC product number.
+ * SPEC.md "Room audio defaults", recorded there by the ADR-0010 amendment.
  */
 export const REJOIN_WINDOW_MS = 60_000;
 

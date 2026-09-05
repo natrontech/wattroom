@@ -25,7 +25,7 @@ file that does not exist.
 | [0007](0007-alpha-hardware-is-all-ftms.md) | Alpha hardware is all FTMS; WCPS leaves M1 | accepted | Supersedes the WCPS half of WATTROOM.md's M1 hardware line |
 | [0008](0008-heart-rate-retention.md) | Heart rate: live in-room, never in a shared artifact | accepted, amended 2026-08-29 | Zones on top of it: [0014](0014-heart-rate-zones.md) |
 | [0009](0009-login-gated-app.md) | Everything behind sign-in | accepted, amended (#111: `/` is public) | — |
-| [0010](0010-room-first-positioning.md) | Room-first — WattRoom replaces the voice app, not just the trainer app | accepted, amended (#201: chat keeps a bounded history) | Chat rule amended by [0022](0022-room-events-are-ephemeral.md); the shape it implies: [0020](0020-the-app-takes-discords-shape.md) |
+| [0010](0010-room-first-positioning.md) | Room-first — WattRoom replaces the voice app, not just the trainer app | accepted, amended twice (#201: chat keeps a bounded history; #681: voice is one tap away, camera never auto-restores) | Chat rule amended by [0022](0022-room-events-are-ephemeral.md); the shape it implies: [0020](0020-the-app-takes-discords-shape.md) |
 | [0011](0011-audio-profiles.md) | Two audio profiles — voice is processed, music never is | accepted | — |
 | [0012](0012-friends-presence.md) | Friends — mutual only, formed in rooms, presence stays room-bounded | accepted, amended twice (friend code only; DMs #208) | Formation rule amended again by [0024](0024-social-profiles.md) — a shared room is a path beside the code |
 | [0013](0013-room-identity-and-moderation.md) | Room identity is an emoji; a ban is a membership role | accepted | Icon and reaction set moved to curated lucide keys in #447; the amendment recording it is #679 |

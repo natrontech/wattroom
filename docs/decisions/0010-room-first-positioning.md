@@ -72,3 +72,33 @@ to attach to. Chat becomes a **bounded room log**:
   six-emoji vocabulary, one toggle per rider per emoji per message.
 - Still room-scoped, still never leaves the room, still no cross-room
   surface. What changed is duration, not visibility.
+
+## Amendment — voice is one tap away, not on by default (2026-09-05, #681)
+
+Decision 1 says "joining a room offers voice immediately". What shipped, and
+what two audits independently judged the better product, is narrower:
+**entering a room never connects you to voice.** The room is the default
+place, voice its primary channel — but the channel opens on a tap, never on
+arrival. A hot mic and a live camera the moment you open a door is exactly
+what people refuse.
+
+The rule, so nobody rebuilds auto-connect from the founding line:
+
+- **Joining is explicit.** The sidebar's *Join voice* button (or the rail's
+  "voice is busy" link, which lands you in the channel because the rider
+  clicked something that said so — #251) is the way in. Nothing joins on
+  route change, on account load or on the roster changing.
+- **A refresh is not a leave.** A tab that was in voice walks straight back
+  in if it reloads within **60 s** of its last heartbeat
+  (`REJOIN_WINDOW_MS`, `web/src/lib/room/rejoin.ts`, #480), with the mic
+  exactly as the rider left it — muted comes back muted. Hanging up tears
+  the note up, so leave-then-reload stays out; a mic held by another tab
+  vetoes the rejoin (#293: one microphone on the machine, and it is in use).
+- **The camera never auto-restores.** Not on rejoin, not on anything. A
+  capture device that was shut stays shut until the rider opens it.
+
+The numbers live in [SPEC.md](../SPEC.md) "Room audio defaults" beside the
+gate figures; this file records why. WATTROOM.md still reads "always-on" —
+ADR-0001 locks that document and #656 is deciding how a founding line
+records a divergence, so the pitch changes there in whatever form #656
+concludes. Until then this amendment is the canonical statement.
