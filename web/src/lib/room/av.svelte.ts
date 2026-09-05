@@ -1,9 +1,8 @@
-import {
+import type {
 	LocalVideoTrack,
 	RemoteTrack,
-	Room,
-	RoomEvent,
-	Track,
+	Room as LiveKitRoom,
+	Track as LiveKitTrack,
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -32,6 +31,8 @@ import {
 	writeNote,
 } from '$lib/room/rejoin';
 
+type LiveKitClient = typeof import('livekit-client');
+
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
  * token the server mints against the same membership check as the metrics
@@ -47,6 +48,9 @@ export type AvStatus =
 	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
 export function createRoomAv(slug: string) {
+	// Keep the SDK out of the shell and login chunks. It is loaded only when a
+	// rider actually starts AV, after the token request has succeeded.
+	let liveKit: LiveKitClient | null = null;
 	let status = $state<AvStatus>('off');
 	let micOn = $state(false);
 	let camOn = $state(false);
@@ -233,7 +237,7 @@ export function createRoomAv(slug: string) {
 		const track = dest.stream.getAudioTracks()[0];
 		mic = { ctx, raw, gain, meter, track };
 		await room?.localParticipant.publishTrack(track, {
-			source: Track.Source.Microphone,
+			source: liveKit!.Track.Source.Microphone,
 		});
 	}
 
@@ -325,7 +329,7 @@ export function createRoomAv(slug: string) {
 		voice = next;
 	}
 
-	let room: Room | null = null;
+	let room: LiveKitRoom | null = null;
 	/** This connection's identity and the rider behind it (#293). */
 	let myIdentity = '';
 	let me = '';
@@ -486,14 +490,16 @@ export function createRoomAv(slug: string) {
 			return;
 		}
 		try {
-			room = new Room({
+			const client = await import('livekit-client');
+			liveKit = client;
+			room = new client.Room({
 				audioCaptureDefaults: {
 					noiseSuppression: true,
 					echoCancellation: true,
 				},
 				...(camId ? { videoCaptureDefaults: { deviceId: camId } } : {}),
 			});
-			wire(room);
+			wire(room, client);
 			await room.connect(res.data.url, res.data.token);
 			myIdentity = room.localParticipant.identity;
 			me = riderOf(myIdentity);
@@ -507,7 +513,7 @@ export function createRoomAv(slug: string) {
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
 			for (const p of room.remoteParticipants.values()) {
-				const pub = p.getTrackPublication(Track.Source.Microphone);
+				const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
 				setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 			}
 			// Away follows the rider across their screens (#706). A voice
@@ -595,10 +601,10 @@ export function createRoomAv(slug: string) {
 		const asConnection = (p: {
 			identity: string;
 			getTrackPublication: (
-				source: Track.Source,
+				source: LiveKitTrack.Source,
 			) => { isMuted: boolean } | undefined;
 		}) => {
-			const pub = p.getTrackPublication(Track.Source.Microphone);
+			const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
 			return { identity: p.identity, micOpen: !!pub && !pub.isMuted };
 		};
 		return micLiveElsewhere(
@@ -645,7 +651,7 @@ export function createRoomAv(slug: string) {
 		try {
 			await room.localParticipant.setCameraEnabled(true);
 			const track = room.localParticipant.getTrackPublication(
-				Track.Source.Camera,
+				liveKit!.Track.Source.Camera,
 			)?.videoTrack;
 			if (track) {
 				videoTracks.set(me, { owner: myIdentity, track });
@@ -708,7 +714,7 @@ export function createRoomAv(slug: string) {
 		if (!camOn || !room) return;
 		camOn = false;
 		const track = room.localParticipant.getTrackPublication(
-			Track.Source.Camera,
+			liveKit!.Track.Source.Camera,
 		)?.videoTrack;
 		await room.localParticipant.setCameraEnabled(false).catch(() => {});
 		track?.mediaStreamTrack?.stop();
@@ -733,11 +739,11 @@ export function createRoomAv(slug: string) {
 		// so the room shows one of them: the last to publish.
 	}
 
-	function wire(r: Room) {
+	function wire(r: LiveKitRoom, client: LiveKitClient) {
 		// Only an explicit takeover arrives this way. The sender must be a
 		// participant we know — an unattributed packet is not something to
 		// mute a rider's microphone over.
-		r.on(RoomEvent.DataReceived, (payload, participant) => {
+		r.on(client.RoomEvent.DataReceived, (payload, participant) => {
 			if (!participant || !myClaim) return;
 			let at: unknown;
 			try {
@@ -751,11 +757,11 @@ export function createRoomAv(slug: string) {
 			if (yieldsTo(myClaim, { identity: participant.identity, at }))
 				void standDown();
 		});
-		r.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
+		r.on(client.RoomEvent.TrackSubscribed, (track, pub, participant) => {
 			const rider = riderOf(participant.identity);
-			if (track.kind === Track.Kind.Video) {
+			if (track.kind === client.Track.Kind.Video) {
 				const owned = { owner: participant.identity, track };
-				if (pub.source === Track.Source.ScreenShare) {
+				if (pub.source === client.Track.Source.ScreenShare) {
 					screenTracks.set(rider, owned);
 					addScreen(rider);
 				} else {
@@ -763,7 +769,7 @@ export function createRoomAv(slug: string) {
 					bumpVideo(rider);
 				}
 			}
-			if (track.kind === Track.Kind.Audio) {
+			if (track.kind === client.Track.Kind.Audio) {
 				const el = track.attach() as HTMLAudioElement;
 				audioElements.set(participant.identity, el);
 				document.body.appendChild(el);
@@ -771,20 +777,21 @@ export function createRoomAv(slug: string) {
 				// Mute here is unpublish, not track-mute (the gate owns the gain),
 				// so the mic chip must follow the publication itself — Muted/
 				// Unmuted never fire and ParticipantConnected ran pre-publish.
-				if (pub.source === Track.Source.Microphone) setVoice(rider, 'live');
+				if (pub.source === client.Track.Source.Microphone)
+					setVoice(rider, 'live');
 			}
 		});
-		r.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+		r.on(client.RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
 			const rider = riderOf(participant.identity);
-			if (track.kind === Track.Kind.Video) {
-				if (pub.source === Track.Source.ScreenShare) {
+			if (track.kind === client.Track.Kind.Video) {
+				if (pub.source === client.Track.Source.ScreenShare) {
 					if (dropOwned(screenTracks, rider, participant.identity))
 						dropScreen(rider);
 				} else if (dropOwned(videoTracks, rider, participant.identity)) {
 					dropVideo(rider);
 				}
 			}
-			if (track.kind === Track.Kind.Audio) {
+			if (track.kind === client.Track.Kind.Audio) {
 				track.detach().forEach((el) => el.remove());
 				audioElements.delete(participant.identity);
 				riderGains.get(participant.identity)?.disconnect();
@@ -792,7 +799,7 @@ export function createRoomAv(slug: string) {
 				riderSources.get(participant.identity)?.disconnect();
 				riderSources.delete(participant.identity);
 				if (
-					pub.source === Track.Source.Microphone &&
+					pub.source === client.Track.Source.Microphone &&
 					!micLive(rider, participant.identity)
 				)
 					setVoice(rider, 'muted');
@@ -802,25 +809,25 @@ export function createRoomAv(slug: string) {
 		// LiveKit unpublishes it for us (handleTrackEnded) and says so here. Without
 		// this the button still offers to stop a share that is already over, and
 		// the local stage sits on its last frame while the room sees nothing.
-		r.on(RoomEvent.LocalTrackUnpublished, (pub) => {
-			if (pub.source !== Track.Source.ScreenShare) return;
+		r.on(client.RoomEvent.LocalTrackUnpublished, (pub) => {
+			if (pub.source !== client.Track.Source.ScreenShare) return;
 			sharing = false;
 			if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
 		});
 		const audioState = (p: {
 			identity: string;
-			getTrackPublication: (source: Track.Source) => unknown;
+			getTrackPublication: (source: LiveKitTrack.Source) => unknown;
 		}) => {
-			const pub = p.getTrackPublication(Track.Source.Microphone) as
+			const pub = p.getTrackPublication(client.Track.Source.Microphone) as
 				{ isMuted: boolean } | undefined;
 			setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 		};
-		r.on(RoomEvent.ParticipantConnected, (p) => {
+		r.on(client.RoomEvent.ParticipantConnected, (p) => {
 			audioState(p);
 			// Another tab of yours just opened: it is the one you are looking at.
 			considerClaim(p);
 		});
-		r.on(RoomEvent.ParticipantDisconnected, (p) => {
+		r.on(client.RoomEvent.ParticipantDisconnected, (p) => {
 			const rider = riderOf(p.identity);
 			// Their other tab may still be in the room — one closed tab does not
 			// take a rider out of voice (#293).
@@ -831,15 +838,16 @@ export function createRoomAv(slug: string) {
 			if (handedOff && rider === me && !stillHere(me, myIdentity))
 				void takeOver({ reopenMic: micBeforeHandoff });
 		});
-		r.on(RoomEvent.TrackMuted, (pub, p) => {
+		r.on(client.RoomEvent.TrackMuted, (pub, p) => {
 			const rider = riderOf(p.identity);
-			if (pub.kind === Track.Kind.Audio && !micLive(rider, p.identity))
+			if (pub.kind === client.Track.Kind.Audio && !micLive(rider, p.identity))
 				setVoice(rider, 'muted');
 		});
-		r.on(RoomEvent.TrackUnmuted, (pub, p) => {
-			if (pub.kind === Track.Kind.Audio) setVoice(riderOf(p.identity), 'live');
+		r.on(client.RoomEvent.TrackUnmuted, (pub, p) => {
+			if (pub.kind === client.Track.Kind.Audio)
+				setVoice(riderOf(p.identity), 'live');
 		});
-		r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+		r.on(client.RoomEvent.ActiveSpeakersChanged, (speakers) => {
 			const next: Record<string, boolean> = {};
 			for (const p of speakers) next[riderOf(p.identity)] = true;
 			speaking = next;
@@ -848,13 +856,13 @@ export function createRoomAv(slug: string) {
 		// while the SDK rebuilds the connection — say so on the dashboard.
 		// SignalReconnecting stays transparent by design (RESEARCH.md): media
 		// keeps flowing while only the signal socket rebuilds.
-		r.on(RoomEvent.Reconnecting, () => {
+		r.on(client.RoomEvent.Reconnecting, () => {
 			if (status === 'live') status = 'reconnecting';
 		});
-		r.on(RoomEvent.Reconnected, () => {
+		r.on(client.RoomEvent.Reconnected, () => {
 			if (status === 'reconnecting') status = 'live';
 		});
-		r.on(RoomEvent.Disconnected, () => {
+		r.on(client.RoomEvent.Disconnected, () => {
 			const unexpected = status === 'live' || status === 'reconnecting';
 			for (const el of audioElements.values()) el.remove();
 			audioElements.clear();
@@ -1096,7 +1104,7 @@ export function createRoomAv(slug: string) {
 				// not our intent.
 				await room.localParticipant.setScreenShareEnabled(sharing);
 				const track = room.localParticipant.getTrackPublication(
-					Track.Source.ScreenShare,
+					liveKit!.Track.Source.ScreenShare,
 				)?.videoTrack;
 				if (sharing && track) {
 					screenTracks.set(me, { owner: myIdentity, track });
@@ -1145,9 +1153,14 @@ export function createRoomAv(slug: string) {
 			stopNote();
 			clearNote(tab);
 			// Same for leaving: every local capture goes back to the machine.
-			for (const kind of [Track.Source.Camera, Track.Source.ScreenShare]) {
-				const pub = room?.localParticipant.getTrackPublication(kind);
-				pub?.videoTrack?.mediaStreamTrack?.stop();
+			if (room && liveKit) {
+				for (const kind of [
+					liveKit.Track.Source.Camera,
+					liveKit.Track.Source.ScreenShare,
+				]) {
+					const pub = room.localParticipant.getTrackPublication(kind);
+					pub?.videoTrack?.mediaStreamTrack?.stop();
+				}
 			}
 			closeMic();
 			void room?.disconnect();
