@@ -65,6 +65,12 @@ type DmMessage struct {
 	ImageID     pgtype.UUID
 }
 
+type DmReaction struct {
+	MessageID pgtype.UUID
+	UserID    pgtype.UUID
+	Emoji     string
+}
+
 type Friendship struct {
 	RequesterID pgtype.UUID
 	AddresseeID pgtype.UUID

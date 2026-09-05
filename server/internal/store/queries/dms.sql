@@ -77,6 +77,46 @@ where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
 order by m.created_at
 limit 200;
 
+-- name: ListDmReactions :many
+-- Counts per message+emoji for the whole pair, plus whether the viewer is
+-- in — like ListChatReactions, but pair-scoped instead of room-scoped since
+-- a DM message already carries its own two participants.
+select r.message_id, r.emoji,
+       count(*) as total,
+       bool_or(r.user_id = $3) as mine
+from dm_reactions r
+join dm_messages m on m.id = r.message_id
+where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
+group by r.message_id, r.emoji;
+
+-- name: AddDmReaction :execrows
+-- Toggle half 1: no-op when already reacted (the conflict), so the caller
+-- knows to remove instead. Scoped to the message's own pair — no separate
+-- friendship recheck, same as viewing a delivered image (GetDmImage):
+-- unfriending ends new sends, it does not black out reacting to history.
+insert into dm_reactions (message_id, user_id, emoji)
+select $1, $2, $3
+where exists (
+    select 1 from dm_messages
+    where id = $1
+      and least(sender_id, recipient_id) = least($4::uuid, $5::uuid)
+      and greatest(sender_id, recipient_id) = greatest($4::uuid, $5::uuid)
+)
+on conflict do nothing;
+
+-- name: RemoveDmReaction :execrows
+-- Pair-scoped like the insert.
+delete from dm_reactions r
+using dm_messages m
+where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
+  and m.id = r.message_id
+  and least(m.sender_id, m.recipient_id) = least($4::uuid, $5::uuid)
+  and greatest(m.sender_id, m.recipient_id) = greatest($4::uuid, $5::uuid);
+
+-- name: CountDmReaction :one
+select count(*) from dm_reactions where message_id = $1 and emoji = $2;
+
 -- name: ListDmHeads :many
 -- The conversation list: my peers with their latest line, newest first.
 select distinct on (peer.id)

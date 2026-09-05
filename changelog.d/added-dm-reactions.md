@@ -1,0 +1,1 @@
+- DMs can now react to messages, the same as room chat.
