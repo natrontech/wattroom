@@ -1,0 +1,1 @@
+- Clarified how playlists, themes, jukebox playback and frequent releases work.
