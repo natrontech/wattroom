@@ -1,12 +1,19 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { levelFromXp } from '$lib/level';
-	import { Copy, MessageCircle } from '@lucide/svelte';
+	import { Copy, MessageCircle, Radio, UserX } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
+	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -68,6 +75,29 @@
 		await load();
 	}
 
+	// Same person, same menu (person-menu.ts) — minus "Add friend", which
+	// makes no sense on someone already friended, plus the two actions this
+	// row alone offers: joining their room and ending the friendship (#663).
+	function friendMenu(friend: Friend): MenuEntry[] {
+		const entries: MenuEntry[] = personMenu(friend.id, goto).filter(
+			(entry) => entry.label !== 'Add friend',
+		);
+		entries.push('separator');
+		if (friend.room)
+			entries.push({
+				label: 'Join their room',
+				icon: Radio,
+				onSelect: () => goto(`/r/${friend.room}`),
+			});
+		entries.push({
+			label: 'Remove friend',
+			icon: UserX,
+			onSelect: () => void act(`/api/friends/${friend.id}`, 'DELETE'),
+			danger: true,
+		});
+		return entries;
+	}
+
 	const accepted = $derived(
 		(friends ?? []).filter((f) => f.status === 'accepted'),
 	);
@@ -93,6 +123,8 @@
 				{#each accepted as friend (friend.id)}
 					<div
 						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+						title={MENU_HINT}
+						{@attach contextMenu(() => friendMenu(friend))}
 					>
 						<!-- Slack's green dot (#251): online = app open (the lobby
 						     socket), with the room named only for shared members. -->

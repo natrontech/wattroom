@@ -11,6 +11,7 @@
 		Copy,
 		Headphones,
 		Image as ImageIcon,
+		ListPlus,
 		Music,
 		Radio,
 		RotateCw,
@@ -24,12 +25,18 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import ImageChip from '$lib/chat/ImageChip.svelte';
+	import { parseInline } from '$lib/chat/inline';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
 	import { createPendingImage } from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { uploadImage } from '$lib/chat/upload';
 	import { account } from '$lib/account.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { formatTime } from '$lib/format';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import { mentionsMe } from '$lib/messages/mention';
@@ -123,6 +130,44 @@
 		} catch {
 			toasts.push('Copy needs clipboard permission', { tone: 'error' });
 		}
+	}
+
+	// The first external link in a line — the same one LinkPreview would
+	// unfurl. addYouTubeUrl already refuses anything that isn't a video or
+	// playlist, so offering the item costs nothing when the guess is wrong.
+	function firstLink(text: string): string | undefined {
+		return parseInline(text, location.origin).find((p) => p.external)?.text;
+	}
+
+	// Touch and long-press have no hover strip to reveal Copy and React, and a
+	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
+	// Same actions, same handlers — the hover strip stays as the shortcut.
+	function messageMenu(message: { id?: string; text: string }): MenuEntry[] {
+		const items: MenuEntry[] = [];
+		if (message.text)
+			items.push({
+				label: 'Copy',
+				icon: Copy,
+				onSelect: () => void copy(message.text),
+			});
+		if (message.id) {
+			const id = message.id;
+			items.push({
+				label: 'React',
+				icon: SmilePlus,
+				onSelect: () => (reactingTo = reactingTo === id ? null : id),
+			});
+		}
+		const link = onQueue && message.text ? firstLink(message.text) : undefined;
+		if (link) {
+			const url = link;
+			items.push({
+				label: 'Queue the link',
+				icon: ListPlus,
+				onSelect: () => onQueue?.(url),
+			});
+		}
+		return items;
 	}
 
 	let draft = $state('');
@@ -267,6 +312,8 @@
 						<div
 							data-testid="thread-message"
 							class="group flex gap-2.5 {grouped ? '-mt-1' : ''}"
+							title={MENU_HINT}
+							{@attach contextMenu(() => messageMenu(message))}
 						>
 							<span class="w-7 shrink-0">
 								{#if !grouped}<Avatar name={message.from} size={28} />{/if}
