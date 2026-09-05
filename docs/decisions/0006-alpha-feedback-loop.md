@@ -1,6 +1,6 @@
 # 0006 — Ride feedback: in-app flag → GitHub issue → agent fix → deliberate deploy
 
-- Status: proposed; the deploy half partially superseded by [ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)
+- Status: accepted; the deploy half partially superseded by [ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)
 - Date: 2026-08-29
 
 > **ADR-0019 (2026-08-31)** replaces the "One environment, deliberate deploys"

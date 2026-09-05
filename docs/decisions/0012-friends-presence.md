@@ -2,6 +2,11 @@
 
 Date: 2026-08-31 · Status: accepted (#147)
 
+> **Amended by [ADR-0024](0024-social-profiles.md) (2026-09-02):** a shared
+> room is a formation path again, beside the friend code. The "formation by
+> friend code only" amendment below is no longer the last word on how a
+> request forms; ADR-0024 is.
+
 ## Context
 
 Every privacy rule in WATTROOM.md is room-scoped by construction. A friends
