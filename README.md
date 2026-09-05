@@ -70,8 +70,8 @@ No smart trainer needed — the simulated trainer covers development, and
 
 A smart trainer speaking **BLE FTMS** (pre-FTMS Wahoo units are backlog, #4), talked to directly
 from the browser via Web Bluetooth — which is Chromium-only: **Chrome/Edge on
-desktop and Android**. No iOS path (Safari won't implement Web Bluetooth — a
-[researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md),
+desktop and Android**. No iOS training path (Safari won't implement Web
+Bluetooth — a [researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md),
 not an oversight); the room itself opens in any browser, with the
 affordances that need a trainer gated off rather than a separate read-only
 page.

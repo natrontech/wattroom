@@ -35,7 +35,18 @@ export default defineConfig({
 		baseURL: external || 'http://localhost:4173',
 		trace: 'retain-on-failure',
 	},
-	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+	projects: [
+		{
+			name: 'chromium',
+			testIgnore: 'mobile-room.spec.ts',
+			use: { ...devices['Desktop Chrome'] },
+		},
+		{
+			name: 'mobile-room',
+			testMatch: 'mobile-room.spec.ts',
+			use: { ...devices['Pixel 5'] },
+		},
+	],
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//
 	// Always builds, never reuses: the server only ever serves build/, so a reused
