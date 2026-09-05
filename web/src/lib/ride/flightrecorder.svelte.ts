@@ -3,18 +3,21 @@ import { api } from '$lib/api';
 
 /**
  * The ride's flight recorder (#52, ADR-0006): a bounded in-memory ring of the
- * last ~120 s — ticks, state transitions, console errors. A mid-ride ⚑ tap
- * stamps a marker with a snapshot; the post-ride card submits each flag as
- * one report. Only the reporter's own telemetry, ever.
+ * last ~120 s — ticks, state transitions, console errors, unhandled rejections.
+ * A mid-ride ⚑ tap stamps a marker with a snapshot; the post-ride card submits
+ * each flag as one report. Only the reporter's own telemetry, ever — and never
+ * heart rate: a report ends up in a public issue, and HR is health data
+ * (WATTROOM.md, ADR-0008).
  */
 const WINDOW_SECONDS = 120;
 const MAX_EVENTS = 100;
+const MAX_ERRORS = 20;
+const MAX_ERROR_CHARS = 500;
 
 export interface RecorderTick {
 	at: number;
 	watts: number;
 	cadence: number;
-	heartRate: number;
 	target: number;
 	state: string;
 }
@@ -29,39 +32,75 @@ export interface Flag {
 	};
 }
 
-let consoleHooked = false;
+/**
+ * Errors are page-wide, not per recorder: the hooks below bind once per page,
+ * and a ride screen mounted a second time must still see what broke before it.
+ */
+let errors: { at: number; text: string }[] = [];
+let hooked = false;
+
+function recordError(text: string) {
+	errors = [
+		...errors.slice(-(MAX_ERRORS - 1)),
+		{ at: Date.now(), text: text.slice(0, MAX_ERROR_CHARS) },
+	];
+}
+
+/**
+ * A rejection reason is whatever was thrown: an Error, a string, undefined, an
+ * object without a toString worth reading. Keep the name and message where there
+ * is one, and never let the stringifying itself throw.
+ */
+export function describeReason(reason: unknown): string {
+	if (reason instanceof Error) {
+		const head = `${reason.name}: ${reason.message}`;
+		if (!reason.stack) return head;
+		return reason.stack.startsWith(head)
+			? reason.stack
+			: `${head}\n${reason.stack}`;
+	}
+	if (typeof reason === 'string') return reason;
+	try {
+		return JSON.stringify(reason) ?? String(reason);
+	} catch {
+		return String(reason);
+	}
+}
 
 export function createFlightRecorder() {
 	let ticks: RecorderTick[] = [];
 	let events: { at: number; kind: string; text: string }[] = [];
-	let errors: { at: number; text: string }[] = [];
 	let flags = $state<Flag[]>([]);
 
-	// One console hook per page: errors are part of what a flag means.
-	if (!consoleHooked && typeof window !== 'undefined') {
-		consoleHooked = true;
+	// One set of hooks per page: errors are part of what a flag means. A rejected
+	// promise from a fetch or a goto raises `unhandledrejection`, not `error`, and
+	// is the SPA's most common failure — without this hook it left no trace (#668).
+	if (!hooked && typeof window !== 'undefined') {
+		hooked = true;
 		const original = console.error.bind(console);
 		console.error = (...args: unknown[]) => {
-			errors = [
-				...errors.slice(-19),
-				{ at: Date.now(), text: args.map(String).join(' ').slice(0, 500) },
-			];
+			recordError(args.map(String).join(' '));
 			original(...args);
 		};
-		window.addEventListener('error', (e) => {
-			errors = [
-				...errors.slice(-19),
-				{ at: Date.now(), text: String(e.message).slice(0, 500) },
-			];
-		});
+		window.addEventListener('error', (e) => recordError(String(e.message)));
+		window.addEventListener('unhandledrejection', (e) =>
+			recordError(`unhandled rejection: ${describeReason(e.reason)}`),
+		);
 	}
 
 	return {
 		get flags() {
 			return flags;
 		},
+		/** Picks its fields by name: a spread sample carries heart rate, the ring must not. */
 		tick(next: Omit<RecorderTick, 'at'>) {
-			ticks.push({ ...next, at: Date.now() });
+			ticks.push({
+				at: Date.now(),
+				watts: next.watts,
+				cadence: next.cadence,
+				target: next.target,
+				state: next.state,
+			});
 			const cutoff = Date.now() - WINDOW_SECONDS * 1000;
 			while (ticks.length > 0 && ticks[0].at < cutoff) ticks.shift();
 		},
