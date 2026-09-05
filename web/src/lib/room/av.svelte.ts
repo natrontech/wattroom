@@ -17,6 +17,7 @@ import {
 	gateStep,
 } from '$lib/room/gate';
 import { MIC_CONSTRAINTS } from '$lib/room/capture';
+import { serverNow } from '$lib/room/server-clock';
 import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
 import { mountTrack } from '$lib/room/mount-track';
 import {
@@ -563,10 +564,18 @@ export function createRoomAv(slug: string) {
 		if (myClaim && yieldsTo(myClaim, claimOf(p))) void standDown();
 	}
 
-	/** Announce that the mic and camera are moving here, now. */
+	/**
+	 * Announce that the mic and camera are moving here, now.
+	 *
+	 * Stamped on the server's clock, because the join stamps it competes
+	 * with are LiveKit's (#646). A browser clock behind the server made the
+	 * takeover read older than the incumbent's join, so it never stood down;
+	 * one ahead made a tab opened right after read older than the takeover,
+	 * so the takeover never stood down for it. Both ways, doubled audio.
+	 */
 	function claimAv() {
 		if (!room) return;
-		myClaim = { identity: myIdentity, at: Date.now() };
+		myClaim = { identity: myIdentity, at: serverNow() };
 		handedOff = false;
 		void room.localParticipant
 			.publishData(

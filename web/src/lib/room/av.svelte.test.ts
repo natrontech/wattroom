@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
+import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 
 vi.mock('$lib/api', () => ({
 	api: async () => ({ ok: true, data: { url: 'ws://livekit', token: 't' } }),
@@ -11,6 +12,7 @@ vi.mock('$lib/api', () => ({
 vi.mock('livekit-client', () => {
 	let shared = false;
 	let joined: FakeRoom | null = null;
+	const published: Uint8Array[] = [];
 	class Room {
 		handlers = new Map<string, (...args: unknown[]) => void>();
 		remoteParticipants = new Map();
@@ -22,6 +24,9 @@ vi.mock('livekit-client', () => {
 			getTrackPublication: () => (shared ? { videoTrack: {} } : undefined),
 			async publishTrack() {},
 			unpublishTrack() {},
+			async publishData(payload: Uint8Array) {
+				published.push(payload);
+			},
 		};
 		on(event: string, handler: (...args: unknown[]) => void) {
 			this.handlers.set(event, handler);
@@ -47,6 +52,10 @@ vi.mock('livekit-client', () => {
 		dropNatively() {
 			joined?.handlers.get('Disconnected')?.();
 		},
+		/** Every data packet this tab has broadcast, decoded. */
+		broadcasts() {
+			return published.map((p) => JSON.parse(new TextDecoder().decode(p)));
+		},
 		// Every RoomEvent.X is just its own name to the wiring under test.
 		RoomEvent: new Proxy({}, { get: (_, key) => key }),
 		Track: {
@@ -71,10 +80,11 @@ vi.mock('$lib/room/mic-level', () => ({
 }));
 
 const { createRoomAv } = await import('./av.svelte');
-const { stopSharingNatively, dropNatively } =
+const { stopSharingNatively, dropNatively, broadcasts } =
 	(await import('livekit-client')) as unknown as {
 		stopSharingNatively: () => void;
 		dropNatively: () => void;
+		broadcasts: () => { t: string; at: number }[];
 	};
 
 /** Enough of Web Audio and getUserMedia for `openMic` to succeed. */
@@ -195,6 +205,33 @@ describe('createRoomAv', () => {
 
 		expect(av.micBeforeDrop).toBe(false);
 		dispose();
+	});
+
+	// #646: a join is stamped by LiveKit's server; the takeover used to be
+	// stamped by the browser. yieldsTo compares the two as numbers, so a
+	// clock a minute behind made "use this tab instead" read older than the
+	// other tab's join, and that tab kept the mic — the rider heard themselves
+	// twice. The takeover has to sit on the server's clock too.
+	it('stamps a takeover on the server clock, not the browser', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(1_000_000);
+			// One tick from a server a minute ahead of this machine.
+			observeServerTime(1_060_000);
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			await av.takeOver();
+
+			const claim = broadcasts().find((b) => b.t === 'av-claim');
+			expect(claim?.at).toBe(1_060_000);
+			dispose();
+		} finally {
+			resetServerClock();
+			vi.useRealTimers();
+		}
 	});
 
 	// #289: the rail draws the threshold as a mark on the mic meter. While
