@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
+	import { toasts } from '$lib/toast.svelte';
 
 	interface Member {
 		id: string;
@@ -78,12 +79,22 @@
 		}
 	}
 
-	async function act(path: string, init?: Parameters<typeof api>[1]) {
+	async function act(
+		path: string,
+		init?: Parameters<typeof api>[1],
+		// errors.md: background actions get a toast; reversible ones get an
+		// undo on it rather than a confirm dialog up front.
+		toast?: { message: string; undo?: () => void },
+	) {
 		busy = true;
 		const res = await api(path, { method: 'POST', ...init });
 		busy = false;
-		if (!res.ok) error = res.error.message;
-		else if (slug) void load(slug);
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
+		if (slug) void load(slug);
+		if (toast) toasts.push(toast.message, { undo: toast.undo });
 	}
 
 	const isMember = $derived(!!room?.role);
@@ -177,8 +188,30 @@
 					method: 'PATCH',
 					json: { startsAt },
 				})}
-			onUnschedule={(id: string) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}`, { method: 'DELETE' })}
+			onUnschedule={(id: string) => {
+				// Captured before the DELETE so undo can re-POST the same plan —
+				// the server has no "restore" for a row it just dropped.
+				const entry = room?.upcoming?.find((u) => u.id === id);
+				act(
+					`/api/rooms/${room?.slug}/schedule/${id}`,
+					{ method: 'DELETE' },
+					{
+						message: entry
+							? `Removed “${entry.workoutName}” from the plan.`
+							: 'Session removed.',
+						undo: entry
+							? () =>
+									void act(`/api/rooms/${room?.slug}/schedule`, {
+										json: {
+											workoutName: entry.workoutName,
+											workoutJson: entry.workoutJson,
+											startsAt: entry.startsAt,
+										},
+									})
+							: undefined,
+					},
+				);
+			}}
 			onRsvp={(id: string, going: boolean) =>
 				act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
 					method: going ? 'PUT' : 'DELETE',
@@ -190,10 +223,17 @@
 				act(`/api/rooms/${room?.slug}/role`, {
 					json: { userId, role: nextRole },
 				})}
-			onRemove={(userId: string) =>
-				act(`/api/rooms/${room?.slug}/members/${userId}`, {
-					method: 'DELETE',
-				})}
+			onRemove={(userId: string) => {
+				// No inverse call exists — rejoining takes the invite link, so
+				// the call site confirms before firing rather than promising an
+				// undo this can't deliver (errors.md).
+				const name = room?.members?.find((m) => m.id === userId)?.displayName;
+				act(
+					`/api/rooms/${room?.slug}/members/${userId}`,
+					{ method: 'DELETE' },
+					{ message: name ? `Removed ${name}.` : 'Member removed.' },
+				);
+			}}
 		>
 			{@render children()}
 		</RoomShell>
