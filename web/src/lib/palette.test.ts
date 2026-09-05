@@ -28,12 +28,9 @@ import {
 	zoneFloor,
 } from './gate';
 import {
-	CUSTOM_ID,
 	DEFAULT_CHOICE,
 	DEFAULT_DARK_ID,
-	HUE_SEPARATION,
 	THEMES,
-	customTheme,
 	parseChoice,
 	resolveTheme,
 	serializeChoice,
@@ -43,7 +40,7 @@ import {
 
 const each = THEMES.map((t) => [t.name, t] as const);
 
-/** The issue gate, applied to catalogue entries and the full custom hue wheel. */
+/** The issue gate, applied to every catalogue entry. */
 function expectLegible(theme: Theme, label: string) {
 	const ref = reference(theme.family, THEMES);
 	for (const token of ['ink', 'muted'] as TokenName[]) {
@@ -245,58 +242,6 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	});
 });
 
-describe('custom themes', () => {
-	const hues = Array.from({ length: 24 }, (_, i) => i * 15);
-
-	it.each(hues)('hue %i stays legible in both families', (hue) => {
-		for (const family of ['dark', 'white'] as const) {
-			const theme = customTheme(hue, family);
-			expectLegible(theme, `custom ${family} ${hue}°`);
-			expectDangerFixed(theme, `custom ${family} ${hue}°`);
-			expect(
-				hueDistance(
-					hexToOklch(theme.tokens.watt).h,
-					hexToOklch(theme.tokens.neon).h,
-				),
-			).toBeGreaterThanOrEqual(30);
-			const ref = reference(family, THEMES);
-			for (let i = 0; i < ZONES.length - 1; i++) {
-				const a = theme.tokens[ZONES[i]];
-				const b = theme.tokens[ZONES[i + 1]];
-				expect(
-					perceptualDistance(a, b),
-					`custom ${family} ${hue}° ${ZONES[i]}`,
-				).toBeGreaterThanOrEqual(adjacentFloor(ref, i, perceptualDistance));
-				for (const kind of ['deuteranopia', 'protanopia'] as const) {
-					const measure = (x: string, y: string) =>
-						dichromatDistance(x, y, kind);
-					expect(
-						measure(a, b),
-						`custom ${family} ${hue}° ${ZONES[i]} ${kind}`,
-					).toBeGreaterThanOrEqual(adjacentFloor(ref, i, measure));
-				}
-			}
-		}
-	});
-
-	it('trails chrome behind the data hue', () => {
-		const k = customTheme(320, 'dark').tokens;
-		expect(hueDistance(hexToOklch(k.watt).h, hexToOklch(k.neon).h)).toBeCloseTo(
-			HUE_SEPARATION,
-			0,
-		);
-	});
-
-	it('derives a dark cave from the same custom hue', () => {
-		const light = customTheme(200, 'white');
-		const cave = customTheme(200, 'dark');
-		expect(light.identity).toBe(cave.identity);
-		expect(hexToOklch(cave.tokens.surface).l).toBeLessThanOrEqual(
-			DARK_SURFACE_MAX_L,
-		);
-	});
-});
-
 describe('choice parsing', () => {
 	it.each([
 		['null', null],
@@ -304,19 +249,14 @@ describe('choice parsing', () => {
 		['not json', '{oh no'],
 		['not an object', '7'],
 		['unknown preset', '{"kind":"preset","identity":"chartreuse"}'],
-		['custom without hue', '{"kind":"custom"}'],
 	])('falls back to the default for %s', (_case, raw) => {
 		expect(parseChoice(raw)).toEqual(DEFAULT_CHOICE);
 	});
 
-	it('accepts a known identity and a normalised custom hue', () => {
+	it('accepts a known identity', () => {
 		expect(parseChoice('{"kind":"preset","identity":"tron"}')).toEqual({
 			kind: 'preset',
 			identity: 'tron',
-		});
-		expect(parseChoice('{"kind":"custom","hue":-40}')).toEqual({
-			kind: 'custom',
-			hue: 320,
 		});
 	});
 
@@ -324,10 +264,6 @@ describe('choice parsing', () => {
 		expect(serializeChoice(DEFAULT_CHOICE)).toBe('');
 		const tron = { kind: 'preset', identity: 'tron' } as const;
 		expect(parseChoice(serializeChoice(tron))).toEqual(tron);
-		expect(parseChoice(serializeChoice({ kind: 'custom', hue: 200 }))).toEqual({
-			kind: 'custom',
-			hue: 200,
-		});
 	});
 
 	it('migrates the accent-only preset schema', () => {
@@ -337,12 +273,25 @@ describe('choice parsing', () => {
 		});
 	});
 
+	// #692: the free hue picker is gone, but a rider's device or account can
+	// still hold a pre-#692 `custom` choice. It must resolve to a real preset,
+	// never a dead `custom` theme id, and land closest to the hue it replaces.
+	it('migrates a stored custom hue to the nearest preset', () => {
+		// Laser Yellow ships at wattHue 100 (dark) — a custom hue right on top
+		// of it should migrate there, not to the default Outrun.
+		expect(parseChoice('{"kind":"custom","hue":100}')).toEqual({
+			kind: 'preset',
+			identity: 'laser',
+		});
+	});
+
+	it('falls back to the default for a custom choice with no usable hue', () => {
+		expect(parseChoice('{"kind":"custom"}')).toEqual(DEFAULT_CHOICE);
+	});
+
 	it('resolves unknown identities back to Outrun in the requested family', () => {
 		expect(resolveTheme({ kind: 'preset', identity: 'gone' }, 'dark').id).toBe(
 			DEFAULT_DARK_ID,
-		);
-		expect(resolveTheme({ kind: 'custom', hue: 90 }, 'white').id).toBe(
-			CUSTOM_ID,
 		);
 	});
 });

@@ -28,7 +28,15 @@ const STYLE_ID = 'wattroom-theme';
 
 let choice = $state<ThemeChoice>(DEFAULT_CHOICE);
 try {
-	choice = parseChoice(localStorage.getItem(KEY));
+	const stored = localStorage.getItem(KEY);
+	choice = parseChoice(stored);
+	// A pre-#692 `custom` choice parses to the nearest preset instead of the
+	// raw value it was saved as — re-persist so this device (and, once synced,
+	// the account) never has to migrate the same choice twice.
+	if (stored !== null && serializeChoice(choice) !== stored) {
+		remember(choice);
+		syncAppearance({ accentPalette: serializeChoice(choice) });
+	}
 } catch {
 	/* storage unavailable: the default identity */
 }
@@ -54,10 +62,7 @@ function apply() {
 	const active = resolveTheme(choice, family);
 	// The cave takes the dark half of whatever identity is showing. For a dark
 	// theme that is the same tokens, which costs nothing and keeps one path.
-	const cave =
-		active.identity === 'custom'
-			? resolveTheme(choice, 'dark')
-			: themeFor(active.identity, 'dark');
+	const cave = themeFor(active.identity, 'dark');
 
 	let style = document.getElementById(STYLE_ID);
 	if (!style) {
@@ -128,6 +133,10 @@ export const palette = {
 			return;
 		}
 		const next = parseChoice(stored || null);
+		// A pre-#692 `custom` account value migrates on read too — push the
+		// migrated choice back up so the account stops handing out `custom`.
+		if (serializeChoice(next) !== stored)
+			syncAppearance({ accentPalette: serializeChoice(next) });
 		if (serializeChoice(next) === serializeChoice(choice)) return;
 		choice = next;
 		remember(next);
