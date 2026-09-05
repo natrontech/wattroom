@@ -29,7 +29,9 @@
 		position?: number;
 		myId?: string;
 		onVote?: () => void;
-		/** −1 up, +1 down. Absent at the ends of the queue. */
+		/** −1 up, +1 down. Reached from the context menu only (#661): the row
+		 *  is too narrow for bike-sized arrows beside a readable title, and
+		 *  the vote button is the one-tap way to float a track up. */
 		onMove?: (by: number) => void;
 		onRemove?: () => void;
 		onRequeue?: () => void;
@@ -144,38 +146,24 @@
 			</button>
 		{/if}
 
-		<div class="flex shrink-0 items-center">
-			{#if onMove}
-				<button
-					onclick={() => onMove(-1)}
-					aria-label="move up"
-					class="text-muted hover:text-ink grid h-6 w-5 place-items-center"
-					><ChevronUp size={13} /></button
-				>
-				<button
-					onclick={() => onMove(1)}
-					aria-label="move down"
-					class="text-muted hover:text-ink grid h-6 w-5 place-items-center"
-					><ChevronDown size={13} /></button
-				>
-			{/if}
-			{#if onRequeue}
-				<button
-					onclick={onRequeue}
-					aria-label="queue this again"
-					class="text-muted hover:text-ink grid h-6 w-6 place-items-center"
-					><RotateCcw size={13} /></button
-				>
-			{/if}
-			{#if onRemove}
-				<button
-					onclick={onRemove}
-					aria-label="remove from the queue"
-					class="text-muted hover:text-danger grid h-6 w-6 place-items-center"
-					><X size={13} /></button
-				>
-			{/if}
-		</div>
+		<!-- The same footprint as the transport above (ux.md: huge tap targets
+		     mid-ride). One verb per row — remove here, play again in history. -->
+		{#if onRequeue}
+			<button
+				onclick={onRequeue}
+				aria-label="queue this again"
+				class="text-muted hover:text-ink grid h-10 w-10 shrink-0 place-items-center rounded-full"
+				><RotateCcw size={15} /></button
+			>
+		{/if}
+		{#if onRemove}
+			<button
+				onclick={onRemove}
+				aria-label="remove from the queue"
+				class="text-muted hover:text-danger grid h-10 w-10 shrink-0 place-items-center rounded-full"
+				><X size={15} /></button
+			>
+		{/if}
 	</div>
 
 	{#if tracks.length && open}
