@@ -1,1 +1,0 @@
-- Removing a friend, unscheduling a session or banning a rider now says so and offers Undo — a mis-tap used to fire silently with no way back. Removing a member from a room has no inverse call, so it asks first instead; the friends list also shows "Loading friends…" instead of a blank panel while it fetches.
