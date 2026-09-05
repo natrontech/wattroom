@@ -139,3 +139,29 @@ readings and nothing else. Errors, failed states, eliminations and destructive
 affordances say `danger`. `positive` and `warning` will join it the same way —
 fixed hue, family lightness — when something needs them; until then the z4/z5
 tones in Banner and the fault surfaces are the call sites waiting for them.
+
+## Amendment — five identities, ten themes (2026-09-05, #693)
+
+This ADR's Decision section still reads as if there is one palette. What
+ships in `web/src/lib/themes.ts` is five curated identities — Outrun, Tron
+Ice, Miami Nights, Laser Yellow, Monokai — each with a dark and a white
+family member, ten themes in total. Outrun remains the default. #402 settled
+what the three non-Outrun identities compared in this ADR's Decision actually
+are; #612 added Monokai and a design editor for building the next one; #620
+added Monokai's white half.
+
+What does not change: a theme is a role assignment (ADR-0023), not a
+decoration, and the two-accent split this ADR decided is the invariant every
+identity must satisfy — `--color-watt` marks live data and is the only thing
+that glows, `--color-neon` is structural chrome and never glows. A sweep of
+every `--color-neon` use against every glow/shadow/blur utility in the
+current tree found zero violations across all ten themes (the one hit, a
+zero-blur focus ring in `web/src/lib/brand/LandingHero.svelte:112`, does not
+glow) — the restraint rule held while the palette count grew from one to
+five identities.
+
+One thing this amendment does *not* record as settled: `PalettePicker.svelte`
+still also offers a free single-hue custom entry (`customTheme()` in
+`themes.ts`) alongside the ten curated themes. #692 proposes removing it so
+the set is closed, but as of this amendment the custom entry still ships —
+the picker is eleven-wide today, not ten.
