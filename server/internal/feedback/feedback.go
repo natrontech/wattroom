@@ -37,9 +37,53 @@ type Report struct {
 	Trainer     string `json:"trainer"`
 	// Marker clocks, both sides, so drift is visible.
 	ClientMs int64 `json:"clientMs"`
-	// The last ~2 minutes: samples, transitions, errors — opaque JSON,
-	// size-bounded at the boundary.
-	Buffer json.RawMessage `json:"buffer"`
+	// The last ~2 minutes: samples, transitions, errors — typed, so only the
+	// allowlisted fields reach disk or a public issue.
+	Buffer Buffer `json:"buffer"`
+}
+
+// Buffer is the flight recorder's ring as the server is willing to keep it.
+// Heart rate is health data (WATTROOM.md, ADR-0008: "never in a shared
+// artifact") and has no field here; whatever a client adds beyond these
+// fields is dropped, never stored, never filed.
+type Buffer struct {
+	Ticks  []Tick        `json:"ticks"`
+	Events []BufferEvent `json:"events"`
+	Errors []BufferError `json:"errors"`
+}
+
+// Tick is one recorded second: the rider's own power and cadence against the
+// target, and the ride state at that moment.
+type Tick struct {
+	At      int64   `json:"at"`
+	Watts   float64 `json:"watts"`
+	Cadence float64 `json:"cadence"`
+	Target  float64 `json:"target"`
+	State   string  `json:"state"`
+}
+
+type BufferEvent struct {
+	At   int64  `json:"at"`
+	Kind string `json:"kind"`
+	Text string `json:"text"`
+}
+
+type BufferError struct {
+	At   int64  `json:"at"`
+	Text string `json:"text"`
+}
+
+// UnmarshalJSON decodes leniently on purpose: the surrounding Report decoder
+// rejects unknown fields, but an older client still shipping heart rate must
+// have its flag land — stripped, not refused.
+func (b *Buffer) UnmarshalJSON(data []byte) error {
+	type plain Buffer
+	var p plain
+	if err := json.Unmarshal(data, &p); err != nil {
+		return err
+	}
+	*b = Buffer(p)
+	return nil
 }
 
 type Sessions interface {

@@ -147,7 +147,8 @@
 				onRecord: (sample) => {
 					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
 					recorder.tick({
-						...sample,
+						watts: sample.watts,
+						cadence: sample.cadence,
 						target: session?.target ?? 0,
 						state: session?.state ?? '',
 					});
