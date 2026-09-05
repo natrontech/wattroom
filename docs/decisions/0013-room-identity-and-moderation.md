@@ -1,6 +1,7 @@
 # ADR-0013: Room identity is an emoji; a ban is a membership role
 
-Date: 2026-08-31 · Status: accepted (#223)
+Date: 2026-08-31 · Status: accepted (#223, amended 2026-09-05: icon and
+reaction palette are lucide keys, not emoji — #447)
 
 ## Context
 
@@ -41,3 +42,23 @@ disconnect, never re-entry.
   way in, and the ban lands the moment they join.
 - Keycap emoji (1️⃣) fail the shape heuristic — a real segmenter is the
   upgrade path if anyone misses them.
+
+## Amendment — icon and reaction palette switch to lucide keys (2026-09-05, #447)
+
+Emoji render inconsistently across platforms — different vendors ship
+different glyphs for the same codepoint, so a room's identity mark and a
+rider's reaction looked different depending on whose OS drew them. #447
+replaces both halves of the Decision above with **curated lucide keys**: a
+room's icon and a room's reaction palette are drawn marks from a fixed set,
+not emoji, because drawn marks render consistently across platforms where
+emoji do not.
+
+- The wire and DB columns are unchanged in shape (short text keys); what
+  changed is the vocabulary they hold and how the client renders them.
+- `protocol.IsIconKey` validates a lucide name; `protocol.IsIconOrEmoji`
+  (`server/internal/protocol/icon.go`) still accepts the old emoji shape,
+  but only so rooms and reactions saved before #447 keep rendering — no
+  path writes a new emoji icon or reaction.
+- docs/SPEC.md's icon and reaction sections describe the lucide vocabulary
+  that ships today; the Decision section above stays as the historical
+  record of why a single glyph was chosen at all.
