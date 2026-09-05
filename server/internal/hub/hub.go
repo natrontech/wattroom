@@ -46,13 +46,13 @@ type ChatKeeper interface {
 }
 
 // AutoplaySource answers what a room's autoplay should draw from (#627),
-// read once per trigger — a rider joining an idle deck — and always outside
-// the room's lock (server/AGENTS.md: DB I/O never happens while holding a
-// room mutex). Defined here, where it is consumed; the playlists service
-// implements it. Nil, or ok=false, means nothing to play: autoplay stays
-// silent. fixed, if non-nil, is queued before tracks — tracks already
-// carries whatever order (list order or shuffled) the caller's autoplay
-// setting currently means.
+// read once per trigger — a rider joining an idle deck, or the deck running
+// dry (#676) — and always outside the room's lock (server/AGENTS.md: DB I/O
+// never happens while holding a room mutex). Defined here, where it is
+// consumed; the playlists service implements it. Nil, or ok=false, means
+// nothing to play: autoplay stays silent. fixed, if non-nil, is queued before
+// tracks — tracks already carries whatever order (list order or shuffled) the
+// caller's autoplay setting currently means.
 type AutoplaySource interface {
 	Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
 }
@@ -124,8 +124,9 @@ type Hub struct {
 	lobbyAuth func(*http.Request) (userID string, ok bool)
 	// Chat persistence queue (#219): read loops enqueue, one worker saves.
 	saves chan chatSave
-	// Autoplay source and its trigger queue (#627): a join enqueues, one
-	// worker reads the room's active playlist and seeds the deck.
+	// Autoplay source and its trigger queue (#627): a join or a deck running
+	// dry enqueues, one worker reads the room's active playlist and seeds
+	// the deck.
 	playlists AutoplaySource
 	autoplays chan autoplayJob
 }
@@ -135,6 +136,9 @@ type Hub struct {
 type autoplayJob struct {
 	rm   *room
 	slug string
+	// The deck ran dry rather than a rider joining (#676): the playlist
+	// loops, the fixed start does not — SPEC calls it a start.
+	loop bool
 }
 
 // chatSave is one line awaiting persistence — enough to save it and to
@@ -204,16 +208,22 @@ func (h *Hub) saveWorker() {
 func (h *Hub) autoplayWorker() {
 	for job := range h.autoplays {
 		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug)
+		if job.loop {
+			fixed = nil
+		}
 		job.rm.applyAutoplay(fixed, tracks, ok, h.now())
 	}
 }
 
-// triggerAutoplay checks a just-joined room's deck and, if it is idle,
-// enqueues the DB read that decides what autoplay puts on it (#627). The
-// check-then-enqueue happens outside any I/O; the worker re-checks idle
-// under the room's lock before seeding, so two riders joining the same
-// instant cannot double-queue the room's playlist.
-func (h *Hub) triggerAutoplay(rm *room, slug string) {
+// triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
+// read that decides what autoplay puts on it (#627). Fired by a join and by
+// the deck running dry (#676, loop=true). The check-then-enqueue happens
+// outside any I/O; the worker re-checks idle under the room's lock before
+// seeding, so two riders joining the same instant cannot double-queue the
+// room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
+// from a client each pass, and a source with nothing to play — autoplay off,
+// an empty playlist — leaves the deck idle and the queue quiet.
+func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
 	if h.playlists == nil {
 		return
 	}
@@ -224,10 +234,11 @@ func (h *Hub) triggerAutoplay(rm *room, slug string) {
 		return
 	}
 	select {
-	case h.autoplays <- autoplayJob{rm: rm, slug: slug}:
+	case h.autoplays <- autoplayJob{rm: rm, slug: slug, loop: loop}:
 	default:
 		// Full queue: the room just stays idle until the next join, which
-		// will try again — better than a joining rider's upgrade blocking.
+		// will try again — better than a joining rider's upgrade or read
+		// loop blocking.
 		h.log.Warn("autoplay queue full, skipping", "room", slug)
 	}
 }
@@ -269,6 +280,9 @@ type room struct {
 	phaseSaid string
 	// Pings the lobby (#251) when the tick sees phase or the riding set change.
 	changed func()
+	// Asks autoplay to refill the deck after a command ran it dry (#676).
+	// Called outside the room lock; nil for a room nobody wired.
+	deckIdled func()
 	// Voice (#467): who is in the channel now, folded to rider ids by the
 	// hub from LiveKit's state, and how long each of them was in it while
 	// the timeline ran — the session voice bonus's input. Bounded by the
@@ -390,7 +404,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
 	// a database read.
-	h.triggerAutoplay(rm, slug)
+	h.triggerAutoplay(rm, slug, false)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
@@ -989,6 +1003,7 @@ func (h *Hub) room(slug string) *room {
 	if !ok {
 		rm = newRoom(slug)
 		rm.changed = h.PresenceChanged
+		rm.deckIdled = func() { h.triggerAutoplay(rm, slug, true) }
 		rm.xp = h.xp
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
@@ -1341,16 +1356,22 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 
 // jukebox runs one deck command and hands back the track it finished, if
 // this command was the one that ended it (#467) — for the caller to credit
-// outside the lock.
+// outside the lock. A command that ran the deck dry hands the room to
+// autoplay (#676), also outside the lock: the trigger takes it again.
 func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool) {
 	rm.mu.Lock()
-	defer rm.mu.Unlock()
 	events, ok := rm.music.apply(cmd, riderID, addedBy, now)
 	for _, ev := range events {
 		rm.events.add(ev, now)
 	}
 	played := rm.music.finished
 	rm.music.finished = nil
+	idled := rm.music.idled
+	rm.music.idled = false
+	rm.mu.Unlock()
+	if idled && rm.deckIdled != nil {
+		rm.deckIdled()
+	}
 	return played, ok
 }
 
