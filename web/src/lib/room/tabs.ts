@@ -17,7 +17,11 @@ export function riderOf(identity: string): string {
 /** A tab's claim on its rider's mic and camera. */
 export interface Claim {
 	identity: string;
-	/** When the claim was made — `Date.now()`, and same clock in every tab. */
+	/**
+	 * When the claim was made, in server millis: LiveKit's `joinedAt` for a
+	 * join, `serverNow()` for a takeover. Compared numerically, so both have
+	 * to sit on the one clock (#646).
+	 */
 	at: number;
 }
 

@@ -36,6 +36,16 @@ describe('yieldsTo (#293)', () => {
 		expect(yieldsTo(mine, { identity: mine.identity, at: 9999 })).toBe(false);
 	});
 
+	it('takes a takeover stamp at face value, even one behind the join', () => {
+		// #646: a takeover minted from a browser clock running behind the
+		// server reads older than the incumbent's server-stamped join, and
+		// the incumbent keeps the mic. yieldsTo has no notion of "takeover";
+		// the number decides, so the caller owes it a stamp on the one clock.
+		const incumbent = { identity: `${jan}#bbb`, at: 1000 };
+		const takeover = { identity: `${jan}#aaa`, at: 999 };
+		expect(yieldsTo(incumbent, takeover)).toBe(false);
+	});
+
 	it('leaves exactly one tab publishing when both claim at once', () => {
 		// Same millisecond: whatever the tie-break decides, it must not decide
 		// the same way for both tabs, or the rider goes silent in every one.
