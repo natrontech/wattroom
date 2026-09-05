@@ -139,3 +139,18 @@ readings and nothing else. Errors, failed states, eliminations and destructive
 affordances say `danger`. `positive` and `warning` will join it the same way —
 fixed hue, family lightness — when something needs them; until then the z4/z5
 tones in Banner and the fault surfaces are the call sites waiting for them.
+
+## Amendment — five identities make ten curated themes (2026-09-05, #693)
+
+The single Outrun identity above is now the default, not the entire catalogue.
+WattRoom ships five named identities — Outrun, Tron Ice, Miami Nights, Laser
+Yellow, and Monokai — and each has a dark and a daylight family member. That
+makes ten curated themes. The scheme setting selects the family; the rider's
+identity stays the same across it, and `.cave` still forces that identity's
+dark member while a ride is active.
+
+This accepts the divergence from the original one-identity decision while
+keeping its invariant: every theme has the same role split, with watt for live
+data and glow, neon for flat structural chrome, and the shared zone scale for
+training data. The named catalogue is a product choice, not permission for an
+unbounded colour space.

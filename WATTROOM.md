@@ -114,7 +114,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 ### Jukebox sync (the fiddly one)
 
 - Server state: queue + `{videoId, positionSeconds, playing, updatedAt}`. Clients render their own YouTube IFrame player and chase server position with **tiered drift correction**: small drift → nudge `playbackRate` (imperceptible soft-sync), drift > ~2 s → hard `seekTo`. ~200 ms cross-client alignment is the state of practice.
-- Queue entries resolve client-side with no Data API key — the IFrame player and keyless oEmbed ([ADR-0026](docs/decisions/0026-a-playlist-is-one-queue-entry.md)); Data API `videos.list`/`playlistItems.list` is the documented upgrade path if that proves flaky, not shipped behaviour. Surface "not embeddable" (label/Vevo content) before playback; no in-app `search.list` — paste-a-URL is the golden path.
+- Queue entries resolve client-side with no Data API key — the IFrame player and keyless oEmbed ([ADR-0026](docs/decisions/0026-a-playlist-is-one-queue-entry.md)); Data API `videos.list`/`playlistItems.list` is the documented upgrade path if that proves flaky, not shipped behaviour. The player reports an embed-disabled item (label/Vevo content) and skips it; no in-app `search.list` — paste-a-URL is the golden path.
 - Play/pause/seek/queue ops go through the server; late joiners get current state on join.
 - **YouTube RMF compliance shapes the UI**: the player is a dedicated ≥200×200 tile, always visible while media plays, never overlaid by metrics/HUD, and the queue only auto-advances while it's on screen. Audio-only/background music mode is prohibited by YouTube's developer policies — not a WattRoom choice.
 - **Audio ducking** client-side: music volume dips when LiveKit reports active speakers.
@@ -245,6 +245,7 @@ The MVP is deliberately maximalist — trainer control, rooms, AV and jukebox to
 - ✅ Account export-all + delete (full purge)
 - ✅ Production compose stack on a single VM ([ADR-0002](docs/decisions/0002-single-vm-compose-deploy.md)) — wattroom.ch is live
 - ✅ Release-driven auto-deploy ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)) — implemented in the operator's `janlauber/homelab`, not here. Grafana dashboards
+- **Small release batches can ship several times a day.** Each has a CalVer tag, a written changelog section, and the same rollback-safe release path; the version says when it shipped, while the changelog says what changed ([ADR-0019](docs/decisions/0019-tagged-releases-and-a-self-converging-vm.md)).
 - ✅ Calibration/spindown, sensor dropout handling, UX polish
 - ✅ Alpha: own training circle rides weekly. Widen only when they keep choosing it unprompted.
 
