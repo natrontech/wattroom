@@ -80,7 +80,7 @@ func setup(t *testing.T) *harness {
 	t.Cleanup(st.Close)
 
 	users := &fakeUsers{byToken: map[string]db.User{}}
-	for _, name := range []string{"alice", "bob"} {
+	for _, name := range []string{"alice", "bob", "carol"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: name, FtpWatts: 200, WeightKg: 75})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
@@ -310,5 +310,71 @@ func TestQueuePlaylistCrossesRoomAndPersonal(t *testing.T) {
 	strangerRoom := h.room(t, "alice")
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+strangerRoom+"/playlists/"+pid+"/queue", ""); status != http.StatusForbidden {
 		t.Fatalf("non-member queue: %d", status)
+	}
+}
+
+// TestMemberCannotTearDownRoomPlaylists is #695: joining from a link makes
+// you a member, and a member can queue, vote and skip but not rename or
+// delete a saved room playlist, drop a track from one, or change autoplay —
+// those stay owner/coach only, same gate schedule.go's requireControl uses.
+func TestMemberCannotTearDownRoomPlaylists(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	h.join(t, slug, "bob", "member")
+	h.join(t, slug, "carol", "coach")
+
+	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
+	id, _ := created["id"].(string)
+	h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/tracks", videoTrack)
+
+	// A plain member is refused every destructive verb.
+	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/playlists/"+id, `{"name":"Renamed"}`); status != http.StatusForbidden {
+		t.Fatalf("member rename: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"ordered"}`); status != http.StatusForbidden {
+		t.Fatalf("member autoplay: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id, ""); status != http.StatusForbidden {
+		t.Fatalf("member delete playlist: %d", status)
+	}
+
+	// A member can still create their own room playlist and queue/add to it —
+	// the recommendation the issue's maintainer picked leaves that alone.
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Bob's set"}`); status != http.StatusCreated {
+		t.Fatalf("member create: %d", status)
+	}
+
+	// Coach and owner both pass the tightened gate.
+	if status, _ := h.call(t, "carol", http.MethodPut, "/api/rooms/"+slug+"/playlists/"+id, `{"name":"Renamed"}`); status != http.StatusOK {
+		t.Fatalf("coach rename: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"ordered"}`); status != http.StatusOK {
+		t.Fatalf("owner autoplay: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id, ""); status != http.StatusNoContent {
+		t.Fatalf("owner delete playlist: %d", status)
+	}
+}
+
+// TestMemberCannotDeleteRoomTrack pins the same gate on the room-playlist
+// track-deletion endpoint specifically, since it lives in tracks.go.
+func TestMemberCannotDeleteRoomTrack(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	h.join(t, slug, "bob", "member")
+
+	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
+	id, _ := created["id"].(string)
+	_, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/tracks", videoTrack)
+	trackID, _ := body["id"].(string)
+	if trackID == "" {
+		t.Fatalf("no track id in %v", body)
+	}
+
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+trackID, ""); status != http.StatusForbidden {
+		t.Fatalf("member delete track: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+trackID, ""); status != http.StatusNoContent {
+		t.Fatalf("owner delete track: %d", status)
 	}
 }

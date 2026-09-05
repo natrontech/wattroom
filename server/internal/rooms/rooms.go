@@ -182,9 +182,9 @@ type medalJSON struct {
 }
 
 type roomJSON struct {
-	Slug   string `json:"slug"`
-	Code   string `json:"code,omitempty"` // members only — the code IS the invite
-	Name   string `json:"name"`
+	Slug string `json:"slug"`
+	Code string `json:"code,omitempty"` // members only — the code IS the invite
+	Name string `json:"name"`
 	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
 	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing
 	// surface offers the toggle until the directory exists.
@@ -423,7 +423,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					Role: member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
-					Badges: member.Badges,
+					Badges:   member.Badges,
 				})
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
@@ -790,6 +790,30 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 		RoomID: room.ID, UserID: user.ID,
 	})
 	if err != nil || m.Role == "banned" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
+		return db.Room{}, db.User{}, false
+	}
+	return room, user, true
+}
+
+// RequireModerator loads the room and refuses unless the caller is its owner
+// or coach — the gate the genuinely destructive room-state verbs stand
+// behind (#695): joining from a link makes you a member, and a member can
+// use the room's shared jukebox and timeline but not tear either down.
+// refusal is the 403 copy, phrased for the surface asking.
+func (s *Service) RequireModerator(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	room, ok := s.roomBySlug(w, r)
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
+	if err != nil || (m.Role != "owner" && m.Role != "coach") {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
 	}

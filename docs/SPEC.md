@@ -41,8 +41,9 @@
 | Jukebox play/pause/skip/back/seek | ✓ | ✓ | ✓ (default — tune in alpha) | – |
 | Skip the rest of a queued playlist (#615) | ✓ | ✓ | ✓ | – |
 | Jukebox upvote / reorder / remove a queued track (#286) | ✓ | ✓ | ✓ | – |
-| Manage room playlists (create/rename/delete, edit tracks, set active) (#627) | ✓ | ✓ | ✓ | – |
-| Change room autoplay settings (#627) | ✓ | ✓ | ✓ | – |
+| Create a room playlist, add a track to one (#627) | ✓ | ✓ | ✓ | – |
+| Rename / delete a room playlist, remove one of its tracks, set it active (#627, #695) | ✓ | ✓ | – | – |
+| Change room autoplay settings (#627, #695) | ✓ | ✓ | – | – |
 | Manage own personal playlists (#627) | ✓ | ✓ | ✓ | ✓ |
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | – |

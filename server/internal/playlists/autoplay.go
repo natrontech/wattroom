@@ -44,7 +44,7 @@ func (s *Service) handleGetAutoplay(w http.ResponseWriter, r *http.Request) {
 // the settings panel PATCHes on every change with its full local state, the
 // same pattern the room settings page already uses for sound pack/icon.
 func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
-	sc, ok := s.roomScope(w, r)
+	sc, ok := s.roomModeratorScope(w, r)
 	if !ok {
 		return
 	}
