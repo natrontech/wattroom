@@ -22,9 +22,15 @@ import (
 )
 
 // UserSource resolves the signed-in user — same shape rooms/customworkouts
-// consume.
+// consume. Personal playlists need nothing more.
 type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+}
+
+// Members is the room-scoped gate (#638), satisfied by *rooms.Service — the
+// same one chat stands behind, so a ban refuses the shelf like everything else.
+type Members interface {
+	RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
 }
 
 // Live pushes a saved playlist's tracks onto a room's live queue (#627) —
@@ -36,14 +42,15 @@ type Live interface {
 }
 
 type Service struct {
-	store *store.Store
-	users UserSource
-	live  Live
-	log   *slog.Logger
+	store   *store.Store
+	users   UserSource
+	members Members
+	live    Live
+	log     *slog.Logger
 }
 
-func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+func New(st *store.Store, users UserSource, members Members, log *slog.Logger) *Service {
+	return &Service{store: st, users: users, members: members, log: log}
 }
 
 // SetLive wires the queue-into-room bridge in after construction, like
@@ -86,24 +93,8 @@ type scope struct {
 // member, not just owner/coach, per docs/SPEC.md's jukebox-controls-are-
 // member-level row.
 func (s *Service) roomScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	room, user, ok := s.members.RequireMember(w, r, "Join the room to manage its playlists.")
 	if !ok {
-		return scope{}, false
-	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(r.PathValue("slug")))
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "No room lives at this link.")
-		return scope{}, false
-	}
-	if err != nil {
-		s.log.Error("room lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
-		return scope{}, false
-	}
-	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: user.ID,
-	}); err != nil || m.Role == "banned" {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to manage its playlists.")
 		return scope{}, false
 	}
 	return scope{room: room, user: user, asRoom: true}, true

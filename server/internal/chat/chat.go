@@ -22,9 +22,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// UserSource resolves the signed-in user — same shape rooms consumes.
-type UserSource interface {
-	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+// Members is what chat borrows from rooms: the one membership gate every
+// room-scoped surface stands behind (#638), satisfied by *rooms.Service.
+type Members interface {
+	RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
 }
 
 // Live is what chat borrows from the hub (#468): a line or a reaction posted
@@ -40,14 +41,14 @@ type Live interface {
 const maxChatRunes = 500
 
 type Service struct {
-	store *store.Store
-	users UserSource
-	log   *slog.Logger
-	live  Live
+	store   *store.Store
+	members Members
+	log     *slog.Logger
+	live    Live
 }
 
-func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+func New(st *store.Store, members Members, log *slog.Logger) *Service {
+	return &Service{store: st, members: members, log: log}
 }
 
 // SetLive wires the hub in after construction — the hub needs this service
@@ -175,25 +176,11 @@ type messageJSON struct {
 	Mine      []string       `json:"mine,omitempty"`
 }
 
-// member gates a chat endpoint: signed in, room exists, requester belongs —
-// chat never leaves the room (ADR-0010), and neither do its images.
+// member gates a chat endpoint: signed in, room exists, requester belongs and
+// is not banned — chat never leaves the room (ADR-0010), and neither do its
+// images.
 func (s *Service) member(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	me, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
-		return db.Room{}, db.User{}, false
-	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), r.PathValue("slug"))
-	if err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such room.")
-		return db.Room{}, db.User{}, false
-	}
-	if _, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: me.ID,
-	}); err != nil {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Chat is for the room's members.")
-		return db.Room{}, db.User{}, false
-	}
-	return room, me, true
+	return s.members.RequireMember(w, r, "Chat is for the room's members.")
 }
 
 // handleImageUpload stores one pasted image: raw bytes in, blob id out. The

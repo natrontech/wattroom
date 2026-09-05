@@ -462,7 +462,7 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.isBanned(r, room, user) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "The owner removed you from this room.")
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", bannedRefusal)
 		return
 	}
 	// Idempotent by design (ON CONFLICT DO NOTHING): joining twice is a no-op,
@@ -478,6 +478,9 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// bannedRefusal is what a banned rider hears at every door they try.
+const bannedRefusal = "The owner removed you from this room."
 
 // isBanned is the join-time gate: a ban survives every re-join path because
 // the membership row itself carries it.
@@ -512,7 +515,7 @@ func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.isBanned(r, room, user) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "The owner removed you from this room.")
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", bannedRefusal)
 		return
 	}
 	err = s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
@@ -706,6 +709,11 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := s.requireRole(w, r, "owner"); !ok {
 			return
 		}
+	} else if s.isBanned(r, room, user) {
+		// Leaving is not a way out of a ban (#637): the banned row is what
+		// keeps the rejoin doors shut, so the rider does not get to delete it.
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", bannedRefusal)
+		return
 	}
 	if room.OwnerID == target {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
@@ -759,6 +767,30 @@ func (s *Service) requireRole(w http.ResponseWriter, r *http.Request, role strin
 	})
 	if err != nil || m.Role != role {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the room's "+role+" can do that.")
+		return db.Room{}, db.User{}, false
+	}
+	return room, user, true
+}
+
+// RequireMember loads the room at {slug} and refuses unless the caller is a
+// member of any role — the one gate every room-scoped surface (chat,
+// playlists, RSVP) stands behind (#638). A banned rider holds a row, not a
+// membership, so the ban is refused here the same way the socket refuses it.
+// refusal is the 403 copy, phrased for the surface asking.
+func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	room, ok := s.roomBySlug(w, r)
+	if !ok {
+		return db.Room{}, db.User{}, false
+	}
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
+	if err != nil || m.Role == "banned" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
 	}
 	return room, user, true

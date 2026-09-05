@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -73,10 +74,40 @@ func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
 			t.Fatal(err)
 		}
 	}
-	svc := New(st, users, slog.New(slog.DiscardHandler))
+	log := slog.New(slog.DiscardHandler)
+	// The real gate, not a fake of it: what refuses a banned rider here is
+	// the same code that refuses them at the socket (#638).
+	svc := New(st, rooms.New(st, users, log), log)
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	return svc, mux, users, room
+}
+
+// The ban stops at chat HTTP too (#638): a banned member holds a membership
+// row, but neither the backlog nor a post is theirs to touch.
+func TestBannedMemberRefusedAtChat(t *testing.T) {
+	svc, mux, users, room := setup(t)
+	if status, _ := post(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat", `{"text":"before"}`); status != http.StatusOK {
+		t.Fatalf("member post before ban: %d", status)
+	}
+	if err := svc.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+		RoomID: room.ID, UserID: users.byToken["bob"].ID, Role: "banned",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if status, msgs := backlog(t, mux, "bob", room.Slug); status != http.StatusForbidden || len(msgs) != 0 {
+		t.Errorf("banned rider read the backlog: %d %v", status, msgs)
+	}
+	if status, _ := post(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat", `{"text":"still here"}`); status != http.StatusForbidden {
+		t.Errorf("banned rider posted: %d", status)
+	}
+	if status, _ := postImage(t, mux, "bob", room.Slug, []byte("\x89PNG")); status != http.StatusForbidden {
+		t.Errorf("banned rider uploaded an image: %d", status)
+	}
+	// Nothing leaked into the room: the members still see one line.
+	if status, msgs := backlog(t, mux, "alice", room.Slug); status != http.StatusOK || len(msgs) != 1 {
+		t.Errorf("room backlog after the refused post: %d, %d lines", status, len(msgs))
+	}
 }
 
 func backlog(t *testing.T, mux *http.ServeMux, user, slug string) (int, []map[string]any) {

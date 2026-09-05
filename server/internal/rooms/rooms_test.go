@@ -437,6 +437,26 @@ func TestBanFlow(t *testing.T) {
 	if _, _, err := svc.Authorize(wsReq, slug); err == nil {
 		t.Error("banned rider authorized for the room socket")
 	}
+	// Nor is "leaving" a way out (#637): the banned row is the ban, so the
+	// self-removal path refuses, the row stays, and the rejoin stays shut.
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/members/"+bobID, ""); status != http.StatusForbidden {
+		t.Errorf("banned rider left the room: %d", status)
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	if err := h.store.Queries.DeleteMembership(t.Context(), db.DeleteMembershipParams{
+		RoomID: room.ID, UserID: h.users.byToken["bob"].ID,
+	}); err != nil {
+		t.Fatalf("delete membership: %v", err)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("banned rider rejoined after leaving: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/schedule/"+bobID+"/rsvp", ""); status != http.StatusForbidden {
+		t.Errorf("banned rider reached the RSVP gate: %d", status)
+	}
 
 	// The room vanishes from bob's nav, and bob gets the outsider view.
 	if _, body := h.call(t, "bob", http.MethodGet, "/api/rooms", ""); body != nil {

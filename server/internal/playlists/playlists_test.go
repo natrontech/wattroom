@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -22,8 +23,13 @@ import (
 // same shape every other package's suite uses.
 type fakeUsers struct{ byToken map[string]db.User }
 
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
 	u, ok := f.byToken[r.Header.Get("X-Test-User")]
+	return u, ok
+}
+
+func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	u, ok := f.User(r)
 	if !ok {
 		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
 	}
@@ -85,7 +91,8 @@ func setup(t *testing.T) *harness {
 		})
 	}
 
-	svc := New(st, users, slog.New(slog.DiscardHandler))
+	log := slog.New(slog.DiscardHandler)
+	svc := New(st, users, rooms.New(st, users, log), log)
 	live := &fakeLive{ok: true}
 	svc.SetLive(live)
 	mux := http.NewServeMux()
