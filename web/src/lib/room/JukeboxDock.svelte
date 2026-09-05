@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { chase, playheadAt } from '$lib/room/playhead';
+	import { chase, pausedChase, playheadAt } from '$lib/room/playhead';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { withYouTubeApi } from '$lib/room/youtube-api';
@@ -345,6 +345,22 @@
 			if (state === PLAYING || state === BUFFERING) player.pauseVideo?.();
 			playerInfo.drift = 0;
 			playerInfo.blocked = false;
+			// A scrub while paused moves the server's anchor but not this
+			// player: nothing else re-seeks a stopped deck, so the chase has
+			// to (#647) — otherwise the rider sees the bar and clock jump
+			// while the picture holds the old frame.
+			if (
+				!streaming &&
+				performance.now() >= settleUntil &&
+				state !== BUFFERING
+			) {
+				const at = player.getCurrentTime?.() ?? 0;
+				const next = pausedChase(target, at);
+				if (next?.do === 'seek') {
+					player.seekTo(next.to, true);
+					settleUntil = performance.now() + SETTLE_MS;
+				}
+			}
 			return;
 		}
 		if (state === PAUSED || state === UNSTARTED) {
