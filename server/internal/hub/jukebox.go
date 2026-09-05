@@ -75,6 +75,9 @@ type jukebox struct {
 	// The track the last command let finish, for the room to credit once
 	// the lock is released; nil otherwise.
 	finished *playedTrack
+	// Set when the last command ran the deck dry (#676), for the room to
+	// hand to autoplay once the lock is released; the room clears it.
+	idled bool
 }
 
 // playedTrack is a track that reached its natural end (#467): who queued it
@@ -384,7 +387,8 @@ func (j *jukebox) remember() {
 
 // advance moves the deck on by one track: to the next track of the playlist
 // on the deck if it has one, otherwise to the next queue entry. It only ever
-// moves FORWARD — a playlist runs once through and never restarts itself.
+// moves FORWARD — a playlist runs once through and never restarts itself;
+// looping is autoplay's job (#676), and it lives in the room, not here.
 func (j *jukebox) advance(now time.Time) {
 	j.remember()
 	if cur := j.state.Current; cur != nil && cur.Index+1 < len(cur.Tracks) {
@@ -395,12 +399,14 @@ func (j *jukebox) advance(now time.Time) {
 }
 
 // advanceEntry leaves the current entry behind — a playlist's remaining
-// tracks with it — and starts the next thing in the queue.
+// tracks with it — and starts the next thing in the queue. An empty queue
+// leaves the deck idle and flags it, so the room can ask autoplay to refill.
 func (j *jukebox) advanceEntry(now time.Time) {
 	if len(j.state.Queue) == 0 {
 		j.state.Current = nil
 		j.state.Playing = false
 		j.state.PositionSec = 0
+		j.idled = true
 		return
 	}
 	next := j.state.Queue[0]

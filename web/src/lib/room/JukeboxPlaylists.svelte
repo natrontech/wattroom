@@ -139,7 +139,8 @@
 				>
 			</div>
 			<p class="text-muted mt-1 text-[10px] leading-relaxed">
-				Starts the active room playlist when someone joins an idle deck.
+				Plays the active room playlist whenever the deck is idle: when someone
+				joins, and again each time it runs out.
 			</p>
 			<div
 				class="mt-2 flex gap-1.5"
