@@ -78,7 +78,10 @@ const { stopSharingNatively, dropNatively } =
 	};
 
 /** Enough of Web Audio and getUserMedia for `openMic` to succeed. */
-function withMicHardware<T>(run: () => Promise<T>): Promise<T> {
+function withMicHardware<T>(
+	run: () => Promise<T>,
+	devices: MediaDeviceInfo[] = [],
+): Promise<T> {
 	class FakeAudioContext {
 		currentTime = 0;
 		createMediaStreamSource() {
@@ -98,7 +101,7 @@ function withMicHardware<T>(run: () => Promise<T>): Promise<T> {
 		configurable: true,
 		value: {
 			getUserMedia: async () => ({ getTracks: () => [] }),
-			enumerateDevices: async () => [],
+			enumerateDevices: async () => devices,
 			addEventListener() {},
 			removeEventListener() {},
 		},
@@ -195,6 +198,68 @@ describe('createRoomAv', () => {
 
 		expect(av.micBeforeDrop).toBe(false);
 		dispose();
+	});
+
+	// #658: the pickers used to fill only after the first connect, so a rider
+	// joined with the wrong mic to be allowed to choose the right one. The mic
+	// test is the earliest grant there is — the names arrive with it.
+	it('lists your microphones the moment the mic test is granted', async () => {
+		const yeti = {
+			deviceId: 'yeti',
+			kind: 'audioinput',
+			label: 'Yeti Stereo Microphone',
+			groupId: 'g1',
+		} as MediaDeviceInfo;
+		await withMicHardware(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			expect(av.mics).toEqual([]);
+
+			await av.toggleMicTest();
+
+			expect(av.micTesting).toBe(true);
+			await vi.waitFor(() =>
+				expect(av.mics.map((m) => m.label)).toEqual(['Yeti Stereo Microphone']),
+			);
+			await av.toggleMicTest();
+			dispose();
+		}, [yeti]);
+	});
+
+	describe.each([
+		{ what: 'no mediaDevices at all', mediaDevices: undefined },
+		{
+			what: 'enumerateDevices refuses',
+			mediaDevices: {
+				enumerateDevices: async () => {
+					throw new DOMException('denied', 'NotAllowedError');
+				},
+				addEventListener() {},
+				removeEventListener() {},
+			},
+		},
+	])('refreshing devices with $what', ({ mediaDevices }) => {
+		it('leaves an empty list instead of throwing into the panel', async () => {
+			const had = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+			Object.defineProperty(navigator, 'mediaDevices', {
+				configurable: true,
+				value: mediaDevices,
+			});
+			try {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await expect(av.refreshDevices()).resolves.toBeUndefined();
+				expect(av.mics).toEqual([]);
+				dispose();
+			} finally {
+				if (had) Object.defineProperty(navigator, 'mediaDevices', had);
+				else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+			}
+		});
 	});
 
 	// #289: the rail draws the threshold as a mark on the mic meter. While

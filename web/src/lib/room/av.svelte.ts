@@ -291,6 +291,7 @@ export function createRoomAv(slug: string) {
 	async function startMicTest() {
 		if (mic || testing) return;
 		const { ctx, raw, gain, meter } = await buildChain();
+		void refreshDevices(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the room
 		const dest = ctx.createMediaStreamDestination();
 		mic = { ctx, raw, gain, meter, track: dest.stream.getAudioTracks()[0] };

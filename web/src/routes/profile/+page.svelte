@@ -98,6 +98,11 @@
 	// The AV chain only exists while you are in a room; the pickers say so
 	// rather than rendering controls that tune nothing.
 	const av = $derived(roomConnection.current?.av);
+	// The store only re-reads devices after a connect or a hot-plug; a rider
+	// choosing a mic here has usually done neither yet (#658).
+	$effect(() => {
+		void av?.refreshDevices();
+	});
 
 	// null = no anchor set; saving null clears it (ADR-0014, device-local).
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
