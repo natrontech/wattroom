@@ -83,4 +83,22 @@ describe('room live send while reconnecting', () => {
 		// The full queue was chat, not watts: metrics never took a slot.
 		expect(live.chat('after')).toBe(true);
 	});
+
+	it('keeps jukebox refusals separate for the add surface', () => {
+		const live = createRoomLive('jukebox-refusal');
+		const socket = FakeSocket.last!;
+		socket.open();
+		socket.onmessage?.({
+			data: JSON.stringify({
+				error: {
+					code: 'jukebox_invalid_video',
+					message: 'That video link is not playable here.',
+				},
+			}),
+		});
+		expect(live.jukeboxRefusal).toBe('That video link is not playable here.');
+		expect(live.refusal).toBeNull();
+		live.jukebox({ action: 'add', videoId: 'dQw4w9WgXcQ' });
+		expect(live.jukeboxRefusal).toBeNull();
+	});
 });

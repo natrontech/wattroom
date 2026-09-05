@@ -514,7 +514,9 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// Any member; the jukebox validates its own input. Throttled like
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
-				if played, _ := rm.jukebox(*msg.Jukebox, rider.ID, rider.Name, h.now()); played != nil && h.xp != nil {
+				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
+					h.writeError(ctx, c, "jukebox_"+string(refusal), refusal.message())
+				} else if played != nil && h.xp != nil {
 					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
 				}
 			}
@@ -1359,8 +1361,13 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 // outside the lock. A command that ran the deck dry hands the room to
 // autoplay (#676), also outside the lock: the trigger takes it again.
 func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool) {
+	played, ok, _ := rm.jukeboxWithRefusal(cmd, riderID, addedBy, now)
+	return played, ok
+}
+
+func (rm *room) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool, jukeboxRefusal) {
 	rm.mu.Lock()
-	events, ok := rm.music.apply(cmd, riderID, addedBy, now)
+	events, ok, refusal := rm.music.applyWithRefusal(cmd, riderID, addedBy, now)
 	for _, ev := range events {
 		rm.events.add(ev, now)
 	}
@@ -1372,7 +1379,7 @@ func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 	if idled && rm.deckIdled != nil {
 		rm.deckIdled()
 	}
-	return played, ok
+	return played, ok, refusal
 }
 
 // autoplayActor is the AddedBy/riderID this feature's own additions carry —

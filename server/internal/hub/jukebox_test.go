@@ -112,6 +112,20 @@ func TestJunkRefused(t *testing.T) {
 	}
 }
 
+func TestAddRefusalExplainsWhyTheDeckRejectedIt(t *testing.T) {
+	j := newJukebox()
+	if _, ok, reason := j.applyWithRefusal(protocol.JukeboxCommand{Action: "add", VideoID: "not-a-video!"}, "r-x", "x", jat(0)); ok || reason != refusalInvalidVideo {
+		t.Fatalf("invalid video: ok=%v reason=%q", ok, reason)
+	}
+	add(j, "dQw4w9WgXcQ", jat(0))
+	for i := 0; i < maxQueue; i++ {
+		add(j, "abcdefghijk", jat(i+1))
+	}
+	if _, ok, reason := j.applyWithRefusal(protocol.JukeboxCommand{Action: "add", VideoID: "ABCDEFGHIJK"}, "r-x", "x", jat(100)); ok || reason != refusalQueueFull {
+		t.Fatalf("full queue: ok=%v reason=%q", ok, reason)
+	}
+}
+
 func TestRemoveTakesTheEntryNotTheVideo(t *testing.T) {
 	// The same track queued twice is two entries; removing the second must
 	// not take the first (#286 — the old remove matched on videoId).

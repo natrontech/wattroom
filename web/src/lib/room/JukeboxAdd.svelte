@@ -13,7 +13,13 @@
 	} from '$lib/room/youtube-playlist';
 
 	// Paste a URL, the golden path — one video, or a whole playlist (#615).
-	let { send }: { send: (command: JukeboxCommand) => void } = $props();
+	let {
+		send,
+		refusal = null,
+	}: {
+		send: (command: JukeboxCommand) => void;
+		refusal?: string | null;
+	} = $props();
 
 	let url = $state('');
 	let addError = $state<string | null>(null);
@@ -157,5 +163,7 @@
 	</div>
 {/if}
 
-{#if addError}<p class="text-danger text-xs">{addError}</p>{/if}
+{#if addError || refusal}<p class="text-danger text-xs">
+		{addError ?? refusal}
+	</p>{/if}
 {#if addNote}<p class="text-muted text-[11px] leading-snug">{addNote}</p>{/if}
