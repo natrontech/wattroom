@@ -29,8 +29,12 @@ type UserSource interface {
 
 // Members is the room-scoped gate (#638), satisfied by *rooms.Service — the
 // same one chat stands behind, so a ban refuses the shelf like everything else.
+// RequireModerator is the tighter gate (#695) behind the genuinely
+// destructive verbs — delete/rename a saved playlist, delete a track, change
+// autoplay — that a member who only joined from a link should not reach.
 type Members interface {
 	RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
+	RequireModerator(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
 }
 
 // Live pushes a saved playlist's tracks onto a room's live queue (#627) —
@@ -94,6 +98,18 @@ type scope struct {
 // member-level row.
 func (s *Service) roomScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
 	room, user, ok := s.members.RequireMember(w, r, "Join the room to manage its playlists.")
+	if !ok {
+		return scope{}, false
+	}
+	return scope{room: room, user: user, asRoom: true}, true
+}
+
+// roomModeratorScope is roomScope behind the tighter gate (#695): renaming or
+// deleting a saved room playlist, dropping a track from one, and changing
+// autoplay all tear down state every member relies on, not just the caller's
+// own — a member who only joined from a link should not reach them.
+func (s *Service) roomModeratorScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
+	room, user, ok := s.members.RequireModerator(w, r, "Only the room's coach or owner can do that.")
 	if !ok {
 		return scope{}, false
 	}
@@ -272,7 +288,7 @@ func (s *Service) renamePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 }
 
 func (s *Service) handleRenameRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
+	if sc, ok := s.roomModeratorScope(w, r); ok {
 		s.renamePlaylist(w, r, sc)
 	}
 }
@@ -297,7 +313,7 @@ func (s *Service) deletePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 }
 
 func (s *Service) handleDeleteRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
+	if sc, ok := s.roomModeratorScope(w, r); ok {
 		s.deletePlaylist(w, r, sc)
 	}
 }

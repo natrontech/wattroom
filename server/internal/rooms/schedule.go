@@ -117,25 +117,10 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// requireControl is requireRole for "coach or owner" — the pair the matrix
-// hands the shared timeline to.
+// requireControl is RequireModerator for the pair the matrix hands the
+// shared timeline to — "coach or owner".
 func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
-		return db.Room{}, db.User{}, false
-	}
-	room, ok := s.roomBySlug(w, r)
-	if !ok {
-		return db.Room{}, db.User{}, false
-	}
-	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: user.ID,
-	})
-	if err != nil || (m.Role != "owner" && m.Role != "coach") {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the room's coach or owner can plan a session.")
-		return db.Room{}, db.User{}, false
-	}
-	return room, user, true
+	return s.RequireModerator(w, r, "Only the room's coach or owner can plan a session.")
 }
 
 // announce puts one plan line on the room's live timeline (#359) and pings
