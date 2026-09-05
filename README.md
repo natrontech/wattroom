@@ -36,7 +36,7 @@ other, you share music. A group ride for pain caves.
 
 |                                                                                            |                                                                                          |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| 🚴 **Rooms** — live watts, HR and cadence on one dashboard, voice & camera always there    | 📈 **Structured workouts** — curated library + editor, precise ERG control over BLE FTMS |
+| 🚴 **Rooms** — live watts, HR and cadence on one dashboard, voice & camera one tap away    | 📈 **Structured workouts** — curated library + editor, precise ERG control over BLE FTMS |
 | 🎮 **Seven game modes** — sprint klaxons, eliminations, Watt Golf, Backyard Ramp, …        | 🎵 **Shared jukebox** — one synced YouTube soundtrack per room                           |
 | 🏅 **Rides that count** — every session saved, `.fit` export, Strava upload, XP & trophies | 🔒 **Private by default** — metrics room-scoped, AV never recorded                       |
 
