@@ -32,6 +32,18 @@ export function chase(targetSec: number, atSec: number, live: boolean): Chase {
 	return { do: 'rate', rate: 1 };
 }
 
+/**
+ * A paused deck has no rate to close on — there's nothing running to nudge —
+ * so the seek tier is the only one that applies. Anything past the deadband
+ * earns it: without this, scrubbing a paused deck (#647) moves the server's
+ * anchor but leaves every docked player on the old frame.
+ */
+export function pausedChase(targetSec: number, atSec: number): Chase | null {
+	return Math.abs(targetSec - atSec) > NUDGE_SEC
+		? { do: 'seek', to: targetSec }
+		: null;
+}
+
 /** Mirrors the server's clamp — a track longer than six hours is not a party track. */
 export const MAX_SEEK_SEC = 6 * 3600;
 

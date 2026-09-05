@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chase, clampSeek, playheadAt } from '$lib/room/playhead';
+import { chase, clampSeek, pausedChase, playheadAt } from '$lib/room/playhead';
 
 describe('chase', () => {
 	it('seeks a real gap, in either direction', () => {
@@ -22,6 +22,19 @@ describe('chase', () => {
 		// The room anchor counts from the moment the stream was queued; the
 		// player's clock is the stream's own. Chasing that seeks every tick.
 		expect(chase(30, 7200, true)).toEqual({ do: 'rate', rate: 1 });
+	});
+});
+
+describe('pausedChase', () => {
+	it('seeks a paused deck when a scrub moved the anchor past the deadband', () => {
+		// #647 — a paused deck has no rate to nudge, so any real gap seeks.
+		expect(pausedChase(150, 30)).toEqual({ do: 'seek', to: 150 });
+		expect(pausedChase(30, 150)).toEqual({ do: 'seek', to: 30 });
+	});
+
+	it('does not reseek a paused deck already sitting on the target', () => {
+		expect(pausedChase(100, 100)).toBeNull();
+		expect(pausedChase(100.2, 100)).toBeNull();
 	});
 });
 

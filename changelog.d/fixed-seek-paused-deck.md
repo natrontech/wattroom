@@ -1,0 +1,1 @@
+- Scrubbing a paused jukebox deck now moves the video, not just the time readout — the picture used to hold the old frame until you pressed play.
