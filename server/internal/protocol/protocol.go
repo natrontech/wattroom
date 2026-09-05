@@ -82,7 +82,7 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended"
+	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "restore"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
 	// For "add": queue a whole YouTube playlist as one entry (#615). The
@@ -104,6 +104,10 @@ type JukeboxCommand struct {
 	// (and tab) reports the end — the epoch match makes N echoes advance
 	// the queue exactly once even when the same video is queued twice.
 	AnchorMs int64 `json:"anchorMs,omitempty"`
+	// "restore" takes no fields: it puts back whatever the last "remove" or
+	// "skipPlaylist" dropped, within its ~10s grace window (#660) — the
+	// undo button on that command's own toast, and the only thing that
+	// sends it.
 }
 
 // ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
@@ -165,7 +169,7 @@ type RoomEvent struct {
 	// the SAME id with a higher Count, and clients replace the line in place.
 	ID   string `json:"id"`
 	Kind string `json:"kind"` // "jukebox" | "session"
-	// jukebox: "queued" | "removed" | "skipped" | "playing"
+	// jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
 	// session: "planned" | "moved" | "cancelled" | "started" | "ended"
 	Verb string `json:"verb"`
 	// Who did it. Empty when nobody did — the deck advancing on its own, or

@@ -20,6 +20,12 @@ const maxHistory = 5
 // untrusted playhead the same way metrics are bounded.
 const maxSeekSec = 6 * 3600
 
+// undoWindow is how long the deck remembers what remove/skipPlaylist just
+// dropped, so the acting client's toast can offer a genuine undo (#660) —
+// errors.md prefers undo over confirm for anything reversible, and the
+// server still holds the entry it just let go of.
+const undoWindow = 10 * time.Second
+
 // How far into a track "back" stops meaning "start this one over" and starts
 // meaning "the one before it" — the idiom every music player already taught.
 const backRestartSec = 3.0
@@ -78,6 +84,29 @@ type jukebox struct {
 	// Set when the last command ran the deck dry (#676), for the room to
 	// hand to autoplay once the lock is released; the room clears it.
 	idled bool
+	// What remove/skipPlaylist last dropped, kept for undoWindow so a
+	// "restore" can put it back (#660); nil once restored, expired, or
+	// superseded by a newer drop. Only the latest survives — undoing an undo
+	// is not a feature riders asked for, and a stack would outlive the toast
+	// that offers it anyway.
+	pending *pendingUndo
+}
+
+// pendingUndo is one dropped entry, plus what "restore" needs to put it back
+// exactly where it left off.
+type pendingUndo struct {
+	entry     protocol.JukeboxEntry
+	ownerID   string // restores j.owners; "" when nobody queued it
+	expiresAt time.Time
+
+	// Set only when the drop was a queue entry (remove): its slot.
+	fromQueue  bool
+	queueIndex int
+
+	// Set only when the drop was the deck itself (skipPlaylist): what it was
+	// doing, so restore resumes rather than restarts.
+	positionSec float64
+	wasPlaying  bool
 }
 
 // playedTrack is a track that reached its natural end (#467): who queued it
@@ -156,9 +185,57 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			return nil, false
 		}
 		removed := j.state.Queue[i]
+		owner := j.owners[removed.ID]
 		j.state.Queue = append(j.state.Queue[:i], j.state.Queue[i+1:]...)
 		delete(j.owners, removed.ID)
+		j.pending = &pendingUndo{
+			entry: removed, ownerID: owner, fromQueue: true, queueIndex: i,
+			expiresAt: now.Add(undoWindow),
+		}
 		return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true
+
+	case "restore":
+		// Puts back exactly what remove/skipPlaylist last dropped, within the
+		// grace window — the toast's undo button, and nothing else reaches
+		// this action. A stale or already-used pending is a no-op, not an
+		// error: the toast may have raced its own timeout.
+		p := j.pending
+		j.pending = nil
+		if p == nil || now.After(p.expiresAt) {
+			return nil, false
+		}
+		if p.fromQueue {
+			i := min(p.queueIndex, len(j.state.Queue))
+			next := make([]protocol.JukeboxEntry, 0, len(j.state.Queue)+1)
+			next = append(next, j.state.Queue[:i]...)
+			next = append(next, p.entry)
+			next = append(next, j.state.Queue[i:]...)
+			j.state.Queue = next
+			if p.ownerID != "" {
+				j.owners[p.entry.ID] = p.ownerID
+			}
+			return []protocol.RoomEvent{deckLine("restored", addedBy, p.entry.Title, now)}, true
+		}
+		// A skipped playlist: give the deck back what it was doing, and put
+		// whatever took its place at the front of the queue rather than
+		// discarding it — the room only moved on a few seconds ago.
+		if j.state.Current != nil {
+			j.state.Queue = append([]protocol.JukeboxEntry{*j.state.Current}, j.state.Queue...)
+		}
+		restored := p.entry
+		j.state.Current = &restored
+		j.state.Playing = p.wasPlaying
+		j.state.PositionSec = p.positionSec
+		j.state.AnchorMs = now.UnixMilli()
+		if p.ownerID != "" {
+			j.owners[restored.ID] = p.ownerID
+		}
+		// Undoes the remember() the skip earned — the playlist did not
+		// actually finish, so it should not sit in "just played".
+		if len(j.state.History) > 0 {
+			j.state.History = j.state.History[1:]
+		}
+		return []protocol.RoomEvent{deckLine("restored", addedBy, restored.PlaylistTitle, now)}, true
 
 	case "vote":
 		// One vote per rider, toggled — and a vote that lands FLOATS the
@@ -285,7 +362,13 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 			return nil, false
 		}
 		skipped := *j.state.Current
+		owner := j.owners[skipped.ID]
 		delete(j.owners, skipped.ID)
+		j.pending = &pendingUndo{
+			entry: skipped, ownerID: owner,
+			positionSec: j.positionAt(now), wasPlaying: j.state.Playing,
+			expiresAt: now.Add(undoWindow),
+		}
 		j.remember()
 		j.advanceEntry(now)
 		line := deckLine("skippedPlaylist", addedBy, skipped.PlaylistTitle, now)

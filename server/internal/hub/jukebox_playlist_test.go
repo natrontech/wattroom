@@ -123,6 +123,39 @@ func TestSkipMovesInsideThePlaylist(t *testing.T) {
 	}
 }
 
+func TestRestoreUndoesASkippedPlaylist(t *testing.T) {
+	j := newJukebox()
+	addPlaylist(j, 4, jat(0))
+	add(j, "dQw4w9WgXcQ", jat(1))                                                // waits behind the playlist
+	accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(2)) // onto track 1
+
+	accepted(j, protocol.JukeboxCommand{Action: "skipPlaylist"}, "r-jan", "jan", jat(3))
+	s := j.snapshot()
+	if s.Current == nil || s.Current.VideoID != "dQw4w9WgXcQ" {
+		t.Fatalf("skipPlaylist did not hand over to the queue: %+v", s.Current)
+	}
+
+	if !accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(4)) {
+		t.Fatal("restore refused within the grace window")
+	}
+	s = j.snapshot()
+	if s.Current == nil || len(s.Current.Tracks) == 0 {
+		t.Fatalf("restore did not bring the playlist back to the deck: %+v", s.Current)
+	}
+	if s.Current.Index != 1 {
+		t.Fatalf("restore lost where the playlist was: index %d, want 1", s.Current.Index)
+	}
+	// What took the playlist's place goes back to the front of the queue
+	// rather than being discarded.
+	if len(s.Queue) != 1 || s.Queue[0].VideoID != "dQw4w9WgXcQ" {
+		t.Fatalf("restore did not put the replacement back in the queue: %+v", s.Queue)
+	}
+
+	if accepted(j, protocol.JukeboxCommand{Action: "restore"}, "r-jan", "jan", jat(5)) {
+		t.Fatal("restore accepted with nothing pending")
+	}
+}
+
 func TestBackRestartsThenStepsBack(t *testing.T) {
 	j := newJukebox()
 	addPlaylist(j, 3, jat(0))
