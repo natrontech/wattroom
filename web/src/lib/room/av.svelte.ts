@@ -73,7 +73,7 @@ export function createRoomAv(slug: string) {
 	let stagePick = $state<string | null>(null);
 	let speaking = $state<Record<string, boolean>>({});
 	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
-	 * once with a fresh token (#219: 6h expiry, transient drops). */
+	 * once with a fresh token (#219: token expiry, transient drops). */
 	let dropped = $state(0);
 	/**
 	 * Who is in voice and whether their mic is open (#151): absent = not in

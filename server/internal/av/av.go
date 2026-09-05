@@ -47,6 +47,18 @@ func FromEnv() (Config, bool) {
 	return cfg, cfg.URL != "" && cfg.Key != "" && cfg.Secret != ""
 }
 
+// joinTokenTTL bounds how long a rider's own roomJoin+canPublish grant stays
+// valid before the client has to re-earn it against Authorize. Eject (#223)
+// only removes the LiveKit participant — it cannot revoke the JWT already in
+// the browser's hands — so this is the actual ceiling on how long a banned
+// rider can keep rejoining with a stale token (#665). Short enough to close
+// that window to a fraction of a ride; long enough that the existing
+// drop-rejoin (web/src/lib/room/connection.svelte.ts, #219) — one automatic
+// reconnect with a fresh token whenever LiveKit disconnects a client — stays
+// a rare, unnoticed blip rather than a recurring one for every legitimate
+// rider still on the call.
+const joinTokenTTL = 30 * time.Minute
+
 type Service struct {
 	cfg    Config
 	access Access
@@ -116,8 +128,10 @@ func (s *Service) mint(slug string, rider protocol.Rider) (string, error) {
 		Sub:  identity,
 		Name: rider.Name,
 		Nbf:  now.Unix(),
-		// Long enough for any session; the membership check happens at mint.
-		Exp: now.Add(6 * time.Hour).Unix(),
+		// Short-lived (#665): the membership check happens at mint, and a
+		// banned rider's already-issued token must stop working soon after,
+		// not up to six hours later.
+		Exp: now.Add(joinTokenTTL).Unix(),
 		Video: videoGrant{
 			Room: slug, RoomJoin: true, CanPublish: true, CanSubscribe: true,
 		},
