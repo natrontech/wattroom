@@ -1,0 +1,1 @@
+- fixed: opening the people list on a phone or tablet no longer hides the playing jukebox video behind the panel — it now drops to its usual floating corner instead.

@@ -20,6 +20,7 @@
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import { countModal } from '$lib/modals.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
@@ -701,10 +702,22 @@
 	     sit inside the stage and TV mode, and a sheet the rider pulled open is
 	     the one surface that must still win — below xl it carries the jukebox
 	     transport, the people and the line saying what was said, and a video
-	     parked on top of it left nothing to press. RMF forbids OUR chrome over the player, never a
-	     drawer the rider opened. -->
+	     parked on top of it left nothing to press. RMF forbids OUR chrome over
+	     the player, never a drawer the rider opened.
+	     But the panel this sheet draws is `panel()` again — a second Jukebox,
+	     mounted fresh, offering its own 200 px hole (#643). That hole sits
+	     behind the sheet's own opaque backdrop, so the dock used to fly INTO
+	     the drawer that was about to paint over it: seated and invisible at
+	     once, with playback and auto-advance both still running — exactly
+	     what RMF forbids. `countModal` marks the sheet a covering surface the
+	     same way Modal.svelte, SessionPicker.svelte and ImageViewer.svelte
+	     already do: the dock un-seats and drops to its corner, which yields
+	     to an open overlay like any other floating chrome (JukeboxDock.svelte
+	     comment above `seat`) instead of quietly claiming a hole it cannot
+	     actually show. -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
+		{@attach countModal}
 		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
 		onclick={(e) => e.target === e.currentTarget && (peopleSheet = false)}
 	>
