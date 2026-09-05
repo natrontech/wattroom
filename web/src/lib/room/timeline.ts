@@ -11,6 +11,8 @@ import type { RoomEvent } from '$lib/protocol';
 export type TimelineMessage = {
 	id?: string;
 	from: string;
+	/** Whose line this is, for own-message and "N new" exclusion (#672). */
+	fromId?: string;
 	text: string;
 	imageId?: string;
 	at: number;

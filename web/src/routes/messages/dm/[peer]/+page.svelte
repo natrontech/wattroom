@@ -2,36 +2,21 @@
 	// A conversation, as a place (ADR-0020) — now beside the rooms' threads
 	// (#468). The room connection survives navigation (#191), so reading a
 	// DM keeps you in the room and in voice.
+	//
+	// The body (timeline, states, composer, reactions, the "N new" divider)
+	// is MessageThread.svelte, shared with a room's thread (#672); this page
+	// only supplies what is DM-specific: the peer's header and the poll
+	// loop in createDmThread.
 	import { page } from '$app/state';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import Banner from '$lib/components/Banner.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import ImageChip from '$lib/chat/ImageChip.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import { createPendingImage } from '$lib/chat/pending-image.svelte';
-	import { stickToBottom } from '$lib/chat/stick-to-bottom';
-	import { uploadImage } from '$lib/chat/upload';
-	import { api } from '$lib/api';
+	import { createDmThread } from '$lib/dm/thread.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { formatTime } from '$lib/format';
+	import MessageThread from '$lib/messages/MessageThread.svelte';
+	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { presence } from '$lib/presence.svelte';
-	import {
-		ChevronLeft,
-		Image as ImageIcon,
-		Radio,
-		RotateCw,
-	} from '@lucide/svelte';
-
-	interface Message {
-		id: string;
-		mine: boolean;
-		text: string;
-		imageId?: string;
-		at: number;
-	}
+	import { ChevronLeft, Radio } from '@lucide/svelte';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
@@ -42,83 +27,40 @@
 	);
 	const riding = $derived(!!inRoom?.riding?.includes(peerName));
 
-	let messages = $state<Message[]>([]);
-	let loading = $state(true);
-	let draft = $state('');
-	let error = $state<string | null>(null);
-	const pending = createPendingImage((refusal) => (error = refusal));
-	let filePicker = $state<HTMLInputElement | null>(null);
-
-	async function load(id: string, after: number) {
-		const res = await api<{ messages: Message[] }>(
-			`/api/dms/${id}${after ? `?after=${after}` : ''}`,
-		);
-		loading = false;
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		error = null;
-		// `after` is millisecond-truncated, so the boundary message can come
-		// back — merge by id, never blind-append.
-		const seen = new Set(messages.map((m) => m.id));
-		const fresh = res.data.messages.filter((m) => !seen.has(m.id));
-		if (!after) messages = res.data.messages;
-		else if (fresh.length > 0) messages = [...messages, ...fresh];
-		if (messages.length > 0 && (fresh.length > 0 || !after)) {
-			// "Seen" only when you could actually have seen it — a thread left
-			// open in a hidden tab must keep the badge (audit #219).
-			if (!document.hidden) dm.stampSeen(id);
-		}
-	}
-
+	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	$effect(() => {
 		const id = peerId;
-		messages = [];
-		loading = true;
-		if (!id) return;
+		if (!id) {
+			thread = null;
+			return;
+		}
+		const t = createDmThread(id, () => peerName);
+		t.start();
+		thread = t;
 		// The open thread, so a new line in it blips nowhere (heads.svelte).
+		// Stamped AFTER the thread captures its readAt, so the "N new" line
+		// marks what's new since the last time this thread was open, not
+		// "nothing" because opening it just stamped now as seen.
 		dm.show(id, peerName);
 		dmHeads.bump();
-		void load(id, 0);
-		// Polled, not a live wire: a note between rides (ADR-0012 amended).
-		const timer = setInterval(
-			() => void load(id, messages.at(-1)?.at ?? 0),
-			5_000,
-		);
 		return () => {
-			clearInterval(timer);
+			t.close();
 			dm.close();
+			thread = null;
 		};
 	});
 
-	async function send() {
-		const text = draft.trim();
-		const image = pending.take();
-		if (!peerId || (!text && !image)) return;
-		draft = '';
-		// The image uploads first; the message then carries only its id.
-		let imageId: string | undefined;
-		if (image) {
-			const up = await uploadImage(`/api/dms/${peerId}/images`, image);
-			if (!up.ok) {
-				error = up.error.message;
-				draft = text; // a refused message is not a deleted one
-				return;
-			}
-			imageId = up.data.id;
-		}
-		const res = await api(`/api/dms/${peerId}`, {
-			method: 'POST',
-			json: { text, imageId },
-		});
-		if (!res.ok) {
-			error = res.error.message;
-			draft = text;
-			return;
-		}
-		await load(peerId, messages.at(-1)?.at ?? 0);
-	}
+	const source: ThreadSource = $derived({
+		timeline: thread?.timeline ?? [],
+		loading: thread?.loading ?? true,
+		error: thread?.error ?? null,
+		readAt: thread?.readAt ?? null,
+		// No reaction backend for DMs yet (#672 follow-up) — omitting
+		// `reactions`/`react` hides the affordance rather than failing on
+		// click (ux.md).
+		retry: () => thread?.retry(),
+		send: async (text, image) => (await thread?.send(text, image)) ?? null,
+	});
 </script>
 
 <!-- The header: who they are, whether they are around, and the one thing
@@ -169,111 +111,18 @@
 	{/if}
 </header>
 
-<div {@attach stickToBottom} class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-	<div class="flex h-full flex-col">
-		<div class="mt-auto space-y-2">
-			{#if loading}
-				<Skeleton rows={3} class="mb-3 h-9" />
-			{:else if error && messages.length === 0}
-				<Banner tone="error">
-					{error}
-					{#snippet action()}
-						<button
-							onclick={() => {
-								loading = true;
-								void load(peerId, 0);
-							}}
-							class="btn btn-secondary btn-xs"
-							><RotateCw size={12} /> Retry</button
-						>
-					{/snippet}
-				</Banner>
-			{:else}
-				{#if messages.length === 0}
-					<div class="mb-4 text-center">
-						<Avatar name={peerName} size={48} />
-						<p class="font-display mt-2 text-base font-bold">{peerName}</p>
-						<p class="text-muted mt-0.5 text-xs">
-							Just you two — messages stay between friends, last 500 kept.
-						</p>
-					</div>
-				{/if}
-				{#each messages as message, i (message.id)}
-					{@const grouped = messages[i - 1]?.mine === message.mine}
-					<div class="flex gap-2.5 {grouped ? '-mt-1' : ''}">
-						<span class="w-7 shrink-0">
-							{#if !grouped}
-								<Avatar name={message.mine ? 'You' : peerName} size={28} />
-							{/if}
-						</span>
-						<span class="min-w-0 flex-1">
-							{#if !grouped}
-								<span class="flex items-baseline gap-2">
-									<span class="text-sm font-medium"
-										>{message.mine ? 'You' : peerName}</span
-									>
-									<span class="text-muted/40 font-mono text-[10px]"
-										>{formatTime(message.at)}</span
-									>
-								</span>
-							{/if}
-							{#if message.text}
-								<span class="text-ink/85 block text-sm wrap-anywhere"
-									><MessageText text={message.text} /></span
-								>
-							{/if}
-							{#if message.imageId}
-								<ChatImage
-									src="/api/dms/images/{message.imageId}"
-									alt={message.mine ? 'Image you sent' : 'Image you received'}
-								/>
-							{/if}
-						</span>
-					</div>
-				{/each}
-			{/if}
+<MessageThread
+	{source}
+	imageSrc={(imageId) => `/api/dms/images/${imageId}`}
+	composerPlaceholder="Message {peerName}…"
+>
+	{#snippet emptyState()}
+		<div class="mb-4 text-center">
+			<Avatar name={peerName} size={48} />
+			<p class="font-display mt-2 text-base font-bold">{peerName}</p>
+			<p class="text-muted mt-0.5 text-xs">
+				Just you two — messages stay between friends, last 500 kept.
+			</p>
 		</div>
-	</div>
-</div>
-
-<div class="border-ink/5 shrink-0 border-t px-5 py-3">
-	{#if error && messages.length > 0}
-		<div class="mb-2"><Banner tone="error">{error}</Banner></div>
-	{/if}
-	<ImageChip image={pending.current} onClear={pending.clear} />
-	<form
-		class="flex items-center gap-2"
-		onsubmit={(e) => {
-			e.preventDefault();
-			void send();
-		}}
-	>
-		<input
-			bind:this={filePicker}
-			type="file"
-			accept="image/*"
-			class="hidden"
-			onchange={(e) => {
-				pending.pick(e.currentTarget.files?.[0]);
-				e.currentTarget.value = '';
-			}}
-		/>
-		<button
-			type="button"
-			onclick={() => filePicker?.click()}
-			class="text-muted hover:text-ink rounded p-1"
-			aria-label="attach an image"
-			title="attach an image (or paste one)"><ImageIcon size={16} /></button
-		>
-		<input
-			bind:value={draft}
-			onpaste={pending.paste}
-			maxlength="500"
-			placeholder="Message {peerName}…"
-			class="input min-w-0 flex-1"
-		/>
-		<button disabled={!draft.trim() && !pending.current} class="btn btn-primary"
-			>Send</button
-		>
-	</form>
-</div>
+	{/snippet}
+</MessageThread>
