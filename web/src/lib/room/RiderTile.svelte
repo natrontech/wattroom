@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Logo from '$lib/brand/Logo.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { wkg } from '$lib/format';
+	import { personMenu } from '$lib/person-menu';
 	import { MicOff } from '@lucide/svelte';
 	import {
 		AWAY_MARK,
@@ -73,6 +76,8 @@
 		rider.speaking,
 		rider.away,
 	)}"
+	title={rider.you ? undefined : MENU_HINT}
+	{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
 >
 	{#if rider.cameraOn && videoAttach}
 		{#key videoKey}
