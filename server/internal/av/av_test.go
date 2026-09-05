@@ -74,8 +74,15 @@ func TestTokenShape(t *testing.T) {
 	if RiderID(got.Sub) != "jan-id" || got.Sub == "jan-id" {
 		t.Fatalf("identity %q is not jan-id plus a nonce", got.Sub)
 	}
-	if got.Exp-got.Nbf != int64((6 * time.Hour).Seconds()) {
+	// Short-lived on purpose (#665): a banned rider's Eject only removes them
+	// from the live LiveKit session, it cannot revoke the JWT already in
+	// their browser, so the mint lifetime is the real ceiling on how long a
+	// stale token keeps working.
+	if got.Exp-got.Nbf != int64(joinTokenTTL.Seconds()) {
 		t.Fatalf("lifetime: %d", got.Exp-got.Nbf)
+	}
+	if joinTokenTTL >= time.Hour {
+		t.Fatalf("joinTokenTTL %s is not short-lived", joinTokenTTL)
 	}
 }
 

@@ -32,7 +32,12 @@ AV tokens are gated by the same door. Banning or removing also severs live
 presence: the hub closes the rider's sockets, and av calls LiveKit's
 `RemoveParticipant` (hand-rolled twirp POST — stdlib-first, no server SDK).
 Voice ejection is best-effort: a failure means lingering on camera until
-disconnect, never re-entry.
+disconnect, never re-entry through the shipped client — but it does not
+revoke the JWT already in a rejected client's hands. What actually bounds
+re-entry with a stale token is the mint lifetime on the AV token itself
+(`server/internal/av/av.go`, #665): short enough that the window closes
+within a fraction of a ride, not the six hours a long-lived grant would
+leave open.
 
 ## Consequences
 
