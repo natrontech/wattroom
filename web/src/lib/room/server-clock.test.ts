@@ -32,7 +32,7 @@ describe('server clock', () => {
 		expect(serverNow() - Date.now()).toBe(clockOffsetMs());
 	});
 
-	it('re-converges after the offset jumps, and resets with the socket', () => {
+	it('re-converges after the offset jumps, and a reset hands the window to the next tick', () => {
 		vi.useFakeTimers();
 		for (let i = 0; i < 8; i++) tickAt(i * 1_000, i * 1_000 + 9_000);
 		expect(clockOffsetMs()).toBe(9_000);
@@ -42,8 +42,13 @@ describe('server clock', () => {
 
 		observeServerTime(Date.now() + 5_000);
 		expect(clockOffsetMs()).toBe(5_000);
+		// A reset drops the window, not the estimate (#644): zero would read
+		// as "this clock is server time". The next tick then replaces it
+		// outright instead of losing the max-filter to eight stale samples.
 		resetServerClock();
-		expect(clockOffsetMs()).toBe(0);
+		expect(clockOffsetMs()).toBe(5_000);
+		observeServerTime(Date.now() + 1_000);
+		expect(clockOffsetMs()).toBe(1_000);
 	});
 
 	it('ignores junk timestamps rather than poisoning the estimate', () => {
@@ -189,5 +194,61 @@ describe('a backgrounded tab', () => {
 		vi.setSystemTime(1_000);
 		clock.observeServerTime(6_000);
 		expect(clock.clockOffsetMs()).toBe(5_000);
+	});
+
+	it('comes back chasing the estimate it learned on screen, not its own clock', async () => {
+		vi.useFakeTimers();
+		vi.resetModules();
+		const clock = await import('./server-clock');
+		const { playheadAt } = await import('./playhead');
+		// A laptop 4.2 s fast, reached by each tick 30 ms after it was sent.
+		const SKEW = 4_200;
+		const START = 1_700_000_000_000;
+		setVisibility('visible');
+		for (let i = 0; i < 8; i++) {
+			vi.setSystemTime(START + i * 1_000 + SKEW + 30);
+			clock.observeServerTime(START + i * 1_000);
+		}
+
+		// A minute in the background, then the tab comes back: the dock resets
+		// the clock and chases in the same breath, before any prompt tick.
+		setVisibility('hidden');
+		setVisibility('visible');
+		clock.resetServerClock();
+		const now = START + 60_000;
+		vi.setSystemTime(now + SKEW);
+		const deck = { positionSec: 30, anchorMs: START, playing: true };
+		// The room is 90 s into the track. On the wall clock it would read
+		// 94.2 s — a hard seek, undone by the next tick (#644).
+		expect(playheadAt(deck, clock.serverNow())).toBeCloseTo(90, 1);
+		expect(playheadAt(deck, Date.now())).toBeCloseTo(94.2, 1);
+
+		// The first prompt tick after the return owns the estimate outright.
+		vi.setSystemTime(now + SKEW + 15);
+		clock.observeServerTime(now);
+		expect(clock.clockOffsetMs()).toBe(-SKEW - 15);
+	});
+
+	it('keeps the on-screen estimate through a reconnect while hidden', async () => {
+		vi.useFakeTimers();
+		vi.resetModules();
+		const clock = await import('./server-clock');
+		setVisibility('visible');
+		for (let i = 0; i < 8; i++) {
+			vi.setSystemTime(i * 1_000 + 30);
+			clock.observeServerTime(i * 1_000 + 3_000);
+		}
+		expect(clock.clockOffsetMs()).toBe(2_970);
+
+		// The socket reopens while the tab is hidden and empties the window.
+		// The throttled ticks that follow read ~2 s late; taking the first
+		// one would hand the returning tab a 2 s bias to chase and undo.
+		setVisibility('hidden');
+		clock.resetServerClock();
+		for (let i = 8; i < 12; i++) {
+			vi.setSystemTime(i * 1_000 + 2_000);
+			clock.observeServerTime(i * 1_000 + 3_000);
+		}
+		expect(clock.clockOffsetMs()).toBe(2_970);
 	});
 });

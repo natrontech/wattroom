@@ -414,8 +414,9 @@
 		// A hidden tab throttles timers while the media element keeps playing,
 		// and every tick it received arrived late — so a tab coming back is
 		// holding a stale playhead AND a clock estimate biased by whatever
-		// its delivery was batched by. Drop the estimate so it re-learns from
-		// prompt ticks, then re-measure against it.
+		// its delivery was batched by. Drop the sample window so it re-learns
+		// from prompt ticks, then re-measure — on the estimate it learned on
+		// screen, which the reset keeps (#644), never the rider's wall clock.
 		const onVisible = () => {
 			if (document.visibilityState !== 'visible') return;
 			resetServerClock();
