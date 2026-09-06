@@ -193,21 +193,26 @@ type SessionRsvp struct {
 }
 
 type User struct {
-	ID            pgtype.UUID
-	DisplayName   string
-	AvatarUrl     *string
-	FtpWatts      int16
-	WeightKg      int16
-	CreatedAt     pgtype.Timestamptz
-	StravaUpload  bool
-	Email         *string
-	NotifyPlanned bool
-	UnsubToken    pgtype.UUID
-	FriendCode    string
-	AvatarPreset  *string
-	IcsToken      string
-	AccentPalette *string
-	ColorScheme   *string
+	ID                 pgtype.UUID
+	DisplayName        string
+	AvatarUrl          *string
+	FtpWatts           int16
+	WeightKg           int16
+	CreatedAt          pgtype.Timestamptz
+	StravaUpload       bool
+	Email              *string
+	NotifyPlanned      bool
+	UnsubToken         pgtype.UUID
+	FriendCode         string
+	AvatarPreset       *string
+	IcsToken           string
+	AccentPalette      *string
+	ColorScheme        *string
+	EmailVerifiedAt    pgtype.Timestamptz
+	EmailPending       *string
+	EmailVerifyHash    []byte
+	EmailVerifyExpires pgtype.Timestamptz
+	EmailRequired      bool
 }
 
 type Workout struct {

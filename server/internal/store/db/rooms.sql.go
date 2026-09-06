@@ -387,7 +387,7 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, u.accent_palette, u.color_scheme, m.role, m.joined_at,
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, m.role, m.joined_at,
     user_total_xp(u.id)::bigint as total_xp,
     coalesce((select array_agg(a.key order by a.earned_at)
               from achievements a where a.user_id = u.id), '{}')::text[] as badges
@@ -398,25 +398,30 @@ order by m.joined_at
 `
 
 type ListRoomMembersRow struct {
-	ID            pgtype.UUID
-	DisplayName   string
-	AvatarUrl     *string
-	FtpWatts      int16
-	WeightKg      int16
-	CreatedAt     pgtype.Timestamptz
-	StravaUpload  bool
-	Email         *string
-	NotifyPlanned bool
-	UnsubToken    pgtype.UUID
-	FriendCode    string
-	AvatarPreset  *string
-	IcsToken      string
-	AccentPalette *string
-	ColorScheme   *string
-	Role          string
-	JoinedAt      pgtype.Timestamptz
-	TotalXp       int64
-	Badges        []string
+	ID                 pgtype.UUID
+	DisplayName        string
+	AvatarUrl          *string
+	FtpWatts           int16
+	WeightKg           int16
+	CreatedAt          pgtype.Timestamptz
+	StravaUpload       bool
+	Email              *string
+	NotifyPlanned      bool
+	UnsubToken         pgtype.UUID
+	FriendCode         string
+	AvatarPreset       *string
+	IcsToken           string
+	AccentPalette      *string
+	ColorScheme        *string
+	EmailVerifiedAt    pgtype.Timestamptz
+	EmailPending       *string
+	EmailVerifyHash    []byte
+	EmailVerifyExpires pgtype.Timestamptz
+	EmailRequired      bool
+	Role               string
+	JoinedAt           pgtype.Timestamptz
+	TotalXp            int64
+	Badges             []string
 }
 
 // Badges ride along (#703): the room's own page is where a crew compares
@@ -448,6 +453,11 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.IcsToken,
 			&i.AccentPalette,
 			&i.ColorScheme,
+			&i.EmailVerifiedAt,
+			&i.EmailPending,
+			&i.EmailVerifyHash,
+			&i.EmailVerifyExpires,
+			&i.EmailRequired,
 			&i.Role,
 			&i.JoinedAt,
 			&i.TotalXp,
