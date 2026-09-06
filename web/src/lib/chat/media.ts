@@ -5,8 +5,10 @@
 
 // Direct-media GIF hosts rendered inline. An allowlist, because an <img> to
 // an arbitrary pasted host would hand every member's IP to that host.
+// Tenor shards its media hosts (media.tenor.com, media1., media2. …), and
+// the picker (#878) hands back whichever one Tenor picked.
 const GIF_HOSTS =
-	/^(media\d*\.giphy\.com|i\.giphy\.com|media\.tenor\.com|c\.tenor\.com)$/;
+	/^(media\d*\.giphy\.com|i\.giphy\.com|media\d*\.tenor\.com|c\.tenor\.com)$/;
 
 /** The message is exactly one allowlisted GIF URL → that URL, else null. */
 export function gifUrl(text: string): string | null {

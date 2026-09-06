@@ -66,6 +66,9 @@ type Service struct {
 	// absent rather than broken. SetMailer lives in email.go.
 	mailer    Mailer
 	avEnabled bool
+	// Whether a Tenor key is configured (#878) — the composer's GIF button
+	// renders at all only when it is.
+	gifsEnabled bool
 	// Passkeys (#782): the relying party, derived from baseURL, and the
 	// in-memory challenges a ceremony spends between start and finish. Both
 	// nil on a server whose base URL will not parse, which takes the routes
@@ -108,6 +111,11 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 // SetAvEnabled marks LiveKit as configured; /api/me carries it so the
 // client can gate voice/camera affordances (#219).
 func (s *Service) SetAvEnabled(v bool) { s.avEnabled = v }
+
+// SetGifsEnabled marks Tenor as configured; /api/me carries it so the
+// composer hides the GIF button rather than opening a picker that 404s
+// (#878).
+func (s *Service) SetGifsEnabled(v bool) { s.gifsEnabled = v }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/providers", s.handleProviders)
@@ -615,6 +623,9 @@ type meResponse struct {
 	// Whether LiveKit is configured — the client hides voice/cam controls
 	// instead of serving 404s on click (#219, capability gating).
 	AvEnabled bool `json:"avEnabled"`
+	// Whether GIF search is configured (#878) — same gating, for the
+	// composer's picker button.
+	GifsEnabled bool `json:"gifsEnabled"`
 	// The evidence behind the suggestion, for the prompt's copy.
 	Best20m int `json:"best20m,omitempty"`
 	// Which providers this account signs in with. Drives the profile's
@@ -815,6 +826,7 @@ func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request)
 func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
+	response.GifsEnabled = s.gifsEnabled
 	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err == nil {
 		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 			response.SuggestedFtp = suggested

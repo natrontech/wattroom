@@ -6,6 +6,7 @@ describe('gifUrl', () => {
 		for (const url of [
 			'https://media.tenor.com/abc123/sprint.gif',
 			'https://c.tenor.com/xyz/tiny.gif',
+			'https://media1.tenor.com/abc/shard.gif', // Tenor shards its hosts (#878)
 			'https://media0.giphy.com/media/abc/giphy.gif',
 			'https://media4.giphy.com/media/abc/giphy.webp',
 			'https://i.giphy.com/abc.gif',
