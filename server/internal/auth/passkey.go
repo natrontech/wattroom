@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -244,6 +245,8 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 			"That passkey could not be saved. Try again.")
 		return
 	}
+	s.alert(user, "A passkey was added to your account",
+		"The passkey "+strconv.Quote(row.Name)+" can now sign in to your WattRoom account.")
 	httpx.WriteJSON(w, http.StatusOK, toPasskey(row))
 }
 
@@ -396,6 +399,12 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 	case rows == 0:
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That passkey is not on this account.")
 	default:
+		// Unnamed on purpose: the id is all the delete path carries, and
+		// reading the row back to name it in the alarm is a query spent on
+		// wording. The alarm says something changed; the profile says what
+		// is left.
+		s.alert(user, "A passkey was removed from your account",
+			"A passkey that could sign in to your WattRoom account was removed, and no longer can.")
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

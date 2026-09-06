@@ -394,6 +394,42 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 	return i, err
 }
 
+const userByEmailVerifyHash = `-- name: UserByEmailVerifyHash :one
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required from users where email_verify_hash = $1 and email_verify_expires > now()
+`
+
+// A read-only peek at the row a confirmation link is about to promote, so the
+// address being replaced can be told it is being replaced (#840). The
+// verification itself is still VerifyEmail's single-use update; this only
+// answers "whose link is this, and what address does the account hold now".
+func (q *Queries) UserByEmailVerifyHash(ctx context.Context, emailVerifyHash []byte) (User, error) {
+	row := q.db.QueryRow(ctx, userByEmailVerifyHash, emailVerifyHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+	)
+	return i, err
+}
+
 const verifyEmail = `-- name: VerifyEmail :one
 update users
 set email = email_pending,

@@ -485,6 +485,8 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 	outcome := "connected"
 	switch err := s.link(r, p, ident, tok, to.ID); {
 	case err == nil:
+		s.alert(to, "A sign-in provider was connected",
+			providerLabel(p.id)+" can now sign in to your WattRoom account.")
 	case errors.Is(err, errIdentityTaken):
 		s.log.Warn("link refused: identity already linked elsewhere", "provider", p.id)
 		outcome = "taken"

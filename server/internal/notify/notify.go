@@ -246,3 +246,66 @@ a WattRoom account, ignore this — nothing happens until someone follows it.`, 
 		Text: text,
 	})
 }
+
+// AccountAlert mails a rider that a way into their account changed (#840,
+// ADR-0030). One template and one variable line across every trigger — a
+// passkey, a provider, the recovery address — because the moment there are two
+// security templates there are ten.
+//
+// Transactional: no unsubscribe header and no setting, since an alarm with an
+// off switch is a decoration. Silent when the account holds no verified
+// address; an unverified one is someone's typo until proven otherwise, and
+// account activity is not something to narrate to it.
+//
+// The user passed in is whichever row holds the address that should hear about
+// this — for a replaced address that is the row as it was *before* the
+// replacement, which is the whole point of the alert.
+func (s *Service) AccountAlert(user db.User, heading, line string) {
+	s.alert(user, heading, line, "Check your account", s.baseURL+"/profile")
+}
+
+// AccountDeleted is the receipt for a purge. Same template, but nothing to
+// check afterwards and nothing to undo, so it carries no button — the one
+// alert whose subject is not something the rider might want to reverse.
+func (s *Service) AccountDeleted(user db.User) {
+	s.alert(user, "Your WattRoom account was deleted",
+		"Your account is gone, and so is every ride, room membership and message that belonged to it. "+
+			"Nothing was kept and there is nothing to undo.", "", "")
+}
+
+func (s *Service) alert(user db.User, heading, line, action, url string) {
+	m, ok := alertMail(user, heading, line, action, url)
+	if !ok {
+		return
+	}
+	// Guarded and detached like the session mails: a mail provider must never
+	// be on the path of an account action, and must never fail one.
+	safego.Go(s.log, "account alert", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		if err := s.send(ctx, m); err != nil {
+			// The address, never the account: this log line is about mail.
+			s.log.Warn("account alert failed", "err", err)
+		}
+	})
+}
+
+// alertMail builds the alert, or reports that there is nobody to send it to.
+// Separate from the sending so the rule that decides who hears about an
+// account event is a plain function a test can ask directly.
+func alertMail(user db.User, heading, line, action, url string) (mail, bool) {
+	if user.Email == nil || !user.EmailVerifiedAt.Valid {
+		return mail{}, false
+	}
+	body := []string{line}
+	text := line
+	if action != "" {
+		body = append(body,
+			"If that was you, there is nothing to do. If it was not, open your profile and check what your account signs in with.")
+		text += "\n\nIf that was you, there is nothing to do. If it was not, check what your\naccount signs in with: " + url
+	}
+	return mail{
+		To: *user.Email, Subject: heading, Heading: heading, Body: body,
+		Action: action, URL: url, Text: text,
+	}, true
+}

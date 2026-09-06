@@ -136,6 +136,8 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 			"That provider is not connected to this account.")
 	default:
 		s.log.Info("provider disconnected", "user", user.ID, "provider", provider)
+		s.alert(user, "A sign-in provider was disconnected",
+			providerLabel(provider)+" can no longer sign in to your WattRoom account.")
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

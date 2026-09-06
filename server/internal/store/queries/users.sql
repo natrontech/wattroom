@@ -47,6 +47,13 @@ set email_pending = $2, email_verify_hash = $3, email_verify_expires = $4
 where id = $1
 returning *;
 
+-- name: UserByEmailVerifyHash :one
+-- A read-only peek at the row a confirmation link is about to promote, so the
+-- address being replaced can be told it is being replaced (#840). The
+-- verification itself is still VerifyEmail's single-use update; this only
+-- answers "whose link is this, and what address does the account hold now".
+select * from users where email_verify_hash = $1 and email_verify_expires > now();
+
 -- name: VerifyEmail :one
 -- Single use and time-bounded: the row that matches is also the row that
 -- clears the token, so a replayed link finds nothing.

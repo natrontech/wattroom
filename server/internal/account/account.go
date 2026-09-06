@@ -27,15 +27,27 @@ type Sessions interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
+// Alerter is what account needs from notify: the receipt for a purge (#840,
+// ADR-0030). Absent — no mail capability on this server — the deletion simply
+// goes unannounced, the same capability gating the rest of the app uses.
+type Alerter interface {
+	AccountDeleted(user db.User)
+}
+
 type Service struct {
 	store    *store.Store
 	sessions Sessions
 	log      *slog.Logger
+	alerter  Alerter
 }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
 	return &Service{store: st, sessions: sessions, log: log}
 }
+
+// SetAlerter wires the notify capability in after construction, the shape
+// auth.SetMailer already uses.
+func (s *Service) SetAlerter(a Alerter) { s.alerter = a }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me/export", s.handleExport)
@@ -136,5 +148,12 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	// Log the fact, never the identity details: the account is gone.
 	s.log.Info("account deleted", "user", store.UUIDString(user.ID))
+	// The receipt goes to the address on the row read before the purge — after
+	// it there is no row, and the mail would have no recipient. Fire-and-forget
+	// inside notify, so a mail provider cannot fail a deletion that already
+	// committed.
+	if s.alerter != nil {
+		s.alerter.AccountDeleted(user)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

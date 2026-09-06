@@ -42,6 +42,8 @@ const emailResendAfter = 2 * time.Minute
 // refuses the field (capability gating, .claude/rules/ux.md).
 type Mailer interface {
 	SendEmailVerification(ctx context.Context, to, link string) error
+	// AccountAlert is the security alarm (#840); alerts.go is the only caller.
+	AccountAlert(user db.User, heading, line string)
 }
 
 // SetMailer wires the notify capability in after construction.
@@ -150,6 +152,11 @@ func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Whose link is this, and what address does the account hold right now?
+	// Read it before the promotion: afterwards the old address is gone, and
+	// the rider who most needs to hear that it moved is the one sitting at it.
+	previous, previousErr := s.store.Queries.UserByEmailVerifyHash(r.Context(), hash(token))
+
 	user, err := s.store.Queries.VerifyEmail(r.Context(), hash(token))
 	switch {
 	case err == nil:
@@ -176,6 +183,12 @@ func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	address := ""
 	if user.Email != nil {
 		address = *user.Email
+	}
+	// Silent unless the account already held a verified address — a first
+	// confirmation replaces nothing, and there is nobody to tell.
+	if previousErr == nil {
+		s.alert(previous, "The recovery address on your account changed",
+			"Your WattRoom account now uses "+address+" to get you back in if you ever lose the way you sign in. This address no longer does.")
 	}
 	httpx.WritePage(w, http.StatusOK, "Address confirmed",
 		"<h1>Confirmed</h1><p><strong>"+html.EscapeString(address)+"</strong> is now the address on your WattRoom account.</p>"+
