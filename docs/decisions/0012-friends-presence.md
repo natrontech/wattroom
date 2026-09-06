@@ -84,3 +84,28 @@ insert. Remove the friend and the channel closes with it.
   business (client-side), never data about you held by the server.
 - Transport is plain REST + polling; a DM is a note between rides, not a
   live wire. If DMs ever grow real-time needs, that is a new decision.
+
+## Amendment — a dismissed request tells the requester (2026-09-06, #876)
+
+The original decision had the addressee dismiss in silence: the request
+simply stopped being pending, and the requester was left watching a row
+that would never move. In practice that reads as a broken feature, not as
+discretion — the rider cannot tell a dismissal from a request that never
+arrived, so they wait, and eventually ask again. **A dismissal now reaches
+the requester**, the way a request and an acceptance do: cue, toast, or an
+OS notification on a hidden tab.
+
+- The wording is the answer, not a verdict: "<name> dismissed your friend
+  request". Said once, and never shown as a row — there is nothing left to
+  act on.
+- **The dismisser is not exposed further.** The requester learns that their
+  ask was answered, which they could already infer by asking again; they
+  learn nothing about the other rider, and nothing reaches anyone else.
+- Storage is a `friend_declines` tombstone (requester, addressee, time),
+  written when the addressee deletes a *pending* request they did not
+  send. Cancelling your own ask and unfriending stay silent, exactly as
+  before — the same DELETE, three different meanings, decided by who owns
+  the pending row.
+- The tombstone is cleared whenever the two of them form a request or a
+  friendship again, in either direction, so an old dismissal cannot
+  resurface on a device that had never heard it.

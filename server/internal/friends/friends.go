@@ -24,9 +24,12 @@ type UserSource interface {
 }
 
 // PresenceSource answers "which room is this user connected to right now" —
-// defined here where it is consumed, implemented by the hub.
+// defined here where it is consumed, implemented by the hub. PresenceChanged
+// pings every lobby socket: a request, an acceptance or a removal reaches the
+// other side now rather than on their next fallback poll (#876).
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
+	PresenceChanged()
 }
 
 type Service struct {
@@ -56,6 +59,9 @@ type friendJSON struct {
 	TotalXp      int64   `json:"totalXp"`
 	// accepted | pending_in (they asked me) | pending_out (I asked them)
 	Status string `json:"status"`
+	// When the row was created, unix ms — the client announces a request or an
+	// acceptance once per row, in one tab, off this (#876).
+	At int64 `json:"at"`
 	// Presence — accepted friends only (ADR-0012). Online means "app open"
 	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
 	// some room, and the room is named ONLY when the viewer is a member of it.
@@ -63,6 +69,14 @@ type friendJSON struct {
 	InRoom   bool   `json:"inRoom,omitempty"`
 	Room     string `json:"room,omitempty"` // slug
 	RoomName string `json:"roomName,omitempty"`
+}
+
+// declineJSON is an ask that was dismissed, on its way to the one rider it
+// concerns. No status, no row in the panel — it is a sentence, said once.
+type declineJSON struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	At   int64  `json:"at"`
 }
 
 // handleList is the whole panel in one GET: friends with presence, plus my
@@ -135,7 +149,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		entry := friendJSON{
 			ID: store.UUIDString(row.ID), Name: row.DisplayName,
 			AvatarURL: row.AvatarUrl, AvatarPreset: row.AvatarPreset,
-			TotalXp: row.TotalXp,
+			TotalXp: row.TotalXp, At: row.CreatedAt.Time.UnixMilli(),
 		}
 		switch {
 		case row.Status == "accepted":
@@ -161,7 +175,25 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		friends = append(friends, entry)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"friends": friends, "code": me.FriendCode})
+	// What became of the asks that are no longer here (#876). Mine alone —
+	// the rider who dismissed one never sees that they did.
+	declineRows, err := s.store.Queries.ListFriendDeclines(r.Context(), me.ID)
+	if err != nil {
+		s.log.Error("list friend declines", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+		return
+	}
+	declines := make([]declineJSON, 0, len(declineRows))
+	for _, row := range declineRows {
+		declines = append(declines, declineJSON{
+			ID: store.UUIDString(row.ID), Name: row.DisplayName,
+			At: row.DeclinedAt.Time.UnixMilli(),
+		})
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"friends": friends, "code": me.FriendCode, "declines": declines,
+	})
 }
 
 func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +262,8 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The request could not be sent.")
 		return
 	}
+	s.clearDeclines(r, me.ID, target)
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -251,6 +285,8 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No pending request from them.")
 		return
 	}
+	s.clearDeclines(r, me.ID, target)
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -259,7 +295,16 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// Cancel, dismiss, or unfriend — the same silent act (ADR-0012).
+	// Which of the three this is decides whether anyone hears about it
+	// (ADR-0012 amendment, #876): dismissing THEIR pending ask leaves a
+	// tombstone so they learn the answer. Cancelling my own ask and
+	// unfriending stay silent, as they always were. Read before the delete —
+	// afterwards there is nothing left to tell them apart.
+	row, err := s.store.Queries.GetFriendship(r.Context(), db.GetFriendshipParams{
+		RequesterID: me.ID, AddresseeID: target,
+	})
+	dismissal := err == nil && row.Status == "pending" && row.AddresseeID == me.ID
+
 	n, err := s.store.Queries.DeleteFriendship(r.Context(), db.DeleteFriendshipParams{
 		RequesterID: me.ID, AddresseeID: target,
 	})
@@ -272,7 +317,27 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "You are not connected to them.")
 		return
 	}
+	if dismissal {
+		if err := s.store.Queries.NoteFriendDecline(r.Context(), db.NoteFriendDeclineParams{
+			RequesterID: target, AddresseeID: me.ID,
+		}); err != nil {
+			// The dismissal itself stood; only the telling failed.
+			s.log.Error("note friend decline", "err", err, "user", store.UUIDString(me.ID))
+		}
+	}
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// clearDeclines wipes the pair's tombstone once they are talking again — an
+// ask, or an acceptance, in either direction. An old dismissal must not
+// resurface on a device that had never heard it.
+func (s *Service) clearDeclines(r *http.Request, a, b pgtype.UUID) {
+	if err := s.store.Queries.ClearFriendDeclines(r.Context(), db.ClearFriendDeclinesParams{
+		RequesterID: a, AddresseeID: b,
+	}); err != nil {
+		s.log.Error("clear friend declines", "err", err, "user", store.UUIDString(a))
+	}
 }
 
 // pair does the boundary work every mutating handler shares: auth, a valid

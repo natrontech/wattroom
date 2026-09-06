@@ -71,6 +71,12 @@ type DmReaction struct {
 	Emoji     string
 }
 
+type FriendDecline struct {
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+	DeclinedAt  pgtype.Timestamptz
+}
+
 type Friendship struct {
 	RequesterID pgtype.UUID
 	AddresseeID pgtype.UUID
