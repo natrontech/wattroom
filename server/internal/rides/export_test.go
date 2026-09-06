@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/muktihari/fit/decoder"
@@ -25,13 +26,21 @@ func exportRequest(t *testing.T, h *harness, user, id string) *httptest.Response
 
 func TestExportOwnerGetsValidFIT(t *testing.T) {
 	h := setup(t)
-	id := h.save(t, "alice", 120, 200)
+	body := strings.ReplaceAll(rideBody(120, 200), `{"watts":200,"cadence":90}`, `{"watts":200,"cadence":90,"hr":150}`)
+	status, result := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, result)
+	}
+	id := result["id"].(string)
 	w := exportRequest(t, h, "alice", id)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
 	if got := w.Header().Get("Content-Type"); got != "application/vnd.ant.fit" {
 		t.Fatalf("content type = %q", got)
+	}
+	if w.Header().Get("Content-Disposition") == "" || w.Header().Get("Cache-Control") != "private, no-store" {
+		t.Fatalf("download headers missing: %v", w.Header())
 	}
 	data, err := io.ReadAll(w.Body)
 	if err != nil {
@@ -42,14 +51,20 @@ func TestExportOwnerGetsValidFIT(t *testing.T) {
 		t.Fatalf("decode FIT: %v", err)
 	}
 	records := filedef.NewActivity(fit.Messages...).Records
-	if len(records) != 120 || records[0].Power != 200 || records[0].Cadence != 90 {
-		t.Fatalf("records = %d, first = %+v", len(records), records[0])
+	if len(records) != 120 {
+		t.Fatalf("records = %d", len(records))
+	}
+	if records[0].Power != 200 || records[0].Cadence != 90 || records[0].HeartRate != 150 {
+		t.Fatalf("first record = %+v", records[0])
 	}
 }
 
 func TestExportAuthorizationAndIDs(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
+	if status, _ := call(t, h.mux, "alice", http.MethodPatch, "/api/rides/"+id, `{"sharedWithFriends":true}`); status != http.StatusOK {
+		t.Fatalf("share: %d", status)
+	}
 	if w := exportRequest(t, h, "", id); w.Code != http.StatusUnauthorized {
 		t.Errorf("anonymous = %d", w.Code)
 	}
