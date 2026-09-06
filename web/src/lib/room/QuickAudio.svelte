@@ -6,7 +6,7 @@
 	// cog is a navigation out of the room onto a page that also holds FTP.
 	//
 	// A shortcut, never the only way (ux.md): /profile keeps the full page,
-	// with the camera picker, push-to-talk's explanation and the rest. A modal
+	// with push-to-talk's explanation and the rest. A modal
 	// rather than a popover because the targets have to survive being tapped
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
 	import Sliders from '@lucide/svelte/icons/sliders';
@@ -45,6 +45,7 @@
 	<Modal
 		label="Sound — the mix and your gate"
 		onclose={() => (soundPanel.open = false)}
+		class="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto"
 	>
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">
@@ -106,7 +107,7 @@
 		</div>
 
 		<div class="border-ink/5 mt-4 border-t pt-4">
-			<div class="grid gap-3 {voice.canPickOutput ? 'sm:grid-cols-2' : ''}">
+			<div class="grid gap-3 sm:grid-cols-2">
 				<label class="block">
 					<span class="eyebrow">microphone</span>
 					<div class="mt-1">
@@ -115,6 +116,20 @@
 							value={voice.micId}
 							options={deviceOptions(voice.mics, 'Microphone')}
 							onchange={(id) => void voice.setMic(id)}
+						/>
+					</div>
+				</label>
+				<!-- The camera sits here too (#945): the you-panel puts its button
+				     next to the mic's, so the device it opens belongs next to the
+				     mic's device, not one page away. -->
+				<label class="block">
+					<span class="eyebrow">camera</span>
+					<div class="mt-1">
+						<Select
+							label="Camera"
+							value={voice.camId}
+							options={deviceOptions(voice.cams, 'Camera')}
+							onchange={(id) => void voice.setCam(id)}
 						/>
 					</div>
 				</label>
