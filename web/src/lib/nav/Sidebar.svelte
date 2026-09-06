@@ -305,7 +305,7 @@
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
 						<ul
-							class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5"
+							class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5"
 						>
 							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
