@@ -8,6 +8,7 @@
  * know accounts exist.
  */
 import { api } from '$lib/api';
+import { people } from '$lib/people.svelte';
 
 export interface Me {
 	id: string;
@@ -49,6 +50,7 @@ function createAccountStore() {
 				api<{ providers?: string[] }>('/api/auth/providers'),
 			]);
 			me = meRes.ok ? meRes.data : null;
+			if (me) people.learn([me]);
 			// Any failure (404 = server running without a database) stays hidden.
 			providers = provRes.ok ? (provRes.data.providers ?? []) : [];
 		} finally {

@@ -3,6 +3,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
@@ -45,6 +46,8 @@
 		const res = await api<Room>(`/api/rooms/${current}`);
 		if (res.ok) {
 			room = res.data;
+			// The room's faces, for every surface that has only an id (#807).
+			people.learn(res.data.members ?? []);
 			error = null;
 		} else if (room?.slug !== current) {
 			// Only the FIRST load of a room may fail loudly. Once the shell is

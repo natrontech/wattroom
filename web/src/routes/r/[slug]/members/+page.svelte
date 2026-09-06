@@ -9,6 +9,7 @@
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
+	import { statusOfRider } from '$lib/status';
 	import { wkg } from '$lib/format';
 	import {
 		contextMenu,
@@ -186,6 +187,8 @@
 						avatarUrl={member.avatarUrl}
 						preset={member.avatarPreset}
 						xp={member.totalXp}
+						status={here ? statusOfRider(here) : 'offline'}
+						ring="var(--color-surface-raised)"
 						size={32}
 					/>
 				</a>

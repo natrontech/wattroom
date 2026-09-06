@@ -9,7 +9,6 @@
 	// loop in createDmThread.
 	import { page } from '$app/state';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { createDmThread } from '$lib/dm/thread.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -17,16 +16,15 @@
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { presence } from '$lib/presence.svelte';
+	import { roomOf, statusOf } from '$lib/status';
 	import { ChevronLeft, Radio } from '@lucide/svelte';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
 	const peerName = $derived(head?.peerName ?? dm.open?.name ?? 'them');
 	// Where they are, if anywhere — the one thing the old drawer could never say.
-	const inRoom = $derived(
-		presence.rooms.find((room) => room.riders?.includes(peerName)),
-	);
-	const riding = $derived(!!inRoom?.riding?.includes(peerName));
+	const inRoom = $derived(roomOf(presence.rooms, peerName));
+	const status = $derived(statusOf(presence.rooms, peerName));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	$effect(() => {
@@ -77,26 +75,14 @@
 		class="text-muted hover:text-ink -ml-2 rounded p-1 md:hidden"
 		aria-label="all messages"><ChevronLeft size={18} /></a
 	>
-	<span class="relative shrink-0">
-		<Avatar
-			name={peerName}
-			avatarUrl={head?.peerAvatarUrl}
-			preset={head?.peerAvatarPreset}
-			xp={head?.peerTotalXp}
-			size={28}
-		/>
-		{#if riding}
-			<span
-				class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
-			>
-				<RidingBars size={8} />
-			</span>
-		{:else if inRoom}
-			<span
-				class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full ring-2"
-			></span>
-		{/if}
-	</span>
+	<Avatar
+		name={peerName}
+		avatarUrl={head?.peerAvatarUrl}
+		preset={head?.peerAvatarPreset}
+		xp={head?.peerTotalXp}
+		{status}
+		size={28}
+	/>
 	<span class="min-w-0">
 		<a
 			href="/u/{peerId}"
@@ -104,7 +90,7 @@
 			title="{peerName}'s page">{peerName}</a
 		>
 		<span class="text-muted block truncate text-[11px]">
-			{#if riding}riding in {inRoom?.name}{:else if inRoom}in {inRoom.name}{:else}not
+			{#if status === 'riding'}riding in {inRoom?.name}{:else if inRoom}in {inRoom.name}{:else}not
 				in a room{/if}
 		</span>
 	</span>
@@ -122,7 +108,13 @@
 >
 	{#snippet emptyState()}
 		<div class="mb-4 text-center">
-			<Avatar name={peerName} size={48} />
+			<Avatar
+				name={peerName}
+				avatarUrl={head?.peerAvatarUrl}
+				preset={head?.peerAvatarPreset}
+				xp={head?.peerTotalXp}
+				size={48}
+			/>
 			<p class="font-display mt-2 text-base font-bold">{peerName}</p>
 			<p class="text-muted mt-0.5 text-xs">
 				Just you two — messages stay between friends, last 500 kept.

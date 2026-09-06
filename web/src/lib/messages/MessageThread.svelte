@@ -16,6 +16,9 @@
 	} from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { people } from '$lib/people.svelte';
+	import { presence } from '$lib/presence.svelte';
+	import { statusOf } from '$lib/status';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
@@ -219,7 +222,20 @@
 							{@attach contextMenu(() => messageMenu(message))}
 						>
 							<span class="w-7 shrink-0">
-								{#if !grouped}<Avatar name={message.from} size={28} />{/if}
+								{#if !grouped}
+									<!-- The person, not their initial (#807): the face the
+									     room's column shows, the level ring the profile
+									     shows, and where they are right now. -->
+									{@const face = people.face(message.fromId)}
+									<Avatar
+										name={message.from}
+										avatarUrl={face?.avatarUrl}
+										preset={face?.avatarPreset}
+										xp={face?.totalXp}
+										status={statusOf(presence.rooms, message.from)}
+										size={28}
+									/>
+								{/if}
 							</span>
 							<span class="min-w-0 flex-1">
 								{#if !grouped}

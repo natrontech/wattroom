@@ -10,6 +10,8 @@
 	// with a DM's (#672); this wrapper supplies what only a room has: events
 	// on the timeline, reactions, and queuing a link to the jukebox.
 	import { ChevronLeft, Headphones, Radio, Users } from '@lucide/svelte';
+	import { api } from '$lib/api';
+	import { people, type Face } from '$lib/people.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import { uploadImage } from '$lib/chat/upload';
@@ -39,6 +41,11 @@
 			outside = null;
 			return;
 		}
+		// Read from outside there is no room layout to have fetched the
+		// members, and a chat line carries no face (#807). One GET, once.
+		void api<{ members?: Face[] }>(`/api/rooms/${slug}`).then((res) => {
+			if (res.ok) people.learn(res.data.members ?? []);
+		});
 		const thread = createOutsideThread(slug);
 		thread.start();
 		outside = thread;

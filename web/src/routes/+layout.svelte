@@ -264,6 +264,8 @@
 					handedOff={av.handedOff}
 					voiceError={av.error}
 					onTakeOver={() => av.takeOver()}
+					away={av.away}
+					onAway={(next) => roomConnection.current?.setAway(next)}
 				/>
 			{:else}
 				<Sidebar

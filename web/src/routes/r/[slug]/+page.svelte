@@ -21,7 +21,6 @@
 		Focus,
 		CalendarClock,
 		Columns2,
-		Coffee,
 		MonitorPlay,
 		MonitorUp,
 		PanelRight,
@@ -228,6 +227,7 @@
 	<RiderTile
 		{rider}
 		phase={room.phase}
+		onPoke={(id) => room.poke(id)}
 		videoKey={room.videoOf(rider.id) ?? 0}
 		videoAttach={room.videoOf(rider.id)
 			? (node) => room.attachVideo(rider.id, node)
@@ -239,12 +239,9 @@
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
-		<button
-			onclick={() => room.setAway(!room.away)}
-			aria-pressed={room.away}
-			class="btn {room.away ? 'btn-primary' : 'btn-secondary'}"
-			><Coffee size={14} /> {room.away ? "I'm back" : 'Away'}</button
-		>
+		<!-- Away moved to the you-panel (#807): it is a statement about you,
+		     like the mic and the camera, and those are pinned bottom-left in
+		     every place rather than only in the Lounge's header. -->
 		{#if room.stageSources.length > 0}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"

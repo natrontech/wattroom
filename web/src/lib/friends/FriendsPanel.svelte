@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { Copy, MessageCircle, Radio, UserX } from '@lucide/svelte';
 	import { api } from '$lib/api';
@@ -13,6 +12,7 @@
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
+	import { people } from '$lib/people.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
@@ -44,6 +44,7 @@
 		error = null;
 		friends = res.data.friends;
 		myCode = res.data.code;
+		people.learn(res.data.friends);
 	}
 
 	async function addByCode(event: SubmitEvent) {
@@ -161,31 +162,22 @@
 						title={MENU_HINT}
 						{@attach contextMenu(() => friendMenu(friend))}
 					>
-						<!-- Slack's green dot (#251): online = app open (the lobby
-						     socket), with the room named only for shared members. -->
-						<span class="relative shrink-0">
-							<Avatar
-								name={friend.name}
-								avatarUrl={friend.avatarUrl}
-								preset={friend.avatarPreset}
-								xp={friend.totalXp}
-								size={30}
-							/>
-							{#if friend.inRoom}
-								<span
-									class="bg-surface-raised ring-surface-raised absolute -top-1 -left-1 rounded-full px-0.5 py-px ring-2"
-								>
-									<RidingBars size={8} />
-								</span>
-							{:else}
-								<span
-									class="border-surface-raised absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 {friend.online
-										? 'bg-z4'
-										: 'bg-muted/40'}"
-									title={friend.online ? 'online' : 'offline'}
-								></span>
-							{/if}
-						</span>
+						<!-- Slack's green dot (#251), now the avatar's own (#807):
+						     online = app open (the lobby socket), with the room
+						     named only for shared members. -->
+						<Avatar
+							name={friend.name}
+							avatarUrl={friend.avatarUrl}
+							preset={friend.avatarPreset}
+							xp={friend.totalXp}
+							status={friend.inRoom
+								? 'riding'
+								: friend.online
+									? 'online'
+									: 'offline'}
+							ring="var(--color-surface-raised)"
+							size={30}
+						/>
 						<span class="min-w-0">
 							<span class="flex items-center gap-1.5 text-sm font-medium">
 								<!-- Their page (ADR-0024): shared rides, medals, the month. -->
