@@ -17,11 +17,19 @@ import (
 )
 
 type fakeMailer struct {
-	mu    sync.Mutex
-	to    string
-	link  string
-	calls int
-	err   error
+	mu     sync.Mutex
+	to     string
+	link   string
+	calls  int
+	err    error
+	alerts []alert
+}
+
+// alert is one AccountAlert the code under test would have sent (#840).
+type alert struct {
+	to      string
+	heading string
+	line    string
 }
 
 func (m *fakeMailer) SendEmailVerification(_ context.Context, to, link string) error {
@@ -30,6 +38,24 @@ func (m *fakeMailer) SendEmailVerification(_ context.Context, to, link string) e
 	m.calls++
 	m.to, m.link = to, link
 	return m.err
+}
+
+func (m *fakeMailer) AccountAlert(user db.User, heading, line string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// The verified-address rule lives in notify, and the fake keeps it so a
+	// test cannot pass on an alert production would never send.
+	if user.Email == nil || !user.EmailVerifiedAt.Valid {
+		return
+	}
+	m.alerts = append(m.alerts, alert{to: *user.Email, heading: heading, line: line})
+}
+
+func (m *fakeMailer) sent(t *testing.T) []alert {
+	t.Helper()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]alert(nil), m.alerts...)
 }
 
 // token pulls the raw token back out of the link the mail would have carried,

@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -279,5 +281,58 @@ func TestMailWithoutLeadRendersNoButton(t *testing.T) {
 	}
 	if strings.Contains(out, "border-radius:9px") {
 		t.Fatal("a mail with no action still rendered a button")
+	}
+}
+
+func verifiedUser(address string) db.User {
+	return db.User{Email: &address, EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}
+}
+
+// The security class is unconditional (ADR-0030) — no unsubscribe header, no
+// setting — but it is not unaddressed: an account with no verified address
+// hears nothing, because an unverified one is someone's typo until proven
+// otherwise.
+func TestAccountAlertOnlyReachesAVerifiedAddress(t *testing.T) {
+	pending := "typo@example.test"
+	for _, tc := range []struct {
+		name string
+		user db.User
+		want bool
+	}{
+		{"verified", verifiedUser("rider@example.test"), true},
+		{"no address at all", db.User{}, false},
+		{"address still unverified", db.User{Email: &pending}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, ok := alertMail(tc.user, "A passkey was added to your account", "line", "Check your account", "https://wattroom.example/profile")
+			if ok != tc.want {
+				t.Fatalf("sendable = %v, want %v", ok, tc.want)
+			}
+			if !ok {
+				return
+			}
+			if m.To != *tc.user.Email {
+				t.Fatalf("addressed to %q, want %q", m.To, *tc.user.Email)
+			}
+			if m.Unsub != "" {
+				t.Fatal("a security alert carried an unsubscribe link — the alarm has no off switch")
+			}
+		})
+	}
+}
+
+// The purge receipt is the one alert with nothing to check afterwards, so it
+// carries no button and none of the "if that was not you" reassurance that
+// assumes an account still exists.
+func TestAccountDeletedReceiptHasNothingToPress(t *testing.T) {
+	m, ok := alertMail(verifiedUser("rider@example.test"), "Your WattRoom account was deleted", "It is gone.", "", "")
+	if !ok {
+		t.Fatal("no receipt for a verified address")
+	}
+	if m.Action != "" || m.URL != "" {
+		t.Fatalf("receipt offered %q -> %q", m.Action, m.URL)
+	}
+	if len(m.Body) != 1 {
+		t.Fatalf("receipt body = %q, want just the line", m.Body)
 	}
 }

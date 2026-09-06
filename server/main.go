@@ -89,7 +89,8 @@ func main() {
 	if st != nil {
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
 		authService.Register(mux)
-		account.New(st, authService, log).Register(mux)
+		accountService := account.New(st, authService, log)
+		accountService.Register(mux)
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
 		uploader := strava.New(st, log)
 		if uploader != nil {
@@ -104,6 +105,9 @@ func main() {
 			notifier.Register(mux)
 			roomsService.SetNotifier(notifier)
 			authService.SetMailer(notifier)
+			// The security alarm (#840): account events reach the rider's
+			// verified address whether or not they opted into anything.
+			accountService.SetAlerter(notifier)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
