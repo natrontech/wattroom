@@ -36,6 +36,7 @@ type Members interface {
 type Live interface {
 	PostChat(slug string, line protocol.ChatLine)
 	PostReaction(slug string, change protocol.ChatReactionCount)
+	PostChatEdit(slug string, edit protocol.ChatEdit)
 }
 
 // maxChatRunes is the cap the socket path and the client's maxlength agree on.
@@ -59,6 +60,7 @@ func (s *Service) SetLive(l Live) { s.live = l }
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rooms/{slug}/chat", s.handleBacklog)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat", s.handlePost)
+	mux.HandleFunc("PATCH /api/rooms/{slug}/chat/{id}", s.handleEdit)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat/reactions", s.handleReact)
 	mux.HandleFunc("POST /api/rooms/{slug}/read", s.handleRead)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat/images", s.handleImageUpload)
@@ -172,6 +174,8 @@ type messageJSON struct {
 	// A pasted image's blob id (#279) — rendered from the images endpoint.
 	ImageID string `json:"imageId,omitempty"`
 	At      int64  `json:"at"`
+	// When the author last rewrote it (#865); absent for a line as sent.
+	EditedAt int64 `json:"editedAt,omitempty"`
 	// emoji → count, plus which the viewer pressed — same shape the live
 	// path builds client-side, so the panel renders one way.
 	Reactions map[string]int `json:"reactions,omitempty"`
@@ -288,6 +292,7 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 			Text:      row.Text,
 			ImageID:   store.UUIDString(row.ImageID), // "" when the line has none
 			At:        row.CreatedAt.Time.UnixMilli(),
+			EditedAt:  store.Millis(row.EditedAt),
 			Reactions: counts[id], Mine: mine[id],
 		})
 	}
@@ -358,6 +363,82 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 	// Saying something is reading up to it.
 	s.markRead(r.Context(), room, me)
 	httpx.WriteJSON(w, http.StatusOK, line)
+}
+
+// handleEdit rewrites a line its author already sent (#865). Sender only —
+// editing someone else's words is a moderator power this deliberately is
+// not — and only the text: an attached image stays where it is, so clearing
+// the words of an image line leaves the picture rather than emptying it.
+//
+// HTTP for both halves of the room: a member reading from /messages and a
+// rider standing in the lounge call the same endpoint, and the hub carries
+// the new text to whoever is connected. Unlike a reaction there is no socket
+// path, because an edit is a once-in-a-while repair, not a mid-ride input.
+func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
+	room, me, ok := s.member(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+		return
+	}
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	text := strings.TrimSpace(req.Text)
+	if utf8.RuneCountInString(text) > maxChatRunes {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"That message is too long — 500 characters is the cap.", "text")
+		return
+	}
+	msg, err := s.store.Queries.GetChatMessage(r.Context(), db.GetChatMessageParams{ID: id, RoomID: room.ID})
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.log.Error("get chat message", "err", err, "room", room.Slug)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be edited. Try again.")
+			return
+		}
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+		return
+	}
+	if msg.UserID != me.ID {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only edit your own messages.")
+		return
+	}
+	// A line with a picture may lose its words; one without would become
+	// nothing at all, and deleting is a different button than editing.
+	if text == "" && !msg.ImageID.Valid {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"An edited message still has to say something.", "text")
+		return
+	}
+	edited, err := s.store.Queries.EditChatMessage(r.Context(), db.EditChatMessageParams{
+		ID: id, RoomID: room.ID, Text: text, UserID: me.ID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Pruned, or moved out from under the read above — either way it
+			// is no longer a line in this room.
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+			return
+		}
+		s.log.Error("edit chat message", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be edited. Try again.")
+		return
+	}
+	change := protocol.ChatEdit{
+		MessageID: store.UUIDString(id), Text: text, EditedAt: store.Millis(edited),
+	}
+	if s.live != nil {
+		s.live.PostChatEdit(room.Slug, change)
+	}
+	httpx.WriteJSON(w, http.StatusOK, change)
 }
 
 // handleReact toggles the caller's reaction over HTTP (#468) — the socket's

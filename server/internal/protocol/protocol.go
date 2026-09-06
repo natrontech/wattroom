@@ -127,6 +127,20 @@ type ChatLine struct {
 	// matching GET. A line may be image-only (empty text).
 	ImageID string `json:"imageId,omitempty"`
 	At      int64  `json:"at"` // server millis, for ordering only
+	// When the author last rewrote this line (#865); 0 for a line as sent.
+	// The client renders "edited" off this, so it is a fact about the line
+	// and not a separate event to remember.
+	EditedAt int64 `json:"editedAt,omitempty"`
+}
+
+// ChatEdit is one already-delivered line rewritten by its author (#865).
+// The room hears it the way it hears a reaction total: the new text lands
+// on the line already in everyone's log, rather than arriving as a second
+// message that would push the conversation along.
+type ChatEdit struct {
+	MessageID string `json:"messageId"`
+	Text      string `json:"text"`
+	EditedAt  int64  `json:"editedAt"`
 }
 
 // ChatID attaches the persisted identity to a line broadcast on an earlier
@@ -360,6 +374,8 @@ type ServerTick struct {
 	// ephemeral means ephemeral.
 	Chat          []ChatLine          `json:"chat,omitempty"`
 	ChatReactions []ChatReactionCount `json:"chatReactions,omitempty"`
+	// Lines rewritten this second (#865), drained like the reactions above.
+	ChatEdits []ChatEdit `json:"chatEdits,omitempty"`
 	// Persisted ids for lines already broadcast (#219) — the async save's
 	// follow-up, unlocking reactions on them.
 	ChatIDs []ChatID `json:"chatIds,omitempty"`

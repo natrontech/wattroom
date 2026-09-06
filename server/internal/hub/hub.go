@@ -258,6 +258,7 @@ type room struct {
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
 	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
 	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
+	edits   []protocol.ChatEdit              // this second's rewritten lines (#865)
 	chatIDs []protocol.ChatID                // ids the async save assigned (#219)
 	events  eventLog                         // what the room did, drained each tick (#321)
 	session *session
@@ -710,6 +711,16 @@ func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
 	}
 }
 
+// PostChatEdit is PostChat for a line its author rewrote (#865). An edit only
+// ever reaches riders who are holding the room open; anyone else reads the
+// edited text straight out of the backlog when they arrive, so an empty room
+// has nothing to be told.
+func (h *Hub) PostChatEdit(slug string, edit protocol.ChatEdit) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.chatEdited(edit)
+	}
+}
+
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue
 // (#627) — a rider pressed "queue" from the playlists panel, which is a plain
 // HTTP call like PostChat, not a WS command. Returns false when nobody is
@@ -1124,6 +1135,13 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		} else {
 			rm.reacts = nil
 		}
+		editsNow := rm.edits
+		if len(editsNow) > 64 {
+			editsNow = rm.edits[:64]
+			rm.edits = append([]protocol.ChatEdit(nil), rm.edits[64:]...)
+		} else {
+			rm.edits = nil
+		}
 		idsNow := rm.chatIDs
 		rm.chatIDs = nil
 		// Resolved before the drain so a transition's own line rides the tick
@@ -1140,6 +1158,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			Cheers:        rm.cheers,
 			Chat:          chatNow,
 			ChatReactions: reactsNow,
+			ChatEdits:     editsNow,
 			ChatIDs:       idsNow,
 			Events:        eventsNow,
 			Sprint:        sprintNow,
@@ -1398,6 +1417,14 @@ func (rm *room) reactionChanged(count protocol.ChatReactionCount) {
 	defer rm.mu.Unlock()
 	if len(rm.reacts) < 256 {
 		rm.reacts = append(rm.reacts, count)
+	}
+}
+
+func (rm *room) chatEdited(edit protocol.ChatEdit) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.edits) < 256 {
+		rm.edits = append(rm.edits, edit)
 	}
 }
 
