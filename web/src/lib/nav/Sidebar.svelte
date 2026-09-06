@@ -162,12 +162,11 @@
 					     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
 				{@const subline = railSubline(room, open)}
-				<!-- The room carries no fill of its own: one filled surface in the
-				     sidebar at a time, and it's the row you're on. Which room is
-				     open is said by the display type, the open places list and the
-				     leave arrow — a tint under all three only muddies the row. -->
+				<!-- Two levels of the same wash, never one: the open room is a
+				     faint ground, the row you're on a stronger fill on top of it.
+				     Equal tints read as one slab and the selection disappears. -->
 				<li
-					class="rounded-md"
+					class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = places.map((place) => ({
 							label: place.label,
@@ -306,7 +305,7 @@
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
 						<ul
-							class="mt-0.5 mb-1 space-y-0.5"
+							class="mt-0.5 mb-1 ml-3 space-y-0.5 pl-2"
 						>
 							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
