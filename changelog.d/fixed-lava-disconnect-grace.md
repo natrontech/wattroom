@@ -1,0 +1,1 @@
+- Floor is Lava now gives disconnected riders the documented grace period before judging their missing power.
