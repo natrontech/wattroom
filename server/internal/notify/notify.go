@@ -114,14 +114,20 @@ profile. Turn them off: %s`,
 }
 
 func (s *Service) send(ctx context.Context, to, subject, text, unsub string) error {
-	payload, err := json.Marshal(map[string]any{
+	body := map[string]any{
 		"from": s.from, "to": []string{to}, "subject": subject, "text": text,
+	}
+	// Only bulk mail carries the header. A transactional mail — the address
+	// confirmation (#781) — has nothing to unsubscribe from, and pointing the
+	// one-click header at a link that does not apply is worse than omitting it.
+	if unsub != "" {
 		// RFC 8058 one-click: mail clients POST here, which our handler flips.
-		"headers": map[string]string{
+		body["headers"] = map[string]string{
 			"List-Unsubscribe":      "<" + unsub + ">",
 			"List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-		},
-	})
+		}
+	}
+	payload, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
@@ -187,4 +193,18 @@ func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = fmt.Fprintln(w, "Done — no more session emails. Turn them back on any time in your WattRoom profile.")
+}
+
+// SendEmailVerification puts the confirm link in front of a rider (#781).
+// Package auth owns the ceremony and calls this through its Mailer interface;
+// notify owns the transport and the words.
+func (s *Service) SendEmailVerification(ctx context.Context, to, link string) error {
+	body := fmt.Sprintf(`Confirm this address so WattRoom can get you back into your
+account if you ever lose the way you sign in:
+
+%s
+
+The link works once and expires in a day. If you did not add this address to
+a WattRoom account, ignore this — nothing happens until someone follows it.`, link)
+	return s.send(ctx, to, "Confirm your WattRoom email address", body, "")
 }

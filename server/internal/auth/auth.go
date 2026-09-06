@@ -58,14 +58,14 @@ type Service struct {
 	providers map[string]provider
 	// secure=false only for plain-http localhost; cookies are Secure otherwise.
 	secure bool
+	// The public origin, for OAuth callbacks and the emailed confirm link.
+	baseURL string
 	// Whether the server can send email (#117) — the profile hides the whole
-	// notifications section when it cannot.
-	mailAvailable bool
-	avEnabled     bool
+	// notifications section when it cannot, and email verification (#781) is
+	// absent rather than broken. SetMailer lives in email.go.
+	mailer    Mailer
+	avEnabled bool
 }
-
-// SetMailAvailable wires the notify capability in after construction.
-func (s *Service) SetMailAvailable(v bool) { s.mailAvailable = v }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
@@ -75,6 +75,7 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 		log:       log,
 		providers: providersFromEnv(baseURL),
 		secure:    secure,
+		baseURL:   baseURL,
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
@@ -93,6 +94,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/{provider}/callback", s.handleCallback)
 	mux.HandleFunc("POST /api/auth/synthetic", s.handleSynthetic)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+	// The emailed confirm link (#781): GET renders the button, POST verifies.
+	mux.HandleFunc("GET /api/auth/verify-email", s.handleVerifyEmailForm)
+	mux.HandleFunc("POST /api/auth/verify-email", s.handleVerifyEmail)
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
 	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
@@ -577,6 +581,14 @@ type meResponse struct {
 	Email         *string `json:"email,omitempty"`
 	NotifyPlanned bool    `json:"notifyPlanned"`
 	MailAvailable bool    `json:"mailAvailable,omitempty"`
+	// The address as a recovery attribute (#781, ADR-0029). EmailVerified is
+	// the only one of the three that means "this rider can be reached";
+	// EmailPending is an address awaiting its link, and EmailRequired marks an
+	// account onboarded with the requirement — new accounts must confirm,
+	// older ones are asked.
+	EmailVerified bool    `json:"emailVerified"`
+	EmailPending  *string `json:"emailPending,omitempty"`
+	EmailRequired bool    `json:"emailRequired"`
 	// Appearance follows the account (#326). Nil: no device has chosen yet;
 	// "": the default, chosen. The client tells the two apart.
 	AccentPalette *string `json:"accentPalette"`
@@ -633,25 +645,32 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if req.StravaUpload != nil {
 		stravaUpload = *req.StravaUpload
 	}
-	email := user.Email
-	if req.Email != nil {
-		switch e := strings.TrimSpace(*req.Email); {
-		case e == "":
-			email = nil
-		case len(e) > 254 || !validEmail(e):
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"That does not look like an email address.", "email")
+	// The address is a two-step ceremony now (#781): this stores a pending
+	// address and mails a link, and only the confirm handler moves it across.
+	// So the write below leaves `email` exactly as it found it, unless the
+	// rider is clearing it.
+	clearing := req.Email != nil && strings.TrimSpace(*req.Email) == ""
+	current := user
+	if req.Email != nil && !clearing {
+		var ok bool
+		if current, ok = s.emailUpdate(r.Context(), w, user, *req.Email); !ok {
 			return
-		default:
-			email = &e
 		}
+	}
+	email := current.Email
+	if clearing {
+		email = nil
 	}
 	notify := user.NotifyPlanned
 	if req.NotifyPlanned != nil {
 		notify = *req.NotifyPlanned
 	}
-	if email == nil {
-		notify = false // no address, nothing to send to
+	// Nothing to send to and nothing on the way: the opt-in cannot stand. A
+	// pending address keeps it, so ticking the box while confirming does not
+	// silently untick itself — ListRoomNotifyTargets skips a null address
+	// anyway, so the setting is inert until the link is followed.
+	if email == nil && current.EmailPending == nil {
+		notify = false
 	}
 	preset := user.AvatarPreset
 	if req.AvatarPreset != nil {
@@ -676,6 +695,11 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"Your profile could not be saved. Try again.")
 		return
+	}
+	if clearing {
+		if updated, ok = s.clearEmail(r.Context(), w, updated); !ok {
+			return
+		}
 	}
 	// The client replaces its whole `me` with this response — it has to be as
 	// complete as GET /api/me, or providers/AV/FTP-suggestion/XP vanish on save.
@@ -769,7 +793,10 @@ func (s *Service) toMe(u db.User) meResponse {
 		WeightKg:      u.WeightKg,
 		Email:         u.Email,
 		NotifyPlanned: u.NotifyPlanned,
-		MailAvailable: s.mailAvailable,
+		MailAvailable: s.mailer != nil,
+		EmailVerified: u.EmailVerifiedAt.Valid,
+		EmailPending:  u.EmailPending,
+		EmailRequired: u.EmailRequired,
 		AccentPalette: u.AccentPalette,
 		ColorScheme:   u.ColorScheme,
 	}
