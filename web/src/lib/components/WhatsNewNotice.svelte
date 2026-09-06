@@ -82,8 +82,7 @@
 			{#if tail}<p class="text-muted text-xs">{tail}.</p>{/if}
 			<button
 				onclick={() => changelog.dismiss()}
-				class="text-muted hover:text-ink ml-auto text-xs underline"
-				>Dismiss</button
+				class="btn-link ml-auto text-xs">Dismiss</button
 			>
 		</div>
 	</section>

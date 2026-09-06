@@ -292,7 +292,7 @@
 			<div class="flex min-w-0 flex-wrap items-center justify-center gap-1">
 				<button
 					onclick={() => send({ action: 'back' })}
-					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+					class="text-muted hover:text-ink icon-btn"
 					aria-label={setTracks
 						? 'start this track over, or step back through the playlist'
 						: 'start this track over'}><SkipBack size={17} /></button
@@ -300,13 +300,13 @@
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed - 30)}
-						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						class="text-muted hover:text-ink icon-btn"
 						aria-label="back 30 seconds"><Rewind size={17} /></button
 					>
 				{/if}
 				<button
 					onclick={() => send({ action: jukebox?.playing ? 'pause' : 'play' })}
-					class="bg-ink text-paper hover:bg-ink/90 grid h-11 w-11 place-items-center rounded-full"
+					class="bg-ink text-paper hover:bg-ink/90 icon-btn icon-btn-lg"
 					aria-label={jukebox?.playing
 						? 'pause for the room'
 						: 'play for the room'}
@@ -319,13 +319,13 @@
 				{#if !streaming}
 					<button
 						onclick={() => seekTo(elapsed + 30)}
-						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						class="text-muted hover:text-ink icon-btn"
 						aria-label="forward 30 seconds"><FastForward size={17} /></button
 					>
 				{/if}
 				<button
 					onclick={() => send({ action: 'skip' })}
-					class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+					class="text-muted hover:text-ink icon-btn"
 					aria-label={setTracks
 						? 'skip to the next track in the playlist'
 						: 'skip to the next track'}><SkipForward size={17} /></button
@@ -336,7 +336,7 @@
 					     when there is a playlist to leave (ux.md). -->
 					<button
 						onclick={skipPlaylist}
-						class="text-muted hover:text-ink grid h-10 w-10 place-items-center rounded-full"
+						class="text-muted hover:text-ink icon-btn"
 						aria-label="skip the whole playlist"><ListX size={17} /></button
 					>
 				{/if}
@@ -396,7 +396,7 @@
 			{#if queue.length > QUEUE_PEEK}
 				<button
 					onclick={() => (showAllQueue = !showAllQueue)}
-					class="text-muted hover:text-ink mt-1.5 text-[11px] underline"
+					class="btn-link mt-1.5 text-[11px]"
 					>{showAllQueue
 						? 'fewer'
 						: `+${queue.length - QUEUE_PEEK} more`}</button

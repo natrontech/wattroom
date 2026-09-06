@@ -290,8 +290,7 @@
 							</div>
 							<button
 								onclick={() => (mode = 'plan')}
-								class="text-muted hover:text-ink mt-3 text-xs underline"
-								>Plan it for later instead</button
+								class="btn-link mt-3 text-xs">Plan it for later instead</button
 							>
 						{:else}
 							<div class="flex flex-wrap items-end gap-3">
@@ -331,8 +330,7 @@
 							{#if onStart}
 								<button
 									onclick={() => (mode = 'start')}
-									class="text-muted hover:text-ink mt-3 text-xs underline"
-									>Start it now instead</button
+									class="btn-link mt-3 text-xs">Start it now instead</button
 								>
 							{/if}
 						{/if}

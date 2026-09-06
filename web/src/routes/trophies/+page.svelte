@@ -48,9 +48,8 @@
 			<Banner tone="error">
 				{error}
 				{#snippet action()}
-					<button
-						onclick={() => void load()}
-						class="text-muted hover:text-ink text-xs underline">Retry</button
+					<button onclick={() => void load()} class="btn-link text-xs"
+						>Retry</button
 					>
 				{/snippet}
 			</Banner>

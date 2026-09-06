@@ -100,6 +100,46 @@
 		<a href="/dev/styleguide" class="underline">Styleguide</a>.
 	</p>
 
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Buttons</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		Chrome, not components: <code>btn</code> and its variants, plus
+		<code>icon-btn</code> for an icon on its own and <code>btn-link</code> for
+		the quiet secondary action (#684). The skin stays at the call site, so a
+		danger hover or an accent colour is one class rather than a new variant.
+		<code>icon-btn-lg</code> is 44 px — ux.md's mid-ride minimum, and the size anything
+		tappable while pedalling should carry.
+	</p>
+	<div class="mt-4 flex flex-wrap items-center gap-3">
+		<button class="btn btn-primary">Primary</button>
+		<button class="btn btn-secondary">Secondary</button>
+		<button class="btn btn-ghost">Ghost</button>
+		<button class="btn btn-accent">Go live</button>
+		<button class="btn btn-danger btn-xs">Delete</button>
+		<button class="btn btn-secondary" disabled>Disabled</button>
+	</div>
+	<div class="mt-4 flex flex-wrap items-center gap-3">
+		<button class="text-muted hover:text-ink icon-btn" aria-label="Copy">
+			<Copy size={18} />
+		</button>
+		<button
+			class="text-muted hover:text-danger icon-btn"
+			aria-label="Remove"
+			title="the skin is the call site's"
+		>
+			<Copy size={18} />
+		</button>
+		<button
+			class="bg-ink text-paper hover:bg-ink/90 icon-btn icon-btn-lg"
+			aria-label="Play"
+		>
+			<SmilePlus size={20} />
+		</button>
+		<button class="text-muted icon-btn icon-btn-lg" aria-label="Off" disabled>
+			<SmilePlus size={20} />
+		</button>
+		<button class="btn-link text-xs">Measure it with a ramp test</button>
+	</div>
+
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Avatar</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		One face everywhere (#253), wearing its level ring and — where the surface
@@ -205,9 +245,7 @@
 		<Banner tone="error">
 			The server did not answer properly.
 			{#snippet action()}
-				<button class="text-muted hover:text-ink text-xs underline"
-					>Retry</button
-				>
+				<button class="btn-link text-xs">Retry</button>
 			{/snippet}
 		</Banner>
 		<Banner tone="warn">That saved workout was not found.</Banner>
