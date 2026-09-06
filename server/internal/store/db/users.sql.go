@@ -11,10 +11,47 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearUserEmail = `-- name: ClearUserEmail :one
+update users
+set email = null, email_verified_at = null, email_pending = null,
+    email_verify_hash = null, email_verify_expires = null, notify_planned = false
+where id = $1
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
+`
+
+// Removing the address takes the verification and anything in flight with it.
+func (q *Queries) ClearUserEmail(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, clearUserEmail, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
-insert into users (display_name, avatar_url, ftp_watts, weight_kg)
-values ($1, $2, $3, $4)
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
+insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required)
+values ($1, $2, $3, $4, true)
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
 `
 
 type CreateUserParams struct {
@@ -24,6 +61,8 @@ type CreateUserParams struct {
 	WeightKg    int16
 }
 
+// email_required is true for every account created from #781 on: a new rider
+// verifies an address, an existing one is only asked.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.DisplayName,
@@ -48,12 +87,38 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
 	)
 	return i, err
 }
 
+const emailVerifiedElsewhere = `-- name: EmailVerifiedElsewhere :one
+select exists (
+    select 1 from users
+    where lower(email) = lower($1::text)
+      and email_verified_at is not null
+      and id <> $2
+)
+`
+
+type EmailVerifiedElsewhereParams struct {
+	Email  string
+	UserID pgtype.UUID
+}
+
+func (q *Queries) EmailVerifiedElsewhere(ctx context.Context, arg EmailVerifiedElsewhereParams) (bool, error) {
+	row := q.db.QueryRow(ctx, emailVerifiedElsewhere, arg.Email, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -75,12 +140,17 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
 	)
 	return i, err
 }
 
 const getUserByIcsToken = `-- name: GetUserByIcsToken :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme from users where ics_token = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required from users where ics_token = $1
 `
 
 func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User, error) {
@@ -102,6 +172,11 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
 	)
 	return i, err
 }
@@ -157,6 +232,55 @@ func (q *Queries) RotateUserIcsToken(ctx context.Context, id pgtype.UUID) (strin
 	return ics_token, err
 }
 
+const startEmailVerification = `-- name: StartEmailVerification :one
+update users
+set email_pending = $2, email_verify_hash = $3, email_verify_expires = $4
+where id = $1
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
+`
+
+type StartEmailVerificationParams struct {
+	ID                 pgtype.UUID
+	EmailPending       *string
+	EmailVerifyHash    []byte
+	EmailVerifyExpires pgtype.Timestamptz
+}
+
+// Writes the pending address and the token, never `email` — the address only
+// moves across in VerifyEmail. Replaces any verification already in flight.
+func (q *Queries) StartEmailVerification(ctx context.Context, arg StartEmailVerificationParams) (User, error) {
+	row := q.db.QueryRow(ctx, startEmailVerification,
+		arg.ID,
+		arg.EmailPending,
+		arg.EmailVerifyHash,
+		arg.EmailVerifyExpires,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+	)
+	return i, err
+}
+
 const unsubscribePlanned = `-- name: UnsubscribePlanned :execrows
 update users set notify_planned = false where id = $1 and unsub_token = $2
 `
@@ -175,7 +299,7 @@ func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlanned
 }
 
 const updateUserAppearance = `-- name: UpdateUserAppearance :one
-update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
+update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
 `
 
 type UpdateUserAppearanceParams struct {
@@ -203,6 +327,11 @@ func (q *Queries) UpdateUserAppearance(ctx context.Context, arg UpdateUserAppear
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
 	)
 	return i, err
 }
@@ -212,7 +341,7 @@ update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
     email = $6, notify_planned = $7, avatar_preset = $8
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
 `
 
 type UpdateUserProfileParams struct {
@@ -254,6 +383,52 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+	)
+	return i, err
+}
+
+const verifyEmail = `-- name: VerifyEmail :one
+update users
+set email = email_pending,
+    email_verified_at = now(),
+    email_pending = null,
+    email_verify_hash = null,
+    email_verify_expires = null
+where email_verify_hash = $1 and email_verify_expires > now()
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
+`
+
+// Single use and time-bounded: the row that matches is also the row that
+// clears the token, so a replayed link finds nothing.
+func (q *Queries) VerifyEmail(ctx context.Context, emailVerifyHash []byte) (User, error) {
+	row := q.db.QueryRow(ctx, verifyEmail, emailVerifyHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.AvatarPreset,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
 	)
 	return i, err
 }

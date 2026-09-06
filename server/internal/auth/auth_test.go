@@ -163,6 +163,7 @@ func TestUpdateMeRejectsJunk(t *testing.T) {
 
 func TestUpdateMeEmailNotify(t *testing.T) {
 	s := testService(t)
+	s.SetMailer(&fakeMailer{})
 	user := testUser(t, s)
 	rec := httptest.NewRecorder()
 	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
@@ -185,20 +186,26 @@ func TestUpdateMeEmailNotify(t *testing.T) {
 		return u
 	}
 
+	// The address lands as *pending* now (#781): PATCH never writes `email`,
+	// only the confirmation does. The opt-in survives the wait, because a
+	// null address sends nothing either way.
 	u := patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":"a@example.test","notifyPlanned":true}`)
-	if u.Email == nil || *u.Email != "a@example.test" || !u.NotifyPlanned {
+	if u.Email != nil {
+		t.Fatalf("patch wrote the address without a confirmation: %+v", u)
+	}
+	if u.EmailPending == nil || *u.EmailPending != "a@example.test" || !u.NotifyPlanned {
 		t.Fatalf("email opt-in did not persist: %+v", u)
 	}
 	// A patch that omits both keeps them — clients predating the fields
 	// must not wipe the setting.
 	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80}`)
-	if u.Email == nil || !u.NotifyPlanned {
+	if u.EmailPending == nil || !u.NotifyPlanned {
 		t.Fatalf("absent fields wiped the setting: %+v", u)
 	}
-	// Clearing the address forces the opt-in off: nothing to send to.
+	// Clearing takes the pending address and the opt-in with it.
 	u = patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":""}`)
-	if u.Email != nil || u.NotifyPlanned {
-		t.Fatalf("cleared email left notify on: %+v", u)
+	if u.Email != nil || u.EmailPending != nil || u.NotifyPlanned {
+		t.Fatalf("clearing left something behind: %+v", u)
 	}
 
 	// Avatar preset (#253): pick persists, absent keeps, "" clears.

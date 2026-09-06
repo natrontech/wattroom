@@ -99,7 +99,7 @@ func main() {
 		if notifier := notify.New(st, log, baseURL); notifier != nil {
 			notifier.Register(mux)
 			roomsService.SetNotifier(notifier)
-			authService.SetMailAvailable(true)
+			authService.SetMailer(notifier)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
