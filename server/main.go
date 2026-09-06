@@ -33,6 +33,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/gamify"
+	"github.com/natrontech/wattroom/server/internal/gifs"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
@@ -167,6 +168,12 @@ func main() {
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
+		// The GIF picker (#878, ADR-0032) mounts only with a Tenor key — no
+		// button that opens onto a 404.
+		if gifService := gifs.New(authService, log); gifService != nil {
+			authService.SetGifsEnabled(true)
+			gifService.Register(mux)
+		}
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// The lobby socket (#251): held by every signed-in client — online for
 		// friends, and the push channel that keeps the rail live.

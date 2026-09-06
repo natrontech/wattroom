@@ -1,0 +1,1 @@
+- A GIF button in the composer: search Tenor and send without leaving the room, in room chat and in direct messages. Servers set `WATTROOM_TENOR_KEY` to enable it; without a key the button does not appear.

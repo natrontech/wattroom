@@ -8,6 +8,7 @@
 		CalendarClock,
 		Copy,
 		Image as ImageIcon,
+		ImagePlay,
 		ListPlus,
 		Music,
 		RotateCw,
@@ -22,6 +23,8 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
+	import GifPicker from '$lib/chat/GifPicker.svelte';
+	import type { Gif } from '$lib/chat/gifs';
 	import ImageChip from '$lib/chat/ImageChip.svelte';
 	import { parseInline } from '$lib/chat/inline';
 	import MessageText from '$lib/chat/MessageText.svelte';
@@ -150,6 +153,16 @@
 		sending = false;
 		sendError = refused;
 		if (refused) draft = text; // a refused message is not a deleted one
+	}
+
+	// A picked GIF is its own message, not something typed into the draft:
+	// the URL IS the message, and MessageText draws it (#279, #878).
+	let gifOpen = $state(false);
+	async function sendGif(gif: Gif) {
+		gifOpen = false;
+		sending = true;
+		sendError = await source.send(gif.url);
+		sending = false;
 	}
 </script>
 
@@ -302,7 +315,13 @@
 	</div>
 </div>
 
-<div class="border-ink/5 shrink-0 border-t px-5 py-3">
+<div class="border-ink/5 relative shrink-0 border-t px-5 py-3">
+	{#if gifOpen}
+		<GifPicker
+			onPick={(gif) => void sendGif(gif)}
+			onClose={() => (gifOpen = false)}
+		/>
+	{/if}
 	{#if sendError || extraSendError || (source.error && timeline.length > 0)}
 		<div class="mb-2">
 			<Banner tone="error">{sendError ?? extraSendError ?? source.error}</Banner
@@ -334,6 +353,18 @@
 			aria-label="attach an image"
 			title="attach an image (or paste one)"><ImageIcon size={16} /></button
 		>
+		<!-- Gated on the server having a Tenor key (ux.md): no button that
+		     opens a picker with nothing behind it. -->
+		{#if account.me?.gifsEnabled}
+			<button
+				type="button"
+				onclick={() => (gifOpen = !gifOpen)}
+				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+				aria-label="send a GIF"
+				aria-expanded={gifOpen}
+				title="send a GIF"><ImagePlay size={16} /></button
+			>
+		{/if}
 		<input
 			bind:value={draft}
 			onpaste={pending.paste}
