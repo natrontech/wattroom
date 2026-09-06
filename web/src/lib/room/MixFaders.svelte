@@ -7,6 +7,7 @@
 	// /profile's Voice & audio page. One set of faders, two surfaces.
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
+	import { applyLevels } from '$lib/sound/board.svelte';
 	import { MUSIC_FADER, RIDER_FADER, UNIT_FADER } from '$lib/sound/fader';
 
 	let {
@@ -56,6 +57,26 @@
 		value={mixer.cues}
 		oninput={(e) => mixer.setCues(Number(e.currentTarget.value))}
 		onchange={() => play('block')}
+		class="mt-0.5 w-full"
+	/>
+</label>
+<!-- Its own channel, never the cues fader (#877, ADR-0033): a quiet ride must
+     not silence the board, and turning the board down must not cost the
+     rider their countdown cue. -->
+<label class="mt-2 block text-xs">
+	<span class="text-muted"
+		>soundboard · <span class="font-display tabular-nums"
+			>{Math.round(mixer.board * 100)}%</span
+		></span
+	>
+	<input
+		type="range"
+		{...UNIT_FADER}
+		value={mixer.board}
+		oninput={(e) => {
+			mixer.setBoard(Number(e.currentTarget.value));
+			applyLevels();
+		}}
 		class="mt-0.5 w-full"
 	/>
 </label>

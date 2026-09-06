@@ -16,6 +16,7 @@
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
+	import Soundboard from '$lib/board/Soundboard.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
@@ -625,6 +626,12 @@
 <div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
 		<CheerLayer cheers={live.tick?.cheers} />
+		<!-- The board floats over the room and is dragged where the rider
+		     wants it (#877); it plays whether or not it is on screen. -->
+		<Soundboard
+			fires={live.tick?.board}
+			onFire={(clipId) => live.fireClip(clipId)}
+		/>
 
 		<!-- Room-level status belongs to the shell, not to a place: a dropped
 		     connection is true on every one of them, and errors.md wants it

@@ -388,6 +388,8 @@ export const CUES: Record<CueId, Cue> = {
 
 let ctx: AudioContext | undefined;
 let master: GainNode | undefined;
+/** Shared with the soundboard (#877) — see `bus()`. */
+let limiter: DynamicsCompressorNode | undefined;
 
 /** Volume the cues sit at. They are mixed *under* voice — this is not the headroom. */
 let volume = 0.7;
@@ -425,7 +427,7 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 		// burst and a block change can land in the same second — and a summed
 		// peak past 1.0 hard-clips, which is harsh on laptop speakers and
 		// headphones alike. Squash the pileup instead.
-		const limiter = ctx.createDynamicsCompressor();
+		limiter = ctx.createDynamicsCompressor();
 		limiter.threshold.value = -6;
 		limiter.knee.value = 4;
 		limiter.ratio.value = 12;
@@ -438,6 +440,18 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
 	if (ctx.state === 'suspended') void ctx.resume();
 	return { ctx, master: master! };
+}
+
+/**
+ * The bus a channel other than the cues plugs into (#877, ADR-0033). The
+ * soundboard needs a fader of its own, never the cue fader — but it wants the
+ * same limiter, because an airhorn and a klaxon landing in the same second is
+ * exactly the pileup that limiter exists for. One context, two channels.
+ */
+export function bus(): { ctx: AudioContext; input: AudioNode } | null {
+	const audio = ensure();
+	if (!audio || !limiter) return null;
+	return { ctx: audio.ctx, input: limiter };
 }
 
 export function setVolume(next: number): void {
