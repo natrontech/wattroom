@@ -49,6 +49,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
 	"github.com/natrontech/wattroom/server/internal/tokens"
+	"github.com/natrontech/wattroom/server/internal/unfurl"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -181,6 +182,9 @@ func main() {
 			authService.SetGifsEnabled(true)
 			gifService.Register(mux)
 		}
+		// Link previews (#866, ADR-0031): signed-in riders only, and every
+		// outbound fetch goes through the package's own SSRF guard.
+		unfurl.New(authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
 		// The lobby socket (#251): held by every signed-in client — online for
 		// friends, and the push channel that keeps the rail live.
