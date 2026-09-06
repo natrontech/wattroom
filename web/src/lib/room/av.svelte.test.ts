@@ -12,11 +12,16 @@ vi.mock('$lib/api', () => ({
 	})),
 }));
 
+let roomOptions: Record<string, unknown> = {};
+
 vi.mock('livekit-client', () => {
 	let shared = false;
 	let joined: FakeRoom | null = null;
 	const published: Uint8Array[] = [];
 	class Room {
+		constructor(options: Record<string, unknown> = {}) {
+			roomOptions = options;
+		}
 		handlers = new Map<string, (...args: unknown[]) => void>();
 		remoteParticipants = new Map();
 		localParticipant = {
@@ -195,6 +200,22 @@ function withMicHardware<T>(
 }
 
 describe('createRoomAv', () => {
+	// #671: the mic is opened by captureMic() with MIC_CONSTRAINTS and
+	// published as an already-processed track — nothing here goes through
+	// LiveKit's own audio capture. The Room used to carry a second,
+	// incomplete copy of those constraints anyway (no autoGainControl, the
+	// one #555 calls load-bearing), which could never take effect and read as
+	// a second source of truth. Video is LiveKit's capture, and keeps its.
+	it('leaves microphone capture to the one module that owns it', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(roomOptions).not.toHaveProperty('audioCaptureDefaults');
+		dispose();
+	});
+
 	// #173: the connection outlives the page that opened it. A $derived built
 	// here would belong to that page's effect and freeze at its last value the
 	// moment you navigate away — which is how screenshares stopped reaching

@@ -1,0 +1,1 @@
+- Removed a stale copy of the microphone settings in the room's voice client. It never took effect and disagreed with the real one, so nothing changes in how you sound — there is now one place those settings live.
