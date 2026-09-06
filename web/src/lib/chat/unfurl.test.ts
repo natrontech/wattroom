@@ -120,32 +120,57 @@ describe('unfurl (#866)', () => {
 		expect((await unfurl('https://e.test/b'))?.thumb).toBeUndefined();
 	});
 
-	it('remembers a 204 but never a refusal (#866)', async () => {
-		// The ration says "ask again in a moment". Remembering that as "this
-		// link has no card" would leave a rider who opened a busy channel
-		// staring at bare URLs until they reloaded the page.
+	it('waits out a refusal and the card still lands (#866)', async () => {
+		// The ration means "early", not "nothing". A rider who opens a channel
+		// full of unseen links spends the bucket; it refills over the next
+		// second or two, and the card has to arrive on the message rather than
+		// leaving a bare URL behind.
+		vi.useFakeTimers();
 		apiResponses.push({
 			ok: false,
 			error: { error: 'invalid_request', message: 'Too many previews.' },
 		});
-		expect(await unfurl('https://example.com/rationed')).toBeNull();
 		apiResponses.push({
 			ok: true,
 			data: { title: 'It came through', host: 'example.com' },
 		});
-		expect((await unfurl('https://example.com/rationed'))?.title).toBe(
-			'It came through',
-		);
+		const pending = unfurl('https://example.com/rationed');
+		await vi.advanceTimersByTimeAsync(2000);
+		expect((await pending)?.title).toBe('It came through');
 		expect(apiCalls).toHaveLength(2);
+		vi.useRealTimers();
+	});
+
+	it('gives up after the backoff, and forgets rather than remembering a no', async () => {
+		vi.useFakeTimers();
+		const refusal = {
+			ok: false,
+			error: { error: 'network', message: 'down' },
+		};
+		for (let i = 0; i < 4; i++) apiResponses.push(refusal);
+		const pending = unfurl('https://example.com/down');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(await pending).toBeNull();
+		expect(apiCalls).toHaveLength(4); // the first ask plus three waits
+
+		// Forgotten, not remembered as "this link has no card": a later render
+		// starts over rather than inheriting one bad minute.
+		apiResponses.push({
+			ok: true,
+			data: { title: 'Back up', host: 'example.com' },
+		});
+		expect((await unfurl('https://example.com/down'))?.title).toBe('Back up');
+		vi.useRealTimers();
 	});
 
 	it('says nothing rather than throwing when a fetch dies', async () => {
+		// Offline is retryable, so this rides the backoff out to its end and
+		// then answers with a null like any other "no card".
+		vi.useFakeTimers();
 		fetchMock.mockRejectedValue(new Error('offline'));
-		expect(await unfurl('https://youtu.be/dead')).toBeNull();
-		apiResponses.push({
-			ok: false,
-			error: { error: 'network', message: 'down' },
-		});
-		expect(await unfurl('https://example.com/down')).toBeNull();
+		const pending = unfurl('https://youtu.be/dead');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(await pending).toBeNull();
+		vi.useRealTimers();
 	});
 });

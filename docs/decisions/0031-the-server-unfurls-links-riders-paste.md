@@ -77,7 +77,9 @@ all of it enforced in `server/internal/unfurl`:
   link on the screen at once, and a fixed gap would refuse most of them for no
   reason the rider could see. A spent bucket answers **429, never 204** — the
   client remembers "there is nothing here" for the session and must never
-  remember "ask again" as if it were that.
+  remember "ask again" as if it were that. It waits the bucket's refill out
+  instead, holding the same promise, so a card that was merely early still
+  lands on the message rather than leaving a bare URL behind.
 
 **Preview images are proxied through our own origin.** The card's image URL
 addresses `GET /api/unfurl/image?url=…`, which fetches through the same guard,

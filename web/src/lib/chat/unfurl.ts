@@ -61,18 +61,38 @@ const cache = new Map<string, Promise<Card | null>>();
  */
 const RETRY = Symbol('unfurl: ask again');
 
+/**
+ * How long to wait out a refusal before asking again. Opening a channel with
+ * a screenful of unseen links spends the server's bucket, which then refills
+ * over the next second or two — so the card is not missing, it is early. The
+ * waits cover that, and the caller is holding the same promise throughout, so
+ * a card that arrives on the second try still lands on the message.
+ */
+const BACKOFF_MS = [1200, 2500, 5000];
+
 /** The card for one link, fetched at most once per session. */
 export function unfurl(url: string): Promise<Card | null> {
 	const cached = cache.get(url);
 	if (cached) return cached;
-	const pending = load(url).catch((reason) => {
-		// Forget it, so the next render of this line asks again. A card that
-		// has not come yet is not a card that is never coming.
-		if (reason === RETRY) cache.delete(url);
-		return null;
-	});
+	const pending = attempt(url, 0);
 	cache.set(url, pending);
 	return pending;
+}
+
+async function attempt(url: string, tries: number): Promise<Card | null> {
+	try {
+		return await load(url);
+	} catch (reason) {
+		if (reason !== RETRY) return null; // a real "nothing here" — remember it
+		if (tries >= BACKOFF_MS.length) {
+			// Given up for now, but not for the session: forget it so a later
+			// render can start over rather than inheriting today's bad minute.
+			cache.delete(url);
+			return null;
+		}
+		await new Promise((resolve) => setTimeout(resolve, BACKOFF_MS[tries]));
+		return attempt(url, tries + 1);
+	}
 }
 
 async function load(url: string): Promise<Card | null> {
