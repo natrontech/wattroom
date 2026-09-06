@@ -79,7 +79,7 @@
 		role="menu"
 		tabindex="-1"
 		onkeydown={onKey}
-		class="panel fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto py-1 shadow-2xl"
+		class="panel fixed z-[70] max-h-[70vh] min-w-44 overflow-y-auto p-1 shadow-2xl"
 		style="left: {pos.left}px; top: {pos.top}px"
 	>
 		{#each menu.items as item, i (i)}
@@ -89,7 +89,7 @@
 				{@const value = dragged[i] ?? item.value}
 				<!-- A fader wide enough to be dragged from a bike; the arrows step
 				     it while the menu's own up/down keep walking the entries. -->
-				<label class="block px-3 py-2 text-sm">
+				<label class="block rounded px-3 py-2 text-sm">
 					<span class="flex items-center gap-2.5">
 						{#if item.icon}<item.icon
 								size={14}
@@ -126,7 +126,7 @@
 						closeMenu();
 						run();
 					}}
-					class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm disabled:opacity-40 {item.danger
+					class="flex w-full items-center gap-2.5 rounded px-3 py-2 text-left text-sm disabled:opacity-40 {item.danger
 						? 'text-danger hover:bg-danger/10'
 						: 'hover:bg-surface'}"
 				>

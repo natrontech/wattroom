@@ -124,6 +124,12 @@ export interface RoomContext {
 	rsvp(id: string, going: boolean): void;
 	rotateIcs(): void;
 	setRole(userId: string, role: string): void;
+	/**
+	 * Ban with an undo toast, so a griefer is met wherever they appear — the
+	 * tile, the roster row — rather than only where someone once wrote the
+	 * entry (#951).
+	 */
+	ban(userId: string, name: string): void;
 	removeMember(userId: string): void;
 	startScheduled(entry: { workoutJson: string; workoutName: string }): void;
 	copyIcsUrl(): void;

@@ -17,20 +17,30 @@ vi.mock('$lib/room/connection.svelte', () => ({ roomConnection: room }));
 
 /** The entries you select; a fader is dragged and has no `onSelect`. */
 const items = (entries: ReturnType<typeof personMenu>): MenuItem[] =>
-	entries.filter((entry): entry is MenuItem => entry.kind !== 'slider');
+	entries.filter(
+		(entry): entry is MenuItem =>
+			entry !== 'separator' && entry.kind !== 'slider',
+	);
+
+/** What the menu reads top to bottom; a separator reads as an em dash. */
+const labels = (entries: ReturnType<typeof personMenu>): string[] =>
+	entries.map((entry) => (entry === 'separator' ? '—' : entry.label));
+
+const faders = (entries: ReturnType<typeof personMenu>) =>
+	entries.filter((entry) => entry !== 'separator' && entry.kind === 'slider');
 
 describe('personMenu (#486)', () => {
 	it('leads with what a click on the object already does', () => {
-		expect(personMenu('u1', () => {}).map((item) => item.label)).toEqual([
+		expect(labels(personMenu('u1', () => {}))).toEqual([
 			'View profile',
 			'Message',
 			'Add friend',
 		]);
-		expect(
-			personMenu('u1', () => {}, { conversation: true }).map(
-				(item) => item.label,
-			),
-		).toEqual(['Open the conversation', 'View profile', 'Add friend']);
+		expect(labels(personMenu('u1', () => {}, { conversation: true }))).toEqual([
+			'Open the conversation',
+			'View profile',
+			'Add friend',
+		]);
 	});
 
 	it('goes where the row already links', () => {
@@ -70,6 +80,26 @@ describe('personMenu (#486)', () => {
 		expect(poke).toHaveBeenCalledOnce();
 	});
 
+	// One person, one menu: the tile used to append the ban itself, so the
+	// roster row beside it offered no way to stop the same griefer (#951).
+	it('ends on the ban, after a separator, and never on yourself', () => {
+		const banned = vi.fn();
+		const entries = personMenu('u1', () => {}, { ban: banned });
+		expect(labels(entries)).toEqual([
+			'View profile',
+			'Message',
+			'Add friend',
+			'—',
+			'Ban from the room',
+		]);
+		expect(entries.at(-1)).toMatchObject({ danger: true });
+		items(entries).at(-1)!.onSelect();
+		expect(banned).toHaveBeenCalledOnce();
+		expect(
+			labels(personMenu('me', () => {}, { you: true, ban: banned })),
+		).not.toContain('Ban from the room');
+	});
+
 	// The menu never asks who is already a friend — the server's own refusal
 	// is the answer, and it is a sentence worth showing (#532).
 	it('asks the server to be friends, by id', async () => {
@@ -94,21 +124,19 @@ describe('personMenu volume', () => {
 	const setRiderGain = vi.fn();
 
 	it('offers no fader for someone not in voice, and none on yourself', () => {
-		expect(personMenu('u1', () => {}).some((e) => e.kind === 'slider')).toBe(
-			false,
-		);
+		expect(faders(personMenu('u1', () => {}))).toEqual([]);
 		expect(
-			personMenu('me', () => {}, { you: true, volume: { name: 'me' } }).some(
-				(e) => e.kind === 'slider',
-			),
-		).toBe(false);
+			faders(personMenu('me', () => {}, { you: true, volume: { name: 'me' } })),
+		).toEqual([]);
 	});
 
 	it('sets the level itself when the room has no voice connection', () => {
 		room.current = null;
-		const [fader] = personMenu('u3', () => {}, {
-			volume: { name: 'Ruben' },
-		}).filter((e) => e.kind === 'slider');
+		const [fader] = faders(
+			personMenu('u3', () => {}, { volume: { name: 'Ruben' } }),
+		);
+		if (fader?.kind !== 'slider')
+			throw new Error('no fader for a rider in voice');
 		fader.onInput(50);
 		expect(mixer.riderGain('u3')).toBe(0.5);
 		mixer.setRiderGain('u3', 1);
@@ -118,7 +146,7 @@ describe('personMenu volume', () => {
 		room.current = { av: { voice: { u1: 'live' }, setRiderGain } };
 		mixer.setRiderGain('u1', 1.4, 'Ada');
 		const entries = personMenu('u1', () => {}, { volume: { name: 'Ada' } });
-		const fader = entries.find((e) => e.kind === 'slider');
+		const [fader] = faders(entries);
 		if (fader?.kind !== 'slider')
 			throw new Error('no fader for a rider in voice');
 		expect([fader.value, fader.format(fader.value), fader.max]).toEqual([
@@ -127,7 +155,7 @@ describe('personMenu volume', () => {
 			200,
 		]);
 		// Before the friendship, after the room's own verbs.
-		expect(entries.map((e) => e.label)).toEqual([
+		expect(labels(entries)).toEqual([
 			'View profile',
 			'Message',
 			'Volume',

@@ -87,7 +87,7 @@
 	// row alone offers: joining their room and ending the friendship (#663).
 	function friendMenu(friend: Friend): MenuEntry[] {
 		const entries: MenuEntry[] = personMenu(friend.id, goto).filter(
-			(entry) => entry.label !== 'Add friend',
+			(entry) => entry === 'separator' || entry.label !== 'Add friend',
 		);
 		entries.push('separator');
 		if (friend.room)

@@ -15,7 +15,6 @@
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
-	import { toasts } from '$lib/toast.svelte';
 	import { goto } from '$app/navigation';
 	import Focus from '@lucide/svelte/icons/focus';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -24,31 +23,18 @@
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import PanelRight from '@lucide/svelte/icons/panel-right';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
-	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
 	const isOwner = $derived(room.myRole === 'owner');
 
-	// Banning is reversible (Unban sets the role right back), so it gets an
-	// undo toast rather than a confirm dialog (errors.md) — same pattern as
-	// the Members page and settings' ban list (#666).
-	function ban(id: string, name: string) {
-		const previousRole =
-			room.members.find((m) => m.id === id)?.role ?? 'member';
-		room.setRole(id, 'banned');
-		toasts.push(`Banned ${name}.`, {
-			undo: () => room.setRole(id, previousRole),
-		});
-	}
-
 	// The tile's right-click (#465): focus is the click, the rest is what
 	// every person in WattRoom offers — their page, the DM, the friend ask,
 	// and — for the owner — the ban a griefer needs met where they are, not
 	// three screens away in Settings (#666).
 	function tileEntries(rider: () => (typeof room.riders)[number]): MenuEntry[] {
-		const entries: MenuEntry[] = [
+		return [
 			{
 				label:
 					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
@@ -72,19 +58,13 @@
 				})),
 			...personMenu(rider().id, goto, {
 				you: rider().you,
+				volume: rider().inVoice ? { name: rider().name } : undefined,
 				poke: {
 					onSelect: () => room.poke(rider().id),
 				},
+				ban: isOwner ? () => room.ban(rider().id, rider().name) : undefined,
 			}),
 		];
-		if (isOwner && !rider().you)
-			entries.push('separator', {
-				label: 'Ban from the room',
-				icon: ShieldBan,
-				onSelect: () => ban(rider().id, rider().name),
-				danger: true,
-			});
-		return entries;
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves

@@ -180,6 +180,19 @@
 			role,
 	);
 	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
+
+	// Banning is reversible (Unban sets the role right back), so it gets an
+	// undo toast rather than a confirm dialog (errors.md) — same pattern as
+	// the Members page and settings' ban list (#666).
+	function ban(userId: string, name: string) {
+		const previousRole =
+			members.find((member) => member.id === userId)?.role ?? 'member';
+		onRole(userId, 'banned');
+		toasts.push(`Banned ${name}.`, {
+			undo: () => onRole(userId, previousRole),
+		});
+	}
+
 	const shared = $derived(connection.shared());
 	const running = $derived(shared?.phase === 'running');
 	const phase = $derived(
@@ -453,6 +466,7 @@
 		rsvp: (id, going) => onRsvp(id, going),
 		rotateIcs: () => onRotateIcs(),
 		setRole: (userId, next) => onRole(userId, next),
+		ban,
 		removeMember: (userId) => onRemove(userId),
 		startScheduled,
 		copyIcsUrl,
@@ -806,6 +820,7 @@
 		onOpenChat={() => void goto(`/r/${slug}/chat`)}
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
+		onBan={myRole === 'owner' ? ban : undefined}
 		{cheers}
 	>
 		{#snippet player()}

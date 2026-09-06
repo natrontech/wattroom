@@ -5,11 +5,12 @@
  */
 import BellRing from '@lucide/svelte/icons/bell-ring';
 import MessageSquare from '@lucide/svelte/icons/message-square';
+import ShieldBan from '@lucide/svelte/icons/shield-ban';
 import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
-import type { MenuItem, MenuSlider } from '$lib/context-menu.svelte';
+import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import { RIDER_FADER } from '$lib/sound/fader';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -71,8 +72,10 @@ export function personMenu(
 		};
 		/** Their volume, offered only where they are in voice to hear it. */
 		volume?: { name: string };
+		/** The room's own moderation, passed only by an owner. */
+		ban?: () => void;
 	} = {},
-): (MenuItem | MenuSlider)[] {
+): MenuEntry[] {
 	const profile: MenuItem = {
 		label: 'View profile',
 		icon: User,
@@ -98,7 +101,7 @@ export function personMenu(
 		hint: options.you ? "that's you" : options.poke.hint,
 	};
 	// The menu leads with what a click on the object already does.
-	const items: (MenuItem | MenuSlider)[] = options.conversation
+	const items: MenuEntry[] = options.conversation
 		? [message, profile, friend]
 		: [profile, message, friend];
 	if (poke) items.splice(2, 0, poke);
@@ -106,5 +109,15 @@ export function personMenu(
 	// came for mid-ride, but the list still reads person-first.
 	if (options.volume && !options.you)
 		items.splice(items.length - 1, 0, riderVolume(id, options.volume.name));
+	// Last, after a separator (ux.md). The tile used to append this itself, so
+	// the same griefer was bannable from their tile and not from the roster row
+	// two hundred pixels away (#951).
+	if (options.ban && !options.you)
+		items.push('separator', {
+			label: 'Ban from the room',
+			icon: ShieldBan,
+			onSelect: options.ban,
+			danger: true,
+		});
 	return items;
 }
