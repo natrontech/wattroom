@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { SimulatedTrainer } from '$lib/ble/simulated';
 import { durationSeconds, flatten, targetAt } from './engine';
+import { createRideSession, DEFAULTS } from './session.svelte';
 import {
 	bestOneMinute,
 	buildRampTest,
@@ -109,5 +111,58 @@ describe('rampUsable', () => {
 			rampUsable(RAMP.warmupSeconds + RAMP.minSteps * RAMP.stepSeconds),
 		).toBe(true);
 		expect(rampUsable(RAMP.warmupSeconds + 12 * RAMP.stepSeconds)).toBe(true);
+	});
+});
+
+describe('a ramp the rider stops in', () => {
+	// #792: the ramp ends when the rider blows, which means five seconds well
+	// under target. Auto-pause releases the actuator target to zero after
+	// three, and `rampFailed` rejects a zero target — so the page, reading the
+	// actuator, never saw a failure and the rider sat auto-paused instead of
+	// being given their FTP.
+	async function stopMidRamp() {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({
+			trainer,
+			workout: buildRampTest(),
+			ftp: 200,
+		});
+		await session.start();
+		// Past the warmup and into a step, so there is a real target to fail.
+		for (let i = 0; i < RAMP.warmupSeconds + 30; i++) {
+			session.onSample({ watts: 150, cadence: 90, at: i * 1000 });
+			session.tick();
+		}
+		// Then the rider stops: long enough to auto-pause AND to fail.
+		for (let i = 0; i < DEFAULTS.pauseAfterSeconds + RAMP.failSeconds; i++) {
+			session.onSample({ watts: 0, cadence: 0, at: 0 });
+			session.tick();
+		}
+		return session;
+	}
+
+	const trailing = (
+		session: Awaited<ReturnType<typeof stopMidRamp>>,
+		target: number,
+	) =>
+		session.recording
+			.slice(-RAMP.failSeconds)
+			.map((s) => ({ watts: s.watts, target }));
+
+	it('finishes against the prescribed target', async () => {
+		const session = await stopMidRamp();
+		expect(session.state).toBe('autopaused');
+		expect(session.info.targetWatts).toBeGreaterThan(0);
+		expect(rampFailed(trailing(session, session.info.targetWatts ?? 0))).toBe(
+			true,
+		);
+		session.stop();
+	});
+
+	it('never finishes against the released one', async () => {
+		const session = await stopMidRamp();
+		expect(session.target).toBe(0);
+		expect(rampFailed(trailing(session, session.target))).toBe(false);
+		session.stop();
 	});
 });

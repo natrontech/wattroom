@@ -66,12 +66,16 @@
 	}
 
 	// The rider at the end of a ramp will not press a button; the test notices for them.
+	// Against the PRESCRIBED target, not the actuator's: stopping is how a ramp ends,
+	// and auto-pause releases the target to zero three seconds before the five the
+	// test needs — so `current.target` had the rider sitting in a pause that never
+	// resolved into a result (#792).
 	$effect(() => {
 		const current = session;
 		if (!current || done) return;
 		const trailing = current.recording.slice(-RAMP.failSeconds).map((s) => ({
 			watts: s.watts,
-			target: current.target,
+			target: current.info.targetWatts ?? 0,
 		}));
 		if (rampFailed(trailing)) {
 			current.stop();
