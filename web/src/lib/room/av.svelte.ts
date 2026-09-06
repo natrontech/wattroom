@@ -3,6 +3,7 @@ import type {
 	RemoteTrack,
 	Room as LiveKitRoom,
 	Track as LiveKitTrack,
+	TrackPublication as LiveKitPublication,
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -446,6 +447,15 @@ export function createRoomAv(slug: string) {
 		return true;
 	}
 
+	/**
+	 * Same ownership question, without forgetting: a camera going quiet keeps
+	 * its subscription, so the mute handlers ask who owns the seat and leave
+	 * the track where it is for the unmute.
+	 */
+	function ownsTrack(map: Map<string, Owned>, rider: string, owner: string) {
+		return map.get(rider)?.owner === owner;
+	}
+
 	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
 		try {
 			if (!outCtx) {
@@ -879,12 +889,16 @@ export function createRoomAv(slug: string) {
 			const rider = riderOf(participant.identity);
 			if (track.kind === client.Track.Kind.Video) {
 				const owned = { owner: participant.identity, track };
+				// A publication can arrive already muted — a rider who switched
+				// their camera off before you walked in. Record the track either
+				// way, so the unmute has something to give the seat back to, but
+				// only claim a seat once there is a picture in it (#851).
 				if (pub.source === client.Track.Source.ScreenShare) {
 					screenTracks.set(rider, owned);
-					addScreen(rider);
+					if (!pub.isMuted) addScreen(rider);
 				} else {
 					videoTracks.set(rider, owned);
-					bumpVideo(rider);
+					if (!pub.isMuted) bumpVideo(rider);
 				}
 			}
 			if (track.kind === client.Track.Kind.Audio) {
@@ -956,14 +970,38 @@ export function createRoomAv(slug: string) {
 			if (handedOff && rider === me && !stillHere(me, myIdentity))
 				void takeOver({ reopenMic: micBeforeHandoff });
 		});
+		// A camera switched off is a MUTE, not an unpublish — livekit-client
+		// only unpublishes a screenshare on disable. Unheard, the subscription
+		// survived, the seat went on claiming "camera on", and the tile drew an
+		// attached element with no frames in it instead of the rider's mark
+		// (#851). Both directions run through the same pair the subscribe path
+		// uses, so the stage's menu and the member list follow too.
+		function setPicture(pub: LiveKitPublication, p: { identity: string }) {
+			if (pub.kind !== client.Track.Kind.Video) return;
+			const rider = riderOf(p.identity);
+			const screen = pub.source === client.Track.Source.ScreenShare;
+			const tracks = screen ? screenTracks : videoTracks;
+			if (!ownsTrack(tracks, rider, p.identity)) return;
+			if (pub.isMuted) {
+				if (screen) dropScreen(rider);
+				else dropVideo(rider);
+				return;
+			}
+			// Only when the seat is empty: your own camera bumps itself on the
+			// way up, and a second bump re-keys the attach for a blink.
+			if (screen) addScreen(rider);
+			else if (!videoOf[rider]) bumpVideo(rider);
+		}
 		r.on(client.RoomEvent.TrackMuted, (pub, p) => {
 			const rider = riderOf(p.identity);
 			if (pub.kind === client.Track.Kind.Audio && !micLive(rider, p.identity))
 				setVoice(rider, 'muted');
+			setPicture(pub, p);
 		});
 		r.on(client.RoomEvent.TrackUnmuted, (pub, p) => {
 			if (pub.kind === client.Track.Kind.Audio)
 				setVoice(riderOf(p.identity), 'live');
+			setPicture(pub, p);
 		});
 		r.on(client.RoomEvent.ActiveSpeakersChanged, (speakers) => {
 			const next: Record<string, boolean> = {};
