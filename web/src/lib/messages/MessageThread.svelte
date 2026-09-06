@@ -359,6 +359,7 @@
 			<button
 				type="button"
 				onclick={() => (gifOpen = !gifOpen)}
+				data-gif-toggle
 				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
 				aria-label="send a GIF"
 				aria-expanded={gifOpen}

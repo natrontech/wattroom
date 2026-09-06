@@ -66,10 +66,16 @@
 
 	void run('');
 
-	// Anywhere but here closes it — the composer stays one click away.
+	// Anywhere but here closes it — the composer stays one click away. The
+	// button that opened it is the exception: it toggles, and closing on its
+	// pointerdown would let its own click reopen what it just shut.
 	function outside(node: HTMLElement) {
 		const onDown = (event: PointerEvent) => {
-			if (!node.contains(event.target as Node)) onClose();
+			const target = event.target as Element | null;
+			if (node.contains(target) || target?.closest?.('[data-gif-toggle]')) {
+				return;
+			}
+			onClose();
 		};
 		document.addEventListener('pointerdown', onDown, true);
 		return () => document.removeEventListener('pointerdown', onDown, true);
