@@ -42,6 +42,13 @@
 							'The call could not reconnect. Your ride is unaffected — rejoin voice when you are ready.',
 					};
 		}
+		if (fault.kind === 'mic') {
+			return {
+				title: 'Your microphone stopped',
+				detail:
+					'The browser lost the microphone — a headset unplugged, Bluetooth switching to its phone profile, or another app taking it. The room hears nothing from you; your ride is unaffected. Plug it back in and reconnect.',
+			};
+		}
 		return fault.state === 'reconnecting'
 			? {
 					title: 'Lost the room',

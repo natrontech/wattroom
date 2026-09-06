@@ -639,6 +639,17 @@
 					onRecover={() => void av.join()}
 				/>
 			</div>
+		{:else if av.status === 'live' && av.micFault}
+			<!-- The capture died under an open mic (#640): we publish our own
+			     WebAudio track, so LiveKit never notices and the room hears
+			     silence with the icon still green. One big button back. -->
+			<div class="shrink-0 px-5 pt-4">
+				<FaultBanner
+					fault={{ kind: 'mic', state: 'lost' }}
+					bufferedSeconds={0}
+					onRecover={() => void av.reconnectMic()}
+				/>
+			</div>
 		{/if}
 
 		{#if shared?.phase === 'paused'}

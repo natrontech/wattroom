@@ -91,12 +91,20 @@ const { stopSharingNatively, dropNatively, broadcasts } =
 		broadcasts: () => { t: string; at: number }[];
 	};
 
+/** The machine's side of the mic: what a test can do to the hardware. */
+interface MicHardware {
+	/** The device goes away under a live capture — USB out, BT to HFP. */
+	unplug(): void;
+	/** What enumerateDevices reports next, then the browser says it changed. */
+	plugIn(devices: Partial<MediaDeviceInfo>[]): Promise<void>;
+}
+
 /** Enough of Web Audio and getUserMedia for `openMic` to succeed — or, given
  *  `refuse`, for the browser to turn the mic down the way a denied permission
- *  does. `devices` is what enumerateDevices then names. */
+ *  does. `initialDevices` is what enumerateDevices names until `plugIn`. */
 function withMicHardware<T>(
-	run: () => Promise<T>,
-	devices: MediaDeviceInfo[] = [],
+	run: (hw: MicHardware) => Promise<T>,
+	initialDevices: Partial<MediaDeviceInfo>[] = [],
 	refuse?: Error,
 ): Promise<T> {
 	class FakeAudioContext {
@@ -113,20 +121,45 @@ function withMicHardware<T>(
 		async close() {}
 	}
 	vi.stubGlobal('AudioContext', FakeAudioContext);
+	// The capture track is an EventTarget so `ended` can arrive the way the
+	// browser sends it; stop() stays silent, as the real one does.
+	class FakeCapture extends EventTarget {
+		stop() {}
+	}
+	let capture: FakeCapture | null = null;
+	let devices = initialDevices;
+	const listeners = new Map<string, () => unknown>();
 	const had = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 	Object.defineProperty(navigator, 'mediaDevices', {
 		configurable: true,
 		value: {
 			getUserMedia: async () => {
 				if (refuse) throw refuse;
-				return { getTracks: () => [] };
+				capture = new FakeCapture();
+				return {
+					getTracks: () => [capture],
+					getAudioTracks: () => [capture],
+				};
 			},
 			enumerateDevices: async () => devices,
-			addEventListener() {},
-			removeEventListener() {},
+			addEventListener(type: string, fn: () => unknown) {
+				listeners.set(type, fn);
+			},
+			removeEventListener(type: string) {
+				listeners.delete(type);
+			},
 		},
 	});
-	return run().finally(() => {
+	const hw: MicHardware = {
+		unplug() {
+			capture?.dispatchEvent(new Event('ended'));
+		},
+		async plugIn(next) {
+			devices = next;
+			await listeners.get('devicechange')?.();
+		},
+	};
+	return run(hw).finally(() => {
 		vi.unstubAllGlobals();
 		if (had) Object.defineProperty(navigator, 'mediaDevices', had);
 		else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
@@ -356,6 +389,102 @@ describe('createRoomAv', () => {
 			resetServerClock();
 			vi.useRealTimers();
 		}
+	});
+
+	// #640: we publish our own WebAudio track, so when the capture behind it
+	// dies — headset unplugged, Bluetooth to HFP, another app taking the
+	// device — LiveKit sees nothing and the destination goes on emitting
+	// silence. micOn stayed true and the icon stayed green for the rest of
+	// the ride. The capture ending is a fault the rider must be shown, and
+	// one button must bring the mic back.
+	describe('a microphone that dies mid-ride', () => {
+		it('says so, goes muted, and comes back on Reconnect', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.join();
+				expect(av.micOn).toBe(true);
+				expect(av.voice.me).toBe('live');
+				expect(av.micFault).toBe(false);
+
+				hw.unplug();
+
+				expect(av.micFault).toBe(true);
+				expect(av.micOn).toBe(false);
+				expect(av.voice.me).toBe('muted');
+
+				await av.reconnectMic();
+
+				expect(av.micFault).toBe(false);
+				expect(av.micOn).toBe(true);
+				expect(av.voice.me).toBe('live');
+				dispose();
+			});
+		});
+
+		it('is not a fault when the rider closed the mic themselves', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.join();
+				await av.toggleMic();
+				expect(av.micOn).toBe(false);
+
+				// The stopped capture's `ended` must find nobody listening.
+				hw.unplug();
+
+				expect(av.micFault).toBe(false);
+				dispose();
+			});
+		});
+
+		it('ends a mic test the same way', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.toggleMicTest();
+				expect(av.micTesting).toBe(true);
+
+				hw.unplug();
+
+				expect(av.micTesting).toBe(false);
+				expect(av.micFault).toBe(true);
+				// Nothing to reconnect to outside voice: the button just clears it.
+				await av.reconnectMic();
+				expect(av.micFault).toBe(false);
+				dispose();
+			});
+		});
+
+		it('un-chooses a mic that is no longer plugged in', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.setMic('usb-1');
+
+				// Pre-permission the browser blanks every id — not evidence.
+				await hw.plugIn([{ kind: 'audioinput', deviceId: '' }]);
+				expect(av.micId).toBe('usb-1');
+				await hw.plugIn([
+					{ kind: 'audioinput', deviceId: 'default' },
+					{ kind: 'audioinput', deviceId: 'usb-1' },
+				]);
+				expect(av.micId).toBe('usb-1');
+
+				await hw.plugIn([{ kind: 'audioinput', deviceId: 'default' }]);
+
+				expect(av.micId).toBe('');
+				dispose();
+			});
+		});
 	});
 
 	// #289: the rail draws the threshold as a mark on the mic meter. While
