@@ -14,7 +14,8 @@
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import type { Snippet } from 'svelte';
+	import { onMount, tick, type Snippet } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
@@ -185,6 +186,15 @@
 	}
 
 	let draft = $state('');
+	let composer = $state<HTMLInputElement | null>(null);
+	// The account gate can mount this thread after initial navigation finished.
+	onMount(() => composer?.focus({ preventScroll: true }));
+	// Navigation includes switching peers in the reused DM page. Live updates
+	// must never take focus back from another control the rider chose.
+	afterNavigate(async () => {
+		await tick();
+		composer?.focus({ preventScroll: true });
+	});
 	let sending = $state(false);
 	let sendError = $state<string | null>(null);
 	const pending = createPendingImage((refusal) => (sendError = refusal));
@@ -475,6 +485,7 @@
 			>
 		{/if}
 		<input
+			bind:this={composer}
 			bind:value={draft}
 			onpaste={pending.paste}
 			maxlength="500"

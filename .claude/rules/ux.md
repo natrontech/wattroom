@@ -19,6 +19,11 @@ Before adding any setting/toggle: would 95% of riders pick the same value? Then 
 - Capability gating: features needing an absent precondition (no trainer paired, LiveKit down, not embeddable) render disabled with a one-line hint, or hide — never fail on click.
 - Vocabulary is docs/SPEC.md's glossary — rooms, coach, session, sprint moments. Don't invent synonyms per screen.
 
+## Keyboard focus
+
+- Opening a text-first task, such as a room chat or private conversation, puts focus in its primary input after navigation so typing works immediately. Apply this when switching conversations too.
+- Focus follows deliberate navigation, never incoming messages, polling, or background renders. Preserve focus when the rider chooses another control or opens a dialog, and avoid incidental scrolling when focusing.
+
 ## Right-click
 
 - Every object with more than one action gets a context menu (`contextMenu` from `$lib/context-menu.svelte`, drawn by `ContextMenuHost`): a room in the sidebar, a rider's tile, a track in the queue, the stage, a message. Right-click on a desk, long-press on touch.
