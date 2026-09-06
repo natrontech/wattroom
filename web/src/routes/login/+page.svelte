@@ -20,6 +20,9 @@
 	let passkeyError = $state('');
 
 	async function withPasskey() {
+		// The same deep link the provider buttons keep (#824): a rider bounced
+		// off /r/tuesday lands back in the room, not on /rooms.
+		rememberNext(page.url.searchParams.get('next'));
 		passkeyBusy = true;
 		passkeyError = '';
 		const result = await passkeys.signIn();
