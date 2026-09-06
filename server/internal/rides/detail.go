@@ -2,11 +2,13 @@ package rides
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -21,6 +23,60 @@ type medalJSON struct {
 	Kind      string `json:"kind"`
 	RoomName  string `json:"roomName"`
 	AwardedAt string `json:"awardedAt"`
+}
+
+func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a ride id.")
+		return
+	}
+	row, err := s.store.Queries.GetRide(r.Context(), db.GetRideParams{ID: id, UserID: user.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
+		return
+	}
+	if err != nil {
+		s.log.Error("ride export read failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		return
+	}
+	if len(row.Samples) == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
+		return
+	}
+	metrics, err := stats.DecodeSamples(row.Samples)
+	if err != nil {
+		s.log.Error("ride export samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride's samples could not be read.")
+		return
+	}
+	if len(metrics) == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
+		return
+	}
+	samples := make([]fitexport.Sample, len(metrics))
+	for i, m := range metrics {
+		samples[i] = fitexport.Sample{Second: i, Watts: uint16(max(0, min(65535, m.Watts))), Cadence: uint8(max(0, min(255, m.Cadence))), HeartRate: uint8(max(0, min(255, m.HR)))}
+	}
+	data, err := fitexport.Encode(fitexport.Ride{StartedAt: row.StartedAt.Time, Samples: samples})
+	if err != nil {
+		s.log.Error("ride export encode failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be exported.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.ant.fit")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"wattroom-%s.fit\"", store.UUIDString(row.ID)))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(data); err != nil {
+		s.log.Warn("ride export write failed", "err", err, "ride", store.UUIDString(row.ID))
+	}
 }
 
 // roomJSON names the room a ride happened in; nil for a solo ride.
