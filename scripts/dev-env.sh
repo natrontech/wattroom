@@ -31,7 +31,6 @@ WEB_PORT_BASE=5500
 VERIFY_PORT_BASE=8500
 PORT_SPAN=200
 
-PG_CONTAINER=${WATTROOM_PG_CONTAINER:-wattroom-postgres-1}
 PG_USER=${WATTROOM_PG_USER:-wattroom}
 PG_DSN_PREFIX=${WATTROOM_PG_DSN_PREFIX:-postgres://wattroom:wattroom@localhost:5432}
 
@@ -39,6 +38,37 @@ PG_DSN_PREFIX=${WATTROOM_PG_DSN_PREFIX:-postgres://wattroom:wattroom@localhost:5
 crc() { printf '%s' "$1" | cksum | awk '{print $1}'; }
 
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Which Postgres to talk to. Never a hardcoded name: compose derives its
+# project from the directory it runs in, so a linked worktree's containers come
+# up as `<worktree>-postgres-1`, and every checkout that guessed
+# `wattroom-postgres-1` created its database nowhere (#814).
+#
+# Two steps, because worktrees share one server (AGENTS.md) but only one of
+# them started it. This checkout's own project answers first, for whoever ran
+# `make infra` here. Otherwise take the shared container by its compose label —
+# whichever checkout started it owns the :5432 bind, and its project name is
+# not ours to guess. Several matches is genuinely ambiguous and asks.
+pg_container() {
+	if [ -n "${WATTROOM_PG_CONTAINER:-}" ]; then
+		echo "$WATTROOM_PG_CONTAINER"
+		return 0
+	fi
+	cid=$(docker compose --project-directory "$toplevel" ps -q postgres 2>/dev/null) || cid=''
+	if [ -n "$cid" ]; then
+		echo "$cid"
+		return 0
+	fi
+	cid=$(docker ps -q --filter label=com.docker.compose.service=postgres 2>/dev/null) || cid=''
+	[ "$(printf '%s' "$cid" | grep -c .)" = 1 ] || return 1
+	echo "$cid"
+}
+
+# no_postgres explains the one failure both database subcommands share.
+no_postgres() {
+	echo "dev-env.sh: no single postgres container to use — run \`make infra\` (in any checkout; they share one server), or set WATTROOM_PG_CONTAINER when several are running" >&2
+	exit 1
+}
 
 # A linked worktree's own git dir sits under the main tree's; in the main tree
 # the two are the same directory. That is the whole test.
@@ -81,6 +111,20 @@ for port in "$server_port" "$web_port" "$verify_port"; do
 	fi
 done
 
+# create_db is idempotent: the caller may run on every `make dev-server`.
+# Failures are loud — a database that silently did not appear surfaces later as
+# a boot error that reads like the wrong thing entirely (#814).
+create_db() {
+	if docker exec "$1" psql -U "$PG_USER" -tc "select 1 from pg_database where datname='$2'" 2>/dev/null | grep -q 1; then
+		return 0
+	fi
+	if ! docker exec "$1" createdb -U "$PG_USER" "$2"; then
+		echo "dev-env.sh: could not create database $2 in container $1" >&2
+		exit 1
+	fi
+	echo "created database $2"
+}
+
 case ${1:-print} in
 print)
 	cat <<END
@@ -107,24 +151,30 @@ ensure-db)
 	if [ "$is_main_tree" = 1 ]; then
 		exit 0
 	fi
-	if ! docker exec "$PG_CONTAINER" psql -U "$PG_USER" -tc "select 1 from pg_database where datname='$db_name'" 2>/dev/null | grep -q 1; then
-		if docker exec "$PG_CONTAINER" createdb -U "$PG_USER" "$db_name" 2>/dev/null; then
-			echo "created database $db_name"
-		else
-			echo "warning: could not create database $db_name in container $PG_CONTAINER — is \`make infra\` up?" >&2
-		fi
+	container=$(pg_container) || no_postgres
+	create_db "$container" "$db_name"
+	;;
+ensure-test-db)
+	# `wattroom_test` is shared by every checkout — the suite deletes users, so
+	# it must never be a dev database. WATTROOM_TEST_DB means the caller brought
+	# their own Postgres (CI's service container does); nothing to create.
+	if [ -n "${WATTROOM_TEST_DB:-}" ]; then
+		exit 0
 	fi
+	container=$(pg_container) || no_postgres
+	create_db "$container" wattroom_test
 	;;
 drop-db)
 	if [ "$is_main_tree" = 1 ]; then
 		echo "refusing to drop the main tree's database ($db_name)" >&2
 		exit 1
 	fi
-	docker exec "$PG_CONTAINER" dropdb -U "$PG_USER" --if-exists --force "$db_name" >/dev/null
+	container=$(pg_container) || no_postgres
+	docker exec "$container" dropdb -U "$PG_USER" --if-exists --force "$db_name" >/dev/null
 	echo "dropped database $db_name"
 	;;
 *)
-	echo "usage: dev-env.sh [print|banner <server|web>|ensure-db|drop-db]" >&2
+	echo "usage: dev-env.sh [print|banner <server|web>|ensure-db|ensure-test-db|drop-db]" >&2
 	exit 2
 	;;
 esac
