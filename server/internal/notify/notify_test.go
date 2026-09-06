@@ -137,6 +137,20 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	if !strings.Contains(text, "/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)) {
 		t.Fatalf("body misses the unsubscribe link: %q", text)
 	}
+
+	// Both parts go out together (#838), and the HTML one carries the room
+	// link on its button and the workout as the line that glows.
+	html := fmt.Sprint(p["html"])
+	for _, want := range []string{
+		"https://wattroom.example/r/notify-test",
+		"Sweet Spot 2×20",
+		"#ff3d8b",
+		"/api/notify/unsubscribe?u=" + store.UUIDString(h.optIn.ID),
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("html part misses %q: %s", want, html)
+		}
+	}
 }
 
 func TestSessionRescheduledSaysMoved(t *testing.T) {
@@ -218,8 +232,52 @@ func TestSendReportsAPIFailure(t *testing.T) {
 	}))
 	defer srv.Close()
 	s := service(h, srv.URL)
-	err := s.send(t.Context(), "x@example.test", "s", "t", "https://u")
+	err := s.send(t.Context(), mail{To: "x@example.test", Subject: "s", Text: "t", Unsub: "https://u"})
 	if err == nil || !strings.Contains(err.Error(), "invalid from") {
 		t.Fatalf("err = %v, want the API detail surfaced", err)
+	}
+}
+
+// The template is the only place rider-written text reaches an inbox as
+// markup — a room name, a workout name — and the button href is the only
+// place a link does. Both are escaped by html/template; this is what fails
+// if someone reaches for text/template because it was "just a mail".
+func TestMailRenderEscapesRiderText(t *testing.T) {
+	out, err := mail{
+		Subject: "s",
+		Heading: "Kelly's <script>alert(1)</script> room",
+		Lead:    "2×20 <b>bold</b>",
+		Body:    []string{"tea & biscuits"},
+		Action:  "Open the room",
+		URL:     "javascript:alert(1)",
+		BaseURL: "https://wattroom.example",
+	}.render()
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, unwanted := range []string{"<script>", "<b>bold", "javascript:alert"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("rendered mail carries %q unescaped: %s", unwanted, out)
+		}
+	}
+	for _, want := range []string{"&lt;script&gt;", "tea &amp; biscuits"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("rendered mail misses %q: %s", want, out)
+		}
+	}
+}
+
+// A mail with nothing live in it has no Lead, and then nothing but the mark
+// is magenta (ADR-0005). The confirmation is the one such mail today.
+func TestMailWithoutLeadRendersNoButton(t *testing.T) {
+	out, err := mail{Subject: "s", Heading: "Confirm your email address", BaseURL: "https://wattroom.example"}.render()
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.Contains(out, "Turn them off") {
+		t.Fatal("a mail with no unsubscribe link still rendered the bulk footer")
+	}
+	if strings.Contains(out, "border-radius:9px") {
+		t.Fatal("a mail with no action still rendered a button")
 	}
 }
