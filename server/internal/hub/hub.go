@@ -256,6 +256,7 @@ type room struct {
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
+	board   []protocol.Board                 // this second's soundboard fires, drained the same way
 	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
 	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
 	chatIDs []protocol.ChatID                // ids the async save assigned (#219)
@@ -511,6 +512,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 						Count: count, By: rider.ID, Added: added,
 					})
 				}
+			}
+		}
+		if msg.Board != nil {
+			// One fire a second per rider (docs/SPEC.md), the same ceiling a
+			// cheer takes — and on the server, because a client asking nicely
+			// is not a limit.
+			if protocol.IsClipID(msg.Board.ClipID) && rm.allow("board", rider.ID, h.now(), time.Second) {
+				rm.fire(protocol.Board{ClipID: msg.Board.ClipID, FromID: rider.ID, From: rider.Name})
 			}
 		}
 		if msg.Cheer != nil {
@@ -1138,6 +1147,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			State:         state,
 			Jukebox:       rm.music.snapshot(),
 			Cheers:        rm.cheers,
+			Board:         rm.board,
 			Chat:          chatNow,
 			ChatReactions: reactsNow,
 			ChatIDs:       idsNow,
@@ -1157,6 +1167,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
+		rm.board = nil
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
@@ -1370,6 +1381,17 @@ func (rm *room) cheer(c protocol.Cheer) {
 	defer rm.mu.Unlock()
 	if len(rm.cheers) < 32 {
 		rm.cheers = append(rm.cheers, c)
+	}
+}
+
+// fire queues one soundboard press for the next tick. Bounded like cheers:
+// the per-rider limit already makes a flood rare, and the bound is what makes
+// "rare" not matter.
+func (rm *room) fire(b protocol.Board) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.board) < 32 {
+		rm.board = append(rm.board, b)
 	}
 }
 

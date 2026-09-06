@@ -262,6 +262,25 @@ export interface Cheer {
   from?: string;
 }
 /**
+ * Board is one rider firing a pad on their soundboard (#877, ADR-0033). The
+ * client sends only ClipID; the hub fills the sender from authenticated
+ * presence, and every listener fetches the clip and mixes it locally, on their
+ * own board fader.
+ * The hub deliberately does not check that the clip exists or belongs to the
+ * sender. Fetching is what authorizes (board.canHear), so a forged id costs a
+ * 404 on every machine and nothing else — and the check it would take is a
+ * database round trip on the room's tick path.
+ */
+export interface Board {
+  clipId: string;
+  /**
+   * Filled by the server: firing is presence, and a listener needs to know
+   * whose per-rider fader this rides.
+   */
+  fromId?: string;
+  from?: string;
+}
+/**
  * SensorClaim is one socket telling the hub which sensors it has connected
  * (#610).
  * A Web Bluetooth grant cannot leave the browser that made it, so pairing
@@ -320,6 +339,7 @@ export interface ClientMessage {
   chat?: ChatLine;
   chatReact?: ChatReact;
   cheer?: Cheer;
+  board?: Board;
   metrics?: RiderMetrics;
   control?: Control;
   backfill?: Backfill;
@@ -459,6 +479,11 @@ export interface ServerTick {
    * This second's cheers, drained each tick like metrics.
    */
   cheers?: Cheer[];
+  /**
+   * This second's soundboard fires, drained the same way. The clip itself
+   * is fetched over HTTP — only the trigger rides the tick (ADR-0033).
+   */
+  board?: Board[];
   /**
    * This second's chat lines, drained the same way. No backlog on join —
    * ephemeral means ephemeral.
