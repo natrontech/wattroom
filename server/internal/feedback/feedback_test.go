@@ -77,10 +77,10 @@ func (f fakeSessions) RequireUser(http.ResponseWriter, *http.Request, string) (d
 	return f.user, true
 }
 
-type captureIssuer struct{ body string }
+type captureIssuer struct{ title, body string }
 
-func (c *captureIssuer) FileOrComment(_, _, body string) (string, error) {
-	c.body = body
+func (c *captureIssuer) FileOrComment(_, title, body string) (string, error) {
+	c.title, c.body = title, body
 	return "https://github.com/natrontech/wattroom/issues/1", nil
 }
 
@@ -165,4 +165,64 @@ func readReports(t *testing.T, dir string) string {
 		t.Fatal("no reports on disk")
 	}
 	return strings.Join(reports, "\n")
+}
+
+func TestPublicRoute(t *testing.T) {
+	// Which screen, not which room and with whom (#737).
+	for route, want := range map[string]string{
+		"/ride":                  "/ride",
+		"/lounge":                "/lounge",
+		"/r/mfw-5":               "/r/…",
+		"/r/mfw-5/sessions":      "/r/…/sessions",
+		"/messages/dm/u-123":     "/messages/dm/…",
+		"/messages/dm/u-123/pin": "/messages/dm/…/pin",
+		"/r/":                    "/r/",
+	} {
+		if got := publicRoute(route); got != want {
+			t.Errorf("publicRoute(%q) = %q, want %q", route, got, want)
+		}
+	}
+}
+
+func TestSubmitKeepsTheReporterOutOfThePublicIssue(t *testing.T) {
+	// #737: the issue is filed in a public repository. A display name plus
+	// the room that rider was in is a disclosure in two halves — and neither
+	// half is needed there. Disk keeps both, for triage.
+	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
+	issuer := &captureIssuer{}
+	svc := New(fakeSessions{db.User{DisplayName: "velvet"}}, issuer, NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler))
+	mux := http.NewServeMux()
+	svc.Register(mux)
+
+	// No note and no error, so the title falls back to the route.
+	payload := `{"route":"/r/mfw-5/sessions","note":"","firstError":"","clientBuild":"dev",
+		"userAgent":"vitest","trainer":"Kickr","clientMs":1700000000000,
+		"buffer":{"ticks":[],"events":[],"errors":[]}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/feedback", strings.NewReader(payload)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	for name, text := range map[string]string{"title": issuer.title, "body": issuer.body} {
+		for _, leaked := range []string{"velvet", "mfw-5"} {
+			if strings.Contains(text, leaked) {
+				t.Errorf("issue %s carries %q:\n%s", name, leaked, text)
+			}
+		}
+	}
+	if !strings.Contains(issuer.body, "/r/…/sessions") {
+		t.Errorf("issue body lost the screen it happened on:\n%s", issuer.body)
+	}
+	// Triage still has both, on disk — the whole record, not the report alone.
+	raw, err := os.ReadFile(filepath.Join(svc.dir, "reports.jsonl")) //nolint:gosec // dir is t.TempDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	disk := string(raw)
+	for _, want := range []string{"velvet", "mfw-5"} {
+		if !strings.Contains(disk, want) {
+			t.Errorf("the disk record lost %q:\n%s", want, disk)
+		}
+	}
 }
