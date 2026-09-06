@@ -246,6 +246,33 @@
 			</section>
 		{/if}
 
+		{#if ride.export}
+			<!-- #799: a rider who turned auto-upload on has had no way to know
+			     whether the ride actually arrived. Delivery is durable now, so
+			     the page can simply say. -->
+			<section class="mt-3">
+				<h2 class="eyebrow">where it went</h2>
+				<p class="panel text-muted mt-3 px-4 py-3 text-xs">
+					{#if ride.export.state === 'delivered'}
+						On Strava{#if ride.export.remoteId}
+							as
+							<a
+								class="underline"
+								href="https://www.strava.com/activities/{ride.export.remoteId}"
+								target="_blank"
+								rel="noreferrer noopener">activity {ride.export.remoteId}</a
+							>{/if}.
+					{:else if ride.export.state === 'pending'}
+						Waiting to reach Strava — it is retried on its own, nothing to do.
+					{:else}
+						Could not be sent to Strava.
+						{ride.export.error ?? ''} Your ride is safe here; reconnect Strava in
+						your profile if you disconnected it.
+					{/if}
+				</p>
+			</section>
+		{/if}
+
 		{#if confirming}
 			<DeleteRideDialog
 				{ride}

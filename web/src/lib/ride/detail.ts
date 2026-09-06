@@ -35,6 +35,18 @@ export interface RideDetail {
 	medals: RideMedal[];
 	/** Empty when the stored blob could not be read — the numbers still hold. */
 	samples: RideTraceSample[];
+	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
+	export?: RideExport;
+}
+
+/** One destination's delivery, as the server durably remembers it. */
+export interface RideExport {
+	destination: string;
+	state: 'pending' | 'delivered' | 'failed';
+	/** The remote's own id, once it has one. */
+	remoteId?: number;
+	/** The last failure, while it is still failing. */
+	error?: string;
 }
 
 export function fetchRide(id: string): Promise<ApiResult<RideDetail>> {

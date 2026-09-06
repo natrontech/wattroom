@@ -77,7 +77,9 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 	return srv, &uploads, &polls
 }
 
-func TestUploadRefreshesPostsAndPolls(t *testing.T) {
+// seedRide gives a test a rider with Strava connected and one saved ride.
+func seedRide(t *testing.T, name string) (*store.Store, pgtype.UUID, pgtype.UUID) {
+	t.Helper()
 	dsn := os.Getenv("WATTROOM_TEST_DB")
 	if dsn == "" {
 		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
@@ -91,7 +93,7 @@ func TestUploadRefreshesPostsAndPolls(t *testing.T) {
 	t.Cleanup(st.Close)
 
 	user, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
-		DisplayName: "strava-test", FtpWatts: 250, WeightKg: 70,
+		DisplayName: name, FtpWatts: 250, WeightKg: 70,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -130,36 +132,147 @@ func TestUploadRefreshesPostsAndPolls(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv, uploads, polls := fakeStrava(t)
-	svc := &Service{
+	return st, user.ID, rideID
+}
+
+func newService(st *store.Store, srv *httptest.Server) *Service {
+	return &Service{
 		store: st, log: slog.New(slog.DiscardHandler),
 		clientID: "id", clientSecret: "secret",
 		apiBase: srv.URL + "/api/v3", tokenURL: srv.URL + "/oauth/token",
 		httpc: srv.Client(), now: time.Now, pollEvery: 10 * time.Millisecond,
 	}
-	if err := svc.upload(t.Context(), rideID); err != nil {
+}
+
+func TestUploadRefreshesPostsAndPolls(t *testing.T) {
+	st, userID, rideID := seedRide(t, "strava-test")
+	srv, uploads, polls := fakeStrava(t)
+	svc := newService(st, srv)
+	activityID, err := svc.upload(t.Context(), rideID)
+	if err != nil {
 		t.Fatalf("upload: %v", err)
+	}
+	if activityID == nil {
+		t.Fatal("a delivered ride reported no activity id")
 	}
 	if uploads.Load() != 1 || polls.Load() < 2 {
 		t.Fatalf("uploads=%d polls=%d", uploads.Load(), polls.Load())
 	}
 	// The refreshed tokens persisted for next time.
 	ident, err := st.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{
-		UserID: user.ID, Provider: "strava",
+		UserID: userID, Provider: "strava",
 	})
 	if err != nil || *ident.AccessToken != "fresh-token" || *ident.RefreshToken != "refresh-2" {
 		t.Fatalf("tokens not persisted: %+v err %v", ident, err)
 	}
 
 	// The rider's off switch short-circuits before any HTTP.
-	if _, err := st.Pool.Exec(t.Context(), "update users set strava_upload = false where id = $1", user.ID); err != nil {
+	if _, err := st.Pool.Exec(t.Context(), "update users set strava_upload = false where id = $1", userID); err != nil {
 		t.Fatal(err)
 	}
 	before := uploads.Load()
-	if err := svc.upload(t.Context(), rideID); err != nil {
+	if _, err := svc.upload(t.Context(), rideID); err != nil {
 		t.Fatalf("opted-out upload errored: %v", err)
 	}
 	if uploads.Load() != before {
 		t.Fatal("opt-out still uploaded")
+	}
+}
+
+// A Strava that refuses the upload, until it is told to stop refusing.
+func flakyStrava(t *testing.T) (*httptest.Server, *atomic.Bool, *atomic.Int32) {
+	t.Helper()
+	srv, uploads, _ := fakeStrava(t)
+	var down atomic.Bool
+	down.Store(true)
+	inner := srv.Config.Handler
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if down.Load() && r.URL.Path == "/api/v3/uploads" {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		inner.ServeHTTP(w, r)
+	})
+	return srv, &down, uploads
+}
+
+func TestDeliveryOutlivesTheGoroutineThatStartedIt(t *testing.T) {
+	// #799: delivery used to live entirely in a 90-second goroutine. A Strava
+	// outage or a restart abandoned it after the ride was saved, and nothing
+	// remembered — not the database, not the rider's screen.
+	st, _, rideID := seedRide(t, "strava-retry")
+	srv, down, uploads := flakyStrava(t)
+	svc := newService(st, srv)
+	exportOf := func() db.GetRideExportRow {
+		t.Helper()
+		row, err := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+			RideID: rideID, Destination: Destination,
+		})
+		if err != nil {
+			t.Fatalf("no delivery record: %v", err)
+		}
+		return row
+	}
+
+	svc.deliver(t.Context(), rideID)
+	first := exportOf()
+	if first.State != "pending" || first.Attempts != 1 {
+		t.Fatalf("a refused upload should stay pending with one attempt: %+v", first)
+	}
+	if first.LastError == nil || *first.LastError == "" {
+		t.Error("the failure was not recorded")
+	}
+
+	// The sweep is what picks it up again — with the clock wound past the
+	// backoff, since a real one waits minutes.
+	down.Store(false)
+	svc.now = func() time.Time { return time.Now().Add(time.Hour) }
+	svc.sweepOnce(t.Context())
+	done := exportOf()
+	if done.State != "delivered" {
+		t.Fatalf("the retry did not deliver: %+v", done)
+	}
+	if done.RemoteID == nil || *done.RemoteID != 4242 {
+		t.Errorf("the activity id was not kept: %+v", done.RemoteID)
+	}
+	if done.LastError != nil {
+		t.Errorf("a delivered ride kept its old error: %q", *done.LastError)
+	}
+	if uploads.Load() != 1 {
+		t.Errorf("uploads=%d, want exactly the one that worked", uploads.Load())
+	}
+
+	// And a delivered ride is not swept again — one delivery per pair, ever.
+	svc.sweepOnce(t.Context())
+	if uploads.Load() != 1 {
+		t.Errorf("a delivered ride was uploaded twice (uploads=%d)", uploads.Load())
+	}
+}
+
+func TestDeliveryStopsAfterItsAttempts(t *testing.T) {
+	// Retried at forever is worse than told: past the ceiling the row goes to
+	// failed, stops being swept, and the ride page says so.
+	st, _, rideID := seedRide(t, "strava-giveup")
+	srv, _, _ := flakyStrava(t)
+	svc := newService(st, srv)
+	for i := 0; i < maxAttempts; i++ {
+		svc.deliver(t.Context(), rideID)
+	}
+	row, err := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if err != nil {
+		t.Fatalf("no delivery record: %v", err)
+	}
+	if row.State != "failed" || row.Attempts != maxAttempts {
+		t.Fatalf("want failed after %d attempts, got %+v", maxAttempts, row)
+	}
+	svc.now = func() time.Time { return time.Now().Add(24 * time.Hour) }
+	svc.sweepOnce(t.Context())
+	after, _ := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if after.Attempts != maxAttempts {
+		t.Errorf("a failed delivery was swept again: %+v", after)
 	}
 }

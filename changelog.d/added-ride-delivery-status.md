@@ -1,0 +1,1 @@
+- A ride sent to Strava now says whether it arrived. Delivery is remembered rather than living in a background task, so an outage or a server restart no longer abandons it silently — the ride is retried on its own, and the ride's page shows where it went, links the Strava activity once it lands, and says plainly when it could not be sent.

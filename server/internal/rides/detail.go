@@ -104,6 +104,21 @@ type rideDetailJSON struct {
 	// them. Empty if the blob cannot be read: the numbers are still true, and
 	// a ride the rider wants gone must still open.
 	Samples []sampleJSON `json:"samples"`
+	// Where this ride was sent, and whether it arrived. Absent when the ride
+	// was never eligible — no Strava on the account, or auto-upload off.
+	Export *exportJSON `json:"export,omitempty"`
+}
+
+// exportJSON is one delivery's durable state (#799): a rider who turned
+// auto-upload on deserves to know whether the ride actually got there.
+type exportJSON struct {
+	Destination string `json:"destination"`
+	// pending | delivered | failed.
+	State string `json:"state"`
+	// The remote's own id for it, once delivered — 0 until then.
+	RemoteID int64 `json:"remoteId,omitempty"`
+	// What went wrong last, while it is still going wrong.
+	Error string `json:"error,omitempty"`
 }
 
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +168,21 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			AwardedAt: medal.AwardedAt.Time.Format(time.RFC3339),
 		})
 	}
+	// A missing row is the answer for every ride nobody tried to send.
+	if export, exportErr := s.store.Queries.GetRideExport(r.Context(), db.GetRideExportParams{
+		RideID: id, Destination: "strava",
+	}); exportErr == nil {
+		out.Export = &exportJSON{Destination: "strava", State: export.State}
+		if export.RemoteID != nil {
+			out.Export.RemoteID = *export.RemoteID
+		}
+		// Only while it is still going wrong: a delivered ride's last error is
+		// a scar, not a status.
+		if export.State != "delivered" && export.LastError != nil {
+			out.Export.Error = *export.LastError
+		}
+	}
+
 	samples, err := stats.DecodeSamples(row.Samples)
 	if err != nil {
 		// One unreadable blob costs this ride its trace, not its page.

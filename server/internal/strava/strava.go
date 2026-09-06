@@ -59,46 +59,144 @@ func New(st *store.Store, log *slog.Logger) *Service {
 	}
 }
 
+// Destination is what a ride_exports row is keyed by. One provider today; the
+// column exists so the second one is a row and not a schema change (#799).
+const Destination = "strava"
+
+// How the delivery record is kept. Operational guards, not product numbers.
+const (
+	// Attempts before a delivery is declared failed and stops being swept.
+	maxAttempts = 5
+	// How quiet a pending row must be before the sweep picks it up again. The
+	// backoff is attempts × this — a Strava outage is retried over hours, not
+	// hammered for a minute.
+	retryBase = 5 * time.Minute
+	// Deliveries started per sweep. A backlog drains over several sweeps
+	// rather than opening a hundred uploads at once.
+	sweepBatch = 20
+	// How often the sweep runs.
+	sweepEvery = time.Minute
+	// One delivery's own budget, upload and processing poll together.
+	attemptBudget = 90 * time.Second
+)
+
 // RideSaved uploads in the background: the save transaction is long done, a
 // Strava outage must cost nothing but a log line. The goroutine exits when
-// the upload settles or the 90 s budget runs out.
+// the upload settles or the budget runs out — and either way the outcome is
+// on the ride's delivery record, so a restart or an outage is picked up by
+// the sweep instead of being abandoned (#799).
 func (s *Service) RideSaved(rideID pgtype.UUID) {
 	safego.Go(s.log, "strava upload", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), attemptBudget)
 		defer cancel()
-		if err := s.upload(ctx, rideID); err != nil {
-			s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
+		s.deliver(ctx, rideID)
+	})
+}
+
+// Sweep retries deliveries that are still owed one, forever, on its own
+// goroutine. Started once from main; it exits when ctx is done.
+func (s *Service) Sweep(ctx context.Context) {
+	safego.Supervise(s.log, s.now, "strava delivery sweep", ctx.Done(), func() {
+		ticker := time.NewTicker(sweepEvery)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+			s.sweepOnce(ctx)
 		}
 	})
 }
 
-func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) error {
+func (s *Service) sweepOnce(ctx context.Context) {
+	due, err := s.store.Queries.ListRideExportsDue(ctx, db.ListRideExportsDueParams{
+		Before:  pgtype.Timestamptz{Time: s.now().Add(-retryBase), Valid: true},
+		MaxRows: sweepBatch,
+	})
+	if err != nil {
+		s.log.Warn("strava sweep query failed", "err", err)
+		return
+	}
+	for _, row := range due {
+		// attempts × retryBase: the more a delivery has failed, the longer it
+		// waits. The query has already applied the first step of that; this is
+		// the widening, off the same injectable clock.
+		if row.UpdatedAt.Time.After(s.now().Add(-time.Duration(row.Attempts) * retryBase)) {
+			continue
+		}
+		attemptCtx, cancel := context.WithTimeout(ctx, attemptBudget)
+		s.deliver(attemptCtx, row.RideID)
+		cancel()
+		if ctx.Err() != nil {
+			return
+		}
+	}
+}
+
+// deliver runs one attempt and records what happened to it.
+func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
+	activityID, err := s.upload(ctx, rideID)
+	switch {
+	case err != nil:
+		s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
+		message := err.Error()
+		if failErr := s.store.Queries.FailRideExport(ctx, db.FailRideExportParams{
+			RideID: rideID, Destination: Destination,
+			LastError: &message, MaxAttempts: maxAttempts,
+		}); failErr != nil {
+			s.log.Warn("strava delivery record not updated", "err", failErr)
+		}
+	case activityID != nil:
+		if doneErr := s.store.Queries.FinishRideExport(ctx, db.FinishRideExportParams{
+			RideID: rideID, Destination: Destination, RemoteID: activityID,
+		}); doneErr != nil {
+			s.log.Warn("strava delivery record not updated", "err", doneErr)
+		}
+	}
+	// activityID nil with no error is "the rider does not want this ride
+	// there" — no record, nothing to retry, nothing to show.
+}
+
+// upload runs one delivery attempt. A nil activity id with a nil error means
+// the ride was never eligible: the rider turned auto-upload off, or has no
+// Strava on the account at all. Neither is a failure and neither is retried.
+func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) (*int64, error) {
 	ride, err := s.store.Queries.GetRideForUpload(ctx, rideID)
 	if err != nil {
-		return fmt.Errorf("load ride: %w", err)
+		return nil, fmt.Errorf("load ride: %w", err)
 	}
 	if !ride.StravaUpload {
-		return nil // the rider said no — not an error, not a log
+		return nil, nil // the rider said no — not an error, not a log
 	}
 	ident, err := s.store.Queries.GetUserIdentity(ctx, db.GetUserIdentityParams{
 		UserID: ride.UserID, Provider: "strava",
 	})
 	if err != nil {
-		return nil // no Strava on this account — silently not a feature
+		return nil, nil // no Strava on this account — silently not a feature
+	}
+	// The ride is eligible, so from here every outcome is worth remembering:
+	// open the delivery record before the first remote call, or a crash
+	// between here and the answer leaves nothing to sweep.
+	if startErr := s.store.Queries.StartRideExport(ctx, db.StartRideExportParams{
+		RideID: rideID, Destination: Destination,
+	}); startErr != nil {
+		s.log.Warn("strava delivery record not opened", "err", startErr)
 	}
 	token, err := s.freshToken(ctx, ident)
 	if err != nil {
-		return fmt.Errorf("token: %w", err)
+		return nil, fmt.Errorf("token: %w", err)
 	}
 
 	fit, err := s.encode(ride)
 	if err != nil {
-		return fmt.Errorf("encode: %w", err)
+		return nil, fmt.Errorf("encode: %w", err)
 	}
 
 	uploadID, err := s.post(ctx, token, ride, fit)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return s.await(ctx, token, uploadID)
 }
@@ -245,22 +343,22 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 }
 
 // await polls the async processing until Strava settles it (#34's spec).
-func (s *Service) await(ctx context.Context, token string, uploadID int64) error {
+func (s *Service) await(ctx context.Context, token string, uploadID int64) (*int64, error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("upload %d still processing at deadline", uploadID)
+			return nil, fmt.Errorf("upload %d still processing at deadline", uploadID)
 		case <-time.After(s.pollEvery):
 		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 			fmt.Sprintf("%s/uploads/%d", s.apiBase, uploadID), nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
 		res, err := s.httpc.Do(req)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		var status struct {
 			ActivityID *int64 `json:"activity_id"`
@@ -269,14 +367,14 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) error
 		decodeErr := json.NewDecoder(res.Body).Decode(&status)
 		_ = res.Body.Close()
 		if decodeErr != nil {
-			return decodeErr
+			return nil, decodeErr
 		}
 		if status.Error != "" {
-			return fmt.Errorf("processing failed: %s", status.Error)
+			return nil, fmt.Errorf("processing failed: %s", status.Error)
 		}
 		if status.ActivityID != nil {
 			s.log.Info("strava upload complete", "activity", *status.ActivityID)
-			return nil
+			return status.ActivityID, nil
 		}
 	}
 }
