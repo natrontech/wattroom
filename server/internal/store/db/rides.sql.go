@@ -346,6 +346,24 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 	return i, err
 }
 
+const getRideSamples = `-- name: GetRideSamples :one
+select samples from rides where id = $1 and user_id = $2
+`
+
+type GetRideSamplesParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// One ride's blob, owner-scoped. The export streams these into the zip one
+// after another, so peak memory is one blob however long the history is.
+func (q *Queries) GetRideSamples(ctx context.Context, arg GetRideSamplesParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getRideSamples, arg.ID, arg.UserID)
+	var samples []byte
+	err := row.Scan(&samples)
+	return samples, err
+}
+
 const listRideExportsDue = `-- name: ListRideExportsDue :many
 select ride_id, destination, attempts, updated_at
 from ride_exports
@@ -670,24 +688,39 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 }
 
 const listUserRidesFull = `-- name: ListUserRidesFull :many
-select id, user_id, room_id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, samples, shared_at, created_at, curve, xp, norm_watts from rides where user_id = $1 order by started_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution,
+       ftp_watts, xp, curve
+from rides where user_id = $1 order by started_at
 `
 
-// Export-all (#35): everything, blobs included — this is the one query
-// allowed to read every blob, because the rider is taking their data home.
-func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]Ride, error) {
+type ListUserRidesFullRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	StartedAt   pgtype.Timestamptz
+	Seconds     int32
+	AvgWatts    int16
+	Kj          int32
+	Execution   float32
+	FtpWatts    int16
+	Xp          int32
+	Curve       []byte
+}
+
+// Export-all (#35): every ride the rider has, summary columns only. The
+// blobs are read one at a time by GetRideSamples below — holding all of them
+// at once grows with how long someone has used WattRoom, which is the one
+// kind of growth an alpha cannot outrun (#894).
+func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]ListUserRidesFullRow, error) {
 	rows, err := q.db.Query(ctx, listUserRidesFull, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ride
+	var items []ListUserRidesFullRow
 	for rows.Next() {
-		var i Ride
+		var i ListUserRidesFullRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.RoomID,
 			&i.WorkoutName,
 			&i.StartedAt,
 			&i.Seconds,
@@ -695,12 +728,8 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.Kj,
 			&i.Execution,
 			&i.FtpWatts,
-			&i.Samples,
-			&i.SharedAt,
-			&i.CreatedAt,
-			&i.Curve,
 			&i.Xp,
-			&i.NormWatts,
+			&i.Curve,
 		); err != nil {
 			return nil, err
 		}

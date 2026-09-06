@@ -115,9 +115,18 @@ select id, samples from rides where norm_watts is null limit $1;
 update rides set norm_watts = $2 where id = $1;
 
 -- name: ListUserRidesFull :many
--- Export-all (#35): everything, blobs included — this is the one query
--- allowed to read every blob, because the rider is taking their data home.
-select * from rides where user_id = $1 order by started_at;
+-- Export-all (#35): every ride the rider has, summary columns only. The
+-- blobs are read one at a time by GetRideSamples below — holding all of them
+-- at once grows with how long someone has used WattRoom, which is the one
+-- kind of growth an alpha cannot outrun (#894).
+select id, workout_name, started_at, seconds, avg_watts, kj, execution,
+       ftp_watts, xp, curve
+from rides where user_id = $1 order by started_at;
+
+-- name: GetRideSamples :one
+-- One ride's blob, owner-scoped. The export streams these into the zip one
+-- after another, so peak memory is one blob however long the history is.
+select samples from rides where id = $1 and user_id = $2;
 
 -- name: DeleteUser :exec
 delete from users where id = $1;

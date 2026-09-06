@@ -117,14 +117,23 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// One blob at a time: read, stream into the zip, let it go. Held together
+	// in one slice, a rider's whole history is in memory at once — and that
+	// number grows every month they keep riding (#894).
 	for _, ride := range rides {
+		blob, err := s.store.Queries.GetRideSamples(r.Context(), db.GetRideSamplesParams{
+			ID: ride.ID, UserID: user.ID,
+		})
+		if err != nil {
+			continue // one unreadable ride loses its samples, not the export
+		}
 		name := fmt.Sprintf("samples/%s-%s.json",
 			ride.StartedAt.Time.UTC().Format("2006-01-02-1504"), store.UUIDString(ride.ID)[:8])
 		f, err := archive.Create(name)
 		if err != nil {
 			return
 		}
-		zr, err := gzip.NewReader(bytes.NewReader(ride.Samples))
+		zr, err := gzip.NewReader(bytes.NewReader(blob))
 		if err != nil {
 			continue // a corrupt blob loses one ride's samples, not the export
 		}
