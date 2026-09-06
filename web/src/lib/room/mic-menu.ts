@@ -33,6 +33,8 @@ export interface MicVoice {
 }
 
 export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
+	// One entry is the system default alone: nothing to choose between.
+	const inputs = deviceOptions(voice.mics, 'Microphone');
 	const mode = (
 		id: 'gate' | 'ptt',
 		label: string,
@@ -54,12 +56,16 @@ export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
 		'separator',
 		mode('gate', 'Voice activation', Radio),
 		mode('ptt', 'Push to talk', Mic),
-		'separator',
-		...deviceOptions(voice.mics, 'Microphone').map((device): MenuEntry => ({
-			label: device.label,
-			hint: device.value === voice.micId ? 'on' : undefined,
-			onSelect: () => void voice.setMic(device.value),
-		})),
+		...(inputs.length > 1
+			? ([
+					'separator',
+					...inputs.map((device): MenuEntry => ({
+						label: device.label,
+						hint: device.value === voice.micId ? 'on' : undefined,
+						onSelect: () => void voice.setMic(device.value),
+					})),
+				] satisfies MenuEntry[])
+			: []),
 		'separator',
 		{
 			label: 'Tune your gate…',

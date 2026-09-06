@@ -64,10 +64,13 @@ function duckFader(): MenuSlider | undefined {
  */
 function speakers(): MenuEntry[] {
 	const av = roomConnection.current?.av;
-	if (!av?.canPickOutput || av.outs.length === 0) return [];
+	if (!av?.canPickOutput) return [];
+	const options = deviceOptions(av.outs, 'Speakers');
+	// One entry is the system default alone: nothing to choose between.
+	if (options.length < 2) return [];
 	return [
 		'separator',
-		...deviceOptions(av.outs, 'Speakers').map((device): MenuEntry => ({
+		...options.map((device): MenuEntry => ({
 			label: device.label,
 			hint: device.value === av.outId ? 'on' : undefined,
 			onSelect: () => av.setOut(device.value),
