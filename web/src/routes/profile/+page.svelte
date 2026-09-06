@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MixFaders from '$lib/room/MixFaders.svelte';
 	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { Monitor, Moon, Sun, Gauge, Zap } from '@lucide/svelte';
@@ -605,7 +606,15 @@
 									: av.setOut(id)}
 					/>
 				{:else}
-					<p class="text-muted mt-2 text-sm">
+					<!-- The mix needs no room: the cues ring for a DM and a friend
+					     request too, and the you-panel's cue fader (#898) must not
+					     be the only way to reach one (ux.md). Devices and the gate
+					     stay behind a live connection — they have nothing to show
+					     without one. -->
+					<div class="mt-3 max-w-sm">
+						<MixFaders />
+					</div>
+					<p class="text-muted mt-4 text-sm">
 						Open a room to pick devices and set your gate — the meter needs a
 						live mic to show you a level.
 					</p>
