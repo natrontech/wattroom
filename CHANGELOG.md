@@ -45,7 +45,6 @@ not a second copy of `git log`.
 
 ### Fixed
 
-- Fixed a server that would not start: two database migrations shipped with the same number, and the migration runner refuses to run at all when it sees that.
 - Exporting all your data no longer loads every ride's samples into memory at once. It reads them one ride at a time while streaming the zip, so the export costs the same whether you have ridden for a month or for years.
 - A solo ride whose save to your account fails is no longer lost. It stays on the device with every sample, and the ride screen offers it back with a "Save to your account" button next to the .fit download — previously only a summary survived, and the recovery card never mentioned it.
 - Auto-pause and the spiral guard now protect you in a group ride, not only when riding alone. Stop pedalling, or grind to a halt at low cadence, and your trainer lets go while the room's session carries on — with a line on screen saying so, and a countdown when you pick back up. A sprint moment no longer lands on a rider who has stopped.
