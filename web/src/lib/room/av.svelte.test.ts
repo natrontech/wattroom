@@ -79,6 +79,18 @@ vi.mock('livekit-client', () => {
 				},
 			};
 		},
+		/** A remote rider's microphone arriving: an audio track to attach. */
+		remoteVoice(identity: string) {
+			joined?.handlers.get('TrackSubscribed')?.(
+				{
+					kind: 'audio',
+					attach: () => document.createElement('audio'),
+					detach: () => [],
+				},
+				{ kind: 'audio', source: 'microphone', isMuted: false },
+				{ identity },
+			);
+		},
 		/** Every data packet this tab has broadcast, decoded. */
 		broadcasts() {
 			return published.map((p) => JSON.parse(new TextDecoder().decode(p)));
@@ -108,16 +120,66 @@ vi.mock('$lib/room/mic-level', () => ({
 
 const { createRoomAv } = await import('./av.svelte');
 const { api } = await import('$lib/api');
-const { stopSharingNatively, dropNatively, broadcasts, remoteCamera } =
-	(await import('livekit-client')) as unknown as {
-		stopSharingNatively: () => void;
-		dropNatively: () => void;
-		broadcasts: () => { t: string; at: number }[];
-		remoteCamera: (
-			identity: string,
-			muted?: boolean,
-		) => { mute: () => void; unmute: () => void };
-	};
+const {
+	stopSharingNatively,
+	dropNatively,
+	broadcasts,
+	remoteCamera,
+	remoteVoice,
+} = (await import('livekit-client')) as unknown as {
+	stopSharingNatively: () => void;
+	dropNatively: () => void;
+	broadcasts: () => { t: string; at: number }[];
+	remoteCamera: (
+		identity: string,
+		muted?: boolean,
+	) => { mute: () => void; unmute: () => void };
+	remoteVoice: (identity: string) => void;
+};
+
+/** Every fader on the output side, in the order the graph built them. */
+type FakeGain = { gain: { value: number } };
+function withOutputGraph<T>(
+	run: (gains: FakeGain[]) => Promise<T>,
+): Promise<T> {
+	const gains: FakeGain[] = [];
+	class FakeAudioContext {
+		currentTime = 0;
+		destination = {};
+		createDynamicsCompressor() {
+			return {
+				threshold: {},
+				knee: {},
+				ratio: {},
+				attack: {},
+				release: {},
+				connect() {},
+			};
+		}
+		createMediaElementSource() {
+			return { connect() {}, disconnect() {} };
+		}
+		createGain() {
+			const node = {
+				gain: {
+					value: 1,
+					setTargetAtTime(target: number) {
+						node.gain.value = target;
+					},
+				},
+				connect() {},
+				disconnect() {},
+			};
+			gains.push(node);
+			return node;
+		}
+		async close() {}
+	}
+	vi.stubGlobal('AudioContext', FakeAudioContext);
+	// `finally` on the promise, not a `try` around it: a `try/finally` here
+	// unstubs the moment the async body first awaits.
+	return run(gains).finally(() => vi.unstubAllGlobals());
+}
 
 /** The machine's side of the mic: what a test can do to the hardware. */
 interface MicHardware {
@@ -214,6 +276,37 @@ describe('createRoomAv', () => {
 		await av.toggleShare();
 		expect(onStage()?.key).toBe('screen:me');
 		expect(av.stageSources.map((s) => s.key)).toEqual(['screen:me']);
+	});
+
+	// #875: away closed the mic and the camera and left the room playing at
+	// full volume into an empty chair — the rider's own speakers still
+	// carrying voices, the jukebox and every cue.
+	it('takes the room off the speakers while the rider is away', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			remoteVoice('jan');
+			expect(gains.at(-1)?.gain.value).toBe(1);
+
+			await av.setAway(true);
+			expect(mixer.muted).toBe(true);
+			expect(gains.map((g) => g.gain.value)).toEqual([0]);
+			// A rider who joins voice while you are out arrives silent too.
+			remoteVoice('mia');
+			expect(gains.map((g) => g.gain.value)).toEqual([0, 0]);
+
+			await av.setAway(false);
+			expect(gains.map((g) => g.gain.value)).toEqual([1, 1]);
+
+			// The room is behind you: leaving hands the speakers back.
+			await av.setAway(true);
+			av.leave();
+			expect(mixer.muted).toBe(false);
+			dispose();
+		});
 	});
 
 	// #354: the browser's own bar ends the share without asking us. LiveKit

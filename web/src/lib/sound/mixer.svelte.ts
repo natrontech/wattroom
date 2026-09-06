@@ -52,6 +52,14 @@ let music = $state(70);
 let cues = $state(0.7);
 let duck = $state(DUCK_DEFAULT);
 let riders = $state<Record<string, number>>({});
+/**
+ * Stepped out (#706, #875): everything the room plays goes quiet on this
+ * device — voices, music, cues — because a rider who is not there is not
+ * there to turn it down. The faders keep their values, so coming back
+ * restores the mix they set and never a default. Not persisted: away is
+ * where the rider is, not how they like the mix.
+ */
+let muted = $state(false);
 // Who a stored fader belongs to, so the profile mixer can name a rider who
 // is not in the room right now.
 let names = $state<Record<string, string>>({});
@@ -83,8 +91,16 @@ export const mixer = {
 	},
 	setCues(v: number) {
 		cues = Math.min(1, Math.max(0, v));
-		setCueVolume(cues);
+		setCueVolume(muted ? 0 : cues);
 		persist();
+	},
+	/** Silent while the rider is away — the outputs each read this. */
+	get muted() {
+		return muted;
+	},
+	setMuted(on: boolean) {
+		muted = on;
+		setCueVolume(on ? 0 : cues);
 	},
 	/**
 	 * How far music and cues dip while someone is speaking (#280), 0–1:

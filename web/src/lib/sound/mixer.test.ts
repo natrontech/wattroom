@@ -189,3 +189,39 @@ describe('fader resolution (#509)', () => {
 		expect(reloaded.riderGain('anna')).toBe(1.37);
 	});
 });
+
+describe('mixer muted while away (#875)', () => {
+	beforeEach(() => (store.value = null));
+
+	it('takes the cue bus to silence and gives the level back on return', async () => {
+		const mixer = await freshMixer();
+		const { setVolume } = await import('$lib/sound/cues');
+		mixer.setCues(0.4);
+
+		mixer.setMuted(true);
+		expect(mixer.muted).toBe(true);
+		expect(setVolume).toHaveBeenLastCalledWith(0);
+		// A fader dragged while away still lands silent — and is what comes
+		// back, so stepping out never rewrites the mix.
+		mixer.setCues(0.9);
+		expect(setVolume).toHaveBeenLastCalledWith(0);
+
+		mixer.setMuted(false);
+		expect(setVolume).toHaveBeenLastCalledWith(0.9);
+	});
+
+	it('leaves the faders honest, and is not a preference to persist', async () => {
+		const mixer = await freshMixer();
+		mixer.setMusic(80);
+		mixer.setRiderGain('anna', 1.5, 'Anna');
+		mixer.setMuted(true);
+
+		// The outputs read `muted`; the panel reads the levels (MixFaders,
+		// RiderVolume), or a step out would show every slider at zero.
+		expect(mixer.music).toBe(80);
+		expect(mixer.riderGain('anna')).toBe(1.5);
+		expect(stored().muted).toBeUndefined();
+		// Away is where the rider is: a reload is not still away.
+		expect((await freshMixer()).muted).toBe(false);
+	});
+});

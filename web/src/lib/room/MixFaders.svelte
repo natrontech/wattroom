@@ -22,6 +22,11 @@
 		onRiderGain ? onRiderGain(id, 1) : mixer.setRiderGain(id, 1);
 </script>
 
+{#if mixer.muted}
+	<!-- The faders keep their values while away (#875), so say why nothing is
+	     coming out rather than showing every slider dragged to zero. -->
+	<p class="text-muted mb-2 text-xs">Muted while you are away.</p>
+{/if}
 <label class="block text-xs">
 	<span class="text-muted"
 		>music · <span class="font-display tabular-nums">{mixer.music}%</span></span
