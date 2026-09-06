@@ -1,1 +1,1 @@
-- The room you're in is marked in the sidebar by a soft tint alone — the left stripe and the pulsing green dot are gone.
+- The room you're in is marked in the sidebar by a soft tint alone — the left stripe, the pulsing green dot and the rule beside its Lounge/Chat/Training list are gone.
