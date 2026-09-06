@@ -19,6 +19,14 @@ let attempts = 0;
 let stopped = true;
 // The first answer is the state of the world, not a burst of arrivals.
 let announced = false;
+// #912: the hub pings EVERY signed-in rider on every chat line, and the ping
+// is contentless by design, so each one used to be its own fetch — a fast
+// exchange of N messages cost N round trips per rider online anywhere. The
+// server's own ping channel only coalesces when a writer falls behind, which
+// it normally does not.
+const PING_WINDOW_MS = 250;
+let pingWindow: ReturnType<typeof setTimeout> | null = null;
+let pingedDuringWindow = false;
 
 async function refresh() {
 	const list = await fetchRailRooms();
@@ -49,6 +57,28 @@ async function refresh() {
 	}
 }
 
+/**
+ * A ping-driven refresh, at most one per window. Leading edge on purpose: the
+ * badge for the first message of a conversation must not wait 250 ms, and it
+ * is the burst behind it that is worth collapsing. A ping that lands inside
+ * the window is not dropped — it refreshes once when the window closes, so
+ * the last state of a burst is always fetched.
+ */
+function refreshCoalesced() {
+	if (pingWindow) {
+		pingedDuringWindow = true;
+		return;
+	}
+	void refresh();
+	pingWindow = setTimeout(() => {
+		pingWindow = null;
+		if (pingedDuringWindow) {
+			pingedDuringWindow = false;
+			refreshCoalesced();
+		}
+	}, PING_WINDOW_MS);
+}
+
 function connect() {
 	// Never dial while a socket is in flight or open (same rule as the room WS).
 	if (stopped || (socket && socket.readyState <= WebSocket.OPEN)) return;
@@ -59,7 +89,7 @@ function connect() {
 		attempts = 0;
 		void refresh();
 	};
-	socket.onmessage = () => void refresh();
+	socket.onmessage = () => refreshCoalesced();
 	socket.onclose = () => {
 		if (stopped) return;
 		attempts += 1;
@@ -105,6 +135,9 @@ export const presence = {
 		announced = false;
 		if (fallback) clearInterval(fallback);
 		if (reconnect) clearTimeout(reconnect);
+		if (pingWindow) clearTimeout(pingWindow);
+		pingWindow = null;
+		pingedDuringWindow = false;
 		socket?.close();
 		socket = null;
 		rooms = [];
