@@ -52,4 +52,23 @@ describe('shouldPromptEmail', () => {
 	it('shows nothing while the account is still loading', () => {
 		expect(shouldPromptEmail(null, false)).toBe(false);
 	});
+
+	// The ride monitor drives the same SPA a rider does, and a gate in front of
+	// it fails the release's own rollout check (#822).
+	it('never asks the machine account', () => {
+		expect(
+			shouldPromptEmail(
+				me({ providers: ['synthetic'], emailRequired: true }),
+				false,
+			),
+		).toBe(false);
+	});
+
+	// Only when synthetic is the *whole* story: a rider who somehow carries it
+	// alongside a real provider is still a rider.
+	it('still asks an account that has a real provider too', () => {
+		expect(
+			shouldPromptEmail(me({ providers: ['synthetic', 'github'] }), false),
+		).toBe(true);
+	});
 });

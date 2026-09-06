@@ -10,6 +10,10 @@ export async function signInTo(page: Page, path: string): Promise<void> {
 	// unauthenticated door and production never sets WATTROOM_DEV_LOGIN. The
 	// synthetic monitor carries a bearer instead (#153); the POST runs through
 	// the page's context, so the session cookie lands where the browser needs it.
+	// This same spec is the operator's pre-deploy gate against production, in a
+	// real browser. Anything that renders over the app there fails the rollout
+	// and rolls it back — which is why the email gate exempts an account whose
+	// only identity is synthetic (#822, $lib/account/verify-prompt).
 	const token = process.env.WATTROOM_SYNTHETIC_TOKEN;
 	if (token) {
 		const res = await page.request.post('/api/auth/synthetic', {

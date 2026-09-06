@@ -12,6 +12,12 @@ const SKIP_KEY = 'wattroom.verify-email.skipped';
 
 export function shouldPromptEmail(me: Me | null, skipped: boolean): boolean {
 	if (!me?.mailAvailable || me.emailVerified) return false;
+	// The production ride monitor (#153) is a machine account with nobody to
+	// email, and it drives the same SPA a rider does. Prompting it puts a
+	// full-screen gate in front of the release's own rollout check, which
+	// then fails and rolls the deploy back (#822).
+	if (me.providers?.length === 1 && me.providers[0] === 'synthetic')
+		return false;
 	return me.emailRequired === true || !skipped;
 }
 
