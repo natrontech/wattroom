@@ -60,6 +60,7 @@
 		ride = null;
 		error = null;
 		missing = false;
+		exportError = null;
 		if (which) void load(which);
 	});
 
@@ -162,8 +163,20 @@
 			</button>
 		</header>
 		{#if exportError}<div class="mt-3">
-				<Banner tone="error">{exportError}</Banner>
-			</div>{/if}
+				<Banner tone="error">
+					{exportError}
+					{#snippet action()}<button
+							class="text-xs underline"
+							onclick={() => void downloadFit()}>Retry</button
+						>{/snippet}
+				</Banner>
+			</div>
+		{:else if ride.samples.length === 0}
+			<p class="text-muted mt-3 text-xs">
+				No samples were stored for this ride, so there is no FIT file to
+				download.
+			</p>
+		{/if}
 
 		<section class="panel mt-6 px-6 py-5">
 			<h2 class="eyebrow">how it went</h2>

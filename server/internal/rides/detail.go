@@ -46,7 +46,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	metrics, err := stats.DecodeSamples(row.Samples)
-	if err != nil || len(metrics) == 0 {
+	if err != nil {
+		s.log.Error("ride export samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride's samples could not be read.")
+		return
+	}
+	if len(metrics) == 0 {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
 		return
 	}
@@ -60,23 +65,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be exported.")
 		return
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", "application/vnd.ant.fit")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"wattroom-%s.fit\"", store.UUIDString(row.ID)))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // roomJSON names the room a ride happened in; nil for a solo ride.
