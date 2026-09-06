@@ -124,7 +124,7 @@
 						aria-current={on ? 'page' : undefined}
 						class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
 							? 'bg-ink/10 text-ink'
-							: 'text-muted hover:text-ink'}"
+							: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 					>
 						<entry.icon size={15} class="shrink-0" />
 						{entry.label}
@@ -305,7 +305,7 @@
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
 						<ul
-							class="mt-0.5 mb-1 ml-3 space-y-0.5 pl-2"
+							class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5"
 						>
 							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
@@ -315,7 +315,7 @@
 										aria-current={on ? 'page' : undefined}
 										class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
 											? 'bg-ink/10 text-ink'
-											: 'text-muted hover:text-ink'}"
+											: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 									>
 										<entry.icon size={14} class="shrink-0" />
 										<span class="truncate">{entry.label}</span>
@@ -369,7 +369,7 @@
 								? 'bg-ink/10 text-ink'
 								: dmHeads.unread(head.peerId)
 									? 'text-ink font-semibold'
-									: 'text-muted hover:text-ink'}"
+									: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 						>
 							<Avatar
 								name={head.peerName}
@@ -454,7 +454,7 @@
 				class="grid h-11 w-11 place-items-center rounded md:h-7 md:w-7 {destination ===
 					undefined && pathname.startsWith('/profile')
 					? 'text-ink'
-					: 'text-muted hover:text-ink'}"
+					: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 				title="settings"
 				aria-label="settings"><Settings size={16} /></a
 			>
