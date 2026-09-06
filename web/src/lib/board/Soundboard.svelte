@@ -9,10 +9,18 @@
 	 * never glows; the part that has already played takes the live hue,
 	 * because that is what ADR-0005 reserves it for.
 	 */
-	import { ChevronUp, GripHorizontal, Plus, Volume2, X } from '@lucide/svelte';
+	import {
+		ChevronUp,
+		GripHorizontal,
+		Library,
+		Plus,
+		Volume2,
+		X,
+	} from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
 	import { board, PADS, type Clip } from '$lib/board/clips.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
+	import { modals } from '$lib/modals.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import {
 		applyLevels,
@@ -21,6 +29,7 @@
 	} from '$lib/sound/board.svelte';
 	import { UNIT_FADER } from '$lib/sound/fader';
 	import { waveform } from '$lib/board/waveform';
+	import ClipLibrary from '$lib/board/ClipLibrary.svelte';
 	import type { Board } from '$lib/protocol';
 
 	let {
@@ -56,10 +65,21 @@
 
 	// Playing is per rider, not per pad: what YOUR pad shows is your own fire.
 	let mine = $state<{ pad: number; until: number } | undefined>();
+	let library = $state(false);
+
+	// Floating chrome yields to a surface the rider opened, the way the
+	// jukebox dock does (modals.svelte) — including the clip library, which is
+	// reached from this very panel and would otherwise open underneath it.
+	const covered = $derived(modals.open > 0);
 
 	function press(pad: number) {
 		const clip = board.onPad(pad);
-		if (!clip) return;
+		if (!clip) {
+			// The empty pad IS the affordance: it is where a rider looking for
+			// somewhere to put a sound is already looking.
+			library = true;
+			return;
+		}
 		onFire(clip.id);
 		mine = { pad, until: Date.now() + clip.millis };
 		setTimeout(() => {
@@ -114,7 +134,9 @@
 	<!-- Never only a key (ux.md): the way back is always on screen. -->
 	<button
 		onclick={() => boardPanel.show()}
-		class="bg-surface-raised ring-ink/15 text-muted hover:text-ink fixed bottom-4 left-4 z-[54] flex h-12 items-center gap-2 rounded-full px-4 shadow-lg ring-1 md:left-64"
+		class="bg-surface-raised ring-ink/15 text-muted hover:text-ink fixed bottom-4 left-4 flex h-12 items-center gap-2 rounded-full px-4 shadow-lg ring-1 md:left-64 {covered
+			? 'z-30'
+			: 'z-[54]'}"
 		title="Show your soundboard (B)"
 	>
 		<Volume2 size={16} />
@@ -123,7 +145,9 @@
 {:else}
 	<div
 		data-pane={PANE}
-		class="bg-surface ring-ink/15 fixed top-32 left-4 z-[55] w-[364px] rounded-lg p-1.5 shadow-2xl ring-1 md:left-72"
+		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] rounded-lg p-1.5 shadow-2xl ring-1 md:left-72 {covered
+			? 'z-30'
+			: 'z-[55]'}"
 	>
 		<div
 			{@attach dragPane}
@@ -132,8 +156,13 @@
 			<GripHorizontal size={14} class="shrink-0 opacity-60" />
 			<span class="truncate">soundboard</span>
 			<button
-				onclick={() => boardPanel.hide()}
+				onclick={() => (library = true)}
 				class="hover:text-ink ml-auto shrink-0"
+				aria-label="your clips"><Library size={13} /></button
+			>
+			<button
+				onclick={() => boardPanel.hide()}
+				class="hover:text-ink shrink-0"
 				aria-label="hide the soundboard"><ChevronUp size={13} /></button
 			>
 			<button
@@ -148,8 +177,9 @@
 				{@const playing = mine?.pad === slot}
 				<button
 					onclick={() => press(slot)}
-					disabled={!clip}
-					title={clip ? `${clip.name} — key ${slot}` : `Pad ${slot} is empty`}
+					title={clip
+						? `${clip.name} — key ${slot}`
+						: `Pad ${slot} is empty — add a clip`}
 					class="relative flex h-23 flex-col gap-1 overflow-hidden rounded border p-2 text-left {clip
 						? playing
 							? 'border-watt/50 bg-watt/8'
@@ -238,4 +268,8 @@
 			</p>
 		{/if}
 	</div>
+{/if}
+
+{#if library}
+	<ClipLibrary onclose={() => (library = false)} />
 {/if}
