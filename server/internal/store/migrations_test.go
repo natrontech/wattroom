@@ -39,6 +39,38 @@ func TestMigrationVersionsAreUnique(t *testing.T) {
 	}
 }
 
+// Two files that do the same thing under different versions is the other way
+// this goes wrong, and it happened within minutes of the timestamp rule
+// landing: two agents each renamed the same merged migration, and main
+// carried `<t1>_ride_room_indexes.sql` and `<t2>_ride_room_indexes.sql`. A
+// fresh database survived it by luck — the second copy happened to be the
+// idempotent one — while every database that already held the original
+// failed on the first.
+func TestMigrationNamesAreUnique(t *testing.T) {
+	entries, err := os.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		_, slug, ok := strings.Cut(strings.TrimSuffix(name, ".sql"), "_")
+		if !ok || slug == "" {
+			continue // the version test has this one
+		}
+		if first, dup := seen[slug]; dup {
+			t.Errorf("%s and %s are both %q — if they really are two different "+
+				"migrations, say so in the name; if they are one migration renamed, "+
+				"delete the copy that no database has applied", first, name, slug)
+			continue
+		}
+		seen[slug] = name
+	}
+}
+
 // Sequence numbers were only ever correct at the instant a branch merged, and
 // nothing can check them at that instant (#928): two branches each take the
 // next free number, each is green alone, and main does not boot once both
