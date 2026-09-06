@@ -86,6 +86,9 @@ func TestLavaDisconnectGrace(t *testing.T) {
 	roster := backyardRoster()
 	l.advance(gat(1), map[string]int{"a": 150, "b": 150}, roster)
 	for sec := 2; sec <= 65; sec++ {
+		if sec == 25 && l.lives["b"] != lavaLives {
+			t.Fatalf("disconnect grace burned a life: %d", l.lives["b"])
+		}
 		l.advance(gat(sec), map[string]int{"a": int(zoneBounds[l.zone][0]*200) + 5}, roster)
 	}
 	if !l.out["b"] {
