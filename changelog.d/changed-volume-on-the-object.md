@@ -1,0 +1,1 @@
+- A rider's volume is now in their right-click menu, wherever they appear — the people column, their tile on stage, the Members list — instead of a speaker icon on two rows. The music level moved into the jukebox, next to the queue and the transport.

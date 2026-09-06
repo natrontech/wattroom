@@ -7,6 +7,7 @@
 		Rewind,
 		SkipBack,
 		SkipForward,
+		Volume2,
 	} from '@lucide/svelte';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
@@ -19,6 +20,8 @@
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
+	import { MUSIC_FADER } from '$lib/sound/fader';
+	import { mixer } from '$lib/sound/mixer.svelte';
 	import {
 		COLUMN_SEAT,
 		offerSeat,
@@ -340,6 +343,26 @@
 					>
 				{/if}
 			</div>
+
+			<!-- The one fader everybody reaches for, where the music is (#874) —
+			     it used to be behind the Sound panel. Every button above it
+			     commands the room; this one is your ears only, and says so. -->
+			<label class="flex min-w-0 items-center gap-2">
+				<Volume2 size={13} class="text-muted shrink-0" />
+				<input
+					type="range"
+					{...MUSIC_FADER}
+					value={mixer.music}
+					oninput={(e) => mixer.setMusic(Number(e.currentTarget.value))}
+					class="min-w-0 flex-1"
+					aria-label="music volume, yours only — {mixer.music}%"
+					title="music volume — yours only, {mixer.music}%"
+				/>
+				<span
+					class="text-muted font-display w-8 shrink-0 text-right text-[10px] tabular-nums"
+					>{mixer.music}%</span
+				>
+			</label>
 		</div>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">

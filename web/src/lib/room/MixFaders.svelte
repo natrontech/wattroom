@@ -7,7 +7,7 @@
 	// /profile's Voice & audio page. One set of faders, two surfaces.
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
-	import { MUSIC_FADER, UNIT_FADER } from '$lib/sound/fader';
+	import { MUSIC_FADER, RIDER_FADER, UNIT_FADER } from '$lib/sound/fader';
 
 	let {
 		onRiderGain,
@@ -16,10 +16,15 @@
 		onRiderGain?: (id: string, gain: number) => void;
 	} = $props();
 
-	// Back to unity — through av when there is one, so a rider still in
-	// voice is heard at 100 % the moment you press it.
-	const resetRider = (id: string) =>
-		onRiderGain ? onRiderGain(id, 1) : mixer.setRiderGain(id, 1);
+	// Through av when there is one, so a rider still in voice is heard at the
+	// new level the moment it moves.
+	const setRider = (id: string, gain: number) =>
+		onRiderGain ? onRiderGain(id, gain) : mixer.setRiderGain(id, gain);
+
+	// Taken once, on purpose: unity forgets a rider (mixer.svelte.ts), so a
+	// live list would delete the row under the thumb the moment a drag passed
+	// 100 %. The levels below still read live.
+	const listed = mixer.mixedRiders;
 </script>
 
 {#if mixer.muted}
@@ -70,30 +75,42 @@
 		aria-label="how far music and cues dip under a voice"
 	/>
 </label>
-<!-- Riders are mixed from their own row (#463) — the speaker in the people
-     column or on Members. This lists what you have set, to undo. -->
+<!-- A rider's volume lives in their right-click menu now (#874), anywhere
+     they appear. Here so it is never ONLY in a menu (ux.md), and so the
+     riders you have moved are in one list to undo. -->
 <div class="mt-3">
 	<span class="text-muted text-xs">riders</span>
-	{#if mixer.mixedRiders.length > 0}
-		<ul class="mt-1 space-y-1">
-			{#each mixer.mixedRiders as rider (rider.id)}
-				<li class="flex items-center gap-2 text-xs">
-					<span class="min-w-0 flex-1 truncate">{rider.name}</span>
-					<span class="font-display shrink-0 tabular-nums"
-						>{Math.round(rider.gain * 100)}%</span
-					>
-					<button
-						onclick={() => resetRider(rider.id)}
-						class="btn btn-ghost btn-xs shrink-0"
-						aria-label="reset {rider.name}'s volume">Reset</button
-					>
+	{#if listed.length > 0}
+		<ul class="mt-1 space-y-2">
+			{#each listed as rider (rider.id)}
+				{@const pct = Math.round(mixer.riderGain(rider.id) * 100)}
+				<li class="text-xs">
+					<span class="flex items-center gap-2">
+						<span class="min-w-0 flex-1 truncate">{rider.name}</span>
+						<span class="font-display shrink-0 tabular-nums">{pct}%</span>
+						<button
+							onclick={() => setRider(rider.id, 1)}
+							disabled={pct === 100}
+							class="btn btn-ghost btn-xs shrink-0"
+							aria-label="reset {rider.name}'s volume">Reset</button
+						>
+					</span>
+					<input
+						type="range"
+						{...RIDER_FADER}
+						value={pct}
+						oninput={(e) =>
+							setRider(rider.id, Number(e.currentTarget.value) / 100)}
+						aria-label="{rider.name}'s volume"
+						class="mt-0.5 w-full"
+					/>
 				</li>
 			{/each}
 		</ul>
 	{:else}
 		<p class="text-muted/70 mt-0.5 text-[11px] leading-snug">
-			Everyone at 100 %. Each rider in voice has a volume of their own — the
-			speaker on their row in the people column.
+			Everyone at 100 %. Each rider in voice has a volume of their own —
+			right-click them, in the people column or on their tile.
 		</p>
 	{/if}
 </div>

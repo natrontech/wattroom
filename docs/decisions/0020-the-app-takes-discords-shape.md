@@ -339,6 +339,42 @@ separate, still-open question ([#656](https://github.com/natrontech/wattroom/iss
 document records a divergence from itself. This amendment is scoped to what
 this ADR itself asserted about the mechanism, which #412 made false.
 
+## Amendment — a control lives on the thing it belongs to (2026-09-06, #874)
+
+The amendment above put the levels back inside the room and stopped there: the
+mix got a panel, and a rider's volume got a speaker icon at the end of a row.
+Ridden further, that is still the wrong place — for a different reason. The
+rule it was missing:
+
+> A control that belongs to **one object** lives on that object. The panel is
+> where you see what you have changed; it is not where you go to change it.
+
+A rider's volume is a property of the rider, not of the row that happens to be
+drawing them, and a row is not one place — the same person appears in the
+people column, on a tile on stage, in the Members list. `RiderVolume.svelte`
+existed on two of those and nowhere else, so the control was missing exactly
+when you were looking somewhere else. The music level is the same mistake in
+the other direction: it is a property of the jukebox, and it was in a panel
+called Sound while the jukebox showed you a queue and a transport.
+
+Every object with more than one action already has a right-click menu (#465).
+So the fader becomes a menu entry: `MenuEntry` grows a slider variant that
+`ContextMenuHost` draws, `personMenu` offers it for anyone in voice, and the
+volume follows the rider to every surface their menu is attached to. The
+speaker icon leaves the rows with `RiderVolume.svelte`. The music fader renders
+in the jukebox deck under the transport, labelled as yours rather than the
+room's — the transport commands everyone, the fader commands your ears.
+
+What does not change:
+
+- **The Sound panel stays**, and stays the second way in (`ux.md`: never only
+  in a menu). Its rider list stops being a row of Reset buttons and becomes the
+  faders themselves — the riders you have moved, adjustable there.
+- **The gate, the devices, the cues and the duck depth stay in it.** None of
+  them belongs to one object; they are the room's sound as a whole.
+- **The sidebar rail keeps its music fader.** It is the control that follows
+  the music out of the room, which is the rail's whole job.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so

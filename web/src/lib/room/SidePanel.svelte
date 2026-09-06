@@ -39,7 +39,6 @@
 	}
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import { rosterGroups } from '$lib/room/roster';
 	import { statusOfRider } from '$lib/status';
 	import type { RoomMember, RoomRider } from '$lib/room/view';
@@ -97,16 +96,16 @@
 </script>
 
 {#snippet person(rider: RoomRider)}
-	<!-- 44 px rows (#463): the speaker at the end is tapped from a bike, and
-	     the slider it opens wraps onto a line of its own under the name. -->
+	<!-- 44 px rows: a bike-side target for the row's own link and its menu. -->
 	<li
-		class="flex min-h-11 flex-wrap items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
 			? 'text-ink'
 			: 'text-ink/70'}"
 		{@attach contextMenu(() =>
 			rider.you
 				? []
 				: personMenu(rider.id, goto, {
+						volume: rider.inVoice ? { name: rider.name } : undefined,
 						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
 					}),
 		)}
@@ -114,11 +113,11 @@
 		<!-- Opening a rider was right-click only here, while the members list,
 		     the friends list and DM heads all linked to the page (#702) —
 		     ux.md: the primary action stays on click, nothing lives ONLY in a
-		     menu. The link takes the face and the name, not the row: the row
-		     ends in RiderVolume, and a slider cannot sit inside an anchor. -->
+		     menu. Their volume is in that menu now (#874), so the link is free
+		     to take the whole row. -->
 		<a
 			href="/u/{rider.id}"
-			class="-my-1 flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-2 py-1"
+			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
 			title="{rider.name} — open their page"
 		>
 			<Avatar
@@ -170,9 +169,6 @@
 				{/if}
 			</span>
 		</a>
-		{#if rider.inVoice && !rider.you}
-			<RiderVolume id={rider.id} name={rider.name} />
-		{/if}
 	</li>
 {/snippet}
 

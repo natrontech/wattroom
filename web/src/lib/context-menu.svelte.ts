@@ -5,8 +5,11 @@
  * in the root layout draws it, `contextMenu(items)` attaches it to a node.
  */
 import type { Component } from 'svelte';
+import type { Fader } from '$lib/sound/fader';
 
 export interface MenuItem {
+	/** Discriminates a plain item from a slider; items may leave it out. */
+	kind?: 'item';
 	label: string;
 	icon?: Component<{ size?: number | string; class?: string }>;
 	onSelect: () => void;
@@ -16,7 +19,26 @@ export interface MenuItem {
 	/** A trailing hint: a shortcut, a state ("on"), a count. */
 	hint?: string;
 }
-export type MenuEntry = MenuItem | 'separator';
+/**
+ * A fader that IS the entry (#874): a rider's volume is dragged, not chosen,
+ * and it belongs to the person rather than to whichever row happens to render
+ * a control. Dragging leaves the menu open — only selecting an item closes it.
+ */
+export interface MenuSlider extends Fader {
+	kind: 'slider';
+	label: string;
+	icon?: Component<{ size?: number | string; class?: string }>;
+	value: number;
+	/** The value as the rider reads it — "120 %". */
+	format: (value: number) => string;
+	onInput: (value: number) => void;
+}
+
+export type MenuEntry = MenuItem | MenuSlider | 'separator';
+
+/** What the keyboard walks: an item, or a fader it can step with the arrows. */
+export const MENU_WALK =
+	'[role="menuitem"]:not([disabled]), input[type="range"]';
 
 /**
  * What a menu-bearing object says on hover. The feature gets no icon and no

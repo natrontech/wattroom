@@ -169,7 +169,7 @@ describe('fader resolution (#509)', () => {
 		const mixer = await freshMixer();
 		for (const pct of positions(RIDER_FADER)) {
 			mixer.setRiderGain('anna', pct / 100, 'Anna');
-			// The fader reads back the percent it was dragged to (RiderVolume).
+			// The fader reads back the percent it was dragged to (#874's menu entry).
 			expect(Math.round(mixer.riderGain('anna') * 100)).toBe(pct);
 			expect(mixer.mixedRiders).toHaveLength(pct === 100 ? 0 : 1);
 		}
