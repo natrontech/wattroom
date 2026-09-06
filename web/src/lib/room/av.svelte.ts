@@ -112,6 +112,15 @@ export function createRoomAv(slug: string) {
 	 * quiet without reading a toast that has already gone.
 	 */
 	let handedOff = $state(false);
+	/**
+	 * The capture died under us (#640): a headset unplugged, Bluetooth
+	 * dropping to its phone profile, another app taking the device. We
+	 * publish our own WebAudio track, so LiveKit's device-loss recovery never
+	 * sees it — the destination keeps emitting silence and nothing notices.
+	 * Persistent until the mic is open again: the rider three metres away has
+	 * to be able to see why the room stopped hearing them.
+	 */
+	let micFault = $state(false);
 	/** Own-mic level 0..1 while transmitting — the "is my mic dead" meter. */
 	let micLevel = $state(0);
 	/** The gate's verdict this instant: is anything leaving this machine? */
@@ -210,8 +219,29 @@ export function createRoomAv(slug: string) {
 		gain: GainNode;
 		meter: MicMeter;
 		track: MediaStreamTrack;
+		/** The capture track being watched for `ended` (#640). */
+		capture: MediaStreamTrack | undefined;
 	} | null = null;
 	let gate: GateState = GATE_SHUT;
+
+	/**
+	 * The capture ended without us asking (#640). `stop()` never fires this
+	 * and closeMic unhooks it first anyway, so what arrives here is the
+	 * device going away under a mic the rider believes is open — or under a
+	 * mic test, which ends the same way and leaves the same fault to show.
+	 */
+	function onCaptureEnded() {
+		micFault = true;
+		closeMic();
+		micOn = false;
+		if (room) setVoice(me, 'muted');
+	}
+
+	function watchCapture(raw: MediaStream) {
+		const capture = raw.getAudioTracks()[0];
+		capture?.addEventListener('ended', onCaptureEnded);
+		return capture;
+	}
 
 	/** The capture constraints, honouring the chosen mic; an unplugged choice
 	 * falls back to the default instead of failing the join. */
@@ -256,10 +286,28 @@ export function createRoomAv(slug: string) {
 		const dest = ctx.createMediaStreamDestination();
 		gain.connect(dest);
 		const track = dest.stream.getAudioTracks()[0];
-		mic = { ctx, raw, gain, meter, track };
+		mic = { ctx, raw, gain, meter, track, capture: watchCapture(raw) };
 		await room?.localParticipant.publishTrack(track, {
 			source: liveKit!.Track.Source.Microphone,
 		});
+		// Open again is the only thing that clears the fault — the rider
+		// pressing Reconnect, tapping the mic, or the next join finding it.
+		micFault = false;
+	}
+
+	/** Open the mic and let `micOn` say what actually happened: a device the
+	 * browser refuses downgrades to listening rather than failing the caller. */
+	async function tryOpenMic() {
+		try {
+			await openMic();
+			micOn = true;
+			// A mic that opens clears the last refusal (#642): the sidebar must
+			// not keep explaining a failure that has since been fixed.
+			error = null;
+		} catch (cause) {
+			micOn = false;
+			failedMedia(cause, 'microphone');
+		}
 	}
 
 	function setGate(openNow: boolean) {
@@ -319,7 +367,14 @@ export function createRoomAv(slug: string) {
 		void refreshDevices(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the room
 		const dest = ctx.createMediaStreamDestination();
-		mic = { ctx, raw, gain, meter, track: dest.stream.getAudioTracks()[0] };
+		mic = {
+			ctx,
+			raw,
+			gain,
+			meter,
+			track: dest.stream.getAudioTracks()[0],
+			capture: watchCapture(raw),
+		};
 		testing = true;
 	}
 
@@ -331,7 +386,9 @@ export function createRoomAv(slug: string) {
 
 	function closeMic() {
 		if (mic) {
-			const { ctx, raw, track } = mic;
+			const { ctx, raw, track, capture } = mic;
+			// Unhook before stopping: a close the rider asked for is not a fault.
+			capture?.removeEventListener('ended', onCaptureEnded);
 			mic.meter.stop();
 			room?.localParticipant.unpublishTrack(track);
 			for (const t of raw.getTracks()) t.stop();
@@ -416,7 +473,25 @@ export function createRoomAv(slug: string) {
 		if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
 		if (outCtx?.state === 'suspended') void outCtx.resume();
 	}
-	const onDeviceChange = () => void refreshDevices();
+	/**
+	 * A chosen mic that is no longer plugged in stops being chosen (#640), so
+	 * the next open lands on the default instead of failing on an exact
+	 * deviceId. Only judged against a list that names its devices: before
+	 * permission, enumerateDevices hands back blank ids, and a blank list must
+	 * not un-choose a headset that is sitting right there.
+	 */
+	const onDeviceChange = async () => {
+		await refreshDevices();
+		const known = mics();
+		if (
+			micId &&
+			known.some((d) => d.deviceId) &&
+			!known.some((d) => d.deviceId === micId)
+		) {
+			micId = '';
+			persistDevices();
+		}
+	};
 	if (typeof document !== 'undefined') {
 		document.addEventListener('visibilitychange', onVisible);
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
@@ -546,15 +621,8 @@ export function createRoomAv(slug: string) {
 			// reconnect or a second tab joining while the rider is away must not
 			// quietly reopen a microphone the away button just closed.
 			if (wantMic && !away) {
-				try {
-					await openMic();
-					micOn = true;
-					setVoice(me, 'live');
-				} catch (cause) {
-					micOn = false;
-					setVoice(me, 'muted');
-					failedMedia(cause, 'microphone');
-				}
+				await tryOpenMic();
+				setVoice(me, micOn ? 'live' : 'muted');
 			} else {
 				micOn = false;
 				setVoice(me, 'muted');
@@ -666,12 +734,7 @@ export function createRoomAv(slug: string) {
 		if (!room) return;
 		claimAv();
 		if (reopenMic && !micOn) {
-			try {
-				await openMic();
-				micOn = true;
-			} catch {
-				micOn = false;
-			}
+			await tryOpenMic();
 			setVoice(me, micOn ? 'live' : 'muted');
 		}
 		noteVoice();
@@ -727,12 +790,7 @@ export function createRoomAv(slug: string) {
 			return;
 		}
 		if (micBeforeAway && !micOn) {
-			try {
-				await openMic();
-				micOn = true;
-			} catch {
-				micOn = false;
-			}
+			await tryOpenMic();
 			setVoice(me, micOn ? 'live' : 'muted');
 			noteVoice();
 		}
@@ -1013,6 +1071,24 @@ export function createRoomAv(slug: string) {
 		},
 		/** Bring them back here. */
 		takeOver: () => takeOver(),
+		/** The capture died under an open mic (#640) and nothing has reopened it. */
+		get micFault() {
+			return micFault;
+		},
+		/**
+		 * The banner's one big button: open the mic again. A device still
+		 * missing leaves the fault standing — the banner is telling the truth
+		 * and the button is the way back once the headset is plugged in.
+		 */
+		async reconnectMic() {
+			if (!room) {
+				micFault = false;
+				return;
+			}
+			await tryOpenMic();
+			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
+			noteVoice();
+		},
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
 		get mics() {
 			return mics();
@@ -1116,14 +1192,7 @@ export function createRoomAv(slug: string) {
 				closeMic();
 				micOn = false;
 			} else {
-				try {
-					await openMic();
-					micOn = true;
-					error = null;
-				} catch (cause) {
-					micOn = false;
-					failedMedia(cause, 'microphone');
-				}
+				await tryOpenMic();
 			}
 			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
 			noteVoice();
@@ -1208,7 +1277,7 @@ export function createRoomAv(slug: string) {
 			room = null;
 			status = 'off';
 			error = null;
-			micOn = camOn = sharing = away = false;
+			micOn = camOn = sharing = away = micFault = false;
 			voice = {};
 			speaking = {};
 			// This av instance dies with the connection: audio graph and

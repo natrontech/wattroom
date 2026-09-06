@@ -27,7 +27,8 @@ export {
 export type Phase = 'lounge' | 'countdown' | 'live';
 
 export interface Fault {
-	kind: 'trainer' | 'room' | 'voice';
+	/** 'mic' is the capture dying under an open microphone (#640). */
+	kind: 'trainer' | 'room' | 'voice' | 'mic';
 	/** 'silent' is trainer-only: connected, and delivering nothing (#520). */
 	state: 'reconnecting' | 'lost' | 'silent';
 }

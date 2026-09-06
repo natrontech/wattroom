@@ -277,6 +277,11 @@
 			bufferedSeconds={0}
 			onRecover={() => {}}
 		/>
+		<FaultBanner
+			fault={{ kind: 'mic', state: 'lost' }}
+			bufferedSeconds={0}
+			onRecover={() => {}}
+		/>
 	</div>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
