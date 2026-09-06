@@ -328,8 +328,10 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			entry.RoomPresence = s.presence.Presence(room.Slug)
 		}
 		// Standing in a room is reading it: a badge on the room you are looking
-		// at is noise, and handleGet has already stamped it read.
-		if !slices.Contains(entry.Riders, user.DisplayName) {
+		// at is noise, and handleGet has already stamped it read. By id, not
+		// by display name — two riders called Dave used to silence each
+		// other's badge (#649).
+		if !slices.Contains(entry.RiderIDs, store.UUIDString(user.ID)) {
 			if n, err := s.store.Queries.CountRoomUnread(r.Context(), db.CountRoomUnreadParams{
 				RoomID: room.ID,
 				UserID: user.ID,

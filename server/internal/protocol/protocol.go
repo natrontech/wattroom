@@ -390,12 +390,18 @@ type RoomPresence struct {
 	Connected int    `json:"connected,omitempty"`
 	Phase     string `json:"phase,omitempty"`
 	// Display names — members-only server-side, room-scoped like all live data.
+	// For rendering only: display names are not unique, so anything asking
+	// "is this particular person in there?" reads RiderIDs instead (#649).
 	Riders []string `json:"riders,omitempty"`
+	// The same riders by account id, in the same order as Riders.
+	RiderIDs []string `json:"riderIds,omitempty"`
 	// Who is in the voice channel, and who has a camera live (LiveKit webhooks).
 	Voice   []string `json:"voice,omitempty"`
 	Cameras []string `json:"cameras,omitempty"`
 	// Names with live metrics in the last few seconds — the watt dot.
 	Riding []string `json:"riding,omitempty"`
+	// The same riders by account id, in the same order as Riding.
+	RidingIDs []string `json:"ridingIds,omitempty"`
 	// The late-join radar: what is on and how far in, while a session runs.
 	WorkoutName string `json:"workoutName,omitempty"`
 	ElapsedSec  int    `json:"elapsedSec,omitempty"`

@@ -24,8 +24,8 @@
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
 	const peerName = $derived(head?.peerName ?? dm.open?.name ?? 'them');
 	// Where they are, if anywhere — the one thing the old drawer could never say.
-	const inRoom = $derived(roomOf(presence.rooms, peerName));
-	const status = $derived(statusOf(presence.rooms, peerName));
+	const inRoom = $derived(roomOf(presence.rooms, peerId));
+	const status = $derived(statusOf(presence.rooms, peerId));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	$effect(() => {

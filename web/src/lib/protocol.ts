@@ -511,8 +511,14 @@ export interface RoomPresence {
   phase?: string;
   /**
    * Display names — members-only server-side, room-scoped like all live data.
+   * For rendering only: display names are not unique, so anything asking
+   * "is this particular person in there?" reads RiderIDs instead (#649).
    */
   riders?: string[];
+  /**
+   * The same riders by account id, in the same order as Riders.
+   */
+  riderIds?: string[];
   /**
    * Who is in the voice channel, and who has a camera live (LiveKit webhooks).
    */
@@ -522,6 +528,10 @@ export interface RoomPresence {
    * Names with live metrics in the last few seconds — the watt dot.
    */
   riding?: string[];
+  /**
+   * The same riders by account id, in the same order as Riding.
+   */
+  ridingIds?: string[];
   /**
    * The late-join radar: what is on and how far in, while a session runs.
    */

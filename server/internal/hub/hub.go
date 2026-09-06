@@ -320,19 +320,24 @@ const ridingWindow = 10 * time.Second
 // person's machine for attention and must not become a harassment button.
 const pokeCooldown = 10 * time.Second
 
-// ridingLocked names riders with a live sample inside ridingWindow — the
-// caller holds rm.mu.
-func (rm *room) ridingLocked(now time.Time) []string {
-	var names []string
+// ridingLocked names riders with a live sample inside ridingWindow, and
+// returns their account ids in the same order — names render, ids identify
+// (#649). The caller holds rm.mu.
+func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
+	riders := make([]protocol.Rider, 0, len(rm.lastMetric))
 	for id, at := range rm.lastMetric {
 		if now.Sub(at) <= ridingWindow {
 			if rider, ok := rm.seen[id]; ok {
-				names = append(names, rider.Name)
+				riders = append(riders, rider)
 			}
 		}
 	}
-	sort.Strings(names)
-	return names
+	sort.Slice(riders, func(i, j int) bool { return riders[i].Name < riders[j].Name })
+	for _, rider := range riders {
+		names = append(names, rider.Name)
+		ids = append(ids, rider.ID)
+	}
+	return names, ids
 }
 
 func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
@@ -772,16 +777,21 @@ func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	seen := make(map[string]struct{}, len(rm.clients))
+	present := make([]protocol.Rider, 0, len(rm.clients))
 	for c := range rm.clients {
 		if _, dup := seen[c.rider.ID]; dup {
 			continue
 		}
 		seen[c.rider.ID] = struct{}{}
-		p.Riders = append(p.Riders, c.rider.Name)
+		present = append(present, c.rider)
 	}
-	sort.Strings(p.Riders)
+	sort.Slice(present, func(i, j int) bool { return present[i].Name < present[j].Name })
+	for _, rider := range present {
+		p.Riders = append(p.Riders, rider.Name)
+		p.RiderIDs = append(p.RiderIDs, rider.ID)
+	}
 	p.Connected = len(seen)
-	p.Riding = rm.ridingLocked(now)
+	p.Riding, p.RidingIDs = rm.ridingLocked(now)
 	state := rm.session.state(now)
 	p.Phase = state.Phase
 	if state.Phase == "countdown" || state.Phase == "running" || state.Phase == "paused" {
@@ -1176,7 +1186,8 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				tick.Roster = append(tick.Roster, rider)
 			}
 		}
-		ridingKey := strings.Join(rm.ridingLocked(now()), "\n")
+		riding, _ := rm.ridingLocked(now())
+		ridingKey := strings.Join(riding, "\n")
 		spoke := len(tick.Chat) > 0
 		// Claim answers ride out with this tick but not IN it (#610): a
 		// rider's device inventory is theirs, and the tick goes to the room.
