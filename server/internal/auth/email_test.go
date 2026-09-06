@@ -149,6 +149,10 @@ func TestVerifyEmailFormDoesNotVerify(t *testing.T) {
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "<form method=\"post\">") {
 		t.Fatalf("form = %d: %s", w.Code, w.Body.String())
 	}
+	// In WattRoom's shell, not the browser's default serif (#832).
+	if body := w.Body.String(); !strings.Contains(body, "<title>") || !strings.Contains(body, "<style>") {
+		t.Fatalf("form page has no shell: %s", body)
+	}
 
 	after, err := s.store.Queries.GetUser(t.Context(), user.ID)
 	if err != nil {
