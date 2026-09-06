@@ -96,7 +96,12 @@ class FakeTrainer implements Trainer {
  * the metrics seq, which the server's ride record then dropped as duplicates.
  */
 describe('roomConnection', () => {
-	afterEach(() => roomConnection.leave());
+	afterEach(() => {
+		roomConnection.leave();
+		// The tick is module state: a roster left behind here is the next
+		// test's opening observation.
+		fakeTick = null;
+	});
 
 	it('keeps one ride and one recording across repeated joins', () => {
 		const first = roomConnection.join('lounge');
@@ -161,6 +166,51 @@ describe('roomConnection', () => {
 		connection.ride.unpair();
 		await tick();
 		expect(fakeLive.claims.at(-1)?.held).not.toContain('trainer');
+	});
+
+	// Every tick carries one; the roster is what these two are about.
+	const idle = { phase: 'idle', elapsed: 0 };
+
+	// #906: an away rider stays in the roster, so the membership cues never
+	// fire and a room can empty to one in silence.
+	it('sounds the pair when a rider steps out and comes back', async () => {
+		roomConnection.join('lounge');
+		fakeTick = { state: idle, roster: [{ id: 'bob', name: 'Bob' }] };
+		await tick();
+		played.length = 0;
+
+		fakeTick = {
+			state: idle,
+			roster: [{ id: 'bob', name: 'Bob', away: true }],
+		};
+		await tick();
+		expect(played).toEqual(['leave']);
+
+		fakeTick = {
+			state: idle,
+			roster: [{ id: 'bob', name: 'Bob', away: false }],
+		};
+		await tick();
+		expect(played).toEqual(['leave', 'join']);
+	});
+
+	// Arriving is the join cue's own event — a rider walking in is not a
+	// rider coming back, and must not sound twice.
+	it('does not hear an arrival as a return', async () => {
+		roomConnection.join('lounge');
+		fakeTick = { state: idle, roster: [{ id: 'bob', name: 'Bob' }] };
+		await tick();
+		played.length = 0;
+
+		fakeTick = {
+			state: idle,
+			roster: [
+				{ id: 'bob', name: 'Bob' },
+				{ id: 'ann', name: 'Ann' },
+			],
+		};
+		await tick();
+		expect(played).toEqual(['join']);
 	});
 });
 

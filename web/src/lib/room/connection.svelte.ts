@@ -190,6 +190,38 @@ function connect(slug: string): Connection {
 			}
 		});
 
+		// Stepping out is a door too (#906). An away rider stays in the
+		// roster, so the pair above never fires and a room of six can empty to
+		// one in silence — the mark on their tile is on a screen nobody on a
+		// bike is reading (ux.md). The same two cues a fifth down: the same
+		// event, one layer in, and less final than actually leaving.
+		//
+		// Your own press is deliberately not special-cased: it arrives here
+		// after `av.setAway` has already muted this device (#875), so going
+		// away is silent — you pressed the button — and coming back is the
+		// first thing you hear, which is the proof the room's sound is back.
+		let knownAway: Map<string, boolean> | null = null;
+		$effect(() => {
+			const roster = live.tick?.roster;
+			// A drop stops the ticks, so the roster on the other side is a
+			// fresh observation, not a change — without this, reconnecting
+			// announces the whole outage in one burst.
+			if (live.status !== 'live' || !roster) {
+				knownAway = null;
+				return;
+			}
+			const before = knownAway;
+			knownAway = new Map(roster.map((rider) => [rider.id, !!rider.away]));
+			if (before === null) return;
+			for (const rider of roster) {
+				const was = before.get(rider.id);
+				// A rider the last tick did not have is arriving, not coming
+				// back: that is the cue above's event, not this one's.
+				if (was === undefined || was === !!rider.away) continue;
+				play(rider.away ? 'leave' : 'join', -7);
+			}
+		});
+
 		// The voice channel says who arrived (#854). LiveKit chimes for
 		// nobody, so a rider joined the call and you found out when they
 		// spoke — or you did not. The room's own join/leave cannot stand in:
