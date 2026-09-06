@@ -30,17 +30,10 @@
 		play(id);
 	}
 
-	const ordered: CueId[] = [
-		'countdown',
-		'go',
-		'poke',
-		'klaxon',
-		'elimination',
-		'fanfare',
-		'cheer',
-		'reaction',
-		'block',
-	];
+	// Every cue in the pack, in pack order — a hand-kept list had already
+	// gone stale on join/leave/chat (#834), which is the one failure mode a
+	// gallery page cannot have.
+	const ordered = Object.keys(CUES) as CueId[];
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">

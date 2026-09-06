@@ -53,7 +53,9 @@ export type CueId =
 	| 'block'
 	| 'join'
 	| 'leave'
-	| 'chat';
+	| 'chat'
+	| 'fault'
+	| 'recover';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -271,6 +273,16 @@ export const CUES: Record<CueId, Cue> = {
 		],
 	},
 
+	leave: {
+		id: 'leave',
+		label: 'Rider left',
+		hint: 'Someone left the room. The join pair, reversed and softer.',
+		voices: [
+			{ type: 'triangle', freq: note(2), at: 0, dur: 0.09, gain: 0.16 },
+			{ type: 'triangle', freq: note(-5), at: 0.09, dur: 0.16, gain: 0.16 },
+		],
+	},
+
 	chat: {
 		id: 'chat',
 		label: 'Chat message',
@@ -288,13 +300,56 @@ export const CUES: Record<CueId, Cue> = {
 		],
 	},
 
-	leave: {
-		id: 'leave',
-		label: 'Rider left',
-		hint: 'Someone left the room. The join pair, reversed and softer.',
+	// The fault pair (#834): a banner is the wrong channel on its own — the
+	// rider is three metres away, sweating, not reading. Falling = something
+	// broke, rising = it came back, and neither is allowed to sound like the
+	// sprint klaxon, which means "go", not "stop".
+	fault: {
+		id: 'fault',
+		label: 'Something broke',
+		hint: 'A trainer, the room, voice or the mic dropped — or an action failed. Two falling notes, urgent but not the klaxon.',
 		voices: [
-			{ type: 'triangle', freq: note(2), at: 0, dur: 0.09, gain: 0.16 },
-			{ type: 'triangle', freq: note(-5), at: 0.09, dur: 0.16, gain: 0.16 },
+			{
+				type: 'triangle',
+				freq: note(-2),
+				at: 0,
+				dur: 0.13,
+				gain: 0.3,
+				filter: { from: 1800, to: 900 },
+			},
+			{
+				type: 'triangle',
+				freq: note(-9),
+				at: 0.13,
+				dur: 0.26,
+				gain: 0.32,
+				detune: -7,
+				filter: { from: 1400, to: 500 },
+			},
+		],
+	},
+
+	recover: {
+		id: 'recover',
+		label: 'Back online',
+		hint: 'The fault cleared itself. The fault pair inverted and resolved a fifth up, so the ear hears an answer.',
+		voices: [
+			{
+				type: 'triangle',
+				freq: note(-9),
+				at: 0,
+				dur: 0.11,
+				gain: 0.24,
+				filter: { from: 900, to: 1600 },
+			},
+			{
+				type: 'triangle',
+				freq: note(-2),
+				at: 0.1,
+				dur: 0.22,
+				gain: 0.26,
+				filter: { from: 1200, to: 2400 },
+			},
 		],
 	},
 };

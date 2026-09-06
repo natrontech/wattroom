@@ -63,6 +63,7 @@
 
 	// Eliminations announce themselves — the rider is not watching the screen.
 	let knownOut = new Set<string>();
+	let heardPodium = false;
 	$effect(() => {
 		for (const [id, rider] of riderRows) {
 			if (rider.eliminated && !knownOut.has(id)) {
@@ -70,7 +71,13 @@
 				play('elimination');
 			}
 		}
-		if (game.phase === 'done' && game.podium?.length) play('fanfare');
+		// Once (#834): the effect re-runs on every tick's new riders object,
+		// so an unguarded podium replayed the fanfare each second for as long
+		// as the game sat on 'done'.
+		if (game.phase === 'done' && game.podium?.length && !heardPodium) {
+			heardPodium = true;
+			play('fanfare');
+		}
 	});
 </script>
 
