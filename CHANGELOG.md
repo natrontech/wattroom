@@ -17,6 +17,90 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.28] - 2026-09-06
+
+### Added
+
+- The sign-in screen now marks the provider you used last time, and a sign-in that creates a brand-new account says so — so clicking the wrong button no longer leaves you quietly looking at an empty second account with none of your rides.
+- Banning a disruptive rider is now available from the Members page and
+  rider tiles in the Lounge, not just Settings — right where you meet them.
+- You can now disconnect a sign-in provider from your account in your profile — connecting the wrong Strava account no longer means deleting everything and starting over. Disconnecting Strava also hands the authorization back to Strava, and stops ride upload. WattRoom will not let you remove your last way in.
+- DMs can now react to messages, the same as room chat.
+- Sign in with a passkey — your phone, your password manager, or a security key. Nothing to type: the browser shows which WattRoom account the passkey belongs to and signs you in. Add one in your profile; the sign-in providers you already use keep working beside it.
+- Saved rides can now be downloaded as FIT files from ride history.
+- When someone else starts sharing a screen while music is playing, the room
+  now hears about it: a line lands in the timeline, the sharer's tile shows a
+  screen glyph while the share is live, and the room-event cue plays. Before,
+  the share only appeared as one more chip in the stage picker.
+- Your account can now hold a confirmed email address, so you can get back in if you ever lose the way you sign in. Add one in your profile and follow the link we send; it is never shown to anyone and nothing else uses it.
+
+### Changed
+
+- Every face now says where its person is. One badge — riding, in a room, away, offline — on the avatar itself, so the people column, the friends list, the messages list, a DM and the chat log all read the same. Chat lines show the real avatar with its level ring instead of a coloured initial, the Away button moved off the Lounge header to sit with your mic and camera at the bottom of the sidebar, and a rider's tile can poke them like the people column always could.
+- DMs now have the same message tools as room chat: right-click Copy, the
+  "N new" unread divider, and time-based grouping. (Reactions stay room-only
+  for now — there's no DM reaction backend yet.)
+- Move the room, history, profile and rider profile fetches into route loads so navigation can start them before each page mounts.
+- The sidebar says where you are with one wash at three strengths — the room you're in, the row you're pointing at, the row you're on — instead of a left stripe, a pulsing green dot and a rule down the room's pages. Those pages no longer run edge-to-edge when highlighted, hovering one now fills it rather than only recolouring the label, and the fill survives the pain cave, where it used to be nearly invisible.
+
+### Fixed
+
+- In the collective ramp, a rider who dropped out no longer makes the room's average go up: past the disconnect grace they count as stopped, the same as in the individual ramp, and a room where everyone has gone quiet ends instead of counting rounds forever.
+- Collective Ramp now averages each rider's FTP fraction equally, keeping mixed-FTP groups fair.
+- The microphone and speaker pickers in the Sound panel and on your profile's
+  Voice & audio page now list your actual devices before you join a room, and
+  fill in the moment "test my mic" is granted permission — no more joining with
+  the wrong microphone just to be able to pick the right one.
+- Opening a direct message from a fresh tab no longer rebuilds the thread when the other rider's name arrives, so the "new since last time" divider stays where it belongs.
+- Coming back to a backgrounded tab no longer yanks the jukebox playhead by
+  your machine's clock skew and then back again: the returning tab re-measures
+  the room's position on server time, from the clock estimate it learned while
+  on screen, instead of falling back to its own wall clock for the first second.
+- Saving your profile no longer re-sends the confirmation mail or kills the link already in your inbox: the address only travels when you changed it. A confirmation that failed to send no longer pretends it went out, and the tab that asked for the link now notices when you confirm it elsewhere. Confirming an address while a profile save was in flight can no longer be overwritten by the old one.
+- Arriving at Rides from a recent ride on Home or from the progression chart rings and scrolls to that ride again.
+- Riders now see an actionable message when a YouTube track or playlist cannot be added to a full or invalid jukebox queue.
+- Removing a passkey and disconnecting a provider at the same moment could both pass the "not your last way in" check and leave an account with nothing to sign in with. The two removals now take turns on the account row, so the second one is refused.
+- Floor is Lava now gives disconnected riders the documented grace period before judging their missing power.
+- Right-clicking a rider's tile in the lounge now reaches Focus, "Watch their screen" and, for the owner, "Ban from the room" — the tile's own menu had been swallowing them.
+- A microphone that dies mid-ride now says so. Unplug a USB headset, let a
+  Bluetooth one switch profiles or have another app grab the device and the
+  room used to hear silence for the rest of the session while your mic icon
+  stayed green. Now the mic closes, your tile reads muted, a persistent
+  "Your microphone stopped" banner sits on the dashboard with one big
+  Reconnect, and a chosen mic that disappears falls back to the default.
+- A passkey named with 40 characters ending in an accented letter was refused after the browser had already stored it; names are now cut by character. Signing in with a passkey from a room link lands you in that room instead of the rooms list.
+- Members no longer see Rename, Delete, "Set as active", remove-a-track or the autoplay switches on room playlists, which the server keeps for the coach and the owner; the controls are hidden or disabled with a one-line hint instead of failing on click.
+- Points Race now awards points for the final sprint before publishing the race podium.
+- Ramp tests now use readings from paired power and heart-rate sensors.
+- A rider's page fetched itself over and over for as long as it was open. It loads once, and again only when presence changes.
+- A crash inside background work (a room's game mode, jukebox, session save,
+  chat pruning, a mail send, or a server-wide housekeeping job) no longer takes
+  the whole server down with every live room in it. The failure is logged with a
+  stack trace, the work is restarted, and every other ride carries on untouched.
+- A game mode or jukebox tick that panicked left its room's lock held forever: the room stopped ticking for good, and the rooms list, friends and rider pages hung for everyone until a restart. The lock is released on the way out and the relaunched loop carries on.
+- A jukebox refusal is no longer wiped by the track ending under it; your own sidebar avatar shows riding like everyone else's; a database hiccup while removing a DM reaction is reported as an error rather than "no such message".
+- Two riders on exactly the same sprint w/kg were placed at random each tick, so a points race could hand the 5 and the 3 either way. Ties now resolve the same way every time.
+- "Use this tab instead" now always wins. The takeover was stamped with your
+  computer's clock while a tab's join was stamped with the server's, so on a
+  machine whose clock ran behind the other tab could refuse to stand down and
+  you heard yourself twice in the room. Both stamps now sit on the server's
+  clock, the way the jukebox playhead already does.
+- A voice join that fails now tells you why and what to do. A browser that is
+  blocking the microphone, a missing microphone or camera, an expired sign-in
+  and a room you are no longer a member of each get their own message in the
+  Lounge next to "Try voice again" — no more bare "voice failed".
+- Voice: a mic test or a mid-call mic switch that the browser refuses now says why instead of doing nothing. A microphone another app is holding no longer forgets your chosen mic for good. The "microphone stopped" banner no longer lingers after handing the mic to another tab or stepping away, and Reconnect there no longer opens a second mic. Leaving and rejoining voice keeps the unplugged-mic and tab-return handling alive.
+
+### Security
+
+- New room links now carry a short random suffix (`/r/thursday-crew-7f3a`), so
+  a room's name is no longer enough to guess its URL. Existing rooms and their
+  links are unaffected, and renaming a room never changes its slug.
+- Joining a room from a shared link no longer lets you delete or rename its
+  saved playlists, remove one of their tracks, or change autoplay — those are
+  owner/coach only now. Members can still queue, vote, skip, and create and
+  manage their own playlists.
+
 ## [2026.09.27] - 2026-09-05
 
 ### Added
@@ -691,7 +775,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.27...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.28...HEAD
+[2026.09.28]: https://github.com/natrontech/wattroom/compare/2026.09.27...2026.09.28
 [2026.09.27]: https://github.com/natrontech/wattroom/compare/2026.09.26...2026.09.27
 [2026.09.26]: https://github.com/natrontech/wattroom/compare/2026.09.25...2026.09.26
 [2026.09.25]: https://github.com/natrontech/wattroom/compare/2026.09.24...2026.09.25

@@ -1,1 +1,0 @@
-- Members no longer see Rename, Delete, "Set as active", remove-a-track or the autoplay switches on room playlists, which the server keeps for the coach and the owner; the controls are hidden or disabled with a one-line hint instead of failing on click.

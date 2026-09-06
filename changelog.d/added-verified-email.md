@@ -1,1 +1,0 @@
-- Your account can now hold a confirmed email address, so you can get back in if you ever lose the way you sign in. Add one in your profile and follow the link we send; it is never shown to anyone and nothing else uses it.

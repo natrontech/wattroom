@@ -1,1 +1,0 @@
-- A passkey named with 40 characters ending in an accented letter was refused after the browser had already stored it; names are now cut by character. Signing in with a passkey from a room link lands you in that room instead of the rooms list.

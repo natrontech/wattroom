@@ -1,1 +1,0 @@
-- Removing a passkey and disconnecting a provider at the same moment could both pass the "not your last way in" check and leave an account with nothing to sign in with. The two removals now take turns on the account row, so the second one is refused.
