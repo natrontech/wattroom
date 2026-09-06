@@ -31,6 +31,13 @@ export interface Me {
 	email?: string | null;
 	notifyPlanned?: boolean;
 	mailAvailable?: boolean;
+	/** The address as a recovery attribute (#781, ADR-0029). `emailVerified`
+	 * is the only one that means "this rider can be reached"; `emailPending`
+	 * is an address waiting on its link; `emailRequired` marks an account
+	 * onboarded with the requirement. */
+	emailVerified?: boolean;
+	emailPending?: string | null;
+	emailRequired?: boolean;
 	/** Appearance follows the account (#326): the palette choice JSON ("" =
 	 * the default) and the scheme ("" = auto); null = never chosen anywhere. */
 	accentPalette?: string | null;

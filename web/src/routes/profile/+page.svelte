@@ -108,7 +108,9 @@
 		ftp = me.ftpWatts;
 		kg = me.weightKg;
 		name = me.displayName;
-		email = me.email ?? '';
+		// A pending address is the one the rider last asked for — show that,
+		// not the confirmed one it is replacing (#781).
+		email = me.emailPending ?? me.email ?? '';
 		notifyPlanned = me.notifyPlanned ?? false;
 	});
 
@@ -388,9 +390,22 @@
 							maxlength="254"
 							class="input mt-1 w-full"
 						/>
-						<span class="text-muted mt-1 block text-[11px]"
-							>Only for the emails you ask for here — never shown to anyone.</span
-						>
+						{#if account.me?.emailPending}
+							<span class="text-muted mt-1 block text-[11px]">
+								Waiting on the link sent to {account.me.emailPending} — it works once
+								and expires in a day.
+							</span>
+						{:else if account.me?.emailVerified}
+							<span class="text-watt mt-1 block text-[11px]">
+								Confirmed — this is how you get back in if you lose the way you
+								sign in.
+							</span>
+						{:else}
+							<span class="text-muted mt-1 block text-[11px]">
+								Save it and we send a link to confirm. It is how you recover
+								this account, and it is never shown to anyone.
+							</span>
+						{/if}
 					</label>
 					<div class="self-end pb-2">
 						<label class="text-muted flex items-start gap-2 text-xs">
