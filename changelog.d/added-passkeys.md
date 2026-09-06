@@ -1,0 +1,1 @@
+- Sign in with a passkey — your phone, your password manager, or a security key. Nothing to type: the browser shows which WattRoom account the passkey belongs to and signs you in. Add one in your profile; the sign-in providers you already use keep working beside it.
