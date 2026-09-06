@@ -1,4 +1,15 @@
 {$DOMAIN} {
+	# The SPA shell is ~390 KB of JS and CSS uncompressed and ~140 KB encoded.
+	# Caddy does not compress unless asked, and the Go binary serves the
+	# embedded build raw. Media is exempt on its own: LiveKit's audio and video
+	# never pass through here (ADR-0002), and Caddy skips already-compressed
+	# types anyway.
+	#
+	# wattroom.ch does NOT get this from here — that edge is its own Caddy in
+	# the operator's infrastructure repo, which carries its own `encode`. This
+	# line is for everyone self-hosting from this file.
+	encode zstd gzip
+
 	# WS upgrade and everything else to the one binary.
 	reverse_proxy wattroom:8080
 

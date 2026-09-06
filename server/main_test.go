@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"testing"
+	"testing/fstest"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/store"
 )
 
@@ -100,5 +102,39 @@ func TestVersionHandlerReportsTag(t *testing.T) {
 	}
 	if got["version"] != "v0.4.0" {
 		t.Fatalf("version = %q, want %q", got["version"], "v0.4.0")
+	}
+}
+
+// The hashed build is the only thing that may be cached forever. index.html
+// names the current hashes, so caching it would pin a rider to the build they
+// first loaded and hide every deploy from them — the failure this test exists
+// to prevent, since nothing else in the response would look wrong.
+func TestSPACachesHashedAssetsOnly(t *testing.T) {
+	dist := fstest.MapFS{
+		"index.html":                   {Data: []byte("<html></html>")},
+		"_app/immutable/chunks/abc.js": {Data: []byte("console.log(1)")},
+		"favicon.png":                  {Data: []byte("png")},
+	}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+
+	const immutable = "public, max-age=31536000, immutable"
+	for _, tc := range []struct {
+		path string
+		want string
+	}{
+		{"/_app/immutable/chunks/abc.js", immutable},
+		{"/index.html", ""},
+		{"/", ""},
+		{"/r/velvet-hammer", ""}, // SPA fallback: index.html under another name
+		{"/favicon.png", ""},     // served from the build, but not content-hashed
+	} {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", tc.path, nil))
+		if rec.Code != 200 {
+			t.Errorf("%s: status = %d, want 200", tc.path, rec.Code)
+		}
+		if got := rec.Header().Get("Cache-Control"); got != tc.want {
+			t.Errorf("%s: Cache-Control = %q, want %q", tc.path, got, tc.want)
+		}
 	}
 }
