@@ -6,9 +6,10 @@ import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 vi.mock('$lib/api', () => ({ api: async () => ({ ok: false }) }));
 // Spread the real module: the mixer imports more of it than the connection
 // does, and only the two calls that would make noise need silencing.
+const played: string[] = [];
 vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/sound/cues')>()),
-	play: () => {},
+	play: (id: string) => played.push(id),
 	setDucked: () => {},
 }));
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
@@ -62,6 +63,7 @@ vi.mock('livekit-client', () => ({
 }));
 
 import { roomConnection } from '$lib/room/connection.svelte';
+import { toasts } from '$lib/toast.svelte';
 
 class FakeTrainer implements Trainer {
 	name = 'Fake';
@@ -117,6 +119,34 @@ describe('roomConnection', () => {
 
 		// A fresh join is a fresh ride — a different room is a different session.
 		expect(roomConnection.join('lounge').ride).not.toBe(connection.ride);
+	});
+
+	// #850, a rider report: they clicked through Home and settings, dropped out
+	// of the room, and heard nothing. A rider three metres from the screen
+	// learns about a state change by ear or not at all (ux.md), and losing the
+	// room takes the socket, the voice channel and the trainer with it.
+	it('says so out loud when the room ends under the rider', () => {
+		played.length = 0;
+		roomConnection.join('lounge');
+
+		roomConnection.leave('signedOut');
+
+		expect(played).toContain('leave');
+		expect(toasts.items.at(-1)?.text).toContain('lounge');
+		// The way back in, on the toast itself.
+		expect(toasts.items.at(-1)?.href).toBe('/r/lounge');
+	});
+
+	// Their own Leave needs no announcement: they just pressed it.
+	it('goes quietly when the rider is the one leaving', () => {
+		played.length = 0;
+		const before = toasts.items.length;
+		roomConnection.join('lounge');
+
+		roomConnection.leave();
+
+		expect(played).not.toContain('leave');
+		expect(toasts.items).toHaveLength(before);
 	});
 
 	it('claims the trainer for this tab, and releases it on unpair', async () => {

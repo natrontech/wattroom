@@ -85,7 +85,7 @@
 	// channel and — since #521 — the trainer, and a signed-out session must
 	// hold none of them: the room's pages are gone, so nothing else would.
 	$effect(() => {
-		if (account.loaded && !account.me) roomConnection.leave();
+		if (account.loaded && !account.me) roomConnection.leave('signedOut');
 	});
 
 	// ONE rail, owned here, on every page — the room included (#191): navigating
