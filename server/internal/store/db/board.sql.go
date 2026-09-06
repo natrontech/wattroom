@@ -73,8 +73,26 @@ func (q *Queries) GetBoardClip(ctx context.Context, id pgtype.UUID) (GetBoardCli
 	return i, err
 }
 
+const getBoardClipSource = `-- name: GetBoardClipSource :one
+select duration_ms from board_clips where id = $1 and user_id = $2
+`
+
+type GetBoardClipSourceParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// What the edit is validated against: the uploaded file's own length.
+func (q *Queries) GetBoardClipSource(ctx context.Context, arg GetBoardClipSourceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getBoardClipSource, arg.ID, arg.UserID)
+	var duration_ms int32
+	err := row.Scan(&duration_ms)
+	return duration_ms, err
+}
+
 const listBoardClips = `-- name: ListBoardClips :many
-select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes, created_at
+select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes,
+       start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms, created_at
 from board_clips
 where user_id = $1
 order by created_at desc
@@ -86,6 +104,11 @@ type ListBoardClipsRow struct {
 	Pad        *int16
 	DurationMs int32
 	SizeBytes  int32
+	StartMs    int32
+	EndMs      int32
+	GainDb     float32
+	FadeInMs   int32
+	FadeOutMs  int32
 	CreatedAt  pgtype.Timestamptz
 }
 
@@ -106,6 +129,11 @@ func (q *Queries) ListBoardClips(ctx context.Context, userID pgtype.UUID) ([]Lis
 			&i.Pad,
 			&i.DurationMs,
 			&i.SizeBytes,
+			&i.StartMs,
+			&i.EndMs,
+			&i.GainDb,
+			&i.FadeInMs,
+			&i.FadeOutMs,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -119,8 +147,8 @@ func (q *Queries) ListBoardClips(ctx context.Context, userID pgtype.UUID) ([]Lis
 }
 
 const saveBoardClip = `-- name: SaveBoardClip :one
-insert into board_clips (user_id, name, duration_ms, bytes)
-values ($1, $2, $3, $4)
+insert into board_clips (user_id, name, duration_ms, bytes, end_ms)
+values ($1, $2, $3, $4, $5)
 returning id, created_at
 `
 
@@ -129,6 +157,7 @@ type SaveBoardClipParams struct {
 	Name       string
 	DurationMs int32
 	Bytes      []byte
+	EndMs      int32
 }
 
 type SaveBoardClipRow struct {
@@ -142,10 +171,44 @@ func (q *Queries) SaveBoardClip(ctx context.Context, arg SaveBoardClipParams) (S
 		arg.Name,
 		arg.DurationMs,
 		arg.Bytes,
+		arg.EndMs,
 	)
 	var i SaveBoardClipRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err
+}
+
+const setBoardClipEdit = `-- name: SetBoardClipEdit :execrows
+update board_clips
+set start_ms = $3, end_ms = $4, gain_db = $5, fade_in_ms = $6, fade_out_ms = $7
+where id = $1 and user_id = $2
+`
+
+type SetBoardClipEditParams struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	StartMs   int32
+	EndMs     int32
+	GainDb    float32
+	FadeInMs  int32
+	FadeOutMs int32
+}
+
+// The edit is numbers, never a re-encode: the source bytes stay as uploaded.
+func (q *Queries) SetBoardClipEdit(ctx context.Context, arg SetBoardClipEditParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setBoardClipEdit,
+		arg.ID,
+		arg.UserID,
+		arg.StartMs,
+		arg.EndMs,
+		arg.GainDb,
+		arg.FadeInMs,
+		arg.FadeOutMs,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setBoardClipPad = `-- name: SetBoardClipPad :execrows

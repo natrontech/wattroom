@@ -10,11 +10,13 @@
 	import {
 		assign,
 		board,
+		keptMillis,
 		PADS,
 		remove,
 		upload,
 		type Clip,
 	} from '$lib/board/clips.svelte';
+	import ClipEditor from '$lib/board/ClipEditor.svelte';
 	import { waveform } from '$lib/board/waveform';
 
 	let { onclose }: { onclose: () => void } = $props();
@@ -23,6 +25,7 @@
 	let refusal = $state<string | undefined>();
 	let dragging = $state(false);
 	let input: HTMLInputElement | undefined = $state();
+	let editing = $state<Clip | undefined>();
 
 	async function take(files: FileList | null | undefined) {
 		if (!files || files.length === 0) return;
@@ -115,6 +118,7 @@
 				<li
 					class="flex min-h-11 items-center gap-3 rounded px-2 py-1"
 					{@attach contextMenu(() => [
+						{ label: 'Trim clip', onSelect: () => (editing = clip) },
 						...(clip.pad
 							? [
 									{
@@ -130,31 +134,39 @@
 						},
 					])}
 				>
-					<svg
-						viewBox="0 0 104 34"
-						width="72"
-						height="24"
-						preserveAspectRatio="none"
-						class="text-neon/55 shrink-0"
-						aria-hidden="true"
+					<!-- The primary action on a clip is shaping it, so it stays on the
+					     row and never only in the menu (ux.md). -->
+					<button
+						onclick={() => (editing = clip)}
+						title="Trim {clip.name}"
+						class="flex min-w-0 flex-1 items-center gap-3 text-left"
 					>
-						{#each waveform(clip.id, 20) as bar, i (i)}
-							<rect
-								x={bar.x}
-								y={bar.y}
-								width="3"
-								height={bar.h}
-								rx="1.5"
-								fill="currentColor"
-							/>
-						{/each}
-					</svg>
-					<span class="font-display min-w-0 flex-1 truncate text-sm"
-						>{clip.name}</span
-					>
+						<svg
+							viewBox="0 0 104 34"
+							width="72"
+							height="24"
+							preserveAspectRatio="none"
+							class="text-neon/55 shrink-0"
+							aria-hidden="true"
+						>
+							{#each waveform(clip.id, 20) as bar, i (i)}
+								<rect
+									x={bar.x}
+									y={bar.y}
+									width="3"
+									height={bar.h}
+									rx="1.5"
+									fill="currentColor"
+								/>
+							{/each}
+						</svg>
+						<span class="font-display min-w-0 flex-1 truncate text-sm"
+							>{clip.name}</span
+						>
+					</button>
 					<span
 						class="text-muted font-display shrink-0 text-[11px] tabular-nums"
-						>{seconds(clip.millis)}</span
+						>{seconds(keptMillis(clip))}</span
 					>
 					<label class="shrink-0">
 						<span class="sr-only">pad for {clip.name}</span>
@@ -191,3 +203,7 @@
 		</p>
 	{/if}
 </Modal>
+
+{#if editing}
+	<ClipEditor clip={editing} onclose={() => (editing = undefined)} />
+{/if}

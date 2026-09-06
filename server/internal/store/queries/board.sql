@@ -1,12 +1,13 @@
 -- name: SaveBoardClip :one
-insert into board_clips (user_id, name, duration_ms, bytes)
-values ($1, $2, $3, $4)
+insert into board_clips (user_id, name, duration_ms, bytes, end_ms)
+values ($1, $2, $3, $4, $5)
 returning id, created_at;
 
 -- name: ListBoardClips :many
 -- The library, newest first. Never selects `bytes` — a listing that carried
 -- the audio would be the whole quota in one response.
-select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes, created_at
+select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes,
+       start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms, created_at
 from board_clips
 where user_id = $1
 order by created_at desc;
@@ -31,3 +32,13 @@ update board_clips set pad = $3 where id = $1 and user_id = $2;
 
 -- name: ClearBoardPad :exec
 update board_clips set pad = null where user_id = $1 and pad = $2;
+
+-- name: SetBoardClipEdit :execrows
+-- The edit is numbers, never a re-encode: the source bytes stay as uploaded.
+update board_clips
+set start_ms = $3, end_ms = $4, gain_db = $5, fade_in_ms = $6, fade_out_ms = $7
+where id = $1 and user_id = $2;
+
+-- name: GetBoardClipSource :one
+-- What the edit is validated against: the uploaded file's own length.
+select duration_ms from board_clips where id = $1 and user_id = $2;

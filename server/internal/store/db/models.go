@@ -31,6 +31,11 @@ type BoardClip struct {
 	DurationMs int32
 	Bytes      []byte
 	CreatedAt  pgtype.Timestamptz
+	StartMs    int32
+	EndMs      int32
+	GainDb     float32
+	FadeInMs   int32
+	FadeOutMs  int32
 }
 
 type ChatImage struct {

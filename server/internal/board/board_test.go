@@ -137,7 +137,6 @@ func TestUploadRefusals(t *testing.T) {
 		{"no name", "alice", "/api/board/clips", tenSeconds(), http.StatusBadRequest},
 		{"name too long", "alice", "/api/board/clips?name=" + string(bytes.Repeat([]byte("a"), 33)), tenSeconds(), http.StatusBadRequest},
 		{"not an mp3", "alice", "/api/board/clips?name=X", []byte("PNG, honestly"), http.StatusBadRequest},
-		{"over a minute", "alice", "/api/board/clips?name=X", mp3(2400, 9, 0), http.StatusBadRequest},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -245,5 +244,104 @@ func TestAudioIsGatedOnSharingARoom(t *testing.T) {
 	}
 	if rec := do(t, mux, "", "GET", "/api/board/clips/"+clip.ID+"/audio", nil); rec.Code != http.StatusUnauthorized {
 		t.Errorf("signed out = %d; want 401", rec.Code)
+	}
+}
+
+// A source longer than the ceiling is accepted and lands already trimmed to
+// it: the rider opens the editor to choose WHICH minute, and until they do the
+// clip can still never play past SPEC's minute (#934).
+func TestLongUploadArrivesTrimmedToTheCeiling(t *testing.T) {
+	mux, _, _ := setup(t)
+	long := mp3(2400, 9, 0) // ~62.7 s
+	if ms, ok := DurationMillis(long); !ok || ms <= MaxClipMillis {
+		t.Fatalf("test fixture is not longer than the ceiling: %d ms", ms)
+	}
+	clip := upload(t, mux, "alice", "LONG", long)
+	if clip.EndMillis != MaxClipMillis || clip.StartMillis != 0 {
+		t.Errorf("kept span = %d..%d; want 0..%d", clip.StartMillis, clip.EndMillis, MaxClipMillis)
+	}
+
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	if len(list.Clips) != 1 || list.Clips[0].EndMillis != MaxClipMillis {
+		t.Errorf("listed edit = %+v; want end at the ceiling", list.Clips)
+	}
+}
+
+func TestEditRules(t *testing.T) {
+	// 10 s of source, so every bound below is a real one.
+	source := 10004
+	tests := []struct {
+		name  string
+		edit  editJSON
+		field string
+	}{
+		{"the whole source", editJSON{}, ""},
+		{"a trim inside it", editJSON{StartMillis: 1000, EndMillis: 4000}, ""},
+		{"fades that fit", editJSON{EndMillis: 4000, FadeInMs: 100, FadeOutMs: 300}, ""},
+		{"gain at the limit", editJSON{GainDb: MaxGainDb}, ""},
+		{"a start past the end of the audio", editJSON{StartMillis: source}, "startMs"},
+		{"a negative start", editJSON{StartMillis: -1}, "startMs"},
+		{"an end before the start", editJSON{StartMillis: 5000, EndMillis: 4000}, "endMs"},
+		{"fades longer than what they fade", editJSON{EndMillis: 1000, FadeInMs: 600, FadeOutMs: 600}, "fadeInMs"},
+		{"a negative fade", editJSON{FadeInMs: -1}, "fadeInMs"},
+		{"gain past the limit", editJSON{GainDb: MaxGainDb + 0.1}, "gainDb"},
+		{"gain past the limit downward", editJSON{GainDb: -MaxGainDb - 0.1}, "gainDb"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg, field := checkEdit(tt.edit, source)
+			if field != tt.field {
+				t.Errorf("field = %q (%q); want %q", field, msg, tt.field)
+			}
+			if (msg == "") != (tt.field == "") {
+				t.Errorf("message %q disagrees with field %q", msg, field)
+			}
+		})
+	}
+}
+
+// A minute of a longer source is fine; a minute and a bit is not, whatever the
+// source's own length.
+func TestEditCannotKeepMoreThanTheCeiling(t *testing.T) {
+	source := 5 * 60 * 1000
+	if _, field := checkEdit(editJSON{EndMillis: MaxClipMillis}, source); field != "" {
+		t.Errorf("exactly the ceiling was refused (%s)", field)
+	}
+	if _, field := checkEdit(editJSON{EndMillis: MaxClipMillis + 1}, source); field != "endMs" {
+		t.Errorf("a clip past the ceiling was allowed; field = %q", field)
+	}
+}
+
+func TestEditEndpoint(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	body := []byte(`{"startMs":500,"endMs":3000,"gainDb":2.5,"fadeInMs":50,"fadeOutMs":300}`)
+
+	if rec := do(t, mux, "bob", "PUT", "/api/board/clips/"+clip.ID+"/edit", body); rec.Code != http.StatusNotFound {
+		t.Errorf("bob editing alice's clip = %d; want 404", rec.Code)
+	}
+	if rec := do(t, mux, "", "PUT", "/api/board/clips/"+clip.ID+"/edit", body); rec.Code != http.StatusUnauthorized {
+		t.Errorf("signed out = %d; want 401", rec.Code)
+	}
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/edit", []byte(`{"startMs":99999}`)); rec.Code != http.StatusBadRequest {
+		t.Errorf("a start past the audio = %d; want 400", rec.Code)
+	}
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/edit", body); rec.Code != http.StatusNoContent {
+		t.Fatalf("edit = %d; want 204", rec.Code)
+	}
+
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	got := list.Clips[0]
+	if got.StartMillis != 500 || got.EndMillis != 3000 || got.GainDb != 2.5 ||
+		got.FadeInMs != 50 || got.FadeOutMs != 300 {
+		t.Errorf("stored edit = %+v; want the one just saved", got.editJSON)
+	}
+	// The source is untouched: an edit is numbers, never a re-encode.
+	if got.Millis != 10004 || got.Bytes != len(tenSeconds()) {
+		t.Errorf("source changed: %d ms / %d bytes", got.Millis, got.Bytes)
 	}
 }
