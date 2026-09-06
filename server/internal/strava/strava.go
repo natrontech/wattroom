@@ -35,6 +35,7 @@ type Service struct {
 	// Overridable for tests; production values in New.
 	apiBase   string
 	tokenURL  string
+	deauthURL string
 	httpc     *http.Client
 	now       func() time.Time
 	pollEvery time.Duration
@@ -50,10 +51,11 @@ func New(st *store.Store, log *slog.Logger) *Service {
 	}
 	return &Service{ //nolint:gosec // the values come from env, nothing is hardcoded
 		store: st, log: log, clientID: id, clientSecret: secret,
-		apiBase:  "https://www.strava.com/api/v3",
-		tokenURL: "https://www.strava.com/oauth/token", //nolint:gosec // a public endpoint URL, not a credential
-		httpc:    &http.Client{Timeout: 30 * time.Second},
-		now:      time.Now, pollEvery: 2 * time.Second,
+		apiBase:   "https://www.strava.com/api/v3",
+		tokenURL:  "https://www.strava.com/oauth/token",       //nolint:gosec // a public endpoint URL, not a credential
+		deauthURL: "https://www.strava.com/oauth/deauthorize", //nolint:gosec // likewise
+		httpc:     &http.Client{Timeout: 30 * time.Second},
+		now:       time.Now, pollEvery: 2 * time.Second,
 	}
 }
 
@@ -277,4 +279,34 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) error
 			return nil
 		}
 	}
+}
+
+// RevokeGrant hands the rider's authorization back to Strava when they
+// disconnect it (#783). Dropping our row while Strava still lists WattRoom
+// among their connected apps would tell them something untrue.
+//
+// The access token goes in the query string because that is where Strava's
+// deauthorize endpoint documents it; a stale one is refreshed first, since a
+// grant nobody has used for a while is exactly the one being disconnected.
+func (s *Service) RevokeGrant(ctx context.Context, ident db.Identity) error {
+	token, err := s.freshToken(ctx, ident)
+	if err != nil {
+		return fmt.Errorf("strava: no usable token to revoke: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		s.deauthURL+"?access_token="+url.QueryEscape(token), nil)
+	if err != nil {
+		return err
+	}
+	res, err := s.httpc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = res.Body.Close() }()
+	// 401 means the grant is already gone — the rider revoked it at Strava,
+	// which is the outcome this asked for.
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusUnauthorized {
+		return fmt.Errorf("strava: deauthorize returned %d", res.StatusCode)
+	}
+	return nil
 }

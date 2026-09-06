@@ -72,6 +72,9 @@ type Service struct {
 	// with them rather than serving ones that cannot work.
 	wa         *webauthn.WebAuthn
 	challenges *challengeStore
+	// Hands a Strava grant back when the rider disconnects it (#783).
+	// SetStravaRevoker lives in credentials.go.
+	stravaRevoker GrantRevoker
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -113,6 +116,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
 	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
+	// The way back out of a connection (#783); linking is ?link=1 on start.
+	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)
 }
 

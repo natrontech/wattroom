@@ -6,6 +6,7 @@
 	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
 	import Banner from '$lib/components/Banner.svelte';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
 
 	let { onUploadToggle }: { onUploadToggle: (on: boolean) => void } = $props();
 
@@ -31,6 +32,29 @@
 
 	function connect(id: string) {
 		window.location.href = `/api/auth/${id}/start?link=1`;
+	}
+
+	let disconnectError = $state('');
+	let disconnecting = $state('');
+
+	// A confirm rather than an undo toast (.claude/rules/errors.md): undoing
+	// means a whole OAuth round trip, and for Strava the grant is handed back
+	// upstream, which no toast can put right.
+	async function disconnect(id: string) {
+		const name = providerName[id] ?? id;
+		const extra =
+			id === 'strava' ? ' Ride upload to Strava stops with it.' : '';
+		if (!confirm(`Disconnect ${name} from this account?${extra}`)) return;
+
+		disconnecting = id;
+		disconnectError = '';
+		const res = await api(`/api/me/identities/${id}`, { method: 'DELETE' });
+		disconnecting = '';
+		if (!res.ok) {
+			disconnectError = res.error.message;
+			return;
+		}
+		await account.load();
 	}
 </script>
 
@@ -63,9 +87,28 @@
 		</div>
 	{/if}
 
-	<p class="mt-2 text-sm">
-		{[...linked].map((p) => providerName[p] ?? p).join(', ') || '—'}
-	</p>
+	{#if disconnectError}
+		<div class="mt-2"><Banner>{disconnectError}</Banner></div>
+	{/if}
+
+	{#if linked.size === 0}
+		<p class="mt-2 text-sm">—</p>
+	{:else}
+		<ul class="mt-2 grid gap-1.5">
+			{#each [...linked] as id (id)}
+				<li class="flex items-center gap-3 text-sm">
+					<span class="min-w-0 flex-1 truncate">{providerName[id] ?? id}</span>
+					<button
+						onclick={() => disconnect(id)}
+						disabled={disconnecting === id}
+						class="btn btn-danger btn-xs"
+					>
+						{disconnecting === id ? 'Disconnecting…' : 'Disconnect'}
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 
 	{#if connectable.length > 0}
 		<div class="mt-3 flex flex-wrap items-center gap-2">

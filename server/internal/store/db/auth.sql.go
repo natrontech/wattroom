@@ -62,6 +62,23 @@ func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
 	return err
 }
 
+const deleteIdentity = `-- name: DeleteIdentity :execrows
+delete from identities where user_id = $1 and provider = $2
+`
+
+type DeleteIdentityParams struct {
+	UserID   pgtype.UUID
+	Provider string
+}
+
+func (q *Queries) DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteIdentity, arg.UserID, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 delete from sessions where token_hash = $1
 `
