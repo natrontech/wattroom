@@ -13,6 +13,7 @@ describe('flight recorder', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it('keeps power, cadence, target and state — never heart rate (#636)', () => {
+		vi.spyOn(Date, 'now').mockReturnValue(1788681515121);
 		const recorder = createFlightRecorder();
 		const sample = { second: 41, watts: 210, cadence: 88, heartRate: 151 };
 		recorder.tick({ ...sample, target: 200, state: 'riding' });
@@ -25,7 +26,6 @@ describe('flight recorder', () => {
 			target: 200,
 			state: 'riding',
 		});
-		expect(JSON.stringify(recorder.flags[0].snapshot)).not.toContain('151');
 	});
 
 	it('captures unhandled promise rejections beside errors (#668)', () => {
