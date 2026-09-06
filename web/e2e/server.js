@@ -16,7 +16,7 @@ const types = {
 	'.css': 'text/css',
 	'.svg': 'image/svg+xml',
 	'.woff2': 'font/woff2',
-	'.json': 'application/json'
+	'.json': 'application/json',
 };
 
 const go = spawn('go', ['run', '.'], {
@@ -29,9 +29,12 @@ const go = spawn('go', ['run', '.'], {
 		WATTROOM_DB:
 			process.env.WATTROOM_DB ??
 			'postgres://wattroom:wattroom@localhost:5432/wattroom',
-		WATTROOM_DEV_LOGIN: '1'
+		WATTROOM_DEV_LOGIN: '1',
+		// The passkey relying party is derived from this (passkey.go): the
+		// ceremony's origin is the page's, which is this proxy, not the API.
+		WATTROOM_BASE_URL: `http://localhost:${WEB_PORT}`,
 	},
-	stdio: 'inherit'
+	stdio: 'inherit',
 });
 process.on('exit', () => go.kill());
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -49,12 +52,12 @@ const web = createServer((req, res) => {
 				port: API_PORT,
 				path: req.url,
 				method: req.method,
-				headers: req.headers
+				headers: req.headers,
 			},
 			(upstream) => {
 				res.writeHead(upstream.statusCode, upstream.headers);
 				upstream.pipe(res);
-			}
+			},
 		);
 		upstreamReq.on('error', () => {
 			res.writeHead(502).end('api unavailable');
@@ -63,10 +66,15 @@ const web = createServer((req, res) => {
 		return;
 	}
 
-	const requested = normalize(decodeURIComponent(req.url.split('?')[0])).replace(/^(\.\.[/\\])+/, '');
+	const requested = normalize(
+		decodeURIComponent(req.url.split('?')[0]),
+	).replace(/^(\.\.[/\\])+/, '');
 	let file = join(dist, requested);
-	if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
-	res.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
+	if (!existsSync(file) || statSync(file).isDirectory())
+		file = join(dist, 'index.html');
+	res.writeHead(200, {
+		'content-type': types[extname(file)] ?? 'application/octet-stream',
+	});
 	createReadStream(file).pipe(res);
 });
 
@@ -102,7 +110,7 @@ async function apiReady() {
 		const ok = await new Promise((resolve) => {
 			const probe = httpRequest(
 				{ host: '127.0.0.1', port: API_PORT, path: '/api/healthz' },
-				(res) => resolve(res.statusCode === 200)
+				(res) => resolve(res.statusCode === 200),
 			);
 			probe.on('error', () => resolve(false));
 			probe.end();
@@ -114,4 +122,6 @@ async function apiReady() {
 }
 
 await apiReady();
-web.listen(WEB_PORT, () => console.log(`e2e web on :${WEB_PORT}, api on :${API_PORT}`));
+web.listen(WEB_PORT, () =>
+	console.log(`e2e web on :${WEB_PORT}, api on :${API_PORT}`),
+);
