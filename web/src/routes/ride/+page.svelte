@@ -20,7 +20,8 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
-	import { api, apiBlob } from '$lib/api';
+	import { apiBlob } from '$lib/api';
+	import { uploadRide } from '$lib/ride/save';
 	import Banner from '$lib/components/Banner.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -136,6 +137,10 @@
 				rideId: String(startedAt),
 				startedAt,
 				workoutName: workout.name,
+				// Carried so a ride whose save failed can be saved from the
+				// recovery card rather than only exported (#794).
+				workoutJson: JSON.stringify(workout),
+				ftp,
 			});
 			trainerName = trainer.name;
 			recorder.event('ride', `starting ${workout.name}`);
@@ -202,24 +207,33 @@
 		const current = session;
 		if (!current || current.state !== 'done' || recorded) return;
 		recorded = true;
-		buffer?.end();
 		const summary = summarise(current.recording);
-		if (summary.seconds === 0) return;
-		void api('/api/rides', {
-			method: 'POST',
-			json: {
-				workoutName: workout.name,
-				workoutJson: JSON.stringify(workout),
-				startedAt: current.startedAt.toISOString(),
-				samples: current.recording.map((sample) => ({
-					watts: sample.watts,
-					cadence: sample.cadence,
-					hr: sample.heartRate,
-				})),
-			},
-		}).then((res) => {
-			if (res.ok) return;
-			error = history.add({
+		if (summary.seconds === 0) {
+			buffer?.end();
+			return;
+		}
+		const ended = buffer;
+		void uploadRide({
+			workoutName: workout.name,
+			workoutJson: JSON.stringify(workout),
+			startedAt: current.startedAt.toISOString(),
+			samples: current.recording.map((sample) => ({
+				watts: sample.watts,
+				cadence: sample.cadence,
+				hr: sample.heartRate,
+			})),
+		}).then((failure) => {
+			if (!failure) {
+				// The ride is on the account: NOW it stops being a ride to
+				// recover. Ending the buffer before the server answered is
+				// what used to make a failed save vanish (#794).
+				ended?.end();
+				return;
+			}
+			// The buffer keeps every sample and stays unfinished, so the ride
+			// is offered back below with a Save that retries this POST. The
+			// local summary is the second copy, not the only one.
+			const localFailure = history.add({
 				id: `${current.startedAt.getTime()}`,
 				workoutName: workout.name,
 				startedAt: current.startedAt.toISOString(),
@@ -227,6 +241,9 @@
 				ftp,
 				...summary,
 			});
+			error =
+				localFailure ??
+				`${failure} This ride is kept on this device — reload to save it from the recovery card.`;
 		});
 	});
 
@@ -265,6 +282,29 @@
 		} finally {
 			recovering = false;
 		}
+	}
+
+	async function saveRecovered(ride: (typeof recoverable)[number]) {
+		if (!ride.workoutJson) return;
+		recovering = true;
+		error = null;
+		const failure = await uploadRide({
+			workoutName: ride.workoutName,
+			workoutJson: ride.workoutJson,
+			startedAt: new Date(ride.startedAt).toISOString(),
+			samples: ride.samples.map((sample) => ({
+				watts: sample.watts,
+				cadence: sample.cadence,
+				hr: sample.heartRate,
+			})),
+		});
+		recovering = false;
+		if (failure) {
+			error = failure;
+			return;
+		}
+		await discardRide(ride.rideId);
+		recoverable = recoverable.filter((r) => r.rideId !== ride.rideId);
 	}
 
 	async function discardRecovered(rideId: string) {
@@ -540,10 +580,19 @@
 							{Math.round(ride.samples.length / 60)} min recorded.
 						</p>
 						<div class="mt-2 flex gap-2">
+							{#if ride.workoutJson}
+								<button
+									onclick={() => saveRecovered(ride)}
+									disabled={recovering}
+									class="btn btn-primary btn-xs">Save to your account</button
+								>
+							{/if}
 							<button
 								onclick={() => downloadRecovered(ride)}
 								disabled={recovering}
-								class="btn btn-primary btn-xs">Download .fit</button
+								class="btn {ride.workoutJson
+									? 'btn-secondary'
+									: 'btn-primary'} btn-xs">Download .fit</button
 							>
 							<button
 								onclick={() => discardRecovered(ride.rideId)}

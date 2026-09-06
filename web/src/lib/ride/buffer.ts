@@ -24,6 +24,16 @@ export interface RideMeta {
 	rideId: string;
 	startedAt: number;
 	workoutName: string;
+	/**
+	 * Enough to save the ride to the account later (#794). A ride whose upload
+	 * failed stays here unfinished and is offered back, and an offer you
+	 * cannot act on is not an offer — so the buffer carries what the POST
+	 * needs, not just what a .fit needs. Absent on rides buffered before this
+	 * existed; the retry hides itself for those.
+	 */
+	workoutJson?: string;
+	ftp?: number;
+	/** Set when the ride is SAVED, not when the recording stops (#794). */
 	endedAt?: number;
 }
 
@@ -64,7 +74,12 @@ function tx<T>(
 
 export interface RideBuffer {
 	append(sample: BufferedSample): void;
-	/** Marks the ride finished — it stops being a crash to recover from. */
+	/**
+	 * Marks the ride finished — it stops being a crash to recover from. Call
+	 * it when the ride is SAFE, which means the server has it: recording
+	 * completion and upload acknowledgement are two different events, and
+	 * ending on the first one is what used to drop a failed save (#794).
+	 */
 	end(): void;
 	/** Samples since (exclusive) a seq, for reconnect replay. */
 	since(seq: number): Promise<BufferedSample[]>;
