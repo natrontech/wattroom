@@ -53,7 +53,12 @@
 		// Playing is not the panel's job to be open for: a rider who hid the
 		// board still hears the room. This component is always mounted — the
 		// chip below is what it renders when closed.
-		for (const shot of batch) void playClip(shot.clipId, shot.fromId ?? '');
+		for (const shot of batch) {
+			// Only your OWN clips carry an edit here — a board is one rider's, so
+			// somebody else's trim rides with their audio, not with the fire.
+			const known = board.clips.find((c) => c.id === shot.clipId);
+			void playClip(shot.clipId, shot.fromId ?? '', known);
+		}
 		const newest = batch[batch.length - 1];
 		last = {
 			from: newest.from ?? 'someone',

@@ -5,14 +5,29 @@
  */
 import { prefetch } from '$lib/sound/board.svelte';
 
-export interface Clip {
+export interface Edit {
+	startMs: number;
+	/** 0 means "to the end of the source" — a clip nobody has trimmed. */
+	endMs: number;
+	gainDb: number;
+	fadeInMs: number;
+	fadeOutMs: number;
+}
+
+export interface Clip extends Edit {
 	id: string;
 	name: string;
 	/** 1–9, or absent for a clip in the library but on no pad. */
 	pad?: number;
+	/** The SOURCE's length; the edit above says what actually plays. */
 	millis: number;
 	bytes: number;
 	uploaded: number;
+}
+
+/** How long a clip actually sounds for, once its trim is applied. */
+export function keptMillis(clip: Clip): number {
+	return (clip.endMs || clip.millis) - clip.startMs;
 }
 
 /** How many pads a board has — the server's check constraint says the same. */
@@ -128,4 +143,22 @@ export async function assign(
 export async function remove(clipId: string): Promise<void> {
 	const res = await fetch(`/api/board/clips/${clipId}`, { method: 'DELETE' });
 	if (res.ok) await board.refresh();
+}
+
+/** Save a clip's trim, gain and fades. The audio is never re-encoded. */
+export async function saveEdit(
+	clipId: string,
+	edit: Edit,
+): Promise<Refusal | undefined> {
+	const res = await fetch(`/api/board/clips/${clipId}/edit`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(edit),
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		return { message: body.message ?? 'The edit could not be saved.' };
+	}
+	await board.refresh();
+	return undefined;
 }

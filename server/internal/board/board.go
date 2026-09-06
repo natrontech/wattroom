@@ -68,6 +68,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/board/clips", s.handleUpload)
 	mux.HandleFunc("DELETE /api/board/clips/{id}", s.handleDelete)
 	mux.HandleFunc("PUT /api/board/clips/{id}/pad", s.handlePad)
+	mux.HandleFunc("PUT /api/board/clips/{id}/edit", s.handleEdit)
 	mux.HandleFunc("GET /api/board/clips/{id}/audio", s.handleAudio)
 }
 
@@ -76,12 +77,26 @@ func (s *Service) me(w http.ResponseWriter, r *http.Request) (db.User, bool) {
 }
 
 type clipJSON struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Pad      *int   `json:"pad,omitempty"`
-	Millis   int    `json:"millis"`
-	Bytes    int    `json:"bytes"`
-	Uploaded int64  `json:"uploaded"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Pad  *int   `json:"pad,omitempty"`
+	// Millis is the SOURCE's length; the edit below says what actually plays.
+	Millis   int   `json:"millis"`
+	Bytes    int   `json:"bytes"`
+	Uploaded int64 `json:"uploaded"`
+	editJSON
+}
+
+// editJSON is the edit applied at playback (#934, ADR-0033) — never baked into
+// the audio, so it stays re-editable and costs no second copy.
+type editJSON struct {
+	StartMillis int `json:"startMs"`
+	// 0 means "to the end of the source": a clip uploaded before the editor
+	// existed has no end to record.
+	EndMillis int     `json:"endMs"`
+	GainDb    float64 `json:"gainDb"`
+	FadeInMs  int     `json:"fadeInMs"`
+	FadeOutMs int     `json:"fadeOutMs"`
 }
 
 type listJSON struct {
@@ -117,6 +132,13 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			Millis:   int(row.DurationMs),
 			Bytes:    int(row.SizeBytes),
 			Uploaded: row.CreatedAt.Time.UnixMilli(),
+			editJSON: editJSON{
+				StartMillis: int(row.StartMs),
+				EndMillis:   int(row.EndMs),
+				GainDb:      float64(row.GainDb),
+				FadeInMs:    int(row.FadeInMs),
+				FadeOutMs:   int(row.FadeOutMs),
+			},
 		}
 		if row.Pad != nil {
 			pad := int(*row.Pad)
@@ -142,6 +164,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 			"A clip needs a name, up to 32 characters.", "name")
 		return
 	}
+	defaultEnd := 0
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadBytes))
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
@@ -154,10 +177,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 			"That file is not an MP3 this can read. Export it as MP3 and try again.")
 		return
 	}
+	// A longer source is fine — the ceiling is on what plays, and the rider
+	// trims it after uploading (#934). What bounds a hostile upload is the
+	// byte cap above, not this.
 	if millis > MaxClipMillis {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"A clip can be at most 60 seconds. Trim it before uploading.")
-		return
+		defaultEnd = MaxClipMillis
 	}
 	used, err := s.store.Queries.BoardClipBytes(r.Context(), me.ID)
 	if err != nil {
@@ -174,8 +198,12 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := s.store.Queries.SaveBoardClip(r.Context(), db.SaveBoardClipParams{
 		// Bounded by MaxClipMillis two checks above, so the narrowing is safe.
-		UserID: me.ID, Name: name, DurationMs: int32(millis), //nolint:gosec // <= MaxClipMillis
-		Bytes: data,
+		UserID: me.ID, Name: name,
+		DurationMs: int32(millis), //nolint:gosec // bounded by maxUploadBytes above
+		Bytes:      data,
+		// A source longer than the ceiling starts trimmed to it, so a clip can
+		// never play past SPEC's minute even before anyone opens the editor.
+		EndMs: int32(defaultEnd), //nolint:gosec // 0 or MaxClipMillis
 	})
 	if err != nil {
 		s.log.Error("save board clip", "err", err, "user", store.UUIDString(me.ID))
@@ -188,6 +216,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		Millis:   millis,
 		Bytes:    len(data),
 		Uploaded: row.CreatedAt.Time.UnixMilli(),
+		editJSON: editJSON{EndMillis: defaultEnd},
 	})
 }
 
@@ -263,6 +292,83 @@ func (s *Service) handlePad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleEdit stores the trim, gain and fades. Nothing is re-encoded: the
+// source bytes stay exactly as uploaded, every listener already decodes the
+// whole file, and these numbers are applied when it plays (ADR-0033).
+func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
+	me, ok := s.me(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	var body editJSON
+	if err := httpx.DecodeStrict(r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not an edit.")
+		return
+	}
+	source, err := s.store.Queries.GetBoardClipSource(r.Context(), db.GetBoardClipSourceParams{ID: id, UserID: me.ID})
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	if msg, field := checkEdit(body, int(source)); msg != "" {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", msg, field)
+		return
+	}
+	n, err := s.store.Queries.SetBoardClipEdit(r.Context(), db.SetBoardClipEditParams{
+		ID: id, UserID: me.ID,
+		StartMs: int32(body.StartMillis), EndMs: int32(body.EndMillis), //nolint:gosec // bounded by checkEdit
+		GainDb:    float32(body.GainDb),
+		FadeInMs:  int32(body.FadeInMs),  //nolint:gosec // bounded by checkEdit
+		FadeOutMs: int32(body.FadeOutMs), //nolint:gosec // bounded by checkEdit
+	})
+	if err != nil {
+		s.log.Error("set board clip edit", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The edit could not be saved.")
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// MaxGainDb is as far as a clip can be pushed either way. Past this a rider is
+// fixing a bad export with the wrong tool, and the room pays for it.
+const MaxGainDb = 12
+
+// checkEdit is the whole rule set, in one place so a test can walk it: the
+// kept span sits inside the source, is not longer than SPEC's ceiling, and the
+// fades fit inside what they fade.
+func checkEdit(e editJSON, sourceMillis int) (message, field string) {
+	if e.StartMillis < 0 || e.StartMillis >= sourceMillis {
+		return "The clip starts outside the audio.", "startMs"
+	}
+	end := e.EndMillis
+	if end == 0 || end > sourceMillis {
+		end = sourceMillis
+	}
+	kept := end - e.StartMillis
+	if kept <= 0 {
+		return "The clip has to keep some audio.", "endMs"
+	}
+	if kept > MaxClipMillis {
+		return "A clip can be at most 60 seconds. Move a handle in.", "endMs"
+	}
+	if e.FadeInMs < 0 || e.FadeOutMs < 0 || e.FadeInMs+e.FadeOutMs > kept {
+		return "The fades are longer than the clip.", "fadeInMs"
+	}
+	if e.GainDb < -MaxGainDb || e.GainDb > MaxGainDb {
+		return "Gain is limited to 12 dB either way.", "gainDb"
+	}
+	return "", ""
 }
 
 // handleAudio serves the bytes to anyone the owner is currently in a room
