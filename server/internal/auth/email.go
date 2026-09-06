@@ -13,7 +13,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"html"
 	"net/http"
 	"strings"
@@ -110,22 +109,31 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 // (server/internal/notify/notify.go).
 func (s *Service) handleVerifyEmailForm(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("t") == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"That confirmation link is incomplete. Use the link from the email, or ask for a new one in your WattRoom profile.")
+		s.verifyOutcome(w, http.StatusBadRequest, "That link is incomplete",
+			"Use the link from the email, or ask for a new one in your WattRoom profile.")
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// No action attribute: the form posts back to this same URL, token and
 	// all, so nothing request-derived is ever written into the HTML.
-	_, _ = fmt.Fprint(w, `<form method="post">
-<p>Confirm this address for your WattRoom account?</p><button>Confirm</button></form>`)
+	httpx.WritePage(w, http.StatusOK, "Confirm your address", httpx.PageBody(
+		"Confirm this address?",
+		"It becomes the address on your WattRoom account — the way back in if every other sign-in is ever lost.",
+		`<form method="post"><button>Confirm</button></form>`))
+}
+
+// verifyOutcome is the page a click lands on when it cannot confirm: the
+// click came from a mail client, so the answer is a page, not JSON — and it
+// offers the way to a fresh link.
+func (s *Service) verifyOutcome(w http.ResponseWriter, status int, heading, line string) {
+	httpx.WritePage(w, status, heading, httpx.PageBody(heading, line,
+		httpx.PageLink(s.baseURL+"/profile", "Back to WattRoom")))
 }
 
 func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("t")
 	if token == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"That confirmation link is incomplete. Use the link from the email, or ask for a new one in your WattRoom profile.")
+		s.verifyOutcome(w, http.StatusBadRequest, "That link is incomplete",
+			"Use the link from the email, or ask for a new one in your WattRoom profile.")
 		return
 	}
 
@@ -135,30 +143,30 @@ func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, pgx.ErrNoRows):
 		// Expired, already used, or never ours — all the same answer, and
 		// none of them says whether an account exists.
-		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That confirmation link has expired or was already used. Ask for a new one in your WattRoom profile.")
+		s.verifyOutcome(w, http.StatusNotFound, "That link has expired or was already used",
+			"Ask for a new one in your WattRoom profile.")
 		return
 	default:
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			httpx.WriteError(w, http.StatusConflict, "conflict",
-				"Another WattRoom account has already confirmed that address. Sign in with that account, or use a different address.")
+			s.verifyOutcome(w, http.StatusConflict, "That address is already confirmed elsewhere",
+				"Another WattRoom account holds it. Sign in with that account, or use a different address.")
 			return
 		}
 		s.log.Error("email verification failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Confirming the address did not work. Try the link again.")
+		s.verifyOutcome(w, http.StatusInternalServerError, "That did not work",
+			"Confirming the address failed on our side. Try the link again.")
 		return
 	}
 
 	s.log.Info("email verified", "user", user.ID)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	address := ""
 	if user.Email != nil {
 		address = *user.Email
 	}
-	_, _ = fmt.Fprintf(w, `<p>Confirmed — %s is now the address on your WattRoom account.</p>
-<p><a href="%s">Back to WattRoom</a></p>`, html.EscapeString(address), html.EscapeString(s.baseURL))
+	httpx.WritePage(w, http.StatusOK, "Address confirmed",
+		"<h1>Confirmed</h1><p><strong>"+html.EscapeString(address)+"</strong> is now the address on your WattRoom account.</p>"+
+			httpx.PageLink(s.baseURL, "Back to WattRoom"))
 }
 
 // emailUpdate is the email half of PATCH /api/me, kept out of the profile

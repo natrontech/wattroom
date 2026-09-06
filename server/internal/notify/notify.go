@@ -159,22 +159,30 @@ func unsubParams(r *http.Request) (id, token pgtype.UUID, ok bool) {
 // the click comes from a mail client, not the SPA.
 func (s *Service) handleUnsubscribeForm(w http.ResponseWriter, r *http.Request) {
 	if _, _, ok := unsubParams(r); !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"That unsubscribe link is incomplete. Use the link from the email, or switch emails off in your WattRoom profile.")
+		s.unsubOutcome(w, http.StatusBadRequest, "That link is incomplete",
+			"Use the link from the email, or switch emails off in your WattRoom profile.")
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// No action attribute: the form posts back to this same URL, query and
 	// all — nothing request-derived is ever written into the HTML.
-	_, _ = fmt.Fprint(w, `<form method="post">
-<p>Stop WattRoom session emails?</p><button>Unsubscribe</button></form>`)
+	httpx.WritePage(w, http.StatusOK, "Unsubscribe", httpx.PageBody(
+		"Stop WattRoom session emails?",
+		"You can turn them back on any time in your profile.",
+		`<form method="post"><button>Unsubscribe</button></form>`))
+}
+
+// unsubOutcome is the page the click lands on: a mail client sent it, so the
+// answer is a page in the app's shell, not JSON (#832).
+func (s *Service) unsubOutcome(w http.ResponseWriter, status int, heading, line string) {
+	httpx.WritePage(w, status, heading, httpx.PageBody(heading, line,
+		httpx.PageLink(s.baseURL+"/profile", "Back to WattRoom")))
 }
 
 func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	id, token, ok := unsubParams(r)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"That unsubscribe link is incomplete. Use the link from the email, or switch emails off in your WattRoom profile.")
+		s.unsubOutcome(w, http.StatusBadRequest, "That link is incomplete",
+			"Use the link from the email, or switch emails off in your WattRoom profile.")
 		return
 	}
 	rows, err := s.store.Queries.UnsubscribePlanned(r.Context(), db.UnsubscribePlannedParams{
@@ -182,17 +190,17 @@ func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.log.Error("unsubscribe failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The unsubscribe did not go through. Try the link again.")
+		s.unsubOutcome(w, http.StatusInternalServerError, "That did not work",
+			"The unsubscribe failed on our side. Try the link again.")
 		return
 	}
 	if rows == 0 {
-		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That unsubscribe link does not match an account. Emails may already be off.")
+		s.unsubOutcome(w, http.StatusNotFound, "That link does not match an account",
+			"Emails may already be off.")
 		return
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = fmt.Fprintln(w, "Done — no more session emails. Turn them back on any time in your WattRoom profile.")
+	s.unsubOutcome(w, http.StatusOK, "Done — no more session emails",
+		"Turn them back on any time in your WattRoom profile.")
 }
 
 // SendEmailVerification puts the confirm link in front of a rider (#781).
