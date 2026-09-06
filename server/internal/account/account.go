@@ -54,9 +54,38 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/me", s.handleDelete)
 }
 
-// handleExport streams a zip: profile.json, rides.json (summaries), and each
-// ride's raw 1 Hz samples as its own JSON file, decompressed — an export the
-// rider can open, not a database dump they cannot.
+// handleExport streams a zip of everything WattRoom holds about the rider —
+// an export they can open, not a database dump they cannot.
+//
+// The scope is not a product choice (#696). Two rights apply and they differ:
+//
+//   - Access — GDPR Art. 15, revFADP Art. 25 — covers everything the
+//     controller holds about the person, including what we derived (XP,
+//     trophies). No machine-readable format is required, only an intelligible
+//     one; the deadline is one month (GDPR Art. 12(3)) / 30 days (FADP
+//     Art. 25(7)).
+//   - Portability — GDPR Art. 20, revFADP Art. 28 — is narrower: data the
+//     rider PROVIDED, processed automatically on consent or a contract, and it
+//     must be "structured, commonly used and machine-readable". WP29's
+//     WP242rev.01 reads "provided" as covering observed data (what they did
+//     here), not inferred data.
+//
+// This export satisfies both by being the wider one in the stricter format:
+// every category below as indented JSON in a zip, served immediately.
+//
+// Third-party data is the hard part, and the rule here is: EXPORT ONLY WHAT
+// THE RIDER CAN ALREADY SEE IN THE APP, attributed by display name and
+// nothing else. GDPR Art. 20(4) says the right "shall not adversely affect
+// the rights and freedoms of others", and WP29 warns equally against reading
+// that so strictly that anything touching another person is withheld. So:
+// their own room-chat lines but not the room's (someone else's line is that
+// person's data, not theirs); whole DM threads, which are as much about them
+// as about the peer and which they can already read; a friend's display name
+// but never their email, id, or a single watt of anyone else's ride.
+//
+// Not legal advice — a lawyer should confirm the reading before it is relied
+// on. The provisions are cited so the next person can check rather than
+// re-derive.
 func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.sessions.RequireUser(w, r, "Sign in to export your data.")
 	if !ok {
@@ -117,6 +146,88 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Everything else the account holds (#696). One query per category, each
+	// user-scoped and each mapped to the keys a person reads rather than the
+	// column names a database uses — this is a file the rider opens. A
+	// category that fails to read loses itself, not the export: someone
+	// entitled to their data should get what we could gather, not a 500.
+	for _, cat := range []struct {
+		name string
+		rows func() (any, error)
+	}{
+		{"chat.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserChat(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserChatRow) any {
+				return map[string]any{"room": row.RoomName, "roomSlug": row.RoomSlug,
+					"text": row.Text, "at": row.CreatedAt.Time}
+			})
+		}},
+		{"messages.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserDms(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserDmsRow) any {
+				return map[string]any{"with": row.PeerName, "fromMe": row.SentByMe,
+					"text": row.Text, "at": row.CreatedAt.Time}
+			})
+		}},
+		{"friends.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserFriends(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserFriendsRow) any {
+				return map[string]any{"name": row.PeerName, "iAsked": row.IAsked,
+					"status": row.Status, "since": row.CreatedAt.Time}
+			})
+		}},
+		{"playlists.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserPlaylists(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserPlaylistsRow) any {
+				return map[string]any{"name": row.Name, "createdAt": row.CreatedAt.Time,
+					"tracks": json.RawMessage(row.Tracks)}
+			})
+		}},
+		{"planned-sessions.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserRsvps(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserRsvpsRow) any {
+				return map[string]any{"room": row.RoomName, "workoutName": row.WorkoutName,
+					"startsAt": row.StartsAt.Time, "saidYesAt": row.CreatedAt.Time}
+			})
+		}},
+		{"rooms.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserRooms(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserRoomsRow) any {
+				return map[string]any{"name": row.Name, "slug": row.Slug,
+					"role": row.Role, "joinedAt": row.JoinedAt.Time}
+			})
+		}},
+		{"workouts.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserWorkouts(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserWorkoutsRow) any {
+				return map[string]any{"name": row.Name, "author": row.Author,
+					"createdAt": row.CreatedAt.Time, "workout": json.RawMessage(row.Definition)}
+			})
+		}},
+		{"xp.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserXp(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserXpRow) any {
+				return map[string]any{"amount": row.Amount, "source": row.Source,
+					"about": row.Ref, "at": row.At.Time}
+			})
+		}},
+		{"trophies.json", func() (any, error) {
+			rows, err := s.store.Queries.ExportUserAchievements(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserAchievementsRow) any {
+				return map[string]any{"trophy": row.Key, "earnedAt": row.EarnedAt.Time}
+			})
+		}},
+	} {
+		rows, err := cat.rows()
+		if err != nil {
+			s.log.Error("export category failed", "category", cat.name, "err", err)
+			continue
+		}
+		if !writeJSON(cat.name, rows) {
+			return
+		}
+	}
+
 	// One blob at a time: read, stream into the zip, let it go. Held together
 	// in one slice, a rider's whole history is in memory at once — and that
 	// number grows every month they keep riding (#894).
@@ -165,4 +276,18 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		s.alerter.AccountDeleted(user)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// mapRows turns a query's rows into the shape the export writes: the reader's
+// vocabulary, not the schema's. An empty result is an empty array rather than
+// null — a rider with no playlists should read "none", not "unknown".
+func mapRows[R any](rows []R, err error, one func(R) any) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, one(row))
+	}
+	return out, nil
 }

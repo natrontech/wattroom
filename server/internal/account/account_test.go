@@ -184,6 +184,14 @@ var userRowQueries = map[string]string{
 	"medals":      "select count(*) from medals where user_id = $1",
 	"friendships": "select count(*) from friendships where requester_id = $1 or addressee_id = $1",
 	"dm_messages": "select count(*) from dm_messages where sender_id = $1 or recipient_id = $1",
+	// Everything the export learned to carry (#696) has to leave with them too
+	// — the second half of the same promise.
+	"chat_messages": "select count(*) from chat_messages where user_id = $1",
+	"playlists":     "select count(*) from playlists where user_id = $1",
+	"session_rsvps": "select count(*) from session_rsvps where user_id = $1",
+	"workouts":      "select count(*) from workouts where owner_id = $1",
+	"xp_events":     "select count(*) from xp_events where user_id = $1",
+	"achievements":  "select count(*) from achievements where user_id = $1",
 }
 
 func TestExportRequiresSignIn(t *testing.T) {
@@ -368,5 +376,131 @@ func TestExportStreamsEveryRideWithoutHoldingThemAll(t *testing.T) {
 	sort.Strings(samples)
 	if len(samples) != 2 || samples[0] != first || samples[1] != second {
 		t.Errorf("want both of alice's rides and neither of bob's, got %q", samples)
+	}
+}
+
+// #696: the export used to be the profile and the rides, while the privacy
+// page and WATTROOM.md promised everything. What must be in it is decided by
+// GDPR Art. 15 / revFADP Art. 25 (access: everything held) rather than by
+// taste — and the third-party line is drawn at what the rider can already see
+// in the app, attributed by display name and nothing else.
+func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
+	h := setup(t)
+	room := h.createRoom(t, "alice")
+	for _, name := range []string{"alice", "bob"} {
+		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+			RoomID: room, UserID: h.id(name), Role: "member",
+		}); err != nil {
+			t.Fatalf("membership %s: %v", name, err)
+		}
+	}
+	mustChat := func(user, text string) {
+		t.Helper()
+		if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
+			RoomID: room, UserID: h.id(user), Text: text,
+		}); err != nil {
+			t.Fatalf("chat %s: %v", user, err)
+		}
+	}
+	mustChat("alice", "starting in five")
+	mustChat("bob", "bobs own line")
+	h.befriend(t, "alice", "bob")
+	h.sendDm(t, "alice", "bob", "see you at 7")
+	h.sendDm(t, "bob", "alice", "bring legs")
+	if _, err := h.store.Queries.CreatePlaylist(t.Context(), db.CreatePlaylistParams{
+		UserID: h.id("alice"), Name: "Threshold bangers",
+	}); err != nil {
+		t.Fatalf("playlist: %v", err)
+	}
+	if _, err := h.store.Queries.CreateWorkout(t.Context(), db.CreateWorkoutParams{
+		OwnerID: h.id("alice"), Name: "My Openers", Author: "alice",
+		Definition: []byte(`{"name":"My Openers","steps":[]}`),
+	}); err != nil {
+		t.Fatalf("workout: %v", err)
+	}
+	planned, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
+		RoomID: room, WorkoutName: "Sweet Spot", WorkoutJson: []byte(`{}`),
+		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		CreatedBy: h.id("alice"),
+	})
+	if err != nil {
+		t.Fatalf("scheduled session: %v", err)
+	}
+	if err := h.store.Queries.SetRsvp(t.Context(), db.SetRsvpParams{
+		SessionID: planned.ID, UserID: h.id("alice"),
+	}); err != nil {
+		t.Fatalf("rsvp: %v", err)
+	}
+	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
+		UserID: h.id("alice"), Source: "lounge", Amount: 5, Ref: "bucket-1",
+		At: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("xp: %v", err)
+	}
+	if _, err := h.store.Queries.AwardAchievement(t.Context(), db.AwardAchievementParams{
+		UserID: h.id("alice"), Key: "first-ride",
+		EarnedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("achievement: %v", err)
+	}
+
+	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("body is not a zip: %v", err)
+	}
+	files := map[string]string{}
+	for _, f := range zr.File {
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open %s: %v", f.Name, err)
+		}
+		body, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read %s: %v", f.Name, err)
+		}
+		files[f.Name] = string(body)
+	}
+
+	// Every category, and the content that proves the query ran rather than
+	// an empty array being written.
+	for name, want := range map[string]string{
+		"chat.json":             "starting in five",
+		"messages.json":         "bring legs",
+		"friends.json":          "bob",
+		"playlists.json":        "Threshold bangers",
+		"planned-sessions.json": "Sweet Spot",
+		"rooms.json":            "account-test-alice",
+		"workouts.json":         "My Openers",
+		"xp.json":               "bucket-1",
+		"trophies.json":         "first-ride",
+	} {
+		body, ok := files[name]
+		if !ok {
+			t.Errorf("the export has no %s", name)
+			continue
+		}
+		if !strings.Contains(body, want) {
+			t.Errorf("%s does not carry %q:\n%s", name, want, body)
+		}
+	}
+
+	// The line: someone else's room-chat line is their personal data, not the
+	// requester's, and it is not in here.
+	if strings.Contains(files["chat.json"], "bobs own line") {
+		t.Errorf("the export carries another rider's chat line:\n%s", files["chat.json"])
+	}
+	// A DM thread is both people's, and alice can already read every line of
+	// it in the app — so the whole thread is hers to take.
+	if !strings.Contains(files["messages.json"], "see you at 7") {
+		t.Errorf("the export dropped alice's own DM:\n%s", files["messages.json"])
+	}
+	// Nobody else's account id or email rides along.
+	if strings.Contains(files["friends.json"], store.UUIDString(h.id("bob"))) {
+		t.Errorf("the export carries another rider's account id:\n%s", files["friends.json"])
 	}
 }
