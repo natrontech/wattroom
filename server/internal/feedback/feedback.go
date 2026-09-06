@@ -175,8 +175,8 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	issueURL := ""
 	if s.issuer != nil {
 		fp := Fingerprint(s.buildSHA, report.FirstError, report.Route)
-		title := fmt.Sprintf("feedback: %s", firstLine(report.Note, report.FirstError, report.Route))
-		body := issueBody(user.DisplayName, s.buildSHA, report)
+		title := fmt.Sprintf("feedback: %s", firstLine(report.Note, report.FirstError, publicRoute(report.Route)))
+		body := issueBody(s.buildSHA, report)
 		url, err := s.issuer.FileOrComment(fp, title, body)
 		if err != nil {
 			// The report is on disk; GitHub can be retried from there.
@@ -230,11 +230,37 @@ func firstLine(candidates ...string) string {
 	return "mid-ride flag"
 }
 
-func issueBody(reporter, sha string, report Report) string {
+// issueBody is what a stranger reads. The reporter's name is not in it: the
+// disk record keeps it for triage, the issue URL goes back to the rider who
+// filed the report, and this repository's issues are public (#737). The route
+// arrives redacted for the same reason — a display name plus the room someone
+// was in is the same disclosure in two halves.
+func issueBody(sha string, report Report) string {
 	buffer, _ := json.Marshal(report.Buffer)
 	return fmt.Sprintf(
-		"Reporter: %s\nRoute: `%s`\nServer: `%s` · Client: `%s`\nUA: %s\nTrainer: %s\n\n%s\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
-		reporter, report.Route, sha, report.ClientBuild, report.UserAgent,
+		"Route: `%s`\nServer: `%s` · Client: `%s`\nUA: %s\nTrainer: %s\n\n%s\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
+		publicRoute(report.Route), sha, report.ClientBuild, report.UserAgent,
 		report.Trainer, report.Note, string(buffer),
 	)
+}
+
+// publicRoute drops the one segment of a route that names somebody: a room
+// slug, or the peer of a DM. Which screen the rider was on is what triage
+// needs; which room, and with whom, is theirs. Fingerprint keeps the full
+// route, so per-room deduplication is unaffected.
+func publicRoute(route string) string {
+	for _, prefix := range []string{"/r/", "/messages/dm/"} {
+		if !strings.HasPrefix(route, prefix) {
+			continue
+		}
+		rest := route[len(prefix):]
+		if rest == "" {
+			return route
+		}
+		if i := strings.IndexByte(rest, '/'); i >= 0 {
+			return prefix + "…" + rest[i:]
+		}
+		return prefix + "…"
+	}
+	return route
 }
