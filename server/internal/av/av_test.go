@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -27,6 +28,44 @@ type denyAll struct{}
 
 func (denyAll) Authorize(*http.Request, string) (protocol.Rider, string, error) {
 	return protocol.Rider{}, "", errors.New("no")
+}
+
+type noSession struct{}
+
+func (noSession) Authorize(*http.Request, string) (protocol.Rider, string, error) {
+	return protocol.Rider{}, "", ErrNoSession
+}
+
+// A refused token says which of two very different things went wrong (#642):
+// a signed-out rider needs the login page, a removed one needs to know they
+// were removed. Both in the one errors.md shape the client already reads.
+func TestTokenRefusalSaysWhy(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		access Access
+		status int
+		code   string
+	}{
+		{"no session", noSession{}, http.StatusUnauthorized, "unauthorized"},
+		{"not a member", denyAll{}, http.StatusForbidden, "forbidden"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
+			req.SetPathValue("slug", "velvet")
+			w := httptest.NewRecorder()
+			service(tc.access).handleToken(w, req)
+			if w.Code != tc.status {
+				t.Fatalf("status %d, want %d: %s", w.Code, tc.status, w.Body.String())
+			}
+			var body httpx.ErrorResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("not the error shape: %v: %s", err, w.Body.String())
+			}
+			if body.Error != tc.code || body.Message == "" {
+				t.Fatalf("body %+v, want code %q with a message", body, tc.code)
+			}
+		})
+	}
 }
 
 func service(access Access) *Service {

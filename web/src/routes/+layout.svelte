@@ -262,6 +262,7 @@
 					onShare={() => void av.toggleShare()}
 					onLeaveVoice={() => av.leave()}
 					handedOff={av.handedOff}
+					voiceError={av.error}
 					onTakeOver={() => av.takeOver()}
 				/>
 			{:else}

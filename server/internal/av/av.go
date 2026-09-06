@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,6 +29,12 @@ import (
 type Access interface {
 	Authorize(r *http.Request, slug string) (rider protocol.Rider, canonical string, err error)
 }
+
+// ErrNoSession is what Authorize returns (wrapped or bare) for a request with
+// no signed-in user, so the token endpoint can say "sign in again" (401) and
+// keep "not a member" for 403 — errors.md's status table (#642). Declared by
+// the consumer, like fs.ErrNotExist: rooms sits above av in the import graph.
+var ErrNoSession = errors.New("av: no session")
 
 type Config struct {
 	URL    string
@@ -78,8 +85,15 @@ func (s *Service) Register(mux *http.ServeMux) {
 func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
 	rider, slug, err := s.access.Authorize(r, r.PathValue("slug"))
 	if err != nil {
+		// errors.md: 401 says "sign in again", 403 says "not yours" — one
+		// collapsed 403 left the rider guessing which (#642).
+		if errors.Is(err, ErrNoSession) {
+			httpx.WriteError(w, http.StatusUnauthorized, "unauthorized",
+				"Your session expired — sign in again to join voice.")
+			return
+		}
 		httpx.WriteError(w, http.StatusForbidden, "forbidden",
-			"Voice and camera are for the room's members.")
+			"Voice and camera are for the room's members — you are not one any more.")
 		return
 	}
 	token, err := s.mint(slug, rider)

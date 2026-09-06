@@ -19,6 +19,7 @@ import (
 
 	"fmt"
 
+	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -865,7 +866,7 @@ func isUniqueViolation(err error) bool {
 func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
 	user, ok := s.users.User(r)
 	if !ok {
-		return protocol.Rider{}, "", errNotMember
+		return protocol.Rider{}, "", av.ErrNoSession
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(slug))
 	if err != nil {
