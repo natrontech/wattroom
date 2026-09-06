@@ -30,6 +30,24 @@ func (q *Queries) AcceptFriendRequest(ctx context.Context, arg AcceptFriendReque
 	return result.RowsAffected(), nil
 }
 
+const clearFriendDeclines = `-- name: ClearFriendDeclines :exec
+delete from friend_declines
+where (requester_id = $1 and addressee_id = $2)
+   or (requester_id = $2 and addressee_id = $1)
+`
+
+type ClearFriendDeclinesParams struct {
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+}
+
+// A request or an acceptance between the two of them settles the pair —
+// either direction, so an old dismissal cannot resurface later.
+func (q *Queries) ClearFriendDeclines(ctx context.Context, arg ClearFriendDeclinesParams) error {
+	_, err := q.db.Exec(ctx, clearFriendDeclines, arg.RequesterID, arg.AddresseeID)
+	return err
+}
+
 const createFriendRequest = `-- name: CreateFriendRequest :exec
 insert into friendships (requester_id, addressee_id) values ($1, $2)
 `
@@ -123,6 +141,40 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 	return i, err
 }
 
+const listFriendDeclines = `-- name: ListFriendDeclines :many
+select d.declined_at, u.id, u.display_name
+from friend_declines d
+join users u on u.id = d.addressee_id
+where d.requester_id = $1
+`
+
+type ListFriendDeclinesRow struct {
+	DeclinedAt  pgtype.Timestamptz
+	ID          pgtype.UUID
+	DisplayName string
+}
+
+// Mine to hear, never theirs: only the rider who asked reads this.
+func (q *Queries) ListFriendDeclines(ctx context.Context, requesterID pgtype.UUID) ([]ListFriendDeclinesRow, error) {
+	rows, err := q.db.Query(ctx, listFriendDeclines, requesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFriendDeclinesRow
+	for rows.Next() {
+		var i ListFriendDeclinesRow
+		if err := rows.Scan(&i.DeclinedAt, &i.ID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFriendships = `-- name: ListFriendships :many
 select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url, u.avatar_preset,
     user_total_xp(u.id)::bigint as total_xp
@@ -173,4 +225,22 @@ func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const noteFriendDecline = `-- name: NoteFriendDecline :exec
+insert into friend_declines (requester_id, addressee_id) values ($1, $2)
+on conflict (requester_id, addressee_id)
+do update set declined_at = now()
+`
+
+type NoteFriendDeclineParams struct {
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+}
+
+// The addressee dismissed a pending ask (#876). Asking again and being
+// dismissed again is a new event, so the timestamp moves.
+func (q *Queries) NoteFriendDecline(ctx context.Context, arg NoteFriendDeclineParams) error {
+	_, err := q.db.Exec(ctx, noteFriendDecline, arg.RequesterID, arg.AddresseeID)
+	return err
 }

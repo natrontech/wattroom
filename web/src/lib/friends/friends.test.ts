@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { friendEvent, type Friend } from './friends.svelte';
+import { declineEvent, friendEvent, type Friend } from './friends.svelte';
 
 const friend = (over: Partial<Friend> = {}): Friend => ({
 	id: 'ruben',
@@ -30,6 +30,13 @@ describe('friendEvent', () => {
 		expect(friendEvent(accepted, 'accepted')).toBeNull();
 		// Their request, accepted by me — I clicked it, it does not need a blip.
 		expect(friendEvent(accepted, 'pending_in')).toBeNull();
+	});
+
+	it('leaves a dismissal to declineEvent — no row survives it to diff', () => {
+		expect(declineEvent({ id: 'ruben', name: 'Ruben', at: 1000 })).toEqual({
+			tag: 'friend-no-ruben',
+			title: 'Ruben dismissed your friend request',
+		});
 	});
 
 	it('stays quiet about my own outgoing request', () => {

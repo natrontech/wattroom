@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -135,6 +137,22 @@ func request(t *testing.T, mux *http.ServeMux, user, code string) int {
 	return w.Code
 }
 
+// declinesOf reads the asks that were dismissed — the requester's alone.
+func declinesOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
+	t.Helper()
+	code, body := call(t, mux, user, http.MethodGet, "/api/friends")
+	if code != http.StatusOK {
+		t.Fatalf("list for %s: %d", user, code)
+	}
+	raw, _ := body["declines"].([]any)
+	out := make([]map[string]any, 0, len(raw))
+	for _, entry := range raw {
+		m, _ := entry.(map[string]any)
+		out = append(out, m)
+	}
+	return out
+}
+
 func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 	t.Helper()
 	code, body := call(t, mux, user, http.MethodGet, "/api/friends")
@@ -239,7 +257,7 @@ func TestFriendLifecycle(t *testing.T) {
 		t.Fatalf("offline entry: %+v", entry)
 	}
 
-	// Unfriend from either side deletes; a second delete 404s.
+	// Unfriending is not a dismissal: nothing to tell either of them (#876).
 	if code, _ := call(t, mux, "bob", http.MethodDelete, "/api/friends/"+store.UUIDString(alice.ID)); code != http.StatusOK {
 		t.Fatalf("unfriend: %d", code)
 	}
@@ -248,6 +266,70 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 	if got := len(friendsOf(t, mux, "alice")); got != 0 {
 		t.Fatalf("rows left after unfriend: %d", got)
+	}
+	for _, who := range []string{"alice", "bob"} {
+		if got := len(declinesOf(t, mux, who)); got != 0 {
+			t.Fatalf("unfriending told %s about it: %d", who, got)
+		}
+	}
+}
+
+// TestADismissalTellsTheRequester is the ADR-0012 amendment (#876): the one
+// rider who asked hears that their ask was answered. The same DELETE means
+// three different things, and only one of them is anybody's business.
+func TestADismissalTellsTheRequester(t *testing.T) {
+	mux, _, users, _ := setup(t)
+	alice, bob := users.byToken["alice"], users.byToken["bob"]
+	ask := func(from string, code string) {
+		t.Helper()
+		if got := request(t, mux, from, code); got != http.StatusOK {
+			t.Fatalf("%s asks: %d", from, got)
+		}
+	}
+	drop := func(who string, target pgtype.UUID) {
+		t.Helper()
+		if code, _ := call(t, mux, who, http.MethodDelete, "/api/friends/"+store.UUIDString(target)); code != http.StatusOK {
+			t.Fatalf("%s deletes: %d", who, code)
+		}
+	}
+
+	// Alice asks, Bob dismisses: she hears, he has nothing to hear.
+	ask("alice", bob.FriendCode)
+	drop("bob", alice.ID)
+	told := declinesOf(t, mux, "alice")
+	if len(told) != 1 || told[0]["name"] != "bob" || told[0]["id"] != store.UUIDString(bob.ID) {
+		t.Fatalf("alice was not told: %+v", told)
+	}
+	if at, ok := told[0]["at"].(float64); !ok || at <= 0 {
+		t.Fatalf("no dismissal timestamp: %+v", told[0])
+	}
+	if got := len(declinesOf(t, mux, "bob")); got != 0 {
+		t.Fatalf("bob sees his own dismissal: %d", got)
+	}
+
+	// Asking again settles it — the old dismissal must not resurface.
+	ask("alice", bob.FriendCode)
+	if got := len(declinesOf(t, mux, "alice")); got != 0 {
+		t.Fatalf("stale dismissal survived a new ask: %d", got)
+	}
+
+	// Cancelling my own ask tells nobody, least of all me.
+	drop("alice", bob.ID)
+	for _, who := range []string{"alice", "bob"} {
+		if got := len(declinesOf(t, mux, who)); got != 0 {
+			t.Fatalf("a cancel told %s about it: %d", who, got)
+		}
+	}
+
+	// An acceptance settles a pair that had been dismissed before.
+	ask("alice", bob.FriendCode)
+	drop("bob", alice.ID)
+	ask("alice", bob.FriendCode)
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(alice.ID)+"/accept"); code != http.StatusOK {
+		t.Fatalf("accept: %d", code)
+	}
+	if got := len(declinesOf(t, mux, "alice")); got != 0 {
+		t.Fatalf("a dismissal outlived the friendship: %d", got)
 	}
 }
 

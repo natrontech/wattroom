@@ -26,6 +26,21 @@ export interface Friend {
 	roomName?: string;
 }
 
+/** An ask that was dismissed — a sentence for the rider who asked, nothing else. */
+export interface Decline {
+	id: string;
+	name: string;
+	at: number;
+}
+
+/** What a dismissal reads as (ADR-0012 amendment): the answer, not a verdict. */
+export function declineEvent(decline: Decline): { tag: string; title: string } {
+	return {
+		tag: `friend-no-${decline.id}`,
+		title: `${decline.name} dismissed your friend request`,
+	};
+}
+
 /** One line to say, or nothing — the whole announceable difference between two lists. */
 export function friendEvent(
 	friend: Friend,
@@ -41,8 +56,8 @@ export function friendEvent(
 			tag: `friend-ok-${friend.id}`,
 			title: `${friend.name} accepted your friend request`,
 		};
-	// A request declined stays silent, as ADR-0012 wrote it: the addressee
-	// dismisses, and the requester simply sees it pending no more.
+	// A dismissal has no row left to diff — the server carries it separately,
+	// and declineEvent says it.
 	return null;
 }
 
@@ -54,7 +69,11 @@ let error = $state<string | null>(null);
 let before: Record<string, Friend['status']> | null = null;
 
 async function refresh() {
-	const res = await api<{ friends: Friend[]; code: string }>('/api/friends');
+	const res = await api<{
+		friends: Friend[];
+		code: string;
+		declines: Decline[];
+	}>('/api/friends');
 	if (!res.ok) {
 		error = res.error.message;
 		return;
@@ -80,6 +99,21 @@ async function refresh() {
 			});
 		}
 	before = now;
+
+	// A dismissal needs no before/after: the server hands it over exactly once
+	// it happened, and the tombstone's own time is what keeps it to one saying
+	// — including on the device that was closed when it arrived.
+	for (const decline of res.data.declines ?? []) {
+		const event = declineEvent(decline);
+		announce({
+			tag: event.tag,
+			at: decline.at,
+			title: event.title,
+			body: '',
+			href: '/friends',
+			reading: false,
+		});
+	}
 }
 
 export const friends = {
