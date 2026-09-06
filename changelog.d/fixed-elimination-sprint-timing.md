@@ -1,1 +1,0 @@
-- Sprint moments no longer speed up disconnect penalties in Floor is Lava, Backyard Ramp or Collective Ramp.

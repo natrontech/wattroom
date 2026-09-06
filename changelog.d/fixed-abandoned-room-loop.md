@@ -1,1 +1,0 @@
-- A room whose clock crashed repeatedly used to strand everyone inside it: the server stopped restarting the loop but left the sockets open, so the timer sat frozen with nothing on screen to say why. Such a room is now closed, and reconnecting puts you straight into a working one.

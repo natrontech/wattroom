@@ -17,6 +17,34 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.30] - 2026-09-06
+
+### Added
+
+- WattRoom now emails you when a way into your account changes: a passkey added or removed, a sign-in provider connected or disconnected, and the recovery address replaced — that last one goes to the address losing the account, so a change you did not make cannot happen quietly. Deleting your account sends a receipt. These need a confirmed address and have no off switch; they are the alarm.
+- Game modes now tell you what to do, not just what happened. Team Relay says out loud when the front comes to you, Floor is Lava announces the called zone changing and your own lives burning, Watt Golf counts the hole in while the meter is hidden, and the ramp modes mark each new round. Until now only being knocked out and the podium made a sound.
+- A planned session now emails the room an hour before it starts, so the ride you meant to do is not the one you remember at nine. It rides the same switch as the other session emails — nothing new to turn on — and each session is reminded exactly once, however many times the server restarts in between. A session whose start slipped past while the server was down is skipped rather than announced late.
+- The voice channel now says who arrived. Someone joining or leaving the call plays the room's arrival cue a fifth up — until now a rider joined silently and you found out when they spoke, or you didn't.
+
+### Changed
+
+- WattRoom's emails now look like WattRoom. A planned session, a session that moved and the address confirmation all arrive in the same dark shell with the equalizer mark, the workout and its start time in the live magenta, and a real button instead of a bare link. The plain-text version still goes out beside it, so a client that will not render HTML — or a rider who told it not to — loses nothing.
+- A tile with the camera off now shows the rider's own avatar and level ring
+  instead of the WattRoom mark, so you can tell who is in the seat at a glance.
+
+### Fixed
+
+- A room whose clock crashed repeatedly used to strand everyone inside it: the server stopped restarting the loop but left the sockets open, so the timer sat frozen with nothing on screen to say why. Such a room is now closed, and reconnecting puts you straight into a working one.
+- A rider switching their camera off gets their mark back on their tile, instead of leaving an empty seat behind.
+- Sprint moments no longer speed up disconnect penalties in Floor is Lava, Backyard Ramp or Collective Ramp.
+- A brief network failure no longer signs you out and drops you from the room you are in — only the server actually saying so does. If the room does end under you, it now says so out loud, with the way back in.
+- Session emails now give the time in your timezone instead of the server's. Two riders in the same room, in different countries, each get the hour their own clock shows. Nothing to set: your browser reports where you are, and it corrects itself when you move.
+- Cancelling a planned session now emails the room, the way planning one and moving one already did — riders who were told to turn up at seven no longer find out by opening an empty room. It rides the same switch as the others, so nothing new to turn on, and a plan whose start time has already passed is skipped: being told a ride you already missed is off is not news.
+
+### Security
+
+- Two ceilings that only an abuser should ever meet: an account can now ask for at most ten address-confirmation emails an hour, and passkey sign-ins refuse to start once too many are already in flight rather than letting one flood slow down everybody else's. Both answer with a plain "try again in a moment" instead of failing quietly.
+
 ## [2026.09.29] - 2026-09-06
 
 ### Added
@@ -785,7 +813,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.29...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.30...HEAD
+[2026.09.30]: https://github.com/natrontech/wattroom/compare/2026.09.29...2026.09.30
 [2026.09.29]: https://github.com/natrontech/wattroom/compare/2026.09.28...2026.09.29
 [2026.09.28]: https://github.com/natrontech/wattroom/compare/2026.09.27...2026.09.28
 [2026.09.27]: https://github.com/natrontech/wattroom/compare/2026.09.26...2026.09.27

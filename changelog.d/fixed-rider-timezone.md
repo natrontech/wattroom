@@ -1,1 +1,0 @@
-- Session emails now give the time in your timezone instead of the server's. Two riders in the same room, in different countries, each get the hour their own clock shows. Nothing to set: your browser reports where you are, and it corrects itself when you move.
