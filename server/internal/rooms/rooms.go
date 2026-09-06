@@ -85,6 +85,7 @@ type VoiceEjector interface {
 type Notifier interface {
 	SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
 	SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
+	SessionCancelled(room db.Room, workoutName string, startsAt time.Time, actor pgtype.UUID)
 }
 
 type Service struct {
