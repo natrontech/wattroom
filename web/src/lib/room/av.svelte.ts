@@ -253,8 +253,17 @@ export function createRoomAv(slug: string) {
 					audio: { ...base, deviceId: { exact: micId } },
 				});
 			} catch {
-				micId = '';
-				persistDevices();
+				// Only an absent device is "unplugged". A mic another app holds,
+				// or a permission blip, must not forget the rider's pick for
+				// good (#824) — the join still falls back to the default below.
+				const known = mics();
+				if (
+					known.some((d) => d.deviceId) &&
+					!known.some((d) => d.deviceId === micId)
+				) {
+					micId = '';
+					persistDevices();
+				}
 			}
 		}
 		return navigator.mediaDevices.getUserMedia({ audio: base });
@@ -492,10 +501,14 @@ export function createRoomAv(slug: string) {
 			persistDevices();
 		}
 	};
-	if (typeof document !== 'undefined') {
+	/** Idempotent: the same handlers, so a second call adds nothing. leave()
+	 * removes them, and the sidebar's Join voice reuses this instance (#824). */
+	function listen() {
+		if (typeof document === 'undefined') return;
 		document.addEventListener('visibilitychange', onVisible);
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
+	listen();
 
 	function addScreen(id: string) {
 		screenSeq += 1;
@@ -578,6 +591,11 @@ export function createRoomAv(slug: string) {
 		void room?.disconnect();
 		status = 'connecting';
 		error = null;
+		// A fault from a previous call, or from a mic test that died, is not
+		// this join's — it surfaced as "your microphone stopped" on a
+		// listen-only join that never opened one (#824).
+		micFault = false;
+		listen();
 		const res = await api<{ url: string; token: string }>(
 			`/api/rooms/${slug}/av-token`,
 		);
@@ -780,6 +798,8 @@ export function createRoomAv(slug: string) {
 		if (away) {
 			micBeforeAway = micOn;
 			camBeforeAway = camOn;
+			// Stepping away is the rider closing the mic, not losing it.
+			micFault = false;
 			if (micOn) {
 				closeMic();
 				micOn = false;
@@ -821,6 +841,8 @@ export function createRoomAv(slug: string) {
 	async function standDown() {
 		if (handedOff) return;
 		handedOff = true;
+		// The mic lives in the other tab now: no fault to reconnect from here.
+		micFault = false;
 		micBeforeHandoff = micOn;
 		if (micOn) {
 			closeMic();
@@ -1081,7 +1103,10 @@ export function createRoomAv(slug: string) {
 		 * and the button is the way back once the headset is plugged in.
 		 */
 		async reconnectMic() {
-			if (!room) {
+			// The same guards the mic button has (#824): in a tab that stood
+			// down the mic lives elsewhere, and away means closed on purpose —
+			// reconnecting here would publish a second one.
+			if (!room || handedOff || away) {
 				micFault = false;
 				return;
 			}
@@ -1118,15 +1143,18 @@ export function createRoomAv(slug: string) {
 			persistDevices();
 			if (testing) {
 				stopMicTest();
-				await startMicTest().catch(() => {
+				await startMicTest().catch((cause) => {
 					testing = false;
+					failedMedia(cause, 'microphone');
 				});
 			} else if (micOn) {
 				try {
 					await openMic();
-				} catch {
+				} catch (cause) {
+					// Dropped to muted — and told why, the way a join is (#824).
 					micOn = false;
 					setVoice(me, 'muted');
+					failedMedia(cause, 'microphone');
 				}
 			}
 		},
@@ -1145,8 +1173,9 @@ export function createRoomAv(slug: string) {
 		async toggleMicTest() {
 			if (testing) stopMicTest();
 			else
-				await startMicTest().catch(() => {
+				await startMicTest().catch((cause) => {
 					testing = false;
+					failedMedia(cause, 'microphone');
 				});
 		},
 		setPtt(held: boolean) {

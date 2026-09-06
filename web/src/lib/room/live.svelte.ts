@@ -400,7 +400,9 @@ export function createRoomLive(slug: string) {
 		 * positional optionals were a bug waiting to be passed in the wrong
 		 * order, and two of them already had been. */
 		jukebox(command: import('$lib/protocol').JukeboxCommand) {
-			jukeboxRefusal = null;
+			// The dock's own end-of-track report is not the rider acting: it
+			// must not wipe a refusal they are still reading (#824).
+			if (command.action !== 'ended') jukeboxRefusal = null;
 			send({ jukebox: command });
 		},
 		control(
