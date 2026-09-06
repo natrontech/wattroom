@@ -1,1 +1,0 @@
-- "Export everything" now actually does. Alongside your profile and rides it carries the messages you wrote, your DM threads, friends, rooms, playlists, workouts, planned sessions and your XP and trophies — machine-readable JSON in one zip. It stops where other people begin: someone else's chat line stays theirs, and nobody else's account details or ride data ride along.

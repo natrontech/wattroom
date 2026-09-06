@@ -1,1 +1,0 @@
-- Icon buttons and quiet text actions now share one definition, so they disable, size and round the same way everywhere. The one visible change is that round icon buttons hold their size in a tight row instead of squashing, and greyed-out ones look greyed out.

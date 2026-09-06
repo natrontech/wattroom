@@ -17,6 +17,69 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.32] - 2026-09-06
+
+### Added
+
+- Links in chat now get a preview. Until now only YouTube and Spotify showed a
+  card, because those were the two sites a browser was allowed to ask; the
+  server fetches the rest, so an article, a Steam page or a repo arrives with
+  its title and picture instead of as a bare URL. Preview images are fetched
+  through WattRoom, so opening a chat never hands your address to the sites
+  other people link.
+- Trim a soundboard clip: cut it down to the part you want, fade either end, and push or pull its level. Nothing is re-encoded, so the edit is undoable forever and you can change your mind later. A file longer than a minute is fine now — upload it and choose which minute.
+- A soundboard of your own: upload MP3s, put them on nine pads, and fire them into the room with keys `1`–`9`. The panel floats where you drag it and folds away with `B`. It has its own volume in the mixer — turning the cues down for a quiet ride never silences it, and turning it down never costs you the countdown.
+
+### Changed
+
+- The room's voice and video code is no longer one 1400-line file. Device
+  choice, the outgoing audio bus, the mic-gate settings and the stage now
+  live in modules of their own, each under test for the first time —
+  including the rules about forgetting an unplugged microphone and about the
+  gate rising while music plays, which previously had no coverage at all. No
+  behaviour changes.
+- Icon buttons and quiet text actions now share one definition, so they disable, size and round the same way everywhere. The one visible change is that round icon buttons hold their size in a tight row instead of squashing, and greyed-out ones look greyed out.
+- A soundboard pad now draws its clip's real waveform once the audio has loaded, so you recognise a sound by its shape rather than by reading the label.
+
+### Fixed
+
+- Device pickers keep to their own column: a long microphone name no longer
+  draws over the picker beside it, and the open list stays inside the dialog,
+  flipping above the picker when there is no room below. The room's Sound
+  panel now picks your camera too, next to the microphone.
+- "Export everything" now actually does. Alongside your profile and rides it carries the messages you wrote, your DM threads, friends, rooms, playlists, workouts, planned sessions and your XP and trophies — machine-readable JSON in one zip. It stops where other people begin: someone else's chat line stays theirs, and nobody else's account details or ride data ride along.
+- Right-clicking a rider now offers the same things wherever you do it. Their
+  tile and their row in the people column had drifted apart: only the row
+  carried their volume, and only the tile let an owner ban them — so stopping
+  someone depended on which of the two you happened to right-click. Both now
+  offer everything the room can do with that person, and the menu itself sits
+  its rows evenly inside its own edges.
+- A busy room no longer makes every open WattRoom tab hammer the server. The
+  app refreshes its sidebar whenever anything changes anywhere, and a fast
+  chat exchange used to mean one refresh per message, on every signed-in
+  rider's machine — including riders who are not in that room. Bursts now
+  collapse into a single refresh, while the first message still updates the
+  badge immediately.
+- A saved ride's duration now counts seconds instead of packets. A trainer that reports in bursts, or a tab that wakes up and flushes what it buffered, could add minutes of riding that never happened — to the ride, to the month's totals and to the XP that follows them.
+- Room pages no longer slow down as the ride history grows. The monthly kJ
+  total and the room's streak both scanned every ride ever recorded, because
+  the column they filter on was never indexed; on a 200 000-ride database they
+  now take 0.4 ms and 0.2 ms instead of 29 ms and 16 ms. Deleting a ride, and
+  deleting an account, get the same treatment.
+- The sidebar no longer gets slower the more rooms you are in, or the busier
+  your rooms are. Loading it ran five separate database queries per room, and
+  every message anyone posted made every signed-in rider load it again — so a
+  single chat line could cost the server hundreds of queries. It is one query
+  now, whatever the room count.
+- One rider on bad wifi no longer slows the room down for everyone. Each rider's screen now has its own outbound queue, so a connection that stops keeping up misses ticks by itself instead of costing every other rider up to a second of theirs — most visible during a sprint, where the room ticks four times a second.
+- The app no longer re-downloads itself on every cold load. Its hashed
+  JavaScript and CSS were served with no cache headers at all — not even a
+  validator to ask "has this changed" with — so every fresh visit pulled the
+  whole shell again. They are now cached for a year, which is safe because a
+  new build writes new filenames. The reference `deploy/Caddyfile` also gains
+  `encode zstd gzip`; self-hosted instances were serving everything
+  uncompressed.
+
 ## [2026.09.31] - 2026-09-06
 
 ### Added
@@ -855,7 +918,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.31...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.32...HEAD
+[2026.09.32]: https://github.com/natrontech/wattroom/compare/2026.09.31...2026.09.32
 [2026.09.31]: https://github.com/natrontech/wattroom/compare/2026.09.30...2026.09.31
 [2026.09.30]: https://github.com/natrontech/wattroom/compare/2026.09.29...2026.09.30
 [2026.09.29]: https://github.com/natrontech/wattroom/compare/2026.09.28...2026.09.29
