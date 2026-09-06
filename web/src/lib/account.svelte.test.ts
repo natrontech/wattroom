@@ -98,3 +98,40 @@ describe('account.load', () => {
 		expect(account.me?.id).toBe('u1');
 	});
 });
+
+/**
+ * #858: session email used to name times in the server's zone. The browser is
+ * the only thing that knows the rider's, so it reports it — on load, so it
+ * also corrects itself when they move, and quietly, because a timezone picker
+ * would fail the 95% rule.
+ */
+describe('account.load timezone', () => {
+	const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const writes = () => calls.filter((c) => c === '/api/me/timezone').length;
+
+	beforeEach(() => {
+		answers.clear();
+		calls.length = 0;
+		hold = null;
+		signedIn();
+	});
+
+	it('reports the zone once the server does not know it', async () => {
+		await account.load();
+		expect(writes()).toBe(1);
+		expect(account.me?.timezone).toBe(zone);
+	});
+
+	it('stays quiet once the server has it', async () => {
+		// What a real server answers after the first write.
+		answers.set('/api/me', { ok: true, data: { ...ME, timezone: zone } });
+		await account.load();
+		expect(writes()).toBe(0);
+
+		// load() runs on every visibilitychange; clicking around must not turn
+		// into a write per click.
+		await account.load();
+		await account.load();
+		expect(writes()).toBe(0);
+	});
+});

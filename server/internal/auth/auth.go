@@ -121,6 +121,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
 	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
+	// Reported by the browser, not chosen by the rider (#858). timezone.go.
+	mux.HandleFunc("PUT /api/me/timezone", s.handleUpdateTimezone)
 	// The way back out of a connection (#783); linking is ?link=1 on start.
 	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)
@@ -638,6 +640,10 @@ type meResponse struct {
 	// "": the default, chosen. The client tells the two apart.
 	AccentPalette *string `json:"accentPalette"`
 	ColorScheme   *string `json:"colorScheme"`
+	// The IANA zone the browser last reported (#858). The client compares it
+	// with what this device says and reports a difference; nil means nothing
+	// has yet, and email falls back to the server's zone.
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -841,6 +847,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		EmailRequired: u.EmailRequired,
 		AccentPalette: u.AccentPalette,
 		ColorScheme:   u.ColorScheme,
+		Timezone:      u.Timezone,
 	}
 }
 

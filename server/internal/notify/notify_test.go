@@ -231,6 +231,46 @@ func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
 	}
 }
 
+// One mail, two riders, two clocks (#858). The time used to be formatted once
+// for the whole room, which is what made it the server's zone rather than
+// anybody's — so this is the test that fails if it ever moves back out of the
+// per-target loop.
+func TestSessionMailUsesEachRidersZone(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+
+	for _, set := range []struct {
+		user db.User
+		zone string
+	}{{h.optIn, "Europe/Zurich"}, {h.optOut, "America/New_York"}} {
+		if _, err := h.store.Pool.Exec(t.Context(),
+			"update users set notify_planned = true, timezone = $2 where id = $1",
+			set.user.ID, set.zone); err != nil {
+			t.Fatalf("set zone: %v", err)
+		}
+	}
+
+	s := service(h, srv.URL)
+	// 17:00 UTC: 19:00 in Zurich, 13:00 in New York.
+	starts := time.Date(2026, 9, 8, 17, 0, 0, 0, time.UTC)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionPlanned)
+
+	for _, want := range []struct {
+		user db.User
+		hour string
+	}{{h.optIn, "19:00"}, {h.optOut, "13:00"}} {
+		got := fake.subjectsTo(want.user.DisplayName + "@example.test")
+		if len(got) != 1 {
+			t.Fatalf("%s got %d mails, want 1", want.user.DisplayName, len(got))
+		}
+		if !strings.Contains(got[0], want.hour) {
+			t.Fatalf("%s was told %q, want their own %s", want.user.DisplayName, got[0], want.hour)
+		}
+	}
+}
+
 func TestUnsubscribe(t *testing.T) {
 	h := setup(t)
 	s := service(h, "http://unused.invalid")

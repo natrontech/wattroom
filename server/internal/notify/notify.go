@@ -105,9 +105,10 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 		s.log.Error("notify targets query failed", "err", err, "room", room.Slug)
 		return
 	}
-	// ponytail: times render in the server's zone — per-rider zones when riders ask.
-	when := startsAt.Local().Format("Mon 2 Jan, 15:04")
-	subject := fmt.Sprintf("%s rides %s — %s", room.Name, workoutName, when)
+	// Everything below that names a time is now per rider (#858), so it waits
+	// for the loop: only the words that are the same for the whole room are
+	// settled here.
+	prefix := ""
 	verb := "has a planned session"
 	// The heading stands on its own, so it cannot end on the dangling "to"
 	// that the sentence in the text part needs.
@@ -118,31 +119,33 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	switch change {
 	case sessionPlanned:
 	case sessionReminder:
-		// Deliberately relative, and so free of the timezone question the
-		// other three still have: "in an hour" is correct in every zone, and
-		// with a one-minute tick against a one-hour window it is accurate to
-		// the minute. Naming a wall-clock time is the only thing that would
-		// need the rider's zone, and a reminder has no reason to.
-		subject = fmt.Sprintf("%s rides %s in an hour", room.Name, workoutName)
+		// Deliberately relative, and so the one session mail that needs no
+		// zone at all: "in an hour" is correct everywhere, and a one-minute
+		// tick against a one-hour window keeps it accurate to the minute.
 		verb = "rides in an hour"
 		heading = room.Name + " rides in an hour"
 	case sessionMoved:
-		subject = "Moved: " + subject
+		prefix = "Moved: "
 		verb = "moved a planned session to"
 		heading = room.Name + " moved a planned session"
 	case sessionCancelled:
-		subject = "Cancelled: " + subject
+		prefix = "Cancelled: "
 		verb = "cancelled a planned session"
 		heading = room.Name + " cancelled a planned session"
 		closing = "Anything else planned is here"
 	}
 	for _, t := range targets {
-		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
-			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
+		// The rider's own clock, or the server's when no browser of theirs has
+		// reported one yet.
+		when := localTime(startsAt, t.Timezone)
+		subject := fmt.Sprintf("%s%s rides %s — %s", prefix, room.Name, workoutName, when)
 		detail := when
 		if change == sessionReminder {
+			subject = fmt.Sprintf("%s rides %s in an hour", room.Name, workoutName)
 			detail = "in an hour"
 		}
+		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
+			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
 		text := fmt.Sprintf(`%s %s:
 
     %s
