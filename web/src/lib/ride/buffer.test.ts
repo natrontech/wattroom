@@ -19,12 +19,15 @@ const sample = (seq: number): BufferedSample => ({
 async function fill(
 	rideId: string,
 	count: number,
-	opts: { end?: boolean } = {},
+	opts: { end?: boolean; saveable?: boolean } = {},
 ) {
 	const buffer = await openRideBuffer({
 		rideId,
 		startedAt: Number(rideId) || 1,
 		workoutName: 'Openers',
+		...(opts.saveable
+			? { workoutJson: '{"name":"Openers","steps":[]}', ftp: 240 }
+			: {}),
 	});
 	for (let seq = 1; seq <= count; seq++) buffer.append(sample(seq));
 	if (opts.end) buffer.end();
@@ -74,5 +77,33 @@ describe('ride buffer', () => {
 		const rides = await unfinishedRides();
 		expect(rides.length).toBeLessThanOrEqual(5);
 		expect(rides.some((r) => r.rideId === '1')).toBe(false);
+	});
+});
+
+describe('a solo save that failed (#794)', () => {
+	// The recording finishing and the server having the ride are two different
+	// events. end() used to be called on the first, so a failed upload left
+	// nothing to recover: the samples were still on disk, and nothing offered
+	// them back.
+	it('is still offered back, with what a retry needs', async () => {
+		await fill('100', 90, { saveable: true });
+		const [ride] = await unfinishedRides();
+		expect(ride.samples).toHaveLength(90);
+		expect(ride.workoutJson).toBe('{"name":"Openers","steps":[]}');
+		expect(ride.ftp).toBe(240);
+	});
+
+	it('stops being offered back once the save goes through', async () => {
+		const buffer = await fill('100', 90, { saveable: true });
+		buffer.end();
+		expect(await unfinishedRides()).toHaveLength(0);
+	});
+
+	it('offers a ride buffered before the retry existed, without the retry', async () => {
+		// The store has no schema: an older ride simply has no workout on it,
+		// and the card hides Save rather than offering a button that cannot work.
+		await fill('100', 90);
+		const [ride] = await unfinishedRides();
+		expect(ride.workoutJson).toBeUndefined();
 	});
 });
