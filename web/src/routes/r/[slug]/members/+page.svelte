@@ -4,7 +4,6 @@
 	// who is holding target. This is roles, medals and the invite, which is
 	// what /rooms used to carry.
 	import Avatar from '$lib/components/Avatar.svelte';
-	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
@@ -101,6 +100,7 @@
 		const here = room.riders.some((rider) => rider.id === member.id);
 		const entries: MenuEntry[] = personMenu(member.id, goto, {
 			you: member.id === account.me?.id,
+			name: member.displayName,
 			poke: {
 				onSelect: () => room.poke(member.id),
 				disabled: !here,
@@ -174,9 +174,8 @@
 			{@const medals = medalsOf(member.displayName)}
 			{@const badges = badgesOf(member)}
 			{@const here = room.riders.find((r) => r.id === member.id)}
-			<!-- Wrapping, so a member's volume slider (#463) takes its own line. -->
 			<li
-				class="flex flex-wrap items-center gap-3 px-4 py-2.5"
+				class="flex items-center gap-3 px-4 py-2.5"
 				title={MENU_HINT}
 				{@attach contextMenu(() => memberMenu(member))}
 			>
@@ -252,11 +251,6 @@
 						{medals}
 						<span class="sr-only">{medals === 1 ? 'medal' : 'medals'}</span>
 					</span>
-				{/if}
-				{#if here?.inVoice && !here.you}
-					<!-- Their volume, the same control as their row in the people
-					     column — here for the member you came to look up. -->
-					<RiderVolume id={member.id} name={member.displayName} />
 				{/if}
 				{#if member.role === 'banned' && canAdmin(member)}
 					<button

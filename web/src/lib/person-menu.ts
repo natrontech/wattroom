@@ -3,9 +3,18 @@
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a room say the same words in the same order (#486).
  */
-import { BellRing, MessageSquare, User, UserPlus } from '@lucide/svelte';
+import {
+	BellRing,
+	MessageSquare,
+	User,
+	UserPlus,
+	Volume2,
+} from '@lucide/svelte';
 import { api } from '$lib/api';
-import type { MenuItem } from '$lib/context-menu.svelte';
+import type { MenuItem, MenuSlider } from '$lib/context-menu.svelte';
+import { roomConnection } from '$lib/room/connection.svelte';
+import { RIDER_FADER } from '$lib/sound/fader';
+import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 
 /**
@@ -24,6 +33,26 @@ async function askToBeFriends(id: string): Promise<void> {
 	else toasts.push(res.error.message, { tone: 'error' });
 }
 
+/**
+ * A rider's volume travels with the rider (#874), instead of living on the two
+ * rows that used to render a speaker icon. Offered only for someone actually
+ * in voice — a fader that changes nothing you can hear is noise — and written
+ * through `av`, so their gain ramps while you drag.
+ */
+function riderVolume(id: string, name?: string): MenuSlider | undefined {
+	const av = roomConnection.current?.av;
+	if (!av || !(id in av.voice)) return undefined;
+	return {
+		kind: 'slider',
+		label: 'Volume',
+		icon: Volume2,
+		...RIDER_FADER,
+		value: Math.round(mixer.riderGain(id) * 100),
+		format: (percent) => `${percent}%`,
+		onInput: (percent) => av.setRiderGain(id, percent / 100, name),
+	};
+}
+
 export function personMenu(
 	id: string,
 	go: (href: string) => void,
@@ -38,8 +67,10 @@ export function personMenu(
 			disabled?: boolean;
 			hint?: string;
 		};
+		/** Who the volume fader belongs to, so the mixer can name them later. */
+		name?: string;
 	} = {},
-): MenuItem[] {
+): (MenuItem | MenuSlider)[] {
 	const profile: MenuItem = {
 		label: 'View profile',
 		icon: User,
@@ -65,9 +96,13 @@ export function personMenu(
 		hint: options.you ? "that's you" : options.poke.hint,
 	};
 	// The menu leads with what a click on the object already does.
-	const items = options.conversation
+	const items: (MenuItem | MenuSlider)[] = options.conversation
 		? [message, profile, friend]
 		: [profile, message, friend];
 	if (poke) items.splice(2, 0, poke);
+	const volume = options.you ? undefined : riderVolume(id, options.name);
+	// After the room's own verbs, before the friendship: the fader is what you
+	// came for mid-ride, but the list still reads person-first.
+	if (volume) items.splice(items.length - 1, 0, volume);
 	return items;
 }

@@ -4,11 +4,16 @@
 	import {
 		closeMenu,
 		menu,
+		MENU_WALK,
 		placeMenu,
 		scrollClosesMenu,
 	} from '$lib/context-menu.svelte';
 
 	let box = $state<HTMLDivElement | null>(null);
+	// Where a fader has been dragged since the menu opened: `menu.items` is
+	// built once at open, so the entry's own value is a snapshot and only this
+	// follows the thumb.
+	let dragged = $state<Record<number, number>>({});
 	let pos = $state({ left: 0, top: 0 });
 	const open = $derived(menu.items.length > 0);
 
@@ -16,6 +21,7 @@
 		if (!open || !box) return;
 		const node = box;
 		const { x, y } = menu;
+		dragged = {};
 		pos = placeMenu(
 			x,
 			y,
@@ -24,9 +30,7 @@
 			innerWidth,
 			innerHeight,
 		);
-		node
-			.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
-			?.focus();
+		node.querySelector<HTMLElement>(MENU_WALK)?.focus();
 		// The press that opened the menu is still travelling: on some inputs
 		// the pointerdown lands after the contextmenu event, and listening for
 		// it right away closed the menu in the same gesture that opened it.
@@ -52,9 +56,7 @@
 
 	function onKey(event: KeyboardEvent) {
 		if (!box) return;
-		const items = [
-			...box.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])'),
-		];
+		const items = [...box.querySelectorAll<HTMLElement>(MENU_WALK)];
 		const at = items.indexOf(document.activeElement as HTMLElement);
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -83,6 +85,37 @@
 		{#each menu.items as item, i (i)}
 			{#if item === 'separator'}
 				<div class="border-ink/10 my-1 border-t" role="separator"></div>
+			{:else if item.kind === 'slider'}
+				{@const value = dragged[i] ?? item.value}
+				<!-- A fader wide enough to be dragged from a bike; the arrows step
+				     it while the menu's own up/down keep walking the entries. -->
+				<label class="block px-3 py-2 text-sm">
+					<span class="flex items-center gap-2.5">
+						{#if item.icon}<item.icon
+								size={14}
+								class="shrink-0 opacity-80"
+							/>{/if}
+						<span class="min-w-0 flex-1 truncate">{item.label}</span>
+						<span
+							class="font-display text-muted shrink-0 text-[11px] tabular-nums"
+							>{item.format(value)}</span
+						>
+					</span>
+					<input
+						type="range"
+						min={item.min}
+						max={item.max}
+						step={item.step}
+						{value}
+						oninput={(e) => {
+							const next = Number(e.currentTarget.value);
+							dragged[i] = next;
+							item.onInput(next);
+						}}
+						aria-label={item.label}
+						class="mt-1.5 w-full"
+					/>
+				</label>
 			{:else}
 				<button
 					role="menuitem"
