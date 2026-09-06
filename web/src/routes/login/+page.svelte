@@ -6,10 +6,33 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { rememberNext, takeNext } from '$lib/auth/next';
+	import Banner from '$lib/components/Banner.svelte';
+	import * as passkeys from '$lib/passkeys';
 
 	void account.load();
 
-	// WATTROOM.md: social OAuth only — no passwords, ever.
+	// A discoverable passkey needs no identifier: the browser resolves the
+	// account and shows the rider which one it is (#782, ADR-0029). Hidden
+	// where the browser cannot do it, rather than failing on click.
+	const canPasskey = passkeys.supported();
+	let passkeyBusy = $state(false);
+	let passkeyError = $state('');
+
+	async function withPasskey() {
+		passkeyBusy = true;
+		passkeyError = '';
+		const result = await passkeys.signIn();
+		passkeyBusy = false;
+		if ('error' in result) {
+			passkeyError = result.error;
+			return;
+		}
+		// The session cookie is set; let the store pick the account up and the
+		// effect below route on from there.
+		await account.load();
+	}
+
+	// ADR-0029: still no passwords. A passkey is not one.
 	const providerLabels: Record<string, { label: string; note?: string }> = {
 		google: { label: 'Continue with Google' },
 		github: { label: 'Continue with GitHub' },
@@ -52,8 +75,30 @@
 
 			{#if !account.loaded}
 				<Skeleton class="mt-8 h-11" rows={2} />
-			{:else if account.providers.length > 0}
-				<div class="mt-8 grid gap-2.5">
+			{:else}
+				{#if canPasskey}
+					<div class="mt-8">
+						<button
+							onclick={withPasskey}
+							disabled={passkeyBusy}
+							class="border-neon/40 bg-surface/60 hover:border-neon flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium"
+						>
+							{passkeyBusy
+								? 'Waiting for your passkey…'
+								: 'Sign in with a passkey'}
+						</button>
+						<p class="text-muted mt-1.5 text-[11px]">
+							Your phone, your password manager, or a security key.
+						</p>
+						{#if passkeyError}
+							<div class="mt-3 text-left"><Banner>{passkeyError}</Banner></div>
+						{/if}
+					</div>
+				{/if}
+			{/if}
+
+			{#if account.loaded && account.providers.length > 0}
+				<div class="mt-4 grid gap-2.5">
 					{#each account.providers as id (id)}
 						{#if id === 'strava'}
 							<!-- Strava's brand guidelines: their asset, unaltered, at its own size. -->
@@ -104,11 +149,15 @@
 				<p class="text-muted mt-6 text-[11px]">
 					No passwords — use an account you already have.
 				</p>
-			{:else}
-				<!-- Capability gating: no providers, no dead buttons — say why. -->
+			{:else if account.loaded}
+				<!-- Capability gating: no providers, no dead buttons — say why. A
+				     passkey is only ever added from an account that already exists,
+				     so without a provider nobody can make a first one. -->
 				<p class="text-muted mx-auto mt-8 max-w-sm text-xs leading-relaxed">
-					No sign-in providers are configured on this server, so nobody can sign
-					in. The operator needs to set the WATTROOM_OAUTH_* environment
+					No sign-in providers are configured on this server, so no new account
+					can be made here{canPasskey
+						? ' — only an existing passkey works'
+						: ''}. The operator needs to set the WATTROOM_OAUTH_* environment
 					variables (or WATTROOM_DEV_LOGIN=1 in development).
 				</p>
 			{/if}

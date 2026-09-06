@@ -6,6 +6,7 @@
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
+	import PasskeyList from '$lib/components/PasskeyList.svelte';
 	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -276,6 +277,7 @@
 							stravaUpload: on,
 						})}
 				/>
+				<PasskeyList />
 				<label class="block">
 					<span class="eyebrow">FTP (W)</span>
 					<input
