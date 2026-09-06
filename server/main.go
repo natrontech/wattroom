@@ -171,7 +171,7 @@ func main() {
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
-		// The GIF picker (#878, ADR-0032) mounts only with a Tenor key — no
+		// The GIF picker (#878, ADR-0032) mounts only with a Giphy key — no
 		// button that opens onto a 404.
 		if gifService := gifs.New(authService, log); gifService != nil {
 			authService.SetGifsEnabled(true)

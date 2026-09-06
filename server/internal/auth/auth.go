@@ -66,7 +66,7 @@ type Service struct {
 	// absent rather than broken. SetMailer lives in email.go.
 	mailer    Mailer
 	avEnabled bool
-	// Whether a Tenor key is configured (#878) — the composer's GIF button
+	// Whether a Giphy key is configured (#878, #909) — the composer's GIF button
 	// renders at all only when it is.
 	gifsEnabled bool
 	// Passkeys (#782): the relying party, derived from baseURL, and the
@@ -112,7 +112,7 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 // client can gate voice/camera affordances (#219).
 func (s *Service) SetAvEnabled(v bool) { s.avEnabled = v }
 
-// SetGifsEnabled marks Tenor as configured; /api/me carries it so the
+// SetGifsEnabled marks Giphy as configured; /api/me carries it so the
 // composer hides the GIF button rather than opening a picker that 404s
 // (#878).
 func (s *Service) SetGifsEnabled(v bool) { s.gifsEnabled = v }

@@ -5,8 +5,9 @@
 
 // Direct-media GIF hosts rendered inline. An allowlist, because an <img> to
 // an arbitrary pasted host would hand every member's IP to that host.
-// Tenor shards its media hosts (media.tenor.com, media1., media2. …), and
-// the picker (#878) hands back whichever one Tenor picked.
+// Both shard their media hosts (media0.giphy.com, media1.tenor.com …). The
+// picker (#878) is Giphy; the Tenor hosts stay because their CDN still serves
+// the URLs riders pasted before Google shut that API off (#909).
 const GIF_HOSTS =
 	/^(media\d*\.giphy\.com|i\.giphy\.com|media\d*\.tenor\.com|c\.tenor\.com)$/;
 
