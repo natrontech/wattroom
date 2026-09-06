@@ -9,6 +9,9 @@ select * from rooms where code = $1;
 -- name: GetRoomBySlug :one
 select * from rooms where slug = $1;
 
+-- name: GetRoomByID :one
+select * from rooms where id = $1;
+
 -- name: GetRoomsBySlugs :many
 -- Batched sibling of GetRoomBySlug (#687): the friends panel resolves every
 -- online friend's room in one query instead of one per friend.
@@ -93,6 +96,24 @@ order by starts_at limit 1;
 -- that has already been and gone (#839).
 delete from scheduled_sessions where id = $1 and room_id = $2
 returning workout_name, starts_at;
+
+-- name: ClaimSessionsToRemind :many
+-- The claim IS the update (#841): a row leaves this query already marked, so a
+-- tick that fires twice, a restart mid-send or a second instance cannot mail
+-- the same session again. Callers do not mark anything afterwards, which is
+-- the point — there is no window between reading and claiming to lose a
+-- process in.
+--
+-- A session whose start slipped past while the server was down falls outside
+-- the window and is simply never reminded. That is deliberate: a burst of
+-- "starts in an hour" for sessions that began three hours ago is worse than
+-- silence.
+update scheduled_sessions
+set reminded_at = now()
+where reminded_at is null
+  and starts_at > now()
+  and starts_at <= now() + interval '1 hour'
+returning id, room_id, workout_name, starts_at;
 
 -- name: RescheduleSession :one
 update scheduled_sessions set starts_at = $3

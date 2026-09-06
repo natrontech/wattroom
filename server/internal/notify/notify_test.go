@@ -102,6 +102,21 @@ func (f *fakeResend) handler() http.HandlerFunc {
 	}
 }
 
+// subjectsTo is every subject the fake was asked to send to one address.
+// remindDue works across rooms, so a test of it cannot assume it is the only
+// thing writing to the shared test database.
+func (f *fakeResend) subjectsTo(address string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for _, p := range f.payloads {
+		if to, ok := p["to"].([]any); ok && len(to) == 1 && to[0] == address {
+			out = append(out, fmt.Sprint(p["subject"]))
+		}
+	}
+	return out
+}
+
 func service(h *harness, apiURL string) *Service {
 	return &Service{
 		store: h.store, log: slog.New(slog.DiscardHandler),

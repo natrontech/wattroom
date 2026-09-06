@@ -65,6 +65,7 @@ const (
 	sessionPlanned sessionChange = iota
 	sessionMoved
 	sessionCancelled
+	sessionReminder
 )
 
 // SessionPlanned emails every opted-in member except the planner. Fire and
@@ -116,6 +117,15 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	closing := "Ride it here"
 	switch change {
 	case sessionPlanned:
+	case sessionReminder:
+		// Deliberately relative, and so free of the timezone question the
+		// other three still have: "in an hour" is correct in every zone, and
+		// with a one-minute tick against a one-hour window it is accurate to
+		// the minute. Naming a wall-clock time is the only thing that would
+		// need the rider's zone, and a reminder has no reason to.
+		subject = fmt.Sprintf("%s rides %s in an hour", room.Name, workoutName)
+		verb = "rides in an hour"
+		heading = room.Name + " rides in an hour"
 	case sessionMoved:
 		subject = "Moved: " + subject
 		verb = "moved a planned session to"
@@ -129,6 +139,10 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	for _, t := range targets {
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
 			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
+		detail := when
+		if change == sessionReminder {
+			detail = "in an hour"
+		}
 		text := fmt.Sprintf(`%s %s:
 
     %s
@@ -138,18 +152,25 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 
 You get this because session emails are switched on in your WattRoom
 profile. Turn them off: %s`,
-			room.Name, verb, workoutName, when, closing, s.baseURL, room.Slug, unsub)
+			room.Name, verb, workoutName, detail, closing, s.baseURL, room.Slug, unsub)
 		m := mail{
 			To: *t.Email, Subject: subject, Heading: heading,
 			Action: "Open the room", URL: s.baseURL + "/r/" + room.Slug,
 			Text: text, Unsub: unsub,
 		}
-		if change == sessionCancelled {
+		switch change {
+		case sessionReminder:
+			// The session is about to happen, which is as live as this mail
+			// gets, so the workout is what glows. No body: the heading already
+			// says "in an hour", and saying it twice on a card this small
+			// reads as padding.
+			m.Lead = workoutName
+		case sessionCancelled:
 			// Nothing is happening at that time any more, so nothing glows:
 			// watt marks live data, and this mail exists to say there is none
 			// (ADR-0005). The session moves out of the lead and into the body.
 			m.Body = []string{workoutName + " was planned for " + when + ". It is not happening."}
-		} else {
+		case sessionPlanned, sessionMoved:
 			// The workout and its time are the live thing this mail is about,
 			// so they are what glows.
 			m.Lead = workoutName + " — " + when
