@@ -1,0 +1,26 @@
+# The other half of e2e.yml's path filter.
+#
+# e2e is a required status check, and e2e.yml only runs on web/**, server/**
+# and its own file — so on a docs-only PR the check never reports at all, and
+# a required check that never reports blocks the merge forever rather than
+# passing. That deadlocked every docs PR, releases included: `make release`
+# promotes CHANGELOG.md and deletes changelog.d/, touching neither filtered
+# path, so it would open its release PR and then never be able to merge it.
+#
+# This job carries the same name, so it supplies the `e2e` context on exactly
+# the PRs where the real one is silent. The two filters are exact complements:
+# change one, change the other, or a PR gets both runs or neither.
+name: e2e
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'web/**'
+      - 'server/**'
+      - '.github/workflows/e2e.yml'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "no web/ or server/ change in this PR — nothing for the ride to break"
