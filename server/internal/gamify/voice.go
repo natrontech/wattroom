@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -60,7 +61,7 @@ func (c *voiceClock) tick(ctx context.Context, present []string, now time.Time) 
 // AccrueVoice walks the voice channels once a minute until ctx ends (#467).
 // The database work happens on this goroutine, never in the hub.
 func (s *Service) AccrueVoice(ctx context.Context, voice VoiceSource) {
-	go runVoiceClock(ctx, voice, s, s.now)
+	safego.Supervise(s.log, s.now, "voice clock", ctx.Done(), func() { runVoiceClock(ctx, voice, s, s.now) })
 }
 
 // runVoiceClock is the ticker loop behind AccrueVoice, pulled out so the

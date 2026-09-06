@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -69,11 +70,12 @@ func (s *Service) SessionRescheduled(room db.Room, workoutName string, startsAt 
 }
 
 func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {
-	go func() {
+	// Guarded (#651): a mail-provider panic must not cost a ride.
+	safego.Go(s.log, "session mail "+room.Slug, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		s.sessionMail(ctx, room, workoutName, startsAt, planner, moved)
-	}()
+	})
 }
 
 func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {

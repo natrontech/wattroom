@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -45,7 +46,8 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 		store: st, users: users, log: log, now: time.Now,
 		jobs: make(chan func(context.Context), 256),
 	}
-	go s.work()
+	// Supervised (#651): a poison job is logged and skipped, the queue lives on.
+	safego.Supervise(log, s.now, "gamify worker", nil, s.work)
 	return s
 }
 
