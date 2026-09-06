@@ -123,9 +123,19 @@
 				ftpWatts: nextFtp,
 				weightKg: kg,
 				// Only where the section renders — an omitted field keeps the
-				// server's current value.
+				// server's current value. The address travels only when the
+				// rider changed it: an unchanged one re-sent past the resend
+				// window mints a new token and kills the link already in their
+				// inbox, and a legacy unverified address was mailed on every
+				// save (#824).
 				...(account.me.mailAvailable
-					? { email: email.trim(), notifyPlanned }
+					? {
+							...(email.trim() !==
+							(account.me.emailPending ?? account.me.email ?? '')
+								? { email: email.trim() }
+								: {}),
+							notifyPlanned,
+						}
 					: {}),
 			});
 			status = err

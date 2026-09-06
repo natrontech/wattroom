@@ -210,7 +210,12 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		removed, err := s.store.Queries.RemoveDmReaction(r.Context(), db.RemoveDmReactionParams{
 			MessageID: mid, UserID: me.ID, Emoji: req.Emoji, Column4: me.ID, Column5: peer,
 		})
-		if err != nil || removed == 0 {
+		if err != nil {
+			s.log.Warn("remove dm reaction", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+			return
+		}
+		if removed == 0 {
 			// Neither added nor removed: the message is not in this pair's
 			// thread — same 404 the insert's own scoping would produce.
 			httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")

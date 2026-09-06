@@ -27,6 +27,7 @@
 		store,
 		slug,
 		roomScoped,
+		canManage,
 		onSetActive,
 	}: {
 		playlist: SavedPlaylist;
@@ -35,6 +36,9 @@
 		slug: string;
 		/** Room playlists only: offers "Set active" in the menu. */
 		roomScoped: boolean;
+		/** Rename, delete and remove-a-track: the coach's and the owner's on a
+		 * room playlist (#771), always yours on a personal one. */
+		canManage: boolean;
 		onSetActive?: () => void;
 	} = $props();
 
@@ -139,8 +143,13 @@
 				icon: ListMusic,
 				onSelect: () => void queue(),
 			},
-			{ label: 'Rename', icon: Pencil, onSelect: () => (renaming = true) },
 		];
+		if (!canManage) return entries;
+		entries.push({
+			label: 'Rename',
+			icon: Pencil,
+			onSelect: () => (renaming = true),
+		});
 		if (roomScoped && !playlist.active && onSetActive)
 			entries.push({
 				label: 'Set as active',
@@ -229,12 +238,14 @@
 									>{track.tracks.length}</span
 								>
 							{/if}
-							<button
-								onclick={() => void removeTrack(track.id)}
-								aria-label="remove this track"
-								class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100"
-								><X size={12} /></button
-							>
+							{#if canManage}
+								<button
+									onclick={() => void removeTrack(track.id)}
+									aria-label="remove this track"
+									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100"
+									><X size={12} /></button
+								>
+							{/if}
 						</li>
 					{/each}
 				</ul>

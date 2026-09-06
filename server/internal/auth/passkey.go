@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -332,7 +333,7 @@ func (s *Service) handleRenamePasskey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimSpace(req.Name)
-	if name == "" || len(name) > maxNameLen {
+	if name == "" || utf8.RuneCountInString(name) > maxNameLen {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A passkey name has to be 1-40 characters.", "name")
 		return
@@ -364,18 +365,16 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 
 	// ADR-0029's invariant, shared with the provider disconnect so the two
 	// cannot drift (credentials.go).
-	if s.refuseIfLastCredential(w, r, user) {
-		return
-	}
-
-	rows, err := s.store.Queries.DeletePasskey(r.Context(), db.DeletePasskeyParams{
-		CredentialID: id, UserID: user.ID,
+	rows, last, err := s.removeCredential(r.Context(), user.ID, func(q *db.Queries) (int64, error) {
+		return q.DeletePasskey(r.Context(), db.DeletePasskeyParams{CredentialID: id, UserID: user.ID})
 	})
 	switch {
 	case err != nil:
 		s.log.Error("passkey delete failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"That passkey could not be removed. Try again.")
+	case last:
+		httpx.WriteError(w, http.StatusConflict, "conflict", lastCredentialMessage)
 	case rows == 0:
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That passkey is not on this account.")
 	default:
@@ -421,8 +420,11 @@ func passkeyName(raw string) string {
 	if name == "" {
 		return "Passkey"
 	}
-	if len(name) > maxNameLen {
-		return name[:maxNameLen]
+	// Characters, not bytes: the form counts 40 characters, and a byte cut
+	// lands mid-rune, which Postgres refuses — after the authenticator has
+	// already minted the credential (#824).
+	if runes := []rune(name); len(runes) > maxNameLen {
+		return string(runes[:maxNameLen])
 	}
 	return name
 }

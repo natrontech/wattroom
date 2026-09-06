@@ -33,6 +33,23 @@
 		if (!address) address = pending || (me?.email ?? '');
 	});
 
+	// The link is followed in another tab — the mail client's — and `me` only
+	// refreshes on a save, so the tab that asked kept the gate up after the
+	// address was confirmed, with no Later button to get past it (#824). Ask
+	// again while a link is out: on coming back to the tab, and every so often.
+	$effect(() => {
+		if (!open || !pending) return;
+		const poll = () => {
+			if (document.visibilityState === 'visible') void account.load();
+		};
+		const timer = setInterval(poll, 15_000);
+		document.addEventListener('visibilitychange', poll);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', poll);
+		};
+	});
+
 	async function send() {
 		if (!me || sending) return;
 		sending = true;

@@ -1,0 +1,1 @@
+- Two riders on exactly the same sprint w/kg were placed at random each tick, so a points race could hand the 5 and the 3 either way. Ties now resolve the same way every time.

@@ -3,9 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -131,5 +134,37 @@ func TestDisconnectStravaProceedsWhenRevokeFails(t *testing.T) {
 		UserID: user.ID, Provider: "strava",
 	}); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("row survived a failed revoke: %v", err)
+	}
+}
+
+// Two removals at once (#824): a passkey and a provider, both reading "two
+// credentials" before either delete landed, used to leave zero — an account
+// nobody can sign into. The row lock makes the second wait and count one.
+func TestConcurrentRemovalsKeepOneCredential(t *testing.T) {
+	s := testService(t)
+	for round := 0; round < 8; round++ {
+		user := testUser(t, s)
+		cookie := signedIn(t, s, user)
+		stamp := fmt.Sprintf("race-%d-%d", round, time.Now().UnixNano())
+		linkIdentity(t, s, user, "github", stamp)
+		key := addPasskey(t, s, user, stamp, "Phone")
+
+		var wg sync.WaitGroup
+		var provider, passkey *httptest.ResponseRecorder
+		wg.Add(2)
+		go func() { defer wg.Done(); provider = disconnect(t, s, cookie, "github") }()
+		go func() { defer wg.Done(); passkey = deletePasskey(t, s, cookie, key) }()
+		wg.Wait()
+
+		total, err := s.store.Queries.CountUserCredentials(t.Context(), user.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if total == 0 {
+			t.Fatalf("round %d: both removals went through (%d and %d) — the account has no way in", round, provider.Code, passkey.Code)
+		}
+		if (provider.Code == http.StatusNoContent) == (passkey.Code == http.StatusNoContent) {
+			t.Fatalf("round %d: exactly one removal may succeed, got %d and %d", round, provider.Code, passkey.Code)
+		}
 	}
 }

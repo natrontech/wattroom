@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -257,3 +258,52 @@ func TestStartEmailVerificationDoesNotResendImmediately(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+// A send that fails must leave the row as it found it (#824): with the fresh
+// token in place, the retry inside the resend window was a silent no-op —
+// 200, emailPending set, the gate saying "link sent" for a mail that never
+// left. And a link already out for the previous address keeps working.
+func TestFailedSendRestoresThePreviousVerification(t *testing.T) {
+	s := testService(t)
+	user, mailer := verifiable(t, s, "first@example.test")
+	firstToken := mailer.token(t)
+
+	mailer.mu.Lock()
+	mailer.err = errors.New("resend is down")
+	mailer.mu.Unlock()
+	before, err := s.store.Queries.GetUser(t.Context(), user.ID)
+	if err != nil {
+		t.Fatalf("read user: %v", err)
+	}
+	if _, err := s.startEmailVerification(t.Context(), before, "second@example.test"); err == nil {
+		t.Fatal("a failed send reported success")
+	}
+	after, err := s.store.Queries.GetUser(t.Context(), user.ID)
+	if err != nil {
+		t.Fatalf("re-read user: %v", err)
+	}
+	if after.EmailPending == nil || *after.EmailPending != "first@example.test" {
+		t.Fatalf("pending after a failed send = %v, want the first address back", after.EmailPending)
+	}
+	if !bytes.Equal(after.EmailVerifyHash, before.EmailVerifyHash) {
+		t.Fatal("the failed send replaced the token that was already in an inbox")
+	}
+	// The first link still confirms.
+	if w := confirm(t, s, firstToken); w.Code != http.StatusOK {
+		t.Fatalf("first link after a failed second send = %d: %s", w.Code, w.Body.String())
+	}
+	// And once the mailer is back, asking again is a real send, not a no-op.
+	mailer.mu.Lock()
+	mailer.err = nil
+	mailer.mu.Unlock()
+	again, err := s.store.Queries.GetUser(t.Context(), user.ID)
+	if err != nil {
+		t.Fatalf("read user: %v", err)
+	}
+	if _, err := s.startEmailVerification(t.Context(), again, "second@example.test"); err != nil {
+		t.Fatalf("retry after the mailer recovered: %v", err)
+	}
+	if mailer.calls != 3 {
+		t.Fatalf("mailer called %d times, want 3 (first, failed, retry)", mailer.calls)
+	}
+}

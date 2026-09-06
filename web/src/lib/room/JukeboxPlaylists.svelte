@@ -2,6 +2,7 @@
 	import { Plus, Shuffle, ListOrdered } from '@lucide/svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
+	import { useRoom } from '$lib/room/context';
 	import {
 		createPlaylistStore,
 		getAutoplay,
@@ -16,6 +17,13 @@
 	// setting — a jukebox control like every other, so it lives here rather
 	// than the owner-only room settings page.
 	let { slug }: { slug: string } = $props();
+
+	// Rename, delete, set active, remove a track and autoplay are the coach's
+	// and the owner's (SPEC roles matrix, #771); a member's own personal
+	// playlists stay theirs. Gated here so nothing renders that the server
+	// would refuse on click (#824).
+	const room = useRoom();
+	const canManage = $derived(room.canControl);
 
 	let tab = $state<'room' | 'mine'>('room');
 	const roomStore = $derived.by(() =>
@@ -43,7 +51,7 @@
 	}
 
 	// ── Autoplay (#627): a room-level setting, but a jukebox control — every
-	// member reads and changes it, matching every other row in the matrix. ──
+	// member reads it; the coach and the owner change it (#771). ──
 	let autoplay = $state<AutoplaySettings | null>(null);
 	let autoplayError = $state<string | null>(null);
 	let fixedUrl = $state('');
@@ -133,7 +141,7 @@
 					role="switch"
 					aria-checked={autoplay.enabled}
 					onclick={() => saveAutoplay({ enabled: !autoplay?.enabled })}
-					disabled={savingAutoplay}
+					disabled={savingAutoplay || !canManage}
 					class="btn btn-xs {autoplay.enabled ? 'btn-secondary' : 'text-muted'}"
 					>{autoplay.enabled ? 'On' : 'Off'}</button
 				>
@@ -141,6 +149,7 @@
 			<p class="text-muted mt-1 text-[10px] leading-relaxed">
 				Plays the active room playlist whenever the deck is idle: when someone
 				joins, and again each time it runs out.
+				{#if !canManage}Only the room's coach or owner can change it.{/if}
 			</p>
 			<div
 				class="mt-2 flex gap-1.5"
@@ -151,7 +160,7 @@
 					role="radio"
 					aria-checked={autoplay.order === 'ordered'}
 					onclick={() => saveAutoplay({ order: 'ordered' })}
-					disabled={savingAutoplay}
+					disabled={savingAutoplay || !canManage}
 					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'ordered'
 						? 'ring-neon bg-neon/15 ring-1'
 						: 'text-muted'}"><ListOrdered size={12} /> Ordered</button
@@ -160,7 +169,7 @@
 					role="radio"
 					aria-checked={autoplay.order === 'shuffled'}
 					onclick={() => saveAutoplay({ order: 'shuffled' })}
-					disabled={savingAutoplay}
+					disabled={savingAutoplay || !canManage}
 					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'shuffled'
 						? 'ring-neon bg-neon/15 ring-1'
 						: 'text-muted'}"><Shuffle size={12} /> Shuffled</button
@@ -176,19 +185,20 @@
 				<div class="mt-1 flex min-w-0 gap-1.5">
 					<input
 						bind:value={fixedUrl}
+						disabled={!canManage}
 						placeholder={autoplay.fixedVideoTitle || 'Always play this first…'}
 						class="input input-xs min-w-0 flex-1"
 					/>
 					<button
 						onclick={setFixed}
-						disabled={savingAutoplay}
+						disabled={savingAutoplay || !canManage}
 						class="btn btn-secondary btn-xs shrink-0">Set</button
 					>
 					{#if autoplay.fixedVideoId}
 						<button
 							onclick={() =>
 								saveAutoplay({ fixedVideoId: '', fixedVideoTitle: '' })}
-							disabled={savingAutoplay}
+							disabled={savingAutoplay || !canManage}
 							class="btn btn-xs text-muted shrink-0">Clear</button
 						>
 					{/if}
@@ -224,6 +234,7 @@
 						{store}
 						{slug}
 						roomScoped={tab === 'room'}
+						canManage={tab !== 'room' || canManage}
 						onSetActive={tab === 'room'
 							? () => setActive(playlist.id)
 							: undefined}

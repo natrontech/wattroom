@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { account } from '$lib/account.svelte';
@@ -25,14 +26,21 @@
 		void ping;
 		const current = slug;
 		const seed = pageData.room;
+		// Untracked: this effect writes seededSlug, and tracking it re-ran
+		// the effect straight into load() — the very fetch the seed was
+		// there to save (#824).
 		if (
 			current &&
-			seededSlug !== current &&
+			untrack(() => seededSlug) !== current &&
 			(seed?.slug === current || pageData.roomError)
 		) {
 			room = seed;
 			error = pageData.roomError ?? null;
 			seededSlug = current;
+			if (seed)
+				people.learn(
+					(seed.members ?? []).map((m) => ({ ...m, name: m.displayName })),
+				);
 			return;
 		}
 		// Re-fetch on every lobby ping (#251, #570): the plan, the members and

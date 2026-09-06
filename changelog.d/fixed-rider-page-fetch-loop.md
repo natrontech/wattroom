@@ -1,0 +1,1 @@
+- A rider's page fetched itself over and over for as long as it was open. It loads once, and again only when presence changes.

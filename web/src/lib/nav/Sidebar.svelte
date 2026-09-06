@@ -32,7 +32,7 @@
 	} from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
-	import { statusOf } from '$lib/status';
+	import { statusOf, statusOfRider } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import type { AvError } from '$lib/room/av.svelte';
@@ -104,6 +104,19 @@
 		away?: boolean;
 		onAway?: (next: boolean) => void;
 	} = $props();
+
+	// Your own badge, on the same rule as everyone else's (#824): the people
+	// column and the Members page show you riding; the rail said "online".
+	const myStatus = $derived(
+		connectedSlug
+			? statusOfRider({
+					away,
+					watts:
+						roomConnection.current?.live.tick?.riders[account.me?.id ?? '']
+							?.watts,
+				})
+			: null,
+	);
 
 	const destination = $derived(activeHref(pathname));
 	// Below md the drawer IS the room's index, and Settings is not offered
@@ -433,7 +446,7 @@
 					avatarUrl={account.me?.avatarUrl}
 					preset={account.me?.avatarPreset}
 					xp={account.me?.totalXp}
-					status={connectedSlug ? (away ? 'away' : 'online') : null}
+					status={myStatus}
 					size={26}
 				/>
 				<span class="min-w-0">

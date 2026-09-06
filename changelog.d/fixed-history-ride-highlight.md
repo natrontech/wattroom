@@ -1,0 +1,1 @@
+- Arriving at Rides from a recent ride on Home or from the progression chart rings and scrolls to that ride again.

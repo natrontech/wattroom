@@ -12,7 +12,7 @@
 	import { useRoom } from '$lib/room/context';
 	import { formatWhen } from '$lib/format';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
+	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
 	import { toasts } from '$lib/toast.svelte';
@@ -49,46 +49,44 @@
 	// every person in WattRoom offers — their page, the DM, the friend ask,
 	// and — for the owner — the ban a griefer needs met where they are, not
 	// three screens away in Settings (#666).
-	function tileMenu(rider: () => (typeof room.riders)[number]) {
-		return contextMenu(() => {
-			const entries: MenuEntry[] = [
-				{
-					label:
-						rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
-					icon: Focus,
-					onSelect: () =>
-						room.setFocus(rider().id === room.focusId ? null : rider().id),
+	function tileEntries(rider: () => (typeof room.riders)[number]): MenuEntry[] {
+		const entries: MenuEntry[] = [
+			{
+				label:
+					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
+				icon: Focus,
+				onSelect: () =>
+					room.setFocus(rider().id === room.focusId ? null : rider().id),
+			},
+			// The glyph on the tile says they are sharing; this is the shortcut
+			// to the stage pick the chip under the stage already offers (#664).
+			...room.stageSources
+				.filter(
+					(source) =>
+						source.kind === 'screen' &&
+						source.riderId === rider().id &&
+						!rider().you,
+				)
+				.map((source) => ({
+					label: `Watch ${rider().name}'s screen`,
+					icon: ScreenShare,
+					onSelect: () => room.pickStage(source.key),
+				})),
+			...personMenu(rider().id, goto, {
+				you: rider().you,
+				poke: {
+					onSelect: () => room.poke(rider().id),
 				},
-				// The glyph on the tile says they are sharing; this is the shortcut
-				// to the stage pick the chip under the stage already offers (#664).
-				...room.stageSources
-					.filter(
-						(source) =>
-							source.kind === 'screen' &&
-							source.riderId === rider().id &&
-							!rider().you,
-					)
-					.map((source) => ({
-						label: `Watch ${rider().name}'s screen`,
-						icon: ScreenShare,
-						onSelect: () => room.pickStage(source.key),
-					})),
-				...personMenu(rider().id, goto, {
-					you: rider().you,
-					poke: {
-						onSelect: () => room.poke(rider().id),
-					},
-				}),
-			];
-			if (isOwner && !rider().you)
-				entries.push('separator', {
-					label: 'Ban from the room',
-					icon: ShieldBan,
-					onSelect: () => ban(rider().id, rider().name),
-					danger: true,
-				});
-			return entries;
-		});
+			}),
+		];
+		if (isOwner && !rider().you)
+			entries.push('separator', {
+				label: 'Ban from the room',
+				icon: ShieldBan,
+				onSelect: () => ban(rider().id, rider().name),
+				danger: true,
+			});
+		return entries;
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves
@@ -227,6 +225,7 @@
 	<RiderTile
 		{rider}
 		phase={room.phase}
+		menu={() => tileEntries(() => rider)}
 		onPoke={(id) => room.poke(id)}
 		videoKey={room.videoOf(rider.id) ?? 0}
 		videoAttach={room.videoOf(rider.id)
@@ -319,8 +318,7 @@
 						<button
 							onclick={() => room.setFocus(null)}
 							class="block w-full text-left"
-							title="tap to unfocus"
-							{@attach tileMenu(() => focused!)}>{@render tile(focused)}</button
+							title="tap to unfocus">{@render tile(focused)}</button
 						>
 						<p class="text-muted mt-2 text-xs">
 							<span class="text-ink font-medium">{focused.name}</span> is focused
@@ -332,8 +330,7 @@
 							<button
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
-								title="focus {rider.name}"
-								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
+								title="focus {rider.name}">{@render tile(rider)}</button
 							>
 						{/each}
 					</div>
@@ -349,11 +346,10 @@
 							<button
 								onclick={() => room.setFocus(rider.id)}
 								class="block text-left"
-								title="focus {rider.name}"
-								{@attach tileMenu(() => rider)}>{@render tile(rider)}</button
+								title="focus {rider.name}">{@render tile(rider)}</button
 							>
 						{:else}
-							<div {@attach tileMenu(() => rider)}>{@render tile(rider)}</div>
+							<div>{@render tile(rider)}</div>
 						{/if}
 					{/each}
 				</div>

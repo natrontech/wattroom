@@ -1,0 +1,1 @@
+- Opening a direct message from a fresh tab no longer rebuilds the thread when the other rider's name arrives, so the "new since last time" divider stays where it belongs.

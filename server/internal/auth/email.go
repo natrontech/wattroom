@@ -87,8 +87,17 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 	}
 	link := s.baseURL + "/api/auth/verify-email?t=" + token
 	if err := s.mailer.SendEmailVerification(ctx, address, link); err != nil {
-		// The row stays: the rider can ask again from the profile, and a
-		// pending address with a dead token is harmless.
+		// Nothing went out, so nothing may look sent: with the fresh token
+		// left in place the retry inside the resend window was a silent
+		// no-op, and the gate said "link sent" for a mail that never left
+		// (#824). Put back whatever was there — a link already in the inbox
+		// for the previous address keeps working.
+		if _, undo := s.store.Queries.StartEmailVerification(ctx, db.StartEmailVerificationParams{
+			ID: user.ID, EmailPending: user.EmailPending,
+			EmailVerifyHash: user.EmailVerifyHash, EmailVerifyExpires: user.EmailVerifyExpires,
+		}); undo != nil {
+			s.log.Error("undoing a failed verification start", "err", undo)
+		}
 		return db.User{}, err
 	}
 	return updated, nil

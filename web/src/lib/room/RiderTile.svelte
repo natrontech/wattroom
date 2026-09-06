@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Logo from '$lib/brand/Logo.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { wkg } from '$lib/format';
 	import { personMenu } from '$lib/person-menu';
 	import { MicOff, ScreenShare } from '@lucide/svelte';
@@ -31,6 +35,7 @@
 		videoKey = 0,
 		videoAttach,
 		onPoke,
+		menu,
 	}: {
 		rider: MockRider;
 		phase: Phase;
@@ -44,6 +49,10 @@
 		/** Ask for their attention. The tile IS the person (#807) — poking was
 		 * reachable only from the people column and the sidebar strip. */
 		onPoke?: (id: string) => void;
+		/** The whole right-click menu, when the surface has more to offer than
+		 * the person (the lounge: focus, watch a screen, ban). The tile's own
+		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
+		menu?: () => MenuEntry[];
 	} = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
@@ -83,11 +92,13 @@
 	)}"
 	title={rider.you ? undefined : MENU_HINT}
 	{@attach contextMenu(() =>
-		rider.you
-			? []
-			: personMenu(rider.id, goto, {
-					poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
-				}),
+		menu
+			? menu()
+			: rider.you
+				? []
+				: personMenu(rider.id, goto, {
+						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+					}),
 	)}
 >
 	{#if rider.cameraOn && videoAttach}

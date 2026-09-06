@@ -1,0 +1,1 @@
+- Right-clicking a rider's tile in the lounge now reaches Focus, "Watch their screen" and, for the owner, "Ban from the room" — the tile's own menu had been swallowing them.
