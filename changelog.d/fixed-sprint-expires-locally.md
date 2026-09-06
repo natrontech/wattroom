@@ -1,1 +1,0 @@
-- A sprint moment now ends on time even if your connection drops during it. The sprint's hill (or, on a single-speed setup, its 2×FTP hold) used to stay on the trainer for as long as the drop lasted, because the window was measured off the last message from the room.

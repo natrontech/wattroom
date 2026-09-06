@@ -1,1 +1,0 @@
-- Stopping now reaches the trainer straight away. A trainer that acknowledges slowly used to leave every out-of-date ERG target queued in front of the release, so the resistance held for seconds after Stop, auto-pause or the spiral guard; superseded targets are dropped instead, and targets left over from a dropped connection no longer stall the reconnect.

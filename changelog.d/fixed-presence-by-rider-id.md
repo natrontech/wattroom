@@ -1,1 +1,0 @@
-- Two riders sharing a display name no longer answer for each other: the unread badge on a room stays yours while your namesake is standing in it, and a DM header no longer says your friend is riding somewhere when it is someone else with their name.

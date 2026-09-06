@@ -1,1 +1,0 @@
-- A solo ride whose save to your account fails is no longer lost. It stays on the device with every sample, and the ride screen offers it back with a "Save to your account" button next to the .fit download — previously only a summary survived, and the recovery card never mentioned it.

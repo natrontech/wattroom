@@ -17,6 +17,49 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.31] - 2026-09-06
+
+### Added
+
+- Stepping out and coming back now make a sound, the way arriving and leaving already did — the same two cues, a fifth lower, so a room quietly emptying to one is something you hear from the bike instead of something you notice on the screen. Your own "Away" stays silent, because the same press mutes your speakers; the cue you hear is the one that tells you the room's sound is back.
+- You can now choose whether your own voice ducks the room. Music and cues have
+  always dipped only for other riders; the mix panel now has a switch for
+  riders who want them to dip while they speak too. Off by default — nothing
+  changes unless you ask for it.
+- You can edit a message you sent, in a room or in a DM. Right-click it (or
+  long-press on a phone) and pick Edit — the line updates for everyone who is
+  there, and shows "edited" so nobody is quietly rewritten. Only the sender
+  can, and only the text; an attached image stays put.
+- A friend request now announces itself wherever you are in the app — a blip, a toast, and an OS notification if the tab is in the background — and so does someone accepting the request you sent. A request that gets dismissed now says so too, instead of leaving you watching a row that would never move. Both sides also see the friends list update the moment it changes, instead of on the next refresh.
+- A GIF button in the composer: search GIPHY and send without leaving the room, in room chat and in direct messages. Servers set `WATTROOM_GIPHY_KEY` to enable it; without a key the button does not appear.
+- A ride sent to Strava now says whether it arrived. Delivery is remembered rather than living in a background task, so an outage or a server restart no longer abandons it silently — the ride is retried on its own, and the ride's page shows where it went, links the Strava activity once it lands, and says plainly when it could not be sent.
+
+### Changed
+
+- Away now takes the room off your speakers as well as your mic and camera. Voices, the jukebox and the cue sounds all go quiet on the screen you stepped away from — until now the room kept playing at full volume to an empty chair, which is a problem for whoever else is in the house. Your levels are untouched: coming back restores the mix you had, not a default, and the sound panel says it is muted rather than showing every fader at zero.
+- The cue level is now in your own menu — right-click yourself at the foot of the sidebar, from any screen — and letting go of the fader plays a cue at the level you set. It stays in the Sound panel too.
+- Pick your microphone by right-clicking the mic, and where the voice comes out by right-clicking yourself — both lists are in the menus now, alongside the Sound panel's own.
+- How far music and cues dip while someone is speaking is now in your own menu too — right-click yourself at the foot of the sidebar while you are in a room. It stays in the Sound panel.
+- Right-clicking your microphone now switches between voice activation and push-to-talk, and offers the way to the gate meter — instead of three clicks into the Sound panel. The threshold itself stays there, where you can see your own level against it.
+- A rider's volume is now in their right-click menu, wherever they appear — the people column, their tile on stage, the Members list — instead of a speaker icon on two rows. The music level moved into the jukebox, next to the queue and the transport.
+
+### Fixed
+
+- Fixed a server that would not start: two database migrations shipped with the same number, and the migration runner refuses to run at all when it sees that.
+- Exporting all your data no longer loads every ride's samples into memory at once. It reads them one ride at a time while streaming the zip, so the export costs the same whether you have ridden for a month or for years.
+- A solo ride whose save to your account fails is no longer lost. It stays on the device with every sample, and the ride screen offers it back with a "Save to your account" button next to the .fit download — previously only a summary survived, and the recovery card never mentioned it.
+- Auto-pause and the spiral guard now protect you in a group ride, not only when riding alone. Stop pedalling, or grind to a halt at low cadence, and your trainer lets go while the room's session carries on — with a line on screen saying so, and a countdown when you pick back up. A sprint moment no longer lands on a rider who has stopped.
+- Removed a stale copy of the microphone settings in the room's voice client. It never took effect and disagreed with the real one, so nothing changes in how you sound — there is now one place those settings live.
+- Two riders sharing a display name no longer answer for each other: the unread badge on a room stays yours while your namesake is standing in it, and a DM header no longer says your friend is riding somewhere when it is someone else with their name.
+- The ramp test now ends when you stop pedalling, which is how a ramp test is meant to end. Auto-pause used to release the trainer before the test had counted the five seconds it needs, leaving you paused mid-ramp with no FTP at the end of it.
+- A sprint moment now ends on time even if your connection drops during it. The sprint's hill (or, on a single-speed setup, its 2×FTP hold) used to stay on the trainer for as long as the drop lasted, because the window was measured off the last message from the room.
+- Stopping now reaches the trainer straight away. A trainer that acknowledges slowly used to leave every out-of-date ERG target queued in front of the release, so the resistance held for seconds after Stop, auto-pause or the spiral guard; superseded targets are dropped instead, and targets left over from a dropped connection no longer stall the reconnect.
+- The "with you" strip in the sidebar now shows real profile pictures and avatar presets, instead of falling back to a coloured initial for everyone.
+
+### Security
+
+- Flagging a problem mid-ride no longer puts your name or your room's address into a public issue. The report still carries everything needed to fix the bug, and the private record kept for triage is unchanged.
+
 ## [2026.09.30] - 2026-09-06
 
 ### Added
@@ -813,7 +856,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.30...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.31...HEAD
+[2026.09.31]: https://github.com/natrontech/wattroom/compare/2026.09.30...2026.09.31
 [2026.09.30]: https://github.com/natrontech/wattroom/compare/2026.09.29...2026.09.30
 [2026.09.29]: https://github.com/natrontech/wattroom/compare/2026.09.28...2026.09.29
 [2026.09.28]: https://github.com/natrontech/wattroom/compare/2026.09.27...2026.09.28
