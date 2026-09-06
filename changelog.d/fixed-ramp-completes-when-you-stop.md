@@ -1,1 +1,0 @@
-- The ramp test now ends when you stop pedalling, which is how a ramp test is meant to end. Auto-pause used to release the trainer before the test had counted the five seconds it needs, leaving you paused mid-ramp with no FTP at the end of it.

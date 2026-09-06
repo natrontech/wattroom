@@ -1,1 +1,0 @@
-- How far music and cues dip while someone is speaking is now in your own menu too — right-click yourself at the foot of the sidebar while you are in a room. It stays in the Sound panel.

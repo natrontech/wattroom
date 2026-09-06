@@ -1,1 +1,0 @@
-- Flagging a problem mid-ride no longer puts your name or your room's address into a public issue. The report still carries everything needed to fix the bug, and the private record kept for triage is unchanged.

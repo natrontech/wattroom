@@ -1,1 +1,0 @@
-- The cue level is now in your own menu — right-click yourself at the foot of the sidebar, from any screen — and letting go of the fader plays a cue at the level you set. It stays in the Sound panel too.

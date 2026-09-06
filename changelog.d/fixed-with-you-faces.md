@@ -1,1 +1,0 @@
-- The "with you" strip in the sidebar now shows real profile pictures and avatar presets, instead of falling back to a coloured initial for everyone.

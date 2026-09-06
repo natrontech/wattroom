@@ -1,1 +1,0 @@
-- Pick your microphone by right-clicking the mic, and where the voice comes out by right-clicking yourself — both lists are in the menus now, alongside the Sound panel's own.

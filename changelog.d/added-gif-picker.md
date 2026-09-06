@@ -1,1 +1,0 @@
-- A GIF button in the composer: search GIPHY and send without leaving the room, in room chat and in direct messages. Servers set `WATTROOM_GIPHY_KEY` to enable it; without a key the button does not appear.
