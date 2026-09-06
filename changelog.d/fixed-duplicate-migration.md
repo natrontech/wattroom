@@ -1,0 +1,1 @@
+- Fixed a server that would not start: two database migrations shipped with the same number, and the migration runner refuses to run at all when it sees that.
