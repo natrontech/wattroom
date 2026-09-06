@@ -6,6 +6,7 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -377,9 +378,27 @@ func newRoom(slug string) *room {
 	}
 }
 
+// How many frames a socket may fall behind before it starts missing them.
+// Deep enough that a scheduling hiccup costs nothing; shallow enough that a
+// client which has stopped reading cannot bank a minute of stale ticks and
+// then be shown them (#670).
+const clientQueue = 8
+
+// How long one frame may take to leave. Per client now, so it is a bound on
+// that socket's writer goroutine rather than on the room's tick.
+const writeTimeout = 5 * time.Second
+
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
+	// Outbound frames, already marshalled, written by this socket's own
+	// goroutine (#670). The tick loop used to write to every socket in turn
+	// with a one-second deadline each, so one client that stopped reading
+	// cost the whole room up to a second per tick — and during a sprint, when
+	// the room ticks at 4 Hz and the timing actually matters, it collapsed
+	// everyone else to 1 Hz. Any member could do it; it was the cheapest
+	// in-room denial of service there is.
+	out chan []byte
 	// Which tab this socket is, and the word its rider's other screens
 	// render for it (#610). Both arrive with the first sensor claim and are
 	// read under rm.mu like the rest of the socket's room state.
@@ -411,7 +430,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rm := h.room(slug)
-	c := &client{rider: rider, conn: conn}
+	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
+	// This socket's own writer, so the room's tick never waits on it (#670).
+	writerDone := make(chan struct{})
+	defer close(writerDone)
+	safego.Go(h.log, "room writer "+slug, func() { c.writeLoop(writerDone) })
 	rm.join(c)
 	h.PresenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
@@ -443,11 +466,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Poke != nil {
 			to := strings.TrimSpace(msg.Poke.To)
 			if to == "" || to == rider.ID {
-				h.writeError(ctx, c, "validation_error", "Choose another rider to poke.")
+				h.writeError(c, "validation_error", "Choose another rider to poke.")
 				continue
 			}
 			if !rm.hasRider(to) {
-				h.writeError(ctx, c, "invalid_request", "That rider is no longer in the room.")
+				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
 				continue
 			}
 			// The target is part of the rate-limit key: one rider cannot evade
@@ -455,13 +478,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
 				// A cooldown that drops in silence reads as a broken button,
 				// and the sender pokes again (errors.md).
-				h.writeError(ctx, c, "conflict", "You just poked them — give them a moment to notice.")
+				h.writeError(c, "conflict", "You just poked them — give them a moment to notice.")
 				continue
 			}
 			if !rm.queuePoke(to, protocol.Poke{
 				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
 			}) {
-				h.writeError(ctx, c, "invalid_request", "That rider is no longer in the room.")
+				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
 			}
 		}
 		if msg.Away != nil {
@@ -482,7 +505,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				// The client caps at 500 CHARACTERS — counting bytes here cut
 				// non-Latin scripts off at half the advertised limit and then
 				// dropped the line silently (audit #219).
-				h.writeError(ctx, c, "validation_error", "That message is too long — 500 characters is the cap.")
+				h.writeError(c, "validation_error", "That message is too long — 500 characters is the cap.")
 				continue
 			}
 			// Untrusted like the text: an image id is a 36-char UUID the room's
@@ -537,7 +560,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
 				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
-					h.writeError(ctx, c, "jukebox_"+string(refusal), refusal.message())
+					h.writeError(c, "jukebox_"+string(refusal), refusal.message())
 				} else if played != nil && h.xp != nil {
 					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
 				}
@@ -558,12 +581,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// The role on THIS socket, not the copy captured when it opened:
 			// a promotion mid-session has to land without a reconnect.
 			if !canControl(rm.roleOf(c)) {
-				h.writeError(ctx, c, "forbidden", "Only the owner or a coach controls the session.")
+				h.writeError(c, "forbidden", "Only the owner or a coach controls the session.")
 				continue
 			}
 			if msg.Control.Action == "game" {
 				if !rm.startGame(msg.Control.GameMode, h.now()) {
-					h.writeError(ctx, c, "invalid_request", "That game mode does not exist, or one is already running.")
+					h.writeError(c, "invalid_request", "That game mode does not exist, or one is already running.")
 				}
 				continue
 			}
@@ -576,11 +599,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				if rm.armIfRunning(h.now()) {
 					continue
 				}
-				h.writeError(ctx, c, "invalid_request", "Sprints arm during a running session.")
+				h.writeError(c, "invalid_request", "Sprints arm during a running session.")
 				continue
 			}
 			if !rm.control(*msg.Control, rider.ID, h.now()) {
-				h.writeError(ctx, c, "invalid_request", "That does not work right now — the session is in another phase.")
+				h.writeError(c, "invalid_request", "That does not work right now — the session is in another phase.")
 			}
 		}
 	}
@@ -1027,10 +1050,55 @@ func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time)
 	}
 }
 
-func (h *Hub) writeError(ctx context.Context, c *client, code, message string) {
-	writeCtx, cancel := context.WithTimeout(ctx, tickInterval)
-	defer cancel()
-	_ = wsjson.Write(writeCtx, c.conn, protocol.ServerMessage{
+// send queues one already-marshalled frame, never blocking: a socket that has
+// stopped reading misses ticks alone rather than taxing the room (#670).
+func (c *client) send(frame []byte) {
+	select {
+	case c.out <- frame:
+	default:
+		metricDroppedFrames.Inc()
+	}
+}
+
+// sendJSON marshals for ONE socket — a refusal, a pairing answer, a poke.
+// The tick itself is marshalled once for the whole room instead.
+func (c *client) sendJSON(log *slog.Logger, msg protocol.ServerMessage) {
+	frame, err := json.Marshal(msg)
+	if err != nil {
+		logger(log).Error("outbound message could not be marshalled", "err", err)
+		return
+	}
+	c.send(frame)
+}
+
+// writeLoop is this socket's only writer, so frames leave in the order they
+// were queued and a slow write holds up nothing but this client. It returns
+// when the socket's reader returns, or when a write fails.
+func (c *client) writeLoop(done <-chan struct{}) {
+	for {
+		select {
+		case <-done:
+			return
+		case frame := <-c.out:
+			ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
+			err := c.conn.Write(ctx, websocket.MessageText, frame)
+			cancel()
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
+func logger(log *slog.Logger) *slog.Logger {
+	if log == nil {
+		return slog.Default()
+	}
+	return log
+}
+
+func (h *Hub) writeError(c *client, code, message string) {
+	c.sendJSON(h.log, protocol.ServerMessage{
 		Error: &protocol.Error{Code: code, Message: message},
 	})
 }
@@ -1267,22 +1335,29 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 
 		metricTicks.Inc()
-		message := protocol.ServerMessage{Tick: &tick}
+		// Once for the room, not once per rider: the tick is identical for
+		// everyone in it — roster, metrics, game state — and marshalling it
+		// per client put the same work N times on the critical path between
+		// one slow socket and the next (#670).
+		payload, err := json.Marshal(protocol.ServerMessage{Tick: &tick})
+		if err != nil {
+			// Half a tick is worse than none: skip the broadcast and say so.
+			logger(log).Error("tick could not be marshalled", "room", rm.slug, "err", err)
+			payload = nil
+		}
 		for _, c := range clients {
-			ctx, cancel := context.WithTimeout(context.Background(), tickInterval)
-			// ponytail: slow consumers just miss ticks; per-client send queues when it matters
-			_ = wsjson.Write(ctx, c.conn, message)
+			if payload != nil {
+				c.send(payload)
+			}
 			// Addressed to this socket alone, so it cannot be folded into the
-			// tick — and written here because this goroutine is the socket's
-			// only writer.
+			// tick — but it rides the same queue, so it keeps its order.
 			if answer, ok := pairing[c]; ok {
-				_ = wsjson.Write(ctx, c.conn, protocol.ServerMessage{Pairing: &answer})
+				c.sendJSON(log, protocol.ServerMessage{Pairing: &answer})
 			}
 			for _, pending := range pokes[c] {
 				poke := pending
-				_ = wsjson.Write(ctx, c.conn, protocol.ServerMessage{Poke: &poke})
+				c.sendJSON(log, protocol.ServerMessage{Poke: &poke})
 			}
-			cancel()
 		}
 	}
 }

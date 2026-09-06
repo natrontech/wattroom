@@ -523,3 +523,59 @@ func TestVoiceRidesTheTickBeforeYouJoin(t *testing.T) {
 		}
 	}
 }
+
+func TestASlowSocketMissesTicksAlone(t *testing.T) {
+	// #670: the tick used to be written to each socket in turn, on the room's
+	// one goroutine, with a second's deadline each. A client that stopped
+	// reading — bad wifi, a backgrounded tab, or a member holding a zero
+	// window on purpose — cost the whole room up to a second per tick, and
+	// during a sprint burst collapsed 4 Hz to 1 Hz for everyone else. Any
+	// member could do it.
+	c := &client{out: make(chan []byte, clientQueue)}
+	for i := 0; i < clientQueue; i++ {
+		c.send([]byte("tick"))
+	}
+
+	// The queue is full. The room must not wait for this rider.
+	returned := make(chan struct{})
+	go func() {
+		c.send([]byte("one more"))
+		close(returned)
+	}()
+	select {
+	case <-returned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("send blocked on a client that had stopped reading — the whole room waits behind it")
+	}
+	if len(c.out) != clientQueue {
+		t.Errorf("queue holds %d frames, want it capped at %d", len(c.out), clientQueue)
+	}
+
+	// And the frames it did take are the ones it took, in order.
+	first := <-c.out
+	if string(first) != "tick" {
+		t.Errorf("first queued frame is %q, want the oldest", first)
+	}
+}
+
+func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
+	// The tick is identical for everyone in the room, so it is marshalled
+	// once (#670). Two riders, one payload: this is the test that would fail
+	// if somebody put the marshal back inside the loop and let the two drift.
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/together"
+	jan := dial(t, url, "jan:owner")
+	sven := dial(t, url, "sven:member")
+
+	janTick, svenTick := readTick(t, jan), readTick(t, sven)
+	if janTick.Roster == nil || svenTick.Roster == nil {
+		t.Fatal("a tick arrived without a roster")
+	}
+	if len(janTick.Roster) != len(svenTick.Roster) {
+		t.Errorf("the two riders saw different rosters: %d vs %d", len(janTick.Roster), len(svenTick.Roster))
+	}
+}
