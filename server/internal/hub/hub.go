@@ -1037,6 +1037,17 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 	// is live (SPEC) and returns to 1 Hz after.
 	timer := time.NewTimer(tickInterval)
 	defer timer.Stop()
+	// The lock below is taken by hand and released twice per iteration, so a
+	// panic inside the tick would unwind holding it — and the relaunch
+	// Supervise does (#738) would then park on Lock() for good: a room that
+	// never ticks again, and every hub-wide walk over rooms (WhereIs,
+	// Presence) hung behind it. Release it on the way out instead.
+	locked := false
+	defer func() {
+		if locked {
+			rm.mu.Unlock()
+		}
+	}()
 	// Presence push (#251): phase and the riding set are the live signals the
 	// rail shows for rooms you are NOT in — ping the lobby only when one of
 	// them changes between ticks, never per tick.
@@ -1051,6 +1062,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		case <-timer.C:
 		}
 		rm.mu.Lock()
+		locked = true
 		// Wall time since the previous tick — the voice clock's step, which a
 		// sprint's 4 Hz burst must not quadruple.
 		dt := now().Sub(lastTick)
@@ -1064,6 +1076,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 		timer.Reset(interval)
 		if len(rm.clients) == 0 {
+			locked = false
 			rm.mu.Unlock()
 			continue
 		}
@@ -1169,6 +1182,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// rider's device inventory is theirs, and the tick goes to the room.
 		pairing := rm.drainPairingLocked()
 		pokes := rm.drainPokesLocked()
+		locked = false
 		rm.mu.Unlock()
 		// Someone spoke: every sidebar's unread count for this room just went
 		// stale, and a rider who is NOT standing in the room announces the
