@@ -39,25 +39,34 @@ crc() { printf '%s' "$1" | cksum | awk '{print $1}'; }
 
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-# Which Postgres `make infra` started. Never a hardcoded name: compose derives
-# its project from the directory it runs in, so a linked worktree's containers
-# come up as `<worktree>-postgres-1`, and every checkout that guessed
-# `wattroom-postgres-1` created its database nowhere (#814). Ask compose, whose
-# answer is right by construction; --project-directory so the answer does not
-# depend on the caller's cwd.
+# Which Postgres to talk to. Never a hardcoded name: compose derives its
+# project from the directory it runs in, so a linked worktree's containers come
+# up as `<worktree>-postgres-1`, and every checkout that guessed
+# `wattroom-postgres-1` created its database nowhere (#814).
+#
+# Two steps, because worktrees share one server (AGENTS.md) but only one of
+# them started it. This checkout's own project answers first, for whoever ran
+# `make infra` here. Otherwise take the shared container by its compose label —
+# whichever checkout started it owns the :5432 bind, and its project name is
+# not ours to guess. Several matches is genuinely ambiguous and asks.
 pg_container() {
 	if [ -n "${WATTROOM_PG_CONTAINER:-}" ]; then
 		echo "$WATTROOM_PG_CONTAINER"
 		return 0
 	fi
 	cid=$(docker compose --project-directory "$toplevel" ps -q postgres 2>/dev/null) || cid=''
-	[ -n "$cid" ] || return 1
+	if [ -n "$cid" ]; then
+		echo "$cid"
+		return 0
+	fi
+	cid=$(docker ps -q --filter label=com.docker.compose.service=postgres 2>/dev/null) || cid=''
+	[ "$(printf '%s' "$cid" | grep -c .)" = 1 ] || return 1
 	echo "$cid"
 }
 
 # no_postgres explains the one failure both database subcommands share.
 no_postgres() {
-	echo "dev-env.sh: no postgres container for this checkout — run \`make infra\` here, or set WATTROOM_PG_CONTAINER to one running elsewhere" >&2
+	echo "dev-env.sh: no single postgres container to use — run \`make infra\` (in any checkout; they share one server), or set WATTROOM_PG_CONTAINER when several are running" >&2
 	exit 1
 }
 
