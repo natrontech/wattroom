@@ -118,10 +118,11 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.allow(rationKey(me)) {
-		// 429, not 204. They mean different things to the client: 204 is "we
-		// looked and there is nothing", which it remembers, and this is "ask
-		// again in a moment", which it must not.
-		httpx.WriteError(w, http.StatusTooManyRequests, "invalid_request",
+		// 429 rate_limited, not 204. They mean different things to the client:
+		// 204 is "we looked and there is nothing", which it remembers, and
+		// this is "ask again in a moment", which it must not. errors.md gives
+		// the ceiling its own code precisely so the two cannot be confused.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"Too many previews at once — give it a moment.")
 		return
 	}
@@ -189,7 +190,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.allow(rationKey(me) + ":img") {
-		httpx.WriteError(w, http.StatusTooManyRequests, "invalid_request",
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"Too many previews at once — give it a moment.")
 		return
 	}

@@ -99,9 +99,11 @@ format is the answer that does not depend on a header being honoured.
 
 ### Why this proxies bytes when the GIF picker does not
 
-[ADR-0032](0032-a-gif-picker-proxied-through-the-server.md) proxies Tenor's
-*API* for the key and the quota, and says plainly that it does not hide riders
-from Tenor — the grid renders straight off `media*.tenor.com`. It goes further
+[ADR-0032](0032-a-gif-picker-proxied-through-the-server.md) proxies the GIF
+provider's *API* for the key and the quota, and says plainly that it does not
+hide riders from that provider — the grid renders straight off its CDN. (Which
+provider has already changed once, Tenor to GIPHY per #909; the argument below
+does not depend on which.) It goes further
 and rejects the idea of proxying the bytes: that would "put a media proxy on a
 single VM to save nothing WATTROOM.md's privacy rules cover — those govern
 metrics, not which CDN a rider's browser talks to."
@@ -109,8 +111,8 @@ metrics, not which CDN a rider's browser talks to."
 That reasoning is right for a GIF picker and wrong for a link preview, and the
 difference is who chose the host.
 
-- A rider **opens** the picker. They are searching Tenor, on purpose, and the
-  host is one fixed, allowlisted CDN. Their address reaching it is a
+- A rider **opens** the picker. They are searching one provider, on purpose,
+  and the host is a fixed, allowlisted CDN. Their address reaching it is a
   consequence of something they did.
 - A preview image is fetched **passively**, while scrolling, from a host **some
   other member chose** by pasting a link. Nobody scrolling the room decided to
@@ -126,7 +128,7 @@ rendering an `<img>` to whatever was in the message.
 
 So the rule is not "proxy image bytes" or "never proxy image bytes". It is:
 **bytes from a host the rider chose may load directly; bytes from a host
-another member chose go through us.** ADR-0032's fixed Tenor allowlist is the
+another member chose go through us.** ADR-0032's fixed CDN allowlist is the
 first case, an arbitrary unfurled page is the second.
 
 The cost ADR-0032 names is real and is accepted here: preview-image bandwidth
@@ -161,7 +163,7 @@ costs nothing — the link still works.
   tests are the specification. The rule this sets is about **rider-supplied**
   addresses — any new code that fetches a URL a rider can influence must go
   through `Service.get`, or it reopens everything this closes. A fetcher aimed
-  at one fixed host the operator configured (`internal/gifs` calling Tenor, the
+  at one fixed host the operator configured (`internal/gifs` calling its GIF provider, the
   Strava and LiveKit clients) is a different thing and needs no guard, because
   there is no address for an attacker to choose.
 - An operator running WattRoom inside a network with private services can no
