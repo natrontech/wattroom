@@ -55,6 +55,30 @@ vi.mock('livekit-client', () => {
 		dropNatively() {
 			joined?.handlers.get('Disconnected')?.();
 		},
+		/**
+		 * A remote rider's camera, driven the way LiveKit drives it: switching
+		 * one off MUTES the publication (only a screenshare is unpublished), so
+		 * the subscription and its track stay exactly where they were.
+		 */
+		remoteCamera(identity: string, muted = false) {
+			const pub = { kind: 'video', source: 'camera', isMuted: muted };
+			const participant = { identity };
+			joined?.handlers.get('TrackSubscribed')?.(
+				{ kind: 'video' },
+				pub,
+				participant,
+			);
+			return {
+				mute() {
+					pub.isMuted = true;
+					joined?.handlers.get('TrackMuted')?.(pub, participant);
+				},
+				unmute() {
+					pub.isMuted = false;
+					joined?.handlers.get('TrackUnmuted')?.(pub, participant);
+				},
+			};
+		},
 		/** Every data packet this tab has broadcast, decoded. */
 		broadcasts() {
 			return published.map((p) => JSON.parse(new TextDecoder().decode(p)));
@@ -84,11 +108,15 @@ vi.mock('$lib/room/mic-level', () => ({
 
 const { createRoomAv } = await import('./av.svelte');
 const { api } = await import('$lib/api');
-const { stopSharingNatively, dropNatively, broadcasts } =
+const { stopSharingNatively, dropNatively, broadcasts, remoteCamera } =
 	(await import('livekit-client')) as unknown as {
 		stopSharingNatively: () => void;
 		dropNatively: () => void;
 		broadcasts: () => { t: string; at: number }[];
+		remoteCamera: (
+			identity: string,
+			muted?: boolean,
+		) => { mute: () => void; unmute: () => void };
 	};
 
 /** The machine's side of the mic: what a test can do to the hardware. */
@@ -205,6 +233,63 @@ describe('createRoomAv', () => {
 
 		expect(av.sharing).toBe(false);
 		expect(av.stageSources).toEqual([]);
+		dispose();
+	});
+
+	// #851: a rider report — a colleague switched his camera off and his tile
+	// went blank, no mark on it. livekit-client MUTES a camera on disable
+	// rather than unpublishing it, so TrackUnsubscribed never came, the seat
+	// went on claiming "camera on", and the tile drew an attached element with
+	// no frames in it where the mark belongs.
+	it('gives the seat back when a remote camera is switched off', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		const cam = remoteCamera('jan');
+		expect(av.videoOf.jan).toBeTruthy();
+
+		cam.mute();
+
+		expect(av.videoOf.jan).toBeUndefined();
+		expect(av.stageSources).toEqual([]);
+		dispose();
+	});
+
+	// The camera coming back must not need a rejoin — the subscription was
+	// never lost, only the picture.
+	it('takes the seat back when the camera comes on again', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		const cam = remoteCamera('jan');
+		cam.mute();
+
+		cam.unmute();
+
+		expect(av.videoOf.jan).toBeTruthy();
+		expect(av.stageSources.map((source) => source.key)).toEqual(['cam:jan']);
+		dispose();
+	});
+
+	// Walking in on a rider whose camera is already off: the publication is
+	// there to subscribe to, so the seat used to be claimed on the strength of
+	// a track that was never going to paint.
+	it('leaves the seat empty for a camera that is already off', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+
+		const cam = remoteCamera('jan', true);
+
+		expect(av.videoOf.jan).toBeUndefined();
+		cam.unmute();
+		expect(av.videoOf.jan).toBeTruthy();
 		dispose();
 	});
 

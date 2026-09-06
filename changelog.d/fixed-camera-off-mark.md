@@ -1,0 +1,1 @@
+- A rider switching their camera off gets their mark back on their tile, instead of leaving an empty seat behind.
