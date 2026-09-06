@@ -1,1 +1,0 @@
-- A jukebox refusal is no longer wiped by the track ending under it; your own sidebar avatar shows riding like everyone else's; a database hiccup while removing a DM reaction is reported as an error rather than "no such message".

@@ -1,1 +1,0 @@
-- Ramp tests now use readings from paired power and heart-rate sensors.

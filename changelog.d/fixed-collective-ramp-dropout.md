@@ -1,1 +1,0 @@
-- In the collective ramp, a rider who dropped out no longer makes the room's average go up: past the disconnect grace they count as stopped, the same as in the individual ramp, and a room where everyone has gone quiet ends instead of counting rounds forever.

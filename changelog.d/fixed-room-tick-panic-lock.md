@@ -1,1 +1,0 @@
-- A game mode or jukebox tick that panicked left its room's lock held forever: the room stopped ticking for good, and the rooms list, friends and rider pages hung for everyone until a restart. The lock is released on the way out and the relaunched loop carries on.

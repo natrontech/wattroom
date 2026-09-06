@@ -1,1 +1,0 @@
-- You can now disconnect a sign-in provider from your account in your profile — connecting the wrong Strava account no longer means deleting everything and starting over. Disconnecting Strava also hands the authorization back to Strava, and stops ride upload. WattRoom will not let you remove your last way in.

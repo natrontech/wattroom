@@ -1,1 +1,0 @@
-- Saved rides can now be downloaded as FIT files from ride history.
