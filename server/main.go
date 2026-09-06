@@ -37,6 +37,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
@@ -109,11 +110,11 @@ func main() {
 		mcp.New(st, tokenService, log).Register(mux)
 		progression.New(st, readAuth, log).Register(mux)
 		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
-		go stats.BackfillNormWatts(context.Background(), st, log)
+		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(context.Background(), st, log) })
 		// Sessions are written on every sign-in and never deleted; sweep the
 		// ones GetSessionUser already treats as expired so the table doesn't
 		// grow forever (#673).
-		go sweepExpiredSessions(context.Background(), st, log)
+		safego.Supervise(log, time.Now, "expired session sweep", nil, func() { sweepExpiredSessions(context.Background(), st, log) })
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
@@ -327,7 +328,7 @@ func spaHandler(social *og.Service) http.Handler {
 // ponytail: fixed 15 min refresh, no ETag — stars are not a live metric.
 func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 	var stars atomic.Int64
-	go func() {
+	safego.Supervise(log, time.Now, "github stars poll", ctx.Done(), func() {
 		for {
 			n, err := fetchStars(ctx)
 			if err != nil {
@@ -341,7 +342,7 @@ func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 			case <-time.After(15 * time.Minute):
 			}
 		}
-	}()
+	})
 	return &stars
 }
 
