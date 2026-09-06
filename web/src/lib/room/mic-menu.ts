@@ -5,6 +5,13 @@
  * two buttons inside the Sound modal, three clicks from the mic that is
  * pinned in front of you.
  *
+ * Which microphone you speak through is the same kind of thing (#920): a
+ * choice, on the object it belongs to. The list comes from `deviceOptions`,
+ * so the menu and the panel cannot disagree about what an unnamed device is
+ * called. No refresh call is needed — `av` re-reads devices on a
+ * `devicechange` and when the permission grant makes labels readable (#658),
+ * and this menu only exists once you are in voice.
+ *
  * The gate THRESHOLD is not here on purpose. Its slider is its meter
  * (`GateMeter`, #289): you set it by dragging the mark under your own live
  * level, and a closed gate looks exactly like a dead mic without one. A
@@ -13,15 +20,21 @@
  */
 import { Mic, MicOff, Radio, SlidersHorizontal } from '@lucide/svelte';
 import type { MenuEntry } from '$lib/context-menu.svelte';
+import { type Device, deviceOptions } from '$lib/room/device-options';
 import { openSoundPanel } from '$lib/room/sound-panel.svelte';
 
 export interface MicVoice {
 	micOn: boolean;
 	mode: 'gate' | 'ptt';
 	setMode: (mode: 'gate' | 'ptt') => void;
+	mics: Device[];
+	micId: string;
+	setMic: (id: string) => void | Promise<void>;
 }
 
 export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
+	// One entry is the system default alone: nothing to choose between.
+	const inputs = deviceOptions(voice.mics, 'Microphone');
 	const mode = (
 		id: 'gate' | 'ptt',
 		label: string,
@@ -43,6 +56,16 @@ export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
 		'separator',
 		mode('gate', 'Voice activation', Radio),
 		mode('ptt', 'Push to talk', Mic),
+		...(inputs.length > 1
+			? ([
+					'separator',
+					...inputs.map((device): MenuEntry => ({
+						label: device.label,
+						hint: device.value === voice.micId ? 'on' : undefined,
+						onSelect: () => void voice.setMic(device.value),
+					})),
+				] satisfies MenuEntry[])
+			: []),
 		'separator',
 		{
 			label: 'Tune your gate…',
