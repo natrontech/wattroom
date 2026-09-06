@@ -1,0 +1,1 @@
+- The voice channel now says who arrived. Someone joining or leaving the call plays the room's arrival cue a fifth up — until now a rider joined silently and you found out when they spoke, or you didn't.

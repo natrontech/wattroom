@@ -1,34 +1,20 @@
 import type { RoomEvent } from '$lib/protocol';
 
+import { comingsAndGoings, type Coming } from '$lib/room/comings-and-goings';
+
 /**
  * Another rider's screen appearing is a state change the room has to hear
  * (#664): while the jukebox plays the stage rightly stays on the music, so
  * a new share was one more chip in a picker nobody on a bike is watching.
  * LiveKit is the only witness, so the line is this client's own — the
  * room-event shape ADR-0022 already renders, never sent, never persisted.
+ *
+ * The diff itself is `comingsAndGoings` (#854): the voice channel asks the
+ * same question of a different set.
  */
-export interface ScreenShareChange {
-	rider: string;
-	live: boolean;
-}
+export type ScreenShareChange = Coming;
 
-/**
- * Whose screens came and went between two looks at the stage list. Your own
- * share is left out: the persistent notice above every page already says so
- * (#563), and a line telling you what you just did is noise.
- */
-export function screenShareChanges(
-	before: ReadonlySet<string>,
-	now: ReadonlySet<string>,
-	me: string | undefined,
-): ScreenShareChange[] {
-	const changes: ScreenShareChange[] = [];
-	for (const rider of now)
-		if (!before.has(rider) && rider !== me) changes.push({ rider, live: true });
-	for (const rider of before)
-		if (!now.has(rider) && rider !== me) changes.push({ rider, live: false });
-	return changes;
-}
+export const screenShareChanges = comingsAndGoings;
 
 /**
  * The timeline line for one change. The id carries the moment, so a rider

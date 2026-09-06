@@ -12,6 +12,7 @@ import { createRide } from '$lib/room/ride.svelte';
 import { sensorClaim } from '$lib/room/sensor-claim';
 import { missedSince, type Missed } from '$lib/room/unread';
 import { announcePoke } from '$lib/room/poke';
+import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
@@ -186,6 +187,37 @@ function connect(slug: string): Connection {
 			} else if ([...before].some((id) => !ids.has(id))) {
 				play('leave');
 			}
+		});
+
+		// The voice channel says who arrived (#854). LiveKit chimes for
+		// nobody, so a rider joined the call and you found out when they
+		// spoke — or you did not. The room's own join/leave cannot stand in:
+		// entering the room and entering the call are often hours apart.
+		//
+		// `tick.voice` and not `av.voice`: a client learns the roster from
+		// LiveKit only once it has joined itself, so the local view of an
+		// empty call is indistinguishable from a full one you have not
+		// entered yet (protocol.go). The server's webhook answer is the only
+		// one true for a rider who has not pressed Join.
+		//
+		// Pitched up a fifth: the same event as arriving in the room, one
+		// layer in, and siblings should sound like siblings.
+		let knownVoice: Set<string> | null = null;
+		$effect(() => {
+			const voice = live.tick?.voice;
+			// A dropped room stops the ticks, so the roster on the other side
+			// of a reconnect is a fresh observation, not a change — without
+			// this, coming back announces the whole outage in one burst.
+			if (live.status !== 'live' || !voice) {
+				knownVoice = null;
+				return;
+			}
+			const now = new Set(voice);
+			const before = knownVoice;
+			knownVoice = now;
+			if (before === null) return;
+			for (const change of comingsAndGoings(before, now, account.me?.id))
+				play(change.live ? 'join' : 'leave', 7);
 		});
 
 		// Someone else's screen appearing announces itself (#664): while the
