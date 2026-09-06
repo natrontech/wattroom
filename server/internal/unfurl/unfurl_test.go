@@ -46,6 +46,8 @@ func setup(t *testing.T, handler http.HandlerFunc) (*Service, *http.ServeMux, *h
 	// Off by default: a test that means to measure the ration turns it on, so
 	// no other test's 204 can quietly be the ration's rather than the page's.
 	svc.every = 0
+	// httptest picks a random high port; the port policy has its own test.
+	svc.ports = nil
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	return svc, mux, upstream
@@ -220,16 +222,22 @@ func TestImageProxyServesPicturesAndNothingElse(t *testing.T) {
 		t.Fatal("a stranger's bytes served without nosniff")
 	}
 
-	// Ration, then the refusals — a fresh service for each so the ration of
-	// the assertion above is not what is being measured.
-	for _, bad := range []string{"/page.html", "/missing"} {
+	// The refusals, each against its own service so nothing about one
+	// assertion can be what makes the next one pass.
+	for _, bad := range []string{"/page.html", "/drawing.svg", "/missing"} {
 		_, mux, upstream := setup(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/page.html" {
+			switch r.URL.Path {
+			case "/page.html":
 				w.Header().Set("Content-Type", "text/html")
 				_, _ = io.WriteString(w, "<b>x</b>")
-				return
+			case "/drawing.svg":
+				// A picture by content type and a document in fact: an SVG
+				// served from our origin carries script into it.
+				w.Header().Set("Content-Type", "image/svg+xml")
+				_, _ = io.WriteString(w, `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)
+			default:
+				w.WriteHeader(http.StatusNotFound)
 			}
-			w.WriteHeader(http.StatusNotFound)
 		})
 		if code := get(t, mux, "kim", ask("/api/unfurl/image", upstream.URL+bad)).Code; code != http.StatusNotFound {
 			t.Fatalf("%s came back as %d, want 404", bad, code)

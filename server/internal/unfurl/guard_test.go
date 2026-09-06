@@ -93,6 +93,60 @@ func TestCheckURLTakesOnlyHTTP(t *testing.T) {
 	}
 }
 
+func TestCheckTargetTakesOnlyTheWebsPorts(t *testing.T) {
+	// Without this the endpoint is a port scanner: a public host is still a
+	// host with an SSH daemon, a database, and a redirect pointing at them.
+	s := New(nil, nil)
+	for _, raw := range []string{
+		"https://example.com/a",
+		"https://example.com:443/a",
+		"http://example.com:80/a",
+		"http://example.com:8080/a",
+	} {
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.checkTarget(u); err != nil {
+			t.Fatalf("%s refused: %v", raw, err)
+		}
+	}
+	for _, raw := range []string{
+		"http://example.com:22/",
+		"http://example.com:25/",
+		"http://example.com:6379/",
+		"http://example.com:5432/",
+		"http://example.com:11211/",
+	} {
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.checkTarget(u); err == nil {
+			t.Fatalf("%s was allowed", raw)
+		}
+	}
+}
+
+func TestRenderableImageLeavesSVGOut(t *testing.T) {
+	// An SVG is a document. Served from our own origin and opened in a tab it
+	// runs its own script as WattRoom — which is why a thumbnail may not be
+	// one, however the linked site labels it.
+	for _, kind := range []string{"image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"} {
+		if !renderableImage(kind) {
+			t.Fatalf("%s refused", kind)
+		}
+	}
+	for _, kind := range []string{
+		"image/svg+xml", "text/html", "application/xhtml+xml",
+		"image/svg", "", "application/octet-stream",
+	} {
+		if renderableImage(kind) {
+			t.Fatalf("%s allowed through as a picture", kind)
+		}
+	}
+}
+
 func TestSafeDialRefusesANameThatResolvesInward(t *testing.T) {
 	// localhost is the shape of every rebind payload: a name that resolves to
 	// an address inside. The dial must never happen.

@@ -60,6 +60,10 @@ all of it enforced in `server/internal/unfurl`:
   documentation ranges — refused, in v4 and v6. A v4 address wearing a v6
   costume (v4-mapped, NAT64, 6to4) is judged as the v4 address it is, or every
   rule above has a bypass.
+- **Web ports only** (80, 443, 8080, 8443), on the rider's URL and on every
+  redirect. A public address is still an address with an SSH daemon and a
+  database behind it; without this rule the endpoint is a port scanner anyone
+  with a chat box can aim at any host on the internet.
 - **Ceilings on everything**: redirect hops, response bytes, connection time,
   total time. HTML content types only. Parsing stops at `<body>`, because the
   metadata is in the head and the rest is a stranger's markup.
@@ -72,9 +76,15 @@ all of it enforced in `server/internal/unfurl`:
 
 **Preview images are proxied through our own origin.** The card's image URL
 addresses `GET /api/unfurl/image?url=…`, which fetches through the same guard,
-requires an image content type, caps the bytes, and serves with `nosniff`. The
-browser never contacts the linked site, so reading a chat does not tell the
-sites other people linked that you were there.
+caps the bytes, and serves with `nosniff`. The browser never contacts the
+linked site, so reading a chat does not tell the sites other people linked
+that you were there.
+
+Only PNG, JPEG, GIF, WebP and AVIF come back through it. **SVG is refused**:
+it is a document, not a picture, and one served from our own origin runs its
+own script as WattRoom the moment a rider opens the image in a tab. The
+response also carries a `default-src 'none'; sandbox` CSP, but not serving the
+format is the answer that does not depend on a header being honoured.
 
 The image proxy is a second guarded fetcher, not a second SSRF surface: it
 dials through the same policy, for the same signed-in riders, and so grants no

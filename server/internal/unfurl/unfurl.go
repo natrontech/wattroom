@@ -16,7 +16,6 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -60,21 +59,26 @@ type Service struct {
 	cache   map[string]entry
 	lastAsk map[string]time.Time
 	now     func() time.Time
+	// The ports an outbound fetch may use; nil means any (tests only).
+	ports map[string]bool
 	// The ration's spacing, a field so a test can measure the cache and the
 	// ration separately instead of one masking the other.
 	every time.Duration
 }
 
 func New(users UserSource, log *slog.Logger) *Service {
-	return &Service{
+	s := &Service{
 		users:   users,
 		log:     log,
-		client:  newClient(),
 		cache:   map[string]entry{},
 		lastAsk: map[string]time.Time{},
 		now:     time.Now,
 		every:   riderEvery,
+		ports:   webPorts,
 	}
+	// After ports: the client's redirect check reads the policy off s.
+	s.client = s.newClient()
+	return s
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -92,7 +96,7 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := r.URL.Query().Get("url")
 	target, err := url.Parse(raw)
-	if err != nil || checkURL(target) != nil {
+	if err != nil || s.checkTarget(target) != nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That is not a link WattRoom can preview.", "url")
 		return
@@ -171,12 +175,13 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	target := r.URL.Query().Get("url")
-	if u, err := url.Parse(target); err != nil || checkURL(u) != nil {
+	if u, err := url.Parse(target); err != nil || s.checkTarget(u) != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That is not an image WattRoom can load.")
 		return
 	}
 	if !s.allow(rationKey(me) + ":img") {
-		httpx.WriteError(w, http.StatusTooManyRequests, "conflict", "Too many previews at once — give it a moment.")
+		httpx.WriteError(w, http.StatusTooManyRequests, "invalid_request",
+			"Too many previews at once — give it a moment.")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), fetchTimeout)
@@ -188,7 +193,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = res.Body.Close() }()
 	kind, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if res.StatusCode != http.StatusOK || !strings.HasPrefix(kind, "image/") {
+	if res.StatusCode != http.StatusOK || !renderableImage(kind) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That preview image could not be loaded.")
 		return
 	}
@@ -203,6 +208,19 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(w, io.LimitReader(res.Body, maxImageBytes)); err != nil {
 		s.log.Debug("unfurl image copy", "err", err)
 	}
+}
+
+// renderableImage is the narrow set a preview thumbnail may be. SVG is
+// deliberately absent: it is a document, not a picture — served from our own
+// origin it can carry script, and a rider who opens the image in a tab is
+// then running a stranger's markup as WattRoom. The CSP below would catch it;
+// not serving it at all is the answer that does not depend on a header.
+func renderableImage(kind string) bool {
+	switch kind {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif":
+		return true
+	}
+	return false
 }
 
 func isHTML(contentType string) bool {

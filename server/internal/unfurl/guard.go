@@ -35,6 +35,7 @@ const (
 
 var (
 	errBadScheme  = errors.New("unfurl: only http and https")
+	errBadPort    = errors.New("unfurl: only the web's own ports")
 	errBlockedIP  = errors.New("unfurl: address is not on the public internet")
 	errTooManyHop = errors.New("unfurl: too many redirects")
 )
@@ -100,6 +101,27 @@ func checkURL(u *url.URL) error {
 	return nil
 }
 
+// webPorts is the port half of the policy. Every address the dialer allows is
+// public, but "public" is not the same as "a web server": without this the
+// endpoint is a port scanner anyone with a chat box can point at any host on
+// the internet, one redirect at a time.
+//
+// A Service field rather than a constant so a test can widen it — an httptest
+// server lives on a random high port, and a policy nothing can exercise is
+// not one worth having.
+var webPorts = map[string]bool{"": true, "80": true, "443": true, "8080": true, "8443": true}
+
+// checkTarget is the full policy for one URL: scheme, host, port.
+func (s *Service) checkTarget(u *url.URL) error {
+	if err := checkURL(u); err != nil {
+		return err
+	}
+	if s.ports != nil && !s.ports[u.Port()] {
+		return fmt.Errorf("%w: %q", errBadPort, u.Port())
+	}
+	return nil
+}
+
 // safeDial resolves the name itself, refuses every address that is not on the
 // public internet, and then dials **the address it checked** rather than the
 // name. That last part is the whole point: a resolver consulted twice can
@@ -133,7 +155,7 @@ func safeDial(ctx context.Context, network, addr string) (net.Conn, error) {
 // newClient builds the one client this package fetches with. Redirects are
 // re-checked per hop and capped; the dialer above re-checks the address on
 // every hop for free, because each hop opens its own connection.
-func newClient() *http.Client {
+func (s *Service) newClient() *http.Client {
 	return &http.Client{
 		Timeout: fetchTimeout,
 		Transport: &http.Transport{
@@ -147,7 +169,7 @@ func newClient() *http.Client {
 			if len(via) >= maxRedirects {
 				return errTooManyHop
 			}
-			return checkURL(req.URL)
+			return s.checkTarget(req.URL)
 		},
 	}
 }
@@ -159,7 +181,7 @@ func (s *Service) get(ctx context.Context, raw string) (*http.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unfurl: parse: %w", err)
 	}
-	if err := checkURL(u); err != nil {
+	if err := s.checkTarget(u); err != nil {
 		return nil, err
 	}
 	// gosec's taint analysis is right that this URL came from a rider, and
