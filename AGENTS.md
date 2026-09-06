@@ -17,6 +17,7 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 - `make test` — Go race-detected tests + web vitest (must pass)
 - `make lint` — golangci-lint + svelte-check + prettier check
 - `make protocol` — regenerate `web/src/lib/protocol.ts` after editing `server/internal/protocol/` (commit both)
+- `make migration name=<slug>` — a new migration, named for the moment you wrote it. **Never type the next sequence number**: it is only correct at the instant your branch merges, two branches take it at once, and main then does not boot at all (#928)
 - `make build` — single binary with embedded SPA
 
 ## Working on the issue board (mandatory for humans AND agents)

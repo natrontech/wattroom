@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol sqlc seed build test lint check ci release print-golangci-version
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -56,6 +56,9 @@ web: changelog ## build frontend and embed it into the server
 
 protocol: ## regenerate web/src/lib/protocol.ts from Go structs
 	cd server && go tool tygo generate
+
+migration: ## new migration named for the moment it was written: make migration name=<slug>
+	@scripts/new-migration.sh "$(name)"
 
 sqlc: ## regenerate internal/store/db from queries + migrations (commit the result)
 	cd server && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 generate
