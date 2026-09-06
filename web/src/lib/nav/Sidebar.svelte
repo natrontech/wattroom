@@ -123,7 +123,7 @@
 						href={entry.href}
 						aria-current={on ? 'page' : undefined}
 						class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
-							? 'bg-surface-raised text-ink'
+							? 'bg-ink/10 text-ink'
 							: 'text-muted hover:text-ink'}"
 					>
 						<entry.icon size={15} class="shrink-0" />
@@ -306,7 +306,7 @@
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
 						<ul
-							class="mt-0.5 mb-1 ml-3 space-y-0.5 pl-2"
+							class="mt-0.5 mb-1 space-y-0.5"
 						>
 							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
@@ -315,7 +315,7 @@
 										href="/r/{room.slug}{entry.path}"
 										aria-current={on ? 'page' : undefined}
 										class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
-											? 'bg-surface-raised text-ink'
+											? 'bg-ink/10 text-ink'
 											: 'text-muted hover:text-ink'}"
 									>
 										<entry.icon size={14} class="shrink-0" />
@@ -367,7 +367,7 @@
 							href="/messages/dm/{head.peerId}"
 							aria-current={on ? 'page' : undefined}
 							class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {on
-								? 'bg-surface-raised text-ink'
+								? 'bg-ink/10 text-ink'
 								: dmHeads.unread(head.peerId)
 									? 'text-ink font-semibold'
 									: 'text-muted hover:text-ink'}"
