@@ -10,6 +10,7 @@
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
+	import { sensors } from '$lib/sensors.svelte';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { pushProfile } from '$lib/profile-sync.svelte';
@@ -55,6 +56,7 @@
 				trainer,
 				workout,
 				ftp: profile.current.ftp,
+				readings: () => sensors.readings,
 			});
 			await next.start();
 			session = next;
