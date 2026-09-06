@@ -187,10 +187,22 @@ rm -f "$notes"
 # worktree, and `git checkout main` fails outright when it is — which is how
 # 2026.09.1 got its PR opened and then stopped short of its tag.
 git checkout -q --detach
-# Zero approvals are required, but mergeability takes a moment to compute.
-for _ in $(seq 30); do
-	[ "$(gh pr view "$branch" --json mergeable --jq .mergeable)" = MERGEABLE ] && break
-	sleep 2
+# Zero approvals are required, but main's ruleset requires the checks to pass,
+# and they take minutes. `mergeable` only reports whether the diff conflicts —
+# it says MERGEABLE while mergeStateStatus is still BLOCKED, which is how
+# 2026.09.32 opened its PR and then stopped short of its tag, the same way
+# 2026.09.1 did for a different reason. Wait for the state that actually gates
+# the merge.
+for _ in $(seq 120); do
+	state=$(gh pr view "$branch" --json mergeStateStatus --jq .mergeStateStatus)
+	case "$state" in
+	CLEAN | UNSTABLE) break ;;
+	DIRTY)
+		echo "release PR conflicts with main ($state) — close it, delete its branch, and run make release again" >&2
+		exit 1
+		;;
+	esac
+	sleep 10
 done
 gh pr merge "$branch" --squash
 
