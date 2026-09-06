@@ -27,6 +27,7 @@ type pointsRace struct {
 	heldZone map[string]int
 	points   map[string]float64
 	joined   map[string]bool
+	awarded  *sprint
 	finished bool
 	podium   []protocol.SprintScore
 }
@@ -56,8 +57,9 @@ func (p *pointsRace) advance(now time.Time, samples map[string]int, roster map[s
 	// Sprints ride the embedded roulette; each closed window pays 5/3/2/1.
 	before := p.roulette.window
 	p.roulette.advance(now, samples, roster)
-	if before != nil && p.roulette.window != before {
-		// A window just closed and rescheduled (or the game ended): award it.
+	if before != nil && now.After(before.endsAt) && p.awarded != before {
+		// A window just closed (including the final one): award it once.
+		p.awarded = before
 		for place, score := range podium(before.samples, roster) {
 			if place < len(sprintPoints) {
 				p.points[score.RiderID] += sprintPoints[place]
