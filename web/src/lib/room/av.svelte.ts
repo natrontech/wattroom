@@ -636,11 +636,14 @@ export function createRoomAv(slug: string) {
 		try {
 			const client = await import('livekit-client');
 			liveKit = client;
+			// No audioCaptureDefaults: this room never opens the mic through
+			// LiveKit. captureMic() does, with MIC_CONSTRAINTS (room/capture),
+			// and publishes the processed track — so a second copy here could
+			// only ever be a second source of truth that never takes effect,
+			// and this one was already missing autoGainControl (#671). Video
+			// IS LiveKit's own capture (setCameraEnabled), so its defaults
+			// stay.
 			room = new client.Room({
-				audioCaptureDefaults: {
-					noiseSuppression: true,
-					echoCancellation: true,
-				},
 				...(camId ? { videoCaptureDefaults: { deviceId: camId } } : {}),
 			});
 			wire(room, client);
