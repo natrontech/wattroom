@@ -52,6 +52,7 @@
 	} from '@lucide/svelte';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import { youMenu } from '$lib/nav/you-menu';
+	import { micMenu } from '$lib/room/mic-menu';
 	import { device } from '$lib/device.svelte';
 
 	let {
@@ -520,13 +521,20 @@
 					     nowhere else. The people column and the lounge header each
 					     drew their own copy of a row the rider already has pinned
 					     in front of them. -->
+					<!-- How you transmit belongs to the mic, not to a panel (#914).
+					     The threshold does not follow it here: that slider IS the
+					     meter, so the menu offers the way to it instead. -->
 					<button
 						onclick={() => onMic?.()}
 						class="flex flex-1 justify-center rounded py-1.5 {micOn
 							? 'text-z4'
 							: 'text-danger'}"
-						title={micOn ? 'mute' : 'unmute'}
+						title="{micOn ? 'mute' : 'unmute'} · {MENU_HINT}"
 						aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
+						{@attach contextMenu(() => {
+							const voice = roomConnection.current?.av;
+							return voice ? micMenu(voice, () => onMic?.()) : [];
+						})}
 					>
 						{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
 					</button>

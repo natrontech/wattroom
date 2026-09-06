@@ -1,0 +1,1 @@
+- Right-clicking your microphone now switches between voice activation and push-to-talk, and offers the way to the gate meter — instead of three clicks into the Sound panel. The threshold itself stays there, where you can see your own level against it.

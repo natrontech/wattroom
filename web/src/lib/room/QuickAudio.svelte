@@ -16,25 +16,20 @@
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { deviceOptions } from '$lib/room/device-options';
+	import { openSoundPanel, soundPanel } from '$lib/room/sound-panel.svelte';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
 	// the mic and the camera it belongs with.
 	let { compact = false }: { compact?: boolean } = $props();
 
-	let open = $state(false);
 	const av = $derived(roomConnection.current?.av);
-
-	// The store only re-reads devices after a connect or a hot-plug, and this
-	// panel opens before either — so ask the browser on the way in (#658).
-	function show() {
-		open = true;
-		void av?.refreshDevices();
-	}
+	// The mic's menu opens this too (#914), so the flag lives outside.
+	const open = $derived(soundPanel.open);
 </script>
 
 {#if av}
 	<button
-		onclick={show}
+		onclick={openSoundPanel}
 		aria-expanded={open}
 		class={compact
 			? 'text-muted/50 hover:text-muted flex flex-1 justify-center rounded py-1.5'
@@ -47,7 +42,10 @@
 
 {#if open && av}
 	{@const voice = av}
-	<Modal label="Sound — the mix and your gate" onclose={() => (open = false)}>
+	<Modal
+		label="Sound — the mix and your gate"
+		onclose={() => (soundPanel.open = false)}
+	>
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">
 			The levels you reach for mid-ride. Everything else lives on <a
@@ -137,8 +135,9 @@
 		</div>
 
 		<div class="mt-5 flex justify-end">
-			<button onclick={() => (open = false)} class="btn btn-secondary"
-				>Done</button
+			<button
+				onclick={() => (soundPanel.open = false)}
+				class="btn btn-secondary">Done</button
 			>
 		</div>
 	</Modal>
