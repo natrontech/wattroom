@@ -17,7 +17,9 @@
 	} from '$lib/messages/unread-marks';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
-	import { Headphones, Search, Users } from '@lucide/svelte';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Search from '@lucide/svelte/icons/search';
+	import Users from '@lucide/svelte/icons/users';
 
 	let { active = '' }: { active?: string } = $props();
 

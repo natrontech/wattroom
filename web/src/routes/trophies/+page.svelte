@@ -2,7 +2,7 @@
 	// The trophy case (#467): the level's receipts. Where the XP came from,
 	// the energy behind it, the medals, the shelf. Every number is the
 	// server's; docs/SPEC.md decides the rules and this page repeats them.
-	import { Zap } from '@lucide/svelte';
+	import Zap from '@lucide/svelte/icons/zap';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';

@@ -70,19 +70,17 @@
 	} from '$lib/messages/unread-marks';
 	import { missedSince } from '$lib/room/unread';
 	import { toasts } from '$lib/toast.svelte';
-	import {
-		BellOff,
-		CheckCheck,
-		ChevronLeft,
-		Headphones,
-		Image as ImageIcon,
-		LogOut,
-		Menu,
-		MessagesSquare,
-		Radio,
-		Search,
-		UserRound,
-	} from '@lucide/svelte';
+	import BellOff from '@lucide/svelte/icons/bell-off';
+	import CheckCheck from '@lucide/svelte/icons/check-check';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import Menu from '@lucide/svelte/icons/menu';
+	import MessagesSquare from '@lucide/svelte/icons/messages-square';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Search from '@lucide/svelte/icons/search';
+	import UserRound from '@lucide/svelte/icons/user-round';
 	import {
 		backlog,
 		dmUnread,

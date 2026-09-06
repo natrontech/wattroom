@@ -15,7 +15,10 @@
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import { apiBlob } from '$lib/api';
 	import { zoneSeconds } from '$lib/ride/stats';
-	import { ArrowLeft, Award, Download, Trash2 } from '@lucide/svelte';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Award from '@lucide/svelte/icons/award';
+	import Download from '@lucide/svelte/icons/download';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const id = $derived(page.params.id ?? '');
 	let ride = $state<RideDetail | null>(null);

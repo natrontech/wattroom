@@ -1,12 +1,10 @@
-import {
-	Dices,
-	Flame,
-	Target,
-	TrendingUp,
-	Star,
-	Users,
-	Zap,
-} from '@lucide/svelte';
+import Dices from '@lucide/svelte/icons/dices';
+import Flame from '@lucide/svelte/icons/flame';
+import Target from '@lucide/svelte/icons/target';
+import TrendingUp from '@lucide/svelte/icons/trending-up';
+import Star from '@lucide/svelte/icons/star';
+import Users from '@lucide/svelte/icons/users';
+import Zap from '@lucide/svelte/icons/zap';
 import type { Icon } from '$lib/icons';
 
 /**

@@ -1,4 +1,6 @@
-import { Award, Medal, Trophy } from '@lucide/svelte';
+import Award from '@lucide/svelte/icons/award';
+import Medal from '@lucide/svelte/icons/medal';
+import Trophy from '@lucide/svelte/icons/trophy';
 import type { Icon } from '$lib/icons';
 
 /**

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Coffee } from '@lucide/svelte';
+	import Coffee from '@lucide/svelte/icons/coffee';
 	import { presetById } from '$lib/avatars';
 	import { levelFromXp, levelProgress } from '$lib/level';
 	import RidingBars from '$lib/components/RidingBars.svelte';

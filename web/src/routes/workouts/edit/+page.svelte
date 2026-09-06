@@ -12,7 +12,7 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
-	import { GripVertical } from '@lucide/svelte';
+	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byId, library } from '$lib/workout/library';

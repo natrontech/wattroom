@@ -1,12 +1,10 @@
 <script lang="ts">
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import {
-		ArrowRight,
-		CalendarClock,
-		ChartColumn,
-		Plus,
-		Radio,
-	} from '@lucide/svelte';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import ChartColumn from '@lucide/svelte/icons/chart-column';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Radio from '@lucide/svelte/icons/radio';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';

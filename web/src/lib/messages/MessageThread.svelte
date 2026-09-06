@@ -4,18 +4,16 @@
 	// there, the way in) and a DM's (where they are) stay with the caller —
 	// what differs surface to surface is what a line IS and what you can do
 	// to it, not how the log scrolls or the box sends.
-	import {
-		CalendarClock,
-		Copy,
-		Image as ImageIcon,
-		ImagePlay,
-		ListPlus,
-		Music,
-		Pencil,
-		RotateCw,
-		ScreenShare,
-		SmilePlus,
-	} from '@lucide/svelte';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Copy from '@lucide/svelte/icons/copy';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import ImagePlay from '@lucide/svelte/icons/image-play';
+	import ListPlus from '@lucide/svelte/icons/list-plus';
+	import Music from '@lucide/svelte/icons/music';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import RotateCw from '@lucide/svelte/icons/rotate-cw';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import type { Snippet } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';

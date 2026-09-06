@@ -1,12 +1,10 @@
 <script lang="ts">
-	import {
-		FastForward,
-		Pause,
-		Play,
-		Rewind,
-		SkipForward,
-		Volume2,
-	} from '@lucide/svelte';
+	import FastForward from '@lucide/svelte/icons/fast-forward';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Play from '@lucide/svelte/icons/play';
+	import Rewind from '@lucide/svelte/icons/rewind';
+	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { page } from '$app/state';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import { MUSIC_FADER } from '$lib/sound/fader';

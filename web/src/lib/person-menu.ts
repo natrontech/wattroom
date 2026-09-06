@@ -3,13 +3,11 @@
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a room say the same words in the same order (#486).
  */
-import {
-	BellRing,
-	MessageSquare,
-	User,
-	UserPlus,
-	Volume2,
-} from '@lucide/svelte';
+import BellRing from '@lucide/svelte/icons/bell-ring';
+import MessageSquare from '@lucide/svelte/icons/message-square';
+import User from '@lucide/svelte/icons/user';
+import UserPlus from '@lucide/svelte/icons/user-plus';
+import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
 import type { MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';

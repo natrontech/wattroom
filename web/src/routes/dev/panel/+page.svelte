@@ -3,24 +3,22 @@
 	// Today's column stacks roster + jukebox + chat in 320 px and each of the
 	// three fights the other two for height. Static data, no room state.
 	import Avatar from '$lib/components/Avatar.svelte';
-	import {
-		Bell,
-		ChevronDown,
-		ChevronRight,
-		Crown,
-		Flame,
-		Headphones,
-		ListPlus,
-		MessageSquare,
-		Mic,
-		MicOff,
-		Music,
-		Pause,
-		Pencil,
-		SkipForward,
-		Video,
-		Volume2,
-	} from '@lucide/svelte';
+	import Bell from '@lucide/svelte/icons/bell';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Crown from '@lucide/svelte/icons/crown';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import ListPlus from '@lucide/svelte/icons/list-plus';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import Mic from '@lucide/svelte/icons/mic';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import Music from '@lucide/svelte/icons/music';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import Video from '@lucide/svelte/icons/video';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
 
 	type Rider = {
 		name: string;

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { X, ZoomIn, ZoomOut } from '@lucide/svelte';
+	import X from '@lucide/svelte/icons/x';
+	import ZoomIn from '@lucide/svelte/icons/zoom-in';
+	import ZoomOut from '@lucide/svelte/icons/zoom-out';
 	import { countModal } from '$lib/modals.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { closeImage, image, toggleActual } from './viewer.svelte';

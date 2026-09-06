@@ -31,7 +31,7 @@
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { activePlace } from '$lib/nav/pages';
 	import { openMember } from '$lib/nav/open-member';
-	import { Menu } from '@lucide/svelte';
+	import Menu from '@lucide/svelte/icons/menu';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';

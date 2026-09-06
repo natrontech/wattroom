@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
-	import {
-		ArrowDown,
-		ArrowUp,
-		ThumbsUp,
-		Trash2,
-		ChevronDown,
-		ChevronUp,
-		RotateCcw,
-		X,
-	} from '@lucide/svelte';
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import X from '@lucide/svelte/icons/x';
 	import type { JukeboxEntry } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 

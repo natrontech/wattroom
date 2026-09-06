@@ -8,7 +8,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { gameMode } from '$lib/room/modes';
 	import { PLACES } from '$lib/room/podium';
-	import { Heart } from '@lucide/svelte';
+	import Heart from '@lucide/svelte/icons/heart';
 	import type { GameState, Rider } from '$lib/protocol';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;

@@ -17,14 +17,12 @@
 	} from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import {
-		Award,
-		Crown,
-		Copy,
-		ShieldBan,
-		UserMinus,
-		UserX,
-	} from '@lucide/svelte';
+	import Award from '@lucide/svelte/icons/award';
+	import Crown from '@lucide/svelte/icons/crown';
+	import Copy from '@lucide/svelte/icons/copy';
+	import ShieldBan from '@lucide/svelte/icons/shield-ban';
+	import UserMinus from '@lucide/svelte/icons/user-minus';
+	import UserX from '@lucide/svelte/icons/user-x';
 	import { ACHIEVEMENTS } from '$lib/trophies/catalogue';
 
 	const room = useRoom();

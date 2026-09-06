@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { levelFromXp } from '$lib/level';
-	import { Copy, MessageCircle, Radio, UserX } from '@lucide/svelte';
+	import Copy from '@lucide/svelte/icons/copy';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
+	import Radio from '@lucide/svelte/icons/radio';
+	import UserX from '@lucide/svelte/icons/user-x';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import {

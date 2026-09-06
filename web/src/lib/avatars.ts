@@ -3,20 +3,18 @@
  * server stores only the id. Colors are zone/theme tokens (never --color-watt:
  * that accent marks live data, ADR-0005).
  */
-import {
-	Bike,
-	Cat,
-	Flame,
-	Ghost,
-	Mountain,
-	Music,
-	Rabbit,
-	Rocket,
-	Skull,
-	Snail,
-	Turtle,
-	Zap,
-} from '@lucide/svelte';
+import Bike from '@lucide/svelte/icons/bike';
+import Cat from '@lucide/svelte/icons/cat';
+import Flame from '@lucide/svelte/icons/flame';
+import Ghost from '@lucide/svelte/icons/ghost';
+import Mountain from '@lucide/svelte/icons/mountain';
+import Music from '@lucide/svelte/icons/music';
+import Rabbit from '@lucide/svelte/icons/rabbit';
+import Rocket from '@lucide/svelte/icons/rocket';
+import Skull from '@lucide/svelte/icons/skull';
+import Snail from '@lucide/svelte/icons/snail';
+import Turtle from '@lucide/svelte/icons/turtle';
+import Zap from '@lucide/svelte/icons/zap';
 
 export interface AvatarPreset {
 	id: string;

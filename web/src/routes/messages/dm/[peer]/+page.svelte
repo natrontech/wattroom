@@ -18,7 +18,8 @@
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { presence } from '$lib/presence.svelte';
 	import { roomOf, statusOf } from '$lib/status';
-	import { ChevronLeft, Radio } from '@lucide/svelte';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import Radio from '@lucide/svelte/icons/radio';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));

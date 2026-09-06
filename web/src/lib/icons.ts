@@ -1,28 +1,26 @@
 import type { Component } from 'svelte';
-import {
-	BicepsFlexed,
-	Bike,
-	Coffee,
-	Dumbbell,
-	Flag,
-	Flame,
-	Ghost,
-	HandMetal,
-	Heart,
-	Moon,
-	Mountain,
-	PartyPopper,
-	Rocket,
-	Skull,
-	Snowflake,
-	Sparkles,
-	Sun,
-	ThumbsUp,
-	Tornado,
-	Trophy,
-	Zap,
-	type IconProps,
-} from '@lucide/svelte';
+import BicepsFlexed from '@lucide/svelte/icons/biceps-flexed';
+import Bike from '@lucide/svelte/icons/bike';
+import Coffee from '@lucide/svelte/icons/coffee';
+import Dumbbell from '@lucide/svelte/icons/dumbbell';
+import Flag from '@lucide/svelte/icons/flag';
+import Flame from '@lucide/svelte/icons/flame';
+import Ghost from '@lucide/svelte/icons/ghost';
+import HandMetal from '@lucide/svelte/icons/hand-metal';
+import Heart from '@lucide/svelte/icons/heart';
+import Moon from '@lucide/svelte/icons/moon';
+import Mountain from '@lucide/svelte/icons/mountain';
+import PartyPopper from '@lucide/svelte/icons/party-popper';
+import Rocket from '@lucide/svelte/icons/rocket';
+import Skull from '@lucide/svelte/icons/skull';
+import Snowflake from '@lucide/svelte/icons/snowflake';
+import Sparkles from '@lucide/svelte/icons/sparkles';
+import Sun from '@lucide/svelte/icons/sun';
+import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
+import Tornado from '@lucide/svelte/icons/tornado';
+import Trophy from '@lucide/svelte/icons/trophy';
+import Zap from '@lucide/svelte/icons/zap';
+import { type IconProps } from '@lucide/svelte';
 
 export type Icon = Component<IconProps>;
 

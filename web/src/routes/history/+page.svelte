@@ -24,7 +24,9 @@
 	} from '$lib/context-menu.svelte';
 	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
 	import { untrack } from 'svelte';
-	import { Lock, Trash2, Users } from '@lucide/svelte';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Users from '@lucide/svelte/icons/users';
 	import type { PageData } from './$types';
 	import type { ServerRide } from './+page';
 

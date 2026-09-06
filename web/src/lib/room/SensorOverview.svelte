@@ -41,7 +41,10 @@
 		sensorState,
 	} from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
-	import { Bike, HeartPulse, RotateCw, Zap } from '@lucide/svelte';
+	import Bike from '@lucide/svelte/icons/bike';
+	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
+	import RotateCw from '@lucide/svelte/icons/rotate-cw';
+	import Zap from '@lucide/svelte/icons/zap';
 
 	let {
 		trainer,

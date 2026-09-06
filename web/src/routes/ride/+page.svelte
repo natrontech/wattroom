@@ -35,7 +35,7 @@
 		type RideBuffer,
 	} from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-	import { Flag } from '@lucide/svelte';
+	import Flag from '@lucide/svelte/icons/flag';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default

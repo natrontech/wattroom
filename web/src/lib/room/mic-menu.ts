@@ -18,7 +18,10 @@
  * number in a menu would not be settable, so the menu opens the surface that
  * has the meter instead.
  */
-import { Mic, MicOff, Radio, SlidersHorizontal } from '@lucide/svelte';
+import Mic from '@lucide/svelte/icons/mic';
+import MicOff from '@lucide/svelte/icons/mic-off';
+import Radio from '@lucide/svelte/icons/radio';
+import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import type { MenuEntry } from '$lib/context-menu.svelte';
 import { type Device, deviceOptions } from '$lib/room/device-options';
 import { openSoundPanel } from '$lib/room/sound-panel.svelte';

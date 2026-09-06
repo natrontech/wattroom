@@ -8,7 +8,7 @@
 	// and how many of the catalogue you hold; someone else's shows the badges
 	// they have earned and nothing more — progress is their current week, and
 	// a completion score is a ladder wearing a smaller hat.
-	import { Lock } from '@lucide/svelte';
+	import Lock from '@lucide/svelte/icons/lock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { ACHIEVEMENTS } from './catalogue';
 	import type { TrophyAchievement } from './trophies';

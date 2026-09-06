@@ -16,7 +16,8 @@
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import { Copy, SmilePlus } from '@lucide/svelte';
+	import Copy from '@lucide/svelte/icons/copy';
+	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import type { MockRider } from '../room/mockRoom.svelte';
 
 	// A stand-in screenshot, deliberately bigger than any window: fit-to-window

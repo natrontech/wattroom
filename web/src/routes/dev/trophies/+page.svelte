@@ -3,23 +3,21 @@
 	// ones, XP sources, and a room event. Every number here is a PROPOSAL —
 	// docs/SPEC.md decides, never this file.
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import {
-		Award,
-		Bike,
-		CalendarClock,
-		Coffee,
-		Flame,
-		Headphones,
-		Lock,
-		Mic,
-		Moon,
-		Music,
-		Rocket,
-		Skull,
-		Sunrise,
-		Users,
-		Zap,
-	} from '@lucide/svelte';
+	import Award from '@lucide/svelte/icons/award';
+	import Bike from '@lucide/svelte/icons/bike';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Coffee from '@lucide/svelte/icons/coffee';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Mic from '@lucide/svelte/icons/mic';
+	import Moon from '@lucide/svelte/icons/moon';
+	import Music from '@lucide/svelte/icons/music';
+	import Rocket from '@lucide/svelte/icons/rocket';
+	import Skull from '@lucide/svelte/icons/skull';
+	import Sunrise from '@lucide/svelte/icons/sunrise';
+	import Users from '@lucide/svelte/icons/users';
+	import Zap from '@lucide/svelte/icons/zap';
 
 	const medals = { gold: 7, silver: 9, bronze: 7 };
 	const achievements = [

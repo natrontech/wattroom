@@ -1,14 +1,12 @@
 <script lang="ts">
-	import {
-		FastForward,
-		ListX,
-		Pause,
-		Play,
-		Rewind,
-		SkipBack,
-		SkipForward,
-		Volume2,
-	} from '@lucide/svelte';
+	import FastForward from '@lucide/svelte/icons/fast-forward';
+	import ListX from '@lucide/svelte/icons/list-x';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Play from '@lucide/svelte/icons/play';
+	import Rewind from '@lucide/svelte/icons/rewind';
+	import SkipBack from '@lucide/svelte/icons/skip-back';
+	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
