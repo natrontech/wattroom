@@ -22,3 +22,23 @@ export const DUCK_HOLD_MS = 600;
 
 /** Up: slow enough to read as the room settling, never a snap. */
 export const DUCK_RELEASE_MS = 400;
+
+/**
+ * Whether the room should be ducking right now, from LiveKit's speaking map.
+ * The music and the cue bus both ask this — one duck, one rule, the way the
+ * depth and the ballistics above already have one home (#675).
+ *
+ * `myId` is left out unless `ownVoice` is set: your own voice pulling the
+ * music down under you is a taste, not the default (#867). An empty `myId`
+ * (not signed in yet, mock surfaces) ducks under every voice, which is the
+ * safe direction — a rider is never made to talk over music they can't dip.
+ */
+export function shouldDuck(
+	speaking: Record<string, boolean | undefined>,
+	myId: string | undefined,
+	ownVoice: boolean,
+): boolean {
+	return Object.entries(speaking).some(
+		([id, active]) => active && (ownVoice || id !== myId),
+	);
+}
