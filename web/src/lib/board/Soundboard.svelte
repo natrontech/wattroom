@@ -28,7 +28,7 @@
 		stopAll,
 	} from '$lib/sound/board.svelte';
 	import { UNIT_FADER } from '$lib/sound/fader';
-	import { waveform } from '$lib/board/waveform';
+	import { learn, shapeOf } from '$lib/board/shapes.svelte';
 	import ClipLibrary from '$lib/board/ClipLibrary.svelte';
 	import type { Board } from '$lib/protocol';
 
@@ -128,8 +128,11 @@
 		})),
 	);
 
-	function bars(clip: Clip): { x: number; y: number; h: number }[] {
-		return waveform(clip.id, 20);
+	// The real envelope once the audio has been decoded for playback, the
+	// id-derived shape until then — the pad never waits to draw.
+	function bars(clip: Clip) {
+		learn(clip.id, 20);
+		return shapeOf(clip.id, 20);
 	}
 </script>
 
