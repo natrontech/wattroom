@@ -10,6 +10,7 @@
 	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
+	import { noteNewAccount } from '$lib/auth/new-account';
 	import { takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
 	// Side-effect imports: both apply their stored choice to :root the moment
@@ -34,13 +35,14 @@
 	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
-	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 
 	let { children } = $props();
 
 	void account.load();
+	// Before the routing effect below replaces the URL and takes ?new= with it.
+	noteNewAccount(page.url.search);
 
 	// DM arrivals blip and badge on every page, not just where the friends
 	// panel mounts (audit #219).
@@ -343,8 +345,6 @@
 <!-- App-wide, framed or not — a toast must be able to land anywhere, and a
      picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
 <VerifyEmailGate />
-
-<NewAccountNotice />
 
 <Toasts />
 <ImageViewer />
