@@ -44,7 +44,7 @@
 				<span class="text-muted truncate text-xs">{image.alt}</span>
 				<button
 					onclick={toggleActual}
-					class="bg-surface-raised ring-ink/10 text-muted hover:text-ink ml-auto grid h-11 w-11 place-items-center rounded-full ring-1"
+					class="bg-surface-raised ring-ink/10 text-muted hover:text-ink icon-btn icon-btn-lg ml-auto ring-1"
 					aria-label={image.actual ? 'Fit to the window' : 'Show at full size'}
 					title={image.actual ? 'Fit to the window' : 'Show at full size'}
 				>
@@ -54,7 +54,7 @@
 				</button>
 				<button
 					onclick={closeImage}
-					class="bg-surface-raised ring-ink/10 text-muted hover:text-ink grid h-11 w-11 place-items-center rounded-full ring-1"
+					class="bg-surface-raised ring-ink/10 text-muted hover:text-ink icon-btn icon-btn-lg ring-1"
 					aria-label="Close the image"
 					title="Close the image (Esc)"><X size={20} /></button
 				>

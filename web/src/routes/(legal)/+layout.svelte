@@ -14,9 +14,7 @@
 	<div class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16">
 		<header class="flex items-center justify-between">
 			<a href="/" aria-label="WattRoom home"><Logo size={28} wordmark /></a>
-			<a href="/home" class="text-muted hover:text-ink text-xs underline"
-				>to the rooms</a
-			>
+			<a href="/home" class="btn-link text-xs">to the rooms</a>
 		</header>
 
 		{@render children()}

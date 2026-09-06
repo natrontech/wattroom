@@ -99,13 +99,11 @@
 										movingId = movingId === entry.id ? null : entry.id;
 										moveAt = '';
 									}}
-									class="text-muted hover:text-ink text-[11px] underline"
-									>move</button
+									class="btn-link text-[11px]">move</button
 								>
 								<button
 									onclick={() => room.unschedule(entry.id)}
-									class="text-muted hover:text-ink text-[11px] underline"
-									>remove</button
+									class="btn-link text-[11px]">remove</button
 								>
 							{/if}
 						</span>
@@ -160,9 +158,7 @@
 
 	{#if room.icsToken}
 		<div class="border-ink/5 mt-4 flex flex-wrap gap-4 border-t pt-3">
-			<button
-				onclick={() => room.copyIcsUrl()}
-				class="text-muted hover:text-ink text-[11px] underline"
+			<button onclick={() => room.copyIcsUrl()} class="btn-link text-[11px]"
 				>subscribe to this room</button
 			>
 		</div>

@@ -513,8 +513,7 @@
 					>
 					<button
 						onclick={() => (freshToken = null)}
-						class="text-muted hover:text-ink mt-3 text-xs underline"
-						>Done, hide it</button
+						class="btn-link mt-3 text-xs">Done, hide it</button
 					>
 				</div>
 			{/if}
@@ -531,8 +530,7 @@
 							</span>
 							<button
 								onclick={() => void revokeToken(entry.id)}
-								class="text-muted hover:text-ink ml-auto underline"
-								>Revoke</button
+								class="btn-link ml-auto">Revoke</button
 							>
 						</li>
 					{/each}
@@ -674,8 +672,7 @@
 				<a href="/api/me/export" class="btn btn-secondary">Export everything</a>
 				<button
 					onclick={() => account.signOut()}
-					class="text-muted hover:text-ink self-center text-xs underline"
-					>Sign out</button
+					class="btn-link self-center text-xs">Sign out</button
 				>
 			</div>
 

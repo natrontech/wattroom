@@ -369,7 +369,7 @@
 			<button
 				onclick={() => ((cheers = []), void save())}
 				disabled={busy}
-				class="text-muted hover:text-ink mt-3 text-xs underline disabled:opacity-40"
+				class="btn-link mt-3 text-xs disabled:opacity-40"
 				>Reset to the base set</button
 			>
 		</section>

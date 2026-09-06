@@ -192,6 +192,25 @@ body {
 	@apply px-5 py-3 font-semibold;
 }
 
+/* An icon on its own: the SHAPE, with the skin left at the call site the way
+ * btn and btn-ghost split it (#684). Seventeen buttons had spelled this out
+ * by hand, which is why a change to disabled styling or to the mid-ride tap
+ * target had nowhere to land. */
+@utility icon-btn {
+	@apply grid h-10 w-10 shrink-0 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-40;
+}
+/* 44 px: ux.md's mid-ride minimum, on a screen at arm's length. Anything a
+ * rider taps while pedalling gets this size, and now it has a name. */
+@utility icon-btn-lg {
+	@apply h-11 w-11;
+}
+
+/* The quiet secondary action — "Measure it with a ramp test", "See all".
+ * Sizing and margin stay at the call site, like input. */
+@utility btn-link {
+	@apply text-muted hover:text-ink underline;
+}
+
 /* Text field look. Width/margin at the call site. */
 @utility input {
 	@apply border-muted/25 placeholder:text-muted/60 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;

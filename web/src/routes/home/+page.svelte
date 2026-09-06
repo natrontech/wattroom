@@ -228,9 +228,8 @@
 			<Banner tone="error">
 				{error}
 				{#snippet action()}
-					<button
-						onclick={() => location.reload()}
-						class="text-muted hover:text-ink text-xs underline">Retry</button
+					<button onclick={() => location.reload()} class="btn-link text-xs"
+						>Retry</button
 					>
 				{/snippet}
 			</Banner>
@@ -396,10 +395,7 @@
 							>
 								Recent rides
 							</h2>
-							<a
-								href="/history"
-								class="text-muted hover:text-ink ml-auto text-xs underline"
-								>All rides →</a
+							<a href="/history" class="btn-link ml-auto text-xs">All rides →</a
 							>
 						</div>
 						<ul class="panel divide-ink/5 mt-3 divide-y">
@@ -475,10 +471,7 @@
 						>
 							Friends
 						</h2>
-						<a
-							href="/friends"
-							class="text-muted hover:text-ink ml-auto text-xs underline"
-							>All friends →</a
+						<a href="/friends" class="btn-link ml-auto text-xs">All friends →</a
 						>
 					</div>
 				</section>

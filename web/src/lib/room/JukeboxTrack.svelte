@@ -152,7 +152,7 @@
 			<button
 				onclick={onRequeue}
 				aria-label="queue this again"
-				class="text-muted hover:text-ink grid h-10 w-10 shrink-0 place-items-center rounded-full"
+				class="text-muted hover:text-ink icon-btn"
 				><RotateCcw size={15} /></button
 			>
 		{/if}
@@ -160,8 +160,7 @@
 			<button
 				onclick={onRemove}
 				aria-label="remove from the queue"
-				class="text-muted hover:text-danger grid h-10 w-10 shrink-0 place-items-center rounded-full"
-				><X size={15} /></button
+				class="text-muted hover:text-danger icon-btn"><X size={15} /></button
 			>
 		{/if}
 	</div>

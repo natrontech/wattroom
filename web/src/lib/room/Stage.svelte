@@ -215,9 +215,8 @@
 		>
 			<GripHorizontal size={14} class="shrink-0 opacity-60" />
 			<span class="truncate">{active?.label ?? 'stage'}</span>
-			<button
-				onclick={() => (popped = false)}
-				class="hover:text-ink ml-auto shrink-0 underline">dock</button
+			<button onclick={() => (popped = false)} class="btn-link ml-auto shrink-0"
+				>dock</button
 			>
 		</div>
 	{/if}
