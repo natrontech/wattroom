@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ExternalLink, Link } from '@lucide/svelte';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import Link from '@lucide/svelte/icons/link';
 	import {
 		contextMenu,
 		MENU_HINT,

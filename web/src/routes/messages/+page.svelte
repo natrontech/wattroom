@@ -2,7 +2,7 @@
 	// No thread picked: teach where the list is. The sidebar IS the list
 	// (#484) — this page never repeats it. Below md the layout shows the
 	// thread list instead of this, because the sidebar is a drawer there.
-	import { MessagesSquare } from '@lucide/svelte';
+	import MessagesSquare from '@lucide/svelte/icons/messages-square';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 </script>
 

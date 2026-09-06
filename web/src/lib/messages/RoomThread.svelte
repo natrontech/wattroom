@@ -9,7 +9,10 @@
 	// The body (timeline, states, composer) is MessageThread.svelte, shared
 	// with a DM's (#672); this wrapper supplies what only a room has: events
 	// on the timeline, reactions, and queuing a link to the jukebox.
-	import { ChevronLeft, Headphones, Radio, Users } from '@lucide/svelte';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Users from '@lucide/svelte/icons/users';
 	import { api } from '$lib/api';
 	import { people, type Face } from '$lib/people.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';

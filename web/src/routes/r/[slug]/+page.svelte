@@ -17,17 +17,15 @@
 	import { clampSize, dividerDrag } from '$lib/divider';
 	import { toasts } from '$lib/toast.svelte';
 	import { goto } from '$app/navigation';
-	import {
-		Focus,
-		CalendarClock,
-		Columns2,
-		MonitorPlay,
-		MonitorUp,
-		PanelRight,
-		ScreenShare,
-		ShieldBan,
-		UserPlus,
-	} from '@lucide/svelte';
+	import Focus from '@lucide/svelte/icons/focus';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Columns2 from '@lucide/svelte/icons/columns-2';
+	import MonitorPlay from '@lucide/svelte/icons/monitor-play';
+	import MonitorUp from '@lucide/svelte/icons/monitor-up';
+	import PanelRight from '@lucide/svelte/icons/panel-right';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import ShieldBan from '@lucide/svelte/icons/shield-ban';
+	import UserPlus from '@lucide/svelte/icons/user-plus';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);

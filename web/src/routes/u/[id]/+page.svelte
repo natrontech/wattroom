@@ -25,18 +25,16 @@
 	import { toasts } from '$lib/toast.svelte';
 	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
 	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
-	import {
-		Award,
-		Check,
-		Eye,
-		Lock,
-		MessageSquare,
-		Pencil,
-		Radio,
-		Trophy,
-		UserPlus,
-		Users,
-	} from '@lucide/svelte';
+	import Award from '@lucide/svelte/icons/award';
+	import Check from '@lucide/svelte/icons/check';
+	import Eye from '@lucide/svelte/icons/eye';
+	import Lock from '@lucide/svelte/icons/lock';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import UserPlus from '@lucide/svelte/icons/user-plus';
+	import Users from '@lucide/svelte/icons/users';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 

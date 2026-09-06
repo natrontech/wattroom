@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X } from '@lucide/svelte';
+	import X from '@lucide/svelte/icons/x';
 
 	// The picture about to be sent, with the one way out (#279). Nothing
 	// while there is none, so a composer can always render it.

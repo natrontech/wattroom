@@ -21,7 +21,7 @@
 		VOICE_DOT,
 	} from '$lib/room/presence-marks';
 	import { STRIP_MAX, orderBySpoke } from './room-strip';
-	import { MicOff } from '@lucide/svelte';
+	import MicOff from '@lucide/svelte/icons/mic-off';
 
 	let { pathname }: { pathname: string } = $props();
 

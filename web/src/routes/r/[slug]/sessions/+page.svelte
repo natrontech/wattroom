@@ -10,7 +10,8 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
-	import { CalendarClock, Plus } from '@lucide/svelte';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Plus from '@lucide/svelte/icons/plus';
 
 	const room = useRoom();
 

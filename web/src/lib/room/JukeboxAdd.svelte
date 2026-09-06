@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus } from '@lucide/svelte';
+	import Plus from '@lucide/svelte/icons/plus';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import {
 		queueResolvedPlaylist,

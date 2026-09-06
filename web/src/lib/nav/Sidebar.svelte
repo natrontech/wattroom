@@ -36,20 +36,18 @@
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import type { AvError } from '$lib/room/av.svelte';
-	import {
-		MessageSquare,
-		Coffee,
-		Headphones,
-		LogOut,
-		Mic,
-		MicOff,
-		Plus,
-		ScreenShare,
-		ScreenShareOff,
-		Settings,
-		Video,
-		VideoOff,
-	} from '@lucide/svelte';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import Coffee from '@lucide/svelte/icons/coffee';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import Mic from '@lucide/svelte/icons/mic';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import Plus from '@lucide/svelte/icons/plus';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
+	import Settings from '@lucide/svelte/icons/settings';
+	import Video from '@lucide/svelte/icons/video';
+	import VideoOff from '@lucide/svelte/icons/video-off';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/room/mic-menu';

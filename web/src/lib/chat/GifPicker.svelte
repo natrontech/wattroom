@@ -6,7 +6,8 @@
 	//
 	// Picking posts the GIF's URL as an ordinary message, which MessageText
 	// then renders as the GIF (#279). Nothing here knows how chat sends.
-	import { RotateCw, Search } from '@lucide/svelte';
+	import RotateCw from '@lucide/svelte/icons/rotate-cw';
+	import Search from '@lucide/svelte/icons/search';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';

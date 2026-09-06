@@ -17,7 +17,7 @@
 	} from '$lib/sound/ducking';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
-	import { VolumeX } from '@lucide/svelte';
+	import VolumeX from '@lucide/svelte/icons/volume-x';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the

@@ -1,15 +1,13 @@
 <script lang="ts">
-	import {
-		GripHorizontal,
-		Maximize,
-		Music,
-		PictureInPicture2,
-		RotateCcw,
-		ScreenShare,
-		Video as VideoIcon,
-		ZoomIn,
-		ZoomOut,
-	} from '@lucide/svelte';
+	import GripHorizontal from '@lucide/svelte/icons/grip-horizontal';
+	import Maximize from '@lucide/svelte/icons/maximize';
+	import Music from '@lucide/svelte/icons/music';
+	import PictureInPicture2 from '@lucide/svelte/icons/picture-in-picture-2';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import VideoIcon from '@lucide/svelte/icons/video';
+	import ZoomIn from '@lucide/svelte/icons/zoom-in';
+	import ZoomOut from '@lucide/svelte/icons/zoom-out';
 	import { dragPane } from '$lib/pane';
 	import { offerSeat, STAGE_SEAT } from '$lib/room/stage-slot.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';

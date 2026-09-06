@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { Copy, Gauge, Pencil, Play, Trash2 } from '@lucide/svelte';
+	import Copy from '@lucide/svelte/icons/copy';
+	import Gauge from '@lucide/svelte/icons/gauge';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Play from '@lucide/svelte/icons/play';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { goto } from '$app/navigation';
 	import {
 		contextMenu,

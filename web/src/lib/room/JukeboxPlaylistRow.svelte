@@ -1,13 +1,11 @@
 <script lang="ts">
-	import {
-		ChevronDown,
-		ChevronUp,
-		ListMusic,
-		Pencil,
-		Star,
-		Trash2,
-		X,
-	} from '@lucide/svelte';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import ListMusic from '@lucide/svelte/icons/list-music';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import Star from '@lucide/svelte/icons/star';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import X from '@lucide/svelte/icons/x';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { thumbnailFor } from '$lib/room/jukebox-add';

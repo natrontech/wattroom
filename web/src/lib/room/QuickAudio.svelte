@@ -9,7 +9,7 @@
 	// with the camera picker, push-to-talk's explanation and the rest. A modal
 	// rather than a popover because the targets have to survive being tapped
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
-	import { Sliders } from '@lucide/svelte';
+	import Sliders from '@lucide/svelte/icons/sliders';
 	import Modal from '$lib/components/Modal.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import GateTune from '$lib/room/GateTune.svelte';

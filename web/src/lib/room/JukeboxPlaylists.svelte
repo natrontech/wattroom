@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Plus, Shuffle, ListOrdered } from '@lucide/svelte';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Shuffle from '@lucide/svelte/icons/shuffle';
+	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';

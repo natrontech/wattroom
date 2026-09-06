@@ -8,7 +8,8 @@
 	// jukebox player, and RMF forbids drawing over it.
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { shareNotice } from '$lib/room/share-notice';
-	import { ScreenShareOff, MonitorUp } from '@lucide/svelte';
+	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
+	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import { goto } from '$app/navigation';
 
 	let {

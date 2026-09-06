@@ -5,19 +5,17 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
-	import {
-		Award,
-		Bike,
-		CalendarClock,
-		Eye,
-		Flame,
-		Lock,
-		MessageSquare,
-		Radio,
-		Trophy,
-		UserPlus,
-		Users,
-	} from '@lucide/svelte';
+	import Award from '@lucide/svelte/icons/award';
+	import Bike from '@lucide/svelte/icons/bike';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Eye from '@lucide/svelte/icons/eye';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Lock from '@lucide/svelte/icons/lock';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import UserPlus from '@lucide/svelte/icons/user-plus';
+	import Users from '@lucide/svelte/icons/users';
 
 	const rider = {
 		name: 'David Kneubühler',

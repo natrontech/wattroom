@@ -12,7 +12,11 @@
 	// ride does. Cancelling a countdown loses nothing and does not ask.
 	import { device } from '$lib/device.svelte';
 	import { useRoom } from '$lib/room/context';
-	import { Pause, Play, Radio, Square, Zap } from '@lucide/svelte';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Play from '@lucide/svelte/icons/play';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Square from '@lucide/svelte/icons/square';
+	import Zap from '@lucide/svelte/icons/zap';
 
 	let { compact = false }: { compact?: boolean } = $props();
 

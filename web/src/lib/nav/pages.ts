@@ -1,14 +1,12 @@
-import {
-	Activity,
-	CalendarClock,
-	ChartColumn,
-	History,
-	House,
-	MessageSquare,
-	MessagesSquare,
-	Settings,
-	Users,
-} from '@lucide/svelte';
+import Activity from '@lucide/svelte/icons/activity';
+import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+import ChartColumn from '@lucide/svelte/icons/chart-column';
+import History from '@lucide/svelte/icons/history';
+import House from '@lucide/svelte/icons/house';
+import MessageSquare from '@lucide/svelte/icons/message-square';
+import MessagesSquare from '@lucide/svelte/icons/messages-square';
+import Settings from '@lucide/svelte/icons/settings';
+import Users from '@lucide/svelte/icons/users';
 
 /**
  * The app's destinations, and the places inside a room. Both live in the one

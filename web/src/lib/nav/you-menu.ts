@@ -7,7 +7,10 @@
  * the dip touches music and cues alike — but both are *yours*, per device,
  * and this is the one object that is you on every screen.
  */
-import { Bell, ChevronsDown, Settings, User } from '@lucide/svelte';
+import Bell from '@lucide/svelte/icons/bell';
+import ChevronsDown from '@lucide/svelte/icons/chevrons-down';
+import Settings from '@lucide/svelte/icons/settings';
+import User from '@lucide/svelte/icons/user';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import { play } from '$lib/sound/cues';

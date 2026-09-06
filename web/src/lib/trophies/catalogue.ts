@@ -1,15 +1,13 @@
-import {
-	Bike,
-	Coffee,
-	Flame,
-	Headphones,
-	Moon,
-	Music,
-	Skull,
-	Sunrise,
-	Users,
-	Zap,
-} from '@lucide/svelte';
+import Bike from '@lucide/svelte/icons/bike';
+import Coffee from '@lucide/svelte/icons/coffee';
+import Flame from '@lucide/svelte/icons/flame';
+import Headphones from '@lucide/svelte/icons/headphones';
+import Moon from '@lucide/svelte/icons/moon';
+import Music from '@lucide/svelte/icons/music';
+import Skull from '@lucide/svelte/icons/skull';
+import Sunrise from '@lucide/svelte/icons/sunrise';
+import Users from '@lucide/svelte/icons/users';
+import Zap from '@lucide/svelte/icons/zap';
 import type { Icon } from '$lib/icons';
 
 /**

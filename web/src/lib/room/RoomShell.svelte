@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Users } from '@lucide/svelte';
+	import Users from '@lucide/svelte/icons/users';
 	import { changes } from '$lib/sound/changes';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';

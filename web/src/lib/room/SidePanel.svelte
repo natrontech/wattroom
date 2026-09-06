@@ -1,13 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import {
-		ChevronRight,
-		Crown,
-		Headphones,
-		Mic,
-		MicOff,
-		Video,
-	} from '@lucide/svelte';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Crown from '@lucide/svelte/icons/crown';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Mic from '@lucide/svelte/icons/mic';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import Video from '@lucide/svelte/icons/video';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import { contextMenu } from '$lib/context-menu.svelte';

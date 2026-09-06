@@ -8,7 +8,8 @@
 	} from '$lib/context-menu.svelte';
 	import { wkg } from '$lib/format';
 	import { personMenu } from '$lib/person-menu';
-	import { MicOff, ScreenShare } from '@lucide/svelte';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import {
 		AWAY_MARK,
 		MARK_SURFACE,

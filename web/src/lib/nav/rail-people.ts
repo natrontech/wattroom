@@ -11,7 +11,8 @@
  * stacking the names Discord-style would quadruple every idle room's height and
  * cost the rail the glance it exists for (ADR-0010).
  */
-import { User, Users } from '@lucide/svelte';
+import User from '@lucide/svelte/icons/user';
+import Users from '@lucide/svelte/icons/users';
 import type { MenuEntry } from '$lib/context-menu.svelte';
 import type { RailRoom } from '$lib/room/mockcompat';
 

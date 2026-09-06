@@ -2,7 +2,11 @@
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { Monitor, Moon, Sun, Gauge, Zap } from '@lucide/svelte';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import Moon from '@lucide/svelte/icons/moon';
+	import Sun from '@lucide/svelte/icons/sun';
+	import Gauge from '@lucide/svelte/icons/gauge';
+	import Zap from '@lucide/svelte/icons/zap';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
