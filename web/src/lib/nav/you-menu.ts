@@ -10,6 +10,7 @@
 import { Bell, ChevronsDown, Settings, User } from '@lucide/svelte';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
+import { deviceOptions } from '$lib/room/device-options';
 import { play } from '$lib/sound/cues';
 import { mixer } from '$lib/sound/mixer.svelte';
 
@@ -53,6 +54,27 @@ function duckFader(): MenuSlider | undefined {
 	};
 }
 
+/**
+ * Which device the voice comes out of (#920). There is no speaker button in
+ * the app to hang this on, and it is the same thing the cue level is: your
+ * ears. Only where the browser can switch sinks — Chrome can, Firefox and
+ * Safari cannot — because a control that cannot do anything should not be
+ * drawn (`ux.md`). Voice only, as the panel's own label says: the jukebox is
+ * an iframe and takes the system's output whatever this says.
+ */
+function speakers(): MenuEntry[] {
+	const av = roomConnection.current?.av;
+	if (!av?.canPickOutput || av.outs.length === 0) return [];
+	return [
+		'separator',
+		...deviceOptions(av.outs, 'Speakers').map((device): MenuEntry => ({
+			label: device.label,
+			hint: device.value === av.outId ? 'on' : undefined,
+			onSelect: () => av.setOut(device.value),
+		})),
+	];
+}
+
 export function youMenu(
 	id: string | undefined,
 	go: (href: string) => void,
@@ -69,5 +91,6 @@ export function youMenu(
 		'separator',
 		cueFader(),
 		...(duck ? [duck] : []),
+		...speakers(),
 	];
 }

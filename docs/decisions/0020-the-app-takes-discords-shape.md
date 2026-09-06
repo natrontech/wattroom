@@ -370,9 +370,10 @@ What does not change:
 - **The Sound panel stays**, and stays the second way in (`ux.md`: never only
   in a menu). Its rider list stops being a row of Reset buttons and becomes the
   faders themselves — the riders you have moved, adjustable there.
-- **The gate and the devices stay in it.** *(The cues and the duck depth were
-  in this list until #898 and #904, and the gate's MODE left for the mic in
-  #914 — see below.)*
+- **The gate threshold stays in it, with its meter.** *(Everything else in
+  this list has since left: the cues and the duck depth in #898 and #904, the
+  gate's MODE and then both device pickers to the mic and to you, #914 and
+  #920 — see below.)*
 - **The sidebar rail keeps its music fader.** It is the control that follows
   the music out of the room, which is the rail's whole job.
 
@@ -413,6 +414,21 @@ door could exist; one `QuickAudio` is mounted at a time, so there is still one
 modal. The general rule, then: *put the control on its object — unless the
 control needs a picture only one surface can draw, in which case put the way
 to that surface on the object.*
+
+**The device pickers followed the mode (#920)**, being the same kind of thing:
+which microphone you speak through is a choice belonging to the mic, and which
+device the voice comes out of is a choice belonging to your ears — there is no
+speaker object in the app, and the you-panel is already where the cue level
+lives. Both lists are built by `deviceOptions`, so a menu and the panel can
+never disagree about what an unnamed device is called, and the output list is
+drawn only where `setSinkId` exists (`av.canPickOutput`). This made the mic's
+menu the first one long enough to run off a screen, so `ContextMenuHost` grew
+a maximum height and scrolls; scrolling inside a menu already did not close
+it, because `scrollClosesMenu` only closes on a scroller containing the
+anchor.
+
+What is left in the Sound panel is the gate threshold and the mic test — a
+level that is a picture, and the button that makes the picture move.
 
 ## Consequences
 

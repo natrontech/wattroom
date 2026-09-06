@@ -15,6 +15,12 @@ const voice = (over: Partial<Parameters<typeof micMenu>[0]> = {}) => ({
 	micOn: true,
 	mode: 'gate' as const,
 	setMode: vi.fn(),
+	mics: [
+		{ deviceId: 'built-in', label: 'MacBook Pro Microphone' },
+		{ deviceId: 'usb', label: '' },
+	],
+	micId: 'built-in',
+	setMic: vi.fn(),
 	...over,
 });
 
@@ -38,6 +44,9 @@ describe('micMenu (#914)', () => {
 			['Mute', undefined],
 			['Voice activation', 'on'],
 			['Push to talk', undefined],
+			['System default', undefined],
+			['MacBook Pro Microphone', 'on'],
+			['Microphone 2', undefined],
 			['Tune your gate…', undefined],
 		]);
 		expect(gate.every((item) => !item.disabled)).toBe(true);
@@ -47,7 +56,20 @@ describe('micMenu (#914)', () => {
 			undefined,
 			'on',
 			undefined,
+			'on',
+			undefined,
+			undefined,
 		]);
+	});
+
+	// An unnamed device is numbered, not blank, and the browser's own choice
+	// leads the list — `deviceOptions`, so the panel says the same words.
+	it('switches which microphone you speak through', () => {
+		const setMic = vi.fn();
+		const list = items(micMenu(voice({ setMic }), () => {}));
+		list.find((item) => item.label === 'Microphone 2')?.onSelect();
+		list.find((item) => item.label === 'System default')?.onSelect();
+		expect(setMic.mock.calls).toEqual([['usb'], ['']]);
 	});
 
 	it('switches how you transmit without opening anything', () => {
@@ -62,7 +84,7 @@ describe('micMenu (#914)', () => {
 	// The threshold is its meter (#289), so the menu hands you the surface
 	// that has one instead of a number you cannot aim.
 	it('offers the way to the meter for the threshold itself', () => {
-		const [, , , tune] = items(micMenu(voice(), () => {}));
+		const tune = items(micMenu(voice(), () => {})).at(-1)!;
 		expect(tune.label).toBe('Tune your gate…');
 		tune.onSelect();
 		expect(soundPanel.open).toBe(true);
