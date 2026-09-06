@@ -204,8 +204,9 @@ function connect(slug: string): Connection {
 			// run when the shares change, not once a second.
 			const tick = untrack(() => live.tick);
 			for (const change of changes) {
-				const name = tick?.roster.find((rider) => rider.id === change.rider)
-					?.name;
+				const name = tick?.roster.find(
+					(rider) => rider.id === change.rider,
+				)?.name;
 				live.pushEvent(screenShareEvent(change, name, tick?.at ?? Date.now()));
 				if (change.live) play('join');
 			}
