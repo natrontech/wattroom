@@ -1,1 +1,0 @@
-- Trim a soundboard clip: cut it down to the part you want, fade either end, and push or pull its level. Nothing is re-encoded, so the edit is undoable forever and you can change your mind later. A file longer than a minute is fine now — upload it and choose which minute.

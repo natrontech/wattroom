@@ -1,1 +1,0 @@
-- A saved ride's duration now counts seconds instead of packets. A trainer that reports in bursts, or a tab that wakes up and flushes what it buffered, could add minutes of riding that never happened — to the ride, to the month's totals and to the XP that follows them.
