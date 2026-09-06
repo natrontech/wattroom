@@ -45,6 +45,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
 		return
 	}
+	if len(row.Samples) == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
+		return
+	}
 	metrics, err := stats.DecodeSamples(row.Samples)
 	if err != nil {
 		s.log.Error("ride export samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
@@ -70,7 +74,9 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		s.log.Warn("ride export write failed", "err", err, "ride", store.UUIDString(row.ID))
+	}
 }
 
 // roomJSON names the room a ride happened in; nil for a solo ride.
