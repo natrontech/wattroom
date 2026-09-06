@@ -2,12 +2,11 @@
  * A pad's face is its own waveform (#877), so a rider finds a sound by
  * silhouette rather than by reading a label at arm's length.
  *
- * ponytail: the shape is derived from the clip's id, not decoded from its
- * audio. It is stable per clip, costs nothing, and needs no decode before a
- * pad can draw — which matters because the board renders before any audio is
- * fetched. Draw the real envelope once the editor decodes clips anyway (#877
- * follow-up); the pad's job until then is to be recognisable, and a shape that
- * never changes for a given clip already is.
+ * This is the shape a pad wears BEFORE its audio has been decoded: derived
+ * from the clip's id, stable per clip, and free. `shapes.svelte.ts` swaps in
+ * the real envelope the moment playback has decoded the file — which is why
+ * this one has to fill the same box. The pad's job in between is to be
+ * recognisable, and a shape that never changes for a given clip already is.
  */
 export interface Bar {
 	x: number;

@@ -17,7 +17,7 @@
 		type Clip,
 	} from '$lib/board/clips.svelte';
 	import ClipEditor from '$lib/board/ClipEditor.svelte';
-	import { waveform } from '$lib/board/waveform';
+	import { learn, shapeOf } from '$lib/board/shapes.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
 
@@ -39,6 +39,11 @@
 			}
 		}
 		busy = false;
+	}
+
+	function rowShape(clipId: string) {
+		learn(clipId, 20);
+		return shapeOf(clipId, 20);
 	}
 
 	const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
@@ -149,7 +154,7 @@
 							class="text-neon/55 shrink-0"
 							aria-hidden="true"
 						>
-							{#each waveform(clip.id, 20) as bar, i (i)}
+							{#each rowShape(clip.id) as bar, i (i)}
 								<rect
 									x={bar.x}
 									y={bar.y}

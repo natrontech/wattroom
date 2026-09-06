@@ -1,0 +1,1 @@
+- A soundboard pad now draws its clip's real waveform once the audio has loaded, so you recognise a sound by its shape rather than by reading the label.
