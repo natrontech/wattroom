@@ -166,7 +166,11 @@
 				     faint ground, the row you're on a stronger fill on top of it.
 				     Equal tints read as one slab and the selection disappears. -->
 				<li
-					class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
+					class="rounded-md {here
+						? 'bg-ink/5'
+						: browsing
+							? 'bg-ink/[0.03]'
+							: ''}"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = places.map((place) => ({
 							label: place.label,
@@ -304,9 +308,7 @@
 						<!-- The room you are standing in opens. This is Discord's
 						     second column, and it costs one indent instead of one
 						     column (ADR-0020). -->
-						<ul
-							class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5"
-						>
+						<ul class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5">
 							{#each places as entry (entry.path)}
 								{@const on = room.slug === activeSlug && place === entry.path}
 								<li>
