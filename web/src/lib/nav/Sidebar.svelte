@@ -163,15 +163,10 @@
 				{@const open = room.slug === activeSlug || here}
 				{@const subline = railSubline(room, open)}
 				<!-- Neutral, not neon: neon is chrome, and the room you're standing
-				     in is a selection state, not structure. Matches the identical
-				     job one indent in (the open place's row, below) — ink was
-				     already the answer there. -->
+				     in is a selection state, not structure. A tint, not a rule —
+				     the stripe read as structure the card doesn't have. -->
 				<li
-					class="rounded-md border-l-2 {here
-						? 'border-ink/40 bg-ink/5'
-						: browsing
-							? 'border-ink/15'
-							: 'border-transparent'}"
+					class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = places.map((place) => ({
 							label: place.label,
@@ -207,12 +202,6 @@
 								: 'text-muted/70 hover:text-ink'}"
 					>
 						<span class="flex items-center gap-2">
-							{#if here}
-								<span
-									class="bg-z4 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full"
-									title="you are in this room"
-								></span>
-							{/if}
 							<RoomIcon icon={room.icon} size={14} />
 							<span
 								class="truncate {here
