@@ -237,8 +237,9 @@
 		</div>
 	{/if}
 
+	<NewAccountNotice />
+
 	{#if changelog.unseen}
-		<div class="mt-6"><NewAccountNotice /></div>
 		<div class="mt-6"><WhatsNewNotice /></div>
 	{/if}
 

@@ -26,7 +26,7 @@
 
 {#if provider && !dismissed}
 	<div
-		class="border-neon/30 bg-surface-raised rounded-xl border p-5"
+		class="border-neon/30 bg-surface-raised mt-6 rounded-xl border p-5"
 		role="status"
 	>
 		<p class="text-sm font-medium">
