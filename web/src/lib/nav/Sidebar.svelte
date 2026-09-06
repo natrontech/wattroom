@@ -51,6 +51,7 @@
 		VideoOff,
 	} from '@lucide/svelte';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
+	import { youMenu } from '$lib/nav/you-menu';
 	import { device } from '$lib/device.svelte';
 
 	let {
@@ -431,8 +432,11 @@
 	     In a room the AV controls get a row of their own: six icons crowded in
 	     beside a name left a 240 px column nothing to put the name in, and
 	     these are tapped from a bike (ux.md). -->
-	<div class="border-ink/5 border-t px-3 py-2.5">
-		<div class="flex items-center gap-2">
+	<div
+		class="border-ink/5 border-t px-3 py-2.5"
+		{@attach contextMenu(() => youMenu(account.me?.id, goto))}
+	>
+		<div class="flex items-center gap-2" title={MENU_HINT}>
 			<!-- Your own rider page (#575). Everywhere else in the app an avatar
 			     opens /u/<id>; yours was the one that did not, and the gear
 			     beside it goes to settings — which are titled "Profile". -->

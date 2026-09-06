@@ -32,6 +32,8 @@ export interface MenuSlider extends Fader {
 	/** The value as the rider reads it — "120 %". */
 	format: (value: number) => string;
 	onInput: (value: number) => void;
+	/** On release, for a fader that should demonstrate the level it just set. */
+	onChange?: (value: number) => void;
 }
 
 export type MenuEntry = MenuItem | MenuSlider | 'separator';
