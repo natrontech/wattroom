@@ -31,7 +31,10 @@ func TestExportOwnerGetsValidFIT(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, result)
 	}
-	id := result["id"].(string)
+	id, ok := result["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("create returned no ride id: %v", result)
+	}
 	w := exportRequest(t, h, "alice", id)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
