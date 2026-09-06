@@ -47,7 +47,9 @@
 		if (res.ok) {
 			room = res.data;
 			// The room's faces, for every surface that has only an id (#807).
-			people.learn(res.data.members ?? []);
+			people.learn(
+				(res.data.members ?? []).map((m) => ({ ...m, name: m.displayName })),
+			);
 			error = null;
 		} else if (room?.slug !== current) {
 			// Only the FIRST load of a room may fail loudly. Once the shell is

@@ -451,9 +451,9 @@
 					>
 					{#if showAv || away}
 						<span class="block truncate text-[10px]">
-							{#if away}<span class="text-muted">away</span>{#if showAv}
-									·
-								{/if}{/if}
+							{#if away}<span class="text-muted">away</span>{/if}
+							{#if !showAv}{:else if away}·
+							{/if}
 							{#if !showAv}{:else if voiceStatus === 'live'}
 								<span class="text-z4">in voice</span>{camOn
 									? ' · camera on'
@@ -483,27 +483,9 @@
 				aria-label="settings"><Settings size={16} /></a
 			>
 		</div>
-		{#if connectedSlug || showAv}
-			<!-- Everything you toggle about YOURSELF, in one row (#807). Away
-			     used to sit in the Lounge header, where it read as a room
-			     control and was off-screen from every other place — it is the
-			     same kind of statement the mic is, so it lives where the mic
-			     does. It needs no LiveKit, so the row now survives a server
-			     with voice switched off. -->
+		{#if showAv}
 			<div class="mt-2 flex items-center gap-1">
-				{#if connectedSlug}
-					<button
-						onclick={() => onAway?.(!away)}
-						aria-pressed={away}
-						class="flex shrink-0 items-center justify-center rounded px-2.5 py-1.5 {away
-							? 'bg-neon/15 text-neon'
-							: 'text-muted/50 hover:text-muted'}"
-						title={away ? "you are away — say you're back" : 'step away'}
-						aria-label={away ? "say you're back" : 'step away'}
-						><Coffee size={16} /></button
-					>
-				{/if}
-				{#if showAv && !inVoice}
+				{#if !inVoice}
 					<!-- The way in is a labelled button, not two greyed icons that
 					     only LOOK like a mic and a camera: a control that does
 					     something else than it draws is not a control (#437,
@@ -526,7 +508,7 @@
 						>
 					{/if}
 					<QuickAudio compact />
-				{:else if showAv}
+				{:else}
 					<!-- Voice, camera, screen, sound and the way out — here and
 					     nowhere else. The people column and the lounge header each
 					     drew their own copy of a row the rider already has pinned
@@ -578,6 +560,21 @@
 					>
 				{/if}
 			</div>
+		{/if}
+		{#if connectedSlug}
+			<!-- Away used to sit in the Lounge header, where it read as a room
+			     control and was off-screen from every other place (#807). It is
+			     the same kind of statement the mic is, so it lives where the mic
+			     does — a labelled row of its own, because a bare cup squeezed in
+			     beside "Join voice" left both of them fighting for 240 px. No
+			     LiveKit needed: it renders on a server with voice switched
+			     off. -->
+			<button
+				onclick={() => onAway?.(!away)}
+				aria-pressed={away}
+				class="btn btn-xs mt-2 w-full {away ? 'btn-primary' : 'btn-secondary'}"
+				><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
+			>
 		{/if}
 		{#if showAv && voiceError}
 			<!-- The failure itself, not "voice failed" (#642, errors.md): what

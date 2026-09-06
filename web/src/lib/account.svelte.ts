@@ -50,7 +50,7 @@ function createAccountStore() {
 				api<{ providers?: string[] }>('/api/auth/providers'),
 			]);
 			me = meRes.ok ? meRes.data : null;
-			if (me) people.learn([me]);
+			if (me) people.learn([{ ...me, name: me.displayName }]);
 			// Any failure (404 = server running without a database) stays hidden.
 			providers = provRes.ok ? (provRes.data.providers ?? []) : [];
 		} finally {

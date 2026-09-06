@@ -43,8 +43,13 @@
 		}
 		// Read from outside there is no room layout to have fetched the
 		// members, and a chat line carries no face (#807). One GET, once.
-		void api<{ members?: Face[] }>(`/api/rooms/${slug}`).then((res) => {
-			if (res.ok) people.learn(res.data.members ?? []);
+		void api<{ members?: (Face & { displayName?: string })[] }>(
+			`/api/rooms/${slug}`,
+		).then((res) => {
+			if (res.ok)
+				people.learn(
+					(res.data.members ?? []).map((m) => ({ ...m, name: m.displayName })),
+				);
 		});
 		const thread = createOutsideThread(slug);
 		thread.start();

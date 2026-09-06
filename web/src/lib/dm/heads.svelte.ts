@@ -46,6 +46,7 @@ async function poll() {
 	people.learn(
 		res.data.conversations.map((head) => ({
 			id: head.peerId,
+			name: head.peerName,
 			avatarUrl: head.peerAvatarUrl,
 			avatarPreset: head.peerAvatarPreset,
 			totalXp: head.peerTotalXp,

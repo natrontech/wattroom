@@ -10,6 +10,8 @@
  */
 export interface Face {
 	id: string;
+	/** Their display name — the initial a face without a picture falls back to. */
+	name?: string;
 	avatarUrl?: string;
 	avatarPreset?: string;
 	totalXp?: number;
@@ -29,6 +31,7 @@ export const people = {
 			const known = faces[person.id];
 			if (
 				known &&
+				known.name === person.name &&
 				known.avatarUrl === person.avatarUrl &&
 				known.avatarPreset === person.avatarPreset &&
 				known.totalXp === person.totalXp
@@ -36,6 +39,7 @@ export const people = {
 				continue;
 			faces[person.id] = {
 				id: person.id,
+				name: person.name,
 				avatarUrl: person.avatarUrl,
 				avatarPreset: person.avatarPreset,
 				totalXp: person.totalXp,

@@ -228,7 +228,7 @@
 									     shows, and where they are right now. -->
 									{@const face = people.face(message.fromId)}
 									<Avatar
-										name={message.from}
+										name={face?.name ?? message.from}
 										avatarUrl={face?.avatarUrl}
 										preset={face?.avatarPreset}
 										xp={face?.totalXp}
