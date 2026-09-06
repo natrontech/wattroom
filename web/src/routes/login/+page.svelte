@@ -6,6 +6,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { rememberNext, takeNext } from '$lib/auth/next';
+	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
 	import Banner from '$lib/components/Banner.svelte';
 	import * as passkeys from '$lib/passkeys';
 
@@ -50,8 +51,13 @@
 		}
 	});
 
+	// Which button this browser used last (#784) — the cheapest answer to
+	// "which one did I use?", and the one that stops a second empty account.
+	const previous = lastProvider();
+
 	function start(id: string) {
 		rememberNext(page.url.searchParams.get('next'));
+		rememberProvider(id);
 		window.location.href = `/api/auth/${id}/start`;
 	}
 </script>
@@ -109,9 +115,11 @@
 									width="237"
 									height="48"
 								/>
-								<span class="text-muted mt-1 block text-[11px]"
-									>{providerLabels[id]?.note}</span
-								>
+								<span class="text-muted mt-1 block text-[11px]">
+									{previous === id
+										? 'you used this last time'
+										: providerLabels[id]?.note}
+								</span>
 							</button>
 						{:else}
 							<button
@@ -136,7 +144,11 @@
 								{/if}
 								<span class="min-w-0">
 									{providerLabels[id]?.label ?? id}
-									{#if providerLabels[id]?.note}
+									{#if previous === id}
+										<span class="text-muted block text-[11px] font-normal"
+											>you used this last time</span
+										>
+									{:else if providerLabels[id]?.note}
 										<span class="text-muted block text-[11px] font-normal"
 											>{providerLabels[id].note}</span
 										>

@@ -7,15 +7,9 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { providerName } from '$lib/auth/providers';
 
 	let { onUploadToggle }: { onUploadToggle: (on: boolean) => void } = $props();
-
-	const providerName: Record<string, string> = {
-		google: 'Google',
-		github: 'GitHub',
-		strava: 'Strava',
-		dev: 'Dev sign-in',
-	};
 
 	// Capability gating: only providers this server actually has credentials
 	// for, so we never offer a button that 500s (.claude/rules/ux.md).

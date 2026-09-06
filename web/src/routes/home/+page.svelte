@@ -21,6 +21,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
+	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -235,6 +236,8 @@
 			</Banner>
 		</div>
 	{/if}
+
+	<NewAccountNotice />
 
 	{#if changelog.unseen}
 		<div class="mt-6"><WhatsNewNotice /></div>
