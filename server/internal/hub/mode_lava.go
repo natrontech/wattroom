@@ -97,6 +97,26 @@ func (l *lava) advance(now time.Time, samples map[string]int, roster map[string]
 			}
 		}
 	}
+	// A rider who vanishes is protected from Wi-Fi blips, then judged as
+	// stopped once the shared disconnect grace has elapsed.
+	for id := range l.joined {
+		if l.out[id] || l.grace.inGrace(id, now) {
+			continue
+		}
+		rider, ok := roster[id]
+		if !ok || rider.FtpWatts <= 0 {
+			continue
+		}
+		l.outOfZone[id]++
+		if l.outOfZone[id] > lavaGraceSecs {
+			l.lives[id]--
+			l.outOfZone[id] = 0
+			if l.lives[id] <= 0 {
+				l.out[id] = true
+				l.order = append(l.order, id)
+			}
+		}
+	}
 
 	alive := 0
 	for id := range l.joined {

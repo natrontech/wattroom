@@ -81,6 +81,36 @@ func TestBackyardDisconnectGrace(t *testing.T) {
 	}
 }
 
+func TestLavaDisconnectGrace(t *testing.T) {
+	check := newLava(gat(0), fixedRng())
+	roster := backyardRoster()
+	onZone := int(zoneBounds[check.zone][0]*200) + 5
+	bOnZone := int(zoneBounds[check.zone][0]*300) + 5
+	check.advance(gat(1), map[string]int{"a": onZone, "b": bOnZone}, roster)
+	for sec := 2; sec <= 31; sec++ {
+		check.advance(gat(sec), map[string]int{"a": onZone}, roster)
+	}
+	if check.finished || check.lives["b"] != lavaLives || check.outOfZone["b"] != 0 {
+		t.Fatalf("disconnect at exact grace boundary burned a life: %d", check.lives["b"])
+	}
+	check.advance(gat(31), map[string]int{"a": onZone, "b": bOnZone}, roster)
+	if check.lives["b"] != lavaLives {
+		t.Fatalf("reconnect inside grace did not protect rider: %d", check.lives["b"])
+	}
+
+	l := newLava(gat(0), fixedRng())
+	l.advance(gat(1), map[string]int{"a": 150, "b": 150}, roster)
+	for sec := 2; sec <= 65; sec++ {
+		if sec == 25 && l.lives["b"] != lavaLives {
+			t.Fatalf("disconnect grace burned a life: %d", l.lives["b"])
+		}
+		l.advance(gat(sec), map[string]int{"a": int(zoneBounds[l.zone][0]*200) + 5}, roster)
+	}
+	if !l.out["b"] {
+		t.Fatalf("disconnected rider survived: %d lives", l.lives["b"])
+	}
+}
+
 func TestBackyardLineClimbs(t *testing.T) {
 	b := newBackyard(gat(0), false)
 	if b.linePct() != 0.80 {
