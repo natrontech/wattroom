@@ -8,7 +8,7 @@ Every API error returns one shape:
 
 ```go
 type ErrorResponse struct {
-    Error   string `json:"error"`           // machine code: validation_error | invalid_request | unauthorized | forbidden | not_found | conflict | internal_error
+    Error   string `json:"error"`           // machine code: validation_error | invalid_request | unauthorized | forbidden | not_found | conflict | rate_limited | internal_error
     Message string `json:"message"`         // human, actionable
     Field   string `json:"field,omitempty"` // for form validation
 }
@@ -16,7 +16,7 @@ type ErrorResponse struct {
 
 - Validate at the boundary — first lines of every handler. Bounds from docs/SPEC.md, never invented.
 - Log internal details (`slog` with context keys), return a safe message. Never `Message: err.Error()`.
-- Status codes: 400 validation, 401 no/expired auth, 403 not-your-room, 404, 409 duplicate, 500 unexpected.
+- Status codes: 400 validation, 401 no/expired auth, 403 not-your-room, 404, 409 duplicate, 429 over a per-account ceiling, 503 a shared resource is full, 500 unexpected. The last three all carry `rate_limited`: the rider's move is the same in each case — wait, then try again — and the code says so without pretending the refusal was their input's fault.
 - Every endpoint test covers: happy path, validation → 400, not found → 404, no auth → 401.
 
 ## Frontend

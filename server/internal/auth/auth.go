@@ -75,6 +75,8 @@ type Service struct {
 	// Hands a Strava grant back when the rider disconnects it (#783).
 	// SetStravaRevoker lives in credentials.go.
 	stravaRevoker GrantRevoker
+	// How much confirmation mail one account may cause (#827). budget.go.
+	verifyMail *mailBudget
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -86,6 +88,9 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 		providers: providersFromEnv(baseURL),
 		secure:    secure,
 		baseURL:   baseURL,
+		// Always present, even where mail is not: the ceiling is cheap, and a
+		// nil one would be a panic waiting for the day a mailer appears.
+		verifyMail: newMailBudget(),
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
