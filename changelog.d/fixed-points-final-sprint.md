@@ -1,0 +1,1 @@
+- Points Race now awards points for the final sprint before publishing the race podium.

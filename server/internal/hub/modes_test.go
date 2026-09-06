@@ -103,6 +103,16 @@ func TestPointsRaceAwards(t *testing.T) {
 	}
 }
 
+func TestPointsRaceAwardsFinalSprint(t *testing.T) {
+	p := newPointsRace(gat(0), fixedRng())
+	p.roulette.sprintNo = rouletteSprints
+	p.roulette.window = &sprint{startsAt: gat(1), endsAt: gat(15), samples: map[string][]int{"a": {300, 300, 300, 300, 300}, "b": {600, 600, 600, 600, 600}}}
+	p.advance(gat(16), nil, backyardRoster())
+	if p.points["a"] != 3 || p.points["b"] != 5 {
+		t.Fatalf("last sprint points: a=%v b=%v; expected 3 and 5", p.points["a"], p.points["b"])
+	}
+}
+
 func TestRelayRotatesAndAccumulates(t *testing.T) {
 	r := newRelay(gat(0), fixedRng())
 	roster := backyardRoster()
