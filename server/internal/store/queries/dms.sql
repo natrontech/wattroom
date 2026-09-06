@@ -69,13 +69,44 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 
 -- name: ListDms :many
 -- One pair's thread, oldest-first; `after` narrows a poll to the new tail.
-select m.id, m.sender_id, m.text, m.image_id, m.created_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at
 from dm_messages m
 where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
   and m.created_at > $3
 order by m.created_at
 limit 200;
+
+-- name: GetDmMessage :one
+-- Pair-scoped, like every other read here: a message id from someone else's
+-- conversation must not even confirm it exists. Read before the edit so the
+-- handler can answer 404 and 403 separately (errors.md).
+select sender_id, text, image_id from dm_messages
+where id = $1
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid);
+
+-- name: EditDmMessage :one
+-- Only the sender rewrites their own line (#865). No friendship re-check:
+-- unfriending ends the conversation, it does not freeze what you already
+-- said — the same reasoning GetDmImage records for delivered pictures.
+update dm_messages
+set text = $4, edited_at = now()
+where id = $1 and sender_id = $2
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+returning edited_at;
+
+-- name: ListDmEdits :many
+-- Every rewritten line in the pair (#865), for the same reason the reactions
+-- below cover the whole pair: `after` narrows a poll to messages created
+-- since, and an edit does not move created_at — so a line the reader already
+-- has would otherwise never come back carrying its new text. Only the edited
+-- ones, which is normally a handful of the 500 a pair keeps.
+select id, text, edited_at from dm_messages
+where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+  and edited_at is not null;
 
 -- name: ListDmReactions :many
 -- Counts per message+emoji for the whole pair, plus whether the viewer is

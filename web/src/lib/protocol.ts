@@ -168,6 +168,23 @@ export interface ChatLine {
    */
   imageId?: string;
   at: number /* int64 */; // server millis, for ordering only
+  /**
+   * When the author last rewrote this line (#865); 0 for a line as sent.
+   * The client renders "edited" off this, so it is a fact about the line
+   * and not a separate event to remember.
+   */
+  editedAt?: number /* int64 */;
+}
+/**
+ * ChatEdit is one already-delivered line rewritten by its author (#865).
+ * The room hears it the way it hears a reaction total: the new text lands
+ * on the line already in everyone's log, rather than arriving as a second
+ * message that would push the conversation along.
+ */
+export interface ChatEdit {
+  messageId: string;
+  text: string;
+  editedAt: number /* int64 */;
 }
 /**
  * ChatID attaches the persisted identity to a line broadcast on an earlier
@@ -465,6 +482,10 @@ export interface ServerTick {
    */
   chat?: ChatLine[];
   chatReactions?: ChatReactionCount[];
+  /**
+   * Lines rewritten this second (#865), drained like the reactions above.
+   */
+  chatEdits?: ChatEdit[];
   /**
    * Persisted ids for lines already broadcast (#219) — the async save's
    * follow-up, unlocking reactions on them.

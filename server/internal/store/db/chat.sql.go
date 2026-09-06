@@ -80,6 +80,35 @@ func (q *Queries) CountRoomUnread(ctx context.Context, arg CountRoomUnreadParams
 	return count, err
 }
 
+const editChatMessage = `-- name: EditChatMessage :one
+update chat_messages
+set text = $3, edited_at = now()
+where id = $1 and room_id = $2 and user_id = $4
+returning edited_at
+`
+
+type EditChatMessageParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+	Text   string
+	UserID pgtype.UUID
+}
+
+// Only the author, and only the text (#865). The room scope is repeated here
+// rather than trusted from the read above: two statements, and nothing says
+// the row is still in this room by the time the second one runs.
+func (q *Queries) EditChatMessage(ctx context.Context, arg EditChatMessageParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, editChatMessage,
+		arg.ID,
+		arg.RoomID,
+		arg.Text,
+		arg.UserID,
+	)
+	var edited_at pgtype.Timestamptz
+	err := row.Scan(&edited_at)
+	return edited_at, err
+}
+
 const getChatImage = `-- name: GetChatImage :one
 select mime, bytes from chat_images
 where id = $1 and room_id = $2
@@ -101,6 +130,32 @@ func (q *Queries) GetChatImage(ctx context.Context, arg GetChatImageParams) (Get
 	row := q.db.QueryRow(ctx, getChatImage, arg.ID, arg.RoomID)
 	var i GetChatImageRow
 	err := row.Scan(&i.Mime, &i.Bytes)
+	return i, err
+}
+
+const getChatMessage = `-- name: GetChatMessage :one
+select user_id, text, image_id from chat_messages
+where id = $1 and room_id = $2
+`
+
+type GetChatMessageParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+type GetChatMessageRow struct {
+	UserID  pgtype.UUID
+	Text    string
+	ImageID pgtype.UUID
+}
+
+// The line as it stands, room-scoped, so the edit handler can tell "not in
+// this room" (404) from "not yours" (403) instead of collapsing both into one
+// refusal (errors.md).
+func (q *Queries) GetChatMessage(ctx context.Context, arg GetChatMessageParams) (GetChatMessageRow, error) {
+	row := q.db.QueryRow(ctx, getChatMessage, arg.ID, arg.RoomID)
+	var i GetChatMessageRow
+	err := row.Scan(&i.UserID, &i.Text, &i.ImageID)
 	return i, err
 }
 
@@ -201,9 +256,9 @@ func (q *Queries) ListChatReactions(ctx context.Context, arg ListChatReactionsPa
 }
 
 const listRoomChat = `-- name: ListRoomChat :many
-select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
 from (
-    select id, room_id, user_id, text, created_at, image_id from chat_messages
+    select id, room_id, user_id, text, created_at, image_id, edited_at from chat_messages
     where room_id = $1
     order by created_at desc, id desc
     limit $2
@@ -224,6 +279,7 @@ type ListRoomChatRow struct {
 	Text        string
 	ImageID     pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
+	EditedAt    pgtype.Timestamptz
 }
 
 // Newest $2, oldest-first for rendering; a deleted author's rows are gone
@@ -245,6 +301,7 @@ func (q *Queries) ListRoomChat(ctx context.Context, arg ListRoomChatParams) ([]L
 			&i.Text,
 			&i.ImageID,
 			&i.CreatedAt,
+			&i.EditedAt,
 		); err != nil {
 			return nil, err
 		}

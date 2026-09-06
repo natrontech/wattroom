@@ -40,6 +40,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/dms/{id}", s.handleThread)
 	mux.HandleFunc("POST /api/dms/{id}", s.handleSend)
 	mux.HandleFunc("POST /api/dms/{id}/reactions", s.handleReact)
+	mux.HandleFunc("PATCH /api/dms/{id}/messages/{messageId}", s.handleEdit)
 	// Four segments, so neither collides with the thread routes above.
 	mux.HandleFunc("POST /api/dms/{id}/images", s.handleImageUpload)
 	mux.HandleFunc("GET /api/dms/images/{id}", s.handleImage)
@@ -170,6 +171,62 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleEdit rewrites a message the caller sent (#865) — the DM twin of
+// chat's handleEdit, with the same two rules: sender only, text only. Like a
+// reaction here, there is no live wire to announce it on; the peer picks the
+// new text up on their next poll.
+func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
+	me, peer, ok := s.peer(w, r)
+	if !ok {
+		return
+	}
+	mid, err := store.ParseUUID(r.PathValue("messageId"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	text := strings.TrimSpace(req.Text)
+	if utf8.RuneCountInString(text) > 500 {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		return
+	}
+	msg, err := s.store.Queries.GetDmMessage(r.Context(), db.GetDmMessageParams{
+		ID: mid, Column2: me.ID, Column3: peer,
+	})
+	if err != nil {
+		// Pair-scoped read: not this conversation's message, or none at all.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	if msg.SenderID != me.ID {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only edit your own messages.")
+		return
+	}
+	// An image is a message body of its own (#285), so the words may go —
+	// but a text-only line cannot be edited down to nothing.
+	if text == "" && !msg.ImageID.Valid {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		return
+	}
+	edited, err := s.store.Queries.EditDmMessage(r.Context(), db.EditDmMessageParams{
+		ID: mid, SenderID: me.ID, Column3: peer, Text: text,
+	})
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, protocol.ChatEdit{
+		MessageID: store.UUIDString(mid), Text: text, EditedAt: store.Millis(edited),
+	})
+}
+
 // handleReact toggles the caller's reaction on a message in this thread
 // (#777, follow-up from #672) — the DM twin of chat's handleReact. Unlike a
 // room, a DM has no live tick to ride: the change is only ever picked up by
@@ -288,17 +345,35 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		// A pasted image's blob id (#285); "" when the message is text only.
 		ImageID string `json:"imageId,omitempty"`
 		At      int64  `json:"at"`
+		// When the sender last rewrote it (#865); absent for a line as sent.
+		EditedAt int64 `json:"editedAt,omitempty"`
 	}
 	out := make([]messageJSON, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, messageJSON{
 			ID: store.UUIDString(row.ID), Mine: row.SenderID == me.ID,
 			Text: row.Text, ImageID: store.UUIDString(row.ImageID),
-			At: row.CreatedAt.Time.UnixMilli(),
+			At: row.CreatedAt.Time.UnixMilli(), EditedAt: store.Millis(row.EditedAt),
 		})
 	}
+	// Edits ride separately from the incremental fetch for the same reason
+	// reactions do, and one more: an edit leaves created_at alone, so `after`
+	// would hide the new text of a line the reader is already looking at.
+	editRows, err := s.store.Queries.ListDmEdits(r.Context(), db.ListDmEditsParams{
+		Column1: me.ID, Column2: peer,
+	})
+	if err != nil {
+		s.log.Error("list dm edits", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		return
+	}
+	edits := make(map[string]protocol.ChatEdit, len(editRows))
+	for _, row := range editRows {
+		id := store.UUIDString(row.ID)
+		edits[id] = protocol.ChatEdit{MessageID: id, Text: row.Text, EditedAt: store.Millis(row.EditedAt)}
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"messages": out, "reactions": counts, "myReacts": mine,
+		"messages": out, "reactions": counts, "myReacts": mine, "edits": edits,
 	})
 }
 

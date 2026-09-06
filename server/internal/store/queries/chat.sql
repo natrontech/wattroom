@@ -45,7 +45,7 @@ where cm.room_id = $1 and cm.id not in (
 -- Newest $2, oldest-first for rendering; a deleted author's rows are gone
 -- (cascade), so the join never dangles. The id breaks a same-millisecond
 -- tie, so two polls of the same log agree on the order (#468).
-select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
 from (
     select * from chat_messages
     where room_id = $1
@@ -54,6 +54,22 @@ from (
 ) m
 join users u on u.id = m.user_id
 order by m.created_at, m.id;
+
+-- name: GetChatMessage :one
+-- The line as it stands, room-scoped, so the edit handler can tell "not in
+-- this room" (404) from "not yours" (403) instead of collapsing both into one
+-- refusal (errors.md).
+select user_id, text, image_id from chat_messages
+where id = $1 and room_id = $2;
+
+-- name: EditChatMessage :one
+-- Only the author, and only the text (#865). The room scope is repeated here
+-- rather than trusted from the read above: two statements, and nothing says
+-- the row is still in this room by the time the second one runs.
+update chat_messages
+set text = $3, edited_at = now()
+where id = $1 and room_id = $2 and user_id = $4
+returning edited_at;
 
 -- name: ListChatReactions :many
 -- Counts per message+emoji for the backlog, plus whether the viewer is in.

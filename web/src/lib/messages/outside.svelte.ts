@@ -1,7 +1,7 @@
 import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
 import { presence } from '$lib/presence.svelte';
-import type { ChatLine, ChatReactionCount } from '$lib/protocol';
+import type { ChatEdit, ChatLine, ChatReactionCount } from '$lib/protocol';
 
 /**
  * A room's chat read from OUTSIDE the room (#468): no socket, no voice, no
@@ -121,6 +121,25 @@ export function createOutsideThread(slug: string) {
 			// but five seconds is a long time to wonder whether Send worked.
 			if (!messages.some((m) => m.id === res.data.id))
 				messages = [...messages, res.data];
+			return null;
+		},
+		/**
+		 * Rewrite one of my lines (#865). The whole backlog is re-read on
+		 * every poll out here, so the edit would arrive on its own — but
+		 * five seconds is a long time to watch your own typo, and the room
+		 * has already been told by the time this answers.
+		 */
+		async edit(id: string, text: string): Promise<string | null> {
+			const res = await api<ChatEdit>(`/api/rooms/${slug}/chat/${id}`, {
+				method: 'PATCH',
+				json: { text },
+			});
+			if (!res.ok) return res.error.message;
+			messages = messages.map((m) =>
+				m.id === id
+					? { ...m, text: res.data.text, editedAt: res.data.editedAt }
+					: m,
+			);
 			return null;
 		},
 		/** Toggle my reaction — optimistic; the answer corrects the count. */

@@ -102,3 +102,91 @@ describe('room live send while reconnecting', () => {
 		expect(live.jukeboxRefusal).toBeNull();
 	});
 });
+
+describe('room live chat edits (#865)', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+	});
+
+	/** One tick, as the server sends it — only the fields a test cares about. */
+	const tick = (socket: FakeSocket, fields: Record<string, unknown>) =>
+		socket.onmessage?.({
+			data: JSON.stringify({ tick: { at: Date.now(), ...fields } }),
+		});
+
+	it('rewrites the line already in the log, without adding a second one', () => {
+		const live = createRoomLive('edits');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [
+				{ id: 'm1', from: 'kim', fromId: 'u1', text: 'warmup at 6', at: 1 },
+			],
+		});
+		expect(live.chatLog).toHaveLength(1);
+
+		tick(socket, {
+			chatEdits: [{ messageId: 'm1', text: 'warmup at 7', editedAt: 42 }],
+		});
+		expect(live.chatLog).toHaveLength(1);
+		expect(live.chatLog[0]).toMatchObject({
+			id: 'm1',
+			text: 'warmup at 7',
+			editedAt: 42,
+		});
+	});
+
+	it('leaves every other line alone, id-less ones included', () => {
+		const live = createRoomLive('edits-others');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [
+				{ id: 'm1', from: 'kim', fromId: 'u1', text: 'first', at: 1 },
+				{ from: 'ada', fromId: 'u2', text: 'not saved yet', at: 2 },
+			],
+		});
+		tick(socket, {
+			chatEdits: [{ messageId: 'm1', text: 'first, fixed', editedAt: 42 }],
+		});
+		expect(live.chatLog.map((line) => line.text)).toEqual([
+			'first, fixed',
+			'not saved yet',
+		]);
+	});
+
+	it('keeps the marker on a line that was already edited before you joined', () => {
+		// The backlog carries the NEW words either way; without editedAt
+		// riding along, a rider who arrives later reads a silently rewritten
+		// line — which is the one thing editing must not do.
+		const live = createRoomLive('edits-seed');
+		live.seedChat([
+			{
+				id: 'm1',
+				from: 'kim',
+				fromId: 'u1',
+				text: 'warmup at 7',
+				at: 1,
+				editedAt: 42,
+			},
+		]);
+		expect(live.chatLog[0]).toMatchObject({
+			text: 'warmup at 7',
+			editedAt: 42,
+		});
+	});
+
+	it('ignores an edit for a line this client never had', () => {
+		const live = createRoomLive('edits-unknown');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [{ id: 'm1', from: 'kim', fromId: 'u1', text: 'here', at: 1 }],
+		});
+		tick(socket, {
+			chatEdits: [{ messageId: 'gone', text: 'ghost', editedAt: 42 }],
+		});
+		expect(live.chatLog).toHaveLength(1);
+		expect(live.chatLog[0].text).toBe('here');
+	});
+});

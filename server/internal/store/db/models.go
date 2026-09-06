@@ -39,6 +39,7 @@ type ChatMessage struct {
 	Text      string
 	CreatedAt pgtype.Timestamptz
 	ImageID   pgtype.UUID
+	EditedAt  pgtype.Timestamptz
 }
 
 type ChatReaction struct {
@@ -63,6 +64,7 @@ type DmMessage struct {
 	Text        string
 	CreatedAt   pgtype.Timestamptz
 	ImageID     pgtype.UUID
+	EditedAt    pgtype.Timestamptz
 }
 
 type DmReaction struct {

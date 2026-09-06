@@ -65,6 +65,37 @@ func (q *Queries) CountDmReaction(ctx context.Context, arg CountDmReactionParams
 	return count, err
 }
 
+const editDmMessage = `-- name: EditDmMessage :one
+update dm_messages
+set text = $4, edited_at = now()
+where id = $1 and sender_id = $2
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+returning edited_at
+`
+
+type EditDmMessageParams struct {
+	ID       pgtype.UUID
+	SenderID pgtype.UUID
+	Column3  pgtype.UUID
+	Text     string
+}
+
+// Only the sender rewrites their own line (#865). No friendship re-check:
+// unfriending ends the conversation, it does not freeze what you already
+// said — the same reasoning GetDmImage records for delivered pictures.
+func (q *Queries) EditDmMessage(ctx context.Context, arg EditDmMessageParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, editDmMessage,
+		arg.ID,
+		arg.SenderID,
+		arg.Column3,
+		arg.Text,
+	)
+	var edited_at pgtype.Timestamptz
+	err := row.Scan(&edited_at)
+	return edited_at, err
+}
+
 const getDmImage = `-- name: GetDmImage :one
 select mime, bytes from dm_images
 where id = $1
@@ -89,6 +120,78 @@ func (q *Queries) GetDmImage(ctx context.Context, arg GetDmImageParams) (GetDmIm
 	var i GetDmImageRow
 	err := row.Scan(&i.Mime, &i.Bytes)
 	return i, err
+}
+
+const getDmMessage = `-- name: GetDmMessage :one
+select sender_id, text, image_id from dm_messages
+where id = $1
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+`
+
+type GetDmMessageParams struct {
+	ID      pgtype.UUID
+	Column2 pgtype.UUID
+	Column3 pgtype.UUID
+}
+
+type GetDmMessageRow struct {
+	SenderID pgtype.UUID
+	Text     string
+	ImageID  pgtype.UUID
+}
+
+// Pair-scoped, like every other read here: a message id from someone else's
+// conversation must not even confirm it exists. Read before the edit so the
+// handler can answer 404 and 403 separately (errors.md).
+func (q *Queries) GetDmMessage(ctx context.Context, arg GetDmMessageParams) (GetDmMessageRow, error) {
+	row := q.db.QueryRow(ctx, getDmMessage, arg.ID, arg.Column2, arg.Column3)
+	var i GetDmMessageRow
+	err := row.Scan(&i.SenderID, &i.Text, &i.ImageID)
+	return i, err
+}
+
+const listDmEdits = `-- name: ListDmEdits :many
+select id, text, edited_at from dm_messages
+where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+  and edited_at is not null
+`
+
+type ListDmEditsParams struct {
+	Column1 pgtype.UUID
+	Column2 pgtype.UUID
+}
+
+type ListDmEditsRow struct {
+	ID       pgtype.UUID
+	Text     string
+	EditedAt pgtype.Timestamptz
+}
+
+// Every rewritten line in the pair (#865), for the same reason the reactions
+// below cover the whole pair: `after` narrows a poll to messages created
+// since, and an edit does not move created_at — so a line the reader already
+// has would otherwise never come back carrying its new text. Only the edited
+// ones, which is normally a handful of the 500 a pair keeps.
+func (q *Queries) ListDmEdits(ctx context.Context, arg ListDmEditsParams) ([]ListDmEditsRow, error) {
+	rows, err := q.db.Query(ctx, listDmEdits, arg.Column1, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDmEditsRow
+	for rows.Next() {
+		var i ListDmEditsRow
+		if err := rows.Scan(&i.ID, &i.Text, &i.EditedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDmHeads = `-- name: ListDmHeads :many
@@ -199,7 +302,7 @@ func (q *Queries) ListDmReactions(ctx context.Context, arg ListDmReactionsParams
 }
 
 const listDms = `-- name: ListDms :many
-select m.id, m.sender_id, m.text, m.image_id, m.created_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at
 from dm_messages m
 where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
@@ -220,6 +323,7 @@ type ListDmsRow struct {
 	Text      string
 	ImageID   pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	EditedAt  pgtype.Timestamptz
 }
 
 // One pair's thread, oldest-first; `after` narrows a poll to the new tail.
@@ -238,6 +342,7 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 			&i.Text,
 			&i.ImageID,
 			&i.CreatedAt,
+			&i.EditedAt,
 		); err != nil {
 			return nil, err
 		}

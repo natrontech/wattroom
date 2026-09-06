@@ -3,7 +3,7 @@ import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
 import { dm } from '$lib/dm/dm.svelte';
 import { dmHeads } from '$lib/dm/heads.svelte';
-import type { ChatReactionCount } from '$lib/protocol';
+import type { ChatEdit, ChatReactionCount } from '$lib/protocol';
 import { roomTimeline, type TimelineMessage } from '$lib/room/timeline';
 
 /**
@@ -29,6 +29,7 @@ interface DmLine {
 	text: string;
 	imageId?: string;
 	at: number;
+	editedAt?: number;
 }
 
 export function createDmThread(peerId: string, peerName: () => string) {
@@ -53,6 +54,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			text: m.text,
 			imageId: m.imageId,
 			at: m.at,
+			editedAt: m.editedAt,
 		};
 	}
 
@@ -61,6 +63,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			messages: DmLine[];
 			reactions?: Record<string, Record<string, number>>;
 			myReacts?: Record<string, string[]>;
+			edits?: Record<string, ChatEdit>;
 		}>(`/api/dms/${peerId}${after ? `?after=${after}` : ''}`);
 		if (closed) return;
 		loading = false;
@@ -85,6 +88,19 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			for (const cheer of cheers) pressed[`${id}:${cheer}`] = true;
 		}
 		myReacts = pressed;
+		// Edits cover the WHOLE pair for a second reason on top of the one
+		// reactions have (#865): rewriting a line leaves its created_at
+		// alone, so `after` can never bring the new text back with the
+		// messages. Applied over whatever is loaded, on every poll.
+		const edits = res.data.edits;
+		if (edits && Object.keys(edits).length > 0) {
+			raw = raw.map((m) => {
+				const edit = edits[m.id];
+				return edit && (m.text !== edit.text || m.editedAt !== edit.editedAt)
+					? { ...m, text: edit.text, editedAt: edit.editedAt }
+					: m;
+			});
+		}
 		if (raw.length > 0 && (fresh.length > 0 || !after)) {
 			// "Seen" only when you could actually have seen it — a thread left
 			// open in a hidden tab must keep the badge (audit #219).
@@ -138,6 +154,20 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			});
 			if (!res.ok) return res.error.message;
 			await load(raw.at(-1)?.at ?? 0);
+			return null;
+		},
+		/** Rewrite one of my messages (#865); the peer sees it on their poll. */
+		async edit(id: string, text: string): Promise<string | null> {
+			const res = await api<ChatEdit>(`/api/dms/${peerId}/messages/${id}`, {
+				method: 'PATCH',
+				json: { text },
+			});
+			if (!res.ok) return res.error.message;
+			raw = raw.map((m) =>
+				m.id === id
+					? { ...m, text: res.data.text, editedAt: res.data.editedAt }
+					: m,
+			);
 			return null;
 		},
 		/** Toggle my reaction — optimistic; the answer corrects the count. */

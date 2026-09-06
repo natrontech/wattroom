@@ -18,6 +18,7 @@ type fakeLive struct {
 	mu      sync.Mutex
 	lines   []protocol.ChatLine
 	changes []protocol.ChatReactionCount
+	edits   []protocol.ChatEdit
 }
 
 func (f *fakeLive) PostChat(_ string, line protocol.ChatLine) {
@@ -30,6 +31,27 @@ func (f *fakeLive) PostReaction(_ string, change protocol.ChatReactionCount) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.changes = append(f.changes, change)
+}
+
+func (f *fakeLive) PostChatEdit(_ string, edit protocol.ChatEdit) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.edits = append(f.edits, edit)
+}
+
+// patch runs one JSON PATCH as a user ("" = signed out) and decodes the answer.
+func patch(t *testing.T, mux *http.ServeMux, user, path, body string) (int, map[string]any) {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if user != "" {
+		req.Header.Set("X-Test-User", user)
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	var decoded map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&decoded)
+	return w.Code, decoded
 }
 
 // post runs one JSON POST as a user ("" = signed out) and decodes the answer.

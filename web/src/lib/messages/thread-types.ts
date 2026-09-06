@@ -26,4 +26,10 @@ export interface ThreadSource {
 	retry: () => void;
 	send: (text: string, image?: Blob) => Promise<string | null>;
 	react?: (id: string, cheer: string) => Promise<string | null>;
+	/**
+	 * Rewrite a line this rider sent (#865). Capability-gated like `react`:
+	 * a surface that omits it simply offers no Edit, rather than offering one
+	 * that fails. Resolves to the refusal, or null once the line has changed.
+	 */
+	edit?: (id: string, text: string) => Promise<string | null>;
 }
