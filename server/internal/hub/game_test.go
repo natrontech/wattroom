@@ -144,6 +144,32 @@ func TestCollectiveJudgesTheAverage(t *testing.T) {
 	}
 }
 
+func TestCollectiveCountsALapsedRiderAsStopped(t *testing.T) {
+	// #824: the mean used to run over this tick's samples, so a rider who
+	// dropped out simply left it — and the room got stronger for losing them.
+	b := newBackyard(gat(0), true)
+	roster := backyardRoster()
+	for sec := 1; sec <= 15; sec++ {
+		b.advance(gat(sec), map[string]int{"a": 152, "b": 228}, roster)
+	}
+	// B vanishes. Inside the disconnect grace the room is judged on A alone
+	// (76 % against the 75 % line) and holds.
+	sec := 16
+	for ; sec <= 15+int(disconnectGrace.Seconds()); sec++ {
+		b.advance(gat(sec), map[string]int{"a": 152}, roster)
+	}
+	if b.done() {
+		t.Fatal("room died while B was still inside the disconnect grace")
+	}
+	// Past it B is 0 W: the mean is 38 %, and the room goes down as one.
+	for ; sec <= 15+int(disconnectGrace.Seconds())+backyardBelowSecs+1; sec++ {
+		b.advance(gat(sec), map[string]int{"a": 152}, roster)
+	}
+	if !b.done() {
+		t.Fatal("a lapsed rider was left out of the collective mean")
+	}
+}
+
 func TestCollectiveUsesArithmeticRiderMean(t *testing.T) {
 	b := newBackyard(gat(0), true)
 	roster := map[string]protocol.Rider{"a": {FtpWatts: 100}, "b": {FtpWatts: 400}}

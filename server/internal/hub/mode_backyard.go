@@ -78,12 +78,23 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 
 	if b.collective {
 		// The room average against the line: everyone survives or nobody does.
+		// Over the joined set, not this tick's samples: a rider who drops out
+		// counts as 0 W once the disconnect grace lapses, the way the
+		// individual rules see them. Off the samples map they simply left the
+		// mean — and the room got stronger for losing them (#824).
 		var avgPct, ftpSum float64
 		riders := 0
-		for id, watts := range samples {
+		for id := range b.joined {
 			rider, ok := roster[id]
 			if !ok || rider.FtpWatts <= 0 {
 				continue
+			}
+			watts, reported := samples[id]
+			if !reported {
+				if b.grace.inGrace(id, now) {
+					continue
+				}
+				watts = 0
 			}
 			avgPct += float64(watts) / float64(rider.FtpWatts)
 			ftpSum += float64(rider.FtpWatts)

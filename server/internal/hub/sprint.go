@@ -104,6 +104,15 @@ func podium(samples map[string][]int, seen map[string]protocol.Rider) []protocol
 			Watts: avg, Wkg: float64(avg) / float64(rider.WeightKg),
 		})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Wkg > out[j].Wkg })
+	// Ties by rider id, not map order: two riders on the same w/kg used to
+	// take 5 and 3 points at random (#824).
+	// ponytail: id is stable, not the SPEC's medal rule (earlier joiner);
+	// that needs the room's seenOrder threaded through every mode's advance.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Wkg != out[j].Wkg {
+			return out[i].Wkg > out[j].Wkg
+		}
+		return out[i].RiderID < out[j].RiderID
+	})
 	return out
 }
