@@ -162,11 +162,12 @@
 					     fold Training two clicks away (rider report, #416). -->
 				{@const open = room.slug === activeSlug || here}
 				{@const subline = railSubline(room, open)}
-				<!-- Neutral, not neon: neon is chrome, and the room you're standing
-				     in is a selection state, not structure. A tint, not a rule —
-				     the stripe read as structure the card doesn't have. -->
+				<!-- The room carries no fill of its own: one filled surface in the
+				     sidebar at a time, and it's the row you're on. Which room is
+				     open is said by the display type, the open places list and the
+				     leave arrow — a tint under all three only muddies the row. -->
 				<li
-					class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
+					class="rounded-md"
 					{@attach contextMenu(() => {
 						const entries: MenuEntry[] = places.map((place) => ({
 							label: place.label,
@@ -314,7 +315,7 @@
 										href="/r/{room.slug}{entry.path}"
 										aria-current={on ? 'page' : undefined}
 										class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
-											? 'bg-ink/5 text-ink'
+											? 'bg-surface-raised text-ink'
 											: 'text-muted hover:text-ink'}"
 									>
 										<entry.icon size={14} class="shrink-0" />
