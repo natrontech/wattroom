@@ -11,6 +11,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
+	import { people } from '$lib/people.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import {
 		AWAY_MARK,
@@ -92,8 +93,17 @@
 							></div>
 						{/key}
 					{:else}
+						<!-- The tick's roster carries no face (view.ts) — the strip asks
+						     the face cache the same way the chat log does. -->
+						{@const face = people.face(rider.id)}
 						<div class="absolute inset-0 grid place-items-center pb-3">
-							<Avatar name={rider.name} xp={rider.totalXp} size={28} />
+							<Avatar
+								name={rider.name}
+								avatarUrl={face?.avatarUrl}
+								preset={face?.avatarPreset}
+								xp={rider.totalXp}
+								size={28}
+							/>
 						</div>
 					{/if}
 					<span
