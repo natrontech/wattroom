@@ -82,8 +82,21 @@ func TestBackyardDisconnectGrace(t *testing.T) {
 }
 
 func TestLavaDisconnectGrace(t *testing.T) {
-	l := newLava(gat(0), fixedRng())
+	check := newLava(gat(0), fixedRng())
 	roster := backyardRoster()
+	check.advance(gat(1), map[string]int{"a": 150, "b": 150}, roster)
+	for sec := 2; sec <= 30; sec++ {
+		check.advance(gat(sec), map[string]int{"a": 150}, roster)
+	}
+	if check.lives["b"] != lavaLives {
+		t.Fatalf("disconnect at exact grace boundary burned a life: %d", check.lives["b"])
+	}
+	check.advance(gat(31), map[string]int{"a": 150, "b": 150}, roster)
+	if check.lives["b"] != lavaLives {
+		t.Fatalf("reconnect inside grace did not protect rider: %d", check.lives["b"])
+	}
+
+	l := newLava(gat(0), fixedRng())
 	l.advance(gat(1), map[string]int{"a": 150, "b": 150}, roster)
 	for sec := 2; sec <= 65; sec++ {
 		if sec == 25 && l.lives["b"] != lavaLives {
