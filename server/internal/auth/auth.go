@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -65,6 +66,12 @@ type Service struct {
 	// absent rather than broken. SetMailer lives in email.go.
 	mailer    Mailer
 	avEnabled bool
+	// Passkeys (#782): the relying party, derived from baseURL, and the
+	// in-memory challenges a ceremony spends between start and finish. Both
+	// nil on a server whose base URL will not parse, which takes the routes
+	// with them rather than serving ones that cannot work.
+	wa         *webauthn.WebAuthn
+	challenges *challengeStore
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -79,6 +86,12 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Servic
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
+	}
+	if wa, err := newWebAuthn(baseURL); err != nil {
+		log.Error("passkeys are off: could not build the relying party", "err", err)
+	} else {
+		svc.wa = wa
+		svc.challenges = newChallengeStore()
 	}
 	return svc
 }
@@ -100,6 +113,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
 	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
+	s.registerPasskeyRoutes(mux)
 }
 
 // handleProviders lists configured provider ids, so the web renders sign-in

@@ -104,6 +104,15 @@ type Membership struct {
 	JoinedAt pgtype.Timestamptz
 }
 
+type Passkey struct {
+	CredentialID []byte
+	UserID       pgtype.UUID
+	Credential   []byte
+	Name         string
+	CreatedAt    pgtype.Timestamptz
+	LastUsedAt   pgtype.Timestamptz
+}
+
 type Playlist struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID
