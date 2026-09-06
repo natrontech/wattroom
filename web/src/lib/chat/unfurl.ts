@@ -52,11 +52,25 @@ export function isYouTube(host: string): boolean {
 
 const cache = new Map<string, Promise<Card | null>>();
 
+/**
+ * Thrown for an answer that means "ask again" rather than "there is nothing
+ * here" — the server's ration, or a request that never arrived. The
+ * difference matters: a remembered null is remembered for the whole session,
+ * so a rider who opened a busy channel and spent their ration would be left
+ * looking at bare URLs until they reloaded the page.
+ */
+const RETRY = Symbol('unfurl: ask again');
+
 /** The card for one link, fetched at most once per session. */
 export function unfurl(url: string): Promise<Card | null> {
 	const cached = cache.get(url);
 	if (cached) return cached;
-	const pending = load(url).catch(() => null);
+	const pending = load(url).catch((reason) => {
+		// Forget it, so the next render of this line asks again. A card that
+		// has not come yet is not a card that is never coming.
+		if (reason === RETRY) cache.delete(url);
+		return null;
+	});
 	cache.set(url, pending);
 	return pending;
 }
@@ -68,8 +82,12 @@ async function load(url: string): Promise<Card | null> {
 	if (endpoint) {
 		// Straight to the service, as before: their oEmbed is public, sends
 		// CORS, and knows more about their own media than og: tags do.
-		const res = await fetch(endpoint);
-		if (!res.ok) return null;
+		const res = await fetch(endpoint).catch(() => {
+			throw RETRY; // offline, or their service is having a moment
+		});
+		// A 404 from oEmbed is an answer — no such video, and there never
+		// will be. A 5xx is them, not the link.
+		if (!res.ok) throw res.status >= 500 ? RETRY : null;
 		const data = await res.json();
 		return data?.title
 			? { title: data.title, thumb: proxied(data.thumbnail_url), host }
@@ -83,7 +101,12 @@ async function load(url: string): Promise<Card | null> {
 		siteName?: string;
 		host?: string;
 	}>(`/api/unfurl?url=${encodeURIComponent(url)}`);
-	if (!res.ok || !res.data) return null;
+	// A refusal is not an absence. The ration and a dead network both arrive
+	// here as !ok, and both are worth asking about again; 204 — the server
+	// looked and there was nothing — arrives as ok with no data, and that one
+	// is the answer worth keeping.
+	if (!res.ok) throw RETRY;
+	if (!res.data) return null;
 	const { title, description, image, siteName } = res.data;
 	if (!title && !description && !image) return null;
 	return {

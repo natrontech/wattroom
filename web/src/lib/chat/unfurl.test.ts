@@ -120,6 +120,25 @@ describe('unfurl (#866)', () => {
 		expect((await unfurl('https://e.test/b'))?.thumb).toBeUndefined();
 	});
 
+	it('remembers a 204 but never a refusal (#866)', async () => {
+		// The ration says "ask again in a moment". Remembering that as "this
+		// link has no card" would leave a rider who opened a busy channel
+		// staring at bare URLs until they reloaded the page.
+		apiResponses.push({
+			ok: false,
+			error: { error: 'invalid_request', message: 'Too many previews.' },
+		});
+		expect(await unfurl('https://example.com/rationed')).toBeNull();
+		apiResponses.push({
+			ok: true,
+			data: { title: 'It came through', host: 'example.com' },
+		});
+		expect((await unfurl('https://example.com/rationed'))?.title).toBe(
+			'It came through',
+		);
+		expect(apiCalls).toHaveLength(2);
+	});
+
 	it('says nothing rather than throwing when a fetch dies', async () => {
 		fetchMock.mockRejectedValue(new Error('offline'));
 		expect(await unfurl('https://youtu.be/dead')).toBeNull();

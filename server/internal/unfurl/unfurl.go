@@ -35,9 +35,14 @@ const (
 	// reader. Long enough that a conversation about one article costs the
 	// article one request; short enough that a fixed title fixes itself.
 	cacheTTL = 30 * time.Minute
-	// A miss for the same rider costs the third party one request, so the
-	// ration is per rider and generous enough to load a screenful of chat.
-	riderEvery   = 400 * time.Millisecond
+	// A miss costs a third party one request, so the ration is per rider —
+	// but it has to be a bucket rather than a spacing. Opening a busy channel
+	// asks for every distinct link on the screen at once, and a fixed gap
+	// between asks would refuse most of them for no reason anybody could see.
+	// Burst covers a screenful; the refill is what bounds a rider who keeps
+	// pasting.
+	riderBurst   = 15
+	riderRefill  = 3 // tokens per second
 	maxCacheKeys = 2048
 	maxRiderKeys = 4096
 )
@@ -57,13 +62,14 @@ type Service struct {
 
 	mu      sync.Mutex
 	cache   map[string]entry
-	lastAsk map[string]time.Time
+	buckets map[string]*bucket
 	now     func() time.Time
 	// The ports an outbound fetch may use; nil means any (tests only).
 	ports map[string]bool
-	// The ration's spacing, a field so a test can measure the cache and the
-	// ration separately instead of one masking the other.
-	every time.Duration
+	// The ration, as fields so a test can measure the cache and the ration
+	// separately instead of one masking the other. burst 0 means no ration.
+	burst  float64
+	refill float64
 }
 
 func New(users UserSource, log *slog.Logger) *Service {
@@ -71,9 +77,10 @@ func New(users UserSource, log *slog.Logger) *Service {
 		users:   users,
 		log:     log,
 		cache:   map[string]entry{},
-		lastAsk: map[string]time.Time{},
+		buckets: map[string]*bucket{},
 		now:     time.Now,
-		every:   riderEvery,
+		burst:   riderBurst,
+		refill:  riderRefill,
 		ports:   webPorts,
 	}
 	// After ports: the client's redirect check reads the policy off s.
@@ -111,9 +118,11 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.allow(rationKey(me)) {
-		// Ration spent. Not an error the rider should see as one: no card,
-		// and their next scroll asks again.
-		w.WriteHeader(http.StatusNoContent)
+		// 429, not 204. They mean different things to the client: 204 is "we
+		// looked and there is nothing", which it remembers, and this is "ask
+		// again in a moment", which it must not.
+		httpx.WriteError(w, http.StatusTooManyRequests, "invalid_request",
+			"Too many previews at once — give it a moment.")
 		return
 	}
 	card, found := s.fetch(r.Context(), key)
@@ -258,19 +267,39 @@ func (s *Service) remember(key string, card Card, ok bool) {
 	s.cache[key] = entry{card: card, ok: ok, exp: s.now().Add(cacheTTL)}
 }
 
-// allow is the per-rider ration, same shape as the hub's input throttle:
-// one ask per riderEvery, and the map is dropped rather than swept when it
-// grows — every entry in it is a timestamp that expires in a moment anyway.
+// bucket is one rider's allowance: tokens that refill with time.
+type bucket struct {
+	tokens float64
+	last   time.Time
+}
+
+// allow spends one token, refilling first. A full bucket lets a rider open a
+// channel and see every link on the screen at once; an empty one costs them
+// the wait, not the preview — the client asks again.
+//
+// The map is dropped rather than swept when it grows. Every entry is a
+// timestamp and a float, and a rider whose bucket is forgotten starts full,
+// which is the same place time would have put them.
 func (s *Service) allow(key string) bool {
+	if s.burst <= 0 {
+		return true
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
-	if now.Sub(s.lastAsk[key]) < s.every {
+	b, seen := s.buckets[key]
+	if !seen {
+		if len(s.buckets) >= maxRiderKeys {
+			s.buckets = map[string]*bucket{}
+		}
+		b = &bucket{tokens: s.burst, last: now}
+		s.buckets[key] = b
+	}
+	b.tokens = min(s.burst, b.tokens+now.Sub(b.last).Seconds()*s.refill)
+	b.last = now
+	if b.tokens < 1 {
 		return false
 	}
-	if len(s.lastAsk) >= maxRiderKeys {
-		s.lastAsk = map[string]time.Time{}
-	}
-	s.lastAsk[key] = now
+	b.tokens--
 	return true
 }

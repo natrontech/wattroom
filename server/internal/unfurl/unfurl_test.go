@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -45,7 +47,7 @@ func setup(t *testing.T, handler http.HandlerFunc) (*Service, *http.ServeMux, *h
 	svc.client.Timeout = fetchTimeout
 	// Off by default: a test that means to measure the ration turns it on, so
 	// no other test's 204 can quietly be the ration's rather than the page's.
-	svc.every = 0
+	svc.burst = 0
 	// httptest picks a random high port; the port policy has its own test.
 	svc.ports = nil
 	mux := http.NewServeMux()
@@ -151,18 +153,81 @@ func TestUnfurlCachesSoOneLinkCostsTheSiteOneRequest(t *testing.T) {
 	}
 }
 
-func TestUnfurlRationsOneRiderWithoutFailingLoudly(t *testing.T) {
+func TestUnfurlRationsOneRider(t *testing.T) {
 	svc, mux, upstream := setup(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = io.WriteString(w, samplePage)
 	})
-	svc.every = riderEvery // the one test that means it
+	svc.burst, svc.refill = 1, 0 // one ask, never refilled
 	// Distinct URLs, so the cache cannot answer and the ration must.
 	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/a")).Code; code != http.StatusOK {
 		t.Fatalf("first ask: %d", code)
 	}
-	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/b")).Code; code != http.StatusNoContent {
-		t.Fatalf("second ask inside the ration: %d, want 204", code)
+	// 429, so the client knows to ask again rather than remembering a "no".
+	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/b")).Code; code != http.StatusTooManyRequests {
+		t.Fatalf("second ask past the ration: %d, want 429", code)
+	}
+}
+
+func TestTheRationIsABucketSoAScreenfulOfLinksGoesThrough(t *testing.T) {
+	// The shape that matters: opening a busy channel asks for every distinct
+	// link on the screen at once. A fixed gap between asks would refuse most
+	// of them, and the rider would see a wall of bare URLs for no reason.
+	var hits int
+	svc, mux, upstream := setup(t, func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, samplePage)
+	})
+	svc.burst, svc.refill = riderBurst, riderRefill
+	clock := time.Now()
+	svc.now = func() time.Time { return clock }
+
+	for i := range riderBurst {
+		path := "/l" + strconv.Itoa(i)
+		if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+path)).Code; code != http.StatusOK {
+			t.Fatalf("link %d of a screenful: %d", i, code)
+		}
+	}
+	if hits != riderBurst {
+		t.Fatalf("%d of %d links were fetched", hits, riderBurst)
+	}
+	// One past the burst, on a clock that has not moved: refused.
+	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/over")).Code; code != http.StatusTooManyRequests {
+		t.Fatalf("past the burst: %d, want 429", code)
+	}
+	// And it refills with time rather than needing a new session.
+	clock = clock.Add(time.Second)
+	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/later")).Code; code != http.StatusOK {
+		t.Fatalf("after a second of refill: %d", code)
+	}
+}
+
+func TestOneRidersRationIsNotAnothersLimit(t *testing.T) {
+	svc, mux, upstream := setup(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, samplePage)
+	})
+	other, err := store.ParseUUID("22222222-2222-2222-2222-222222222222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	users, ok := svc.users.(*fakeUsers)
+	if !ok {
+		t.Fatal("setup handed back a service with somebody else's user source")
+	}
+	users.byToken["ada"] = db.User{ID: other, DisplayName: "ada"}
+	svc.burst, svc.refill = 1, 0
+
+	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/a")).Code; code != http.StatusOK {
+		t.Fatalf("kim's one ask: %d", code)
+	}
+	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/b")).Code; code != http.StatusTooManyRequests {
+		t.Fatalf("kim past their ration: %d", code)
+	}
+	// A rider who has spent nothing is not made to wait for one who has.
+	if code := get(t, mux, "ada", ask("/api/unfurl", upstream.URL+"/c")).Code; code != http.StatusOK {
+		t.Fatalf("ada paid for kim's asks: %d", code)
 	}
 }
 

@@ -72,7 +72,12 @@ all of it enforced in `server/internal/unfurl`:
   derived from the rider's request.
 - **A per-rider ration and a shared response cache**, so a room full of people
   reading the same link costs that site one request, and no rider can turn the
-  endpoint into an amplifier pointed at somebody else.
+  endpoint into an amplifier pointed at somebody else. The ration is a bucket,
+  not a spacing between asks: opening a busy channel asks for every distinct
+  link on the screen at once, and a fixed gap would refuse most of them for no
+  reason the rider could see. A spent bucket answers **429, never 204** — the
+  client remembers "there is nothing here" for the session and must never
+  remember "ask again" as if it were that.
 
 **Preview images are proxied through our own origin.** The card's image URL
 addresses `GET /api/unfurl/image?url=…`, which fetches through the same guard,
