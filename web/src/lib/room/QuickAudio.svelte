@@ -23,11 +23,18 @@
 
 	let open = $state(false);
 	const av = $derived(roomConnection.current?.av);
+
+	// The store only re-reads devices after a connect or a hot-plug, and this
+	// panel opens before either — so ask the browser on the way in (#658).
+	function show() {
+		open = true;
+		void av?.refreshDevices();
+	}
 </script>
 
 {#if av}
 	<button
-		onclick={() => (open = true)}
+		onclick={show}
 		aria-expanded={open}
 		class={compact
 			? 'text-muted/50 hover:text-muted flex flex-1 justify-center rounded py-1.5'

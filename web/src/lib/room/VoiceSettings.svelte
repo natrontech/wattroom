@@ -92,7 +92,7 @@
 </div>
 {#if devices.mics.length > 0 && !devices.mics.some((d) => d.label)}
 	<p class="text-muted/70 mt-2 text-[11px]">
-		Names appear after the first voice join grants mic access.
+		Names appear once a mic test or a voice join grants mic access.
 	</p>
 {/if}
 
