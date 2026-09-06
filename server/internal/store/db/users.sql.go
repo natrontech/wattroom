@@ -339,7 +339,7 @@ func (q *Queries) UpdateUserAppearance(ctx context.Context, arg UpdateUserAppear
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    email = $6, notify_planned = $7, avatar_preset = $8
+    notify_planned = $6, avatar_preset = $7
 where id = $1
 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required
 `
@@ -350,11 +350,14 @@ type UpdateUserProfileParams struct {
 	FtpWatts      int16
 	WeightKg      int16
 	StravaUpload  bool
-	Email         *string
 	NotifyPlanned bool
 	AvatarPreset  *string
 }
 
+// Never `email`: the address moves in VerifyEmail and leaves in
+// ClearUserEmail. Writing it back from the handler's snapshot let a confirm
+// click landing mid-save be overwritten by the old address, with
+// email_verified_at still set (#824).
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateUserProfile,
 		arg.ID,
@@ -362,7 +365,6 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		arg.FtpWatts,
 		arg.WeightKg,
 		arg.StravaUpload,
-		arg.Email,
 		arg.NotifyPlanned,
 		arg.AvatarPreset,
 	)

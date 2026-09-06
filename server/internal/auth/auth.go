@@ -685,8 +685,8 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 	// The address is a two-step ceremony now (#781): this stores a pending
 	// address and mails a link, and only the confirm handler moves it across.
-	// So the write below leaves `email` exactly as it found it, unless the
-	// rider is clearing it.
+	// The profile write below never touches `email`; clearing goes through
+	// ClearUserEmail after it.
 	clearing := req.Email != nil && strings.TrimSpace(*req.Email) == ""
 	current := user
 	if req.Email != nil && !clearing {
@@ -695,10 +695,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	email := current.Email
-	if clearing {
-		email = nil
-	}
+	hasEmail := current.Email != nil && !clearing
 	notify := user.NotifyPlanned
 	if req.NotifyPlanned != nil {
 		notify = *req.NotifyPlanned
@@ -707,7 +704,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	// pending address keeps it, so ticking the box while confirming does not
 	// silently untick itself — ListRoomNotifyTargets skips a null address
 	// anyway, so the setting is inert until the link is followed.
-	if email == nil && current.EmailPending == nil {
+	if !hasEmail && current.EmailPending == nil {
 		notify = false
 	}
 	preset := user.AvatarPreset
@@ -726,7 +723,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
-		Email: email, NotifyPlanned: notify, AvatarPreset: preset,
+		NotifyPlanned: notify, AvatarPreset: preset,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)

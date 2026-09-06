@@ -273,3 +273,20 @@ func TestPasskeyFinishNeedsItsChallenge(t *testing.T) {
 		t.Fatalf("finish without a cookie = %d, want 400", w.Code)
 	}
 }
+
+// Names are cut by character, never mid-rune (#824): the form counts 40
+// characters, and a byte cut produced invalid UTF-8 that Postgres refused —
+// after the authenticator had already minted the credential.
+func TestPasskeyNameCountsCharacters(t *testing.T) {
+	forty := strings.Repeat("a", 39) + "é"
+	if got := passkeyName(forty); got != forty {
+		t.Fatalf("a 40-character name was cut: %q", got)
+	}
+	long := strings.Repeat("é", 41)
+	if got := passkeyName(long); got != strings.Repeat("é", 40) {
+		t.Fatalf("41 characters cut to %d bytes %q", len(got), got)
+	}
+	if got := passkeyName("  "); got != "Passkey" {
+		t.Fatalf("blank name = %q", got)
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -28,11 +29,15 @@ type GrantRevoker interface {
 // SetMailer uses. Absent, a disconnect still drops our row.
 func (s *Service) SetStravaRevoker(r GrantRevoker) { s.stravaRevoker = r }
 
-// refuseIfLastCredential writes the refusal and reports whether it did.
-//
 // Providers and passkeys count together: a rider whose only way in is one
 // Strava grant must not be able to remove it, and neither must the one whose
 // only way in is a single passkey.
+const lastCredentialMessage = "This is the only way into your account. Add a passkey or connect another sign-in provider first."
+
+// refuseIfLastCredential writes the refusal and reports whether it did. An
+// early answer only — removeCredential is what holds the rule. It exists so a
+// rider whose only way in is Strava is told no BEFORE their grant is revoked
+// upstream, not after.
 func (s *Service) refuseIfLastCredential(w http.ResponseWriter, r *http.Request, user db.User) bool {
 	total, err := s.store.Queries.CountUserCredentials(r.Context(), user.ID)
 	if err != nil {
@@ -42,11 +47,37 @@ func (s *Service) refuseIfLastCredential(w http.ResponseWriter, r *http.Request,
 		return true
 	}
 	if total <= 1 {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
-			"This is the only way into your account. Add a passkey or connect another sign-in provider first.")
+		httpx.WriteError(w, http.StatusConflict, "conflict", lastCredentialMessage)
 		return true
 	}
 	return false
+}
+
+// removeCredential runs del with the rider's row locked, so two removals
+// cannot both count two credentials and both proceed (#824): the second waits
+// on the row, then counts one. last reports that the count refused it; rows
+// is what del removed.
+func (s *Service) removeCredential(ctx context.Context, userID pgtype.UUID, del func(q *db.Queries) (int64, error)) (rows int64, last bool, err error) {
+	tx, err := s.store.Pool.Begin(ctx)
+	if err != nil {
+		return 0, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(ctx, userID); err != nil {
+		return 0, false, err
+	}
+	total, err := q.CountUserCredentials(ctx, userID)
+	if err != nil {
+		return 0, false, err
+	}
+	if total <= 1 {
+		return 0, true, nil
+	}
+	if rows, err = del(q); err != nil {
+		return 0, false, err
+	}
+	return rows, false, tx.Commit(ctx)
 }
 
 // handleDisconnectProvider removes one identity from the account. Until this
@@ -90,14 +121,16 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	rows, err := s.store.Queries.DeleteIdentity(r.Context(), db.DeleteIdentityParams{
-		UserID: user.ID, Provider: provider,
+	rows, last, err := s.removeCredential(r.Context(), user.ID, func(q *db.Queries) (int64, error) {
+		return q.DeleteIdentity(r.Context(), db.DeleteIdentityParams{UserID: user.ID, Provider: provider})
 	})
 	switch {
 	case err != nil:
 		s.log.Error("identity delete failed", "provider", provider, "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"That provider could not be disconnected. Try again.")
+	case last:
+		httpx.WriteError(w, http.StatusConflict, "conflict", lastCredentialMessage)
 	case rows == 0:
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
 			"That provider is not connected to this account.")

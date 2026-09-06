@@ -124,6 +124,21 @@ func (q *Queries) ListUserPasskeys(ctx context.Context, userID pgtype.UUID) ([]P
 	return items, nil
 }
 
+const lockUser = `-- name: LockUser :exec
+select 1 from users where id = $1 for update
+`
+
+// The row every credential removal serialises on (#824): count-then-delete
+// in two statements let two removals both count two and both proceed, and
+// a guarded delete alone does not close it either — under READ COMMITTED,
+// deletes of different rows never block each other and each statement's
+// subquery reads its own snapshot. Holding the user's row makes the second
+// removal wait, then count one.
+func (q *Queries) LockUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockUser, id)
+	return err
+}
+
 const renamePasskey = `-- name: RenamePasskey :one
 update passkeys set name = $3 where credential_id = $1 and user_id = $2
 returning credential_id, user_id, credential, name, created_at, last_used_at

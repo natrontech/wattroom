@@ -23,6 +23,15 @@ returning *;
 -- name: DeletePasskey :execrows
 delete from passkeys where credential_id = $1 and user_id = $2;
 
+-- name: LockUser :exec
+-- The row every credential removal serialises on (#824): count-then-delete
+-- in two statements let two removals both count two and both proceed, and
+-- a guarded delete alone does not close it either — under READ COMMITTED,
+-- deletes of different rows never block each other and each statement's
+-- subquery reads its own snapshot. Holding the user's row makes the second
+-- removal wait, then count one.
+select 1 from users where id = $1 for update;
+
 -- name: CountUserCredentials :one
 -- Providers and passkeys together: what a rider can never take to zero
 -- (ADR-0029). One query so the passkey and provider removal paths cannot

@@ -9,9 +9,13 @@ returning *;
 select * from users where id = $1;
 
 -- name: UpdateUserProfile :one
+-- Never `email`: the address moves in VerifyEmail and leaves in
+-- ClearUserEmail. Writing it back from the handler's snapshot let a confirm
+-- click landing mid-save be overwritten by the old address, with
+-- email_verified_at still set (#824).
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    email = $6, notify_planned = $7, avatar_preset = $8
+    notify_planned = $6, avatar_preset = $7
 where id = $1
 returning *;
 
