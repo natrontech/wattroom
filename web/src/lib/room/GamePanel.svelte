@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { changes } from '$lib/sound/changes';
 	import { play } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
@@ -64,6 +65,15 @@
 	// Eliminations announce themselves — the rider is not watching the screen.
 	let knownOut = new Set<string>();
 	let heardPodium = false;
+	// A second game in the same mounted panel starts from silence again
+	// (#834): both memories are per-game, and only the moment a game leaves
+	// 'done' can clear them — 'running' is every tick of the one in progress.
+	const newGame = changes<boolean>((done) => {
+		if (done) return;
+		knownOut = new Set();
+		heardPodium = false;
+	});
+	$effect(() => newGame(game.phase === 'done'));
 	$effect(() => {
 		for (const [id, rider] of riderRows) {
 			if (rider.eliminated && !knownOut.has(id)) {
