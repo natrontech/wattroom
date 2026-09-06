@@ -103,24 +103,22 @@
 	});
 
 	async function ring(list: ServerRide[]) {
-		{
-			const picked = page.url.searchParams.get('ride');
-			if (picked && list.some((ride) => ride.id === picked)) {
-				highlightId = picked;
-				await tick();
-				// Instant, retried: smooth scrolling gets cancelled by the route
-				// transition, and arriving from another page needs a position,
-				// not an animation.
-				for (const delay of [50, 400]) {
-					setTimeout(() => {
-						const row = document.getElementById(`ride-${picked}`);
-						if (!row) return;
-						const box = row.getBoundingClientRect();
-						if (box.top > window.innerHeight * 0.8 || box.top < 0) {
-							row.scrollIntoView({ behavior: 'instant', block: 'center' });
-						}
-					}, delay);
-				}
+		const picked = page.url.searchParams.get('ride');
+		if (picked && list.some((ride) => ride.id === picked)) {
+			highlightId = picked;
+			await tick();
+			// Instant, retried: smooth scrolling gets cancelled by the route
+			// transition, and arriving from another page needs a position,
+			// not an animation.
+			for (const delay of [50, 400]) {
+				setTimeout(() => {
+					const row = document.getElementById(`ride-${picked}`);
+					if (!row) return;
+					const box = row.getBoundingClientRect();
+					if (box.top > window.innerHeight * 0.8 || box.top < 0) {
+						row.scrollIntoView({ behavior: 'instant', block: 'center' });
+					}
+				}, delay);
 			}
 		}
 	}

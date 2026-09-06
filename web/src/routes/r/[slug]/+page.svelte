@@ -50,45 +50,43 @@
 	// and — for the owner — the ban a griefer needs met where they are, not
 	// three screens away in Settings (#666).
 	function tileEntries(rider: () => (typeof room.riders)[number]): MenuEntry[] {
-		{
-			const entries: MenuEntry[] = [
-				{
-					label:
-						rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
-					icon: Focus,
-					onSelect: () =>
-						room.setFocus(rider().id === room.focusId ? null : rider().id),
+		const entries: MenuEntry[] = [
+			{
+				label:
+					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
+				icon: Focus,
+				onSelect: () =>
+					room.setFocus(rider().id === room.focusId ? null : rider().id),
+			},
+			// The glyph on the tile says they are sharing; this is the shortcut
+			// to the stage pick the chip under the stage already offers (#664).
+			...room.stageSources
+				.filter(
+					(source) =>
+						source.kind === 'screen' &&
+						source.riderId === rider().id &&
+						!rider().you,
+				)
+				.map((source) => ({
+					label: `Watch ${rider().name}'s screen`,
+					icon: ScreenShare,
+					onSelect: () => room.pickStage(source.key),
+				})),
+			...personMenu(rider().id, goto, {
+				you: rider().you,
+				poke: {
+					onSelect: () => room.poke(rider().id),
 				},
-				// The glyph on the tile says they are sharing; this is the shortcut
-				// to the stage pick the chip under the stage already offers (#664).
-				...room.stageSources
-					.filter(
-						(source) =>
-							source.kind === 'screen' &&
-							source.riderId === rider().id &&
-							!rider().you,
-					)
-					.map((source) => ({
-						label: `Watch ${rider().name}'s screen`,
-						icon: ScreenShare,
-						onSelect: () => room.pickStage(source.key),
-					})),
-				...personMenu(rider().id, goto, {
-					you: rider().you,
-					poke: {
-						onSelect: () => room.poke(rider().id),
-					},
-				}),
-			];
-			if (isOwner && !rider().you)
-				entries.push('separator', {
-					label: 'Ban from the room',
-					icon: ShieldBan,
-					onSelect: () => ban(rider().id, rider().name),
-					danger: true,
-				});
-			return entries;
-		}
+			}),
+		];
+		if (isOwner && !rider().you)
+			entries.push('separator', {
+				label: 'Ban from the room',
+				icon: ShieldBan,
+				onSelect: () => ban(rider().id, rider().name),
+				danger: true,
+			});
+		return entries;
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves
