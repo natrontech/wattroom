@@ -328,6 +328,13 @@ func versionHandler() http.HandlerFunc {
 	}
 }
 
+// immutablePrefix is the SvelteKit build's content-hashed output. A file
+// under it never changes meaning: a new build writes a new name, so a stale
+// copy is unreachable rather than wrong. index.html is deliberately NOT in
+// here — it is the fallback that names the current hashes, and spaHandler
+// rewrites it per request to splice in og meta.
+const immutablePrefix = "/_app/immutable/"
+
 // spaHandler serves the embedded SvelteKit build; SPA-route fallbacks get
 // index.html with og meta spliced in at request time (the embedded FS is
 // read-only, and only the server knows what a /r/{slug} link points at).
@@ -336,11 +343,28 @@ func spaHandler(social *og.Service) http.Handler {
 	if err != nil {
 		panic(err)
 	}
+	return serveSPA(dist, social)
+}
+
+// serveSPA is spaHandler with the build handed in, so a test can supply one:
+// a dev checkout embeds an empty webdist, and the branch that matters most
+// here is the one that only fires for a file that exists.
+func serveSPA(dist fs.FS, social *og.Service) http.Handler {
 	fileServer := http.FileServerFS(dist)
 	index, _ := fs.ReadFile(dist, "index.html") // nil before `make web` (dev placeholder)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if p := strings.TrimPrefix(r.URL.Path, "/"); p != "" && p != "index.html" {
 			if _, err := fs.Stat(dist, p); err == nil {
+				// An embedded file has a zero ModTime, so http.ServeContent
+				// emits neither Last-Modified nor ETag: without a header of
+				// our own the browser has no validator to revalidate with and
+				// re-downloads the whole shell on every cold load. SvelteKit
+				// hashes everything under _app/immutable/ into its filename,
+				// which is exactly what an immutable cache wants — the same
+				// header chat and DM images already carry.
+				if strings.HasPrefix(r.URL.Path, immutablePrefix) {
+					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				}
 				fileServer.ServeHTTP(w, r)
 				return
 			}
