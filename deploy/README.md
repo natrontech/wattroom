@@ -1,10 +1,11 @@
 # Deploying WattRoom (ADR-0002: one VM, one compose stack)
 
-First time, on the VM:
+First time, on the VM: copy and fill [`.env.example`](.env.example), which
+explains each value and what happens when an optional capability stays unset.
 
     mkdir -p /opt/wattroom && cd /opt/wattroom
     # copy this deploy/ directory here
-    cp .env.example .env            # fill it (sops-managed in the homelab repo)
+    cp .env.example .env
     cp livekit.yaml.example livekit.yaml   # real keys, same values as .env
     docker compose -f docker-compose.prod.yml up -d
 
