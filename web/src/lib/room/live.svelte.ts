@@ -29,6 +29,17 @@ export function createRoomLive(slug: string) {
 	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
 	let roomEvents = $state<RoomEvent[]>([]);
+	function mergeEvents(incoming: RoomEvent[]) {
+		const next = [...roomEvents];
+		for (const event of incoming) {
+			// A growing burst re-sends its own id ("queued 3 tracks"):
+			// replace the line in place, never stack a second one.
+			const at = next.findIndex((have) => have.id === event.id);
+			if (at >= 0) next[at] = event;
+			else next.push(event);
+		}
+		roomEvents = next.slice(-100);
+	}
 	// messageId → emoji → count, shared truth from the tick + backlog.
 	let chatReactions = $state<Record<string, Record<string, number>>>({});
 	// "did I press it" — the client's own knowledge, keyed id:emoji.
@@ -140,17 +151,7 @@ export function createRoomLive(slug: string) {
 						pendingIds[`${assigned.fromId}:${assigned.at}`] = assigned.id;
 					}
 				}
-				if (msg.tick.events?.length) {
-					const next = [...roomEvents];
-					for (const event of msg.tick.events) {
-						// A growing burst re-sends its own id ("queued 3 tracks"):
-						// replace the line in place, never stack a second one.
-						const at = next.findIndex((have) => have.id === event.id);
-						if (at >= 0) next[at] = event;
-						else next.push(event);
-					}
-					roomEvents = next.slice(-100);
-				}
+				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 				if (msg.tick.chat?.length) {
 					// A line posted from outside the room (#468) arrives with its
 					// id already on it — and may already be here from a backlog
@@ -325,6 +326,13 @@ export function createRoomLive(slug: string) {
 		},
 		get roomEvents() {
 			return roomEvents;
+		},
+		/**
+		 * A line this client made itself (#664: a screen share only LiveKit
+		 * saw). Same list, same cap, never sent — the hub knows nothing of it.
+		 */
+		pushEvent(event: RoomEvent) {
+			mergeEvents([event]);
 		},
 		get chatReactions() {
 			return chatReactions;

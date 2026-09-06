@@ -11,6 +11,7 @@
 		ListPlus,
 		Music,
 		RotateCw,
+		ScreenShare,
 		SmilePlus,
 	} from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
@@ -180,7 +181,11 @@
 						     copy. The room talking about itself stays quieter than the
 						     people in it. -->
 						{@const Mark =
-							entry.event.kind === 'session' ? CalendarClock : Music}
+							entry.event.kind === 'session'
+								? CalendarClock
+								: entry.event.kind === 'screen'
+									? ScreenShare
+									: Music}
 						<p
 							class="text-muted/70 flex items-baseline gap-1.5 pl-9 text-[11px] italic"
 						>

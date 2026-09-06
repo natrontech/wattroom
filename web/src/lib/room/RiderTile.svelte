@@ -4,11 +4,12 @@
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { wkg } from '$lib/format';
 	import { personMenu } from '$lib/person-menu';
-	import { MicOff } from '@lucide/svelte';
+	import { MicOff, ScreenShare } from '@lucide/svelte';
 	import {
 		AWAY_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
+		SHARE_MARK,
 		tileFrame,
 		VOICE_DOT,
 	} from '$lib/room/presence-marks';
@@ -138,6 +139,15 @@
 			<span class={VOICE_DOT} title="in voice" aria-label="in voice"></span>
 		{:else if rider.muted}
 			<MicOff size={12} class={MUTED_MARK} aria-label="muted" />
+		{/if}
+		{#if rider.sharing}
+			<!-- The share need not move the stage (#664), so the tile says it. -->
+			<ScreenShare
+				size={12}
+				class={SHARE_MARK}
+				aria-label="sharing a screen"
+				title="sharing a screen"
+			/>
 		{/if}
 	</div>
 

@@ -25,6 +25,7 @@
 		MonitorPlay,
 		MonitorUp,
 		PanelRight,
+		ScreenShare,
 		ShieldBan,
 		UserPlus,
 	} from '@lucide/svelte';
@@ -59,6 +60,20 @@
 					onSelect: () =>
 						room.setFocus(rider().id === room.focusId ? null : rider().id),
 				},
+				// The glyph on the tile says they are sharing; this is the shortcut
+				// to the stage pick the chip under the stage already offers (#664).
+				...room.stageSources
+					.filter(
+						(source) =>
+							source.kind === 'screen' &&
+							source.riderId === rider().id &&
+							!rider().you,
+					)
+					.map((source) => ({
+						label: `Watch ${rider().name}'s screen`,
+						icon: ScreenShare,
+						onSelect: () => room.pickStage(source.key),
+					})),
 				...personMenu(rider().id, goto, {
 					you: rider().you,
 					poke: {

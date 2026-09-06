@@ -79,6 +79,12 @@ export function eventText(event: RoomEvent): string {
 		// list the lounge card renders.
 		case 'due':
 			return `${subject} starts at ${at}`;
+		// A screen appearing (#664) — this client's own line, never the
+		// server's: LiveKit is the only one who saw it.
+		case 'shared':
+			return `${event.actor} started sharing a screen`;
+		case 'unshared':
+			return `${event.actor} stopped sharing`;
 		default:
 			return '';
 	}

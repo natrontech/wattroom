@@ -31,6 +31,9 @@ export const VOICE_DOT = 'bg-z4 h-1.5 w-1.5 rounded-full';
 /** Muted: a struck-through mic, quiet chrome, wherever the rider is drawn. */
 export const MUTED_MARK = 'text-muted shrink-0';
 
+/** Sharing a screen (#664): the stage picker's glyph, as quiet as the mic. */
+export const SHARE_MARK = MUTED_MARK;
+
 /** Explicitly stepped out: quiet structural chrome, never live-data watt. */
 export const AWAY_MARK =
 	'bg-surface/85 text-muted rounded-full px-1.5 py-0.5 text-[9px] font-medium tracking-wider uppercase';

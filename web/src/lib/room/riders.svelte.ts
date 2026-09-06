@@ -10,6 +10,7 @@ interface RiderDeps {
 		readonly videoOf: Record<string, number | undefined>;
 		readonly voice: Record<string, string | undefined>;
 		readonly speaking: Record<string, boolean | undefined>;
+		readonly stageSources: { id: string; kind: string }[];
 	};
 	recording: ReturnType<typeof createRecording>;
 	myId: () => string | undefined;
@@ -84,6 +85,9 @@ export function createRiders(deps: RiderDeps) {
 				you,
 				coach: rider.role !== 'member',
 				cameraOn: !!deps.av.videoOf[rider.id],
+				sharing: deps.av.stageSources.some(
+					(source) => source.kind === 'screen' && source.id === rider.id,
+				),
 				inVoice: rider.id in deps.av.voice || serverVoice.has(rider.id),
 				muted: deps.av.voice[rider.id] === 'muted',
 				speaking: !!deps.av.speaking[rider.id],
