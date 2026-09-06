@@ -1,1 +1,0 @@
-- Cancelling a planned session now emails the room, the way planning one and moving one already did — riders who were told to turn up at seven no longer find out by opening an empty room. It rides the same switch as the others, so nothing new to turn on, and a plan whose start time has already passed is skipped: being told a ride you already missed is off is not news.
