@@ -15,6 +15,7 @@ const RIDER_GAIN_MAX = 2;
 function load(): {
 	music: number;
 	cues: number;
+	board: number;
 	duck: number;
 	duckSelf: boolean;
 	riders: Record<string, number>;
@@ -36,6 +37,7 @@ function load(): {
 		return {
 			music: clamp(raw.music, 0, 100, 70),
 			cues: clamp(raw.cues, 0, 1, 0.7),
+			board: clamp(raw.board, 0, 1, 0.7),
 			duck: clamp(raw.duck, 0, 1, DUCK_DEFAULT),
 			duckSelf: raw.duckSelf === true,
 			riders,
@@ -45,6 +47,7 @@ function load(): {
 		return {
 			music: 70,
 			cues: 0.7,
+			board: 0.7,
 			duck: DUCK_DEFAULT,
 			duckSelf: false,
 			riders: {},
@@ -59,6 +62,12 @@ function clamp(v: unknown, lo: number, hi: number, fallback: number): number {
 
 let music = $state(70);
 let cues = $state(0.7);
+/**
+ * The soundboard's level (#877, ADR-0033), 0–1. Its OWN channel, never the
+ * cues fader: a quiet ride must not silence the board, and turning the board
+ * down must not cost the rider their countdown.
+ */
+let board = $state(0.7);
 let duck = $state(DUCK_DEFAULT);
 let duckSelf = $state(false);
 let riders = $state<Record<string, number>>({});
@@ -76,6 +85,7 @@ let names = $state<Record<string, string>>({});
 const initial = load();
 music = initial.music;
 cues = initial.cues;
+board = initial.board;
 duck = initial.duck;
 duckSelf = initial.duckSelf;
 riders = initial.riders;
@@ -85,7 +95,7 @@ setDuckLevel(duck);
 
 function persist() {
 	mixerStorage.write(
-		JSON.stringify({ music, cues, duck, duckSelf, riders, names }),
+		JSON.stringify({ music, cues, board, duck, duckSelf, riders, names }),
 	);
 }
 
@@ -105,6 +115,14 @@ export const mixer = {
 	setCues(v: number) {
 		cues = Math.min(1, Math.max(0, v));
 		setCueVolume(muted ? 0 : cues);
+		persist();
+	},
+	/** Soundboard level, 0–1 — see the note on the state above. */
+	get board() {
+		return board;
+	},
+	setBoard(v: number) {
+		board = Math.min(1, Math.max(0, v));
 		persist();
 	},
 	/** Silent while the rider is away — the outputs each read this. */

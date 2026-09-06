@@ -331,6 +331,11 @@ export function createRoomLive(slug: string) {
 		finish() {
 			buffer?.end();
 		},
+		/** Fire a soundboard pad (#877): only the clip id crosses the wire —
+		 * the hub fills in who fired it, and every listener fetches the audio. */
+		fireClip(clipId: string) {
+			send({ board: { clipId } });
+		},
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
 		},

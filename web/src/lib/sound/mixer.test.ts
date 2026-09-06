@@ -210,14 +210,45 @@ describe('fader resolution (#509)', () => {
 		const mixer = await freshMixer();
 		mixer.setMusic(43);
 		mixer.setCues(0.63);
+		mixer.setBoard(0.31);
 		mixer.setDuck(0.17);
 		mixer.setRiderGain('anna', 1.37, 'Anna');
 
 		const reloaded = await freshMixer();
 		expect(reloaded.music).toBe(43);
 		expect(reloaded.cues).toBe(0.63);
+		expect(reloaded.board).toBe(0.31);
 		expect(reloaded.duck).toBe(0.17);
 		expect(reloaded.riderGain('anna')).toBe(1.37);
+	});
+
+	// ADR-0033: the board is its own channel. A rider who wants a quiet ride
+	// pulls the cues down, and the board keeps whatever level they gave it.
+	it('moves the board without touching the cues, or the cue bus', async () => {
+		const mixer = await freshMixer();
+		const { setVolume } = await import('$lib/sound/cues');
+		mixer.setCues(0.6);
+		vi.mocked(setVolume).mockClear();
+
+		mixer.setBoard(0.2);
+		expect(mixer.board).toBe(0.2);
+		expect(mixer.cues).toBe(0.6);
+		expect(setVolume).not.toHaveBeenCalled();
+
+		mixer.setCues(0);
+		expect(mixer.board).toBe(0.2);
+	});
+
+	it('keeps every board position the fader can emit, and clamps past its ends', async () => {
+		const mixer = await freshMixer();
+		for (const v of positions(UNIT_FADER)) {
+			mixer.setBoard(v);
+			expect(mixer.board).toBe(v);
+		}
+		mixer.setBoard(4);
+		expect(mixer.board).toBe(1);
+		mixer.setBoard(-1);
+		expect(mixer.board).toBe(0);
 	});
 });
 
