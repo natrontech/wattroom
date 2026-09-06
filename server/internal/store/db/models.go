@@ -223,6 +223,7 @@ type User struct {
 	EmailVerifyHash    []byte
 	EmailVerifyExpires pgtype.Timestamptz
 	EmailRequired      bool
+	Timezone           *string
 }
 
 type Workout struct {

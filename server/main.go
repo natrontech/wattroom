@@ -1,6 +1,11 @@
 package main
 
 import (
+	// The zone database, embedded rather than the host's (#858): session mail
+	// formats times in each rider's zone, and a distroless image is not where
+	// that should depend on what the base layer happens to ship.
+	_ "time/tzdata"
+
 	"context"
 	"embed"
 	"encoding/json"

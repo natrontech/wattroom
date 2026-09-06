@@ -43,6 +43,9 @@ export interface Me {
 	 * the default) and the scheme ("" = auto); null = never chosen anywhere. */
 	accentPalette?: string | null;
 	colorScheme?: string | null;
+	/** The IANA zone last reported from a browser (#858). Session email is
+	 * written in it; absent, the server falls back to its own. */
+	timezone?: string | null;
 }
 
 function createAccountStore() {
@@ -69,6 +72,7 @@ function createAccountStore() {
 			if (meRes.ok) {
 				me = meRes.data;
 				people.learn([{ ...me, name: me.displayName }]);
+				void reportTimezone(meRes.data);
 			} else if (meRes.error.error === 'unauthorized') {
 				// The ONE answer that means signed out. A server that cannot be
 				// reached, or a 500 from a session lookup that hit a database
@@ -84,6 +88,27 @@ function createAccountStore() {
 		} finally {
 			if (mine === asked) loaded = true;
 		}
+	}
+
+	/**
+	 * Tell the server where this rider is, so a session email names a time
+	 * they recognise instead of the one on the server's clock (#858).
+	 *
+	 * Reported, never asked: the browser already knows, and a timezone picker
+	 * would fail the 95% rule in .claude/rules/ux.md. Reporting on every load
+	 * is also what makes it right after a rider moves. Fire-and-forget — a
+	 * failed write costs a slightly wrong time in an email, not this page.
+	 */
+	async function reportTimezone(current: Me): Promise<void> {
+		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (!zone || zone === current.timezone) return;
+		const res = await api('/api/me/timezone', {
+			method: 'PUT',
+			json: { timezone: zone },
+		});
+		// load() runs on every visibilitychange, so remember it here too
+		// rather than waiting for the next GET to echo it back.
+		if (res.ok && me) me.timezone = zone;
 	}
 
 	return {

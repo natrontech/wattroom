@@ -24,10 +24,18 @@ update users set notify_planned = false where id = $1 and unsub_token = $2;
 
 -- name: ListRoomNotifyTargets :many
 -- Members who asked for planned-session email — minus the planner, who knows.
-select u.id, u.email, u.unsub_token
+-- The zone comes along because the time in the mail is formatted per rider
+-- (#858), not once for the whole room.
+select u.id, u.email, u.unsub_token, u.timezone
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1 and u.notify_planned and u.email is not null and u.id <> $2;
+
+-- name: UpdateUserTimezone :exec
+-- Reported by the browser, never typed. Its own statement rather than a field
+-- on the profile update, because that one validates a whole form and this is a
+-- background write of one value.
+update users set timezone = $2 where id = $1;
 
 -- name: GetUserByIcsToken :one
 select * from users where ics_token = $1;
