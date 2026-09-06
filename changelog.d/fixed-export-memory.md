@@ -1,0 +1,1 @@
+- Exporting all your data no longer loads every ride's samples into memory at once. It reads them one ride at a time while streaming the zip, so the export costs the same whether you have ridden for a month or for years.

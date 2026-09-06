@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -324,5 +325,48 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	var rooms int
 	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from rooms where id = $1", room).Scan(&rooms); err != nil || rooms != 1 {
 		t.Errorf("bob's room should survive alice's purge: %d %v", rooms, err)
+	}
+}
+
+func TestExportStreamsEveryRideWithoutHoldingThemAll(t *testing.T) {
+	// #894: the blobs used to be read as one slice and held across both
+	// loops, so a rider's whole history sat in memory at once. They are read
+	// one at a time now — every ride still has to reach the zip, and still
+	// only the rider's own.
+	h := setup(t)
+	room := h.createRoom(t, "bob")
+	first := `[{"t":0,"w":180}]`
+	second := `[{"t":0,"w":250}]`
+	h.createRide(t, "alice", room, "Openers", gzipped(t, first))
+	h.createRide(t, "alice", room, "Threshold", gzipped(t, second))
+	h.createRide(t, "bob", room, "Bob's Ride", gzipped(t, `[{"t":0,"w":999}]`))
+
+	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("body is not a zip: %v", err)
+	}
+	var samples []string
+	for _, f := range zr.File {
+		if !strings.HasPrefix(f.Name, "samples/") {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open %s: %v", f.Name, err)
+		}
+		body, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read %s: %v", f.Name, err)
+		}
+		samples = append(samples, string(body))
+	}
+	sort.Strings(samples)
+	if len(samples) != 2 || samples[0] != first || samples[1] != second {
+		t.Errorf("want both of alice's rides and neither of bob's, got %q", samples)
 	}
 }
