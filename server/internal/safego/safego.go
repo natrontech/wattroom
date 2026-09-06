@@ -46,18 +46,34 @@ func Run(log *slog.Logger, where string, fn func()) (panicked bool) {
 // Window — logged as an error, since at that point restarting is spinning.
 // now is injectable for the tests; production passes time.Now.
 func Supervise(log *slog.Logger, now func() time.Time, where string, stop <-chan struct{}, loop func()) {
-	go supervise(log, now, where, stop, loop)
+	SuperviseThen(log, now, where, stop, loop, nil)
 }
 
-func supervise(log *slog.Logger, now func() time.Time, where string, stop <-chan struct{}, loop func()) {
+// SuperviseThen is Supervise with a hand-off for the give-up case: when the
+// panics exceed Budget, gaveUp runs on the supervisor's goroutine. Without it
+// the caller cannot tell a loop that returned on purpose from one the
+// supervisor abandoned — and a room whose clock was abandoned keeps its
+// sockets open, riders watching a timer that will never move again (#751).
+// gaveUp may be nil, and does not run when the loop stops for any other
+// reason.
+func SuperviseThen(log *slog.Logger, now func() time.Time, where string, stop <-chan struct{}, loop func(), gaveUp func()) {
+	go func() {
+		if supervise(log, now, where, stop, loop) && gaveUp != nil {
+			gaveUp()
+		}
+	}()
+}
+
+// supervise reports whether it stopped because the panics exceeded Budget.
+func supervise(log *slog.Logger, now func() time.Time, where string, stop <-chan struct{}, loop func()) bool {
 	var panics []time.Time
 	for {
 		if !Run(log, where, loop) {
-			return
+			return false
 		}
 		select {
 		case <-stop:
-			return
+			return false
 		default:
 		}
 		at := now()
@@ -70,7 +86,7 @@ func supervise(log *slog.Logger, now func() time.Time, where string, stop <-chan
 		panics = append(recent, at)
 		if len(panics) > Budget {
 			logger(log).Error("goroutine gave up after repeated panics", "where", where, "panics", len(panics), "window", Window)
-			return
+			return true
 		}
 		logger(log).Warn("goroutine restarted after a panic", "where", where, "panics", len(panics))
 	}

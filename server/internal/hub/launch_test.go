@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/coder/websocket/wsjson"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -92,4 +95,60 @@ func TestRoomLoopReleasesTheLockAfterAPanic(t *testing.T) {
 		t.Fatal("the room mutex is still held after the panic")
 	}
 	rm.mu.Unlock()
+}
+
+// A game mode that blows up on every tick, so the supervisor spends its
+// budget instead of recovering.
+type alwaysPanickingMode struct{ ticks atomic.Int32 }
+
+func (m *alwaysPanickingMode) advance(time.Time, map[string]int, map[string]protocol.Rider) {
+	m.ticks.Add(1)
+	panic("game mode blows up every tick")
+}
+func (m *alwaysPanickingMode) state(time.Time) protocol.GameState { return protocol.GameState{} }
+func (m *alwaysPanickingMode) done() bool                         { return false }
+
+func TestRoomIsClosedWhenItsLoopGivesUp(t *testing.T) {
+	// #751: past safego's budget the loop is gone for good. The room used to
+	// keep its sockets — riders sitting in a room whose clock will never tick
+	// again, with nothing on screen saying so. Now it is closed, and the
+	// reconnect lands in a fresh room with a live loop.
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	rm := newRoom("doomed")
+	mode := &alwaysPanickingMode{}
+	rm.game = mode
+	h.mu.Lock()
+	h.rooms["doomed"] = rm
+	h.mu.Unlock()
+	h.launchRoom(rm)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/doomed", "jan:owner")
+
+	// One tick per relaunch, so the budget takes a few seconds of real time
+	// to spend — longer than `eventually`'s deadline.
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		h.mu.Lock()
+		_, still := h.rooms["doomed"]
+		h.mu.Unlock()
+		if !still {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the room outlived its abandoned loop (%d panicking ticks)", mode.ticks.Load())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var msg protocol.ServerMessage
+	for {
+		if err := wsjson.Read(ctx, conn, &msg); err != nil {
+			return // the socket was dropped, which is the point
+		}
+	}
 }
