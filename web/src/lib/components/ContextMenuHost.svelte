@@ -112,6 +112,7 @@
 							dragged[i] = next;
 							item.onInput(next);
 						}}
+						onchange={(e) => item.onChange?.(Number(e.currentTarget.value))}
 						aria-label={item.label}
 						class="mt-1.5 w-full"
 					/>

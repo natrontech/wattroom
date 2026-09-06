@@ -370,10 +370,22 @@ What does not change:
 - **The Sound panel stays**, and stays the second way in (`ux.md`: never only
   in a menu). Its rider list stops being a row of Reset buttons and becomes the
   faders themselves — the riders you have moved, adjustable there.
-- **The gate, the devices, the cues and the duck depth stay in it.** None of
-  them belongs to one object; they are the room's sound as a whole.
+- **The gate, the devices and the duck depth stay in it.** None of them
+  belongs to one object; they are the room's sound as a whole. *(The cues were
+  in this list until #898 — see below.)*
 - **The sidebar rail keeps its music fader.** It is the control that follows
   the music out of the room, which is the rail's whole job.
+
+**The cues followed, one issue later (#898).** They were left in the panel here
+on the grounds that no object owns them — they fire from the room, from chat,
+from a poke, from a toast. That was the wrong half of the question. Nothing
+*plays* them from one place, but they belong to one thing all the same: they
+are yours, per device, wherever in the app you are. The object that is you and
+is pinned to every screen is the you-panel at the foot of the sidebar, so the
+cue level is an entry in its menu (`you-menu.ts`), beside your rider page and
+your settings. Letting the fader go plays a cue at the level it landed on —
+`MenuSlider` grew an `onChange` for it — because a level you cannot hear is
+not a level you can set.
 
 ## Consequences
 
