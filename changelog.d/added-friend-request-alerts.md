@@ -1,0 +1,1 @@
+- A friend request now announces itself wherever you are in the app — a blip, a toast, and an OS notification if the tab is in the background — and so does someone accepting the request you sent. Both sides also see the friends list update the moment it changes, instead of on the next refresh. Dismissing a request stays silent, as it always has.

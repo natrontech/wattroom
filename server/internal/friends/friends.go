@@ -24,9 +24,12 @@ type UserSource interface {
 }
 
 // PresenceSource answers "which room is this user connected to right now" —
-// defined here where it is consumed, implemented by the hub.
+// defined here where it is consumed, implemented by the hub. PresenceChanged
+// pings every lobby socket: a request, an acceptance or a removal reaches the
+// other side now rather than on their next fallback poll (#876).
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
+	PresenceChanged()
 }
 
 type Service struct {
@@ -56,6 +59,9 @@ type friendJSON struct {
 	TotalXp      int64   `json:"totalXp"`
 	// accepted | pending_in (they asked me) | pending_out (I asked them)
 	Status string `json:"status"`
+	// When the row was created, unix ms — the client announces a request or an
+	// acceptance once per row, in one tab, off this (#876).
+	At int64 `json:"at"`
 	// Presence — accepted friends only (ADR-0012). Online means "app open"
 	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
 	// some room, and the room is named ONLY when the viewer is a member of it.
@@ -135,7 +141,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		entry := friendJSON{
 			ID: store.UUIDString(row.ID), Name: row.DisplayName,
 			AvatarURL: row.AvatarUrl, AvatarPreset: row.AvatarPreset,
-			TotalXp: row.TotalXp,
+			TotalXp: row.TotalXp, At: row.CreatedAt.Time.UnixMilli(),
 		}
 		switch {
 		case row.Status == "accepted":
@@ -230,6 +236,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The request could not be sent.")
 		return
 	}
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -251,6 +258,7 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No pending request from them.")
 		return
 	}
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -272,6 +280,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "You are not connected to them.")
 		return
 	}
+	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

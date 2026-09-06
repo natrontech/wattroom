@@ -26,6 +26,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { activePlace } from '$lib/nav/pages';
@@ -48,6 +49,15 @@
 	// panel mounts (audit #219).
 	$effect(() => {
 		if (account.me) dmHeads.start();
+	});
+
+	// Friend events arrive the same way (#876): someone asking, someone
+	// accepting. Off the lobby ping — the friends endpoints ping it now — so
+	// it reaches the other side while they watch, wherever they are.
+	$effect(() => {
+		if (!account.me) return;
+		presence.version;
+		void friends.reload();
 	});
 
 	// Account → local profile cache, once me arrives (ADR-0009: server truth).

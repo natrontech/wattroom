@@ -11,41 +11,19 @@
 	} from '$lib/context-menu.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { friends, type Friend } from '$lib/friends/friends.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
-	import { people } from '$lib/people.svelte';
 	import { personMenu } from '$lib/person-menu';
-	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
-	interface Friend {
-		id: string;
-		name: string;
-		avatarUrl?: string;
-		avatarPreset?: string;
-		totalXp?: number;
-		status: 'accepted' | 'pending_in' | 'pending_out';
-		online?: boolean;
-		inRoom?: boolean;
-		room?: string;
-		roomName?: string;
-	}
-
-	let friends = $state<Friend[] | null>(null);
-	let myCode = $state('');
-	let error = $state<string | null>(null);
+	// The list, my code and its load error live in the store (#876): the app
+	// refreshes it off the presence ping and announces what arrives in it,
+	// whether or not this panel is on screen.
+	const list = $derived(friends.list);
+	let actionError = $state<string | null>(null);
+	const error = $derived(actionError ?? friends.error);
 	let codeInput = $state('');
 	let codeError = $state<string | null>(null);
-	async function load() {
-		const res = await api<{ friends: Friend[]; code: string }>('/api/friends');
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		error = null;
-		friends = res.data.friends;
-		myCode = res.data.code;
-		people.learn(res.data.friends);
-	}
 
 	async function addByCode(event: SubmitEvent) {
 		event.preventDefault();
@@ -59,16 +37,8 @@
 		}
 		codeError = null;
 		codeInput = '';
-		await load();
+		await friends.reload();
 	}
-
-	$effect(() => {
-		// Push-driven (#251): any presence change — a friend coming online, a
-		// join, a leave — bumps the version and this re-fetches. DM heads are
-		// polled globally (heads.svelte.ts), not by this panel.
-		presence.version;
-		void load();
-	});
 
 	async function act(
 		path: string,
@@ -77,10 +47,11 @@
 	) {
 		const res = await api(path, { method });
 		if (!res.ok) {
-			error = res.error.message;
+			actionError = res.error.message;
 			return;
 		}
-		await load();
+		actionError = null;
+		await friends.reload();
 		if (toast) toasts.push(toast.message, { undo: toast.undo });
 	}
 
@@ -98,7 +69,7 @@
 			return;
 		}
 		toasts.push(`Sent ${name} a new friend request.`);
-		await load();
+		await friends.reload();
 	}
 
 	function removeFriend(friend: Friend) {
@@ -132,11 +103,9 @@
 	}
 
 	const accepted = $derived(
-		(friends ?? []).filter((f) => f.status === 'accepted'),
+		(list ?? []).filter((f) => f.status === 'accepted'),
 	);
-	const pending = $derived(
-		(friends ?? []).filter((f) => f.status !== 'accepted'),
-	);
+	const pending = $derived((list ?? []).filter((f) => f.status !== 'accepted'));
 </script>
 
 <section class="mt-6">
@@ -144,11 +113,11 @@
 		<p class="text-danger mt-3 text-xs">{error}</p>
 	{/if}
 
-	{#if friends === null}
+	{#if list === null}
 		<!-- errors.md: never blank while a fetch is in flight. -->
 		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading friends…</p>
 	{:else}
-		{#if friends.length === 0}
+		{#if list.length === 0}
 			<!-- Nobody yet: teach the formation rule (ADR-0012 amendment). -->
 			<p class="text-muted mt-3 text-sm">
 				Friends are made by trading codes — share yours below, or enter theirs,
@@ -266,10 +235,10 @@
 
 		<!-- Formation is code-only (ADR-0012 amendment): no user listing exists. -->
 		<div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-			{#if myCode}
+			{#if friends.code}
 				<button
 					onclick={() => {
-						void navigator.clipboard.writeText(myCode);
+						void navigator.clipboard.writeText(friends.code);
 						toasts.push('Friend code copied.');
 					}}
 					class="text-muted hover:text-ink flex items-center gap-2 text-xs"
@@ -277,7 +246,7 @@
 				>
 					your code
 					<span class="font-display text-ink text-sm font-bold tracking-widest"
-						>{myCode}</span
+						>{friends.code}</span
 					>
 					<Copy size={13} />
 				</button>

@@ -30,8 +30,14 @@ func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMe
 	return u, ok
 }
 
-// fakePresence stands in for the hub: userID → room slug.
-type fakePresence struct{ where map[string]string }
+// fakePresence stands in for the hub: userID → room slug, plus a count of
+// the lobby pings a mutation asked for (#876).
+type fakePresence struct {
+	where map[string]string
+	pings int
+}
+
+func (f *fakePresence) PresenceChanged() { f.pings++ }
 
 func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	out := map[string]string{}
@@ -163,9 +169,17 @@ func TestFriendLifecycle(t *testing.T) {
 		t.Fatalf("self request: %d", code)
 	}
 
+	// Nothing refused so far may have pinged the lobby (#876).
+	if presence.pings != 0 {
+		t.Fatalf("refused requests pinged the lobby %d times", presence.pings)
+	}
 	// Codes are the only gate — no shared room needed, and case/space forgiven.
 	if code := request(t, mux, "alice", "  "+strings.ToLower(bob.FriendCode)+" "); code != http.StatusOK {
 		t.Fatalf("request: %d", code)
+	}
+	// A request bob can be told about: the lobby ping is how he hears (#876).
+	if presence.pings != 1 {
+		t.Fatalf("request pings: %d", presence.pings)
 	}
 	// Duplicate (either direction) → 409.
 	if code := request(t, mux, "bob", alice.FriendCode); code != http.StatusConflict {
@@ -173,6 +187,10 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 	if got := friendsOf(t, mux, "alice")[0]["status"]; got != "pending_out" {
 		t.Fatalf("alice sees %v", got)
+	}
+	// The row's own timestamp — the client announces the request off it.
+	if at, ok := friendsOf(t, mux, "bob")[0]["at"].(float64); !ok || at <= 0 {
+		t.Fatalf("no request timestamp: %v", friendsOf(t, mux, "bob")[0]["at"])
 	}
 	if got := friendsOf(t, mux, "bob")[0]["status"]; got != "pending_in" {
 		t.Fatalf("bob sees %v", got)
@@ -184,6 +202,10 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(alice.ID)+"/accept"); code != http.StatusOK {
 		t.Fatalf("accept: %d", code)
+	}
+	// Alice hears about it the same way — the refused self-accept above did not.
+	if presence.pings != 2 {
+		t.Fatalf("accept pings: %d", presence.pings)
 	}
 
 	// Presence: bob is in the shared room — alice sees online AND the name.
