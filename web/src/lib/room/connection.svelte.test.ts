@@ -29,6 +29,7 @@ const fakeLive = {
 	status: 'live',
 	chatLog: [],
 	roomEvents: [],
+	pushEvent() {},
 	chatReactions: {},
 	myReacts: {},
 	refusal: null,

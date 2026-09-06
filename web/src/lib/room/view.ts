@@ -14,6 +14,8 @@ export interface RoomRider {
 	you: boolean;
 	coach: boolean;
 	cameraOn: boolean;
+	/** Their screen is live in the room (#664) — marked on the tile, since the stage need not move. */
+	sharing?: boolean;
 	/** In the voice channel at all — absent mic ≠ muted mic (#151). */
 	inVoice?: boolean;
 	muted: boolean;

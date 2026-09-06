@@ -12,8 +12,10 @@ import { createRide } from '$lib/room/ride.svelte';
 import { sensorClaim } from '$lib/room/sensor-claim';
 import { missedSince, type Missed } from '$lib/room/unread';
 import { announcePoke } from '$lib/room/poke';
+import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
+import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
 
@@ -178,6 +180,34 @@ function connect(slug: string): Connection {
 				);
 			} else if ([...before].some((id) => !ids.has(id))) {
 				play('leave');
+			}
+		});
+
+		// Someone else's screen appearing announces itself (#664): while the
+		// jukebox plays the stage stays on the music, so the share was one chip
+		// in a picker nobody on a bike is watching. A local timeline line and
+		// the join cue — something arrived in the room — through the mixer like
+		// every other cue. Only while voice is live: a drop empties the list,
+		// and every share would otherwise read as ended.
+		let knownScreens = new Set<string>();
+		$effect(() => {
+			if (av.status !== 'live') return;
+			const now = new Set(
+				av.stageSources
+					.filter((source) => source.kind === 'screen')
+					.map((source) => source.id),
+			);
+			const changes = screenShareChanges(knownScreens, now, account.me?.id);
+			knownScreens = now;
+			if (changes.length === 0) return;
+			// Untracked: the roster is a new object every tick, and this must
+			// run when the shares change, not once a second.
+			const tick = untrack(() => live.tick);
+			for (const change of changes) {
+				const name = tick?.roster.find((rider) => rider.id === change.rider)
+					?.name;
+				live.pushEvent(screenShareEvent(change, name, tick?.at ?? Date.now()));
+				if (change.live) play('join');
 			}
 		});
 
