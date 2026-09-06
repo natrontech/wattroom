@@ -1,0 +1,1 @@
+- One rider on bad wifi no longer slows the room down for everyone. Each rider's screen now has its own outbound queue, so a connection that stops keeping up misses ticks by itself instead of costing every other rider up to a second of theirs — most visible during a sprint, where the room ticks four times a second.

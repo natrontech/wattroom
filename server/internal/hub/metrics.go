@@ -16,6 +16,13 @@ var (
 		Name: "wattroom_room_ticks_total",
 		Help: "Room tick broadcasts sent.",
 	})
+	// A socket that has fallen behind its queue (#670). One rider on bad wifi
+	// producing a trickle is normal; a climbing rate is a room where somebody
+	// is not reading, which is exactly what used to slow everyone else down.
+	metricDroppedFrames = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "wattroom_room_frames_dropped_total",
+		Help: "Frames dropped because a client's send queue was full.",
+	})
 )
 
 // Riders actually pedalling — a live sample inside ridingWindow — as opposed to
