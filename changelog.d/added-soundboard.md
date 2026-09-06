@@ -1,1 +1,0 @@
-- A soundboard of your own: upload MP3s, put them on nine pads, and fire them into the room with keys `1`–`9`. The panel floats where you drag it and folds away with `B`. It has its own volume in the mixer — turning the cues down for a quiet ride never silences it, and turning it down never costs you the countdown.
