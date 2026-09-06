@@ -87,17 +87,6 @@ func (q *Queries) CountOwnedRooms(ctx context.Context, ownerID pgtype.UUID) (int
 	return count, err
 }
 
-const countRoomMembers = `-- name: CountRoomMembers :one
-select count(*) from memberships where room_id = $1 and role != 'banned'
-`
-
-func (q *Queries) CountRoomMembers(ctx context.Context, roomID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countRoomMembers, roomID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createMembership = `-- name: CreateMembership :exec
 insert into memberships (room_id, user_id, role)
 values ($1, $2, $3)
@@ -708,9 +697,45 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, m.role
+select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, m.role,
+       (select count(*) from memberships mm
+         where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
+       (select count(*)
+          from chat_messages cm
+          left join room_reads rr on rr.room_id = cm.room_id and rr.user_id = $1
+         where cm.room_id = r.id
+           and cm.user_id != $1
+           and (rr.read_at is null or cm.created_at > rr.read_at))::bigint as unread,
+       -- coalesced because the lateral is a LEFT join: sqlc reads the column
+       -- as non-null from the schema and would scan a room with nothing
+       -- planned into a *string, which fails. next_starts_at carries the
+       -- "is there one" answer instead — pgtype handles its NULL.
+       coalesce(upcoming.workout_name, '')::text as next_workout_name,
+       upcoming.starts_at as next_starts_at,
+       -- LastRoomChat's row, per room: the one-line preview that makes a room
+       -- sortable next to a DM by recency (#468). last_at carries whether
+       -- there is one, so the texts coalesce like the workout name above.
+       coalesce(last.text, '')::text as last_chat_text,
+       coalesce(last.display_name, '')::text as last_chat_from,
+       last.image_id as last_chat_image_id,
+       last.created_at as last_chat_at
 from memberships m
 join rooms r on r.id = m.room_id
+left join lateral (
+    select s.workout_name, s.starts_at
+    from scheduled_sessions s
+    where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
+    order by s.starts_at
+    limit 1
+) upcoming on true
+left join lateral (
+    select cm.text, cm.image_id, cm.created_at, u.display_name
+    from chat_messages cm
+    join users u on u.id = cm.user_id
+    where cm.room_id = r.id
+    order by cm.created_at desc
+    limit 1
+) last on true
 where m.user_id = $1 and m.role != 'banned'
 order by m.joined_at desc
 `
@@ -733,10 +758,26 @@ type ListUserRoomsRow struct {
 	AutoplayFixedVideoID    string
 	AutoplayFixedVideoTitle string
 	Role                    string
+	MemberCount             int64
+	Unread                  int64
+	NextWorkoutName         string
+	NextStartsAt            pgtype.Timestamptz
+	LastChatText            string
+	LastChatFrom            string
+	LastChatImageID         pgtype.UUID
+	LastChatAt              pgtype.Timestamptz
 }
 
 // Banned members keep their row (the ban IS the row) but the room vanishes
 // from their nav.
+//
+// Everything the rail draws per room comes along here rather than in a loop
+// of its own (#890): every presence ping makes every online rider re-run
+// this, so it was 1+4N round trips multiplied by the whole fleet. The unread
+// predicate is CountRoomUnread's, unchanged — the rail and a single room must
+// not be able to disagree about what "new" means.
+// NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
+// a little past its time, and the read is the cleanup.
 func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]ListUserRoomsRow, error) {
 	rows, err := q.db.Query(ctx, listUserRooms, userID)
 	if err != nil {
@@ -764,6 +805,14 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.AutoplayFixedVideoID,
 			&i.AutoplayFixedVideoTitle,
 			&i.Role,
+			&i.MemberCount,
+			&i.Unread,
+			&i.NextWorkoutName,
+			&i.NextStartsAt,
+			&i.LastChatText,
+			&i.LastChatFrom,
+			&i.LastChatImageID,
+			&i.LastChatAt,
 		); err != nil {
 			return nil, err
 		}
@@ -773,24 +822,6 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 		return nil, err
 	}
 	return items, nil
-}
-
-const nextRoomSession = `-- name: NextRoomSession :one
-select workout_name, starts_at from scheduled_sessions
-where room_id = $1 and starts_at > now() - interval '30 minutes'
-order by starts_at limit 1
-`
-
-type NextRoomSessionRow struct {
-	WorkoutName string
-	StartsAt    pgtype.Timestamptz
-}
-
-func (q *Queries) NextRoomSession(ctx context.Context, roomID pgtype.UUID) (NextRoomSessionRow, error) {
-	row := q.db.QueryRow(ctx, nextRoomSession, roomID)
-	var i NextRoomSessionRow
-	err := row.Scan(&i.WorkoutName, &i.StartsAt)
-	return i, err
 }
 
 const rescheduleSession = `-- name: RescheduleSession :one

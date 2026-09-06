@@ -321,34 +321,30 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		// which handleGet would count as reading it.
 		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
 			Cheers: cheerSet(room.Cheers)}
-		if count, err := s.store.Queries.CountRoomMembers(r.Context(), room.ID); err == nil {
-			entry.MemberCount = int(count)
-		}
+		entry.MemberCount = int(room.MemberCount)
 		if s.presence != nil {
 			entry.RoomPresence = s.presence.Presence(room.Slug)
 		}
 		// Standing in a room is reading it: a badge on the room you are looking
 		// at is noise, and handleGet has already stamped it read. By id, not
 		// by display name — two riders called Dave used to silence each
-		// other's badge (#649).
+		// other's badge (#649). The count is already in hand; what is
+		// conditional is whether it is worth showing.
 		if !slices.Contains(entry.RiderIDs, store.UUIDString(user.ID)) {
-			if n, err := s.store.Queries.CountRoomUnread(r.Context(), db.CountRoomUnreadParams{
-				RoomID: room.ID,
-				UserID: user.ID,
-			}); err == nil {
-				entry.Unread = int(n)
-			}
+			entry.Unread = int(room.Unread)
 		}
-		if next, err := s.store.Queries.NextRoomSession(r.Context(), room.ID); err == nil {
+		// The timestamp is the "is there one" answer for both of these: the
+		// lateral joins are LEFT, and their text columns coalesce to empty.
+		if room.NextStartsAt.Valid {
 			entry.NextSession = &nextJSON{
-				WorkoutName: next.WorkoutName,
-				StartsAt:    next.StartsAt.Time.Format(time.RFC3339),
+				WorkoutName: room.NextWorkoutName,
+				StartsAt:    room.NextStartsAt.Time.Format(time.RFC3339),
 			}
 		}
-		if last, err := s.store.Queries.LastRoomChat(r.Context(), room.ID); err == nil {
+		if room.LastChatAt.Valid {
 			entry.LastChat = &lastChatJSON{
-				From: last.DisplayName, Text: last.Text, HasImage: last.ImageID.Valid,
-				At: last.CreatedAt.Time.UnixMilli(),
+				From: room.LastChatFrom, Text: room.LastChatText, HasImage: room.LastChatImageID.Valid,
+				At: room.LastChatAt.Time.UnixMilli(),
 			}
 		}
 		out = append(out, entry)

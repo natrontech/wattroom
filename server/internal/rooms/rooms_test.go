@@ -822,3 +822,37 @@ func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
 		t.Errorf("alice is standing in the room: unread = %v, want 0", n)
 	}
 }
+
+// #890 folded four per-room queries into ListUserRooms, two of them as LEFT
+// LATERAL joins. A room with nothing planned and nothing said yields NULL for
+// both, and sqlc reads their text columns as non-null from the schema — so
+// without the coalesce in the query this scan fails and the whole rail 500s
+// on the most ordinary room there is: a brand new one.
+func TestRoomsListHandlesARoomWithNoPlanAndNoChat(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Fresh Air")
+
+	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+	if status != http.StatusOK {
+		t.Fatalf("list rooms: %d %v", status, body)
+	}
+	list, _ := body["rooms"].([]any)
+	if len(list) != 1 {
+		t.Fatalf("want one room, got %v", body["rooms"])
+	}
+	entry, _ := list[0].(map[string]any)
+	if entry["slug"] != slug {
+		t.Fatalf("slug = %v, want %q", entry["slug"], slug)
+	}
+	// Absent, not an empty husk: the frontend renders on presence of the key.
+	if next, ok := entry["nextSession"]; ok && next != nil {
+		t.Errorf("nextSession = %v, want absent for a room with no plan", next)
+	}
+	if last, ok := entry["lastChat"]; ok && last != nil {
+		t.Errorf("lastChat = %v, want absent for a room nobody has spoken in", last)
+	}
+	// The owner still counts, and the count comes from the same single query.
+	if n, _ := entry["memberCount"].(float64); n != 1 {
+		t.Errorf("memberCount = %v, want 1", n)
+	}
+}

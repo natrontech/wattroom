@@ -39,10 +39,54 @@ order by m.joined_at;
 -- name: ListUserRooms :many
 -- Banned members keep their row (the ban IS the row) but the room vanishes
 -- from their nav.
-select r.*, m.role
+--
+-- Everything the rail draws per room comes along here rather than in a loop
+-- of its own (#890): every presence ping makes every online rider re-run
+-- this, so it was 1+4N round trips multiplied by the whole fleet. The unread
+-- predicate is CountRoomUnread's, unchanged — the rail and a single room must
+-- not be able to disagree about what "new" means.
+select r.*, m.role,
+       (select count(*) from memberships mm
+         where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
+       (select count(*)
+          from chat_messages cm
+          left join room_reads rr on rr.room_id = cm.room_id and rr.user_id = sqlc.arg(user_id)
+         where cm.room_id = r.id
+           and cm.user_id != sqlc.arg(user_id)
+           and (rr.read_at is null or cm.created_at > rr.read_at))::bigint as unread,
+       -- coalesced because the lateral is a LEFT join: sqlc reads the column
+       -- as non-null from the schema and would scan a room with nothing
+       -- planned into a *string, which fails. next_starts_at carries the
+       -- "is there one" answer instead — pgtype handles its NULL.
+       coalesce(upcoming.workout_name, '')::text as next_workout_name,
+       upcoming.starts_at as next_starts_at,
+       -- LastRoomChat's row, per room: the one-line preview that makes a room
+       -- sortable next to a DM by recency (#468). last_at carries whether
+       -- there is one, so the texts coalesce like the workout name above.
+       coalesce(last.text, '')::text as last_chat_text,
+       coalesce(last.display_name, '')::text as last_chat_from,
+       last.image_id as last_chat_image_id,
+       last.created_at as last_chat_at
 from memberships m
 join rooms r on r.id = m.room_id
-where m.user_id = $1 and m.role != 'banned'
+-- NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
+-- a little past its time, and the read is the cleanup.
+left join lateral (
+    select s.workout_name, s.starts_at
+    from scheduled_sessions s
+    where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
+    order by s.starts_at
+    limit 1
+) upcoming on true
+left join lateral (
+    select cm.text, cm.image_id, cm.created_at, u.display_name
+    from chat_messages cm
+    join users u on u.id = cm.user_id
+    where cm.room_id = r.id
+    order by cm.created_at desc
+    limit 1
+) last on true
+where m.user_id = sqlc.arg(user_id) and m.role != 'banned'
 order by m.joined_at desc;
 
 -- name: GetMembership :one
@@ -68,9 +112,6 @@ update memberships set role = $3 where room_id = $1 and user_id = $2;
 -- A banned row is the ban (#637): leaving must never delete it, whoever asks.
 delete from memberships where room_id = $1 and user_id = $2 and role != 'banned';
 
--- name: CountRoomMembers :one
-select count(*) from memberships where room_id = $1 and role != 'banned';
-
 -- name: CreateScheduledSession :one
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
 values ($1, $2, $3, $4, $5) returning *;
@@ -84,11 +125,6 @@ join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
 order by s.starts_at
 limit 10;
-
--- name: NextRoomSession :one
-select workout_name, starts_at from scheduled_sessions
-where room_id = $1 and starts_at > now() - interval '30 minutes'
-order by starts_at limit 1;
 
 -- name: DeleteScheduledSession :one
 -- Returns the name so the room's timeline can say which plan went (#359), and
