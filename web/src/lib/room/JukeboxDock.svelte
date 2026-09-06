@@ -144,8 +144,11 @@
 				playerVars: { playsinline: 1, rel: 0, controls: 0, disablekb: 1 },
 				events: {
 					onReady: () => {
+						// The ducking effect sets the volume on its first run,
+						// which this readiness triggers — a second setter here
+						// would hand a rider who is away one blast of music at
+						// full level (#875).
 						playerReady = true;
-						player.setVolume?.(Math.round(mixer.music));
 						disableCaptions();
 					},
 					onStateChange: (e: { data: number }) => {
@@ -213,7 +216,9 @@
 	let wasDucked = false;
 	$effect(() => {
 		if (!playerReady) return;
-		baseVolume = mixer.music; // the mixer owns the ceiling (#179)
+		// The mixer owns the ceiling (#179), and away takes it to nothing
+		// (#875) — the jukebox is the loudest thing in an empty room.
+		baseVolume = mixer.muted ? 0 : mixer.music;
 		if (ducked) {
 			wasDucked = true;
 			clearTimeout(releaseTimer);

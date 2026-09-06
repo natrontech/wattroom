@@ -475,7 +475,7 @@ export function createRoomAv(slug: string) {
 			}
 			const source = outCtx.createMediaElementSource(el);
 			const gain = outCtx.createGain();
-			gain.gain.value = mixer.riderGain(riderOf(identity));
+			gain.gain.value = outGain(identity);
 			source.connect(gain);
 			gain.connect(riderBus);
 			riderGains.set(identity, gain);
@@ -483,6 +483,21 @@ export function createRoomAv(slug: string) {
 		} catch {
 			// routing failed: the element still plays at unity — degraded, not broken
 		}
+	}
+
+	/**
+	 * A rider's voice as it should sound right now: their fader, or nothing
+	 * while you are away (#875) — the room does not play to an empty chair.
+	 */
+	function outGain(identity: string) {
+		return mixer.muted ? 0 : mixer.riderGain(riderOf(identity));
+	}
+
+	/** Ramp every live voice to that; a jump would zipper (#179). */
+	function applyRiderGains() {
+		if (!outCtx) return;
+		for (const [identity, gain] of riderGains)
+			gain.gain.setTargetAtTime(outGain(identity), outCtx.currentTime, 0.02);
 	}
 
 	function onVisible() {
@@ -802,6 +817,11 @@ export function createRoomAv(slug: string) {
 	async function setAway(next: boolean) {
 		if (next === away) return;
 		away = next;
+		// Stepping out silences the speakers too (#875): voices, the jukebox
+		// and the cues all play to an empty chair otherwise. The faders keep
+		// their values, so coming back restores the mix and not a default.
+		mixer.setMuted(next);
+		applyRiderGains();
 		// A rider can step away without joining voice. Keep the state so a
 		// later voice join stays listen-only; there is no capture to change yet.
 		if (!room) return;
@@ -1235,14 +1255,7 @@ export function createRoomAv(slug: string) {
 		 */
 		setRiderGain(id: string, v: number, name?: string) {
 			mixer.setRiderGain(id, v, name);
-			if (!outCtx) return;
-			for (const [identity, gain] of riderGains)
-				if (riderOf(identity) === id)
-					gain.gain.setTargetAtTime(
-						mixer.riderGain(id),
-						outCtx.currentTime,
-						0.02,
-					);
+			applyRiderGains();
 		},
 		join,
 		async toggleMic() {
@@ -1345,6 +1358,9 @@ export function createRoomAv(slug: string) {
 			status = 'off';
 			error = null;
 			micOn = camOn = sharing = away = micFault = false;
+			// The room is behind you: its mute goes with it, or the next
+			// room — and every cue outside one — starts silent.
+			mixer.setMuted(false);
 			voice = {};
 			speaking = {};
 			// This av instance dies with the connection: audio graph and
