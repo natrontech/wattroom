@@ -76,7 +76,10 @@
 	}
 
 	// Tiles are laid out in columns, so the skeleton is too — a grid of equal
-	// boxes would jump into a ragged one the moment results land.
+	// boxes would jump into a ragged one the moment results land. The columns
+	// are sized by WIDTH, not counted: the same picker opens in the room's
+	// narrow side panel and on the full-width chat page, and two columns of
+	// 420px there made one GIF the whole grid.
 	const SKELETON_HEIGHTS = [96, 132, 112, 84, 120, 100];
 </script>
 
@@ -104,7 +107,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto p-2">
 		{#if loading}
-			<div class="columns-2 gap-2">
+			<div class="columns-[8rem] gap-2">
 				{#each SKELETON_HEIGHTS as height, i (i)}
 					<div
 						class="skeleton mb-2 rounded"
@@ -131,7 +134,7 @@
 					: 'Tenor has nothing to feature right now — try searching.'}
 			</EmptyState>
 		{:else}
-			<div class="columns-2 gap-2">
+			<div class="columns-[8rem] gap-2">
 				{#each results as gif (gif.id)}
 					<button
 						onclick={() => onPick(gif)}
