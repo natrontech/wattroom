@@ -1,0 +1,1 @@
+- The sign-in screen now marks the provider you used last time, and a sign-in that creates a brand-new account says so — so clicking the wrong button no longer leaves you quietly looking at an empty second account with none of your rides.

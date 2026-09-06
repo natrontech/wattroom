@@ -34,6 +34,7 @@
 	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
+	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 
@@ -342,6 +343,8 @@
 <!-- App-wide, framed or not — a toast must be able to land anywhere, and a
      picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
 <VerifyEmailGate />
+
+<NewAccountNotice />
 
 <Toasts />
 <ImageViewer />

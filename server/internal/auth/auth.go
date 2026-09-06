@@ -179,7 +179,7 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			s.finishLink(w, r, p, ident, &oauth2.Token{}, linkTo)
 			return
 		}
-		user, err := s.upsert(r, p, ident, &oauth2.Token{})
+		user, created, err := s.upsert(r, p, ident, &oauth2.Token{})
 		if err == nil {
 			err = s.startSession(w, r, user.ID)
 		}
@@ -188,7 +188,7 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Dev login failed. Check the server log.")
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, afterSignIn(p.id, created), http.StatusFound)
 		return
 	}
 
@@ -227,7 +227,7 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 			"That token is not valid for synthetic sign-in.")
 		return
 	}
-	user, err := s.upsert(r, p, identity{
+	user, _, err := s.upsert(r, p, identity{
 		ProviderUserID: "synthetic-monitor",
 		DisplayName:    "Synthetic Monitor",
 	}, &oauth2.Token{})
@@ -289,7 +289,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.upsert(r, p, ident, tok)
+	user, created, err := s.upsert(r, p, ident, tok)
 	if err != nil {
 		s.log.Error("identity upsert failed", "provider", p.id, "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
@@ -303,12 +303,27 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 			"Signed in, but the session could not be saved. Try again.")
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, afterSignIn(p.id, created), http.StatusFound)
+}
+
+// afterSignIn is where the OAuth round trip lands. A sign-in that *created* an
+// account says so in the URL, because a rider who meant to reach the account
+// they already have has just made a second one, and this is the only moment
+// undoing it is cheap (#784). The client reads it once and clears it.
+func afterSignIn(provider string, created bool) string {
+	if !created {
+		return "/"
+	}
+	return "/?new=" + url.QueryEscape(provider)
 }
 
 // upsert finds or creates the user behind an identity. First sign-in creates
 // the account; every later one just refreshes Strava's stored grant.
-func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth2.Token) (db.User, error) {
+//
+// created tells the caller which of those happened, which is the whole of
+// #784: a rider who meant to sign into an existing account and reached a new
+// one should hear about it at the one moment undoing it is cheap.
+func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth2.Token) (user db.User, created bool, err error) {
 	ctx := r.Context()
 	q := s.store.Queries
 
@@ -319,14 +334,15 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	case err == nil:
 		if p.keepTokens {
 			if err := q.UpdateIdentityTokens(ctx, tokenParams(p, ident, tok)); err != nil {
-				return db.User{}, err
+				return db.User{}, false, err
 			}
 		}
-		return q.GetUser(ctx, existing.UserID)
+		found, err := q.GetUser(ctx, existing.UserID)
+		return found, false, err
 	case errors.Is(err, pgx.ErrNoRows):
 		// fall through to create
 	default:
-		return db.User{}, err
+		return db.User{}, false, err
 	}
 
 	name := ident.DisplayName
@@ -337,11 +353,11 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	if ident.AvatarURL != "" {
 		avatar = &ident.AvatarURL
 	}
-	user, err := q.CreateUser(ctx, db.CreateUserParams{
+	user, err = q.CreateUser(ctx, db.CreateUserParams{
 		DisplayName: name, AvatarUrl: avatar, FtpWatts: 200, WeightKg: 75,
 	})
 	if err != nil {
-		return db.User{}, err
+		return db.User{}, false, err
 	}
 	create := db.CreateIdentityParams{
 		Provider: p.id, ProviderUserID: ident.ProviderUserID, UserID: user.ID,
@@ -362,14 +378,17 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 				Provider: p.id, ProviderUserID: ident.ProviderUserID,
 			})
 			if lookupErr != nil {
-				return db.User{}, lookupErr
+				return db.User{}, false, lookupErr
 			}
 			_ = q.DeleteUser(ctx, user.ID)
-			return q.GetUser(ctx, winner.UserID)
+			// The loser adopts the winner's account, so nothing was created
+			// here even though this branch ran CreateUser.
+			adopted, err := q.GetUser(ctx, winner.UserID)
+			return adopted, false, err
 		}
-		return db.User{}, err
+		return db.User{}, false, err
 	}
-	return user, nil
+	return user, true, nil
 }
 
 // errIdentityTaken: the provider account is already somebody else's way in.

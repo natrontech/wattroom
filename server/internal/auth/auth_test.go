@@ -933,3 +933,43 @@ func TestLinkRefusesASecondIdentityForTheSameProvider(t *testing.T) {
 		t.Fatalf("re-link of the owned identity: %v", err)
 	}
 }
+
+// #784 turns on knowing which of the two things happened: a rider who meant to
+// reach the account they already have has otherwise silently made a second.
+func TestUpsertReportsWhetherItCreated(t *testing.T) {
+	s := testService(t)
+	p := provider{id: "dev"}
+	ident := identity{ProviderUserID: "created-flag-test", DisplayName: "Flag Test"}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	user, created, err := s.upsert(req, p, ident, &oauth2.Token{})
+	if err != nil {
+		t.Fatalf("first upsert: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID)
+	})
+	if !created {
+		t.Fatal("the first sign-in did not report creating the account")
+	}
+
+	again, created, err := s.upsert(req, p, ident, &oauth2.Token{})
+	if err != nil {
+		t.Fatalf("second upsert: %v", err)
+	}
+	if created {
+		t.Fatal("a returning sign-in reported creating an account")
+	}
+	if again.ID != user.ID {
+		t.Fatal("the second sign-in landed on a different account")
+	}
+}
+
+func TestAfterSignIn(t *testing.T) {
+	if got := afterSignIn("github", false); got != "/" {
+		t.Errorf("returning rider goes to %q", got)
+	}
+	if got := afterSignIn("github", true); got != "/?new=github" {
+		t.Errorf("new account goes to %q", got)
+	}
+}
