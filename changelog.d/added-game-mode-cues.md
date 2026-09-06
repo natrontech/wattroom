@@ -1,0 +1,1 @@
+- Game modes now tell you what to do, not just what happened. Team Relay says out loud when the front comes to you, Floor is Lava announces the called zone changing and your own lives burning, Watt Golf counts the hole in while the meter is hidden, and the ramp modes mark each new round. Until now only being knocked out and the podium made a sound.

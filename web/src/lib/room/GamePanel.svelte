@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { changes } from '$lib/sound/changes';
-	import { play } from '$lib/sound/cues';
+	import { gameCues, golfMoment } from '$lib/room/game-cues';
+	import { play, playCountdownTick } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
@@ -62,32 +62,32 @@
 		game.mode === 'backyard-ramp' || game.mode === 'collective-ramp',
 	);
 
-	// Eliminations announce themselves — the rider is not watching the screen.
-	let knownOut = new Set<string>();
-	let heardPodium = false;
-	// A second game in the same mounted panel starts from silence again
-	// (#834): both memories are per-game, and only the moment a game leaves
-	// 'done' can clear them — 'running' is every tick of the one in progress.
-	const newGame = changes<boolean>((done) => {
-		if (done) return;
-		knownOut = new Set();
-		heardPodium = false;
-	});
-	$effect(() => newGame(game.phase === 'done'));
+	// Every cue this mode owes the rider (#845). The decisions are in
+	// game-cues.ts — pure, so the seven of them are tested without a browser
+	// — and the panel keeps only the previous state to compare against.
+	let seen: GameState | null = null;
 	$effect(() => {
-		for (const [id, rider] of riderRows) {
-			if (rider.eliminated && !knownOut.has(id)) {
-				knownOut.add(id);
-				play('elimination');
-			}
+		const before = seen;
+		seen = game;
+		for (const cue of gameCues(before, game, account.me?.id))
+			play(cue.id, cue.shift);
+	});
+
+	// Watt Golf's run-in is a clock, not a state change. The decision is in
+	// golfMoment; all the panel keeps is which second it last spoke, so a
+	// re-render inside the same second stays quiet.
+	let heardSecond = -1;
+	$effect(() => {
+		const moment = golfMoment(game, now);
+		if (!moment) {
+			heardSecond = -1;
+			return;
 		}
-		// Once (#834): the effect re-runs on every tick's new riders object,
-		// so an unguarded podium replayed the fanfare each second for as long
-		// as the game sat on 'done'.
-		if (game.phase === 'done' && game.podium?.length && !heardPodium) {
-			heardPodium = true;
-			play('fanfare');
-		}
+		const second = 'go' in moment ? 0 : moment.tick;
+		if (second === heardSecond) return;
+		heardSecond = second;
+		if ('go' in moment) play('go');
+		else playCountdownTick(moment.tick);
 	});
 </script>
 

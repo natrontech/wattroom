@@ -55,7 +55,8 @@ export type CueId =
 	| 'leave'
 	| 'chat'
 	| 'fault'
-	| 'recover';
+	| 'recover'
+	| 'handoff';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -297,6 +298,37 @@ export const CUES: Record<CueId, Cue> = {
 				gain: 0.16,
 			},
 			{ type: 'sine', freq: note(14), at: 0.07, dur: 0.09, gain: 0.13 },
+		],
+	},
+
+	// Team Relay's handover (#845): you are on front now, at 110 % FTP.
+	// Deliberately not the klaxon — that one is allowed to be rude because a
+	// sprint happens once; a relay rotates every 60–90 s, and the pack's own
+	// rule is that nothing repetitive survives an hour. Two notes up a fourth
+	// and a filter opening: directive, over in a quarter second.
+	handoff: {
+		id: 'handoff',
+		label: 'You are on front',
+		hint: 'Team Relay handed you the front. Go to the target now — clear without being the klaxon, because this comes round every minute.',
+		voices: [
+			{
+				type: 'square',
+				freq: note(2),
+				at: 0,
+				dur: 0.1,
+				gain: 0.3,
+				detune: 5,
+				filter: { from: 1600, to: 2600 },
+			},
+			{
+				type: 'square',
+				freq: note(7),
+				at: 0.1,
+				dur: 0.2,
+				gain: 0.34,
+				detune: 5,
+				filter: { from: 2200, to: 3400 },
+			},
 		],
 	},
 
