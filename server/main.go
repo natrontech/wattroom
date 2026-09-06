@@ -108,6 +108,10 @@ func main() {
 			// The security alarm (#840): account events reach the rider's
 			// verified address whether or not they opted into anything.
 			accountService.SetAlerter(notifier)
+			// Nothing else wakes up to send the hour-before reminder: the
+			// other session mails ride the handler that caused them (#841).
+			safego.Supervise(log, time.Now, "session reminders", nil,
+				func() { notifier.RemindLoop(context.Background()) })
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data

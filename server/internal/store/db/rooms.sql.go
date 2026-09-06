@@ -11,6 +11,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimSessionsToRemind = `-- name: ClaimSessionsToRemind :many
+update scheduled_sessions
+set reminded_at = now()
+where reminded_at is null
+  and starts_at > now()
+  and starts_at <= now() + interval '1 hour'
+returning id, room_id, workout_name, starts_at
+`
+
+type ClaimSessionsToRemindRow struct {
+	ID          pgtype.UUID
+	RoomID      pgtype.UUID
+	WorkoutName string
+	StartsAt    pgtype.Timestamptz
+}
+
+// The claim IS the update (#841): a row leaves this query already marked, so a
+// tick that fires twice, a restart mid-send or a second instance cannot mail
+// the same session again. Callers do not mark anything afterwards, which is
+// the point — there is no window between reading and claiming to lose a
+// process in.
+//
+// A session whose start slipped past while the server was down falls outside
+// the window and is simply never reminded. That is deliberate: a burst of
+// "starts in an hour" for sessions that began three hours ago is worse than
+// silence.
+func (q *Queries) ClaimSessionsToRemind(ctx context.Context) ([]ClaimSessionsToRemindRow, error) {
+	rows, err := q.db.Query(ctx, claimSessionsToRemind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ClaimSessionsToRemindRow
+	for rows.Next() {
+		var i ClaimSessionsToRemindRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.WorkoutName,
+			&i.StartsAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const clearRsvp = `-- name: ClearRsvp :exec
 delete from session_rsvps where session_id = $1 and user_id = $2
 `
@@ -108,7 +159,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 
 const createScheduledSession = `-- name: CreateScheduledSession :one
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at
+values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
 `
 
 type CreateScheduledSessionParams struct {
@@ -136,6 +187,7 @@ func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateSchedule
 		&i.StartsAt,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.RemindedAt,
 	)
 	return i, err
 }
@@ -217,6 +269,34 @@ select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, che
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
 	row := q.db.QueryRow(ctx, getRoomByCode, code)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
+		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
+	)
+	return i, err
+}
+
+const getRoomByID = `-- name: GetRoomByID :one
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title from rooms where id = $1
+`
+
+func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error) {
+	row := q.db.QueryRow(ctx, getRoomByID, id)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -713,7 +793,7 @@ func (q *Queries) NextRoomSession(ctx context.Context, roomID pgtype.UUID) (Next
 
 const rescheduleSession = `-- name: RescheduleSession :one
 update scheduled_sessions set starts_at = $3
-where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at
+where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
 `
 
 type RescheduleSessionParams struct {
@@ -733,6 +813,7 @@ func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionPa
 		&i.StartsAt,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.RemindedAt,
 	)
 	return i, err
 }
