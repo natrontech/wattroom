@@ -177,36 +177,6 @@ func (q *Queries) GetRoomReadAt(ctx context.Context, arg GetRoomReadAtParams) (p
 	return read_at, err
 }
 
-const lastRoomChat = `-- name: LastRoomChat :one
-select m.text, m.image_id, m.created_at, u.display_name
-from chat_messages m
-join users u on u.id = m.user_id
-where m.room_id = $1
-order by m.created_at desc
-limit 1
-`
-
-type LastRoomChatRow struct {
-	Text        string
-	ImageID     pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	DisplayName string
-}
-
-// The rooms list's one-line preview (#468): who said the last thing, and
-// when — what makes a room sortable next to a DM by recency.
-func (q *Queries) LastRoomChat(ctx context.Context, roomID pgtype.UUID) (LastRoomChatRow, error) {
-	row := q.db.QueryRow(ctx, lastRoomChat, roomID)
-	var i LastRoomChatRow
-	err := row.Scan(
-		&i.Text,
-		&i.ImageID,
-		&i.CreatedAt,
-		&i.DisplayName,
-	)
-	return i, err
-}
-
 const listChatReactions = `-- name: ListChatReactions :many
 select r.message_id, r.emoji,
        count(*) as total,

@@ -122,13 +122,3 @@ where m.room_id = $1
 -- Where the "N new" divider goes when a room's chat is read from outside
 -- the room (#468). No row = never opened: everything is new.
 select read_at from room_reads where room_id = $1 and user_id = $2;
-
--- name: LastRoomChat :one
--- The rooms list's one-line preview (#468): who said the last thing, and
--- when — what makes a room sortable next to a DM by recency.
-select m.text, m.image_id, m.created_at, u.display_name
-from chat_messages m
-join users u on u.id = m.user_id
-where m.room_id = $1
-order by m.created_at desc
-limit 1;
