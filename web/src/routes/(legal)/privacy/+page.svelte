@@ -163,8 +163,13 @@
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
 		The two big ones are built in: your profile has
-		<strong class="text-ink font-medium">export everything</strong> (a
-		machine-readable copy of all your data) and
+		<strong class="text-ink font-medium">export everything</strong> — a zip of
+		your profile, every ride with its per-second samples, the messages you
+		wrote, your DM threads, friends, rooms, playlists, workouts, planned
+		sessions you said yes to, and your XP and trophies, all as machine-readable
+		JSON. It stops where other people begin: someone else's chat line is theirs,
+		not yours, and the only thing it says about anyone else is the display name
+		you already see in the app. There is also
 		<strong class="text-ink font-medium">delete account</strong> (a full purge,
 		not a soft delete). Beyond that you have the usual GDPR rights — access,
 		rectification, erasure, restriction, portability, objection, withdrawal of
