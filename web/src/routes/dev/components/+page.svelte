@@ -123,8 +123,9 @@
 		Rider tile
 	</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
-		One object: camera, voice state and live power fused. Falls back to the mark
-		when the camera is off, greys out when the trainer stops reporting.
+		One object: camera, voice state and live power fused. Falls back to the
+		rider's own face when the camera is off, greys out when the trainer stops
+		reporting.
 	</p>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 		{#each [{ label: 'riding', r: rider() }, { label: 'speaking', r: rider( { speaking: true } ) }, { label: 'away', r: rider( { away: true, cameraOn: false, watts: 0 } ) }, { label: 'no camera', r: rider( { name: 'Milo', cameraOn: false, muted: true, watts: 168, ftp: 195 } ) }, { label: 'signal lost', r: rider( { stale: true } ) }] as sample (sample.label)}

@@ -219,12 +219,16 @@
 		focusable ? tiles.find((r) => r.id === room.focusId) : undefined,
 	);
 	const others = $derived(tiles.filter((r) => r.id !== focused?.id));
+	// The tick's roster carries no face, so the tile's avatar comes from the
+	// member list — the same lookup the people column does (SidePanel).
+	const faceOf = $derived(new Map(room.members.map((m) => [m.id, m])));
 </script>
 
 {#snippet tile(rider: (typeof room.riders)[number])}
 	<RiderTile
 		{rider}
 		phase={room.phase}
+		face={faceOf.get(rider.id)}
 		menu={() => tileEntries(() => rider)}
 		onPoke={(id) => room.poke(id)}
 		videoKey={room.videoOf(rider.id) ?? 0}

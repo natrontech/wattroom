@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Logo from '$lib/brand/Logo.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -25,6 +25,7 @@
 		type Phase,
 		zoneOf,
 	} from '$lib/room/mockcompat';
+	import type { RoomMember } from '$lib/room/view';
 
 	let {
 		rider,
@@ -36,6 +37,7 @@
 		videoAttach,
 		onPoke,
 		menu,
+		face,
 	}: {
 		rider: MockRider;
 		phase: Phase;
@@ -53,6 +55,9 @@
 		 * the person (the lounge: focus, watch a screen, ban). The tile's own
 		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
 		menu?: () => MenuEntry[];
+		/** Their face, from the room's member list — the tick's roster
+		 * carries names and levels, never an avatar (view.ts). */
+		face?: RoomMember;
 	} = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
@@ -128,9 +133,6 @@
 				30} 60% 50%) 8%, var(--color-surface-raised)), hsl({rider.hue +
 				30} 25% 7%)))"
 		></div>
-		<div class="absolute inset-0 grid place-items-center">
-			<Logo size={44} {live} />
-		</div>
 	{/if}
 
 	{#if rider.cameraOn}
@@ -190,11 +192,28 @@
 		</div>
 	{/if}
 
-	{#if rider.away}
-		<div class="pointer-events-none absolute inset-0 grid place-items-center">
+	<!-- The seat's centre is the person, not the brand: the same avatar the
+	     roster and the sidebar strip draw (#253), with its level ring — a
+	     WattRoom mark on every camera-off tile said nothing about who was in
+	     the chair. Over the camera it steps aside; the away word does not. -->
+	<div
+		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+	>
+		{#if !rider.cameraOn}
+			<Avatar
+				name={rider.name}
+				avatarUrl={face?.avatarUrl}
+				preset={face?.avatarPreset}
+				xp={face?.totalXp}
+				status={rider.away ? 'away' : live ? 'riding' : null}
+				size={44}
+				ring="var(--color-surface-raised)"
+			/>
+		{/if}
+		{#if rider.away}
 			<span class={AWAY_MARK}>away</span>
-		</div>
-	{/if}
+		{/if}
+	</div>
 
 	{#if rider.paused}
 		<div class="bg-surface/70 absolute inset-0 grid place-items-center">
