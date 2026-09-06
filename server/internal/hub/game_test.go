@@ -81,6 +81,18 @@ func TestBackyardDisconnectGrace(t *testing.T) {
 	}
 }
 
+func TestLavaDisconnectGrace(t *testing.T) {
+	l := newLava(gat(0), fixedRng())
+	roster := backyardRoster()
+	l.advance(gat(1), map[string]int{"a": 150, "b": 150}, roster)
+	for sec := 2; sec <= 65; sec++ {
+		l.advance(gat(sec), map[string]int{"a": int(zoneBounds[l.zone][0]*200) + 5}, roster)
+	}
+	if !l.out["b"] {
+		t.Fatalf("disconnected rider survived: %d lives", l.lives["b"])
+	}
+}
+
 func TestBackyardLineClimbs(t *testing.T) {
 	b := newBackyard(gat(0), false)
 	if b.linePct() != 0.80 {
