@@ -16,6 +16,8 @@ export type TimelineMessage = {
 	text: string;
 	imageId?: string;
 	at: number;
+	/** When the author last rewrote it (#865); absent for a line as sent. */
+	editedAt?: number;
 };
 
 export type TimelineEntry =

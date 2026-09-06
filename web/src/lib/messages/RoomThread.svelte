@@ -88,6 +88,19 @@
 		myReacts: conn ? conn.live.myReacts : (outside?.myReacts ?? {}),
 		cheers,
 		retry: () => outside?.retry(),
+		// One endpoint from both sides of the room: standing inside, the
+		// socket has no edit command — the hub relays what the PATCH did, so
+		// the log this component is already showing updates itself.
+		async edit(id, text) {
+			if (conn) {
+				const res = await api(`/api/rooms/${slug}/chat/${id}`, {
+					method: 'PATCH',
+					json: { text },
+				});
+				return res.ok ? null : res.error.message;
+			}
+			return (await outside?.edit(id, text)) ?? null;
+		},
 		async react(id, cheer) {
 			if (conn) {
 				conn.live.react(id, cheer);

@@ -176,6 +176,20 @@ export function createRoomLive(slug: string) {
 					// would pool forever — reset the stragglers.
 					if (Object.keys(pendingIds).length > 64) pendingIds = {};
 				}
+				if (msg.tick.chatEdits?.length) {
+					// A rewritten line lands ON the line already in the log
+					// (#865) — never as a second message, which is the whole
+					// point of editing rather than posting a correction.
+					const byId = new Map(
+						msg.tick.chatEdits.map((edit) => [edit.messageId, edit]),
+					);
+					chatLog = chatLog.map((line) => {
+						const edit = line.id ? byId.get(line.id) : undefined;
+						return edit
+							? { ...line, text: edit.text, editedAt: edit.editedAt }
+							: line;
+					});
+				}
 				if (msg.tick.chatReactions?.length) {
 					const next = { ...chatReactions };
 					const pressed = { ...myReacts };
@@ -360,6 +374,7 @@ export function createRoomLive(slug: string) {
 				text: string;
 				imageId?: string;
 				at: number;
+				editedAt?: number;
 				reactions?: Record<string, number>;
 				mine?: string[];
 			}[],
@@ -378,6 +393,9 @@ export function createRoomLive(slug: string) {
 						text: m.text,
 						imageId: m.imageId,
 						at: m.at,
+						// Without this a rider who joins after the fix sees the
+						// new words with no sign they are new ones (#865).
+						editedAt: m.editedAt,
 					})),
 				...chatLog,
 			]

@@ -11,6 +11,7 @@
 		ImagePlay,
 		ListPlus,
 		Music,
+		Pencil,
 		RotateCw,
 		ScreenShare,
 		SmilePlus,
@@ -39,7 +40,7 @@
 	} from '$lib/context-menu.svelte';
 	import { formatTime } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
-	import type { ThreadSource } from '$lib/messages/thread-types';
+	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
 	import { eventText } from '$lib/room/timeline';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -84,6 +85,48 @@
 	const GROUP_GAP_MS = 5 * 60_000;
 
 	let reactingTo = $state<string | null>(null);
+
+	// Editing a sent line (#865): the sender's own, text only. One at a time
+	// — the draft lives here, not per message, so opening a second editor
+	// cannot leave a first one half-typed somewhere off screen.
+	let editingId = $state<string | null>(null);
+	let editDraft = $state('');
+	let editError = $state<string | null>(null);
+	let savingEdit = $state(false);
+
+	const canEdit = (message: ThreadMessage) =>
+		!!source.edit && !!message.id && message.fromId === me && !!message.text;
+
+	function startEdit(message: ThreadMessage) {
+		editingId = message.id ?? null;
+		editDraft = message.text;
+		editError = null;
+	}
+
+	function cancelEdit() {
+		editingId = null;
+		editDraft = '';
+		editError = null;
+	}
+
+	async function saveEdit(id: string, original: string) {
+		const text = editDraft.trim();
+		// Nothing changed is not an edit — closing is the honest answer, and
+		// it spares the room a tick saying a line became itself.
+		if (text === original.trim()) return cancelEdit();
+		if (!text) {
+			editError = 'An edited message still has to say something.';
+			return;
+		}
+		savingEdit = true;
+		const refused = await source.edit?.(id, text);
+		savingEdit = false;
+		if (refused) {
+			editError = refused; // the words stay in the box, like a refused send
+			return;
+		}
+		cancelEdit();
+	}
 	async function react(id: string, cheer: string) {
 		reactingTo = null;
 		const refused = await source.react?.(id, cheer);
@@ -109,8 +152,14 @@
 	// Touch and long-press have no hover strip to reveal Copy and React, and a
 	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
 	// Same actions, same handlers — the hover strip stays as the shortcut.
-	function messageMenu(message: { id?: string; text: string }): MenuEntry[] {
+	function messageMenu(message: ThreadMessage): MenuEntry[] {
 		const items: MenuEntry[] = [];
+		if (canEdit(message))
+			items.push({
+				label: 'Edit',
+				icon: Pencil,
+				onSelect: () => startEdit(message),
+			});
 		if (message.text)
 			items.push({
 				label: 'Copy',
@@ -261,21 +310,75 @@
 								{/if}
 								<!-- A line that names you gets the bar — there is no server
 								     mention yet, this is "@" plus your first name. -->
-								<span
-									class="text-ink/85 block text-sm wrap-anywhere {mention
-										? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
-										: ''}"
-								>
-									{#if message.text}
-										<MessageText text={message.text} {onQueue} />
-									{/if}
-									{#if message.imageId}
-										<ChatImage
-											src={imageSrc(message.imageId)}
-											alt="Sent by {message.from}"
+								{#if message.id && editingId === message.id}
+									{@const id = message.id}
+									{@const original = message.text}
+									<!-- The line becomes its own box: no modal for a typo, and
+									     the message stays where it is on screen while you fix
+									     it. Escape gets you out, Enter saves. -->
+									<form
+										class="mt-0.5"
+										onsubmit={(e) => {
+											e.preventDefault();
+											void saveEdit(id, original);
+										}}
+									>
+										<!-- svelte-ignore a11y_autofocus -->
+										<input
+											bind:value={editDraft}
+											autofocus
+											maxlength="500"
+											onkeydown={(e) => {
+												if (e.key === 'Escape') cancelEdit();
+											}}
+											class="input w-full text-sm"
+											aria-label="edit your message"
 										/>
-									{/if}
-								</span>
+										{#if editError}
+											<p class="text-danger mt-1 text-[11px]">{editError}</p>
+										{/if}
+										<span class="mt-1 flex items-center gap-2">
+											<button
+												disabled={savingEdit}
+												class="btn btn-primary btn-xs">Save</button
+											>
+											<button
+												type="button"
+												onclick={cancelEdit}
+												class="btn btn-ghost btn-xs">Cancel</button
+											>
+											<span class="text-muted/60 text-[10px]"
+												>Escape cancels · the room sees the change</span
+											>
+										</span>
+									</form>
+								{:else}
+									<span
+										class="text-ink/85 block text-sm wrap-anywhere {mention
+											? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
+											: ''}"
+									>
+										{#if message.text}
+											<MessageText text={message.text} {onQueue} />
+										{/if}
+										{#if message.editedAt}
+											<!-- Nobody is rewritten quietly (#865). Not a
+											     timestamp: WHEN it was fixed is nobody's
+											     business, THAT it was is everybody's. -->
+											<span
+												class="text-muted/50 ml-1 align-baseline text-[10px]"
+												title="edited {formatTime(message.editedAt)}"
+												>edited</span
+											>
+										{/if}
+										{#if message.imageId}
+											<ChatImage
+												src={imageSrc(message.imageId)}
+												alt="Sent by {message.from}"
+											/>
+										{/if}
+									</span>
+								{/if}
 								{#if message.id && source.reactions}
 									{@const id = message.id}
 									<Reactions
@@ -291,6 +394,13 @@
 							<span
 								class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
 							>
+								{#if canEdit(message) && editingId !== message.id}
+									<button
+										onclick={() => startEdit(message)}
+										class="text-muted/60 hover:text-ink p-1"
+										aria-label="edit message"><Pencil size={13} /></button
+									>
+								{/if}
 								{#if message.text}
 									<button
 										onclick={() => copy(message.text)}

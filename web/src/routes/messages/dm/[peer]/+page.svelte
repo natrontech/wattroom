@@ -69,6 +69,7 @@
 		retry: () => thread?.retry(),
 		send: async (text, image) => (await thread?.send(text, image)) ?? null,
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,
+		edit: async (id, text) => (await thread?.edit(id, text)) ?? null,
 	});
 </script>
 

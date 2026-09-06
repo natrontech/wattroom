@@ -30,7 +30,7 @@ vi.mock('$lib/api', () => ({
 	},
 }));
 
-const { createDmThread } = await import('./thread.svelte');
+const { createDmThread, POLL_MS } = await import('./thread.svelte');
 
 afterEach(() => {
 	responses = [];
@@ -211,6 +211,84 @@ describe('createDmThread reactions (#777)', () => {
 		const refusal = await thread.react('a', '🔥');
 		expect(refusal).toBe('No such message.');
 		expect(thread.myReacts['a:🔥']).toBeFalsy();
+		thread.close();
+	});
+	it('applies an edit to a line the incremental poll can never bring back (#865)', async () => {
+		// `after` filters on created_at, which an edit leaves alone: the second
+		// poll returns no messages at all, and the new text has to arrive in
+		// the edits map or the reader keeps staring at the old words.
+		vi.useFakeTimers();
+		responses.push({
+			ok: true,
+			data: { messages: [{ id: 'a', mine: true, text: 'ride at 6?', at: 5 }] },
+		});
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(thread.timeline[0]).toMatchObject({
+			message: { text: 'ride at 6?', editedAt: undefined },
+		});
+
+		responses.push({
+			ok: true,
+			data: {
+				messages: [],
+				edits: { a: { messageId: 'a', text: 'ride at 7?', editedAt: 9 } },
+			},
+		});
+		await vi.advanceTimersByTimeAsync(POLL_MS);
+		expect(thread.timeline[0]).toMatchObject({
+			message: { text: 'ride at 7?', editedAt: 9 },
+		});
+		thread.close();
+		vi.useRealTimers();
+	});
+
+	it('edit() PATCHes the message and shows the new words at once', async () => {
+		responses.push({
+			ok: true,
+			data: { messages: [{ id: 'a', mine: true, text: 'ride at 6?', at: 5 }] },
+		});
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		responses.push({
+			ok: true,
+			data: { messageId: 'a', text: 'ride at 7?', editedAt: 9 },
+		});
+		expect(await thread.edit('a', 'ride at 7?')).toBeNull();
+		expect(thread.timeline[0]).toMatchObject({
+			message: { text: 'ride at 7?', editedAt: 9 },
+		});
+		thread.close();
+	});
+
+	it('edit() hands the refusal back and leaves the line alone', async () => {
+		responses.push({
+			ok: true,
+			data: { messages: [{ id: 'a', mine: true, text: 'ride at 6?', at: 5 }] },
+		});
+		const thread = createDmThread('sven', () => 'Sven');
+		thread.start();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		responses.push({
+			ok: false,
+			error: {
+				error: 'forbidden',
+				message: 'You can only edit your own messages.',
+			},
+		});
+		expect(await thread.edit('a', 'mine now')).toBe(
+			'You can only edit your own messages.',
+		);
+		expect(thread.timeline[0]).toMatchObject({
+			message: { text: 'ride at 6?' },
+		});
 		thread.close();
 	});
 });
