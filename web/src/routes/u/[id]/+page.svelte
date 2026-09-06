@@ -82,8 +82,12 @@
 	});
 	$effect(() => {
 		// Presence pings (#251) re-fetch: they walked into a room, or out.
+		// `rider` is read untracked: load() writes it, and tracking it made
+		// every response schedule the next fetch — a loop at network speed
+		// (#824).
 		presence.version;
-		if (id && rider) void load(id);
+		const loaded = untrack(() => rider);
+		if (id && loaded) void load(id);
 	});
 
 	// Add, accept: one call each, then the page re-reads itself. A refused

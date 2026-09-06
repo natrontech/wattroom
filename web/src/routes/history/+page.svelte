@@ -89,8 +89,23 @@
 		if (res.ok) {
 			rides = res.data.rides;
 			error = null;
+			await ring(rides);
+		} else {
+			error = res.error.message;
+		}
+	}
+
+	// The rides arrive seeded from load() (#772) and nothing calls load()
+	// until Retry — so the mount is where the ring happens now (#824).
+	$effect(() => {
+		const seeded = untrack(() => rides);
+		if (seeded) void ring(seeded);
+	});
+
+	async function ring(list: ServerRide[]) {
+		{
 			const picked = page.url.searchParams.get('ride');
-			if (picked && rides.some((ride) => ride.id === picked)) {
+			if (picked && list.some((ride) => ride.id === picked)) {
 				highlightId = picked;
 				await tick();
 				// Instant, retried: smooth scrolling gets cancelled by the route
@@ -107,8 +122,6 @@
 					}, delay);
 				}
 			}
-		} else {
-			error = res.error.message;
 		}
 	}
 
