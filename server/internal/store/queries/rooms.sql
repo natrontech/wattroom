@@ -88,9 +88,11 @@ where room_id = $1 and starts_at > now() - interval '30 minutes'
 order by starts_at limit 1;
 
 -- name: DeleteScheduledSession :one
--- Returns the name so the room's timeline can say which plan went (#359).
+-- Returns the name so the room's timeline can say which plan went (#359), and
+-- the time so the cancellation mail can say which session it was and skip one
+-- that has already been and gone (#839).
 delete from scheduled_sessions where id = $1 and room_id = $2
-returning workout_name;
+returning workout_name, starts_at;
 
 -- name: RescheduleSession :one
 update scheduled_sessions set starts_at = $3

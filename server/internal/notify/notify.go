@@ -56,29 +56,47 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/notify/unsubscribe", s.handleUnsubscribe)
 }
 
+// What a session mail is about. The three share an audience, an opt-in and a
+// shape; only the words differ, which is why they share a path (ADR-0030 puts
+// all of them behind the one notify_planned switch).
+type sessionChange int
+
+const (
+	sessionPlanned sessionChange = iota
+	sessionMoved
+	sessionCancelled
+)
+
 // SessionPlanned emails every opted-in member except the planner. Fire and
 // forget: the handler must not wait on a mail provider. The goroutine exits
 // when the member list is sent or the one-minute context runs out.
 func (s *Service) SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
-	s.sessionAsync(room, workoutName, startsAt, planner, false)
+	s.sessionAsync(room, workoutName, startsAt, planner, sessionPlanned)
 }
 
 // SessionRescheduled is SessionPlanned for a plan that moved (#258): same
 // audience, subject and body say so.
 func (s *Service) SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
-	s.sessionAsync(room, workoutName, startsAt, planner, true)
+	s.sessionAsync(room, workoutName, startsAt, planner, sessionMoved)
 }
 
-func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {
+// SessionCancelled is the mail the other two owed the room (#839): riders told
+// to turn up at seven were never told the plan was gone. startsAt is when the
+// session would have been.
+func (s *Service) SessionCancelled(room db.Room, workoutName string, startsAt time.Time, actor pgtype.UUID) {
+	s.sessionAsync(room, workoutName, startsAt, actor, sessionCancelled)
+}
+
+func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
 	// Guarded (#651): a mail-provider panic must not cost a ride.
 	safego.Go(s.log, "session mail "+room.Slug, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		s.sessionMail(ctx, room, workoutName, startsAt, planner, moved)
+		s.sessionMail(ctx, room, workoutName, startsAt, planner, change)
 	})
 }
 
-func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, moved bool) {
+func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
 	targets, err := s.store.Queries.ListRoomNotifyTargets(ctx, db.ListRoomNotifyTargetsParams{
 		RoomID: room.ID, ID: planner,
 	})
@@ -93,10 +111,20 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	// The heading stands on its own, so it cannot end on the dangling "to"
 	// that the sentence in the text part needs.
 	heading := room.Name + " has a planned session"
-	if moved {
+	// Where the last line of the text part points. A cancellation has nothing
+	// to ride, but the room is still where anything else planned lives.
+	closing := "Ride it here"
+	switch change {
+	case sessionPlanned:
+	case sessionMoved:
 		subject = "Moved: " + subject
 		verb = "moved a planned session to"
 		heading = room.Name + " moved a planned session"
+	case sessionCancelled:
+		subject = "Cancelled: " + subject
+		verb = "cancelled a planned session"
+		heading = room.Name + " cancelled a planned session"
+		closing = "Anything else planned is here"
 	}
 	for _, t := range targets {
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
@@ -106,19 +134,27 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
     %s
     %s
 
-Ride it here: %s/r/%s
+%s: %s/r/%s
 
 You get this because session emails are switched on in your WattRoom
 profile. Turn them off: %s`,
-			room.Name, verb, workoutName, when, s.baseURL, room.Slug, unsub)
-		if err := s.send(ctx, mail{
+			room.Name, verb, workoutName, when, closing, s.baseURL, room.Slug, unsub)
+		m := mail{
 			To: *t.Email, Subject: subject, Heading: heading,
-			// The workout and its time are the live thing this mail is about,
-			// so they are what glows (ADR-0005).
-			Lead:   workoutName + " — " + when,
 			Action: "Open the room", URL: s.baseURL + "/r/" + room.Slug,
 			Text: text, Unsub: unsub,
-		}); err != nil {
+		}
+		if change == sessionCancelled {
+			// Nothing is happening at that time any more, so nothing glows:
+			// watt marks live data, and this mail exists to say there is none
+			// (ADR-0005). The session moves out of the lead and into the body.
+			m.Body = []string{workoutName + " was planned for " + when + ". It is not happening."}
+		} else {
+			// The workout and its time are the live thing this mail is about,
+			// so they are what glows.
+			m.Lead = workoutName + " — " + when
+		}
+		if err := s.send(ctx, m); err != nil {
 			s.log.Warn("session email failed", "err", err, "room", room.Slug)
 		}
 	}

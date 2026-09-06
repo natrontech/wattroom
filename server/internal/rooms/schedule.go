@@ -243,7 +243,7 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
 	}
-	name, err := s.store.Queries.DeleteScheduledSession(r.Context(), db.DeleteScheduledSessionParams{
+	row, err := s.store.Queries.DeleteScheduledSession(r.Context(), db.DeleteScheduledSessionParams{
 		ID: id, RoomID: room.ID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -255,7 +255,12 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be removed. Try again.")
 		return
 	}
-	s.announce(room, "cancelled", user.DisplayName, name, time.Time{})
+	// A session that has already been and gone is not news, and telling
+	// somebody that the ride they missed is now cancelled is noise (#839).
+	if s.notifier != nil && row.StartsAt.Time.After(time.Now()) {
+		s.notifier.SessionCancelled(room, row.WorkoutName, row.StartsAt.Time, user.ID)
+	}
+	s.announce(room, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
 	w.WriteHeader(http.StatusNoContent)
 }
 

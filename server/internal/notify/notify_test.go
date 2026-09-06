@@ -118,7 +118,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, false)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionPlanned)
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1 (opt-in member only)", len(fake.payloads))
@@ -163,7 +163,7 @@ func TestSessionRescheduledSaysMoved(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 2, 18, 30, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, true)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionMoved)
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1", len(fake.payloads))
@@ -174,6 +174,45 @@ func TestSessionRescheduledSaysMoved(t *testing.T) {
 	}
 	if text := fmt.Sprint(p["text"]); !strings.Contains(text, "moved a planned session to") {
 		t.Fatalf("body %q does not say the plan moved", text)
+	}
+}
+
+// The mail the other two owed the room (#839). Same audience and same switch;
+// what differs is that nothing in it glows, because there is nothing live left
+// to mark (ADR-0005).
+func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+
+	s := service(h, srv.URL)
+	starts := time.Date(2026, 9, 3, 19, 0, 0, 0, time.Local)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionCancelled)
+
+	if len(fake.payloads) != 1 {
+		t.Fatalf("sent %d emails, want exactly 1", len(fake.payloads))
+	}
+	p := fake.payloads[0]
+	if subject := fmt.Sprint(p["subject"]); !strings.HasPrefix(subject, "Cancelled: ") {
+		t.Fatalf("subject %q misses the Cancelled: prefix", subject)
+	}
+	text := fmt.Sprint(p["text"])
+	if !strings.Contains(text, "cancelled a planned session") {
+		t.Fatalf("body %q does not say the plan is off", text)
+	}
+	// "Ride it here" is a lie in a mail about a session that is not happening.
+	if strings.Contains(text, "Ride it here") {
+		t.Fatalf("a cancellation still invited the rider to ride it: %q", text)
+	}
+	html := fmt.Sprint(p["html"])
+	if !strings.Contains(html, "It is not happening.") {
+		t.Fatalf("html part does not say the plan is off: %s", html)
+	}
+	// The lead is the only magenta in a session mail's body, and a cancelled
+	// session is the opposite of live data.
+	if strings.Contains(html, "#ff3d8b;\">Sweet Spot") {
+		t.Fatalf("a cancelled session still glowed: %s", html)
 	}
 }
 
