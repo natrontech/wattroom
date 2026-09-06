@@ -1,0 +1,1 @@
+- Collective Ramp now averages each rider's FTP fraction equally, keeping mixed-FTP groups fair.

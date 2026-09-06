@@ -78,21 +78,21 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 
 	if b.collective {
 		// The room average against the line: everyone survives or nobody does.
-		var sum, ftpSum float64
+		var avgPct, ftpSum float64
 		riders := 0
 		for id, watts := range samples {
 			rider, ok := roster[id]
 			if !ok || rider.FtpWatts <= 0 {
 				continue
 			}
-			sum += float64(watts)
+			avgPct += float64(watts) / float64(rider.FtpWatts)
 			ftpSum += float64(rider.FtpWatts)
 			riders++
 		}
 		if riders == 0 {
 			return
 		}
-		avgPct := sum / ftpSum
+		avgPct /= float64(riders)
 		band := math.Max(line*0.05, 10/(ftpSum/float64(riders)))
 		if avgPct < line-band {
 			b.below["room"]++

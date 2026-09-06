@@ -114,6 +114,17 @@ func TestCollectiveJudgesTheAverage(t *testing.T) {
 	}
 }
 
+func TestCollectiveUsesArithmeticRiderMean(t *testing.T) {
+	b := newBackyard(gat(0), true)
+	roster := map[string]protocol.Rider{"a": {FtpWatts: 100}, "b": {FtpWatts: 400}}
+	for sec := 1; sec <= 10; sec++ {
+		b.advance(gat(sec), map[string]int{"a": 120, "b": 160}, roster)
+	}
+	if b.done() {
+		t.Fatal("arithmetic 80% mean should hold above 75% line")
+	}
+}
+
 func TestGameRegistry(t *testing.T) {
 	if newGameMode("backyard-ramp", gat(0)) == nil || newGameMode("collective-ramp", gat(0)) == nil {
 		t.Fatal("registry missing ramp modes")
