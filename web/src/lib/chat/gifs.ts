@@ -1,5 +1,5 @@
 /**
- * The GIF picker's data half (#878, ADR-0032). The server proxies Tenor and
+ * The GIF picker's data half (#878, ADR-0032). The server proxies Giphy and
  * hands back only URLs `gifUrl()` in ./media.ts agrees to render, so what a
  * picked tile posts is an ordinary chat message that draws itself.
  */
@@ -18,11 +18,11 @@ export interface Gif {
 
 export interface GifPage {
 	results: Gif[];
-	/** Tenor's cursor; absent when the results ran out. */
+	/** The next page's cursor; absent when the results ran out. */
 	next?: string;
 }
 
-/** No query asks for what Tenor is featuring — the grid is never empty. */
+/** No query asks for what is trending — the grid is never empty. */
 export function searchGifs(
 	query: string,
 	cursor?: string,

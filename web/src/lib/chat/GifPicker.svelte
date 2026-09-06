@@ -1,8 +1,8 @@
 <script lang="ts">
 	// The picker (#878): a grid over the composer, in a room and in a DM
-	// alike. It opens on Tenor's featured set so the common case — mid-ride,
-	// one hand, three seconds — costs no typing at all (ux.md); the search
-	// box is for when you know what you want.
+	// alike. It opens on what is trending so the common case — mid-ride, one
+	// hand, three seconds — costs no typing at all (ux.md); the search box is
+	// for when you know what you want.
 	//
 	// Picking posts the GIF's URL as an ordinary message, which MessageText
 	// then renders as the GIF (#279). Nothing here knows how chat sends.
@@ -56,12 +56,14 @@
 		}
 	}
 
-	// A search per keystroke would spend the rider's ceiling in one word.
+	// A search per keystroke would spend the SERVER's hourly Giphy budget on
+	// one word — the quota is shared by every rider, not per account (#909).
+	// 600ms is a typing pause, not a lag.
 	let debounce: ReturnType<typeof setTimeout> | undefined;
 	function typed(term: string) {
 		query = term;
 		clearTimeout(debounce);
-		debounce = setTimeout(() => void run(term), 300);
+		debounce = setTimeout(() => void run(term), 600);
 	}
 
 	void run('');
@@ -104,7 +106,7 @@
 		<input
 			value={query}
 			oninput={(event) => typed(event.currentTarget.value)}
-			maxlength="100"
+			maxlength="50"
 			placeholder="Search GIFs"
 			aria-label="Search GIFs"
 			class="min-w-0 flex-1 border-0 bg-transparent py-1 text-sm outline-none"
@@ -137,7 +139,7 @@
 			<EmptyState>
 				{query.trim()
 					? `Nothing for “${query.trim()}”. A shorter word usually finds more.`
-					: 'Tenor has nothing to feature right now — try searching.'}
+					: 'Nothing is trending right now — try searching.'}
 			</EmptyState>
 		{:else}
 			<div class="columns-[8rem] gap-2">
@@ -170,9 +172,10 @@
 		{/if}
 	</div>
 
-	<!-- Tenor's terms ask for the credit, and it says where a bad GIF came
-	     from without a settings page to explain it. -->
+	<!-- Giphy's terms require the credit, and it says where a bad GIF came
+	     from without a settings page to explain it. ponytail: their guidelines
+	     want the official mark; the wordmark asset is a follow-up (#909). -->
 	<p class="text-muted/70 border-ink/5 border-t px-3 py-1.5 text-[10px]">
-		GIFs via Tenor
+		Powered by GIPHY
 	</p>
 </div>

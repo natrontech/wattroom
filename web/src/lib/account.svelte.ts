@@ -26,7 +26,7 @@ export interface Me {
 	providers?: string[];
 	/** LiveKit is configured — voice/camera affordances render at all (#219). */
 	avEnabled?: boolean;
-	/** Tenor is configured — the composer's GIF button renders at all (#878). */
+	/** Giphy is configured — the composer's GIF button renders at all (#878). */
 	gifsEnabled?: boolean;
 	stravaUpload?: boolean;
 	/** Email notifications for planned sessions (#117); the section hides
