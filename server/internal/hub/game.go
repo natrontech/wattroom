@@ -58,11 +58,11 @@ func newGameMode(mode string, now time.Time) gameMode {
 	rng := rand.New(rand.NewSource(now.UnixNano())) //nolint:gosec // game variety, not security
 	switch mode {
 	case "backyard-ramp":
-		return newBackyard(now, false)
+		return newSampledGame(newBackyard(now, false), now)
 	case "collective-ramp":
-		return newBackyard(now, true)
+		return newSampledGame(newBackyard(now, true), now)
 	case "floor-is-lava":
-		return newLava(now, rng)
+		return newSampledGame(newLava(now, rng), now)
 	case "watt-golf":
 		return newGolf(now, rng)
 	case "sprint-roulette":
