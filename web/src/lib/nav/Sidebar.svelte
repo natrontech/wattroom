@@ -31,11 +31,14 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
+	import { presence } from '$lib/presence.svelte';
+	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import type { AvError } from '$lib/room/av.svelte';
 	import {
 		MessageSquare,
+		Coffee,
 		Headphones,
 		LogOut,
 		Mic,
@@ -71,6 +74,8 @@
 		handedOff = false,
 		onTakeOver,
 		voiceError = null,
+		away = false,
+		onAway,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -95,6 +100,9 @@
 		onTakeOver?: () => void;
 		/** Why the last voice action failed, until the next one clears it. */
 		voiceError?: AvError | null;
+		/** You stepped out (#706) — a statement about YOU, so it lives here. */
+		away?: boolean;
+		onAway?: (next: boolean) => void;
 	} = $props();
 
 	const destination = $derived(activeHref(pathname));
@@ -387,6 +395,7 @@
 								avatarUrl={head.peerAvatarUrl}
 								preset={head.peerAvatarPreset}
 								xp={head.peerTotalXp}
+								status={statusOf(presence.rooms, head.peerName)}
 								size={20}
 							/>
 							<span class="truncate">{head.peerName}</span>
@@ -433,6 +442,7 @@
 					avatarUrl={account.me?.avatarUrl}
 					preset={account.me?.avatarPreset}
 					xp={account.me?.totalXp}
+					status={connectedSlug ? (away ? 'away' : 'online') : null}
 					size={26}
 				/>
 				<span class="min-w-0">
@@ -440,6 +450,8 @@
 						>{account.me?.displayName ?? ''}</span
 					>
 					{#if showAv}
+						<!-- Away is not repeated here: the avatar wears the mark and
+						     the button below says "I'm back" (#807). -->
 						<span class="block truncate text-[10px]">
 							{#if voiceStatus === 'live'}
 								<span class="text-z4">in voice</span>{camOn
@@ -470,81 +482,98 @@
 				aria-label="settings"><Settings size={16} /></a
 			>
 		</div>
-		{#if showAv && !inVoice}
-			<!-- The way in is a labelled button, not two greyed icons that only
-			     LOOK like a mic and a camera: a control that does something else
-			     than it draws is not a control (#437, ux.md). Mic, camera and
-			     screen appear once you are in, because that is when they work. -->
+		{#if showAv}
 			<div class="mt-2 flex items-center gap-1">
-				{#if voiceStatus === 'connecting' || voiceStatus === 'reconnecting'}
-					<span class="text-muted flex-1 px-1 text-[11px]"
-						>{voiceStatus === 'connecting'
-							? 'joining voice…'
-							: 'reconnecting…'}</span
-					>
+				{#if !inVoice}
+					<!-- The way in is a labelled button, not two greyed icons that
+					     only LOOK like a mic and a camera: a control that does
+					     something else than it draws is not a control (#437,
+					     ux.md). Mic, camera and screen appear once you are in,
+					     because that is when they work. -->
+					{#if voiceStatus === 'connecting' || voiceStatus === 'reconnecting'}
+						<span class="text-muted flex-1 px-1 text-[11px]"
+							>{voiceStatus === 'connecting'
+								? 'joining voice…'
+								: 'reconnecting…'}</span
+						>
+					{:else}
+						<button
+							onclick={() => onJoin?.()}
+							class="btn btn-primary btn-xs flex-1"
+							><Headphones size={13} />
+							{voiceStatus === 'failed'
+								? 'Try voice again'
+								: 'Join voice'}</button
+						>
+					{/if}
+					<QuickAudio compact />
 				{:else}
+					<!-- Voice, camera, screen, sound and the way out — here and
+					     nowhere else. The people column and the lounge header each
+					     drew their own copy of a row the rider already has pinned
+					     in front of them. -->
 					<button
-						onclick={() => onJoin?.()}
-						class="btn btn-primary btn-xs flex-1"
-						><Headphones size={13} />
-						{voiceStatus === 'failed'
-							? 'Try voice again'
-							: 'Join voice'}</button
+						onclick={() => onMic?.()}
+						class="flex flex-1 justify-center rounded py-1.5 {micOn
+							? 'text-z4'
+							: 'text-danger'}"
+						title={micOn ? 'mute' : 'unmute'}
+						aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
 					>
-				{/if}
-				<QuickAudio compact />
-			</div>
-		{:else if showAv}
-			<!-- Voice, camera, screen, sound and the way out — here and nowhere
-			     else. The people column and the lounge header each drew their own
-			     copy of a row the rider already has pinned in front of them. -->
-			<div class="mt-2 flex items-center gap-1">
-				<button
-					onclick={() => onMic?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {micOn
-						? 'text-z4'
-						: 'text-danger'}"
-					title={micOn ? 'mute' : 'unmute'}
-					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
-				>
-					{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
-				</button>
-				<button
-					onclick={() => onCam?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {camOn
-						? 'text-z4'
-						: 'text-muted/50 hover:text-muted'}"
-					title={camOn ? 'turn camera off' : 'turn camera on'}
-					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
-				>
-					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
-				</button>
-				<!-- Sharing takes the danger token, like the mic does when it is
+						{#if micOn}<Mic size={16} />{:else}<MicOff size={16} />{/if}
+					</button>
+					<button
+						onclick={() => onCam?.()}
+						class="flex flex-1 justify-center rounded py-1.5 {camOn
+							? 'text-z4'
+							: 'text-muted/50 hover:text-muted'}"
+						title={camOn ? 'turn camera off' : 'turn camera on'}
+						aria-label={camOn ? 'turn camera off' : 'turn camera on'}
+					>
+						{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
+					</button>
+					<!-- Sharing takes the danger token, like the mic does when it is
 				     muted (#563): a state you might not have noticed, and the one
 				     that can put a private tab on the stage. Chrome, so the token
 				     and not a glow — ADR-0005 keeps those for live data. -->
-				<button
-					onclick={() => onShare?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {sharing
-						? 'bg-danger/15 text-danger'
-						: 'text-muted/50 hover:text-muted'}"
-					title={sharing ? 'stop sharing your screen' : 'share your screen'}
-					aria-label={sharing
-						? 'stop sharing your screen'
-						: 'share your screen'}
-				>
-					{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
-							size={16}
-						/>{/if}
-				</button>
-				<QuickAudio compact />
-				<button
-					onclick={() => onLeaveVoice?.()}
-					class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
-					title="leave voice"
-					aria-label="leave voice"><LogOut size={16} /></button
-				>
+					<button
+						onclick={() => onShare?.()}
+						class="flex flex-1 justify-center rounded py-1.5 {sharing
+							? 'bg-danger/15 text-danger'
+							: 'text-muted/50 hover:text-muted'}"
+						title={sharing ? 'stop sharing your screen' : 'share your screen'}
+						aria-label={sharing
+							? 'stop sharing your screen'
+							: 'share your screen'}
+					>
+						{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
+								size={16}
+							/>{/if}
+					</button>
+					<QuickAudio compact />
+					<button
+						onclick={() => onLeaveVoice?.()}
+						class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
+						title="leave voice"
+						aria-label="leave voice"><LogOut size={16} /></button
+					>
+				{/if}
 			</div>
+		{/if}
+		{#if connectedSlug}
+			<!-- Away used to sit in the Lounge header, where it read as a room
+			     control and was off-screen from every other place (#807). It is
+			     the same kind of statement the mic is, so it lives where the mic
+			     does — a labelled row of its own, because a bare cup squeezed in
+			     beside "Join voice" left both of them fighting for 240 px. No
+			     LiveKit needed: it renders on a server with voice switched
+			     off. -->
+			<button
+				onclick={() => onAway?.(!away)}
+				aria-pressed={away}
+				class="btn btn-xs mt-2 w-full {away ? 'btn-primary' : 'btn-secondary'}"
+				><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
+			>
 		{/if}
 		{#if showAv && voiceError}
 			<!-- The failure itself, not "voice failed" (#642, errors.md): what

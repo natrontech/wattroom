@@ -30,6 +30,7 @@
 		metrics = ['hr', 'cadence', 'wkg'],
 		videoKey = 0,
 		videoAttach,
+		onPoke,
 	}: {
 		rider: MockRider;
 		phase: Phase;
@@ -40,6 +41,9 @@
 		videoKey?: number;
 		/** Attaches the live track into the tile; the mock gradient stands in without it. */
 		videoAttach?: (node: HTMLElement) => void;
+		/** Ask for their attention. The tile IS the person (#807) — poking was
+		 * reachable only from the people column and the sidebar strip. */
+		onPoke?: (id: string) => void;
 	} = $props();
 
 	const live = $derived(phase === 'live' && rider.watts > 0);
@@ -78,7 +82,13 @@
 		rider.away,
 	)}"
 	title={rider.you ? undefined : MENU_HINT}
-	{@attach contextMenu(() => (rider.you ? [] : personMenu(rider.id, goto)))}
+	{@attach contextMenu(() =>
+		rider.you
+			? []
+			: personMenu(rider.id, goto, {
+					poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+				}),
+	)}
 >
 	{#if rider.cameraOn && videoAttach}
 		{#key videoKey}

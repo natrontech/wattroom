@@ -33,6 +33,11 @@ type Connection = {
 	slug: string;
 	live: ReturnType<typeof createRoomLive>;
 	av: ReturnType<typeof createRoomAv>;
+	/**
+	 * You stepped out, or came back (#706). One home for the pair the state
+	 * needs (#807): the local AV and the hub message.
+	 */
+	setAway: (next: boolean) => void;
 	/** The rider's FTP/weight cache, pulled from the account (ADR-0009). */
 	profile: ReturnType<typeof createProfileStore>;
 	/** What you rode this session — the ride writes it, the summary reads it. */
@@ -352,6 +357,16 @@ function connect(slug: string): Connection {
 		slug,
 		live,
 		av,
+		/**
+		 * You stepped out, or came back (#706). Local AV moves at once; the hub
+		 * message makes the same state reach this rider's other screens and
+		 * everyone watching. One home for the pair (#807) — the button that
+		 * sends it now lives in the sidebar, which has no room context.
+		 */
+		setAway(next: boolean) {
+			void av.setAway(next);
+			live.setAway(next);
+		},
 		profile,
 		recording,
 		ride,

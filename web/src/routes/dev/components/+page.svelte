@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import MedalCard from '$lib/components/MedalCard.svelte';
@@ -97,6 +98,26 @@
 		in
 		<a href="/dev/styleguide" class="underline">Styleguide</a>.
 	</p>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Avatar</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		One face everywhere (#253), wearing its level ring and — where the surface
+		knows it — where the person is (#807). The badge is the avatar's, not the
+		call site's: the same mark in the roster, the friends list, a DM head and a
+		chat line.
+	</p>
+	<div class="mt-4 flex flex-wrap items-end gap-6">
+		{#each [{ label: 'no status', status: undefined }, { label: 'in a room', status: 'online' as const }, { label: 'riding now', status: 'riding' as const }, { label: 'away', status: 'away' as const }, { label: 'offline', status: 'offline' as const }] as sample (sample.label)}
+			<div class="text-center">
+				<Avatar name="Sara Vogt" xp={3200} status={sample.status} size={40} />
+				<p class="text-muted mt-1.5 text-[11px]">{sample.label}</p>
+			</div>
+		{/each}
+		<div class="text-center">
+			<Avatar name="Milo" status="riding" size={22} />
+			<p class="text-muted mt-1.5 text-[11px]">22 px, no level</p>
+		</div>
+	</div>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
 		Rider tile

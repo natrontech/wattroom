@@ -2,7 +2,6 @@
 	import type { Snippet } from 'svelte';
 	import {
 		ChevronRight,
-		Coffee,
 		Crown,
 		Headphones,
 		Mic,
@@ -40,9 +39,9 @@
 	}
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RiderVolume from '$lib/room/RiderVolume.svelte';
 	import { rosterGroups } from '$lib/room/roster';
+	import { statusOfRider } from '$lib/status';
 	import type { RoomMember, RoomRider } from '$lib/room/view';
 
 	// The room's people and the room's talk, in one column (ADR-0020). Discord's
@@ -122,27 +121,14 @@
 			class="-my-1 flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-2 py-1"
 			title="{rider.name} — open their page"
 		>
-			<span class="relative shrink-0">
-				<Avatar
-					name={rider.name}
-					avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
-					preset={avatarOf.get(rider.id)?.avatarPreset}
-					xp={avatarOf.get(rider.id)?.totalXp}
-					size={22}
-				/>
-				{#if rider.watts > 0}
-					<!-- Riding is motion, not a red-adjacent dot (ADR-0020). -->
-					<span
-						class="bg-surface ring-surface absolute -right-1 -bottom-1 rounded-full px-0.5 py-px ring-2"
-					>
-						<RidingBars size={8} />
-					</span>
-				{:else}
-					<span
-						class="bg-z4 ring-surface absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full ring-2"
-					></span>
-				{/if}
-			</span>
+			<Avatar
+				name={rider.name}
+				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
+				preset={avatarOf.get(rider.id)?.avatarPreset}
+				xp={avatarOf.get(rider.id)?.totalXp}
+				status={statusOfRider(rider)}
+				size={22}
+			/>
 			<span class="min-w-0 flex-1">
 				<span class="flex items-center gap-1.5">
 					<span
@@ -155,9 +141,6 @@
 							size={11}
 							class="text-muted shrink-0"
 						/>{/if}
-					{#if rider.away}
-						<Coffee size={11} class="text-muted shrink-0" aria-label="away" />
-					{/if}
 					{#if rider.speaking}
 						<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
 					{:else if rider.muted}
@@ -213,15 +196,14 @@
 			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
 			title="{member.displayName} — open their page"
 		>
-			<span class="shrink-0 opacity-50">
-				<Avatar
-					name={member.displayName}
-					avatarUrl={member.avatarUrl}
-					preset={member.avatarPreset}
-					xp={member.totalXp}
-					size={22}
-				/>
-			</span>
+			<Avatar
+				name={member.displayName}
+				avatarUrl={member.avatarUrl}
+				preset={member.avatarPreset}
+				xp={member.totalXp}
+				status="offline"
+				size={22}
+			/>
 			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
 		</a>
 	</li>

@@ -8,6 +8,7 @@ import { untrack } from 'svelte';
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
 import { announce } from '$lib/messages/announce';
+import { people } from '$lib/people.svelte';
 
 export interface DmHead {
 	peerId: string;
@@ -40,6 +41,17 @@ async function poll() {
 	const res = await api<{ conversations: DmHead[] }>('/api/dms');
 	if (!res.ok) return;
 	heads = [...res.data.conversations].sort((a, b) => b.at - a.at);
+	// The faces a chat line cannot carry (#807) — learned from the poll that
+	// already fetched them, never a fetch of their own.
+	people.learn(
+		res.data.conversations.map((head) => ({
+			id: head.peerId,
+			name: head.peerName,
+			avatarUrl: head.peerAvatarUrl,
+			avatarPreset: head.peerAvatarPreset,
+			totalXp: head.peerTotalXp,
+		})),
+	);
 	const next = { ...inbound };
 	for (const head of res.data.conversations) {
 		if (head.mine) continue;

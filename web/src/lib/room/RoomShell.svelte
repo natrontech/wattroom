@@ -341,15 +341,6 @@
 		get myRole() {
 			return myRole;
 		},
-		get away() {
-			return av.away;
-		},
-		setAway: (next) => {
-			// Local AV moves at once; the hub message makes the same state reach
-			// every other screen belonging to this rider and everyone watching.
-			void av.setAway(next);
-			live.setAway(next);
-		},
 		get sprint() {
 			return live.tick?.sprint;
 		},

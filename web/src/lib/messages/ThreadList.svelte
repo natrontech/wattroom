@@ -16,6 +16,7 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { presence } from '$lib/presence.svelte';
+	import { statusOf } from '$lib/status';
 	import { Headphones, Search, Users } from '@lucide/svelte';
 
 	let { active = '' }: { active?: string } = $props();
@@ -89,6 +90,7 @@
 							avatarUrl={t.head.peerAvatarUrl}
 							preset={t.head.peerAvatarPreset}
 							xp={t.head.peerTotalXp}
+							status={statusOf(presence.rooms, t.name)}
 							size={32}
 						/>
 					{/if}
