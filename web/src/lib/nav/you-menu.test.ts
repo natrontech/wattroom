@@ -3,6 +3,10 @@ import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { youMenu } from '$lib/nav/you-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
 
+// The room decides whether a voice can dip anything (#904).
+const room = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('$lib/room/connection.svelte', () => ({ roomConnection: room }));
+
 // The cue engine is an AudioContext; the fader only has to reach it.
 const cues = vi.hoisted(() => ({ played: [] as string[] }));
 vi.mock('$lib/sound/cues', () => ({
@@ -45,5 +49,34 @@ describe('youMenu (#898)', () => {
 		fader.onChange?.(65);
 		expect(cues.played).toEqual(['block']);
 		mixer.setCues(0.7);
+	});
+});
+
+// The dip belongs to the same mix, and reads the way the Sound panel's fader
+// reads: right is off (#904).
+describe('youMenu duck', () => {
+	it('offers no dip outside a room — there is no voice to dip under', () => {
+		room.current = null;
+		expect(
+			youMenu('u1', () => {})
+				.filter(isSlider)
+				.map((fader) => fader.label),
+		).toEqual(['Cue sounds']);
+	});
+
+	it('is the depth, off at the top, and never disagrees with the panel', () => {
+		room.current = { av: {} };
+		mixer.setDuck(0.7);
+		const duck = youMenu('u1', () => {}).filter(isSlider)[1];
+		expect([duck.label, duck.value, duck.format(duck.value)]).toEqual([
+			'Duck under voice',
+			70,
+			'\u221230%',
+		]);
+		expect(duck.format(100)).toBe('off');
+		duck.onInput(25);
+		expect(mixer.duck).toBeCloseTo(0.25);
+		mixer.setDuck(0.75);
+		room.current = null;
 	});
 });
