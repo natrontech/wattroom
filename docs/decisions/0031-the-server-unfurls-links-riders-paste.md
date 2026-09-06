@@ -5,6 +5,10 @@
 - Builds on: [ADR-0009](0009-login-gated-app.md) (the app is login-gated, so
   every outbound fetch is on behalf of a signed-in rider),
   [ADR-0010](0010-room-first-positioning.md) (chat is room-scoped)
+- Read against: [ADR-0032](0032-a-gif-picker-proxied-through-the-server.md),
+  which reaches the opposite conclusion about proxying image bytes. The two
+  were written the same day and the difference is deliberate — see
+  "Why this proxies bytes when the GIF picker does not" below.
 
 ## Context
 
@@ -93,6 +97,44 @@ own script as WattRoom the moment a rider opens the image in a tab. The
 response also carries a `default-src 'none'; sandbox` CSP, but not serving the
 format is the answer that does not depend on a header being honoured.
 
+### Why this proxies bytes when the GIF picker does not
+
+[ADR-0032](0032-a-gif-picker-proxied-through-the-server.md) proxies Tenor's
+*API* for the key and the quota, and says plainly that it does not hide riders
+from Tenor — the grid renders straight off `media*.tenor.com`. It goes further
+and rejects the idea of proxying the bytes: that would "put a media proxy on a
+single VM to save nothing WATTROOM.md's privacy rules cover — those govern
+metrics, not which CDN a rider's browser talks to."
+
+That reasoning is right for a GIF picker and wrong for a link preview, and the
+difference is who chose the host.
+
+- A rider **opens** the picker. They are searching Tenor, on purpose, and the
+  host is one fixed, allowlisted CDN. Their address reaching it is a
+  consequence of something they did.
+- A preview image is fetched **passively**, while scrolling, from a host **some
+  other member chose** by pasting a link. Nobody scrolling the room decided to
+  contact it.
+
+That second shape is not a CDN question. It is a member-controlled
+IP-disclosure primitive: paste a link to a host you run, and every member who
+scrolls past the message hands you their address, their user-agent, and a
+timestamp — without clicking anything. Room membership is not supposed to buy
+that (WATTROOM.md, "Privacy is architecture"), and `media.ts` already refused
+exactly this for pasted GIFs by allowlisting a handful of hosts rather than
+rendering an `<img>` to whatever was in the message.
+
+So the rule is not "proxy image bytes" or "never proxy image bytes". It is:
+**bytes from a host the rider chose may load directly; bytes from a host
+another member chose go through us.** ADR-0032's fixed Tenor allowlist is the
+first case, an arbitrary unfurled page is the second.
+
+The cost ADR-0032 names is real and is accepted here: preview-image bandwidth
+lands on the single VM. It is bounded per image and per rider, and it buys
+something the GIF grid had no need to buy.
+
+### The proxy is not a second SSRF surface
+
 The image proxy is a second guarded fetcher, not a second SSRF surface: it
 dials through the same policy, for the same signed-in riders, and so grants no
 reach the unfurl endpoint beside it does not already grant. It is therefore not
@@ -116,8 +158,12 @@ costs nothing — the link still works.
 - **The server now makes outbound requests to addresses riders choose.** That
   is a real, permanent increase in what this app does, and the guard is what
   keeps it bounded. Changes to `guard.go` are security changes: its refusal
-  tests are the specification, and adding a fetcher that does not go through
-  `Service.get` reopens everything this closes.
+  tests are the specification. The rule this sets is about **rider-supplied**
+  addresses — any new code that fetches a URL a rider can influence must go
+  through `Service.get`, or it reopens everything this closes. A fetcher aimed
+  at one fixed host the operator configured (`internal/gifs` calling Tenor, the
+  Strava and LiveKit clients) is a different thing and needs no guard, because
+  there is no address for an attacker to choose.
 - An operator running WattRoom inside a network with private services can no
   longer assume the app never speaks to them — it will not, but that is now a
   property of code rather than a property of the app having no such feature.
