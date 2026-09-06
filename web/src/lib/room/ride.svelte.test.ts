@@ -65,8 +65,8 @@ class FakeTrainer implements Trainer {
 		return () => {};
 	}
 	/** One ~1 Hz reading, as the BLE layer would deliver it. */
-	pedal(watts: number) {
-		this.listener?.({ watts, cadence: 90, at: Date.now() });
+	pedal(watts: number, cadence = 90) {
+		this.listener?.({ watts, cadence, at: Date.now() });
 	}
 }
 
@@ -215,5 +215,158 @@ describe('a sprint the ticks stop under (#789)', () => {
 
 		dispose();
 		live.close();
+	});
+});
+
+describe('the personal guards in a group ride (#788)', () => {
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	/** A room mid-interval: the shared timeline is running and asks for 200 W. */
+	function inASession() {
+		const live = createRoomLive('mfw');
+		const socket = FakeSocket.last!;
+		const deps = {
+			live,
+			profile: {
+				current: {
+					ftp: 200,
+					shareHr: true,
+					singleSpeed: false,
+					sprintGrade: 5,
+				},
+			},
+			recording: { record() {} } as never,
+			myId: () => 'me',
+			shared: () => ({ phase: 'running', elapsed: 10 }),
+			segments: () => [
+				{
+					kind: 'steady' as const,
+					startSeconds: 0,
+					seconds: 600,
+					fromFraction: 1,
+					toFraction: 1,
+					stepIndex: 0,
+				},
+			],
+		};
+		return { live, socket, deps };
+	}
+
+	it('releases the target when the rider stops, leaving the room clock alone', async () => {
+		vi.useFakeTimers();
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.target).toBe(200);
+
+		for (let i = 0; i < 3; i++) trainer.pedal(0, 0);
+		await settle();
+		expect(ride.guard).toBe('autopaused');
+		expect(ride.target).toBe(0);
+		expect(trainer.commands.at(-1)).toBe('erg:0');
+		// The room's own timeline is untouched: the shared session still says
+		// running, and this rider's guard is nobody else's business.
+		expect(deps.shared().phase).toBe('running');
+
+		// Pedalling again starts the countdown, not a snap back to target.
+		trainer.pedal(180);
+		await settle();
+		expect(ride.guard).toBe('resuming');
+		expect(ride.guardResumeIn).toBe(3);
+		await vi.advanceTimersByTimeAsync(3000);
+		await settle();
+		expect(ride.guard).toBe('running');
+		expect(ride.target).toBe(200);
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
+	});
+
+	it('releases the target when cadence collapses under it', async () => {
+		vi.useFakeTimers();
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		// Five seconds grinding at 40 rpm against a 200 W target.
+		for (let i = 0; i < 5; i++) trainer.pedal(120, 40);
+		await settle();
+		expect(ride.target).toBe(0);
+		expect(trainer.commands.at(-1)).toBe('erg:0');
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
+	});
+
+	it('leaves a rider resting between sessions alone', async () => {
+		// Nothing is being asked of them, so there is nothing to release — and
+		// "Paused — you stopped pedalling" over a room with no session running
+		// is noise, not status.
+		vi.useFakeTimers();
+		const { live, deps } = inASession();
+		deps.shared = () => ({ phase: 'idle', elapsed: 0 });
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		for (let i = 0; i < 10; i++) trainer.pedal(0, 0);
+		await settle();
+		expect(ride.guard).toBe('running');
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
+	});
+
+	it('still hands a sprint to a rider the guard had paused', async () => {
+		// The guards infer that the rider left; the klaxon is an announced
+		// event they are about to answer. A rider sitting at zero when it
+		// sounds would otherwise never be given the hill.
+		vi.useFakeTimers();
+		const { live, socket, deps } = inASession();
+		deps.profile.current.singleSpeed = true;
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		for (let i = 0; i < 3; i++) trainer.pedal(0, 0);
+		await settle();
+		expect(ride.guard).toBe('autopaused');
+
+		const at = Date.now();
+		socket.onmessage!({
+			data: JSON.stringify({
+				tick: { at, sprint: { startsAtMs: at, endsAtMs: at + 10_000 } },
+			}),
+		});
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:400');
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
 	});
 });

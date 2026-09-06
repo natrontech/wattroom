@@ -1,4 +1,5 @@
 import { arbitrate } from '$lib/ble/arbitrate';
+import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
 import { serverNow } from '$lib/room/server-clock';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
@@ -72,7 +73,8 @@ export function createRide(deps: RideDeps) {
 		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
 	}
 
-	const target = $derived.by(() => {
+	/** What the room asks of this rider, before their own guards get a say. */
+	const prescribed = $derived.by(() => {
 		const game = deps.live.tick?.game;
 		const mine = game?.riders?.[deps.myId() ?? ''];
 		if (game?.phase === 'running' && mine && mine.targetPct) {
@@ -86,6 +88,36 @@ export function createRide(deps: RideDeps) {
 			targetAt(segments, deps.profile.current.ftp, shared.elapsed)
 				.targetWatts ?? 0;
 		return Math.round(raw * bias);
+	});
+
+	/**
+	 * Auto-pause and the spiral release, the same machine the solo ride runs
+	 * (#788). A rider who stops, or who grinds to a halt at 40 rpm, gets their
+	 * target released in a room exactly as they would alone — and the room's
+	 * clock does not notice, because the guards mask this rider's target and
+	 * touch nothing shared.
+	 */
+	const guards = createPersonalGuards();
+	let guardsReleased = $state(false);
+	let guardPhase = $state<GuardPhase>('running');
+	let guardResumeIn = $state(0);
+	function syncGuards() {
+		guardsReleased = guards.released;
+		guardPhase = guards.phase;
+		guardResumeIn = guards.resumeIn;
+	}
+
+	const target = $derived(guardsReleased ? 0 : prescribed);
+
+	// The guards' countdowns run on a local second — the room's clock is the
+	// room's, and a rider's own recovery must not wait on it.
+	$effect(() => {
+		if (!trainer) return;
+		const id = setInterval(() => {
+			guards.tick();
+			syncGuards();
+		}, 1000);
+		return () => clearInterval(id);
 	});
 
 	/**
@@ -116,6 +148,11 @@ export function createRide(deps: RideDeps) {
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
+		// A sprint outranks the guards, deliberately. Auto-pause is an
+		// INFERENCE that the rider left; the klaxon is an announced event they
+		// are about to answer, and a rider who was sitting at zero when it
+		// sounded would otherwise never be given the hill. (Tried the other
+		// way round first; the two-rider e2e is what showed the cost.)
 		if (sprintLive) {
 			if (!sprintMode) {
 				sprintMode = true;
@@ -151,6 +188,15 @@ export function createRide(deps: RideDeps) {
 						{ trainer: sample, sensors: sensors.readings },
 						sample.at,
 					);
+					// Only while the room is actually asking something of this
+					// rider. With no target there is nothing to release, and a
+					// rider resting in a room between sessions is not "paused"
+					// — they are just in a room. Against the PRESCRIBED target,
+					// too: the one the trainer holds is zero exactly when a
+					// guard is already up.
+					if (prescribed > 0) guards.sample(metrics, prescribed);
+					else guards.reset();
+					syncGuards();
 					hrSource =
 						metrics.from.heartRate === 'heart-rate' ||
 						metrics.from.heartRate === 'trainer'
@@ -208,6 +254,13 @@ export function createRide(deps: RideDeps) {
 		},
 		get target() {
 			return target;
+		},
+		/** The rider's own guard state — the room's clock is unaffected (#788). */
+		get guard() {
+			return guardPhase;
+		},
+		get guardResumeIn() {
+			return guardResumeIn;
 		},
 		nudgeBias,
 		ride,
