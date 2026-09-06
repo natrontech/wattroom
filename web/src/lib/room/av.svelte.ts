@@ -8,7 +8,6 @@ import type {
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { glideTo } from '$lib/sound/glide';
-import { GATE_DEFAULT, clampThreshold } from '$lib/room/gate-scale';
 import {
 	GATE_ATTACK_MS,
 	GATE_RELEASE_MS,
@@ -17,6 +16,10 @@ import {
 	gateStep,
 } from '$lib/room/gate';
 import { MIC_CONSTRAINTS } from '$lib/room/capture';
+import { createDeviceChoices } from '$lib/room/av-devices.svelte';
+import { createGateSettings } from '$lib/room/gate-settings.svelte';
+import { createStage } from '$lib/room/av-stage.svelte';
+import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
 import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
@@ -84,19 +87,7 @@ export function createRoomAv(slug: string) {
 		const message = describeMediaError(cause, device);
 		if (message) error = { message, signIn: false };
 	}
-	/** Rider ids with a live camera track — bumped to retrigger attach. */
-	let videoOf = $state<Record<string, number>>({});
-	/**
-	 * Every live screenshare (#280). #206's projector kept exactly one — a
-	 * second sharer silently stole the room's screen. LiveKit was always fine
-	 * with many; only the UI insisted on one, so keep them all in arrival
-	 * order (last = newest) and let the viewer choose.
-	 */
-	let screens = $state<{ id: string; key: number }[]>([]);
-	let screenSeq = 0;
-	/** What YOU want on the stage: a `screen:`/`cam:` key, or null = newest
-	 * share. Yours alone — a stage pick is a glance, never room state. */
-	let stagePick = $state<string | null>(null);
+	const stage = createStage();
 	let speaking = $state<Record<string, boolean>>({});
 	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
 	 * once with a fresh token (#219: token expiry, transient drops). */
@@ -126,87 +117,13 @@ export function createRoomAv(slug: string) {
 	let micLevel = $state(0);
 	/** The gate's verdict this instant: is anything leaving this machine? */
 	let transmitting = $state(false);
-	/** SPEC room-audio defaults; threshold persisted per device. */
-	let mode = $state<'gate' | 'ptt'>('gate');
-	let gateThreshold = $state(GATE_DEFAULT);
-	let pttHeld = $state(false);
-	/** Reactive: the rail draws the EFFECTIVE threshold, and music moves it. */
-	let deckPlaying = $state(false);
+	const gateSettings = createGateSettings();
 
-	const VOICE_KEY = 'wattroom.voice.v1';
-	try {
-		const saved = JSON.parse(localStorage.getItem(VOICE_KEY) ?? '{}');
-		if (saved.mode === 'ptt') mode = 'ptt';
-		if (typeof saved.threshold === 'number' && saved.threshold > 0)
-			gateThreshold = clampThreshold(saved.threshold);
-	} catch {
-		// storage blocked: SPEC defaults stand
-	}
-
-	// ── Device selection (#181 feedback: "which input/output/camera is this?").
-	// '' = browser default. Persisted per device — a chosen mic survives rejoin.
-	let micId = $state('');
-	let camId = $state('');
-	let outId = $state('');
-	let deviceList = $state<MediaDeviceInfo[]>([]);
-	const DEVICES_KEY = 'wattroom.devices.v1';
-	try {
-		const saved = JSON.parse(localStorage.getItem(DEVICES_KEY) ?? '{}');
-		if (typeof saved.mic === 'string') micId = saved.mic;
-		if (typeof saved.cam === 'string') camId = saved.cam;
-		if (typeof saved.out === 'string') outId = saved.out;
-	} catch {
-		// per-device convenience only
-	}
-	function persistDevices() {
-		try {
-			localStorage.setItem(
-				DEVICES_KEY,
-				JSON.stringify({ mic: micId, cam: camId, out: outId }),
-			);
-		} catch {
-			// per-device convenience only
-		}
-	}
-	async function refreshDevices() {
-		try {
-			deviceList = await navigator.mediaDevices.enumerateDevices();
-		} catch {
-			deviceList = [];
-		}
-	}
-	// Computed on read, never $derived: a derived created here belongs to
-	// whichever component happened to construct the store, and Svelte freezes
-	// it at its last value once that component unmounts (derived_inert). The
-	// connection outlives every page (#173), so it would freeze on the first
-	// navigation away from the room.
-	const mics = () => deviceList.filter((d) => d.kind === 'audioinput');
-	const cams = () => deviceList.filter((d) => d.kind === 'videoinput');
-	const outs = () => deviceList.filter((d) => d.kind === 'audiooutput');
-	// Voice output rides the WebAudio bus, so switching speakers needs
-	// AudioContext.setSinkId — Chrome has it, and Chrome is the platform
-	// (ADR-0004); elsewhere the picker simply doesn't render.
-	const canPickOutput =
-		typeof AudioContext !== 'undefined' &&
-		'setSinkId' in AudioContext.prototype;
-	function applySink() {
-		if (!outCtx || !outId || !canPickOutput) return;
-		void (outCtx as AudioContext & { setSinkId(id: string): Promise<void> })
-			.setSinkId(outId)
-			.catch(() => {
-				// unplugged sink: audio falls back to the OS default, not silence
-			});
-	}
-	function persistVoice() {
-		try {
-			localStorage.setItem(
-				VOICE_KEY,
-				JSON.stringify({ mode, threshold: gateThreshold }),
-			);
-		} catch {
-			// per-device convenience only
-		}
-	}
+	// Device selection and the rider-audio bus own their own state now (#892).
+	// The bus reads the chosen sink through a getter: the AudioContext outlives
+	// any one pick.
+	const devices = createDeviceChoices();
+	const output = createRiderOutput(() => devices.outId);
 
 	/**
 	 * The mic path (#151, SPEC room audio): capture (browser DSP on) → gain →
@@ -248,23 +165,15 @@ export function createRoomAv(slug: string) {
 	 * falls back to the default instead of failing the join. */
 	async function captureMic(): Promise<MediaStream> {
 		const base = MIC_CONSTRAINTS;
-		if (micId) {
+		if (devices.micId) {
 			try {
 				return await navigator.mediaDevices.getUserMedia({
-					audio: { ...base, deviceId: { exact: micId } },
+					audio: { ...base, deviceId: { exact: devices.micId } },
 				});
 			} catch {
-				// Only an absent device is "unplugged". A mic another app holds,
-				// or a permission blip, must not forget the rider's pick for
-				// good (#824) — the join still falls back to the default below.
-				const known = mics();
-				if (
-					known.some((d) => d.deviceId) &&
-					!known.some((d) => d.deviceId === micId)
-				) {
-					micId = '';
-					persistDevices();
-				}
+				// The join still falls back to the default below either way; the
+				// store decides whether the pick itself is forgotten (#824).
+				devices.forgetMicIfUnplugged();
 			}
 		}
 		return navigator.mediaDevices.getUserMedia({ audio: base });
@@ -335,34 +244,17 @@ export function createRoomAv(slug: string) {
 		);
 	}
 
-	/**
-	 * SPEC: while the jukebox plays the threshold doubles. The gate reads it
-	 * here and the meter's marker reads the same function, so the mark can
-	 * never claim a gate the rider is not actually being held to (#289).
-	 *
-	 * Two things the doubling has to respect (#478). It pays for speaker
-	 * bleed, so it applies only to ears that hear the deck: a rider with
-	 * music at zero has no bleed to gate out and stays on what they set. And
-	 * doubling is +6 dB, which walks off the top of the axis from a gate as
-	 * low as half GATE_CEIL — unclamped, the meter pins its mark at 100% and
-	 * the mic can stop opening at all the moment a track starts.
-	 */
-	function effectiveThreshold() {
-		const bleed = deckPlaying && mixer.music > 0;
-		return bleed ? clampThreshold(gateThreshold * 2) : gateThreshold;
-	}
-
 	function runGate() {
 		if (!mic || (!micOn && !testing)) return;
-		if (mode === 'ptt') {
-			setGate(pttHeld);
+		if (gateSettings.mode === 'ptt') {
+			setGate(gateSettings.pttHeld);
 			return;
 		}
 		// The hold no longer chases the timer that fed it (#214's fix): the
 		// level arrives from the audio thread, at the same rate whether this
 		// tab is in front or behind another window.
 		const was = gate.open;
-		gate = gateStep(gate, micLevel, effectiveThreshold(), performance.now());
+		gate = gateStep(gate, micLevel, gateSettings.effective, performance.now());
 		if (gate.open !== was) setGate(gate.open);
 	}
 
@@ -374,7 +266,7 @@ export function createRoomAv(slug: string) {
 	async function startMicTest() {
 		if (mic || testing) return;
 		const { ctx, raw, gain, meter } = await buildChain();
-		void refreshDevices(); // the grant just made the labels readable (#658)
+		void devices.refresh(); // the grant just made the labels readable (#658)
 		gain.connect(ctx.destination); // your own ears, not the room
 		const dest = ctx.createMediaStreamDestination();
 		mic = {
@@ -432,14 +324,6 @@ export function createRoomAv(slug: string) {
 	const screenTracks = new Map<string, Owned>();
 	/** Audio plumbing is per CONNECTION: one element and one gain each. */
 	const audioElements = new Map<string, HTMLAudioElement>();
-	// Per-rider output gain (#179): media-element → gain → speakers, so a
-	// quiet teammate can go ABOVE unity — element.volume caps at 1, WebAudio
-	// doesn't.
-	let outCtx: AudioContext | null = null;
-	let riderBus: DynamicsCompressorNode | null = null;
-	const riderGains = new Map<string, GainNode>();
-	const riderSources = new Map<string, MediaElementAudioSourceNode>();
-
 	/** Forget a rider's track only if this connection is the one that owns it. */
 	function dropOwned(map: Map<string, Owned>, rider: string, owner: string) {
 		if (map.get(rider)?.owner !== owner) return false;
@@ -456,56 +340,12 @@ export function createRoomAv(slug: string) {
 		return map.get(rider)?.owner === owner;
 	}
 
-	function routeRiderAudio(identity: string, el: HTMLAudioElement) {
-		try {
-			if (!outCtx) {
-				outCtx = new AudioContext();
-				applySink();
-			}
-			// One limiter for all rider audio (#152): faders go to ×2, and two
-			// boosted voices summing past 1.0 would hard-clip at the DAC.
-			if (!riderBus) {
-				riderBus = outCtx.createDynamicsCompressor();
-				riderBus.threshold.value = -6;
-				riderBus.knee.value = 4;
-				riderBus.ratio.value = 12;
-				riderBus.attack.value = 0.003;
-				riderBus.release.value = 0.25;
-				riderBus.connect(outCtx.destination);
-			}
-			const source = outCtx.createMediaElementSource(el);
-			const gain = outCtx.createGain();
-			gain.gain.value = outGain(identity);
-			source.connect(gain);
-			gain.connect(riderBus);
-			riderGains.set(identity, gain);
-			riderSources.set(identity, source);
-		} catch {
-			// routing failed: the element still plays at unity — degraded, not broken
-		}
-	}
-
-	/**
-	 * A rider's voice as it should sound right now: their fader, or nothing
-	 * while you are away (#875) — the room does not play to an empty chair.
-	 */
-	function outGain(identity: string) {
-		return mixer.muted ? 0 : mixer.riderGain(riderOf(identity));
-	}
-
-	/** Ramp every live voice to that; a jump would zipper (#179). */
-	function applyRiderGains() {
-		if (!outCtx) return;
-		for (const [identity, gain] of riderGains)
-			gain.gain.setTargetAtTime(outGain(identity), outCtx.currentTime, 0.02);
-	}
-
 	function onVisible() {
 		if (document.visibilityState !== 'visible') return;
 		// Browsers may suspend audio graphs in long-hidden tabs; coming
 		// back must not need a rejoin (#214).
 		if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
-		if (outCtx?.state === 'suspended') void outCtx.resume();
+		output.resume();
 	}
 	/**
 	 * A chosen mic that is no longer plugged in stops being chosen (#640), so
@@ -515,16 +355,8 @@ export function createRoomAv(slug: string) {
 	 * not un-choose a headset that is sitting right there.
 	 */
 	const onDeviceChange = async () => {
-		await refreshDevices();
-		const known = mics();
-		if (
-			micId &&
-			known.some((d) => d.deviceId) &&
-			!known.some((d) => d.deviceId === micId)
-		) {
-			micId = '';
-			persistDevices();
-		}
+		await devices.refresh();
+		devices.forgetMicIfUnplugged();
 	};
 	/** Idempotent: the same handlers, so a second call adds nothing. leave()
 	 * removes them, and the sidebar's Join voice reuses this instance (#824). */
@@ -534,49 +366,6 @@ export function createRoomAv(slug: string) {
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
 	listen();
-
-	function addScreen(id: string) {
-		screenSeq += 1;
-		screens = [...screens.filter((s) => s.id !== id), { id, key: screenSeq }];
-	}
-
-	function dropScreen(id: string) {
-		screens = screens.filter((s) => s.id !== id);
-		// A sharer stopping must not blank the stage for everyone — falling
-		// back to null lets the derived pick the next newest share (#206).
-		if (stagePick === `screen:${id}`) stagePick = null;
-	}
-
-	function bumpVideo(id: string) {
-		videoOf = { ...videoOf, [id]: (videoOf[id] ?? 0) + 1 };
-	}
-
-	// A camera turning OFF must clear the flag — bumping it left a blank
-	// tile claiming "camera on" for the rest of the session (audit #219).
-	function dropVideo(id: string) {
-		const next = { ...videoOf };
-		delete next[id];
-		videoOf = next;
-	}
-
-	/**
-	 * The stage's menu: every share, then every open camera. Screens lead
-	 * because a shared screen is why anyone looks at the stage at all.
-	 */
-	const stageSources = () => [
-		...screens.map((s) => ({
-			key: `screen:${s.id}`,
-			id: s.id,
-			kind: 'screen' as const,
-			gen: s.key,
-		})),
-		...Object.entries(videoOf).map(([id, gen]) => ({
-			key: `cam:${id}`,
-			id,
-			kind: 'cam' as const,
-			gen,
-		})),
-	];
 
 	// ── "I was in voice here" (#480) ─────────────────────────────────────────
 	// A refresh kills the page and the LiveKit room with it. The note this
@@ -644,7 +433,9 @@ export function createRoomAv(slug: string) {
 			// IS LiveKit's own capture (setCameraEnabled), so its defaults
 			// stay.
 			room = new client.Room({
-				...(camId ? { videoCaptureDefaults: { deviceId: camId } } : {}),
+				...(devices.camId
+					? { videoCaptureDefaults: { deviceId: devices.camId } }
+					: {}),
 			});
 			wire(room, client);
 			await room.connect(res.data.url, res.data.token);
@@ -656,7 +447,7 @@ export function createRoomAv(slug: string) {
 			// than this one — check rather than assume newest-connected wins.
 			for (const p of room.remoteParticipants.values()) considerClaim(p);
 			// Post-permission the labels are real — the pickers can name devices.
-			void refreshDevices();
+			void devices.refresh();
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
 			for (const p of room.remoteParticipants.values()) {
@@ -801,7 +592,7 @@ export function createRoomAv(slug: string) {
 			)?.videoTrack;
 			if (track) {
 				videoTracks.set(me, { owner: myIdentity, track });
-				bumpVideo(me);
+				stage.bumpVideo(me);
 			} else {
 				await closeCam();
 			}
@@ -824,7 +615,7 @@ export function createRoomAv(slug: string) {
 		// and the cues all play to an empty chair otherwise. The faders keep
 		// their values, so coming back restores the mix and not a default.
 		mixer.setMuted(next);
-		applyRiderGains();
+		output.applyGains();
 		// A rider can step away without joining voice. Keep the state so a
 		// later voice join stays listen-only; there is no capture to change yet.
 		if (!room) return;
@@ -867,7 +658,7 @@ export function createRoomAv(slug: string) {
 		)?.videoTrack;
 		await room.localParticipant.setCameraEnabled(false).catch(() => {});
 		track?.mediaStreamTrack?.stop();
-		if (dropOwned(videoTracks, me, myIdentity)) dropVideo(me);
+		if (dropOwned(videoTracks, me, myIdentity)) stage.dropVideo(me);
 	}
 
 	/** Another tab of yours took over: drop the mic and camera, keep listening. */
@@ -918,17 +709,17 @@ export function createRoomAv(slug: string) {
 				// only claim a seat once there is a picture in it (#851).
 				if (pub.source === client.Track.Source.ScreenShare) {
 					screenTracks.set(rider, owned);
-					if (!pub.isMuted) addScreen(rider);
+					if (!pub.isMuted) stage.addScreen(rider);
 				} else {
 					videoTracks.set(rider, owned);
-					if (!pub.isMuted) bumpVideo(rider);
+					if (!pub.isMuted) stage.bumpVideo(rider);
 				}
 			}
 			if (track.kind === client.Track.Kind.Audio) {
 				const el = track.attach() as HTMLAudioElement;
 				audioElements.set(participant.identity, el);
 				document.body.appendChild(el);
-				routeRiderAudio(participant.identity, el);
+				output.route(participant.identity, el);
 				// Mute here is unpublish, not track-mute (the gate owns the gain),
 				// so the mic chip must follow the publication itself — Muted/
 				// Unmuted never fire and ParticipantConnected ran pre-publish.
@@ -941,18 +732,15 @@ export function createRoomAv(slug: string) {
 			if (track.kind === client.Track.Kind.Video) {
 				if (pub.source === client.Track.Source.ScreenShare) {
 					if (dropOwned(screenTracks, rider, participant.identity))
-						dropScreen(rider);
+						stage.dropScreen(rider);
 				} else if (dropOwned(videoTracks, rider, participant.identity)) {
-					dropVideo(rider);
+					stage.dropVideo(rider);
 				}
 			}
 			if (track.kind === client.Track.Kind.Audio) {
 				track.detach().forEach((el) => el.remove());
 				audioElements.delete(participant.identity);
-				riderGains.get(participant.identity)?.disconnect();
-				riderGains.delete(participant.identity);
-				riderSources.get(participant.identity)?.disconnect();
-				riderSources.delete(participant.identity);
+				output.drop(participant.identity);
 				if (
 					pub.source === client.Track.Source.Microphone &&
 					!micLive(rider, participant.identity)
@@ -967,7 +755,7 @@ export function createRoomAv(slug: string) {
 		r.on(client.RoomEvent.LocalTrackUnpublished, (pub) => {
 			if (pub.source !== client.Track.Source.ScreenShare) return;
 			sharing = false;
-			if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
+			if (dropOwned(screenTracks, me, myIdentity)) stage.dropScreen(me);
 		});
 		const audioState = (p: {
 			identity: string;
@@ -1006,14 +794,14 @@ export function createRoomAv(slug: string) {
 			const tracks = screen ? screenTracks : videoTracks;
 			if (!ownsTrack(tracks, rider, p.identity)) return;
 			if (pub.isMuted) {
-				if (screen) dropScreen(rider);
-				else dropVideo(rider);
+				if (screen) stage.dropScreen(rider);
+				else stage.dropVideo(rider);
 				return;
 			}
 			// Only when the seat is empty: your own camera bumps itself on the
 			// way up, and a second bump re-keys the attach for a blink.
-			if (screen) addScreen(rider);
-			else if (!videoOf[rider]) bumpVideo(rider);
+			if (screen) stage.addScreen(rider);
+			else if (!stage.hasVideo(rider)) stage.bumpVideo(rider);
 		}
 		r.on(client.RoomEvent.TrackMuted, (pub, p) => {
 			const rider = riderOf(p.identity);
@@ -1046,10 +834,8 @@ export function createRoomAv(slug: string) {
 			for (const el of audioElements.values()) el.remove();
 			audioElements.clear();
 			videoTracks.clear();
-			videoOf = {};
 			screenTracks.clear();
-			screens = [];
-			stagePick = null;
+			stage.clear();
 			voice = {};
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
@@ -1106,7 +892,7 @@ export function createRoomAv(slug: string) {
 			return error;
 		},
 		get videoOf() {
-			return videoOf;
+			return stage.videoOf;
 		},
 		get speaking() {
 			return speaking;
@@ -1121,27 +907,25 @@ export function createRoomAv(slug: string) {
 			return transmitting;
 		},
 		get mode() {
-			return mode;
+			return gateSettings.mode;
 		},
 		get gateThreshold() {
-			return gateThreshold;
+			return gateSettings.threshold;
 		},
 		/** What is gating you right now — the stored value, doubled by music. */
 		get effectiveGateThreshold() {
-			return effectiveThreshold();
+			return gateSettings.effective;
 		},
 		get pttHeld() {
-			return pttHeld;
+			return gateSettings.pttHeld;
 		},
 		setMode(next: 'gate' | 'ptt') {
-			mode = next;
-			persistVoice();
+			gateSettings.setMode(next);
 			if (next === 'gate') gate = GATE_SHUT;
 			runGate();
 		},
 		setGateThreshold(next: number) {
-			gateThreshold = clampThreshold(next);
-			persistVoice();
+			gateSettings.setThreshold(next);
 			// Tuning mid-sentence must land on this breath, not the next tick.
 			runGate();
 		},
@@ -1177,31 +961,30 @@ export function createRoomAv(slug: string) {
 		},
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
 		get mics() {
-			return mics();
+			return devices.mics;
 		},
 		get cams() {
-			return cams();
+			return devices.cams;
 		},
 		get outs() {
-			return outs();
+			return devices.outs;
 		},
 		get micId() {
-			return micId;
+			return devices.micId;
 		},
 		get camId() {
-			return camId;
+			return devices.camId;
 		},
 		get outId() {
-			return outId;
+			return devices.outId;
 		},
 		get canPickOutput() {
 			return canPickOutput;
 		},
-		refreshDevices,
+		refreshDevices: devices.refresh,
 		/** Switching mid-transmission rebuilds the capture chain in place. */
 		async setMic(id: string) {
-			micId = id;
-			persistDevices();
+			devices.setMic(id);
 			if (testing) {
 				stopMicTest();
 				await startMicTest().catch((cause) => {
@@ -1220,16 +1003,14 @@ export function createRoomAv(slug: string) {
 			}
 		},
 		async setCam(id: string) {
-			camId = id;
-			persistDevices();
+			devices.setCam(id);
 			if (camOn && room) {
 				await room.switchActiveDevice('videoinput', id).catch(() => {});
 			}
 		},
 		setOut(id: string) {
-			outId = id;
-			persistDevices();
-			applySink();
+			devices.setOut(id);
+			output.applySink();
 		},
 		async toggleMicTest() {
 			if (testing) stopMicTest();
@@ -1240,7 +1021,7 @@ export function createRoomAv(slug: string) {
 				});
 		},
 		setPtt(held: boolean) {
-			pttHeld = held;
+			gateSettings.setPttHeld(held);
 			runGate();
 		},
 		/**
@@ -1249,7 +1030,7 @@ export function createRoomAv(slug: string) {
 		 * decides whether there is any bleed to gate out (#478).
 		 */
 		setDeckPlaying(playing: boolean) {
-			deckPlaying = playing;
+			gateSettings.setDeckPlaying(playing);
 		},
 		/**
 		 * Applies the mixer's per-rider gain live (#179, #463). One fader per
@@ -1258,7 +1039,7 @@ export function createRoomAv(slug: string) {
 		 */
 		setRiderGain(id: string, v: number, name?: string) {
 			mixer.setRiderGain(id, v, name);
-			applyRiderGains();
+			output.applyGains();
 		},
 		join,
 		async toggleMic() {
@@ -1300,10 +1081,10 @@ export function createRoomAv(slug: string) {
 				)?.videoTrack;
 				if (sharing && track) {
 					screenTracks.set(me, { owner: myIdentity, track });
-					addScreen(me);
+					stage.addScreen(me);
 				} else {
 					sharing = false;
-					if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
+					if (dropOwned(screenTracks, me, myIdentity)) stage.dropScreen(me);
 				}
 			} catch (cause) {
 				sharing = false;
@@ -1312,21 +1093,21 @@ export function createRoomAv(slug: string) {
 		},
 		/** Everything the stage can show, screens first (#280). */
 		get stageSources() {
-			return stageSources();
+			return stage.sources;
 		},
 		/** The rider's pick. The room page resolves it against the full list —
 		 *  longer than ours, the jukebox video is on it too (#316). */
 		get stagePick() {
-			return stagePick;
+			return stage.pick;
 		},
 		/** Pick a source, or null to follow the newest share again. */
 		setStage(key: string | null) {
-			stagePick = key;
+			stage.setPick(key);
 		},
 		/** The stage surface: a screen is a document (contain), a face isn't.
 		 *  A key we do not know is not ours to draw — the jukebox seats itself. */
 		attachStage(container: HTMLElement, key: string) {
-			const source = stageSources().find((candidate) => candidate.key === key);
+			const source = stage.sources.find((candidate) => candidate.key === key);
 			mountTrack(
 				container,
 				source
@@ -1376,13 +1157,7 @@ export function createRoomAv(slug: string) {
 					onDeviceChange,
 				);
 			}
-			for (const gain of riderGains.values()) gain.disconnect();
-			for (const source of riderSources.values()) source.disconnect();
-			riderGains.clear();
-			riderSources.clear();
-			void outCtx?.close().catch(() => {});
-			outCtx = null;
-			riderBus = null;
+			output.close();
 		},
 	};
 }
