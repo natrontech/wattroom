@@ -4,6 +4,7 @@
  * errors stay persistent dashboard status (FaultBanner), never a toast.
  * Rendered by components/Toasts.svelte in the app layout.
  */
+import { play } from '$lib/sound/cues';
 
 export interface Toast {
 	id: number;
@@ -37,6 +38,10 @@ export const toasts = {
 		},
 	) {
 		const id = ++seq;
+		// An error toast means something the rider asked for did not happen
+		// (#834). Sounding it here rather than at forty call sites is also
+		// what keeps the next one from being silent by omission.
+		if (opts?.tone === 'error') play('fault');
 		items.push({
 			id,
 			text,

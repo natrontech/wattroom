@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Users } from '@lucide/svelte';
+	import { changes } from '$lib/sound/changes';
 	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -279,6 +280,39 @@
 			playCountdownTick(left);
 		}
 	});
+
+	// Pause and resume are the one phase change that tells the legs to do
+	// something different, and they were the silent one (#834). The block
+	// cue is exactly right for it: the target just changed.
+	const heardPause = changes<boolean>((paused) =>
+		play('block', paused ? -5 : 0),
+	);
+	$effect(() => heardPause(shared?.phase === 'paused'));
+
+	// A fault, and its recovery, announce themselves too (#834). The banner
+	// below is the whole story only for someone reading the screen — which
+	// is nobody on a bike. One effect for all four kinds, in the same order
+	// the banner ranks them, so a trainer drop under a voice drop is heard
+	// once, as the thing that actually matters.
+	//
+	// `reconnecting` and not the banner's `!== 'live'`: the first connect of
+	// every room entry passes through `connecting`, and a room that has not
+	// dropped must not announce that it came back.
+	const faultKind = $derived(
+		live.status === 'reconnecting'
+			? 'room'
+			: rideCtl.fault
+				? 'trainer'
+				: av.status === 'reconnecting'
+					? 'voice'
+					: av.status === 'live' && av.micFault
+						? 'mic'
+						: null,
+	);
+	const heardFault = changes<string | null>((now) =>
+		play(now ? 'fault' : 'recover'),
+	);
+	$effect(() => heardFault(faultKind));
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	function startWorkout(picked: import('$lib/workout/types').Workout) {

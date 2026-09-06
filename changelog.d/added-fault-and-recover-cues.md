@@ -1,0 +1,1 @@
+- The room now says out loud when something breaks. A trainer, the room connection, voice or the microphone dropping plays a falling two-note cue, and a rising one when it comes back — the banner alone only ever reached riders who were reading the screen. Error toasts, a coach pausing or resuming the session, and someone reacting to a chat line are audible for the first time too.

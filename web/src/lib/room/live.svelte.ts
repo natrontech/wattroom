@@ -11,6 +11,7 @@ import type {
 } from '$lib/protocol';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { play } from '$lib/sound/cues';
 
 /**
  * The live side of one room (#18): a WebSocket to the hub, the latest tick,
@@ -179,6 +180,16 @@ export function createRoomLive(slug: string) {
 					const next = { ...chatReactions };
 					const pressed = { ...myReacts };
 					let mineChanged = false;
+					// Someone too gassed to type still said something (#834):
+					// the feel layer's quick-reaction cue, which had been
+					// written and never played. Added only — taking one back
+					// is not an announcement — and never your own.
+					if (
+						msg.tick.chatReactions.some(
+							(change) => change.added && change.by !== account.me?.id,
+						)
+					)
+						play('reaction');
 					for (const change of msg.tick.chatReactions) {
 						next[change.messageId] = {
 							...next[change.messageId],
