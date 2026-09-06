@@ -19,11 +19,36 @@ Every app uses the same callback shape: `https://wattroom.ch/api/auth/<provider>
 Notes:
 - Google wants an OAuth consent screen first (External, app name WattRoom,
   no sensitive scopes → no review needed).
+- GitHub must be an **OAuth App**, not a GitHub App: the server uses the
+  classic web flow. Scopes are not configured on the app — `read:user` is
+  requested at authorize time.
 - The IDs/secrets go into `deploy/.env` as
   `WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}` — sops-managed in the
   homelab repo, never in this one.
 - Any provider left unset simply doesn't render a button (capability
   gating); you can launch with one and add the rest later.
+
+**Two traps when you set them (#820, both met on 2026-09-06):**
+
+1. **The restart is what applies it.** `providersFromEnv` runs once inside
+   `auth.New` at boot, so an env edit alone changes nothing — this is the step
+   that looks like the credentials were wrong. `docker compose restart` will
+   not do: it does not re-read the env file. It has to be
+   `docker compose up -d wattroom`.
+2. **Do not clobber the runtime image pin.** The operator's deployment keeps
+   `WATTROOM_IMAGE` (`tag@sha256:…`) in the target's `.env`, written by the
+   auto-updater and deliberately absent from the encrypted source. A push that
+   overwrites the whole file drops it, and the restart then falls back to the
+   compose default — an older release. Nothing is lost, and the updater rolls
+   forward on its next tick, but the deploy goes backwards at exactly the
+   moment you are watching for a new button to appear.
+
+Then verify, which is the only thing that proves any of it:
+
+```bash
+curl -s https://wattroom.ch/api/auth/providers
+# want: {"providers":["github","strava"]} — that order is the server's, not your file's
+```
 
 ## 2. VM + DNS (#36)
 
