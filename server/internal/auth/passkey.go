@@ -70,11 +70,20 @@ type challengeEntry struct {
 	expires time.Time
 }
 
+// challengeMax bounds the map. login/start is unauthenticated, so without a
+// ceiling a stranger's loop grows it until the process runs out of memory —
+// and grows the sweep below, which every register and login finish waits on
+// behind the same mutex (#827). Far above anything real: it is ten minutes of
+// simultaneous ceremonies, and the alpha does not have four thousand riders.
+const challengeMax = 4096
+
 func newChallengeStore() *challengeStore {
 	return &challengeStore{m: map[string]challengeEntry{}}
 }
 
-func (c *challengeStore) put(data webauthn.SessionData) string {
+// put reports false when the store is full, which is the caller's cue to
+// refuse the ceremony rather than start one it cannot remember.
+func (c *challengeStore) put(data webauthn.SessionData) (string, bool) {
 	token := randomToken()
 	now := time.Now()
 
@@ -87,8 +96,13 @@ func (c *challengeStore) put(data webauthn.SessionData) string {
 			delete(c.m, k)
 		}
 	}
+	// Swept first, so the ceiling counts live ceremonies and not the debris
+	// of a flood that has already aged out.
+	if len(c.m) >= challengeMax {
+		return "", false
+	}
 	c.m[token] = challengeEntry{data: data, expires: now.Add(challengeTTL)}
-	return token
+	return token, true
 }
 
 func (c *challengeStore) take(token string) (webauthn.SessionData, bool) {
@@ -181,7 +195,9 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 			"Adding a passkey could not start. Try again.")
 		return
 	}
-	s.setCookie(w, passkeyCookie, s.challenges.put(*session), challengeTTL)
+	if !s.beginCeremony(w, *session) {
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, creation)
 }
 
@@ -239,7 +255,9 @@ func (s *Service) handlePasskeyLoginStart(w http.ResponseWriter, r *http.Request
 			"Signing in with a passkey could not start. Try again.")
 		return
 	}
-	s.setCookie(w, passkeyCookie, s.challenges.put(*session), challengeTTL)
+	if !s.beginCeremony(w, *session) {
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, assertion)
 }
 
@@ -380,6 +398,21 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// beginCeremony hands the rider the cookie that carries their challenge, or
+// refuses because the store is full — the only way past the cap is to wait,
+// and saying so beats issuing a challenge nothing will remember.
+func (s *Service) beginCeremony(w http.ResponseWriter, session webauthn.SessionData) bool {
+	token, ok := s.challenges.put(session)
+	if !ok {
+		s.log.Warn("passkey challenge store full", "cap", challengeMax)
+		httpx.WriteError(w, http.StatusServiceUnavailable, "rate_limited",
+			"Too many passkey sign-ins are in progress right now. Try again in a moment.")
+		return false
+	}
+	s.setCookie(w, passkeyCookie, token, challengeTTL)
+	return true
 }
 
 // takeChallenge spends the one-shot cookie from the ceremony's start.

@@ -52,6 +52,11 @@ func (s *Service) SetMailer(m Mailer) { s.mailer = m }
 // ADR-0029 rules out.
 var errEmailTaken = errors.New("email verified on another account")
 
+// errTooManyVerifications: this account has spent its hourly mail budget
+// (budget.go). Refusing costs a rider one wait and costs an abuser the whole
+// point of the exercise.
+var errTooManyVerifications = errors.New("verification mail budget spent")
+
 // startEmailVerification stores the pending address with a hashed single-use
 // token and mails the link out. The rider's current address is untouched until
 // they follow it.
@@ -72,6 +77,14 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 		user.EmailVerifyExpires.Valid &&
 		time.Until(user.EmailVerifyExpires.Time) > emailVerifyTTL-emailResendAfter {
 		return user, nil
+	}
+
+	// The ceiling belongs here, past the early return above: that return is
+	// the rider saving their profile again, and spending budget on a mail
+	// nobody sends would punish them for it. Everything below this line puts
+	// a message in somebody's inbox.
+	if !s.verifyMail.spend(user.ID) {
+		return db.User{}, errTooManyVerifications
 	}
 
 	token := randomToken()
@@ -197,6 +210,9 @@ func (s *Service) emailUpdate(ctx context.Context, w http.ResponseWriter, user d
 	case errors.Is(err, errEmailTaken):
 		httpx.WriteFieldError(w, http.StatusConflict, "conflict",
 			"Another WattRoom account has already confirmed that address. Sign in with that account, or use a different one.", "email")
+	case errors.Is(err, errTooManyVerifications):
+		httpx.WriteFieldError(w, http.StatusTooManyRequests, "rate_limited",
+			"That is a lot of confirmation emails in one hour. Wait an hour, then try again.", "email")
 	default:
 		s.log.Error("starting email verification failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",

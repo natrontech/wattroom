@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,9 +20,20 @@ import (
 // authorization, and the invariant that keeps a rider from locking themselves
 // out.
 
+// mustPut keeps these tests reading as they did before put grew a second
+// return value; the full-store case has a test of its own below.
+func mustPut(t *testing.T, c *challengeStore, data webauthn.SessionData) string {
+	t.Helper()
+	token, ok := c.put(data)
+	if !ok {
+		t.Fatal("the challenge store refused a put")
+	}
+	return token
+}
+
 func TestChallengeIsSingleUse(t *testing.T) {
 	c := newChallengeStore()
-	token := c.put(webauthn.SessionData{Challenge: "abc"})
+	token := mustPut(t, c, webauthn.SessionData{Challenge: "abc"})
 
 	got, ok := c.take(token)
 	if !ok || got.Challenge != "abc" {
@@ -34,7 +46,7 @@ func TestChallengeIsSingleUse(t *testing.T) {
 
 func TestChallengeExpires(t *testing.T) {
 	c := newChallengeStore()
-	token := c.put(webauthn.SessionData{Challenge: "abc"})
+	token := mustPut(t, c, webauthn.SessionData{Challenge: "abc"})
 
 	c.mu.Lock()
 	entry := c.m[token]
@@ -50,7 +62,7 @@ func TestChallengeExpires(t *testing.T) {
 // A ceremony started long ago must not keep the map alive forever.
 func TestChallengesAreSweptOnWrite(t *testing.T) {
 	c := newChallengeStore()
-	stale := c.put(webauthn.SessionData{Challenge: "old"})
+	stale := mustPut(t, c, webauthn.SessionData{Challenge: "old"})
 
 	c.mu.Lock()
 	entry := c.m[stale]
@@ -58,12 +70,60 @@ func TestChallengesAreSweptOnWrite(t *testing.T) {
 	c.m[stale] = entry
 	c.mu.Unlock()
 
-	c.put(webauthn.SessionData{Challenge: "new"})
+	mustPut(t, c, webauthn.SessionData{Challenge: "new"})
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, still := c.m[stale]; still {
 		t.Fatal("the stale challenge survived a later write")
+	}
+}
+
+// login/start is unauthenticated, so the store has to answer a flood with a
+// refusal rather than growth (#827) — and it counts live ceremonies only, so
+// a flood that has aged out leaves room for whoever arrives after it.
+func TestChallengeStoreRefusesPastTheCap(t *testing.T) {
+	c := newChallengeStore()
+	for i := range challengeMax {
+		if _, ok := c.put(webauthn.SessionData{Challenge: "flood"}); !ok {
+			t.Fatalf("refused at %d, want room up to %d", i, challengeMax)
+		}
+	}
+	if _, ok := c.put(webauthn.SessionData{Challenge: "one too many"}); ok {
+		t.Fatal("the store took an entry past its cap")
+	}
+
+	c.mu.Lock()
+	for k, v := range c.m {
+		v.expires = time.Now().Add(-time.Hour)
+		c.m[k] = v
+	}
+	c.mu.Unlock()
+
+	if _, ok := c.put(webauthn.SessionData{Challenge: "after the flood"}); !ok {
+		t.Fatal("a store full of expired entries still refused a fresh ceremony")
+	}
+}
+
+// The refusal has to reach the rider as a 503, not as a cookie for a challenge
+// nothing will remember.
+func TestPasskeyLoginStartRefusesWhenFull(t *testing.T) {
+	s := testService(t)
+	s.challenges.mu.Lock()
+	for i := range challengeMax {
+		s.challenges.m[fmt.Sprint(i)] = challengeEntry{expires: time.Now().Add(challengeTTL)}
+	}
+	s.challenges.mu.Unlock()
+
+	w := httptest.NewRecorder()
+	s.handlePasskeyLoginStart(w, httptest.NewRequestWithContext(
+		t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil))
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("start = %d, want 503: %s", w.Code, w.Body.String())
+	}
+	if cookies := w.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("a refused ceremony still set %d cookie(s)", len(cookies))
 	}
 }
 

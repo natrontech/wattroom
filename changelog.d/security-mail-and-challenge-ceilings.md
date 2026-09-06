@@ -1,0 +1,1 @@
+- Two ceilings that only an abuser should ever meet: an account can now ask for at most ten address-confirmation emails an hour, and passkey sign-ins refuse to start once too many are already in flight rather than letting one flood slow down everybody else's. Both answer with a plain "try again in a moment" instead of failing quietly.
