@@ -370,9 +370,9 @@ What does not change:
 - **The Sound panel stays**, and stays the second way in (`ux.md`: never only
   in a menu). Its rider list stops being a row of Reset buttons and becomes the
   faders themselves — the riders you have moved, adjustable there.
-- **The gate, the devices and the duck depth stay in it.** None of them
-  belongs to one object; they are the room's sound as a whole. *(The cues were
-  in this list until #898 — see below.)*
+- **The gate and the devices stay in it.** Neither belongs to one object; they
+  are the room's sound as a whole. *(The cues and the duck depth were in this
+  list until #898 and #904 — see below.)*
 - **The sidebar rail keeps its music fader.** It is the control that follows
   the music out of the room, which is the rail's whole job.
 
@@ -386,6 +386,14 @@ cue level is an entry in its menu (`you-menu.ts`), beside your rider page and
 your settings. Letting the fader go plays a cue at the level it landed on —
 `MenuSlider` grew an `onChange` for it — because a level you cannot hear is
 not a level you can set.
+
+**The duck depth is the same answer (#904).** How far music and cues dip under
+a voice is not the jukebox's property — it dips the cues too, with an empty
+queue — and it is nobody's rider level. It is your mix, so it sits under the
+cue level in the same menu, offered only while there is a room connection,
+because outside a room no voice can dip anything. Both homes read it the same
+way round: right is off. Two surfaces for one control that disagree about
+which way is louder are worse than one surface.
 
 ## Consequences
 
