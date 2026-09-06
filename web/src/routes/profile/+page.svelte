@@ -396,7 +396,7 @@
 								and expires in a day.
 							</span>
 						{:else if account.me?.emailVerified}
-							<span class="text-watt mt-1 block text-[11px]">
+							<span class="text-z4 mt-1 block text-[11px]">
 								Confirmed — this is how you get back in if you lose the way you
 								sign in.
 							</span>
