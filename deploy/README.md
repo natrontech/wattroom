@@ -4,7 +4,7 @@ First time, on the VM:
 
     mkdir -p /opt/wattroom && cd /opt/wattroom
     # copy this deploy/ directory here
-    cp .env.example .env            # fill it (sops-managed in the homelab repo)
+    cp .env.example .env            # fill it; see .env.example for each variable's behaviour
     cp livekit.yaml.example livekit.yaml   # real keys, same values as .env
     docker compose -f docker-compose.prod.yml up -d
 
