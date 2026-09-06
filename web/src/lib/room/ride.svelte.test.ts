@@ -313,7 +313,34 @@ describe('the personal guards in a group ride (#788)', () => {
 		vi.useRealTimers();
 	});
 
-	it('does not hand a sprint to a rider who has stopped', async () => {
+	it('leaves a rider resting between sessions alone', async () => {
+		// Nothing is being asked of them, so there is nothing to release — and
+		// "Paused — you stopped pedalling" over a room with no session running
+		// is noise, not status.
+		vi.useFakeTimers();
+		const { live, deps } = inASession();
+		deps.shared = () => ({ phase: 'idle', elapsed: 0 });
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		for (let i = 0; i < 10; i++) trainer.pedal(0, 0);
+		await settle();
+		expect(ride.guard).toBe('running');
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
+	});
+
+	it('still hands a sprint to a rider the guard had paused', async () => {
+		// The guards infer that the rider left; the klaxon is an announced
+		// event they are about to answer. A rider sitting at zero when it
+		// sounds would otherwise never be given the hill.
 		vi.useFakeTimers();
 		const { live, socket, deps } = inASession();
 		deps.profile.current.singleSpeed = true;
@@ -336,10 +363,7 @@ describe('the personal guards in a group ride (#788)', () => {
 			}),
 		});
 		await settle();
-		// 2xFTP against a rider who is not pedalling is exactly what the guard
-		// exists to prevent.
-		expect(trainer.commands).not.toContain('erg:400');
-		expect(trainer.commands.at(-1)).toBe('erg:0');
+		expect(trainer.commands.at(-1)).toBe('erg:400');
 
 		dispose();
 		live.close();

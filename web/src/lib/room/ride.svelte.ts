@@ -148,9 +148,12 @@ export function createRide(deps: RideDeps) {
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
-		// A released rider does not get handed a sprint: they have stopped, or
-		// they are grinding to a halt, and 2xFTP is the last thing they need.
-		if (sprintLive && !guardsReleased) {
+		// A sprint outranks the guards, deliberately. Auto-pause is an
+		// INFERENCE that the rider left; the klaxon is an announced event they
+		// are about to answer, and a rider who was sitting at zero when it
+		// sounded would otherwise never be given the hill. (Tried the other
+		// way round first; the two-rider e2e is what showed the cost.)
+		if (sprintLive) {
 			if (!sprintMode) {
 				sprintMode = true;
 				if (deps.profile.current.singleSpeed) {
@@ -185,9 +188,14 @@ export function createRide(deps: RideDeps) {
 						{ trainer: sample, sensors: sensors.readings },
 						sample.at,
 					);
-					// Against the prescribed target, not the one the trainer
-					// holds — that one is zero exactly when a guard is up.
-					guards.sample(metrics, prescribed);
+					// Only while the room is actually asking something of this
+					// rider. With no target there is nothing to release, and a
+					// rider resting in a room between sessions is not "paused"
+					// — they are just in a room. Against the PRESCRIBED target,
+					// too: the one the trainer holds is zero exactly when a
+					// guard is already up.
+					if (prescribed > 0) guards.sample(metrics, prescribed);
+					else guards.reset();
 					syncGuards();
 					hrSource =
 						metrics.from.heartRate === 'heart-rate' ||
