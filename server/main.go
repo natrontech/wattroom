@@ -101,6 +101,9 @@ func main() {
 		if uploader != nil {
 			// Disconnecting Strava hands the grant back, not just our row (#783).
 			authService.SetStravaRevoker(uploader)
+			// A delivery abandoned by a restart or an outage is retried from
+			// its durable record rather than lost with the goroutine (#799).
+			uploader.Sweep(context.Background())
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)

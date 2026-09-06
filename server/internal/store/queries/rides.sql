@@ -139,3 +139,43 @@ select user_total_xp($1)::bigint;
 update rides
 set shared_at = case when sqlc.arg(shared)::boolean then coalesce(shared_at, now()) else null end
 where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
+
+-- name: StartRideExport :exec
+-- Opens (or re-opens) the delivery record for one ride and destination. A
+-- retry lands on the same row: one delivery per pair, ever (#799).
+insert into ride_exports (ride_id, destination, state, attempts, updated_at)
+values ($1, $2, 'pending', 0, now())
+on conflict (ride_id, destination) do update
+    set state = 'pending', updated_at = now()
+    where ride_exports.state <> 'delivered';
+
+-- name: FinishRideExport :exec
+-- The remote has it. remote_id is the activity it became.
+update ride_exports
+set state = 'delivered', remote_id = $3, last_error = null, updated_at = now()
+where ride_id = $1 and destination = $2;
+
+-- name: FailRideExport :exec
+-- One attempt spent. Past the ceiling the row stops being swept and the
+-- rider is told, rather than retried at forever.
+update ride_exports
+set attempts = attempts + 1,
+    last_error = $3,
+    state = case when attempts + 1 >= sqlc.arg(max_attempts)::int then 'failed' else 'pending' end,
+    updated_at = now()
+where ride_id = $1 and destination = $2;
+
+-- name: ListRideExportsDue :many
+-- The sweep: deliveries still owed a try, quiet for long enough that the last
+-- failure is not being repeated immediately. Bounded — a backlog drains over
+-- several sweeps rather than in one burst of uploads.
+select ride_id, destination, attempts, updated_at
+from ride_exports
+where state = 'pending' and updated_at < sqlc.arg(before)::timestamptz
+order by updated_at
+limit sqlc.arg(max_rows)::int;
+
+-- name: GetRideExport :one
+select state, attempts, last_error, remote_id
+from ride_exports
+where ride_id = $1 and destination = $2;

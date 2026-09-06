@@ -175,6 +175,52 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const failRideExport = `-- name: FailRideExport :exec
+update ride_exports
+set attempts = attempts + 1,
+    last_error = $3,
+    state = case when attempts + 1 >= $4::int then 'failed' else 'pending' end,
+    updated_at = now()
+where ride_id = $1 and destination = $2
+`
+
+type FailRideExportParams struct {
+	RideID      pgtype.UUID
+	Destination string
+	LastError   *string
+	MaxAttempts int32
+}
+
+// One attempt spent. Past the ceiling the row stops being swept and the
+// rider is told, rather than retried at forever.
+func (q *Queries) FailRideExport(ctx context.Context, arg FailRideExportParams) error {
+	_, err := q.db.Exec(ctx, failRideExport,
+		arg.RideID,
+		arg.Destination,
+		arg.LastError,
+		arg.MaxAttempts,
+	)
+	return err
+}
+
+const finishRideExport = `-- name: FinishRideExport :exec
+update ride_exports
+set state = 'delivered', remote_id = $3, last_error = null, updated_at = now()
+where ride_id = $1 and destination = $2
+`
+
+type FinishRideExportParams struct {
+	RideID      pgtype.UUID
+	Destination string
+	RemoteID    *int64
+}
+
+// The remote has it. remote_id is the activity it became.
+func (q *Queries) FinishRideExport(ctx context.Context, arg FinishRideExportParams) error {
+	_, err := q.db.Exec(ctx, finishRideExport, arg.RideID, arg.Destination, arg.RemoteID)
+	return err
+}
+
 const getRide = `-- name: GetRide :one
 select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts,
        coalesce(rm.slug, '')::text as room_slug,
@@ -240,6 +286,36 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 	return i, err
 }
 
+const getRideExport = `-- name: GetRideExport :one
+select state, attempts, last_error, remote_id
+from ride_exports
+where ride_id = $1 and destination = $2
+`
+
+type GetRideExportParams struct {
+	RideID      pgtype.UUID
+	Destination string
+}
+
+type GetRideExportRow struct {
+	State     string
+	Attempts  int32
+	LastError *string
+	RemoteID  *int64
+}
+
+func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (GetRideExportRow, error) {
+	row := q.db.QueryRow(ctx, getRideExport, arg.RideID, arg.Destination)
+	var i GetRideExportRow
+	err := row.Scan(
+		&i.State,
+		&i.Attempts,
+		&i.LastError,
+		&i.RemoteID,
+	)
+	return i, err
+}
+
 const getRideForUpload = `-- name: GetRideForUpload :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload
 from rides r join users u on u.id = r.user_id
@@ -268,6 +344,54 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 		&i.StravaUpload,
 	)
 	return i, err
+}
+
+const listRideExportsDue = `-- name: ListRideExportsDue :many
+select ride_id, destination, attempts, updated_at
+from ride_exports
+where state = 'pending' and updated_at < $1::timestamptz
+order by updated_at
+limit $2::int
+`
+
+type ListRideExportsDueParams struct {
+	Before  pgtype.Timestamptz
+	MaxRows int32
+}
+
+type ListRideExportsDueRow struct {
+	RideID      pgtype.UUID
+	Destination string
+	Attempts    int32
+	UpdatedAt   pgtype.Timestamptz
+}
+
+// The sweep: deliveries still owed a try, quiet for long enough that the last
+// failure is not being repeated immediately. Bounded — a backlog drains over
+// several sweeps rather than in one burst of uploads.
+func (q *Queries) ListRideExportsDue(ctx context.Context, arg ListRideExportsDueParams) ([]ListRideExportsDueRow, error) {
+	rows, err := q.db.Query(ctx, listRideExportsDue, arg.Before, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRideExportsDueRow
+	for rows.Next() {
+		var i ListRideExportsDueRow
+		if err := rows.Scan(
+			&i.RideID,
+			&i.Destination,
+			&i.Attempts,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRideMedals = `-- name: ListRideMedals :many
@@ -635,6 +759,26 @@ func (q *Queries) SetRideShared(ctx context.Context, arg SetRideSharedParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const startRideExport = `-- name: StartRideExport :exec
+insert into ride_exports (ride_id, destination, state, attempts, updated_at)
+values ($1, $2, 'pending', 0, now())
+on conflict (ride_id, destination) do update
+    set state = 'pending', updated_at = now()
+    where ride_exports.state <> 'delivered'
+`
+
+type StartRideExportParams struct {
+	RideID      pgtype.UUID
+	Destination string
+}
+
+// Opens (or re-opens) the delivery record for one ride and destination. A
+// retry lands on the same row: one delivery per pair, ever (#799).
+func (q *Queries) StartRideExport(ctx context.Context, arg StartRideExportParams) error {
+	_, err := q.db.Exec(ctx, startRideExport, arg.RideID, arg.Destination)
+	return err
 }
 
 const userTotalXp = `-- name: UserTotalXp :one

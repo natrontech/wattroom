@@ -159,6 +159,17 @@ type Ride struct {
 	NormWatts   *int16
 }
 
+type RideExport struct {
+	RideID      pgtype.UUID
+	Destination string
+	State       string
+	Attempts    int32
+	LastError   *string
+	RemoteID    *int64
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Room struct {
 	ID                      pgtype.UUID
 	Code                    string
