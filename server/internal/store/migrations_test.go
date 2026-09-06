@@ -48,7 +48,12 @@ func TestMigrationVersionsAreUnique(t *testing.T) {
 // The files below this ceiling are the ones that already existed; nothing is
 // renamed, because goose sorts numerically and every timestamp sorts after
 // every one of them, forever.
-const lastSequentialVersion = 39
+// 40 and not 39 because #899 landed its 00040 while this rule was in review —
+// which is the very thing #928 is about: a number is only correct at the
+// instant it merges, and I based this ceiling on a main that had already
+// moved. It grandfathers stragglers from that window and nothing else; a
+// 00041 is a rename, not another bump.
+const lastSequentialVersion = 40
 
 func TestNewMigrationsAreTimestamped(t *testing.T) {
 	entries, err := os.ReadDir("migrations")
