@@ -16,6 +16,7 @@ import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
+import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
@@ -422,9 +423,19 @@ export const roomConnection = {
 		current = connect(slug);
 		return current;
 	},
-	/** The explicit act. Ends the ride, closes the socket, hangs up voice. */
-	leave() {
+	/**
+	 * Ends the ride, closes the socket, hangs up voice. `'rider'` is the
+	 * explicit act — they just pressed Leave, so it goes quietly. Anything
+	 * else happened TO them, and a rider three metres from the screen learns
+	 * about it by ear or not at all (ux.md): #850 is what one silent drop
+	 * cost, a session that expired mid-click taking the room with it and
+	 * nobody noticing. There is no dashboard left to hold a persistent
+	 * status, so the toast carries the way back in.
+	 */
+	leave(reason: 'rider' | 'signedOut' = 'rider') {
 		if (!current) return;
+		const { slug } = current;
+		const name = presence.rooms.find((room) => room.slug === slug)?.name;
 		// Before dispose: stop() closes the ride buffer and releases the
 		// trainer, and both need the reactive scope the root is about to end.
 		current.ride.stop();
@@ -432,5 +443,13 @@ export const roomConnection = {
 		current.live.close();
 		current.av.leave();
 		current = null;
+		if (reason === 'rider') return;
+		// The leave cue, not the fault buzz: the sound already means "someone
+		// is out of the room", and an error-toned toast would sound its own.
+		play('leave');
+		toasts.push(`Your session ended — you left ${name ?? slug}.`, {
+			href: `/r/${slug}`,
+			seconds: 12,
+		});
 	},
 };

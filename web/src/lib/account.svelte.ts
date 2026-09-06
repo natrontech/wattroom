@@ -50,18 +50,39 @@ function createAccountStore() {
 	let providers = $state<string[]>([]);
 	let loaded = $state(false);
 
+	/**
+	 * Which load is the current question. Home, the room layout, the landing
+	 * page and the verify-email gate all call `load()`, the last of them on
+	 * every `visibilitychange`, so a rider clicking around has several in
+	 * flight at once and a slow one used to be able to answer last (#850).
+	 */
+	let asked = 0;
+
 	async function load(): Promise<void> {
+		const mine = ++asked;
 		try {
 			const [meRes, provRes] = await Promise.all([
 				api<Me>('/api/me'),
 				api<{ providers?: string[] }>('/api/auth/providers'),
 			]);
-			me = meRes.ok ? meRes.data : null;
-			if (me) people.learn([{ ...me, name: me.displayName }]);
-			// Any failure (404 = server running without a database) stays hidden.
-			providers = provRes.ok ? (provRes.data.providers ?? []) : [];
+			if (mine !== asked) return;
+			if (meRes.ok) {
+				me = meRes.data;
+				people.learn([{ ...me, name: me.displayName }]);
+			} else if (meRes.error.error === 'unauthorized') {
+				// The ONE answer that means signed out. A server that cannot be
+				// reached, or a 500 from a session lookup that hit a database
+				// blip, is a question that failed — not an answer about who this
+				// is — and nulling `me` on one signed the rider out and took the
+				// room, the voice channel and the trainer with it (#850).
+				me = null;
+			}
+			// Any failure (404 = server running without a database) stays hidden;
+			// an unreachable server keeps whatever we were last told.
+			if (provRes.ok) providers = provRes.data.providers ?? [];
+			else if (provRes.error.error !== 'network') providers = [];
 		} finally {
-			loaded = true;
+			if (mine === asked) loaded = true;
 		}
 	}
 

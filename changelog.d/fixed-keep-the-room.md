@@ -1,0 +1,1 @@
+- A brief network failure no longer signs you out and drops you from the room you are in — only the server actually saying so does. If the room does end under you, it now says so out loud, with the way back in.
