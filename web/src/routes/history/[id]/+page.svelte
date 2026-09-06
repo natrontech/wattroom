@@ -13,8 +13,9 @@
 	import { MEDAL_META, medalName } from '$lib/medals';
 	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
+	import { apiBlob } from '$lib/api';
 	import { zoneSeconds } from '$lib/ride/stats';
-	import { ArrowLeft, Award, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, Award, Download, Trash2 } from '@lucide/svelte';
 
 	const id = $derived(page.params.id ?? '');
 	let ride = $state<RideDetail | null>(null);
@@ -23,6 +24,24 @@
 	// so it gets the empty state, not the error-with-retry one.
 	let missing = $state(false);
 	let confirming = $state(false);
+	let exporting = $state(false);
+	let exportError = $state<string | null>(null);
+
+	async function downloadFit() {
+		if (!ride || ride.samples.length === 0) return;
+		exporting = true;
+		exportError = null;
+		const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/export`);
+		if (res.ok) {
+			const url = URL.createObjectURL(res.data.blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = res.data.filename ?? `wattroom-${id}.fit`;
+			a.click();
+			URL.revokeObjectURL(url);
+		} else exportError = res.error.message;
+		exporting = false;
+	}
 
 	async function load(which: string) {
 		const res = await fetchRide(which);
@@ -131,12 +150,20 @@
 				</p>
 			</div>
 			<button
-				onclick={() => (confirming = true)}
-				class="btn btn-danger btn-xs ml-auto"
+				onclick={() => void downloadFit()}
+				disabled={exporting || ride.samples.length === 0}
+				class="btn btn-secondary btn-xs ml-auto disabled:opacity-50"
 			>
+				<Download size={13} />
+				{exporting ? 'Preparing…' : 'Download FIT'}
+			</button>
+			<button onclick={() => (confirming = true)} class="btn btn-danger btn-xs">
 				<Trash2 size={13} /> Delete ride
 			</button>
 		</header>
+		{#if exportError}<div class="mt-3">
+				<Banner tone="error">{exportError}</Banner>
+			</div>{/if}
 
 		<section class="panel mt-6 px-6 py-5">
 			<h2 class="eyebrow">how it went</h2>
