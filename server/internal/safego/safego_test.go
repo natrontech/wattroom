@@ -128,3 +128,39 @@ func TestSuperviseRelaunchesAndGivesUp(t *testing.T) {
 		})
 	}
 }
+
+func TestSuperviseThenHandsOffOnlyWhenItGivesUp(t *testing.T) {
+	tests := []struct {
+		name       string
+		panics     int
+		stop       bool
+		wantGaveUp bool
+	}{
+		{name: "a loop past the budget hands off", panics: 100, wantGaveUp: true},
+		{name: "a loop that recovers does not", panics: Budget},
+		{name: "a stopped loop does not", panics: 100, stop: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				log, _ := newSink()
+				clock := time.Unix(0, 0)
+				stop := make(chan struct{})
+				if tt.stop {
+					close(stop)
+				}
+				var runs atomic.Int32
+				var gaveUp atomic.Bool
+				SuperviseThen(log, func() time.Time { return clock }, "flaky loop", stop, func() {
+					if int(runs.Add(1)) <= tt.panics {
+						panic("tick went wrong")
+					}
+				}, func() { gaveUp.Store(true) })
+				synctest.Wait()
+				if got := gaveUp.Load(); got != tt.wantGaveUp {
+					t.Errorf("gaveUp = %v, want %v", got, tt.wantGaveUp)
+				}
+			})
+		})
+	}
+}

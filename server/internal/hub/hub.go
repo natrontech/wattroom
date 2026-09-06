@@ -1023,8 +1023,15 @@ func (h *Hub) room(slug string) *room {
 // in one tick — game mode, jukebox, session close — is logged with its stack
 // and the loop relaunched, so the clock never stays dead on the riders'
 // screens while every other room rides on. Bounded by safego's budget.
+//
+// Once that budget is spent the loop is gone for good, and a room with no
+// clock is worse than no room: the sockets stay open and every rider watches
+// a timer that will never move again (#751). Close it instead — the clients
+// reconnect, and the join builds a fresh room with a live loop.
 func (h *Hub) launchRoom(rm *room) {
-	safego.Supervise(h.log, h.now, "room "+rm.slug, rm.stop, func() { rm.run(h.log, h.now, h.saver) })
+	safego.SuperviseThen(h.log, h.now, "room "+rm.slug, rm.stop,
+		func() { rm.run(h.log, h.now, h.saver) },
+		func() { h.CloseRoom(rm.slug) })
 }
 
 // run broadcasts one tick per interval while anyone is connected. The tick
