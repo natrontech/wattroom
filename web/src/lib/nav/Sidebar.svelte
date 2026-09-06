@@ -449,12 +449,11 @@
 					<span class="block truncate text-xs font-medium"
 						>{account.me?.displayName ?? ''}</span
 					>
-					{#if showAv || away}
+					{#if showAv}
+						<!-- Away is not repeated here: the avatar wears the mark and
+						     the button below says "I'm back" (#807). -->
 						<span class="block truncate text-[10px]">
-							{#if away}<span class="text-muted">away</span>{/if}
-							{#if !showAv}{:else if away}·
-							{/if}
-							{#if !showAv}{:else if voiceStatus === 'live'}
+							{#if voiceStatus === 'live'}
 								<span class="text-z4">in voice</span>{camOn
 									? ' · camera on'
 									: ''}
