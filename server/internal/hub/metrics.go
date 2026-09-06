@@ -59,7 +59,8 @@ func (h *Hub) ridingCount() float64 {
 	riding := 0
 	for _, rm := range rooms {
 		rm.mu.Lock()
-		riding += len(rm.ridingLocked(now))
+		names, _ := rm.ridingLocked(now)
+		riding += len(names)
 		rm.mu.Unlock()
 	}
 	return float64(riding)

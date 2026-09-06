@@ -15,34 +15,32 @@ import type { RailRoom } from '$lib/room/mockcompat';
 export type PresenceStatus = 'riding' | 'online' | 'away' | 'offline';
 
 /**
- * The room the presence feed has them in, if any. The rail carries display
- * NAMES and not ids (rail-people.ts), so this is the only question a DM head,
- * a thread row or a chat line can ask about someone.
- *
- * ponytail: names are not unique (#649). That ceiling was already load-bearing
- * in three copies of this lookup; here it is one place, and the one place ids
- * land when the feed learns to carry them.
+ * The room the presence feed has them in, if any — by account id, which is
+ * what the feed now carries alongside the names it renders (#649). Display
+ * names are not unique, and two riders called Dave used to answer for each
+ * other here: a DM header said your friend was riding in a room their
+ * namesake was standing in, with a Join button under it.
  */
 export function roomOf(
 	rooms: readonly RailRoom[],
-	name: string,
+	riderId: string,
 ): RailRoom | undefined {
-	if (!name) return undefined;
-	return rooms.find((room) => room.riders?.includes(name));
+	if (!riderId) return undefined;
+	return rooms.find((room) => room.riderIds?.includes(riderId));
 }
 
 /**
- * What the feed knows about them by name. `null` means it has nothing to say
- * — no badge at all, rather than a confident "offline" about someone who is
- * simply not in a room you can see.
+ * What the feed knows about them. `null` means it has nothing to say — no
+ * badge at all, rather than a confident "offline" about someone who is simply
+ * not in a room you can see.
  */
 export function statusOf(
 	rooms: readonly RailRoom[],
-	name: string,
+	riderId: string,
 ): PresenceStatus | null {
-	const room = roomOf(rooms, name);
+	const room = roomOf(rooms, riderId);
 	if (!room) return null;
-	return room.riding?.includes(name) ? 'riding' : 'online';
+	return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
 }
 
 /**

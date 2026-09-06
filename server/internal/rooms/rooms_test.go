@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -762,5 +763,62 @@ func TestMembersCarryEarnedBadges(t *testing.T) {
 	}
 	if len(seen) != 2 {
 		t.Fatalf("bob's badges = %v, want the two he earned", seen)
+	}
+}
+
+// fakePresence is one canned answer for every room — enough to drive the
+// unread badge, which is the only thing on this path that reads presence.
+type fakePresence struct{ p protocol.RoomPresence }
+
+func (f fakePresence) Presence(string) protocol.RoomPresence { return f.p }
+func (f fakePresence) Kick(string, string)                   {}
+func (f fakePresence) SetRole(string, string, string)        {}
+func (f fakePresence) SessionAnnounce(string, string, string, string, time.Time) {
+}
+func (f fakePresence) PresenceChanged() {}
+func (f fakePresence) CloseRoom(string) {}
+
+func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
+	// #649: standing in a room is reading it, so the badge is suppressed for
+	// whoever is in there. That test used to be by display name, which
+	// nothing makes unique: a second rider called "alice" standing in the
+	// room silenced the real alice's badge, and the sidebar read as broken.
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "MFW 5")
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room by slug: %v", err)
+	}
+	if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
+		RoomID: room.ID, UserID: h.users.byToken["bob"].ID, Text: "anyone riding tonight?",
+	}); err != nil {
+		t.Fatalf("save chat: %v", err)
+	}
+
+	unreadFor := func(t *testing.T, present protocol.RoomPresence) float64 {
+		t.Helper()
+		h.svc.SetPresence(fakePresence{p: present})
+		status, body := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+		if status != http.StatusOK {
+			t.Fatalf("list rooms: %d %v", status, body)
+		}
+		list, _ := body["rooms"].([]any)
+		if len(list) != 1 {
+			t.Fatalf("want one room, got %v", body["rooms"])
+		}
+		entry, _ := list[0].(map[string]any)
+		n, _ := entry["unread"].(float64)
+		return n
+	}
+
+	// A namesake in the room, and alice herself nowhere near it.
+	namesake := store.UUIDString(h.users.byToken["bob"].ID)
+	if n := unreadFor(t, protocol.RoomPresence{Riders: []string{"alice"}, RiderIDs: []string{namesake}}); n != 1 {
+		t.Errorf("a namesake silenced the badge: unread = %v, want 1", n)
+	}
+	// Alice herself, standing in it: the badge is hers to lose.
+	alice := store.UUIDString(h.users.byToken["alice"].ID)
+	if n := unreadFor(t, protocol.RoomPresence{Riders: []string{"alice"}, RiderIDs: []string{alice}}); n != 0 {
+		t.Errorf("alice is standing in the room: unread = %v, want 0", n)
 	}
 }

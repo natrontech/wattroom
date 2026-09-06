@@ -232,7 +232,7 @@
 										avatarUrl={face?.avatarUrl}
 										preset={face?.avatarPreset}
 										xp={face?.totalXp}
-										status={statusOf(presence.rooms, message.from)}
+										status={statusOf(presence.rooms, message.fromId ?? '')}
 										size={28}
 									/>
 								{/if}

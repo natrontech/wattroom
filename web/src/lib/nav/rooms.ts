@@ -38,9 +38,11 @@ export async function fetchRailRooms(): Promise<RailRoomList> {
 		members: room.memberCount ?? 0,
 		connected: room.connected ?? 0,
 		riders: room.riders ?? [],
+		riderIds: room.riderIds ?? [],
 		voice: room.voice ?? [],
 		cameras: room.cameras ?? [],
 		riding: room.riding ?? [],
+		ridingIds: room.ridingIds ?? [],
 		session: room.workoutName
 			? { workoutName: room.workoutName, elapsedSec: room.elapsedSec ?? 0 }
 			: undefined,

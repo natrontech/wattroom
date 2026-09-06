@@ -45,12 +45,16 @@ export interface RailRoom {
 	connected?: number;
 	/** Their names, for the hover and the rooms page. */
 	riders?: string[];
+	/** The same riders by account id — names are not unique (#649). */
+	riderIds?: string[];
 	/** Who is in the voice channel (#149) — the radar's core signal. */
 	voice?: string[];
 	/** Camera-on names (#251), from LiveKit's track webhook. */
 	cameras?: string[];
 	/** Names with live watts right now — the watt dot (#251). */
 	riding?: string[];
+	/** The same riders by account id. */
+	ridingIds?: string[];
 	/** The running session — the late-join radar line (#251). */
 	session?: { workoutName: string; elapsedSec: number };
 	/** The next planned session, when one exists. */

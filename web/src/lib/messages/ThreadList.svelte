@@ -90,7 +90,7 @@
 							avatarUrl={t.head.peerAvatarUrl}
 							preset={t.head.peerAvatarPreset}
 							xp={t.head.peerTotalXp}
-							status={statusOf(presence.rooms, t.name)}
+							status={statusOf(presence.rooms, t.head.peerId)}
 							size={32}
 						/>
 					{/if}
