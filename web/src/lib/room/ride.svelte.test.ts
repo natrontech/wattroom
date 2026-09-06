@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 
@@ -48,8 +49,14 @@ class FakeTrainer implements Trainer {
 	constructor(readonly name = 'Kickr') {}
 	async connect() {}
 	async disconnect() {}
-	async setTargetPower() {}
-	async setSimulation() {}
+	/** Every actuator command, in order — what the sprint effect is judged on. */
+	commands: string[] = [];
+	async setTargetPower(watts: number) {
+		this.commands.push(`erg:${watts}`);
+	}
+	async setSimulation(grade: number) {
+		this.commands.push(`sim:${grade}`);
+	}
 	onSample(cb: (sample: TrainerSample) => void) {
 		this.listener = cb;
 		return () => (this.listener = null);
@@ -117,6 +124,96 @@ describe('the seq stream (#522)', () => {
 		disposeSecond();
 
 		expect(seqsSentOn(socket)).toEqual([1, 2, 3, 4]);
+		live.close();
+	});
+});
+
+describe('a sprint the ticks stop under (#789)', () => {
+	/** Svelte settles its effects on a microtask; flushSync alone does not. */
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	function rider() {
+		const live = createRoomLive('mfw');
+		const socket = FakeSocket.last!;
+		const deps = {
+			live,
+			profile: {
+				current: {
+					ftp: 200,
+					shareHr: true,
+					// The single-speed command is the loud one: 2xFTP held
+					// against a rider who cannot shift out of it.
+					singleSpeed: true,
+					sprintGrade: 5,
+				},
+			},
+			recording: { record() {} } as never,
+			myId: () => 'me',
+			shared: () => undefined,
+			segments: () => [],
+		};
+		return { live, socket, deps };
+	}
+
+	/** One tick carrying a sprint window that opens now and runs 10 s. */
+	function sprintTick(socket: FakeSocket, at: number) {
+		socket.onmessage!({
+			data: JSON.stringify({
+				tick: { at, sprint: { startsAtMs: at, endsAtMs: at + 10_000 } },
+			}),
+		});
+	}
+
+	it('releases the sprint command when its window passes', async () => {
+		vi.useFakeTimers();
+		const { live, socket, deps } = rider();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		sprintTick(socket, Date.now());
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:400');
+
+		// The socket drops here: no further ticks, so the last one's `at` sits
+		// inside the window forever. The window still has to end.
+		await vi.advanceTimersByTimeAsync(11_000);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:0');
+
+		dispose();
+		live.close();
+	});
+
+	it('holds the sprint for as long as the window actually runs', async () => {
+		vi.useFakeTimers();
+		const { live, socket, deps } = rider();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		sprintTick(socket, Date.now());
+		await settle();
+		await vi.advanceTimersByTimeAsync(5_000);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:400');
+
+		dispose();
 		live.close();
 	});
 });

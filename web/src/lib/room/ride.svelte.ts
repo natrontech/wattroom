@@ -1,4 +1,5 @@
 import { arbitrate } from '$lib/ble/arbitrate';
+import { serverNow } from '$lib/room/server-clock';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
@@ -87,10 +88,29 @@ export function createRide(deps: RideDeps) {
 		return Math.round(raw * bias);
 	});
 
+	/**
+	 * A local re-check while a sprint is on the board (#789). The window is a
+	 * deadline, not a state the server keeps repeating: read off the last
+	 * tick's `at`, a socket that drops mid-sprint freezes the clock inside the
+	 * window and leaves SIM grade — or the single-speed 2xFTP command —
+	 * applied for as long as the drop lasts. Nothing else re-evaluates,
+	 * because no tick arrives to re-evaluate on.
+	 */
+	let sprintClock = $state(serverNow());
+	$effect(() => {
+		if (!deps.live.tick?.sprint) return;
+		const id = setInterval(() => (sprintClock = serverNow()), 250);
+		return () => clearInterval(id);
+	});
+
 	const sprintLive = $derived.by(() => {
 		const sprint = deps.live.tick?.sprint;
 		if (!sprint) return false;
-		const at = deps.live.tick?.at ?? Date.now();
+		// serverNow() is the server's clock carried on this machine's, so it
+		// keeps moving while the socket is down and stays skew-corrected when
+		// it comes back (room/server-clock). sprintClock is what makes this
+		// recompute without a tick.
+		const at = Math.max(sprintClock, serverNow());
 		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
 	});
 	let sprintMode = false;
