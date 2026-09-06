@@ -62,6 +62,37 @@ describe('mixer defaults', () => {
 		store.value = '{not json';
 		expect((await freshMixer()).duck).toBe(DUCK_DEFAULT);
 	});
+
+	it('leaves your own voice out of the duck until you ask (#867)', async () => {
+		expect((await freshMixer()).duckSelf).toBe(false);
+	});
+});
+
+describe('mixer own-voice duck (#867)', () => {
+	beforeEach(() => (store.value = null));
+
+	it('persists per device and comes back after a reload', async () => {
+		(await freshMixer()).setDuckSelf(true);
+		expect(stored().duckSelf).toBe(true);
+		expect((await freshMixer()).duckSelf).toBe(true);
+	});
+
+	it('reads anything but a stored true as off', async () => {
+		// A truthy leftover ('yes', 1) is not a rider who asked for this.
+		for (const junk of ['yes', 1, null, undefined]) {
+			seed({ duckSelf: junk });
+			expect((await freshMixer()).duckSelf).toBe(false);
+		}
+	});
+
+	it('survives a reload alongside the levels, not instead of them', async () => {
+		const mixer = await freshMixer();
+		mixer.setDuckSelf(true);
+		mixer.setMusic(40);
+		mixer.setDuck(0.5);
+		const back = await freshMixer();
+		expect([back.duckSelf, back.music, back.duck]).toEqual([true, 40, 0.5]);
+	});
 });
 
 describe('mixer rider gain (#463)', () => {

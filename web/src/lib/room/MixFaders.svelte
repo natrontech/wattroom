@@ -75,6 +75,22 @@
 		aria-label="how far music and cues dip under a voice"
 	/>
 </label>
+<!-- The fader above says how far; this says whose voice counts. Off, and the
+     room only dips for other people — which is what it has always done. -->
+<label class="mt-2 flex items-start gap-2">
+	<input
+		type="checkbox"
+		checked={mixer.duckSelf}
+		onchange={(e) => mixer.setDuckSelf(e.currentTarget.checked)}
+		class="mt-0.5"
+	/>
+	<span class="text-xs">
+		My voice ducks it too
+		<span class="text-muted block text-[11px]">
+			Off, music and cues dip only when someone else speaks.
+		</span>
+	</span>
+</label>
 <!-- A rider's volume lives in their right-click menu now (#874), anywhere
      they appear. Here so it is never ONLY in a menu (ux.md), and so the
      riders you have moved are in one list to undo. -->

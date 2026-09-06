@@ -16,6 +16,7 @@ function load(): {
 	music: number;
 	cues: number;
 	duck: number;
+	duckSelf: boolean;
 	riders: Record<string, number>;
 	names: Record<string, string>;
 } {
@@ -36,11 +37,19 @@ function load(): {
 			music: clamp(raw.music, 0, 100, 70),
 			cues: clamp(raw.cues, 0, 1, 0.7),
 			duck: clamp(raw.duck, 0, 1, DUCK_DEFAULT),
+			duckSelf: raw.duckSelf === true,
 			riders,
 			names,
 		};
 	} catch {
-		return { music: 70, cues: 0.7, duck: DUCK_DEFAULT, riders: {}, names: {} };
+		return {
+			music: 70,
+			cues: 0.7,
+			duck: DUCK_DEFAULT,
+			duckSelf: false,
+			riders: {},
+			names: {},
+		};
 	}
 }
 
@@ -51,6 +60,7 @@ function clamp(v: unknown, lo: number, hi: number, fallback: number): number {
 let music = $state(70);
 let cues = $state(0.7);
 let duck = $state(DUCK_DEFAULT);
+let duckSelf = $state(false);
 let riders = $state<Record<string, number>>({});
 /**
  * Stepped out (#706, #875): everything the room plays goes quiet on this
@@ -67,13 +77,16 @@ const initial = load();
 music = initial.music;
 cues = initial.cues;
 duck = initial.duck;
+duckSelf = initial.duckSelf;
 riders = initial.riders;
 names = initial.names;
 setCueVolume(cues);
 setDuckLevel(duck);
 
 function persist() {
-	mixerStorage.write(JSON.stringify({ music, cues, duck, riders, names }));
+	mixerStorage.write(
+		JSON.stringify({ music, cues, duck, duckSelf, riders, names }),
+	);
 }
 
 export const mixer = {
@@ -113,6 +126,19 @@ export const mixer = {
 	setDuck(v: number) {
 		duck = Math.min(1, Math.max(0, v));
 		setDuckLevel(duck);
+		persist();
+	},
+	/**
+	 * Whether your own voice ducks the room too (#867). Off: the music and the
+	 * cues dip for other riders only, which is what the app has always done —
+	 * hearing the mix drop every time you open your mouth is a taste, and a
+	 * coach talking over a set is the one who has it.
+	 */
+	get duckSelf() {
+		return duckSelf;
+	},
+	setDuckSelf(on: boolean) {
+		duckSelf = on;
 		persist();
 	},
 	/** Per-rider voice gain, 0–2; 1 (unity) for anyone never adjusted. */

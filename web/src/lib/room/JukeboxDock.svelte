@@ -13,6 +13,7 @@
 		DUCK_ATTACK_MS,
 		DUCK_HOLD_MS,
 		DUCK_RELEASE_MS,
+		shouldDuck,
 	} from '$lib/sound/ducking';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
@@ -33,12 +34,9 @@
 
 	const conn = $derived(roomConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
-	const ducked = $derived.by(() => {
-		const speaking = conn?.av.speaking ?? {};
-		return Object.entries(speaking).some(
-			([id, active]) => active && id !== account.me?.id,
-		);
-	});
+	const ducked = $derived(
+		shouldDuck(conn?.av.speaking ?? {}, account.me?.id, mixer.duckSelf),
+	);
 
 	let container = $state<HTMLDivElement | null>(null);
 	let shell = $state<HTMLDivElement | null>(null);

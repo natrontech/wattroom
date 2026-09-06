@@ -16,6 +16,8 @@ import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play, setDucked } from '$lib/sound/cues';
+import { shouldDuck } from '$lib/sound/ducking';
+import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
@@ -296,11 +298,7 @@ function connect(slug: string): Connection {
 			av.setDeckPlaying(!!live.tick?.jukebox?.playing);
 		});
 		$effect(() => {
-			setDucked(
-				Object.entries(av.speaking).some(
-					([id, active]) => active && id !== account.me?.id,
-				),
-			);
+			setDucked(shouldDuck(av.speaking, account.me?.id, mixer.duckSelf));
 			// Leaving mid-sentence must not park every cue ducked forever.
 			return () => setDucked(false);
 		});
