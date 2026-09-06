@@ -16,6 +16,7 @@ import {
 	gateStep,
 } from '$lib/room/gate';
 import { MIC_CONSTRAINTS } from '$lib/room/capture';
+import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
 import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
 import { mountTrack } from '$lib/room/mount-track';
@@ -48,6 +49,20 @@ type LiveKitClient = typeof import('livekit-client');
 export type AvStatus =
 	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
+/**
+ * Why the last thing the rider asked of voice did not happen (#642). Not a
+ * toast: a rider on a bike reads it a minute later, mid-interval, so the
+ * sidebar keeps it until the next attempt clears it. `signIn` marks the one
+ * failure whose remedy is a page, not a retry.
+ */
+export interface AvError {
+	message: string;
+	signIn: boolean;
+}
+
+const VOICE_UNREACHABLE =
+	'Voice could not connect — check your connection and try again.';
+
 export function createRoomAv(slug: string) {
 	// Keep the SDK out of the shell and login chunks. It is loaded only when a
 	// rider actually starts AV, after the token request has succeeded.
@@ -62,7 +77,12 @@ export function createRoomAv(slug: string) {
 	let micBeforeAway = false;
 	let camBeforeAway = false;
 	let sharing = $state(false);
-	let error = $state<string | null>(null);
+	let error = $state<AvError | null>(null);
+	/** Record a device the browser refused; a closed share picker says nothing. */
+	function failedMedia(cause: unknown, device: MediaDevice) {
+		const message = describeMediaError(cause, device);
+		if (message) error = { message, signIn: false };
+	}
 	/** Rider ids with a live camera track — bumped to retrigger attach. */
 	let videoOf = $state<Record<string, number>>({});
 	/**
@@ -488,7 +508,11 @@ export function createRoomAv(slug: string) {
 		);
 		if (!res.ok) {
 			status = 'failed';
-			error = res.error.message;
+			// 401 is the one refusal a retry cannot fix (#642).
+			error = {
+				message: res.error.message,
+				signIn: res.error.error === 'unauthorized',
+			};
 			return;
 		}
 		try {
@@ -526,18 +550,21 @@ export function createRoomAv(slug: string) {
 					await openMic();
 					micOn = true;
 					setVoice(me, 'live');
-				} catch {
+				} catch (cause) {
 					micOn = false;
 					setVoice(me, 'muted');
+					failedMedia(cause, 'microphone');
 				}
 			} else {
 				micOn = false;
 				setVoice(me, 'muted');
 			}
 			startNote();
-		} catch (cause) {
+		} catch {
+			// LiveKit's own message is written for developers; the rider needs
+			// the step that failed and the one thing to try (errors.md).
 			status = 'failed';
-			error = cause instanceof Error ? cause.message : String(cause);
+			error = { message: VOICE_UNREACHABLE, signIn: false };
 		}
 	}
 
@@ -669,8 +696,9 @@ export function createRoomAv(slug: string) {
 			} else {
 				await closeCam();
 			}
-		} catch {
+		} catch (cause) {
 			camOn = false;
+			failedMedia(cause, 'camera');
 		}
 	}
 
@@ -1091,8 +1119,10 @@ export function createRoomAv(slug: string) {
 				try {
 					await openMic();
 					micOn = true;
-				} catch {
+					error = null;
+				} catch (cause) {
 					micOn = false;
+					failedMedia(cause, 'microphone');
 				}
 			}
 			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
@@ -1123,8 +1153,9 @@ export function createRoomAv(slug: string) {
 					sharing = false;
 					if (dropOwned(screenTracks, me, myIdentity)) dropScreen(me);
 				}
-			} catch {
+			} catch (cause) {
 				sharing = false;
+				failedMedia(cause, 'screen');
 			}
 		},
 		/** Everything the stage can show, screens first (#280). */
@@ -1176,6 +1207,7 @@ export function createRoomAv(slug: string) {
 			void room?.disconnect();
 			room = null;
 			status = 'off';
+			error = null;
 			micOn = camOn = sharing = away = false;
 			voice = {};
 			speaking = {};

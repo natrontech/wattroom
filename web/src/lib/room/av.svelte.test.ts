@@ -6,7 +6,10 @@ import { pickStage } from '$lib/room/stage';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 
 vi.mock('$lib/api', () => ({
-	api: async () => ({ ok: true, data: { url: 'ws://livekit', token: 't' } }),
+	api: vi.fn(async () => ({
+		ok: true,
+		data: { url: 'ws://livekit', token: 't' },
+	})),
 }));
 
 vi.mock('livekit-client', () => {
@@ -80,6 +83,7 @@ vi.mock('$lib/room/mic-level', () => ({
 }));
 
 const { createRoomAv } = await import('./av.svelte');
+const { api } = await import('$lib/api');
 const { stopSharingNatively, dropNatively, broadcasts } =
 	(await import('livekit-client')) as unknown as {
 		stopSharingNatively: () => void;
@@ -87,10 +91,13 @@ const { stopSharingNatively, dropNatively, broadcasts } =
 		broadcasts: () => { t: string; at: number }[];
 	};
 
-/** Enough of Web Audio and getUserMedia for `openMic` to succeed. */
+/** Enough of Web Audio and getUserMedia for `openMic` to succeed — or, given
+ *  `refuse`, for the browser to turn the mic down the way a denied permission
+ *  does. `devices` is what enumerateDevices then names. */
 function withMicHardware<T>(
 	run: () => Promise<T>,
 	devices: MediaDeviceInfo[] = [],
+	refuse?: Error,
 ): Promise<T> {
 	class FakeAudioContext {
 		currentTime = 0;
@@ -110,7 +117,10 @@ function withMicHardware<T>(
 	Object.defineProperty(navigator, 'mediaDevices', {
 		configurable: true,
 		value: {
-			getUserMedia: async () => ({ getTracks: () => [] }),
+			getUserMedia: async () => {
+				if (refuse) throw refuse;
+				return { getTracks: () => [] };
+			},
 			enumerateDevices: async () => devices,
 			addEventListener() {},
 			removeEventListener() {},
@@ -193,6 +203,55 @@ describe('createRoomAv', () => {
 				dispose();
 			});
 		});
+	});
+
+	// #642: the store knew why and never said. A denied permission used to
+	// leave the rider in voice with a mic drawn muted and nothing to read.
+	it('says the browser is blocking the mic when the join lands listen-only', async () => {
+		const denied = new Error('Permission denied');
+		denied.name = 'NotAllowedError';
+		await withMicHardware(
+			async () => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.join();
+				expect(av.status).toBe('live');
+				expect(av.micOn).toBe(false);
+				expect(av.error).toEqual({
+					message:
+						'Your browser is blocking the microphone — allow it in the address bar and try again.',
+					signIn: false,
+				});
+				dispose();
+			},
+			[],
+			denied,
+		);
+	});
+
+	// #642: an expired session is the one refusal "Try voice again" cannot
+	// fix, so the store marks it for the sidebar to offer the login page.
+	it('asks for a sign-in when the token endpoint says the session is over', async () => {
+		vi.mocked(api).mockResolvedValueOnce({
+			ok: false,
+			error: {
+				error: 'unauthorized',
+				message: 'Your session expired — sign in again to join voice.',
+			},
+		});
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(av.status).toBe('failed');
+		expect(av.error).toEqual({
+			message: 'Your session expired — sign in again to join voice.',
+			signIn: true,
+		});
+		dispose();
 	});
 
 	it('rejoins listening only when the mic never opened', async () => {

@@ -33,6 +33,7 @@
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
+	import type { AvError } from '$lib/room/av.svelte';
 	import {
 		MessageSquare,
 		Headphones,
@@ -69,6 +70,7 @@
 		onLeaveVoice,
 		handedOff = false,
 		onTakeOver,
+		voiceError = null,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -91,6 +93,8 @@
 		onLeaveVoice?: () => void;
 		handedOff?: boolean;
 		onTakeOver?: () => void;
+		/** Why the last voice action failed, until the next one clears it. */
+		voiceError?: AvError | null;
 	} = $props();
 
 	const destination = $derived(activeHref(pathname));
@@ -540,6 +544,22 @@
 					title="leave voice"
 					aria-label="leave voice"><LogOut size={16} /></button
 				>
+			</div>
+		{/if}
+		{#if showAv && voiceError}
+			<!-- The failure itself, not "voice failed" (#642, errors.md): what
+			     the browser refused and where to allow it, or that the session
+			     is over and the way back is the login page. Persistent like the
+			     hand-off below — the next attempt replaces it. -->
+			<div class="border-danger/40 mt-2 rounded border px-2 py-1.5">
+				<p class="text-muted text-[10px] leading-snug">{voiceError.message}</p>
+				{#if voiceError.signIn}
+					<a
+						href="/login"
+						class="border-muted/25 text-muted hover:text-ink mt-1.5 block w-full rounded border px-2 py-1.5 text-center text-[11px]"
+						>Sign in</a
+					>
+				{/if}
 			</div>
 		{/if}
 		{#if showAv && handedOff}
