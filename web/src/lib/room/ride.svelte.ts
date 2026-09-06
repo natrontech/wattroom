@@ -203,7 +203,7 @@ export function createRide(deps: RideDeps) {
 							? metrics.from.heartRate
 							: null;
 					deps.live.sendMetrics(
-						wireMetrics(metrics, deps.profile.current.shareHr),
+						wireMetrics(metrics, deps.profile.current.shareHr, bias),
 					);
 					const shared = deps.shared();
 					if (shared?.phase === 'running')

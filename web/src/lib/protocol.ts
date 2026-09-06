@@ -18,6 +18,17 @@ export interface RiderMetrics {
   hr?: number /* int */;
   cadence?: number /* int */;
   seq: number /* int */; // monotonic per ride, for reconnect dedup
+  /**
+   * The rider's personal trim on their own targets at this second, 0.8–1.2
+   * (docs/SPEC.md). A score answers "did you ride the plan you were on?",
+   * and this is what the plan was — so the second is scored against the
+   * biased target, not the prescribed one (#795). It rides every sample
+   * because bias moves mid-ride, and it is stored with them, which is what
+   * lets the saved score agree with the live one.
+   * Zero means "not sent": every sample recorded before this existed, and
+   * any client that does not send it, scores at 1.0.
+   */
+  bias?: number /* float64 */;
 }
 /**
  * SprintScore is one rider's place on the mini-podium.

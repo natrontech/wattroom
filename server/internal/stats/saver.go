@@ -184,7 +184,7 @@ func BuildRideRow(
 		watts[i] = sample.Watts
 		total += sample.Watts
 	}
-	execution, err := Execution(workoutJSON, float64(ftpWatts), watts)
+	execution, err := Execution(workoutJSON, float64(ftpWatts), samples)
 	if err != nil {
 		return db.CreateRideParams{}, err
 	}

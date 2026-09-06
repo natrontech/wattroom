@@ -118,8 +118,13 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 	if !scored || target <= 0 {
 		return
 	}
-	band := math.Max(target*0.05, 10)
+	// Against the rider's OWN target: bias is "this is the plan I am on
+	// today", and the score answers whether they rode the plan they were on
+	// (#795). The weight stays the prescribed intensity, so dialling down
+	// does not also quietly reduce how much that second counts for.
 	wgt := target / ftp
+	target *= m.BiasOr()
+	band := math.Max(target*0.05, 10)
 	record.weight += wgt
 	if math.Abs(float64(m.Watts)-target) <= band {
 		record.inBand += wgt

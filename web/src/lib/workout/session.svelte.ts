@@ -105,8 +105,14 @@ export function createRideSession({
 	}[] = [];
 	let recordedSeconds = 0;
 
-	let insideBand = 0;
-	let ridden = 0;
+	// SPEC's execution score, accumulated as the ride happens: seconds inside
+	// the band over seconds ridden, each weighed by the step's prescribed
+	// intensity (target/FTP), warmup, cooldown and freeride excluded. It used
+	// to count samples equally and include every targeted second, so the same
+	// ride scored one number here and another one when the server saved it
+	// (#795).
+	let insideWeight = 0;
+	let scoredWeight = 0;
 	let ticker: Ticker | undefined;
 	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
@@ -119,7 +125,9 @@ export function createRideSession({
 		state === 'autopaused' || spiralActive ? 0 : (info.targetWatts ?? 0),
 	);
 
-	const execution = $derived(ridden > 0 ? insideBand / ridden : 1);
+	const execution = $derived(
+		scoredWeight > 0 ? insideWeight / scoredWeight : 1,
+	);
 	const inBand = $derived(
 		target > 0 &&
 			sample !== null &&
@@ -175,11 +183,23 @@ export function createRideSession({
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
 		// grace seconds before auto-pause engages are excluded too — the rider had
-		// already stopped, we simply had not noticed yet.
-		if (state === 'running' && target > 0 && pedalling) {
-			ridden += 1;
+		// already stopped, we simply had not noticed yet. A ramp is a warmup or a
+		// cooldown, which SPEC excludes as well: the server has always agreed
+		// (workout.TargetAt reports those seconds unscored) and this side had not.
+		if (
+			state === 'running' &&
+			target > 0 &&
+			pedalling &&
+			info.segment?.kind === 'steady'
+		) {
+			// The band is the rider's own biased target; the weight is the
+			// intensity the workout asked for, so dialling down does not also
+			// quietly reduce how much the second counts for. `target` is
+			// already biased, so the prescribed one is target / bias.
+			const weight = target / bias / ftp;
+			scoredWeight += weight;
 			if (Math.abs(next.watts - target) <= toleranceBand(target))
-				insideBand += 1;
+				insideWeight += weight;
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
@@ -15,21 +16,26 @@ import (
 // counts more than nailing recovery. Warmup/cooldown/freeride excluded; a
 // second with no power is a second not ridden and is excluded too (the
 // auto-pause exclusion, seen from the server side).
-func Execution(workoutJSON string, ftp float64, watts []int) (float64, error) {
+func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics) (float64, error) {
 	segments, err := workout.Parse(workoutJSON)
 	if err != nil {
 		return 0, fmt.Errorf("stats: workout json: %w", err)
 	}
 	var weight, inBand float64
-	for second, sample := range watts {
+	for second, sample := range samples {
 		target, scored := workout.TargetAt(segments, ftp, second)
-		if !scored || target <= 0 || sample <= 0 {
+		if !scored || target <= 0 || sample.Watts <= 0 {
 			continue
 		}
-		band := math.Max(target*0.05, 10)
+		// The same rule the live score uses (hub/accumulator): the band is
+		// the rider's own biased target, the weight is the prescribed
+		// intensity. Live and saved must agree, or a rider watches one number
+		// all session and is handed another (#795).
 		wgt := target / ftp
+		target *= sample.BiasOr()
+		band := math.Max(target*0.05, 10)
 		weight += wgt
-		if math.Abs(float64(sample)-target) <= band {
+		if math.Abs(float64(sample.Watts)-target) <= band {
 			inBand += wgt
 		}
 	}

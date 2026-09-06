@@ -14,10 +14,15 @@ import type { RiderMetrics } from '$lib/protocol';
 export function wireMetrics(
 	metrics: Metrics,
 	shareHr: boolean,
+	bias = 1,
 ): Omit<RiderMetrics, 'seq'> {
 	return {
 		watts: Math.max(0, Math.round(metrics.watts)),
 		cadence: Math.max(0, Math.round(metrics.cadence)),
 		hr: shareHr ? Math.max(0, Math.round(metrics.heartRate ?? 0)) : 0,
+		// The trim on this rider's own targets, so the room scores the second
+		// against the plan they were actually on (#795). It rides every
+		// sample because bias moves mid-ride.
+		bias,
 	};
 }

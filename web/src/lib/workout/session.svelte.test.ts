@@ -258,3 +258,70 @@ describe('soloRide', () => {
 		expect(soloRide.active).toBe(false);
 	});
 });
+
+describe('the execution score (#795)', () => {
+	// SPEC: "% of riding seconds inside the band, weighted by step intensity
+	// (each second weighs target/FTP) ... Warmup/cooldown/freeride excluded."
+	// The server has always scored it that way; this side counted samples
+	// equally and included the warmup, so one ride produced two numbers.
+	const workout: Workout = {
+		name: 'weighted',
+		steps: [
+			{ type: 'warmup', seconds: 10, from: 0.4, to: 0.4 },
+			{ type: 'steady', seconds: 10, target: 1.0 }, // 200 W, weight 1.0
+			{ type: 'steady', seconds: 10, target: 0.5 }, //100 W, weight 0.5
+		],
+	};
+
+	function scored(watts: (second: number) => number, bias = 1) {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		return { session, trainer, watts, bias };
+	}
+
+	async function ride(
+		setup: ReturnType<typeof scored>,
+		seconds = 30,
+	): Promise<number> {
+		await setup.session.start();
+		for (let i = 0; i < Math.round((setup.bias - 1) / DEFAULTS.biasStep); i++)
+			setup.session.nudgeBias(DEFAULTS.biasStep);
+		for (let i = 0; i > Math.round((setup.bias - 1) / DEFAULTS.biasStep); i--)
+			setup.session.nudgeBias(-DEFAULTS.biasStep);
+		for (let second = 0; second < seconds; second++) {
+			setup.session.onSample({
+				watts: setup.watts(second),
+				cadence: 90,
+				at: second * 1000,
+			});
+			setup.session.tick();
+		}
+		const value = setup.session.execution;
+		setup.session.stop();
+		return value;
+	}
+
+	it('ignores the warmup, whatever the rider does in it', async () => {
+		// Nothing at all in the warmup, then both blocks exactly on target.
+		const on = (second: number) => (second < 10 ? 30 : second < 20 ? 200 : 100);
+		expect(await ride(scored(on))).toBeCloseTo(1, 5);
+	});
+
+	it('weighs a hard block more than an easy one', async () => {
+		// Nail the hard block (weight 1.0), miss the easy one (weight 0.5):
+		// 1.0 / 1.5 = 2/3, not the unweighted 1/2.
+		const half = (second: number) =>
+			second < 10 ? 80 : second < 20 ? 200 : 300;
+		expect(await ride(scored(half))).toBeCloseTo(2 / 3, 5);
+	});
+
+	it("scores against the rider's own biased target", async () => {
+		// At −20 % the blocks want 160 W and 80 W. Riding those is a perfect
+		// ride; riding the prescribed 200/100 is not.
+		const own = (second: number) => (second < 10 ? 80 : second < 20 ? 160 : 80);
+		expect(await ride(scored(own, 0.8))).toBeCloseTo(1, 5);
+		const prescribed = (second: number) =>
+			second < 10 ? 80 : second < 20 ? 200 : 100;
+		expect(await ride(scored(prescribed, 0.8))).toBeCloseTo(0, 5);
+	});
+});
