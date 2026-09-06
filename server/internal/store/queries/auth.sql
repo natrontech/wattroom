@@ -31,3 +31,6 @@ select provider from identities where user_id = $1 order by created_at;
 
 -- name: GetUserIdentity :one
 select * from identities where user_id = $1 and provider = $2;
+
+-- name: DeleteIdentity :execrows
+delete from identities where user_id = $1 and provider = $2;

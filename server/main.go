@@ -92,6 +92,10 @@ func main() {
 		account.New(st, authService, log).Register(mux)
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
 		uploader := strava.New(st, log)
+		if uploader != nil {
+			// Disconnecting Strava hands the grant back, not just our row (#783).
+			authService.SetStravaRevoker(uploader)
+		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —

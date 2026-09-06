@@ -362,19 +362,9 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The invariant from ADR-0029: providers and passkeys count together, and
-	// the last one never leaves. Without it a rider can lock themselves out of
-	// their own account with two clicks.
-	total, err := s.store.Queries.CountUserCredentials(r.Context(), user.ID)
-	if err != nil {
-		s.log.Error("credential count failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be removed. Try again.")
-		return
-	}
-	if total <= 1 {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
-			"This is the only way into your account. Add another passkey or connect a sign-in provider first.")
+	// ADR-0029's invariant, shared with the provider disconnect so the two
+	// cannot drift (credentials.go).
+	if s.refuseIfLastCredential(w, r, user) {
 		return
 	}
 
