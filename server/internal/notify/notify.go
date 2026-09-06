@@ -90,14 +90,18 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	when := startsAt.Local().Format("Mon 2 Jan, 15:04")
 	subject := fmt.Sprintf("%s rides %s — %s", room.Name, workoutName, when)
 	verb := "has a planned session"
+	// The heading stands on its own, so it cannot end on the dangling "to"
+	// that the sentence in the text part needs.
+	heading := room.Name + " has a planned session"
 	if moved {
 		subject = "Moved: " + subject
 		verb = "moved a planned session to"
+		heading = room.Name + " moved a planned session"
 	}
 	for _, t := range targets {
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
 			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
-		body := fmt.Sprintf(`%s %s:
+		text := fmt.Sprintf(`%s %s:
 
     %s
     %s
@@ -107,23 +111,39 @@ Ride it here: %s/r/%s
 You get this because session emails are switched on in your WattRoom
 profile. Turn them off: %s`,
 			room.Name, verb, workoutName, when, s.baseURL, room.Slug, unsub)
-		if err := s.send(ctx, *t.Email, subject, body, unsub); err != nil {
+		if err := s.send(ctx, mail{
+			To: *t.Email, Subject: subject, Heading: heading,
+			// The workout and its time are the live thing this mail is about,
+			// so they are what glows (ADR-0005).
+			Lead:   workoutName + " — " + when,
+			Action: "Open the room", URL: s.baseURL + "/r/" + room.Slug,
+			Text: text, Unsub: unsub,
+		}); err != nil {
 			s.log.Warn("session email failed", "err", err, "room", room.Slug)
 		}
 	}
 }
 
-func (s *Service) send(ctx context.Context, to, subject, text, unsub string) error {
+func (s *Service) send(ctx context.Context, m mail) error {
+	m.BaseURL = s.baseURL
+	rendered, err := m.render()
+	if err != nil {
+		return err
+	}
+	// Both parts in one call (#838): a client that will not render HTML, or a
+	// rider who told it not to, still gets the words — and the text part is
+	// the copy that was already written and already good.
 	body := map[string]any{
-		"from": s.from, "to": []string{to}, "subject": subject, "text": text,
+		"from": s.from, "to": []string{m.To}, "subject": m.Subject,
+		"text": m.Text, "html": rendered,
 	}
 	// Only bulk mail carries the header. A transactional mail — the address
 	// confirmation (#781) — has nothing to unsubscribe from, and pointing the
 	// one-click header at a link that does not apply is worse than omitting it.
-	if unsub != "" {
+	if m.Unsub != "" {
 		// RFC 8058 one-click: mail clients POST here, which our handler flips.
 		body["headers"] = map[string]string{
-			"List-Unsubscribe":      "<" + unsub + ">",
+			"List-Unsubscribe":      "<" + m.Unsub + ">",
 			"List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
 		}
 	}
@@ -207,12 +227,22 @@ func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 // Package auth owns the ceremony and calls this through its Mailer interface;
 // notify owns the transport and the words.
 func (s *Service) SendEmailVerification(ctx context.Context, to, link string) error {
-	body := fmt.Sprintf(`Confirm this address so WattRoom can get you back into your
+	text := fmt.Sprintf(`Confirm this address so WattRoom can get you back into your
 account if you ever lose the way you sign in:
 
 %s
 
 The link works once and expires in a day. If you did not add this address to
 a WattRoom account, ignore this — nothing happens until someone follows it.`, link)
-	return s.send(ctx, to, "Confirm your WattRoom email address", body, "")
+	// No Lead: nothing in this mail is live data, so nothing in it glows.
+	return s.send(ctx, mail{
+		To: to, Subject: "Confirm your WattRoom email address",
+		Heading: "Confirm your email address",
+		Body: []string{
+			"Confirm this address so WattRoom can get you back into your account if you ever lose the way you sign in.",
+			"The link works once and expires in a day. If you did not add this address to a WattRoom account, ignore this — nothing happens until someone follows it.",
+		},
+		Action: "Confirm this address", URL: link,
+		Text: text,
+	})
 }
