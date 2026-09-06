@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.29] - 2026-09-06
+
+### Added
+
+- The room now says out loud when something breaks. A trainer, the room connection, voice or the microphone dropping plays a falling two-note cue, and a rising one when it comes back — the banner alone only ever reached riders who were reading the screen. Error toasts, a coach pausing or resuming the session, and someone reacting to a chat line are audible for the first time too.
+
+### Changed
+
+- The pages a mail link opens — confirm your address, unsubscribe — now look like WattRoom: the app's colours, the wordmark and a proper button instead of an unstyled form in the browser's default serif. A link that has expired or was already used explains itself on the same page rather than showing raw JSON.
+
 ## [2026.09.28] - 2026-09-06
 
 ### Added
@@ -775,7 +785,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.28...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.29...HEAD
+[2026.09.29]: https://github.com/natrontech/wattroom/compare/2026.09.28...2026.09.29
 [2026.09.28]: https://github.com/natrontech/wattroom/compare/2026.09.27...2026.09.28
 [2026.09.27]: https://github.com/natrontech/wattroom/compare/2026.09.26...2026.09.27
 [2026.09.26]: https://github.com/natrontech/wattroom/compare/2026.09.25...2026.09.26

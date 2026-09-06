@@ -1,1 +1,0 @@
-- The pages a mail link opens — confirm your address, unsubscribe — now look like WattRoom: the app's colours, the wordmark and a proper button instead of an unstyled form in the browser's default serif. A link that has expired or was already used explains itself on the same page rather than showing raw JSON.
