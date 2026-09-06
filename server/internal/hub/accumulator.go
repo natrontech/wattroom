@@ -45,6 +45,14 @@ type riderRecord struct {
 	stream  int
 	lastSeq int
 	started bool
+	// The last timeline second this record admitted a LIVE sample for, and
+	// whether it has admitted one at all. A second cannot elapse twice (#791):
+	// notifications arrive irregularly — a trainer that bursts, a tab that
+	// wakes and flushes — and the ride record counts one entry as one second
+	// (stats.BuildRideRow's len(samples)). Sixty packets inside one second
+	// used to be sixty seconds of riding.
+	lastSecond int
+	secondSet  bool
 	// Live execution (#27): the SPEC score accumulated as samples arrive, so
 	// the tick can carry every rider's compliance without rescoring history.
 	weight float64
@@ -90,6 +98,15 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 		record.stream++
 	}
 	record.started, record.lastSeq = true, m.Seq
+	// One sample per timeline second, admitted against the ROOM's clock (#791).
+	// The client's sequence number is proof that it sent something, never that
+	// a second passed — and the record is read as one-sample-per-second by
+	// everything downstream. The live tiles are not affected: they read the
+	// latest metrics, not this record.
+	if record.secondSet && second <= record.lastSecond {
+		return
+	}
+	record.lastSecond, record.secondSet = second, true
 	if !record.keep(m) {
 		return
 	}

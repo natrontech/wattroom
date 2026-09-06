@@ -247,6 +247,9 @@ func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
 }
 
 type room struct {
+	// The room's clock. time.Now in production; the tests move it so a
+	// sample's timeline second is theirs to choose (#791).
+	now  func() time.Time
 	slug string
 	// Closed when the room is deleted (#618) — the tick goroutine is the
 	// only reader, and it returns rather than ticking for a room nobody
@@ -358,6 +361,7 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 
 func newRoom(slug string) *room {
 	return &room{
+		now:        time.Now,
 		slug:       slug,
 		stop:       make(chan struct{}),
 		clients:    make(map[*client]struct{}),
@@ -1345,6 +1349,7 @@ func validMetrics(m protocol.RiderMetrics) bool {
 
 func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 	rider := c.rider
+	now := rm.now()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	// One stream per rider (#610). Two paired screens do not merely overwrite
@@ -1356,7 +1361,7 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 		return
 	}
 	rm.metrics[rider.ID] = m
-	rm.lastMetric[rider.ID] = time.Now()
+	rm.lastMetric[rider.ID] = now
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
@@ -1365,9 +1370,9 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 	// same seq dedupes against it, and it scores live at the timeline second
 	// it arrived on (#27).
 	if rm.session.phase == "running" {
-		state := rm.session.state(time.Now())
+		state := rm.session.state(now)
 		rm.record.add(rider.ID, m, rm.session.segments, float64(rider.FtpWatts), state.Elapsed)
-		rm.sprint.collect(rider.ID, m.Watts, time.Now())
+		rm.sprint.collect(rider.ID, m.Watts, now)
 	}
 }
 

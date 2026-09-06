@@ -168,6 +168,16 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 			rm.session.start(now)
 			rm.session.state(now.Add(countdownSeconds * time.Second))
 
+			// One second of room time per sample. The record admits one
+			// sample per timeline second (#791), so a hundred packets fired
+			// inside one second would be one sample — which is the bug, not
+			// this test's subject: this one is about seq and stream.
+			clock := now.Add(countdownSeconds * time.Second)
+			rm.now = func() time.Time {
+				clock = clock.Add(time.Second)
+				return clock
+			}
+
 			for seq := 1; seq <= sent; seq++ {
 				rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: seq})
 			}
@@ -347,5 +357,50 @@ func TestCloseRoomStopsTheTicker(t *testing.T) {
 	case <-rm.stop:
 	default:
 		t.Fatal("the room was never told to stop ticking")
+	}
+}
+
+func TestOneSecondOfRidingIsOneSample(t *testing.T) {
+	// #791: the ride record is read as one sample per second — saved duration
+	// is len(samples) (stats.BuildRideRow). A client's sequence number is
+	// proof that it sent something, never that a second passed, and trainer
+	// notifications are irregular: a burst, or a backgrounded tab flushing
+	// what it buffered, used to become minutes of riding that never happened.
+	rm := newRoom("test")
+	rm.session.pick("Openers", "{}", 3600)
+	start := time.Now()
+	rm.session.start(start)
+	rm.session.state(start.Add(countdownSeconds * time.Second))
+
+	// Sixty packets, one timeline second. The isolated probe in the issue.
+	clock := start.Add(countdownSeconds * time.Second)
+	rm.now = func() time.Time { return clock }
+	for seq := 1; seq <= 60; seq++ {
+		rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: seq})
+	}
+	if got := rm.record.count("jan"); got != 1 {
+		t.Errorf("60 packets inside one second recorded %d seconds of riding, want 1", got)
+	}
+
+	// The clock moves, the record grows — one per second, whatever the client
+	// sends in between.
+	for second := 1; second <= 5; second++ {
+		clock = clock.Add(time.Second)
+		for burst := 0; burst < 3; burst++ {
+			rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: 100 + second*10 + burst})
+		}
+	}
+	if got := rm.record.count("jan"); got != 6 {
+		t.Errorf("five more seconds recorded %d samples in total, want 6", got)
+	}
+
+	// A backfill is not gated on the clock: a replayed sample's timeline
+	// second is unknown, it dedupes on seq, and dropping it is the data loss
+	// the buffer exists to prevent (#19).
+	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{
+		{Watts: 180, Seq: 900}, {Watts: 185, Seq: 901},
+	})
+	if got := rm.record.count("jan"); got != 8 {
+		t.Errorf("a reconnect's replay recorded %d samples in total, want 8", got)
 	}
 }
