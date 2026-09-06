@@ -639,6 +639,33 @@
 					onRecover={() => location.reload()}
 				/>
 			</div>
+		{:else if rideCtl.guard !== 'running'}
+			<!-- The rider's own guard, in a room (#788): the group timeline runs
+			     on without them, so nothing else on screen says why their
+			     target went to zero. Ranked above the trainer's own faults for
+			     the same reason auto-pause outranks everything solo — it is the
+			     thing that just happened. -->
+			<div class="shrink-0 px-5 pt-4">
+				<div
+					class="border-neon/40 bg-surface-raised flex items-center gap-4 rounded-lg border px-5 py-3"
+				>
+					{#if rideCtl.guard === 'resuming'}
+						<span
+							class="text-watt glow-text-strong font-display text-3xl font-bold tabular-nums"
+							>{rideCtl.guardResumeIn}</span
+						>
+						<p class="text-sm">Picking back up — ease in.</p>
+					{:else}
+						<p class="text-sm">
+							<span class="font-medium">Paused — you stopped pedalling.</span>
+							<span class="text-muted"
+								>Your targets are released; the room rides on. Start pedalling
+								to pick them back up.</span
+							>
+						</p>
+					{/if}
+				</div>
+			</div>
 		{:else if rideCtl.fault}
 			<!-- The trainer's own state, which the room never showed (#520): the
 			     mock has simulated this banner since #39 and the product could

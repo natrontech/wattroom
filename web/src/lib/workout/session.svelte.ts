@@ -2,40 +2,18 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
+import { createPersonalGuards, DEFAULTS } from './guards';
 import { createTicker, type Ticker } from './ticker';
 import { acquireWakeLock, type WakeLock } from './wakelock';
 import type { Segment, Workout } from './types';
 
 /**
  * Every number here is docs/SPEC.md's ("Ride guards") — ridden and promoted in #46.
- * Tune them there, not here.
+ * Tune them there, not here. They live with the guard machine that reads them
+ * (workout/guards), and are re-exported because half the app imports them from
+ * this module.
  */
-export const DEFAULTS = {
-	/** Below this cadence AND below pedallingWatts, the rider has stopped. */
-	pauseCadence: 5,
-	/**
-	 * Power floor for "still pedalling". Cadence alone is not safe: a Kickr v2 reports
-	 * no cadence at all (RESEARCH.md §9), and keying auto-pause on cadence would leave
-	 * those riders permanently paused mid-ride.
-	 */
-	pedallingWatts: 20,
-	/** Seconds of not-pedalling before their targets pause. */
-	pauseAfterSeconds: 3,
-	/** Countdown shown when they start again, so resuming is not a jump-scare. */
-	resumeCountdown: 3,
-	/** Spiral guard: cadence under this while an ERG target is held. */
-	spiralCadence: 50,
-	/** ...for this long, before the target is released. */
-	spiralAfterSeconds: 5,
-	/** No cadence source? Fall back to power collapsing this far under target. */
-	spiralPowerFraction: 0.5,
-	/** How long the target stays released once the guard trips. */
-	spiralReleaseSeconds: 10,
-	/** Bias step and range for the ±% control. */
-	biasStep: 0.01,
-	biasMin: 0.8,
-	biasMax: 1.2,
-} as const;
+export { DEFAULTS } from './guards';
 
 /** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
 export function toleranceBand(target: number): number {
@@ -101,8 +79,14 @@ export function createRideSession({
 	let state = $state<RideState>('idle');
 	let bias = $state(1);
 	let sample = $state<TrainerSample | null>(null);
+	/**
+	 * Auto-pause and the spiral release, shared with the group path so a rider
+	 * gets the same protection in a room as alone (#788). The mirrors below
+	 * are what makes the machine's answers reactive here.
+	 */
+	const guards = createPersonalGuards();
 	let resumeIn = $state(0);
-	let spiralUntil = $state(0);
+	let spiralActive = $state(false);
 	/** Per-segment time shifts from skip/extend, so the timeline stays authoritative. */
 	let shift = $state(0);
 	/** The ride's own power history, for the interval graph. Owned here rather than
@@ -123,15 +107,12 @@ export function createRideSession({
 
 	let insideBand = 0;
 	let ridden = 0;
-	let idleSeconds = 0;
-	let lowCadenceSeconds = 0;
 	let ticker: Ticker | undefined;
 	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
 
 	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
 	const info = $derived(targetAt(segments, ftp, clockSeconds, { bias }));
-	const spiralActive = $derived(spiralUntil > 0);
 
 	/** Released during spiral guard and while auto-paused — both mean "no target". */
 	const target = $derived(
@@ -147,6 +128,16 @@ export function createRideSession({
 
 	function applyTarget() {
 		void trainer.setTargetPower(target);
+	}
+
+	/**
+	 * The guards are a plain machine; these are its answers made reactive. The
+	 * ride's own states — idle, done — are not the guards' to set.
+	 */
+	function syncGuards() {
+		state = guards.phase;
+		resumeIn = guards.resumeIn;
+		spiralActive = guards.spiralActive;
 	}
 
 	function onSample(raw: TrainerSample) {
@@ -173,37 +164,13 @@ export function createRideSession({
 		trace.push({ t: clockSeconds, w: next.watts });
 		if (trace.length > 900) trace.shift();
 
-		// Auto-pause: their targets stop, the clock does not rewind.
-		const pedalling =
-			next.cadence >= DEFAULTS.pauseCadence ||
-			next.watts >= DEFAULTS.pedallingWatts;
-		if (!pedalling && state === 'running') {
-			idleSeconds += 1;
-			if (idleSeconds >= DEFAULTS.pauseAfterSeconds) {
-				state = 'autopaused';
-				applyTarget();
-			}
-		} else if (pedalling) {
-			idleSeconds = 0;
-			if (state === 'autopaused') {
-				state = 'resuming';
-				resumeIn = DEFAULTS.resumeCountdown;
-			}
-		}
-
-		// Spiral guard. Cadence is the good signal; power collapse is the fallback when
-		// no cadence source exists at all (RESEARCH.md §9 — the Kickr v2 case).
-		if (state === 'running' && target > 0 && !spiralActive) {
-			const collapsing =
-				next.cadence > 0
-					? next.cadence < DEFAULTS.spiralCadence
-					: next.watts < target * DEFAULTS.spiralPowerFraction;
-			lowCadenceSeconds = collapsing ? lowCadenceSeconds + 1 : 0;
-			if (lowCadenceSeconds >= DEFAULTS.spiralAfterSeconds) {
-				spiralUntil = DEFAULTS.spiralReleaseSeconds;
-				lowCadenceSeconds = 0;
-				applyTarget();
-			}
+		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
+		// the trainer holds is zero exactly when a guard is already up.
+		const pedalling = guards.pedalling(next);
+		if (state !== 'idle' && state !== 'done') {
+			const actuate = guards.sample(next, info.targetWatts ?? 0);
+			syncGuards();
+			if (actuate) applyTarget();
 		}
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
@@ -223,18 +190,17 @@ export function createRideSession({
 	 */
 	function tick(seconds = 1) {
 		if (state === 'resuming') {
-			resumeIn -= seconds;
-			if (resumeIn <= 0) {
-				state = 'running';
-				applyTarget();
-			}
+			const actuate = guards.tick(seconds);
+			syncGuards();
+			if (actuate) applyTarget();
 			return;
 		}
 		if (state !== 'running') return;
 
-		if (spiralUntil > 0) {
-			spiralUntil = Math.max(0, spiralUntil - seconds);
-			if (spiralUntil === 0) applyTarget();
+		if (spiralActive) {
+			const actuate = guards.tick(seconds);
+			syncGuards();
+			if (actuate) applyTarget();
 		}
 
 		elapsed += seconds;
