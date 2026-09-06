@@ -370,9 +370,9 @@ What does not change:
 - **The Sound panel stays**, and stays the second way in (`ux.md`: never only
   in a menu). Its rider list stops being a row of Reset buttons and becomes the
   faders themselves — the riders you have moved, adjustable there.
-- **The gate and the devices stay in it.** Neither belongs to one object; they
-  are the room's sound as a whole. *(The cues and the duck depth were in this
-  list until #898 and #904 — see below.)*
+- **The gate and the devices stay in it.** *(The cues and the duck depth were
+  in this list until #898 and #904, and the gate's MODE left for the mic in
+  #914 — see below.)*
 - **The sidebar rail keeps its music fader.** It is the control that follows
   the music out of the room, which is the rail's whole job.
 
@@ -394,6 +394,25 @@ cue level in the same menu, offered only while there is a room connection,
 because outside a room no voice can dip anything. Both homes read it the same
 way round: right is off. Two surfaces for one control that disagree about
 which way is louder are worse than one surface.
+
+**The gate is where the rule stops, and the stopping is the point (#914).**
+Every fader that moved was a number with a label. The gate threshold is not
+one: `GateMeter` makes the slider's track the meter, so setting it is "drag
+the mark under my own voice" (#289), and a closed gate is indistinguishable
+from a dead mic without it. A `MenuSlider` has no meter, and giving it one
+would put a second copy of `GateTune` inside the menu system — the drift this
+whole amendment exists to prevent. So the threshold stays on the surfaces that
+can show a level.
+
+What did move is the part that was never a level: **how you transmit** is a
+choice, and it belongs to the microphone. The mic in the you-panel has a menu
+now (`mic-menu.ts`) — mute, voice activation, push-to-talk with the current
+one marked, and "Tune your gate…", which opens the Sound panel where the meter
+is. `QuickAudio`'s open flag lifted into `sound-panel.svelte.ts` so a second
+door could exist; one `QuickAudio` is mounted at a time, so there is still one
+modal. The general rule, then: *put the control on its object — unless the
+control needs a picture only one surface can draw, in which case put the way
+to that surface on the object.*
 
 ## Consequences
 
