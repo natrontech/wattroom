@@ -102,7 +102,7 @@
 			: rider.you
 				? []
 				: personMenu(rider.id, goto, {
-						name: rider.name,
+						volume: rider.inVoice ? { name: rider.name } : undefined,
 						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
 					}),
 	)}

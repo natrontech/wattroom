@@ -97,10 +97,11 @@
 	// separator (#666: ban belongs where the griefer is met, not three
 	// screens away in Settings).
 	function memberMenu(member: Member): MenuEntry[] {
-		const here = room.riders.some((rider) => rider.id === member.id);
+		const rider = room.riders.find((r) => r.id === member.id);
+		const here = !!rider;
 		const entries: MenuEntry[] = personMenu(member.id, goto, {
 			you: member.id === account.me?.id,
-			name: member.displayName,
+			volume: rider?.inVoice ? { name: member.displayName } : undefined,
 			poke: {
 				onSelect: () => room.poke(member.id),
 				disabled: !here,

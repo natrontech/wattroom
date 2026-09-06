@@ -35,13 +35,12 @@ async function askToBeFriends(id: string): Promise<void> {
 
 /**
  * A rider's volume travels with the rider (#874), instead of living on the two
- * rows that used to render a speaker icon. Offered only for someone actually
- * in voice — a fader that changes nothing you can hear is noise — and written
- * through `av`, so their gain ramps while you drag.
+ * rows that used to render a speaker icon. The caller says when they are in
+ * voice, because that is the room's answer and not the menu's — a fader that
+ * changes nothing you can hear is noise. Written through `av` when there is
+ * one, so the gain ramps while you drag.
  */
-function riderVolume(id: string, name?: string): MenuSlider | undefined {
-	const av = roomConnection.current?.av;
-	if (!av || !(id in av.voice)) return undefined;
+function riderVolume(id: string, name: string): MenuSlider {
 	return {
 		kind: 'slider',
 		label: 'Volume',
@@ -49,7 +48,12 @@ function riderVolume(id: string, name?: string): MenuSlider | undefined {
 		...RIDER_FADER,
 		value: Math.round(mixer.riderGain(id) * 100),
 		format: (percent) => `${percent}%`,
-		onInput: (percent) => av.setRiderGain(id, percent / 100, name),
+		onInput: (percent) => {
+			const gain = percent / 100;
+			const av = roomConnection.current?.av;
+			if (av) av.setRiderGain(id, gain, name);
+			else mixer.setRiderGain(id, gain, name);
+		},
 	};
 }
 
@@ -67,8 +71,8 @@ export function personMenu(
 			disabled?: boolean;
 			hint?: string;
 		};
-		/** Who the volume fader belongs to, so the mixer can name them later. */
-		name?: string;
+		/** Their volume, offered only where they are in voice to hear it. */
+		volume?: { name: string };
 	} = {},
 ): (MenuItem | MenuSlider)[] {
 	const profile: MenuItem = {
@@ -100,9 +104,9 @@ export function personMenu(
 		? [message, profile, friend]
 		: [profile, message, friend];
 	if (poke) items.splice(2, 0, poke);
-	const volume = options.you ? undefined : riderVolume(id, options.name);
 	// After the room's own verbs, before the friendship: the fader is what you
 	// came for mid-ride, but the list still reads person-first.
-	if (volume) items.splice(items.length - 1, 0, volume);
+	if (options.volume && !options.you)
+		items.splice(items.length - 1, 0, riderVolume(id, options.volume.name));
 	return items;
 }

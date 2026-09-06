@@ -3,8 +3,8 @@ import type { MenuItem } from '$lib/context-menu.svelte';
 import { personMenu } from '$lib/person-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
 
-// The volume fader asks the live room who is in voice (#874); no room, no
-// fader, which is every case below except the last two.
+// The surface says who is in voice (#874); the fader writes through the room's
+// av when there is one.
 const room = vi.hoisted(() => ({
 	current: null as null | {
 		av: {
@@ -92,33 +92,32 @@ describe('personMenu (#486)', () => {
 // that used to render a speaker (#874).
 describe('personMenu volume', () => {
 	const setRiderGain = vi.fn();
-	const inVoice = (voice: Record<string, 'live' | 'muted'>) =>
-		(room.current = { av: { voice, setRiderGain } });
 
-	it('offers no fader outside a room, or for someone not in voice', () => {
-		room.current = null;
+	it('offers no fader for someone not in voice, and none on yourself', () => {
 		expect(personMenu('u1', () => {}).some((e) => e.kind === 'slider')).toBe(
 			false,
 		);
-		inVoice({ u2: 'live' });
-		expect(personMenu('u1', () => {}).some((e) => e.kind === 'slider')).toBe(
-			false,
-		);
-	});
-
-	it('offers no fader on yourself — you are not in your own mix', () => {
-		inVoice({ me: 'live' });
 		expect(
-			personMenu('me', () => {}, { you: true }).some(
+			personMenu('me', () => {}, { you: true, volume: { name: 'me' } }).some(
 				(e) => e.kind === 'slider',
 			),
 		).toBe(false);
 	});
 
+	it('sets the level itself when the room has no voice connection', () => {
+		room.current = null;
+		const [fader] = personMenu('u3', () => {}, {
+			volume: { name: 'Ruben' },
+		}).filter((e) => e.kind === 'slider');
+		fader.onInput(50);
+		expect(mixer.riderGain('u3')).toBe(0.5);
+		mixer.setRiderGain('u3', 1);
+	});
+
 	it('reads the rider back at their stored level and writes through av', () => {
-		inVoice({ u1: 'live' });
+		room.current = { av: { voice: { u1: 'live' }, setRiderGain } };
 		mixer.setRiderGain('u1', 1.4, 'Ada');
-		const entries = personMenu('u1', () => {}, { name: 'Ada' });
+		const entries = personMenu('u1', () => {}, { volume: { name: 'Ada' } });
 		const fader = entries.find((e) => e.kind === 'slider');
 		if (fader?.kind !== 'slider')
 			throw new Error('no fader for a rider in voice');
