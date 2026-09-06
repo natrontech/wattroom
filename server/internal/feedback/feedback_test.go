@@ -1,6 +1,9 @@
 package feedback
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -130,11 +133,36 @@ func TestSubmitRejectsMalformedBuffer(t *testing.T) {
 	}
 }
 
+// The reports on disk, WITHOUT the envelope each is stored in.
+//
+// That envelope is stamped with a nanosecond timestamp, and the privacy
+// assertion above is a substring check: a run stamped ...238479151Z contains
+// "151", which is the fixture's heart rate, so the test failed on the clock
+// while the stripping had worked perfectly (#857). Nothing asserted here
+// lives outside the report, so the envelope has no business being searched.
 func readReports(t *testing.T, dir string) string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(dir, "reports.jsonl")) //nolint:gosec // dir is t.TempDir()
+	f, err := os.Open(filepath.Join(dir, "reports.jsonl")) //nolint:gosec // dir is t.TempDir()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(raw)
+	defer func() { _ = f.Close() }()
+	// One JSON object per line; take the report out of each.
+	var reports []string
+	dec := json.NewDecoder(f)
+	for {
+		var record struct {
+			Report json.RawMessage `json:"report"`
+		}
+		if err := dec.Decode(&record); errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			t.Fatalf("stored record is not JSON: %v", err)
+		}
+		reports = append(reports, string(record.Report))
+	}
+	if len(reports) == 0 {
+		t.Fatal("no reports on disk")
+	}
+	return strings.Join(reports, "\n")
 }
