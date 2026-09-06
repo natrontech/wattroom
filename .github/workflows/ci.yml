@@ -51,6 +51,10 @@ jobs:
       - run: go test -race ./...
         env:
           WATTROOM_TEST_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
+          # The service container above exists so these tests run against it.
+          # Without this, an unreachable database is 17 skips and a green job
+          # rather than a failure (#814).
+          WATTROOM_REQUIRE_DB: '1'
       - name: protocol types are up to date
         run: |
           go tool tygo generate

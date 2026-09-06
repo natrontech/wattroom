@@ -69,9 +69,14 @@ build: web ## single binary with embedded frontend
 
 test:
 	@# Tests get their own database — a suite that deletes users must never
-	@# point at the dev data (it did once; the seed world paid for it).
-	@docker exec wattroom-postgres-1 psql -U wattroom -tc "select 1 from pg_database where datname='wattroom_test'" 2>/dev/null | grep -q 1 || docker exec wattroom-postgres-1 createdb -U wattroom wattroom_test 2>/dev/null || true
-	cd server && go test -race ./...
+	@# point at the dev data (it did once; the seed world paid for it). The
+	@# container is whichever one `make infra` started here, not a name: from a
+	@# worktree it is `<worktree>-postgres-1`, and guessing wrong used to create
+	@# the database nowhere and skip every DB-backed test to a green `ok` (#814).
+	@$(DEV_ENV) ensure-test-db
+	@# WATTROOM_REQUIRE_DB turns "no database" from 17 quiet skips into one
+	@# loud failure. A bare `go test` without it still skips.
+	cd server && WATTROOM_REQUIRE_DB=1 go test -race ./...
 	cd web && pnpm run test
 
 lint:

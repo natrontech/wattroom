@@ -12,15 +12,23 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// Needs a running Postgres (make infra) and skips without one, so `make test`
-// stays green on machines and CI runners that have no database. Set
-// WATTROOM_TEST_DB to run it; the compose default is the fallback attempt.
+// The compose default, tried when WATTROOM_TEST_DB says nothing else.
+const defaultTestDSN = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
+
+func testDSN() string {
+	if dsn := os.Getenv("WATTROOM_TEST_DB"); dsn != "" {
+		return dsn
+	}
+	return defaultTestDSN
+}
+
+// Needs a running Postgres (make infra) and skips without one, so a bare
+// `go test` stays green on a machine with no database. `make test` and CI set
+// WATTROOM_REQUIRE_DB, which turns that skip into a failure — see
+// TestDatabaseReachableWhenRequired.
 func open(t *testing.T) *store.Store {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-	}
+	dsn := testDSN()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	st, err := store.Open(ctx, dsn)
@@ -95,4 +103,25 @@ func pgNow() (ts pgtype.Timestamptz) {
 	ts.Time = time.Now().UTC()
 	ts.Valid = true
 	return ts
+}
+
+// A suite that skips its way to green is worse than a red one. Seventeen
+// packages here open the test database and skip when they cannot, so an
+// unreachable one leaves `go test ./...` printing `ok` for every package
+// having run essentially nothing — which is how a worktree whose Postgres
+// container was never found reported a passing suite (#814).
+//
+// WATTROOM_REQUIRE_DB is set by `make test` and by CI, whose Postgres service
+// exists for exactly this. Without it a bare `go test` still skips.
+func TestDatabaseReachableWhenRequired(t *testing.T) {
+	if os.Getenv("WATTROOM_REQUIRE_DB") != "1" {
+		t.Skip("WATTROOM_REQUIRE_DB is not set — `make test` and CI set it")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	st, err := store.Open(ctx, testDSN())
+	if err != nil {
+		t.Fatalf("no test database, so every DB-backed package would skip and the suite would still say ok — run `make infra` here, or set WATTROOM_TEST_DB: %v", err)
+	}
+	st.Close()
 }
