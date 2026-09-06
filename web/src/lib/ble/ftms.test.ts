@@ -234,17 +234,15 @@ describe('FtmsTrainer control-point queue', () => {
 
 	it('runs the next queued write after one has failed', async () => {
 		// The issue's reduction: with target-200 failing, 250 and 300 never reached
-		// the trainer again for the rest of the session.
+		// the trainer again for the rest of the session. Written one at a time,
+		// because a burst of targets now collapses to the newest (#790) — which
+		// would hide the poisoned tail rather than prove it gone.
 		const { trainer, control } = await paired();
 		control.answer = (f) => (targetWatts(f) === 200 ? 'fail' : 'ack');
 
-		const failed = trainer.setTargetPower(200);
-		const next = trainer.setTargetPower(250);
-		const last = trainer.setTargetPower(300);
-
-		await expect(failed).rejects.toThrow();
-		await next;
-		await last;
+		await expect(trainer.setTargetPower(200)).rejects.toThrow();
+		await trainer.setTargetPower(250);
+		await trainer.setTargetPower(300);
 		expect(targetsWritten(control)).toEqual([200, 250, 300]);
 	});
 
@@ -313,6 +311,10 @@ describe('FtmsTrainer control-point queue', () => {
 		control.answer = () => 'silent';
 
 		const first = trainer.setTargetPower(200);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(targetsWritten(control)).toEqual([200]);
+
+		// Queued while the first is still waiting for its indication.
 		void trainer.setTargetPower(250).catch(() => {});
 		await vi.advanceTimersByTimeAsync(0);
 		expect(targetsWritten(control)).toEqual([200]);
@@ -321,5 +323,51 @@ describe('FtmsTrainer control-point queue', () => {
 		await first;
 		await vi.advanceTimersByTimeAsync(0);
 		expect(targetsWritten(control)).toEqual([200, 250]);
+	});
+
+	it('collapses a burst of targets to the newest', async () => {
+		const { trainer, control } = await paired();
+		const writes = [200, 250, 300].map((w) => trainer.setTargetPower(w));
+		await Promise.all(writes);
+		// Superseded writes resolve for their caller — they were obsolete, not
+		// broken, and ride.svelte.ts voids the promise either way.
+		expect(targetsWritten(control)).toEqual([300]);
+	});
+
+	it('puts a release in front of the targets it obsoletes', async () => {
+		// The issue's scenario: slow acknowledgements, solo ticks piling targets
+		// on, and then Stop. The release used to queue behind every one of them.
+		const { trainer, control } = await paired();
+		control.answer = (f) => (targetWatts(f) === 200 ? 'silent' : 'ack');
+
+		const stalled = trainer.setTargetPower(200);
+		await vi.advanceTimersByTimeAsync(0);
+		for (const watts of [210, 220, 230])
+			void trainer.setTargetPower(watts).catch(() => {});
+		const release = trainer.setTargetPower(0);
+
+		control.indicate(0x05);
+		await stalled;
+		await release;
+		expect(targetsWritten(control)).toEqual([200, 0]);
+	});
+
+	it('drops targets queued against the previous connection', async () => {
+		const { trainer, device, control } = await paired();
+		control.answer = (f) => (f[0] === 0x05 ? 'silent' : 'ack');
+
+		const stalled = trainer.setTargetPower(200);
+		const dropped = expect(stalled).rejects.toThrow('disconnected');
+		await vi.advanceTimersByTimeAsync(0);
+		// Behind the in-flight write when the link dies: addressed to a control
+		// grant that no longer exists by the time the queue reaches them.
+		void trainer.setTargetPower(250).catch(() => {});
+		void trainer.setTargetPower(300).catch(() => {});
+
+		device.drop();
+		await dropped;
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(trainer.status).toBe('connected');
+		expect(targetsWritten(control)).toEqual([200]);
 	});
 });

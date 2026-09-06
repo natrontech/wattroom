@@ -150,6 +150,19 @@ export class FtmsTrainer implements Trainer {
 	 * indication before the next one starts (RESEARCH.md §1).
 	 */
 	#queue: Promise<void> = Promise.resolve();
+	/**
+	 * Target writes are absolutely superseded by later ones: nobody wants the
+	 * watts from two seconds ago. Each carries the sequence it was queued with
+	 * and is dropped at its turn if a newer one has been queued since, so a
+	 * release — Stop, auto-pause, the spiral guard — waits for the procedure in
+	 * flight and nothing else (#790). Serialization itself is untouched.
+	 */
+	#targetSeq = 0;
+	/**
+	 * Bumped by every attach. A write queued against the previous connection is
+	 * addressed to a control grant that no longer exists.
+	 */
+	#generation = 0;
 	#pending?: { resolve: () => void; reject: (e: Error) => void; timer: number };
 	#range: PowerRange = DEFAULT_POWER_RANGE;
 	/** Scopes one attach's characteristic listeners, so a reattach drops them. */
@@ -183,6 +196,11 @@ export class FtmsTrainer implements Trainer {
 		// mid-interval, not at the keyboard.
 		this.#device.addEventListener('gattserverdisconnected', () => {
 			this.#settlePending(new Error('trainer disconnected'));
+			// The control grant died with the link, so everything still queued
+			// for it is addressed to nothing. Left to run, each stale write
+			// spends its own control-point timeout before the reattach's
+			// request-control write gets a turn (#790).
+			this.#generation++;
 			if (this.#closed) {
 				this.#setStatus('disconnected');
 				return;
@@ -208,6 +226,7 @@ export class FtmsTrainer implements Trainer {
 		// dropping the previous pass's listeners every retry stacks another copy
 		// of each handler and one frame arrives as two samples, then three.
 		this.#attachment?.abort();
+		this.#generation++;
 		const { signal } = (this.#attachment = new AbortController());
 
 		const server = await this.#device!.gatt!.connect();
@@ -300,7 +319,7 @@ export class FtmsTrainer implements Trainer {
 		payload.setUint8(0, OP_SET_TARGET_POWER);
 		payload.setInt16(1, clampTarget(Math.max(0, watts), this.#range), true);
 		this.#mode = 'erg';
-		await this.#write(payload.buffer);
+		await this.#writeTarget(payload.buffer);
 	}
 
 	async setSimulation(gradePercent: number): Promise<void> {
@@ -311,7 +330,7 @@ export class FtmsTrainer implements Trainer {
 		payload.setUint8(5, 40); // Crr 0.0040
 		payload.setUint8(6, 51); // Cw 0.51 kg/m
 		this.#mode = 'sim';
-		await this.#write(payload.buffer);
+		await this.#writeTarget(payload.buffer);
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {
@@ -341,14 +360,26 @@ export class FtmsTrainer implements Trainer {
 	 * ever carries a caught, always-settling promise, while the rejection goes to
 	 * the caller alone. Do not collapse these two back into one.
 	 */
-	#write(bytes: ArrayBuffer): Promise<void> {
-		const run = this.#queue.then(() => this.#send(bytes));
+	#write(bytes: ArrayBuffer, wanted?: () => boolean): Promise<void> {
+		const generation = this.#generation;
+		const run = this.#queue.then(() => {
+			// Checked at the head of the queue, not when it was appended: what
+			// makes a write obsolete happens while it waits.
+			if (generation !== this.#generation || wanted?.() === false) return;
+			return this.#send(bytes);
+		});
 		this.#queue = run.catch((err: unknown) => {
 			// Most callers void this promise (ride.svelte.ts), so without a word
 			// here a dying control point is invisible until #520 gives it a status.
 			console.warn('[ftms] control-point write failed', err);
 		});
 		return run;
+	}
+
+	/** A target write, obsolete the moment a later one is queued. */
+	#writeTarget(bytes: ArrayBuffer): Promise<void> {
+		const seq = ++this.#targetSeq;
+		return this.#write(bytes, () => seq === this.#targetSeq);
 	}
 
 	/** One control-point round trip: the write, then its 0x80 indication. */
