@@ -23,6 +23,16 @@ type ApiToken struct {
 	LastUsedAt pgtype.Timestamptz
 }
 
+type BoardClip struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Name       string
+	Pad        *int16
+	DurationMs int32
+	Bytes      []byte
+	CreatedAt  pgtype.Timestamptz
+}
+
 type ChatImage struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID

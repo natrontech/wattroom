@@ -26,6 +26,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/board"
 	"github.com/natrontech/wattroom/server/internal/chat"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/dms"
@@ -170,6 +171,9 @@ func main() {
 		trophies.AccrueVoice(context.Background(), h)
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
+		// The soundboard's durable half (#877, ADR-0033): clips are personal,
+		// so the hub is what says whether a listener can hear one.
+		board.New(st, authService, h, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		// The GIF picker (#878, ADR-0032) mounts only with a Giphy key — no
 		// button that opens onto a 404.
