@@ -20,6 +20,7 @@ import { createDeviceChoices } from '$lib/room/av-devices.svelte';
 import { createGateSettings } from '$lib/room/gate-settings.svelte';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
+import { createSpeaking } from '$lib/room/speaking';
 import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
 import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
@@ -123,7 +124,18 @@ export function createRoomAv(slug: string) {
 	// The bus reads the chosen sink through a getter: the AudioContext outlives
 	// any one pick.
 	const devices = createDeviceChoices();
-	const output = createRiderOutput(() => devices.outId);
+	// Who is talking, measured off the voice on its way to the speakers (#987)
+	// rather than remembered from the server's broadcast. `level` answers
+	// whether anything actually moved, so the reactive write happens on a
+	// change rather than fifty times a second per rider.
+	const talk = createSpeaking(riderOf);
+	const output = createRiderOutput(
+		() => devices.outId,
+		(identity, level) => {
+			if (talk.level(identity, level, performance.now()))
+				speaking = { ...talk.riders };
+		},
+	);
 
 	/**
 	 * The mic path (#151, SPEC room audio): capture (browser DSP on) → gain →
@@ -183,6 +195,13 @@ export function createRoomAv(slug: string) {
 	function onLevel(level: number) {
 		micLevel = level;
 		runGate();
+		// Your own tile lights on the same measurement as everybody else's
+		// (#987). What the room hears is what the gate lets through, so a
+		// level under your own threshold is not you speaking — and neither is
+		// a hot mic you have switched off.
+		const heard = micOn && gate.open ? level : 0;
+		if (talk.level(myIdentity, heard, performance.now()))
+			speaking = { ...talk.riders };
 	}
 
 	/** capture → level → gate gain. Whoever calls it connects the gain to
@@ -301,6 +320,8 @@ export function createRoomAv(slug: string) {
 		micLevel = 0;
 		transmitting = false;
 		testing = false;
+		// No meter left to report you falling quiet, so say so once.
+		if (talk.drop(myIdentity)) speaking = { ...talk.riders };
 	}
 
 	function setVoice(id: string, state: 'live' | 'muted' | null) {
@@ -741,6 +762,10 @@ export function createRoomAv(slug: string) {
 				track.detach().forEach((el) => el.remove());
 				audioElements.delete(participant.identity);
 				output.drop(participant.identity);
+				// The meter went with the track, so nothing can report this
+				// voice again — and a flag nothing will ever clear is what
+				// left riders ringed forever (#987).
+				if (talk.drop(participant.identity)) speaking = { ...talk.riders };
 				if (
 					pub.source === client.Track.Source.Microphone &&
 					!micLive(rider, participant.identity)
@@ -772,6 +797,9 @@ export function createRoomAv(slug: string) {
 		});
 		r.on(client.RoomEvent.ParticipantDisconnected, (p) => {
 			const rider = riderOf(p.identity);
+			// Belt and braces: TrackUnsubscribed normally arrives first and takes
+			// the meter with it, but a connection dropped hard may skip it.
+			if (talk.drop(p.identity)) speaking = { ...talk.riders };
 			// Their other tab may still be in the room — one closed tab does not
 			// take a rider out of voice (#293).
 			if (!stillHere(rider, p.identity)) setVoice(rider, null);
@@ -814,11 +842,6 @@ export function createRoomAv(slug: string) {
 				setVoice(riderOf(p.identity), 'live');
 			setPicture(pub, p);
 		});
-		r.on(client.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-			const next: Record<string, boolean> = {};
-			for (const p of speakers) next[riderOf(p.identity)] = true;
-			speaking = next;
-		});
 		// Media-interrupted retry window (#234, errors.md): audio is gapped
 		// while the SDK rebuilds the connection — say so on the dashboard.
 		// SignalReconnecting stays transparent by design (RESEARCH.md): media
@@ -840,6 +863,7 @@ export function createRoomAv(slug: string) {
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
 			// camOn, sharing and micOn all lied about dead tracks (#219, #354).
+			talk.clear();
 			speaking = {};
 			camOn = false;
 			micBeforeDrop = micOn;
@@ -1146,6 +1170,7 @@ export function createRoomAv(slug: string) {
 			// room — and every cue outside one — starts silent.
 			mixer.setMuted(false);
 			voice = {};
+			talk.clear();
 			speaking = {};
 			// This av instance dies with the connection: audio graph and
 			// listener go with it, or six room-hops exhaust the browser's

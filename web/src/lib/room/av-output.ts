@@ -1,3 +1,4 @@
+import { createMicMeter, type MicMeter } from '$lib/room/mic-level';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { riderOf } from '$lib/room/tabs';
 
@@ -24,12 +25,20 @@ export type RiderOutput = ReturnType<typeof createRiderOutput>;
 /**
  * @param sinkId the chosen output device, read at the moment it is applied —
  * a getter, not a value, because the context outlives any one pick.
+ * @param onLevel every rider's envelope, taken on this graph (#987). Who is
+ * talking is measured here rather than remembered from the server's broadcast:
+ * the audio is already on its way through these nodes, and a meter that lives
+ * on the chain cannot outlive the voice it is measuring.
  */
-export function createRiderOutput(sinkId: () => string) {
+export function createRiderOutput(
+	sinkId: () => string,
+	onLevel?: (identity: string, level: number) => void,
+) {
 	let ctx: AudioContext | null = null;
 	let bus: DynamicsCompressorNode | null = null;
 	const gains = new Map<string, GainNode>();
 	const sources = new Map<string, MediaElementAudioSourceNode>();
+	const meters = new Map<string, MicMeter>();
 
 	/**
 	 * A rider's voice as it should sound right now: their fader, or nothing
@@ -70,16 +79,47 @@ export function createRiderOutput(sinkId: () => string) {
 				const source = ctx.createMediaElementSource(el);
 				const gain = ctx.createGain();
 				gain.gain.value = gainFor(identity);
-				source.connect(gain);
 				gain.connect(bus);
 				gains.set(identity, gain);
 				sources.set(identity, source);
+				// The meter goes in ahead of the fader, so what it reads is the
+				// voice as sent rather than as this listener chose to hear it —
+				// turning somebody down must not stop them lighting up. The
+				// worklet passes audio through and the analyser taps beside it,
+				// so `out` is what carries on to the gain either way, and the
+				// whole chain reaches the destination — an unconnected meter is
+				// never pulled.
+				if (!onLevel) {
+					source.connect(gain);
+				} else {
+					const level = (value: number) => onLevel(identity, value);
+					source.connect(gain); // audible immediately; the meter is async
+					void createMicMeter(ctx, source, level)
+						.then((meter) => {
+							if (!gains.has(identity)) {
+								meter.stop();
+								return;
+							}
+							if (meter.out !== source) {
+								source.disconnect(gain);
+								meter.out.connect(gain);
+							}
+							meters.set(identity, meter);
+						})
+						.catch(() => {
+							// No meter is a room whose rings never light, not a
+							// room with no sound in it. The voice is already
+							// connected above.
+						});
+				}
 			} catch {
 				// routing failed: the element still plays at unity — degraded, not broken
 			}
 		},
 		/** One connection left. */
 		drop(identity: string) {
+			meters.get(identity)?.stop();
+			meters.delete(identity);
 			gains.get(identity)?.disconnect();
 			gains.delete(identity);
 			sources.get(identity)?.disconnect();
@@ -99,6 +139,8 @@ export function createRiderOutput(sinkId: () => string) {
 			if (ctx?.state === 'suspended') void ctx.resume();
 		},
 		close() {
+			for (const meter of meters.values()) meter.stop();
+			meters.clear();
 			for (const gain of gains.values()) gain.disconnect();
 			for (const source of sources.values()) source.disconnect();
 			gains.clear();
