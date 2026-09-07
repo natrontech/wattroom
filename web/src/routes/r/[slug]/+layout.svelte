@@ -163,6 +163,7 @@
 			members={room.members ?? []}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
+			crew={room.crew ?? null}
 			monthKj={room.monthKj ?? 0}
 			upcoming={room.upcoming ?? []}
 			onSchedule={(

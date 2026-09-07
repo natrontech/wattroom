@@ -546,6 +546,50 @@ func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]
 	return items, nil
 }
 
+const listRoomSessionDays = `-- name: ListRoomSessionDays :many
+select started_at::date as day,
+       bool_or(user_id = $1) as attended
+from rides
+where room_id = $2
+group by day
+order by day desc
+limit 12
+`
+
+type ListRoomSessionDaysParams struct {
+	ViewerID pgtype.UUID
+	RoomID   pgtype.UUID
+}
+
+type ListRoomSessionDaysRow struct {
+	Day      pgtype.Date
+	Attended bool
+}
+
+// The room's last sessions, newest first, and whether the caller was in each
+// (#995). A day rather than a ride: one evening the crew rode together is one
+// dot, however many of them were there. Describes the caller's own turnout and
+// nobody else's — RESEARCH.md §14.8 forbids grading attendance.
+func (q *Queries) ListRoomSessionDays(ctx context.Context, arg ListRoomSessionDaysParams) ([]ListRoomSessionDaysRow, error) {
+	rows, err := q.db.Query(ctx, listRoomSessionDays, arg.ViewerID, arg.RoomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomSessionDaysRow
+	for rows.Next() {
+		var i ListRoomSessionDaysRow
+		if err := rows.Scan(&i.Day, &i.Attended); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserProgression = `-- name: ListUserProgression :many
 select id, started_at, seconds, kj, execution, ftp_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
@@ -739,6 +783,36 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const roomCrewTotals = `-- name: RoomCrewTotals :one
+select coalesce(sum(seconds), 0)::bigint as seconds,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now())
+       )::bigint as sessions_this_month,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now()) - interval '1 month'
+           and started_at < date_trunc('month', now())
+       )::bigint as sessions_last_month
+from rides
+where room_id = $1
+`
+
+type RoomCrewTotalsRow struct {
+	Seconds           int64
+	SessionsThisMonth int64
+	SessionsLastMonth int64
+}
+
+// What the crew did together (#995, RESEARCH.md §14.7). Cooperative by
+// construction: every figure is a sum or a count over the whole room, so
+// nobody is ranked inside any of it. Sessions are counted as distinct days
+// rather than rides, because six riders in one session is one session.
+func (q *Queries) RoomCrewTotals(ctx context.Context, roomID pgtype.UUID) (RoomCrewTotalsRow, error) {
+	row := q.db.QueryRow(ctx, roomCrewTotals, roomID)
+	var i RoomCrewTotalsRow
+	err := row.Scan(&i.Seconds, &i.SessionsThisMonth, &i.SessionsLastMonth)
+	return i, err
 }
 
 const roomMonthKj = `-- name: RoomMonthKj :one

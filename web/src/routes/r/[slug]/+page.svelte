@@ -200,6 +200,17 @@
 	// The tick's roster carries no face, so the tile's avatar comes from the
 	// member list — the same lookup the people column does (SidePanel).
 	const faceOf = $derived(new Map(room.members.map((m) => [m.id, m])));
+
+	// Describe, never grade (RESEARCH.md §14.8): the crew against its own last
+	// month, in words, with no arrow that reads as a verdict on a quiet month.
+	const monthOnMonth = $derived.by(() => {
+		const now = room.crew?.sessionsThisMonth ?? 0;
+		const then = room.crew?.sessionsLastMonth ?? 0;
+		if (!then) return 'the first month here';
+		if (now > then) return `up from ${then}`;
+		if (now < then) return `${then} last month`;
+		return 'same as last month';
+	});
 </script>
 
 {#snippet tile(rider: (typeof room.riders)[number])}
@@ -345,15 +356,20 @@
 		     Lounge rather than a sixth place — Discord's server home IS its
 		     first channel. -->
 		<section class="mt-6">
+			<!-- Consistency leads and nothing here orders anybody (#995,
+			     RESEARCH.md §14.4/§14.7): three whole-room sums and the
+			     viewer's own turnout. The riders count moved to the roster it
+			     duplicates and the medals count to the members page, which is
+			     where a medal's owner is legible anyway. -->
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				<div class="panel px-4 py-3">
-					<p class="eyebrow">riders</p>
+					<p class="eyebrow">together</p>
 					<p class="font-display text-2xl font-bold tabular-nums">
-						{room.members.length}
+						{Math.round((room.crew?.seconds ?? 0) / 3600).toLocaleString()}<span
+							class="text-muted ml-1 text-sm">h</span
+						>
 					</p>
-					<p class="text-muted text-[11px]">
-						{room.riders.length} here now
-					</p>
+					<p class="text-muted text-[11px]">ridden as a crew</p>
 				</div>
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">streak</p>
@@ -367,18 +383,39 @@
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">this month</p>
 					<p class="font-display text-2xl font-bold tabular-nums">
-						{Math.round(room.monthKj).toLocaleString()}<span
-							class="text-muted ml-1 text-sm">kJ</span
+						{room.crew?.sessionsThisMonth ?? 0}<span
+							class="text-muted ml-1 text-sm"
+							>session{(room.crew?.sessionsThisMonth ?? 0) === 1
+								? ''
+								: 's'}</span
 						>
 					</p>
-					<p class="text-muted text-[11px]">everyone, together</p>
+					<p class="text-muted text-[11px]">
+						{monthOnMonth} · {Math.round(room.monthKj).toLocaleString()} kJ
+					</p>
 				</div>
 				<div class="panel px-4 py-3">
-					<p class="eyebrow">medals</p>
-					<p class="font-display text-2xl font-bold tabular-nums">
-						{room.medals.length}
-					</p>
-					<p class="text-muted text-[11px]">earned in this room</p>
+					<p class="eyebrow">showed up</p>
+					{#if room.crew?.attended.length}
+						<div class="mt-1.5 flex flex-wrap items-center gap-1">
+							{#each room.crew.attended as here, i (i)}
+								<span
+									class="size-2.5 rounded-full {here
+										? 'bg-neon'
+										: 'border-muted/50 border'}"
+								></span>
+							{/each}
+						</div>
+						<p class="text-muted mt-2 text-[11px]">
+							you, last {room.crew.attended.length} session{room.crew.attended
+								.length === 1
+								? ''
+								: 's'}
+						</p>
+					{:else}
+						<p class="font-display text-2xl font-bold tabular-nums">—</p>
+						<p class="text-muted text-[11px]">after the first ride here</p>
+					{/if}
 				</div>
 			</div>
 

@@ -4,6 +4,7 @@
 package rooms
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"log/slog"
@@ -158,6 +159,25 @@ func (s *Service) Register(mux *http.ServeMux) {
 
 // --- responses ---
 
+// What a room shows about the riding its members did together (#995,
+// RESEARCH.md §14.7, ADR-0035). Every figure here is either a whole-room sum
+// — which orders nobody — or the CALLER's own turnout. No other rider's
+// ride-derived number appears, which is what keeps this side of ADR-0034's
+// line without a per-rider consent set.
+type crewJSON struct {
+	// Seconds ridden in this room by everyone, ever. The cooperative total
+	// RESEARCH.md §14.4 recommends as the room's primary number.
+	Seconds int64 `json:"seconds"`
+	// Sessions this month and last, so the crew is ranked against its own past
+	// rather than its members against each other (§14.3).
+	SessionsThisMonth int64 `json:"sessionsThisMonth"`
+	SessionsLastMonth int64 `json:"sessionsLastMonth"`
+	// The room's last sessions, newest first: true where the caller was there.
+	// Their own attendance and nobody else's — §14.8 forbids a strip that
+	// grades anyone, and one that can only describe you cannot become a ladder.
+	Attended []bool `json:"attended"`
+}
+
 type memberJSON struct {
 	ID           string  `json:"id"`
 	DisplayName  string  `json:"displayName"`
@@ -208,6 +228,9 @@ type roomJSON struct {
 	// no individual numbers anywhere in it.
 	StreakWeeks int   `json:"streakWeeks"`
 	MonthKj     int64 `json:"monthKj"`
+	// What the crew did together (#995, ADR-0035). Members only, like every
+	// other room number, and cooperative by construction — see crewJSON.
+	Crew *crewJSON `json:"crew,omitempty"`
 	// Planned rides (#116): the full upcoming list for members, and just the
 	// next one for the list view — the nav shows where the action will be.
 	Upcoming    []scheduledJSON `json:"upcoming,omitempty"`
@@ -359,6 +382,33 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 // code is the invite, so it stays inside the room); anyone else with the link
 // gets just enough to decide to join. Metrics privacy is not at stake here —
 // nothing live crosses this endpoint.
+// crew reads what the room did together. Soft-fails to nil like the streak and
+// month-kJ reads beside it: a stats query that cannot answer is a tile that
+// does not render, never a room that will not open.
+func (s *Service) crew(ctx context.Context, roomID, viewer pgtype.UUID) *crewJSON {
+	totals, err := s.store.Queries.RoomCrewTotals(ctx, roomID)
+	if err != nil {
+		return nil
+	}
+	out := &crewJSON{
+		Seconds:           totals.Seconds,
+		SessionsThisMonth: totals.SessionsThisMonth,
+		SessionsLastMonth: totals.SessionsLastMonth,
+	}
+	days, err := s.store.Queries.ListRoomSessionDays(ctx, db.ListRoomSessionDaysParams{
+		RoomID: roomID, ViewerID: viewer,
+	})
+	if err != nil {
+		return out
+	}
+	// Oldest first: the strip reads left to right like every other timeline.
+	out.Attended = make([]bool, len(days))
+	for i, day := range days {
+		out.Attended[len(days)-1-i] = day.Attended
+	}
+	return out
+}
+
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	room, ok := s.roomBySlug(w, r)
 	if !ok {
@@ -438,6 +488,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
 				response.MonthKj = kj
 			}
+			response.Crew = s.crew(r.Context(), room.ID, user.ID)
 			medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
 				RoomID: room.ID, Limit: 24,
 			})
