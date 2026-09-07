@@ -1,3 +1,0 @@
-- The soundboard is one panel with three faces instead of a stack of popups. Your clips and the trim editor now open in the board itself, so opening them no longer dims the board you opened them from.
-- You can hear a clip without firing it at the room. There is a play button on every clip in your library and on the trim editor, alt-click does the same on a pad, and all of them play to you alone — nobody else in the room hears a thing.
-- The trim editor previews the edit as you make it, looping, with a playhead on the waveform and the fades and gain you are setting applied live.
