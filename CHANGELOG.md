@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.34] - 2026-09-07
+
+### Fixed
+
+- Returning to WattRoom now gets you the current version. The page that names the app's files carried no caching instructions at all, so a browser was free to keep an old copy — and once those files started being cached for a year, that old copy stuck, hiding every new release until a hard reload.
+
 ## [2026.09.33] - 2026-09-07
 
 ### Changed
@@ -931,7 +937,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.33...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.34...HEAD
+[2026.09.34]: https://github.com/natrontech/wattroom/compare/2026.09.33...2026.09.34
 [2026.09.33]: https://github.com/natrontech/wattroom/compare/2026.09.32...2026.09.33
 [2026.09.32]: https://github.com/natrontech/wattroom/compare/2026.09.31...2026.09.32
 [2026.09.31]: https://github.com/natrontech/wattroom/compare/2026.09.30...2026.09.31
