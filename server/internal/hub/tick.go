@@ -1,0 +1,297 @@
+// The room's goroutine: one per live room, one tick a second. Every mutation
+// the room makes arrives on its channels and is applied here, which is what
+// makes the room's fields safe to touch without each caller taking a lock.
+package hub
+
+import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/safego"
+)
+
+const tickInterval = time.Second
+
+// run broadcasts one tick per interval while anyone is connected. The tick
+// always carries the session state and roster — the timer must advance on
+// screens even when nobody is pedalling yet.
+// ponytail: the ticker runs while the room is empty; rooms are cheap and few,
+// stop-on-empty can land with room GC if it ever shows up in a profile.
+func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
+	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
+	// is live (SPEC) and returns to 1 Hz after.
+	timer := time.NewTimer(tickInterval)
+	defer timer.Stop()
+	// The lock below is taken by hand and released twice per iteration, so a
+	// panic inside the tick would unwind holding it — and the relaunch
+	// Supervise does (#738) would then park on Lock() for good: a room that
+	// never ticks again, and every hub-wide walk over rooms (WhereIs,
+	// Presence) hung behind it. Release it on the way out instead.
+	locked := false
+	defer func() {
+		if locked {
+			rm.mu.Unlock()
+		}
+	}()
+	// Presence push (#251): phase and the riding set are the live signals the
+	// rail shows for rooms you are NOT in — ping the lobby only when one of
+	// them changes between ticks, never per tick.
+	lastPhase, lastRiding := "", ""
+	lastTick := now()
+	for {
+		select {
+		case <-rm.stop:
+			// The room was deleted: no tick, and no session save — the
+			// durable row it would reference is already gone.
+			return
+		case <-timer.C:
+		}
+		rm.mu.Lock()
+		locked = true
+		// Wall time since the previous tick — the voice clock's step, which a
+		// sprint's 4 Hz burst must not quadruple.
+		dt := now().Sub(lastTick)
+		lastTick = now()
+		interval := tickInterval
+		if sp := rm.sprint; sp != nil {
+			t := now()
+			if t.After(sp.startsAt.Add(-time.Second)) && t.Before(sp.endsAt.Add(time.Second)) {
+				interval = burstTick
+			}
+		}
+		timer.Reset(interval)
+		if len(rm.clients) == 0 {
+			locked = false
+			rm.mu.Unlock()
+			continue
+		}
+		if rm.game != nil {
+			samples := make(map[string]int, len(rm.metrics))
+			for id, m := range rm.metrics {
+				samples[id] = m.Watts
+			}
+			rm.game.advance(now(), samples, rm.seen)
+			gs := rm.game.state(now())
+			rm.lastGame = &gs
+		} else {
+			rm.lastGame = nil
+		}
+		// Drain a bounded slice per tick and CARRY the overflow — a burst
+		// above the per-tick cap used to vanish silently (#219).
+		chatNow := rm.chat
+		if len(chatNow) > 32 {
+			chatNow = rm.chat[:32]
+			rm.chat = append([]protocol.ChatLine(nil), rm.chat[32:]...)
+		} else {
+			rm.chat = nil
+		}
+		reactsNow := rm.reacts
+		if len(reactsNow) > 64 {
+			reactsNow = rm.reacts[:64]
+			rm.reacts = append([]protocol.ChatReactionCount(nil), rm.reacts[64:]...)
+		} else {
+			rm.reacts = nil
+		}
+		editsNow := rm.edits
+		if len(editsNow) > 64 {
+			editsNow = rm.edits[:64]
+			rm.edits = append([]protocol.ChatEdit(nil), rm.edits[64:]...)
+		} else {
+			rm.edits = nil
+		}
+		idsNow := rm.chatIDs
+		rm.chatIDs = nil
+		// Resolved before the drain so a transition's own line rides the tick
+		// that carries the transition, not the one after it.
+		state := rm.session.state(now())
+		rm.sayPhaseLocked(state, now())
+		rm.accrueVoiceLocked(state.Phase, dt)
+		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
+		eventsNow := rm.events.drain()
+		tick := protocol.ServerTick{
+			At:            now().UnixMilli(),
+			State:         state,
+			Jukebox:       rm.music.snapshot(),
+			Cheers:        rm.cheers,
+			Board:         rm.board,
+			Chat:          chatNow,
+			ChatReactions: reactsNow,
+			ChatEdits:     editsNow,
+			ChatIDs:       idsNow,
+			Events:        eventsNow,
+			Sprint:        sprintNow,
+			Game:          rm.lastGame,
+			Execution: func() map[string]float64 {
+				out := make(map[string]float64, len(rm.seen))
+				for id := range rm.seen {
+					out[id] = rm.record.execution(id)
+				}
+				return out
+			}(),
+			Voice:  rm.voiceIDsLocked(),
+			Riders: rm.metrics,
+			Roster: make([]protocol.Rider, 0, len(rm.clients)),
+		}
+		rm.metrics = make(map[string]protocol.RiderMetrics)
+		rm.cheers = nil
+		rm.board = nil
+		// The session just closed: hand the ride record to the saver exactly
+		// once. Snapshot under the lock, persist outside it (hub discipline:
+		// no I/O while holding a room mutex).
+		var closing []RiderRecord
+		var closingMeta protocol.SessionState
+		var closed *SessionClosed
+		if tick.State.Phase == "done" && !rm.saved {
+			rm.saved = true
+			closingMeta = tick.State
+			if saver != nil {
+				for _, id := range rm.seenOrder {
+					if record, ok := rm.record.byRider[id]; ok {
+						closing = append(closing, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
+					}
+				}
+			}
+			if rm.xp != nil {
+				closed = rm.closedLocked(tick.State, now())
+			}
+		}
+		clients := make([]*client, 0, len(rm.clients))
+		// One roster entry per rider, however many sockets they hold — the same
+		// person on a dashboard and a phone is one presence, and duplicate ids
+		// are poison to keyed rendering downstream.
+		seen := make(map[string]struct{}, len(rm.clients))
+		for c := range rm.clients {
+			clients = append(clients, c)
+			if _, dup := seen[c.rider.ID]; !dup {
+				seen[c.rider.ID] = struct{}{}
+				// The socket's captured rider plus the room's live view of
+				// them: away is room state, not something a socket carries.
+				rider := c.rider
+				_, rider.Away = rm.away[c.rider.ID]
+				tick.Roster = append(tick.Roster, rider)
+			}
+		}
+		riding, _ := rm.ridingLocked(now())
+		ridingKey := strings.Join(riding, "\n")
+		spoke := len(tick.Chat) > 0
+		// Claim answers ride out with this tick but not IN it (#610): a
+		// rider's device inventory is theirs, and the tick goes to the room.
+		pairing := rm.drainPairingLocked()
+		pokes := rm.drainPokesLocked()
+		locked = false
+		rm.mu.Unlock()
+		// Someone spoke: every sidebar's unread count for this room just went
+		// stale, and a rider who is NOT standing in the room announces the
+		// line off that count (#568). Without this it waited for the lobby's
+		// 60 s fallback poll.
+		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding || spoke) {
+			lastPhase, lastRiding = tick.State.Phase, ridingKey
+			rm.changed()
+		}
+		// Stable roster order, so tiles do not shuffle every second.
+		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
+
+		if closing != nil {
+			// Fire and hand off: the tick loop never blocks on the database.
+			// The saver owns timeouts and retries (#235); the goroutine exits
+			// when its bounded retry policy returns — minutes at worst.
+			safego.Go(log, "session save "+rm.slug, func() {
+				saver.SaveSession(context.Background(), rm.slug,
+					closingMeta.WorkoutName, closingMeta.WorkoutJSON,
+					time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
+			})
+		}
+		// The keeper returns at once (it queues its own I/O) — still outside
+		// the lock, like every other hand-off.
+		if closed != nil {
+			rm.xp.SessionClosed(*closed)
+		}
+		if sprintWinner != "" && rm.xp != nil {
+			rm.xp.SprintWon(rm.slug, sprintWinner, now())
+		}
+
+		metricTicks.Inc()
+		// Once for the room, not once per rider: the tick is identical for
+		// everyone in it — roster, metrics, game state — and marshalling it
+		// per client put the same work N times on the critical path between
+		// one slow socket and the next (#670).
+		payload, err := json.Marshal(protocol.ServerMessage{Tick: &tick})
+		if err != nil {
+			// Half a tick is worse than none: skip the broadcast and say so.
+			logger(log).Error("tick could not be marshalled", "room", rm.slug, "err", err)
+			payload = nil
+		}
+		for _, c := range clients {
+			if payload != nil {
+				c.send(payload)
+			}
+			// Addressed to this socket alone, so it cannot be folded into the
+			// tick — but it rides the same queue, so it keeps its order.
+			if answer, ok := pairing[c]; ok {
+				c.sendJSON(log, protocol.ServerMessage{Pairing: &answer})
+			}
+			for _, pending := range pokes[c] {
+				poke := pending
+				c.sendJSON(log, protocol.ServerMessage{Poke: &poke})
+			}
+		}
+	}
+}
+
+// sayPhaseLocked puts a line on the timeline when the session crosses into a
+// phase worth talking about (#359), once per crossing. The transition is the
+// trigger, never the control message: the clock closes a session as readily
+// as a coach does, and a rider staring at the stage hears about both.
+func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
+	if state.Phase == rm.phaseSaid {
+		return
+	}
+	rm.phaseSaid = state.Phase
+	switch state.Phase {
+	case "countdown":
+		rm.events.add(sessionLine("started", "", state.WorkoutName, time.Time{}, now), now)
+	case "done":
+		rm.events.add(sessionLine("ended", "", state.WorkoutName, time.Time{}, now), now)
+	}
+}
+
+// scoreSprintLocked renders the sprint for the tick and names the winner on
+// the one tick that scores it (#467). Caller holds rm.mu.
+func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
+	scoredBefore := rm.sprint != nil && rm.sprint.scored
+	state := rm.sprint.state(now, rm.seen)
+	if scoredBefore || rm.sprint == nil || !rm.sprint.scored || len(rm.sprint.results) < minSprintField {
+		return state, ""
+	}
+	return state, rm.sprint.results[0].RiderID
+}
+
+// closedLocked is the session as the XpKeeper hears it (#467): everyone who
+// rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
+func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
+	ev := &SessionClosed{Slug: rm.slug, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	for _, id := range rm.seenOrder {
+		ev.Riders = append(ev.Riders, SessionRider{
+			ID: id, Rode: rm.record.count(id) >= MinRideSamples,
+			VoiceSeconds: int(rm.voiceMs[id] / 1000),
+		})
+	}
+	// Voice-only people — a coach without a trainer, a spectator on the
+	// call — in a stable order, since the map has none.
+	var listeners []string
+	for id := range rm.voiceMs {
+		if _, rode := rm.seen[id]; !rode {
+			listeners = append(listeners, id)
+		}
+	}
+	sort.Strings(listeners)
+	for _, id := range listeners {
+		ev.Riders = append(ev.Riders, SessionRider{ID: id, VoiceSeconds: int(rm.voiceMs[id] / 1000)})
+	}
+	return ev
+}
