@@ -1,1 +1,0 @@
-- Sit out the room's music without stopping it for anyone else: **Skip for me** drops you out until the next track starts, **Stop for me** until you press Rejoin. Your player unloads, so nothing streams while you are out, and rejoining lands you back on the room's playhead. Stepping away now does the same.

@@ -1,1 +1,0 @@
-- The Sensors page can pair your trainer. It used to send you into a room to do it — on the one screen named for setting up equipment. Pairing now looks and reads the same everywhere: the Sensors page, the solo ride and ramp screens, and the room all draw one card, which says what is connected, what it is reporting, and what to do when it isn't.
