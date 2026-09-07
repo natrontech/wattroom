@@ -1,1 +1,0 @@
-- Opening a room chat or private conversation puts the cursor in the message box, ready to type without an extra click.

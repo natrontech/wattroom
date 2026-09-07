@@ -1,1 +1,0 @@
-- Your execution score now means the same thing on screen and in the saved ride. It weighs a hard interval more than an easy one, ignores warmup and cooldown, and — the part that was a genuine question — scores you against your own ±% trim rather than the untrimmed target, so riding a dialled-down day well is a good score.
