@@ -44,7 +44,7 @@ describe('plannedZoneSeconds', () => {
 			[
 				{
 					kind: 'steady',
-					stepIndex: 0,
+					stepPath: [0],
 					startSeconds: 0,
 					seconds: 600,
 					fromFraction: 0.7,
@@ -53,13 +53,13 @@ describe('plannedZoneSeconds', () => {
 				// 50 → 60 % crosses the Z1/Z2 line exactly halfway through.
 				{
 					kind: 'ramp',
-					stepIndex: 0,
+					stepPath: [0],
 					startSeconds: 600,
 					seconds: 100,
 					fromFraction: 0.5,
 					toFraction: 0.6,
 				},
-				{ kind: 'sprint', stepIndex: 0, startSeconds: 700, seconds: 15 },
+				{ kind: 'sprint', stepPath: [0], startSeconds: 700, seconds: 15 },
 			],
 			200,
 		);
@@ -74,7 +74,7 @@ describe('plannedZoneSeconds', () => {
 			[
 				{
 					kind: 'steady',
-					stepIndex: 0,
+					stepPath: [0],
 					startSeconds: 0,
 					seconds: 60,
 					watts: 250,
@@ -91,7 +91,7 @@ describe('plannedZoneSeconds', () => {
 		const workout: Segment[] = [
 			{
 				kind: 'steady',
-				stepIndex: 0,
+				stepPath: [0],
 				startSeconds: 0,
 				seconds: 60,
 				watts: 250,

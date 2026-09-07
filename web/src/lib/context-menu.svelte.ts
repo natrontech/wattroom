@@ -136,7 +136,12 @@ export function contextMenu(
 			open(event.clientX, event.clientY);
 		};
 		const onDown = (event: PointerEvent) => {
-			if (event.pointerType !== 'touch') return;
+			if (event.pointerType !== 'touch' || items().length === 0) return;
+			// Menus nest (a step inside a repeat, #1004): the innermost one claims
+			// the press, exactly as onContext claims the right-click. Without this
+			// both timers ran and the ancestor's opened last — a long-press on the
+			// child silently gave you the parent's menu.
+			event.stopPropagation();
 			press = setTimeout(
 				() => open(event.clientX, event.clientY),
 				LONG_PRESS_MS,

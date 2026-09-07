@@ -5,11 +5,11 @@ export function flatten(workout: Workout): Segment[] {
 	const segments: Segment[] = [];
 	let t = 0;
 
-	const push = (step: WorkoutStep, stepIndex: number) => {
+	const push = (step: WorkoutStep, stepPath: number[]) => {
 		switch (step.type) {
 			case 'repeat':
 				for (let i = 0; i < step.times; i++) {
-					for (const inner of step.steps) push(inner, stepIndex);
+					step.steps.forEach((inner, j) => push(inner, [...stepPath, j]));
 				}
 				break;
 			case 'steady':
@@ -24,7 +24,7 @@ export function flatten(workout: Workout): Segment[] {
 					cadenceHigh: step.cadenceHigh,
 					hrLow: step.hrLow,
 					hrHigh: step.hrHigh,
-					stepIndex,
+					stepPath,
 				});
 				t += step.seconds;
 				break;
@@ -33,7 +33,7 @@ export function flatten(workout: Workout): Segment[] {
 					kind: 'sprint',
 					startSeconds: t,
 					seconds: step.seconds,
-					stepIndex,
+					stepPath,
 				});
 				t += step.seconds;
 				break;
@@ -44,13 +44,13 @@ export function flatten(workout: Workout): Segment[] {
 					seconds: step.seconds,
 					fromFraction: step.from,
 					toFraction: step.to,
-					stepIndex,
+					stepPath,
 				});
 				t += step.seconds;
 		}
 	};
 
-	workout.steps.forEach(push);
+	workout.steps.forEach((step, i) => push(step, [i]));
 	return segments;
 }
 

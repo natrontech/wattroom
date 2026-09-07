@@ -11,7 +11,7 @@
 		ftp,
 		trace,
 		compact = false,
-		selectedStep = null,
+		selectedPath = null,
 		onSelect,
 	}: {
 		segments: Segment[];
@@ -20,9 +20,10 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
-		/** Editor hooks: present ⇒ blocks are clickable and select their step. */
-		selectedStep?: number | null;
-		onSelect?: (stepIndex: number) => void;
+		/** Editor hooks: present ⇒ blocks are clickable and select their step.
+		    A path, not an index, so a repeat's child selects itself (#1004). */
+		selectedPath?: number[] | null;
+		onSelect?: (stepPath: number[]) => void;
 	} = $props();
 
 	const W = 1000;
@@ -63,7 +64,7 @@
 				points: `${x0},${BASE} ${x0},${y(from)} ${x1},${y(to)} ${x1},${BASE}`,
 				edge: `${x0},${y(from)} ${x1},${y(to)}`,
 				zone,
-				stepIndex: seg.stepIndex,
+				path: seg.stepPath,
 				sprint: seg.kind === 'sprint',
 				label:
 					seg.kind === 'sprint'
@@ -90,7 +91,8 @@
 	>
 		{#each blocks as block, i (i)}
 			{@const picked =
-				selectedStep !== null && block.stepIndex === selectedStep}
+				selectedPath !== null &&
+				block.path.join('.') === selectedPath.join('.')}
 			<!-- Opacity via class, not attribute, so hover/selected states can win.
 			     tabindex/role/keydown appear together or not at all — the static
 			     checker can't see that through the conditionals. -->
@@ -108,10 +110,10 @@
 				role={onSelect ? 'button' : undefined}
 				tabindex={onSelect ? 0 : undefined}
 				aria-label={onSelect ? block.label : undefined}
-				onclick={onSelect && (() => onSelect(block.stepIndex))}
+				onclick={onSelect && (() => onSelect(block.path))}
 				onkeydown={onSelect &&
 					((e) => {
-						if (e.key === 'Enter' || e.key === ' ') onSelect(block.stepIndex);
+						if (e.key === 'Enter' || e.key === ' ') onSelect(block.path);
 					})}
 			>
 				<title>{block.label}</title>

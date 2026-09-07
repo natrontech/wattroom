@@ -32,7 +32,7 @@ describe('flatten', () => {
 			fromFraction: 1.2,
 		});
 		expect(segs[8]).toMatchObject({ startSeconds: 510, fromFraction: 0.5 });
-		expect(segs[8].stepIndex).toBe(1); // all repeat children map to the repeat step
+		expect(segs[8].stepPath).toEqual([1, 1]); // a repeat's child keeps its own path
 		expect(durationSeconds(workout)).toBe(300 + 240 + 15 + 60 + 120);
 	});
 });

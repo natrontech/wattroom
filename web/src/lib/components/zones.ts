@@ -3,7 +3,7 @@
  * docs/SPEC.md's; the class names are literal because Tailwind scans source text and
  * would never generate `bg-z${n}`.
  */
-import type { Segment } from '$lib/workout/types';
+import type { Segment, WorkoutStep } from '$lib/workout/types';
 
 export const CEILING = 1.5;
 
@@ -47,6 +47,23 @@ export function zoneOf(watts: number, ftp: number): number {
 	const fraction = watts / ftp;
 	const zone = ZONE_TOPS.findIndex((top) => fraction <= top);
 	return zone === -1 ? 7 : zone + 1;
+}
+
+/**
+ * Zone of one planned step at a given FTP. 0 for a repeat or a sprint — neither
+ * has a single target to colour (a repeat's children carry their own, and a
+ * sprint is all-out by definition).
+ */
+export function zoneOfStep(step: WorkoutStep, ftp: number): number {
+	if (step.type === 'repeat' || step.type === 'sprint') return 0;
+	if (step.type === 'steady') {
+		// An absolute-watt step has no fraction to read; scoring it as 0 %
+		// painted every one of them Z1 whatever it actually asked for.
+		const fraction =
+			step.watts !== undefined ? step.watts / ftp : (step.target ?? 0);
+		return zoneOf(fraction * ftp, ftp);
+	}
+	return zoneOf(((step.from + step.to) / 2) * ftp, ftp);
 }
 
 /** Seconds a planned workout spends in each zone (index 1–7; sprints count as Z7). */
