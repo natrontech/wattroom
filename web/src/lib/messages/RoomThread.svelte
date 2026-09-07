@@ -13,6 +13,7 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Radio from '@lucide/svelte/icons/radio';
 	import Users from '@lucide/svelte/icons/users';
+	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { people, type Face } from '$lib/people.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
@@ -69,7 +70,11 @@
 	// What the room did rides only the tick (ADR-0022): from outside there
 	// is nothing to interleave, and nothing missed.
 	const timeline = $derived(
-		roomTimeline(messages, conn ? conn.live.roomEvents : []),
+		roomTimeline(
+			messages,
+			conn ? conn.live.roomEvents : [],
+			account.me?.displayName,
+		),
 	);
 
 	// Queuing a link is a jukebox command, and the jukebox is the socket's:

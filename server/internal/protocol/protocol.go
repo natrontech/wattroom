@@ -202,9 +202,10 @@ type RoomEvent struct {
 	// Room-unique and stable across re-broadcasts: a growing burst re-sends
 	// the SAME id with a higher Count, and clients replace the line in place.
 	ID   string `json:"id"`
-	Kind string `json:"kind"` // "jukebox" | "session"
+	Kind string `json:"kind"` // "jukebox" | "session" | "presence"
 	// jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
 	// session: "planned" | "moved" | "cancelled" | "started" | "ended"
+	// presence: "joined" | "left" | "away" | "back"
 	Verb string `json:"verb"`
 	// Who did it. Empty when nobody did — the deck advancing on its own, or
 	// a session the clock started.
@@ -219,9 +220,9 @@ type RoomEvent struct {
 	When int64 `json:"when,omitempty"`
 	// For "playing": who put this track in the queue.
 	QueuedBy string `json:"queuedBy,omitempty"`
-	// How many tracks this one line covers — 1 normally, more when a burst
-	// of adds coalesced ("queued 8 tracks"). Eight lines would push the
-	// actual conversation off the screen.
+	// How many things this one line covers — 1 normally, more when a burst
+	// coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
+	// would push the actual conversation off the screen.
 	Count int   `json:"count"`
 	At    int64 `json:"at"` // server millis, for ordering only
 }

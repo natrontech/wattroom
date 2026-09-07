@@ -136,3 +136,53 @@ describe('roomTimeline (#321)', () => {
 		expect(roomTimeline([message()])).toHaveLength(1);
 	});
 });
+
+// Who came and went (#984, ADR-0022's join/leave shape).
+const presence = (over: Partial<RoomEvent> = {}): RoomEvent =>
+	event({ kind: 'presence', verb: 'joined', track: '', ...over });
+
+describe('presence lines (#984)', () => {
+	it('names one arrival, and counts a burst', () => {
+		expect(eventText(presence())).toBe('Kim joined');
+		expect(eventText(presence({ count: 2 }))).toBe('Kim and 1 other joined');
+		expect(eventText(presence({ count: 3 }))).toBe('Kim and 2 others joined');
+	});
+
+	it('says the other three verbs', () => {
+		expect(eventText(presence({ verb: 'left' }))).toBe('Kim left');
+		expect(eventText(presence({ verb: 'away' }))).toBe('Kim went away');
+		expect(eventText(presence({ verb: 'back' }))).toBe('Kim is back');
+	});
+
+	// A rider is not told about themselves: they are looking at the room they
+	// just walked into, and they pressed the button that says they stepped out.
+	it('keeps a rider’s own presence lines off their own timeline', () => {
+		const lines = roomTimeline(
+			[],
+			[
+				presence({ id: 'a', actor: 'Kim' }),
+				presence({ id: 'b', actor: 'Ada', at: 2000 }),
+			],
+			'Kim',
+		);
+		expect(lines).toHaveLength(1);
+		expect(lines[0].kind === 'event' && lines[0].event.actor).toBe('Ada');
+	});
+
+	it('shows everybody their own view when nobody is named', () => {
+		expect(roomTimeline([], [presence(), presence({ id: '2' })])).toHaveLength(
+			2,
+		);
+	});
+
+	// Their own CHAT is still theirs — only presence is filtered.
+	it('never hides a rider’s own messages', () => {
+		const lines = roomTimeline([message({ from: 'Kim' })], [], 'Kim');
+		expect(lines).toHaveLength(1);
+	});
+
+	// A tab open since before this shipped renders nothing rather than junk.
+	it('renders nothing for a verb it has never heard of', () => {
+		expect(eventText(presence({ verb: 'teleported' }))).toBe('');
+	});
+});

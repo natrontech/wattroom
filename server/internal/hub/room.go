@@ -78,6 +78,14 @@ type room struct {
 	// happened to be the socket that asked. Emptied as the rider's last
 	// socket goes, so away never outlives being in the room.
 	away map[string]struct{}
+	// Riders whose last socket has gone, and when. The room is not told until
+	// the grace window is out (#984): a phone in a garage flaps, and a leave
+	// line per flap is a strobe rather than a timeline. Coming back inside the
+	// window says nothing at all — no leave, and no second arrival either.
+	departed map[string]time.Time
+	// What to call them once the window is out: the socket that knew their
+	// name has gone by then.
+	departedNames map[string]string
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
 	xp        XpKeeper
@@ -126,19 +134,21 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 
 func newRoom(slug string) *room {
 	return &room{
-		now:        time.Now,
-		slug:       slug,
-		stop:       make(chan struct{}),
-		clients:    make(map[*client]struct{}),
-		metrics:    make(map[string]protocol.RiderMetrics),
-		session:    newSession(),
-		record:     newAccumulator(),
-		music:      newJukebox(),
-		seen:       make(map[string]protocol.Rider),
-		lastMetric: make(map[string]time.Time),
-		voiceNow:   make(map[string]struct{}),
-		voiceMs:    make(map[string]int64),
-		away:       make(map[string]struct{}),
+		now:           time.Now,
+		slug:          slug,
+		stop:          make(chan struct{}),
+		clients:       make(map[*client]struct{}),
+		metrics:       make(map[string]protocol.RiderMetrics),
+		session:       newSession(),
+		record:        newAccumulator(),
+		music:         newJukebox(),
+		seen:          make(map[string]protocol.Rider),
+		lastMetric:    make(map[string]time.Time),
+		voiceNow:      make(map[string]struct{}),
+		voiceMs:       make(map[string]int64),
+		away:          make(map[string]struct{}),
+		departed:      make(map[string]time.Time),
+		departedNames: make(map[string]string),
 	}
 }
 
@@ -153,8 +163,48 @@ func (rm *room) roleOf(c *client) string {
 func (rm *room) join(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// Whether this is the rider arriving or only another of their screens
+	// (#219: a person on a desktop and a phone is one presence).
+	first := !rm.presentLocked(c.rider.ID)
 	rm.clients[c] = struct{}{}
 	metricRiders.Inc()
+	if !first {
+		return
+	}
+	// A socket that flapped is not an arrival. It was never announced as a
+	// leave either, so the room hears nothing about the round trip.
+	if _, flapped := rm.departed[c.rider.ID]; flapped {
+		delete(rm.departed, c.rider.ID)
+		delete(rm.departedNames, c.rider.ID)
+		return
+	}
+	now := rm.now()
+	rm.events.add(presenceLine("joined", c.rider.Name, now), now)
+}
+
+// presentLocked is whether any socket in this room belongs to that rider.
+func (rm *room) presentLocked(riderID string) bool {
+	for c := range rm.clients {
+		if c.rider.ID == riderID {
+			return true
+		}
+	}
+	return false
+}
+
+// sayDepartedLocked announces everyone whose grace window has run out. Called
+// from the tick, which is the only clock the room has.
+func (rm *room) sayDepartedLocked(now time.Time) {
+	for riderID, at := range rm.departed {
+		if now.Sub(at) < presenceGrace {
+			continue
+		}
+		delete(rm.departed, riderID)
+		if name := rm.departedNames[riderID]; name != "" {
+			rm.events.add(presenceLine("left", name, now), now)
+			delete(rm.departedNames, riderID)
+		}
+	}
 }
 
 func (rm *room) leave(c *client) {
@@ -182,6 +232,9 @@ func (rm *room) leave(c *client) {
 		// Away is presence, and the rider is no longer present (#706).
 		// Left behind, it would greet them as away on the next join.
 		delete(rm.away, c.rider.ID)
+		// Not announced yet: the tick says so once the grace window is out.
+		rm.departed[c.rider.ID] = rm.now()
+		rm.departedNames[c.rider.ID] = c.rider.Name
 	}
 	metricRiders.Dec()
 }
@@ -374,9 +427,35 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 func (rm *room) setAway(riderID string, away bool) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	_, was := rm.away[riderID]
 	if away {
 		rm.away[riderID] = struct{}{}
+	} else {
+		delete(rm.away, riderID)
+	}
+	// Only the change is worth a line: a tab restating what it already said
+	// on every reconnect would print one every time (#984).
+	if was == away {
 		return
 	}
-	delete(rm.away, riderID)
+	name := rm.nameOfLocked(riderID)
+	if name == "" {
+		return
+	}
+	verb := "back"
+	if away {
+		verb = "away"
+	}
+	now := rm.now()
+	rm.events.add(presenceLine(verb, name, now), now)
+}
+
+// nameOfLocked is what to call a rider who is in the room right now.
+func (rm *room) nameOfLocked(riderID string) string {
+	for c := range rm.clients {
+		if c.rider.ID == riderID {
+			return c.rider.Name
+		}
+	}
+	return ""
 }
