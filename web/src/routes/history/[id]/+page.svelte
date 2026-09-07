@@ -13,6 +13,10 @@
 	import { MEDAL_META, medalName } from '$lib/medals';
 	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
+	import RideComparison from '$lib/ride/RideComparison.svelte';
+	import type { RideRecord } from '$lib/history.svelte';
+	import { api } from '$lib/api';
+	import { fetchProgression, type Progression } from '$lib/progression';
 	import { apiBlob } from '$lib/api';
 	import { zoneSeconds } from '$lib/ride/stats';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
@@ -29,6 +33,19 @@
 	let confirming = $state(false);
 	let exporting = $state(false);
 	let exportError = $state<string | null>(null);
+
+	// The comparison (#996) reads two lists the app already serves — every ride
+	// for "your best of this workout", and the curve for the 20-minute line.
+	// Both are secondary to the ride itself, so they load beside it and their
+	// absence costs one section rather than the page.
+	let rides = $state<RideRecord[] | null>(null);
+	let progression = $state<Progression | null>(null);
+	void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
+		if (res.ok) rides = res.data.rides;
+	});
+	void fetchProgression().then((res) => {
+		if (res.ok) progression = res.data;
+	});
 
 	async function downloadFit() {
 		if (!ride || ride.samples.length === 0) return;
@@ -216,6 +233,15 @@
 				</div>
 			{/each}
 		</section>
+
+		<div class="mt-6">
+			<RideComparison
+				{ride}
+				{rides}
+				d30={progression?.curve.d30.best20m}
+				d90={progression?.curve.d90.best20m}
+			/>
+		</div>
 
 		{#if zones.some((seconds) => seconds > 0)}
 			<section class="panel mt-3 px-6 py-5">
