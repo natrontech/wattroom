@@ -24,6 +24,21 @@ func (q *Queries) BoardClipBytes(ctx context.Context, userID pgtype.UUID) (int64
 	return column_1, err
 }
 
+const clearBoardKey = `-- name: ClearBoardKey :exec
+update board_clips set key = null where user_id = $1 and key = $2
+`
+
+type ClearBoardKeyParams struct {
+	UserID pgtype.UUID
+	Key    *string
+}
+
+// The key moves rather than colliding, the same way a pad does.
+func (q *Queries) ClearBoardKey(ctx context.Context, arg ClearBoardKeyParams) error {
+	_, err := q.db.Exec(ctx, clearBoardKey, arg.UserID, arg.Key)
+	return err
+}
+
 const clearBoardPad = `-- name: ClearBoardPad :exec
 update board_clips set pad = null where user_id = $1 and pad = $2
 `
@@ -91,7 +106,7 @@ func (q *Queries) GetBoardClipSource(ctx context.Context, arg GetBoardClipSource
 }
 
 const listBoardClips = `-- name: ListBoardClips :many
-select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes,
+select id, name, pad, key, duration_ms, octet_length(bytes)::int as size_bytes,
        start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms, created_at
 from board_clips
 where user_id = $1
@@ -102,6 +117,7 @@ type ListBoardClipsRow struct {
 	ID         pgtype.UUID
 	Name       string
 	Pad        *int16
+	Key        *string
 	DurationMs int32
 	SizeBytes  int32
 	StartMs    int32
@@ -127,6 +143,7 @@ func (q *Queries) ListBoardClips(ctx context.Context, userID pgtype.UUID) ([]Lis
 			&i.ID,
 			&i.Name,
 			&i.Pad,
+			&i.Key,
 			&i.DurationMs,
 			&i.SizeBytes,
 			&i.StartMs,
@@ -205,6 +222,25 @@ func (q *Queries) SetBoardClipEdit(ctx context.Context, arg SetBoardClipEditPara
 		arg.FadeInMs,
 		arg.FadeOutMs,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setBoardClipKey = `-- name: SetBoardClipKey :execrows
+update board_clips set key = $3 where id = $1 and user_id = $2
+`
+
+type SetBoardClipKeyParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+	Key    *string
+}
+
+// Null clears the binding: a clip with no key is tapped, never fired blind.
+func (q *Queries) SetBoardClipKey(ctx context.Context, arg SetBoardClipKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setBoardClipKey, arg.ID, arg.UserID, arg.Key)
 	if err != nil {
 		return 0, err
 	}

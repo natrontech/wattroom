@@ -17,6 +17,8 @@
 		type Clip,
 	} from '$lib/board/clips.svelte';
 	import ClipEditor from '$lib/board/ClipEditor.svelte';
+	import KeyBinder from '$lib/board/KeyBinder.svelte';
+	import { toggleKey } from '$lib/board/toggle-key.svelte';
 	import { learn, shapeOf } from '$lib/board/shapes.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
@@ -119,6 +121,12 @@
 		</p>
 	{/if}
 
+	<p class="text-muted mt-3 text-[11px]">
+		<span class="font-display text-ink/85">{toggleKey.label}</span> shows and hides
+		the board. A pad fires on the key next to it — click that key to change it, or
+		press Escape while it is listening to take the key away.
+	</p>
+
 	{#if board.clips.length > 0}
 		<ul class="mt-4 space-y-1">
 			{#each board.clips as clip (clip.id)}
@@ -175,6 +183,7 @@
 						class="text-muted font-display shrink-0 text-[11px] tabular-nums"
 						>{seconds(keptMillis(clip))}</span
 					>
+					<KeyBinder {clip} />
 					<label class="shrink-0">
 						<span class="sr-only">pad for {clip.name}</span>
 						<select

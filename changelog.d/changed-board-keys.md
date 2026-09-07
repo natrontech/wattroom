@@ -1,0 +1,1 @@
+- Soundboard keys are yours to set: click the key beside a clip and press whichever one you want, or Escape to take it away. Showing the board moved from `B` to `Alt+B`, so it no longer fires while you have a button or a link focused, and a pad can no longer go off behind an open dialog.
