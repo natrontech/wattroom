@@ -1,0 +1,1 @@
+- A soundboard is no longer capped at nine clips. Add as many as your storage allows — the board grows a row at a time and scrolls, and the empty slot at the end is always the next one to fill.
