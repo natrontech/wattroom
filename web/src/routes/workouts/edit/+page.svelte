@@ -13,6 +13,7 @@
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
+	import { account } from '$lib/account.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
@@ -26,9 +27,12 @@
 	import { validateWorkout } from '$lib/workout/validate';
 
 	// The preview is what a rider steers by while authoring, so it scales to
-	// their own FTP — the profile the root layout syncs from the account (#1003).
+	// their own FTP (#1003). The account first — it is reactive, so a hard
+	// landing here redraws the moment `me` arrives rather than keeping whatever
+	// localStorage held at mount — then the local profile /ride writes, which
+	// carries its own bounded default for a browser that has neither.
 	const profile = createProfileStore();
-	const ftp = $derived(profile.current.ftp);
+	const ftp = $derived(account.me?.ftpWatts ?? profile.current.ftp);
 	const custom = createCustomStore();
 
 	// ?from= copies a library workout as a starting point; ?w= edits a saved
