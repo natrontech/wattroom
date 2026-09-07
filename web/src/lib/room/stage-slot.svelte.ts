@@ -72,6 +72,27 @@ const ENOUGH_VISIBLE = 0.5;
 /** How often the offered hole is re-measured while it is on screen. */
 const MEASURE_MS = 100;
 
+/**
+ * Is any part of `rect` on screen? The observer is what decides "mostly
+ * visible"; this only catches the hole that is nowhere on screen at all — a
+ * drawer that slid away, a surface scrolled past.
+ *
+ * It exists because the two answers can disagree (#978). The observer runs
+ * inside the browser's rendering steps, so a frame that is never painted
+ * fires no observation — while `MEASURE_MS`'s timer keeps going and keeps
+ * republishing the last answer the observer gave. The rect is measured fresh
+ * every tick; asking it directly is what keeps a stale flag from parking the
+ * dock over whatever the seat left behind.
+ */
+export function onScreen(rect: DOMRectReadOnly): boolean {
+	return (
+		rect.right > 0 &&
+		rect.bottom > 0 &&
+		rect.left < window.innerWidth &&
+		rect.top < window.innerHeight
+	);
+}
+
 /** The seat a hole's rect amounts to; none while hidden or not laid out. */
 export function seatOf(rect: DOMRectReadOnly, visible: boolean): Seat | null {
 	return visible && rect.width > 0
@@ -180,7 +201,8 @@ export function offerSeat(node: HTMLElement, priority = 0): () => void {
 	const offer = { priority, seat: null as Seat | null };
 	offers.set(node, offer);
 	const publish = () => {
-		offer.seat = seatOf(node.getBoundingClientRect(), visible);
+		const rect = node.getBoundingClientRect();
+		offer.seat = seatOf(rect, visible && onScreen(rect));
 		settle();
 	};
 	const intersect = new IntersectionObserver(
