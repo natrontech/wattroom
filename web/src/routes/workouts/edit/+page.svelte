@@ -13,6 +13,7 @@
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byId, library } from '$lib/workout/library';
@@ -24,7 +25,10 @@
 	} from '$lib/workout/types';
 	import { validateWorkout } from '$lib/workout/validate';
 
-	const FTP = 265;
+	// The preview is what a rider steers by while authoring, so it scales to
+	// their own FTP — the profile the root layout syncs from the account (#1003).
+	const profile = createProfileStore();
+	const ftp = $derived(profile.current.ftp);
 	const custom = createCustomStore();
 
 	// ?from= copies a library workout as a starting point; ?w= edits a saved
@@ -81,7 +85,7 @@
 	const total = $derived(durationSeconds(workout));
 	const check = $derived(validateWorkout(workout));
 	const current = $derived(selected === null ? null : stepAt(selected));
-	const zones = $derived(plannedZoneSeconds(segments, FTP));
+	const zones = $derived(plannedZoneSeconds(segments, ftp));
 
 	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
 	// seconds were a dev unit that leaked into the UI.
@@ -123,7 +127,7 @@
 		if (step.type === 'repeat' || step.type === 'sprint') return 0;
 		const fraction =
 			step.type === 'steady' ? (step.target ?? 0) : (step.from + step.to) / 2;
-		return zoneOf(fraction * FTP, FTP);
+		return zoneOf(fraction * ftp, ftp);
 	}
 
 	function add(type: 'steady' | 'ramp' | 'sprint' | 'repeat') {
@@ -252,7 +256,7 @@
 			{segments}
 			{total}
 			elapsed={0}
-			ftp={FTP}
+			{ftp}
 			trace={[]}
 			selectedStep={selected?.[0] ?? null}
 			onSelect={(i) => (selected = [i])}
@@ -437,7 +441,7 @@
 								class="input mt-1 w-full font-mono tabular-nums"
 							/>
 							<span class="text-muted mt-1 block text-[11px]">
-								{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
+								{Math.round((current.target ?? 0) * ftp)} W at {ftp} FTP ·
 								{ZONE_NAMES[zoneOfStep(current)]}
 							</span>
 						</label>

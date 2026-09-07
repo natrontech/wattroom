@@ -12,6 +12,7 @@
 	} from '$lib/context-menu.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { formatClock } from '$lib/format';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import {
@@ -26,8 +27,10 @@
 		type Suggestion,
 	} from '$lib/progression';
 
-	// FTP only scales the preview here; the ride screen owns the real value (#16).
-	const previewFtp = 265;
+	// Same FTP the editor and the ride screen draw with (#1003) — one workout
+	// must not change colour between the card and the editor one click away.
+	const profile = createProfileStore();
+	const previewFtp = $derived(profile.current.ftp);
 
 	const custom = createCustomStore();
 	let active = $state<Focus | 'All'>('All');

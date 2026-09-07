@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Segment } from '$lib/workout/types';
 import { hrZoneOf, hrZoneRanges, plannedZoneSeconds, zoneOf } from './zones';
 
 describe('zoneOf', () => {
@@ -82,5 +83,22 @@ describe('plannedZoneSeconds', () => {
 			250,
 		);
 		expect(zones[4]).toBe(60);
+	});
+
+	// Why the editor's hardcoded 265 was a bug (#1003): the same workout is a
+	// different session at a different FTP, so the preview has to be told the
+	// rider's own number.
+	it('puts the same workout in different zones at different FTPs', () => {
+		const steps: Segment[] = [
+			{
+				kind: 'steady',
+				stepIndex: 0,
+				startSeconds: 0,
+				seconds: 60,
+				watts: 250,
+			},
+		];
+		expect(plannedZoneSeconds(steps, 265)[4]).toBe(60); // 94 % — tempo/threshold
+		expect(plannedZoneSeconds(steps, 180)[6]).toBe(60); // 139 % — anaerobic
 	});
 });

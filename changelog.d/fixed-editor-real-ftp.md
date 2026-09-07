@@ -1,0 +1,1 @@
+- The workout editor draws your workout against your own FTP. It previewed every workout at 265 W no matter what your FTP was, so the zone colours, the zone bar and the watts under each step belonged to somebody else — and the ride you got was not the ride the editor drew. The workouts list now uses your FTP too, so a workout does not change colour on the way into the editor.
