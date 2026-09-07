@@ -18,7 +18,7 @@
 	} from '$lib/board/clips.svelte';
 	import ClipEditor from '$lib/board/ClipEditor.svelte';
 	import KeyBinder from '$lib/board/KeyBinder.svelte';
-	import { toggleKey } from '$lib/board/toggle-key.svelte';
+	import ToggleBinder from '$lib/board/ToggleBinder.svelte';
 	import { learn, shapeOf } from '$lib/board/shapes.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
@@ -122,10 +122,14 @@
 	{/if}
 
 	<p class="text-muted mt-3 text-[11px]">
-		<span class="font-display text-ink/85">{toggleKey.label}</span> shows and hides
-		the board. A pad fires on the key next to it — click that key to change it, or
-		press Escape while it is listening to take the key away.
+		A pad fires on the key next to it, whether the board is showing or not —
+		click that key to change it, or press Escape while it is listening to take
+		the key away.
 	</p>
+
+	<!-- The chord was named here and nowhere changeable (#982): on a Mac the
+	     line was naming one that did not work, with no way out of it. -->
+	<ToggleBinder />
 
 	{#if board.clips.length > 0}
 		<ul class="mt-4 space-y-1">
