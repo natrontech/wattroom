@@ -86,9 +86,18 @@ type room struct {
 	// What to call them once the window is out: the socket that knew their
 	// name has gone by then.
 	departedNames map[string]string
+	// Who was in the room while the session ran, and when (ADR-0034): one
+	// span per rider, sampled by the tick, reset on start. Bounded by riders
+	// ever present in one session.
+	present map[string]*span
+	// The stored recap, waiting for the next tick to carry it to the room.
+	// Nil the rest of the time — unlike everything else the tick drains,
+	// this one is already durable.
+	recap *protocol.SessionRecap
 	// Who pressed start — the coach of record for Crew Chief.
 	startedBy string
 	xp        XpKeeper
+	recaps    RecapKeeper
 }
 
 // ridingWindow is how recent a sample must be to count as "riding now".
@@ -146,6 +155,7 @@ func newRoom(slug string) *room {
 		lastMetric:    make(map[string]time.Time),
 		voiceNow:      make(map[string]struct{}),
 		voiceMs:       make(map[string]int64),
+		present:       make(map[string]*span),
 		away:          make(map[string]struct{}),
 		departed:      make(map[string]time.Time),
 		departedNames: make(map[string]string),
@@ -416,6 +426,9 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 		rm.seenOrder = nil
 		rm.saved = false
 		rm.voiceMs = make(map[string]int64)
+		// A new session is a new recap: the last one's presence must not
+		// leak into it (ADR-0034).
+		rm.present = make(map[string]*span)
 		rm.startedBy = riderID
 	}
 	return rm.session.apply(c, now)

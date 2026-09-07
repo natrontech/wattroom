@@ -112,6 +112,9 @@ type Hub struct {
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
 	xp    XpKeeper
+	// What makes a finished session durable (ADR-0034). Nil = no database,
+	// and a session leaves nothing.
+	recaps RecapKeeper
 	// The lobby (#251): every signed-in client holds one socket here; holding
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
@@ -364,6 +367,7 @@ func (h *Hub) room(slug string) *room {
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug, true) }
 		rm.xp = h.xp
+		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
 		rm.voiceNow = h.voiceRidersLocked(slug)

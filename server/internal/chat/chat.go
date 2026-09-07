@@ -29,6 +29,16 @@ type Members interface {
 	RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
 }
 
+// Recaps is what the backlog borrows from the recap service (ADR-0034): the
+// room's durable session cards, merged into the same timeline the messages
+// are. One endpoint rather than two, because it is one question — "what has
+// happened in this room?" — behind one membership gate that is already
+// checked here. Optional: without it the timeline is messages and live
+// events, exactly as before.
+type Recaps interface {
+	List(ctx context.Context, roomID pgtype.UUID, limit int) ([]protocol.SessionRecap, error)
+}
+
 // Live is what chat borrows from the hub (#468): a line or a reaction posted
 // over HTTP by a member who is not in the room still has to reach the riders
 // who are, on the next tick, as if it had come over their socket. Optional:
@@ -47,6 +57,7 @@ type Service struct {
 	members Members
 	log     *slog.Logger
 	live    Live
+	recaps  Recaps
 }
 
 func New(st *store.Store, members Members, log *slog.Logger) *Service {
@@ -56,6 +67,9 @@ func New(st *store.Store, members Members, log *slog.Logger) *Service {
 // SetLive wires the hub in after construction — the hub needs this service
 // first, as its ChatKeeper.
 func (s *Service) SetLive(l Live) { s.live = l }
+
+// SetRecaps wires the session cards into the backlog (ADR-0034).
+func (s *Service) SetRecaps(r Recaps) { s.recaps = r }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rooms/{slug}/chat", s.handleBacklog)
@@ -307,7 +321,22 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		s.log.Warn("room read stamp", "err", err, "room", room.Slug)
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"messages": out, "readAt": readAt})
+	// The room's durable session cards (ADR-0034), on the same response as
+	// the messages they interleave with. A recap that cannot be read is not
+	// worth failing a conversation over: the timeline renders without it.
+	recaps := []protocol.SessionRecap{}
+	if s.recaps != nil {
+		// Bounded like the messages above and by the same argument — the
+		// backlog is what one scrollback can hold, not the whole history.
+		if rows, err := s.recaps.List(r.Context(), room.ID, 50); err == nil {
+			recaps = rows
+		} else {
+			s.log.Warn("list recaps", "err", err, "room", room.Slug)
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"messages": out, "readAt": readAt, "recaps": recaps,
+	})
 }
 
 // handlePost is a chat line from OUTSIDE the room (#468): a member who is

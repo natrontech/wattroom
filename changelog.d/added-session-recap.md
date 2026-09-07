@@ -1,0 +1,1 @@
+- A finished session now leaves a card in the room's chat: who was here, when each rider arrived and how long they stayed, with a filled dot for everyone who rode. It is the first thing in a room's timeline that is still there after a reload. Presence and time only — no watts, no kJ, no heart rate — and recaps are kept for 90 days.

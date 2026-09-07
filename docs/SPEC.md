@@ -277,6 +277,13 @@ future trainer that reports none.
 - **Lanterne Rouge** — last on the final sprint/podium metric but completed the session
 - Ties: earlier joiner wins. Minimum 3 riders for medals (default — tune in alpha).
 
+## Session recap retention (ADR-0034)
+
+- A finished session leaves **one recap** per session: who was in the room, when they arrived, how long they stayed, and whether they rode. **Presence and time only** — never watts, kJ, execution, heart rate or a per-rider workout.
+- **Kept 90 days**, then pruned. Long enough to answer "who rode with us last month"; short enough to stop answering "where was this person in March". A room is a crew, not an attendance register.
+- Readable by the room's **current members** only; leaving the room ends access. Deleting the room takes its recaps with it, and deleting an account removes that rider's interval from every recap that names them.
+- A session that never started leaves nothing. Sitting in a room with no session leaves nothing.
+
 ## Game mode parameters (defaults — tune in alpha)
 
 | Mode | Parameters |

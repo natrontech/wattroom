@@ -497,6 +497,49 @@ export interface JukeboxState {
   history: JukeboxEntry[];
 }
 /**
+ * SessionRecapRider is one person a session saw, and when — the only two
+ * things a recap may say about anybody (ADR-0034). No watts, no kJ, no
+ * execution, no heart rate, no per-rider workout: everyone in the room
+ * watched the roster, so the card writes down what they already saw, and
+ * WATTROOM.md's metrics rules stay exactly where they are.
+ */
+export interface SessionRecapRider {
+  /**
+   * The rider's user id, so the client can key a row and an account purge
+   * can find the intervals it has to remove. A display name identifies
+   * nobody reliably.
+   */
+  id: string;
+  rider: string;
+  /**
+   * Unix millis: first and last time the session saw them present.
+   */
+  from: number /* int64 */;
+  to: number /* int64 */;
+  /**
+   * They have a ride row for this session — a filled pip. False is the
+   * coach without a trainer, or the person on the sofa in voice.
+   */
+  rode: boolean;
+}
+/**
+ * SessionRecap is what a finished session leaves behind (ADR-0034): the first
+ * thing in this app that survives a reload of the room's timeline. Written
+ * once when the session ends, rendered as one collapsed card the chat pane
+ * merges in by timestamp — the artifact ADR-0022 said to build if riders ever
+ * asked, rather than the persisted event stream it refused.
+ */
+export interface SessionRecap {
+  id: string;
+  workout: string;
+  /**
+   * Unix millis, the shared timeline's own clock.
+   */
+  startedAt: number /* int64 */;
+  endedAt: number /* int64 */;
+  riders: SessionRecapRider[];
+}
+/**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
  * sample, the roster, and the shared session state.
  */
@@ -528,6 +571,13 @@ export interface ServerTick {
    * follow-up, unlocking reactions on them.
    */
   chatIds?: ChatID[];
+  /**
+   * The recap of the session that just ended (ADR-0034), on the tick where
+   * the row lands — the async write's follow-up, the same shape ChatIDs
+   * already uses. Everyone else gets it from the backlog on their next
+   * join, because unlike everything above it, this one is durable.
+   */
+  recap?: SessionRecap;
   /**
    * What the room did this second (#321) — jukebox actions the chat pane
    * interleaves with the talking. Ephemeral, like the cheers above.

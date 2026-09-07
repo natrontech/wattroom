@@ -40,6 +40,7 @@
 	import { formatTime } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
+	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import { eventText } from '$lib/room/timeline';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -249,7 +250,11 @@
 				{@render emptyState()}
 			{:else}
 				{#each timeline as entry, i (entry.key)}
-					{#if entry.kind === 'event'}
+					{#if entry.kind === 'recap'}
+						<!-- The one entry that survives a reload (ADR-0034), and so
+						     the only one with a border. -->
+						<SessionRecapCard recap={entry.recap} />
+					{:else if entry.kind === 'event'}
 						<!-- An event, not a message: no avatar, no reactions, nothing to
 						     copy. The room talking about itself stays quieter than the
 						     people in it. -->

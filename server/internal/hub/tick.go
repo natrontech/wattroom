@@ -147,9 +147,16 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
+		// Who the session has seen, sampled once a second while it runs
+		// (ADR-0034). Cheap, and it needs no join/leave hook: the roster is
+		// right here, already folded across a rider's several screens.
+		if tick.State.Phase == "countdown" || tick.State.Phase == "running" || tick.State.Phase == "paused" {
+			rm.sawLocked(now())
+		}
 		var closing []RiderRecord
 		var closingMeta protocol.SessionState
 		var closed *SessionClosed
+		var recap *protocol.SessionRecap
 		if tick.State.Phase == "done" && !rm.saved {
 			rm.saved = true
 			closingMeta = tick.State
@@ -163,7 +170,16 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			if rm.xp != nil {
 				closed = rm.closedLocked(tick.State, now())
 			}
+			// A session that ran leaves a recap; one that never started
+			// leaves nothing, which is what an empty presence map means.
+			if rm.recaps != nil && len(rm.present) > 0 {
+				snapshot := rm.recapLocked(tick.State, now())
+				recap = &snapshot
+			}
 		}
+		// The stored row, on the first tick after the write came back.
+		tick.Recap = rm.recap
+		rm.recap = nil
 		clients := make([]*client, 0, len(rm.clients))
 		// One roster entry per rider, however many sockets they hold — the same
 		// person on a dashboard and a phone is one presence, and duplicate ids
@@ -217,6 +233,13 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 		if sprintWinner != "" && rm.xp != nil {
 			rm.xp.SprintWon(rm.slug, sprintWinner, now())
+		}
+		// Outside the lock like every other hand-off, and on its own
+		// goroutine because this one reaches the database: the keeper writes
+		// the row and posts it back for the next tick to carry (ADR-0034).
+		if recap != nil {
+			keeper, slug := rm.recaps, rm.slug
+			safego.Go(log, "session recap "+slug, func() { keeper.SaveRecap(slug, *recap) })
 		}
 
 		metricTicks.Inc()
