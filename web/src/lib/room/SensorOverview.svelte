@@ -182,9 +182,7 @@
 					>Unpair trainer</button
 				>
 			{:else if trainerView.button}
-				<button
-					onclick={trainer.onPair}
-					class="btn btn-secondary btn-xs"
+				<button onclick={trainer.onPair} class="btn btn-secondary btn-xs"
 					>{trainerView.button.label === 'Pair'
 						? 'Pair trainer'
 						: trainerView.button.label}</button

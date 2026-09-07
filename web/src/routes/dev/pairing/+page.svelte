@@ -39,9 +39,14 @@
 		{
 			name: 'failed',
 			state: 'failed',
-			error: 'The trainer stopped responding after pairing. Wake it up — spin the cranks — then try again.',
+			error:
+				'The trainer stopped responding after pairing. Wake it up — spin the cranks — then try again.',
 		},
-		{ name: 'on another screen (#610)', state: 'idle', elsewhere: 'on your phone' },
+		{
+			name: 'on another screen (#610)',
+			state: 'idle',
+			elsewhere: 'on your phone',
+		},
 	];
 
 	let picked = $state(0);
@@ -49,7 +54,9 @@
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">The sensor card</h1>
+	<h1 class="font-display text-3xl font-bold tracking-tight">
+		The sensor card
+	</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		One card answers "is my trainer connected?" on /pair, /ride, /ramp and in
 		the Training place. The real one is below — pick a state.
@@ -105,7 +112,9 @@
 	>
 		<Logo size={40} />
 		<div>
-			<p class="text-sm">The real screen is <a href="/pair" class="underline">/pair</a>.</p>
+			<p class="text-sm">
+				The real screen is <a href="/pair" class="underline">/pair</a>.
+			</p>
 			<p class="text-muted mt-1 text-xs">
 				WattRoom talks to your trainer straight from this browser — nothing is
 				installed, and your power never leaves the room you're riding in.
