@@ -4,25 +4,26 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import StepList from './StepList.svelte';
 	import {
 		plannedZoneSeconds,
-		ZONE_BG,
 		ZONE_NAMES,
-		zoneOf,
+		zoneOfStep,
 	} from '$lib/components/zones';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
-	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
+	import {
+		duplicate,
+		move,
+		remove,
+		stepAt,
+		wrapInRepeat,
+	} from '$lib/workout/tree';
 	import { byId, library } from '$lib/workout/library';
-	import type {
-		RampStep,
-		SteadyStep,
-		Workout,
-		WorkoutStep,
-	} from '$lib/workout/types';
+	import type { RampStep, SteadyStep, Workout } from '$lib/workout/types';
 	import { validateWorkout } from '$lib/workout/validate';
 
 	// The rider steers by this preview — it is the workout they are about to
@@ -63,28 +64,13 @@
 			: null,
 	);
 
-	function stepAt(path: number[]): WorkoutStep | undefined {
-		let step: WorkoutStep | undefined = workout.steps[path[0]];
-		for (const i of path.slice(1)) {
-			if (step?.type !== 'repeat') return undefined;
-			step = step.steps[i];
-		}
-		return step;
-	}
-
-	function siblingsOf(path: number[]): WorkoutStep[] {
-		if (path.length === 1) return workout.steps;
-		const parent = stepAt(path.slice(0, -1));
-		return parent?.type === 'repeat' ? parent.steps : [];
-	}
-
-	const isSelected = (path: number[]) => selected?.join('.') === path.join('.');
-
 	// The preview runs the real engine, so it cannot flatter the JSON.
 	const segments = $derived(flatten(workout));
 	const total = $derived(durationSeconds(workout));
 	const check = $derived(validateWorkout(workout));
-	const current = $derived(selected === null ? null : stepAt(selected));
+	const current = $derived(
+		selected === null ? null : stepAt(workout, selected),
+	);
 	const zones = $derived(plannedZoneSeconds(segments, FTP));
 
 	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
@@ -100,95 +86,6 @@
 		return seconds !== null && seconds >= 5 && seconds <= 24 * 60 * 60
 			? seconds
 			: null;
-	}
-
-	function stepSeconds(step: WorkoutStep): number {
-		if (step.type === 'repeat') {
-			return (
-				step.times *
-				step.steps.reduce((sum, inner) => sum + stepSeconds(inner), 0)
-			);
-		}
-		return step.seconds;
-	}
-
-	function describe(step: WorkoutStep): string {
-		if (step.type === 'repeat') return `${step.times} ×`;
-		if (step.type === 'sprint') return 'all out';
-		if (step.type === 'steady') {
-			return step.watts !== undefined
-				? `${step.watts} W`
-				: `${Math.round((step.target ?? 0) * 100)}% FTP`;
-		}
-		return `${Math.round(step.from * 100)} → ${Math.round(step.to * 100)}% FTP`;
-	}
-
-	function zoneOfStep(step: WorkoutStep): number {
-		if (step.type === 'repeat' || step.type === 'sprint') return 0;
-		const fraction =
-			step.type === 'steady' ? (step.target ?? 0) : (step.from + step.to) / 2;
-		return zoneOf(fraction * FTP, FTP);
-	}
-
-	function add(type: 'steady' | 'ramp' | 'sprint' | 'repeat') {
-		const step: WorkoutStep =
-			type === 'steady'
-				? { type: 'steady', seconds: 300, target: 0.75 }
-				: type === 'ramp'
-					? { type: 'ramp', seconds: 300, from: 0.5, to: 0.8 }
-					: type === 'sprint'
-						? { type: 'sprint', seconds: 15 }
-						: {
-								type: 'repeat',
-								times: 3,
-								steps: [
-									{ type: 'steady', seconds: 300, target: 0.9 },
-									{ type: 'steady', seconds: 180, target: 0.5 },
-								],
-							};
-		workout.steps = [...workout.steps, step];
-		selected = [workout.steps.length - 1];
-	}
-
-	function addInto(path: number[]) {
-		const rep = stepAt(path);
-		if (rep?.type !== 'repeat') return;
-		// ponytail: steady only — over-unders are steady pairs; other types via top-level
-		rep.steps.push({ type: 'steady', seconds: 300, target: 0.9 });
-		selected = [...path, rep.steps.length - 1];
-	}
-
-	// Drag to reorder (#170's intuitiveness bar): native HTML5 drag, no
-	// dependency. The arrow buttons stay — drag is mouse-only and the
-	// keyboard path is part of the editor, not a fallback.
-	let dragIndex = $state<number | null>(null);
-	let dropIndex = $state<number | null>(null);
-	function dropStep() {
-		if (dragIndex === null || dropIndex === null || dragIndex === dropIndex) {
-			dragIndex = dropIndex = null;
-			return;
-		}
-		const next = [...workout.steps];
-		const [moved] = next.splice(dragIndex, 1);
-		next.splice(dropIndex > dragIndex ? dropIndex - 1 : dropIndex, 0, moved);
-		workout.steps = next;
-		selected = [dropIndex > dragIndex ? dropIndex - 1 : dropIndex];
-		dragIndex = dropIndex = null;
-	}
-
-	function move(path: number[], by: number) {
-		const arr = siblingsOf(path);
-		const index = path[path.length - 1];
-		const to = index + by;
-		if (to < 0 || to >= arr.length) return;
-		[arr[index], arr[to]] = [arr[to], arr[index]];
-		selected = [...path.slice(0, -1), to];
-	}
-
-	function remove(path: number[]) {
-		const arr = siblingsOf(path);
-		arr.splice(path[path.length - 1], 1);
-		selected = null;
 	}
 
 	// Loading replaces the sheet with a copy — the library stays pristine and a
@@ -258,8 +155,8 @@
 			elapsed={0}
 			ftp={FTP}
 			trace={[]}
-			selectedStep={selected?.[0] ?? null}
-			onSelect={(i) => (selected = [i])}
+			selectedPath={selected}
+			onSelect={(path) => (selected = path)}
 		/>
 		<div class="border-ink/5 border-t px-4 py-3">
 			<ZoneBar seconds={zones} legend />
@@ -308,101 +205,7 @@
 		</aside>
 
 		<section>
-			<h2 class="eyebrow">steps</h2>
-			<ul class="mt-3 space-y-1.5">
-				{#snippet stepRow(step: WorkoutStep, path: number[])}
-					{@const i = path[0]}
-					{@const top = path.length === 1}
-					<li
-						draggable={top}
-						ondragstart={top
-							? (e) => {
-									dragIndex = i;
-									e.dataTransfer?.setData('text/plain', String(i));
-									if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-								}
-							: undefined}
-						ondragover={top
-							? (e) => {
-									e.preventDefault();
-									const rect = e.currentTarget.getBoundingClientRect();
-									dropIndex =
-										e.clientY < rect.top + rect.height / 2 ? i : i + 1;
-								}
-							: undefined}
-						ondrop={top
-							? (e) => {
-									e.preventDefault();
-									dropStep();
-								}
-							: undefined}
-						ondragend={top ? () => (dragIndex = dropIndex = null) : undefined}
-						class="{top && dragIndex === i ? 'opacity-40' : ''} {top &&
-						dropIndex === i
-							? 'border-t-neon/70 border-t-2'
-							: top && dropIndex === i + 1 && i === workout.steps.length - 1
-								? 'border-b-neon/70 border-b-2'
-								: ''} rounded-lg {top
-							? 'cursor-grab active:cursor-grabbing'
-							: ''}"
-					>
-						<button
-							onclick={() => (selected = path)}
-							class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left {isSelected(
-								path,
-							)
-								? 'bg-surface-raised border-ink/40'
-								: 'border-muted/15 hover:border-muted/40'}"
-						>
-							{#if top}
-								<GripVertical size={14} class="text-muted/50 -ml-1 shrink-0" />
-							{/if}
-							<span
-								class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
-									? 'bg-z7'
-									: step.type === 'repeat'
-										? 'bg-muted/40'
-										: ZONE_BG[zoneOfStep(step)]}"
-							></span>
-							<span class="min-w-0 flex-1">
-								<span class="block text-sm font-medium capitalize"
-									>{step.type}</span
-								>
-								<span class="text-muted block text-xs">{describe(step)}</span>
-							</span>
-							<span class="text-muted shrink-0 font-mono text-xs tabular-nums"
-								>{formatClock(stepSeconds(step))}</span
-							>
-						</button>
-						{#if step.type === 'repeat'}
-							<!-- The repeat's own steps, indented and just as editable (#255). -->
-							<ul class="mt-1.5 mb-1 ml-7 space-y-1.5">
-								{#each step.steps as inner, j (j)}
-									{@render stepRow(inner, [...path, j])}
-								{/each}
-								<li>
-									<button
-										onclick={() => addInto(path)}
-										class="btn btn-secondary btn-xs">+ step</button
-									>
-								</li>
-							</ul>
-						{/if}
-					</li>
-				{/snippet}
-				{#each workout.steps as step, i (i)}
-					{@render stepRow(step, [i])}
-				{/each}
-			</ul>
-
-			<div class="mt-3 flex flex-wrap gap-2">
-				{#each ['steady', 'ramp', 'repeat', 'sprint'] as type (type)}
-					<button
-						onclick={() => add(type as 'steady' | 'ramp' | 'sprint' | 'repeat')}
-						class="btn btn-secondary btn-xs capitalize">+ {type}</button
-					>
-				{/each}
-			</div>
+			<StepList {workout} bind:selected ftp={FTP} />
 		</section>
 
 		<aside>
@@ -442,7 +245,7 @@
 							/>
 							<span class="text-muted mt-1 block text-[11px]">
 								{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
-								{ZONE_NAMES[zoneOfStep(current)]}
+								{ZONE_NAMES[zoneOfStep(current, FTP)]}
 							</span>
 						</label>
 						<!-- Cadence band (#66): display-only, and optional — most steps
@@ -557,19 +360,38 @@
 						</p>
 					{/if}
 
-					<div class="border-ink/5 flex gap-2 border-t pt-3">
+					<!-- Every verb the step's right-click menu holds, visible: a menu
+					     is a shortcut, never the only way (ux.md). -->
+					<div class="border-ink/5 flex flex-wrap gap-2 border-t pt-3">
 						<button
-							onclick={() => move(selected!, -1)}
+							onclick={() =>
+								(selected = move(workout, selected!, -1) ?? selected)}
 							class="btn btn-secondary btn-xs"
 							aria-label="Move step up">↑</button
 						>
 						<button
-							onclick={() => move(selected!, 1)}
+							onclick={() =>
+								(selected = move(workout, selected!, 1) ?? selected)}
 							class="btn btn-secondary btn-xs"
 							aria-label="Move step down">↓</button
 						>
 						<button
-							onclick={() => remove(selected!)}
+							onclick={() =>
+								(selected = duplicate(workout, selected!) ?? selected)}
+							class="btn btn-secondary btn-xs">Duplicate</button
+						>
+						{#if current.type !== 'repeat'}
+							<button
+								onclick={() =>
+									(selected = wrapInRepeat(workout, selected!) ?? selected)}
+								class="btn btn-secondary btn-xs">Wrap in a repeat</button
+							>
+						{/if}
+						<button
+							onclick={() => {
+								remove(workout, selected!);
+								selected = null;
+							}}
 							class="btn btn-danger btn-xs ml-auto">Delete</button
 						>
 					</div>

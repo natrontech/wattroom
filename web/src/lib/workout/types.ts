@@ -70,8 +70,13 @@ export interface Segment {
 	/** HR band carried from the step (steady only, display-only, bpm) */
 	hrLow?: number;
 	hrHigh?: number;
-	/** index into the original (unexpanded) step list, for UI highlighting */
-	stepIndex: number;
+	/**
+	 * Path into the original (unexpanded) step tree, for UI highlighting:
+	 * `[i]` a top-level step, `[i, j]` a step inside a repeat. Every pass of a
+	 * repeat carries the same path — the tree has one node per step, however
+	 * many times it is ridden.
+	 */
+	stepPath: number[];
 }
 
 export interface TargetInfo {

@@ -248,7 +248,7 @@ describe('the personal guards in a group ride (#788)', () => {
 					seconds: 600,
 					fromFraction: 1,
 					toFraction: 1,
-					stepIndex: 0,
+					stepPath: [0],
 				},
 			],
 		};

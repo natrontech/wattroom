@@ -96,7 +96,7 @@ export function describeBlock(
 	const label = (seg: Segment | undefined): string => {
 		if (!seg) return '';
 		if (seg.kind === 'sprint') return 'Sprint';
-		const step = workout?.steps[seg.stepIndex];
+		const step = workout?.steps[seg.stepPath[0]];
 		if (step?.type === 'warmup') return 'Warm-up';
 		if (step?.type === 'cooldown') return 'Cool-down';
 		const mid =
