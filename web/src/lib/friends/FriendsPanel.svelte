@@ -108,7 +108,15 @@
 	const accepted = $derived(
 		(list ?? []).filter((f) => f.status === 'accepted'),
 	);
-	const pending = $derived((list ?? []).filter((f) => f.status !== 'accepted'));
+	// The two halves of "pending" mean opposite things and only one is
+	// actionable (#1010): someone waiting on YOU goes first and loud, you
+	// waiting on THEM goes last and quiet.
+	const incoming = $derived(
+		(list ?? []).filter((f) => f.status === 'pending_in'),
+	);
+	const outgoing = $derived(
+		(list ?? []).filter((f) => f.status === 'pending_out'),
+	);
 </script>
 
 <section class="mt-6">
@@ -127,6 +135,36 @@
 				to see when they're around.
 			</p>
 		{:else}
+			{#if incoming.length > 0}
+				<!-- Above everything, because it is the only part of this page
+				     that is waiting on you. -->
+				<div class="eyebrow mt-3 px-1 pb-1">wants to be friends</div>
+				<div class="panel">
+					{#each incoming as friend (friend.id)}
+						<div
+							class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+						>
+							<!-- Someone asking you gets a page: see who before you accept. -->
+							<a
+								href="/u/{friend.id}"
+								class="text-sm font-medium hover:underline">{friend.name}</a
+							>
+							<span class="ml-auto flex shrink-0 items-center gap-3">
+								<button
+									onclick={() =>
+										act(`/api/friends/${friend.id}/accept`, 'POST')}
+									class="btn btn-primary btn-xs">Accept</button
+								>
+								<button
+									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
+									class="text-muted hover:text-ink text-xs">dismiss</button
+								>
+							</span>
+						</div>
+					{/each}
+				</div>
+				<div class="eyebrow mt-4 px-1 pb-1">your friends</div>
+			{/if}
 			<div class="panel mt-3">
 				{#each accepted as friend (friend.id)}
 					<div
@@ -198,39 +236,16 @@
 						</span>
 					</div>
 				{/each}
-				{#each pending as friend (friend.id)}
+				{#each outgoing as friend (friend.id)}
 					<div
-						class="border-muted/10 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+						class="border-muted/10 text-muted flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
 					>
-						{#if friend.status === 'pending_in'}
-							<!-- Someone asking you gets a page: see who before you accept. -->
-							<a
-								href="/u/{friend.id}"
-								class="text-sm font-medium hover:underline">{friend.name}</a
-							>
-						{:else}
-							<span class="text-sm font-medium">{friend.name}</span>
-						{/if}
-						{#if friend.status === 'pending_in'}
-							<span class="text-muted text-xs">wants to be friends</span>
-							<span class="ml-auto flex shrink-0 items-center gap-3">
-								<button
-									onclick={() =>
-										act(`/api/friends/${friend.id}/accept`, 'POST')}
-									class="btn btn-primary btn-xs">Accept</button
-								>
-								<button
-									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-									class="text-muted hover:text-ink text-xs">dismiss</button
-								>
-							</span>
-						{:else}
-							<span class="text-muted text-xs">asked — waiting on them</span>
-							<button
-								onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-								class="text-muted hover:text-ink ml-auto text-xs">cancel</button
-							>
-						{/if}
+						<span class="text-sm">{friend.name}</span>
+						<span class="text-xs">asked — waiting on them</span>
+						<button
+							onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
+							class="hover:text-ink ml-auto text-xs">cancel</button
+						>
 					</div>
 				{/each}
 			</div>

@@ -1,0 +1,2 @@
+- A waiting friend request now shows as a count beside "friends" in the sidebar, the way an unread room or DM does. It used to announce itself once and then leave no trace, so if you were riding or the tab was closed you found out the next time you happened to open the page.
+- The friends page puts requests waiting on you at the top, in their own section, and the ones you are waiting on quietly at the bottom. They were one list, mixed together, below your friends.
