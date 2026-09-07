@@ -110,11 +110,15 @@
 			boardPanel.toggle();
 			return;
 		}
-		// Nothing below fires while the board is away, or under a surface the
-		// rider opened: a pad must not go off behind the library or the editor.
-		if (!boardPanel.open || covered) return;
+		// A pad fires whether the panel is showing or not (#982). Hitting it
+		// without looking is the whole pitch, and a rider hides the board
+		// precisely once they have learnt the keys and want the screen back
+		// for the ride — the same reason this component stays mounted while it
+		// is closed. What must still stop a pad is a surface the rider opened
+		// over it: it cannot go off behind the library or the editor.
+		if (covered) return;
 		if (event.key === 'Escape') {
-			boardPanel.hide();
+			if (boardPanel.open) boardPanel.hide();
 			return;
 		}
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
