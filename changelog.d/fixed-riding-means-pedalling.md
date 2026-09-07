@@ -1,1 +1,0 @@
-- Your friends see you as **riding** only while you are actually pedalling. Pairing a trainer and walking away used to leave you marked as riding for as long as the tab stayed open, and the same rider could read as riding on the friends list and online in the room they were standing in.
