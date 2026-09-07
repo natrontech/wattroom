@@ -47,7 +47,7 @@ export const test = base.extend<{
 			await context.addInitScript(() =>
 				localStorage.setItem(
 					'wattroom.mixer.v1',
-					JSON.stringify({ music: 0, cues: 0 }),
+					JSON.stringify({ music: 0, cues: 0, board: 0 }),
 				),
 			);
 			const page = await context.newPage();

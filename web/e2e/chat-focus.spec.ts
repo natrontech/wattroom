@@ -5,7 +5,7 @@ test('opening room chat focuses its composer', async ({ page, rooms }) => {
 	await page.addInitScript(() =>
 		localStorage.setItem(
 			'wattroom.mixer.v1',
-			JSON.stringify({ music: 0, cues: 0 }),
+			JSON.stringify({ music: 0, cues: 0, board: 0 }),
 		),
 	);
 	await signInAs(page, 'Chat Focus', '/rooms');

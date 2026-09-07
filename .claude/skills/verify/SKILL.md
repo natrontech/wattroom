@@ -6,10 +6,19 @@ description: Verify a WattRoom change end-to-end by running the real app, not ju
 # Verify a change in the running app
 
 **Mute first.** Anything you queue plays out of the operator's speakers. Before
-starting playback, set `music` to 0 (and `cues` to 0 if the flow rings any) in
-`wattroom.mixer.v1` in the browser's localStorage — the store reads it on load,
-so do it before the room page mounts, or reload after. Skip this only when the
-audio is what you are verifying. See AGENTS.md, Hard rules.
+starting playback, write all three channels of `wattroom.mixer.v1` in the
+browser's localStorage at once:
+
+```js
+localStorage.setItem('wattroom.mixer.v1', JSON.stringify({ music: 0, cues: 0, board: 0 }));
+```
+
+`board` is the soundboard's own fader and defaults to 0.7, so an object that
+names only `music` and `cues` replaces the stored one and leaves the board
+audible — the rule looks obeyed and a clip still fires into the room (#990).
+The store reads it on load, so do this before the room page mounts, or reload
+after. Skip it only when the audio is what you are verifying. See AGENTS.md,
+Hard rules.
 
 1. `make test && make lint` — baseline. Race detector is on; flaky-under-race means broken.
 2. Static path (fastest full-stack check):
