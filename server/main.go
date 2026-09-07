@@ -361,9 +361,16 @@ func serveSPA(dist fs.FS, social *og.Service) http.Handler {
 				// re-downloads the whole shell on every cold load. SvelteKit
 				// hashes everything under _app/immutable/ into its filename,
 				// which is exactly what an immutable cache wants — the same
-				// header chat and DM images already carry.
+				// header chat and DM images already carry. Pinning these for a
+				// year is only safe while the document naming them
+				// revalidates; see the fallback below (#966).
 				if strings.HasPrefix(r.URL.Path, immutablePrefix) {
 					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				} else {
+					// Everything else keeps its name across builds —
+					// favicon.png, changelog.md — so with no validator either
+					// it must be revalidated, not guessed at (#966).
+					w.Header().Set("Cache-Control", "no-cache")
 				}
 				fileServer.ServeHTTP(w, r)
 				return
@@ -374,6 +381,13 @@ func serveSPA(dist fs.FS, social *og.Service) http.Handler {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
+		// The document that names the current hashes has to be re-checked on
+		// every visit. It went out with no directive and no validator, so a
+		// browser was free to keep it — and once the hashes it names are
+		// pinned for a year, a rider is stuck on that release until they hard
+		// reload (#966). `no-cache` is "store it, but ask first", not "do not
+		// store": the shell is a few KB and only it has to be revalidated.
+		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(social.Inject(index, r))
 	})
