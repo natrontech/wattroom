@@ -17,6 +17,26 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.39] - 2026-09-07
+
+### Added
+
+- The workout editor has undo and redo: ⌘Z / Ctrl+Z steps back through every edit — added and deleted steps, drags, duplicates, typed numbers, a workout loaded from the library — and ⇧⌘Z goes forward again. Undoing a delete brings the step back selected, and a run of typing in one field is a single step back rather than forty.
+- A finished ride now shows itself against your own best ride of the same workout — average watts, execution and energy, with the difference beside each. The first time you ride something it says so instead of comparing the ride to itself. Underneath, your best 20-minute power names the window it belongs to, and says when the 90-day best is one you set recently.
+- Your trophy case and your own profile now show what you have actually done here: hours in voice, sessions you were in voice for, sessions you coached, sprint wins, and tracks the room played to the end. The server had been counting all of it to award badges and then throwing the numbers away. Your level also says where it came from — riding, in voice, sessions, trophies. These are yours alone for now: four of them are the same numbers your unearned badges are measured by, which stay private.
+- Sit out the room's music without stopping it for anyone else: **Skip for me** drops you out until the next track starts, **Stop for me** until you press Rejoin. Your player unloads, so nothing streams while you are out, and rejoining lands you back on the room's playhead. Stepping away now does the same.
+
+### Changed
+
+- Steps inside a repeat are now as editable as any other: drag them to reorder, add a ramp or a sprint or another repeat inside the set, and click a repeat's block on the graph to select that exact step instead of the whole block. Every step also gained a right-click menu and a Duplicate — building `4 × (3 min hard / 1 min ramp / 2 min easy)` no longer means writing every rep out by hand.
+
+### Fixed
+
+- A waiting friend request now shows as a count beside "friends" in the sidebar, the way an unread room or DM does. It used to announce itself once and then leave no trace, so if you were riding or the tab was closed you found out the next time you happened to open the page.
+- The friends page puts requests waiting on you at the top, in their own section, and the ones you are waiting on quietly at the bottom. They were one list, mixed together, below your friends.
+- Long-pressing an item that sits inside another item with its own right-click menu now opens the item you pressed, not its container.
+- The Sensors page can pair your trainer. It used to send you into a room to do it — on the one screen named for setting up equipment. Pairing now looks and reads the same everywhere: the Sensors page, the solo ride and ramp screens, and the room all draw one card, which says what is connected, what it is reporting, and what to do when it isn't.
+
 ## [2026.09.38] - 2026-09-07
 
 ### Added
@@ -989,7 +1009,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.38...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.39...HEAD
+[2026.09.39]: https://github.com/natrontech/wattroom/compare/2026.09.38...2026.09.39
 [2026.09.38]: https://github.com/natrontech/wattroom/compare/2026.09.37...2026.09.38
 [2026.09.37]: https://github.com/natrontech/wattroom/compare/2026.09.36...2026.09.37
 [2026.09.36]: https://github.com/natrontech/wattroom/compare/2026.09.35...2026.09.36

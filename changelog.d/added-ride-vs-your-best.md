@@ -1,1 +1,0 @@
-- A finished ride now shows itself against your own best ride of the same workout — average watts, execution and energy, with the difference beside each. The first time you ride something it says so instead of comparing the ride to itself. Underneath, your best 20-minute power names the window it belongs to, and says when the 90-day best is one you set recently.

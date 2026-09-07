@@ -1,1 +1,0 @@
-- Long-pressing an item that sits inside another item with its own right-click menu now opens the item you pressed, not its container.
