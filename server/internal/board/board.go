@@ -70,6 +70,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/board/clips", s.handleUpload)
 	mux.HandleFunc("DELETE /api/board/clips/{id}", s.handleDelete)
 	mux.HandleFunc("PUT /api/board/clips/{id}/pad", s.handlePad)
+	mux.HandleFunc("PUT /api/board/clips/{id}/name", s.handleName)
 	mux.HandleFunc("PUT /api/board/clips/{id}/key", s.handleKey)
 	mux.HandleFunc("PUT /api/board/clips/{id}/edit", s.handleEdit)
 	mux.HandleFunc("GET /api/board/clips/{id}/audio", s.handleAudio)
@@ -386,6 +387,49 @@ type keyJSON struct {
 // handleKey binds one key to one clip. Whatever held that key is unbound
 // first, so a rider moving a key never has to clear the old one — the same
 // courtesy handlePad does for pads.
+type nameJSON struct {
+	Name string `json:"name"`
+}
+
+// A clip's name was set once, from the uploaded file's stem, and a bad one
+// could only be fixed by uploading the file again (#981). The bound and the
+// refusal are the upload's, word for word: one rule, said one way.
+func (s *Service) handleName(w http.ResponseWriter, r *http.Request) {
+	me, ok := s.me(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	var body nameJSON
+	if err := httpx.DecodeStrict(r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a name.")
+		return
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" || utf8.RuneCountInString(name) > maxNameRunes {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A clip needs a name, up to 32 characters.", "name")
+		return
+	}
+	n, err := s.store.Queries.SetBoardClipName(r.Context(), db.SetBoardClipNameParams{ID: id, UserID: me.ID, Name: name})
+	if err != nil {
+		s.log.Error("set board name", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The name could not be changed.")
+		return
+	}
+	// Somebody else's clip is not found rather than forbidden: the id of a
+	// clip you cannot see is not yours to have confirmed.
+	if n == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Service) handleKey(w http.ResponseWriter, r *http.Request) {
 	me, ok := s.me(w, r)
 	if !ok {

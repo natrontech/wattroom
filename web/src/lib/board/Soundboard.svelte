@@ -214,7 +214,11 @@
 		</div>
 
 		{#if face === 'board'}
-			<BoardFace mine={mine?.pad} onPress={press} />
+			<BoardFace
+				mine={mine?.pad}
+				onPress={press}
+				onAudition={(clip) => void preview(clip.id, me, clip)}
+			/>
 
 			<!-- The board's own fader (ADR-0033): pulling the cues down for a quiet
 			     ride never silences it, and this never costs you the countdown. -->

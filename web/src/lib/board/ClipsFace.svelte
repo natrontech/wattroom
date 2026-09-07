@@ -13,6 +13,7 @@
 	import {
 		assign,
 		board,
+		movePad,
 		keptMillis,
 		MIN_PADS,
 		remove,
@@ -198,7 +199,7 @@
 					<select
 						value={clip.pad ?? ''}
 						onchange={(e) =>
-							void assign(
+							void movePad(
 								clip.id,
 								e.currentTarget.value ? Number(e.currentTarget.value) : null,
 							)}
@@ -207,7 +208,9 @@
 						<option value="">no pad</option>
 						{#each padOptions(clip) as option (option.pad)}
 							<option value={option.pad}>
-								{option.pad}{option.taken && !option.mine ? ' · replaces' : ''}
+								{option.pad}{option.taken && !option.mine
+									? ` · swaps with ${option.taken.name}`
+									: ''}
 							</option>
 						{/each}
 					</select>

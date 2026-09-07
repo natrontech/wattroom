@@ -43,6 +43,11 @@ where id = $1 and user_id = $2;
 -- What the edit is validated against: the uploaded file's own length.
 select duration_ms from board_clips where id = $1 and user_id = $2;
 
+-- name: SetBoardClipName :execrows
+-- A name is the rider's to change (#981). It was set once, from the uploaded
+-- file's stem, and there was no way to fix a bad one but to upload again.
+update board_clips set name = $3 where id = $1 and user_id = $2;
+
 -- name: SetBoardClipKey :execrows
 -- Null clears the binding: a clip with no key is tapped, never fired blind.
 update board_clips set key = $3 where id = $1 and user_id = $2;

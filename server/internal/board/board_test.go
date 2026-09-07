@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -425,6 +426,51 @@ func TestBindingAKeyMovesIt(t *testing.T) {
 				t.Errorf("AIRHORN kept %q; the key moved to COWBELL", *clip.Key)
 			}
 		}
+	}
+}
+
+// A name was set once, from the file's stem, and a bad one could only be
+// fixed by uploading again (#981).
+func TestRename(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/name", []byte(`{"name":"  KLAXON  "}`)); rec.Code != http.StatusNoContent {
+		t.Fatalf("rename: %d %s", rec.Code, rec.Body)
+	}
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	if len(list.Clips) != 1 || list.Clips[0].Name != "KLAXON" {
+		t.Fatalf("clips = %+v; want the one clip renamed and trimmed to KLAXON", list.Clips)
+	}
+}
+
+func TestRenameRefusals(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	tests := []struct {
+		name, who, id, body string
+		want                int
+	}{
+		{"signed out", "", clip.ID, `{"name":"KLAXON"}`, http.StatusUnauthorized},
+		// The id of a clip you cannot see is not yours to have confirmed.
+		{"somebody else's clip", "bob", clip.ID, `{"name":"KLAXON"}`, http.StatusNotFound},
+		{"no such clip", "alice", "11111111-1111-1111-1111-111111111111", `{"name":"KLAXON"}`, http.StatusNotFound},
+		{"not a uuid", "alice", "nonsense", `{"name":"KLAXON"}`, http.StatusNotFound},
+		{"nothing at all", "alice", clip.ID, `{"name":""}`, http.StatusBadRequest},
+		{"only spaces", "alice", clip.ID, `{"name":"   "}`, http.StatusBadRequest},
+		{"past 32 characters", "alice", clip.ID, `{"name":"` + strings.Repeat("A", 33) + `"}`, http.StatusBadRequest},
+		{"exactly 32", "alice", clip.ID, `{"name":"` + strings.Repeat("A", 32) + `"}`, http.StatusNoContent},
+		{"not a name at all", "alice", clip.ID, `{"nope":1}`, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := do(t, mux, tt.who, "PUT", "/api/board/clips/"+tt.id+"/name", []byte(tt.body))
+			if rec.Code != tt.want {
+				t.Errorf("status = %d; want %d (%s)", rec.Code, tt.want, rec.Body)
+			}
+		})
 	}
 }
 
