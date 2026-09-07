@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { page } from '$app/state';
+	import { untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import StepList from './StepList.svelte';
@@ -15,6 +16,8 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
+	import { createHistory, type Snapshot } from '$lib/workout/history.svelte';
+	import { isTyping } from '$lib/keys';
 	import {
 		duplicate,
 		move,
@@ -51,8 +54,10 @@
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;
 		const saved = editingId ? custom.byId(editingId)?.workout : undefined;
-		if (saved) workout = $state.snapshot(saved) as Workout;
-		else status = 'That saved workout was not found — this starts fresh.';
+		if (saved) {
+			workout = $state.snapshot(saved) as Workout;
+			history.reset({ workout: $state.snapshot(workout) as Workout, selected });
+		} else status = 'That saved workout was not found — this starts fresh.';
 		hydrated = true;
 	});
 	// Selection is a path into the step tree: [i] top-level, [i, j] inside a
@@ -63,6 +68,37 @@
 			? 'That workout link didn’t match anything — this starts fresh.'
 			: null,
 	);
+
+	// Undo/redo (#1005). One effect over the whole sheet, so every surface that
+	// mutates it — the list, the inspector, a drag, #1006's graph — is covered
+	// without any of them knowing history exists. $state.snapshot reads every
+	// property, which is exactly the subscription this needs.
+	// untracked: the seed is deliberately the sheet as it is right now — the
+	// starting point undo walks back to, not a value that follows edits.
+	const history = untrack(() =>
+		createHistory({ workout: $state.snapshot(workout) as Workout, selected }),
+	);
+	$effect(() => {
+		const sheet = $state.snapshot(workout) as Workout;
+		// untracked: moving the selection is not an edit, and record() writes
+		// state this effect must not then re-read.
+		untrack(() => history.record({ workout: sheet, selected }));
+	});
+
+	function apply(entry: Snapshot | null) {
+		if (!entry) return;
+		workout = entry.workout;
+		selected = entry.selected;
+	}
+
+	function keys(event: KeyboardEvent) {
+		if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z')
+			return;
+		// In a field the browser's own undo is the one the rider means.
+		if (isTyping(event)) return;
+		event.preventDefault();
+		apply(event.shiftKey ? history.redo() : history.undo());
+	}
 
 	// The preview runs the real engine, so it cannot flatter the JSON.
 	const segments = $derived(flatten(workout));
@@ -92,16 +128,14 @@
 	// saved custom never edits in place from here (that is ?w=). Undo over
 	// confirm (errors.md): the click runs, the toast is the way back.
 	function load(next: Workout, asCopy: boolean) {
-		const prev = $state.snapshot(workout) as Workout;
-		const prevSelected = selected;
 		workout = structuredClone($state.snapshot(next) as Workout);
 		if (asCopy) workout.name = `${next.name} (copy)`;
 		selected = null;
+		// The toast keeps its place — a load's effect is off-screen, in the
+		// library column — but it undoes through the same stack ⌘Z does, so the
+		// two can never disagree about what "back" means.
 		toasts.push(`Loaded “${workout.name}” — this replaced your sheet.`, {
-			undo: () => {
-				workout = prev;
-				selected = prevSelected;
-			},
+			undo: () => apply(history.undo()),
 		});
 	}
 
@@ -117,6 +151,8 @@
 		void goto(`/workouts?saved=${result.id}`);
 	}
 </script>
+
+<svelte:window onkeydown={keys} />
 
 <main class="page">
 	<header class="flex flex-wrap items-center gap-4">
