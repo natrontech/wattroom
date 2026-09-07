@@ -399,10 +399,12 @@
 					{#if room.crew?.attended.length}
 						<div class="mt-1.5 flex flex-wrap items-center gap-1">
 							{#each room.crew.attended as here, i (i)}
+								<!-- A dim fill, not a thin ring: a 10 px outline disappears at
+								     the arm's length this screen is read from (ux.md). -->
 								<span
 									class="size-2.5 rounded-full {here
 										? 'bg-neon'
-										: 'border-muted/50 border'}"
+										: 'bg-muted/30'}"
 								></span>
 							{/each}
 						</div>
