@@ -112,6 +112,23 @@ func TestMeta(t *testing.T) {
 			t.Fatalf("subpath got default card:\n%s", meta)
 		}
 	})
+	t.Run("only an emoji icon reaches the title", func(t *testing.T) {
+		icons := map[string]string{"keyed": "flame", "emoji": "🔥", "none": ""}
+		svc := New("https://wattroom.ch", func(_ context.Context, slug string) (string, string, bool) {
+			icon, ok := icons[slug]
+			return "Sunday Ride", icon, ok
+		}, slog.New(slog.DiscardHandler))
+		for slug, want := range map[string]string{
+			"keyed": "<title>Sunday Ride — WattRoom</title>", // not "flame Sunday Ride" (#973)
+			"emoji": "<title>🔥 Sunday Ride — WattRoom</title>",
+			"none":  "<title>Sunday Ride — WattRoom</title>",
+		} {
+			meta := string(svc.Meta(httptest.NewRequestWithContext(t.Context(), "GET", "/r/"+slug, nil)))
+			if !strings.Contains(meta, want) {
+				t.Errorf("%s icon: meta missing %q:\n%s", slug, want, meta)
+			}
+		}
+	})
 	for _, path := range []string{"/", "/rooms", "/r/unknown-room"} {
 		t.Run("default card for "+path, func(t *testing.T) {
 			meta := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", path, nil)))
