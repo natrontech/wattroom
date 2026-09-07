@@ -1,2 +1,0 @@
-- The music comes back after someone stops talking. It could get stuck at a quarter volume until the next time somebody spoke, because anything else changing on screen during the pause cancelled the ramp bringing it back up.
-- Music and cue sounds now dip and return at the same moment. They ran on two separate clocks with the same numbers, so one moved a little after the other.

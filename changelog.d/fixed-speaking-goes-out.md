@@ -1,2 +1,0 @@
-- A rider who leaves or mutes mid-sentence stops being shown as speaking. Their tile stayed ringed and their name bold until the room ended, and in a room people come and go from, the highlights piled up.
-- The speaking ring now follows the voice rather than the server's opinion of it. It is measured from the audio already playing in your browser, so it lights up as someone starts talking instead of a beat later.
