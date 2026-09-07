@@ -7,23 +7,13 @@ import type {
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
-import { glideTo } from '$lib/sound/glide';
-import {
-	GATE_ATTACK_MS,
-	GATE_RELEASE_MS,
-	GATE_SHUT,
-	type GateState,
-	gateStep,
-} from '$lib/room/gate';
-import { MIC_CONSTRAINTS } from '$lib/room/capture';
 import { createDeviceChoices } from '$lib/room/av-devices.svelte';
-import { createGateSettings } from '$lib/room/gate-settings.svelte';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
 import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
-import { type MicMeter, createMicMeter } from '$lib/room/mic-level';
+import { createMicChain } from '$lib/room/mic-chain.svelte';
 import { mountTrack } from '$lib/room/mount-track';
 import {
 	type Claim,
@@ -105,20 +95,6 @@ export function createRoomAv(slug: string) {
 	 * quiet without reading a toast that has already gone.
 	 */
 	let handedOff = $state(false);
-	/**
-	 * The capture died under us (#640): a headset unplugged, Bluetooth
-	 * dropping to its phone profile, another app taking the device. We
-	 * publish our own WebAudio track, so LiveKit's device-loss recovery never
-	 * sees it — the destination keeps emitting silence and nothing notices.
-	 * Persistent until the mic is open again: the rider three metres away has
-	 * to be able to see why the room stopped hearing them.
-	 */
-	let micFault = $state(false);
-	/** Own-mic level 0..1 while transmitting — the "is my mic dead" meter. */
-	let micLevel = $state(0);
-	/** The gate's verdict this instant: is anything leaving this machine? */
-	let transmitting = $state(false);
-	const gateSettings = createGateSettings();
 
 	// Device selection and the rider-audio bus own their own state now (#892).
 	// The bus reads the chosen sink through a getter: the AudioContext outlives
@@ -138,106 +114,39 @@ export function createRoomAv(slug: string) {
 	);
 
 	/**
-	 * The mic path (#151, SPEC room audio): capture (browser DSP on) → gain →
-	 * published track. The gate drives the GAIN, never the track's mute — a
-	 * muted track broadcasts state, and a gate that flaps everyone's muted
-	 * chip per pause in speech is worse than no gate.
+	 * This machine's microphone (#892). It owns the capture, the meter, the
+	 * gate and the mic test; this closure owns the connection it publishes to,
+	 * and hands it the four functions it needs to reach one.
 	 */
-	let mic: {
-		ctx: AudioContext;
-		raw: MediaStream;
-		gain: GainNode;
-		meter: MicMeter;
-		track: MediaStreamTrack;
-		/** The capture track being watched for `ended` (#640). */
-		capture: MediaStreamTrack | undefined;
-	} | null = null;
-	let gate: GateState = GATE_SHUT;
+	const chain = createMicChain({
+		devices,
+		publish: async (track) => {
+			await room?.localParticipant.publishTrack(track, {
+				source: liveKit!.Track.Source.Microphone,
+			});
+		},
+		unpublish: (track) => room?.localParticipant.unpublishTrack(track),
+		live: () => micOn,
+		heard: (level) => {
+			if (talk.level(myIdentity, level, performance.now()))
+				speaking = { ...talk.riders };
+		},
+		silenced: () => {
+			if (talk.drop(myIdentity)) speaking = { ...talk.riders };
+		},
+		captureLost: () => {
+			micOn = false;
+			if (room) setVoice(me, 'muted');
+		},
+	});
 
 	/**
-	 * The capture ended without us asking (#640). `stop()` never fires this
-	 * and closeMic unhooks it first anyway, so what arrives here is the
-	 * device going away under a mic the rider believes is open — or under a
-	 * mic test, which ends the same way and leaves the same fault to show.
+	 * Open the mic and let `micOn` say what actually happened: a device the
+	 * browser refuses downgrades to listening rather than failing the caller.
 	 */
-	function onCaptureEnded() {
-		micFault = true;
-		closeMic();
-		micOn = false;
-		if (room) setVoice(me, 'muted');
-	}
-
-	function watchCapture(raw: MediaStream) {
-		const capture = raw.getAudioTracks()[0];
-		capture?.addEventListener('ended', onCaptureEnded);
-		return capture;
-	}
-
-	/** The capture constraints, honouring the chosen mic; an unplugged choice
-	 * falls back to the default instead of failing the join. */
-	async function captureMic(): Promise<MediaStream> {
-		const base = MIC_CONSTRAINTS;
-		if (devices.micId) {
-			try {
-				return await navigator.mediaDevices.getUserMedia({
-					audio: { ...base, deviceId: { exact: devices.micId } },
-				});
-			} catch {
-				// The join still falls back to the default below either way; the
-				// store decides whether the pick itself is forgotten (#824).
-				devices.forgetMicIfUnplugged();
-			}
-		}
-		return navigator.mediaDevices.getUserMedia({ audio: base });
-	}
-
-	/** Every level the audio thread reports: the meter's number and the gate's. */
-	function onLevel(level: number) {
-		micLevel = level;
-		runGate();
-		// Your own tile lights on the same measurement as everybody else's
-		// (#987). What the room hears is what the gate lets through, so a
-		// level under your own threshold is not you speaking — and neither is
-		// a hot mic you have switched off.
-		const heard = micOn && gate.open ? level : 0;
-		if (talk.level(myIdentity, heard, performance.now()))
-			speaking = { ...talk.riders };
-	}
-
-	/** capture → level → gate gain. Whoever calls it connects the gain to
-	 *  wherever the audio is going: the room, or your own ears. */
-	async function buildChain() {
-		const raw = await captureMic();
-		const ctx = new AudioContext();
-		const source = ctx.createMediaStreamSource(raw);
-		const gain = ctx.createGain();
-		gain.gain.value = 0; // closed until the gate opens
-		const meter = await createMicMeter(ctx, source, onLevel);
-		meter.out.connect(gain);
-		gate = GATE_SHUT;
-		return { ctx, raw, gain, meter };
-	}
-
-	async function openMic() {
-		if (mic) closeMic(); // a mic test or stale chain must not orphan a stream
-		const { ctx, raw, gain, meter } = await buildChain();
-		const dest = ctx.createMediaStreamDestination();
-		gain.connect(dest);
-		const track = dest.stream.getAudioTracks()[0];
-		mic = { ctx, raw, gain, meter, track, capture: watchCapture(raw) };
-		await room?.localParticipant.publishTrack(track, {
-			source: liveKit!.Track.Source.Microphone,
-		});
-		// Open again is the only thing that clears the fault — the rider
-		// pressing Reconnect, tapping the mic, or the next join finding it.
-		micFault = false;
-	}
-
-	/** Open the mic and let `micOn` say what actually happened: a device the
-	 * browser refuses downgrades to listening rather than failing the caller. */
 	async function tryOpenMic() {
 		try {
-			await openMic();
+			await chain.open();
 			micOn = true;
 			// A mic that opens clears the last refusal (#642): the sidebar must
 			// not keep explaining a failure that has since been fixed.
@@ -246,82 +155,6 @@ export function createRoomAv(slug: string) {
 			micOn = false;
 			failedMedia(cause, 'microphone');
 		}
-	}
-
-	function setGate(openNow: boolean) {
-		if (!mic) return;
-		transmitting = openNow;
-		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
-		// first syllable, and a close that fades is one the room forgives —
-		// it reads as a breath ending rather than a cut, and re-opening inside
-		// the fade is inaudible.
-		glideTo(
-			mic.gain.gain,
-			openNow ? 1 : 0,
-			mic.ctx.currentTime,
-			openNow ? GATE_ATTACK_MS : GATE_RELEASE_MS,
-		);
-	}
-
-	function runGate() {
-		if (!mic || (!micOn && !testing)) return;
-		if (gateSettings.mode === 'ptt') {
-			setGate(gateSettings.pttHeld);
-			return;
-		}
-		// The hold no longer chases the timer that fed it (#214's fix): the
-		// level arrives from the audio thread, at the same rate whether this
-		// tab is in front or behind another window.
-		const was = gate.open;
-		gate = gateStep(gate, micLevel, gateSettings.effective, performance.now());
-		if (gate.open !== was) setGate(gate.open);
-	}
-
-	/** Mic test (#178): hear yourself through the gate before anyone else
-	 * does. Same chain as transmission, output to the local speakers; the
-	 * meter and the transmitting verdict run identically. Only outside a
-	 * live mic — in voice, the meter is already the truth. */
-	let testing = $state(false);
-	async function startMicTest() {
-		if (mic || testing) return;
-		const { ctx, raw, gain, meter } = await buildChain();
-		void devices.refresh(); // the grant just made the labels readable (#658)
-		gain.connect(ctx.destination); // your own ears, not the room
-		const dest = ctx.createMediaStreamDestination();
-		mic = {
-			ctx,
-			raw,
-			gain,
-			meter,
-			track: dest.stream.getAudioTracks()[0],
-			capture: watchCapture(raw),
-		};
-		testing = true;
-	}
-
-	function stopMicTest() {
-		if (!testing) return;
-		testing = false;
-		closeMic();
-	}
-
-	function closeMic() {
-		if (mic) {
-			const { ctx, raw, track, capture } = mic;
-			// Unhook before stopping: a close the rider asked for is not a fault.
-			capture?.removeEventListener('ended', onCaptureEnded);
-			mic.meter.stop();
-			room?.localParticipant.unpublishTrack(track);
-			for (const t of raw.getTracks()) t.stop();
-			void ctx.close();
-		}
-		mic = null;
-		gate = GATE_SHUT;
-		micLevel = 0;
-		transmitting = false;
-		testing = false;
-		// No meter left to report you falling quiet, so say so once.
-		if (talk.drop(myIdentity)) speaking = { ...talk.riders };
 	}
 
 	function setVoice(id: string, state: 'live' | 'muted' | null) {
@@ -365,7 +198,7 @@ export function createRoomAv(slug: string) {
 		if (document.visibilityState !== 'visible') return;
 		// Browsers may suspend audio graphs in long-hidden tabs; coming
 		// back must not need a rejoin (#214).
-		if (mic && mic.ctx.state === 'suspended') void mic.ctx.resume();
+		chain.resume();
 		output.resume();
 	}
 	/**
@@ -429,7 +262,7 @@ export function createRoomAv(slug: string) {
 		// A fault from a previous call, or from a mic test that died, is not
 		// this join's — it surfaced as "your microphone stopped" on a
 		// listen-only join that never opened one (#824).
-		micFault = false;
+		chain.clearFault();
 		listen();
 		const res = await api<{ url: string; token: string }>(
 			`/api/rooms/${slug}/av-token`,
@@ -644,9 +477,9 @@ export function createRoomAv(slug: string) {
 			micBeforeAway = micOn;
 			camBeforeAway = camOn;
 			// Stepping away is the rider closing the mic, not losing it.
-			micFault = false;
+			chain.clearFault();
 			if (micOn) {
-				closeMic();
+				chain.close();
 				micOn = false;
 			}
 			setVoice(me, 'muted');
@@ -687,10 +520,10 @@ export function createRoomAv(slug: string) {
 		if (handedOff) return;
 		handedOff = true;
 		// The mic lives in the other tab now: no fault to reconnect from here.
-		micFault = false;
+		chain.clearFault();
 		micBeforeHandoff = micOn;
 		if (micOn) {
-			closeMic();
+			chain.close();
 			micOn = false;
 		}
 		// The note stops vetoing a rejoin in the tab that now holds the mic.
@@ -872,7 +705,7 @@ export function createRoomAv(slug: string) {
 			handedOff = false;
 			myClaim = null;
 			room = null;
-			closeMic();
+			chain.close();
 			if (unexpected) {
 				// Stop restamping, but leave the note behind: a refresh during
 				// the drop-rejoin window is still a refresh (#219, #480). Only
@@ -925,36 +758,33 @@ export function createRoomAv(slug: string) {
 			return voice;
 		},
 		get micLevel() {
-			return micLevel;
+			return chain.level;
 		},
 		get transmitting() {
-			return transmitting;
+			return chain.transmitting;
 		},
 		get mode() {
-			return gateSettings.mode;
+			return chain.mode;
 		},
 		get gateThreshold() {
-			return gateSettings.threshold;
+			return chain.threshold;
 		},
 		/** What is gating you right now — the stored value, doubled by music. */
 		get effectiveGateThreshold() {
-			return gateSettings.effective;
+			return chain.effectiveThreshold;
 		},
 		get pttHeld() {
-			return gateSettings.pttHeld;
+			return chain.pttHeld;
 		},
 		setMode(next: 'gate' | 'ptt') {
-			gateSettings.setMode(next);
-			if (next === 'gate') gate = GATE_SHUT;
-			runGate();
+			chain.setMode(next);
 		},
 		setGateThreshold(next: number) {
-			gateSettings.setThreshold(next);
 			// Tuning mid-sentence must land on this breath, not the next tick.
-			runGate();
+			chain.setThreshold(next);
 		},
 		get micTesting() {
-			return testing;
+			return chain.testing;
 		},
 		/** Your mic and camera live in another of your tabs (#293). */
 		get handedOff() {
@@ -964,7 +794,7 @@ export function createRoomAv(slug: string) {
 		takeOver: () => takeOver(),
 		/** The capture died under an open mic (#640) and nothing has reopened it. */
 		get micFault() {
-			return micFault;
+			return chain.fault;
 		},
 		/**
 		 * The banner's one big button: open the mic again. A device still
@@ -976,7 +806,7 @@ export function createRoomAv(slug: string) {
 			// down the mic lives elsewhere, and away means closed on purpose —
 			// reconnecting here would publish a second one.
 			if (!room || handedOff || away) {
-				micFault = false;
+				chain.clearFault();
 				return;
 			}
 			await tryOpenMic();
@@ -1009,15 +839,15 @@ export function createRoomAv(slug: string) {
 		/** Switching mid-transmission rebuilds the capture chain in place. */
 		async setMic(id: string) {
 			devices.setMic(id);
-			if (testing) {
-				stopMicTest();
-				await startMicTest().catch((cause) => {
-					testing = false;
+			if (chain.testing) {
+				chain.stopTest();
+				await chain.startTest().catch((cause) => {
+					chain.stopTest();
 					failedMedia(cause, 'microphone');
 				});
 			} else if (micOn) {
 				try {
-					await openMic();
+					await chain.open();
 				} catch (cause) {
 					// Dropped to muted — and told why, the way a join is (#824).
 					micOn = false;
@@ -1037,16 +867,15 @@ export function createRoomAv(slug: string) {
 			output.applySink();
 		},
 		async toggleMicTest() {
-			if (testing) stopMicTest();
+			if (chain.testing) chain.stopTest();
 			else
-				await startMicTest().catch((cause) => {
-					testing = false;
+				await chain.startTest().catch((cause) => {
+					chain.stopTest();
 					failedMedia(cause, 'microphone');
 				});
 		},
 		setPtt(held: boolean) {
-			gateSettings.setPttHeld(held);
-			runGate();
+			chain.setPttHeld(held);
 		},
 		/**
 		 * The room's deck, as the tick reports it. Whether it raises this
@@ -1054,7 +883,7 @@ export function createRoomAv(slug: string) {
 		 * decides whether there is any bleed to gate out (#478).
 		 */
 		setDeckPlaying(playing: boolean) {
-			gateSettings.setDeckPlaying(playing);
+			chain.setDeckPlaying(playing);
 		},
 		/**
 		 * Applies the mixer's per-rider gain live (#179, #463). One fader per
@@ -1068,7 +897,7 @@ export function createRoomAv(slug: string) {
 		join,
 		async toggleMic() {
 			if (!room) return;
-			if (testing) stopMicTest();
+			if (chain.testing) chain.stopTest();
 			// Pressing the mic in a tab that stood down means "bring it here",
 			// not "publish a second one" — the rail says the mic lives in
 			// another tab, and the button must not quietly contradict it.
@@ -1077,7 +906,7 @@ export function createRoomAv(slug: string) {
 				return;
 			}
 			if (micOn) {
-				closeMic();
+				chain.close();
 				micOn = false;
 			} else {
 				await tryOpenMic();
@@ -1160,12 +989,13 @@ export function createRoomAv(slug: string) {
 					pub?.videoTrack?.mediaStreamTrack?.stop();
 				}
 			}
-			closeMic();
+			chain.close();
 			void room?.disconnect();
 			room = null;
 			status = 'off';
 			error = null;
-			micOn = camOn = sharing = away = micFault = false;
+			micOn = camOn = sharing = away = false;
+			chain.clearFault();
 			// The room is behind you: its mute goes with it, or the next
 			// room — and every cue outside one — starts silent.
 			mixer.setMuted(false);
