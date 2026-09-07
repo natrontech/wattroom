@@ -1,5 +1,5 @@
 import { formatWhen } from '$lib/format';
-import type { RoomEvent } from '$lib/protocol';
+import type { RoomEvent, SessionRecap } from '$lib/protocol';
 
 /**
  * The room's timeline (#321): what riders said, interleaved with what the
@@ -22,7 +22,10 @@ export type TimelineMessage = {
 
 export type TimelineEntry =
 	| { kind: 'message'; key: string; at: number; message: TimelineMessage }
-	| { kind: 'event'; key: string; at: number; event: RoomEvent };
+	| { kind: 'event'; key: string; at: number; event: RoomEvent }
+	// The one durable entry (ADR-0034): a finished session's card, which is
+	// here again after a reload when every event above it is gone.
+	| { kind: 'recap'; key: string; at: number; recap: SessionRecap };
 
 /**
  * The room's own wording for one event. Vocabulary is docs/SPEC.md's glossary
@@ -117,10 +120,16 @@ export function eventText(event: RoomEvent): string {
  * goes for stepping out, which they did by pressing the button that says so
  * (#984). Everyone ELSE sees every line.
  */
+/**
+ * @param recaps finished sessions (ADR-0034), from the tick that wrote one and
+ * from the backlog on every join after. Deduplicated by id, because a rider
+ * who was standing in the room when it was written has it from both.
+ */
 export function roomTimeline(
 	messages: TimelineMessage[],
 	events: RoomEvent[] = [],
 	mine?: string,
+	recaps: SessionRecap[] = [],
 ): TimelineEntry[] {
 	const lines: TimelineEntry[] = messages.map((message) => ({
 		kind: 'message',
@@ -132,6 +141,19 @@ export function roomTimeline(
 		if (event.kind === 'presence' && mine && event.actor === mine) continue;
 		if (!eventText(event)) continue; // a verb this client cannot render
 		lines.push({ kind: 'event', key: `e:${event.id}`, at: event.at, event });
+	}
+	const seen = new Set<string>();
+	for (const recap of recaps) {
+		if (seen.has(recap.id)) continue;
+		seen.add(recap.id);
+		lines.push({
+			kind: 'recap',
+			key: `r:${recap.id}`,
+			// It belongs where the session ended, which is where the room was
+			// talking about it.
+			at: recap.endedAt,
+			recap,
+		});
 	}
 	return lines.sort((a, b) => a.at - b.at);
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/playlists"
 	"github.com/natrontech/wattroom/server/internal/progression"
+	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
@@ -170,6 +171,13 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		// What a finished session leaves behind (ADR-0034). The hub writes
+		// through it when a session ends; the backlog reads it back, so the
+		// card survives the reload every other timeline entry does not.
+		recapService := recap.New(st, log)
+		h.SetRecapKeeper(recapService)
+		recapService.SetLive(h)
+		chatService.SetRecaps(recapService)
 		playlistsService := playlists.New(st, authService, roomsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)

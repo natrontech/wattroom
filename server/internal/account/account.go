@@ -169,6 +169,20 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"text": row.Text, "at": row.CreatedAt.Time}
 			})
 		}},
+		{"sessions.json", func() (any, error) {
+			// The sessions this rider was present for, and their own interval
+			// in each (ADR-0034). Everyone else's interval in the same room is
+			// their personal data, not the requester's — the same rule
+			// chat.json follows.
+			rows, err := s.store.Queries.ExportUserRecaps(r.Context(), store.UUIDString(user.ID))
+			return mapRows(rows, err, func(row db.ExportUserRecapsRow) any {
+				return map[string]any{"room": row.RoomName, "roomSlug": row.RoomSlug,
+					"workout": row.Workout, "sessionStarted": row.StartedAt.Time,
+					"sessionEnded": row.EndedAt.Time,
+					"joined":       time.UnixMilli(row.JoinedAt), "left": time.UnixMilli(row.LeftAt),
+					"rode": row.Rode}
+			})
+		}},
 		{"friends.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserFriends(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserFriendsRow) any {

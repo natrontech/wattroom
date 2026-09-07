@@ -1,7 +1,12 @@
 import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
 import { presence } from '$lib/presence.svelte';
-import type { ChatEdit, ChatLine, ChatReactionCount } from '$lib/protocol';
+import type {
+	ChatEdit,
+	ChatLine,
+	ChatReactionCount,
+	SessionRecap,
+} from '$lib/protocol';
 
 /**
  * A room's chat read from OUTSIDE the room (#468): no socket, no voice, no
@@ -19,6 +24,7 @@ interface BacklogMessage extends ChatLine {
 
 export function createOutsideThread(slug: string) {
 	let messages = $state<ChatLine[]>([]);
+	let recaps = $state<SessionRecap[]>([]);
 	let reactions = $state<Record<string, Record<string, number>>>({});
 	let myReacts = $state<Record<string, boolean>>({});
 	// Where you had read up to when this thread opened — the "N new" line
@@ -30,9 +36,11 @@ export function createOutsideThread(slug: string) {
 	let closed = false;
 
 	async function load() {
-		const res = await api<{ messages: BacklogMessage[]; readAt: number }>(
-			`/api/rooms/${slug}/chat`,
-		);
+		const res = await api<{
+			messages: BacklogMessage[];
+			readAt: number;
+			recaps?: SessionRecap[];
+		}>(`/api/rooms/${slug}/chat`);
 		if (closed) return;
 		loading = false;
 		if (!res.ok) {
@@ -57,6 +65,9 @@ export function createOutsideThread(slug: string) {
 		);
 		reactions = counts;
 		myReacts = pressed;
+		// A finished session's card (ADR-0034) reads the same from outside the
+		// room as inside it — it is the one timeline entry that is durable.
+		recaps = res.data.recaps ?? [];
 		// Reading is what clears the badge — only when you could actually
 		// have read it: a thread left open in a hidden tab keeps its count.
 		if ((first || fresh) && !document.hidden) void markRead();
@@ -75,6 +86,9 @@ export function createOutsideThread(slug: string) {
 	};
 
 	return {
+		get recaps() {
+			return recaps;
+		},
 		get messages() {
 			return messages;
 		},

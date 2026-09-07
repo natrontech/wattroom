@@ -142,6 +142,31 @@ func (h *harness) createSession(t *testing.T, user string) {
 	}
 }
 
+// createRecap seeds one finished session naming every rider given, the way
+// the hub writes it (ADR-0034): presence and time, nothing else.
+func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) {
+	t.Helper()
+	entries := make([]map[string]any, 0, len(riders))
+	for i, name := range riders {
+		entries = append(entries, map[string]any{
+			"id": store.UUIDString(h.id(name)), "rider": name,
+			"from": 1_700_000_000_000 + int64(i)*60_000, "to": 1_700_003_600_000,
+			"rode": true,
+		})
+	}
+	blob, err := json.Marshal(entries)
+	if err != nil {
+		t.Fatalf("recap riders: %v", err)
+	}
+	started := pgtype.Timestamptz{Time: time.UnixMilli(1_700_000_000_000), Valid: true}
+	ended := pgtype.Timestamptz{Time: time.UnixMilli(1_700_003_600_000), Valid: true}
+	if _, err := h.store.Queries.SaveSessionRecap(t.Context(), db.SaveSessionRecapParams{
+		RoomID: room, Workout: "Openers", StartedAt: started, EndedAt: ended, Riders: blob,
+	}); err != nil {
+		t.Fatalf("save recap: %v", err)
+	}
+}
+
 func (h *harness) befriend(t *testing.T, requester, addressee string) {
 	t.Helper()
 	pair := db.CreateFriendRequestParams{RequesterID: h.id(requester), AddresseeID: h.id(addressee)}
@@ -192,6 +217,11 @@ var userRowQueries = map[string]string{
 	"workouts":      "select count(*) from workouts where owner_id = $1",
 	"xp_events":     "select count(*) from xp_events where user_id = $1",
 	"achievements":  "select count(*) from achievements where user_id = $1",
+	// A session recap is one shared row naming several riders (ADR-0034), so
+	// the purge does not delete it — it rewrites it. A ghost interval saying
+	// "someone left at 19:40" is still a record of a person, which is why
+	// this counts rows that NAME the rider rather than rows they own.
+	"session_recaps": "select count(*) from session_recaps where riders @> jsonb_build_array(jsonb_build_object('id', $1::text))",
 }
 
 func TestExportRequiresSignIn(t *testing.T) {
@@ -300,6 +330,7 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 			t.Fatalf("medal %s: %v", name, err)
 		}
 	}
+	h.createRecap(t, room, "alice", "bob")
 	h.befriend(t, "alice", "bob")
 	h.befriend(t, "bob", "carol")
 	h.sendDm(t, "alice", "bob", "see you at 7")
@@ -329,6 +360,16 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	}
 	if n := h.count(t, userRowQueries["dm_messages"], "bob"); n != 1 {
 		t.Errorf("bob should keep his DM with carol only, has %d", n)
+	}
+	// The recap itself survives — it is the room's, and bob was there. What
+	// leaves with alice is her interval inside it, asserted on the row rather
+	// than through an endpoint.
+	if n := h.count(t, userRowQueries["session_recaps"], "bob"); n != 1 {
+		t.Errorf("bob should still be named in the session recap, is in %d", n)
+	}
+	var recaps int
+	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from session_recaps where room_id = $1", room).Scan(&recaps); err != nil || recaps != 1 {
+		t.Errorf("the recap row itself should survive alice's purge: %d %v", recaps, err)
 	}
 	var rooms int
 	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from rooms where id = $1", room).Scan(&rooms); err != nil || rooms != 1 {

@@ -232,6 +232,16 @@ type Session struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
+type SessionRecap struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	Workout   string
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Riders    []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type SessionRsvp struct {
 	SessionID pgtype.UUID
 	UserID    pgtype.UUID
