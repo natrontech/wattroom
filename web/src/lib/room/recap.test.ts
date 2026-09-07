@@ -60,6 +60,21 @@ describe('recapBars', () => {
 		expect(late.left + late.width).toBeLessThanOrEqual(100);
 	});
 
+	it('says "< 1 min" rather than "0 min" beside a bar that is visibly there', () => {
+		const [flash] = recapBars(
+			session([
+				{
+					id: 'u4',
+					rider: 'Sara',
+					from: START,
+					to: START + 12_000,
+					rode: false,
+				},
+			]),
+		);
+		expect(flash.stayed).toBe('< 1 min');
+	});
+
 	it('keeps a very short visit visible', () => {
 		const [flash] = recapBars(
 			session([

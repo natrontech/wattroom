@@ -26,6 +26,15 @@ export interface RecapBar {
 /** The narrowest bar still worth drawing: a two-minute visit is not nothing. */
 const MIN_WIDTH = 2;
 
+/**
+ * How long someone stayed. `formatDuration` rounds to whole minutes, which
+ * writes "0 min" beside a bar that is visibly there — so anything under a
+ * minute says so instead of saying nothing happened.
+ */
+function stayed(ms: number): string {
+	return ms < 60_000 ? '< 1 min' : formatDuration(ms / 1000);
+}
+
 export function recapBars(recap: SessionRecap): RecapBar[] {
 	const span = Math.max(1, recap.endedAt - recap.startedAt);
 	return recap.riders.map((rider: SessionRecapRider) => {
@@ -45,7 +54,7 @@ export function recapBars(recap: SessionRecap): RecapBar[] {
 				100 - left,
 				Math.max(MIN_WIDTH, ((to - from) / span) * 100),
 			),
-			stayed: formatDuration((to - from) / 1000),
+			stayed: stayed(to - from),
 		};
 	});
 }
@@ -56,6 +65,6 @@ export function recapBars(recap: SessionRecap): RecapBar[] {
  */
 export function recapSummary(recap: SessionRecap): string {
 	const riders = recap.riders.length;
-	const long = formatDuration((recap.endedAt - recap.startedAt) / 1000);
+	const long = stayed(recap.endedAt - recap.startedAt);
 	return `${riders} ${riders === 1 ? 'rider' : 'riders'} · ${long}`;
 }

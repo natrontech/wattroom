@@ -57,6 +57,26 @@ func TestRecapHoldsEveryRiderTheSessionSaw(t *testing.T) {
 	}
 }
 
+// The clock is wall-clock, taken from the first tick that saw anybody — NOT
+// state.Elapsed. A coach ending a session early zeroes elapsed, which made
+// every bar the same width and the card a lie (found verifying #985).
+func TestTheClockSurvivesASessionEndedEarly(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-jan", "Jan"))
+	sawAt(rm, 0)
+	sawAt(rm, 30)
+
+	// Elapsed 0 is exactly what a coach-ended session reports.
+	rec := recapAt(rm, 30, 0)
+	if rec.StartedAt != pat(0).UnixMilli() {
+		t.Errorf("the card's clock should start where the session did: %d", rec.StartedAt)
+	}
+	if rec.EndedAt-rec.StartedAt != 30_000 {
+		t.Errorf("a 30 s session should be 30 s wide, was %d ms", rec.EndedAt-rec.StartedAt)
+	}
+}
+
 func TestARiderWhoLeftEarlyStopsWhereTheyLeft(t *testing.T) {
 	now := pat(0)
 	rm := presenceRoom(&now)

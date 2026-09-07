@@ -57,6 +57,13 @@ type span struct {
 // window, folds a rider's several screens by itself, and cannot drift out of
 // step with the roster the room is drawing. Caller holds rm.mu.
 func (rm *room) sawLocked(now time.Time) {
+	// The card's clock starts at the first tick that saw anybody, and it is
+	// wall-clock on purpose: the bars are wall-clock, and `state.Elapsed`
+	// is not — it excludes pauses, and a coach ending a session early zeroes
+	// it outright, which made every bar on the card the same width.
+	if rm.presentSince.IsZero() {
+		rm.presentSince = now
+	}
 	for c := range rm.clients {
 		if s, ok := rm.present[c.rider.ID]; ok {
 			s.name, s.to = c.rider.Name, now
@@ -72,10 +79,8 @@ func (rm *room) sawLocked(now time.Time) {
 // never reaches a rider's screen. Caller holds rm.mu.
 func (rm *room) recapLocked(state protocol.SessionState, now time.Time) protocol.SessionRecap {
 	out := protocol.SessionRecap{
-		Workout: state.WorkoutName,
-		// The timeline's own clock: elapsed excludes pauses, so this is when
-		// the riding started rather than when the countdown did.
-		StartedAt: now.UnixMilli() - int64(state.Elapsed)*1000,
+		Workout:   state.WorkoutName,
+		StartedAt: rm.presentSince.UnixMilli(),
 		EndedAt:   now.UnixMilli(),
 	}
 	for id, s := range rm.present {

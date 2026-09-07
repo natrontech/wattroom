@@ -90,6 +90,9 @@ type room struct {
 	// span per rider, sampled by the tick, reset on start. Bounded by riders
 	// ever present in one session.
 	present map[string]*span
+	// When the recap's clock starts: the first tick that saw anyone this
+	// session. Zero between sessions.
+	presentSince time.Time
 	// The stored recap, waiting for the next tick to carry it to the room.
 	// Nil the rest of the time — unlike everything else the tick drains,
 	// this one is already durable.
@@ -429,6 +432,7 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 		// A new session is a new recap: the last one's presence must not
 		// leak into it (ADR-0034).
 		rm.present = make(map[string]*span)
+		rm.presentSince = time.Time{}
 		rm.startedBy = riderID
 	}
 	return rm.session.apply(c, now)
