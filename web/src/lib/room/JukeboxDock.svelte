@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { modals } from '$lib/modals.svelte';
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { chase, pausedChase, playheadAt } from '$lib/room/playhead';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
@@ -9,12 +8,7 @@
 	import { withYouTubeApi } from '$lib/room/youtube-api';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import {
-		DUCK_ATTACK_MS,
-		DUCK_HOLD_MS,
-		DUCK_RELEASE_MS,
-		shouldDuck,
-	} from '$lib/sound/ducking';
+	import { onDuck } from '$lib/sound/duck';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
@@ -34,10 +28,6 @@
 
 	const conn = $derived(roomConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
-	const ducked = $derived(
-		shouldDuck(conn?.av.speaking ?? {}, account.me?.id, mixer.duckSelf),
-	);
-
 	let container = $state<HTMLDivElement | null>(null);
 	let shell = $state<HTMLDivElement | null>(null);
 
@@ -195,11 +185,14 @@
 
 	// ── Ducking (#24, ramps per #152): dip under voice, wherever you are. ────
 	let baseVolume = mixer.music;
-	let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 	let rampTimer: ReturnType<typeof setInterval> | undefined;
 
 	function rampTo(target: number, ms: number) {
 		clearInterval(rampTimer);
+		if (ms <= 0) {
+			player.setVolume?.(Math.round(target));
+			return;
+		}
 		const from = player.getVolume?.() ?? target;
 		const steps = Math.max(1, Math.round(ms / 30));
 		let step = 0;
@@ -211,33 +204,32 @@
 		}, 30);
 	}
 
-	let wasDucked = false;
+	// The attack, the hold and the release belong to the duck controller
+	// (#988), not to this effect. They used to live on timers created inside
+	// it, and a Svelte effect's cleanup runs before every RE-RUN, not only on
+	// destroy — so any dependency changing inside the 600 ms hold cleared the
+	// timer that was going to bring the music back, and it sat at 25 % until
+	// the next duck cycle happened to end cleanly. That is the "not on time"
+	// riders heard as the music simply never returning.
+	//
+	// What is left here re-runs freely: it reads the ceiling the mixer owns
+	// (#179, and away takes it to nothing — #875) and subscribes. Subscribing
+	// hands back the current state with `ms: 0`, so a fader move still acts
+	// NOW rather than through a hold, which is what made the slider feel dead
+	// (audit #219).
 	$effect(() => {
 		if (!playerReady) return;
-		// The mixer owns the ceiling (#179), and away takes it to nothing
-		// (#875) — the jukebox is the loudest thing in an empty room.
 		baseVolume = mixer.muted ? 0 : mixer.music;
-		if (ducked) {
-			wasDucked = true;
-			clearTimeout(releaseTimer);
-			rampTo(Math.round(baseVolume * mixer.duck), DUCK_ATTACK_MS);
-		} else if (wasDucked) {
-			// The SPEC release: hold, then ramp back up.
-			wasDucked = false;
-			releaseTimer = setTimeout(
-				() => rampTo(baseVolume, DUCK_RELEASE_MS),
-				DUCK_HOLD_MS,
-			);
-		} else {
-			// A fader move must act NOW — routing it through the release hold
-			// made the slider feel dead (audit #219).
-			player.setVolume?.(Math.round(baseVolume));
-		}
-		return () => {
-			clearTimeout(releaseTimer);
-			clearInterval(rampTimer);
-		};
+		const depth = mixer.duck;
+		const ceiling = baseVolume;
+		return onDuck(({ down, ms }) =>
+			rampTo(Math.round(down ? ceiling * depth : ceiling), ms),
+		);
 	});
+
+	// The ramp itself is this component's, so it stops when the component
+	// does — and only then. No reactive read, so this never re-runs.
+	$effect(() => () => clearInterval(rampTimer));
 
 	// ── Chase the room's playhead (#286, docs/SPEC.md sync tolerances) ───────
 	//

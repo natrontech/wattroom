@@ -1,9 +1,5 @@
-import {
-	DUCK_ATTACK_MS,
-	DUCK_DEFAULT,
-	DUCK_HOLD_MS,
-	DUCK_RELEASE_MS,
-} from '$lib/sound/ducking';
+import { ducking, onDuck } from '$lib/sound/duck';
+import { DUCK_ATTACK_MS, DUCK_DEFAULT } from '$lib/sound/ducking';
 import { glideTo } from '$lib/sound/glide';
 
 /**
@@ -398,8 +394,6 @@ let muted = false;
 let duck = 1;
 /** How hard that dip goes — the mixer's knob (#280); 1 = no ducking at all. */
 let duckLevel = DUCK_DEFAULT;
-/** The SPEC hold between a voice stopping and the cues coming back up. */
-let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Where the master belongs right now; every setter converges on it. */
 function level(): number {
@@ -466,22 +460,15 @@ export function setMuted(next: boolean): void {
 
 /**
  * Ride-critical cues still get through; this only pulls them down under a
- * voice — with the SPEC ballistics: attack now, release after a hold, never
- * a snap in either direction (docs/SPEC.md, #152).
+ * voice. The attack, the hold and the release are the duck controller's
+ * (`duck.ts`, #988) — this only applies what it is told, at the moment the
+ * jukebox is told the same thing, so a rider hears one duck rather than two
+ * a few tens of milliseconds apart.
  */
-export function setDucked(next: boolean): void {
-	clearTimeout(releaseTimer);
-	if (next) {
-		duck = duckLevel;
-		settle(DUCK_ATTACK_MS);
-		return;
-	}
-	if (duck === 1) return;
-	releaseTimer = setTimeout(() => {
-		duck = 1;
-		settle(DUCK_RELEASE_MS);
-	}, DUCK_HOLD_MS);
-}
+onDuck(({ down, ms }) => {
+	duck = down ? duckLevel : 1;
+	settle(ms);
+});
 
 /**
  * Duck depth, 0 (silence under a voice) … 1 (never duck). Mixer-owned. A knob
@@ -489,7 +476,7 @@ export function setDucked(next: boolean): void {
  */
 export function setDuckLevel(next: number): void {
 	duckLevel = Math.min(1, Math.max(0, next));
-	if (duck !== 1) {
+	if (ducking()) {
 		duck = duckLevel;
 		settle(DUCK_ATTACK_MS);
 	}

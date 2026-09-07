@@ -67,9 +67,16 @@ vi.stubGlobal('AudioContext', FakeAudioContext);
 /** The ramp `glideTo` schedules for a ramp that reads as `ms` long. */
 const tau = (ms: number) => ms / 3000;
 
+/**
+ * The duck's state machine lives in `duck.ts` now (#988) — one attack, one
+ * hold, one release for the cue bus and the jukebox alike — so a fresh cue
+ * module comes with the fresh duck it subscribed to.
+ */
 async function freshCues() {
 	vi.resetModules();
-	return await import('./cues');
+	const cues = await import('./cues');
+	const duck = await import('./duck');
+	return { ...cues, setDucked: duck.setDucking };
 }
 
 describe('cue ducking follows the SPEC envelope (#675)', () => {
