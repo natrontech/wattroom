@@ -17,6 +17,21 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.41] - 2026-09-08
+
+### Added
+
+- A finished session now leaves a card in the room's chat: who was here, when each rider arrived and how long they stayed, with a filled dot for everyone who rode. It is the first thing in a room's timeline that is still there after a reload. Presence and time only — no watts, no kJ, no heart rate — and recaps are kept for 90 days.
+
+### Fixed
+
+- Switching from push-to-talk back to the noise gate while still holding the key now stops transmitting immediately, instead of staying open until your mic next reported a level.
+
+### Security
+
+- The Strava refresh token is no longer stored in the clear. With `WATTROOM_TOKEN_KEY` set (32 random bytes, base64), it is sealed with AES-256-GCM and existing rows are sealed once at startup — so a database dump that leaves the host without the app's environment no longer carries a usable credential. Servers without the key keep working exactly as before and say so at boot; a key that is set but unusable stops the server rather than quietly storing in the clear.
+- **Upgrading with a key set is one-way for Strava.** Sealing a token clears the readable copy, which is the point — so rolling back to an image older than this release leaves Strava auto-upload needing a reconnect for any rider whose token was sealed in the meantime. Rolling back to this release or newer is unaffected. See [ADR-0035](docs/decisions/0035-stored-credentials-are-sealed-with-a-key-from-the-environment.md).
+
 ## [2026.09.40] - 2026-09-08
 
 ### Added
@@ -1021,7 +1036,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.40...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.41...HEAD
+[2026.09.41]: https://github.com/natrontech/wattroom/compare/2026.09.40...2026.09.41
 [2026.09.40]: https://github.com/natrontech/wattroom/compare/2026.09.39...2026.09.40
 [2026.09.39]: https://github.com/natrontech/wattroom/compare/2026.09.38...2026.09.39
 [2026.09.38]: https://github.com/natrontech/wattroom/compare/2026.09.37...2026.09.38

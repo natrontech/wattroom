@@ -69,11 +69,15 @@
 	);
 	// What the room did rides only the tick (ADR-0022): from outside there
 	// is nothing to interleave, and nothing missed.
+	// A finished session's card is the exception (ADR-0034): durable, so it
+	// reads the same from outside the room as inside it.
+	const recaps = $derived(conn ? conn.live.recaps : (outside?.recaps ?? []));
 	const timeline = $derived(
 		roomTimeline(
 			messages,
 			conn ? conn.live.roomEvents : [],
 			account.me?.displayName,
+			recaps,
 		),
 	);
 

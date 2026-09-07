@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Users from '@lucide/svelte/icons/users';
-	import { changes } from '$lib/sound/changes';
-	import { play, playCountdownTick, setMuted } from '$lib/sound/cues';
+	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import type { Crew } from '$lib/room/room-data';
 	import { api } from '$lib/api';
@@ -16,6 +14,7 @@
 	import { pickStage, sourceLabel } from '$lib/room/stage';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { createRiders } from '$lib/room/riders.svelte';
+	import { createRoomSounds } from '$lib/room/room-sounds.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import Soundboard from '$lib/board/Soundboard.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
@@ -23,17 +22,17 @@
 	import { createCustomStore } from '$lib/workout/custom.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { countModal } from '$lib/modals.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
+	import PeopleSheet from '$lib/room/PeopleSheet.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
-	import TvMode from '$lib/room/TvMode.svelte';
+	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
 	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
-	import { TV_SEAT, offerSeat, stageSlot } from '$lib/room/stage-slot.svelte';
+	import { stageSlot } from '$lib/room/stage-slot.svelte';
 
 	interface AdminMember {
 		id: string;
@@ -280,37 +279,8 @@
 	const onStage = $derived(pickStage(stageSources, av.stagePick));
 
 	// ── Sounds follow state (riders are not watching) ─────────────────────────
-	// Cue ducking + the music-aware gate threshold moved to the room
-	// connection (#216) — they must work on every page, not just this one.
-	let heardCount = -1;
-	$effect(() => {
-		if (shared?.phase !== 'countdown') {
-			if (shared?.phase === 'running' && heardCount > 0) {
-				heardCount = -1;
-				play('go');
-			}
-			return;
-		}
-		const left = shared.countdownRemaining ?? 0;
-		if (left <= 3 && left > 0 && left !== heardCount) {
-			heardCount = left;
-			playCountdownTick(left);
-		}
-	});
-
-	// Pause and resume are the one phase change that tells the legs to do
-	// something different, and they were the silent one (#834). The block
-	// cue is exactly right for it: the target just changed.
-	const heardPause = changes<boolean>((paused) =>
-		play('block', paused ? -5 : 0),
-	);
-	$effect(() => heardPause(shared?.phase === 'paused'));
-
-	// A fault, and its recovery, announce themselves too (#834). The banner
-	// below is the whole story only for someone reading the screen — which
-	// is nobody on a bike. One effect for all four kinds, in the same order
-	// the banner ranks them, so a trainer drop under a voice drop is heard
-	// once, as the thing that actually matters.
+	// The cues themselves are room-sounds.svelte.ts; what stays here is the
+	// ranking, because only this component can see all four sources at once.
 	//
 	// `reconnecting` and not the banner's `!== 'live'`: the first connect of
 	// every room entry passes through `connecting`, and a room that has not
@@ -326,10 +296,11 @@
 						? 'mic'
 						: null,
 	);
-	const heardFault = changes<string | null>((now) =>
-		play(now ? 'fault' : 'recover'),
-	);
-	$effect(() => heardFault(faultKind));
+	createRoomSounds({
+		phase: () => shared?.phase,
+		countdownRemaining: () => shared?.countdownRemaining,
+		fault: () => faultKind,
+	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	function startWorkout(picked: import('$lib/workout/types').Workout) {
@@ -563,36 +534,19 @@
 />
 
 {#if tv}
-	<!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
-	<div class="cave bg-surface fixed inset-0 z-50">
-		{#if live.tick?.jukebox?.current}
-			<!-- The player takes the TV's top-right corner (#460): the dock
-			     outranks this overlay and used to land wherever it was, over the
-			     numbers. A seat here makes it part of the layout — ≥200×200 for
-			     RMF, and it outranks the column's and the stage's seats. -->
-			<div
-				class="absolute top-[3vh] right-[3vw] z-10 aspect-video w-[24vw] min-w-[240px]"
-				style="min-height: 200px"
-				{@attach (node) => offerSeat(node, TV_SEAT)}
-			></div>
-		{/if}
-		<button
-			onclick={() => (tv = false)}
-			class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
-			>Exit TV mode (esc)</button
-		>
-		<TvMode
-			{riders}
-			{segments}
-			total={shared?.totalSeconds ?? 0}
-			elapsed={shared?.elapsed ?? 0}
-			{block}
-			{roomName}
-			{code}
-			live={phase === 'live'}
-			workoutName={shared?.workoutName ?? ''}
-		/>
-	</div>
+	<TvOverlay
+		{riders}
+		{segments}
+		total={shared?.totalSeconds ?? 0}
+		elapsed={shared?.elapsed ?? 0}
+		{block}
+		{roomName}
+		{code}
+		live={phase === 'live'}
+		workoutName={shared?.workoutName ?? ''}
+		playing={!!live.tick?.jukebox?.current}
+		onExit={() => (tv = false)}
+	/>
 {/if}
 
 {#if setup}
@@ -767,55 +721,7 @@
 	</div>
 </div>
 
-<!-- Below xl the panel becomes a summonable sheet — who is here, the deck,
-     and the line saying what you missed. The chat itself is a place now, so
-     the button no longer promises a log it cannot show (#219, #504). -->
-<button
-	onclick={() => (peopleSheet = true)}
-	class="bg-surface-raised ring-ink/15 fixed right-4 z-40 grid h-12 w-12
-	place-items-center rounded-full shadow-lg ring-1 xl:hidden {chatPlace
-		? 'bottom-20'
-		: 'bottom-4'}"
-	aria-label="who is here"
->
-	<Users size={18} />
-	{#if missed}
-		<!-- The bar it opens is off screen here, so the dot is the whole
-		     signal: something was said. The count is on the bar itself. -->
-		<span
-			class="bg-neon ring-surface-raised absolute top-1 right-1 h-2.5 w-2.5 rounded-full ring-2"
-		></span>
-	{/if}
-</button>
-{#if peopleSheet}
-	<!-- Above the seated player, not under it (#483): the dock takes z-[56] to
-	     sit inside the stage and TV mode, and a sheet the rider pulled open is
-	     the one surface that must still win — below xl it carries the jukebox
-	     transport, the people and the line saying what was said, and a video
-	     parked on top of it left nothing to press. RMF forbids OUR chrome over
-	     the player, never a drawer the rider opened.
-	     But the panel this sheet draws is `panel()` again — a second Jukebox,
-	     mounted fresh, offering its own 200 px hole (#643). That hole sits
-	     behind the sheet's own opaque backdrop, so the dock used to fly INTO
-	     the drawer that was about to paint over it: seated and invisible at
-	     once, with playback and auto-advance both still running — exactly
-	     what RMF forbids. `countModal` marks the sheet a covering surface the
-	     same way Modal.svelte, SessionPicker.svelte and ImageViewer.svelte
-	     already do: the dock un-seats and drops to its corner, which yields
-	     to an open overlay like any other floating chrome (JukeboxDock.svelte
-	     comment above `seat`) instead of quietly claiming a hole it cannot
-	     actually show. -->
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-	<div
-		{@attach countModal}
-		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
-		onclick={(e) => e.target === e.currentTarget && (peopleSheet = false)}
-	>
-		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">
-			{@render panel()}
-		</div>
-	</div>
-{/if}
+<PeopleSheet bind:open={peopleSheet} {panel} missed={!!missed} {chatPlace} />
 
 {#snippet panel()}
 	<SidePanel

@@ -26,6 +26,10 @@ export function createRoomLive(slug: string) {
 	// Chat is a bounded room log since ADR-0010's amendment (#201): the
 	// backlog seeds it on join, live lines ride the tick on top.
 	let chatLog = $state<import('$lib/protocol').ChatLine[]>([]);
+	// Finished sessions (ADR-0034). Unlike everything else here these are
+	// durable: the backlog seeds them and the tick adds the one written while
+	// this rider was standing in the room.
+	let recaps = $state<import('$lib/protocol').SessionRecap[]>([]);
 	// What the room did (#321), interleaved with the talking by the chat pane.
 	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
@@ -144,6 +148,14 @@ export function createRoomLive(slug: string) {
 				// keeps the jukebox playhead on server time (#286).
 				observeServerTime(msg.tick.at);
 				tick = msg.tick;
+				if (msg.tick.recap) {
+					// The session that just ended left a card (ADR-0034), on
+					// the tick after its row landed. Riders who were not here
+					// read the same row from the backlog when they arrive.
+					const written = msg.tick.recap;
+					if (!recaps.some((r) => r.id === written.id))
+						recaps = [...recaps, written];
+				}
 				if (msg.tick.chatIds?.length) {
 					// The save happens off the server's read loop (#219): lines
 					// arrive id-less, their persisted id follows here and turns
@@ -350,6 +362,19 @@ export function createRoomLive(slug: string) {
 		setAway(next: boolean) {
 			away = next;
 			send({ away: { away: next } });
+		},
+		get recaps() {
+			return recaps;
+		},
+		/** The room's stored session cards, read with the chat backlog. */
+		seedRecaps(rows: import('$lib/protocol').SessionRecap[]) {
+			// Merged rather than replaced, and by id: a recap can arrive on
+			// the tick before this resolves, and a reconnect re-reads the
+			// same backlog (the same rule seedChat follows).
+			const have = new Set(recaps.map((r) => r.id));
+			recaps = [...recaps, ...rows.filter((r) => !have.has(r.id))].sort(
+				(a, b) => a.endedAt - b.endedAt,
+			);
 		},
 		get chatLog() {
 			return chatLog;

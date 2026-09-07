@@ -1,4 +1,4 @@
-# 0035 — What a room shows about its members: sums, your own turnout, and no default ladder
+# 0036 — What a room shows about its members: sums, your own turnout, and no default ladder
 
 - Status: accepted
 - Date: 2026-09-08

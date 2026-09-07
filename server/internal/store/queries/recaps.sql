@@ -1,0 +1,50 @@
+-- One row per finished session (ADR-0034): who was in the room, and for how
+-- long. Presence and time only — no watts, no kJ, no execution, no heart rate
+-- and no per-rider workout reach this table, which is what lets it be durable
+-- at all while WATTROOM.md's metrics rules stay untouched.
+
+-- name: SaveSessionRecap :one
+insert into session_recaps (room_id, workout, started_at, ended_at, riders)
+values ($1, $2, $3, $4, $5)
+returning id, created_at;
+
+-- name: ListRoomRecaps :many
+-- The room's most recent, oldest-first for rendering — the same shape and the
+-- same reason as ListRoomChat, so the timeline merges two ordered lists rather
+-- than sorting one.
+select r.id, r.workout, r.started_at, r.ended_at, r.riders
+from (
+    select * from session_recaps
+    where room_id = $1
+    order by ended_at desc
+    limit $2
+) r
+order by r.ended_at;
+
+-- name: PruneSessionRecaps :exec
+-- The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
+-- register: this is what stops the table answering "where was this person in
+-- March". Swept on write, like PruneChat — the table never grows past it.
+delete from session_recaps where ended_at < now() - make_interval(days => $1::int);
+
+-- name: ExportUserRecaps :many
+-- Export-all (#696, GDPR Art. 15 / revFADP Art. 25): the sessions this rider
+-- was present for, and their own interval in each. Other riders' intervals are
+-- their personal data, not the requester's, so the row is narrowed to theirs —
+-- the same rule ExportUserChat follows.
+select s.workout, s.started_at, s.ended_at, r.name as room_name, r.slug as room_slug,
+       (entry ->> 'from')::bigint as joined_at,
+       (entry ->> 'to')::bigint as left_at,
+       (entry ->> 'rode')::boolean as rode
+from session_recaps s
+join rooms r on r.id = s.room_id
+cross join lateral jsonb_array_elements(s.riders) entry
+where entry ->> 'id' = $1::text
+order by s.ended_at;
+
+-- name: CountRecapsNaming :one
+-- The purge trigger's witness: how many rows still carry this rider's
+-- interval. Zero after `delete from users`, which is what the account test
+-- asserts against the rows themselves rather than through an API.
+select count(*) from session_recaps
+where riders @> jsonb_build_array(jsonb_build_object('id', $1::text));

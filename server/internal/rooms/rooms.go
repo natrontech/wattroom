@@ -160,7 +160,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 // --- responses ---
 
 // What a room shows about the riding its members did together (#995,
-// RESEARCH.md §14.7, ADR-0035). Every figure here is either a whole-room sum
+// RESEARCH.md §14.7, ADR-0036). Every figure here is either a whole-room sum
 // — which orders nobody — or the CALLER's own turnout. No other rider's
 // ride-derived number appears, which is what keeps this side of ADR-0034's
 // line without a per-rider consent set.
@@ -228,7 +228,7 @@ type roomJSON struct {
 	// no individual numbers anywhere in it.
 	StreakWeeks int   `json:"streakWeeks"`
 	MonthKj     int64 `json:"monthKj"`
-	// What the crew did together (#995, ADR-0035). Members only, like every
+	// What the crew did together (#995, ADR-0036). Members only, like every
 	// other room number, and cooperative by construction — see crewJSON.
 	Crew *crewJSON `json:"crew,omitempty"`
 	// Planned rides (#116): the full upcoming list for members, and just the

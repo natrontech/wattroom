@@ -103,13 +103,14 @@ type Friendship struct {
 }
 
 type Identity struct {
-	Provider       string
-	ProviderUserID string
-	UserID         pgtype.UUID
-	AccessToken    *string
-	RefreshToken   *string
-	TokenExpiresAt pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
+	Provider        string
+	ProviderUserID  string
+	UserID          pgtype.UUID
+	AccessToken     *string
+	RefreshToken    *string
+	TokenExpiresAt  pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	RefreshTokenEnc []byte
 }
 
 type Medal struct {
@@ -229,6 +230,16 @@ type Session struct {
 	UserID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
 	ExpiresAt pgtype.Timestamptz
+}
+
+type SessionRecap struct {
+	ID        pgtype.UUID
+	RoomID    pgtype.UUID
+	Workout   string
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Riders    []byte
+	CreatedAt pgtype.Timestamptz
 }
 
 type SessionRsvp struct {

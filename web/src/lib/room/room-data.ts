@@ -17,7 +17,7 @@ export interface Medal {
 }
 
 /**
- * What the crew did together (#995, ADR-0035). Cooperative by construction:
+ * What the crew did together (#995, ADR-0036). Cooperative by construction:
  * sums over the whole room, plus the VIEWER's own turnout — no other rider's
  * ride-derived number is in here.
  */

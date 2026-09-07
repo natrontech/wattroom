@@ -68,10 +68,15 @@ let current = $state<Connection | null>(null);
 
 /** The chat backlog (#201) — a nicety; live chat still works without it. */
 function loadBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
-	void api<{ messages?: Parameters<typeof live.seedChat>[0] }>(
-		`/api/rooms/${slug}/chat`,
-	).then((res) => {
-		if (res.ok && res.data?.messages) live.seedChat(res.data.messages);
+	void api<{
+		messages?: Parameters<typeof live.seedChat>[0];
+		recaps?: Parameters<typeof live.seedRecaps>[0];
+	}>(`/api/rooms/${slug}/chat`).then((res) => {
+		if (!res.ok) return;
+		if (res.data?.messages) live.seedChat(res.data.messages);
+		// The room's finished sessions ride the same response (ADR-0034):
+		// one question, one round trip, one membership gate.
+		if (res.data?.recaps) live.seedRecaps(res.data.recaps);
 	});
 }
 

@@ -41,10 +41,12 @@ import (
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/playlists"
 	"github.com/natrontech/wattroom/server/internal/progression"
+	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/safego"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
@@ -95,12 +97,24 @@ func main() {
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
 	if st != nil {
-		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"))
+		// The key that seals stored third-party credentials (#697). Absent is
+		// allowed and warns; present-but-unusable is fatal, because an
+		// operator who set it believes credentials are encrypted and a server
+		// that boots anyway makes that belief false and silent. Failing here
+		// is what ADR-0019's health gate and rollback are for.
+		keys, err := secrets.FromEnv(log)
+		if err != nil {
+			log.Error("token key", "err", err)
+			os.Exit(1)
+		}
+		// One pass, at boot, over the rows written before the key existed.
+		secrets.Backfill(context.Background(), st, keys, log)
+		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"), keys)
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
 		accountService.Register(mux)
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
-		uploader := strava.New(st, log)
+		uploader := strava.New(st, log, keys)
 		if uploader != nil {
 			// Disconnecting Strava hands the grant back, not just our row (#783).
 			authService.SetStravaRevoker(uploader)
@@ -157,6 +171,13 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		// What a finished session leaves behind (ADR-0034). The hub writes
+		// through it when a session ends; the backlog reads it back, so the
+		// card survives the reload every other timeline entry does not.
+		recapService := recap.New(st, log)
+		h.SetRecapKeeper(recapService)
+		recapService.SetLive(h)
+		chatService.SetRecaps(recapService)
 		playlistsService := playlists.New(st, authService, roomsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)

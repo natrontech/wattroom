@@ -24,7 +24,7 @@
 | **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Planned session** | A session put on a room's calendar for a time (#116). Members **RSVP**: in, or not in — there is no maybe. It is not a second kind of object, and it is not a *room event*, which is the chat line above. |
 | **Streak** | Consecutive **weeks** in which a room held at least one session, counted from Monday-start weeks. The current week is forgiving: a streak survives until that week ends without a session, so a crew that always rides on Saturday does not read as broken on Tuesday. Feeds the XP bonus (`25 × current-week-streak`). |
-| **Consistency** | Showing up, as opposed to how hard you rode — the thing a room's own numbers are about ([RESEARCH.md §14.7](RESEARCH.md)). A room expresses it two ways: its **streak**, and its **sessions this month** against its own last month. It is never a per-rider score and never a ranking; a rider sees only their own turnout ([ADR-0035](decisions/0035-what-a-room-shows-about-its-members.md)). |
+| **Consistency** | Showing up, as opposed to how hard you rode — the thing a room's own numbers are about ([RESEARCH.md §14.7](RESEARCH.md)). A room expresses it two ways: its **streak**, and its **sessions this month** against its own last month. It is never a per-rider score and never a ranking; a rider sees only their own turnout ([ADR-0036](decisions/0036-what-a-room-shows-about-its-members.md)). |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
@@ -278,6 +278,13 @@ future trainer that reports none.
 - **Hammer** — best 5 s w/kg
 - **Lanterne Rouge** — last on the final sprint/podium metric but completed the session
 - Ties: earlier joiner wins. Minimum 3 riders for medals (default — tune in alpha).
+
+## Session recap retention (ADR-0034)
+
+- A finished session leaves **one recap** per session: who was in the room, when they arrived, how long they stayed, and whether they rode. **Presence and time only** — never watts, kJ, execution, heart rate or a per-rider workout.
+- **Kept 90 days**, then pruned. Long enough to answer "who rode with us last month"; short enough to stop answering "where was this person in March". A room is a crew, not an attendance register.
+- Readable by the room's **current members** only; leaving the room ends access. Deleting the room takes its recaps with it, and deleting an account removes that rider's interval from every recap that names them.
+- A session that never started leaves nothing. Sitting in a room with no session leaves nothing.
 
 ## Game mode parameters (defaults — tune in alpha)
 
