@@ -52,9 +52,9 @@ describe('statusOf', () => {
 
 describe('statusOfRider', () => {
 	it('prefers what the rider said over what the trainer shows', () => {
-		expect(statusOfRider({ away: true, watts: 210 })).toBe('away');
-		expect(statusOfRider({ watts: 210 })).toBe('riding');
-		expect(statusOfRider({ watts: 0 })).toBe('online');
+		expect(statusOfRider({ away: true, riding: true })).toBe('away');
+		expect(statusOfRider({ riding: true })).toBe('riding');
+		expect(statusOfRider({ riding: false })).toBe('online');
 		expect(statusOfRider({})).toBe('online');
 	});
 });

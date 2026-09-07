@@ -46,11 +46,17 @@ export function statusOf(
 /**
  * A rider on the room's own tick, which knows more than the rail can: away is
  * a thing the rider SAID (#706), never inferred from an idle trainer.
+ *
+ * `riding` comes from the server and means pedalled-inside-the-window
+ * (#1016). It used to be read off the current sample's watts here, which put
+ * a rider on and off the mark every time they coasted — and meant a different
+ * thing again outside the room, where the same word covered anyone whose
+ * trainer was merely switched on.
  */
 export function statusOfRider(rider: {
 	away?: boolean;
-	watts?: number;
+	riding?: boolean;
 }): PresenceStatus {
 	if (rider.away) return 'away';
-	return (rider.watts ?? 0) > 0 ? 'riding' : 'online';
+	return rider.riding ? 'riding' : 'online';
 }

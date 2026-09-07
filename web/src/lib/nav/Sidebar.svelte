@@ -112,9 +112,11 @@
 		connectedSlug
 			? statusOfRider({
 					away,
-					watts:
-						roomConnection.current?.live.tick?.riders[account.me?.id ?? '']
-							?.watts,
+					// The roster, not the metrics map: riding is the room's
+					// window now, and only the roster carries it (#1016).
+					riding: roomConnection.current?.live.tick?.roster.find(
+						(rider) => rider.id === account.me?.id,
+					)?.riding,
 				})
 			: null,
 	);

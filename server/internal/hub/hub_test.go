@@ -267,10 +267,13 @@ func TestSprintLifecycle(t *testing.T) {
 	}
 }
 
-// The deploy guard on the VM restarts the app when nobody is riding, and
-// "riding" has to mean pedalling rather than present — a room full of people
-// between sessions is the normal case, and it must not block a rollout.
-func TestRidingCountIsPedallingNotPresence(t *testing.T) {
+// The deploy guard on the VM restarts the app when nobody is on a trainer, so
+// the gauge counts LIVE TRAINERS rather than people holding a socket — a room
+// full of people between sessions is the normal case and must not block a
+// rollout. Deliberately looser than the rider-facing "riding" (#1016): a rider
+// resting between intervals is not riding, and a restart in their rest is
+// still a restart mid-session, so this one keeps reading lastMetric.
+func TestRidingGaugeCountsLiveTrainersNotPresence(t *testing.T) {
 	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
 	now := time.Now()
 	h.now = func() time.Time { return now }
@@ -278,18 +281,67 @@ func TestRidingCountIsPedallingNotPresence(t *testing.T) {
 	rm := newRoom("test")
 	rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
 	rm.seen["sven"] = protocol.Rider{ID: "sven", Name: "Sven"}
-	rm.lastMetric["jan"] = now.Add(-2 * time.Second)   // pedalling
+	rm.lastMetric["jan"] = now.Add(-2 * time.Second)   // trainer talking
 	rm.lastMetric["sven"] = now.Add(-60 * time.Second) // present, sample stale
 	h.rooms["test"] = rm
 
 	if got := h.ridingCount(); got != 1 {
-		t.Fatalf("ridingCount = %v, want 1 — sven is in the room but not riding", got)
+		t.Fatalf("ridingCount = %v, want 1 — sven is in the room, trainer silent", got)
 	}
 
 	// Everyone stops: the room is still occupied, and a deploy is now fine.
 	rm.lastMetric["jan"] = now.Add(-ridingWindow - time.Second)
 	if got := h.ridingCount(); got != 0 {
 		t.Fatalf("ridingCount = %v, want 0 once every sample is stale", got)
+	}
+}
+
+// Riding is a thing a rider does, not a thing their trainer does (#1016). A
+// paired trainer publishes 0 W at 1 Hz for as long as the tab is open, so the
+// friends page used to mark anyone who had ever paired as riding, forever.
+func TestRidingLockedNeedsWatts(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		name    string
+		samples []protocol.RiderMetrics
+		// How long before `now` the last sample arrived.
+		ago  time.Duration
+		want bool
+	}{
+		{"never pedalled", []protocol.RiderMetrics{{Watts: 0}, {Watts: 0}}, 0, false},
+		{"pedalling", []protocol.RiderMetrics{{Watts: 214}}, 0, true},
+		{"coasting holds the mark", []protocol.RiderMetrics{{Watts: 214}, {Watts: 0}}, 5 * time.Second, true},
+		{"sat down loses it", []protocol.RiderMetrics{{Watts: 214}, {Watts: 0}}, 15 * time.Second, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rm := newRoom("test")
+			rider := protocol.Rider{ID: "jan", Name: "Jan"}
+			rm.seen["jan"] = rider
+			// The trainer is paired and talking at 1 Hz throughout — that is
+			// the bug: 0 W is a sample like any other, so lastMetric is fresh
+			// in every case here and only the watts stamp moves. setMetrics
+			// needs a client and a claim, and the stamping rule is what is
+			// under test, not the ingest guard.
+			rm.lastMetric["jan"] = now
+			at := now.Add(-tc.ago)
+			for _, m := range tc.samples {
+				if m.Watts > 0 {
+					rm.lastWatts["jan"] = at
+				}
+			}
+			names, ids := rm.ridingLocked(now)
+			if got := len(names) == 1; got != tc.want {
+				t.Fatalf("riding = %v (%v), want %v", got, names, tc.want)
+			}
+			if len(names) != len(ids) {
+				t.Fatalf("names %v and ids %v are different lengths", names, ids)
+			}
+			// The trainer is talking either way — that signal must survive.
+			if rm.liveTrainersLocked(now) != 1 {
+				t.Fatalf("liveTrainersLocked = 0, want 1: the trainer is connected in every case here")
+			}
+		})
 	}
 }
 
