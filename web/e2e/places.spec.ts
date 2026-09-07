@@ -22,14 +22,21 @@ test('every place in a room renders, and none of them throws', async ({
 	await signInAs(page, 'Places Walker', '/rooms');
 	const { slug } = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
 
-	const links = page.locator(`a[href^="/r/${slug}"]`);
-	const hrefs = [
+	// The sidebar only lists the places once the room it opened is the open one,
+	// so reading it the instant `rooms.open` returns finds the room's own link
+	// and nothing else (#960). `/chat` is rendered by that list alone, so it is
+	// the one link whose arrival says the list is there; `evaluateAll` has no
+	// auto-waiting of its own to hold the read back.
+	await expect(page.locator(`a[href="/r/${slug}/chat"]`)).toBeVisible();
+
+	// Everything under the room, which is every place but the lounge — the
+	// lounge is where creation landed, and the walk is the places beyond it.
+	const links = page.locator(`a[href^="/r/${slug}/"]`);
+	const places = [
 		...new Set(
 			await links.evaluateAll((all) => all.map((a) => a.getAttribute('href')!)),
 		),
 	];
-	// The lounge is where creation landed; the walk is the places beyond it.
-	const places = hrefs.filter((href) => href !== `/r/${slug}`);
 	expect(places.length).toBeGreaterThan(2);
 
 	const main = page.locator('main').first();
