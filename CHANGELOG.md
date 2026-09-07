@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.42] - 2026-09-08
+
+### Added
+
+- A room's lounge now says what the crew did together: hours ridden as a crew, sessions this month against last month, and a strip of the last twelve sessions showing which ones you were in. Every figure is either the whole room's or your own — no rider's numbers are shown to anyone else.
+
 ## [2026.09.41] - 2026-09-08
 
 ### Added
@@ -1036,7 +1042,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.41...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.42...HEAD
+[2026.09.42]: https://github.com/natrontech/wattroom/compare/2026.09.41...2026.09.42
 [2026.09.41]: https://github.com/natrontech/wattroom/compare/2026.09.40...2026.09.41
 [2026.09.40]: https://github.com/natrontech/wattroom/compare/2026.09.39...2026.09.40
 [2026.09.39]: https://github.com/natrontech/wattroom/compare/2026.09.38...2026.09.39
