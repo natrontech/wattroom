@@ -1,0 +1,1 @@
+- Returning to WattRoom now gets you the current version. The page that names the app's files carried no caching instructions at all, so a browser was free to keep an old copy — and once those files started being cached for a year, that old copy stuck, hiding every new release until a hard reload.

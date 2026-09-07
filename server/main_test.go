@@ -109,6 +109,10 @@ func TestVersionHandlerReportsTag(t *testing.T) {
 // names the current hashes, so caching it would pin a rider to the build they
 // first loaded and hide every deploy from them — the failure this test exists
 // to prevent, since nothing else in the response would look wrong.
+// Hashed assets are pinned for a year; everything else revalidates. The pair
+// is the point: pinning the chunks is only safe while the document that names
+// them is re-checked, and shipping the first half without the second froze
+// returning riders on the previous release (#966).
 func TestSPACachesHashedAssetsOnly(t *testing.T) {
 	dist := fstest.MapFS{
 		"index.html":                   {Data: []byte("<html></html>")},
@@ -118,15 +122,16 @@ func TestSPACachesHashedAssetsOnly(t *testing.T) {
 	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
 
 	const immutable = "public, max-age=31536000, immutable"
+	const revalidate = "no-cache"
 	for _, tc := range []struct {
 		path string
 		want string
 	}{
 		{"/_app/immutable/chunks/abc.js", immutable},
-		{"/index.html", ""},
-		{"/", ""},
-		{"/r/velvet-hammer", ""}, // SPA fallback: index.html under another name
-		{"/favicon.png", ""},     // served from the build, but not content-hashed
+		{"/index.html", revalidate},
+		{"/", revalidate},
+		{"/r/velvet-hammer", revalidate}, // SPA fallback: index.html again
+		{"/favicon.png", revalidate},     // from the build, but not hashed
 	} {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", tc.path, nil))
