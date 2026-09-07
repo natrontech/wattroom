@@ -235,7 +235,10 @@ body {
    page that never finished loading. A section that would stretch too far
    goes multi-column at xl instead of the page narrowing. */
 @utility page {
-	@apply w-full px-8 py-8;
+	/* 32px each side was decided for wide screens (ADR-0020) and applied at
+	   every width: on a 375px phone it spent a sixth of the viewport on
+	   margin. Narrow gets 16px, and the original holds from `sm` up. */
+	@apply w-full px-4 py-6 sm:px-8 sm:py-8;
 }
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's

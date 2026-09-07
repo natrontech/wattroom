@@ -92,7 +92,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 	<svg
 		viewBox="0 0 {W} {H}"
-		width={W}
+		width="100%"
 		height={H}
 		class="block {onpick ? 'cursor-pointer' : ''}"
 		role="img"

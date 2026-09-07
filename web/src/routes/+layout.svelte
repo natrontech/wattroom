@@ -323,7 +323,12 @@
 					onStop={() => void av.toggleShare()}
 				/>
 			{/if}
-			<div class="min-h-0 flex-1 overflow-y-auto">
+			<!-- The page body. It scrolls down, never sideways: wide content
+			     wraps itself in its own overflow-x container (.claude/rules/ux.md).
+			     Named so the phone-width spec can assert exactly that — the
+			     document cannot, because this element absorbs the overflow and
+			     leaves documentElement.scrollWidth equal to its clientWidth (#1008). -->
+			<div data-testid="page-body" class="min-h-0 flex-1 overflow-y-auto">
 				{@render children()}
 			</div>
 		</div>

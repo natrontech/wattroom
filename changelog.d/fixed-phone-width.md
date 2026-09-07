@@ -1,0 +1,1 @@
+- Pages outside a room fit a phone. The charts on Rides and your profile were drawn at a fixed 600px and pushed the whole page sideways on a 375px screen, dragging the header off with them; every page also spent 32px a side on margin at every width. Charts now fit their column and narrow screens get their space back.
