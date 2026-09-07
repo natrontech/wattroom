@@ -1,34 +1,28 @@
 <script lang="ts">
 	/**
-	 * The way to the soundboard, in the row the room already keeps for sound.
+	 * The way to the soundboard, in the room's reaction row.
 	 *
-	 * It began as a pill floating over the room, which was a way of avoiding
-	 * this file rather than a design: it landed on the chat composer and read
-	 * as something bolted on. `QuickAudio` sets the pattern this follows —
-	 * an icon among the mic and the camera when the strip is there, a labelled
-	 * button when it is not.
+	 * It has moved twice. First a pill floating over the room, which landed on
+	 * the chat composer; then an icon in the sidebar's audio strip, where a
+	 * speaker glyph sat beside the mix faders and read as a second volume
+	 * control while taking a third of a 240 px row. Firing a clip is what a
+	 * cheer is — something you throw into the room — so it lives with the
+	 * cheers and draws a drum, not a speaker.
+	 *
+	 * Labelled rather than a fifth glyph in that row: a bare drum among four
+	 * reaction faces reads as a fifth reaction, and the first rider to see it
+	 * there could not find the board at all. `Away` in the sidebar is the same
+	 * shape — a toggle that says what it is, primary while it is on.
 	 */
-	import Volume2 from '@lucide/svelte/icons/volume-2';
+	import Drum from '@lucide/svelte/icons/drum';
 	import { boardPanel } from '$lib/board/panel.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
-
-	// `compact` is the sidebar's icon row, the same word QuickAudio uses.
-	let { compact = false }: { compact?: boolean } = $props();
-
-	// A board needs a room to fire into, and nothing else — not voice, so this
-	// does not follow `showAv`.
-	const inRoom = $derived(!!roomConnection.current);
 </script>
 
-{#if inRoom}
-	<button
-		onclick={() => boardPanel.toggle()}
-		aria-expanded={boardPanel.open}
-		class={compact
-			? `flex flex-1 justify-center rounded py-1.5 ${boardPanel.open ? 'text-ink' : 'text-muted/50 hover:text-muted'}`
-			: 'btn btn-secondary btn-xs mt-2 w-full'}
-		title="your soundboard"
-		aria-label="your soundboard"
-		>{#if compact}<Volume2 size={16} />{:else}<Volume2 size={13} /> Soundboard{/if}</button
-	>
-{/if}
+<button
+	onclick={() => boardPanel.toggle()}
+	aria-expanded={boardPanel.open}
+	class="btn btn-xs mt-1.5 w-full {boardPanel.open
+		? 'btn-primary'
+		: 'btn-secondary'}"
+	title="your soundboard"><Drum size={13} /> Soundboard</button
+>

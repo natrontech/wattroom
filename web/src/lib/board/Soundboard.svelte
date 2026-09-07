@@ -12,14 +12,7 @@
 	 * never glows; the part that has already played takes the live hue,
 	 * because that is what ADR-0005 reserves it for.
 	 */
-	import {
-		ChevronUp,
-		GripHorizontal,
-		Library,
-		Plus,
-		Volume2,
-		X,
-	} from '@lucide/svelte';
+	import { GripHorizontal, Library, Plus, Volume2, X } from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
 	import { board, type Clip } from '$lib/board/clips.svelte';
 	import { isToggle } from '$lib/board/toggle-key.svelte';
@@ -55,8 +48,8 @@
 		if (!batch || batch.length === 0 || batch === seenTick) return;
 		seenTick = batch;
 		// Playing is not the panel's job to be open for: a rider who hid the
-		// board still hears the room. This component is always mounted — the
-		// chip below is what it renders when closed.
+		// board still hears the room — this component stays mounted and
+		// renders nothing while it is closed.
 		for (const shot of batch) {
 			// Only your OWN clips carry an edit here — a board is one rider's, so
 			// somebody else's trim rides with their audio, not with the fire.
@@ -173,11 +166,6 @@
 				onclick={() => (library = true)}
 				class="hover:text-ink ml-auto shrink-0"
 				aria-label="your clips"><Library size={13} /></button
-			>
-			<button
-				onclick={() => boardPanel.hide()}
-				class="hover:text-ink shrink-0"
-				aria-label="hide the soundboard"><ChevronUp size={13} /></button
 			>
 			<button
 				onclick={() => boardPanel.hide()}

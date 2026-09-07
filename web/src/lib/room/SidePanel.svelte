@@ -7,6 +7,7 @@
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Video from '@lucide/svelte/icons/video';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -292,8 +293,10 @@
 			</button>
 		{/if}
 		<div class="border-ink/5 border-t p-3">
-			<!-- The room's reactions. Typing lives on the Chat place now, and
-			     mid-ride it was never on the table anyway (ux.md). -->
+			<!-- The room's reactions, and under them the soundboard: both are
+			     a thing you throw into the room, and neither is typing —
+			     which lives on the Chat place now and mid-ride was never on
+			     the table anyway (ux.md). -->
 			<div class="flex gap-1.5">
 				{#each cheers.slice(0, 4) as cheer (cheer)}
 					<button
@@ -305,6 +308,7 @@
 					>
 				{/each}
 			</div>
+			<BoardToggle />
 		</div>
 	</div>
 </aside>
