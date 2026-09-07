@@ -85,6 +85,78 @@ export async function fire(
 	riderId: string,
 	edit?: Edit,
 ): Promise<void> {
+	// A fire from the room ends whatever the rider was auditioning: one rider
+	// is one voice, and the tick outranks a preview.
+	if (riderId === auditioning?.riderId) auditioning = null;
+	return play(clipId, riderId, edit);
+}
+
+/**
+ * Play a clip to THIS machine only (#981): no `onFire`, no protocol message,
+ * no tick entry, and nothing the "someone fired X" strip reports. It is the
+ * same `play` a fire uses, with the local rider's own id, so the retrigger
+ * rule and the board fader keep working — an audition is a fire that never
+ * went to the hub, not a second audio path.
+ *
+ * `loop` is the trim face: restarting at the boundary rather than looping the
+ * buffer, so every pass applies the fades the rider is actually setting.
+ */
+export async function preview(
+	clipId: string,
+	riderId: string,
+	edit?: Edit,
+	loop = false,
+): Promise<void> {
+	const token = {};
+	auditioning = { clipId, riderId, edit, loop, token };
+	return play(clipId, riderId, edit);
+}
+
+/** What this machine is auditioning, for the button that says so. */
+export function previewing(): string | null {
+	return auditioning?.clipId ?? null;
+}
+
+/**
+ * How far into the kept range the audition is, in seconds — null when nothing
+ * is being auditioned. Read every frame by the trim face's playhead, so it is
+ * a plain computation off the audio clock rather than state that ticks.
+ */
+export function previewAt(): number | null {
+	const live = auditioning;
+	const audio = bus();
+	if (!live || !audio || live.startedAt === undefined || !live.kept)
+		return null;
+	const into = audio.ctx.currentTime - live.startedAt;
+	if (into < 0) return 0;
+	return live.loop ? into % live.kept : Math.min(into, live.kept);
+}
+
+/** Stop an audition; a no-op when nothing is being auditioned. */
+export function stopPreview(): void {
+	const was = auditioning;
+	auditioning = null;
+	if (was) stop(was.riderId);
+}
+
+// Reactive: the row's play button and the trim face's readout both draw from
+// it, and it flips when the audio starts and when it is stopped or taken over.
+let auditioning = $state<{
+	clipId: string;
+	riderId: string;
+	edit?: Edit;
+	loop: boolean;
+	token: object;
+	/** Context time this pass started, and how much of the clip it plays. */
+	startedAt?: number;
+	kept?: number;
+} | null>(null);
+
+async function play(
+	clipId: string,
+	riderId: string,
+	edit?: Edit,
+): Promise<void> {
 	const audio = bus();
 	if (!audio) return;
 	const buffer = await load(clipId);
@@ -116,11 +188,24 @@ export async function fire(
 	const source = audio.ctx.createBufferSource();
 	source.buffer = buffer;
 	source.connect(gain);
+	const mine = auditioning;
 	source.onended = () => {
 		if (sounding.get(riderId)?.source === source) sounding.delete(riderId);
 		gain.disconnect();
+		// The loop, restarted rather than looped: `mine` pins the audition this
+		// pass belonged to, so stopping it — or firing over it — ends the loop
+		// instead of racing a fresh one.
+		if (mine && mine.loop && auditioning?.token === mine.token) {
+			void play(mine.clipId, mine.riderId, mine.edit);
+		}
 	};
 	sounding.set(riderId, { source, gain, clipGain });
+	// Where the playhead is, for the face that draws one. Written here because
+	// this is the only place that knows when the audio actually started.
+	if (auditioning?.clipId === clipId && auditioning.riderId === riderId) {
+		auditioning.startedAt = now;
+		auditioning.kept = kept;
+	}
 	source.start(now, start, kept);
 }
 
@@ -137,6 +222,7 @@ export function stop(riderId: string): void {
 }
 
 export function stopAll(): void {
+	auditioning = null;
 	for (const riderId of [...sounding.keys()]) stop(riderId);
 }
 
