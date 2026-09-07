@@ -24,7 +24,12 @@
 	} from '$lib/rider';
 	import { toasts } from '$lib/toast.svelte';
 	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
-	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
+	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
+	import {
+		fetchTrophies,
+		XP_SOURCES,
+		type Trophies,
+	} from '$lib/trophies/trophies';
 	import Award from '@lucide/svelte/icons/award';
 	import Check from '@lucide/svelte/icons/check';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -215,6 +220,24 @@
 						>{toNext.toLocaleString()} XP to {level + 1}</span
 					>
 				</div>
+				<!-- Where the level came from (#993). "Level 18" says nothing about
+				     whether it was earned on the bike or in the lounge, and both are
+				     worth saying — but lounge XP is a floor on the hours behind
+				     Lounge Lizard, so like the counts it is yours alone (#1025). -->
+				{#if trophies && trophies.xp.total > 0 && rider.friend === 'self'}
+					<p class="text-muted mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
+						{#each XP_SOURCES as row (row.key)}
+							{#if trophies.xp[row.key] > 0}
+								<span class="tabular-nums"
+									>{row.short}
+									<span class="text-ink font-semibold"
+										>{trophies.xp[row.key].toLocaleString()}</span
+									></span
+								>
+							{/if}
+						{/each}
+					</p>
+				{/if}
 			</div>
 			<div class="flex shrink-0 flex-col gap-2">
 				{#if rider.friend === 'self'}
@@ -350,6 +373,17 @@
 				     and the same on your own page, which is how a room-mate sees
 				     it (ADR-0024's honest preview). Your progress bars live on
 				     /trophies. -->
+				<!-- Your own page only. For the four social badges these counts
+				     ARE the progress ADR-0027 keeps private — the same integers —
+				     so the server sends zeroes for anyone else's case and this
+				     does not render there either (#1025). -->
+				{#if trophies && rider.friend === 'self'}
+					<RiderCounts
+						counts={trophies.counts}
+						achievements={trophies.achievements}
+					/>
+				{/if}
+
 				{#if trophies}
 					<BadgeGrid achievements={trophies.achievements} mine={false} />
 				{/if}

@@ -25,6 +25,25 @@ type xpJSON struct {
 	Achievements int64 `json:"achievements"`
 }
 
+// countsJSON is what the rider has done, as counts rather than as XP —
+// tallies' four social counts plus the sessions they were in voice for.
+//
+// THE RIDER'S OWN ONLY. These are the same integers `have()` judges Lounge
+// Lizard, DJ, Crew Chief and Sprint Snob from, so serving them to a room-mate
+// would hand back precisely the progress ADR-0027 strips one field below —
+// and, for a badge already earned, "the value that earned it", which that ADR
+// forbids in the same breath. write() zeroes the struct for anyone else; see
+// #1025 for the question of whether it should.
+type countsJSON struct {
+	VoiceMinutes int64 `json:"voiceMinutes"`
+	// Group sessions the rider was in voice for at least half of — what
+	// events.go actually records, and not the same thing as sessions ridden.
+	VoiceSessions int64 `json:"voiceSessions"`
+	Coached       int64 `json:"coached"`
+	SprintWins    int64 `json:"sprintWins"`
+	TracksPlayed  int64 `json:"tracksPlayed"`
+}
+
 // medalsJSON counts by docs/SPEC.md's kinds — the only medals WattRoom has.
 type medalsJSON struct {
 	Diesel        int64 `json:"diesel"`
@@ -49,6 +68,7 @@ type achievementJSON struct {
 // it, the medals, and every catalogue entry with how far along it is.
 type Response struct {
 	Xp           xpJSON            `json:"xp"`
+	Counts       countsJSON        `json:"counts"`
 	EnergyKj     int64             `json:"energyKj"`
 	Medals       medalsJSON        `json:"medals"`
 	Achievements []achievementJSON `json:"achievements"`
@@ -66,6 +86,13 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 			Lounge:       t.bySource[sourceLounge].Amount,
 			Sessions:     t.bySource[sourceSession].Amount,
 			Achievements: t.bySource[sourceAchievement].Amount,
+		},
+		Counts: countsJSON{
+			VoiceMinutes:  t.voiceMinutes(),
+			VoiceSessions: t.voiceSessions(),
+			Coached:       t.coached(),
+			SprintWins:    t.sprintWins(),
+			TracksPlayed:  t.tracksPlayed(),
 		},
 		EnergyKj: t.kj,
 		Medals: medalsJSON{
@@ -142,6 +169,10 @@ func (s *Service) write(w http.ResponseWriter, r *http.Request, userID pgtype.UU
 		for i := range out.Achievements {
 			out.Achievements[i].Progress = nil
 		}
+		// The counts ARE that progress for the four social badges — the same
+		// integers, from the same map — so stripping one and not the other
+		// would leave the strip above decorative (#993 review).
+		out.Counts = countsJSON{}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

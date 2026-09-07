@@ -8,6 +8,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
+	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
 	import TrophyShelf from '$lib/trophies/TrophyShelf.svelte';
 	import {
 		fetchTrophies,
@@ -135,6 +136,13 @@
 				</p>
 			</div>
 		</section>
+
+		<div class="mt-8">
+			<RiderCounts
+				counts={trophies.counts}
+				achievements={trophies.achievements}
+			/>
+		</div>
 
 		<div class="mt-8">
 			<TrophyShelf {trophies} />

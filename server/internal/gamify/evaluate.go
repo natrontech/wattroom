@@ -91,6 +91,23 @@ func clockCounts(rows []db.ListUserRideTimesRow, loc *time.Location) (sunrise, n
 	return sunrise, night
 }
 
+// The four social counts, each read as a ROW COUNT. docs/SPEC.md records
+// lounge blocks past the daily cap at 0 XP so the hours keep counting, and
+// pays sprint wins, DJ tracks and coached sessions 0 always — summed, all
+// four would read as nothing. They live here because `have()` judges the
+// badge from them and the trophy case displays them, and the two disagreeing
+// is a bug nobody would see: the profile draws the count and its own badge's
+// annotation side by side.
+func (t *tallies) voiceMinutes() int64 { return t.bySource[sourceLounge].N * blockMinutes }
+func (t *tallies) tracksPlayed() int64 { return t.bySource[sourceDjTrack].N }
+func (t *tallies) coached() int64      { return t.bySource[sourceCoached].N }
+func (t *tallies) sprintWins() int64   { return t.bySource[sourceSprintWin].N }
+
+// voiceSessions is group sessions the rider was IN VOICE for at least half of
+// — that is the row events.go writes, and calling it "group sessions" would
+// read a voice-off rider's twenty sessions as zero.
+func (t *tallies) voiceSessions() int64 { return t.bySource[sourceSession].N }
+
 // have is how far along a counted achievement the rider is; false for the
 // ride achievements, which have no count.
 func (t *tallies) have(key string) (int, bool) {
@@ -102,13 +119,13 @@ func (t *tallies) have(key string) (int, bool) {
 	case key200Rides:
 		return int(t.rides), true
 	case keyLounge:
-		return int(t.bySource[sourceLounge].N) * blockMinutes, true
+		return int(t.voiceMinutes()), true
 	case keyDJ:
-		return int(t.bySource[sourceDjTrack].N), true
+		return int(t.tracksPlayed()), true
 	case keyCrewChief:
-		return int(t.bySource[sourceCoached].N), true
+		return int(t.coached()), true
 	case keySprintSnob:
-		return int(t.bySource[sourceSprintWin].N), true
+		return int(t.sprintWins()), true
 	}
 	return 0, false
 }
