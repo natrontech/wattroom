@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { account } from '$lib/account.svelte';
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -24,7 +25,10 @@
 	} from '$lib/workout/types';
 	import { validateWorkout } from '$lib/workout/validate';
 
-	const FTP = 265;
+	// The rider steers by this preview — it is the workout they are about to
+	// ride — so it scales to their own FTP; 265 only covers the flicker
+	// before `me` lands (#1003).
+	const FTP = $derived(account.me?.ftpWatts || 265);
 	const custom = createCustomStore();
 
 	// ?from= copies a library workout as a starting point; ?w= edits a saved

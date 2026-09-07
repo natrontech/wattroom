@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hrZoneOf, hrZoneRanges, plannedZoneSeconds, zoneOf } from './zones';
+import type { Segment } from '$lib/workout/types';
 
 describe('zoneOf', () => {
 	it('keeps SPEC boundaries inclusive on the low side', () => {
@@ -82,5 +83,15 @@ describe('plannedZoneSeconds', () => {
 			250,
 		);
 		expect(zones[4]).toBe(60);
+	});
+
+	// #1003: the preview a rider steers by is only theirs if FTP reaches it —
+	// the same minute of 250 W is all-out for one rider and endurance for another.
+	it('puts one workout in different zones at different FTPs', () => {
+		const workout: Segment[] = [
+			{ kind: 'steady', stepIndex: 0, startSeconds: 0, seconds: 60, watts: 250 },
+		];
+		expect(plannedZoneSeconds(workout, 150)[7]).toBe(60);
+		expect(plannedZoneSeconds(workout, 350)[2]).toBe(60);
 	});
 });
