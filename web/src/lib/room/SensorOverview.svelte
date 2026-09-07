@@ -178,6 +178,12 @@
 		     three metres away (errors.md). -->
 		<div class="flex flex-wrap items-center gap-2">
 			{#if trainerView.shape === 'live'}
+				{#if trainerView.note}
+					<!-- Paired but silent (#520). This is the surface a rider is on
+					     while the session runs, so it is the one that most needs to
+					     say a connected trainer is not actually working. -->
+					<p class="text-danger text-xs">{trainerView.note}</p>
+				{/if}
 				<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
 					>Unpair trainer</button
 				>
