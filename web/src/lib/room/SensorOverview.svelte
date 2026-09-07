@@ -188,8 +188,10 @@
 					>Unpair trainer</button
 				>
 			{:else if trainerView.button}
+				<!-- "Pair trainer", not "Pair": the strip has no card around it to
+				     say what is being paired. -->
 				<button onclick={trainer.onPair} class="btn btn-secondary btn-xs"
-					>{trainerView.button.label === 'Pair'
+					>{trainerView.button.variant === 'primary'
 						? 'Pair trainer'
 						: trainerView.button.label}</button
 				>
@@ -205,7 +207,7 @@
 						: ''}
 				</p>
 			{/if}
-			{#if trainer.error}
+			{#if trainer.error && trainer.state !== 'connecting'}
 				<p class="text-danger text-xs">{trainer.error}</p>
 			{/if}
 		</div>
