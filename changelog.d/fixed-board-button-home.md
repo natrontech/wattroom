@@ -1,0 +1,1 @@
+- The soundboard opens from the sound row in the sidebar now, beside the mic and the mixer, instead of a floating button that sat on top of the chat composer.

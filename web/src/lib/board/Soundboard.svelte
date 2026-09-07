@@ -138,19 +138,7 @@
 
 <svelte:window onkeydown={keys} />
 
-{#if !boardPanel.open}
-	<!-- Never only a key (ux.md): the way back is always on screen. -->
-	<button
-		onclick={() => boardPanel.show()}
-		class="bg-surface-raised ring-ink/15 text-muted hover:text-ink fixed bottom-4 left-4 flex h-12 items-center gap-2 rounded-full px-4 shadow-lg ring-1 md:left-64 {covered
-			? 'z-30'
-			: 'z-[54]'}"
-		title="Show your soundboard (B)"
-	>
-		<Volume2 size={16} />
-		<span class="text-xs">board</span>
-	</button>
-{:else}
+{#if boardPanel.open}
 	<div
 		data-pane={PANE}
 		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] rounded-lg p-1.5 shadow-2xl ring-1 md:left-72 {covered
