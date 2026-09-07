@@ -242,10 +242,11 @@ export interface RoomEvent {
    * the SAME id with a higher Count, and clients replace the line in place.
    */
   id: string;
-  kind: string; // "jukebox" | "session"
+  kind: string; // "jukebox" | "session" | "presence"
   /**
    * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
    * session: "planned" | "moved" | "cancelled" | "started" | "ended"
+   * presence: "joined" | "left" | "away" | "back"
    */
   verb: string;
   /**
@@ -272,9 +273,9 @@ export interface RoomEvent {
    */
   queuedBy?: string;
   /**
-   * How many tracks this one line covers — 1 normally, more when a burst
-   * of adds coalesced ("queued 8 tracks"). Eight lines would push the
-   * actual conversation off the screen.
+   * How many things this one line covers — 1 normally, more when a burst
+   * coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
+   * would push the actual conversation off the screen.
    */
   count: number /* int */;
   at: number /* int64 */; // server millis, for ordering only

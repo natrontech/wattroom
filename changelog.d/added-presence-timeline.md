@@ -1,0 +1,2 @@
+- The room's timeline now says who came and went — joined, left, went away, is back — the way ADR-0022 always described. Thirty seconds after someone slips out, "wait, is Marco still here?" has an answer other than counting avatars.
+- A phone whose connection flaps produces no line at all: a rider has to be gone for fifteen seconds before the room is told, and coming back inside that says nothing in either direction. Several people arriving at once are one line that grows, not six lines pushing the conversation off the screen.

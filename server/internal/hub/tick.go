@@ -110,6 +110,10 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// that carries the transition, not the one after it.
 		state := rm.session.state(now())
 		rm.sayPhaseLocked(state, now())
+		// Whoever has been gone longer than the grace window (#984). The tick
+		// is the room's only clock, and the line has to be resolved before the
+		// drain below or it waits a whole second for the next one.
+		rm.sayDepartedLocked(now())
 		rm.accrueVoiceLocked(state.Phase, dt)
 		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 		eventsNow := rm.events.drain()

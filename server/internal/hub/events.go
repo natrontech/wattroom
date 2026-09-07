@@ -36,8 +36,8 @@ type eventLog struct {
 // the same. A grown line is re-sent under its original id — clients key on it
 // and replace the line in place rather than stacking a second one.
 func (el *eventLog) add(ev protocol.RoomEvent, now time.Time) {
-	if el.open != nil && ev.Verb == "queued" && ev.Actor == el.open.Actor &&
-		now.Sub(el.openAt) <= eventBurstWindow {
+	if el.open != nil && el.open.Verb == ev.Verb &&
+		now.Sub(el.openAt) <= eventBurstWindow && coalesces(*el.open, ev) {
 		el.open.Count += ev.Count
 		el.open.Track = "" // "Kim queued 3 tracks" — no single title left
 		el.openAt = now
@@ -47,12 +47,27 @@ func (el *eventLog) add(ev protocol.RoomEvent, now time.Time) {
 	el.nextID++
 	ev.ID = strconv.Itoa(el.nextID)
 	el.append(ev)
-	if ev.Verb == "queued" {
+	if bursts(ev.Verb) {
 		open := ev
 		el.open, el.openAt = &open, now
 	} else {
 		el.open = nil
 	}
+}
+
+// Which verbs grow a line instead of starting one.
+func bursts(verb string) bool { return verb == "queued" || verb == "joined" }
+
+// Whether `next` belongs on the line `open` already started. A queue burst is
+// one rider pasting tracks, so it is the ACTOR that has to match; arrivals are
+// the opposite — six people turning up when a planned session opens is exactly
+// the burst worth folding, and the line names the first of them ("Ana and 2
+// others joined") because six lines push the conversation off the screen.
+func coalesces(open, next protocol.RoomEvent) bool {
+	if next.Verb == "joined" {
+		return true
+	}
+	return next.Actor == open.Actor
 }
 
 // resend replaces the pending copy of a grown line, or queues it again when
@@ -78,6 +93,29 @@ func (el *eventLog) drain() []protocol.RoomEvent {
 	out := el.pending
 	el.pending = nil
 	return out
+}
+
+// presenceKind labels who came and went (#984, ADR-0022's "Discord join/leave
+// shape"). Ephemeral like the rest: a rider arriving is worth a line while
+// the room is happening and worth nothing tomorrow, so it rides the tick and
+// no table hears about it.
+const presenceKind = "presence"
+
+// How long a rider's socket may be gone before the room is told they left.
+//
+// Not invented: the client's reconnect backoff is `min(1000 * 2^attempts,
+// 10s)`, which spends 1+2+4+8 = 15 s trying before it settles into ten-second
+// retries. A phone in a garage flaps constantly, and a leave line per flap is
+// a strobe rather than a timeline — so a socket that is coming back is back
+// inside this, and nothing is said at all.
+const presenceGrace = 15 * time.Second
+
+// presenceLine is one rider arriving, leaving, stepping out or coming back.
+func presenceLine(verb, actor string, now time.Time) protocol.RoomEvent {
+	return protocol.RoomEvent{
+		Kind: presenceKind, Verb: verb, Actor: actor,
+		Count: 1, At: now.UnixMilli(),
+	}
 }
 
 // sessionKind labels the lines a room's plan and timeline produce (#359).

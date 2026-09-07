@@ -72,6 +72,20 @@ export function eventText(event: RoomEvent): string {
 				: `${event.actor} moved ${subject}`;
 		case 'cancelled':
 			return `${event.actor} cancelled ${subject}`;
+		// Who came and went (#984, ADR-0022). Quieter than a message by
+		// design: no reaction, no name badge, one line.
+		case 'joined':
+			return event.count > 1
+				? `${event.actor} and ${event.count - 1} ${
+						event.count === 2 ? 'other' : 'others'
+					} joined`
+				: `${event.actor} joined`;
+		case 'left':
+			return `${event.actor} left`;
+		case 'away':
+			return `${event.actor} went away`;
+		case 'back':
+			return `${event.actor} is back`;
 		case 'started':
 			return `${subject} is starting`;
 		case 'ended':
@@ -97,9 +111,16 @@ export function eventText(event: RoomEvent): string {
  * order, so this is a merge, not a sort — and a tie puts the message first,
  * because the room reacting to what someone typed reads that way round.
  */
+/**
+ * @param mine the reader's own display name. Their own arrival is not news to
+ * them — they are looking at the room they just walked into — and the same
+ * goes for stepping out, which they did by pressing the button that says so
+ * (#984). Everyone ELSE sees every line.
+ */
 export function roomTimeline(
 	messages: TimelineMessage[],
 	events: RoomEvent[] = [],
+	mine?: string,
 ): TimelineEntry[] {
 	const lines: TimelineEntry[] = messages.map((message) => ({
 		kind: 'message',
@@ -108,6 +129,7 @@ export function roomTimeline(
 		message,
 	}));
 	for (const event of events) {
+		if (event.kind === 'presence' && mine && event.actor === mine) continue;
 		if (!eventText(event)) continue; // a verb this client cannot render
 		lines.push({ kind: 'event', key: `e:${event.id}`, at: event.at, event });
 	}
