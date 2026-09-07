@@ -307,6 +307,115 @@ Candidate rules with thresholds (confidence): ramp brake > ~8 Fitness/week susta
 
 **Bottom line**: the read integration is compliant and cheap in the exact shape #222 already has (per-user, private, rule-based), costs the developer a Strava subscription, and needs its own ADR covering scope re-consent, the 7-day/30-day retention duties, and the AI firewall.
 
+## 14. The social stats layer (research for #992; run of 2026-09-07)
+
+Inline research tier — every claim below is sourced, none survived a 3-vote adversarial pass; items marked *extracted* were read off the primary page rather than a summary. Feeds #995 (room stats), #993 (profile counts) and #996 (self-comparison), which were blocked on it deliberately: these are the surfaces most likely to change how a crew treats each other, and picking their metrics by taste is how a friendly room turns into a ladder nobody enjoys.
+
+§13.2 point 5 says "Zwift ships none of this layer". That is true of *progression* and false of the *social* layer — Zwift ships a great deal of it, and what it refuses to ship at the same time is the most useful finding in this section (§14.1).
+
+### 14.1 Teardown: what group products show about a group
+
+| product | what a group sees | shape |
+| --- | --- | --- |
+| **Zwift** (Companion, Meetups, Club events) | live position, group text, meetup members highlighted in the rider list; **"Keep Everyone Together"** rubberbands a mixed-ability group to one pace | presence + chat; results *optional and exclusive* |
+| **Peloton** | live class leaderboard, **Here Now**, high fives, milestone badges, an activity feed of friends' workouts | rank + lightweight acknowledgement |
+| **Strava clubs** | a weekly leaderboard of members, current and previous week, top 100 only; no club-authored challenges | rank, reset weekly, capped |
+| **WHOOP Teams** | leaderboards over strain / recovery / sleep, daily / weekly / monthly, **metric set chosen at team creation and immutable after** | rank, with consent fixed up front |
+| **Garmin Connect** | connection and group challenges with individual rankings; leaderboard hidden from anyone who has not synced in 24 h | rank, and *auto-enrolling* |
+| **Discord** | presence, activity, who is in the voice channel — no performance metric at all | presence only |
+
+**What recurs**: a weekly cadence, presence as a first-class display, and lightweight acknowledgement (high five, kudos, cheer) that costs the sender nothing and is not a ranking.
+
+**What got removed or fenced, and why** — the more instructive half:
+
+- **Zwift will not run rubberbanding and results at the same time.** "Keep Everyone Together" is Club-events-only, cannot be enabled together with **Event Results**, and segment times under it reflect the group's collective speed rather than individual effort. (*extracted* — [Zwift Insider](https://zwiftinsider.com/keep-everyone-together-added/)) The social-indoor incumbent, holding the largest mixed-ability dataset in the category, treats *riding together* and *ranking each other* as mutually exclusive modes. That is the single strongest evidence in this pass, and it is a design decision, not a technical limit.
+- **Strava turned Flyby off for everyone in October 2020** and made it opt-in, after riders showed it could be used to learn another athlete's routine and route. Few re-enabled it, so the feature is effectively dead. ([DC Rainmaker](https://www.dcrainmaker.com/2020/10/strava-flyby-feature.html), [Cycling Weekly](https://www.cyclingweekly.com/news/latest-news/strava-removes-automatic-flybys-after-safety-concerns-472797)) A presence-derived feature that ships on-by-default gets switched off wholesale later; the migration is one-way.
+- **Garmin auto-enrols.** Group challenges cannot be left without leaving the group, and the support site carries an article titled *"I Am in a Garmin Connect Challenge I Did Not Accept"*. ([Garmin support](https://support.garmin.com/en-US/?faq=RFzAEyeARbAwczDE2hRt39), [leaving a challenge](https://forums.garmin.com/apps-software/mobile-apps-web/f/garmin-connect-web/196597/how-do-you-leave-a-challenge)) A room that enrols its members in a ladder by existing is this bug.
+- **Nobody ships the cooperative total.** The most-repeated Garmin feature request is a combined, whole-group number rather than individual rankings ([forum](https://forums.garmin.com/apps-software/mobile-apps-web/f/garmin-connect-mobile-ios/442756/garmin-connect-app-ui-ux-improvements-challenges-and-notifications/2057896)). It is unoccupied ground in every product torn down here.
+
+### 14.2 A standing crew is not a population
+
+The audience is 3–10 people who ride together weekly and know each other. Almost all leaderboard evidence is drawn from large anonymous populations, and it does not transfer cleanly.
+
+- **Small is the recommended size, not the compromise.** Leung et al.'s pre-registered field experiment (>1,000 users) found contribution *rises* when peers' scores are more **dispersed** — the opposite of the standard model — that falling average peer contribution also motivates, and that both effects are mediated by group size; the paper recommends leaderboards of **10–20 people**. ([CHI 2019](https://dl.acm.org/doi/10.1145/3290605.3300397)) A crew of six is inside the band the literature actually endorses, and a wide fitness spread inside it is not automatically a problem.
+- **Duolingo's leagues are 30 randomly assigned users, reset weekly**, with promotion and demotion. The cohort size, the randomisation and the weekly reset are the design; the anxiety it produces is documented and comes from the *demotion threat*, which is available to everyone not already at the bottom. ([Deconstructor of Fun](https://duolingo.deconstructoroffun.com/mechanics/leagues)) A standing crew cannot be re-randomised — the same six people are there next week — so the mechanism Duolingo uses for engagement is exactly the one WattRoom cannot borrow.
+- **The 95 % claim has no study behind it.** "Leaderboards motivate the top 5 % and demotivate the bottom 95 %" is practitioner writing, repeated widely without a citation ([Yu-kai Chou](https://yukaichou.com/gamification-analysis/leaderboard-design-definitive-guide-octalysis/)). The directional worry is real and the number is folklore; do not quote it in the product, and do not design against it as if it were measured.
+- **Vendor-reported, treat accordingly**: Peloton says socially engaged members work out ~15 % more often. Self-reported by the party selling the feature, and confounded by the obvious direction of causation (people who ride more join things).
+
+### 14.3 When a ladder helps and when it harms
+
+Helps: when rank is against your **own** past, when the group is small and known, when the cadence resets often enough that a bad week is not permanent, and when the thing ranked is *effort shown up for* rather than *capacity*.
+
+Harms: when the ordering is stable — in a standing crew the same person is last every week, which is the one configuration none of the cited products has to survive, because all of them re-randomise, cap, or reset the pool.
+
+Mitigations that actually shipped, ranked by how well they fit a room:
+
+1. **Do not rank at all while riding together** (Zwift's exclusivity). Strongest, and free.
+2. **Fix what is shared at join time and make it immutable** (WHOOP Teams: the metric set is chosen at team creation, cannot be changed afterwards, and a joiner sees exactly what will be shared before joining).
+3. **Weekly reset with no accumulating history** (Strava clubs: current and previous week only; Duolingo: one week).
+4. **Cap the board** (Strava: top 100 — irrelevant at crew size, but the principle that a board has a floor it does not print is not).
+5. **Suppress on thin data** (Garmin hides the leaderboard from anyone who has not synced in 24 h — the same instinct as §13.4's small-N rule).
+6. **Opt in, per person, and be able to leave** — the one Garmin gets wrong, and the reason it has a support article about it.
+
+### 14.4 Fairness across mismatched riders — several boards, no single rank
+
+There is no defensible single crew metric, and the evidence points at not looking for one:
+
+- **kJ** rewards mass and duration; a 95 kg rider doing 90 easy minutes beats a 55 kg rider's hard hour, and both did the right session.
+- **w/kg** inverts it, and WattRoom already owns a fairer form of it: **Category** (D–A from the 90-day w/kg curve, moves both directions, SPEC glossary). That is a *bracket*, not a rank — it says who to compare with, which is the useful half.
+- **Execution score** cannot carry this: §13.4 is explicit that 100 % in-band on a recovery spin and on 5×5 VO2 are different achievements, so a board sorted by execution ranks workout choice.
+- **Time in zone / duration** is the only raw quantity that means roughly the same thing to every body, and it is what the training-load evidence in §13.3 already ranks first for this audience ("time in saddle + consistency" beating performance metrics by 5–8× in rider surveys).
+
+**Recommendation**: the room's primary number should be a **cooperative total** — the crew's combined work for the week, one figure nobody is ranked inside — beside a per-rider **showed-up** strip. This is unoccupied ground (§14.1), it is fair by construction because it does not order anyone, it is the metric the small-group evidence supports, and it is the only shape compatible with Zwift's finding that riding together and ranking each other do not coexist. If a room wants an ordered board, it is a **second, opt-in, weekly-resetting** surface — never the default view, and never the one a new member is enrolled in by joining.
+
+Rank the crew against **itself over time** (this week vs the crew's own average), never its members against each other by default. That keeps the "always good news, monotonic" property §13.3 ranks power-curve PRs fourth for, at group scale.
+
+### 14.5 Attendance and presence — where the line is
+
+The line is not *presence vs no presence*. It is **ephemeral and mutual** vs **durable and one-sided**:
+
+- **Ephemeral, inside a known group, everyone equally visible** — Peloton's Here Now, Discord's voice channel, Zwift's highlighted meetup list. Universally shipped, no backlash on file.
+- **Durable, derived, and readable by people you did not choose** — Strava Flyby. Turned off for everyone (§14.1).
+
+A WattRoom room is a closed membership with mutual consent (ADR-0013) rather than an open network, which puts a "who showed up" strip on the Here Now side of the line — *provided* three things hold, all borrowed from products that survived: the set of what the room can see is **fixed and shown before joining** (WHOOP), it does not **aggregate across rooms** into a profile of a person's week, and it stays **inside the room** (WATTROOM.md is already absolute on this). Workplace-wellness research is the warning for the failure case: participation collapses the moment a health display reads as monitoring rather than company ([step-challenge privacy guidance](https://blog.stepsetgo.com/employee-wellness-tracking-progress-without-surveillance)) — and a room whose members did not choose each other freely (a coach's crew, a team) is structurally that case.
+
+This settles the overlap with #985: a **session recap** listing who was there and how long is durable and therefore in scope for the fixed-at-join consent set; the live "here now" strip is ephemeral and already covered by the room's own tick and ADR-0022.
+
+### 14.6 Vocabulary
+
+Everything above is nameable in `docs/SPEC.md` words — **room, session, coach, rider, execution score, level, category, medals, cheers** — with two gaps that must be closed deliberately rather than coined in passing:
+
+- **Streak** is used in the XP formula (`25 × current-week-streak`) and in #992's mockups but is **not a glossary entry**. If consistency becomes a room surface, the glossary grows by one line, in the same PR.
+- **"Consistency"** has no SPEC definition and is doing load-bearing work in this section and in #992. Either define it (rides per week over N weeks, forgiveness rule included) or use *streak* and say what a streak counts.
+
+Do **not** coin *ladder*, *board*, or a crew-metric name. §13.2 point 4 already ruled on this: invented jargon is a moat and an adoption ceiling.
+
+### 14.7 What to show a standing crew, ranked
+
+1. **Who rode this week, and whether that is the crew's normal** — attendance as company, not as compliance. Fairest metric available, immune to fitness spread, and the one the small-group and consistency evidence both point at.
+2. **The crew's combined work for the week** (kJ or hours — one number, unranked, cooperative). Unoccupied ground; safe because nobody is inside it.
+3. **Lightweight acknowledgement between riders** — cheers already exist and cost the sender nothing. Every product torn down here ships this and none has regretted it.
+4. **A rider against their own past** (#996's job) — always good news, no privacy argument, no comparison to defend.
+5. **A session recap** — who was here, when they came, how long they stayed (#985), under the fixed-at-join consent set.
+6. **An ordered board**, opt-in per room, weekly reset, bracketed by **Category** so it compares like with like. Last, and never the default.
+
+### 14.8 Traps (design these out)
+
+- **Enrolment by existence** — being in a room must not put a rider on a board. Garmin's mandatory group challenges are the shipped counter-example.
+- **The permanent last place.** A standing crew does not re-randomise; a stable ordering is the failure mode none of the cited products has to survive. Reset weekly, or do not order.
+- **A board that is the room's front page.** Zwift's exclusivity is the pattern: what a room shows *while riding together* should not be a ranking.
+- **Aggregating a person across rooms** — that is a profile of their week, not a room's stats, and it is the Flyby shape.
+- **Reading a ladder into an attendance strip** — "showed up 1/4 weeks" beside four green weeks grades attendance. Describe, never grade (ADR-0016).
+- **Strava-derived numbers anywhere room-visible** — §13.5, hard rule, and it applies to every number in this section.
+- **Heart rate in any shared artifact** — ADR-0008, unchanged.
+- **Quoting the 95 % folklore** as if it were evidence (§14.2).
+
+### 14.9 What this leaves to decide (ADRs, not paragraphs)
+
+1. **What a room may show about its members, and when they consent to it** — extends [ADR-0024](decisions/0024-social-profiles.md) and [ADR-0013](decisions/0013-room-identity-and-moderation.md); the WHOOP pattern (fixed at creation, visible before joining, immutable after) is the candidate. Blocks #995 and #985.
+2. **Whether a room has an ordered board at all**, and if so its cadence, its bracket and its opt-in. The evidence here recommends *cooperative total by default, ordered board opt-in*; that is a product decision, not a finding.
+3. **Streak and consistency as SPEC terms** — one glossary addition, with the forgiveness rule, since [ADR-0027](decisions/0027-an-earned-badge-travels-progress-stays-home.md) already lets earned things travel and this decides whether consistency is one of them.
+
 ---
 
 ## Ranked risks to the plan
