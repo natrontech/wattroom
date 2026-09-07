@@ -112,6 +112,12 @@ func TestTrophies(t *testing.T) {
 		if body.EnergyKj != 720 {
 			t.Fatalf("friend saw energy %d", body.EnergyKj)
 		}
+		// The counts travel the way an earned badge does (#993): everyone in
+		// the room watched Alice sit in the lounge. It is only how far along
+		// she is on an unearned badge that stays hers, asserted just below.
+		if body.Counts.VoiceMinutes != blockMinutes {
+			t.Fatalf("friend saw voice minutes %d, want %d", body.Counts.VoiceMinutes, blockMinutes)
+		}
 		// ADR-0027: an earned badge travels, progress toward an unearned one
 		// does not. Alice has a ride and a lounge block, so her OWN case
 		// carries progress on both — this endpoint handed all of it to any
