@@ -8,6 +8,11 @@
 	 * control while taking a third of a 240 px row. Firing a clip is what a
 	 * cheer is — something you throw into the room — so it lives with the
 	 * cheers and draws a drum, not a speaker.
+	 *
+	 * Labelled rather than a fifth glyph in that row: a bare drum among four
+	 * reaction faces reads as a fifth reaction, and the first rider to see it
+	 * there could not find the board at all. `Away` in the sidebar is the same
+	 * shape — a toggle that says what it is, primary while it is on.
 	 */
 	import Drum from '@lucide/svelte/icons/drum';
 	import { boardPanel } from '$lib/board/panel.svelte';
@@ -16,9 +21,8 @@
 <button
 	onclick={() => boardPanel.toggle()}
 	aria-expanded={boardPanel.open}
-	class="flex flex-1 items-center justify-center rounded border py-2 {boardPanel.open
-		? 'border-neon/50 text-ink'
-		: 'border-muted/20 text-muted hover:border-muted/50 hover:text-ink'}"
-	title="your soundboard"
-	aria-label="your soundboard"><Drum size={18} /></button
+	class="btn btn-xs mt-1.5 w-full {boardPanel.open
+		? 'btn-primary'
+		: 'btn-secondary'}"
+	title="your soundboard"><Drum size={13} /> Soundboard</button
 >

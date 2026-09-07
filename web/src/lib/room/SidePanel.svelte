@@ -293,7 +293,7 @@
 			</button>
 		{/if}
 		<div class="border-ink/5 border-t p-3">
-			<!-- The room's reactions, and the soundboard beside them: both are
+			<!-- The room's reactions, and under them the soundboard: both are
 			     a thing you throw into the room, and neither is typing —
 			     which lives on the Chat place now and mid-ride was never on
 			     the table anyway (ux.md). -->
@@ -307,8 +307,8 @@
 						><CheerIcon {cheer} size={18} /></button
 					>
 				{/each}
-				<BoardToggle />
 			</div>
+			<BoardToggle />
 		</div>
 	</div>
 </aside>
