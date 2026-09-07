@@ -10,7 +10,6 @@ const played: string[] = [];
 vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/sound/cues')>()),
 	play: (id: string) => played.push(id),
-	setDucked: () => {},
 }));
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
 // A hand-driven socket: the tick is what the ride and the room both read,

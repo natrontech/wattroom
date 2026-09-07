@@ -15,7 +15,8 @@ import { announcePoke } from '$lib/room/poke';
 import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
-import { play, setDucked } from '$lib/sound/cues';
+import { play } from '$lib/sound/cues';
+import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
@@ -329,10 +330,15 @@ function connect(slug: string): Connection {
 		$effect(() => {
 			av.setDeckPlaying(!!live.tick?.jukebox?.playing);
 		});
+		// The one caller (#988): the duck follows the CONNECTION, not whichever
+		// page is mounted, and both the cue bus and the jukebox subscribe to
+		// what it decides. Nothing here holds a timer — the hold and the
+		// release live in the controller, where an effect re-running cannot
+		// cancel them.
 		$effect(() => {
-			setDucked(shouldDuck(av.speaking, account.me?.id, mixer.duckSelf));
-			// Leaving mid-sentence must not park every cue ducked forever.
-			return () => setDucked(false);
+			setDucking(shouldDuck(av.speaking, account.me?.id, mixer.duckSelf));
+			// Leaving mid-sentence must not park the mix ducked forever.
+			return () => setDucking(false);
 		});
 
 		// A reconnect leaves a chat gap the tick stream never backfills —

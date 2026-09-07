@@ -3,10 +3,10 @@
 		CUES,
 		play,
 		playCountdown,
-		setDucked,
 		setMuted,
 		type CueId,
 	} from '$lib/sound/cues';
+	import { setDucking } from '$lib/sound/duck';
 	import { UNIT_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 
@@ -23,7 +23,7 @@
 	// same reason.
 	$effect(() => mixer.setCues(volume));
 	$effect(() => setMuted(muted));
-	$effect(() => setDucked(ducked));
+	$effect(() => setDucking(ducked));
 
 	function fire(id: CueId) {
 		last = id;
