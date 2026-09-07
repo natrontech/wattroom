@@ -1,0 +1,1 @@
+- The jukebox video no longer stays parked over the sidebar after the surface holding it has scrolled or slid off screen — it drops back to its corner instead of floating over the member list.

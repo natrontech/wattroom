@@ -7,6 +7,7 @@ import {
 	COLUMN_SEAT,
 	offerSeat,
 	outranksColumn,
+	onScreen,
 	onSeat,
 	RAIL_SEAT,
 	sameSeat,
@@ -81,6 +82,30 @@ describe('seatOf', () => {
 	});
 });
 
+describe('onScreen', () => {
+	// happy-dom's viewport is 1024x768.
+	it('is false only for a rect with nothing inside the viewport', () => {
+		expect(onScreen(rect({ left: 10, top: 20, width: 300, height: 200 }))).toBe(
+			true,
+		);
+		// A drawer that slid away: the hole ends exactly at the left edge.
+		expect(
+			onScreen(rect({ left: -240, top: 0, width: 240, height: 200 })),
+		).toBe(false);
+		// Scrolled past the bottom, and past the right edge.
+		expect(onScreen(rect({ left: 0, top: 768, width: 300, height: 200 }))).toBe(
+			false,
+		);
+		expect(
+			onScreen(rect({ left: 1024, top: 0, width: 300, height: 200 })),
+		).toBe(false);
+		// A sliver still counts — the observer owns "mostly visible".
+		expect(
+			onScreen(rect({ left: -239, top: 0, width: 240, height: 200 })),
+		).toBe(true);
+	});
+});
+
 describe('sameSeat', () => {
 	it('compares the four numbers, and null only with null', () => {
 		const a = { x: 1, y: 2, w: 3, h: 4 };
@@ -103,6 +128,26 @@ describe('offerSeat', () => {
 		expect(seen?.y).toBe(80);
 		stop();
 		expect(seen).toBeNull();
+	});
+
+	// #978: the observer runs in the browser's rendering steps, so a frame
+	// that is never painted — a backgrounded tab, a drawer sliding away —
+	// fires no observation at all, while this timer keeps going. The dock was
+	// left parked at the last rect the observer had blessed, on top of
+	// whatever the seat had scrolled off and left behind.
+	it('withdraws a hole the timer finds off screen, observer or not', () => {
+		const { node, box } = hole({ left: 0, top: 100, width: 240, height: 200 });
+		const stop = offerSeat(node, RAIL_SEAT);
+		expect(seen).not.toBeNull();
+		// The drawer slid away. No observation arrives; only the timer runs.
+		box.left = -240;
+		tick();
+		expect(seen).toBeNull();
+		// And it comes back when the drawer does.
+		box.left = 0;
+		tick();
+		expect(seen?.x).toBe(0);
+		stop();
 	});
 
 	it('withdraws the seat while the stage is mostly off screen', () => {
