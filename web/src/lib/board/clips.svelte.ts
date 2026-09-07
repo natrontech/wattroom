@@ -176,6 +176,50 @@ export async function assign(
 	if (res.ok) await board.refresh();
 }
 
+/**
+ * Put a clip on a pad, SWAPPING with whatever was already there (#981).
+ *
+ * `assign` alone bumps the occupant to the library — the unique index has to
+ * be freed before the write lands — which meant a rider tidying their board
+ * silently knocked a clip off it. The occupant takes the pad this clip just
+ * left instead, so nothing leaves the board that the rider did not take off.
+ */
+export async function movePad(
+	clipId: string,
+	pad: number | null,
+): Promise<void> {
+	const from = board.clips.find((c) => c.id === clipId)?.pad ?? null;
+	const displaced = pad === null ? undefined : board.onPad(pad);
+	await assign(clipId, pad);
+	if (displaced && displaced.id !== clipId && from !== null) {
+		await assign(displaced.id, from);
+	}
+}
+
+/** Rename a clip. The name was the uploaded file's stem and set once (#981). */
+export async function rename(
+	clipId: string,
+	name: string,
+): Promise<Refusal | undefined> {
+	const res = await fetch(`/api/board/clips/${clipId}/name`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ name }),
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		return { message: body.message ?? 'The name could not be changed.' };
+	}
+	await board.refresh();
+	return undefined;
+}
+
+// ponytail: delete stays a confirm rather than errors.md's preferred undo.
+// The row and the audio both go on DELETE, and the browser does not keep the
+// file it uploaded — so "undo" would mean asking the rider for the MP3 again,
+// which is not an undo. #981 named this the case to say out loud rather than
+// silently drop. An undo toast becomes possible the day a delete is a soft
+// one, and this is the only place that would change.
 export async function remove(clipId: string): Promise<void> {
 	const res = await fetch(`/api/board/clips/${clipId}`, { method: 'DELETE' });
 	if (res.ok) await board.refresh();

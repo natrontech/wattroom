@@ -247,6 +247,26 @@ func (q *Queries) SetBoardClipKey(ctx context.Context, arg SetBoardClipKeyParams
 	return result.RowsAffected(), nil
 }
 
+const setBoardClipName = `-- name: SetBoardClipName :execrows
+update board_clips set name = $3 where id = $1 and user_id = $2
+`
+
+type SetBoardClipNameParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+	Name   string
+}
+
+// A name is the rider's to change (#981). It was set once, from the uploaded
+// file's stem, and there was no way to fix a bad one but to upload again.
+func (q *Queries) SetBoardClipName(ctx context.Context, arg SetBoardClipNameParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setBoardClipName, arg.ID, arg.UserID, arg.Name)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setBoardClipPad = `-- name: SetBoardClipPad :execrows
 update board_clips set pad = $3 where id = $1 and user_id = $2
 `
