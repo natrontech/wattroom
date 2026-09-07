@@ -4,16 +4,24 @@
 	 * same `dragPane` the popped-out stage uses, so a board and a stage behave
 	 * identically once they are loose.
 	 *
-	 * The grid grows with the board and scrolls rather than running off the
-	 * screen; nine is only where an empty one starts.
+	 * ONE surface with three faces (#981): the pads, your clips, and the trim
+	 * editor. They used to be a floating panel with a modal on it and a second
+	 * modal on that — three deep, and because the board counts modals to know
+	 * when to get out of the way, opening the library dimmed the board it was
+	 * opened from. Faces of one panel cannot do that to themselves.
 	 *
-	 * A pad's face is its own waveform, so a sound is found by silhouette at
-	 * arm's length rather than read. Idle is violet and flat because chrome
-	 * never glows; the part that has already played takes the live hue,
-	 * because that is what ADR-0005 reserves it for.
+	 * This file is the shell: the frame, the header, the keyboard, the fader
+	 * and the strip. Each face draws itself.
 	 */
-	import { GripHorizontal, Library, Plus, Volume2, X } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		GripHorizontal,
+		Library,
+		Volume2,
+		X,
+	} from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
+	import { account } from '$lib/account.svelte';
 	import { board, type Clip } from '$lib/board/clips.svelte';
 	import { isToggle } from '$lib/board/toggle-key.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
@@ -22,11 +30,13 @@
 	import {
 		applyLevels,
 		fire as playClip,
+		preview,
 		stopAll,
 	} from '$lib/sound/board.svelte';
 	import { UNIT_FADER } from '$lib/sound/fader';
-	import { learn, shapeOf } from '$lib/board/shapes.svelte';
-	import ClipLibrary from '$lib/board/ClipLibrary.svelte';
+	import BoardFace from '$lib/board/BoardFace.svelte';
+	import ClipsFace from '$lib/board/ClipsFace.svelte';
+	import TrimFace from '$lib/board/TrimFace.svelte';
 	import type { Board } from '$lib/protocol';
 
 	let {
@@ -67,22 +77,33 @@
 
 	// Playing is per rider, not per pad: what YOUR pad shows is your own fire.
 	let mine = $state<{ pad: number; until: number } | undefined>();
-	let library = $state(false);
+
+	const me = $derived(account.me?.id ?? '');
+	const face = $derived(boardPanel.face);
+	const trimmed = $derived(
+		boardPanel.trimming
+			? board.clips.find((c) => c.id === boardPanel.trimming)
+			: undefined,
+	);
 
 	// Floating chrome yields to a surface the rider opened, the way the
-	// jukebox dock does (modals.svelte) — including the clip library, which is
-	// reached from this very panel and would otherwise open underneath it.
+	// jukebox dock does (modals.svelte). The board's own faces are not modals
+	// any more, so this counts only what somebody else put on top.
 	const covered = $derived(modals.open > 0);
 
-	function press(pad: number) {
+	function press(pad: number, alt: boolean) {
 		const clip = board.onPad(pad);
 		if (!clip) {
 			// The empty pad IS the affordance: it is where a rider looking for
 			// somewhere to put a sound is already looking.
-			library = true;
+			boardPanel.go('clips');
 			return;
 		}
-		fireClip(clip);
+		// Alt is the audition (#981): only you hear it, and nothing reaches
+		// the hub. The pad does not glow, because nothing live happened in
+		// the room.
+		if (alt) void preview(clip.id, me, clip);
+		else fireClip(clip);
 	}
 
 	/** Fire by key or by tap — both land here, so both light the pad. */
@@ -113,14 +134,15 @@
 		// A pad fires whether the panel is showing or not (#982). Hitting it
 		// without looking is the whole pitch, and a rider hides the board
 		// precisely once they have learnt the keys and want the screen back
-		// for the ride — the same reason this component stays mounted while it
-		// is closed. What must still stop a pad is a surface the rider opened
-		// over it: it cannot go off behind the library or the editor.
+		// for the ride. What must still stop a pad is a surface the rider
+		// opened over it, and a face that is not the pads: the clips and trim
+		// faces are where a digit means a pad number, not a sound.
 		if (covered) return;
 		if (event.key === 'Escape') {
 			if (boardPanel.open) boardPanel.hide();
 			return;
 		}
+		if (boardPanel.open && face !== 'board') return;
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
 		const clip = board.onKey(event.key);
 		if (clip) {
@@ -136,154 +158,101 @@
 		return stopAll;
 	});
 
-	const pads = $derived(
-		Array.from({ length: board.padCount }, (_, i) => ({
-			slot: i + 1,
-			clip: board.onPad(i + 1),
-		})),
-	);
-
-	// The real envelope once the audio has been decoded for playback, the
-	// id-derived shape until then — the pad never waits to draw.
-	function bars(clip: Clip) {
-		learn(clip.id, 20);
-		return shapeOf(clip.id, 20);
-	}
+	const megabytes = (bytes: number) => `${(bytes / (1 << 20)).toFixed(1)} MB`;
+	const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
 </script>
 
 <svelte:window onkeydown={keys} />
 
 {#if boardPanel.open}
+	<!-- The trim face needs room for a waveform with two handles in it; the
+	     other two are a 364 px column. `motion-reduce` takes the width without
+	     the slide. -->
 	<div
 		data-pane={PANE}
-		class="bg-surface ring-ink/15 fixed top-32 left-4 w-[364px] rounded-lg p-1.5 shadow-2xl ring-1 md:left-72 {covered
-			? 'z-30'
-			: 'z-[55]'}"
+		class="bg-surface ring-ink/15 fixed top-32 left-4 rounded-lg p-1.5 shadow-2xl ring-1 transition-[width] duration-200 motion-reduce:transition-none md:left-72 {face ===
+		'trim'
+			? 'w-[min(600px,calc(100vw-2rem))]'
+			: 'w-[364px]'} {covered ? 'z-30' : 'z-[55]'}"
 	>
 		<div
 			{@attach dragPane}
 			class="text-muted flex cursor-grab touch-none items-center gap-2 px-1 pb-1.5 text-[11px] active:cursor-grabbing"
 		>
-			<GripHorizontal size={14} class="shrink-0 opacity-60" />
-			<span class="truncate">soundboard</span>
-			<button
-				onclick={() => (library = true)}
-				class="hover:text-ink ml-auto shrink-0"
-				aria-label="your clips"><Library size={13} /></button
-			>
-			<button
-				onclick={() => boardPanel.hide()}
-				class="hover:text-ink shrink-0"
-				aria-label="close the soundboard"><X size={13} /></button
-			>
-		</div>
-
-		<div
-			class="grid max-h-[min(60vh,32rem)] grid-cols-3 gap-2 overflow-y-auto px-0.5"
-		>
-			{#each pads as { slot, clip } (slot)}
-				{@const playing = mine?.pad === slot}
+			{#if face === 'board'}
+				<GripHorizontal size={14} class="shrink-0 opacity-60" />
+				<span class="truncate">soundboard</span>
 				<button
-					onclick={() => press(slot)}
-					title={clip
-						? `${clip.name} — key ${slot}`
-						: `Pad ${slot} is empty — add a clip`}
-					class="relative flex h-23 flex-col gap-1 overflow-hidden rounded border p-2 text-left {clip
-						? playing
-							? 'border-watt/50 bg-watt/8'
-							: 'border-muted/20 bg-surface-raised hover:border-muted/40'
-						: 'border-muted/20 border-dashed'}"
+					onclick={() => boardPanel.go('clips')}
+					class="hover:text-ink ml-auto shrink-0"
+					aria-label="your clips"><Library size={13} /></button
 				>
-					{#if clip}
-						<span class="flex items-start">
-							<span class="flex-1"></span>
-							<!-- Only a pad a key actually fires wears one. A badge on
-							     pad 10 would draw a shortcut that does nothing, and a
-							     control that does something else than it draws is not
-							     a control (ux.md). -->
-							{#if clip.key}
-								<span
-									class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
-										? 'border-watt/40 text-watt'
-										: 'border-muted/25 text-muted'} uppercase">{clip.key}</span
-								>
-							{/if}
-						</span>
-						<span class="flex flex-1 items-center">
-							<svg
-								viewBox="0 0 104 34"
-								width="100%"
-								height="34"
-								preserveAspectRatio="none"
-								aria-hidden="true"
-							>
-								<g class={playing ? 'text-watt glow-stroke' : 'text-neon/55'}>
-									{#each bars(clip) as bar, i (i)}
-										<rect
-											x={bar.x}
-											y={bar.y}
-											width="3"
-											height={bar.h}
-											rx="1.5"
-											fill="currentColor"
-										/>
-									{/each}
-								</g>
-							</svg>
-						</span>
-						<span
-							class="truncate text-[11px] leading-tight {playing
-								? 'font-medium'
-								: 'text-ink/85'}">{clip.name}</span
-						>
-					{:else}
-						<span
-							class="text-muted/55 absolute inset-0 flex flex-col items-center justify-center gap-1"
-						>
-							<Plus size={16} />
-							<span class="text-[10px]">empty</span>
-						</span>
+				<button
+					onclick={() => boardPanel.hide()}
+					class="hover:text-ink shrink-0"
+					aria-label="close the soundboard"><X size={13} /></button
+				>
+			{:else}
+				<button
+					onclick={() => boardPanel.back()}
+					class="hover:text-ink shrink-0"
+					aria-label="back to the pads"><ArrowLeft size={14} /></button
+				>
+				<span class="truncate"
+					>{face === 'clips'
+						? 'your clips'
+						: `trim ${trimmed?.name ?? ''}`}</span
+				>
+				<span class="font-display ml-auto shrink-0 tabular-nums">
+					{#if face === 'clips'}
+						{megabytes(board.used)} of {megabytes(board.limit)}
+					{:else if trimmed}
+						source {seconds(trimmed.millis)}
 					{/if}
-				</button>
-			{/each}
+				</span>
+			{/if}
 		</div>
 
-		<!-- The board's own fader (ADR-0033): pulling the cues down for a quiet
-		     ride never silences it, and this never costs you the countdown. -->
-		<label class="flex items-center gap-2 px-1.5 pt-3 pb-1.5">
-			<Volume2 size={14} class="text-muted shrink-0" />
-			<span class="sr-only">soundboard volume</span>
-			<input
-				type="range"
-				{...UNIT_FADER}
-				value={mixer.board}
-				oninput={(e) => {
-					mixer.setBoard(Number(e.currentTarget.value));
-					applyLevels();
-				}}
-				class="min-w-0 flex-1"
-				aria-label="soundboard volume"
-			/>
-			<span
-				class="font-display w-9 shrink-0 text-right text-[11px] tabular-nums"
-				>{Math.round(mixer.board * 100)}%</span
-			>
-		</label>
+		{#if face === 'board'}
+			<BoardFace mine={mine?.pad} onPress={press} />
 
-		{#if last}
-			<p
-				class="border-ink/5 text-muted flex items-center gap-2 border-t px-1.5 py-1.5 text-[11px]"
-			>
-				<span class="text-ink/85 truncate">{last.from}</span>
-				<span class="shrink-0">fired</span>
-				<span class="font-display text-ink/85 min-w-0 flex-1 truncate"
-					>{last.name}</span
+			<!-- The board's own fader (ADR-0033): pulling the cues down for a quiet
+			     ride never silences it, and this never costs you the countdown. -->
+			<label class="flex items-center gap-2 px-1.5 pt-3 pb-1.5">
+				<Volume2 size={14} class="text-muted shrink-0" />
+				<span class="sr-only">soundboard volume</span>
+				<input
+					type="range"
+					{...UNIT_FADER}
+					value={mixer.board}
+					oninput={(e) => {
+						mixer.setBoard(Number(e.currentTarget.value));
+						applyLevels();
+					}}
+					class="min-w-0 flex-1"
+					aria-label="soundboard volume"
+				/>
+				<span
+					class="font-display w-9 shrink-0 text-right text-[11px] tabular-nums"
+					>{Math.round(mixer.board * 100)}%</span
 				>
-			</p>
+			</label>
+
+			{#if last}
+				<p
+					class="border-ink/5 text-muted flex items-center gap-2 border-t px-1.5 py-1.5 text-[11px]"
+				>
+					<span class="text-ink/85 truncate">{last.from}</span>
+					<span class="shrink-0">fired</span>
+					<span class="font-display text-ink/85 min-w-0 flex-1 truncate"
+						>{last.name}</span
+					>
+				</p>
+			{/if}
+		{:else if face === 'clips'}
+			<ClipsFace {me} />
+		{:else if trimmed}
+			<TrimFace clip={trimmed} {me} />
 		{/if}
 	</div>
-{/if}
-
-{#if library}
-	<ClipLibrary onclose={() => (library = false)} />
 {/if}
