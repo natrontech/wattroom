@@ -40,7 +40,9 @@ func testService(t *testing.T) *Service {
 		t.Skipf("no database available: %v", err)
 	}
 	t.Cleanup(st.Close)
-	return New(st, slog.New(slog.DiscardHandler), "http://localhost:8080", false)
+	// nil cipher: the unencrypted path is what every existing case here
+	// asserts, and the sealed one has its own test (#697).
+	return New(st, slog.New(slog.DiscardHandler), "http://localhost:8080", false, nil)
 }
 
 func testUser(t *testing.T, s *Service) db.User {

@@ -12,17 +12,18 @@ import (
 )
 
 const createIdentity = `-- name: CreateIdentity :exec
-insert into identities (provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at)
-values ($1, $2, $3, $4, $5, $6)
+insert into identities (provider, provider_user_id, user_id, access_token, refresh_token, refresh_token_enc, token_expires_at)
+values ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateIdentityParams struct {
-	Provider       string
-	ProviderUserID string
-	UserID         pgtype.UUID
-	AccessToken    *string
-	RefreshToken   *string
-	TokenExpiresAt pgtype.Timestamptz
+	Provider        string
+	ProviderUserID  string
+	UserID          pgtype.UUID
+	AccessToken     *string
+	RefreshToken    *string
+	RefreshTokenEnc []byte
+	TokenExpiresAt  pgtype.Timestamptz
 }
 
 func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) error {
@@ -32,6 +33,7 @@ func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) 
 		arg.UserID,
 		arg.AccessToken,
 		arg.RefreshToken,
+		arg.RefreshTokenEnc,
 		arg.TokenExpiresAt,
 	)
 	return err
@@ -89,7 +91,7 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getIdentity = `-- name: GetIdentity :one
-select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at from identities where provider = $1 and provider_user_id = $2
+select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at, refresh_token_enc from identities where provider = $1 and provider_user_id = $2
 `
 
 type GetIdentityParams struct {
@@ -108,6 +110,7 @@ func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Ident
 		&i.RefreshToken,
 		&i.TokenExpiresAt,
 		&i.CreatedAt,
+		&i.RefreshTokenEnc,
 	)
 	return i, err
 }
@@ -149,7 +152,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 }
 
 const getUserIdentity = `-- name: GetUserIdentity :one
-select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at from identities where user_id = $1 and provider = $2
+select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at, refresh_token_enc from identities where user_id = $1 and provider = $2
 `
 
 type GetUserIdentityParams struct {
@@ -168,8 +171,42 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 		&i.RefreshToken,
 		&i.TokenExpiresAt,
 		&i.CreatedAt,
+		&i.RefreshTokenEnc,
 	)
 	return i, err
+}
+
+const listPlaintextRefreshTokens = `-- name: ListPlaintextRefreshTokens :many
+select provider, provider_user_id, refresh_token from identities
+where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null
+`
+
+type ListPlaintextRefreshTokensRow struct {
+	Provider       string
+	ProviderUserID string
+	RefreshToken   *string
+}
+
+// Rows still holding a plaintext refresh token, for the one-time backfill
+// (#697). Bounded by the number of third-party connections, not by riders.
+func (q *Queries) ListPlaintextRefreshTokens(ctx context.Context) ([]ListPlaintextRefreshTokensRow, error) {
+	rows, err := q.db.Query(ctx, listPlaintextRefreshTokens)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlaintextRefreshTokensRow
+	for rows.Next() {
+		var i ListPlaintextRefreshTokensRow
+		if err := rows.Scan(&i.Provider, &i.ProviderUserID, &i.RefreshToken); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUserProviders = `-- name: ListUserProviders :many
@@ -196,18 +233,38 @@ func (q *Queries) ListUserProviders(ctx context.Context, userID pgtype.UUID) ([]
 	return items, nil
 }
 
+const sealRefreshToken = `-- name: SealRefreshToken :exec
+update identities set refresh_token_enc = $3, refresh_token = null
+where provider = $1 and provider_user_id = $2
+`
+
+type SealRefreshTokenParams struct {
+	Provider        string
+	ProviderUserID  string
+	RefreshTokenEnc []byte
+}
+
+// Seal one row in place. The plaintext goes in the same statement it is
+// replaced by, so a crash mid-backfill leaves every row either sealed or
+// untouched, never neither.
+func (q *Queries) SealRefreshToken(ctx context.Context, arg SealRefreshTokenParams) error {
+	_, err := q.db.Exec(ctx, sealRefreshToken, arg.Provider, arg.ProviderUserID, arg.RefreshTokenEnc)
+	return err
+}
+
 const updateIdentityTokens = `-- name: UpdateIdentityTokens :exec
 update identities
-set access_token = $3, refresh_token = $4, token_expires_at = $5
+set access_token = $3, refresh_token = $4, refresh_token_enc = $5, token_expires_at = $6
 where provider = $1 and provider_user_id = $2
 `
 
 type UpdateIdentityTokensParams struct {
-	Provider       string
-	ProviderUserID string
-	AccessToken    *string
-	RefreshToken   *string
-	TokenExpiresAt pgtype.Timestamptz
+	Provider        string
+	ProviderUserID  string
+	AccessToken     *string
+	RefreshToken    *string
+	RefreshTokenEnc []byte
+	TokenExpiresAt  pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateIdentityTokens(ctx context.Context, arg UpdateIdentityTokensParams) error {
@@ -216,6 +273,7 @@ func (q *Queries) UpdateIdentityTokens(ctx context.Context, arg UpdateIdentityTo
 		arg.ProviderUserID,
 		arg.AccessToken,
 		arg.RefreshToken,
+		arg.RefreshTokenEnc,
 		arg.TokenExpiresAt,
 	)
 	return err
