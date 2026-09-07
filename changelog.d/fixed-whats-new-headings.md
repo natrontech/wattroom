@@ -1,1 +1,0 @@
-- The what's-new notice on home no longer runs its Changed/Fixed labels into the text beside them — the label column now sizes itself to the longest label, so every line starts in the same place.
