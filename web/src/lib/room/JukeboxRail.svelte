@@ -73,7 +73,7 @@
 			: ''}"
 	>
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
-			{#if jukebox?.playing && !playerInfo.live}
+			{#if jukebox?.playing && !playerInfo.live && !listening.out}
 				<span
 					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
 						? 'bg-watt glow-stroke'

@@ -199,8 +199,10 @@
 <section class="flex min-w-0 flex-col gap-3">
 	<div class="flex min-w-0 items-center justify-between gap-2">
 		<span class="eyebrow">jukebox</span>
-		{#if current && jukebox?.playing && !streaming}
-			<!-- Proof the room is together, in the one place riders look for it. -->
+		{#if current && jukebox?.playing && !streaming && !listening.out}
+			<!-- Proof the room is together, in the one place riders look for it.
+			     A rider who has stepped out is not with it and must not be told
+			     they are: the badge goes, and comes back when they rejoin. -->
 			<span
 				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
 					? 'text-watt'
