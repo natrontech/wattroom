@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.33] - 2026-09-07
+
+### Changed
+
+- A soundboard is no longer capped at nine clips. Add as many as your storage allows — the board grows a row at a time and scrolls, and the empty slot at the end is always the next one to fill.
+- Soundboard keys are yours to set: click the key beside a clip and press whichever one you want, or Escape to take it away. Showing the board moved from `B` to `Alt+B`, so it no longer fires while you have a button or a link focused, and a pad can no longer go off behind an open dialog.
+
+### Fixed
+
+- The soundboard opens from the sound row in the sidebar now, beside the mic and the mixer, instead of a floating button that sat on top of the chat composer.
+- Opening a room chat or private conversation puts the cursor in the message box, ready to type without an extra click.
+- Your execution score now means the same thing on screen and in the saved ride. It weighs a hard interval more than an easy one, ignores warmup and cooldown, and — the part that was a genuine question — scores you against your own ±% trim rather than the untrimmed target, so riding a dialled-down day well is a good score.
+
 ## [2026.09.32] - 2026-09-06
 
 ### Added
@@ -918,7 +931,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.32...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.33...HEAD
+[2026.09.33]: https://github.com/natrontech/wattroom/compare/2026.09.32...2026.09.33
 [2026.09.32]: https://github.com/natrontech/wattroom/compare/2026.09.31...2026.09.32
 [2026.09.31]: https://github.com/natrontech/wattroom/compare/2026.09.30...2026.09.31
 [2026.09.30]: https://github.com/natrontech/wattroom/compare/2026.09.29...2026.09.30
