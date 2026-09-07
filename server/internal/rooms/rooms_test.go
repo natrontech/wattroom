@@ -856,3 +856,108 @@ func TestRoomsListHandlesARoomWithNoPlanAndNoChat(t *testing.T) {
 		t.Errorf("memberCount = %v, want 1", n)
 	}
 }
+
+// crewRide writes one summary row into a room, back-dated, so the crew tiles
+// have sessions to count. Distinct days are what a session is (#995).
+func (h *harness) crewRide(t *testing.T, user string, room pgtype.UUID, at time.Time, seconds int32) {
+	t.Helper()
+	if _, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: h.users.byToken[user].ID, RoomID: room, WorkoutName: "Openers",
+		StartedAt: pgtype.Timestamptz{Time: at, Valid: true},
+		Seconds:   seconds, AvgWatts: 200, Kj: 500, Execution: 0.9, FtpWatts: 200,
+		Samples: []byte("bytes"), Xp: 10,
+	}); err != nil {
+		t.Fatalf("create ride: %v", err)
+	}
+}
+
+func TestCrewStatsAreCooperativeAndOwn(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Crew Stats Test")
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob join")
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+
+	now := time.Now()
+	// Two riders in one session is ONE session, and both their seconds count.
+	h.crewRide(t, "alice", room.ID, now.Add(-2*time.Hour), 1800)
+	h.crewRide(t, "bob", room.ID, now.Add(-2*time.Hour), 1200)
+	// A second session this month, alice only.
+	h.crewRide(t, "alice", room.ID, now.AddDate(0, 0, -3), 600)
+	// And one last month, so the month-on-month figure has something behind it.
+	h.crewRide(t, "bob", room.ID, now.AddDate(0, -1, 0).AddDate(0, 0, -1), 900)
+
+	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if status != http.StatusOK {
+		t.Fatalf("get room: %d", status)
+	}
+	crew, ok := body["crew"].(map[string]any)
+	if !ok {
+		t.Fatalf("no crew stats: %v", body)
+	}
+	number := func(field string) float64 {
+		t.Helper()
+		got, ok := crew[field].(float64)
+		if !ok {
+			t.Fatalf("crew.%s is %T, not a number: %v", field, crew[field], crew)
+		}
+		return got
+	}
+	if got := number("seconds"); got != 4500 {
+		t.Errorf("seconds together = %v, want 4500 (everyone's, summed)", got)
+	}
+	// Three rides across two days this month, not three sessions.
+	if got := number("sessionsThisMonth"); got != 2 {
+		t.Errorf("sessions this month = %v, want 2", got)
+	}
+	if got := number("sessionsLastMonth"); got != 1 {
+		t.Errorf("sessions last month = %v, want 1", got)
+	}
+
+	// The strip is the CALLER's own turnout. Bob missed the middle session and
+	// alice missed last month's, and each of them sees only their own record.
+	attended := func(who string) []bool {
+		t.Helper()
+		_, body := h.call(t, who, http.MethodGet, "/api/rooms/"+slug, "")
+		stats, ok := body["crew"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s sees no crew stats: %v", who, body)
+		}
+		raw, ok := stats["attended"].([]any)
+		if !ok {
+			t.Fatalf("%s: attended is %T: %v", who, stats["attended"], stats)
+		}
+		out := make([]bool, len(raw))
+		for i, v := range raw {
+			here, ok := v.(bool)
+			if !ok {
+				t.Fatalf("%s: attended[%d] is %T", who, i, v)
+			}
+			out[i] = here
+		}
+		return out
+	}
+	// Oldest first: last month, three days ago, today.
+	if got := attended("alice"); len(got) != 3 || got[0] || !got[1] || !got[2] {
+		t.Errorf("alice attended = %v, want [false true true]", got)
+	}
+	if got := attended("bob"); len(got) != 3 || !got[0] || got[1] || !got[2] {
+		t.Errorf("bob attended = %v, want [true false true]", got)
+	}
+}
+
+func TestCrewStatsAreMembersOnly(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Privacy Test")
+	if _, body := h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, ""); body["crew"] != nil {
+		t.Errorf("a non-member can see the crew stats: %v", body["crew"])
+	}
+	if _, body := h.call(t, "", http.MethodGet, "/api/rooms/"+slug, ""); body["crew"] != nil {
+		t.Errorf("a signed-out visitor can see the crew stats: %v", body["crew"])
+	}
+}

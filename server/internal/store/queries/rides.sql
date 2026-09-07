@@ -70,6 +70,35 @@ limit 60;
 select coalesce(sum(kj), 0)::bigint from rides
 where room_id = $1 and started_at >= date_trunc('month', now());
 
+-- name: RoomCrewTotals :one
+-- What the crew did together (#995, RESEARCH.md §14.7). Cooperative by
+-- construction: every figure is a sum or a count over the whole room, so
+-- nobody is ranked inside any of it. Sessions are counted as distinct days
+-- rather than rides, because six riders in one session is one session.
+select coalesce(sum(seconds), 0)::bigint as seconds,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now())
+       )::bigint as sessions_this_month,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now()) - interval '1 month'
+           and started_at < date_trunc('month', now())
+       )::bigint as sessions_last_month
+from rides
+where room_id = $1;
+
+-- name: ListRoomSessionDays :many
+-- The room's last sessions, newest first, and whether the caller was in each
+-- (#995). A day rather than a ride: one evening the crew rode together is one
+-- dot, however many of them were there. Describes the caller's own turnout and
+-- nobody else's — RESEARCH.md §14.8 forbids grading attendance.
+select started_at::date as day,
+       bool_or(user_id = sqlc.arg(viewer_id)) as attended
+from rides
+where room_id = sqlc.arg(room_id)
+group by day
+order by day desc
+limit 12;
+
 -- name: Best20mIn90Days :one
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides

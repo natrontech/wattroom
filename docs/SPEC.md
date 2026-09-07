@@ -23,6 +23,8 @@
 | **Vote** | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals. |
 | **Room event** | A line in the chat timeline for something the *room* did rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md)): it rides the tick and is never persisted. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Planned session** | A session put on a room's calendar for a time (#116). Members **RSVP**: in, or not in — there is no maybe. It is not a second kind of object, and it is not a *room event*, which is the chat line above. |
+| **Streak** | Consecutive **weeks** in which a room held at least one session, counted from Monday-start weeks. The current week is forgiving: a streak survives until that week ends without a session, so a crew that always rides on Saturday does not read as broken on Tuesday. Feeds the XP bonus (`25 × current-week-streak`). |
+| **Consistency** | Showing up, as opposed to how hard you rode — the thing a room's own numbers are about ([RESEARCH.md §14.7](RESEARCH.md)). A room expresses it two ways: its **streak**, and its **sessions this month** against its own last month. It is never a per-rider score and never a ranking; a rider sees only their own turnout ([ADR-0036](decisions/0036-what-a-room-shows-about-its-members.md)). |
 | **Spiral guard** | ERG low-cadence protection: detect collapse, temporarily release target. |
 | **WCPS** | Wahoo's proprietary BLE control protocol (Kickr v2 path). |
 
