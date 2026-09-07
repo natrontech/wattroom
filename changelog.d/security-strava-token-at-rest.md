@@ -1,0 +1,1 @@
+- The Strava refresh token is no longer stored in the clear. With `WATTROOM_TOKEN_KEY` set (32 random bytes, base64), it is sealed with AES-256-GCM and existing rows are sealed once at startup — so a database dump that leaves the host without the app's environment no longer carries a usable credential. Servers without the key keep working exactly as before and say so at boot.

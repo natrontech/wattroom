@@ -103,13 +103,14 @@ type Friendship struct {
 }
 
 type Identity struct {
-	Provider       string
-	ProviderUserID string
-	UserID         pgtype.UUID
-	AccessToken    *string
-	RefreshToken   *string
-	TokenExpiresAt pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
+	Provider        string
+	ProviderUserID  string
+	UserID          pgtype.UUID
+	AccessToken     *string
+	RefreshToken    *string
+	TokenExpiresAt  pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	RefreshTokenEnc []byte
 }
 
 type Medal struct {

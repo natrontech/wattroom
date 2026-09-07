@@ -22,14 +22,18 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/safego"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 type Service struct {
-	store        *store.Store
-	log          *slog.Logger
+	store *store.Store
+	log   *slog.Logger
+	// Opens the sealed refresh token (#697). Nil on a server with no key, and
+	// the plaintext column is then the only place it ever was.
+	keys         *secrets.Cipher
 	clientID     string
 	clientSecret string
 	// Overridable for tests; production values in New.
@@ -43,7 +47,7 @@ type Service struct {
 
 // New returns nil when the Strava app is not configured — the saver treats a
 // nil uploader as "feature absent", the same capability gating as everywhere.
-func New(st *store.Store, log *slog.Logger) *Service {
+func New(st *store.Store, log *slog.Logger, keys *secrets.Cipher) *Service {
 	id := os.Getenv("WATTROOM_OAUTH_STRAVA_ID")
 	secret := os.Getenv("WATTROOM_OAUTH_STRAVA_SECRET")
 	if id == "" || secret == "" {
@@ -201,6 +205,28 @@ func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) (*int64, error
 	return s.await(ctx, token, uploadID)
 }
 
+// refreshToken reads the stored refresh token from whichever column holds it
+// (#697). Sealed wins: during the release that introduces the key, rows
+// written since have only the sealed one and rows not yet touched have only
+// the plaintext, and both have to keep working.
+//
+// A sealed value that will not open is NOT reported as "no token stored":
+// that is a wrong or rotated key, and answering it with "reconnect your Strava
+// account" would have every rider re-authorise over an operator's mistake.
+func (s *Service) refreshToken(ident db.Identity) (string, error) {
+	if len(ident.RefreshTokenEnc) > 0 {
+		token, err := s.keys.Open(ident.RefreshTokenEnc)
+		if err != nil {
+			return "", fmt.Errorf("stored refresh token cannot be read — is %s the key it was sealed with? %w", secrets.KeyEnv, err)
+		}
+		return token, nil
+	}
+	if ident.RefreshToken == nil || *ident.RefreshToken == "" {
+		return "", fmt.Errorf("no refresh token stored")
+	}
+	return *ident.RefreshToken, nil
+}
+
 // freshToken refreshes when the stored access token is at or past expiry.
 func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, error) {
 	valid := ident.TokenExpiresAt.Valid &&
@@ -208,14 +234,15 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 	if valid && ident.AccessToken != nil && *ident.AccessToken != "" {
 		return *ident.AccessToken, nil
 	}
-	if ident.RefreshToken == nil || *ident.RefreshToken == "" {
-		return "", fmt.Errorf("no refresh token stored")
+	refresh, err := s.refreshToken(ident)
+	if err != nil {
+		return "", err
 	}
 	form := url.Values{
 		"client_id":     {s.clientID},
 		"client_secret": {s.clientSecret},
 		"grant_type":    {"refresh_token"},
-		"refresh_token": {*ident.RefreshToken},
+		"refresh_token": {refresh},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.tokenURL,
 		strings.NewReader(form.Encode()))
@@ -239,9 +266,16 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 	if err := json.NewDecoder(res.Body).Decode(&tok); err != nil {
 		return "", err
 	}
+	// Strava rotates the refresh token on every use, so this write is the one
+	// that matters: seal the new one rather than replacing a sealed row with a
+	// readable one (#697).
+	stored, sealed, err := s.keys.Columns(tok.RefreshToken)
+	if err != nil {
+		return "", fmt.Errorf("seal refreshed token: %w", err)
+	}
 	err = s.store.Queries.UpdateIdentityTokens(ctx, db.UpdateIdentityTokensParams{
 		Provider: "strava", ProviderUserID: ident.ProviderUserID,
-		AccessToken: &tok.AccessToken, RefreshToken: &tok.RefreshToken,
+		AccessToken: &tok.AccessToken, RefreshToken: stored, RefreshTokenEnc: sealed,
 		TokenExpiresAt: pgtype.Timestamptz{Time: time.Unix(tok.ExpiresAt, 0), Valid: true},
 	})
 	if err != nil {

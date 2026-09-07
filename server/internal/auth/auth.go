@@ -21,6 +21,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/mail"
@@ -37,6 +38,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -54,8 +56,11 @@ const (
 )
 
 type Service struct {
-	store     *store.Store
-	log       *slog.Logger
+	store *store.Store
+	log   *slog.Logger
+	// Seals the one credential that is stored to be used again rather than
+	// merely checked (#697). Nil on a server with no key configured.
+	keys      *secrets.Cipher
 	providers map[string]provider
 	// secure=false only for plain-http localhost; cookies are Secure otherwise.
 	secure bool
@@ -84,10 +89,13 @@ type Service struct {
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
-func New(st *store.Store, log *slog.Logger, baseURL string, secure bool) *Service {
+// keys seals the refresh tokens this service stores (#697); a nil one stores
+// them in the clear, exactly as every release before it did.
+func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *secrets.Cipher) *Service {
 	svc := &Service{
 		store:     st,
 		log:       log,
+		keys:      keys,
 		providers: providersFromEnv(baseURL),
 		secure:    secure,
 		baseURL:   baseURL,
@@ -348,7 +356,11 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	switch {
 	case err == nil:
 		if p.keepTokens {
-			if err := q.UpdateIdentityTokens(ctx, tokenParams(p, ident, tok)); err != nil {
+			params, err := s.tokenParams(p, ident, tok)
+			if err != nil {
+				return db.User{}, false, err
+			}
+			if err := q.UpdateIdentityTokens(ctx, params); err != nil {
 				return db.User{}, false, err
 			}
 		}
@@ -378,9 +390,12 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 		Provider: p.id, ProviderUserID: ident.ProviderUserID, UserID: user.ID,
 	}
 	if p.keepTokens {
-		tp := tokenParams(p, ident, tok)
-		create.AccessToken, create.RefreshToken, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.TokenExpiresAt
+		tp, err := s.tokenParams(p, ident, tok)
+		if err != nil {
+			return db.User{}, false, err
+		}
+		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Two callbacks for the same identity can race past the earlier lookup
@@ -434,7 +449,11 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 		// Already linked here: nothing to add, but a fresh Strava grant is
 		// worth keeping — this is how a rider re-authorizes after a revoke.
 		if p.keepTokens {
-			return q.UpdateIdentityTokens(ctx, tokenParams(p, ident, tok))
+			params, err := s.tokenParams(p, ident, tok)
+			if err != nil {
+				return err
+			}
+			return q.UpdateIdentityTokens(ctx, params)
 		}
 		return nil
 	case errors.Is(err, pgx.ErrNoRows):
@@ -462,9 +481,12 @@ func (s *Service) link(r *http.Request, p provider, ident identity, tok *oauth2.
 		Provider: p.id, ProviderUserID: ident.ProviderUserID, UserID: userID,
 	}
 	if p.keepTokens {
-		tp := tokenParams(p, ident, tok)
-		create.AccessToken, create.RefreshToken, create.TokenExpiresAt =
-			tp.AccessToken, tp.RefreshToken, tp.TokenExpiresAt
+		tp, err := s.tokenParams(p, ident, tok)
+		if err != nil {
+			return err
+		}
+		create.AccessToken, create.RefreshToken, create.RefreshTokenEnc, create.TokenExpiresAt =
+			tp.AccessToken, tp.RefreshToken, tp.RefreshTokenEnc, tp.TokenExpiresAt
 	}
 	if err := q.CreateIdentity(ctx, create); err != nil {
 		// Someone claimed this identity between the lookup and the insert —
@@ -509,13 +531,21 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 	http.Redirect(w, r, "/profile?link="+outcome+"&provider="+url.QueryEscape(p.id), http.StatusFound)
 }
 
-func tokenParams(p provider, ident identity, tok *oauth2.Token) db.UpdateIdentityTokensParams {
+// tokenParams shapes a provider's tokens for storage. The refresh token is
+// the one that is kept to be used again, so it is the one that gets sealed
+// (#697); the access token expires in hours and is replaced from it.
+func (s *Service) tokenParams(p provider, ident identity, tok *oauth2.Token) (db.UpdateIdentityTokensParams, error) {
 	expiry := pgtype.Timestamptz{Time: tok.Expiry, Valid: !tok.Expiry.IsZero()}
-	access, refresh := tok.AccessToken, tok.RefreshToken
+	access := tok.AccessToken
+	refresh, sealed, err := s.keys.Columns(tok.RefreshToken)
+	if err != nil {
+		return db.UpdateIdentityTokensParams{}, fmt.Errorf("seal refresh token: %w", err)
+	}
 	return db.UpdateIdentityTokensParams{
 		Provider: p.id, ProviderUserID: ident.ProviderUserID,
-		AccessToken: &access, RefreshToken: &refresh, TokenExpiresAt: expiry,
-	}
+		AccessToken: &access, RefreshToken: refresh, RefreshTokenEnc: sealed,
+		TokenExpiresAt: expiry,
+	}, nil
 }
 
 // --- sessions ---
