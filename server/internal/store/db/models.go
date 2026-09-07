@@ -36,6 +36,7 @@ type BoardClip struct {
 	GainDb     float32
 	FadeInMs   int32
 	FadeOutMs  int32
+	Key        *string
 }
 
 type ChatImage struct {

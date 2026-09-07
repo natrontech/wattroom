@@ -373,3 +373,102 @@ func TestPadsGoPastNine(t *testing.T) {
 		}
 	}
 }
+
+func TestNormaliseKey(t *testing.T) {
+	tests := []struct {
+		in    string
+		want  string
+		valid bool
+	}{
+		{"q", "q", true},
+		{"Q", "q", true}, // one binding, not two that shadow each other
+		{"3", "3", true},
+		{"/", "/", true},
+		{"ü", "ü", true},
+		{"", "", false},
+		{"qq", "", false},
+		{" ", "", false}, // the space bar scrolls the room
+		{"\t", "", false},
+		{"\n", "", false},
+	}
+	for _, tt := range tests {
+		got, valid := NormaliseKey(tt.in)
+		if got != tt.want || valid != tt.valid {
+			t.Errorf("NormaliseKey(%q) = %q, %v; want %q, %v", tt.in, got, valid, tt.want, tt.valid)
+		}
+	}
+}
+
+// A key means one clip. Binding one that is taken moves it, the same courtesy
+// a pad gets, so a rider never has to clear the old binding first.
+func TestBindingAKeyMovesIt(t *testing.T) {
+	mux, _, _ := setup(t)
+	horn := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	bell := upload(t, mux, "alice", "COWBELL", tenSeconds())
+
+	for _, id := range []string{horn.ID, bell.ID} {
+		if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+id+"/key", []byte(`{"key":"Q"}`)); rec.Code != http.StatusNoContent {
+			t.Fatalf("bind: %d %s", rec.Code, rec.Body)
+		}
+	}
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	for _, clip := range list.Clips {
+		switch clip.Name {
+		case "COWBELL":
+			if clip.Key == nil || *clip.Key != "q" {
+				t.Errorf("COWBELL key = %v; want q, lower-cased", clip.Key)
+			}
+		case "AIRHORN":
+			if clip.Key != nil {
+				t.Errorf("AIRHORN kept %q; the key moved to COWBELL", *clip.Key)
+			}
+		}
+	}
+}
+
+func TestKeyRefusals(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	tests := []struct {
+		name, who, id, body string
+		want                int
+	}{
+		{"signed out", "", clip.ID, `{"key":"q"}`, http.StatusUnauthorized},
+		{"somebody else's clip", "bob", clip.ID, `{"key":"q"}`, http.StatusNotFound},
+		{"two characters", "alice", clip.ID, `{"key":"qq"}`, http.StatusBadRequest},
+		{"the space bar", "alice", clip.ID, `{"key":" "}`, http.StatusBadRequest},
+		{"nothing at all", "alice", clip.ID, `{"key":""}`, http.StatusBadRequest},
+		{"clearing it", "alice", clip.ID, `{"key":null}`, http.StatusNoContent},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := do(t, mux, tt.who, "PUT", "/api/board/clips/"+tt.id+"/key", []byte(tt.body))
+			if rec.Code != tt.want {
+				t.Errorf("status = %d; want %d (%s)", rec.Code, tt.want, rec.Body)
+			}
+		})
+	}
+}
+
+// Every board that exists keeps working: the nine pads that fired on a digit
+// carry that digit as a real binding now.
+func TestExistingPadsKeepTheirDigit(t *testing.T) {
+	mux, _, _ := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/pad", []byte(`{"pad":4}`)); rec.Code != http.StatusNoContent {
+		t.Fatalf("set pad: %d", rec.Code)
+	}
+	// The migration backfills existing rows; a clip padded after it takes its
+	// key the same way, so the two paths agree.
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/key", []byte(`{"key":"4"}`)); rec.Code != http.StatusNoContent {
+		t.Fatalf("bind digit: %d", rec.Code)
+	}
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	if list.Clips[0].Key == nil || *list.Clips[0].Key != "4" {
+		t.Errorf("key = %v; want 4", list.Clips[0].Key)
+	}
+}

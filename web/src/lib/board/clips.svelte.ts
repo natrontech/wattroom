@@ -17,8 +17,10 @@ export interface Edit {
 export interface Clip extends Edit {
 	id: string;
 	name: string;
-	/** 1–9, or absent for a clip in the library but on no pad. */
+	/** A position on the board, or absent for a clip only in the library. */
 	pad?: number;
+	/** The key that fires it, or absent for a clip that is only tapped. */
+	key?: string;
 	/** The SOURCE's length; the edit above says what actually plays. */
 	millis: number;
 	bytes: number;
@@ -89,6 +91,11 @@ export const board = {
 	onPad(pad: number): Clip | undefined {
 		return clips.find((c) => c.pad === pad);
 	},
+	/** The clip a keystroke fires, if any rider bound one to it. */
+	onKey(key: string): Clip | undefined {
+		const wanted = key.toLowerCase();
+		return clips.find((c) => c.key === wanted);
+	},
 	/** Loads once per session; every caller can ask. */
 	load(): Promise<void> {
 		loading ??= fetchAll().finally(() => {
@@ -132,6 +139,19 @@ export async function upload(file: File): Promise<Refusal | undefined> {
 	// it. Beyond nine, the upload lands in the library and the rider chooses.
 	const free = firstFreePad();
 	if (free) await assign(id, free);
+	// And a digit while one is going spare, so a new clip is reachable from
+	// the keyboard the way the first nine always were. Past that the rider
+	// picks a key — there are only ten digits, and a board can be bigger.
+	const digit = firstFreeDigit();
+	if (digit) await bindKey(id, digit);
+	return undefined;
+}
+
+/** The lowest digit nothing is bound to, or undefined once all ten are taken. */
+export function firstFreeDigit(): string | undefined {
+	for (const digit of '123456789') {
+		if (!board.onKey(digit)) return digit;
+	}
 	return undefined;
 }
 
@@ -174,6 +194,27 @@ export async function saveEdit(
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
 		return { message: body.message ?? 'The edit could not be saved.' };
+	}
+	await board.refresh();
+	return undefined;
+}
+
+/**
+ * Bind a key to a clip, or clear it with null. The server moves the key off
+ * whatever held it, so the caller never has to unbind first.
+ */
+export async function bindKey(
+	clipId: string,
+	key: string | null,
+): Promise<Refusal | undefined> {
+	const res = await fetch(`/api/board/clips/${clipId}/key`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ key }),
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		return { message: body.message ?? 'The key could not be set.' };
 	}
 	await board.refresh();
 	return undefined;

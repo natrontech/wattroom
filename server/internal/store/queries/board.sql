@@ -6,7 +6,7 @@ returning id, created_at;
 -- name: ListBoardClips :many
 -- The library, newest first. Never selects `bytes` — a listing that carried
 -- the audio would be the whole quota in one response.
-select id, name, pad, duration_ms, octet_length(bytes)::int as size_bytes,
+select id, name, pad, key, duration_ms, octet_length(bytes)::int as size_bytes,
        start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms, created_at
 from board_clips
 where user_id = $1
@@ -42,3 +42,11 @@ where id = $1 and user_id = $2;
 -- name: GetBoardClipSource :one
 -- What the edit is validated against: the uploaded file's own length.
 select duration_ms from board_clips where id = $1 and user_id = $2;
+
+-- name: SetBoardClipKey :execrows
+-- Null clears the binding: a clip with no key is tapped, never fired blind.
+update board_clips set key = $3 where id = $1 and user_id = $2;
+
+-- name: ClearBoardKey :exec
+-- The key moves rather than colliding, the same way a pad does.
+update board_clips set key = null where user_id = $1 and key = $2;

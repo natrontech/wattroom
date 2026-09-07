@@ -21,7 +21,8 @@
 		X,
 	} from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
-	import { board, MIN_PADS, type Clip } from '$lib/board/clips.svelte';
+	import { board, type Clip } from '$lib/board/clips.svelte';
+	import { isToggle } from '$lib/board/toggle-key.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
 	import { modals } from '$lib/modals.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
@@ -88,7 +89,14 @@
 			library = true;
 			return;
 		}
+		fireClip(clip);
+	}
+
+	/** Fire by key or by tap — both land here, so both light the pad. */
+	function fireClip(clip: Clip) {
 		onFire(clip.id);
+		const pad = clip.pad;
+		if (pad === undefined) return;
 		mine = { pad, until: Date.now() + clip.millis };
 		setTimeout(() => {
 			if (mine?.pad === pad) mine = undefined;
@@ -100,22 +108,27 @@
 		const typing =
 			el?.isContentEditable ||
 			['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName ?? '');
-		if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
-		if (event.key === 'b' || event.key === 'B') {
+		if (typing) return;
+		// The toggle carries a modifier now, so it survives focus sitting on a
+		// button or the page itself — which is exactly where a bare `b` used to
+		// fire the board at riders who were not asking for it.
+		if (isToggle(event)) {
+			event.preventDefault();
 			boardPanel.toggle();
 			return;
 		}
-		if (!boardPanel.open) return;
+		// Nothing below fires while the board is away, or under a surface the
+		// rider opened: a pad must not go off behind the library or the editor.
+		if (!boardPanel.open || covered) return;
 		if (event.key === 'Escape') {
 			boardPanel.hide();
 			return;
 		}
-		// Digits only ever reached nine pads; past that a pad is tapped until
-		// keys become rebindable (the next slice of this follow-up).
-		const pad = Number(event.key);
-		if (Number.isInteger(pad) && pad >= 1 && pad <= MIN_PADS) {
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
+		const clip = board.onKey(event.key);
+		if (clip) {
 			event.preventDefault();
-			press(pad);
+			fireClip(clip);
 		}
 	}
 
@@ -196,11 +209,11 @@
 							     pad 10 would draw a shortcut that does nothing, and a
 							     control that does something else than it draws is not
 							     a control (ux.md). -->
-							{#if slot <= MIN_PADS}
+							{#if clip.key}
 								<span
 									class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
 										? 'border-watt/40 text-watt'
-										: 'border-muted/25 text-muted'}">{slot}</span
+										: 'border-muted/25 text-muted'} uppercase">{clip.key}</span
 								>
 							{/if}
 						</span>

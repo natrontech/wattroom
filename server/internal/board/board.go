@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -69,6 +70,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/board/clips", s.handleUpload)
 	mux.HandleFunc("DELETE /api/board/clips/{id}", s.handleDelete)
 	mux.HandleFunc("PUT /api/board/clips/{id}/pad", s.handlePad)
+	mux.HandleFunc("PUT /api/board/clips/{id}/key", s.handleKey)
 	mux.HandleFunc("PUT /api/board/clips/{id}/edit", s.handleEdit)
 	mux.HandleFunc("GET /api/board/clips/{id}/audio", s.handleAudio)
 }
@@ -81,6 +83,9 @@ type clipJSON struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Pad  *int   `json:"pad,omitempty"`
+	// The key that fires this clip, or absent for one that is only tapped.
+	// A pad's number stopped being its key when the board outgrew nine.
+	Key *string `json:"key,omitempty"`
 	// Millis is the SOURCE's length; the edit below says what actually plays.
 	Millis   int   `json:"millis"`
 	Bytes    int   `json:"bytes"`
@@ -145,6 +150,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			pad := int(*row.Pad)
 			clip.Pad = &pad
 		}
+		clip.Key = row.Key
 		out.Clips = append(out.Clips, clip)
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
@@ -370,6 +376,74 @@ func checkEdit(e editJSON, sourceMillis int) (message, field string) {
 		return "Gain is limited to 12 dB either way.", "gainDb"
 	}
 	return "", ""
+}
+
+type keyJSON struct {
+	// null clears the binding, leaving a clip that is tapped and never fired.
+	Key *string `json:"key"`
+}
+
+// handleKey binds one key to one clip. Whatever held that key is unbound
+// first, so a rider moving a key never has to clear the old one — the same
+// courtesy handlePad does for pads.
+func (s *Service) handleKey(w http.ResponseWriter, r *http.Request) {
+	me, ok := s.me(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	var body keyJSON
+	if err := httpx.DecodeStrict(r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a key.")
+		return
+	}
+	if body.Key != nil {
+		normalised, valid := NormaliseKey(*body.Key)
+		if !valid {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"A key is one character — a letter, a digit or a symbol.", "key")
+			return
+		}
+		body.Key = &normalised
+		if err := s.store.Queries.ClearBoardKey(r.Context(), db.ClearBoardKeyParams{UserID: me.ID, Key: &normalised}); err != nil {
+			s.log.Error("clear board key", "err", err, "user", store.UUIDString(me.ID))
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The key could not be set.")
+			return
+		}
+	}
+	n, err := s.store.Queries.SetBoardClipKey(r.Context(), db.SetBoardClipKeyParams{ID: id, UserID: me.ID, Key: body.Key})
+	if err != nil {
+		s.log.Error("set board key", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The key could not be set.")
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// NormaliseKey is the one place a key's shape is decided: exactly one
+// printable character, lower-cased so "Q" and "q" are the same binding rather
+// than two that shadow each other.
+//
+// Whitespace is refused because a pad bound to the space bar would fire every
+// time the rider scrolled the room with it.
+func NormaliseKey(raw string) (string, bool) {
+	lowered := strings.ToLower(raw)
+	runes := []rune(lowered)
+	if len(runes) != 1 {
+		return "", false
+	}
+	if unicode.IsSpace(runes[0]) || !unicode.IsPrint(runes[0]) {
+		return "", false
+	}
+	return lowered, true
 }
 
 // handleAudio serves the bytes to anyone the owner is currently in a room
