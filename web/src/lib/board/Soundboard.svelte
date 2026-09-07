@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isTyping } from '$lib/keys';
 	/**
 	 * The floating soundboard (#877), dragged where the rider wants it — the
 	 * same `dragPane` the popped-out stage uses, so a board and a stage behave
@@ -118,11 +119,7 @@
 	}
 
 	function keys(event: KeyboardEvent) {
-		const el = event.target as HTMLElement | null;
-		const typing =
-			el?.isContentEditable ||
-			['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName ?? '');
-		if (typing) return;
+		if (isTyping(event)) return;
 		// The toggle carries a modifier now, so it survives focus sitting on a
 		// button or the page itself — which is exactly where a bare `b` used to
 		// fire the board at riders who were not asking for it.

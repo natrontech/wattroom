@@ -1,0 +1,1 @@
+- The workout editor has undo and redo: ⌘Z / Ctrl+Z steps back through every edit — added and deleted steps, drags, duplicates, typed numbers, a workout loaded from the library — and ⇧⌘Z goes forward again. Undoing a delete brings the step back selected, and a run of typing in one field is a single step back rather than forty.
