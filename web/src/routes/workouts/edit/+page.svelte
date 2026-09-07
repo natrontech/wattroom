@@ -5,6 +5,7 @@
 	import { untrack } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import { applyEdit, type GraphEdit } from '$lib/components/graph-edit';
 	import StepList from './StepList.svelte';
 	import {
 		plannedZoneSeconds,
@@ -193,6 +194,8 @@
 			trace={[]}
 			selectedPath={selected}
 			onSelect={(path) => (selected = path)}
+			editable
+			onEdit={(edit: GraphEdit) => applyEdit(workout, edit, FTP)}
 		/>
 		<div class="border-ink/5 border-t px-4 py-3">
 			<ZoneBar seconds={zones} legend />
