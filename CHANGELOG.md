@@ -17,6 +17,21 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.38] - 2026-09-07
+
+### Added
+
+- The room's timeline now says who came and went — joined, left, went away, is back — the way ADR-0022 always described. Thirty seconds after someone slips out, "wait, is Marco still here?" has an answer other than counting avatars.
+- A phone whose connection flaps produces no line at all: a rider has to be gone for fifteen seconds before the room is told, and coming back inside that says nothing in either direction. Several people arriving at once are one line that grows, not six lines pushing the conversation off the screen.
+
+### Fixed
+
+- The music comes back after someone stops talking. It could get stuck at a quarter volume until the next time somebody spoke, because anything else changing on screen during the pause cancelled the ramp bringing it back up.
+- Music and cue sounds now dip and return at the same moment. They ran on two separate clocks with the same numbers, so one moved a little after the other.
+- The workout editor and the workout list now draw every preview against your own FTP. They were both scaled to a fixed 265 W, so the watts and zone colours you shaped a workout by belonged to somebody else.
+- A rider who leaves or mutes mid-sentence stops being shown as speaking. Their tile stayed ringed and their name bold until the room ended, and in a room people come and go from, the highlights piled up.
+- The speaking ring now follows the voice rather than the server's opinion of it. It is measured from the audio already playing in your browser, so it lights up as someone starts talking instead of a beat later.
+
 ## [2026.09.37] - 2026-09-07
 
 ### Added
@@ -974,7 +989,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.37...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.38...HEAD
+[2026.09.38]: https://github.com/natrontech/wattroom/compare/2026.09.37...2026.09.38
 [2026.09.37]: https://github.com/natrontech/wattroom/compare/2026.09.36...2026.09.37
 [2026.09.36]: https://github.com/natrontech/wattroom/compare/2026.09.35...2026.09.36
 [2026.09.35]: https://github.com/natrontech/wattroom/compare/2026.09.34...2026.09.35
