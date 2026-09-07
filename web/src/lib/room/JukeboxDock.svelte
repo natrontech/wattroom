@@ -4,13 +4,21 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { chase, pausedChase, playheadAt } from '$lib/room/playhead';
 	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import {
+		backIn,
+		listening,
+		playerAction,
+		type Play,
+	} from '$lib/room/listening.svelte';
 	import { resetServerClock, serverNow } from '$lib/room/server-clock';
 	import { withYouTubeApi } from '$lib/room/youtube-api';
 	import { toasts } from '$lib/toast.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { onDuck } from '$lib/sound/duck';
+	import { formatClockLong } from '$lib/format';
 	import { keepSize } from '$lib/pane';
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
+	import Music from '@lucide/svelte/icons/music';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
@@ -30,6 +38,22 @@
 	const jukebox = $derived(conn?.live.tick?.jukebox);
 	let container = $state<HTMLDivElement | null>(null);
 	let shell = $state<HTMLDivElement | null>(null);
+
+	// ── Sitting out (#989) ───────────────────────────────────────────────────
+	// ponytail: the chase's own 250 ms tick does the unloading. An effect that
+	// called tickChase() on the flag would drag every read in the chase into
+	// the effect graph (#494), and a quarter second of music is not worth it.
+	let outNow = $state(0);
+	const play = $derived<Play | null>(
+		jukebox?.current
+			? { videoId: jukebox.current.videoId, anchorMs: jukebox.anchorMs }
+			: null,
+	);
+	const backInSec = $derived(
+		jukebox
+			? backIn(listening.durationOf(play), playheadAt(jukebox, outNow))
+			: null,
+	);
 
 	// ── Placement ─────────────────────────────────────────────────────────────
 	// The corner it falls back to, comfortably clear of RMF's 200×200 even
@@ -301,6 +325,26 @@
 			return;
 		}
 
+		const nowPlay: Play | null = deck.current
+			? { videoId: deck.current.videoId, anchorMs: deck.anchorMs }
+			: null;
+		// ── Sitting out (#989) ───────────────────────────────────────────────
+		// A second local reason to take this client out while the room plays
+		// on — the same shape as `hiddenByFullscreen` above, except the player
+		// UNLOADS rather than pausing: a rider who is not listening should not
+		// be streaming. Away (#875) routes through the same door, so coming
+		// back rejoins by itself.
+		listening.sees(nowPlay);
+		const action = playerAction(listening.out || mixer.muted, !!loadedVideo);
+		if (action !== 'chase') {
+			if (action === 'unload') unload();
+			// Only clients know how long a track is, so the length dies with
+			// the player: keep it for the play we measured and admit to
+			// knowing nothing about the next one.
+			playerInfo.duration = listening.durationOf(nowPlay);
+			return;
+		}
+
 		if (!deck.current) {
 			if (loadedVideo) unload();
 			return;
@@ -405,7 +449,12 @@
 
 	$effect(() => {
 		if (!playerReady) return;
-		const timer = setInterval(tickChase, 250);
+		const timer = setInterval(() => {
+			tickChase();
+			// The bar stays truthful while nothing streams: the tick is still
+			// read, it is only the player that is gone.
+			if (listening.out) outNow = serverNow();
+		}, 250);
 		// A hidden tab throttles timers while the media element keeps playing,
 		// and every tick it received arrived late — so a tab coming back is
 		// holding a stale playhead AND a clock estimate biased by whatever
@@ -430,7 +479,9 @@
 		player?.playVideo?.();
 	}
 
-	const showPlayer = $derived(!!jukebox?.current);
+	// Away is the rider being elsewhere: nothing to look at, and nothing
+	// plays, so RMF's "visible while media plays" is not engaged either.
+	const showPlayer = $derived(!!jukebox?.current && !mixer.muted);
 </script>
 
 {#if conn}
@@ -458,7 +509,7 @@
 		style="width: {CORNER.w}px; height: {CORNER.h}px; max-width: 96vw;
 			max-height: 90vh"
 	>
-		<div class="flex min-h-0 flex-1 bg-black">
+		<div class="flex min-h-0 flex-1 bg-black {listening.out ? 'hidden' : ''}">
 			<!-- ≥200×200, always visible while media plays, nothing overlaid. -->
 			<div class="relative min-w-0 flex-1">
 				<div bind:this={container} class="h-full w-full"></div>
@@ -473,7 +524,37 @@
 			</div>
 		</div>
 
-		{#if showPlayer && playerInfo.blocked}
+		{#if listening.out}
+			<!-- Out (#989): the player is unloaded, so there is no stream and no
+		     video element — RMF's "visible while media plays" is not engaged
+		     because nothing plays for this rider. What is left names what the
+		     room is on, read from the tick, and the way back in. Chrome, so
+		     no glow: magenta is live data (ADR-0005). -->
+			<div
+				class="text-muted flex min-h-0 flex-1 flex-col justify-center gap-2 p-3 text-xs"
+			>
+				<p class="flex min-w-0 items-center gap-1.5">
+					<Music size={13} class="shrink-0" />
+					<span class="min-w-0 truncate">{jukebox?.current?.title}</span>
+				</p>
+				<div class="flex min-w-0 items-center justify-between gap-2">
+					<span class="min-w-0 truncate"
+						>{listening.mode === 'skip' && backInSec !== null
+							? `back in ${formatClockLong(backInSec)}`
+							: listening.mode === 'skip'
+								? 'back on the next track'
+								: 'the room is listening'}</span
+					>
+					<button
+						onclick={() => listening.rejoin()}
+						class="btn btn-secondary btn-xs shrink-0"
+						>{listening.mode === 'skip' ? 'Rejoin now' : 'Rejoin'}</button
+					>
+				</div>
+			</div>
+		{/if}
+
+		{#if showPlayer && !listening.out && playerInfo.blocked}
 			<!-- The browser refused to start audio with no gesture behind it.
 			     One press fixes it for the session. Beside the player, never
 			     over it (RMF) — and quiet: this is chrome, and magenta means

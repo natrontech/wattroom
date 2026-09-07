@@ -3,6 +3,8 @@
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
 	import Rewind from '@lucide/svelte/icons/rewind';
+	import HeadphoneOff from '@lucide/svelte/icons/headphone-off';
+	import Headphones from '@lucide/svelte/icons/headphones';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { page } from '$app/state';
@@ -11,6 +13,7 @@
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { listening } from '$lib/room/listening.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
 	import { offerSeat, RAIL_SEAT } from '$lib/room/stage-slot.svelte';
@@ -39,6 +42,18 @@
 	function transport(action: string) {
 		conn?.live.jukebox({ action });
 	}
+	// Sitting out (#989). The rail is the whole jukebox below xl, so the
+	// durable verb lives here as a button; skip-for-me stays in the column's
+	// menu, where there is room to say what it does.
+	function stopForMe() {
+		listening.stepOut(
+			'stop',
+			current
+				? { videoId: current.videoId, anchorMs: jukebox!.anchorMs }
+				: null,
+			playerInfo.duration,
+		);
+	}
 	function nudge(seconds: number) {
 		if (!jukebox?.current) return;
 		conn?.live.jukebox({
@@ -58,7 +73,7 @@
 			: ''}"
 	>
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
-			{#if jukebox?.playing && !playerInfo.live}
+			{#if jukebox?.playing && !playerInfo.live && !listening.out}
 				<span
 					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
 						? 'bg-watt glow-stroke'
@@ -93,9 +108,9 @@
 				onclick={() => transport(jukebox?.playing ? 'pause' : 'play')}
 				class="hover:text-ink shrink-0 rounded p-1"
 				aria-label={jukebox?.playing
-					? 'pause for the room'
-					: 'play for the room'}
-				title={jukebox?.playing ? 'pause for the room' : 'play for the room'}
+					? 'pause for everyone'
+					: 'play for everyone'}
+				title={jukebox?.playing ? 'Pause for everyone' : 'Play for everyone'}
 			>
 				{#if jukebox?.playing}<Pause size={13} />{:else}<Play size={13} />{/if}
 			</button>
@@ -120,7 +135,24 @@
 				aria-label="skip for the room"
 				title="skip for the room"><SkipForward size={13} /></button
 			>
+			<!-- Past the divider it is your ears only, never the room's. -->
 			<span class="bg-ink/10 mx-1 h-4 w-px shrink-0"></span>
+			{#if listening.out}
+				<button
+					onclick={() => listening.rejoin()}
+					class="hover:text-ink shrink-0 rounded p-1"
+					aria-label="rejoin the music"
+					title="rejoin the music"><Headphones size={13} /></button
+				>
+			{:else}
+				<button
+					onclick={stopForMe}
+					class="hover:text-ink shrink-0 rounded p-1"
+					aria-label="stop the music for you"
+					title="Stop for you — the room keeps playing"
+					><HeadphoneOff size={13} /></button
+				>
+			{/if}
 			<Volume2 size={12} class="shrink-0" />
 			<input
 				type="range"

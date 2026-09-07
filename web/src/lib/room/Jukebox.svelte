@@ -6,6 +6,9 @@
 	import Rewind from '@lucide/svelte/icons/rewind';
 	import SkipBack from '@lucide/svelte/icons/skip-back';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import HeadphoneOff from '@lucide/svelte/icons/headphone-off';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Hourglass from '@lucide/svelte/icons/hourglass';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { account } from '$lib/account.svelte';
 	import { formatClockLong } from '$lib/format';
@@ -16,6 +19,7 @@
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { listening } from '$lib/room/listening.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
 	import { MUSIC_FADER } from '$lib/sound/fader';
@@ -116,13 +120,27 @@
 		});
 	}
 
+	// ── Sitting out (#989) ───────────────────────────────────────────────────
+	// Yours, not the room's: the deck's playhead is untouched and nothing is
+	// sent. `stepOut` is handed the play and the length THIS client measured,
+	// because the server holds an anchor and never a timeline.
+	function stepOut(kind: 'skip' | 'stop') {
+		listening.stepOut(
+			kind,
+			current
+				? { videoId: current.videoId, anchorMs: jukebox!.anchorMs }
+				: null,
+			duration,
+		);
+	}
+
 	// The deck's own transport, as a menu (#486) — every verb still has its
 	// button below. Seek stays out: it needs a position, not a click.
 	function deckMenu(): MenuEntry[] {
 		const playing = !!jukebox?.playing;
 		return [
 			{
-				label: playing ? 'Pause' : 'Play',
+				label: playing ? 'Pause for everyone' : 'Play for everyone',
 				icon: playing ? Pause : Play,
 				onSelect: () => send({ action: playing ? 'pause' : 'play' }),
 			},
@@ -145,6 +163,29 @@
 						} satisfies MenuEntry,
 					]
 				: []),
+			// Below the separator, everything is yours alone — "for me" and
+			// "for everyone" are never adjacent (#989).
+			'separator',
+			...(listening.out
+				? [
+						{
+							label: 'Rejoin the music',
+							icon: Headphones,
+							onSelect: () => listening.rejoin(),
+						} satisfies MenuEntry,
+					]
+				: [
+						{
+							label: 'Skip this one for me',
+							icon: Hourglass,
+							onSelect: () => stepOut('skip'),
+						} satisfies MenuEntry,
+						{
+							label: 'Stop the music for me',
+							icon: HeadphoneOff,
+							onSelect: () => stepOut('stop'),
+						} satisfies MenuEntry,
+					]),
 		];
 	}
 
@@ -158,8 +199,10 @@
 <section class="flex min-w-0 flex-col gap-3">
 	<div class="flex min-w-0 items-center justify-between gap-2">
 		<span class="eyebrow">jukebox</span>
-		{#if current && jukebox?.playing && !streaming}
-			<!-- Proof the room is together, in the one place riders look for it. -->
+		{#if current && jukebox?.playing && !streaming && !listening.out}
+			<!-- Proof the room is together, in the one place riders look for it.
+			     A rider who has stepped out is not with it and must not be told
+			     they are: the badge goes, and comes back when they rejoin. -->
 			<span
 				class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] {inSync
 					? 'text-watt'
@@ -308,8 +351,9 @@
 					onclick={() => send({ action: jukebox?.playing ? 'pause' : 'play' })}
 					class="bg-ink text-paper hover:bg-ink/90 icon-btn icon-btn-lg"
 					aria-label={jukebox?.playing
-						? 'pause for the room'
-						: 'play for the room'}
+						? 'pause for everyone'
+						: 'play for everyone'}
+					title={jukebox?.playing ? 'Pause for everyone' : 'Play for everyone'}
 				>
 					{#if jukebox?.playing}<Pause size={18} />{:else}<Play
 							size={18}
@@ -361,6 +405,38 @@
 					>{mixer.music}%</span
 				>
 			</label>
+
+			<!-- Still your ears, one line down: sitting out is a local decision
+			     about a local player (#989, ADR-0018), so it belongs under the
+			     fader and nowhere near the transport above it. -->
+			<div class="flex min-w-0 items-center gap-1.5 text-[11px]">
+				{#if listening.out}
+					<button
+						onclick={() => listening.rejoin()}
+						class="btn btn-secondary btn-xs"
+						title="back in with the room, from wherever it has got to"
+						><Headphones size={12} /> Rejoin</button
+					>
+					<span class="text-muted min-w-0 truncate"
+						>{listening.mode === 'skip'
+							? 'back on the next track'
+							: 'the room is listening'}</span
+					>
+				{:else}
+					<button
+						onclick={() => stepOut('skip')}
+						class="btn btn-ghost btn-xs text-muted"
+						title="sit this one out — back automatically on the next track"
+						><Hourglass size={12} /> Skip for me</button
+					>
+					<button
+						onclick={() => stepOut('stop')}
+						class="btn btn-ghost btn-xs text-muted"
+						title="stop the music for you — the room keeps playing"
+						><HeadphoneOff size={12} /> Stop for me</button
+					>
+				{/if}
+			</div>
 		</div>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
