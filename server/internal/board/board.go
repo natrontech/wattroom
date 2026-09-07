@@ -33,9 +33,10 @@ const (
 	// trust boundary, not the length rule — DurationMillis is that.
 	maxUploadBytes = 4 << 20
 
-	// Pads is how many a board has, and the migration's check constraint says
-	// the same. Beyond that a clip lives in the library with no pad.
-	Pads = 9
+	// MaxPad is a sanity bound, not a ceiling: a pad is a position in a list,
+	// and MaxRiderBytes is what actually limits how many a rider can have.
+	// Nine was a number from the mockups and riders hit it on day one.
+	MaxPad = 999
 
 	// maxNameRunes keeps a clip's label to something a pad can render.
 	maxNameRunes = 32
@@ -268,9 +269,9 @@ func (s *Service) handlePad(w http.ResponseWriter, r *http.Request) {
 	}
 	var pad *int16
 	if body.Pad != nil {
-		if *body.Pad < 1 || *body.Pad > Pads {
+		if *body.Pad < 1 || *body.Pad > MaxPad {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"The board has pads 1 to "+strconv.Itoa(Pads)+".", "pad")
+				"A pad is numbered from 1 to "+strconv.Itoa(MaxPad)+".", "pad")
 			return
 		}
 		slot := int16(*body.Pad)

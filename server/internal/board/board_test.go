@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -180,7 +181,7 @@ func TestPadRefusals(t *testing.T) {
 	}{
 		{"signed out", "", clip.ID, `{"pad":1}`, http.StatusUnauthorized},
 		{"pad zero", "alice", clip.ID, `{"pad":0}`, http.StatusBadRequest},
-		{"pad past the board", "alice", clip.ID, `{"pad":10}`, http.StatusBadRequest},
+		{"pad past the sanity bound", "alice", clip.ID, `{"pad":1000}`, http.StatusBadRequest},
 		{"not a pad at all", "alice", clip.ID, `{"pad":"one"}`, http.StatusBadRequest},
 		{"somebody else's clip", "bob", clip.ID, `{"pad":1}`, http.StatusNotFound},
 		{"no such clip", "alice", "not-a-uuid", `{"pad":1}`, http.StatusNotFound},
@@ -343,5 +344,32 @@ func TestEditEndpoint(t *testing.T) {
 	// The source is untouched: an edit is numbers, never a re-encode.
 	if got.Millis != 10004 || got.Bytes != len(tenSeconds()) {
 		t.Errorf("source changed: %d ms / %d bytes", got.Millis, got.Bytes)
+	}
+}
+
+// Nine was a number from the mockups, not from SPEC, and riders hit it on the
+// first day. A board is as big as the rider's clips (#877 follow-up).
+func TestPadsGoPastNine(t *testing.T) {
+	mux, _, _ := setup(t)
+	for _, pad := range []int{10, 42, MaxPad} {
+		clip := upload(t, mux, "alice", "CLIP", tenSeconds())
+		body := []byte(`{"pad":` + strconv.Itoa(pad) + `}`)
+		if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/pad", body); rec.Code != http.StatusNoContent {
+			t.Fatalf("pad %d = %d; want 204 (%s)", pad, rec.Code, rec.Body)
+		}
+	}
+	rec := do(t, mux, "alice", "GET", "/api/board/clips", nil)
+	var list listJSON
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	got := map[int]bool{}
+	for _, c := range list.Clips {
+		if c.Pad != nil {
+			got[*c.Pad] = true
+		}
+	}
+	for _, pad := range []int{10, 42, MaxPad} {
+		if !got[pad] {
+			t.Errorf("pad %d did not stick; have %v", pad, got)
+		}
 	}
 }

@@ -1,8 +1,11 @@
 <script lang="ts">
 	/**
-	 * The floating soundboard (#877). Nine pads, keys 1–9, dragged where the
-	 * rider wants it — the same `dragPane` the popped-out stage uses, so a
-	 * board and a stage behave identically once they are loose.
+	 * The floating soundboard (#877), dragged where the rider wants it — the
+	 * same `dragPane` the popped-out stage uses, so a board and a stage behave
+	 * identically once they are loose.
+	 *
+	 * The grid grows with the board and scrolls rather than running off the
+	 * screen; nine is only where an empty one starts.
 	 *
 	 * A pad's face is its own waveform, so a sound is found by silhouette at
 	 * arm's length rather than read. Idle is violet and flat because chrome
@@ -18,7 +21,7 @@
 		X,
 	} from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
-	import { board, PADS, type Clip } from '$lib/board/clips.svelte';
+	import { board, MIN_PADS, type Clip } from '$lib/board/clips.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
 	import { modals } from '$lib/modals.svelte';
 	import { mixer } from '$lib/sound/mixer.svelte';
@@ -107,8 +110,10 @@
 			boardPanel.hide();
 			return;
 		}
+		// Digits only ever reached nine pads; past that a pad is tapped until
+		// keys become rebindable (the next slice of this follow-up).
 		const pad = Number(event.key);
-		if (Number.isInteger(pad) && pad >= 1 && pad <= PADS) {
+		if (Number.isInteger(pad) && pad >= 1 && pad <= MIN_PADS) {
 			event.preventDefault();
 			press(pad);
 		}
@@ -122,7 +127,7 @@
 	});
 
 	const pads = $derived(
-		Array.from({ length: PADS }, (_, i) => ({
+		Array.from({ length: board.padCount }, (_, i) => ({
 			slot: i + 1,
 			clip: board.onPad(i + 1),
 		})),
@@ -168,7 +173,9 @@
 			>
 		</div>
 
-		<div class="grid grid-cols-3 gap-2 px-0.5">
+		<div
+			class="grid max-h-[min(60vh,32rem)] grid-cols-3 gap-2 overflow-y-auto px-0.5"
+		>
 			{#each pads as { slot, clip } (slot)}
 				{@const playing = mine?.pad === slot}
 				<button
@@ -185,11 +192,17 @@
 					{#if clip}
 						<span class="flex items-start">
 							<span class="flex-1"></span>
-							<span
-								class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
-									? 'border-watt/40 text-watt'
-									: 'border-muted/25 text-muted'}">{slot}</span
-							>
+							<!-- Only a pad a key actually fires wears one. A badge on
+							     pad 10 would draw a shortcut that does nothing, and a
+							     control that does something else than it draws is not
+							     a control (ux.md). -->
+							{#if slot <= MIN_PADS}
+								<span
+									class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
+										? 'border-watt/40 text-watt'
+										: 'border-muted/25 text-muted'}">{slot}</span
+								>
+							{/if}
 						</span>
 						<span class="flex flex-1 items-center">
 							<svg

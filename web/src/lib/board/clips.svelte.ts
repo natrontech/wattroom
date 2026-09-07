@@ -30,8 +30,15 @@ export function keptMillis(clip: Clip): number {
 	return (clip.endMs || clip.millis) - clip.startMs;
 }
 
-/** How many pads a board has — the server's check constraint says the same. */
-export const PADS = 9;
+/**
+ * The fewest pads a board ever shows. Not a ceiling: the grid grows as clips
+ * are added (`padCount`), and the rider's storage quota is the real limit.
+ * Nine keeps an empty board looking like a board rather than a single slot.
+ */
+export const MIN_PADS = 9;
+
+/** The server's sanity bound on a pad number — not a product ceiling. */
+export const MAX_PAD = 999;
 
 let clips = $state<Clip[]>([]);
 let used = $state(0);
@@ -68,6 +75,15 @@ export const board = {
 	},
 	get loaded() {
 		return loaded;
+	},
+	/**
+	 * How many pads to draw: every one in use, plus a spare to fill, and never
+	 * fewer than MIN_PADS. A board that grew never shrinks under the rider
+	 * mid-session either — the highest pad in use holds the floor.
+	 */
+	get padCount(): number {
+		const highest = clips.reduce((max, c) => Math.max(max, c.pad ?? 0), 0);
+		return Math.max(MIN_PADS, highest + 1);
 	},
 	/** The clip on one pad, or undefined for an empty slot. */
 	onPad(pad: number): Clip | undefined {
@@ -121,7 +137,7 @@ export async function upload(file: File): Promise<Refusal | undefined> {
 
 /** The lowest pad with nothing on it, or undefined when the board is full. */
 export function firstFreePad(): number | undefined {
-	for (let pad = 1; pad <= PADS; pad++) {
+	for (let pad = 1; pad <= MAX_PAD; pad++) {
 		if (!board.onPad(pad)) return pad;
 	}
 	return undefined;

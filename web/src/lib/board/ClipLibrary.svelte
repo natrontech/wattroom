@@ -11,7 +11,7 @@
 		assign,
 		board,
 		keptMillis,
-		PADS,
+		MIN_PADS,
 		remove,
 		upload,
 		type Clip,
@@ -50,7 +50,9 @@
 	const megabytes = (bytes: number) => `${(bytes / (1 << 20)).toFixed(1)} MB`;
 
 	function padOptions(clip: Clip) {
-		return Array.from({ length: PADS }, (_, i) => i + 1).map((pad) => ({
+		// Every pad in use, plus a spare — the same shape the board draws.
+		const slots = Math.max(MIN_PADS, board.padCount);
+		return Array.from({ length: slots }, (_, i) => i + 1).map((pad) => ({
 			pad,
 			taken: board.onPad(pad),
 			mine: clip.pad === pad,
