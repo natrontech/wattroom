@@ -53,7 +53,6 @@
 
 {#if conn && !onLounge && others.length > 0}
 	{@const av = conn.av}
-	{@const metrics = conn.live.tick?.riders ?? {}}
 	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
 		<div class="eyebrow flex items-center pb-1.5">
 			with you
@@ -62,7 +61,9 @@
 		<div class="grid grid-cols-2 gap-1.5">
 			{#each shown as rider (rider.id)}
 				{@const video = av.videoOf[rider.id]}
-				{@const riding = (metrics[rider.id]?.watts ?? 0) > 0}
+				<!-- The room's word, not this strip's reading of the current
+				     sample (#1016): a coast holds the mark here too. -->
+				{@const riding = !!rider.riding}
 				<!-- A tile is the way back to the Lounge — and at the sidebar's
 				     width it is already a thumb-sized target (ux.md). The marks
 				     are the Lounge tile's own (presence-marks.ts, #505): one way

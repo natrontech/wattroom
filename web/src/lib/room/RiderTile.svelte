@@ -61,6 +61,9 @@
 		face?: RoomMember;
 	} = $props();
 
+	// Whether this tile has live NUMBERS to draw — not whether the rider is
+	// riding. The presence badge below asks the room that (#1016); this asks
+	// whether there is a reading worth rendering in this second.
 	const live = $derived(phase === 'live' && rider.watts > 0);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
 	const fill = $derived(fillPct(rider.watts, rider.ftp));
@@ -207,7 +210,7 @@
 				avatarUrl={face?.avatarUrl}
 				preset={face?.avatarPreset}
 				xp={face?.totalXp}
-				status={rider.away ? 'away' : live ? 'riding' : null}
+				status={rider.away ? 'away' : rider.riding ? 'riding' : null}
 				size={44}
 				ring="var(--color-surface-raised)"
 			/>
