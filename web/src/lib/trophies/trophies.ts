@@ -22,14 +22,19 @@ export interface TrophyAchievement {
 }
 
 /**
- * What a rider has done here, as counts. Every one is a row count, never a
- * summed XP amount: the SPEC pays lounge blocks past the daily cap at 0 XP so
- * the hours keep counting, and sprint wins, tracks and coached sessions are
- * paid 0 always — summed, the whole section would read as a rounding error.
+ * What a rider has done here, as counts — row counts, never summed XP: the
+ * SPEC pays lounge blocks past the daily cap at 0 XP so the hours keep
+ * counting, and sprint wins, tracks and coached sessions are paid 0 always.
+ *
+ * **Yours only.** Four of these are the same integers the server judges
+ * Lounge Lizard, DJ, Crew Chief and Sprint Snob from, so they are the
+ * progress ADR-0027 keeps private; the server sends zeroes for anybody
+ * else's case, and nothing renders this section there (#1025).
  */
 export interface TrophyCounts {
 	voiceMinutes: number;
-	groupSessions: number;
+	/** Group sessions you were in voice for at least half of. */
+	voiceSessions: number;
 	coached: number;
 	sprintWins: number;
 	tracksPlayed: number;
@@ -126,7 +131,7 @@ export const RIDER_COUNTS: {
 		hours: true,
 		achievement: 'lounge-lizard',
 	},
-	{ key: 'groupSessions', label: 'group sessions' },
+	{ key: 'voiceSessions', label: 'sessions in voice' },
 	{ key: 'coached', label: 'coached', achievement: 'crew-chief' },
 	{ key: 'sprintWins', label: 'sprint wins', achievement: 'sprint-snob' },
 	{ key: 'tracksPlayed', label: 'tracks played', achievement: 'dj' },

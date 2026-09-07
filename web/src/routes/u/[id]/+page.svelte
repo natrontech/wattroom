@@ -222,8 +222,9 @@
 				</div>
 				<!-- Where the level came from (#993). "Level 18" says nothing about
 				     whether it was earned on the bike or in the lounge, and both are
-				     worth saying. -->
-				{#if trophies && trophies.xp.total > 0}
+				     worth saying — but lounge XP is a floor on the hours behind
+				     Lounge Lizard, so like the counts it is yours alone (#1025). -->
+				{#if trophies && trophies.xp.total > 0 && rider.friend === 'self'}
 					<p class="text-muted mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
 						{#each XP_SOURCES as row (row.key)}
 							{#if trophies.xp[row.key] > 0}
@@ -372,16 +373,18 @@
 				     and the same on your own page, which is how a room-mate sees
 				     it (ADR-0024's honest preview). Your progress bars live on
 				     /trophies. -->
-				<!-- The counts travel the way an earned badge does: everyone in
-				     the room watched them happen. Only the progress bars are
-				     held back, which RiderCounts does off `mine` (ADR-0027). -->
-				{#if trophies}
+				<!-- Your own page only. For the four social badges these counts
+				     ARE the progress ADR-0027 keeps private — the same integers —
+				     so the server sends zeroes for anyone else's case and this
+				     does not render there either (#1025). -->
+				{#if trophies && rider.friend === 'self'}
 					<RiderCounts
 						counts={trophies.counts}
 						achievements={trophies.achievements}
-						mine={rider.friend === 'self'}
 					/>
+				{/if}
 
+				{#if trophies}
 					<BadgeGrid achievements={trophies.achievements} mine={false} />
 				{/if}
 			</div>

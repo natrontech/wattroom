@@ -1,7 +1,13 @@
 <script lang="ts">
-	// What a rider has done here (#993). The server already counted all of it
-	// to judge achievements and then threw the numbers away; this is where the
+	// What YOU have done here (#993). The server already counted all of it to
+	// judge achievements and then threw the numbers away; this is where the
 	// count itself becomes readable and the badge is the annotation.
+	//
+	// Your own case only, and the server enforces it: four of these counts are
+	// the integers Lounge Lizard, DJ, Crew Chief and Sprint Snob are judged
+	// from, which ADR-0027 keeps private even once the badge is earned — "a
+	// badge is a binary, never the value that earned it". #1025 asks whether
+	// that should change; until it does, no caller passes someone else's.
 	//
 	// Wording is locked (docs/SPEC.md): the server cannot hear who talks, so
 	// presence is measured, and every surface says "in voice" — never
@@ -20,11 +26,9 @@
 	let {
 		counts,
 		achievements = [],
-		mine = true,
 	}: {
 		counts: TrophyCounts;
 		achievements?: TrophyAchievement[];
-		mine?: boolean;
 	} = $props();
 
 	const byKey = $derived(new Map(achievements.map((a) => [a.key, a])));
@@ -43,15 +47,15 @@
 
 <section>
 	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-		{mine ? 'What you have done here' : 'What they have done here'}
+		What you have done here
 	</h2>
 
 	{#if nothingYet}
 		<div class="mt-3">
 			<EmptyState>
-				{mine
-					? 'Nothing counted yet. Time in a lounge, sessions you ride with other people, sprints you win and tracks the room plays to the end all land here.'
-					: 'Nothing counted yet — they have not ridden with anyone here so far.'}
+				Nothing counted yet. Time in a lounge, sessions you ride with other
+				people, sprints you win and tracks the room plays to the end all land
+				here.
 			</EmptyState>
 		</div>
 	{:else}
@@ -68,14 +72,11 @@
 					<span class="font-display font-semibold tabular-nums"
 						>{show(row)}</span
 					>
-					<!-- ADR-0027: how far along someone else is on an unearned badge
-					     is their business, so a stranger's page shows the count and
-					     the badges they hold, and no bars. -->
 					{#if badge?.earnedAt && meta}
 						<span class="text-neon ml-auto flex items-center gap-1 text-[11px]"
 							><Check size={12} />{meta.name}</span
 						>
-					{:else if mine && badge?.progress && meta}
+					{:else if badge?.progress && meta}
 						<span class="ml-auto flex items-center gap-2">
 							<span class="w-24"
 								><ProgressBar
