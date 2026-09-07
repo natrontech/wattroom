@@ -1,4 +1,3 @@
-import type { SlotState } from '$lib/components/DeviceSlot.svelte';
 import type { SensorKind } from '$lib/ble/sensor';
 import type { SensorPairing } from '$lib/protocol';
 import type { createRide } from '$lib/room/ride.svelte';
@@ -13,12 +12,15 @@ import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
 export type Pairing = SensorKind | 'trainer' | null;
 
 /**
- * Neither helper below ever asks for the browser's own picker dialog
- * ('requesting' — that's `DeviceSlot`'s to show while a caller awaits its
- * own `navigator.bluetooth.requestDevice`), so callers get the narrower
- * union rather than casting away `SlotState`'s full range every time.
+ * The machine itself is untouched (#1000) — this is still the same four
+ * states, said in the same order, and every helper below still returns
+ * exactly what it always did. Only the type's home moved: it used to be
+ * `Exclude<SlotState, 'requesting'>` off `DeviceSlot`, and `DeviceSlot` is
+ * gone. 'requesting' was never one of these states — it was that component's
+ * own word for "the browser's picker is open", which no helper here has ever
+ * returned — so nothing is lost by naming the four directly.
  */
-export type PairState = Exclude<SlotState, 'requesting'>;
+export type PairState = 'idle' | 'connecting' | 'connected' | 'failed';
 
 /** #520's fault states, said as the same four-state machine every slot uses. */
 export function trainerState(

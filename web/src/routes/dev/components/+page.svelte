@@ -7,7 +7,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import DeviceSlot from '$lib/components/DeviceSlot.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import PlayerTile from '$lib/room/PlayerTile.svelte';
@@ -482,31 +482,24 @@
 	<div class="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
 		<PlayerTile />
 		<div class="grid content-start gap-3">
-			<DeviceSlot
-				slot={{
-					id: 'trainer',
-					label: 'Smart trainer',
-					need: 'Required to ride.',
-					required: true,
+			<!-- The one sensor card (#1000), in both of its layouts. -->
+			<SensorOverview
+				trainer={{
+					state: 'connected',
 					device: 'KICKR CORE 8F2A',
-					protocol: 'FTMS · 0x1826',
+					reading: '214 W · 88 rpm',
+					onPair: () => {},
+					onForget: () => {},
 				}}
-				state="connected"
-				supported={true}
-				onPair={() => {}}
-				onForget={() => {}}
 			/>
-			<DeviceSlot
-				slot={{
-					id: 'hr',
-					label: 'Heart rate',
-					need: 'Adds bpm to your tile and your .fit export.',
-					required: false,
+			<SensorOverview
+				compact
+				trainer={{
+					state: 'failed',
+					error: 'The trainer stopped responding after pairing.',
+					onPair: () => {},
+					onForget: () => {},
 				}}
-				state="failed"
-				supported={true}
-				onPair={() => {}}
-				onForget={() => {}}
 			/>
 		</div>
 	</div>

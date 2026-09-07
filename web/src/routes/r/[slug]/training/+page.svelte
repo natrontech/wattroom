@@ -15,7 +15,6 @@
 	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
-	import TrainerButton from '$lib/room/TrainerButton.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import TrainingPhone from '$lib/room/TrainingPhone.svelte';
 	import { device } from '$lib/device.svelte';
@@ -123,7 +122,7 @@
 				{formatClock(elapsed)}
 				<span class="text-muted/50">/ {formatClock(total)}</span>
 			</p>
-			{#if !room.trainer}<TrainerButton compact />{/if}
+			{#if !room.trainer}<RoomSensorOverview compact />{/if}
 			<SessionControls compact />
 		</header>
 

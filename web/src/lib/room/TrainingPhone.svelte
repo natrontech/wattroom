@@ -7,7 +7,7 @@
 	// That is the one thing a phone propped on a stem or a kitchen counter is
 	// for, and it is the surface #383 built for every other width.
 	//
-	// Nothing here decides what a spectator may do: `TrainerButton` and
+	// Nothing here decides what a spectator may do: `RoomSensorOverview` and
 	// `SessionControls` carry that gate themselves, so on a phone they draw
 	// nothing and on a narrow screen that CAN reach a trainer — or one that
 	// asked for the cockpit with ?full=1 — they are simply there.
@@ -19,7 +19,7 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import Stage from '$lib/room/Stage.svelte';
-	import TrainerButton from '$lib/room/TrainerButton.svelte';
+	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import { device } from '$lib/device.svelte';
 	import { followedRider } from '$lib/room/follow';
 	import { pictureKey } from '$lib/room/stage';
@@ -73,7 +73,7 @@
 		     in them, so this surface is narrow, not permanently spectating. -->
 		<div class="mt-2 flex flex-wrap items-center gap-2 empty:mt-0">
 			<SessionControls compact />
-			<TrainerButton compact />
+			<RoomSensorOverview compact />
 		</div>
 	</header>
 

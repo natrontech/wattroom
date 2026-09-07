@@ -2,7 +2,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
-	import { dev } from '$app/environment';
+	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
@@ -175,7 +175,7 @@
 					// Simulated watts pair like any other trainer rather than
 					// starting the test outright: the card is where a rider sees
 					// a trainer reporting before Start.
-					onSimulate: dev
+					onSimulate: canSimulate()
 						? () => void solo.pair(new SimulatedTrainer({ baseWatts: 150 }))
 						: undefined,
 				}}

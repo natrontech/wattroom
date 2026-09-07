@@ -11,9 +11,11 @@ import { signInTo } from './signin';
  * purpose: compressing the clock would stop testing the thing that broke before.
  */
 test('a simulated ride produces a .fit file', async ({ page }) => {
-	// ?w= resolves the hidden two-minute CI fixture; ?sim unlocks the
-	// simulator in this production build (#123).
-	await signInTo(page, '/ride?w=smoke-test&sim=1');
+	// ?w= resolves the hidden two-minute CI fixture. The simulator needs no URL
+	// escape any more (#1000): signInTo goes through the dev sign-in door, and
+	// a server that OFFERS that door is what the one gate admits — which is
+	// true of this production build and false of production.
+	await signInTo(page, '/ride?w=smoke-test');
 	await expect(
 		page.getByRole('heading', { name: 'Smoke Test' }),
 	).toBeVisible();
