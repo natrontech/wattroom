@@ -27,7 +27,7 @@
 	];
 
 	let width = $state(600);
-	const W = $derived(Math.max(width, 320));
+	const W = $derived(Math.max(width, 240));
 	const H = 260;
 	const PAD = { top: 30, bottom: 30 };
 	const plotH = H - PAD.top - PAD.bottom;
@@ -42,6 +42,14 @@
 		),
 	);
 	const barH = (watts: number) => (watts / max) * plotH;
+
+	// A direct label is centred on its bar, and the last group's bar sits close
+	// enough to the right edge that the number ran past the viewBox once the
+	// chart could actually be narrow (#1008). Clamp the anchor so the whole
+	// label stays inside; 18 covers four digits at 15px.
+	const LABEL_HALF = 18;
+	const labelX = (x: number) =>
+		Math.min(Math.max(x, LABEL_HALF), W - LABEL_HALF);
 
 	let hovered = $state<{ wi: number; ri: number } | null>(null);
 </script>
@@ -61,7 +69,7 @@
 <div class="mt-3 w-full" bind:clientWidth={width}>
 	<svg
 		viewBox="0 0 {W} {H}"
-		width={W}
+		width="100%"
 		height={H}
 		class="block"
 		role="img"
@@ -108,7 +116,7 @@
 			     number on every mark. -->
 			{#if d30[win.key] > 0}
 				<text
-					x={cx + barW + gap}
+					x={labelX(cx + barW + gap)}
 					y={H - PAD.bottom - barH(d30[win.key]) - 8}
 					text-anchor="middle"
 					class="fill-ink font-display text-[15px] font-semibold"
@@ -116,7 +124,7 @@
 				>
 			{/if}
 			<text
-				x={cx}
+				x={labelX(cx)}
 				y={H - 8}
 				text-anchor="middle"
 				class="fill-muted font-display text-[13px]">{win.label}</text

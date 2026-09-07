@@ -38,12 +38,18 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			testIgnore: 'mobile-room.spec.ts',
+			testIgnore: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Desktop Chrome'] },
 		},
 		{
-			name: 'mobile-room',
-			testMatch: 'mobile-room.spec.ts',
+			// A real phone profile, not a narrow desktop window: device.svelte.ts
+			// reads pointer and Bluetooth signals, not width alone (#412), so a
+			// dragged-narrow Chrome would render desktop affordances and the
+			// phone specs would pass against a room a phone never sees.
+			// phone-width.spec.ts overrides the viewport to the 375×812 the
+			// standard is written at, and keeps this device's touch pointer.
+			name: 'phone',
+			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Pixel 5'] },
 		},
 	],
