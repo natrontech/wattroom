@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.35] - 2026-09-07
+
+### Changed
+
+- The soundboard now opens from a labelled Soundboard button under the room's reactions instead of a speaker icon in the voice strip, so `Join voice` gets its width back and the two audio icons no longer look alike. It is there whether or not voice is running; `B` still toggles the board.
+
+### Fixed
+
+- Sharing a room link posts the room's name again. Rooms made since icons
+  stopped being emoji were pasting the icon's internal name into the preview,
+  so an invite to Sunday Sufferfest arrived in the chat as "flame Sunday
+  Sufferfest".
+- The what's-new notice on home no longer runs its Changed/Fixed labels into the text beside them — the label column now sizes itself to the longest label, so every line starts in the same place.
+
 ## [2026.09.34] - 2026-09-07
 
 ### Fixed
@@ -937,7 +951,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.34...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.35...HEAD
+[2026.09.35]: https://github.com/natrontech/wattroom/compare/2026.09.34...2026.09.35
 [2026.09.34]: https://github.com/natrontech/wattroom/compare/2026.09.33...2026.09.34
 [2026.09.33]: https://github.com/natrontech/wattroom/compare/2026.09.32...2026.09.33
 [2026.09.32]: https://github.com/natrontech/wattroom/compare/2026.09.31...2026.09.32
