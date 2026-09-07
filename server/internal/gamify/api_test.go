@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -140,4 +141,61 @@ func TestTrophies(t *testing.T) {
 			t.Fatal("a rider lost their own progress on the rider path")
 		}
 	})
+}
+
+// The trap the counts exist to avoid: docs/SPEC.md pays lounge blocks past
+// the daily cap at 0 XP *so the hours keep counting*. Sum the amount and a
+// rider who spent the evening in voice reads as two hours; count the rows and
+// they read as the evening they had.
+func TestCountsPastTheDailyCap(t *testing.T) {
+	s, _, alice, _ := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+
+	// One UTC day, well past the cap — each block's ref is its own minute, so
+	// they are distinct rows rather than one row replayed.
+	day := time.Date(2026, 3, 4, 18, 0, 0, 0, time.UTC)
+	const blocks = LoungeDailyCap + 6
+	for i := range blocks {
+		s.LoungeBlock(t.Context(), store.UUIDString(alice.ID), day.Add(time.Duration(i)*5*time.Minute))
+	}
+
+	rec, body := get(t, mux, "/api/me/trophies", "alice")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if body.Xp.Lounge != LoungeDailyCap {
+		t.Fatalf("lounge xp = %d, want the cap %d — the cap itself is not what broke", body.Xp.Lounge, LoungeDailyCap)
+	}
+	if want := int64(blocks * blockMinutes); body.Counts.VoiceMinutes != want {
+		t.Fatalf("voice minutes = %d, want %d — hours are row counts, not summed XP", body.Counts.VoiceMinutes, want)
+	}
+}
+
+// sprint_win, dj_track and coached are paid 0 XP always, so amount says
+// nothing about them at all and only N can.
+func TestCountsOfTheZeroXpSources(t *testing.T) {
+	s, _, alice, _ := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+
+	at := time.Date(2026, 3, 4, 18, 0, 0, 0, time.UTC)
+	for i := range 3 {
+		s.record(t.Context(), store.UUIDString(alice.ID), sourceSprintWin, 0, "sprint"+strconv.Itoa(i), at)
+	}
+	for i := range 2 {
+		s.record(t.Context(), store.UUIDString(alice.ID), sourceDjTrack, 0, "track"+strconv.Itoa(i), at)
+	}
+	s.record(t.Context(), store.UUIDString(alice.ID), sourceCoached, 0, "coached1", at)
+
+	rec, body := get(t, mux, "/api/me/trophies", "alice")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if body.Counts.SprintWins != 3 || body.Counts.TracksPlayed != 2 || body.Counts.Coached != 1 {
+		t.Fatalf("counts = %+v", body.Counts)
+	}
+	if body.Xp.Total != 0 {
+		t.Fatalf("xp total = %d, want 0 — these sources pay nothing and are counted anyway", body.Xp.Total)
+	}
 }

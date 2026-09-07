@@ -25,6 +25,19 @@ type xpJSON struct {
 	Achievements int64 `json:"achievements"`
 }
 
+// countsJSON is what the rider has done, as counts rather than as XP. Every
+// one of these is row COUNT, never summed amount: docs/SPEC.md pays lounge
+// blocks past the daily cap at 0 XP so the hours keep counting, and
+// sprint_win, dj_track and coached are paid 0 always. Summing amount reads
+// a nine-hour lounge day as two, and the other three as nothing at all.
+type countsJSON struct {
+	VoiceMinutes  int64 `json:"voiceMinutes"`
+	GroupSessions int64 `json:"groupSessions"`
+	Coached       int64 `json:"coached"`
+	SprintWins    int64 `json:"sprintWins"`
+	TracksPlayed  int64 `json:"tracksPlayed"`
+}
+
 // medalsJSON counts by docs/SPEC.md's kinds — the only medals WattRoom has.
 type medalsJSON struct {
 	Diesel        int64 `json:"diesel"`
@@ -49,6 +62,7 @@ type achievementJSON struct {
 // it, the medals, and every catalogue entry with how far along it is.
 type Response struct {
 	Xp           xpJSON            `json:"xp"`
+	Counts       countsJSON        `json:"counts"`
 	EnergyKj     int64             `json:"energyKj"`
 	Medals       medalsJSON        `json:"medals"`
 	Achievements []achievementJSON `json:"achievements"`
@@ -66,6 +80,13 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 			Lounge:       t.bySource[sourceLounge].Amount,
 			Sessions:     t.bySource[sourceSession].Amount,
 			Achievements: t.bySource[sourceAchievement].Amount,
+		},
+		Counts: countsJSON{
+			VoiceMinutes:  t.bySource[sourceLounge].N * blockMinutes,
+			GroupSessions: t.bySource[sourceSession].N,
+			Coached:       t.bySource[sourceCoached].N,
+			SprintWins:    t.bySource[sourceSprintWin].N,
+			TracksPlayed:  t.bySource[sourceDjTrack].N,
 		},
 		EnergyKj: t.kj,
 		Medals: medalsJSON{

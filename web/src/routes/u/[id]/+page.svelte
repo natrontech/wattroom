@@ -24,7 +24,12 @@
 	} from '$lib/rider';
 	import { toasts } from '$lib/toast.svelte';
 	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
-	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
+	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
+	import {
+		fetchTrophies,
+		XP_SOURCES,
+		type Trophies,
+	} from '$lib/trophies/trophies';
 	import Award from '@lucide/svelte/icons/award';
 	import Check from '@lucide/svelte/icons/check';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -215,6 +220,23 @@
 						>{toNext.toLocaleString()} XP to {level + 1}</span
 					>
 				</div>
+				<!-- Where the level came from (#993). "Level 18" says nothing about
+				     whether it was earned on the bike or in the lounge, and both are
+				     worth saying. -->
+				{#if trophies && trophies.xp.total > 0}
+					<p class="text-muted mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
+						{#each XP_SOURCES as row (row.key)}
+							{#if trophies.xp[row.key] > 0}
+								<span class="tabular-nums"
+									>{row.short}
+									<span class="text-ink font-semibold"
+										>{trophies.xp[row.key].toLocaleString()}</span
+									></span
+								>
+							{/if}
+						{/each}
+					</p>
+				{/if}
 			</div>
 			<div class="flex shrink-0 flex-col gap-2">
 				{#if rider.friend === 'self'}
@@ -350,7 +372,16 @@
 				     and the same on your own page, which is how a room-mate sees
 				     it (ADR-0024's honest preview). Your progress bars live on
 				     /trophies. -->
+				<!-- The counts travel the way an earned badge does: everyone in
+				     the room watched them happen. Only the progress bars are
+				     held back, which RiderCounts does off `mine` (ADR-0027). -->
 				{#if trophies}
+					<RiderCounts
+						counts={trophies.counts}
+						achievements={trophies.achievements}
+						mine={rider.friend === 'self'}
+					/>
+
 					<BadgeGrid achievements={trophies.achievements} mine={false} />
 				{/if}
 			</div>

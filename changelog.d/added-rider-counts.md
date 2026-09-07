@@ -1,0 +1,1 @@
+- Your profile shows what you have actually done here: hours in voice, group sessions, sessions you coached, sprint wins, and tracks the room played to the end. The server had been counting all of it to award badges and then throwing the numbers away. A rider's page shows the same counts, and the level now says where it came from — riding, in voice, sessions, trophies.
