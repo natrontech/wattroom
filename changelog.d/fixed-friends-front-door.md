@@ -1,1 +1,0 @@
-- **Friends** is a row in the sidebar with an icon, beside Home, Workouts and Rides, and the count of people waiting on your answer sits on it. It used to be a small word tucked into the corner of the messages heading. The two lists of faces below it now say what they are: **direct messages** holds your threads, and **with you** names the room you are standing in.

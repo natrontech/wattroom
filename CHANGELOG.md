@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.40] - 2026-09-08
+
+### Added
+
+- Shape a workout on its graph instead of in the side panel: drag a block's top edge to set its target (a ramp's two ends move separately), its right edge to set its duration, or the block itself to reorder it. The number follows your hand, arrow keys do the same thing without a mouse, and one drag is one ⌘Z. The graph stays read-only everywhere you are riding rather than building.
+
+### Fixed
+
+- **Friends** is a row in the sidebar with an icon, beside Home, Workouts and Rides, and the count of people waiting on your answer sits on it. It used to be a small word tucked into the corner of the messages heading. The two lists of faces below it now say what they are: **direct messages** holds your threads, and **with you** names the room you are standing in.
+- Pages outside a room fit a phone. The charts on Rides and your profile were drawn at a fixed 600px and pushed the whole page sideways on a 375px screen, dragging the header off with them; every page also spent 32px a side on margin at every width. Charts now fit their column and narrow screens get their space back.
+- Your friends see you as **riding** only while you are actually pedalling. Pairing a trainer and walking away used to leave you marked as riding for as long as the tab stayed open, and the same rider could read as riding on the friends list and online in the room they were standing in.
+
 ## [2026.09.39] - 2026-09-07
 
 ### Added
@@ -1009,7 +1021,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.39...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.40...HEAD
+[2026.09.40]: https://github.com/natrontech/wattroom/compare/2026.09.39...2026.09.40
 [2026.09.39]: https://github.com/natrontech/wattroom/compare/2026.09.38...2026.09.39
 [2026.09.38]: https://github.com/natrontech/wattroom/compare/2026.09.37...2026.09.38
 [2026.09.37]: https://github.com/natrontech/wattroom/compare/2026.09.36...2026.09.37
