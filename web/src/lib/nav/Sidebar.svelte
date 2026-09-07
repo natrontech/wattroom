@@ -14,6 +14,7 @@
 	import RoomStrip from './RoomStrip.svelte';
 	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
 	import { account } from '$lib/account.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
 	import {
@@ -373,7 +374,22 @@
 					: ''}"
 				title="every room's chat and your DMs, in one place">messages</a
 			>
-			<a href="/friends" class="hover:text-ink ml-auto normal-case">friends</a>
+			<!-- The one announceable thing with no home in the sidebar (#1010):
+			     a request announced itself once and then left no trace. This
+			     counts people waiting on you, so visiting the page does not
+			     clear it — answering them does. -->
+			<a
+				href="/friends"
+				class="hover:text-ink ml-auto flex items-center gap-1.5 normal-case"
+				title={friends.waiting > 0
+					? `${friends.waiting} waiting for you to answer`
+					: 'the people you ride with'}
+			>
+				friends
+				{#if friends.waiting > 0}
+					<span class={UNREAD_COUNT}>{unreadCount(friends.waiting)}</span>
+				{/if}
+			</a>
 		</div>
 		{#if dmHeads.heads.length > 0}
 			<ul class="pb-2">

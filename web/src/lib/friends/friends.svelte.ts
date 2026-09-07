@@ -121,6 +121,15 @@ export const friends = {
 	get list() {
 		return list;
 	},
+	/**
+	 * How many people are waiting on YOU (#1010). Deliberately not unread
+	 * semantics: opening /friends does not clear it, because seeing a request
+	 * is not answering one. It goes down when you accept or dismiss, which is
+	 * when it stops being true.
+	 */
+	get waiting() {
+		return (list ?? []).filter((f) => f.status === 'pending_in').length;
+	},
 	/** My own friend code: the thing I hand out so people can ask me. */
 	get code() {
 		return code;
