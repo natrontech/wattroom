@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.36] - 2026-09-07
+
+### Fixed
+
+- The jukebox video no longer stays parked over the sidebar after the surface holding it has scrolled or slid off screen — it drops back to its corner instead of floating over the member list.
+- Soundboard pads now fire with the board hidden. Hiding the panel — which is what you do once you have learnt the keys and want the screen back for the ride — used to switch every pad key off.
+- `Alt`+`B` shows and hides the soundboard on a Mac. It never did: macOS turns `Option`+`B` into `∫`, and WattRoom was listening for the letter, so the one shortcut the clips window told you about did nothing on every Mac.
+- The soundboard chord can be changed, from a row in your clips window. `Esc` cancels, Reset puts `Alt`+`B` back, and a chord the browser keeps for itself is refused with a line saying which one takes it and where — `Ctrl`+`1` switches tabs on Windows and Linux, so it says so.
+
 ## [2026.09.35] - 2026-09-07
 
 ### Changed
@@ -951,7 +960,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.35...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.36...HEAD
+[2026.09.36]: https://github.com/natrontech/wattroom/compare/2026.09.35...2026.09.36
 [2026.09.35]: https://github.com/natrontech/wattroom/compare/2026.09.34...2026.09.35
 [2026.09.34]: https://github.com/natrontech/wattroom/compare/2026.09.33...2026.09.34
 [2026.09.33]: https://github.com/natrontech/wattroom/compare/2026.09.32...2026.09.33
