@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -112,6 +113,12 @@ func (s *Service) Meta(r *http.Request) []byte {
 		slug, _, _ := strings.Cut(rest, "/")
 		slug = strings.ToLower(slug)
 		if name, icon, found := s.lookup(r.Context(), slug); found {
+			// A room icon has been a lucide key since #459 — "flame Sunday
+			// Ride" is not a title. Only the emoji a pre-#459 room still
+			// stores is a glyph a crawler can render.
+			if !protocol.IsEmoji(icon) {
+				icon = ""
+			}
 			title = strings.TrimSpace(icon+" "+name) + " — " + siteName
 			desc = roomDesc
 			img = s.baseURL + "/og/r/" + url.PathEscape(slug) + ".png"
