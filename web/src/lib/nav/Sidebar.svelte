@@ -142,16 +142,29 @@
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
 				{@const on = destination === entry.href}
+				<!-- The one announceable thing with no home in the sidebar (#1010):
+				     a friend request announced itself once and then left no
+				     trace. It counted people waiting on you from a word in the
+				     messages eyebrow; now that Friends is a row, it counts them
+				     there (#1017). Visiting the page does not clear it —
+				     answering them does. -->
+				{@const waiting = entry.href === '/friends' ? friends.waiting : 0}
 				<li>
 					<a
 						href={entry.href}
 						aria-current={on ? 'page' : undefined}
+						title={waiting > 0
+							? `${waiting} waiting for you to answer`
+							: undefined}
 						class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
 							? 'bg-ink/10 text-ink'
 							: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 					>
 						<entry.icon size={15} class="shrink-0" />
 						{entry.label}
+						{#if waiting > 0}
+							<span class="{UNREAD_COUNT} ml-auto">{unreadCount(waiting)}</span>
+						{/if}
 					</a>
 				</li>
 			{/each}
@@ -364,9 +377,13 @@
 		</ul>
 
 		<!-- Messages is a place (#468): every room's chat and every DM, one
-		     list. The heading is the way in; the DMs below open straight into
-		     their thread. Rooms are already listed above, so they are not
-		     repeated here — their unread count is the way in for them. -->
+		     list. The heading is the way in; the threads below open straight
+		     into themselves. Rooms are already listed above, so they are not
+		     repeated here — their unread count is the way in for them.
+		     The heading names what is UNDER it rather than the place it opens
+		     (#1017): these rows are threads with people, and a rider reading
+		     "messages" over a column of faces could not tell them from the
+		     friends list or from who is in the room with them. -->
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
 			<a
 				href="/messages"
@@ -374,24 +391,8 @@
 				class="hover:text-ink {pathname.startsWith('/messages')
 					? 'text-ink'
 					: ''}"
-				title="every room's chat and your DMs, in one place">messages</a
+				title="every room's chat and your DMs, in one place">direct messages</a
 			>
-			<!-- The one announceable thing with no home in the sidebar (#1010):
-			     a request announced itself once and then left no trace. This
-			     counts people waiting on you, so visiting the page does not
-			     clear it — answering them does. -->
-			<a
-				href="/friends"
-				class="hover:text-ink ml-auto flex items-center gap-1.5 normal-case"
-				title={friends.waiting > 0
-					? `${friends.waiting} waiting for you to answer`
-					: 'the people you ride with'}
-			>
-				friends
-				{#if friends.waiting > 0}
-					<span class={UNREAD_COUNT}>{unreadCount(friends.waiting)}</span>
-				{/if}
-			</a>
 		</div>
 		{#if dmHeads.heads.length > 0}
 			<ul class="pb-2">

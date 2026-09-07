@@ -128,16 +128,55 @@
 		<!-- errors.md: never blank while a fetch is in flight. -->
 		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading friends…</p>
 	{:else}
+		<!-- Formation is code-only (ADR-0012 amendment): no user listing
+		     exists — so this IS the way a friend is added, and it sat under the
+		     whole list (#1017). A rider who came here to add someone scrolled
+		     past everyone they already know to reach it, and on an empty list
+		     it was the only control on the page and still last. -->
+		<div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
+			{#if friends.code}
+				<button
+					onclick={() => {
+						void navigator.clipboard.writeText(friends.code);
+						toasts.push('Friend code copied.');
+					}}
+					class="text-muted hover:text-ink flex items-center gap-2 text-xs"
+					title="copy your friend code"
+				>
+					your code
+					<span class="font-display text-ink text-sm font-bold tracking-widest"
+						>{friends.code}</span
+					>
+					<Copy size={13} />
+				</button>
+			{/if}
+			<form onsubmit={addByCode} class="flex items-center gap-2">
+				<input
+					bind:value={codeInput}
+					class="input w-36 uppercase"
+					placeholder="friend code"
+					maxlength="8"
+					aria-label="add a friend by code"
+				/>
+				<button class="btn btn-xs" disabled={!codeInput.trim()}>Add</button>
+			</form>
+		</div>
+		{#if codeError}
+			<p class="text-danger mt-2 text-xs">{codeError}</p>
+		{/if}
+
 		{#if list.length === 0}
 			<!-- Nobody yet: teach the formation rule (ADR-0012 amendment). -->
 			<p class="text-muted mt-3 text-sm">
-				Friends are made by trading codes — share yours below, or enter theirs,
+				Friends are made by trading codes — share yours above, or enter theirs,
 				to see when they're around.
 			</p>
 		{:else}
 			{#if incoming.length > 0}
-				<!-- Above everything, because it is the only part of this page
-				     that is waiting on you. -->
+				<!-- Above the lists, because it is the only part of this page
+				     that is waiting on you. Only the add-by-code row is higher
+				     (#1017), and that is the thing a rider arrives here to
+				     use — it is not a list of people to read past. -->
 				<div class="eyebrow mt-3 px-1 pb-1">wants to be friends</div>
 				<div class="panel">
 					{#each incoming as friend (friend.id)}
@@ -249,39 +288,6 @@
 					</div>
 				{/each}
 			</div>
-		{/if}
-
-		<!-- Formation is code-only (ADR-0012 amendment): no user listing exists. -->
-		<div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-			{#if friends.code}
-				<button
-					onclick={() => {
-						void navigator.clipboard.writeText(friends.code);
-						toasts.push('Friend code copied.');
-					}}
-					class="text-muted hover:text-ink flex items-center gap-2 text-xs"
-					title="copy your friend code"
-				>
-					your code
-					<span class="font-display text-ink text-sm font-bold tracking-widest"
-						>{friends.code}</span
-					>
-					<Copy size={13} />
-				</button>
-			{/if}
-			<form onsubmit={addByCode} class="flex items-center gap-2">
-				<input
-					bind:value={codeInput}
-					class="input w-36 uppercase"
-					placeholder="friend code"
-					maxlength="8"
-					aria-label="add a friend by code"
-				/>
-				<button class="btn btn-xs" disabled={!codeInput.trim()}>Add</button>
-			</form>
-		</div>
-		{#if codeError}
-			<p class="text-danger mt-2 text-xs">{codeError}</p>
 		{/if}
 	{/if}
 </section>
