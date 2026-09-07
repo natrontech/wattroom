@@ -1,0 +1,1 @@
+- Switching from push-to-talk back to the noise gate while still holding the key now stops transmitting immediately, instead of staying open until your mic next reported a level.
