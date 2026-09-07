@@ -92,6 +92,7 @@ export function createRiders(deps: RiderDeps) {
 				muted: deps.av.voice[rider.id] === 'muted',
 				speaking: !!deps.av.speaking[rider.id],
 				away: !!rider.away,
+				riding: !!rider.riding,
 				hue: [...rider.id].reduce(
 					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
 					7,
@@ -121,6 +122,7 @@ export function createRiders(deps: RiderDeps) {
 			muted: false,
 			speaking: false,
 			away: false,
+			riding: false,
 			hue: 210,
 			watts: 0,
 			cadence: 0,

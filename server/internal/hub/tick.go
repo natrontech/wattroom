@@ -169,18 +169,25 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// person on a dashboard and a phone is one presence, and duplicate ids
 		// are poison to keyed rendering downstream.
 		seen := make(map[string]struct{}, len(rm.clients))
+		riding, ridingIDs := rm.ridingLocked(now())
+		pedalling := make(map[string]struct{}, len(ridingIDs))
+		for _, id := range ridingIDs {
+			pedalling[id] = struct{}{}
+		}
 		for c := range rm.clients {
 			clients = append(clients, c)
 			if _, dup := seen[c.rider.ID]; !dup {
 				seen[c.rider.ID] = struct{}{}
 				// The socket's captured rider plus the room's live view of
-				// them: away is room state, not something a socket carries.
+				// them: away is room state, not something a socket carries,
+				// and riding is the window the room holds rather than the
+				// watts on this one sample (#1016).
 				rider := c.rider
 				_, rider.Away = rm.away[c.rider.ID]
+				_, rider.Riding = pedalling[c.rider.ID]
 				tick.Roster = append(tick.Roster, rider)
 			}
 		}
-		riding, _ := rm.ridingLocked(now())
 		ridingKey := strings.Join(riding, "\n")
 		spoke := len(tick.Chat) > 0
 		// Claim answers ride out with this tick but not IN it (#610): a

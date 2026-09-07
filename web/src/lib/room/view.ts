@@ -22,6 +22,9 @@ export interface RoomRider {
 	speaking: boolean;
 	/** The rider explicitly stepped out; presence, never inferred from watts. */
 	away?: boolean;
+	/** Pedalling inside the room's window (#1016) — the server's word, not this
+	 * tile's reading of the current sample. A coast holds it. */
+	riding?: boolean;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;

@@ -45,9 +45,18 @@ type room struct {
 	// kind+rider → last accepted time: limits are per RIDER, not per socket —
 	// a second tab must not double every allowance (audit #219).
 	lastInput map[string]time.Time
-	// rider id → last live sample, for the rail's watt dot (#251). Entries go
-	// stale harmlessly; the map is bounded by riders ever seen.
+	// rider id → last live sample, 0 W included: a trainer that is CONNECTED
+	// and talking (#251). Its one reader is the wattroom_room_riding gauge,
+	// which the deploy guard on laub-wattroom-001 refuses to restart under —
+	// and a rider resting between intervals must still hold that guard, so
+	// this deliberately stays the looser signal. Entries go stale harmlessly;
+	// the map is bounded by riders ever seen.
 	lastMetric map[string]time.Time
+	// rider id → last sample with watts on it. Riding is a thing a rider does,
+	// not a thing their trainer does (#1016): a paired trainer publishes 0 W
+	// at 1 Hz forever, so stamping every sample marked anyone with a tab open
+	// as riding on their friends' screens.
+	lastWatts map[string]time.Time
 	// The phase the timeline last spoke a line about (#359) — a transition
 	// says it once, not every tick it stays there.
 	phaseSaid string
@@ -98,12 +107,18 @@ const ridingWindow = 10 * time.Second
 // person's machine for attention and must not become a harassment button.
 const pokeCooldown = 10 * time.Second
 
-// ridingLocked names riders with a live sample inside ridingWindow, and
+// ridingLocked names riders who have PEDALLED inside ridingWindow, and
 // returns their account ids in the same order — names render, ids identify
 // (#649). The caller holds rm.mu.
+//
+// The window is the hold, and that is the point of it: testing watts on the
+// current sample would flicker a rider between riding and online several
+// times a minute, because coasting into a corner, freewheeling between
+// intervals and reaching for a bottle are all 0 W. Ten seconds of no watts
+// is sitting down; two is riding a bike.
 func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
-	riders := make([]protocol.Rider, 0, len(rm.lastMetric))
-	for id, at := range rm.lastMetric {
+	riders := make([]protocol.Rider, 0, len(rm.lastWatts))
+	for id, at := range rm.lastWatts {
 		if now.Sub(at) <= ridingWindow {
 			if rider, ok := rm.seen[id]; ok {
 				riders = append(riders, rider)
@@ -116,6 +131,21 @@ func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
 		ids = append(ids, rider.ID)
 	}
 	return names, ids
+}
+
+// liveTrainersLocked counts riders whose trainer has spoken inside
+// ridingWindow, watts or no watts — what the deploy guard asks about. Kept
+// apart from ridingLocked on purpose (#1016): the rider-facing word got
+// stricter, and a restart during somebody's rest interval is exactly what
+// the guard exists to prevent. The caller holds rm.mu.
+func (rm *room) liveTrainersLocked(now time.Time) int {
+	live := 0
+	for _, at := range rm.lastMetric {
+		if now.Sub(at) <= ridingWindow {
+			live++
+		}
+	}
+	return live
 }
 
 func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
@@ -144,6 +174,7 @@ func newRoom(slug string) *room {
 		music:         newJukebox(),
 		seen:          make(map[string]protocol.Rider),
 		lastMetric:    make(map[string]time.Time),
+		lastWatts:     make(map[string]time.Time),
 		voiceNow:      make(map[string]struct{}),
 		voiceMs:       make(map[string]int64),
 		away:          make(map[string]struct{}),
@@ -261,6 +292,9 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 	}
 	rm.metrics[rider.ID] = m
 	rm.lastMetric[rider.ID] = now
+	if m.Watts > 0 {
+		rm.lastWatts[rider.ID] = now
+	}
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}

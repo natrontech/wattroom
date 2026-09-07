@@ -25,9 +25,15 @@ var (
 	})
 )
 
-// Riders actually pedalling — a live sample inside ridingWindow — as opposed to
-// metricRiders, which counts anyone holding a room socket. The two differ all
-// the time: a room between sessions is full of people who are not riding.
+// Riders whose trainer is connected and talking — a live sample inside
+// ridingWindow, watts or no watts — as opposed to metricRiders, which counts
+// anyone holding a room socket. The two differ all the time: a room between
+// sessions is full of people whose trainer is not on.
+//
+// Deliberately looser than the rider-facing "riding" (#1016), which now means
+// pedalled-recently: someone resting between intervals is not riding, and a
+// restart during their rest is still a restart mid-session. The gauge's name
+// and Help are unchanged because the deploy guard queries them.
 //
 // The deploy guard on laub-wattroom-001 reads this one. Someone sitting in a
 // room can take a five-second restart; someone mid-interval cannot.
@@ -66,8 +72,7 @@ func (h *Hub) ridingCount() float64 {
 	riding := 0
 	for _, rm := range rooms {
 		rm.mu.Lock()
-		names, _ := rm.ridingLocked(now)
-		riding += len(names)
+		riding += rm.liveTrainersLocked(now)
 		rm.mu.Unlock()
 	}
 	return float64(riding)

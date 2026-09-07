@@ -404,6 +404,14 @@ export interface Rider {
    * an open mic over an empty trainer.
    */
   away?: boolean;
+  /**
+   * Pedalling right now (#1016) — watts inside the room's riding window, so
+   * a coast holds the mark and sitting down loses it. The server owns the
+   * word: every screen used to decide it from the current sample's watts,
+   * which flickered, and the friends page decided it from "a trainer is
+   * talking", which never went out at all.
+   */
+  riding?: boolean;
 }
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no
