@@ -43,11 +43,13 @@
 
 		<!-- Unkeyed on purpose, like /whats-new: these are render-only lists
 		     whose text repeats across releases. -->
-		<ul class="mt-3 space-y-2">
+		<ul
+			class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm leading-relaxed"
+		>
 			{#each news.lines as line}
-				<li class="flex gap-3 text-sm leading-relaxed">
-					<span class="eyebrow mt-1.5 w-12 shrink-0">{line.heading}</span>
-					<span class="flex-1">
+				<li class="contents">
+					<span class="eyebrow mt-1.5">{line.heading}</span>
+					<span>
 						{#each inlineParts(line.text) as part}
 							{#if part.code}<code class="bg-z1/60 rounded px-1 py-0.5 text-xs"
 									>{part.text}</code
