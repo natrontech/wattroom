@@ -10,8 +10,7 @@
 	// grid (#611): the sensors are one singleton everywhere, the trainer is
 	// not — a room owns its connection for as long as you stand in it, a solo
 	// screen pairs one it has not started riding yet.
-	import { dev } from '$app/environment';
-	import { account } from '$lib/account.svelte';
+	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -24,15 +23,16 @@
 		trainerState,
 	} from '$lib/room/sensor-status';
 
+	// The trainer alone as one row, for a running session's header (#1000) —
+	// what `TrainerButton` used to draw with its own vocabulary.
+	let { compact = false }: { compact?: boolean } = $props();
+
 	const room = useRoom();
 	const ride = $derived(roomConnection.current?.ride);
 	// What the rider's OTHER screens hold (#610). Only a room knows this — the
 	// socket is what arbitrates — which is why it enters here rather than in
 	// the grid the solo pre-ride screens share.
 	const elsewhere = $derived(pairedElsewhereAll(room.pairing, deviceWord()));
-	// Same gate as #123's SimulatedTrainer everywhere else: real watts only,
-	// unless this is a dev server or a dev-provider sign-in.
-	const canSimulate = dev || account.providers.includes('dev');
 
 	let pairing = $state<Pairing>(null);
 
@@ -54,6 +54,7 @@
 </script>
 
 <SensorOverview
+	{compact}
 	{elsewhere}
 	trainer={{
 		state: trainerState(
@@ -71,6 +72,6 @@
 		error: ride?.error,
 		onPair: () => void pairTrainer(),
 		onForget: () => ride?.unpair(),
-		onSimulate: canSimulate ? () => void pairSimulatedTrainer() : undefined,
+		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
 	}}
 />

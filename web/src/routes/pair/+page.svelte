@@ -1,92 +1,62 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
-	import DeviceSlot, { type Slot } from '$lib/components/DeviceSlot.svelte';
-	import type { SensorKind } from '$lib/ble/sensor';
+	// The screen a rider opens to ask "what am I paired to?" — and, since
+	// #1000, to answer it: pairing a trainer here used to be disabled with a
+	// note sending the rider into a room, on the one page named for pairing.
+	// The machinery was already there; only this page was never wired to it.
+	//
+	// One card everywhere (#1000): the same `SensorOverview` /ride, /ramp and
+	// the Training place draw, so the answer reads identically wherever a
+	// rider happens to be standing.
+	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { SimulatedTrainer } from '$lib/ble/simulated';
+	import { createProfileStore } from '$lib/profile.svelte';
+	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/room/sensor-claim';
-	import {
-		pairedElsewhere,
-		type Pairing,
-		sensorReading,
-		sensorState,
-		trainerState,
-	} from '$lib/room/sensor-status';
+	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 
-	// The trainer is paired in a ROOM (#521) and this page could not see it, so
-	// the one screen a rider opens to check their equipment was silent about the
-	// only device the ride depends on (#565).
+	// A room holds its BLE connection for as long as you stand in one (#521),
+	// and this page could not see it (#565) — so when there IS a room, its
+	// trainer is the one to show. With no room, the page pairs its own, the
+	// way /ride does: `solo.pair` takes the hardware back from a room first,
+	// so the two owners can never both hold it.
+	const solo = createSoloTrainer();
+	const profile = createProfileStore();
 	const ride = $derived(roomConnection.current?.ride);
-	// And what the rider's OTHER screens hold (#610) — this is the screen they
-	// open to ask "what am I actually paired to", so answering only for this
+	const roomHolds = $derived(!!ride?.trainer);
+	// And what the rider's OTHER screens hold (#610) — answering only for this
 	// tab would be the same half-truth #565 fixed.
-	const pairing = $derived(roomConnection.current?.live.pairing);
-	const here = $derived(deviceWord());
+	const elsewhere = $derived(
+		pairedElsewhereAll(roomConnection.current?.live.pairing, deviceWord()),
+	);
 
-	// What each sensor buys the rider. Capability gating needs a reason, not a shrug
-	// (.claude/rules/ux.md) — and for two of these the honest answer is "probably
-	// nothing, your trainer already does it".
-	const slots: Record<SensorKind, Slot> = {
-		'heart-rate': {
-			id: 'heart-rate',
-			label: 'Heart rate',
-			need: 'Adds bpm to your dashboard and your .fit export. If your strap is already paired to your trainer, it comes through without this.',
-			required: false,
-			protocol: 'HRS · 0x180D',
-		},
-		'power-meter': {
-			id: 'power-meter',
-			label: 'Power meter',
-			need: 'Pair one only if you trust it over your trainer — it takes over as the power your ride is scored on.',
-			required: false,
-			protocol: 'CPS · 0x1818',
-		},
-		cadence: {
-			id: 'cadence',
-			label: 'Cadence',
-			need: 'Most trainers report cadence already. Worth pairing if yours drops out when you stop sprinting.',
-			required: false,
-			protocol: 'CSC · 0x1816',
-		},
-	};
-
-	const trainerSlot: Slot = {
-		id: 'trainer',
-		label: 'Trainer',
-		need: 'Pairing lives in the room — open one and pair from the Lounge or the Training place.',
-		required: true,
-		protocol: 'FTMS · 0x1826',
-	};
-
-	const kinds = Object.keys(slots) as SensorKind[];
-	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-
-	let busy = $state<Pairing>(null);
-
-	/** #520's fault states, said in words a rider can act on. */
-	const trainerSlotState = $derived(
+	const roomTrainerState = $derived(
 		trainerState(
 			{
 				trainer: ride?.trainer ?? null,
 				fault: ride?.fault ?? null,
 				error: ride?.error ?? null,
 			},
-			busy,
+			null,
 		),
 	);
 
 	async function pairTrainer() {
-		if (!ride) return;
-		busy = 'trainer';
-		await ride.ride(new FtmsTrainer());
-		busy = null;
+		await solo.pair(new FtmsTrainer());
 	}
 
-	async function pair(kind: SensorKind, simulated = false) {
-		busy = kind;
-		await sensors.pair(kind, simulated);
-		busy = null;
+	async function pairSimulated() {
+		await solo.pair(
+			new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
+		);
+	}
+
+	function forgetTrainer() {
+		if (roomHolds) ride?.unpair();
+		else solo.forget();
 	}
 </script>
 
@@ -101,65 +71,64 @@
 		</div>
 	</div>
 
-	{#if !supported}
-		<p
-			class="border-muted/20 bg-surface-raised text-muted mt-8 rounded-lg border px-5 py-4 text-sm"
-		>
-			This browser has no Web Bluetooth, so nothing here can pair. Chrome or
-			Edge on desktop or Android will work; Safari has said it never will.
-		</p>
-	{/if}
-
-	<div class="mt-8 grid gap-3">
-		<DeviceSlot
-			slot={{
-				...trainerSlot,
-				device: ride?.trainer?.name,
-				// Paired but silent is not working (#520) — say so where the rider
-				// is looking, rather than reading as a healthy trainer.
-				protocol:
-					ride?.fault === 'silent'
-						? 'FTMS · 0x1826 · no watts yet — turn the cranks'
-						: trainerSlot.protocol,
+	<div class="mt-8">
+		<SensorOverview
+			{elsewhere}
+			trainer={{
+				state: roomHolds ? roomTrainerState : solo.state,
+				device: roomHolds ? ride?.trainer?.name : solo.trainer?.name,
+				// Live-ness is the honest confirmation: paired but silent is not
+				// working (#520), and this is the screen a rider checks it on.
+				reading: roomHolds ? undefined : solo.reading,
+				hint:
+					(roomHolds ? ride?.fault : solo.fault) === 'silent'
+						? 'no watts yet — turn the cranks'
+						: undefined,
+				error: roomHolds ? ride?.error : solo.error,
+				onPair: () => void pairTrainer(),
+				onForget: forgetTrainer,
+				onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
 			}}
-			state={trainerSlotState}
-			supported={supported && !!ride}
-			elsewhere={pairedElsewhere('trainer', pairing, here)}
-			onPair={() => void pairTrainer()}
-			onForget={() => ride?.unpair()}
 		/>
-		{#if ride?.error && busy !== 'trainer'}
-			<p class="text-muted -mt-1 px-5 text-xs">{ride.error}</p>
-		{/if}
-
-		{#each kinds as kind (kind)}
-			{@const slot = sensors.slot(kind)}
-			<DeviceSlot
-				slot={{
-					...slots[kind],
-					device: slot.name,
-					// Once it is live, the number matters more than the protocol.
-					protocol: sensorReading(kind) ?? slots[kind].protocol,
-				}}
-				state={sensorState(kind, busy)}
-				{supported}
-				elsewhere={pairedElsewhere(kind, pairing, here)}
-				onPair={() => pair(kind)}
-				onForget={() => sensors.forget(kind)}
-			/>
-			{#if slot.error && busy !== kind}
-				<p class="text-muted -mt-1 px-5 text-xs">{slot.error}</p>
-			{/if}
-		{/each}
 	</div>
+
+	<!-- What each optional sensor actually buys the rider — capability gating
+	     needs a reason, not a shrug (ux.md), and for two of these the honest
+	     answer is "probably nothing, your trainer already does it". It sits
+	     under the grid rather than inside the cards because this is the screen
+	     a rider reads, not the one they glance at mid-ride. -->
+	<dl class="text-muted mt-6 grid gap-2 text-xs sm:grid-cols-3">
+		<div>
+			<dt class="text-ink font-medium">Heart rate</dt>
+			<dd>
+				Adds bpm to your dashboard and your .fit export. If your strap is
+				already paired to your trainer, it comes through without this.
+			</dd>
+		</div>
+		<div>
+			<dt class="text-ink font-medium">Power meter</dt>
+			<dd>
+				Pair one only if you trust it over your trainer — it takes over as the
+				power your ride is scored on.
+			</dd>
+		</div>
+		<div>
+			<dt class="text-ink font-medium">Cadence</dt>
+			<dd>
+				Most trainers report cadence already. Worth pairing if yours drops out
+				when you stop sprinting.
+			</dd>
+		</div>
+	</dl>
 
 	<div class="mt-8 flex flex-wrap items-center gap-3">
 		<a href="/workouts" class="btn btn-primary btn-lg">Pick a workout</a>
-		{#if dev}
+		{#if canSimulate()}
 			<!-- Same reason SimulatedTrainer exists: the dashboard has to be
-			     buildable without a strap on your chest. Dev-only (#123). -->
+			     buildable without a strap on your chest. Dev equipment (#123),
+			     behind the one gate every surface now shares. -->
 			<button
-				onclick={() => pair('heart-rate', true)}
+				onclick={() => void sensors.pair('heart-rate', true)}
 				class="btn btn-secondary btn-lg">Simulate a strap</button
 			>
 		{/if}

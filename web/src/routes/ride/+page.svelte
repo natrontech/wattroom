@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
+	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
@@ -25,7 +26,6 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
-	import { dev } from '$app/environment';
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -72,12 +72,12 @@
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
 	// rider's.
-	// WATTROOM.md: simulators are dev-flag equipment. ?sim=1 is the escape the
-	// e2e needs — it rides the production build (fake watts in a ROOM stay
-	// dev-only; solo they only ever reach your own history).
-	const simAllowed = $derived(dev || page.url.searchParams.has('sim'));
+	// WATTROOM.md: simulators are dev-flag equipment, and there is one gate for
+	// that now (#1000). `?sim=1` is gone with it: it was a URL any rider could
+	// type, and the e2e it existed for signs in through the dev door instead —
+	// which the gate admits on the production BUILD CI rides.
 	const replayName = $derived(
-		simAllowed ? page.url.searchParams.get('replay') : null,
+		canSimulate() ? page.url.searchParams.get('replay') : null,
 	);
 	async function beginReplay() {
 		error = null;
@@ -499,7 +499,7 @@
 						// Simulated watts pair like any other trainer rather than
 						// starting the ride outright: the card is where a rider
 						// (and the e2e) sees a trainer reporting before Start.
-						onSimulate: simAllowed
+						onSimulate: canSimulate()
 							? () =>
 									void solo.pair(new SimulatedTrainer({ baseWatts: ftp * 0.8 }))
 							: undefined,
