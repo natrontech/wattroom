@@ -49,7 +49,6 @@
 	import Video from '@lucide/svelte/icons/video';
 	import VideoOff from '@lucide/svelte/icons/video-off';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
-	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/room/mic-menu';
 	import { device } from '$lib/device.svelte';
@@ -515,7 +514,6 @@
 						>
 					{/if}
 					<QuickAudio compact />
-					<BoardToggle compact />
 				{:else}
 					<!-- Voice, camera, screen, sound and the way out — here and
 					     nowhere else. The people column and the lounge header each
@@ -567,7 +565,6 @@
 							/>{/if}
 					</button>
 					<QuickAudio compact />
-					<BoardToggle compact />
 					<button
 						onclick={() => onLeaveVoice?.()}
 						class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
@@ -591,9 +588,6 @@
 				class="btn btn-xs mt-2 w-full {away ? 'btn-primary' : 'btn-secondary'}"
 				><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
 			>
-		{/if}
-		{#if !showAv}
-			<BoardToggle />
 		{/if}
 		{#if showAv && voiceError}
 			<!-- The failure itself, not "voice failed" (#642, errors.md): what
