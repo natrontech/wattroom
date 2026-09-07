@@ -1,3 +1,0 @@
-- Pads answer a right-click. Preview, trim, change the key, rename, take it off the board or delete it — the one thing you actually touch mid-ride was the only object in the soundboard with no menu.
-- Clips can be renamed. A name was the uploaded file's stem, set once, and a bad one could only be fixed by uploading the file again.
-- Dragging a pad onto an occupied one swaps the two clips, and so does the pad picker in your clips. Moving a clip used to knock whatever was there off the board, silently.

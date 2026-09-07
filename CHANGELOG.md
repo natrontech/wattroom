@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.37] - 2026-09-07
+
+### Added
+
+- Pads answer a right-click. Preview, trim, change the key, rename, take it off the board or delete it — the one thing you actually touch mid-ride was the only object in the soundboard with no menu.
+- Clips can be renamed. A name was the uploaded file's stem, set once, and a bad one could only be fixed by uploading the file again.
+- Dragging a pad onto an occupied one swaps the two clips, and so does the pad picker in your clips. Moving a clip used to knock whatever was there off the board, silently.
+
+### Changed
+
+- The soundboard is one panel with three faces instead of a stack of popups. Your clips and the trim editor now open in the board itself, so opening them no longer dims the board you opened them from.
+- You can hear a clip without firing it at the room. There is a play button on every clip in your library and on the trim editor, alt-click does the same on a pad, and all of them play to you alone — nobody else in the room hears a thing.
+- The trim editor previews the edit as you make it, looping, with a playhead on the waveform and the fades and gain you are setting applied live.
+
 ## [2026.09.36] - 2026-09-07
 
 ### Fixed
@@ -960,7 +974,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.36...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.37...HEAD
+[2026.09.37]: https://github.com/natrontech/wattroom/compare/2026.09.36...2026.09.37
 [2026.09.36]: https://github.com/natrontech/wattroom/compare/2026.09.35...2026.09.36
 [2026.09.35]: https://github.com/natrontech/wattroom/compare/2026.09.34...2026.09.35
 [2026.09.34]: https://github.com/natrontech/wattroom/compare/2026.09.33...2026.09.34
