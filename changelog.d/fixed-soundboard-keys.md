@@ -1,3 +1,0 @@
-- Soundboard pads now fire with the board hidden. Hiding the panel — which is what you do once you have learnt the keys and want the screen back for the ride — used to switch every pad key off.
-- `Alt`+`B` shows and hides the soundboard on a Mac. It never did: macOS turns `Option`+`B` into `∫`, and WattRoom was listening for the letter, so the one shortcut the clips window told you about did nothing on every Mac.
-- The soundboard chord can be changed, from a row in your clips window. `Esc` cancels, Reset puts `Alt`+`B` back, and a chord the browser keeps for itself is refused with a line saying which one takes it and where — `Ctrl`+`1` switches tabs on Windows and Linux, so it says so.
