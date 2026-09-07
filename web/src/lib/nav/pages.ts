@@ -12,16 +12,23 @@ import Users from '@lucide/svelte/icons/users';
  * The app's destinations, and the places inside a room. Both live in the one
  * sidebar (ADR-0020) — there is no second navigation to keep in sync.
  *
- * Three, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
+ * Four, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
  * second half of "what is happening" (Home), `/progression` the chart half of
  * a ride log split down the middle, `/ramp` a workout you start rather than a
  * page you visit, and `/pair` is set up once. A sidebar that lists everything
  * lists nothing.
+ *
+ * Friends earns a row because ADR-0020 made it a place and nothing drew it as
+ * one (#1017): it was a 10 px word at the right-hand end of the messages
+ * eyebrow, wearing `normal-case` to fight that container's uppercase back
+ * off — which reads as a label on the section beside it, not as a way to go
+ * somewhere.
  */
 export const pages = [
 	{ href: '/home', label: 'Home', icon: House },
 	{ href: '/workouts', label: 'Workouts', icon: ChartColumn },
 	{ href: '/history', label: 'Rides', icon: History },
+	{ href: '/friends', label: 'Friends', icon: Users },
 ];
 
 /** The room you are standing in opens into these. */
