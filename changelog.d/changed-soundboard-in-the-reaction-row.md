@@ -1,1 +1,1 @@
-- The soundboard now opens from a drum button beside the room's reactions instead of a speaker icon in the voice strip, so `Join voice` gets its width back and the two audio icons no longer look alike. It is there whether or not voice is running; `B` still toggles the board.
+- The soundboard now opens from a labelled Soundboard button under the room's reactions instead of a speaker icon in the voice strip, so `Join voice` gets its width back and the two audio icons no longer look alike. It is there whether or not voice is running; `B` still toggles the board.
