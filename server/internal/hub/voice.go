@@ -1,7 +1,8 @@
 // Voice and camera presence. LiveKit is the source of truth and tells the
 // server who is connected (webhooks and the periodic sync); the room only
 // mirrors that into the tick and the voice-time accrual. Nothing here
-// carries audio — the media never touches this process (ADR-0010).
+// carries audio: the media is LiveKit's, transit-only and never recorded
+// (WATTROOM.md), and this process only ever learns who is on it.
 package hub
 
 import (
