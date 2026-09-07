@@ -12,13 +12,7 @@
 	 * never glows; the part that has already played takes the live hue,
 	 * because that is what ADR-0005 reserves it for.
 	 */
-	import {
-		GripHorizontal,
-		Library,
-		Plus,
-		Volume2,
-		X,
-	} from '@lucide/svelte';
+	import { GripHorizontal, Library, Plus, Volume2, X } from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
 	import { board, type Clip } from '$lib/board/clips.svelte';
 	import { isToggle } from '$lib/board/toggle-key.svelte';
