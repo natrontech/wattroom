@@ -5,6 +5,7 @@
 	import Play from '@lucide/svelte/icons/play';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { goto } from '$app/navigation';
+	import { account } from '$lib/account.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -26,8 +27,9 @@
 		type Suggestion,
 	} from '$lib/progression';
 
-	// FTP only scales the preview here; the ride screen owns the real value (#16).
-	const previewFtp = 265;
+	// The same FTP the editor draws with (#1003), so one workout is not two
+	// different pictures; 265 only covers the flicker before `me` lands.
+	const previewFtp = $derived(account.me?.ftpWatts || 265);
 
 	const custom = createCustomStore();
 	let active = $state<Focus | 'All'>('All');

@@ -1,0 +1,1 @@
+- The workout editor and the workout list now draw every preview against your own FTP. They were both scaled to a fixed 265 W, so the watts and zone colours you shaped a workout by belonged to somebody else.
