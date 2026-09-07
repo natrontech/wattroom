@@ -1,1 +1,0 @@
-- A room's lounge now says what the crew did together: hours ridden as a crew, sessions this month against last month, and a strip of the last twelve sessions showing which ones you were in. Every figure is either the whole room's or your own — no rider's numbers are shown to anyone else.
