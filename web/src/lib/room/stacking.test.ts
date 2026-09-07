@@ -31,12 +31,15 @@ describe('room stacking (#483)', () => {
 		'lib/room/Stage.svelte',
 		/fixed top-24 left-24 z-\[(\d+)\]/,
 	);
+	// Both moved out of RoomShell with their seams (#686). The layers are the
+	// same numbers; only the files holding them changed, which is exactly what
+	// this test exists to notice.
 	const tvMode = layer(
-		'lib/room/RoomShell.svelte',
+		'lib/room/TvOverlay.svelte',
 		/cave bg-surface fixed inset-0 z-(\d+)/,
 	);
 	const chatSheet = layer(
-		'lib/room/RoomShell.svelte',
+		'lib/room/PeopleSheet.svelte',
 		/bg-paper\/50 fixed inset-0 z-\[(\d+)\] xl:hidden/,
 	);
 
