@@ -112,6 +112,8 @@ export interface RoomContext {
 		joinedAt?: string;
 		/** Earned achievement keys (#703). Never progress — ADR-0027. */
 		badges?: string[];
+		/** A banned row the crew also bans (#1150). */
+		crewBanned?: boolean;
 	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
 	reschedule(id: string, startsAt: string): void;
