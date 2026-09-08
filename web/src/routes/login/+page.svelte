@@ -9,6 +9,14 @@
 	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
 	import Banner from '$lib/components/Banner.svelte';
 	import * as passkeys from '$lib/passkeys';
+	import {
+		browserSignInUrl,
+		desktopNonce,
+		handoffLink,
+		redeemHandoff,
+		shellVersion,
+		startBrowserSignIn,
+	} from '$lib/desktop';
 
 	void account.load();
 
@@ -19,10 +27,55 @@
 	let passkeyBusy = $state(false);
 	let passkeyError = $state('');
 
+	// The desktop shell cannot sign a rider in (#1188, ADR-0040): no WebAuthn
+	// UI, and Google refuses OAuth from an Electron window. So inside the
+	// shell this page has one button, which opens THIS page in the system
+	// browser with a nonce; and in the browser, with that nonce in the query,
+	// a finished sign-in is handed back through wattroom://auth/<token>.
+	const shell = shellVersion() !== null;
+	const nonce = $derived(desktopNonce(page.url.searchParams));
+	// After the OAuth round trip the app lands on "/" and follows the stash;
+	// with a nonce, the stash is this page again so the handoff can happen.
+	const nextAfterSignIn = () =>
+		nonce ? `/login?desktop=${nonce}` : page.url.searchParams.get('next');
+
+	let browserOpened = $state(false);
+	let handoffError = $state('');
+	let redeeming = $state(false);
+	/** The link back to the app, once minted — shown, and followed. */
+	let backToApp = $state<string | null>(null);
+
+	function openBrowser() {
+		browserOpened = true;
+		handoffError = '';
+		// Off-origin, so the shell hands it to the system browser.
+		window.open(
+			browserSignInUrl(location.origin, startBrowserSignIn()),
+			'_blank',
+		);
+	}
+
+	// Arriving in the shell from wattroom://auth/<token>: redeem it once.
+	let redeemed = false;
+	$effect(() => {
+		const token = page.url.searchParams.get('handoff');
+		if (!shell || !token || redeemed) return;
+		redeemed = true;
+		redeeming = true;
+		void redeemHandoff(token).then(async (err) => {
+			redeeming = false;
+			if (err) {
+				handoffError = err;
+				return;
+			}
+			await account.load();
+		});
+	});
+
 	async function withPasskey() {
 		// The same deep link the provider buttons keep (#824): a rider bounced
 		// off /r/tuesday lands back in the room, not on /rooms.
-		rememberNext(page.url.searchParams.get('next'));
+		rememberNext(nextAfterSignIn());
 		passkeyBusy = true;
 		passkeyError = '';
 		const result = await passkeys.signIn();
@@ -47,11 +100,27 @@
 		dev: { label: 'Dev sign-in (local only)' },
 	};
 
-	// Already signed in (or just returned from OAuth): straight through.
+	// Already signed in (or just returned from OAuth): straight through — or,
+	// when this browser was opened by the desktop shell, back to it.
+	let handedOff = false;
 	$effect(() => {
-		if (account.loaded && account.me) {
-			void goto(takeNext() ?? '/rooms', { replaceState: true });
+		if (!account.loaded || !account.me) return;
+		if (nonce && !shell) {
+			if (handedOff) return;
+			handedOff = true;
+			takeNext();
+			void handoffLink(nonce).then((link) => {
+				if (!link) {
+					handoffError =
+						'Could not hand this sign-in to the app. Open WattRoom on your desk and try again.';
+					return;
+				}
+				backToApp = link;
+				location.href = link;
+			});
+			return;
 		}
+		void goto(takeNext() ?? '/rooms', { replaceState: true });
 	});
 
 	// Which button this browser used last (#784) — the cheapest answer to
@@ -59,7 +128,7 @@
 	const previous = lastProvider();
 
 	function start(id: string) {
-		rememberNext(page.url.searchParams.get('next'));
+		rememberNext(nextAfterSignIn());
 		rememberProvider(id);
 		window.location.href = `/api/auth/${id}/start`;
 	}
@@ -84,7 +153,55 @@
 
 			{#if !account.loaded}
 				<Skeleton class="mt-8 h-11" rows={2} />
+			{:else if backToApp}
+				<!-- The browser half is done (#1188): the link opens the app. -->
+				<p class="mt-8 text-sm">You are signed in. Back to the WattRoom app.</p>
+				<a href={backToApp} class="btn btn-primary btn-lg mt-4 w-full"
+					>Open WattRoom</a
+				>
+				<p class="text-muted mt-3 text-xs">
+					If nothing happened, the app is not installed on this computer — get
+					it at
+					<a href="/download" class="hover:text-ink underline"
+						>wattroom.ch/download</a
+					>.
+				</p>
+			{:else if shell}
+				<!-- Inside the desktop shell: one button, the browser does the rest. -->
+				<div class="mt-8">
+					{#if handoffError}
+						<div class="mb-3 text-left"><Banner>{handoffError}</Banner></div>
+					{/if}
+					{#if redeeming}
+						<p class="text-sm" aria-busy="true">Signing you in…</p>
+					{:else}
+						<button onclick={openBrowser} class="btn btn-primary btn-lg w-full">
+							Sign in with your browser
+						</button>
+						<p class="text-muted mt-2 text-xs leading-relaxed">
+							Your passkey, GitHub or Strava — in the browser you already use.
+							Come back here once it says you are signed in.
+						</p>
+						{#if browserOpened}
+							<p class="text-muted mt-5 text-xs" aria-live="polite">
+								Waiting for your browser…
+								<button onclick={openBrowser} class="btn-link"
+									>open it again</button
+								>
+							</p>
+						{/if}
+					{/if}
+				</div>
 			{:else}
+				{#if handoffError && nonce}
+					<div class="mt-6 text-left"><Banner>{handoffError}</Banner></div>
+				{/if}
+				{#if nonce}
+					<p class="text-muted mt-6 text-xs">
+						Signing in for the WattRoom desktop app — you will be sent back to
+						it.
+					</p>
+				{/if}
 				{#if canPasskey}
 					<div class="mt-8">
 						<button
