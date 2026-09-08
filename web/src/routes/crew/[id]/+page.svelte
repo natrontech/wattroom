@@ -6,21 +6,14 @@
 	// invite and the way out. Nothing live: the crew carries no voice, deck,
 	// session or metrics.
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CrewPeople from './CrewPeople.svelte';
 	import CrewRooms from './CrewRooms.svelte';
-	import {
-		fetchCrew,
-		inviteLink,
-		joinCrew,
-		leaveCrew as leaveCrewApi,
-		type Crew,
-	} from '$lib/crew';
+	import { fetchCrew, inviteLink, type Crew } from '$lib/crew';
+	import { leaveCrewFlow } from '$lib/crew-flows';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -90,26 +83,9 @@
 	const ownedHere = $derived(myRooms.filter((r) => r.role === 'owner'));
 	async function leaveCrew() {
 		if (!crew || ownedHere.length) return;
-		const leaving = crew;
-		const standing = myRooms.some(
-			(r) => r.slug === roomConnection.current?.slug,
-		);
 		busy = true;
-		const res = await leaveCrewApi(leaving.id);
+		await leaveCrewFlow(crew);
 		busy = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		if (standing) roomConnection.leave();
-		presence.reload();
-		const code = leaving.code;
-		toasts.push(`You left ${leaving.name}.`, {
-			undo: code
-				? () => void joinCrew(code).then(() => presence.reload())
-				: undefined,
-		});
-		await goto('/home');
 	}
 </script>
 

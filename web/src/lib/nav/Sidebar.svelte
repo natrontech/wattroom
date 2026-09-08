@@ -25,7 +25,8 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { inviteLink, joinCrew, leaveCrew } from '$lib/crew';
+	import { inviteLink } from '$lib/crew';
+	import { leaveCrewFlow } from '$lib/crew-flows';
 	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
@@ -166,30 +167,9 @@
 				danger: true,
 				disabled: owned.length > 0,
 				hint: owned.length ? 'you own a room here' : undefined,
-				onSelect: () => void leaveCrewFromRail(c),
+				onSelect: () => void leaveCrewFlow(c),
 			});
 		return entries;
-	}
-	// The same move the crew page makes (#1228): one call, the connection
-	// dropped if it was to one of the crew's rooms, undo by the code.
-	async function leaveCrewFromRail(c: RoomCrew) {
-		const standing = rooms.some(
-			(r) => r.crew?.id === c.id && r.slug === roomConnection.current?.slug,
-		);
-		const res = await leaveCrew(c.id);
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		if (standing) roomConnection.leave();
-		presence.reload();
-		const code = c.code;
-		toasts.push(`You left ${c.name}.`, {
-			undo: code
-				? () => void joinCrew(code).then(() => presence.reload())
-				: undefined,
-		});
-		void goto('/home');
 	}
 	// The + beside rooms opens the open/join forms in a sheet (#1199).
 	let opening = $state(false);
