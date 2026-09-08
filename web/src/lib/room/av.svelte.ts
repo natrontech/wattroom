@@ -292,10 +292,14 @@ export function createRoomAv(slug: string) {
 			myIdentity = room.localParticipant.identity;
 			me = riderOf(myIdentity);
 			status = 'live';
-			claims.current = { identity: room.localParticipant.identity, at: room.localParticipant.joinedAt?.getTime() ?? Date.now() };
+			claims.current = {
+				identity: room.localParticipant.identity,
+				at: room.localParticipant.joinedAt?.getTime() ?? Date.now(),
+			};
 			// A tab already in the room could, in principle, hold a newer claim
 			// than this one — check rather than assume newest-connected wins.
-			for (const p of room.remoteParticipants.values()) claims.consider(asClaimant(p));
+			for (const p of room.remoteParticipants.values())
+				claims.consider(asClaimant(p));
 			// Post-permission the labels are real — the pickers can name devices.
 			void devices.refresh();
 			// Mic on by default (SPEC); a denied permission downgrades to
@@ -348,8 +352,13 @@ export function createRoomAv(slug: string) {
 		identity: () => myIdentity,
 		now: () => serverNow(),
 		participants: () =>
-			room ? [room.localParticipant, ...room.remoteParticipants.values()].map(asClaimant) : [],
-		others: () => (room ? [...room.remoteParticipants.values()].map(asClaimant) : []),
+			room
+				? [room.localParticipant, ...room.remoteParticipants.values()].map(
+						asClaimant,
+					)
+				: [],
+		others: () =>
+			room ? [...room.remoteParticipants.values()].map(asClaimant) : [],
 		announce: (at) => {
 			void room?.localParticipant
 				.publishData(
@@ -480,7 +489,6 @@ export function createRoomAv(slug: string) {
 		track?.mediaStreamTrack?.stop();
 		if (dropOwned(videoTracks, me, myIdentity)) stage.dropVideo(me);
 	}
-
 
 	function wire(r: LiveKitRoom, client: LiveKitClient) {
 		// Only an explicit takeover arrives this way. The sender must be a
@@ -613,7 +621,10 @@ export function createRoomAv(slug: string) {
 		}
 		r.on(client.RoomEvent.TrackMuted, (pub, p) => {
 			const rider = riderOf(p.identity);
-			if (pub.kind === client.Track.Kind.Audio && !claims.micLive(rider, p.identity))
+			if (
+				pub.kind === client.Track.Kind.Audio &&
+				!claims.micLive(rider, p.identity)
+			)
 				setVoice(rider, 'muted');
 			setPicture(pub, p);
 		});
