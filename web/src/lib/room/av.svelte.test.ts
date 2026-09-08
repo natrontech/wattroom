@@ -184,17 +184,7 @@ vi.mock('$lib/room/mic-level', () => ({
 }));
 
 const { createRoomAv } = await import('./av.svelte');
-const { createMicMeter } = (await import('$lib/room/mic-level')) as {
-	createMicMeter: ReturnType<
-		typeof vi.fn<
-			(
-				ctx: unknown,
-				source: unknown,
-				onLevel: (level: number) => void,
-			) => Promise<{ out: unknown; stop: () => void }>
-		>
-	>;
-};
+const { createMicMeter } = vi.mocked(await import('$lib/room/mic-level'));
 const { api } = await import('$lib/api');
 const {
 	stopSharingNatively,
@@ -1031,7 +1021,7 @@ describe('a remote voice actually reaching av.speaking', () => {
 
 			createMicMeter.mockImplementationOnce(async (_ctx, source, onLevel) => {
 				onLevel(1);
-				return { out: source, stop() {} };
+				return { kind: 'analyser', out: source, stop() {} };
 			});
 			remoteVoice('jan');
 			await Promise.resolve();
@@ -1072,7 +1062,7 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 
 			createMicMeter.mockImplementation(async (_ctx, source, onLevel) => {
 				onLevel(1);
-				return { out: source, stop() {} };
+				return { kind: 'analyser', out: source, stop() {} };
 			});
 
 			remoteVoice('jan');
