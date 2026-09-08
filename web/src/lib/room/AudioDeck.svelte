@@ -68,6 +68,10 @@
 		// A repeat of the same track arrives with a new anchor — a new play,
 		// not the one already loaded.
 		if (loaded !== now.current.trackId || loadedAnchor !== now.anchorMs) {
+			// A different file: its length arrives with its metadata, and until
+			// then the bar must not keep drawing the last track's. A repeat of
+			// the same file reloads nothing, so its length simply stands.
+			if (loaded !== now.current.trackId) playerInfo.duration = 0;
 			loaded = now.current.trackId;
 			loadedAnchor = now.anchorMs;
 			el.currentTime = playheadAt(now, serverNow());
