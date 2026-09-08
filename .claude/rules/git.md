@@ -13,7 +13,7 @@ Commit automatically when a logical unit of work is complete. One commit = one c
 ```
 
 Types: `feat` `fix` `refactor` `docs` `test` `chore` `perf` `style`.
-Scopes: `server` `web` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` — omit when the change is repo-wide (most `docs:`/`chore:`).
+Scopes: `server` `web` `desktop` `ble` `hub` `protocol` `game` `jukebox` `ci` `deps` — omit when the change is repo-wide (most `docs:`/`chore:`).
 Rules: lowercase, imperative mood ("add" not "added"), no trailing period, ≤72 chars. Body only when the "why" isn't obvious.
 
 ```
