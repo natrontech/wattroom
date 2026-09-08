@@ -11,6 +11,7 @@
 		{ href: '/dev/components', label: 'Components' },
 		{ href: '/dev/account', label: 'Account' },
 		{ href: '/dev/rooms', label: 'Rooms' },
+		{ href: '/dev/crew', label: 'Crew' },
 		{ href: '/dev/settings', label: 'Settings' },
 		{ href: '/dev/pairing', label: 'Pairing' },
 		{ href: '/dev/hardware', label: 'Hardware' },
