@@ -976,8 +976,8 @@ func TestTogetherStatsAreMembersOnly(t *testing.T) {
 
 // The crew rides the room payload so the sidebar can group by it without a
 // second request (#1178). Members only, on the same rule as the join code:
-// crew membership follows room membership, so someone outside the room is
-// outside its crew and its name is not theirs to read.
+// someone outside the room may be outside its crew, and the crew's name is
+// then not theirs to read.
 func TestTheCrewIsOnTheRoomAndMembersOnly(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Crew Field Test")

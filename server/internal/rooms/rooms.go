@@ -359,7 +359,8 @@ type lastChatJSON struct {
 }
 
 // crewRoleWord turns the two booleans the list query carries into the word
-// the payload speaks. Member is the derived case — being in the room at all.
+// the payload speaks. Member is what is left when neither is set: a room on
+// the rail is a room in a crew the caller is in (#1236).
 func crewRoleWord(owner, admin bool) string {
 	switch {
 	case owner:
@@ -745,9 +746,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			}
 			response.Together = s.together(r.Context(), room.ID, user.ID)
 			// The crew, for members only and on the same rule as the code and
-			// the sound pack: crew membership follows room membership, so
-			// someone outside this room is outside its crew and the crew's
-			// name is not theirs to read. Soft-fails to absent like the reads
+			// the sound pack: a room's members are in its crew, and someone
+			// outside this room may be outside the crew, whose name is then
+			// not theirs to read. Soft-fails to absent like the reads
 			// above — a crew that cannot be looked up is a switcher entry that
 			// does not render, never a room that will not open.
 			if room.CrewID.Valid {
