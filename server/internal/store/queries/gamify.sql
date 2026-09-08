@@ -56,10 +56,13 @@ select kind, count(*)::bigint as n from medals where user_id = $1 group by kind;
 -- a friend. The same reach the members list and the friends panel have.
 select (
     exists (
-        select 1 from memberships a
-        join memberships b on a.room_id = b.room_id
-        where a.user_id = @viewer and a.role != 'banned'
-          and b.user_id = @rider and b.role != 'banned'
+        -- `visible_rooms` is the boundary, not a hand-written membership join
+        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
+        -- `role != 'banned'`; going through the view is what stops the next
+        -- one being missed, and it brings crew bans and grants along free.
+        select 1 from visible_rooms a
+        join visible_rooms b on a.room_id = b.room_id
+        where a.user_id = @viewer and b.user_id = @rider
     )
     or exists (
         select 1 from friendships
