@@ -61,9 +61,7 @@ describe('parseTags', () => {
 	it('bounds both axes the way the column does', () => {
 		expect(parseTags('a'.repeat(90))[0]).toHaveLength(40);
 		expect(
-			parseTags(
-				Array.from({ length: 30 }, (_, i) => `tag${i}`).join(','),
-			),
+			parseTags(Array.from({ length: 30 }, (_, i) => `tag${i}`).join(',')),
 		).toHaveLength(20);
 	});
 });

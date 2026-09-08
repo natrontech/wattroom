@@ -426,14 +426,14 @@ func TestNormalizeTags(t *testing.T) {
 // only way to give a synthetic MP3 a genre for the upload path to read.
 func id3v23(frameID, text string, data []byte) []byte {
 	payload := append([]byte{0x00}, text...) // 0x00 = ISO-8859-1
-	frame := append([]byte(frameID),
-		byte(len(payload)>>24), byte(len(payload)>>16), byte(len(payload)>>8), byte(len(payload)),
-		0x00, 0x00)
+
+	// Both lengths fit a byte: the text a test tags a track with is a few
+	// words, so the wide ends of these size fields are always zero.
+	frame := append([]byte(frameID), 0, 0, 0, byte(len(payload)), 0x00, 0x00) //nolint:gosec // test text, well under 255
 	frame = append(frame, payload...)
 
-	size := len(frame)
-	header := []byte{'I', 'D', '3', 3, 0, 0,
-		byte(size >> 21 & 0x7F), byte(size >> 14 & 0x7F), byte(size >> 7 & 0x7F), byte(size & 0x7F)}
+	// The tag header's size is synchsafe — seven bits per byte.
+	header := []byte{'I', 'D', '3', 3, 0, 0, 0, 0, byte(len(frame) >> 7 & 0x7F), byte(len(frame) & 0x7F)} //nolint:gosec // masked to 7 bits
 	return append(append(header, frame...), data...)
 }
 
