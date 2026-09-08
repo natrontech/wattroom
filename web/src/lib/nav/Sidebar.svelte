@@ -64,6 +64,8 @@
 	import Shield from '@lucide/svelte/icons/shield';
 	import Users from '@lucide/svelte/icons/users';
 	import { device } from '$lib/device.svelte';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import { shellVersion } from '$lib/desktop';
 
 	let {
 		pathname,
@@ -655,6 +657,19 @@
 	     shows everyone in tiles. -->
 	{#if connectedSlug}
 		<RoomStrip {pathname} />
+	{/if}
+
+	<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to
+	     the desktop app, for a rider in a browser on a desk. Gone inside the
+	     shell, and on a phone, where the app is not for them. -->
+	{#if !shellVersion() && !device.coarse}
+		<a
+			href="/download"
+			class="text-muted hover:text-ink border-ink/5 flex items-center gap-2 border-t px-4 py-2.5 text-xs"
+		>
+			<Monitor size={14} />
+			Get the desktop app
+		</a>
 	{/if}
 
 	<YouPanel {pathname} />

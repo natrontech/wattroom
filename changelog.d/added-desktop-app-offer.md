@@ -1,0 +1,1 @@
+- The desktop app is now offered where you will see it: once on the home page with the installer for your computer, as a quiet row at the bottom of the sidebar, and under the landing page's sign-in. Not on a phone, and never inside the app itself.
