@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.55] - 2026-09-09
+
+### Changed
+
+- A room's settings page no longer carries a second copy of the member list. Coaches, bans and handing the room on live on the Members place, on each person's menu, and the settings page points there. (#1265)
+
+### Fixed
+
+- Following your own crew's invite link no longer offers you a "Join" that does nothing: the door says you are in and opens the crew. (#1236)
+- Right-clicking a crew room you have not walked into yet offers "Walk in" instead of places and a chat you could not read. (#1236)
+
 ## [2026.09.54] - 2026-09-09
 
 ### Added
@@ -1237,7 +1248,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.54...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.55...HEAD
+[2026.09.55]: https://github.com/natrontech/wattroom/compare/2026.09.54...2026.09.55
 [2026.09.54]: https://github.com/natrontech/wattroom/compare/2026.09.53...2026.09.54
 [2026.09.53]: https://github.com/natrontech/wattroom/compare/2026.09.52...2026.09.53
 [2026.09.52]: https://github.com/natrontech/wattroom/compare/2026.09.51...2026.09.52

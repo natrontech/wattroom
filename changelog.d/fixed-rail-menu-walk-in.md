@@ -1,1 +1,0 @@
-- Right-clicking a crew room you have not walked into yet offers "Walk in" instead of places and a chat you could not read. (#1236)
