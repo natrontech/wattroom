@@ -1,0 +1,1 @@
+- Notifications finally reach you: a message, someone arriving, a session starting or a poke, whenever the window is hidden or behind another app. The desktop app has them on from the start; in a browser, turn them on from your profile. A click lands in the conversation, and on a Mac the desktop app lets you reply right from the notification.

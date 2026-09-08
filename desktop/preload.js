@@ -32,4 +32,9 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// The floating HUD (ADR-0041): opened by the layout when a ride starts,
 	// closed when it ends or from the HUD's own close button.
 	hud: (on) => ipcRenderer.send('wattroom:hud', on),
+	// Notifications with a way back (ADR-0042): the shell shows them, and a
+	// click or a typed reply arrives through onNotification.
+	notify: (n) => ipcRenderer.send('wattroom:notify', n),
+	onNotification: (cb) =>
+		ipcRenderer.on('wattroom:notification', (_event, payload) => cb(payload)),
 });

@@ -63,6 +63,8 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	expect(bridge.keys).toEqual([
 		'hud',
 		'keepAwake',
+		'notify',
+		'onNotification',
 		'platform',
 		'retry',
 		'titleBar',

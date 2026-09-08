@@ -41,12 +41,16 @@
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import { shellTitleBar } from '$lib/desktop';
+	import { notify } from '$lib/notify.svelte';
 
 	let { children } = $props();
 
 	// The desktop shell hides the OS title bar and this app draws the strip
 	// (#1188): the window's handle, in the app's own colour. 0 in a browser.
 	const titleBar = shellTitleBar();
+	// Notifications answer back (ADR-0042): a click lands in the
+	// conversation, a reply from the shell's own notification is sent.
+	notify.listen((href) => void goto(href));
 
 	void account.load();
 	// Before the routing effect below replaces the URL and takes ?new= with it.

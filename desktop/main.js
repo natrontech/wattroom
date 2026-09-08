@@ -16,6 +16,7 @@ const {
 	desktopCapturer,
 	dialog,
 	ipcMain,
+	Notification,
 	powerSaveBlocker,
 	screen,
 	shell,
@@ -331,6 +332,48 @@ function setHud(on) {
 }
 
 ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
+
+// Notifications (ADR-0042). The web app's lib/notify decides WHETHER to
+// notify — enabled, nobody looking — and sends the words here, because the
+// shell's own Notification can do what the renderer's cannot: carry a reply
+// field (macOS) and hand a click back to the app with the conversation it
+// belongs to. Everything is clipped and the href must be a path on our
+// origin: remote content chooses the words, never where the app goes.
+const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+const ownPath = (v) =>
+	typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') ? v : '';
+
+ipcMain.on('wattroom:notify', (event, n) => {
+	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
+	const title = clip(n.title, 120);
+	if (!title) return;
+	const payload = { tag: clip(n.tag, 80), href: ownPath(n.href) };
+	const placeholder = clip(n.replyPlaceholder, 60);
+	const note = new Notification({
+		title,
+		body: clip(n.body, 400),
+		hasReply: placeholder !== '',
+		replyPlaceholder: placeholder || undefined,
+	});
+	const win = BrowserWindow.fromWebContents(event.sender);
+	note.on('click', () => {
+		if (win && !win.isDestroyed()) {
+			if (win.isMinimized()) win.restore();
+			win.show();
+			win.focus();
+		}
+		if (!event.sender.isDestroyed())
+			event.sender.send('wattroom:notification', payload);
+	});
+	note.on('reply', (_e, reply) => {
+		if (!event.sender.isDestroyed())
+			event.sender.send('wattroom:notification', {
+				...payload,
+				reply: clip(reply, 2000),
+			});
+	});
+	note.show();
+});
 
 // wattroom:// — the way back into the app from the system browser (#1188).
 //
