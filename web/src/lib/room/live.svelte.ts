@@ -413,6 +413,26 @@ export function createRoomLive(slug: string) {
 			// UNDER them by id — replacing wholesale ate the first seconds of a
 			// conversation (audit #219). Live reaction counts stay authoritative.
 			const liveIds = new Set(chatLog.map((line) => line.id).filter(Boolean));
+
+			// ...but a line we already hold still has to take an edit we
+			// missed (#1082). The edit fan-out rides one tick and is never
+			// re-sent, so a rider whose socket flapped across it never saw the
+			// new words, and this reseed is the only thing left that can say
+			// so. Skipping every known id — which is what merging UNDER them
+			// meant — left the stale line on screen until a full reload.
+			//
+			// editedAt is the version, so this cannot undo the race above: a
+			// live edit that landed while the fetch was in flight is newer
+			// than the backlog's copy and stays.
+			const seeded = new Map(messages.map((m) => [m.id, m]));
+			chatLog = chatLog.map((line) => {
+				const m = line.id ? seeded.get(line.id) : undefined;
+				if (!m) return line;
+				return (m.editedAt ?? 0) > (line.editedAt ?? 0)
+					? { ...line, text: m.text, editedAt: m.editedAt }
+					: line;
+			});
+
 			chatLog = [
 				...messages
 					.filter((m) => !liveIds.has(m.id))
