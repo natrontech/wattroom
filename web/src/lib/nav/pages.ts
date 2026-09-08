@@ -3,6 +3,7 @@ import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
+import Music from '@lucide/svelte/icons/music';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessagesSquare from '@lucide/svelte/icons/messages-square';
 import Settings from '@lucide/svelte/icons/settings';
@@ -23,11 +24,18 @@ import Users from '@lucide/svelte/icons/users';
  * eyebrow, wearing `normal-case` to fight that container's uppercase back
  * off — which reads as a label on the section beside it, not as a way to go
  * somewhere.
+ *
+ * Music earns one on the same test (#268): the pool is instance-wide while
+ * every jukebox is room-scoped, so a rider uploading to it or searching it is
+ * not standing in a room — and a destination reachable only from inside one is
+ * not reachable when you want it. It is not the "second half" of any page
+ * here, which is what the retirements above all had in common.
  */
 export const pages = [
 	{ href: '/home', label: 'Home', icon: House },
 	{ href: '/workouts', label: 'Workouts', icon: ChartColumn },
 	{ href: '/history', label: 'Rides', icon: History },
+	{ href: '/music', label: 'Music', icon: Music },
 	{ href: '/friends', label: 'Friends', icon: Users },
 ];
 

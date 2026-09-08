@@ -14,7 +14,7 @@ import (
 const createTrack = `-- name: CreateTrack :one
 insert into tracks (sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm)
 values ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at
+returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search
 `
 
 type CreateTrackParams struct {
@@ -53,6 +53,7 @@ func (q *Queries) CreateTrack(ctx context.Context, arg CreateTrackParams) (Track
 		&i.SizeBytes,
 		&i.Bpm,
 		&i.CreatedAt,
+		&i.Search,
 	)
 	return i, err
 }
@@ -76,7 +77,7 @@ func (q *Queries) DeleteTrack(ctx context.Context, arg DeleteTrackParams) (strin
 }
 
 const getTrack = `-- name: GetTrack :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at from tracks where id = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search from tracks where id = $1
 `
 
 func (q *Queries) GetTrack(ctx context.Context, id pgtype.UUID) (Track, error) {
@@ -93,21 +94,30 @@ func (q *Queries) GetTrack(ctx context.Context, id pgtype.UUID) (Track, error) {
 		&i.SizeBytes,
 		&i.Bpm,
 		&i.CreatedAt,
+		&i.Search,
 	)
 	return i, err
 }
 
 const listTracks = `-- name: ListTracks :many
-select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, u.display_name as uploaded_by_name
+select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, t.search, u.display_name as uploaded_by_name
 from tracks t
 join users u on u.id = t.uploaded_by
-order by t.created_at desc
-limit $1 offset $2
+where $1::text = ''
+   or t.search @@ websearch_to_tsquery('simple', $1::text)
+order by
+    -- Ranked when there is a query, newest when there is not.
+    case when $1::text = '' then 0
+         else ts_rank(t.search, websearch_to_tsquery('simple', $1::text))
+    end desc,
+    t.created_at desc
+limit $3 offset $2
 `
 
 type ListTracksParams struct {
-	Limit  int32
-	Offset int32
+	Search string
+	Off    int32
+	Lim    int32
 }
 
 type ListTracksRow struct {
@@ -121,13 +131,18 @@ type ListTracksRow struct {
 	SizeBytes      int32
 	Bpm            *int16
 	CreatedAt      pgtype.Timestamptz
+	Search         interface{}
 	UploadedByName string
 }
 
 // The pool: one global library every signed-in rider browses (ADR-0015),
 // newest first. Carries the uploader's name so a track has a face.
+//
+// An empty search returns everything: the browse view and the search view are
+// one query, so a rider clearing the box gets the library back rather than a
+// second code path that might disagree with the first.
 func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListTracksRow, error) {
-	rows, err := q.db.Query(ctx, listTracks, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listTracks, arg.Search, arg.Off, arg.Lim)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +161,7 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 			&i.SizeBytes,
 			&i.Bpm,
 			&i.CreatedAt,
+			&i.Search,
 			&i.UploadedByName,
 		); err != nil {
 			return nil, err
@@ -159,7 +175,7 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 }
 
 const trackBySha = `-- name: TrackBySha :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at from tracks where sha256 = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search from tracks where sha256 = $1
 `
 
 func (q *Queries) TrackBySha(ctx context.Context, sha256 string) (Track, error) {
@@ -176,6 +192,7 @@ func (q *Queries) TrackBySha(ctx context.Context, sha256 string) (Track, error) 
 		&i.SizeBytes,
 		&i.Bpm,
 		&i.CreatedAt,
+		&i.Search,
 	)
 	return i, err
 }
@@ -196,7 +213,7 @@ func (q *Queries) TrackQuotaUsed(ctx context.Context, uploadedBy pgtype.UUID) (i
 const updateTrack = `-- name: UpdateTrack :one
 update tracks set title = $3, artist = $4, album = $5, bpm = $6
 where id = $1 and uploaded_by = $2
-returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at
+returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search
 `
 
 type UpdateTrackParams struct {
@@ -231,6 +248,7 @@ func (q *Queries) UpdateTrack(ctx context.Context, arg UpdateTrackParams) (Track
 		&i.SizeBytes,
 		&i.Bpm,
 		&i.CreatedAt,
+		&i.Search,
 	)
 	return i, err
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,7 +100,7 @@ func song(seed byte, frames int) []byte {
 
 func (h *harness) upload(t *testing.T, who string, data []byte, name string) map[string]any {
 	t.Helper()
-	w := h.do(t, who, http.MethodPost, "/api/tracks?name="+name, data)
+	w := h.do(t, who, http.MethodPost, "/api/tracks?name="+url.QueryEscape(name), data)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("upload: %d %s", w.Code, w.Body.String())
 	}
@@ -113,7 +114,7 @@ func (h *harness) upload(t *testing.T, who string, data []byte, name string) map
 func TestUploadMeasuresTheFileAndStoresItByContent(t *testing.T) {
 	h := setup(t)
 	data := song(1, 383) // ~10 s at 128 kbps
-	body := h.upload(t, "alice", data, "Midnight%20City.mp3")
+	body := h.upload(t, "alice", data, "Midnight City.mp3")
 
 	// The duration is walked out of the frames, not taken from the uploader.
 	if ms, _ := body["durationMs"].(float64); ms < 9500 || ms > 10500 {
@@ -307,5 +308,77 @@ func TestListShowsThePoolToEveryone(t *testing.T) {
 	// One global pool: bob sees alice's upload, with her name on it.
 	if titles["Hers"] != "alice" || titles["His"] != "bob" {
 		t.Errorf("pool = %v, want both tracks with their uploaders", titles)
+	}
+}
+
+func TestSearchRanksTitleAboveAlbum(t *testing.T) {
+	h := setup(t)
+	byAlbum := h.upload(t, "alice", song(8, 383), "Something Else.mp3")
+	byTitle := h.upload(t, "alice", song(9, 383), "Placeholder.mp3")
+
+	// Put the word in one track's album and the other's title, so the ranking
+	// has something to be right about rather than just the recency order.
+	for _, tc := range []struct {
+		track map[string]any
+		body  string
+	}{
+		{byAlbum, `{"title":"Something Else","artist":"","album":"Thunderstruck","bpm":null}`},
+		{byTitle, `{"title":"Thunderstruck","artist":"","album":"","bpm":null}`},
+	} {
+		id, _ := tc.track["id"].(string)
+		if w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, []byte(tc.body)); w.Code != http.StatusOK {
+			t.Fatalf("tag track: %d %s", w.Code, w.Body.String())
+		}
+	}
+
+	w := h.do(t, "alice", http.MethodGet, "/api/tracks?q=thunderstruck", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("search: %d", w.Code)
+	}
+	list, _ := decode(t, w)["tracks"].([]any)
+	if len(list) != 2 {
+		t.Fatalf("found %d tracks, want both", len(list))
+	}
+	first, _ := list[0].(map[string]any)
+	if first["title"] != "Thunderstruck" {
+		t.Errorf("first hit = %v, want the title match ranked above the album match", first["title"])
+	}
+}
+
+func TestSearchIsTolerantOfWhatRidersType(t *testing.T) {
+	h := setup(t)
+	track := h.upload(t, "alice", song(10, 383), "Placeholder.mp3")
+	id, _ := track["id"].(string)
+	if w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id,
+		[]byte(`{"title":"Midnight City","artist":"M83","album":"","bpm":null}`)); w.Code != http.StatusOK {
+		t.Fatalf("tag: %d", w.Code)
+	}
+
+	found := func(q string) int {
+		t.Helper()
+		w := h.do(t, "alice", http.MethodGet, "/api/tracks?q="+url.QueryEscape(q), nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("search %q: %d", q, w.Code)
+		}
+		list, _ := decode(t, w)["tracks"].([]any)
+		return len(list)
+	}
+	if n := found("midnight"); n != 1 {
+		t.Errorf("one word of the title found %d, want 1", n)
+	}
+	if n := found("m83"); n != 1 {
+		t.Errorf("the artist found %d, want 1", n)
+	}
+	// websearch_to_tsquery, so a rider typing punctuation gets an answer
+	// rather than a 500 from a malformed tsquery.
+	if n := found(`"midnight city"`); n != 1 {
+		t.Errorf("a quoted phrase found %d, want 1", n)
+	}
+	if n := found("!!! &|"); n != 0 {
+		t.Errorf("junk found %d, want 0 and no error", n)
+	}
+	// An empty box is the whole library, not an empty page.
+	if n := found(""); n < 1 {
+		t.Errorf("clearing the search found %d, want the library back", n)
 	}
 }
