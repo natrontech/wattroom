@@ -16,6 +16,29 @@
 	 * always dark inside .cave. One definition, no duplicate blocks. */
 	--color-surface: light-dark(#f6f2fa, #0a0118);
 	--color-surface-raised: light-dark(#ffffff, #1a0736);
+	/* The other two rungs of the ladder (#613). Derived from the pair above
+	 * rather than added to TOKENS, so every theme gets them without widening
+	 * what the gate has to hold legible (#621).
+	 *
+	 * Elevation runs toward white in both families and recess runs toward
+	 * black, which is why these mix against literals: no token is white in the
+	 * cave and white on paper at once. Raw hex is fine here and nowhere else
+	 * (#400) — this IS the token layer.
+	 *
+	 * sunken is the well inside a raised thing: an input's field, a nested
+	 * row, a code block. It exists because `bg-surface` was being painted on
+	 * top of raised elements 75 times to fake exactly this, which made the
+	 * page background a component colour. */
+	--color-surface-sunken: color-mix(in oklab, var(--color-surface) 94%, #000);
+	/* overlay is what floats above the page: modals, menus, popovers. In the
+	 * cave it lifts clear of raised; on paper raised is already #ffffff and
+	 * there is nowhere lighter to go, so an overlay separates by shadow
+	 * instead — the white family's whole depth budget, since spending
+	 * lightness there costs the zone ramp its contrast headroom (#621). */
+	--color-surface-overlay: light-dark(
+		var(--color-surface-raised),
+		color-mix(in oklab, var(--color-surface-raised) 88%, #fff)
+	);
 	--color-muted: light-dark(#60548a, #9182b8);
 	/* live data only, never chrome */
 	--color-watt: light-dark(#e6247d, #ff3d8b);
@@ -36,6 +59,65 @@
 		color-mix(in oklab, var(--color-ink) 22%, transparent),
 		color-mix(in oklab, var(--color-ink) 12%, transparent)
 	);
+	/* Three weights, one job each (#613). The app had eighteen border
+	 * colour/alpha combinations across ~370 declarations and used --color-edge
+	 * seven times, six of them under /dev — so the line around a card, the
+	 * line between two rows, and the line a rider is meant to click were all
+	 * the same arbitrary muted alpha, picked per call site. A border that says
+	 * nothing about what it separates is the "unfinished" feeling.
+	 *
+	 * subtle divides *within* one surface — rows in a list, a panel header
+	 * from its body. It must not compete with the panel's own outline. */
+	--color-edge-subtle: light-dark(
+		color-mix(in oklab, var(--color-ink) 10%, transparent),
+		color-mix(in oklab, var(--color-ink) 7%, transparent)
+	);
+	/* strong outlines something the rider acts on — a field, a secondary
+	 * button. It has to be findable at arm's length while pedalling (ux.md),
+	 * which the 15% hairline on a white card is not. */
+	--color-edge-strong: light-dark(
+		color-mix(in oklab, var(--color-ink) 38%, transparent),
+		color-mix(in oklab, var(--color-ink) 26%, transparent)
+	);
+
+	/* Elevation (#613). There was no box-shadow in the token layer at all; the
+	 * twelve call sites that wanted depth reached for Tailwind's shadow-lg /
+	 * shadow-2xl, which are black and therefore invisible on a near-black
+	 * cave surface and the wrong shape on paper.
+	 *
+	 * The families do not split the work evenly, and that asymmetry is the
+	 * point. In the cave, depth is already carried by the lightness step from
+	 * surface to raised, so a shadow only needs to detach an edge. On paper,
+	 * raised is #ffffff and cannot go lighter, so shadow carries the whole
+	 * job — which is what lets the white family stop buying separation with
+	 * lightness and stop starving the zone ramp (#621). Same light-dark idiom
+	 * as glow-*, inverted: near-nothing where the other one does the work.
+	 *
+	 * Geometry is shared and only the ink flips: light-dark() takes two
+	 * values, and a two-layer shadow is already comma-separated, so the two
+	 * families cannot each spell a whole shadow list inside one call. */
+	--shadow-ink-near: light-dark(
+		color-mix(in oklab, #0b0616 10%, transparent),
+		color-mix(in oklab, #000 40%, transparent)
+	);
+	--shadow-ink-far: light-dark(
+		color-mix(in oklab, #0b0616 16%, transparent),
+		color-mix(in oklab, #000 55%, transparent)
+	);
+	--shadow-raised: 0 1px 2px var(--shadow-ink-near);
+	--shadow-overlay:
+		0 4px 6px -2px var(--shadow-ink-near),
+		0 16px 32px -8px var(--shadow-ink-far);
+
+	/* The small-text band, named (#613). 419 call sites set an arbitrary pixel
+	 * size — text-[11px] ×206, text-[10px] ×171, text-[13px] ×24, text-[12px]
+	 * ×7, text-[9px] ×11 — against 507 text-xs and 339 text-sm. Five sizes
+	 * were doing "small" with nothing saying which meant what, which is the
+	 * density that reads as accidental rather than dense on purpose.
+	 * text-xs (12px) and up already have names; these are the rungs below. */
+	--text-micro: 0.625rem; /* 10px — eyebrows, badges, axis labels */
+	--text-mini: 0.6875rem; /* 11px — dense metadata beside a value */
+	--text-meta: 0.8125rem; /* 13px — secondary body, between xs and sm */
 
 	/* Coggan 7-zone ramp. Shared by every theme, not themed (ADR-0023 §4):
 	 * zone colour is learned and read across the room, and the sRGB gamut does
@@ -167,7 +249,7 @@ body {
 	@apply bg-ink text-paper hover:bg-ink/90 font-medium;
 }
 @utility btn-secondary {
-	@apply border-muted/30 hover:border-muted/60 border;
+	@apply border-edge-strong hover:border-ink/50 border;
 }
 @utility btn-ghost {
 	@apply text-muted hover:text-ink;
@@ -212,21 +294,42 @@ body {
 }
 
 /* Text field look. Width/margin at the call site. */
+/* A field is a well, not a card: it takes the sunken surface so it reads as
+ * something you type into even when it sits on a raised panel, and the edge a
+ * rider is meant to aim at. */
 @utility input {
-	@apply border-muted/25 placeholder:text-muted/60 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
+	@apply border-edge-strong bg-surface-sunken placeholder:text-muted/60 focus:border-neon/60 rounded border px-3 py-2 text-sm outline-none;
 }
 @utility input-xs {
 	@apply px-3 py-1.5 text-xs;
 }
 
 /* Raised card. Padding and margin at the call site. */
+/* Raised card. Padding and margin at the call site.
+ * The border is the token built for exactly this (#505) rather than the
+ * muted/15 hairline it had been retyping, and the shadow is what separates it
+ * from the page on paper, where raised is #ffffff and lightness has nothing
+ * left to give (#621). */
 @utility panel {
-	@apply border-muted/15 bg-surface-raised rounded-lg border;
+	@apply border-edge bg-surface-raised shadow-raised rounded-lg border;
+}
+
+/* Floats above the page: modals, menus, popovers. Same shape as panel, one
+ * rung up — in the cave it lifts clear of raised, on paper only the shadow
+ * distinguishes it, which is the whole reason the shadow exists. */
+@utility overlay {
+	@apply border-edge bg-surface-overlay shadow-overlay rounded-lg border;
+}
+
+/* The line between two rows of one list — quieter than the outline around
+ * the thing that contains them, so a panel still reads as one object. */
+@utility rule {
+	@apply border-edge-subtle;
 }
 
 /* Section label. One tracking, one size — ends the tracking-wider/tracking-[0.2em] split. */
 @utility eyebrow {
-	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
+	@apply text-muted text-micro tracking-[0.2em] uppercase;
 }
 
 /* Page rhythm (ADR-0020, amended in #417). Pages fill the content column:
