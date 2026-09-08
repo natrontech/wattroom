@@ -39,7 +39,8 @@
 	<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 		<h1 class="font-display text-2xl font-bold tracking-tight">Find a room</h1>
 		<p class="text-muted text-xs">
-			Rooms whose owners chose to be findable. Everything else is invite-only.
+			Rooms whose owners chose to be findable; joining one puts you in its crew.
+			Everything else takes the crew's invite.
 		</p>
 	</header>
 

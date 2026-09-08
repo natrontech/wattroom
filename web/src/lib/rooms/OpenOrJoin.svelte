@@ -94,13 +94,24 @@
 	>
 		<div class={compact ? '' : 'panel p-5'}>
 			<h3 class="font-display font-bold">
-				Open a room{#if target && openable.length === 1}<span
-						class="text-muted font-normal">&nbsp;in {target.name}</span
-					>{/if}
+				{#if presence.loaded && openable.length === 0}
+					Open your first room
+				{:else}
+					Open a room{#if target && openable.length === 1}<span
+							class="text-muted font-normal">&nbsp;in {target.name}</span
+						>{/if}
+				{/if}
 			</h3>
 			<p class="text-muted mt-1 text-xs">
-				Open to the crew from the start. Anyone new joins the crew with its code
-				or link — rooms have none of their own.
+				{#if presence.loaded && openable.length === 0}
+					<!-- The day-one fact, said before the click rather than in a toast
+					     after it (#1151): a first room makes the crew. -->
+					It makes your crew, named after you until you rename it, and the room is
+					open to the crew from the start.
+				{:else}
+					Open to the crew from the start. Anyone new joins the crew with its
+					code or link — rooms have none of their own.
+				{/if}
 			</p>
 			{#if openable.length > 1}
 				<div class="mt-3">
@@ -177,8 +188,8 @@
 			     second half of a page here, and this is exactly that. -->
 			<p class="text-muted mt-3 text-xs">
 				No code? <a href="/rooms/directory" class="underline"
-					>Find a room that listed itself</a
-				>.
+					>Browse the rooms crews have listed</a
+				> — joining one joins its crew.
 			</p>
 		</div>
 	</div>
