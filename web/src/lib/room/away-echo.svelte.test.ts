@@ -133,4 +133,47 @@ describe('away, against the tick that was already in flight', () => {
 			fakeTick = null;
 		}
 	});
+
+	// The bound. A message the server never received must not pin this screen
+	// to a wish forever — after enough disagreeing ticks the roster wins, and
+	// that is also how a dropped socket heals on reconnect.
+	//
+	// Counted in TICKS rather than milliseconds on purpose: a wall clock
+	// measures how busy the machine is. A five-second version of this window
+	// expired inside a single run on a loaded CI box while passing locally
+	// three times, which is a bound that means two different things.
+	it('gives up waiting after enough ticks disagree', async () => {
+		const connection = roomConnection.join('lounge');
+		try {
+			fakeTick = roster(false);
+			await settle();
+
+			// The press is never echoed — the message went nowhere.
+			connection.setAway(true);
+			await settle();
+			expect(connection.av.away).toBe(true);
+
+			// It holds for more than a tick or two — the whole point is
+			// surviving a slow round trip.
+			for (let i = 0; i < 2; i++) {
+				fakeTick = roster(false);
+				await settle();
+				expect(connection.av.away).toBe(true);
+			}
+			// …and it does give up, rather than pinning this screen forever.
+			// The exact tick it gives up on is a tuning number and not what
+			// this asserts: `settle()` lets the effect run more than once, so
+			// counting them here would be measuring the harness.
+			let gaveUp = false;
+			for (let i = 0; i < 12 && !gaveUp; i++) {
+				fakeTick = roster(false);
+				await settle();
+				gaveUp = connection.av.away === false;
+			}
+			expect(gaveUp).toBe(true);
+		} finally {
+			roomConnection.leave();
+			fakeTick = null;
+		}
+	});
 });

@@ -20,12 +20,17 @@ import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';
 
 /**
- * How long a screen waits for the server to echo its own away press before
- * believing the roster again (#1128). Ticks are 1 Hz, so this is several of
- * them — long enough that a slow round trip is not mistaken for a lost one,
- * short enough that a genuinely lost message heals inside a rest interval.
+ * How many disagreeing ticks a screen tolerates before believing the roster
+ * again (#1128) — the bound on waiting for the server to echo a press it may
+ * never have received.
+ *
+ * Counted in TICKS, not milliseconds. Ticks are what actually arrive, and a
+ * wall clock measures how busy the machine is instead: a five-second window
+ * expired inside a single test on a loaded CI runner while the same test
+ * passed locally, which is a bound that means one thing on a laptop and
+ * another under load. Five ticks is five chances to agree, whenever they come.
  */
-const AWAY_ECHO_MS = 5000;
+const AWAY_ECHO_TICKS = 5;
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
@@ -122,7 +127,7 @@ function connect(slug: string): Connection {
 	 * object, and the effect that reads it lives inside.
 	 */
 	let awayWanted: boolean | null = null;
-	let awaySentAt = 0;
+	let awayWaited = 0;
 
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
@@ -194,10 +199,10 @@ function connect(slug: string): Connection {
 		// doing nothing while the room went on hearing them.
 		//
 		// So a press records what it is waiting for, and the roster is ignored
-		// until it agrees. `awaySentAt` bounds that: a message the server never
+		// until it agrees. `awayWaited` bounds that: a message the server never
 		// answers (a socket that dropped mid-send) must not pin this rider's
-		// away state to a wish forever — after the window the server's truth
-		// wins again, which is also how a reconnect heals.
+		// away state to a wish forever — after five disagreeing ticks the
+		// server's truth wins again, which is also how a reconnect heals.
 		$effect(() => {
 			const mine = live.tick?.roster.find(
 				(rider) => rider.id === account.me?.id,
@@ -205,8 +210,7 @@ function connect(slug: string): Connection {
 			if (!mine) return;
 			const server = !!mine.away;
 			if (awayWanted !== null) {
-				const stale = Date.now() - awaySentAt > AWAY_ECHO_MS;
-				if (server !== awayWanted && !stale) return;
+				if (server !== awayWanted && ++awayWaited <= AWAY_ECHO_TICKS) return;
 				awayWanted = null;
 			}
 			void av.setAway(server);
@@ -478,7 +482,7 @@ function connect(slug: string): Connection {
 			// What we are waiting for the server to echo (#1128), so the tick
 			// already in flight cannot undo the press that produced it.
 			awayWanted = next;
-			awaySentAt = Date.now();
+			awayWaited = 0;
 			void av.setAway(next);
 			live.setAway(next);
 		},
