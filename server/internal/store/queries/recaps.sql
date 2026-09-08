@@ -49,9 +49,3 @@ cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at;
 
--- name: CountRecapsNaming :one
--- The purge trigger's witness: how many rows still carry this rider's
--- interval. Zero after `delete from users`, which is what the account test
--- asserts against the rows themselves rather than through an API.
-select count(*) from session_recaps
-where riders @> jsonb_build_array(jsonb_build_object('id', $1::text));

@@ -75,24 +75,6 @@ func (q *Queries) DeletePasskey(ctx context.Context, arg DeletePasskeyParams) (i
 	return result.RowsAffected(), nil
 }
 
-const getPasskey = `-- name: GetPasskey :one
-select credential_id, user_id, credential, name, created_at, last_used_at from passkeys where credential_id = $1
-`
-
-func (q *Queries) GetPasskey(ctx context.Context, credentialID []byte) (Passkey, error) {
-	row := q.db.QueryRow(ctx, getPasskey, credentialID)
-	var i Passkey
-	err := row.Scan(
-		&i.CredentialID,
-		&i.UserID,
-		&i.Credential,
-		&i.Name,
-		&i.CreatedAt,
-		&i.LastUsedAt,
-	)
-	return i, err
-}
-
 const listUserPasskeys = `-- name: ListUserPasskeys :many
 select credential_id, user_id, credential, name, created_at, last_used_at from passkeys where user_id = $1 order by created_at
 `

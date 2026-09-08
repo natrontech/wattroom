@@ -61,17 +61,6 @@ func (q *Queries) CountCrewMembershipsOf(ctx context.Context, arg CountCrewMembe
 	return count, err
 }
 
-const countCrewRooms = `-- name: CountCrewRooms :one
-select count(*) from rooms where crew_id = $1
-`
-
-func (q *Queries) CountCrewRooms(ctx context.Context, crewID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countCrewRooms, crewID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countRoomsOwnedInCrew = `-- name: CountRoomsOwnedInCrew :one
 select count(*) from rooms where crew_id = $1 and owner_id = $2
 `
@@ -618,46 +607,6 @@ type PlaceRoomInCrewParams struct {
 func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
 	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
 	return err
-}
-
-const revokeRoomAccess = `-- name: RevokeRoomAccess :exec
-delete from room_grants where room_id = $1 and user_id = $2
-`
-
-type RevokeRoomAccessParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessParams) error {
-	_, err := q.db.Exec(ctx, revokeRoomAccess, arg.RoomID, arg.UserID)
-	return err
-}
-
-const roomsVisibleTo = `-- name: RoomsVisibleTo :many
-select room_id from visible_rooms where user_id = $1
-`
-
-// THE gate. Every call site that needs "which rooms may this person enter"
-// selects from the view and never re-derives it (ADR-0038, third amendment).
-func (q *Queries) RoomsVisibleTo(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, roomsVisibleTo, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var room_id pgtype.UUID
-		if err := rows.Scan(&room_id); err != nil {
-			return nil, err
-		}
-		items = append(items, room_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const setCrewRole = `-- name: SetCrewRole :exec
