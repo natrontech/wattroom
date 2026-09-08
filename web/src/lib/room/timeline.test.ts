@@ -186,3 +186,58 @@ describe('presence lines (#984)', () => {
 		expect(eventText(presence({ verb: 'teleported' }))).toBe('');
 	});
 });
+
+/**
+ * Every verb the SERVER can put on the wire has to render to something.
+ *
+ * `eventText` returns '' for a verb it does not know and `roomTimeline` drops
+ * the entry — deliberately, so an old client degrades quietly against a newer
+ * server instead of printing junk. The cost is that a verb nobody wrote a case
+ * for is indistinguishable from one this client is too old to know: nothing
+ * fails, the line simply never appears. That is how `restored` was broadcast
+ * to every room and thrown away by every client (#1068).
+ *
+ * This list is the server's, kept beside `protocol.go`'s RoomEvent comment.
+ * Adding a verb there without a case here fails now, rather than going quiet.
+ */
+const SERVER_VERBS = [
+	// jukebox
+	'queued',
+	'queuedPlaylist',
+	'removed',
+	'skipped',
+	'skippedPlaylist',
+	'playing',
+	'restored',
+	// session
+	'planned',
+	'moved',
+	'cancelled',
+	'started',
+	'ended',
+	// presence
+	'joined',
+	'left',
+	'away',
+	'back',
+];
+
+describe('every verb the server sends renders', () => {
+	it.each(SERVER_VERBS)('%s is not silently dropped', (verb) => {
+		const text = eventText(
+			event({ kind: 'jukebox', verb, actor: 'Kim', track: 'Sandstorm' }),
+		);
+		expect(text).not.toBe('');
+	});
+
+	it('names who put a track back, and what came back', () => {
+		expect(
+			eventText(event({ verb: 'restored', actor: 'Kim', track: 'Sandstorm' })),
+		).toBe('Kim put Sandstorm back');
+	});
+
+	it('still drops a verb this client has never heard of', () => {
+		// The quiet degrade is the point — only unknown verbs may use it.
+		expect(eventText(event({ verb: 'teleported' }))).toBe('');
+	});
+});

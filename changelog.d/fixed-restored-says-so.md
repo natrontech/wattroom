@@ -1,0 +1,1 @@
+- Taking back a skipped track or playlist now says so in the room's chat — "Kim put Sandstorm back". The undo worked, but the log recorded only the skip, which left it saying the opposite of what happened.

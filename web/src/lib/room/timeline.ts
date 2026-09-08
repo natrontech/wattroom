@@ -56,6 +56,11 @@ export function eventText(event: RoomEvent): string {
 			return `${event.actor} removed ${track}`;
 		case 'skipped':
 			return `${event.actor} skipped ${track}`;
+		case 'restored':
+			// The undo behind every destructive deck verb (#660). Without a
+			// line here the log records the skip and not the taking-back, so
+			// it does not merely go quiet — it stays wrong.
+			return `${event.actor} put ${track} back`;
 		case 'skippedPlaylist':
 			return event.count > 0
 				? `${event.actor} skipped the rest of ${track} · ${event.count} tracks`
