@@ -18,19 +18,26 @@ const {
 	ipcMain,
 	powerSaveBlocker,
 	shell,
-} = require("electron");
-const path = require("node:path");
+} = require('electron');
+const path = require('node:path');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
-const APP_URL = process.env.WATTROOM_URL || "https://wattroom.ch";
+const APP_URL = process.env.WATTROOM_URL || 'https://wattroom.ch';
 const APP_ORIGIN = new URL(APP_URL).origin;
 
 // app.getVersion() returns ELECTRON's version when unpackaged, so it would
 // report 44.x in dev and 0.1.0 in a build — and the update check compares this
 // against the newest release tag. Read the manifest directly: main is not
 // sandboxed, and this is the same number in both.
-const SHELL_VERSION = require("./package.json").version;
+const SHELL_VERSION = require('./package.json').version;
+
+// The OS title bar is hidden and the web app draws the strip (#1188): macOS
+// drew a white bar over a dark app, and a bar the app owns follows its theme
+// and its typography. This is its height; the preload hands it to the app
+// as window.wattroom.titleBar, and the traffic lights and the Windows/Linux
+// overlay controls are placed to sit inside it.
+const TITLE_BAR_PX = 32;
 
 // The last trainer a rider chose, so the chooser can skip itself next time.
 // In memory only: a file would be state to migrate, and re-picking once per
@@ -51,13 +58,27 @@ function createWindow() {
 		width: 1280,
 		height: 860,
 		minWidth: 380,
-		backgroundColor: "#0a0118", // --color-surface, so the first paint is not white
+		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
+		titleBarStyle: 'hidden',
+		trafficLightPosition: { x: 14, y: (TITLE_BAR_PX - 12) / 2 },
+		// Windows and Linux keep the native window controls, drawn over the
+		// app's strip in the surface colour. ponytail: the colour is the dark
+		// theme's; a light-theme rider there sees a dark control box until the
+		// app tells the shell its scheme.
+		titleBarOverlay: {
+			color: '#0a0118',
+			symbolColor: '#ffffff',
+			height: TITLE_BAR_PX,
+		},
 		webPreferences: {
-			preload: path.join(__dirname, "preload.js"),
+			preload: path.join(__dirname, 'preload.js'),
 			// The preload is sandboxed and cannot read package.json, so the
 			// version arrives as a switch it can parse off process.argv.
-			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
+			additionalArguments: [
+				`--wattroom-version=${SHELL_VERSION}`,
+				`--wattroom-titlebar=${TITLE_BAR_PX}`,
+			],
 			// The three that matter with remote content. Defaults in modern
 			// Electron, restated because a future edit that flips one of them
 			// should have to delete a line that says why.
@@ -72,7 +93,7 @@ function createWindow() {
 		},
 	});
 
-	win.once("ready-to-show", () => win.show());
+	win.once('ready-to-show', () => win.show());
 	installHandlers(win);
 	load(win);
 	return win;
@@ -93,11 +114,11 @@ function installHandlers(win) {
 	//    that forgets preventDefault the FIRST device is selected silently —
 	//    which in a room of advertising sensors is someone else's trainer.
 	//    RESEARCH.md §15.1.
-	win.webContents.on("select-bluetooth-device", (event, devices, callback) => {
+	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
 		event.preventDefault();
 
 		if (devices.length === 0) {
-			callback(""); // rejects in the renderer; media-error.ts has copy for it
+			callback(''); // rejects in the renderer; media-error.ts has copy for it
 			return;
 		}
 		const remembered = devices.find(
@@ -111,14 +132,14 @@ function installHandlers(win) {
 		// FTMS/HR/CSC, so everything offered here is pairable.
 		chooseFrom(
 			win,
-			"Pair a sensor",
+			'Pair a sensor',
 			devices.map((d) => ({
 				label: d.deviceName || d.deviceId,
 				value: d.deviceId,
 			})),
 		).then((deviceId) => {
 			if (deviceId) lastBluetoothDeviceId = deviceId;
-			callback(deviceId || "");
+			callback(deviceId || '');
 		});
 	});
 
@@ -126,7 +147,7 @@ function installHandlers(win) {
 	//    hands camera and microphone to anything that gets the renderer to
 	//    navigate. Deny by default, allow our own origin the things a room
 	//    actually needs.
-	const ALLOWED = new Set(["media", "clipboard-sanitized-write", "fullscreen"]);
+	const ALLOWED = new Set(['media', 'clipboard-sanitized-write', 'fullscreen']);
 	ses.setPermissionRequestHandler((contents, permission, callback) => {
 		callback(isOurs(contents.getURL()) && ALLOWED.has(permission));
 	});
@@ -134,7 +155,7 @@ function installHandlers(win) {
 	// a handler on one and not the other is a gate with a hole in it.
 	ses.setPermissionCheckHandler(
 		(contents, permission, origin) =>
-			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? "")) &&
+			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
 			ALLOWED.has(permission),
 	);
 
@@ -145,12 +166,12 @@ function installHandlers(win) {
 	ses.setDisplayMediaRequestHandler(
 		(request, callback) => {
 			desktopCapturer
-				.getSources({ types: ["screen", "window"] })
+				.getSources({ types: ['screen', 'window'] })
 				.then((sources) => {
 					if (sources.length === 0) return callback({});
 					return chooseFrom(
 						win,
-						"Share a screen",
+						'Share a screen',
 						sources.map((s) => ({ label: s.name, value: s.id })),
 					).then((id) => {
 						const picked = sources.find((s) => s.id === id);
@@ -162,7 +183,7 @@ function installHandlers(win) {
 						// tap on macOS 14.2+ and WASAPI on Windows. Asked for
 						// alongside the video rather than instead of it — the room
 						// hears the machine that is showing it something.
-						callback(picked ? { video: picked, audio: "loopback" } : {});
+						callback(picked ? { video: picked, audio: 'loopback' } : {});
 					});
 				})
 				.catch(() => callback({}));
@@ -177,16 +198,16 @@ function installHandlers(win) {
 		//
 		// Electron ignores the flag below macOS 15, where the app picker is
 		// still the only one, so this is safe to set for all of darwin.
-		{ useSystemPicker: process.platform === "darwin" },
+		{ useSystemPicker: process.platform === 'darwin' },
 	);
 
 	// 4. Navigation. Remote content that can navigate the shell anywhere is the
 	//    same hole as the permission default, one step removed.
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (/^https?:/.test(url)) void shell.openExternal(url);
-		return { action: "deny" };
+		return { action: 'deny' };
 	});
-	win.webContents.on("will-navigate", (event, url) => {
+	win.webContents.on('will-navigate', (event, url) => {
 		if (isOurs(url)) return;
 		event.preventDefault();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
@@ -195,10 +216,10 @@ function installHandlers(win) {
 	// The server-down screen. A shell whose remote never answers is a white
 	// rectangle with no way out, which errors.md forbids.
 	win.webContents.on(
-		"did-fail-load",
+		'did-fail-load',
 		(event, code, description, url, isMain) => {
 			if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
-			void win.webContents.loadFile(path.join(__dirname, "offline.html"), {
+			void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
 				query: { url: APP_URL, reason: description || String(code) },
 			});
 		},
@@ -216,10 +237,10 @@ function installHandlers(win) {
 async function chooseFrom(win, title, options) {
 	const shown = options.slice(0, 8);
 	const { response } = await dialog.showMessageBox(win, {
-		type: "question",
+		type: 'question',
 		title,
 		message: title,
-		buttons: [...shown.map((o) => o.label), "Cancel"],
+		buttons: [...shown.map((o) => o.label), 'Cancel'],
 		cancelId: shown.length,
 		defaultId: 0,
 	});
@@ -246,8 +267,8 @@ function deepLinkTarget(link) {
 	} catch {
 		return null;
 	}
-	if (url.protocol !== "wattroom:" || url.hostname !== "auth") return null;
-	const token = url.pathname.replace(/^\//, "");
+	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
+	const token = url.pathname.replace(/^\//, '');
 	if (!DEEP_LINK_TOKEN.test(token)) return null;
 	// APP_ORIGIN, not APP_URL: a WATTROOM_URL with a trailing slash made this
 	// `//login`, which the smoke caught.
@@ -273,10 +294,10 @@ function openDeepLink(link) {
 	});
 }
 
-const deepLinkIn = (argv) => argv.find((a) => a.startsWith("wattroom://"));
+const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
 
-app.setAsDefaultProtocolClient("wattroom");
-app.on("open-url", (event, link) => {
+app.setAsDefaultProtocolClient('wattroom');
+app.on('open-url', (event, link) => {
 	event.preventDefault();
 	openDeepLink(link);
 });
@@ -287,7 +308,7 @@ app.on("open-url", (event, link) => {
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
-	app.on("second-instance", (_event, argv) => {
+	app.on('second-instance', (_event, argv) => {
 		const link = deepLinkIn(argv);
 		if (link) {
 			openDeepLink(link);
@@ -307,15 +328,15 @@ if (!app.requestSingleInstanceLock()) {
 		if (pendingDeepLink) {
 			const target = pendingDeepLink;
 			pendingDeepLink = null;
-			win.once("ready-to-show", () => void win.loadURL(target).catch(() => {}));
+			win.once('ready-to-show', () => void win.loadURL(target).catch(() => {}));
 		}
-		app.on("activate", () => {
+		app.on('activate', () => {
 			if (BrowserWindow.getAllWindows().length === 0) createWindow();
 		});
 	});
 
-	app.on("window-all-closed", () => {
-		if (process.platform !== "darwin") app.quit();
+	app.on('window-all-closed', () => {
+		if (process.platform !== 'darwin') app.quit();
 	});
 }
 
@@ -328,7 +349,7 @@ let sleepBlockerId = null;
 function keepAwake(on) {
 	if (on) {
 		if (sleepBlockerId === null) {
-			sleepBlockerId = powerSaveBlocker.start("prevent-display-sleep");
+			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
 		}
 		return;
 	}
@@ -338,18 +359,18 @@ function keepAwake(on) {
 	}
 }
 
-ipcMain.on("wattroom:keep-awake", (_event, on) => keepAwake(Boolean(on)));
+ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
 
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
-app.on("browser-window-created", (_e, win) => {
-	win.webContents.on("render-process-gone", () => keepAwake(false));
-	win.on("closed", () => keepAwake(false));
+app.on('browser-window-created', (_e, win) => {
+	win.webContents.on('render-process-gone', () => keepAwake(false));
+	win.on('closed', () => keepAwake(false));
 });
-app.on("will-quit", () => keepAwake(false));
+app.on('will-quit', () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
-ipcMain.on("wattroom:retry", (event) => {
+ipcMain.on('wattroom:retry', (event) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (win) load(win);
 });

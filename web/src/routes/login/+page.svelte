@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
+	import LandingHero from '$lib/brand/LandingHero.svelte';
 	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
@@ -142,14 +143,46 @@
 		aria-hidden="true"
 	></div>
 
-	<div class="relative w-full max-w-md">
+	<!-- In the desktop shell this is the first screen, on a window built for a
+	     desk (#1188): the pitch and the live-room scene on the left, the one
+	     sign-in on the right. In a browser the card stands alone as before. -->
+	<div
+		class="relative w-full {shell
+			? 'max-w-5xl lg:grid lg:grid-cols-[1.15fr_minmax(20rem,1fr)] lg:items-center lg:gap-14'
+			: 'max-w-md'}"
+	>
+		{#if shell}
+			<div class="hidden lg:block">
+				<Logo size={40} wordmark />
+				<h1 class="font-display mt-8 text-4xl leading-tight font-bold">
+					Train together, not alone.
+				</h1>
+				<p class="text-muted mt-3 max-w-md text-base leading-relaxed">
+					A room, a coach, and everyone's watts on one screen. Your trainer does
+					the rest.
+				</p>
+				<div class="mt-8 w-full max-w-xl"><LandingHero /></div>
+			</div>
+		{/if}
 		<div
 			class="border-muted/20 bg-surface-raised/80 rounded-xl border px-8 py-10 text-center backdrop-blur"
 		>
-			<a href="/" class="inline-block" aria-label="WattRoom home">
+			<a
+				href="/"
+				class="inline-block {shell ? 'lg:hidden' : ''}"
+				aria-label="WattRoom home"
+			>
 				<Logo size={52} wordmark />
 			</a>
-			<p class="text-muted mt-3 text-sm">Train together, not alone.</p>
+			<p class="text-muted mt-3 text-sm {shell ? 'lg:hidden' : ''}">
+				Train together, not alone.
+			</p>
+			{#if shell}
+				<div class="hidden text-left lg:block">
+					<p class="eyebrow">the desktop app</p>
+					<h2 class="font-display mt-1 text-2xl font-bold">Sign in</h2>
+				</div>
+			{/if}
 
 			{#if !account.loaded}
 				<Skeleton class="mt-8 h-11" rows={2} />
@@ -223,7 +256,7 @@
 				{/if}
 			{/if}
 
-			{#if account.loaded && account.providers.length > 0}
+			{#if account.loaded && account.providers.length > 0 && !shell && !backToApp}
 				<div class="mt-4 grid gap-2.5">
 					{#each account.providers as id (id)}
 						{#if id === 'strava'}

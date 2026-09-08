@@ -14,10 +14,10 @@
 //
 // Run: `make desktop-smoke`. It points the shell at a URL that cannot resolve
 // unless one is given, which is what exercises the offline path.
-const { test, expect, _electron: electron } = require("@playwright/test");
-const path = require("node:path");
-const fs = require("node:fs");
-const os = require("node:os");
+const { test, expect, _electron: electron } = require('@playwright/test');
+const path = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
 
 /**
  * Nothing listens here, so the shell lands on its offline screen.
@@ -28,7 +28,7 @@ const os = require("node:os");
  * scenario this claims to cover is "the app did not answer", and that is
  * ERR_CONNECTION_REFUSED.
  */
-const DEAD_URL = "http://localhost:45999/";
+const DEAD_URL = 'http://localhost:45999/';
 
 async function launch(url) {
 	// Its own userData directory, which is what the single-instance lock is
@@ -36,61 +36,71 @@ async function launch(url) {
 	// machine, so `make desktop` running in one worktree makes a smoke run in
 	// another quit on startup — the same collision #552 fixed for ports and
 	// databases, and this repo runs worktrees in parallel by design.
-	const userData = fs.mkdtempSync(path.join(os.tmpdir(), "wattroom-smoke-"));
+	const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'wattroom-smoke-'));
 	return electron.launch({
-		args: [path.join(__dirname, "main.js"), `--user-data-dir=${userData}`],
+		args: [path.join(__dirname, 'main.js'), `--user-data-dir=${userData}`],
 		env: { ...process.env, WATTROOM_URL: url },
 	});
 }
 
-test("the window opens and the bridge carries what the app looks for", async () => {
+test('the window opens and the bridge carries what the app looks for', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	// The first load fails and the shell navigates to its offline screen, so
 	// evaluating before that settles races the navigation.
-	await expect(win.locator("#retry")).toBeVisible();
+	await expect(win.locator('#retry')).toBeVisible();
 
 	// ADR-0037: the web app feature-detects `window.wattroom?.…`. These are the
 	// names it detects, so renaming one is a breaking change to that contract.
 	const bridge = await win.evaluate(() => ({
-		present: typeof window.wattroom === "object" && window.wattroom !== null,
+		present: typeof window.wattroom === 'object' && window.wattroom !== null,
 		keys: Object.keys(window.wattroom ?? {}).sort(),
 		platform: window.wattroom?.platform,
 		version: window.wattroom?.version,
+		titleBar: window.wattroom?.titleBar,
 	}));
 	expect(bridge.present).toBe(true);
-	expect(bridge.keys).toEqual(["keepAwake", "platform", "retry", "version"]);
+	expect(bridge.keys).toEqual([
+		'keepAwake',
+		'platform',
+		'retry',
+		'titleBar',
+		'version',
+	]);
+	// The strip the app draws where the OS title bar was (#1188): a number,
+	// or the app draws nothing and the traffic lights land on the sidebar.
+	expect(bridge.titleBar).toBe(32);
 	expect(bridge.platform).toBe(process.platform);
 	// Not Electron's version. app.getVersion() returns Electron's when
 	// unpackaged, so this asserts the shell's own — the number the update
 	// check compares against the newest release tag.
-	expect(bridge.version).toBe(require("./package.json").version);
+	expect(bridge.version).toBe(require('./package.json').version);
 
 	// Remote content must not reach Node through the bridge.
 	const leaked = await win.evaluate(
-		() => typeof require !== "undefined" || typeof process !== "undefined",
+		() => typeof require !== 'undefined' || typeof process !== 'undefined',
 	);
-	expect(leaked, "node reachable from the renderer").toBe(false);
+	expect(leaked, 'node reachable from the renderer').toBe(false);
 
 	await app.close();
 });
 
-test("an unreachable app renders the offline screen, not a blank window", async () => {
+test('an unreachable app renders the offline screen, not a blank window', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 
 	// errors.md: never blank, and recovery is one big button.
-	await expect(win.locator("h1")).toHaveText(/can’t be reached/i);
-	await expect(win.locator("#retry")).toBeVisible();
-	expect(await win.locator("#target").textContent()).toContain(DEAD_URL);
+	await expect(win.locator('h1')).toHaveText(/can’t be reached/i);
+	await expect(win.locator('#retry')).toBeVisible();
+	expect(await win.locator('#target').textContent()).toContain(DEAD_URL);
 
 	await app.close();
 });
 
-test("the navigation guard refuses another origin", async () => {
+test('the navigation guard refuses another origin', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
-	await expect(win.locator("#retry")).toBeVisible();
+	await expect(win.locator('#retry')).toBeVisible();
 
 	// Stub the external open in the MAIN process. Two reasons, and the second
 	// is why this test failed in CI before: most of the app's outbound links
@@ -109,64 +119,64 @@ test("the navigation guard refuses another origin", async () => {
 
 	const before = win.url();
 	await win.evaluate(() => {
-		window.location.href = "https://example.com/";
+		window.location.href = 'https://example.com/';
 	});
 	await new Promise((r) => setTimeout(r, 1500));
 
 	// Blocked in the shell...
 	expect(win.url()).toBe(before);
-	expect(win.url()).not.toContain("example.com");
+	expect(win.url()).not.toContain('example.com');
 	// ...and handed to the browser rather than silently dropped, which would
 	// leave every external link in the app dead.
 	const opened = await app.evaluate(() => globalThis.__opened);
-	expect(opened).toEqual(["https://example.com/"]);
+	expect(opened).toEqual(['https://example.com/']);
 
 	await app.close();
 });
 
-test("a wattroom://auth link loads the handoff on our origin, and nothing else does", async () => {
+test('a wattroom://auth link loads the handoff on our origin, and nothing else does', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
-	await expect(win.locator("#retry")).toBeVisible();
+	await expect(win.locator('#retry')).toBeVisible();
 
 	// loadURL from main fires no will-navigate, so watch the navigation itself.
 	await app.evaluate(({ BrowserWindow }) => {
 		globalThis.__nav = [];
 		const [w] = BrowserWindow.getAllWindows();
-		w.webContents.on("did-start-navigation", (e) => {
+		w.webContents.on('did-start-navigation', (e) => {
 			if (e.isMainFrame) globalThis.__nav.push(e.url);
 		});
 	});
 	const emit = (link) =>
 		app.evaluate(
-			({ app }, l) => app.emit("open-url", { preventDefault() {} }, l),
+			({ app }, l) => app.emit('open-url', { preventDefault() {} }, l),
 			link,
 		);
 
 	// Not ours, and not the auth path: dropped, no navigation.
-	await emit("https://example.com/login?handoff=abcdefghijklmnopqrstuvwxyz");
-	await emit("wattroom://evil/abcdefghijklmnopqrstuvwxyz");
-	await emit("wattroom://auth/short");
-	await emit("wattroom://auth/has%20space%20and%20more%20chars");
+	await emit('https://example.com/login?handoff=abcdefghijklmnopqrstuvwxyz');
+	await emit('wattroom://evil/abcdefghijklmnopqrstuvwxyz');
+	await emit('wattroom://auth/short');
+	await emit('wattroom://auth/has%20space%20and%20more%20chars');
 	await new Promise((r) => setTimeout(r, 500));
 	expect(await app.evaluate(() => globalThis.__nav)).toEqual([]);
 
 	// The real thing: /login?handoff=<token> on the app's origin, never the
 	// link's own host.
-	await emit("wattroom://auth/abcdefghijklmnopqrstuvwxyz0123456789");
+	await emit('wattroom://auth/abcdefghijklmnopqrstuvwxyz0123456789');
 	await new Promise((r) => setTimeout(r, 1500));
 	const nav = await app.evaluate(() => globalThis.__nav);
 	expect(nav[0]).toBe(
-		`${DEAD_URL.replace(/\/$/, "")}/login?handoff=abcdefghijklmnopqrstuvwxyz0123456789`,
+		`${DEAD_URL.replace(/\/$/, '')}/login?handoff=abcdefghijklmnopqrstuvwxyz0123456789`,
 	);
 
 	await app.close();
 });
 
-test("a ride holds the machine awake, and stops holding it", async () => {
+test('a ride holds the machine awake, and stops holding it', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
-	await expect(win.locator("#retry")).toBeVisible();
+	await expect(win.locator('#retry')).toBeVisible();
 
 	const blocking = () =>
 		app.evaluate(

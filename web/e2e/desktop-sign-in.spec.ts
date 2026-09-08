@@ -82,7 +82,10 @@ test('the shell half, no sign-in yet: one button, and it goes to the browser', a
 	).toBeVisible();
 	// No passkey and no provider buttons inside the shell.
 	await expect(page.getByText('Sign in with a passkey')).toHaveCount(0);
-	await expect(page.getByText(/Continue with|Connect with/)).toHaveCount(0);
+	// ...including the dev provider, which is what the dev server offers.
+	await expect(
+		page.getByText(/Continue with|Connect with|Dev sign-in/),
+	).toHaveCount(0);
 
 	const popup = page.waitForEvent('popup');
 	await page.getByRole('button', { name: 'Sign in with your browser' }).click();

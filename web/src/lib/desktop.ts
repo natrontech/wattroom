@@ -41,6 +41,16 @@ export function shellVersion(): string | null {
 }
 
 /**
+ * The height of the strip the app draws where the shell hid the OS title bar
+ * (#1188), or 0 in a browser and in a shell old enough to keep its own bar.
+ */
+export function shellTitleBar(): number {
+	const shell = (globalThis as { wattroom?: { titleBar?: unknown } }).wattroom;
+	const h = shell?.titleBar;
+	return typeof h === 'number' && h > 0 ? h : 0;
+}
+
+/**
  * What the visitor is on. A phone gets no installer: WATTROOM.md makes it a
  * spectator in the browser. An iPad asking for a desktop site says
  * "Macintosh" and is offered the dmg — a wrong answer it can ignore, and not
