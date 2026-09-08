@@ -25,8 +25,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { inviteLink } from '$lib/crew';
-	import { leaveCrewFlow } from '$lib/crew-flows';
+	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
 	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
@@ -155,10 +154,7 @@
 			entries.push({
 				label: 'Copy invite link',
 				icon: Link,
-				onSelect: () =>
-					void navigator.clipboard
-						.writeText(inviteLink(code))
-						.then(() => toasts.push('Invite link copied.')),
+				onSelect: () => void copyInviteLink(code),
 			});
 		}
 		if (c.role !== 'owner')
