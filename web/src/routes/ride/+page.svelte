@@ -18,7 +18,8 @@
 	import { uploadRide } from '$lib/ride/save';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
+	import { confirm } from '$lib/confirm.svelte';
 	import { page } from '$app/state';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
@@ -348,14 +349,22 @@
 	// unload guard rides along for tab closes.
 	const riding = () =>
 		!!session && session.state !== 'done' && session.state !== 'idle';
+	// The guard must cancel synchronously and the dialog answers later, so a
+	// "yes" re-issues the navigation with the guard stood down.
+	let leaving = false;
 	beforeNavigate((navigation) => {
-		if (
-			riding() &&
-			navigation.type !== 'leave' &&
-			!confirm('End the ride and leave? The summary and .fit are lost.')
-		) {
-			navigation.cancel();
-		}
+		if (!riding() || navigation.type === 'leave' || leaving) return;
+		navigation.cancel();
+		void confirm({
+			title: 'End the ride and leave?',
+			body: 'The summary and the .fit file are lost.',
+			action: 'End the ride',
+			cancel: 'Keep riding',
+		}).then((ok) => {
+			if (!ok || !navigation.to) return;
+			leaving = true;
+			void goto(navigation.to.url);
+		});
 	});
 	$effect(() => {
 		const handler = (event: BeforeUnloadEvent) => {

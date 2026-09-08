@@ -10,6 +10,7 @@
 	// 44 px target ends the ride for the whole room, and there is no undo to
 	// offer (errors.md's confirm exception), so it confirms the way the solo
 	// ride does. Cancelling a countdown loses nothing and does not ask.
+	import { confirm } from '$lib/confirm.svelte';
 	import { device } from '$lib/device.svelte';
 	import { useRoom } from '$lib/room/context';
 	import Pause from '@lucide/svelte/icons/pause';
@@ -26,15 +27,15 @@
 	const paused = $derived(phase === 'paused');
 	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
 
-	function endSession() {
+	async function endSession() {
 		const n = room.riders.length;
-		if (
-			confirm(
-				`End the session for ${n} rider${n === 1 ? '' : 's'}? The ride stops for everyone and cannot be resumed.`,
-			)
-		) {
-			room.control('end');
-		}
+		const ok = await confirm({
+			title: `End the session for ${n} rider${n === 1 ? '' : 's'}?`,
+			body: 'The ride stops for everyone and cannot be resumed.',
+			action: 'End the session',
+			cancel: 'Keep riding',
+		});
+		if (ok) room.control('end');
 	}
 </script>
 

@@ -4,6 +4,7 @@
 	//
 	// Playlists are not here yet — they need tables #1064 deliberately did not
 	// create, and their naming is the decision #655 is sitting on.
+	import { confirm } from '$lib/confirm.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -128,10 +129,12 @@
 	// Undo over confirm is the rule (errors.md), but a delete here destroys the
 	// file — there is nothing to undo to. That is the case the rule exempts.
 	async function remove(track: Track) {
-		if (
-			!confirm(`Delete “${track.title}” from the pool? This cannot be undone.`)
-		)
-			return;
+		const ok = await confirm({
+			title: `Delete “${track.title}” from the pool?`,
+			body: 'The file goes with it. This cannot be undone.',
+			action: 'Delete track',
+		});
+		if (!ok) return;
 		const res = await deleteTrack(track.id);
 		if (!res.ok) {
 			error = res.error.message;

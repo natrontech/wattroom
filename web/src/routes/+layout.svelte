@@ -38,6 +38,7 @@
 	import Toasts from '$lib/components/Toasts.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
+	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 
 	let { children } = $props();
@@ -348,3 +349,4 @@
 <Toasts />
 <ImageViewer />
 <ContextMenuHost />
+<ConfirmHost />
