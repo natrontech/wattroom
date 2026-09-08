@@ -1,0 +1,1 @@
+- The app has a real sense of depth and rhythm: panels, cards and dialogs now read as distinct layers at a glance, spacing follows one scale instead of varying screen to screen, and dividers are visible at riding distance rather than only in a contrast readout.
