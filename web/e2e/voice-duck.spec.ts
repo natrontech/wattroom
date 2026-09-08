@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext } from '@playwright/test';
 import { signInAs } from './signin';
 
 /**
@@ -12,15 +12,53 @@ import { signInAs } from './signin';
  *
  * Needs `make infra`'s LiveKit container (e2e/server.js passes the same
  * devkey/secret `make dev-server` uses) and a real microphone signal, so this
- * runs in its own Playwright project with Chromium's fake capture device —
- * looping e2e/fixtures/fake-voice.wav, a continuous tone rather than the fake
- * device's default mostly-silent beep pattern — and `--mute-audio` so a real
- * voice never reaches whatever speakers this happens to run near (AGENTS.md:
- * "Mute before you play").
+ * runs in its own Playwright project (playwright.config.ts) with Chromium's
+ * fake-media flags.
+ *
+ * The signal itself is a SOUND, not a recording: `fakeMicrophone` below
+ * overrides `getUserMedia` to hand back a live `OscillatorNode`'s output
+ * (through a `MediaStreamAudioDestinationNode`) rather than pointing
+ * Chromium's own `--use-file-for-fake-audio-capture` at a WAV. A generated
+ * tone is guaranteed non-silent for as long as this page's Web Audio graph
+ * keeps running; a looped file additionally depends on Chromium's fake
+ * capture device correctly decoding and looping it, one more moving part
+ * between "the test wrote a signal" and "the app received one".
  */
 
 const A = 'Voice Dev A';
 const B = 'Voice Dev B';
+
+/**
+ * Make `getUserMedia({ audio: … })` on this context return a live tone
+ * instead of asking for real (or Chromium-faked) hardware — vibrato on a
+ * sawtooth rather than a flat sine, so the signal has the amplitude and
+ * harmonic variance a dead-flat test tone lacks, in case anything downstream
+ * (WebRTC's own DTX included) leans on that to tell signal from silence.
+ */
+async function fakeMicrophone(ctx: BrowserContext): Promise<void> {
+	await ctx.addInitScript(() => {
+		const real = navigator.mediaDevices.getUserMedia.bind(
+			navigator.mediaDevices,
+		);
+		navigator.mediaDevices.getUserMedia = async (constraints) => {
+			if (!constraints?.audio) return real(constraints);
+			const audioCtx = new AudioContext();
+			const osc = new OscillatorNode(audioCtx, {
+				type: 'sawtooth',
+				frequency: 180,
+			});
+			const vibrato = new OscillatorNode(audioCtx, { frequency: 5 });
+			const vibratoDepth = new GainNode(audioCtx, { gain: 40 });
+			vibrato.connect(vibratoDepth).connect(osc.detune);
+			const level = new GainNode(audioCtx, { gain: 0.5 });
+			const dest = audioCtx.createMediaStreamDestination();
+			osc.connect(level).connect(dest);
+			osc.start();
+			vibrato.start();
+			return dest.stream;
+		};
+	});
+}
 
 test("a real remote voice lights the listener's speaking ring, and losing it clears the ring", async ({
 	browser,
@@ -30,6 +68,11 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider and make infra only exist against a local dev server',
 	);
+	// Well under the suite's 5-minute default: everything here is either a
+	// join that resolves in seconds or an assertion with its own explicit
+	// timeout, so a run still going at 60s is stuck, not slow — fail it
+	// loudly rather than burning the shared budget finding that out.
+	test.setTimeout(60_000);
 
 	const aCtx = await browser.newContext({
 		baseURL,
@@ -39,6 +82,8 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		baseURL,
 		permissions: ['microphone'],
 	});
+	await fakeMicrophone(aCtx);
+	await fakeMicrophone(bCtx);
 	const a = await aCtx.newPage();
 	const b = await bCtx.newPage();
 
@@ -88,9 +133,13 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		// A fresh navigation does not carry the "user activation" a prior
 		// click left on the page it replaced, so LiveKit's playback can start
 		// blocked (#645, av.svelte.ts's "any first click unblocks it") — a
-		// real click, not just being on the page, is what starts remote audio.
-		await a.mouse.click(1, 1);
-		await b.mouse.click(1, 1);
+		// real gesture, not just being on the page, is what starts remote
+		// audio. A keypress rather than a click: a click's actionability wait
+		// (visible, stable, unobscured, hit-testable at that point) is one
+		// more thing that can stall against a page mid-layout, where a key
+		// event has no target to resolve at all.
+		await a.keyboard.press('Space');
+		await b.keyboard.press('Space');
 
 		// B's fake microphone is already publishing a continuous tone. On A's
 		// screen, B's tile should light the speaking ring (presence-marks.ts's

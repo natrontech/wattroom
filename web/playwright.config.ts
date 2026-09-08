@@ -1,19 +1,4 @@
-import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
-
-/**
- * 3 s of pink noise (e2e/fixtures/fake-voice.wav), looped by Chromium's fake
- * capture device as voice-duck.spec.ts's "remote microphone". The device's
- * default beep pattern is mostly silence between short beeps — real enough to
- * flip a state machine once, not real enough to hold a gate open for a
- * multi-second assertion. Noise rather than a pure tone: a dead-flat sine has
- * no amplitude variance at all, the one property speech-detection heuristics
- * anywhere in the chain (WebRTC's own DTX included) key off to tell signal
- * from silence.
- */
-const fakeVoiceWav = fileURLToPath(
-	new URL('./e2e/fixtures/fake-voice.wav', import.meta.url),
-);
 
 /**
  * PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
@@ -73,26 +58,33 @@ export default defineConfig({
 		},
 		{
 			// voice-duck.spec.ts is the one spec that needs a real microphone
-			// signal rather than none: Chromium's fake capture device (real
-			// audio, not silence) so getUserMedia produces something the mic
-			// gate and the meter actually see. Scoped to its own project —
-			// every other spec keeps the plain Desktop Chrome launch.
+			// signal rather than none. The signal itself is a live tone —
+			// voice-duck.spec.ts overrides getUserMedia with an OscillatorNode
+			// routed into a MediaStreamAudioDestinationNode, not a recording
+			// played through Chromium's own fake-file-capture device: a
+			// generated sound is guaranteed non-silent for as long as this
+			// page's Web Audio keeps running, where a looped file depends on
+			// Chromium's own fake device correctly decoding and looping it (a
+			// dependency, not a guarantee — the file-based device is the
+			// harder-to-reason-about half of the two). The launch flags below
+			// only cover what a script-supplied stream cannot: auto-granting
+			// the getUserMedia prompt and letting audio start without a
+			// user-gesture wait. Scoped to its own project — every other spec
+			// keeps the plain Desktop Chrome launch.
 			// No --mute-audio and no zeroed mixer (AGENTS.md's usual "mute
 			// before you play"): this spec's whole point is a real voice
 			// actually being heard, which AGENTS.md itself carves out —
 			// "Unless the audio is the thing under test". A real GitHub
 			// Actions runner has no speaker to reach either way; a developer
-			// running this locally hears one 3 s loop, once, per run.
+			// running this locally hears one short tone, once, per run.
 			name: 'voice',
 			testMatch: ['voice-duck.spec.ts'],
 			use: {
 				...devices['Desktop Chrome'],
 				launchOptions: {
 					args: [
-						'--use-fake-device-for-media-stream',
 						'--use-fake-ui-for-media-stream',
 						'--autoplay-policy=no-user-gesture-required',
-						`--use-file-for-fake-audio-capture=${fakeVoiceWav}`,
 					],
 				},
 			},
