@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import type { Crew } from '$lib/room/room-data';
+	import type { BoardRow, Crew } from '$lib/room/room-data';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { flatten } from '$lib/workout/engine';
@@ -59,6 +59,7 @@
 		medals = [],
 		streakWeeks = 0,
 		crew = null,
+		board = [],
 		monthKj = 0,
 		adminBusy = false,
 		onRole,
@@ -86,6 +87,7 @@
 		medals?: AdminMedal[];
 		streakWeeks?: number;
 		crew?: Crew | null;
+		board?: BoardRow[];
 		monthKj?: number;
 		adminBusy?: boolean;
 		onRole: (userId: string, role: string) => void;
@@ -427,6 +429,9 @@
 		},
 		get crew() {
 			return crew;
+		},
+		get board() {
+			return board;
 		},
 		get streakWeeks() {
 			return streakWeeks;

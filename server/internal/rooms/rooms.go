@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"regexp"
 	"slices"
@@ -178,6 +179,18 @@ type crewJSON struct {
 	Attended []bool `json:"attended"`
 }
 
+// One rider's week on a room's ordered board (#995, ADR-0036). Category is a
+// bracket rather than a rank — it says who to compare with, which is the
+// useful half (RESEARCH.md §14.4) — and it comes from the FTP and weight the
+// room already shows on every member, not from rides outside this room.
+type boardRowJSON struct {
+	Id          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	Kj          int64  `json:"kj"`
+	Seconds     int64  `json:"seconds"`
+	Category    string `json:"category"`
+}
+
 type memberJSON struct {
 	ID           string  `json:"id"`
 	DisplayName  string  `json:"displayName"`
@@ -231,6 +244,13 @@ type roomJSON struct {
 	// What the crew did together (#995, ADR-0036). Members only, like every
 	// other room number, and cooperative by construction — see crewJSON.
 	Crew *crewJSON `json:"crew,omitempty"`
+	// Whether this room has turned its ordered board on (ADR-0036). Off is the
+	// default and stays the default: being in a room must not put a rider on a
+	// board. Members only, like the setting it mirrors.
+	BoardEnabled bool `json:"boardEnabled,omitempty"`
+	// This week's board, present only when the room has enabled it. Resets on
+	// Monday with the streak's week — a bad week is never permanent.
+	Board []boardRowJSON `json:"board,omitempty"`
 	// Planned rides (#116): the full upcoming list for members, and just the
 	// next one for the list view — the nav shows where the action will be.
 	Upcoming    []scheduledJSON `json:"upcoming,omitempty"`
@@ -409,6 +429,28 @@ func (s *Service) crew(ctx context.Context, roomID, viewer pgtype.UUID) *crewJSO
 	return out
 }
 
+// board reads this week's ordered board. Only called when the room has turned
+// it on; soft-fails to nil like every other stats read beside it.
+func (s *Service) board(ctx context.Context, roomID pgtype.UUID) []boardRowJSON {
+	rows, err := s.store.Queries.RoomWeekBoard(ctx, roomID)
+	if err != nil {
+		return nil
+	}
+	out := make([]boardRowJSON, 0, len(rows))
+	for _, row := range rows {
+		// SPEC defines FTP as 0.95 x the 90-day best 20-minute power, so the
+		// bracket reads off the FTP the room already publishes rather than
+		// querying rides this room cannot see.
+		best20m := int(math.Round(float64(row.FtpWatts) / 0.95))
+		out = append(out, boardRowJSON{
+			Id: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
+			Kj: row.Kj, Seconds: row.Seconds,
+			Category: stats.Category(best20m, float64(row.WeightKg)),
+		})
+	}
+	return out
+}
+
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	room, ok := s.roomBySlug(w, r)
 	if !ok {
@@ -489,6 +531,10 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				response.MonthKj = kj
 			}
 			response.Crew = s.crew(r.Context(), room.ID, user.ID)
+			response.BoardEnabled = room.BoardEnabled
+			if room.BoardEnabled {
+				response.Board = s.board(r.Context(), room.ID)
+			}
 			medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
 				RoomID: room.ID, Limit: 24,
 			})
@@ -596,6 +642,8 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		SoundPack string    `json:"soundPack"`
 		Icon      *string   `json:"icon"`   // nil keeps, "" clears
 		Cheers    *[]string `json:"cheers"` // nil keeps, [] resets to base
+		// nil keeps: a rename must not silently switch the board on or off.
+		BoardEnabled *bool `json:"boardEnabled"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -650,9 +698,13 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		cheers = strings.Join(deduped, " ") // "" = back to the base set
 	}
+	boardEnabled := room.BoardEnabled
+	if req.BoardEnabled != nil {
+		boardEnabled = *req.BoardEnabled
+	}
 	updated, err := s.store.Queries.UpdateRoom(r.Context(), db.UpdateRoomParams{
 		ID: room.ID, Name: req.Name, Listed: req.Listed, SoundPack: req.SoundPack,
-		Icon: icon, Cheers: cheers,
+		Icon: icon, Cheers: cheers, BoardEnabled: boardEnabled,
 	})
 	if err != nil {
 		s.log.Error("room update failed", "err", err, "room", room.Slug)
@@ -664,6 +716,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Icon: updated.Icon,
 		Listed: updated.Listed, SoundPack: updated.SoundPack,
 		Cheers: cheerSet(updated.Cheers), Role: "owner",
+		BoardEnabled: updated.BoardEnabled,
 	})
 }
 

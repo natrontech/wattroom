@@ -29,6 +29,18 @@ export interface Crew {
 	attended: boolean[];
 }
 
+/**
+ * One rider's week on a room's opt-in board (#995, ADR-0036). Category is a
+ * bracket, not a rank — it says who is comparable, which is the useful half.
+ */
+export interface BoardRow {
+	id: string;
+	displayName: string;
+	kj: number;
+	seconds: number;
+	category: string;
+}
+
 export interface Room {
 	slug: string;
 	name: string;
@@ -43,6 +55,8 @@ export interface Room {
 	streakWeeks?: number;
 	monthKj?: number;
 	crew?: Crew;
+	boardEnabled?: boolean;
+	board?: BoardRow[];
 	upcoming?: {
 		id: string;
 		workoutName: string;

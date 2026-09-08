@@ -1,0 +1,1 @@
+- A room can now turn on a weekly board: everyone's kJ for the current week, listed under the crew's tiles with each rider's category beside it. It is off until the room's owner switches it on, it resets every Monday, and nothing carries over between weeks — being in a room does not put you on a board.

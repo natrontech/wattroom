@@ -98,7 +98,8 @@ select * from memberships where room_id = $1 and user_id = $2;
 select * from memberships where user_id = sqlc.arg(user_id) and room_id = any(sqlc.arg(room_ids)::uuid[]);
 
 -- name: UpdateRoom :one
-update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6
+update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
+                 board_enabled = $7
 where id = $1 returning *;
 
 -- name: DeleteRoom :exec
