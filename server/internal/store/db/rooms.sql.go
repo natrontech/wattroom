@@ -386,6 +386,60 @@ func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, 
 	return items, nil
 }
 
+const listListedRooms = `-- name: ListListedRooms :many
+select r.slug, r.name, r.icon
+from rooms r
+where r.listed
+order by r.name asc, r.slug asc
+limit $2 offset $1
+`
+
+type ListListedRoomsParams struct {
+	Off int32
+	Lim int32
+}
+
+type ListListedRoomsRow struct {
+	Slug string
+	Name string
+	Icon string
+}
+
+// The opt-in public directory (#1118, ADR-0039). Every room whose owner has
+// chosen to be findable, and NOTHING ELSE ABOUT THEM.
+//
+// The columns are the whole disclosure decision, so they are the thing to
+// read twice: name, icon, slug. No member count, no activity, no owner, no
+// last-ridden. A directory entry is a way to find the door, not a window —
+// and #1025 is still open on whether a room-MATE may see the counts behind a
+// badge, which settles it for a stranger who has not joined at all.
+//
+// Adding a column here later widens what strangers see and is a decision.
+// Removing one narrows it and breaks a promise already made. The narrow
+// version is the one that can still move.
+//
+// Ordered by name because there is no other honest order: "most active" and
+// "biggest" are the disclosures this deliberately does not make.
+func (q *Queries) ListListedRooms(ctx context.Context, arg ListListedRoomsParams) ([]ListListedRoomsRow, error) {
+	rows, err := q.db.Query(ctx, listListedRooms, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListListedRoomsRow
+	for rows.Next() {
+		var i ListListedRoomsRow
+		if err := rows.Scan(&i.Slug, &i.Name, &i.Icon); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMembershipsForUser = `-- name: ListMembershipsForUser :many
 select room_id, user_id, role, joined_at, notify, on_board from memberships where user_id = $1 and room_id = any($2::uuid[])
 `

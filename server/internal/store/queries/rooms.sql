@@ -217,3 +217,25 @@ order by r.created_at;
 update memberships set notify = $3, on_board = $4
 where room_id = $1 and user_id = $2
 returning notify, on_board;
+
+-- name: ListListedRooms :many
+-- The opt-in public directory (#1118, ADR-0039). Every room whose owner has
+-- chosen to be findable, and NOTHING ELSE ABOUT THEM.
+--
+-- The columns are the whole disclosure decision, so they are the thing to
+-- read twice: name, icon, slug. No member count, no activity, no owner, no
+-- last-ridden. A directory entry is a way to find the door, not a window —
+-- and #1025 is still open on whether a room-MATE may see the counts behind a
+-- badge, which settles it for a stranger who has not joined at all.
+--
+-- Adding a column here later widens what strangers see and is a decision.
+-- Removing one narrows it and breaks a promise already made. The narrow
+-- version is the one that can still move.
+--
+-- Ordered by name because there is no other honest order: "most active" and
+-- "biggest" are the disclosures this deliberately does not make.
+select r.slug, r.name, r.icon
+from rooms r
+where r.listed
+order by r.name asc, r.slug asc
+limit sqlc.arg(lim) offset sqlc.arg(off);

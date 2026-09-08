@@ -563,6 +563,68 @@
 			</label>
 		</section>
 
+		<!-- The one control that takes a room from private-by-default to
+		     findable by people who have never been in it (#1118, ADR-0039).
+		     Worded as the privacy choice it is rather than as a checkbox
+		     called "listed", and it says what each option actually does —
+		     including the half riders assume and should not: being findable
+		     is not being readable. -->
+		<section class="panel mt-3 p-6">
+			<h2 class="font-display font-bold">Who can find this room</h2>
+			<p class="text-muted mt-1.5 text-xs">
+				Finding is not joining and it is not reading. Whichever you pick, the
+				chat, the members and the numbers stay for people who are actually in
+				here.
+			</p>
+			<div
+				class="mt-3 space-y-2"
+				role="radiogroup"
+				aria-label="who can find this room"
+			>
+				<button
+					role="radio"
+					aria-checked={!listed}
+					onclick={() => {
+						listed = false;
+						void save();
+					}}
+					disabled={busy}
+					class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {!listed
+						? 'ring-neon border-neon/40 bg-neon/10 ring-1'
+						: 'border-muted/15'}"
+				>
+					<span class="min-w-0">
+						<span class="block text-sm font-medium">Unlisted</span>
+						<span class="text-muted block text-xs">
+							Only people you give the code or the link to. This is how every
+							room starts.
+						</span>
+					</span>
+				</button>
+				<button
+					role="radio"
+					aria-checked={listed}
+					onclick={() => {
+						listed = true;
+						void save();
+					}}
+					disabled={busy}
+					class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {listed
+						? 'ring-neon border-neon/40 bg-neon/10 ring-1'
+						: 'border-muted/15'}"
+				>
+					<span class="min-w-0">
+						<span class="block text-sm font-medium">Listed</span>
+						<span class="text-muted block text-xs">
+							Anyone signed in can find this room by name in the directory, and
+							ask to come in. They see its name and icon — nothing about who
+							rides here or what you did.
+						</span>
+					</span>
+				</button>
+			</div>
+		</section>
+
 		<!-- An owner is a rider too: they are on their own room's board, and
 		     get their own room's mail. Same block as the member view. -->
 		{@render myPrefs()}

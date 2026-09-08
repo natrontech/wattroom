@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,6 +141,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms", s.handleCreate)
 	mux.HandleFunc("GET /api/rooms", s.handleMine)
 	mux.HandleFunc("POST /api/rooms/join", s.handleJoinByCode)
+	mux.HandleFunc("GET /api/rooms/directory", s.handleDirectory)
 	mux.HandleFunc("GET /api/rooms/{slug}", s.handleGet)
 	mux.HandleFunc("PATCH /api/rooms/{slug}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/rooms/{slug}", s.handleDelete)
@@ -892,6 +894,11 @@ func (s *Service) requireRole(w http.ResponseWriter, r *http.Request, role strin
 	return room, user, true
 }
 
+// directoryPageSize is one screenful. A list rather than a search (ux.md's
+// 95% rule applies to a search box too), and paged rather than unbounded so
+// the route cannot become a way to enumerate the instance in one request.
+const directoryPageSize = 50
+
 // RequireMember loads the room at {slug} and refuses unless the caller is a
 // member of any role — the one gate every room-scoped surface (chat,
 // playlists, RSVP) stands behind (#638). A banned rider holds a row, not a
@@ -914,6 +921,50 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 		return db.Room{}, db.User{}, false
 	}
 	return room, user, true
+}
+
+// directoryEntryJSON is one room in the public directory (#1118, ADR-0039):
+// what it is called, what it looks like, and where its door is. The absence
+// of a member count and of any activity signal is the decision, not an
+// oversight — see the query.
+type directoryEntryJSON struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	Icon string `json:"icon,omitempty"`
+}
+
+// handleDirectory lists rooms whose owners chose to be findable.
+//
+// Signed in, because everything in WattRoom is (ADR-0009) — "opt-in public"
+// means opt-in to every rider on the instance, not to the web. Listing a room
+// widens DISCOVERY and never ACCESS: this route hands back three fields, and
+// a non-member following the slug still meets exactly the gates they met
+// before, which is asserted rather than assumed.
+//
+// Registered before "GET /api/rooms/{slug}" so the literal wins over the
+// wildcard — Go's mux prefers the more specific pattern, but the order also
+// says which one is meant to.
+func (s *Service) handleDirectory(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.users.RequireUser(w, r, "Sign in to browse rooms."); !ok {
+		return
+	}
+	limit, offset := directoryPageSize, 0
+	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
+		offset = n
+	}
+	rows, err := s.store.Queries.ListListedRooms(r.Context(), db.ListListedRoomsParams{
+		Lim: int32(limit), Off: int32(offset), //nolint:gosec // both bounded here
+	})
+	if err != nil {
+		s.log.Error("room directory failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The directory could not be loaded.")
+		return
+	}
+	out := make([]directoryEntryJSON, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, directoryEntryJSON{Slug: row.Slug, Name: row.Name, Icon: row.Icon})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out})
 }
 
 // handleSetMyPrefs writes the caller's own settings for this room (#1100).

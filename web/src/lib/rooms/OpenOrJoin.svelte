@@ -120,6 +120,14 @@
 					class="btn btn-secondary mt-3 w-full">Join room</button
 				>
 			</form>
+			<!-- The directory is the other half of "join a room" (#1118), not a
+			     place of its own — nav/pages.ts retires anything that is the
+			     second half of a page here, and this is exactly that. -->
+			<p class="text-muted mt-3 text-xs">
+				No code? <a href="/rooms/directory" class="underline"
+					>Find a room that listed itself</a
+				>.
+			</p>
 		</div>
 	</div>
 </section>
