@@ -1,1 +1,0 @@
-- A room's owner can hand it to one of its members — right-click them on the Members place. You stay on as a coach. Until now a room could never change hands, and it vanished for everyone the day its owner deleted their account. (#1227)

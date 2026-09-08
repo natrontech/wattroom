@@ -17,6 +17,27 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.51] - 2026-09-08
+
+### Added
+
+- A crew's owner and admins can open any of the crew's rooms to the crew, or make it private again, from the crew page — including rooms they have never entered. The room's contents stay its members'; only who may walk in changes. (#1226)
+- A crew can have an icon: its owner or an admin clicks the crew's mark on the crew page and picks one from the same set rooms use. The sidebar switcher and the crew strip draw it. (#1209)
+- The desktop app is now offered where you will see it: once on the home page with the installer for your computer, as a quiet row at the bottom of the sidebar, and under the landing page's sign-in. Not on a phone, and never inside the app itself.
+- The desktop app floats your watts, target and time left in a small window over whatever else is on screen while a ride runs and WattRoom is not in front — and room events now reach you as system notifications there, once you flip the notification switch.
+- A crew's page has a "Leave the crew" button for members: it leaves every room of the crew you are in, in one move, with an undo. It says up front when you own a room there and have to hand it on first. (#1228)
+- Notifications finally reach you: a message, someone arriving, a session starting or a poke, whenever the window is hidden or behind another app. The desktop app has them on from the start; in a browser, turn them on from your profile. A click lands in the conversation, and on a Mac the desktop app lets you reply right from the notification.
+- The owner of a private room can let one crew-mate in without opening the room to the whole crew: the Members place lists crew-mates outside the room with a "Let in" button, and who has been let in but not walked in yet. They see the room in their sidebar and join themselves — being let in is not joining. (#1224)
+- A room's owner can hand it to one of its members — right-click them on the Members place. You stay on as a coach. Until now a room could never change hands, and it vanished for everyone the day its owner deleted their account. (#1227)
+
+### Changed
+
+- The crew switcher at the top of the sidebar is a plain row like Home and Friends below it, and opening it lists your crews in place instead of dropping a card. With one crew the row simply opens the crew's page. (#1238)
+
+### Fixed
+
+- Joining voice can no longer sit at "joining voice…" for the rest of a ride. If the connection neither opens nor fails within twenty seconds, voice reports that it did not connect in time and offers "Try voice again". (#1203)
+
 ## [2026.09.50] - 2026-09-08
 
 ### Added
@@ -1189,7 +1210,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.50...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.51...HEAD
+[2026.09.51]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.4...2026.09.51
 [2026.09.50]: https://github.com/natrontech/wattroom/compare/2026.09.49...2026.09.50
 [2026.09.49]: https://github.com/natrontech/wattroom/compare/2026.09.48...2026.09.49
 [2026.09.48]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.3...2026.09.48

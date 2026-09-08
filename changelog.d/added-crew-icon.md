@@ -1,1 +1,0 @@
-- A crew can have an icon: its owner or an admin clicks the crew's mark on the crew page and picks one from the same set rooms use. The sidebar switcher and the crew strip draw it. (#1209)

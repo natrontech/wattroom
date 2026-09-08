@@ -1,1 +1,0 @@
-- Joining voice can no longer sit at "joining voice…" for the rest of a ride. If the connection neither opens nor fails within twenty seconds, voice reports that it did not connect in time and offers "Try voice again". (#1203)

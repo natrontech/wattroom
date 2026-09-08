@@ -1,1 +1,0 @@
-- The crew switcher at the top of the sidebar is a plain row like Home and Friends below it, and opening it lists your crews in place instead of dropping a card. With one crew the row simply opens the crew's page. (#1238)
