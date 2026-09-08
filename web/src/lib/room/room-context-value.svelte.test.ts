@@ -62,6 +62,8 @@ function shellProps(): RoomShellProps {
 		adminBusy: false,
 		onRole: () => {},
 		onRemove: () => {},
+		onGrant: () => {},
+		onRevoke: () => {},
 		onSchedule: () => {},
 		onReschedule: () => {},
 		onUnschedule: () => {},

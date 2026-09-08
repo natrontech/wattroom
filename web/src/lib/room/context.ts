@@ -116,6 +116,17 @@ export interface RoomContext {
 		crewBanned?: boolean;
 	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
+	/** Open to its crew (ADR-0038). */
+	readonly crewVisible: boolean;
+	/**
+	 * A private room's named exceptions (#1224), owner only: crew-mates let
+	 * in who have not walked in yet, and the crew-mates outside.
+	 */
+	readonly invited: RoomContext['members'];
+	readonly crewOutside: RoomContext['members'];
+	/** Let a crew-mate in, or take the door back before they used it. */
+	grant(userId: string): void;
+	revoke(userId: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
 	/** Say you are in for a planned session, or take it back (#450). */

@@ -59,6 +59,12 @@ export interface RoomShellProps {
 	code?: string;
 	soundPack?: string;
 	members?: AdminMember[];
+	/** The private room's door list (#1224): let in, and outside. */
+	crewVisible?: boolean;
+	invited?: AdminMember[];
+	crewOutside?: AdminMember[];
+	onGrant: (userId: string) => void;
+	onRevoke: (userId: string) => void;
 	medals?: AdminMedal[];
 	streakWeeks?: number;
 	together?: Together | null;
@@ -216,6 +222,17 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get members() {
 			return props.members ?? [];
 		},
+		get crewVisible() {
+			return props.crewVisible ?? false;
+		},
+		get invited() {
+			return props.invited ?? [];
+		},
+		get crewOutside() {
+			return props.crewOutside ?? [];
+		},
+		grant: (userId) => props.onGrant(userId),
+		revoke: (userId) => props.onRevoke(userId),
 		get medals() {
 			return props.medals ?? [];
 		},

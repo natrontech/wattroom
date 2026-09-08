@@ -286,6 +286,64 @@
 		{/each}
 	</ul>
 
+	{#if isOwner && !room.crewVisible && (room.invited.length || room.crewOutside.length)}
+		<!-- A private room's named exceptions (ADR-0038, #1224). A grant is a
+		     door, not a membership: they see the room in their sidebar and walk
+		     in themselves — being let in is not joining, so nothing of theirs
+		     is shown here until they do. -->
+		<h3 class="eyebrow mt-8">let in from the crew</h3>
+		<p class="text-muted mt-1 text-xs">
+			This room is private. A crew-mate you let in sees it in their sidebar and
+			can walk in — they still join themselves. Open the room to the whole crew
+			in Settings instead if that is what you mean.
+		</p>
+		<ul class="divide-ink/5 panel mt-2 divide-y">
+			{#each room.invited as person (person.id)}
+				<li class="flex min-h-11 items-center gap-3 px-4 py-2">
+					<Avatar
+						name={person.displayName}
+						avatarUrl={person.avatarUrl}
+						preset={person.avatarPreset}
+						ring="var(--color-surface-raised)"
+						size={28}
+					/>
+					<span class="min-w-0 flex-1">
+						<span class="block truncate text-sm">{person.displayName}</span>
+						<span class="text-muted block text-[11px]">let in · not in yet</span
+						>
+					</span>
+					<button
+						onclick={() => room.revoke(person.id)}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0">Take back</button
+					>
+				</li>
+			{/each}
+			{#each room.crewOutside as person (person.id)}
+				<li class="flex min-h-11 items-center gap-3 px-4 py-2">
+					<Avatar
+						name={person.displayName}
+						avatarUrl={person.avatarUrl}
+						preset={person.avatarPreset}
+						ring="var(--color-surface-raised)"
+						size={28}
+					/>
+					<span class="min-w-0 flex-1">
+						<span class="block truncate text-sm">{person.displayName}</span>
+						<span class="text-muted block text-[11px]"
+							>in the crew, not in this room</span
+						>
+					</span>
+					<button
+						onclick={() => room.grant(person.id)}
+						disabled={room.adminBusy}
+						class="btn btn-secondary btn-xs shrink-0">Let in</button
+					>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+
 	<h3 class="eyebrow mt-8">invite</h3>
 	<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
 		<span class="min-w-0">
