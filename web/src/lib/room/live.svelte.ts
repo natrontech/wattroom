@@ -68,6 +68,22 @@ export function createRoomLive(slug: string) {
 	// line — usually applied the moment they arrive, kept only when a flood
 	// carries the line to a later tick than its id.
 	let pendingIds: Record<string, string> = {};
+	/**
+	 * What names a line before and after its save: its id once it has one,
+	 * and the author + server time the id announcement is keyed by (#219).
+	 * The backlog and the tick can each carry the same line, and only one of
+	 * the two copies knows the id (#1231).
+	 */
+	function lineKeys(line: {
+		id?: string;
+		fromId?: string;
+		at: number;
+	}): string[] {
+		const keys: string[] = [];
+		if (line.id) keys.push(line.id);
+		if (line.fromId) keys.push(`${line.fromId}:${line.at}`);
+		return keys;
+	}
 	// Edits that named an id no line here carries yet (#1231): the save runs
 	// off the read loop, so a line's id follows in a later tick, and an author
 	// can edit inside that gap. Held until the id lands, like pendingIds.
@@ -184,23 +200,24 @@ export function createRoomLive(slug: string) {
 				}
 				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 				if (msg.tick.chat?.length) {
-					// A line posted from outside the room (#468) arrives with its
-					// id already on it — and may already be here from a backlog
-					// fetch that raced the tick. One line, once.
-					const have = new Set(chatLog.map((line) => line.id).filter(Boolean));
+					// A line may already be here from the backlog fetch that raced
+					// the tick (#468, #1231): by id when it was posted from outside
+					// the room, by author and time when posted from inside — the
+					// tick's copy has no id yet. One line, once.
+					const have = new Set(chatLog.flatMap(lineKeys));
 					const fresh = msg.tick.chat.filter(
-						(line) => !line.id || !have.has(line.id),
+						(line) => !lineKeys(line).some((k) => have.has(k)),
 					);
 					if (fresh.length > 0) chatLog = [...chatLog, ...fresh].slice(-200);
 				}
 				if (Object.keys(pendingIds).length > 0) {
 					chatLog = chatLog.map((line) => {
-						const id = line.id
-							? undefined
-							: pendingIds[`${line.fromId}:${line.at}`];
+						const key = `${line.fromId}:${line.at}`;
+						const id = pendingIds[key];
 						if (!id) return line;
-						delete pendingIds[`${line.fromId}:${line.at}`];
-						return { ...line, id };
+						delete pendingIds[key];
+						// The backlog may have named it first (#1231).
+						return line.id ? line : { ...line, id };
 					});
 					// An id whose line never surfaced (pruned by the 200-line cap)
 					// would pool forever — reset the stragglers.
@@ -434,8 +451,6 @@ export function createRoomLive(slug: string) {
 			// Live lines may land before the backlog resolves; the seed merges
 			// UNDER them by id — replacing wholesale ate the first seconds of a
 			// conversation (audit #219). Live reaction counts stay authoritative.
-			const liveIds = new Set(chatLog.map((line) => line.id).filter(Boolean));
-
 			// ...but a line we already hold still has to take an edit we
 			// missed (#1082). The edit fan-out rides one tick and is never
 			// re-sent, so a rider whose socket flapped across it never saw the
@@ -446,18 +461,28 @@ export function createRoomLive(slug: string) {
 			// editedAt is the version, so this cannot undo the race above: a
 			// live edit that landed while the fetch was in flight is newer
 			// than the backlog's copy and stays.
-			const seeded = new Map(messages.map((m) => [m.id, m]));
+			//
+			// A live line not yet told its id is the backlog's line by author
+			// and time (#1231); it takes the id here rather than a twin.
+			const seeded = new Map(
+				messages.flatMap((m) => lineKeys(m).map((k) => [k, m] as const)),
+			);
+			const held = new Set<string>();
 			chatLog = chatLog.map((line) => {
-				const m = line.id ? seeded.get(line.id) : undefined;
+				const m = lineKeys(line)
+					.map((k) => seeded.get(k))
+					.find(Boolean);
 				if (!m) return line;
-				return (m.editedAt ?? 0) > (line.editedAt ?? 0)
-					? { ...line, text: m.text, editedAt: m.editedAt }
-					: line;
+				held.add(m.id);
+				const named = line.id ? line : { ...line, id: m.id };
+				return (m.editedAt ?? 0) > (named.editedAt ?? 0)
+					? { ...named, text: m.text, editedAt: m.editedAt }
+					: named;
 			});
 
 			chatLog = [
 				...messages
-					.filter((m) => !liveIds.has(m.id))
+					.filter((m) => !held.has(m.id))
 					.map((m) => ({
 						id: m.id,
 						from: m.from,
