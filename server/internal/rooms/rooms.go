@@ -161,6 +161,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
 	s.registerCrews(mux)
 	s.registerGrants(mux)
+	mux.HandleFunc("POST /api/rooms/{slug}/transfer", s.handleTransferRoom)
 }
 
 // --- responses ---
@@ -1313,3 +1314,78 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 }
 
 var errNotMember = errors.New("rooms: not a member")
+
+// handleTransferRoom hands the room to one of its members (#1227). Until now
+// ownership did not move at all, and rooms.owner_id cascades: the day an
+// owner deleted their account the room went with it — its chat, medals and
+// plan, for everyone in it — which since ADR-0038 is a group's place inside a
+// crew, often opened by an admin (#1201). The old owner becomes a coach: they
+// were running it a moment ago. The new owner's cap binds (docs/SPEC.md).
+func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
+	room, owner, ok := s.requireRole(w, r, "owner")
+	if !ok {
+		return
+	}
+	var req struct {
+		UserID string `json:"userId"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	target, err := store.ParseUUID(req.UserID)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a user id.", "userId")
+		return
+	}
+	if target == owner.ID {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You already own this room.")
+		return
+	}
+	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{RoomID: room.ID, UserID: target})
+	if err != nil || m.Role == "banned" {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"A room passes to one of its members — they have to be in here, and not banned.")
+		return
+	}
+	if banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target}); err != nil || banned {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"They are banned from the crew this room is in. Lift that first if you mean it.")
+		return
+	}
+	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), target); err == nil && owned >= maxOwnedRooms {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			fmt.Sprintf("They already own %d rooms — the cap. They would have to delete one first.", maxOwnedRooms))
+		return
+	}
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("room transfer begin failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	err = q.TransferRoom(r.Context(), db.TransferRoomParams{ID: room.ID, OwnerID: target})
+	if err == nil {
+		err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: target, Role: "owner"})
+	}
+	if err == nil {
+		err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: owner.ID, Role: "coach"})
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
+	if err != nil {
+		s.log.Error("room transfer failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
+		return
+	}
+	if s.presence != nil {
+		s.presence.SetRole(room.Slug, req.UserID, "owner")
+		s.presence.SetRole(room.Slug, store.UUIDString(owner.ID), "coach")
+	}
+	s.log.Info("room handed on", "room", room.Slug, "from", store.UUIDString(owner.ID), "to", req.UserID)
+	s.changed()
+	w.WriteHeader(http.StatusNoContent)
+}

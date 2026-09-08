@@ -203,6 +203,12 @@ where id = $1 returning ics_token;
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;
 
+-- name: TransferRoom :exec
+-- The room changes hands (#1227). Always with both membership rows
+-- rewritten in the same transaction: the owner column and the 'owner'
+-- role are two answers to one question and must not disagree.
+update rooms set owner_id = $2 where id = $1;
+
 -- name: ListUserCalendar :many
 -- Every room the rider is in, one list (#325). $2 is the horizon and is the
 -- only difference between the two callers: the iCal feed keeps a month of

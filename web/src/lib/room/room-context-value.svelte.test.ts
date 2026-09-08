@@ -64,6 +64,7 @@ function shellProps(): RoomShellProps {
 		onRemove: () => {},
 		onGrant: () => {},
 		onRevoke: () => {},
+		onTransfer: () => {},
 		onSchedule: () => {},
 		onReschedule: () => {},
 		onUnschedule: () => {},

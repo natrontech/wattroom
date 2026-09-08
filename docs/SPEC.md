@@ -35,6 +35,7 @@
 | ------------------------------------------------------------------------------------- | ----- | ----- | --------------------------- | ----------------- |
 | Edit room (name, icon, listing, sound pack, reaction set, weekly board)               | ✓     | –     | –                           | –                 |
 | Assign/remove coach role                                                              | ✓     | –     | –                           | –                 |
+| Hand the room to a member — you stay on as a coach (#1227)                            | ✓     | –     | –                           | –                 |
 | Remove / ban / unban member (#223)                                                    | ✓     | –     | –                           | –                 |
 | Pick workout / mode, start countdown, pause/end session                               | ✓     | ✓     | –                           | –                 |
 | Arm sprint moments                                                                    | ✓     | ✓     | –                           | –                 |
