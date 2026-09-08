@@ -1,1 +1,0 @@
-- Music is a place now: browse the crew's shared library, search it by title, artist or album, and drop MP3s straight onto the page to add them. Tags come out of the files and every field stays editable, so a badly-tagged track gets fixed rather than re-uploaded.

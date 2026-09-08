@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.45] - 2026-09-08
+
+### Added
+
+- Music is a place now: browse the crew's shared library, search it by title, artist or album, and drop MP3s straight onto the page to add them. Tags come out of the files and every field stays editable, so a badly-tagged track gets fixed rather than re-uploaded.
+- A track from the music pool can go in the room's queue beside YouTube links and plays for everyone in sync, like anything else on the deck. It shows as a card rather than a video — there is nothing to watch — and the queue interleaves the two sources in one list.
+
 ## [2026.09.44] - 2026-09-08
 
 ### Fixed
@@ -1061,7 +1068,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.44...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.45...HEAD
+[2026.09.45]: https://github.com/natrontech/wattroom/compare/2026.09.44...2026.09.45
 [2026.09.44]: https://github.com/natrontech/wattroom/compare/2026.09.43...2026.09.44
 [2026.09.43]: https://github.com/natrontech/wattroom/compare/2026.09.42...2026.09.43
 [2026.09.42]: https://github.com/natrontech/wattroom/compare/2026.09.41...2026.09.42
