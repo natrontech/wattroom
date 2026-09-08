@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.49] - 2026-09-08
+
+### Fixed
+
+- **The + beside your rooms does something now.** It opens "Open a room" and "Or join with a code" right there, in the crew you are looking at, instead of pointing at a spot on Home the page could not scroll to. Home's own "Open a room" button and the old /rooms link land on the forms too.
+- fixed: the speaking ring and voice ducking now react to a teammate's voice — they never actually worked for any remote rider before this
+
 ## [2026.09.48] - 2026-09-08
 
 ### Changed
@@ -1165,7 +1172,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.48...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.49...HEAD
+[2026.09.49]: https://github.com/natrontech/wattroom/compare/2026.09.48...2026.09.49
 [2026.09.48]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.3...2026.09.48
 [2026.09.47]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.2...2026.09.47
 [2026.09.46]: https://github.com/natrontech/wattroom/compare/2026.09.45...2026.09.46
