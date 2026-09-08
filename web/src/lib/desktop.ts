@@ -11,6 +11,8 @@
  * feed is a 404, and a 404 means "no build yet" — the page teaches, it does
  * not apologise (ux.md).
  */
+import { api } from '$lib/api';
+
 export type OS = 'mac' | 'windows' | 'linux' | 'phone' | 'other';
 
 export interface Installer {
@@ -141,4 +143,74 @@ export function latestRelease(): Promise<DesktopRelease | null> {
 		.then((json) => (json ? parseRelease(json) : null))
 		.catch(() => null);
 	return latest;
+}
+
+// ── Signing in from the shell (#1188, ADR-0040) ──────────────────────────
+//
+// The shell cannot sign a rider in (no WebAuthn UI; Google refuses OAuth from
+// Electron), so it sends them to the ordinary login page in the system
+// browser with a nonce, and the browser comes back through wattroom://auth.
+// The nonce lives in localStorage rather than sessionStorage: on Windows and
+// Linux the link can arrive as a cold start, and a fresh window has no
+// session storage to remember anything with.
+
+const NONCE_KEY = 'wattroom.desktop-signin.v1';
+const NONCE_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
+
+/** The login page the browser opens: our own origin, the nonce in the query. */
+export function browserSignInUrl(origin: string, nonce: string): string {
+	return `${origin}/login?desktop=${encodeURIComponent(nonce)}`;
+}
+
+/** A fresh nonce, remembered until the handoff redeems it. */
+export function startBrowserSignIn(): string {
+	const nonce = crypto.randomUUID().replace(/-/g, '');
+	try {
+		localStorage.setItem(NONCE_KEY, nonce);
+	} catch {
+		/* no storage: the redeem fails closed, and the page says to try again */
+	}
+	return nonce;
+}
+
+/** The nonce from a `?desktop=` query, only if it looks like one we made. */
+export function desktopNonce(search: URLSearchParams): string | null {
+	const n = search.get('desktop');
+	return n && NONCE_SHAPE.test(n) ? n : null;
+}
+
+/** In the browser, once signed in: a one-time token → the link back to the app. */
+export async function handoffLink(nonce: string): Promise<string | null> {
+	const res = await api<{ token: string }>('/api/auth/desktop/handoff', {
+		method: 'POST',
+		json: { nonce },
+	});
+	return res.ok ? `wattroom://auth/${res.data.token}` : null;
+}
+
+/**
+ * In the shell, arriving on `/login?handoff=<token>`: redeem it with the
+ * nonce this window kept. A message when it did not work, null when it did —
+ * the session cookie is then set and `account.load()` finds it.
+ */
+export async function redeemHandoff(token: string): Promise<string | null> {
+	let nonce: string | null = null;
+	try {
+		nonce = localStorage.getItem(NONCE_KEY);
+	} catch {
+		/* handled below */
+	}
+	if (!nonce) {
+		return 'This sign-in was started somewhere else. Start again from this app.';
+	}
+	const res = await api<unknown>('/api/auth/desktop/redeem', {
+		method: 'POST',
+		json: { token, nonce },
+	});
+	try {
+		localStorage.removeItem(NONCE_KEY);
+	} catch {
+		/* fine */
+	}
+	return res.ok ? null : res.error.message;
 }
