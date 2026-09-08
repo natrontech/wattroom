@@ -15,6 +15,12 @@ type Step struct {
 	To      float64 `json:"to,omitempty"`
 	Times   int     `json:"times,omitempty"`
 	Steps   []Step  `json:"steps,omitempty"`
+	// The cadence band a steady block may carry (#66) — display-only to the
+	// rider, but the server reads it too since #270: it is the only thing in
+	// a workout that says what rpm the room is actually turning, which is
+	// what music can be matched to. Absent is 0, meaning "nobody said".
+	CadenceLow  int `json:"cadenceLow,omitempty"`
+	CadenceHigh int `json:"cadenceHigh,omitempty"`
 }
 
 type definition struct {
@@ -31,6 +37,9 @@ type Segment struct {
 	Watts   float64
 	From    float64
 	To      float64
+	// The block's cadence band in rpm, 0 when the workout did not say (#66).
+	CadenceLow  int
+	CadenceHigh int
 }
 
 // Parse flattens a workout JSON into timeline segments.
@@ -57,6 +66,7 @@ func flatten(steps []Step, at int) ([]Segment, int) {
 			out = append(out, Segment{
 				Kind: s.Type, Start: at, Seconds: s.Seconds,
 				Target: s.Target, Watts: s.Watts, From: s.From, To: s.To,
+				CadenceLow: s.CadenceLow, CadenceHigh: s.CadenceHigh,
 			})
 			at += s.Seconds
 		}
@@ -78,11 +88,45 @@ func TargetAt(segments []Segment, ftp float64, second int) (watts float64, score
 			}
 			return seg.Target * ftp, true
 		case "warmup", "cooldown":
-			progress := float64(second-seg.Start) / float64(seg.Seconds)
-			return (seg.From + (seg.To-seg.From)*progress) * ftp, false
+			return seg.rampPct(second) * ftp, false
 		default:
 			return 0, false
 		}
 	}
 	return 0, false
+}
+
+// rampPct is a warmup's or cooldown's fraction of FTP at one second — the
+// only place the ramp is interpolated, so TargetAt and SegmentAt cannot
+// drift apart on it.
+func (s Segment) rampPct(second int) float64 {
+	progress := float64(second-s.Start) / float64(s.Seconds)
+	return s.From + (s.To-s.From)*progress
+}
+
+// SegmentAt is the block the timeline is inside at one second, with its
+// target as a FRACTION of FTP. #270 needs the block itself — its cadence
+// band — and not only the watts TargetAt hands back.
+//
+// An absolute-watts block reports pct 0: it asks every rider for the same
+// number, so there is no fraction that describes the room. Same for sprint
+// and freeride, which ask for effort rather than a target.
+func SegmentAt(segments []Segment, second int) (seg Segment, pct float64, ok bool) {
+	for _, s := range segments {
+		if second < s.Start || second >= s.Start+s.Seconds {
+			continue
+		}
+		switch s.Kind {
+		case "steady":
+			if s.Watts > 0 {
+				return s, 0, true
+			}
+			return s, s.Target, true
+		case "warmup", "cooldown":
+			return s, s.rampPct(second), true
+		default:
+			return s, 0, true
+		}
+	}
+	return Segment{}, 0, false
 }

@@ -1,0 +1,1 @@
+- Smart autoplay now matches the music to the work: while a session is running it favours tracks whose tempo fits the cadence the current block is asking for, at that cadence or at double it. Tracks with no BPM are never buried for it, and a room with nothing running picks exactly as before.

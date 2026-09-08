@@ -47,8 +47,11 @@ type ChatKeeper interface {
 // nothing to play: autoplay stays silent. fixed, if non-nil, is queued before
 // tracks — tracks already carries whatever order (list order or shuffled) the
 // caller's autoplay setting currently means.
+// mood is what the room's timeline is asking for at the moment of the read
+// (#270); the zero value means no preference, and every source is free to
+// ignore it.
 type AutoplaySource interface {
-	Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
+	Autoplay(ctx context.Context, slug string, mood SessionMood) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
 }
 
 // TrackHistory hears what a room did with a pool track (#269, ADR-0015):
@@ -212,7 +215,10 @@ func (h *Hub) saveWorker() {
 // ponytail: one worker for the whole hub, same call as chat's.
 func (h *Hub) autoplayWorker() {
 	for job := range h.autoplays {
-		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug)
+		// Read the mood at the moment of the REFILL, not when the job was
+		// queued: the worker can lag a busy hub, and a block that has since
+		// ended is not what the room is riding.
+		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
 		if job.loop {
 			fixed = nil
 		}

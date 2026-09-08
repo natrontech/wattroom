@@ -370,6 +370,15 @@ func (rm *room) fire(b protocol.Board) {
 	}
 }
 
+// mood is what this room's timeline is asking for right now (#270), for the
+// autoplay read that happens outside the lock. Taken under the lock and
+// returned by value: the caller must not hold a pointer into live state.
+func (rm *room) mood(now time.Time) SessionMood {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return rm.session.mood(now)
+}
+
 // jukebox runs one deck command and hands back the track it finished, if
 // this command was the one that ended it (#467) — for the caller to credit
 // outside the lock. A command that ran the deck dry hands the room to

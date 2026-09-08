@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -47,12 +48,17 @@ func (s *Service) TrackEnded(ctx context.Context, slug, trackID, queuedBy string
 
 // smartShuffle is the pool half of autoplay (#269): a weighted draw over
 // every track in the pool, penalised by what THIS room played recently and
-// keeps skipping. Empty (and silent) when the pool is empty — a room set to
+// keeps skipping, and since #270 boosted toward the cadence the room's
+// timeline is asking for. Empty (and silent) when the pool is empty — a room set to
 // smart with nothing uploaded simply has nothing to play, the same answer an
 // empty active playlist already gives.
-func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug string) []protocol.JukeboxCommand {
+func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug string, mood hub.SessionMood) []protocol.JukeboxCommand {
+	// 0 rpm is "no session, or a block that asks for nothing in particular",
+	// and the query reads it as "no BPM preference" (#270).
+	rpm, _ := targetCadence(mood)
 	rows, err := s.store.Queries.SmartShuffleTracks(ctx, db.SmartShuffleTracksParams{
 		RoomID: roomID, Lim: smartShuffleBatch,
+		TargetRpm: rpm, BpmTolerance: bpmTolerance, BpmBoost: bpmBoost,
 	})
 	if err != nil {
 		s.log.Error("smart shuffle failed", "room", slug, "err", err)
@@ -63,7 +69,7 @@ func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug str
 		id := store.UUIDString(t.ID)
 		// Why this track and not another: the draw is random and cannot be
 		// explained after the fact, so the weight is said here or nowhere.
-		s.log.Debug("smart shuffle picked", "room", slug, "track", id, "weight", t.Weight)
+		s.log.Debug("smart shuffle picked", "room", slug, "track", id, "weight", t.Weight, "targetRpm", rpm)
 		cmds = append(cmds, protocol.JukeboxCommand{
 			Action: "add", TrackID: id, Title: t.Title, Artist: t.Artist,
 		})
