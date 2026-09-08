@@ -11,6 +11,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import {
@@ -95,6 +96,22 @@
 		draft = crew.name;
 		editing = true;
 		queueMicrotask(() => field?.select());
+	}
+	// The icon (#1209): the same set a room picks from, opened from the mark
+	// itself — the one place a rider would look for it.
+	let pickingIcon = $state(false);
+	async function pickCrewIcon(key: string) {
+		if (!crew) return;
+		busy = true;
+		const res = await renameCrew(crew.id, crew.name, key);
+		busy = false;
+		pickingIcon = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		crew = { ...crew, icon: res.data.icon };
+		presence.reload();
 	}
 	async function saveName() {
 		editing = false;
@@ -260,17 +277,32 @@
 		<Skeleton class="mt-6 h-40" />
 	{:else}
 		<header class="flex items-start gap-3">
-			<span
-				class="bg-ink/5 text-ink/80 grid h-12 w-12 shrink-0 place-items-center rounded-xl"
-			>
-				{#if crew.icon}
+			{#snippet mark()}
+				{#if crew?.icon}
 					<RoomIcon icon={crew.icon} size={22} />
 				{:else}
 					<span class="font-display text-xl font-bold"
-						>{crew.name.slice(0, 1).toUpperCase()}</span
+						>{crew?.name.slice(0, 1).toUpperCase()}</span
 					>
 				{/if}
-			</span>
+			{/snippet}
+			{#if administers}
+				<button
+					onclick={() => (pickingIcon = !pickingIcon)}
+					disabled={busy}
+					title="change the crew's icon"
+					aria-expanded={pickingIcon}
+					class="bg-ink/5 text-ink/80 hover:bg-ink/10 grid h-12 w-12 shrink-0 place-items-center rounded-xl"
+				>
+					{@render mark()}
+				</button>
+			{:else}
+				<span
+					class="bg-ink/5 text-ink/80 grid h-12 w-12 shrink-0 place-items-center rounded-xl"
+				>
+					{@render mark()}
+				</span>
+			{/if}
 			<div class="min-w-0 flex-1">
 				{#if editing}
 					<input
@@ -315,6 +347,16 @@
 				</p>
 			</div>
 		</header>
+
+		{#if pickingIcon}
+			<div class="mt-3">
+				<IconPicker
+					value={crew.icon ?? ''}
+					onpick={pickCrewIcon}
+					disabled={busy}
+				/>
+			</div>
+		{/if}
 
 		{#if owner && crew.name === account.me?.displayName}
 			<!-- The migration's placeholder (#1151): said here, where the name
