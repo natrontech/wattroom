@@ -17,6 +17,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/natrontech/wattroom/server/internal/audio"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -179,7 +180,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 			"A clip file is capped at 4 MB — a minute of audio is well under that.")
 		return
 	}
-	millis, ok := DurationMillis(data)
+	millis, ok := audio.DurationMillis(data)
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
 			"That file is not an MP3 this can read. Export it as MP3 and try again.")

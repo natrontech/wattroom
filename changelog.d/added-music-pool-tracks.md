@@ -1,0 +1,1 @@
+- The music pool has its server side: upload MP3s to a library the whole instance shares, with 2 GB per rider. Titles, artists and albums come from the file's own tags and stay editable, uploading a song the crew already has takes no extra space, and only whoever uploaded a track can change or remove it.

@@ -51,6 +51,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
 	"github.com/natrontech/wattroom/server/internal/tokens"
+	"github.com/natrontech/wattroom/server/internal/tracks"
 	"github.com/natrontech/wattroom/server/internal/unfurl"
 )
 
@@ -196,6 +197,7 @@ func main() {
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
 		// so the hub is what says whether a listener can hear one.
 		board.New(st, authService, h, log).Register(mux)
+		tracks.New(st, authService, log).Register(mux)
 		dms.New(st, authService, log).Register(mux)
 		// The GIF picker (#878, ADR-0032) mounts only with a Giphy key — no
 		// button that opens onto a 404.

@@ -249,6 +249,19 @@ type SessionRsvp struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type Track struct {
+	ID         pgtype.UUID
+	Sha256     string
+	UploadedBy pgtype.UUID
+	Title      string
+	Artist     string
+	Album      string
+	DurationMs int32
+	SizeBytes  int32
+	Bpm        *int16
+	CreatedAt  pgtype.Timestamptz
+}
+
 type User struct {
 	ID                 pgtype.UUID
 	DisplayName        string
