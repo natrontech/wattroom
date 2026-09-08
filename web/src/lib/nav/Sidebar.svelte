@@ -112,14 +112,12 @@
 	// What the header says under the name: how many rooms, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
 	// member says nothing, being in it at all is the default.
+	// The one number that tells two crews apart at a glance (#1238): the
+	// role words went — the header's mark says "yours", and the crew page
+	// says the rest.
 	function crewLine(c: RoomCrew): string {
 		const n = rooms.filter((r) => r.crew?.id === c.id).length;
-		const count = n === 1 ? '1 room' : `${n} rooms`;
-		return c.role === 'owner'
-			? `${count} · yours`
-			: c.role === 'admin'
-				? `${count} · you admin it`
-				: count;
+		return n === 1 ? '1 room' : `${n} rooms`;
 	}
 	function pick(id: string) {
 		chosen = id;
@@ -391,88 +389,86 @@
 
 	{#if crew}
 		<!-- The crew is the mode the whole column is in (ADR-0020 amended,
-		     #1147), so it sits at the top like Discord's server header, and
-		     the column below keeps exactly the shape it had. -->
-		<div class="relative" bind:this={header}>
-			<button
-				onclick={() => (switching = !switching)}
-				class="border-ink/5 hover:bg-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5 text-left {switching
-					? 'bg-ink/5'
-					: ''}"
-				title={crews.length > 1 ? 'switch crew' : 'the crew'}
-				aria-label="crew: {crew.name}{crews.length > 1 ? ' — switch crew' : ''}"
-				aria-expanded={switching}
-				aria-haspopup="menu"
-			>
-				{@render crewBadge(crew, 'h-8 w-8 rounded-lg', 16, 'text-sm')}
-				<span class="min-w-0 flex-1">
-					<span class="flex items-center gap-1.5">
-						<span class="font-display truncate text-sm font-bold"
-							>{crew.name}</span
-						>
-						{#if crew.role === 'owner'}
-							<Shield
-								size={12}
-								class="text-muted/60 shrink-0"
-								aria-label="yours"
-							/>
-						{/if}
-					</span>
-					<span class="text-muted block truncate text-[11px]"
-						>{crewLine(crew)}</span
-					>
-				</span>
-				<ChevronsUpDown size={15} class="text-muted shrink-0" />
-			</button>
+		     #1147), so it sits at the top like Discord's server header — drawn
+		     as one more nav row, not a boxed card (#1238): the same 16 px left
+		     edge, the same icon slot and label as Home below it. Opening it
+		     expands the crews in place, plain rows at the same indentation;
+		     nothing floats, nothing is rounded, nothing is inset. -->
+		<div class="px-2" bind:this={header}>
+			{#snippet crewRow(c: RoomCrew)}
+				{@render crewBadge(c, 'h-5 w-5 rounded', 13, 'text-[11px]')}
+				<span class="font-display min-w-0 flex-1 truncate text-sm font-bold"
+					>{c.name}</span
+				>
+				{#if c.role === 'owner'}
+					<Shield size={12} class="text-muted/60 shrink-0" aria-label="yours" />
+				{/if}
+			{/snippet}
+			{#if crews.length > 1}
+				<button
+					onclick={() => (switching = !switching)}
+					class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left md:min-h-0 {switching
+						? 'bg-ink/5 text-ink'
+						: 'text-ink'}"
+					title="switch crew"
+					aria-label="crew: {crew.name} — switch crew"
+					aria-expanded={switching}
+				>
+					{@render crewRow(crew)}
+					<ChevronsUpDown size={14} class="text-muted shrink-0" />
+				</button>
+			{:else}
+				<!-- One crew: nothing to switch, so the row is the crew's page
+				     (the 95% rule, ux.md) and spends no chevron on a choice that
+				     does not exist. -->
+				<a
+					href="/crew/{crew.id}"
+					class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 md:min-h-0"
+					title="the crew — its people and rooms"
+				>
+					{@render crewRow(crew)}
+				</a>
+			{/if}
 			{#if switching}
 				{@const here = crew}
-				<div
-					class="bg-surface border-ink/5 absolute inset-x-0 top-full z-40 border-b shadow-lg"
-					role="menu"
-				>
-					<ul class="space-y-1 p-2">
-						{#each crews as c (c.id)}
-							{@const now = c.id === here.id}
-							<li>
-								<button
-									role="menuitem"
-									onclick={() => {
-										pick(c.id);
-										switching = false;
-									}}
-									class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-3 rounded px-2 py-1.5 text-left md:min-h-10 {now
-										? 'bg-ink/5 text-ink'
-										: 'text-muted hover:text-ink'}"
-									aria-current={now ? 'true' : undefined}
+				<ul class="mt-0.5 space-y-0.5" role="menu">
+					{#each crews as c (c.id)}
+						{@const now = c.id === here.id}
+						<li>
+							<button
+								role="menuitem"
+								onclick={() => {
+									pick(c.id);
+									switching = false;
+								}}
+								class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {now
+									? 'bg-ink/10 text-ink'
+									: 'text-muted hover:bg-ink/5 hover:text-ink'}"
+								aria-current={now ? 'true' : undefined}
+							>
+								{@render crewBadge(c, 'h-5 w-5 rounded', 13, 'text-[11px]')}
+								<span class="min-w-0 flex-1 truncate">{c.name}</span>
+								<span class="text-muted shrink-0 text-[11px]"
+									>{crewLine(c)}</span
 								>
-									{@render crewBadge(c, 'h-7 w-7 rounded-md', 14, 'text-xs')}
-									<span class="min-w-0 flex-1">
-										<span class="block truncate text-sm font-medium"
-											>{c.name}</span
-										>
-										<span class="text-muted block truncate text-[10px]"
-											>{crewLine(c)}</span
-										>
-									</span>
-									{#if now}<Check size={14} class="text-muted shrink-0" />{/if}
-								</button>
-							</li>
-						{/each}
-					</ul>
+								{#if now}<Check size={13} class="text-muted shrink-0" />{/if}
+							</button>
+						</li>
+					{/each}
 					<!-- The crew's own page: its people, its rooms, its name
-					     (#1150, #1151). -->
-					<div class="border-ink/5 border-t p-2">
+					     (#1150, #1151) — one more row, not a boxed footer. -->
+					<li>
 						<a
 							href="/crew/{here.id}"
 							role="menuitem"
 							onclick={() => (switching = false)}
-							class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-9"
+							class="text-muted hover:bg-ink/5 hover:text-ink flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0"
 						>
 							<Users size={15} class="shrink-0" />
-							<span class="truncate">People and rooms of {here.name}</span>
+							<span class="truncate">People and rooms</span>
 						</a>
-					</div>
-				</div>
+					</li>
+				</ul>
 			{/if}
 		</div>
 	{/if}
@@ -520,9 +516,7 @@
 			</ul>
 		{/if}
 	{/if}
-	<!-- pt-3: the crew header above has its own borders now, and the logo row's
-	     bottom padding no longer separates it from Home. -->
-	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-4">
+	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
 				{@const on = destination === entry.href}
