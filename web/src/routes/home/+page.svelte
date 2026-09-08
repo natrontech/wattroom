@@ -362,8 +362,13 @@
 						</div>
 					{:else}
 						<p class="text-muted mt-3 text-sm">
-							Nobody's around right now — open a room below and your crew gets a
-							place to appear.
+							{#if rooms.length}
+								Nobody's around right now. Your rooms are quiet — the first
+								rider to walk in shows up here.
+							{:else}
+								Nobody's around yet — open your first room and your crew gets a
+								place to appear.
+							{/if}
 						</p>
 					{/if}
 					{#if friendsOnline.length > 0}
