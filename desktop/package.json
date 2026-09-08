@@ -3,7 +3,7 @@
   "productName": "WattRoom",
   "version": "0.1.0",
   "private": true,
-  "description": "The WattRoom desktop shell — a window around the deployed web app.",
+  "description": "The WattRoom desktop shell \u2014 a window around the deployed web app.",
   "license": "AGPL-3.0-only",
   "main": "main.js",
   "packageManager": "pnpm@10.32.1",
@@ -28,7 +28,12 @@
     "mac": {
       "category": "public.app-category.healthcare-fitness",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
@@ -38,11 +43,17 @@
         "NSMicrophoneUsageDescription": "WattRoom uses your microphone for the room's voice channel.",
         "NSCameraUsageDescription": "WattRoom uses your camera so your crew can see you ride.",
         "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the room."
-      }
+      },
+      "notarize": true
     },
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
@@ -52,5 +63,7 @@
       ],
       "category": "Utility"
     }
-  }
+  },
+  "author": "Natron Tech AG",
+  "repository": "https://github.com/natrontech/wattroom"
 }
