@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.48] - 2026-09-08
+
+### Changed
+
+- The desktop app draws its own title bar in the app's colours — no more white strip over a dark room — and opens on a first screen made for a desk: the live-room scene beside one sign-in button.
+
+### Fixed
+
+- The desktop app signs you in through your browser: one button opens wattroom.ch there, you use your passkey, GitHub or Strava as usual, and the app picks the session up on its own. Signing in inside the app's own window never worked — passkeys hung and GitHub or Strava stranded you in the browser.
+
 ## [2026.09.47] - 2026-09-08
 
 ### Added
@@ -1155,7 +1165,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.47...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.48...HEAD
+[2026.09.48]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.3...2026.09.48
 [2026.09.47]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.2...2026.09.47
 [2026.09.46]: https://github.com/natrontech/wattroom/compare/2026.09.45...2026.09.46
 [2026.09.45]: https://github.com/natrontech/wattroom/compare/2026.09.44...2026.09.45
