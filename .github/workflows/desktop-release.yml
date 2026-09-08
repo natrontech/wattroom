@@ -44,19 +44,29 @@
 #    APPLE_API_ISSUER      the issuer UUID from App Store Connect.
 #    APPLE_TEAM_ID         the 10-character team id.
 #
-# 3. Bump `desktop/package.json` version, then tag `desktop-v<that version>`.
-#    The guard below refuses a mismatch, because the shell's update check
-#    compares `app.getVersion()` — which reads that file — against the newest
-#    release tag. If they disagree, every install nags forever.
+# 3. `make desktop-release`. Versions are CalVer like the server's (ADR-0019,
+#    `YYYY.0M.MICRO`), computed from the existing `desktop-v*` tags — in this
+#    namespace, so a server release never drags the shell along (ADR-0037,
+#    amended). The script writes the number into `desktop/package.json`
+#    through a pull request, merges it, then tags `desktop-v<version>`. The
+#    guard below refuses a tag that disagrees with the file, because the
+#    shell reports that file's version as `window.wattroom.version` and the
+#    update notice compares it against the newest release tag. If they
+#    disagree, every install nags forever.
 #
 # ── Artifact names ────────────────────────────────────────────────────────────
 #
-# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-0.1.0-mac-arm64.dmg`,
-# `WattRoom-0.1.0-win-x64.exe`, `WattRoom-0.1.0-linux-x64.AppImage`. No spaces,
-# because electron-builder's default Windows name is `WattRoom Setup 0.1.0.exe`
-# and a download URL with a space in it is one more thing to get wrong. The
-# web app's /download page finds each installer by extension, so the names
-# can change; the extensions cannot.
+# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-2026.9.1-mac-arm64.dmg`,
+# `WattRoom-2026.9.1-win-x64.exe`, `WattRoom-2026.9.1-linux-x86_64.AppImage`.
+# No spaces, because electron-builder's default Windows name has one, and a
+# download URL with a space in it is one more thing to get wrong.
+#
+# The `9`, not `09`: electron-builder parses the version as semver, which
+# forbids a leading zero, and writes the normalised form into the file names
+# and the bundle's CFBundleShortVersionString. The tag, package.json and the
+# update notice all carry `2026.09.1`; it is the same number, and the /download
+# page finds each installer by extension, so the names can change but the
+# extensions cannot.
 #
 # The icon is `desktop/build/icon.png`, rendered from `icon.svg` beside it —
 # electron-builder generates the .icns and .ico from the 1024px PNG.

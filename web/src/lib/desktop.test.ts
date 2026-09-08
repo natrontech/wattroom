@@ -130,6 +130,18 @@ describe('isNewer', () => {
 	});
 });
 
+describe('isNewer with CalVer', () => {
+	it('counts the way the server and the shell both do', () => {
+		expect(isNewer('2026.09.2', '2026.09.1')).toBe(true);
+		expect(isNewer('2026.09.10', '2026.09.9')).toBe(true);
+		expect(isNewer('2026.10.1', '2026.09.46')).toBe(true);
+		expect(isNewer('2026.09.1', '0.1.0')).toBe(true);
+		// electron-builder writes the unpadded form into the app bundle; it is
+		// the same version, not a newer one.
+		expect(isNewer('2026.09.1', '2026.9.1')).toBe(false);
+	});
+});
+
 describe('formatBytes', () => {
 	it('rounds to whole megabytes and says nothing for an unknown size', () => {
 		expect(formatBytes(128377524)).toBe('122 MB');
