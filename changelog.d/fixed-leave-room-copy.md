@@ -1,1 +1,0 @@
-- Leaving a room no longer promises that "the room's code gets you back in" — rooms have had no codes since the invite became the crew's. It now says what is true: an open room you can walk back into, a private one the owner lets you back into.

@@ -1,1 +1,0 @@
-- Home's "nobody's around" line no longer tells a rider with rooms to open one: it says the rooms are quiet, and keeps the open-a-room nudge for someone who has none yet.
