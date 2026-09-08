@@ -1,1 +1,0 @@
-- Home tells a rider without a crew that their first room makes one, named after them, before they open it — and the note that follows links straight to the crew's settings, where the rename lives. The "no code?" line says that joining a listed room joins its crew. (#1151, #1236)
