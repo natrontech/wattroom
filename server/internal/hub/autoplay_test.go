@@ -25,8 +25,22 @@ type fakeAutoplaySource struct {
 	ok     bool
 }
 
-func (f fakeAutoplaySource) Autoplay(context.Context, string) (*protocol.JukeboxCommand, []protocol.JukeboxCommand, bool) {
+func (f fakeAutoplaySource) Autoplay(context.Context, string, SessionMood) (*protocol.JukeboxCommand, []protocol.JukeboxCommand, bool) {
 	return f.fixed, f.tracks, f.ok
+}
+
+// moodSpy records what the hub told the source about the timeline (#270);
+// a pointer receiver so the recorded value survives the interface copy.
+type moodSpy struct {
+	seen chan SessionMood
+}
+
+func (m *moodSpy) Autoplay(_ context.Context, _ string, mood SessionMood) (*protocol.JukeboxCommand, []protocol.JukeboxCommand, bool) {
+	select {
+	case m.seen <- mood:
+	default:
+	}
+	return nil, []protocol.JukeboxCommand{{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "x"}}, true
 }
 
 func TestAutoplaySeedsAnIdleDeckOnJoin(t *testing.T) {

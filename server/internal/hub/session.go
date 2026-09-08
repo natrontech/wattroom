@@ -134,3 +134,33 @@ func (s *session) apply(c protocol.Control, now time.Time) bool {
 		return false
 	}
 }
+
+// SessionMood is what the room's timeline is asking of its riders right now
+// (#270), handed to autoplay so a refill can match the music to the work.
+// The zero value means "no preference" — nothing running, or a block that
+// asks for nothing in particular — and leaves the draw exactly as #269 left
+// it. Defined here rather than in the workout package because it is a
+// summary FOR the deck, not a piece of the workout model.
+type SessionMood struct {
+	// The current block's target as a fraction of FTP; 0 when there is no
+	// fraction that describes the room (an absolute-watts block, a sprint).
+	TargetPct float64
+	// The block's cadence band in rpm when it carries one (#66); 0 for
+	// either bound means the workout did not say.
+	CadenceLow, CadenceHigh int
+}
+
+// mood reads the timeline WITHOUT advancing it. state() promotes a finished
+// countdown to "running" as a side effect of being called, and a jukebox
+// refill must never be the thing that starts a session.
+func (s *session) mood(now time.Time) SessionMood {
+	if s.phase != "running" {
+		return SessionMood{}
+	}
+	elapsed := int((s.banked + now.Sub(s.startedAt)).Seconds())
+	seg, pct, ok := workout.SegmentAt(s.segments, elapsed)
+	if !ok {
+		return SessionMood{}
+	}
+	return SessionMood{TargetPct: pct, CadenceLow: seg.CadenceLow, CadenceHigh: seg.CadenceHigh}
+}

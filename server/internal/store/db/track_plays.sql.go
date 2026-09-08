@@ -53,15 +53,27 @@ cross join lateral (
             else least(extract(epoch from (now() - h.last_played)) / 14400.0, 1.0)
         end,
         0.05
-    ) / (1 + coalesce(h.skips, 0)))::float8 as weight
+    ) / (1 + coalesce(h.skips, 0))
+    * case
+        when $2::float8 <= 0 or t.bpm is null then 1.0
+        when abs(t.bpm - $2::float8)
+                 <= $2::float8 * $3::float8
+          or abs(t.bpm - $2::float8 * 2)
+                 <= $2::float8 * 2 * $3::float8
+        then $4::float8
+        else 1.0
+      end)::float8 as weight
 ) w
 order by random() ^ (1.0 / w.weight) desc
-limit $2
+limit $5
 `
 
 type SmartShuffleTracksParams struct {
-	RoomID pgtype.UUID
-	Lim    int32
+	RoomID       pgtype.UUID
+	TargetRpm    float64
+	BpmTolerance float64
+	BpmBoost     float64
+	Lim          int32
 }
 
 type SmartShuffleTracksRow struct {
@@ -79,19 +91,32 @@ type SmartShuffleTracksRow struct {
 // `order by random() * weight` is NOT the same thing: it collapses toward
 // picking the heaviest every time, where this draws in proportion.
 //
-// Weight is `recency × skip`, both numbers from docs/SPEC.md:
+// Weight is `recency × skip × bpm`, every number from docs/SPEC.md:
 //
 //	recency: 0.05 the instant a track ends, rising linearly to 1 over 4 h.
 //	         The floor is why it is a penalty and not a ban.
 //	skip:    divided by one more than the times this room skipped it, so
 //	         one skip halves a track's chances and three quarter them.
+//	bpm:     a BOOST (#270) for a track whose tempo fits the cadence the
+//	         room is turning, at that cadence or at double it — the same
+//	         beat, felt one pedal stroke at a time instead of two. A boost
+//	         rather than a penalty on the rest, so an untagged pool and an
+//	         idle room both draw exactly as they did before it existed:
+//	         target_rpm 0 means no session, and a null bpm means nobody has
+//	         said, and neither is a reason to bury a track.
 //
 // History is this room's only (privacy is architecture, WATTROOM.md) — a
 // room with none weights everything at 1, which is a plain random draw.
 // `weight` is returned so a headless autoplay log can say WHY a track came
 // up; the ordering is random and unexplainable after the fact otherwise.
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
-	rows, err := q.db.Query(ctx, smartShuffleTracks, arg.RoomID, arg.Lim)
+	rows, err := q.db.Query(ctx, smartShuffleTracks,
+		arg.RoomID,
+		arg.TargetRpm,
+		arg.BpmTolerance,
+		arg.BpmBoost,
+		arg.Lim,
+	)
 	if err != nil {
 		return nil, err
 	}

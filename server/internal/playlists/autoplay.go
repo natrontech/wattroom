@@ -120,8 +120,9 @@ func validAutoplayOrder(order string) bool {
 // or freshly shuffled when that's the room's current setting — "shuffled"
 // means shuffled once per trigger, not a history-weighted order. "smart"
 // (#269) is the history-weighted one, and it draws from the pool rather than
-// from any playlist.
-func (s *Service) Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool) {
+// from any playlist — weighted, since #270, toward the cadence `mood` says
+// the room is turning right now.
+func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMood) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool) {
 	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
 	if err != nil || !room.AutoplayEnabled {
 		return nil, nil, false
@@ -131,7 +132,7 @@ func (s *Service) Autoplay(ctx context.Context, slug string) (fixed *protocol.Ju
 		fixed = &cmd
 	}
 	if room.AutoplayOrder == "smart" {
-		tracks = s.smartShuffle(ctx, room.ID, slug)
+		tracks = s.smartShuffle(ctx, room.ID, slug, mood)
 	} else if room.AutoplayPlaylistID.Valid {
 		if rows, err := s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err == nil {
 			tracks = commandsFromTracks(rows)
