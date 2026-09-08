@@ -56,7 +56,7 @@
 #
 # ── Artifact names ────────────────────────────────────────────────────────────
 #
-# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-2026.9.1-mac-arm64.dmg`,
+# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-2026.9.1-mac-universal.dmg`,
 # `WattRoom-2026.9.1-win-x64.exe`, `WattRoom-2026.9.1-linux-x86_64.AppImage`.
 # No spaces, because electron-builder's default Windows name has one, and a
 # download URL with a space in it is one more thing to get wrong.
@@ -117,11 +117,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # arm64 only. macos-15-intel is the last x86_64 macOS runner and
-          # retires in August 2027, so an Intel dmg is a bonus with an expiry
-          # date rather than a target to design around.
+          # One universal dmg, not one per architecture: the machine by the
+          # trainer is often the old laptop, and a 2019 MacBook cannot open an
+          # arm64 build at all. A user agent does not say which Mac it is, so
+          # two dmgs would mean the rider guessing on /download; one file that
+          # runs on both costs ~2x the download, once. Built on the arm64
+          # runner — electron-builder fetches both Electron binaries and merges
+          # them — so it does not depend on macos-15-intel, which retires in
+          # August 2027.
           - os: macos-latest
-            artifact: macos-arm64
+            artifact: macos-universal
           - os: windows-latest
             artifact: windows-x64
           - os: ubuntu-latest
@@ -207,7 +212,12 @@ jobs:
         if: runner.os == 'macOS'
         working-directory: desktop
         run: |
-          app=dist/mac-arm64/WattRoom.app
+          app=dist/mac-universal/WattRoom.app
+          archs=$(lipo -archs "$app/Contents/MacOS/WattRoom")
+          case "$archs" in
+            *x86_64*arm64* | *arm64*x86_64*) echo "universal: $archs" ;;
+            *) echo "::error::the app is not universal — lipo says: $archs" >&2; exit 1 ;;
+          esac
           codesign -dvv "$app" 2>&1 | grep '^Authority=' | head -3
           if ! codesign -dvv "$app" 2>&1 | grep -q '^Authority=Developer ID Application'; then
             echo "::error::signed with something other than a Developer ID Application certificate — export that one as MACOS_CERT_P12" >&2
