@@ -26,9 +26,23 @@
 	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
+	import type { RoomEvent } from '$lib/protocol';
 	import { roomTimeline } from '$lib/room/timeline';
 
-	let { slug }: { slug: string } = $props();
+	let {
+		slug,
+		reminders = [],
+	}: {
+		slug: string;
+		/**
+		 * "This starts in ten minutes" (#359) — derived by the client, because
+		 * the hub does not know the schedule. Only the room's own Chat place
+		 * can supply them: from /messages there is no RoomShell, and a
+		 * reminder for a room you are not standing in is not this thread's
+		 * job.
+		 */
+		reminders?: RoomEvent[];
+	} = $props();
 
 	const room = $derived(presence.rooms.find((r) => r.slug === slug));
 	const name = $derived(room?.name ?? slug);
@@ -75,7 +89,7 @@
 	const timeline = $derived(
 		roomTimeline(
 			messages,
-			conn ? conn.live.roomEvents : [],
+			conn ? [...conn.live.roomEvents, ...reminders] : [],
 			account.me?.displayName,
 			recaps,
 		),
