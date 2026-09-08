@@ -59,18 +59,22 @@ asks for two caps and this is the pair: one crew, the room cap inside it.
 
 ### Crew roles ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md))
 
-| Capability                                                   | Crew owner                                            | Crew admin         | Crew member |
-| ------------------------------------------------------------ | ----------------------------------------------------- | ------------------ | ----------- |
-| Rename the crew, set its icon                                | ✓                                                     | ✓                  | –           |
-| Make / unmake a crew admin                                   | ✓                                                     | ✓                  | –           |
-| Ban / unban from the crew (#1150)                            | ✓                                                     | ✓                  | –           |
-| See the crew's ban list                                      | ✓                                                     | ✓                  | –           |
-| See the crew's rooms listed, with their access state (#1149) | ✓                                                     | ✓                  | ✓           |
-| Enter a room open to the crew                                | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |
-| Read a room's contents, rename it, ban from it               | only as that room's member/owner — never by crew role |
+| Capability                                                                      | Crew owner                                            | Crew admin         | Crew member |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------ | ----------- |
+| Rename the crew, set its icon                                                   | ✓                                                     | ✓                  | –           |
+| Make / unmake a crew admin                                                      | ✓                                                     | ✓                  | –           |
+| Ban / unban from the crew (#1150) — never someone who owns a room in it (#1212) | ✓                                                     | ✓                  | –           |
+| Hand the crew to someone in it (#1208)                                          | ✓                                                     | –                  | –           |
+| See the crew's ban list                                                         | ✓                                                     | ✓                  | –           |
+| See the crew's rooms listed, with their access state (#1149)                    | ✓                                                     | ✓                  | ✓           |
+| Enter a room open to the crew                                                   | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |
+| Read a room's contents, rename it, ban from it                                  | only as that room's member/owner — never by crew role |
 
 - The **owner** is exactly one person and cannot be demoted, removed or
-  banned; they gain no reading power over rooms they never joined.
+  banned; they gain no reading power over rooms they never joined. Handing
+  the crew on leaves them an admin; the new owner's crew role is cleared,
+  since owner beats it. A room owner cannot be crew-banned: a room never
+  leaves its crew, so neither can the person who owns it.
 - **Room roles are unchanged.** Coach, room ban and room unban stay the room
   owner's (matrix above). A crew ban implies exclusion from every room in the
   crew; a room ban implies nothing at the crew; **lifting one never lifts the

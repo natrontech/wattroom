@@ -50,6 +50,9 @@ type crewPersonJSON struct {
 	// How many of the crew's rooms hold them. Not which: that is the rooms'
 	// business, and a crew admin may not read rooms they never joined.
 	Rooms int64 `json:"rooms,omitempty"`
+	// Owns a room in the crew, so cannot be banned from it (#1212) — the menu
+	// withholds the ban rather than offering one that fails.
+	OwnsRoom bool `json:"ownsRoom,omitempty"`
 }
 
 type crewRoomJSON struct {
@@ -79,6 +82,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
 	mux.HandleFunc("POST /api/crews/{id}/role", s.handleSetCrewRole)
+	mux.HandleFunc("POST /api/crews/{id}/transfer", s.handleTransferCrew)
 }
 
 // crewFor is the crew a room is created into: the one the rider owns, made
@@ -144,11 +148,23 @@ func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew db.Crew) 
 	if err != nil {
 		return err
 	}
-	if err := q.TransferCrew(ctx, db.TransferCrewParams{ID: crew.ID, OwnerID: next}); err != nil {
+	if err := makeOwner(ctx, q, crew.ID, next); err != nil {
 		return err
 	}
 	s.log.Info("crew transferred", "crew", store.UUIDString(crew.ID), "to", store.UUIDString(next))
 	return nil
+}
+
+// makeOwner is the only way a crew changes hands. Owner beats every role, so
+// the new owner's crew_roles row — an admin grant at best, a stale ban at
+// worst — goes with the transfer (#1212): visible_rooms and IsBannedFromRoom
+// read that table without asking who owns the crew, and a banned row on an
+// owner locks them out of every room they own.
+func makeOwner(ctx context.Context, q *db.Queries, crew, next pgtype.UUID) error {
+	if err := q.TransferCrew(ctx, db.TransferCrewParams{ID: crew, OwnerID: next}); err != nil {
+		return err
+	}
+	return q.ClearCrewRole(ctx, db.ClearCrewRoleParams{CrewID: crew, UserID: next})
 }
 
 // ReleaseCrews is the purge's obligation (ADR-0038, second amendment):
@@ -310,6 +326,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		out.People = append(out.People, crewPersonJSON{
 			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl, AvatarPreset: p.AvatarPreset,
 			Role: personRole, Since: p.Since.Time.Format("2006-01-02"), Rooms: p.RoomCount,
+			OwnsRoom: p.OwnsRoom,
 		})
 	}
 	if administers(role) {
@@ -422,6 +439,22 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			"Your own crew role is not yours to change.")
 		return
 	}
+	if req.Role == "banned" {
+		// A room never leaves its crew, so its owner cannot either (#1212):
+		// banning them would orphan a room nobody else can moderate, and
+		// leave a banned person for the successor of last resort to pick.
+		owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: target})
+		if err != nil {
+			s.log.Error("crew ban owner check failed", "err", err, "crew", store.UUIDString(crew.ID))
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+			return
+		}
+		if owned > 0 {
+			httpx.WriteError(w, http.StatusConflict, "conflict",
+				"They own a room in this crew, and a room never leaves its crew — so neither can its owner. Ban them from your rooms instead.")
+			return
+		}
+	}
 	if req.Role == "member" {
 		err = s.store.Queries.ClearCrewRole(r.Context(), db.ClearCrewRoleParams{CrewID: crew.ID, UserID: target})
 	} else {
@@ -444,4 +477,76 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleTransferCrew: the deliberate hand-over ADR-0038's second amendment
+// asks for, so the only way to pass a crew on is not deleting your account.
+// Owner only; the target must be in the crew and not banned from it. The old
+// owner stays on as an admin — they were running it a moment ago, and taking
+// that away is one click if the new owner means to — and the new owner's own
+// row goes, since owner beats it (makeOwner).
+func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
+	crew, actor, role, ok := s.crewByID(w, r)
+	if !ok {
+		return
+	}
+	if role != "owner" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner can hand it on.")
+		return
+	}
+	var req struct {
+		UserID string `json:"userId"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	target, err := store.ParseUUID(req.UserID)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a user id.", "userId")
+		return
+	}
+	if target == actor.ID {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You already own this crew.")
+		return
+	}
+	switch targetRole, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: target}); {
+	case err != nil:
+		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		return
+	case targetRole == "banned":
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"They are banned from this crew. Lift the ban first if you mean it.")
+		return
+	case targetRole == "":
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"A crew passes to someone already in it — they have to be in one of its rooms.")
+		return
+	}
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("crew transfer begin failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	err = makeOwner(r.Context(), q, crew.ID, target)
+	if err == nil {
+		err = q.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: actor.ID, Role: "admin"})
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
+	if err != nil {
+		s.log.Error("crew transfer failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		return
+	}
+	s.log.Info("crew handed on", "crew", store.UUIDString(crew.ID), "from", store.UUIDString(actor.ID), "to", req.UserID)
+	s.changed()
+	httpx.WriteJSON(w, http.StatusOK, roomCrewJSON{
+		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "admin",
+	})
 }

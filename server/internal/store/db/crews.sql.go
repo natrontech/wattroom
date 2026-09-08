@@ -72,6 +72,25 @@ func (q *Queries) CountCrewRooms(ctx context.Context, crewID pgtype.UUID) (int64
 	return count, err
 }
 
+const countRoomsOwnedInCrew = `-- name: CountRoomsOwnedInCrew :one
+select count(*) from rooms where crew_id = $1 and owner_id = $2
+`
+
+type CountRoomsOwnedInCrewParams struct {
+	CrewID  pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+// A room never leaves its crew, so its owner cannot be banned from it (#1212):
+// the ban would orphan the room, and the successor of last resort could then
+// hand the crew to someone it banned.
+func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwnedInCrewParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoomsOwnedInCrew, arg.CrewID, arg.OwnerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCrew = `-- name: CreateCrew :one
 
 insert into crews (name, owner_id) values ($1, $2) returning id, name, icon, owner_id, created_at
@@ -323,7 +342,10 @@ func (q *Queries) ListCrewBans(ctx context.Context, crewID pgtype.UUID) ([]pgtyp
 const listCrewPeople = `-- name: ListCrewPeople :many
 select u.id, u.display_name, u.avatar_url, u.avatar_preset,
        min(m.joined_at)::timestamptz as since,
-       count(distinct m.room_id)::bigint as room_count
+       count(distinct m.room_id)::bigint as room_count,
+       -- Owns a room here, so cannot be crew-banned (#1212): the menu says so
+       -- instead of offering a ban that 409s.
+       bool_or(m.role = 'owner')::boolean as owns_room
 from memberships m
 join rooms r on r.id = m.room_id
 join users u on u.id = m.user_id
@@ -350,6 +372,7 @@ type ListCrewPeopleRow struct {
 	AvatarPreset *string
 	Since        pgtype.Timestamptz
 	RoomCount    int64
+	OwnsRoom     bool
 }
 
 // The crew's people, once each (ADR-0038: crew membership follows room
@@ -378,6 +401,7 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 			&i.AvatarPreset,
 			&i.Since,
 			&i.RoomCount,
+			&i.OwnsRoom,
 		); err != nil {
 			return nil, err
 		}
@@ -667,6 +691,11 @@ type TransferCrewParams struct {
 // amendment). crews.owner_id is ON DELETE RESTRICT, so the purge path MUST run
 // this before deleting a user or the deletion fails loudly — which is the
 // intended behaviour, not a bug to work around.
+//
+// Always through makeOwner in Go, never alone: the new owner's crew_roles row
+// has to go with it (#1212). Owner beats every role in CrewRoleOf, but
+// visible_rooms and IsBannedFromRoom read the row without asking who owns
+// the crew, so a banned row left on an owner locks them out of their rooms.
 func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) error {
 	_, err := q.db.Exec(ctx, transferCrew, arg.ID, arg.OwnerID)
 	return err

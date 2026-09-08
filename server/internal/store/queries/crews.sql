@@ -22,7 +22,18 @@ delete from crew_roles where crew_id = $1 and user_id = $2;
 -- amendment). crews.owner_id is ON DELETE RESTRICT, so the purge path MUST run
 -- this before deleting a user or the deletion fails loudly — which is the
 -- intended behaviour, not a bug to work around.
+--
+-- Always through makeOwner in Go, never alone: the new owner's crew_roles row
+-- has to go with it (#1212). Owner beats every role in CrewRoleOf, but
+-- visible_rooms and IsBannedFromRoom read the row without asking who owns
+-- the crew, so a banned row left on an owner locks them out of their rooms.
 update crews set owner_id = $2 where id = $1;
+
+-- name: CountRoomsOwnedInCrew :one
+-- A room never leaves its crew, so its owner cannot be banned from it (#1212):
+-- the ban would orphan the room, and the successor of last resort could then
+-- hand the crew to someone it banned.
+select count(*) from rooms where crew_id = $1 and owner_id = $2;
 
 -- name: GrantRoomAccess :exec
 insert into room_grants (room_id, user_id) values ($1, $2)
@@ -128,7 +139,10 @@ select * from crew_roles where crew_id = $1;
 -- whole crew.
 select u.id, u.display_name, u.avatar_url, u.avatar_preset,
        min(m.joined_at)::timestamptz as since,
-       count(distinct m.room_id)::bigint as room_count
+       count(distinct m.room_id)::bigint as room_count,
+       -- Owns a room here, so cannot be crew-banned (#1212): the menu says so
+       -- instead of offering a ban that 409s.
+       bool_or(m.role = 'owner')::boolean as owns_room
 from memberships m
 join rooms r on r.id = m.room_id
 join users u on u.id = m.user_id

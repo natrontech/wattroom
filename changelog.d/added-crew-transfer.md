@@ -1,0 +1,1 @@
+- A crew's owner can hand it to someone in it — right-click a person on the crew page. You stay on as an admin. Until now the only ways a crew changed hands were deleting your account or leaving every one of its rooms. (#1208)

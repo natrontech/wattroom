@@ -1,0 +1,1 @@
+- Someone who owns a room in a crew can no longer be banned from that crew: a room never leaves its crew, and banning its owner left a room nobody could moderate and an owner locked out of their own room. Any crew whose owner carried a stale ban is repaired on upgrade. (#1212)

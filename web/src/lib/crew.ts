@@ -19,6 +19,8 @@ export interface CrewPerson {
 	since: string;
 	/** How many of the crew's rooms hold them; absent on the ban list. */
 	rooms?: number;
+	/** Owns a room in the crew, so cannot be banned from it (#1212). */
+	ownsRoom?: boolean;
 }
 
 export interface CrewRoom {
@@ -74,5 +76,19 @@ export function setCrewRole(
 	return api<void>(`/api/crews/${id}/role`, {
 		method: 'POST',
 		json: { userId, role },
+	});
+}
+
+/**
+ * The deliberate hand-over (#1208): owner only, to someone in the crew. You
+ * stay on as an admin; they become the one person nobody can demote.
+ */
+export function transferCrew(
+	id: string,
+	userId: string,
+): Promise<ApiResult<RoomCrew>> {
+	return api<RoomCrew>(`/api/crews/${id}/transfer`, {
+		method: 'POST',
+		json: { userId },
 	});
 }
