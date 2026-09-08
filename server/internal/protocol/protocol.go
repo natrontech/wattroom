@@ -111,6 +111,11 @@ type JukeboxCommand struct {
 	PlaylistID    string         `json:"playlistId,omitempty"`
 	PlaylistTitle string         `json:"playlistTitle,omitempty"`
 	Tracks        []JukeboxTrack `json:"tracks,omitempty"`
+	// For "add": a track from the pool rather than a YouTube video (#267).
+	// Mutually exclusive with VideoID; Title and Artist ride along for
+	// display, because the deck carries no metadata of its own.
+	TrackID string `json:"trackId,omitempty"`
+	Artist  string `json:"artist,omitempty"`
 	// For "remove" | "vote" | "move": which queue entry (#286). Video ids
 	// are not unique — the same track queued twice is two entries, and
 	// addressing by video used to hit the wrong one.
@@ -387,6 +392,17 @@ type JukeboxEntry struct {
 	// running off the end advances to the next QUEUE entry rather than
 	// wrapping — a playlist plays once through and never restarts itself.
 	Index int `json:"index,omitempty"`
+	// A track from the self-hosted pool (#267, ADR-0015) instead of a
+	// YouTube video: the id the client fetches audio for. VideoID is empty
+	// on such an entry, and `TrackID != ""` is what makes an entry a pool
+	// track — the deck's rules do not otherwise care where audio comes from.
+	//
+	// RMF's tile rules bind only while a YouTube entry plays (WATTROOM.md),
+	// which is the whole reason a pool track may be audio-only.
+	TrackID string `json:"trackId,omitempty"`
+	// Display only, resolved by whoever queued it: the server holds no
+	// track metadata on the deck, the same way it holds no YouTube titles.
+	Artist string `json:"artist,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the

@@ -340,3 +340,103 @@ func TestPastedTimestampStartsTheEntryThere(t *testing.T) {
 		t.Fatalf("start-at from queue: %v", got)
 	}
 }
+
+// A track from the self-hosted pool (#267, ADR-0015). The deck's rules are
+// source-agnostic — the point of the issue is that a pool track is just
+// another queue entry — so these check the shape gate and that nothing about
+// the deck changes because the audio lives somewhere else.
+
+const poolTrack = "6c60e0eb-850f-4067-b746-1995c7051b45"
+
+func addTrack(j *jukebox, id string, at time.Time) bool {
+	return accepted(j, protocol.JukeboxCommand{
+		Action: "add", TrackID: id, Title: "Sandstorm", Artist: "Darude",
+	}, "r-jan", "jan", at)
+}
+
+func TestAPoolTrackPlaysAnEmptyDeckLikeAnyOther(t *testing.T) {
+	j := newJukebox()
+	if !addTrack(j, poolTrack, jat(0)) {
+		t.Fatal("add refused")
+	}
+	s := j.snapshot()
+	if s.Current == nil {
+		t.Fatal("an empty deck should play the first entry, whatever its source")
+	}
+	if s.Current.TrackID != poolTrack {
+		t.Errorf("track id: %q", s.Current.TrackID)
+	}
+	if s.Current.VideoID != "" {
+		t.Errorf("a pool track carries no video id, got %q", s.Current.VideoID)
+	}
+	if s.Current.Title != "Sandstorm" || s.Current.Artist != "Darude" {
+		t.Errorf("display metadata: %q / %q", s.Current.Title, s.Current.Artist)
+	}
+	if !s.Playing {
+		t.Error("adding to an empty deck is pressing play")
+	}
+}
+
+func TestAPoolTrackIsCheckedForShapeOnly(t *testing.T) {
+	// The hub never reaches for the database (server/AGENTS.md): whether the
+	// row exists is the audio endpoint's answer, not the deck's.
+	for _, id := range []string{"", "not-a-uuid", "../../etc/passwd", strings.Repeat("a", 36)} {
+		j := newJukebox()
+		if addTrack(j, id, jat(0)) {
+			t.Errorf("accepted a track id of %q", id)
+		}
+	}
+	j := newJukebox()
+	if !addTrack(j, poolTrack, jat(0)) {
+		t.Error("refused a well-shaped uuid")
+	}
+}
+
+func TestAPoolTrackAndAVideoShareOneQueue(t *testing.T) {
+	j := newJukebox()
+	add(j, "dQw4w9WgXcQ", jat(0)) // plays
+	addTrack(j, poolTrack, jat(1))
+	add(j, "abcdefghijk", jat(2))
+	s := j.snapshot()
+	if len(s.Queue) != 2 {
+		t.Fatalf("queue: %d", len(s.Queue))
+	}
+	if s.Queue[0].TrackID != poolTrack || s.Queue[1].VideoID != "abcdefghijk" {
+		t.Errorf("interleaved order lost: %+v", s.Queue)
+	}
+	// Skipping into the pool track is the ordinary advance — no branch.
+	accepted(j, protocol.JukeboxCommand{Action: "skip"}, "r-jan", "jan", jat(3))
+	if got := j.snapshot().Current; got == nil || got.TrackID != poolTrack {
+		t.Errorf("skip should land on the pool track, got %+v", got)
+	}
+}
+
+func TestAPoolTrackEndsOnItsOwnID(t *testing.T) {
+	j := newJukebox()
+	addTrack(j, poolTrack, jat(0))
+	add(j, "dQw4w9WgXcQ", jat(1))
+	anchor := j.snapshot().AnchorMs
+
+	// The case only the TrackID check catches: a stale client that had a
+	// DIFFERENT pool track loaded reports its end. Both carry no video id,
+	// so matching on VideoID alone compares "" to "" and lets it through —
+	// advancing the deck past a track nobody finished.
+	const otherTrack = "11111111-2222-3333-4444-555555555555"
+	if accepted(j, protocol.JukeboxCommand{
+		Action: "ended", TrackID: otherTrack, AnchorMs: anchor,
+	}, "r-kim", "kim", jat(2)) {
+		t.Error("another pool track's end advanced this one")
+	}
+	if got := j.snapshot().Current; got == nil || got.TrackID != poolTrack {
+		t.Fatalf("deck moved: %+v", got)
+	}
+
+	if !accepted(j, protocol.JukeboxCommand{
+		Action: "ended", TrackID: poolTrack, AnchorMs: anchor,
+	}, "r-jan", "jan", jat(3)) {
+		t.Fatal("the track's own end was refused")
+	}
+	if got := j.snapshot().Current; got == nil || got.VideoID != "dQw4w9WgXcQ" {
+		t.Errorf("should have advanced to the video, got %+v", got)
+	}
+}

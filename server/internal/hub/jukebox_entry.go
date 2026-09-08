@@ -28,6 +28,16 @@ var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 // lists is a message the paster must read, which makes it the client's job.
 var playlistIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`)
 
+// A pool track is addressed by its uuid (#267). Shape only, like every other
+// id here: whether the row exists is the audio endpoint's answer, and the hub
+// deliberately never reaches for the database (server/AGENTS.md).
+//
+// The dashes are positional rather than "36 characters of hex and hyphen" —
+// the loose version accepts 36 a's, which is not an id anything can serve.
+var trackIDPattern = regexp.MustCompile(
+	`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`,
+)
+
 // ValidVideoID and ValidYouTubePlaylistID are exported so the playlists
 // package (#627) can reject an unsaveable track at write time — the same
 // shape check a live "add" applies, so a saved entry is never a promise the
@@ -56,6 +66,7 @@ const (
 	refusalInvalidPlaylist jukeboxRefusal = "invalid_playlist"
 	refusalPlaylistLarge   jukeboxRefusal = "playlist_too_large"
 	refusalInvalidTrack    jukeboxRefusal = "invalid_playlist_track"
+	refusalInvalidTrackID  jukeboxRefusal = "invalid_track"
 )
 
 func (r jukeboxRefusal) message() string {
@@ -72,6 +83,8 @@ func (r jukeboxRefusal) message() string {
 		return "That playlist is too large — choose a shorter playlist and try again."
 	case refusalInvalidTrack:
 		return "That playlist contains a video this jukebox cannot play — choose another playlist or video."
+	case refusalInvalidTrackID:
+		return "That track is not one from the music pool — pick it from the library and try again."
 	default:
 		return "That track could not be added — check the link and try again."
 	}
@@ -112,6 +125,24 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		// ?t= is not carried over: it belongs to the single video somebody
 		// pasted, and track four of a set was never the good part of one.
 		entry.VideoID, entry.Title = tracks[0].VideoID, tracks[0].Title
+		return entry, true, ""
+	}
+
+	// A track from the pool (#267, ADR-0015). Checked before the video
+	// branch because such an entry carries no VideoID at all, and the
+	// server still knows nothing about the audio — it holds an id the
+	// client fetches, exactly as it holds a YouTube id it cannot play.
+	if cmd.TrackID != "" {
+		if !trackIDPattern.MatchString(cmd.TrackID) {
+			return protocol.JukeboxEntry{}, false, refusalInvalidTrackID
+		}
+		if j.queuedTracks() >= maxQueuedTracks {
+			return protocol.JukeboxEntry{}, false, refusalTrackCap
+		}
+		entry.TrackID = cmd.TrackID
+		entry.Title = clip(cmd.Title, 200)
+		entry.Artist = clip(cmd.Artist, 200)
+		entry.StartSec = clampSec(cmd.PositionSec)
 		return entry, true, ""
 	}
 
