@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke desktop-release
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -114,3 +114,6 @@ ci: test lint ## what CI runs
 
 release: ## cut a release: promote the changelog, tag, push (version is CalVer, computed)
 	@scripts/release.sh
+
+desktop-release: ## cut a desktop release: bump desktop/package.json, tag, push (CalVer, computed; ADR-0037)
+	@scripts/desktop-release.sh

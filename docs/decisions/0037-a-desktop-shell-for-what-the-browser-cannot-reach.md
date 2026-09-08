@@ -7,7 +7,8 @@
   0004 itself set
 - Constrained by: WATTROOM.md's **iOS row — "web-only, forever"**, which this
   does not touch, and [0019](0019-tagged-releases-and-a-self-converging-vm.md),
-  whose CalVer tags this deliberately does not share
+  whose CalVer tags this deliberately does not share *(amended below: the
+  scheme is shared, the tags are not)*
 - Answers: [#296](https://github.com/natrontech/wattroom/issues/296)
 
 ## Context
@@ -77,7 +78,8 @@ Four things this fixes in place:
 4. **A separate version namespace.** `desktop-v*` tags, deliberately uncoupled
    from ADR-0019's CalVer release tags: the VM converges on the newest server
    release, and the shell must not be dragged along by a deploy that changed no
-   native code.
+   native code. *(Amended below: the numbers inside that namespace are CalVer
+   too.)*
 
 **macOS is signed and notarized from the first build; Windows ships unsigned
 until it costs installs.** The Apple membership is already held, and on macOS
@@ -126,3 +128,25 @@ mid-interval regardless.
   unworkable through ScreenCaptureKit at whatever Electron major is pinned,
   then the shell is ~120 MB per platform and two signing pipelines bought for
   convenience, and convenience is what ADR-0004 declined to pay for.
+
+## Amendment, 2026-09-08 (#296): the shell counts in CalVer too
+
+The first release went out as `desktop-v0.1.0`, and the number was wrong for
+the same reason ADR-0019 gave up on semver: nothing about a thin shell has a
+major, a minor or a patch. What a rider or an operator wants to know is *when*
+this build is from, and whether it is older than the one on the download page.
+
+So the shell's versions are `YYYY.0M.MICRO`, exactly the server's scheme, and
+`make desktop-release` computes the number the way `make release` does — from
+the tags that already exist. What decision 4 above protects is unchanged and
+still holds: the tags live in their own `desktop-v` namespace, the workflow
+runs only on those, and a server release never produces a shell release. Two
+trains, one calendar. `desktop-v0.1.0` was deleted with zero downloads and
+replaced by `desktop-v2026.09.1`.
+
+One wrinkle, accepted: electron-builder parses the version as semver, which
+forbids a leading zero, so the installer file names and the bundle's own
+version string read `2026.9.1`. The tag, `desktop/package.json` and the update
+notice carry `2026.09.1`. It is the same number, the download page finds
+installers by extension, and the notice compares numerically — the
+`2026.9.1`/`2026.09.1` pair is tested equal.
