@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.50] - 2026-09-08
+
+### Added
+
+- A crew's owner can hand it to someone in it — right-click a person on the crew page. You stay on as an admin. Until now the only ways a crew changed hands were deleting your account or leaving every one of its rooms. (#1208)
+- A room's owner now chooses who can find it in one place: its members only, the whole crew, or everyone on WattRoom. Rooms from before crews arrived were private and stayed that way with no way to open them; the settings page's "Who can find this room" now has the crew as its middle step, and a room made for the crew can be shut again. (#1204)
+- A crew's owner and admins can open rooms in it — not only the person who made it. The sidebar's + opens the room in the crew you are looking at when you may, the crew page has "Open a room here", and a rider who runs more than one crew picks which. Members still open rooms in their own crew. (#1201)
+
+### Changed
+
+- Opening a room your crew left open no longer greets you with "You have been invited to ride here" — it says the room is open to everyone in the crew, you included, and the button reads "Walk in". The invitation wording stays for share links. (#1216)
+
+### Fixed
+
+- A room you made private no longer hands its link to crew-mates who are not in it. The sidebar and the crew page showed "private — you are not in this room" but still carried the room's address underneath, and the address is the door: anyone who found it could walk in. Locked rooms now travel without it. (#1205)
+- Someone who owns a room in a crew can no longer be banned from that crew: a room never leaves its crew, and banning its owner left a room nobody could moderate and an owner locked out of their own room. Any crew whose owner carried a stale ban is repaired on upgrade. (#1212)
+
 ## [2026.09.49] - 2026-09-08
 
 ### Fixed
@@ -1172,7 +1189,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.49...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.50...HEAD
+[2026.09.50]: https://github.com/natrontech/wattroom/compare/2026.09.49...2026.09.50
 [2026.09.49]: https://github.com/natrontech/wattroom/compare/2026.09.48...2026.09.49
 [2026.09.48]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.3...2026.09.48
 [2026.09.47]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.2...2026.09.47

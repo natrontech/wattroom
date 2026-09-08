@@ -1,1 +1,0 @@
-- Opening a room your crew left open no longer greets you with "You have been invited to ride here" — it says the room is open to everyone in the crew, you included, and the button reads "Walk in". The invitation wording stays for share links. (#1216)
