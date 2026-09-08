@@ -1,0 +1,1 @@
+- A room's owner now chooses who can find it in one place: its members only, the whole crew, or everyone on WattRoom. Rooms from before crews arrived were private and stayed that way with no way to open them; the settings page's "Who can find this room" now has the crew as its middle step, and a room made for the crew can be shut again. (#1204)

@@ -129,7 +129,7 @@ select * from memberships where user_id = sqlc.arg(user_id) and room_id = any(sq
 
 -- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
-                 board_enabled = $7
+                 board_enabled = $7, crew_visible = $8
 where id = $1 returning *;
 
 -- name: DeleteRoom :exec

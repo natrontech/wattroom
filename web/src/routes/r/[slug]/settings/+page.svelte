@@ -38,10 +38,26 @@
 		cheers?: string[];
 		soundPack?: string;
 		boardEnabled?: boolean;
+		/** Open to the crew (ADR-0038) — absent means shut (#1204). */
+		crewVisible?: boolean;
+		crew?: { id: string; name: string };
 		role?: string;
 		code?: string;
 		members?: Member[];
 	}
+
+	/**
+	 * Who can find the room, as one ladder (#1204). The server keeps two
+	 * columns — listed is the public directory, crewVisible the crew's
+	 * sidebar — but a room listed to strangers and hidden from its own crew
+	 * is not a state anyone means, so the page walks them as one question.
+	 */
+	type Reach = 'members' | 'crew' | 'everyone';
+	const REACH: Record<Reach, { crewVisible: boolean; listed: boolean }> = {
+		members: { crewVisible: false, listed: false },
+		crew: { crewVisible: true, listed: false },
+		everyone: { crewVisible: true, listed: true },
+	};
 
 	const slug = $derived(page.params.slug);
 	let room = $state<Room | null>(null);
@@ -52,6 +68,7 @@
 	// Editable copies — PATCHed on change, never on keystroke.
 	let name = $state('');
 	let listed = $state(false);
+	let crewVisible = $state(false);
 	let pack = $state('base');
 	let boardEnabled = $state(false);
 	let icon = $state('');
@@ -73,6 +90,7 @@
 			room = res.data;
 			name = res.data.name;
 			listed = res.data.listed;
+			crewVisible = res.data.crewVisible ?? false;
 			pack = res.data.soundPack ?? 'base';
 			notify = res.data.me?.notify ?? true;
 			onBoard = res.data.me?.onBoard ?? true;
@@ -130,6 +148,7 @@
 			json: {
 				name: name.trim(),
 				listed,
+				crewVisible,
 				soundPack: pack,
 				boardEnabled,
 				icon,
@@ -147,6 +166,14 @@
 
 	function pickIcon(key: string) {
 		icon = key;
+		void save();
+	}
+
+	const reach = $derived<Reach>(
+		listed ? 'everyone' : crewVisible ? 'crew' : 'members',
+	);
+	function setReach(next: Reach) {
+		({ crewVisible, listed } = REACH[next]);
 		void save();
 	}
 
@@ -563,10 +590,10 @@
 			</label>
 		</section>
 
-		<!-- The one control that takes a room from private-by-default to
-		     findable by people who have never been in it (#1118, ADR-0039).
-		     Worded as the privacy choice it is rather than as a checkbox
-		     called "listed", and it says what each option actually does —
+		<!-- The one control that takes a room from private to findable — by
+		     its crew (#1204, ADR-0038) or by people who have never been in it
+		     (#1118, ADR-0039). Worded as the privacy choice it is rather than
+		     as two checkboxes, and it says what each step actually does —
 		     including the half riders assume and should not: being findable
 		     is not being readable. -->
 		<section class="panel mt-3 p-6">
@@ -581,47 +608,23 @@
 				role="radiogroup"
 				aria-label="who can find this room"
 			>
-				<button
-					role="radio"
-					aria-checked={!listed}
-					onclick={() => {
-						listed = false;
-						void save();
-					}}
-					disabled={busy}
-					class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {!listed
-						? 'ring-neon border-neon/40 bg-neon/10 ring-1'
-						: 'border-muted/15'}"
-				>
-					<span class="min-w-0">
-						<span class="block text-sm font-medium">Unlisted</span>
-						<span class="text-muted block text-xs">
-							Only people you give the code or the link to. This is how every
-							room starts.
+				{#each [{ key: 'members', label: 'Its members', hint: 'Only people you give the code or the link to. Crew-mates see that it exists and that it is private — not a way in.' }, { key: 'crew', label: room.crew ? `The crew — ${room.crew.name}` : 'The crew', hint: 'Everyone in the crew sees it in their sidebar and can walk in without a code. This is how a new room starts.' }, { key: 'everyone', label: 'Everyone on WattRoom', hint: 'Anyone signed in can find it by name in the directory and ask to come in — and the crew sees it too. They see its name and icon, nothing about who rides here or what you did.' }] as const as step (step.key)}
+					<button
+						role="radio"
+						aria-checked={reach === step.key}
+						onclick={() => setReach(step.key)}
+						disabled={busy}
+						class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {reach ===
+						step.key
+							? 'ring-neon border-neon/40 bg-neon/10 ring-1'
+							: 'border-muted/15'}"
+					>
+						<span class="min-w-0">
+							<span class="block text-sm font-medium">{step.label}</span>
+							<span class="text-muted block text-xs">{step.hint}</span>
 						</span>
-					</span>
-				</button>
-				<button
-					role="radio"
-					aria-checked={listed}
-					onclick={() => {
-						listed = true;
-						void save();
-					}}
-					disabled={busy}
-					class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {listed
-						? 'ring-neon border-neon/40 bg-neon/10 ring-1'
-						: 'border-muted/15'}"
-				>
-					<span class="min-w-0">
-						<span class="block text-sm font-medium">Listed</span>
-						<span class="text-muted block text-xs">
-							Anyone signed in can find this room by name in the directory, and
-							ask to come in. They see its name and icon — nothing about who
-							rides here or what you did.
-						</span>
-					</span>
-				</button>
+					</button>
+				{/each}
 			</div>
 		</section>
 
