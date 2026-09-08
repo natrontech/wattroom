@@ -170,6 +170,37 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	}
 }
 
+// A ban keeps the membership row (ADR-0013), and this query is the one that
+// reaches OUTSIDE the app. Without the guard a rider thrown out of a room goes
+// on receiving its session mail in their inbox, with no way to stop it from
+// inside a room they can no longer open — ADR-0030 governs what leaves as
+// mail, and this was not it. Sibling of #1110, found by the audit in #1113.
+func TestSessionMailSkipsABannedMember(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+
+	s := service(h, srv.URL)
+	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2\u00d720", starts, h.planner.ID, sessionPlanned)
+	if len(fake.payloads) != 1 {
+		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
+	}
+
+	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+		RoomID: h.room.ID, UserID: h.optIn.ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("ban: %v", err)
+	}
+
+	fake.payloads = nil
+	s.sessionMail(t.Context(), h.room, "Sweet Spot 2\u00d720", starts, h.planner.ID, sessionPlanned)
+	if len(fake.payloads) != 0 {
+		t.Errorf("mailed a banned member: %v", fake.payloads[0]["to"])
+	}
+}
+
 func TestSessionRescheduledSaysMoved(t *testing.T) {
 	h := setup(t)
 	fake := &fakeResend{}

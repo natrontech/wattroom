@@ -38,7 +38,8 @@ where t.id = sqlc.arg(id)
        or exists (
            select 1 from memberships mine
            join memberships theirs on theirs.room_id = mine.room_id
-           where mine.user_id = sqlc.arg(user_id) and theirs.user_id = t.uploaded_by
+           where mine.user_id = sqlc.arg(user_id) and mine.role != 'banned'
+             and theirs.user_id = t.uploaded_by and theirs.role != 'banned'
        ));
 
 -- name: ListTracks :many

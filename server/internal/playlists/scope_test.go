@@ -82,3 +82,37 @@ func TestOneSongOnTwoShelvesIsDrawnOncePerShelf(t *testing.T) {
 		}
 	}
 }
+
+// A ban keeps the membership row (ADR-0013), so an unguarded join still counts
+// it and the room goes on playing the music of someone it threw out. This is
+// the loudest of the three siblings #1113 found: the room HEARS it, and there
+// is no surface anywhere that explains why.
+func TestSmartShuffleDropsABannedRidersShelf(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	h.join(t, slug, "bob", "member")
+	mine := h.track(t, "alice", "Still Here")
+	theirs := h.track(t, "bob", "Played Anyway")
+
+	if h.drawIDs(t, slug)[theirs] == 0 {
+		t.Fatal("bob's shelf was unreachable before the ban — test proves nothing")
+	}
+
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+		RoomID: room.ID, UserID: h.users["bob"].ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("ban: %v", err)
+	}
+
+	drawn := h.drawIDs(t, slug)
+	if drawn[theirs] > 0 {
+		t.Error("autoplay still draws from a banned rider's shelf")
+	}
+	if drawn[mine] == 0 {
+		t.Error("the ban emptied the room's own autoplay")
+	}
+}

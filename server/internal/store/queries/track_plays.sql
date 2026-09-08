@@ -77,6 +77,7 @@ liked as (
 select t.id, t.title, t.artist, w.weight
 from tracks t
 join memberships m on m.user_id = t.uploaded_by and m.room_id = sqlc.arg(room_id)
+    and m.role != 'banned'
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (

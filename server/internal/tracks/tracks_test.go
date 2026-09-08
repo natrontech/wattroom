@@ -698,7 +698,7 @@ func TestARoomMateCanPlayYourTrackButNotBrowseYourShelf(t *testing.T) {
 
 // sharedRoom puts two riders in one room, which is the trust boundary the
 // audio endpoint reads.
-func (h *harness) sharedRoom(t *testing.T, a, b string) {
+func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Code: "SHR001", Slug: "shared-" + strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")),
@@ -716,5 +716,36 @@ func (h *harness) sharedRoom(t *testing.T, a, b string) {
 		}); err != nil {
 			t.Fatalf("membership %s: %v", who, err)
 		}
+	}
+	return room
+}
+
+// A ban keeps the membership row (ADR-0013), so the "shares a room" join
+// counts it unless it says otherwise — and this endpoint is the one that
+// hands over the bytes. #1110 fixed the same hole in the trophy case; this
+// is its sibling, found by the audit in #1113.
+func TestABannedRiderCannotPlayTheRoomsTracks(t *testing.T) {
+	h := setup(t)
+	track := h.upload(t, "alice", song(22, 383), "Queued.mp3")
+	id, _ := track["id"].(string)
+	room := h.sharedRoom(t, "alice", "bob")
+
+	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusOK {
+		t.Fatalf("bob could not play it before the ban (%d) — test proves nothing", w.Code)
+	}
+
+	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+		RoomID: room.ID, UserID: h.users.byToken["bob"].ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("ban: %v", err)
+	}
+
+	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
+		t.Errorf("a banned rider still played the room's track: %d, want 404", w.Code)
+	}
+	// The ban is one-way in the row but two-way in the join: alice is not
+	// banned anywhere, so her own track must still play for her.
+	if w := h.do(t, "alice", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusOK {
+		t.Errorf("banning bob cost alice her own track: %d", w.Code)
 	}
 }
