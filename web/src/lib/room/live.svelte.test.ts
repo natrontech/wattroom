@@ -176,6 +176,69 @@ describe('room live chat edits (#865)', () => {
 		});
 	});
 
+	it('takes an edit it missed while the socket was down (#1082)', () => {
+		// The edit fan-out is ephemeral: it rides one tick and is never
+		// re-sent. A rider whose socket flapped across that tick never saw it,
+		// and the reconnect reseed is the only thing that can still tell them.
+		// It could not, because the seed skips every line it already holds —
+		// so the stale words stayed on screen until a full page reload.
+		const live = createRoomLive('edits-missed');
+		live.seedChat([
+			{ id: 'm1', from: 'kim', fromId: 'u1', text: 'warmup at 7', at: 1 },
+		]);
+		expect(live.chatLog[0]).toMatchObject({ text: 'warmup at 7' });
+
+		// Reconnect: the backlog is read again, and it carries the edit that
+		// was made while this client was away.
+		live.seedChat([
+			{
+				id: 'm1',
+				from: 'kim',
+				fromId: 'u1',
+				text: 'warmup at 8',
+				at: 1,
+				editedAt: 99,
+			},
+		]);
+		expect(live.chatLog).toHaveLength(1);
+		expect(live.chatLog[0]).toMatchObject({
+			text: 'warmup at 8',
+			editedAt: 99,
+		});
+	});
+
+	it('does not let a stale backlog undo an edit that just arrived', () => {
+		// The other half of audit #219's race: a live edit can land while the
+		// backlog fetch is still in flight, so the seed resolves holding OLDER
+		// words. editedAt is the version — the newer edit wins, whichever way
+		// it arrived, or a reconnect would silently roll a line back.
+		const live = createRoomLive('edits-race');
+		live.seedChat([
+			{
+				id: 'm1',
+				from: 'kim',
+				fromId: 'u1',
+				text: 'warmup at 8',
+				at: 1,
+				editedAt: 99,
+			},
+		]);
+		live.seedChat([
+			{
+				id: 'm1',
+				from: 'kim',
+				fromId: 'u1',
+				text: 'warmup at 7',
+				at: 1,
+				editedAt: 42,
+			},
+		]);
+		expect(live.chatLog[0]).toMatchObject({
+			text: 'warmup at 8',
+			editedAt: 99,
+		});
+	});
+
 	it('ignores an edit for a line this client never had', () => {
 		const live = createRoomLive('edits-unknown');
 		const socket = FakeSocket.last!;
