@@ -119,6 +119,9 @@ export interface CrewDoor {
 	icon?: string;
 	imageUrl?: string;
 	members: number;
+	/** Set only for someone already in the crew: the way in is the page. */
+	inCrew?: boolean;
+	id?: string;
 }
 
 export function crewDoor(

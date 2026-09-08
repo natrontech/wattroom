@@ -1,0 +1,1 @@
+- Following your own crew's invite link no longer offers you a "Join" that does nothing: the door says you are in and opens the crew. (#1236)

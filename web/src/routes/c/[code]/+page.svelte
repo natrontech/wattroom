@@ -29,7 +29,11 @@
 
 <svelte:head>
 	<title
-		>{data.crew ? `Join ${data.crew.name}` : 'Join a crew'} · WattRoom</title
+		>{data.crew
+			? data.crew.inCrew
+				? data.crew.name
+				: `Join ${data.crew.name}`
+			: 'Join a crew'} · WattRoom</title
 	>
 </svelte:head>
 
@@ -47,21 +51,36 @@
 				/>
 			</div>
 			<h1 class="font-display mt-3 text-2xl font-bold">{data.crew.name}</h1>
-			<p class="text-muted mt-2 text-sm">
-				You have been invited to ride with this crew{data.crew.members > 1
-					? ` — ${data.crew.members} people are in it`
-					: ''}.
-			</p>
-			<button onclick={join} disabled={busy} class="btn btn-primary btn-lg mt-6"
-				>Join {data.crew.name}</button
-			>
-			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
-			<!-- Privacy is architecture (WATTROOM.md): say what joining shows
-			     before the button. Joining a crew shows nobody anything yet. -->
-			<p class="text-muted/70 mt-4 text-[11px]">
-				Joining shows nobody your numbers. Your watts are visible to a room
-				while you ride in it, and nowhere else.
-			</p>
+			{#if data.crew.inCrew && data.crew.id}
+				<!-- Your own crew's link, followed again: the door is already
+				     open, so the button is the page, not a Join that does nothing. -->
+				<p class="text-muted mt-2 text-sm">
+					You are in this crew{data.crew.members > 1
+						? ` with ${data.crew.members - 1} ${data.crew.members === 2 ? 'other' : 'others'}`
+						: ''}.
+				</p>
+				<a href="/crew/{data.crew.id}" class="btn btn-primary btn-lg mt-6"
+					>Open {data.crew.name}</a
+				>
+			{:else}
+				<p class="text-muted mt-2 text-sm">
+					You have been invited to ride with this crew{data.crew.members > 1
+						? ` — ${data.crew.members} people are in it`
+						: ''}.
+				</p>
+				<button
+					onclick={join}
+					disabled={busy}
+					class="btn btn-primary btn-lg mt-6">Join {data.crew.name}</button
+				>
+				{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
+				<!-- Privacy is architecture (WATTROOM.md): say what joining shows
+				     before the button. Joining a crew shows nobody anything yet. -->
+				<p class="text-muted/70 mt-4 text-[11px]">
+					Joining shows nobody your numbers. Your watts are visible to a room
+					while you ride in it, and nowhere else.
+				</p>
+			{/if}
 		{:else}
 			<p class="mt-6 text-sm">{data.error}</p>
 			<a

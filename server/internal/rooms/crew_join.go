@@ -24,10 +24,20 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	members, _ := s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"name": crew.Name, "icon": crew.Icon, "members": members,
 		"imageUrl": crewDoorImageURL(code, crew.HasImage),
-	})
+	}
+	// Someone already in the crew who follows its own link again gets the
+	// way in rather than a Join that would do nothing: the id is theirs to
+	// know, and only then.
+	if user, signedIn := s.users.User(r); signedIn {
+		if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID}); err == nil && role != "" && role != "banned" {
+			out["inCrew"] = true
+			out["id"] = store.UUIDString(crew.ID)
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores
