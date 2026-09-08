@@ -1,0 +1,1 @@
+- The owner of a private room can let one crew-mate in without opening the room to the whole crew: the Members place lists crew-mates outside the room with a "Let in" button, and who has been let in but not walked in yet. They see the room in their sidebar and join themselves — being let in is not joining. (#1224)

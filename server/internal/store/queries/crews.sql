@@ -36,8 +36,23 @@ update crews set owner_id = $2 where id = $1;
 select count(*) from rooms where crew_id = $1 and owner_id = $2;
 
 -- name: GrantRoomAccess :exec
+-- The named exception into a private room (ADR-0038, #1224): a door, not a
+-- membership — the person still walks in themselves.
 insert into room_grants (room_id, user_id) values ($1, $2)
 on conflict (room_id, user_id) do nothing;
+
+-- name: RevokeRoomAccess :exec
+delete from room_grants where room_id = $1 and user_id = $2;
+
+-- name: ListRoomGrantees :many
+-- People let into a private room who have not walked in yet. A grant is moot
+-- once they join — membership admits — so joined people drop off this list.
+select u.id, u.display_name, u.avatar_url, u.avatar_preset, g.granted_at
+from room_grants g
+join users u on u.id = g.user_id
+where g.room_id = $1
+  and not exists (select 1 from memberships m where m.room_id = g.room_id and m.user_id = g.user_id)
+order by g.granted_at;
 
 -- name: CanEnterRoom :one
 select exists (

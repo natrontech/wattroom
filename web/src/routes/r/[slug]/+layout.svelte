@@ -173,6 +173,27 @@
 			code={room.code ?? ''}
 			soundPack={room.soundPack ?? 'base'}
 			members={room.members ?? []}
+			crewVisible={room.crewVisible ?? false}
+			invited={room.invited ?? []}
+			crewOutside={room.crewOutside ?? []}
+			onGrant={(userId: string) => {
+				const name = room?.crewOutside?.find(
+					(m) => m.id === userId,
+				)?.displayName;
+				act(
+					`/api/rooms/${room?.slug}/grants`,
+					{ json: { userId } },
+					{
+						message: name ? `${name} can walk in now.` : 'Let in.',
+						undo: () =>
+							void act(`/api/rooms/${room?.slug}/grants/${userId}`, {
+								method: 'DELETE',
+							}),
+					},
+				);
+			}}
+			onRevoke={(userId: string) =>
+				act(`/api/rooms/${room?.slug}/grants/${userId}`, { method: 'DELETE' })}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
 			together={room.together ?? null}

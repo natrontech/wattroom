@@ -197,10 +197,9 @@ const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
 select id, name, icon, owner_id, created_at from crews where owner_id = $1 order by created_at limit 1
 `
 
-// The crew a room is created into. One crew per owner, made with their first
-// room and named after them — the migration's rule, applied to accounts that
-// arrive after it. ponytail: a rider owns one crew; choosing a crew on room
-// creation is the upgrade if a second one is ever wanted.
+// The crew a room is created into when the caller names none (#1201). One
+// crew per owner, made with their first room and named after them — the
+// migration's rule, applied to accounts that arrive after it.
 func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew, error) {
 	row := q.db.QueryRow(ctx, getCrewOwnedBy, ownerID)
 	var i Crew
@@ -224,6 +223,8 @@ type GrantRoomAccessParams struct {
 	UserID pgtype.UUID
 }
 
+// The named exception into a private room (ADR-0038, #1224): a door, not a
+// membership — the person still walks in themselves.
 func (q *Queries) GrantRoomAccess(ctx context.Context, arg GrantRoomAccessParams) error {
 	_, err := q.db.Exec(ctx, grantRoomAccess, arg.RoomID, arg.UserID)
 	return err
@@ -561,6 +562,51 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 	return items, nil
 }
 
+const listRoomGrantees = `-- name: ListRoomGrantees :many
+select u.id, u.display_name, u.avatar_url, u.avatar_preset, g.granted_at
+from room_grants g
+join users u on u.id = g.user_id
+where g.room_id = $1
+  and not exists (select 1 from memberships m where m.room_id = g.room_id and m.user_id = g.user_id)
+order by g.granted_at
+`
+
+type ListRoomGranteesRow struct {
+	ID           pgtype.UUID
+	DisplayName  string
+	AvatarUrl    *string
+	AvatarPreset *string
+	GrantedAt    pgtype.Timestamptz
+}
+
+// People let into a private room who have not walked in yet. A grant is moot
+// once they join — membership admits — so joined people drop off this list.
+func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]ListRoomGranteesRow, error) {
+	rows, err := q.db.Query(ctx, listRoomGrantees, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomGranteesRow
+	for rows.Next() {
+		var i ListRoomGranteesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.AvatarUrl,
+			&i.AvatarPreset,
+			&i.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pickCrewSuccessor = `-- name: PickCrewSuccessor :one
 select m.user_id
 from memberships m
@@ -606,6 +652,20 @@ type PlaceRoomInCrewParams struct {
 // rooms directly and none of them is a creation path a rider can reach.
 func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
 	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
+	return err
+}
+
+const revokeRoomAccess = `-- name: RevokeRoomAccess :exec
+delete from room_grants where room_id = $1 and user_id = $2
+`
+
+type RevokeRoomAccessParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessParams) error {
+	_, err := q.db.Exec(ctx, revokeRoomAccess, arg.RoomID, arg.UserID)
 	return err
 }
 

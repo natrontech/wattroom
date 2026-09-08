@@ -160,6 +160,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
 	s.registerCrews(mux)
+	s.registerGrants(mux)
 }
 
 // --- responses ---
@@ -277,6 +278,12 @@ type roomJSON struct {
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
+	// A private room's named exceptions (ADR-0038, #1224), owner only:
+	// crew-mates let in who have not walked in yet, and the crew-mates the
+	// owner can see who are outside — the people a grant is for. Absent for
+	// a room open to its crew, where everyone may already walk in.
+	Invited     []memberJSON `json:"invited,omitempty"`
+	CrewOutside []memberJSON `json:"crewOutside,omitempty"`
 	// The caller's own preferences for this room (#1100); nil for a
 	// non-member, who has none.
 	Me *riderPrefsJSON `json:"me,omitempty"`
@@ -696,6 +703,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					Badges:     member.Badges,
 					CrewBanned: member.Role == "banned" && crewBanned[member.ID],
 				})
+			}
+			if m.Role == "owner" && room.CrewID.Valid && !room.CrewVisible {
+				response.Invited, response.CrewOutside = s.exceptions(r.Context(), room, user, members)
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
 				times := make([]time.Time, len(weeks))

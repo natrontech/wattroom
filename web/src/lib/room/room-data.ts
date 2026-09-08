@@ -80,6 +80,11 @@ export interface Room {
 	code?: string;
 	role?: string;
 	members?: Member[];
+	/** Open to its crew (ADR-0038); members only, absent = shut. */
+	crewVisible?: boolean;
+	/** A private room's door list (#1224), owner only. */
+	invited?: Member[];
+	crewOutside?: Member[];
 	medals?: Medal[];
 	streakWeeks?: number;
 	monthKj?: number;
