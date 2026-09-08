@@ -9,3 +9,11 @@ web/.svelte-kit/
 
 # air rebuild artifact - never a repo file
 server/tmp/
+
+# What a dev server writes beside itself. Both default to a path relative to
+# the server's working directory (WATTROOM_TRACKS_DIR, WATTROOM_FEEDBACK_DIR),
+# so running `make dev-server` without setting them drops rider audio and
+# rider reports into the checkout. AGENTS.md already tells agents never to
+# `git add -A`; this is the half that does not depend on anyone remembering.
+server/tracks/
+server/feedback/
