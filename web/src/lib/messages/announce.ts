@@ -1,4 +1,4 @@
-import { notify } from '$lib/notify.svelte';
+import { away, notify, type ReplyTo } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { play } from '$lib/sound/cues';
 import { toasts } from '$lib/toast.svelte';
@@ -17,6 +17,8 @@ export interface Arrival {
 	href: string;
 	/** The thread is open in front of the reader — it announces itself. */
 	reading: boolean;
+	/** How to answer from the notification itself, where the shell offers it. */
+	reply?: ReplyTo;
 }
 
 /**
@@ -28,10 +30,15 @@ export interface Arrival {
 export function announce(arrival: Arrival): void {
 	if (arrival.reading || !shouldAnnounce(arrival.tag, arrival.at)) return;
 	play('chat');
-	// A hidden tab gets the OS notification, as it always has. A VISIBLE one
-	// gets a toast: the rider is in the app looking at Training or a workout,
-	// where a blip alone says something happened but never what or where.
-	if (document.hidden) notify.push(arrival.title, arrival.body, arrival.tag);
+	// A window nobody is looking at gets the OS notification — hidden, or
+	// behind another app (ADR-0042). A VISIBLE, focused one gets a toast: the
+	// rider is in the app looking at Training or a workout, where a blip
+	// alone says something happened but never what or where.
+	if (away())
+		notify.push(arrival.title, arrival.body, arrival.tag, {
+			href: arrival.href,
+			reply: arrival.reply,
+		});
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,

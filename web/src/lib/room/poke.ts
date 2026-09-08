@@ -15,5 +15,7 @@ export function announcePoke(
 	// play() owns the receiver's cue fader; notify.push() owns both browser
 	// permission and the hidden-tab gate. A poke bypasses neither.
 	play('poke');
-	notify.push(poke.from, `Poked you in ${roomName}`, tag);
+	notify.push(poke.from, `Poked you in ${roomName}`, tag, {
+		href: `/r/${slug}`,
+	});
 }

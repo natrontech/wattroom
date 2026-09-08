@@ -225,6 +225,7 @@ function connect(slug: string): Connection {
 					slug,
 					`${arrived.map((rider) => rider.name).join(', ')} joined the room`,
 					`join-${slug}`,
+					{ href: `/r/${slug}` },
 				);
 			} else if ([...before].some((id) => !ids.has(id))) {
 				play('leave');
@@ -346,6 +347,10 @@ function connect(slug: string): Connection {
 					body: line.text || (line.imageId ? 'sent an image' : ''),
 					href: `/r/${slug}/chat`,
 					reading: chatOpen && !document.hidden,
+					reply: {
+						placeholder: `Reply in ${where}`,
+						send: (text) => live.chat(text),
+					},
 				});
 			}
 		});
@@ -456,6 +461,7 @@ function connect(slug: string): Connection {
 					slug,
 					'The session is starting — saddle up',
 					`session-${slug}`,
+					{ href: `/r/${slug}/training` },
 				);
 			}
 		});
