@@ -260,6 +260,7 @@ type Track struct {
 	SizeBytes  int32
 	Bpm        *int16
 	CreatedAt  pgtype.Timestamptz
+	Search     interface{}
 }
 
 type User struct {

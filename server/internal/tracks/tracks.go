@@ -239,7 +239,8 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		offset = n
 	}
 	rows, err := s.store.Queries.ListTracks(r.Context(), db.ListTracksParams{
-		Limit: int32(limit), Offset: int32(offset), //nolint:gosec // bounded above
+		Search: strings.TrimSpace(r.URL.Query().Get("q")),
+		Lim:    int32(limit), Off: int32(offset), //nolint:gosec // bounded above
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)
