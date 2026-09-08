@@ -14,13 +14,17 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const version =
-	process.argv.find((a) => a.startsWith('--wattroom-version='))?.split('=')[1] ??
-	'0.0.0';
+const arg = (name) =>
+	process.argv.find((a) => a.startsWith(`--wattroom-${name}=`))?.split('=')[1];
+const version = arg('version') ?? '0.0.0';
+// The OS title bar is hidden; this is the height of the strip the app draws
+// in its place (#1188). Absent in a browser, which keeps its own chrome.
+const titleBar = Number(arg('titlebar')) || 0;
 
 contextBridge.exposeInMainWorld('wattroom', {
 	version,
 	platform: process.platform,
+	titleBar,
 	retry: () => ipcRenderer.send('wattroom:retry'),
 	// Held for a ride's duration by workout/wakelock.ts. The browser's own wake
 	// lock keeps the screen on; this keeps the machine from sleeping under it.

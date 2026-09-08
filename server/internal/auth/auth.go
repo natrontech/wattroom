@@ -62,6 +62,8 @@ type Service struct {
 	// merely checked (#697). Nil on a server with no key configured.
 	keys      *secrets.Cipher
 	providers map[string]provider
+	// Desktop sign-in handoffs in flight (#1188); see desktop.go.
+	handoffs handoffs
 	// secure=false only for plain-http localhost; cookies are Secure otherwise.
 	secure bool
 	// The public origin, for OAuth callbacks and the emailed confirm link.
@@ -142,6 +144,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	// The way back out of a connection (#783); linking is ?link=1 on start.
 	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)
+	s.registerDesktopRoutes(mux)
 }
 
 // handleProviders lists configured provider ids, so the web renders sign-in

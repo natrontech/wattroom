@@ -1,0 +1,1 @@
+- The desktop app draws its own title bar in the app's colours — no more white strip over a dark room — and opens on a first screen made for a desk: the live-room scene beside one sign-in button.

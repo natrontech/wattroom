@@ -1,0 +1,1 @@
+- The desktop app signs you in through your browser: one button opens wattroom.ch there, you use your passkey, GitHub or Strava as usual, and the app picks the session up on its own. Signing in inside the app's own window never worked — passkeys hung and GitHub or Strava stranded you in the browser.

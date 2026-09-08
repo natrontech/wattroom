@@ -1,7 +1,10 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import { shellTitleBar } from '$lib/desktop';
 
 	let { children } = $props();
+	// Under the desktop shell's drag strip (#1188); 0 in a browser.
+	const titleBar = shellTitleBar();
 </script>
 
 <!-- Shared shell for the public pages (#232) — legal, privacy, and the
@@ -12,7 +15,10 @@
 		aria-hidden="true"
 	></div>
 
-	<div class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16">
+	<div
+		class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16"
+		style={titleBar ? `padding-top: ${titleBar + 20}px` : ''}
+	>
 		<header class="flex items-center justify-between">
 			<a href="/" aria-label="WattRoom home"><Logo size={28} wordmark /></a>
 			<a href="/home" class="btn-link text-xs">to the rooms</a>

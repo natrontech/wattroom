@@ -57,9 +57,19 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		keys: Object.keys(window.wattroom ?? {}).sort(),
 		platform: window.wattroom?.platform,
 		version: window.wattroom?.version,
+		titleBar: window.wattroom?.titleBar,
 	}));
 	expect(bridge.present).toBe(true);
-	expect(bridge.keys).toEqual(['keepAwake', 'platform', 'retry', 'version']);
+	expect(bridge.keys).toEqual([
+		'keepAwake',
+		'platform',
+		'retry',
+		'titleBar',
+		'version',
+	]);
+	// The strip the app draws where the OS title bar was (#1188): a number,
+	// or the app draws nothing and the traffic lights land on the sidebar.
+	expect(bridge.titleBar).toBe(32);
 	expect(bridge.platform).toBe(process.platform);
 	// Not Electron's version. app.getVersion() returns Electron's when
 	// unpackaged, so this asserts the shell's own — the number the update
@@ -124,18 +134,57 @@ test('the navigation guard refuses another origin', async () => {
 	await app.close();
 });
 
+test('a wattroom://auth link loads the handoff on our origin, and nothing else does', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	// loadURL from main fires no will-navigate, so watch the navigation itself.
+	await app.evaluate(({ BrowserWindow }) => {
+		globalThis.__nav = [];
+		const [w] = BrowserWindow.getAllWindows();
+		w.webContents.on('did-start-navigation', (e) => {
+			if (e.isMainFrame) globalThis.__nav.push(e.url);
+		});
+	});
+	const emit = (link) =>
+		app.evaluate(
+			({ app }, l) => app.emit('open-url', { preventDefault() {} }, l),
+			link,
+		);
+
+	// Not ours, and not the auth path: dropped, no navigation.
+	await emit('https://example.com/login?handoff=abcdefghijklmnopqrstuvwxyz');
+	await emit('wattroom://evil/abcdefghijklmnopqrstuvwxyz');
+	await emit('wattroom://auth/short');
+	await emit('wattroom://auth/has%20space%20and%20more%20chars');
+	await new Promise((r) => setTimeout(r, 500));
+	expect(await app.evaluate(() => globalThis.__nav)).toEqual([]);
+
+	// The real thing: /login?handoff=<token> on the app's origin, never the
+	// link's own host.
+	await emit('wattroom://auth/abcdefghijklmnopqrstuvwxyz0123456789');
+	await new Promise((r) => setTimeout(r, 1500));
+	const nav = await app.evaluate(() => globalThis.__nav);
+	expect(nav[0]).toBe(
+		`${DEAD_URL.replace(/\/$/, '')}/login?handoff=abcdefghijklmnopqrstuvwxyz0123456789`,
+	);
+
+	await app.close();
+});
+
 test('a ride holds the machine awake, and stops holding it', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 
 	const blocking = () =>
-		app.evaluate(({ powerSaveBlocker }) =>
-			powerSaveBlocker
-				.isStarted(0)
+		app.evaluate(
+			({ powerSaveBlocker }) =>
+				powerSaveBlocker.isStarted(0) ||
 				// ids are sequential from 0; any started blocker is ours, since
 				// the shell starts no other.
-				|| [1, 2, 3].some((id) => powerSaveBlocker.isStarted(id)),
+				[1, 2, 3].some((id) => powerSaveBlocker.isStarted(id)),
 		);
 
 	// Nothing is riding yet.

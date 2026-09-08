@@ -32,6 +32,13 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 // sandboxed, and this is the same number in both.
 const SHELL_VERSION = require('./package.json').version;
 
+// The OS title bar is hidden and the web app draws the strip (#1188): macOS
+// drew a white bar over a dark app, and a bar the app owns follows its theme
+// and its typography. This is its height; the preload hands it to the app
+// as window.wattroom.titleBar, and the traffic lights and the Windows/Linux
+// overlay controls are placed to sit inside it.
+const TITLE_BAR_PX = 32;
+
 // The last trainer a rider chose, so the chooser can skip itself next time.
 // In memory only: a file would be state to migrate, and re-picking once per
 // launch is the cost of not having one. ponytail: persist when riders complain.
@@ -53,11 +60,25 @@ function createWindow() {
 		minWidth: 380,
 		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
+		titleBarStyle: 'hidden',
+		trafficLightPosition: { x: 14, y: (TITLE_BAR_PX - 12) / 2 },
+		// Windows and Linux keep the native window controls, drawn over the
+		// app's strip in the surface colour. ponytail: the colour is the dark
+		// theme's; a light-theme rider there sees a dark control box until the
+		// app tells the shell its scheme.
+		titleBarOverlay: {
+			color: '#0a0118',
+			symbolColor: '#ffffff',
+			height: TITLE_BAR_PX,
+		},
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			// The preload is sandboxed and cannot read package.json, so the
 			// version arrives as a switch it can parse off process.argv.
-			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
+			additionalArguments: [
+				`--wattroom-version=${SHELL_VERSION}`,
+				`--wattroom-titlebar=${TITLE_BAR_PX}`,
+			],
 			// The three that matter with remote content. Defaults in modern
 			// Electron, restated because a future edit that flips one of them
 			// should have to delete a line that says why.
@@ -100,7 +121,9 @@ function installHandlers(win) {
 			callback(''); // rejects in the renderer; media-error.ts has copy for it
 			return;
 		}
-		const remembered = devices.find((d) => d.deviceId === lastBluetoothDeviceId);
+		const remembered = devices.find(
+			(d) => d.deviceId === lastBluetoothDeviceId,
+		);
 		if (remembered) {
 			callback(remembered.deviceId);
 			return;
@@ -130,9 +153,11 @@ function installHandlers(win) {
 	});
 	// The check half: most web APIs check first and only request if denied, so
 	// a handler on one and not the other is a gate with a hole in it.
-	ses.setPermissionCheckHandler((contents, permission, origin) =>
-		(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
-		ALLOWED.has(permission));
+	ses.setPermissionCheckHandler(
+		(contents, permission, origin) =>
+			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
+			ALLOWED.has(permission),
+	);
 
 	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
 	//    without this the stage (#280) silently breaks. It must also survive
@@ -190,12 +215,15 @@ function installHandlers(win) {
 
 	// The server-down screen. A shell whose remote never answers is a white
 	// rectangle with no way out, which errors.md forbids.
-	win.webContents.on('did-fail-load', (event, code, description, url, isMain) => {
-		if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
-		void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
-			query: { url: APP_URL, reason: description || String(code) },
-		});
-	});
+	win.webContents.on(
+		'did-fail-load',
+		(event, code, description, url, isMain) => {
+			if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
+			void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
+				query: { url: APP_URL, reason: description || String(code) },
+			});
+		},
+	);
 }
 
 /**
@@ -219,12 +247,73 @@ async function chooseFrom(win, title, options) {
 	return shown[response]?.value ?? null;
 }
 
+// wattroom:// — the way back into the app from the system browser (#1188).
+//
+// Sign-in happens in the browser, because it cannot happen here: Electron has
+// no WebAuthn UI, so a passkey request never resolves, and Google refuses
+// OAuth from an Electron window outright. The web app opens
+// /login?desktop=<nonce> in the browser, the rider signs in there however
+// they like, and the page comes back through wattroom://auth/<token>. All
+// the shell does with it is load /login?handoff=<token> on its own origin;
+// the page redeems the token with the nonce it kept, and the server mints
+// this window its own session. Nothing else is accepted: an unknown path or
+// an odd-looking token is dropped, not loaded.
+const DEEP_LINK_TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
+
+function deepLinkTarget(link) {
+	let url;
+	try {
+		url = new URL(link);
+	} catch {
+		return null;
+	}
+	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
+	const token = url.pathname.replace(/^\//, '');
+	if (!DEEP_LINK_TOKEN.test(token)) return null;
+	// APP_ORIGIN, not APP_URL: a WATTROOM_URL with a trailing slash made this
+	// `//login`, which the smoke caught.
+	return `${APP_ORIGIN}/login?handoff=${encodeURIComponent(token)}`;
+}
+
+// macOS delivers the link before the window exists when the app was not
+// running; hold it until ready-to-show.
+let pendingDeepLink = null;
+
+function openDeepLink(link) {
+	const target = deepLinkTarget(link);
+	if (!target) return;
+	const [win] = BrowserWindow.getAllWindows();
+	if (!win) {
+		pendingDeepLink = target;
+		return;
+	}
+	if (win.isMinimized()) win.restore();
+	win.focus();
+	win.loadURL(target).catch(() => {
+		/* did-fail-load shows the offline screen */
+	});
+}
+
+const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
+
+app.setAsDefaultProtocolClient('wattroom');
+app.on('open-url', (event, link) => {
+	event.preventDefault();
+	openDeepLink(link);
+});
+
 // One instance. Without this every wattroom:// link opens a second window
-// against the same session, and the deep-link work later depends on it.
+// against the same session; on Windows and Linux the link arrives as the
+// second instance's argv.
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
-	app.on('second-instance', () => {
+	app.on('second-instance', (_event, argv) => {
+		const link = deepLinkIn(argv);
+		if (link) {
+			openDeepLink(link);
+			return;
+		}
 		const [win] = BrowserWindow.getAllWindows();
 		if (!win) return;
 		if (win.isMinimized()) win.restore();
@@ -232,7 +321,15 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.whenReady().then(() => {
-		createWindow();
+		const win = createWindow();
+		// A cold start from a link, on Windows and Linux.
+		const link = deepLinkIn(process.argv);
+		if (link) pendingDeepLink = deepLinkTarget(link);
+		if (pendingDeepLink) {
+			const target = pendingDeepLink;
+			pendingDeepLink = null;
+			win.once('ready-to-show', () => void win.loadURL(target).catch(() => {}));
+		}
 		app.on('activate', () => {
 			if (BrowserWindow.getAllWindows().length === 0) createWindow();
 		});

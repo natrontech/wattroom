@@ -40,8 +40,13 @@
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
+	import { shellTitleBar } from '$lib/desktop';
 
 	let { children } = $props();
+
+	// The desktop shell hides the OS title bar and this app draws the strip
+	// (#1188): the window's handle, in the app's own colour. 0 in a browser.
+	const titleBar = shellTitleBar();
 
 	void account.load();
 	// Before the routing effect below replaces the URL and takes ?new= with it.
@@ -217,6 +222,17 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+{#if titleBar}
+	<!-- The window's handle: drag, double-click to zoom. It sits over every
+	     page, and the framed layout below starts under it so the traffic
+	     lights and the Windows controls never land on the sidebar's logo. -->
+	<div
+		class="fixed inset-x-0 top-0 z-60"
+		style="height: {titleBar}px; -webkit-app-region: drag"
+		aria-hidden="true"
+	></div>
+{/if}
+
 {#if !account.loaded && !publicPath}
 	<!-- Hold the frame while /api/me answers — no gated flash, no login flash. -->
 	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
@@ -235,7 +251,10 @@
 				ridePhase === 'running' ||
 				ridePhase === 'paused')) ||
 		soloRide.active}
-	<div class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}">
+	<div
+		class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}"
+		style={titleBar ? `padding-top: ${titleBar}px` : ''}
+	>
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
 		     rooms, the places inside the room you are standing in, messages and
 		     you. Owned here so navigating out of a room does not swap instances
@@ -257,6 +276,7 @@
 			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
+			style={titleBar ? `top: ${titleBar}px` : ''}
 		>
 			<!-- One call, connected or not (#1047). The AV row inside reads the
 			     chain itself now, and what is left answers with optional
