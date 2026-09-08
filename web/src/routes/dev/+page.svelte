@@ -21,11 +21,6 @@
 			hint: 'Rooms and DMs together, unread first, read a room from outside (#451)',
 		},
 		{
-			href: '/dev/crew',
-			label: 'Crew navigation',
-			hint: 'Three ways to make the sidebar tree three deep, and the states the cutover must keep (#1023)',
-		},
-		{
 			href: '/dev/themes',
 			label: 'Theme gallery',
 			hint: 'Every theme against the surfaces that carry colour, cave and desk (#399)',
