@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-09-08
-- Amends: [0029](0029-auth-concept.md)'s picture of where a session is born — one more door, the same credentials
+- Amends: [0029](0029-one-account-a-set-of-credentials.md)'s picture of where a session is born — one more door, the same credentials
 - Constrained by: [0037](0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) — the shell holds no product code, and its bridge stays small
 - Answers: [#1188](https://github.com/natrontech/wattroom/issues/1188)
 
