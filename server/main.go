@@ -61,10 +61,30 @@ import (
 //go:embed all:webdist
 var webdist embed.FS
 
+// logLevel reads WATTROOM_LOG_LEVEL, the same shape as WATTROOM_ADDR and
+// WATTROOM_DEV_LOGIN rather than a new mechanism. Unset or unreadable means
+// info, which is what every deployment has had until now — an operator who
+// mistypes it gets the old behaviour and a line saying so, not a silent
+// server.
+func logLevel() slog.Level {
+	raw := strings.TrimSpace(os.Getenv("WATTROOM_LOG_LEVEL"))
+	if raw == "" {
+		return slog.LevelInfo
+	}
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(raw)); err != nil {
+		fmt.Fprintf(os.Stderr, "WATTROOM_LOG_LEVEL=%q is not a level (debug, info, warn, error) — using info\n", raw)
+		return slog.LevelInfo
+	}
+	return level
+}
+
 func main() {
 	// The log ring tees every record into a bounded buffer so a feedback
-	// report can staple the server's recent log onto itself (#53).
-	logRing := feedback.NewLogRing(slog.NewJSONHandler(os.Stdout, nil))
+	// report can staple the server's recent log onto itself (#53). What
+	// reaches STDOUT is WATTROOM_LOG_LEVEL's business; the ring keeps Info
+	// and above either way (#1098).
+	logRing := feedback.NewLogRing(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel()}))
 	log := slog.New(logRing)
 	slog.SetDefault(log)
 
