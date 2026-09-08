@@ -1,0 +1,1 @@
+- Editing a chat line right after sending it now reaches everyone in the room. If the fix arrived before the other riders' copies of the line had been saved, it was dropped and they kept reading the old words until a reload. (#1231)

@@ -68,6 +68,24 @@ export function createRoomLive(slug: string) {
 	// line — usually applied the moment they arrive, kept only when a flood
 	// carries the line to a later tick than its id.
 	let pendingIds: Record<string, string> = {};
+	// Edits that named an id no line here carries yet (#1231): the save runs
+	// off the read loop, so a line's id follows in a later tick, and an author
+	// can edit inside that gap. Held until the id lands, like pendingIds.
+	let pendingEdits: Record<string, import('$lib/protocol').ChatEdit> = {};
+	/** Land every held edit whose line now has its id; keep the rest. */
+	function applyPendingEdits() {
+		const ids = Object.keys(pendingEdits);
+		if (ids.length === 0) return;
+		chatLog = chatLog.map((line) => {
+			const edit = line.id ? pendingEdits[line.id] : undefined;
+			if (!edit) return line;
+			delete pendingEdits[line.id!];
+			return { ...line, text: edit.text, editedAt: edit.editedAt };
+		});
+		// An edit whose line never surfaces (pruned, or never ours) must not
+		// pool forever.
+		if (Object.keys(pendingEdits).length > 64) pendingEdits = {};
+	}
 	let socket: WebSocket | null = null;
 	let closed = false;
 	let attempts = 0;
@@ -187,6 +205,7 @@ export function createRoomLive(slug: string) {
 					// An id whose line never surfaced (pruned by the 200-line cap)
 					// would pool forever — reset the stragglers.
 					if (Object.keys(pendingIds).length > 64) pendingIds = {};
+					applyPendingEdits();
 				}
 				if (msg.tick.chatEdits?.length) {
 					// A rewritten line lands ON the line already in the log
@@ -197,10 +216,13 @@ export function createRoomLive(slug: string) {
 					);
 					chatLog = chatLog.map((line) => {
 						const edit = line.id ? byId.get(line.id) : undefined;
+						if (edit) byId.delete(line.id!);
 						return edit
 							? { ...line, text: edit.text, editedAt: edit.editedAt }
 							: line;
 					});
+					// Whatever found no line yet waits for its id (#1231).
+					for (const [id, edit] of byId) pendingEdits[id] = edit;
 				}
 				if (msg.tick.chatReactions?.length) {
 					const next = { ...chatReactions };
