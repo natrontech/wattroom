@@ -1,6 +1,7 @@
 package playlists
 
 import (
+	"context"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -114,5 +115,45 @@ func TestSmartShuffleDropsABannedRidersShelf(t *testing.T) {
 	}
 	if drawn[mine] == 0 {
 		t.Error("the ban emptied the room's own autoplay")
+	}
+}
+
+// The draw stays on the room's members (#1103 confirmed that over the crew),
+// but a member the CREW banned keeps their row and loses their say: their
+// shelf must leave the rotation with them. Silent if it regresses — the
+// draw is random, so a track that should be gone looks like one that should
+// be there — so this was seen red against the old `role != 'banned'` join.
+func TestACrewBannedMembersShelfLeavesAutoplay(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+		RoomID: room.ID, UserID: h.users["bob"].ID, Role: "member",
+	}); err != nil {
+		t.Fatalf("membership: %v", err)
+	}
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: room.OwnerID})
+	if err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID) })
+	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room.ID, CrewID: crew.ID, CrewVisible: true}); err != nil {
+		t.Fatalf("place: %v", err)
+	}
+	theirs := h.track(t, "bob", "Bob's Song")
+	if h.drawIDs(t, slug)[theirs] == 0 {
+		t.Fatal("a member's track was not reachable before the ban — test proves nothing")
+	}
+
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users["bob"].ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("crew ban: %v", err)
+	}
+	if h.drawIDs(t, slug)[theirs] > 0 {
+		t.Error("autoplay still draws from the shelf of a member the crew banned")
 	}
 }
