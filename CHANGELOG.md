@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.52] - 2026-09-08
+
+### Changed
+
+- Inviting people happens at the crew now, not per room. A crew has a six-character code and a share link; whoever joins with it can walk into the crew's open rooms, and a room the owner made private still admits only its members and whoever was let in. Room codes and room links are gone from the app — settings and the Members place point at the crew's invite instead — and "Join with a code" on Home takes a crew code. Rooms listed in the directory stay a public door; joining one joins its crew. (#1236)
+
 ## [2026.09.51] - 2026-09-08
 
 ### Added
@@ -1210,7 +1216,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.51...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.52...HEAD
+[2026.09.52]: https://github.com/natrontech/wattroom/compare/2026.09.51...2026.09.52
 [2026.09.51]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.4...2026.09.51
 [2026.09.50]: https://github.com/natrontech/wattroom/compare/2026.09.49...2026.09.50
 [2026.09.49]: https://github.com/natrontech/wattroom/compare/2026.09.48...2026.09.49
