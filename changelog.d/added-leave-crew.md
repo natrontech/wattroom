@@ -1,0 +1,1 @@
+- A crew's page has a "Leave the crew" button for members: it leaves every room of the crew you are in, in one move, with an undo. It says up front when you own a room there and have to hand it on first. (#1228)
