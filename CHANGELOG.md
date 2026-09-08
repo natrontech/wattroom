@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.57] - 2026-09-09
+
+### Changed
+
+- The crew's invite has one home, the crew page, where every member sees it. Crew settings hold only what the crew is called and looks like, and the invite panel no longer squeezes its sentence into a thin column on a phone.
+
+### Fixed
+
+- Home's "nobody's around" line no longer tells a rider with rooms to open one: it says the rooms are quiet, and keeps the open-a-room nudge for someone who has none yet.
+- Leaving a room no longer promises that "the room's code gets you back in" — rooms have had no codes since the invite became the crew's. It now says what is true: an open room you can walk back into, a private one the owner lets you back into.
+- A room's settings header said "you joined 2026-09-08"; it now reads "you joined Sept 2026", the way a crew's people and a room's members already say "since".
+
 ## [2026.09.56] - 2026-09-09
 
 ### Added
@@ -1258,7 +1270,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.56...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.57...HEAD
+[2026.09.57]: https://github.com/natrontech/wattroom/compare/2026.09.56...2026.09.57
 [2026.09.56]: https://github.com/natrontech/wattroom/compare/2026.09.55...2026.09.56
 [2026.09.55]: https://github.com/natrontech/wattroom/compare/2026.09.54...2026.09.55
 [2026.09.54]: https://github.com/natrontech/wattroom/compare/2026.09.53...2026.09.54
