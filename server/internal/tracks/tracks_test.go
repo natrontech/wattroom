@@ -1,0 +1,311 @@
+package tracks
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/natrontech/wattroom/server/internal/audio/audiotest"
+	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
+)
+
+type fakeUsers struct{ byToken map[string]db.User }
+
+func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	u, ok := f.byToken[r.Header.Get("X-Test-User")]
+	if !ok {
+		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
+	}
+	return u, ok
+}
+
+type harness struct {
+	mux   *http.ServeMux
+	users *fakeUsers
+	store *store.Store
+	dir   string
+}
+
+func setup(t *testing.T) *harness {
+	t.Helper()
+	dsn := os.Getenv("WATTROOM_TEST_DB")
+	if dsn == "" {
+		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	st, err := store.Open(ctx, dsn)
+	if err != nil {
+		t.Skipf("no database available: %v", err)
+	}
+	t.Cleanup(st.Close)
+
+	users := &fakeUsers{byToken: map[string]db.User{}}
+	for _, name := range []string{"alice", "bob"} {
+		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
+			DisplayName: name, FtpWatts: 200, WeightKg: 75,
+		})
+		if err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+		users.byToken[name] = u
+		t.Cleanup(func() {
+			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
+		})
+	}
+	// A directory per test: the pool is content-addressed, so two tests using
+	// the same bytes would otherwise share a file and one would delete it out
+	// from under the other.
+	dir := t.TempDir()
+	mux := http.NewServeMux()
+	svc := &Service{store: st, auth: users, log: slog.New(slog.DiscardHandler), dir: dir}
+	svc.Register(mux)
+	return &harness{mux: mux, users: users, store: st, dir: dir}
+}
+
+func (h *harness) do(t *testing.T, who, method, path string, body []byte) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), method, path, bytes.NewReader(body))
+	if who != "" {
+		req.Header.Set("X-Test-User", who)
+	}
+	w := httptest.NewRecorder()
+	h.mux.ServeHTTP(w, req)
+	return w
+}
+
+func decode(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var out map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode %s: %v", w.Body.String(), err)
+	}
+	return out
+}
+
+// song is a real MP3 of `frames` frames, unique per `seed` so two tests do not
+// collide on one content address.
+func song(seed byte, frames int) []byte {
+	return append(audiotest.MP3(frames, 9, 0), seed)
+}
+
+func (h *harness) upload(t *testing.T, who string, data []byte, name string) map[string]any {
+	t.Helper()
+	w := h.do(t, who, http.MethodPost, "/api/tracks?name="+name, data)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("upload: %d %s", w.Code, w.Body.String())
+	}
+	body := decode(t, w)
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from tracks where id = $1", body["id"])
+	})
+	return body
+}
+
+func TestUploadMeasuresTheFileAndStoresItByContent(t *testing.T) {
+	h := setup(t)
+	data := song(1, 383) // ~10 s at 128 kbps
+	body := h.upload(t, "alice", data, "Midnight%20City.mp3")
+
+	// The duration is walked out of the frames, not taken from the uploader.
+	if ms, _ := body["durationMs"].(float64); ms < 9500 || ms > 10500 {
+		t.Errorf("durationMs = %v, want ~10004 measured from the frames", body["durationMs"])
+	}
+	// No ID3 tag on a synthetic file, so the filename is the fallback title.
+	if body["title"] != "Midnight City" {
+		t.Errorf("title = %v, want the filename without its extension", body["title"])
+	}
+	if body["uploadedBy"] != "alice" {
+		t.Errorf("uploadedBy = %v", body["uploadedBy"])
+	}
+
+	// The file is on disk at its content address, fanned out by two hex chars.
+	sha := Address(data)
+	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stored file: %v", err)
+	}
+	if info.Size() != int64(len(data)) {
+		t.Errorf("stored %d bytes, uploaded %d", info.Size(), len(data))
+	}
+}
+
+func TestUploadRefusesWhatIsNotAnMp3(t *testing.T) {
+	h := setup(t)
+	w := h.do(t, "alice", http.MethodPost, "/api/tracks?name=x.mp3", []byte("PNG, honestly"))
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+	if body := decode(t, w); body["error"] != "validation_error" {
+		t.Errorf("error = %v, want validation_error", body["error"])
+	}
+}
+
+func TestASecondUploadOfTheSameSongStoresNothingNew(t *testing.T) {
+	h := setup(t)
+	data := song(2, 383)
+	first := h.upload(t, "alice", data, "Shared.mp3")
+
+	// Bob uploads the same bytes: he gets the track that is already there.
+	w := h.do(t, "bob", http.MethodPost, "/api/tracks?name=Shared.mp3", data)
+	if w.Code != http.StatusOK {
+		t.Fatalf("duplicate upload: %d %s", w.Code, w.Body.String())
+	}
+	if decode(t, w)["id"] != first["id"] {
+		t.Errorf("a duplicate made a second track")
+	}
+	// And it charged nobody: bob stored no bytes, so his quota is untouched.
+	used, err := h.store.Queries.TrackQuotaUsed(t.Context(), h.users.byToken["bob"].ID)
+	if err != nil {
+		t.Fatalf("quota: %v", err)
+	}
+	if used != 0 {
+		t.Errorf("bob's quota = %d, want 0 — he stored nothing", used)
+	}
+}
+
+func TestAudioIsSignedInOnlyAndSeekable(t *testing.T) {
+	h := setup(t)
+	data := song(3, 383)
+	track := h.upload(t, "alice", data, "Ranged.mp3")
+	id, _ := track["id"].(string)
+	path := "/api/tracks/" + id + "/audio"
+
+	if w := h.do(t, "", http.MethodGet, path, nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("signed out = %d, want 401", w.Code)
+	}
+	// Anyone signed in can play it: one global pool (ADR-0015).
+	w := h.do(t, "bob", http.MethodGet, path, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("play = %d", w.Code)
+	}
+	if got := w.Body.Len(); got != len(data) {
+		t.Errorf("served %d bytes, stored %d", got, len(data))
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "audio/mpeg" {
+		t.Errorf("content-type = %q", ct)
+	}
+	// Range requests are the reason the audio is a file rather than a column.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+	req.Header.Set("X-Test-User", "bob")
+	req.Header.Set("Range", "bytes=0-99")
+	ranged := httptest.NewRecorder()
+	h.mux.ServeHTTP(ranged, req)
+	if ranged.Code != http.StatusPartialContent {
+		t.Errorf("ranged = %d, want 206", ranged.Code)
+	}
+	if ranged.Body.Len() != 100 {
+		t.Errorf("ranged body = %d bytes, want 100", ranged.Body.Len())
+	}
+}
+
+func TestOnlyTheUploaderEditsOrDeletes(t *testing.T) {
+	h := setup(t)
+	data := song(4, 383)
+	track := h.upload(t, "alice", data, "Mine.mp3")
+	id, _ := track["id"].(string)
+
+	edit := []byte(`{"title":"Renamed","artist":"Someone","album":"","bpm":128}`)
+	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusForbidden {
+		t.Errorf("bob edited alice's track: %d", w.Code)
+	}
+	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusForbidden {
+		t.Errorf("bob deleted alice's track: %d", w.Code)
+	}
+
+	w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, edit)
+	if w.Code != http.StatusOK {
+		t.Fatalf("alice's own edit: %d %s", w.Code, w.Body.String())
+	}
+	body := decode(t, w)
+	if body["title"] != "Renamed" || body["bpm"] != float64(128) {
+		t.Errorf("edit did not take: %v", body)
+	}
+
+	if w := h.do(t, "alice", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d", w.Code)
+	}
+	// The row and the file both go.
+	if w := h.do(t, "alice", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
+		t.Errorf("deleted track still plays: %d", w.Code)
+	}
+	sha := Address(data)
+	if _, err := os.Stat(filepath.Join(h.dir, sha[:2], sha+".mp3")); !os.IsNotExist(err) {
+		t.Errorf("the file outlived its row")
+	}
+}
+
+func TestEditValidatesAtTheBoundary(t *testing.T) {
+	h := setup(t)
+	track := h.upload(t, "alice", song(5, 383), "Bounds.mp3")
+	id, _ := track["id"].(string)
+
+	for _, tc := range []struct{ name, body string }{
+		{"no title", `{"title":"   ","artist":"","album":"","bpm":null}`},
+		{"impossible bpm", `{"title":"Fine","artist":"","album":"","bpm":900}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, []byte(tc.body))
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400", w.Code)
+			}
+			if decode(t, w)["error"] != "validation_error" {
+				t.Errorf("error = %v", decode(t, w)["error"])
+			}
+		})
+	}
+}
+
+func TestMissingTrackIs404AndSignedOutIs401(t *testing.T) {
+	h := setup(t)
+	gone := "/api/tracks/00000000-0000-0000-0000-000000000000"
+	for _, tc := range []struct {
+		name, who, method, path string
+		want                    int
+	}{
+		{"list signed out", "", http.MethodGet, "/api/tracks", http.StatusUnauthorized},
+		{"upload signed out", "", http.MethodPost, "/api/tracks?name=x.mp3", http.StatusUnauthorized},
+		{"edit a track that is not there", "alice", http.MethodPatch, gone, http.StatusNotFound},
+		{"delete a track that is not there", "alice", http.MethodDelete, gone, http.StatusNotFound},
+		{"play a track that is not there", "alice", http.MethodGet, gone + "/audio", http.StatusNotFound},
+		{"a path that is not an id", "alice", http.MethodGet, "/api/tracks/not-a-uuid/audio", http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if w := h.do(t, tc.who, tc.method, tc.path, []byte(`{}`)); w.Code != tc.want {
+				t.Errorf("status = %d, want %d", w.Code, tc.want)
+			}
+		})
+	}
+}
+
+func TestListShowsThePoolToEveryone(t *testing.T) {
+	h := setup(t)
+	h.upload(t, "alice", song(6, 383), "Hers.mp3")
+	h.upload(t, "bob", song(7, 383), "His.mp3")
+
+	w := h.do(t, "bob", http.MethodGet, "/api/tracks", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list: %d", w.Code)
+	}
+	list, _ := decode(t, w)["tracks"].([]any)
+	titles := map[string]string{}
+	for _, item := range list {
+		row, _ := item.(map[string]any)
+		title, _ := row["title"].(string)
+		uploader, _ := row["uploadedBy"].(string)
+		titles[title] = uploader
+	}
+	// One global pool: bob sees alice's upload, with her name on it.
+	if titles["Hers"] != "alice" || titles["His"] != "bob" {
+		t.Errorf("pool = %v, want both tracks with their uploaders", titles)
+	}
+}

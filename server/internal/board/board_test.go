@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/audio"
+	"github.com/natrontech/wattroom/server/internal/audio/audiotest"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -98,7 +100,7 @@ func upload(t *testing.T, mux *http.ServeMux, who, name string, data []byte) cli
 }
 
 // tenSeconds is a real MPEG 1 Layer III file: 383 silent frames at 128 kbps.
-func tenSeconds() []byte { return mp3(383, 9, 0) }
+func tenSeconds() []byte { return audiotest.MP3(383, 9, 0) }
 
 func TestUploadAndList(t *testing.T) {
 	mux, _, _ := setup(t)
@@ -254,8 +256,8 @@ func TestAudioIsGatedOnSharingARoom(t *testing.T) {
 // clip can still never play past SPEC's minute (#934).
 func TestLongUploadArrivesTrimmedToTheCeiling(t *testing.T) {
 	mux, _, _ := setup(t)
-	long := mp3(2400, 9, 0) // ~62.7 s
-	if ms, ok := DurationMillis(long); !ok || ms <= MaxClipMillis {
+	long := audiotest.MP3(2400, 9, 0) // ~62.7 s
+	if ms, ok := audio.DurationMillis(long); !ok || ms <= MaxClipMillis {
 		t.Fatalf("test fixture is not longer than the ceiling: %d ms", ms)
 	}
 	clip := upload(t, mux, "alice", "LONG", long)

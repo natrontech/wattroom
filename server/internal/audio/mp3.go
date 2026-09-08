@@ -1,8 +1,10 @@
-package board
+package audio
 
-// MP3 is the one upload format (#877): every browser decodes it, and its
-// frame headers carry enough to measure a file without a decoder, which is
-// what lets the length rule live on the server where a rule belongs.
+// MP3 is the one upload format the app accepts (#877 for soundboard clips,
+// #266 for the music pool): every browser decodes it, and its frame headers
+// carry enough to measure a file without a decoder — which is what lets the
+// length rule live on the server, where a rule belongs, rather than in a
+// number the uploading browser hands us.
 
 // Layer III frame sizes, indexed [version][bitrate index]. Index 0 is "free"
 // and 15 is reserved; both are refused rather than guessed at.

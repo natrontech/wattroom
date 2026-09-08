@@ -10,8 +10,13 @@ services:
       WATTROOM_BASE_URL: https://${DOMAIN}
       WATTROOM_LIVEKIT_URL: wss://${DOMAIN}/livekit
       WATTROOM_FEEDBACK_DIR: /data/feedback
+      # The music pool's audio (ADR-0015): metadata is in Postgres, the files
+      # are here. Its own volume, because the pg_dump before a rollout does
+      # not carry it and a 2 GB-per-rider library has no business in one.
+      WATTROOM_TRACKS_DIR: /data/tracks
     volumes:
       - feedback:/data/feedback
+      - tracks:/data/tracks
     depends_on:
       - postgres
     expose:
@@ -88,6 +93,7 @@ services:
 volumes:
   pgdata:
   feedback:
+  tracks:
   caddy-data:
   caddy-config:
 
