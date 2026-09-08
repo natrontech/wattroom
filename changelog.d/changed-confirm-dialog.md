@@ -1,1 +1,0 @@
-- "Are you sure?" questions — ending a session, leaving a live ride, removing a member, disconnecting Strava, deleting a track from the pool — now open WattRoom's own dialog instead of the browser's plain grey prompt, with the action named on the button.

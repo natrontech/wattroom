@@ -1,1 +1,0 @@
-- Disconnecting Strava now revokes the grant through Strava's `oauth/revoke` endpoint, which carries your token in the request body rather than in the URL. A token in a URL is a token in somebody's proxy log; it never should have been there. A revoke that Strava refuses is now reported instead of passed over in silence.

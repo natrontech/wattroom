@@ -1,1 +1,0 @@
-- **The crews you are not looking at still report in.** When another crew has something on — riders on watts, people in voice, lines you have not read — one line under the crew header says so, and tapping it switches. A quiet crew says nothing at all.

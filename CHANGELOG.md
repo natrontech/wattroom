@@ -17,6 +17,83 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.47] - 2026-09-08
+
+### Added
+
+- Autoplay's Smart mode now leans toward what your room actually enjoys: finish a track and its artist — or, more loosely, its genre — comes round more often. Skipping builds nothing, and the track you just heard does not come straight back. Each room learns only from its own rides.
+- Smart autoplay now matches the music to the work: while a session is running it favours tracks whose tempo fits the cadence the current block is asking for, at that cadence or at double it. Tracks with no BPM are never buried for it, and a room with nothing running picks exactly as before.
+- **Your crew has a door now.** Every room is made inside your crew and open to it; your room list says what you may do in each of the crew's rooms — open, private and you are in it, private and you are not, or yours to administer without reading; a crew can be renamed; a crew admin can ban from the whole crew, which severs every room at once, and lifting a crew ban never lifts a room ban or the other way round. Deleting your account now hands your crew on instead of failing.
+- **Your crew has a page.** From the crew header in the sidebar: its rooms with what you may do in each, its people with their crew roles, and — for the owner and admins — make or unmake an admin, ban from the crew, and lift a crew ban with a line saying it restores nothing a room's owner decided. The room's own Unban says the same in the other direction.
+- **The day the crew arrives, it says so once.** A brief notice names your crew — named after you until you rename it — and points at its page, where the name is the heading and a click edits it.
+- **The crews you are not looking at still report in.** When another crew has something on — riders on watts, people in voice, lines you have not read — one line under the crew header says so, and tapping it switches. A quiet crew says nothing at all.
+- **The sidebar shows one crew at a time.** A header above your rooms names the crew you are looking at and switches to another; the room you are connected to stays in the sidebar under "you are in", whichever crew is on screen. The crew you own carries a small shield.
+- **A room row says what you may do there before you open it.** Private rooms you are in carry an eye, private rooms you are not in a lock, and rooms you administer without being in them a sliders mark — and the last two are not links that fail.
+- Groundwork for crews, the layer above rooms: a group can be in one place
+  while doing different things, each in its own room. Nothing changes for
+  riders yet — this release only lays the tables down, and every existing
+  room keeps exactly the visibility it had.
+- A desktop app is on its way. wattroom.ch/download picks the installer for the computer you are on once one is published, and the app itself says so on the home page when a newer version is out — never mid-ride.
+- Rooms can list themselves. An owner can now make a room findable by name in a new directory at **Find a room**, linked from the join card — and every room stays invite-only until its owner says otherwise. Being findable is not being readable: people who have not joined see a room's name and icon, and nothing about who rides there or what they did.
+- You now have your own settings for each room, on its settings page: whether planned sessions there reach you by email, and whether you appear on that room's weekly board. They are yours — nobody else sees them and the owner cannot change them. Both start on, so nothing changes until you say so, and leaving a room forgets them.
+- In the desktop app, sharing your screen now shares what your computer is playing too, so the room hears the same thing you do. It arrives on its own fader and ducks under voices like the jukebox does, and the sharing notice says when the room can hear you as well as see you. Requires macOS 14.2 or Windows; a screen shared from the browser is silent as before.
+- Autoplay has a third mode, **Smart**: instead of looping a playlist it picks from your music library, quietest on the tracks the room just played or keeps skipping. Each room learns on its own — what one room skips changes nothing anywhere else.
+- Tag anything in the music pool with whatever words suit it — genre, mood, the part of a ride it belongs to. A track arrives wearing whatever genre its file claimed, the tags stay editable like every other field, and the Music page grows a row of shelves you can click to narrow the library down to one of them.
+
+### Changed
+
+- "Are you sure?" questions — ending a session, leaving a live ride, removing a member, disconnecting Strava, deleting a track from the pool — now open WattRoom's own dialog instead of the browser's plain grey prompt, with the action named on the button.
+- Who can see your profile, trophies and shared rides is now decided in one
+  place rather than by four separate queries that each had to remember the
+  rules. Nothing changes about who that is today; a ban — of either kind —
+  now reliably ends it everywhere at once.
+- Room settings is worth opening when you don't own the room. It used to say only that you cannot change anything; now it shows the room's join code and invite link with copy buttons, who owns it, how many ride there, and what the room is set to — sound pack, weekly board, reactions. Leaving is still there, still last.
+
+### Fixed
+
+- **Away works.** Pressing it used to flip your status and then quietly undo itself a moment later — your mic stayed live, the room kept hearing you, and your speakers came back on. It now sticks: the mic and camera close and stay closed, a screen you were sharing stops, and coming back restores the mic and camera you had. A share is not resumed for you; the button is there when you want it.
+- Self-hosters can turn the server's log up: `WATTROOM_LOG_LEVEL=debug` now actually prints debug lines, which it never did — an internal filter dropped every one of them before they reached the log. Unset still means info, and a rider's feedback report keeps the same lines it always did.
+- A ride the workout gave nothing to score no longer reports a perfect
+  execution. It used to read 100 %, pay the full execution XP bonus, and take
+  the Metronome medal — and a rider whose power meter dropped out took
+  Diesel and Lanterne Rouge with it, off people who had actually ridden.
+  Those medals now go to riders who reported power, and history shows a dash
+  where there was nothing to score.
+- Two things WattRoom promised to delete now actually get deleted. Session
+  recaps past their 90 days were only swept when a session ended, so a room
+  that went quiet kept them indefinitely; expired sign-in sessions were never
+  removed at all. Neither could be read by anyone, but both were kept longer
+  than intended.
+- Deleting a pool track while a room is playing it no longer freezes the room's
+  jukebox on it. The deck now reports the dead track as over and moves on to the
+  next thing in the queue, with a toast saying which track could not be played,
+  exactly as it already does for a YouTube video that refuses to play.
+- A track from the pool now shows its length and a moving seek bar in the
+  jukebox, and no longer draws an empty black tile on the stage — a pool track
+  is heard, not seen, so the stage stays with the riders.
+- "Just played" can put a pool track on again. The replay arrow used to send
+  the row as a YouTube video with no id, which the jukebox refused with "that
+  video link is not playable here".
+- **A Strava outage no longer loses your ride's upload.** It used to give up about fifty minutes after the first failure, and answer Strava asking us to slow down by asking ~45 more times a second later. Uploads now back off over hours, a rate limit pauses every delivery instead of costing an attempt, and a ride that still could not be sent has a **Try sending it again** button — the old message blamed a disconnection that had usually not happened.
+
+### Security
+
+- A ban now reaches everywhere it should. A rider banned from a room could
+  still stream the tracks its members had uploaded, have their own music
+  drawn into the room's autoplay, and receive its planned-session emails —
+  the last with no way to stop it from outside the room. All three now stop
+  at the ban, and the room's own members are unaffected.
+- **A ban now reaches the trophy case.** Being banned from a room kept the seat occupied, which is deliberate — rejoining by link or code lands you back on the ban. But the trophy-case check read that seat as a shared room, so a banned rider could still open the case of everyone left in the room, and be opened by them. The rider page above it already said no. Both now agree. Friendship is a separate door and still opens: a banned ex-room-mate who is also an accepted friend keeps the access friendship gave them.
+- Groundwork for crews: a ban can now be set for a whole crew, and every door
+  that already refused a room ban refuses it too — joining by link or by code,
+  the room itself, the live socket, the jukebox and a rider's own room
+  settings. Nothing changes for existing rooms, which have no crew ban to
+  honour.
+- **A crew ban now empties the sidebar too.** Being banned from a crew closed every door into its rooms — joining, opening, settings — except one: the room list your own sidebar reads still handed you the room. Nothing behind it would open, but it should not have been listed, and now it is not.
+- **Your music reaches the crew — and stops at a crew ban.** A track plays for anyone who may enter a room its uploader may enter, so a room open to your crew shares its members' music with everyone in the crew; browsing a shelf stays the uploader's alone. A rider banned from the crew could still fetch a crew-mate's audio through a membership row the ban leaves in place; they cannot now, and their shelf leaves the room's autoplay with them.
+- **The music library is yours, not the whole server's.** Until now every signed-in person on an instance could browse, play and queue every track anyone had ever uploaded — fine when one instance meant one crew, wrong once it does not. Your shelf is now your own, and a room's autoplay reaches only what its own members brought. Nothing was deleted: a song two people uploaded is two entries over one stored file, and a track you uploaded is still yours.
+- Disconnecting Strava now revokes the grant through Strava's `oauth/revoke` endpoint, which carries your token in the request body rather than in the URL. A token in a URL is a token in somebody's proxy log; it never should have been there. A revoke that Strava refuses is now reported instead of passed over in silence.
+
 ## [2026.09.46] - 2026-09-08
 
 ### Added
@@ -1078,7 +1155,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.46...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.47...HEAD
+[2026.09.47]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.2...2026.09.47
 [2026.09.46]: https://github.com/natrontech/wattroom/compare/2026.09.45...2026.09.46
 [2026.09.45]: https://github.com/natrontech/wattroom/compare/2026.09.44...2026.09.45
 [2026.09.44]: https://github.com/natrontech/wattroom/compare/2026.09.43...2026.09.44

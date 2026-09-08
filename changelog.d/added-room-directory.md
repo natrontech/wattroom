@@ -1,1 +1,0 @@
-- Rooms can list themselves. An owner can now make a room findable by name in a new directory at **Find a room**, linked from the join card — and every room stays invite-only until its owner says otherwise. Being findable is not being readable: people who have not joined see a room's name and icon, and nothing about who rides there or what they did.

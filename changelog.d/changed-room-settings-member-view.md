@@ -1,1 +1,0 @@
-- Room settings is worth opening when you don't own the room. It used to say only that you cannot change anything; now it shows the room's join code and invite link with copy buttons, who owns it, how many ride there, and what the room is set to — sound pack, weekly board, reactions. Leaving is still there, still last.
