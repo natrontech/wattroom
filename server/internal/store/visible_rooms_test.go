@@ -88,6 +88,16 @@ func (f *crewFixture) join(t *testing.T, room, user pgtype.UUID, role string) {
 	}); err != nil {
 		t.Fatalf("membership: %v", err)
 	}
+	// Crew membership is a row since #1236, written by the crew's door
+	// before any room's; the fixture writes it too, except for the crew's
+	// owner, who holds no row (#1212).
+	if _, err := f.st.Pool.Exec(t.Context(), `
+		insert into crew_roles (crew_id, user_id, role)
+		select r.crew_id, $2, 'member' from rooms r join crews c on c.id = r.crew_id
+		where r.id = $1 and c.owner_id <> $2
+		on conflict do nothing`, room, user); err != nil {
+		t.Fatalf("crew membership: %v", err)
+	}
 }
 
 func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string) {

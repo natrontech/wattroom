@@ -98,21 +98,27 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		`opening "${name}" never landed ${A} in the room`,
 	).toBeVisible({ timeout: 20_000 });
 	const slug = a.url().split('/r/')[1].split(/[/?#]/)[0];
-	const code = await a.evaluate(
-		(roomSlug) =>
-			fetch(`/api/rooms/${roomSlug}`)
-				.then((res) => res.json())
-				.then((room) => String(room.code ?? '')),
-		slug,
-	);
-	expect(code, `room ${slug} came back without a join code`).toMatch(
+	// The code is the crew's (#1236); the room is entered through it.
+	const code = await a.evaluate(async (roomSlug) => {
+		const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
+			res.json(),
+		);
+		const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
+			res.json(),
+		);
+		return String(crew.code ?? '');
+	}, slug);
+	expect(code, `room ${slug}'s crew came back without a code`).toMatch(
 		/^[A-Z0-9]{6}$/,
 	);
 
 	try {
 		await signInAs(b, B, '/home#rooms');
 		await b.locator('#join-code').fill(code);
-		await b.getByRole('button', { name: 'Join room' }).click();
+		await b.getByRole('button', { name: 'Join crew' }).click();
+		await b.waitForURL(/\/crew\//, { timeout: 20_000 });
+		await b.goto(`/r/${slug}`);
+		await b.getByRole('button', { name: 'Walk in' }).click();
 		await expect(
 			b.getByRole('heading', { name }),
 			`${B} never landed in "${name}" after joining with the code ${code}`,

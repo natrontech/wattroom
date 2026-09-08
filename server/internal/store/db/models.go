@@ -70,6 +70,7 @@ type Crew struct {
 	Icon      string
 	OwnerID   pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	Code      *string
 }
 
 type CrewRole struct {

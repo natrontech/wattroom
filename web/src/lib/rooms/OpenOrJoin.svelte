@@ -6,6 +6,7 @@
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import Select from '$lib/components/Select.svelte';
+	import { joinCrew } from '$lib/crew';
 	import { creationCrew, crewsOf, openableCrews } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
 
@@ -64,15 +65,16 @@
 		else roomError = res.error.message;
 	}
 
+	// The code is the crew's (ADR-0038 amended, #1236): joining lands on the
+	// crew's page, where its rooms are the doors.
 	async function joinByCode() {
 		roomBusy = true;
-		const res = await api<{ slug: string }>('/api/rooms/join', {
-			method: 'POST',
-			json: { code: joinCode },
-		});
+		const res = await joinCrew(joinCode);
 		roomBusy = false;
-		if (res.ok) void goto(`/r/${res.data.slug}`);
-		else roomError = res.error.message;
+		if (res.ok) {
+			presence.reload();
+			void goto(`/crew/${res.data.id}`);
+		} else roomError = res.error.message;
 	}
 </script>
 
@@ -97,8 +99,8 @@
 					>{/if}
 			</h3>
 			<p class="text-muted mt-1 text-xs">
-				Open to the crew from the start; share the link or the code with anyone
-				else.
+				Open to the crew from the start. Anyone new joins the crew with its code
+				or link — rooms have none of their own.
 			</p>
 			{#if openable.length > 1}
 				<div class="mt-3">
@@ -139,10 +141,10 @@
 
 		<div class={compact ? 'border-ink/5 border-t pt-4' : 'panel p-5'}>
 			<h3 class="font-display font-bold">
-				{compact ? 'Or join with a code' : 'Join with a code'}
+				{compact ? 'Or join a crew with a code' : 'Join a crew with a code'}
 			</h3>
 			<p class="text-muted mt-1 text-xs">
-				Six characters, from whoever invited you.
+				Six characters, from whoever invited you to their crew.
 			</p>
 			<form
 				onsubmit={(e) => {
@@ -157,7 +159,7 @@
 					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
 						? 'border-danger/60'
 						: 'border-muted/25 focus:border-muted/60'}"
-					placeholder="Room code"
+					placeholder="Crew code"
 				/>
 				{#if invalidCode}
 					<!-- Field-level validation lands under the field (errors.md). -->
@@ -167,7 +169,7 @@
 				{/if}
 				<button
 					disabled={roomBusy || joinCode.length !== 6 || invalidCode}
-					class="btn btn-secondary mt-3 w-full">Join room</button
+					class="btn btn-secondary mt-3 w-full">Join crew</button
 				>
 			</form>
 			<!-- The directory is the other half of "join a room" (#1118), not a

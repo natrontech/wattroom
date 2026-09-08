@@ -7,7 +7,6 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
-	import Copy from '@lucide/svelte/icons/copy';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { CHEER_ICONS, keyFor } from '$lib/icons';
 	import IconPicker from '$lib/components/IconPicker.svelte';
@@ -253,7 +252,6 @@
 	const owner = $derived(ownerName(roster));
 	const members = $derived(memberCount(roster));
 	const joined = $derived(joinedOn(roster, account.me?.id));
-	const inviteLink = $derived(room ? `${location.origin}/r/${room.slug}` : '');
 	const soundPackLabel = $derived(packLabel(packs, room?.soundPack));
 
 	// Whole object on every change, like the room's own settings: there is no
@@ -277,11 +275,6 @@
 			onBoard = room.me?.onBoard ?? true;
 			error = res.error.message;
 		}
-	}
-
-	async function copy(text: string, said: string) {
-		await navigator.clipboard.writeText(text);
-		toasts.push(said);
 	}
 </script>
 
@@ -368,40 +361,16 @@
 			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 		{/if}
 
-		<!-- The reason a member opens this page (#1099). The code is
-		     member-visible by design — rooms.go: "members only — the code IS
-		     the invite" — so this is showing what they already have, not
-		     widening anything. -->
-		<section class="border-muted/15 mt-6 rounded-lg border p-6">
-			<h2 class="font-display font-bold">Invite someone</h2>
-			<dl class="mt-4 space-y-3">
-				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-					<dt class="eyebrow w-20 shrink-0">join code</dt>
-					<dd class="font-display min-w-0 text-lg font-bold tracking-widest">
-						{room.code}
-					</dd>
-					<button
-						onclick={() => copy(room?.code ?? '', 'Join code copied.')}
-						class="btn btn-secondary btn-xs ml-auto"
-						><Copy size={13} /> Copy</button
-					>
-				</div>
-				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-					<dt class="eyebrow w-20 shrink-0">link</dt>
-					<!-- Wraps rather than scrolls: a link is the one value on this
-					     page long enough to push a phone sideways (ux.md). -->
-					<dd class="text-muted min-w-0 text-xs break-all">{inviteLink}</dd>
-					<button
-						onclick={() => copy(inviteLink, 'Invite link copied.')}
-						class="btn btn-secondary btn-xs ml-auto"
-						><Copy size={13} /> Copy</button
-					>
-				</div>
-			</dl>
-			<p class="text-muted mt-4 text-xs">
-				Members only — anyone with the code or the link can join.
+		<!-- Inviting is the crew's (#1236): a room has no code or link of its
+		     own, so a member who came here to get somebody in is pointed at it. -->
+		{#if room.crew}
+			<p class="text-muted mt-6 text-xs">
+				To get someone in, invite them to the crew — <a
+					href="/crew/{room.crew.id}"
+					class="underline">{room.crew.name}</a
+				> has the code and the link. Rooms have none of their own.
 			</p>
-		</section>
+		{/if}
 
 		<section class="border-muted/15 mt-4 rounded-lg border p-6">
 			<h2 class="font-display font-bold">What's on</h2>

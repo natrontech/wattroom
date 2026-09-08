@@ -79,6 +79,9 @@ export interface Room {
 	soundPack?: string;
 	code?: string;
 	role?: string;
+	/** The outsider's two facts (#1236): does the door open, are you in the crew. */
+	canEnter?: boolean;
+	inCrew?: boolean;
 	members?: Member[];
 	/** Open to its crew (ADR-0038); members only, absent = shut. */
 	crewVisible?: boolean;

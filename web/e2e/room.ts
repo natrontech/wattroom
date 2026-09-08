@@ -9,12 +9,15 @@ import { signInTo } from './signin';
 /** A room the test opened: where it lives, and how somebody else gets in. */
 export interface OpenedRoom {
 	slug: string;
-	/** The six characters the join form takes — the code IS the invite. */
+	/** The six characters the join form takes — the CREW's code (#1236). */
 	code: string;
+	name: string;
 }
 
 export interface RoomOwner {
 	open(page: Page, name: string): Promise<OpenedRoom>;
+	/** The way in for a second rider: the crew by its code, then the room. */
+	enter(page: Page, room: OpenedRoom): Promise<void>;
 }
 
 /**
@@ -83,17 +86,32 @@ export const test = base.extend<{
 				).toBeVisible({ timeout: 15_000 });
 				const slug = page.url().split('/r/')[1].split(/[/?#]/)[0];
 				opened.push({ page, slug });
-				const code = await page.evaluate(
-					(roomSlug) =>
-						fetch(`/api/rooms/${roomSlug}`)
-							.then((res) => res.json())
-							.then((room) => String(room.code ?? '')),
-					slug,
-				);
-				expect(code, `room ${slug} came back without a join code`).toMatch(
+				const code = await page.evaluate(async (roomSlug) => {
+					const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
+						res.json(),
+					);
+					if (!room.crew?.id) return '';
+					const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
+						res.json(),
+					);
+					return String(crew.code ?? '');
+				}, slug);
+				expect(code, `room ${slug}'s crew came back without a code`).toMatch(
 					/^[A-Z0-9]{6}$/,
 				);
-				return { slug, code };
+				return { slug, code, name };
+			},
+			async enter(page, room) {
+				await page.goto('/home#rooms');
+				await page.locator('#join-code').fill(room.code);
+				await page.getByRole('button', { name: 'Join crew' }).click();
+				await page.waitForURL(/\/crew\//, { timeout: 15_000 });
+				await page.goto(`/r/${room.slug}`);
+				await page.getByRole('button', { name: 'Walk in' }).click();
+				await expect(
+					page.getByRole('heading', { name: room.name }),
+					`never landed in "${room.name}" through the crew's door`,
+				).toBeVisible({ timeout: 15_000 });
 			},
 		});
 		for (const { page, slug } of opened) {

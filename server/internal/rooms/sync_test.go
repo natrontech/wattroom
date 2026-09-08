@@ -38,8 +38,8 @@ func TestRoomMutationsPingTheLobby(t *testing.T) {
 		name, user, method, path, body string
 		want                           int
 	}{
-		{"join by code", "bob", http.MethodPost, "/api/rooms/join", fmt.Sprintf(`{"code":%q}`, code), http.StatusOK},
-		{"join by link", "carol", http.MethodPost, "/api/rooms/" + slug + "/join", "", http.StatusNoContent},
+		{"join the crew by code", "bob", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code), http.StatusOK},
+		{"walk into the room", "bob", http.MethodPost, "/api/rooms/" + slug + "/join", "", http.StatusNoContent},
 		{"rename", "alice", http.MethodPatch, "/api/rooms/" + slug, `{"name":"Ping Test Room 2","listed":false}`, http.StatusOK},
 		{"promote", "alice", http.MethodPost, "/api/rooms/" + slug + "/role",
 			fmt.Sprintf(`{"userId":%q,"role":"coach"}`, bob), http.StatusNoContent},

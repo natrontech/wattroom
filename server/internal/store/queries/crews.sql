@@ -3,7 +3,30 @@
 -- only the two facts room membership cannot imply: an admin grant and a ban.
 
 -- name: CreateCrew :one
-insert into crews (name, owner_id) values ($1, $2) returning *;
+insert into crews (name, owner_id, code) values ($1, $2, $3) returning *;
+
+-- name: GetCrewByCode :one
+-- The crew's door (#1236). A code is a secret: the caller learns the crew it
+-- names and nothing about codes that do not exist.
+select * from crews where code = $1;
+
+-- name: JoinCrew :exec
+-- Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
+-- conflict: joining never lifts a ban and never demotes an admin.
+insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member')
+on conflict (crew_id, user_id) do nothing;
+
+-- name: LeaveCrewRole :exec
+-- Leaving takes the member or admin row, never a ban.
+delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned';
+
+-- name: LeaveCrewRooms :exec
+-- ...and every room membership in the crew, in one statement.
+delete from memberships m using rooms r
+where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
+
+-- name: CountCrewMembers :one
+select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin');
 
 -- name: GetCrew :one
 select * from crews where id = $1;
@@ -112,17 +135,12 @@ select slug from rooms where crew_id = $1;
 
 -- name: CrewRoleOf :one
 -- One word for what a person is to a crew. Owner beats everything (they
--- cannot be banned — ADR-0038's second amendment), a ban beats an admin row
--- that was never cleared, and membership is derived from the rooms.
+-- cannot be banned — ADR-0038's second amendment); every other word is the
+-- row (#1236: membership is stored, not derived from the rooms).
 select case
     when c.owner_id = sqlc.arg(user_id) then 'owner'
-    when exists (select 1 from crew_roles cr
-                 where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'banned') then 'banned'
-    when exists (select 1 from crew_roles cr
-                 where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin') then 'admin'
-    when exists (select 1 from memberships m join rooms r on r.id = m.room_id
-                 where r.crew_id = c.id and m.user_id = sqlc.arg(user_id) and m.role <> 'banned') then 'member'
-    else ''
+    else coalesce((select cr.role from crew_roles cr
+                   where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id)), '')
 end::text
 from crews c where c.id = sqlc.arg(crew_id);
 
@@ -130,33 +148,34 @@ from crews c where c.id = sqlc.arg(crew_id);
 select * from crew_roles where crew_id = $1;
 
 -- name: ListCrewPeople :many
--- The crew's people, once each (ADR-0038: crew membership follows room
--- membership). A crew ban takes a person off this list even while their room
--- rows stand — they are on the banned list instead.
+-- The crew's people (#1236: the owner plus every member and admin row), each
+-- with how many of the crew's rooms hold them and whether they own one there.
 --
--- Person-visibility follows the rooms the VIEWER may enter (#1135), so a
--- plain member sees the crew-mates they share an enterable room with and
--- nobody from a private room they are outside of — `everyone` is false and
--- the join is narrowed to visible_rooms. The owner and admins act on people
--- by id (a ban, an admin grant), so for them it is true and the list is the
--- whole crew.
+-- Person-visibility follows the rooms the VIEWER may enter (#1135): a plain
+-- member sees the crew-mates they share an enterable room with (and
+-- themselves); the owner and admins act on people by id, so for them
+-- `everyone` is true and the list is the whole crew.
+with people as (
+    select c.owner_id as user_id, c.created_at as since from crews c where c.id = sqlc.arg(crew_id)
+    union all
+    select cr.user_id, cr.set_at from crew_roles cr
+    where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
+)
 select u.id, u.display_name, u.avatar_url, u.avatar_preset,
-       min(m.joined_at)::timestamptz as since,
-       count(distinct m.room_id)::bigint as room_count,
-       -- Owns a room here, so cannot be crew-banned (#1212): the menu says so
-       -- instead of offering a ban that 409s.
-       bool_or(m.role = 'owner')::boolean as owns_room
-from memberships m
-join rooms r on r.id = m.room_id
-join users u on u.id = m.user_id
-where r.crew_id = sqlc.arg(crew_id) and m.role <> 'banned'
-  and (sqlc.arg(everyone)::boolean
-       or exists (select 1 from visible_rooms v
-                  where v.room_id = r.id and v.user_id = sqlc.arg(viewer)))
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = r.crew_id and cr.user_id = u.id and cr.role = 'banned')
-group by u.id
-order by min(m.joined_at);
+       p.since::timestamptz as since,
+       (select count(*) from memberships m join rooms r on r.id = m.room_id
+         where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
+       exists (select 1 from memberships m join rooms r on r.id = m.room_id
+                where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role = 'owner')::boolean as owns_room
+from people p
+join users u on u.id = p.user_id
+where sqlc.arg(everyone)::boolean
+   or u.id = sqlc.arg(viewer)
+   or exists (select 1 from memberships m
+              join rooms r on r.id = m.room_id
+              join visible_rooms v on v.room_id = r.id and v.user_id = sqlc.arg(viewer)
+              where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')
+order by p.since;
 
 -- name: ListCrewBanned :many
 select u.id, u.display_name, u.avatar_url, u.avatar_preset, cr.set_at
@@ -176,10 +195,7 @@ select user_id from crew_roles where crew_id = $1 and role = 'banned';
 -- amendment). A room ban keeps you off this list entirely — a banned
 -- membership row is still a row — and so does a crew ban.
 with mine as (
-    select r.crew_id from memberships m join rooms r on r.id = m.room_id
-    where m.user_id = sqlc.arg(user_id) and m.role <> 'banned' and r.crew_id is not null
-    union
-    select cr.crew_id from crew_roles cr where cr.user_id = sqlc.arg(user_id) and cr.role = 'admin'
+    select cr.crew_id from crew_roles cr where cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin')
     union
     select c.id from crews c where c.owner_id = sqlc.arg(user_id)
 )
@@ -199,25 +215,14 @@ order by r.created_at;
 
 -- name: PickCrewSuccessor :one
 -- docs/SPEC.md's succession rule: the longest-standing admin, else the
--- longest-standing member, among the people in the crew's remaining rooms;
--- never the departing owner, never anyone the crew banned. No row means
--- nobody is left and the crew is deleted rather than left ownerless.
-select m.user_id
-from memberships m
-join rooms r on r.id = m.room_id
-where r.crew_id = sqlc.arg(crew_id) and m.user_id <> sqlc.arg(departing) and m.role <> 'banned'
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = r.crew_id and cr.user_id = m.user_id and cr.role = 'banned')
-group by m.user_id
-order by exists (select 1 from crew_roles cr
-                 where cr.crew_id = sqlc.arg(crew_id) and cr.user_id = m.user_id and cr.role = 'admin') desc,
-         min(m.joined_at)
+-- longest-standing member (#1236: the rows, not the rooms); never the
+-- departing owner, never anyone the crew banned. No row means nobody is left
+-- and the crew is deleted rather than left ownerless.
+select cr.user_id
+from crew_roles cr
+where cr.crew_id = sqlc.arg(crew_id) and cr.user_id <> sqlc.arg(departing) and cr.role in ('admin', 'member')
+order by (cr.role = 'admin') desc, cr.set_at
 limit 1;
-
--- name: CountCrewMembershipsOf :one
--- Is this person still IN the crew — a live membership in any of its rooms.
-select count(*) from memberships m join rooms r on r.id = m.room_id
-where r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
 
 -- name: FirstRoomOwnerInCrew :one
 -- The successor of last resort: PickCrewSuccessor can come back empty while

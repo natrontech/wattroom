@@ -311,6 +311,13 @@ type roomJSON struct {
 	// private | locked | admin. List view only — a room you are looking at
 	// has already answered by rendering.
 	Access string `json:"access,omitempty"`
+	// The outsider view's two facts (#1236): may this signed-in non-member
+	// walk in — a crew member at an open room's door, or someone let in —
+	// and, when not, are they at least in the room's crew. The door reads
+	// "private, ask to be let in" for a crew-mate and "a crew you are not in"
+	// for everyone else, and offers a button only when it would work.
+	CanEnter bool `json:"canEnter,omitempty"`
+	InCrew   bool `json:"inCrew,omitempty"`
 	// Whether this room has turned its ordered board on (ADR-0036). Off is the
 	// default and stays the default: being in a room must not put a rider on a
 	// board. Members only, like the setting it mirrors.
@@ -632,6 +639,16 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	response := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon}
 
 	if user, signedIn := s.users.User(r); signedIn {
+		// The outsider's two facts (#1236): whether the door opens for them,
+		// and whether they are at least in the room's crew.
+		if can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID}); err == nil {
+			response.CanEnter = can && !s.isBanned(r, room, user)
+		}
+		if room.CrewID.Valid {
+			if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID}); err == nil {
+				response.InCrew = role != "" && role != "banned"
+			}
+		}
 		// A banned viewer gets the outsider view — the join button tells them.
 		if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 			RoomID: room.ID, UserID: user.ID,
@@ -767,9 +784,31 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", bannedRefusal)
 		return
 	}
+	// The slug is a name, not a door (#1236): entering needs the right to,
+	// which visible_rooms answers — crew membership at an open room, a grant
+	// at a private one. A listed room (ADR-0039) is the one public door, and
+	// it opens onto the crew: joining it joins the crew first.
+	can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID})
+	if err != nil {
+		s.log.Error("enter check failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+		return
+	}
+	if !can {
+		if !room.Listed || !room.CrewID.Valid {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden",
+				"This room is in a crew you are not in. Ask for the crew's invite link.")
+			return
+		}
+		if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: room.CrewID, UserID: user.ID}); err != nil {
+			s.log.Error("crew join via listed room failed", "err", err, "room", room.Slug)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			return
+		}
+	}
 	// Idempotent by design (ON CONFLICT DO NOTHING): joining twice is a no-op,
 	// and an existing role is never downgraded to member by a re-join.
-	err := s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
+	err = s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
 		RoomID: room.ID, UserID: user.ID, Role: "member",
 	})
 	if err != nil {
@@ -807,43 +846,15 @@ func (s *Service) isBanned(r *http.Request, room db.Room, user db.User) bool {
 	return banned
 }
 
-// handleJoinByCode resolves a 6-char code to its room and joins — the
-// cross-device fallback when the link is on another screen.
+// handleJoinByCode is retired (#1236): the invite is the crew's, and a room
+// code opens nothing. Kept one release so a client built before the cutover
+// hears why rather than a 404, then removed with the column (ADR-0019).
 func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.RequireUser(w, r, "Sign in to join a room.")
-	if !ok {
+	if _, ok := s.users.RequireUser(w, r, "Sign in to join."); !ok {
 		return
 	}
-	var req struct {
-		Code string `json:"code"`
-	}
-	if err := httpx.DecodeStrict(r, &req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
-		return
-	}
-	code := strings.ToUpper(strings.TrimSpace(req.Code))
-	room, err := s.store.Queries.GetRoomByCode(r.Context(), code)
-	if err != nil {
-		// Same shape for "no such code" and lookup errors: a code is a secret,
-		// and this endpoint must not confirm which ones exist.
-		httpx.WriteFieldError(w, http.StatusNotFound, "not_found",
-			"No room has that code. Check it with whoever shared it.", "code")
-		return
-	}
-	if s.isBanned(r, room, user) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", bannedRefusal)
-		return
-	}
-	err = s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: user.ID, Role: "member",
-	})
-	if err != nil {
-		s.log.Error("join by code failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
-		return
-	}
-	s.changed()
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"slug": room.Slug})
+	httpx.WriteFieldError(w, http.StatusBadRequest, "invalid_request",
+		"Room codes are gone — the invite is the crew's now. Ask for the crew's code or link.", "code")
 }
 
 // handleUpdate: owner-only per the matrix — "Edit room (name, listing)".
@@ -962,9 +973,8 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if s.presence != nil {
 		s.presence.CloseRoom(room.Slug)
 	}
-	// The crew it left may now have nothing to own, or an owner who is in
-	// none of its rooms (ADR-0038, second amendment).
-	s.settleCrew(r.Context(), room.CrewID)
+	// A crew with no rooms left is still a crew (#1236): its members stay,
+	// and its owner opens the next room in it.
 	s.log.Info("room deleted", "room", room.Slug)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)

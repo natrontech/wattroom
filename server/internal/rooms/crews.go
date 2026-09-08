@@ -68,6 +68,9 @@ type crewJSON struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon,omitempty"`
+	// The invite (#1236): the crew's code, and the one thing to share. Every
+	// member sees it — inviting is every member's (docs/SPEC.md).
+	Code string `json:"code,omitempty"`
 	// The caller's own role: owner | admin | member.
 	Role    string           `json:"role"`
 	OwnerID string           `json:"ownerId"`
@@ -80,6 +83,9 @@ type crewJSON struct {
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
+	mux.HandleFunc("GET /api/crews/by-code/{code}", s.handleCrewDoor)
+	mux.HandleFunc("POST /api/crews/join", s.handleJoinCrew)
+	mux.HandleFunc("POST /api/crews/{id}/leave", s.handleLeaveCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
 	mux.HandleFunc("POST /api/crews/{id}/role", s.handleSetCrewRole)
 	mux.HandleFunc("POST /api/crews/{id}/transfer", s.handleTransferCrew)
@@ -103,30 +109,14 @@ func (s *Service) crewFor(ctx context.Context, user db.User) (db.Crew, error) {
 	if name == "" {
 		name = "My crew"
 	}
-	return s.store.Queries.CreateCrew(ctx, db.CreateCrewParams{Name: name, OwnerID: user.ID})
-}
-
-// settleCrew applies ADR-0038's ownership rule after a room leaves a crew:
-// a crew with no rooms left has nobody and nothing to own and is deleted; a
-// crew whose owner no longer stands in any of its rooms passes to
-// docs/SPEC.md's successor. Both rather than an ownerless crew, which is the
-// lockout the second amendment exists to prevent. Failures are logged, not
-// surfaced: the room change that got us here has already committed.
-func (s *Service) settleCrew(ctx context.Context, crewID pgtype.UUID) {
-	if !crewID.Valid {
-		return
-	}
-	q := s.store.Queries
-	crew, err := q.GetCrew(ctx, crewID)
-	if err != nil {
-		return
-	}
-	held, err := q.CountCrewMembershipsOf(ctx, db.CountCrewMembershipsOfParams{CrewID: crewID, UserID: crew.OwnerID})
-	if err != nil || held > 0 {
-		return
-	}
-	if err := s.releaseCrew(ctx, q, crew); err != nil {
-		s.log.Error("crew settle failed", "err", err, "crew", store.UUIDString(crewID))
+	// The code is the crew's invite (#1236); the unique index is the check,
+	// so a collision retries rather than being looked for first.
+	for attempt := 0; ; attempt++ {
+		code := randomCode(6)
+		crew, err := s.store.Queries.CreateCrew(ctx, db.CreateCrewParams{Name: name, OwnerID: user.ID, Code: &code})
+		if err == nil || !isUniqueViolation(err) || attempt >= 3 {
+			return crew, err
+		}
 	}
 }
 
@@ -255,13 +245,23 @@ func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.Crew, db.
 
 func administers(role string) bool { return role == "owner" || role == "admin" }
 
+// codeOf: crews.code is nullable for one release (ADR-0019) and every crew
+// has one from the cutover on, so "" only ever means a row older than the
+// migration that should not exist.
+func codeOf(crew db.Crew) string {
+	if crew.Code == nil {
+		return ""
+	}
+	return *crew.Code
+}
+
 func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	crew, user, role, ok := s.crewByID(w, r)
 	if !ok {
 		return
 	}
 	out := crewJSON{
-		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
+		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role, Code: codeOf(crew),
 		OwnerID: store.UUIDString(crew.OwnerID),
 		Rooms:   []crewRoomJSON{}, People: []crewPersonJSON{},
 	}
@@ -598,6 +598,100 @@ func (s *Service) handleSetRoomAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("room access set", "room", room.Slug, "crewVisible", req.CrewVisible, "by", store.UUIDString(user.ID))
+	s.changed()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleCrewDoor is what a share link shows before the join (#1236): the
+// crew's name and icon and how many are in it, and nothing else — not its id,
+// not its rooms, not its people. A code is a secret, so an unknown one and a
+// malformed one read the same.
+func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
+	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
+	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
+		return
+	}
+	members, _ := s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"name": crew.Name, "icon": crew.Icon, "members": members})
+}
+
+// handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores
+// a member row and nothing else: metrics stay visible only to people who
+// actually enter a room, and a crew member has entered none yet. A ban is a
+// row too and wins the conflict, so a banned rider is refused, not readmitted.
+func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Sign in to join a crew.")
+	if !ok {
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(req.Code))
+	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.", "code")
+		return
+	}
+	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+	if err != nil {
+		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+		return
+	}
+	if role == "banned" {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "This crew removed you.")
+		return
+	}
+	if role == "" {
+		if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: crew.ID, UserID: user.ID}); err != nil {
+			s.log.Error("crew join failed", "err", err, "crew", store.UUIDString(crew.ID))
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			return
+		}
+		s.log.Info("crew joined", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
+		s.changed()
+	}
+	httpx.WriteJSON(w, http.StatusOK, roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role})
+}
+
+// handleLeaveCrew takes the member row and every room membership in the crew
+// in one move (#1228, #1236). The owner cannot leave — a crew is never
+// ownerless — so they hand it on first (#1208). Sockets in the crew's rooms
+// are severed the way a removal severs them.
+func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
+	crew, user, role, ok := s.crewByID(w, r)
+	if !ok {
+		return
+	}
+	if role == "owner" {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You own this crew — hand it to someone first, then leave.")
+		return
+	}
+	if owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID}); err != nil || owned > 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
+		return
+	}
+	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
+	err := s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	if err == nil {
+		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
+	}
+	if err != nil {
+		s.log.Error("crew leave failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Leaving did not work. Try again.")
+		return
+	}
+	for _, slug := range slugs {
+		s.evict(slug, store.UUIDString(user.ID))
+	}
+	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
