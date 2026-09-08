@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { audioSrc } from '$lib/music/pool';
 	// A pool track on the deck (#267, ADR-0015): an <audio> element chasing the
 	// same anchor the YouTube player chases, so one queue plays from two
 	// sources without the room's clock knowing the difference.
@@ -145,7 +146,7 @@
 	     transport, and this element exists to make a sound. -->
 	<audio
 		bind:this={audio}
-		src="/api/tracks/{track}/audio"
+		src={audioSrc(track)}
 		preload="auto"
 		onended={reportEnded}
 		onerror={failed}
