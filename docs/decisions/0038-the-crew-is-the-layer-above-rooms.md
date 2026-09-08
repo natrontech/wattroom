@@ -1,6 +1,6 @@
 # 0038 — The crew is the layer above rooms, and permissions inherit into it
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-09-08
 
 ## Context
