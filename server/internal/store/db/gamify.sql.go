@@ -162,10 +162,13 @@ func (q *Queries) ListUserRideTimes(ctx context.Context, userID pgtype.UUID) ([]
 const sharesRoomOrFriends = `-- name: SharesRoomOrFriends :one
 select (
     exists (
-        select 1 from memberships a
-        join memberships b on a.room_id = b.room_id
-        where a.user_id = $1 and a.role != 'banned'
-          and b.user_id = $2 and b.role != 'banned'
+        -- ` + "`" + `visible_rooms` + "`" + ` is the boundary, not a hand-written membership join
+        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
+        -- ` + "`" + `role != 'banned'` + "`" + `; going through the view is what stops the next
+        -- one being missed, and it brings crew bans and grants along free.
+        select 1 from visible_rooms a
+        join visible_rooms b on a.room_id = b.room_id
+        where a.user_id = $1 and b.user_id = $2
     )
     or exists (
         select 1 from friendships

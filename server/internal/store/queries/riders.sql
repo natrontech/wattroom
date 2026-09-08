@@ -1,14 +1,20 @@
 -- A rider's page (ADR-0024): what rooms already see, plus what the rider
 -- chose to share. Every query here takes the viewer as well as the rider,
 -- because the room boundary decides what comes back.
+--
+-- That boundary is `visible_rooms` and nothing here re-derives it (ADR-0038,
+-- third amendment). The joins used to spell `role != 'banned'` by hand, which
+-- is exactly how #1109 and #1114 happened — four such joins, one of them
+-- missing the guard. The view also carries what a hand-written join could not
+-- have known about: crew visibility, private-room grants and the crew ban.
 
 -- name: ListRoomsInCommon :many
 -- Rooms where both hold a live (non-banned) membership — the gate for the
 -- whole page, and the scope of the medals shown on it.
 select r.id, r.slug, r.name
 from rooms r
-join memberships a on a.room_id = r.id and a.user_id = sqlc.arg(rider) and a.role != 'banned'
-join memberships b on b.room_id = r.id and b.user_id = sqlc.arg(viewer) and b.role != 'banned'
+join visible_rooms a on a.room_id = r.id and a.user_id = sqlc.arg(rider)
+join visible_rooms b on b.room_id = r.id and b.user_id = sqlc.arg(viewer)
 order by r.name;
 
 -- name: RiderTotals :one
@@ -36,8 +42,8 @@ where user_id = $1 and started_at >= date_trunc('month', now());
 -- Rooms they have since left are not "rooms you share" any more.
 select m.kind, count(*)::bigint as count
 from medals m
-join memberships a on a.room_id = m.room_id and a.user_id = sqlc.arg(rider) and a.role != 'banned'
-join memberships b on b.room_id = m.room_id and b.user_id = sqlc.arg(viewer) and b.role != 'banned'
+join visible_rooms a on a.room_id = m.room_id and a.user_id = sqlc.arg(rider)
+join visible_rooms b on b.room_id = m.room_id and b.user_id = sqlc.arg(viewer)
 where m.user_id = sqlc.arg(rider)
 group by m.kind
 order by m.kind;
@@ -52,7 +58,7 @@ select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
 from rides r
 left join rooms rm on rm.id = r.room_id
-left join memberships v on v.room_id = r.room_id and v.user_id = sqlc.arg(viewer) and v.role != 'banned'
+left join visible_rooms v on v.room_id = r.room_id and v.user_id = sqlc.arg(viewer)
 where r.user_id = sqlc.arg(rider) and r.shared_at is not null
 order by r.started_at desc
 limit sqlc.arg(max);

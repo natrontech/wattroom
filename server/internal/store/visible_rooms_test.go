@@ -54,10 +54,18 @@ func (f *crewFixture) user(t *testing.T, name string) pgtype.UUID {
 	return u.ID
 }
 
-func (f *crewFixture) room(t *testing.T, code, slug string, owner pgtype.UUID, crew pgtype.UUID, crewVisible bool) pgtype.UUID {
+// rooms.code is unique across the WHOLE test database, which every package
+// shares. The "VR" prefix keeps these clear of the other harnesses' codes —
+// playlists derives its own from the owner's initial (alice -> "A00001"), and
+// an earlier version of this helper generated exactly that and collided.
+func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pgtype.UUID, crewVisible bool) pgtype.UUID {
 	t.Helper()
+	n := roomSeq.Add(1) % 10000
 	r, err := f.st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: code, Slug: slug, Name: slug, OwnerID: owner,
+		Code:    fmt.Sprintf("VR%04d", n),
+		Slug:    fmt.Sprintf("%s-%d", slug, n),
+		Name:    slug,
+		OwnerID: owner,
 	})
 	if err != nil {
 		t.Fatalf("create room %s: %v", slug, err)
@@ -97,11 +105,6 @@ func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string)
 func setupCrew(t *testing.T) *crewFixture {
 	t.Helper()
 	f := &crewFixture{st: open(t)}
-	// A counter, not a hash of t.Name(): rooms.code is unique with a
-	// char_length = 6 check, and two tests whose names happen to be the same
-	// length would have collided on it.
-	seq := fmt.Sprintf("%05d", roomSeq.Add(1)%100000)
-
 	f.alice = f.user(t, "alice")
 	f.bob = f.user(t, "bob")
 	f.carol = f.user(t, "carol")
@@ -123,9 +126,9 @@ func setupCrew(t *testing.T) *crewFixture {
 		_, _ = f.st.Pool.Exec(context.Background(), "delete from crews where id = $1", other.ID)
 	})
 
-	f.openRoom = f.room(t, "A"+seq, "open-"+seq, f.alice, f.crew, true)
-	f.private = f.room(t, "B"+seq, "priv-"+seq, f.alice, f.crew, false)
-	f.elsewhere = f.room(t, "C"+seq, "else-"+seq, f.carol, other.ID, true)
+	f.openRoom = f.room(t, "open", f.alice, f.crew, true)
+	f.private = f.room(t, "priv", f.alice, f.crew, false)
+	f.elsewhere = f.room(t, "else", f.carol, other.ID, true)
 	f.join(t, f.openRoom, f.bob, "member")
 	return f
 }
