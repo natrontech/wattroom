@@ -161,7 +161,9 @@ re-derives this list rather than trusting it.
   stays a state you carry, not a place you join"* — voice remains per-room, which
   this design preserves by giving the crew no voice at all. Whether the deeper
   tree changes the column count is [#1023](https://github.com/natrontech/wattroom/issues/1023)'s
-  to draw, not this ADR's to assert.
+  to draw, not this ADR's to assert. **Answered, 2026-09-08**: it does not — the
+  column stays one and the crew becomes a mode it is in, recorded in
+  [ADR-0020's amendment](0020-the-app-takes-discords-shape.md).
 - **WATTROOM.md** — the join-flow/privacy paragraph (line 68) and the ownership
   cap. Per [ADR-0001](0001-adrs-and-founding-decisions.md) that file is edited
   only to mark a decision superseded, and it is **not edited by this PR**: the
@@ -262,7 +264,10 @@ inherited-permission models fail *before* the cutover rather than after.
 
 **The tree gets deeper and navigation gets harder**, which ADR-0020 spent a
 whole decision avoiding. [#1023](https://github.com/natrontech/wattroom/issues/1023)
-iterates on that before any implementation issue exists.
+iterated on that before any implementation issue existed, and
+[ADR-0020's 2026-09-08 amendment](0020-the-app-takes-discords-shape.md) is the
+answer: one crew at a time, so the navigation stays two deep while the tree is
+three.
 
 **Permanent room–crew binding is the sharpest constraint here.** A room in the
 wrong crew can only be recreated, losing its code, slug, medals and streak. It

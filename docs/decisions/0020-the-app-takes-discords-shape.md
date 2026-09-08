@@ -430,6 +430,68 @@ anchor.
 What is left in the Sound panel is the gate threshold and the mic test — a
 level that is a picture, and the button that makes the picture move.
 
+## Amendment — the crew is a mode, not a level (2026-09-08, #1023)
+
+[ADR-0038](0038-the-crew-is-the-layer-above-rooms.md) puts a crew above the
+room, so the tree this document sized for is a level deeper:
+`crew → room → place`. It said the arithmetic here had to be **re-argued rather
+than quietly inherited**, and left the column count to #1023 rather than
+asserting one. #1023 drew three answers at true width and this is what it
+came back with.
+
+**The decision above stands: one column.** What changes is the sentence holding
+it up. This:
+
+> Discord's shape is two columns because Discord has forty servers of thirty
+> channels. WattRoom has five rooms of five places.
+
+is now true **per crew** rather than in total. A rider has a few crews of a few
+rooms, and the crew is expressed as a **mode the column is in**, not as a second
+indent inside it: a switcher names the current crew at the top, and everything
+below it — the rooms, the open room expanding into its places, the you panel —
+is structurally untouched. The tree is three levels deep; the navigation is
+still two.
+
+### The pin, which is not polish
+
+**The room you are standing in stays in the sidebar whichever crew is on
+screen.** A mode that swapped the whole column would drop the room you are
+connected to out of the navigation the moment you looked at another crew, and
+fold Training two clicks away mid-session.
+
+That is the report in #416 arriving again by a new route, and it is this
+document's own first promise — *places are permanent and beside the content* —
+failing. It was found by clicking the mock rather than by reading the design,
+which is the argument for having drawn it at all. Any implementation of this
+amendment carries the pin, and a test that fails without it.
+
+### The other crews still have to report themselves
+
+[ADR-0010](0010-room-first-positioning.md) makes this strip the crew's radar —
+what is live, who is in voice, what is planned. A mode shows one crew, so by
+construction it hides the rest, and a radar that hides three quarters of its
+sky is not one. The switcher therefore carries a summary of what the crews you
+are *not* looking at are doing. This is the cost the chosen shape pays, and it
+is part of the shape rather than a later enhancement.
+
+### What was rejected
+
+- **Indent the crew into the same column.** Two indents truncate "Thursday
+  Threshold" at 240 px where the other two shapes fit it, and three crews of
+  four rooms is a column you scroll through to reach Settings.
+- **A 48 px crew rail beside the column.** This is the two-strip rail the
+  decision above rejected on sight, and the objection did not weaken: 48 px
+  cannot say "Sweet Spot, 12 min in", so the rail spends a dot on what the
+  column spells out, and the eye still has to work out which strip a click
+  belongs to.
+
+**The evidence was not unanimous, and pretending otherwise would age badly.**
+Collapsed, the indent option is the *most* compact of the three and still
+answers "where is everyone" through a per-crew pulse — a genuinely good state,
+and the strongest thing found for a shape that was not chosen. It lost on its
+default rather than on its best case: a rider who never collapses anything is
+the one the 240 px column has to work for.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so
