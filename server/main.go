@@ -35,6 +35,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/gamify"
 	"github.com/natrontech/wattroom/server/internal/gifs"
+	"github.com/natrontech/wattroom/server/internal/housekeeping"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
@@ -192,6 +193,9 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		// The deletions no write can trigger (#1153, #1163). Sessions and
+		// recaps are both bounded by TIME, which nothing but a clock enforces.
+		housekeeping.Run(context.Background(), st, log)
 		// What a finished session leaves behind (ADR-0034). The hub writes
 		// through it when a session ends; the backlog reads it back, so the
 		// card survives the reload every other timeline entry does not.

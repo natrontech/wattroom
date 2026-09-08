@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
-	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -80,22 +79,6 @@ func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
 	if s.live != nil {
 		s.live.PostRecap(slug, rec)
 	}
-	s.prune(slug)
-}
-
-// prune enforces the retention bound on write, the way chat enforces its
-// 500-line one: the table cannot grow past the promise, and nothing needs a
-// scheduler. Sessions end rarely enough that this needs no sampling.
-func (s *Service) prune(slug string) {
-	// Detached deliberately: the sweep must outlive the write that triggered
-	// it, and it is bounded by the timeout below.
-	safego.Go(s.log, "recap prune "+slug, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := s.store.Queries.PruneSessionRecaps(ctx, RetentionDays); err != nil {
-			s.log.Warn("prune recaps", "err", err)
-		}
-	})
 }
 
 // List is a room's recaps for the chat backlog, oldest-first — the caller has
