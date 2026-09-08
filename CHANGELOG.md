@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.54] - 2026-09-09
+
+### Added
+
+- Right-click the crew at the top of the sidebar for its page, its settings, a copy of its invite link, and leaving it — the same things its page offers, one click closer. (#1257)
+
+### Changed
+
+- Home tells a rider without a crew that their first room makes one, named after them, before they open it — and the note that follows links straight to the crew's settings, where the rename lives. The "no code?" line says that joining a listed room joins its crew. (#1151, #1236)
+
 ## [2026.09.53] - 2026-09-08
 
 ### Added
@@ -1227,7 +1237,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.53...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.54...HEAD
+[2026.09.54]: https://github.com/natrontech/wattroom/compare/2026.09.53...2026.09.54
 [2026.09.53]: https://github.com/natrontech/wattroom/compare/2026.09.52...2026.09.53
 [2026.09.52]: https://github.com/natrontech/wattroom/compare/2026.09.51...2026.09.52
 [2026.09.51]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.4...2026.09.51
