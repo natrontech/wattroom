@@ -54,8 +54,10 @@
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
 Membership is uncapped; deleting a room frees a slot. A rider owns **one
-crew**, made with their first room, so rooms-per-crew is the same 3 — ADR-0038
-asks for two caps and this is the pair: one crew, the room cap inside it.
+crew**, made with their first room. Rooms-per-crew is not capped separately
+(#1201): every room counts against its own owner's 3, and only the crew's
+owner and admins open rooms in it, so a crew holds at most 3 × the people
+running it — ADR-0038 asks for two caps and this is the pair.
 
 ### Crew roles ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md))
 
@@ -66,6 +68,7 @@ asks for two caps and this is the pair: one crew, the room cap inside it.
 | Ban / unban from the crew (#1150) — never someone who owns a room in it (#1212) | ✓                                                     | ✓                  | –           |
 | Hand the crew to someone in it (#1208)                                          | ✓                                                     | –                  | –           |
 | See the crew's ban list                                                         | ✓                                                     | ✓                  | –           |
+| Open a room in the crew (#1201)                                                 | ✓                                                     | ✓                  | –           |
 | See the crew's rooms listed, with their access state (#1149)                    | ✓                                                     | ✓                  | ✓           |
 | Enter a room open to the crew                                                   | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |
 | Read a room's contents, rename it, ban from it                                  | only as that room's member/owner — never by crew role |

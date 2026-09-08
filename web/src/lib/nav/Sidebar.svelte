@@ -662,11 +662,8 @@
 
 {#if opening}
 	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
-		<!-- Named for the crew a new room actually lands in — the one you own
-		     — not the one on screen, which you may only be a member of. -->
-		<OpenOrJoin
-			compact
-			crew={crews.find((c) => c.role === 'owner')?.name ?? ''}
-		/>
+		<!-- The crew on screen (#1201): the room lands there when you may open
+		     rooms in it, else in your own — the form says which. -->
+		<OpenOrJoin compact crewId={crew?.id} />
 	</Modal>
 {/if}

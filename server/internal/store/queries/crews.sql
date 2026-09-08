@@ -73,10 +73,9 @@ select (
 )::boolean;
 
 -- name: GetCrewOwnedBy :one
--- The crew a room is created into. One crew per owner, made with their first
--- room and named after them — the migration's rule, applied to accounts that
--- arrive after it. ponytail: a rider owns one crew; choosing a crew on room
--- creation is the upgrade if a second one is ever wanted.
+-- The crew a room is created into when the caller names none (#1201). One
+-- crew per owner, made with their first room and named after them — the
+-- migration's rule, applied to accounts that arrive after it.
 select * from crews where owner_id = $1 order by created_at limit 1;
 
 -- name: PlaceRoomInCrew :exec

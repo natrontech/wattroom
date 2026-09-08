@@ -180,3 +180,29 @@ export function crewPulse(
 export function quiet(pulse: CrewPulse): boolean {
 	return !pulse.riding && !pulse.voice && !pulse.unread;
 }
+
+/**
+ * The crews you may open a room in (#1201): the one you own and any you
+ * administer — Discord's Manage Channels. A member of a crew opens rooms in
+ * their own crew, not the one they are looking at.
+ */
+export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
+	return crews.filter((c) => c.role === 'owner' || c.role === 'admin');
+}
+
+/**
+ * Where a new room lands: the crew on screen when you may open rooms there,
+ * else your own, else whichever you administer. Null while the room list has
+ * not landed — the server then defaults to your own crew.
+ */
+export function creationCrew(
+	openable: readonly RoomCrew[],
+	preferred: string | undefined,
+): RoomCrew | null {
+	return (
+		openable.find((c) => c.id === preferred) ??
+		openable.find((c) => c.role === 'owner') ??
+		openable[0] ??
+		null
+	);
+}
