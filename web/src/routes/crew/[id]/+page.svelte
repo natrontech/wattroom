@@ -12,10 +12,9 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CrewPeople from './CrewPeople.svelte';
 	import CrewRooms from './CrewRooms.svelte';
-	import { fetchCrew, inviteLink, type Crew } from '$lib/crew';
-	import { leaveCrewFlow } from '$lib/crew-flows';
+	import { fetchCrew, type Crew } from '$lib/crew';
+	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
 	import { presence } from '$lib/presence.svelte';
-	import { toasts } from '$lib/toast.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
 	import { untrack } from 'svelte';
@@ -64,14 +63,6 @@
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
 	const owner = $derived(crew?.role === 'owner');
-
-	// The invite (#1236): the crew's code and its link, every member's to
-	// share — rooms have no codes of their own any more.
-	async function copyInvite() {
-		if (!crew?.code) return;
-		await navigator.clipboard.writeText(inviteLink(crew.code));
-		toasts.push('Invite link copied.');
-	}
 
 	// Leaving the crew (#1228, #1236): one call takes the membership and every
 	// room of the crew you were in. Refused up front when you own a room here:
@@ -159,7 +150,9 @@
 					Anyone with it joins {crew.name} and walks into its open rooms. Rooms have
 					no codes of their own.
 				</span>
-				<button onclick={copyInvite} class="btn btn-secondary btn-xs shrink-0"
+				<button
+					onclick={() => crew?.code && copyInviteLink(crew.code)}
+					class="btn btn-secondary btn-xs shrink-0"
 					><Copy size={13} /> Copy invite link</button
 				>
 			</div>

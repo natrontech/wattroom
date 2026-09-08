@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation';
-import { joinCrew, leaveCrew } from '$lib/crew';
+import { inviteLink, joinCrew, leaveCrew } from '$lib/crew';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import type { RoomCrew } from '$lib/room/room-data';
@@ -33,4 +33,13 @@ export async function leaveCrewFlow(
 	});
 	await goto('/home');
 	return true;
+}
+
+/**
+ * The invite link onto the clipboard, from wherever it is offered — the crew
+ * page, its settings, the crew row's menu (#1236, #1257) — with the one toast.
+ */
+export async function copyInviteLink(code: string): Promise<void> {
+	await navigator.clipboard.writeText(inviteLink(code));
+	toasts.push('Invite link copied.');
 }

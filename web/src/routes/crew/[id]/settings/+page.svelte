@@ -16,6 +16,7 @@
 		setCrewImage,
 		type Crew,
 	} from '$lib/crew';
+	import { copyInviteLink } from '$lib/crew-flows';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -98,12 +99,6 @@
 		}
 		bump += 1;
 		await reload();
-	}
-
-	async function copyInvite() {
-		if (!crew?.code) return;
-		await navigator.clipboard.writeText(inviteLink(crew.code));
-		toasts.push('Invite link copied.');
 	}
 </script>
 
@@ -220,7 +215,9 @@
 					<span class="text-muted min-w-0 flex-1 text-xs break-all"
 						>{inviteLink(crew.code)}</span
 					>
-					<button onclick={copyInvite} class="btn btn-secondary btn-xs shrink-0"
+					<button
+						onclick={() => crew?.code && copyInviteLink(crew.code)}
+						class="btn btn-secondary btn-xs shrink-0"
 						><Copy size={13} /> Copy invite link</button
 					>
 				</div>
