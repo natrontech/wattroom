@@ -44,6 +44,8 @@ export interface RoomCrew {
 	id: string;
 	name: string;
 	icon?: string;
+	/** The crew's logo (#1237), drawn before the icon and the initial. */
+	imageUrl?: string;
 	/**
 	 * What you are to the crew. `owner` is the un-removable one (ADR-0038,
 	 * second amendment); it earns a small mark, not a louder row.

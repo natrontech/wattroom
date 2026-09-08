@@ -8,7 +8,7 @@ insert into crews (name, owner_id, code) values ($1, $2, $3) returning *;
 -- name: GetCrewByCode :one
 -- The crew's door (#1236). A code is a secret: the caller learns the crew it
 -- names and nothing about codes that do not exist.
-select * from crews where code = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where code = $1;
 
 -- name: JoinCrew :exec
 -- Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
@@ -29,7 +29,8 @@ where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'bann
 select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin');
 
 -- name: GetCrew :one
-select * from crews where id = $1;
+-- Everything but the image bytes (#1237): GetCrewImage serves those.
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin or banned. The owner is crews.owner_id and cannot be expressed here,
@@ -117,6 +118,17 @@ update rooms set crew_id = $2, crew_visible = $3 where id = $1;
 -- name: UpdateCrew :one
 update crews set name = $2, icon = $3 where id = $1 returning *;
 
+-- name: SetCrewImage :exec
+update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1;
+
+-- name: ClearCrewImage :exec
+update crews set image_mime = null, image = null, image_set_at = null where id = $1;
+
+-- name: GetCrewImage :one
+-- The blob alone: GetCrew selects * and every crew read would otherwise carry
+-- up to 2 MB it never shows.
+select image_mime, image, image_set_at from crews where id = $1 and image is not null;
+
 -- name: ListCrewsOwnedBy :many
 select * from crews where owner_id = $1 order by created_at;
 
@@ -201,6 +213,7 @@ with mine as (
 )
 select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
        c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
+       (c.image_set_at is not null)::boolean as crew_has_image,
        exists (select 1 from visible_rooms v
                where v.room_id = r.id and v.user_id = sqlc.arg(user_id))::boolean as enterable,
        (c.owner_id = sqlc.arg(user_id) or exists (select 1 from crew_roles cr

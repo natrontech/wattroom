@@ -196,6 +196,9 @@ type roomCrewJSON struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon,omitempty"`
+	// The crew's logo (#1237), when one is set: the mark every surface draws
+	// before falling back to the icon, then the initial.
+	ImageURL string `json:"imageUrl,omitempty"`
 	// What the caller is to the crew: owner | admin | member. The switcher's
 	// owner mark reads it; it is small because the guarantee behind it is
 	// about permissions, not a reading power (ADR-0038, second amendment).
@@ -450,7 +453,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusCreated, roomJSON{
 		Slug: room.Slug, Code: room.Code, Name: room.Name, Listed: room.Listed, Role: "owner",
-		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: crewRole},
+		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, ImageURL: crewImageURL(crew.ID, crew.HasImage), Role: crewRole},
 	})
 }
 
@@ -461,38 +464,38 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 // caller's own, made with their first room. Refused, not redirected, when
 // they may not: a room quietly landing in the wrong crew is the confusion
 // #1201 describes.
-func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.User, crewID string) (db.Crew, string, bool) {
+func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.User, crewID string) (db.GetCrewRow, string, bool) {
 	if crewID == "" {
 		crew, err := s.crewFor(r.Context(), user)
 		if err != nil {
 			s.log.Error("own crew lookup failed", "err", err)
 			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 				"The room could not be created. Try again.")
-			return db.Crew{}, "", false
+			return db.GetCrewRow{}, "", false
 		}
-		return crew, "owner", true
+		return asRow(crew), "owner", true
 	}
 	id, err := store.ParseUUID(crewID)
 	if err != nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a crew.", "crewId")
-		return db.Crew{}, "", false
+		return db.GetCrewRow{}, "", false
 	}
 	crew, err := s.store.Queries.GetCrew(r.Context(), id)
 	if err != nil {
 		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No crew lives here.", "crewId")
-		return db.Crew{}, "", false
+		return db.GetCrewRow{}, "", false
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 	if err != nil {
 		s.log.Error("crew role lookup failed", "err", err, "crew", crewID)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"The room could not be created. Try again.")
-		return db.Crew{}, "", false
+		return db.GetCrewRow{}, "", false
 	}
 	if !administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden",
 			"Only the crew's owner or an admin can open a room in it — ask them, or open one in your own crew.")
-		return db.Crew{}, "", false
+		return db.GetCrewRow{}, "", false
 	}
 	return crew, role, true
 }
@@ -522,7 +525,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		if room.CrewID.Valid {
 			entry.Crew = &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
-				Role: crewRoleWord(room.CrewOwned, room.CrewAdmin),
+				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage),
+				Role:     crewRoleWord(room.CrewOwned, room.CrewAdmin),
 			}
 		}
 		if s.presence != nil {
@@ -568,7 +572,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			ID: store.UUIDString(room.ID), Slug: slug, Name: room.Name, Icon: room.Icon, Access: access,
 			Crew: &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
-				Role: crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
+				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage),
+				Role:     crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
 			},
 		})
 	}
@@ -747,6 +752,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 					response.Crew = &roomCrewJSON{
 						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
+						ImageURL: crewImageURL(crew.ID, crew.HasImage),
 					}
 				}
 			}

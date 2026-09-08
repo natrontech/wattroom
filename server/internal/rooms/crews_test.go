@@ -13,7 +13,7 @@ import (
 )
 
 // crewOf returns the crew a room was created into.
-func (h *harness) crewOf(t *testing.T, slug string) db.Crew {
+func (h *harness) crewOf(t *testing.T, slug string) db.GetCrewRow {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
 	if err != nil {
@@ -52,7 +52,7 @@ func (h *harness) enter(t *testing.T, who, code, slug string) {
 // join enters a room as a crew member would: through the crew's door first.
 func (h *harness) join(t *testing.T, who, slug string) {
 	t.Helper()
-	h.enter(t, who, codeOf(h.crewOf(t, slug)), slug)
+	h.enter(t, who, codeOf(h.crewOf(t, slug).Code), slug)
 }
 
 // accessIn reads the access state the room list reports for slug, "" if the
@@ -509,7 +509,7 @@ func TestTheCrewPageShowsAMemberOnlyThePeopleTheyCouldAlreadySee(t *testing.T) {
 	h.join(t, "bob", open)
 	// carol is let into the private room (#1225): the crew's door, then the
 	// named exception, then the room.
-	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(h.crewOf(t, open)))); status != http.StatusOK {
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(h.crewOf(t, open).Code))); status != http.StatusOK {
 		t.Fatalf("carol could not join the crew: %d", status)
 	}
 	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{RoomID: roomID(t, h, private), UserID: h.users.byToken["carol"].ID}); err != nil {

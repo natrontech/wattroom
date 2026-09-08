@@ -68,6 +68,8 @@ type crewJSON struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon,omitempty"`
+	// The logo (#1237), when one is set.
+	ImageURL string `json:"imageUrl,omitempty"`
 	// The invite (#1236): the crew's code, and the one thing to share. Every
 	// member sees it — inviting is every member's (docs/SPEC.md).
 	Code string `json:"code,omitempty"`
@@ -83,13 +85,20 @@ type crewJSON struct {
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
-	mux.HandleFunc("GET /api/crews/by-code/{code}", s.handleCrewDoor)
+	// The door lives under its own prefix: "/api/crews/by-code/{code}" and
+	// "/api/crews/{id}/image" are both four segments, and Go's mux refuses a
+	// pair where "by-code/image" would match either.
+	mux.HandleFunc("GET /api/crew-doors/{code}", s.handleCrewDoor)
 	mux.HandleFunc("POST /api/crews/join", s.handleJoinCrew)
 	mux.HandleFunc("POST /api/crews/{id}/leave", s.handleLeaveCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
 	mux.HandleFunc("POST /api/crews/{id}/role", s.handleSetCrewRole)
 	mux.HandleFunc("POST /api/crews/{id}/transfer", s.handleTransferCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}/rooms/{roomID}/access", s.handleSetRoomAccess)
+	mux.HandleFunc("POST /api/crews/{id}/image", s.handleSetCrewImage)
+	mux.HandleFunc("DELETE /api/crews/{id}/image", s.handleClearCrewImage)
+	mux.HandleFunc("GET /api/crews/{id}/image", s.handleCrewImage)
+	mux.HandleFunc("GET /api/crew-doors/{code}/image", s.handleCrewDoorImage)
 }
 
 // crewFor is the crew a room is created into: the one the rider owns, made
@@ -210,35 +219,35 @@ func doorOf(row db.ListCrewRoomsForRow) (slug, access string) {
 // administers it or owns it. 404 rather than 403 for everyone else: a crew is
 // reached only through one of its rooms, so its existence is not public the
 // way a room's shareable link is.
-func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.Crew, db.User, string, bool) {
+func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.GetCrewRow, db.User, string, bool) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew lives here.")
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	crew, err := s.store.Queries.GetCrew(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew lives here.")
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	if err != nil {
 		s.log.Error("crew lookup failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 	if err != nil {
 		s.log.Error("crew role lookup failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	if role == "" || role == "banned" {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew lives here.")
-		return db.Crew{}, db.User{}, "", false
+		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	return crew, user, role, true
 }
@@ -248,11 +257,21 @@ func administers(role string) bool { return role == "owner" || role == "admin" }
 // codeOf: crews.code is nullable for one release (ADR-0019) and every crew
 // has one from the cutover on, so "" only ever means a row older than the
 // migration that should not exist.
-func codeOf(crew db.Crew) string {
-	if crew.Code == nil {
+func codeOf(code *string) string {
+	if code == nil {
 		return ""
 	}
-	return *crew.Code
+	return *code
+}
+
+// asRow is the crew as every handler sees it: GetCrew's shape, which leaves
+// the image bytes behind (#1237). CreateCrew and GetCrewOwnedBy still hand
+// back the full row, and this is where they meet the rest.
+func asRow(c db.Crew) db.GetCrewRow {
+	return db.GetCrewRow{
+		ID: c.ID, Name: c.Name, Icon: c.Icon, OwnerID: c.OwnerID, CreatedAt: c.CreatedAt,
+		Code: c.Code, HasImage: c.ImageSetAt.Valid,
+	}
 }
 
 func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
@@ -261,9 +280,10 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := crewJSON{
-		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role, Code: codeOf(crew),
-		OwnerID: store.UUIDString(crew.OwnerID),
-		Rooms:   []crewRoomJSON{}, People: []crewPersonJSON{},
+		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role, Code: codeOf(crew.Code),
+		ImageURL: crewImageURL(crew.ID, crew.HasImage),
+		OwnerID:  store.UUIDString(crew.OwnerID),
+		Rooms:    []crewRoomJSON{}, People: []crewPersonJSON{},
 	}
 	// The rooms, with what the CALLER may do in each — the same four states
 	// the sidebar draws, from the same two queries.
@@ -392,6 +412,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	s.changed()
 	httpx.WriteJSON(w, http.StatusOK, roomCrewJSON{
 		Id: store.UUIDString(updated.ID), Name: updated.Name, Icon: updated.Icon, Role: role,
+		ImageURL: crewImageURL(updated.ID, updated.ImageSetAt.Valid),
 	})
 }
 
@@ -614,7 +635,10 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	members, _ := s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"name": crew.Name, "icon": crew.Icon, "members": members})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"name": crew.Name, "icon": crew.Icon, "members": members,
+		"imageUrl": crewDoorImageURL(code, crew.HasImage),
+	})
 }
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores

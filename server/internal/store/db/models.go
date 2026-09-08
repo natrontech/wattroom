@@ -65,12 +65,15 @@ type ChatReaction struct {
 }
 
 type Crew struct {
-	ID        pgtype.UUID
-	Name      string
-	Icon      string
-	OwnerID   pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	Code      *string
+	ID         pgtype.UUID
+	Name       string
+	Icon       string
+	OwnerID    pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
+	Code       *string
+	ImageMime  *string
+	Image      []byte
+	ImageSetAt pgtype.Timestamptz
 }
 
 type CrewRole struct {

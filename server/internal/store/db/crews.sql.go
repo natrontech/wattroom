@@ -29,6 +29,15 @@ func (q *Queries) CanEnterRoom(ctx context.Context, arg CanEnterRoomParams) (boo
 	return column_1, err
 }
 
+const clearCrewImage = `-- name: ClearCrewImage :exec
+update crews set image_mime = null, image = null, image_set_at = null where id = $1
+`
+
+func (q *Queries) ClearCrewImage(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearCrewImage, id)
+	return err
+}
+
 const clearCrewRole = `-- name: ClearCrewRole :exec
 delete from crew_roles where crew_id = $1 and user_id = $2
 `
@@ -75,7 +84,7 @@ func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwned
 
 const createCrew = `-- name: CreateCrew :one
 
-insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code
+insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
 `
 
 type CreateCrewParams struct {
@@ -97,6 +106,9 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
 	)
 	return i, err
 }
@@ -167,12 +179,23 @@ func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerIn
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1
 `
 
-func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (Crew, error) {
+type GetCrewRow struct {
+	ID        pgtype.UUID
+	Name      string
+	Icon      string
+	OwnerID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Code      *string
+	HasImage  bool
+}
+
+// Everything but the image bytes (#1237): GetCrewImage serves those.
+func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, error) {
 	row := q.db.QueryRow(ctx, getCrew, id)
-	var i Crew
+	var i GetCrewRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -180,19 +203,30 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (Crew, error) {
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.Code,
+		&i.HasImage,
 	)
 	return i, err
 }
 
 const getCrewByCode = `-- name: GetCrewByCode :one
-select id, name, icon, owner_id, created_at, code from crews where code = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where code = $1
 `
+
+type GetCrewByCodeRow struct {
+	ID        pgtype.UUID
+	Name      string
+	Icon      string
+	OwnerID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Code      *string
+	HasImage  bool
+}
 
 // The crew's door (#1236). A code is a secret: the caller learns the crew it
 // names and nothing about codes that do not exist.
-func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (Crew, error) {
+func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (GetCrewByCodeRow, error) {
 	row := q.db.QueryRow(ctx, getCrewByCode, code)
-	var i Crew
+	var i GetCrewByCodeRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -200,12 +234,32 @@ func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (Crew, error)
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.Code,
+		&i.HasImage,
 	)
 	return i, err
 }
 
+const getCrewImage = `-- name: GetCrewImage :one
+select image_mime, image, image_set_at from crews where id = $1 and image is not null
+`
+
+type GetCrewImageRow struct {
+	ImageMime  *string
+	Image      []byte
+	ImageSetAt pgtype.Timestamptz
+}
+
+// The blob alone: GetCrew selects * and every crew read would otherwise carry
+// up to 2 MB it never shows.
+func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImageRow, error) {
+	row := q.db.QueryRow(ctx, getCrewImage, id)
+	var i GetCrewImageRow
+	err := row.Scan(&i.ImageMime, &i.Image, &i.ImageSetAt)
+	return i, err
+}
+
 const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
-select id, name, icon, owner_id, created_at, code from crews where owner_id = $1 order by created_at limit 1
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at limit 1
 `
 
 // The crew a room is created into when the caller names none (#1201). One
@@ -221,6 +275,9 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
 	)
 	return i, err
 }
@@ -564,6 +621,7 @@ with mine as (
 )
 select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
        c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
+       (c.image_set_at is not null)::boolean as crew_has_image,
        exists (select 1 from visible_rooms v
                where v.room_id = r.id and v.user_id = $1)::boolean as enterable,
        (c.owner_id = $1 or exists (select 1 from crew_roles cr
@@ -578,17 +636,18 @@ order by r.created_at
 `
 
 type ListCrewRoomsForRow struct {
-	ID          pgtype.UUID
-	Slug        string
-	Name        string
-	Icon        string
-	CrewVisible bool
-	CrewID      pgtype.UUID
-	CrewName    string
-	CrewIcon    string
-	CrewOwnerID pgtype.UUID
-	Enterable   bool
-	Administers bool
+	ID           pgtype.UUID
+	Slug         string
+	Name         string
+	Icon         string
+	CrewVisible  bool
+	CrewID       pgtype.UUID
+	CrewName     string
+	CrewIcon     string
+	CrewOwnerID  pgtype.UUID
+	CrewHasImage bool
+	Enterable    bool
+	Administers  bool
 }
 
 // The crew's rooms you hold NO membership in, for the sidebar (#1149): a
@@ -616,6 +675,7 @@ func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]L
 			&i.CrewName,
 			&i.CrewIcon,
 			&i.CrewOwnerID,
+			&i.CrewHasImage,
 			&i.Enterable,
 			&i.Administers,
 		); err != nil {
@@ -630,7 +690,7 @@ func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]L
 }
 
 const listCrewsOwnedBy = `-- name: ListCrewsOwnedBy :many
-select id, name, icon, owner_id, created_at, code from crews where owner_id = $1 order by created_at
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at
 `
 
 func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
@@ -649,6 +709,9 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 			&i.OwnerID,
 			&i.CreatedAt,
 			&i.Code,
+			&i.ImageMime,
+			&i.Image,
+			&i.ImageSetAt,
 		); err != nil {
 			return nil, err
 		}
@@ -761,6 +824,21 @@ func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessPara
 	return err
 }
 
+const setCrewImage = `-- name: SetCrewImage :exec
+update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1
+`
+
+type SetCrewImageParams struct {
+	ID        pgtype.UUID
+	ImageMime *string
+	Image     []byte
+}
+
+func (q *Queries) SetCrewImage(ctx context.Context, arg SetCrewImageParams) error {
+	_, err := q.db.Exec(ctx, setCrewImage, arg.ID, arg.ImageMime, arg.Image)
+	return err
+}
+
 const setCrewRole = `-- name: SetCrewRole :exec
 insert into crew_roles (crew_id, user_id, role) values ($1, $2, $3)
 on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now()
@@ -819,7 +897,7 @@ func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) erro
 }
 
 const updateCrew = `-- name: UpdateCrew :one
-update crews set name = $2, icon = $3 where id = $1 returning id, name, icon, owner_id, created_at, code
+update crews set name = $2, icon = $3 where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
 `
 
 type UpdateCrewParams struct {
@@ -838,6 +916,9 @@ func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, e
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
 	)
 	return i, err
 }

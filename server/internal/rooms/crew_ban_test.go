@@ -132,7 +132,7 @@ func TestACrewBanSurvivesRejoining(t *testing.T) {
 	h.crewBan(t, slug, "bob")
 	// crewBan re-homes the room in a crew of its own; the ban and the code
 	// under test are that crew's.
-	code := codeOf(h.crewOf(t, slug))
+	code := codeOf(h.crewOf(t, slug).Code)
 
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
 		t.Errorf("a crew-banned rider joined by link: %d", status)
