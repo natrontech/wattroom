@@ -7,15 +7,23 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
+	import Copy from '@lucide/svelte/icons/copy';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { CHEER_ICONS, keyFor, ROOM_ICONS } from '$lib/icons';
 	import { play } from '$lib/sound/cues';
 	import { device } from '$lib/device.svelte';
+	import {
+		joinedOn,
+		memberCount,
+		ownerName,
+		packLabel,
+	} from '$lib/room/settings-summary';
 
 	interface Member {
 		id: string;
 		displayName: string;
 		role: string;
+		joinedAt?: string;
 	}
 	interface Room {
 		slug: string;
@@ -196,6 +204,21 @@
 			hint: 'Visual cues only. Voice stays on.',
 		},
 	];
+
+	// What a member's own room read already carries (#1099): the code, the
+	// sound pack, the cheers and the roster all arrive in the same GET, so the
+	// read-only view costs no second request.
+	const roster = $derived(room?.members ?? []);
+	const owner = $derived(ownerName(roster));
+	const members = $derived(memberCount(roster));
+	const joined = $derived(joinedOn(roster, account.me?.id));
+	const inviteLink = $derived(room ? `${location.origin}/r/${room.slug}` : '');
+	const soundPackLabel = $derived(packLabel(packs, room?.soundPack));
+
+	async function copy(text: string, said: string) {
+		await navigator.clipboard.writeText(text);
+		toasts.push(said);
+	}
 </script>
 
 {#if error && !room}
@@ -211,18 +234,88 @@
 	</main>
 {:else if room && room.role !== 'owner'}
 	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click.
-	     What a member CAN do here is leave, which nothing offered after the
-	     rooms page retired into the sidebar (ADR-0020, rider report #415). -->
+	     But the gating was the whole page (#1099): a member arrived asking what
+	     this room is and how to get somebody else into it, and was told what
+	     they cannot do. The invite and the room's own facts come first now; the
+	     one line about who may change them sits under them rather than being
+	     them. Everything here is already in the member's own room read. -->
 	<main class="page">
-		<h2 class="font-display text-xl font-bold">{room.name}</h2>
-		<p class="text-muted mt-1 text-xs">
-			Only the owner can change a room's settings — coaches run sessions, owners
-			shape the room.
-		</p>
+		<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+			<h2 class="font-display text-xl font-bold">{room.name}</h2>
+			<p class="text-muted text-xs">
+				{members}
+				{members === 1 ? 'member' : 'members'} · {owner} owns it{#if joined}{' '}
+					· you joined {joined}{/if}
+			</p>
+		</header>
 		{#if error}
 			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 		{/if}
+
+		<!-- The reason a member opens this page (#1099). The code is
+		     member-visible by design — rooms.go: "members only — the code IS
+		     the invite" — so this is showing what they already have, not
+		     widening anything. -->
 		<section class="border-muted/15 mt-6 rounded-lg border p-6">
+			<h2 class="font-display font-bold">Invite someone</h2>
+			<dl class="mt-4 space-y-3">
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<dt class="eyebrow w-20 shrink-0">join code</dt>
+					<dd class="font-display min-w-0 text-lg font-bold tracking-widest">
+						{room.code}
+					</dd>
+					<button
+						onclick={() => copy(room?.code ?? '', 'Join code copied.')}
+						class="btn btn-secondary btn-xs ml-auto"
+						><Copy size={13} /> Copy</button
+					>
+				</div>
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<dt class="eyebrow w-20 shrink-0">link</dt>
+					<!-- Wraps rather than scrolls: a link is the one value on this
+					     page long enough to push a phone sideways (ux.md). -->
+					<dd class="text-muted min-w-0 text-xs break-all">{inviteLink}</dd>
+					<button
+						onclick={() => copy(inviteLink, 'Invite link copied.')}
+						class="btn btn-secondary btn-xs ml-auto"
+						><Copy size={13} /> Copy</button
+					>
+				</div>
+			</dl>
+			<p class="text-muted mt-4 text-xs">
+				Members only — anyone with the code or the link can join.
+			</p>
+		</section>
+
+		<section class="border-muted/15 mt-4 rounded-lg border p-6">
+			<h2 class="font-display font-bold">What's on</h2>
+			<dl class="mt-4 space-y-3 text-sm">
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<dt class="eyebrow w-28 shrink-0">sound pack</dt>
+					<dd>{soundPackLabel}</dd>
+				</div>
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<dt class="eyebrow w-28 shrink-0">weekly board</dt>
+					<dd>{room.boardEnabled ? 'Running' : 'Off'}</dd>
+				</div>
+				{#if room.cheers && room.cheers.length > 0}
+					<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+						<dt class="eyebrow w-28 shrink-0">reactions</dt>
+						<dd class="flex flex-wrap items-center gap-1.5">
+							{#each room.cheers as cheer (cheer)}
+								<CheerIcon cheer={keyFor(cheer)} size={18} />
+							{/each}
+						</dd>
+					</div>
+				{/if}
+			</dl>
+			<p class="text-muted mt-4 text-xs">
+				Only the owner can change these — coaches run sessions, owners shape the
+				room.
+			</p>
+		</section>
+
+		<section class="border-muted/15 mt-4 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Leave room</h2>
 			<p class="text-muted mt-1.5 text-xs">
 				You drop off the member list and the room leaves your sidebar. Rides you
