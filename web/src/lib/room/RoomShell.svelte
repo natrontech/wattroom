@@ -180,8 +180,10 @@
 	// The jukebox video is a stage source, and it leads (#316): what the room
 	// is watching together belongs in the room, never in a window pasted over
 	// the cam grid. A rider who wants a share instead picks it.
+	// A pool track is heard, not seen (#267): no picture, so no seat — offering
+	// one drew a black tile the dock never flew into (#1141).
 	const stageSources = $derived([
-		...(live.tick?.jukebox?.current
+		...(live.tick?.jukebox?.current?.videoId
 			? [
 					{
 						key: 'jukebox',
