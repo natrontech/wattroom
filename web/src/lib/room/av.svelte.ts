@@ -36,6 +36,21 @@ import {
  * audio defaults); camera starts off. Track ownership: LiveKit owns the media
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
+ *
+ * ON THE LENGTH. This file is over code-quality.md's ~300-line ceiling and is
+ * meant to be: what is left after #892 took out four seams (device choices,
+ * the rider-audio bus, the mic chain, the claim protocol) is the AV lifecycle
+ * itself — join/leave, the LiveKit event surface, and the store's public API,
+ * which is a third of the file and is surface rather than logic.
+ *
+ * #892 was written against "one mutable scope wide enough that a cross-wired
+ * bug looks local", and that condition is gone: the gate, the fault, the
+ * claim protocol and the device choices each have their own scope and their
+ * own tests now, none of which need a livekit-client mock. The line count did
+ * not fall much and is not the thing to fix. Extracting `wire()` would mean
+ * declaring nearly this whole closure as an interface — the same coupling
+ * written down twice — so don't, unless a bug shows the coupling actually
+ * costs something. Closed on those terms 2026-09-08.
  */
 
 /**
@@ -50,8 +65,9 @@ const VOICE_UNREACHABLE =
 
 export function createRoomAv(slug: string) {
 	// One named place for what the UI watches, one for what the connection
-	// keeps to itself (#892) — av-state.svelte.ts says why they are two, and
-	// why naming them is what the remaining seam needs.
+	// keeps to itself (#892) — av-state.svelte.ts says why they are two. It
+	// was named to make a further split possible; see the note above for why
+	// that split is deliberately not being taken.
 	const av = createAvState();
 	const conn = createAvConn();
 	/** Record a device the browser refused; a closed share picker says nothing. */
