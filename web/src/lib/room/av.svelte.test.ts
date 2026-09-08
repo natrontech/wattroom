@@ -310,6 +310,23 @@ describe('createRoomAv', () => {
 	// incomplete copy of those constraints anyway (no autoGainControl, the
 	// one #555 calls load-bearing), which could never take effect and read as
 	// a second source of truth. Video is LiveKit's capture, and keeps its.
+	// #669: LiveKit ships both off, so every subscribed camera arrived at the
+	// publisher's full layer whatever it landed in — and video kept flowing
+	// into a hidden tab — while publishers uploaded simulcast layers nobody
+	// had subscribed to.
+	it('lets the room scale what it sends and what it asks for', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(roomOptions).toMatchObject({
+			adaptiveStream: true,
+			dynacast: true,
+		});
+		dispose();
+	});
+
 	it('leaves microphone capture to the one module that owns it', async () => {
 		let av!: ReturnType<typeof createRoomAv>;
 		const dispose = $effect.root(() => {

@@ -1,0 +1,1 @@
+- Cameras no longer stream at full quality into thumbnail-sized tiles, and your own upload stops sending picture sizes nobody asked for. On a home connection with several riders in the room, that was the difference between a room that holds and one that stutters — and it cost your own upload too. Video also stops flowing into a tab you have switched away from.

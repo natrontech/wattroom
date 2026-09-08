@@ -280,6 +280,21 @@ export function createRoomAv(slug: string) {
 			// IS LiveKit's own capture (setCameraEnabled), so its defaults
 			// stay.
 			conn.room = new client.Room({
+				// Both ship OFF, and neither was ever turned on (#669).
+				//
+				// adaptiveStream: without it every subscribed camera arrives at
+				// the publisher's full layer whatever it lands in — and what it
+				// lands in here is a 96 px tile, with at most one source on the
+				// stage. It also keeps video flowing into a hidden tab. The
+				// precondition is one element per container, attached through
+				// `track.attach()`, which `mount-track.ts` already does.
+				//
+				// dynacast: without it a publisher encodes and uploads simulcast
+				// layers nobody has subscribed to. That is the rider's OWN
+				// upstream — one household uplink, which is the link that gives
+				// out first on a group ride.
+				adaptiveStream: true,
+				dynacast: true,
 				...(devices.camId
 					? { videoCaptureDefaults: { deviceId: devices.camId } }
 					: {}),
