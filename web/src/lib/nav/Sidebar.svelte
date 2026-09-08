@@ -73,6 +73,7 @@
 		live = false,
 		onLeave,
 		onMember,
+		onSheet,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -82,6 +83,13 @@
 		onLeave?: () => void;
 		/** A rider named in a room's people line — the layout resolves them. */
 		onMember?: (slug: string, name: string) => void;
+		/**
+		 * The sidebar is opening a sheet of its own (#1199). Below md the
+		 * layout's drawer sits above dialogs (z-50 over z-40, and dialogs stay
+		 * there for the player's sake), so the drawer has to step aside the
+		 * way it does on navigation.
+		 */
+		onSheet?: () => void;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -565,7 +573,10 @@
 			     Channel" in the server you are looking at, not a trip to the
 			     bottom of Home. -->
 			<button
-				onclick={() => (opening = true)}
+				onclick={() => {
+					opening = true;
+					onSheet?.();
+				}}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title="open a room or join with a code"
 				aria-label="open a room or join with a code"><Plus size={16} /></button
