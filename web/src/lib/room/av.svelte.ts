@@ -13,14 +13,10 @@ import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
 import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
+import { createClaims } from '$lib/room/av-claim.svelte';
 import { createMicChain } from '$lib/room/mic-chain.svelte';
 import { mountTrack } from '$lib/room/mount-track';
-import {
-	type Claim,
-	micLiveElsewhere,
-	riderOf,
-	yieldsTo,
-} from '$lib/room/tabs';
+import { riderOf, yieldsTo } from '$lib/room/tabs';
 import {
 	REJOIN_HEARTBEAT_MS,
 	clearNote,
@@ -296,10 +292,10 @@ export function createRoomAv(slug: string) {
 			myIdentity = room.localParticipant.identity;
 			me = riderOf(myIdentity);
 			status = 'live';
-			myClaim = claimOf(room.localParticipant);
+			claims.current = { identity: room.localParticipant.identity, at: room.localParticipant.joinedAt?.getTime() ?? Date.now() };
 			// A tab already in the room could, in principle, hold a newer claim
 			// than this one — check rather than assume newest-connected wins.
-			for (const p of room.remoteParticipants.values()) considerClaim(p);
+			for (const p of room.remoteParticipants.values()) claims.consider(asClaimant(p));
 			// Post-permission the labels are real — the pickers can name devices.
 			void devices.refresh();
 			// Mic on by default (SPEC); a denied permission downgrades to
@@ -338,9 +334,6 @@ export function createRoomAv(slug: string) {
 	// sender is a participant the others already know. (Publishing a claim on
 	// join instead looked simpler and did not work: the packet outruns the
 	// join event, and the receiver gets it with no sender attached.)
-	let myClaim: Claim | null = null;
-	/** Whether the mic was open when this tab handed over, for taking it back. */
-	let micBeforeHandoff = false;
 	/**
 	 * Whether the mic was open when LiveKit dropped us, for the rejoin (#641).
 	 * The Disconnected handler clears `micOn` before the rejoin fires, and a
@@ -348,82 +341,55 @@ export function createRoomAv(slug: string) {
 	 */
 	let micBeforeDrop = false;
 
-	function claimOf(p: { identity: string; joinedAt?: Date }): Claim {
-		return { identity: p.identity, at: p.joinedAt?.getTime() ?? Date.now() };
-	}
+	// One rider, several tabs (#293): which one holds the mic, and what a tab
+	// standing down has to put down. The protocol is av-claim.svelte.ts; this
+	// hands it the connection.
+	const claims = createClaims({
+		identity: () => myIdentity,
+		now: () => serverNow(),
+		participants: () =>
+			room ? [room.localParticipant, ...room.remoteParticipants.values()].map(asClaimant) : [],
+		others: () => (room ? [...room.remoteParticipants.values()].map(asClaimant) : []),
+		announce: (at) => {
+			void room?.localParticipant
+				.publishData(
+					new TextEncoder().encode(JSON.stringify({ t: 'av-claim', at })),
+					{ reliable: true },
+				)
+				.catch(() => {});
+		},
+		handedOff: () => handedOff,
+		setHandedOff: (next) => (handedOff = next),
+		micOn: () => micOn,
+		closeMic: () => {
+			chain.close();
+			micOn = false;
+		},
+		clearFault: () => chain.clearFault(),
+		closeCam: () => closeCam(),
+		noteVoice: () => noteVoice(),
+	});
 
-	/** Stand down if this participant is a newer tab of mine. */
-	function considerClaim(p: { identity: string; joinedAt?: Date }) {
-		if (myClaim && yieldsTo(myClaim, claimOf(p))) void standDown();
-	}
-
-	/**
-	 * Announce that the mic and camera are moving here, now.
-	 *
-	 * Stamped on the server's clock, because the join stamps it competes
-	 * with are LiveKit's (#646). A browser clock behind the server made the
-	 * takeover read older than the incumbent's join, so it never stood down;
-	 * one ahead made a tab opened right after read older than the takeover,
-	 * so the takeover never stood down for it. Both ways, doubled audio.
-	 */
-	function claimAv() {
-		if (!room) return;
-		myClaim = { identity: myIdentity, at: serverNow() };
-		handedOff = false;
-		void room.localParticipant
-			.publishData(
-				new TextEncoder().encode(
-					JSON.stringify({ t: 'av-claim', at: myClaim.at }),
-				),
-				{ reliable: true },
-			)
-			// A claim that never lands leaves both tabs publishing: doubled
-			// audio, which the rider can hear and fix. Better than a silent
-			// stand-down on a channel that failed.
-			.catch(() => {});
-	}
-
-	/**
-	 * Is any OTHER connection of this rider publishing an open mic?
-	 *
-	 * Muting here is unpublishing, and `voice` is keyed by rider while the
-	 * events that drive it are per connection — so a tab standing down
-	 * broadcasts an unpublish for a rider who is still live in the tab that
-	 * just took over, and everyone reads them as muted. Ask the room instead
-	 * of trusting the event.
-	 */
-	function micLive(rider: string, except: string) {
-		if (!room) return false;
-		const asConnection = (p: {
-			identity: string;
-			getTrackPublication: (
-				source: LiveKitTrack.Source,
-			) => { isMuted: boolean } | undefined;
-		}) => {
-			const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
-			return { identity: p.identity, micOpen: !!pub && !pub.isMuted };
+	/** A participant as the claim protocol sees it — no SDK past this line. */
+	function asClaimant(p: {
+		identity: string;
+		joinedAt?: Date;
+		getTrackPublication: (
+			source: LiveKitTrack.Source,
+		) => { isMuted: boolean } | undefined;
+	}) {
+		const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
+		return {
+			identity: p.identity,
+			joinedAt: p.joinedAt,
+			micOpen: !!pub && !pub.isMuted,
 		};
-		return micLiveElsewhere(
-			[room.localParticipant, ...room.remoteParticipants.values()].map(
-				asConnection,
-			),
-			rider,
-			except,
-		);
-	}
-
-	/** Is any other connection of this rider still in the room? */
-	function stillHere(rider: string, except: string) {
-		if (!room) return false;
-		for (const p of room.remoteParticipants.values())
-			if (p.identity !== except && riderOf(p.identity) === rider) return true;
-		return false;
 	}
 
 	/** Take the mic and camera back into this tab; the others stand down. */
 	async function takeOver({ reopenMic = true } = {}) {
 		if (!room) return;
-		claimAv();
+		claims.claim();
 		if (reopenMic && !micOn) {
 			await tryOpenMic();
 			setVoice(me, micOn ? 'live' : 'muted');
@@ -515,32 +481,13 @@ export function createRoomAv(slug: string) {
 		if (dropOwned(videoTracks, me, myIdentity)) stage.dropVideo(me);
 	}
 
-	/** Another tab of yours took over: drop the mic and camera, keep listening. */
-	async function standDown() {
-		if (handedOff) return;
-		handedOff = true;
-		// The mic lives in the other tab now: no fault to reconnect from here.
-		chain.clearFault();
-		micBeforeHandoff = micOn;
-		if (micOn) {
-			chain.close();
-			micOn = false;
-		}
-		// The note stops vetoing a rejoin in the tab that now holds the mic.
-		noteVoice();
-		await closeCam();
-		// Screenshare deliberately stays. Sharing a laptop screen while riding
-		// from the tablet is a real thing to want, and unlike a mic two shares
-		// do not fight — they are silent. `screenTracks` keys by rider though,
-		// so the room shows one of them: the last to publish.
-	}
 
 	function wire(r: LiveKitRoom, client: LiveKitClient) {
 		// Only an explicit takeover arrives this way. The sender must be a
 		// participant we know — an unattributed packet is not something to
 		// mute a rider's microphone over.
 		r.on(client.RoomEvent.DataReceived, (payload, participant) => {
-			if (!participant || !myClaim) return;
+			if (!participant || !claims.current) return;
 			let at: unknown;
 			try {
 				const msg = JSON.parse(new TextDecoder().decode(payload));
@@ -550,8 +497,8 @@ export function createRoomAv(slug: string) {
 				return; // not ours to read
 			}
 			if (typeof at !== 'number') return;
-			if (yieldsTo(myClaim, { identity: participant.identity, at }))
-				void standDown();
+			if (yieldsTo(claims.current, { identity: participant.identity, at }))
+				void claims.standDown();
 		});
 		r.on(client.RoomEvent.TrackSubscribed, (track, pub, participant) => {
 			const rider = riderOf(participant.identity);
@@ -601,7 +548,7 @@ export function createRoomAv(slug: string) {
 				if (talk.drop(participant.identity)) speaking = { ...talk.riders };
 				if (
 					pub.source === client.Track.Source.Microphone &&
-					!micLive(rider, participant.identity)
+					!claims.micLive(rider, participant.identity)
 				)
 					setVoice(rider, 'muted');
 			}
@@ -626,7 +573,7 @@ export function createRoomAv(slug: string) {
 		r.on(client.RoomEvent.ParticipantConnected, (p) => {
 			audioState(p);
 			// Another tab of yours just opened: it is the one you are looking at.
-			considerClaim(p);
+			claims.consider(asClaimant(p));
 		});
 		r.on(client.RoomEvent.ParticipantDisconnected, (p) => {
 			const rider = riderOf(p.identity);
@@ -635,12 +582,12 @@ export function createRoomAv(slug: string) {
 			if (talk.drop(p.identity)) speaking = { ...talk.riders };
 			// Their other tab may still be in the room — one closed tab does not
 			// take a rider out of voice (#293).
-			if (!stillHere(rider, p.identity)) setVoice(rider, null);
+			if (!claims.stillHere(rider, p.identity)) setVoice(rider, null);
 			// The tab that took the mic is gone: this one may have it back, and
 			// it goes back the way it left, without asking (ux.md: recovery is
 			// automatic where it can be).
-			if (handedOff && rider === me && !stillHere(me, myIdentity))
-				void takeOver({ reopenMic: micBeforeHandoff });
+			if (handedOff && rider === me && !claims.stillHere(me, myIdentity))
+				void takeOver({ reopenMic: claims.micBeforeHandoff });
 		});
 		// A camera switched off is a MUTE, not an unpublish — livekit-client
 		// only unpublishes a screenshare on disable. Unheard, the subscription
@@ -666,7 +613,7 @@ export function createRoomAv(slug: string) {
 		}
 		r.on(client.RoomEvent.TrackMuted, (pub, p) => {
 			const rider = riderOf(p.identity);
-			if (pub.kind === client.Track.Kind.Audio && !micLive(rider, p.identity))
+			if (pub.kind === client.Track.Kind.Audio && !claims.micLive(rider, p.identity))
 				setVoice(rider, 'muted');
 			setPicture(pub, p);
 		});
@@ -703,7 +650,7 @@ export function createRoomAv(slug: string) {
 			micOn = false;
 			sharing = false;
 			handedOff = false;
-			myClaim = null;
+			claims.current = null;
 			room = null;
 			chain.close();
 			if (unexpected) {
@@ -810,7 +757,7 @@ export function createRoomAv(slug: string) {
 				return;
 			}
 			await tryOpenMic();
-			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
+			setVoice(me, micOn || claims.micLive(me, myIdentity) ? 'live' : 'muted');
 			noteVoice();
 		},
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
@@ -911,7 +858,7 @@ export function createRoomAv(slug: string) {
 			} else {
 				await tryOpenMic();
 			}
-			setVoice(me, micOn || micLive(me, myIdentity) ? 'live' : 'muted');
+			setVoice(me, micOn || claims.micLive(me, myIdentity) ? 'live' : 'muted');
 			noteVoice();
 		},
 		async toggleCam() {
