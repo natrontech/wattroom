@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import Music from '@lucide/svelte/icons/music';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -81,13 +82,23 @@
 >
 	<div class="flex min-w-0 items-center gap-2">
 		<div class="relative shrink-0">
-			<img
-				src={thumbnailFor(entry.videoId)}
-				alt=""
-				loading="lazy"
-				referrerpolicy="no-referrer"
-				class="bg-surface h-9 w-16 rounded object-cover"
-			/>
+			{#if entry.trackId}
+				<!-- A pool track has no thumbnail to show and needs none: the
+				     mark says "this one is audio" at a glance (#267). -->
+				<div
+					class="bg-surface text-muted grid h-9 w-16 place-items-center rounded"
+				>
+					<Music size={14} />
+				</div>
+			{:else}
+				<img
+					src={thumbnailFor(entry.videoId)}
+					alt=""
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					class="bg-surface h-9 w-16 rounded object-cover"
+				/>
+			{/if}
 			{#if position}
 				<span
 					class="bg-paper/70 text-ink absolute bottom-0 left-0 rounded-tr px-1 font-mono text-[9px] tabular-nums"
@@ -110,6 +121,10 @@
 			<p class="text-muted truncate text-[10px]">
 				{#if tracks.length}
 					playlist · {tracks.length} tracks · {entry.addedBy}
+				{:else if entry.artist}
+					<!-- The artist is what a rider recognises a pool track by;
+					     who queued it still follows, as on every other row. -->
+					{entry.artist} · {entry.addedBy}
 				{:else}
 					{entry.addedBy}
 				{/if}

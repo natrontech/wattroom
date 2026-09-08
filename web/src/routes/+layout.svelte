@@ -32,6 +32,7 @@
 	import { activePlace } from '$lib/nav/pages';
 	import { openMember } from '$lib/nav/open-member';
 	import Menu from '@lucide/svelte/icons/menu';
+	import AudioDeck from '$lib/room/AudioDeck.svelte';
 	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
 	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
@@ -331,6 +332,10 @@
 		     auto-advance while the player is offscreen, so it cannot be a place.
 		     Threads became places instead (ADR-0020) — /messages (#468). -->
 		<JukeboxDock />
+		<!-- The other half of one queue (#267): a pool track is heard here,
+		     beside the dock rather than inside it, because it needs none of
+		     the iframe's geometry. -->
+		<AudioDeck />
 	</div>
 {:else}
 	{@render children()}

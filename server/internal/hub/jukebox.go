@@ -392,7 +392,11 @@ func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 		// Every client reports the end; the (video, epoch) pair makes the
 		// first report advance and every echo a no-op — a video queued twice
 		// used to be eaten by its own echoes (audit #219).
+		// A pool track carries no video id (#267), so matching on VideoID
+		// alone would compare "" to "" and pass by accident. Both ids are
+		// checked: whichever one identifies the entry has to agree.
 		if j.state.Current == nil || j.state.Current.VideoID != cmd.VideoID ||
+			j.state.Current.TrackID != cmd.TrackID ||
 			cmd.AnchorMs != j.state.AnchorMs {
 			return nil, false, ""
 		}

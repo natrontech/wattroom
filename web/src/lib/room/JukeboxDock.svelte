@@ -345,7 +345,11 @@
 			return;
 		}
 
-		if (!deck.current) {
+		// A pool track belongs to AudioDeck (#267): it carries no video id, and
+		// loading "" makes the iframe raise an unplayable-video error, which
+		// this dock then answers by SKIPPING the entry. The room's own track
+		// would be skipped by the player that cannot play it.
+		if (!deck.current || deck.current.trackId) {
 			if (loadedVideo) unload();
 			return;
 		}
@@ -481,7 +485,11 @@
 
 	// Away is the rider being elsewhere: nothing to look at, and nothing
 	// plays, so RMF's "visible while media plays" is not engaged either.
-	const showPlayer = $derived(!!jukebox?.current && !mixer.muted);
+	// A pool track has no picture and no player to show (#267) — the dock
+	// stays out of the way rather than framing an empty iframe.
+	const showPlayer = $derived(
+		!!jukebox?.current && !jukebox.current.trackId && !mixer.muted,
+	);
 </script>
 
 {#if conn}
