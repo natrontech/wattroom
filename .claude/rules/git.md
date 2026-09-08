@@ -39,5 +39,19 @@ Work lives in issues on milestones (M0 onward); nobody (human or agent) works un
 3. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment. Standing down instead? Say "proceed, do not stand down on account of my comment" — two agents each deferring to the other leaves the issue undone.
 4. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
 5. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
+6. **Reading a PR's checks: `gh pr checks <n>`, never `statusCheckRollup`.** The rollup returns *every* run of a check, not the current one, and a superseded run keeps its old conclusion forever. That is routine here rather than an edge case: `changelog.yml` triggers on `labeled` and cancels in-progress runs, so applying `no-changelog` leaves a dead `FAILURE` — or a `CANCELLED`, when the label beats the first run to the finish — sitting in the array beside the `SKIPPED` that replaced it. #1061, #1073 and #1115 all read red that way and all three are green; the first two were briefly mistaken for the changelog gate being bypassed in practice (#1043). `gh pr checks` collapses to the newest run and is correct. When you genuinely need JSON, take the newest run per name:
+
+   ```bash
+   gh pr view <n> --json statusCheckRollup --jq '
+     [.statusCheckRollup[]]
+     | group_by(.name // .context)
+     | map(max_by(.startedAt // .createdAt))
+     | map(select((.conclusion // .state) as $c
+           | $c != "SUCCESS" and $c != "SKIPPED" and $c != "NEUTRAL"))
+     | if length == 0 then "all green"
+       else map("\(.name // .context): \(.conclusion // .state)") | join(", ") end'
+   ```
+
+   Ask what a conclusion is **not**, as above, rather than listing the ways one can fail: `FAILURE` was the whole list until `CANCELLED` turned up, and the next one will not announce itself either.
 
 Labels — **area**: `ble` `rooms` `workouts` `game-modes` `jukebox` `infra` `docs` `design`. **Kind**: `bug` `enhancement` `security` `feedback` (a rider report from the in-app flag button — ADR-0006; the `pickup-feedback` skill works this queue). **State**: `blocked` (waiting on another issue — the body names which), `backlog` (parked — ask first), `needs-human-input` (a decision a contributor must make — **do not implement what the issue says**; it usually records one person's opening position and wants push-back). **Process**: `no-changelog` (PR is invisible to riders — exempt from the CHANGELOG check), `good-first-issue`.
