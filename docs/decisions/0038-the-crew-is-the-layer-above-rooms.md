@@ -271,27 +271,91 @@ one-crew-per-owner migration removes the common reason anyone would want to
 move one. If riders hit this in practice, the revisit is a room *copy*, never a
 move.
 
-## Amendment, 2026-09-08 (#1021): two items for the cutover
+## Amendment, 2026-09-08 (#1021): what §16 changed
 
 [RESEARCH.md §16](../RESEARCH.md) landed after this ADR — the wrong order, and
-§16 says so. It does not overturn anything above; it supports the
+§16 says so. It overturns nothing above. It supports the
 existing-rooms-migrate-private rule with a regulator-tested precedent (the FTC's
-Google Buzz order, §16.3) and raises two items that are
-[#1106](https://github.com/natrontech/wattroom/issues/1106)'s to settle:
+Google Buzz order, §16.3), settles the crew owner below, and leaves one item
+open for [#1106](https://github.com/natrontech/wattroom/issues/1106).
 
-1. **There is no crew owner.** This ADR names crew *admins* and no un-removable
-   actor. Every product surveyed in §16.5 has one — Discord's server owner can
-   reach any channel's permissions at all times, which is why lockout there is
-   recoverable. Two crew admins can demote each other and this ADR does not say
-   who still holds the crew. The one-crew-per-owner migration already supplies
-   the obvious row.
-2. **Two ban levels may be one too many.** §16.4: Discord has no per-channel
-   ban at all — exclusion from a channel is a deny in the same permission
-   system as everything else. Keeping one ban at the crew and expressing "out of
-   this room" through the per-room override this ADR already introduces would
-   leave one mechanism to audit instead of two. [#1109](https://github.com/natrontech/wattroom/issues/1109)
-   is evidence the guard is forgettable at one level, let alone two.
+**Still open — two ban levels may be one too many.** §16.4: Discord has no
+per-channel ban at all; exclusion from a channel is a deny in the same
+permission system as everything else. Keeping one ban at the crew and
+expressing "out of this room" through the per-room override this ADR already
+introduces would leave one mechanism to audit instead of two.
+[#1109](https://github.com/natrontech/wattroom/issues/1109) is evidence the
+guard is forgettable at one level, let alone two. Not decided here.
 
-Also from §16.2: the single permission expression the cutover needs should be a
-**SQL view** every gate and visibility join selects from, so that a new join
+**Also from §16.2**: the single permission expression the cutover needs should
+be a **SQL view** every gate and visibility join selects from, so a new join
 that forgets it fails to compile rather than silently over-permitting.
+
+## Amendment, 2026-09-08 (#1106): a crew has an owner
+
+The decision above named crew *admins* and no un-removable actor, so two admins
+could demote each other with nothing stating who still held the crew. §16.5
+found no product with that shape: Discord's permission lockout is a documented,
+*recoverable* state precisely because the server owner sits outside the
+permission system. This settles it, ahead of the design (#1023), because it is a
+question about the model rather than about how the tree is drawn.
+
+**A crew has exactly one owner.** They cannot be demoted, removed or banned by
+anyone, and they can always reach the crew's and its rooms' permissions. That is
+the whole of the guarantee: it exists so that no configuration of roles can
+leave a crew with nobody able to fix it.
+
+**The owner is not a super-reader.** They gain no ability to read a room's
+contents without joining it — the same line this ADR already draws for crew
+admins, and deliberately stricter than Discord, whose `ADMINISTRATOR`
+*"overrides any potential permission overwrites"*. The anti-lockout guarantee is
+about **permissions, not contents**, and keeping those separate is what stops a
+crew owner becoming a way to read every room in the crew.
+
+Note the consequence this shares with crew admins, stated rather than hidden:
+a crew owner can re-grant themselves permissions in a room whose own owner
+excluded them. That is inherent in having any actor above the room, it is
+already true of admins under "crew admins manage room permissions", and the
+owner only adds that nobody can take the power away.
+
+### The migration supplies the row
+
+One crew per existing room owner, named after them — so **that person is the
+crew's owner**, and no backfill has to invent one.
+
+### Deletion is the part that forces the design
+
+Room ownership does not transfer today (`rooms/rooms.go:777`) and
+`rooms.owner_id` is `on delete cascade` (`00001_init.sql:26`), so deleting an
+account deletes the rooms it owns. That is coherent for a room: it is one
+person's, and WATTROOM.md's *delete-account (full purge)* promise is worth more
+than the room.
+
+**It is not coherent for a crew**, because a crew holds rooms *other people
+own*, and this ADR binds a room to its crew permanently. A crew that cascaded
+with its owner would destroy other people's rooms, and those rooms cannot be
+moved out of the way first. Three options, and canon rules out two:
+
+- **Cascade** — rejected. One person's account deletion would take other
+  people's rooms with it.
+- **Refuse the deletion while they own a crew** — rejected. WATTROOM.md locks
+  export-all and delete-account as a privacy promise; a crew must never become
+  a reason a rider cannot leave.
+- **Transfer, and delete the person** — the only option left, and therefore the
+  decision.
+
+So: **crew ownership transfers, and on account deletion it transfers
+automatically.** The purge still removes the person and the rooms they own
+personally, exactly as today; the crew survives with a new owner. Deliberate
+transfer while alive must also exist, or the only way to hand a crew over is to
+delete your account.
+
+Who receives it is `docs/SPEC.md`'s to state rather than this ADR's to invent —
+the constraint is only that the rule must always name somebody, and must not be
+able to pick the departing owner. The same rule applies when an owner leaves
+every room in the crew, which is how they leave the crew at all, membership
+following room membership.
+
+A crew whose rooms are all gone has no members and nothing to own; it is
+deleted rather than left ownerless.
+
