@@ -1,8 +1,8 @@
 -- name: CreateTrack :one
 -- Content-addressed: a second upload of the same bytes hits the unique index
 -- on sha256, and the caller reads the existing row instead of storing a copy.
-insert into tracks (sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm)
-values ($1, $2, $3, $4, $5, $6, $7, $8)
+insert into tracks (sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, tags)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 returning *;
 
 -- name: TrackBySha :one
@@ -21,8 +21,9 @@ select * from tracks where id = $1;
 select t.*, u.display_name as uploaded_by_name
 from tracks t
 join users u on u.id = t.uploaded_by
-where sqlc.arg(search)::text = ''
-   or t.search @@ websearch_to_tsquery('simple', sqlc.arg(search)::text)
+where (sqlc.arg(search)::text = ''
+       or t.search @@ websearch_to_tsquery('simple', sqlc.arg(search)::text))
+  and (sqlc.arg(tag)::text = '' or sqlc.arg(tag)::text = any(t.tags))
 order by
     -- Ranked when there is a query, newest when there is not.
     case when sqlc.arg(search)::text = '' then 0
@@ -39,9 +40,24 @@ select coalesce(sum(size_bytes), 0)::bigint from tracks where uploaded_by = $1;
 -- name: UpdateTrack :one
 -- Every field editable in place: real-world tags are garbage and
 -- edit-beats-cleanup (ADR-0015). Uploader only — the where clause is the check.
-update tracks set title = $3, artist = $4, album = $5, bpm = $6
+update tracks set title = $3, artist = $4, album = $5, bpm = $6, tags = $7
 where id = $1 and uploaded_by = $2
 returning *;
+
+-- name: TrackTagCounts :many
+-- The facet row: every tag in the pool with how many tracks wear it.
+--
+-- Counted over the whole pool rather than over the current search, so a rider
+-- narrowing by text still sees the shelf they can jump to. Cheap enough to run
+-- beside every list — a pool of a few thousand rows aggregates in under a
+-- millisecond, and there is no page of tags to paginate.
+-- The cast is not decoration: without it sqlc types an unnested element as
+-- `interface{}` and the handler has to assert what the column already is.
+select tag::text as tag, count(*)::bigint as tracks
+from tracks, unnest(tags) as tag
+group by tag
+order by tracks desc, tag
+limit 100;
 
 -- name: DeleteTrack :one
 -- Returns the sha so the caller can remove the file it addressed. Uploader

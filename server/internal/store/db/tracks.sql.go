@@ -12,9 +12,9 @@ import (
 )
 
 const createTrack = `-- name: CreateTrack :one
-insert into tracks (sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm)
-values ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search
+insert into tracks (sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, tags)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags
 `
 
 type CreateTrackParams struct {
@@ -26,6 +26,7 @@ type CreateTrackParams struct {
 	DurationMs int32
 	SizeBytes  int32
 	Bpm        *int16
+	Tags       []string
 }
 
 // Content-addressed: a second upload of the same bytes hits the unique index
@@ -40,6 +41,7 @@ func (q *Queries) CreateTrack(ctx context.Context, arg CreateTrackParams) (Track
 		arg.DurationMs,
 		arg.SizeBytes,
 		arg.Bpm,
+		arg.Tags,
 	)
 	var i Track
 	err := row.Scan(
@@ -54,6 +56,7 @@ func (q *Queries) CreateTrack(ctx context.Context, arg CreateTrackParams) (Track
 		&i.Bpm,
 		&i.CreatedAt,
 		&i.Search,
+		&i.Tags,
 	)
 	return i, err
 }
@@ -77,7 +80,7 @@ func (q *Queries) DeleteTrack(ctx context.Context, arg DeleteTrackParams) (strin
 }
 
 const getTrack = `-- name: GetTrack :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search from tracks where id = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where id = $1
 `
 
 func (q *Queries) GetTrack(ctx context.Context, id pgtype.UUID) (Track, error) {
@@ -95,27 +98,30 @@ func (q *Queries) GetTrack(ctx context.Context, id pgtype.UUID) (Track, error) {
 		&i.Bpm,
 		&i.CreatedAt,
 		&i.Search,
+		&i.Tags,
 	)
 	return i, err
 }
 
 const listTracks = `-- name: ListTracks :many
-select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, t.search, u.display_name as uploaded_by_name
+select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, t.search, t.tags, u.display_name as uploaded_by_name
 from tracks t
 join users u on u.id = t.uploaded_by
-where $1::text = ''
-   or t.search @@ websearch_to_tsquery('simple', $1::text)
+where ($1::text = ''
+       or t.search @@ websearch_to_tsquery('simple', $1::text))
+  and ($2::text = '' or $2::text = any(t.tags))
 order by
     -- Ranked when there is a query, newest when there is not.
     case when $1::text = '' then 0
          else ts_rank(t.search, websearch_to_tsquery('simple', $1::text))
     end desc,
     t.created_at desc
-limit $3 offset $2
+limit $4 offset $3
 `
 
 type ListTracksParams struct {
 	Search string
+	Tag    string
 	Off    int32
 	Lim    int32
 }
@@ -132,6 +138,7 @@ type ListTracksRow struct {
 	Bpm            *int16
 	CreatedAt      pgtype.Timestamptz
 	Search         interface{}
+	Tags           []string
 	UploadedByName string
 }
 
@@ -142,7 +149,12 @@ type ListTracksRow struct {
 // one query, so a rider clearing the box gets the library back rather than a
 // second code path that might disagree with the first.
 func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListTracksRow, error) {
-	rows, err := q.db.Query(ctx, listTracks, arg.Search, arg.Off, arg.Lim)
+	rows, err := q.db.Query(ctx, listTracks,
+		arg.Search,
+		arg.Tag,
+		arg.Off,
+		arg.Lim,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +174,7 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 			&i.Bpm,
 			&i.CreatedAt,
 			&i.Search,
+			&i.Tags,
 			&i.UploadedByName,
 		); err != nil {
 			return nil, err
@@ -175,7 +188,7 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 }
 
 const trackBySha = `-- name: TrackBySha :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search from tracks where sha256 = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where sha256 = $1
 `
 
 func (q *Queries) TrackBySha(ctx context.Context, sha256 string) (Track, error) {
@@ -193,6 +206,7 @@ func (q *Queries) TrackBySha(ctx context.Context, sha256 string) (Track, error) 
 		&i.Bpm,
 		&i.CreatedAt,
 		&i.Search,
+		&i.Tags,
 	)
 	return i, err
 }
@@ -210,10 +224,51 @@ func (q *Queries) TrackQuotaUsed(ctx context.Context, uploadedBy pgtype.UUID) (i
 	return column_1, err
 }
 
+const trackTagCounts = `-- name: TrackTagCounts :many
+select tag::text as tag, count(*)::bigint as tracks
+from tracks, unnest(tags) as tag
+group by tag
+order by tracks desc, tag
+limit 100
+`
+
+type TrackTagCountsRow struct {
+	Tag    string
+	Tracks int64
+}
+
+// The facet row: every tag in the pool with how many tracks wear it.
+//
+// Counted over the whole pool rather than over the current search, so a rider
+// narrowing by text still sees the shelf they can jump to. Cheap enough to run
+// beside every list — a pool of a few thousand rows aggregates in under a
+// millisecond, and there is no page of tags to paginate.
+// The cast is not decoration: without it sqlc types an unnested element as
+// `interface{}` and the handler has to assert what the column already is.
+func (q *Queries) TrackTagCounts(ctx context.Context) ([]TrackTagCountsRow, error) {
+	rows, err := q.db.Query(ctx, trackTagCounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TrackTagCountsRow
+	for rows.Next() {
+		var i TrackTagCountsRow
+		if err := rows.Scan(&i.Tag, &i.Tracks); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTrack = `-- name: UpdateTrack :one
-update tracks set title = $3, artist = $4, album = $5, bpm = $6
+update tracks set title = $3, artist = $4, album = $5, bpm = $6, tags = $7
 where id = $1 and uploaded_by = $2
-returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search
+returning id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags
 `
 
 type UpdateTrackParams struct {
@@ -223,6 +278,7 @@ type UpdateTrackParams struct {
 	Artist     string
 	Album      string
 	Bpm        *int16
+	Tags       []string
 }
 
 // Every field editable in place: real-world tags are garbage and
@@ -235,6 +291,7 @@ func (q *Queries) UpdateTrack(ctx context.Context, arg UpdateTrackParams) (Track
 		arg.Artist,
 		arg.Album,
 		arg.Bpm,
+		arg.Tags,
 	)
 	var i Track
 	err := row.Scan(
@@ -249,6 +306,7 @@ func (q *Queries) UpdateTrack(ctx context.Context, arg UpdateTrackParams) (Track
 		&i.Bpm,
 		&i.CreatedAt,
 		&i.Search,
+		&i.Tags,
 	)
 	return i, err
 }

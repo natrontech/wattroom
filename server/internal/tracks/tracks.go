@@ -50,6 +50,12 @@ const (
 	// A title has to fit a queue row and a now-playing line.
 	maxTextRunes = 200
 
+	// A tag is a word or two on a chip, and a track wears a handful. Both are
+	// bounds on what can be stored, not a taxonomy — ADR-0015 is explicit that
+	// there isn't one.
+	maxTagRunes = 40
+	maxTags     = 20
+
 	// The pool is browsed a page at a time; the client asks, this bounds it.
 	defaultLimit = 100
 	maxLimit     = 500
@@ -94,15 +100,25 @@ type trackJSON struct {
 	Album      string `json:"album,omitempty"`
 	DurationMs int32  `json:"durationMs"`
 	SizeBytes  int32  `json:"sizeBytes"`
-	Bpm        int16  `json:"bpm,omitempty"`
-	UploadedBy string `json:"uploadedBy,omitempty"`
-	CreatedAt  string `json:"createdAt"`
+	Bpm        int16    `json:"bpm,omitempty"`
+	Tags       []string `json:"tags"`
+	UploadedBy string   `json:"uploadedBy,omitempty"`
+	CreatedAt  string   `json:"createdAt"`
+}
+
+// tagJSON is a shelf label: the tag and how many tracks wear it.
+type tagJSON struct {
+	Tag    string `json:"tag"`
+	Tracks int64  `json:"tracks"`
 }
 
 func toJSON(t db.Track, uploader string) trackJSON {
 	out := trackJSON{
 		Id: store.UUIDString(t.ID), Title: t.Title, Artist: t.Artist, Album: t.Album,
 		DurationMs: t.DurationMs, SizeBytes: t.SizeBytes,
+		// Never nil: a track with no tags is `[]` rather than `null`, so the
+		// client can iterate it without asking which one it got.
+		Tags:       append([]string{}, t.Tags...),
 		UploadedBy: uploader,
 		CreatedAt:  t.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -166,7 +182,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, artist, album, bpm := metadata(data, r.URL.Query().Get("name"))
+	title, artist, album, bpm, tags := metadata(data, r.URL.Query().Get("name"))
 	if _, err := s.put(sha, data); err != nil {
 		s.log.Error("track write", "err", err, "sha", sha)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
@@ -178,6 +194,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		DurationMs: int32(millis),    //nolint:gosec // bounded by maxUploadBytes above
 		SizeBytes:  int32(len(data)), //nolint:gosec // bounded by maxUploadBytes above
 		Bpm:        bpm,
+		Tags:       tags,
 	})
 	if err != nil {
 		// The file stays: another upload of the same content will find it and
@@ -192,10 +209,16 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 // metadata reads what the ID3 tag claims, falling back to the filename for a
 // title. Real-world tags are garbage and every field is editable afterwards
 // (ADR-0015), so nothing here has to be right — only present and bounded.
-func metadata(data []byte, filename string) (title, artist, album string, bpm *int16) {
+//
+// The genre frame seeds the track's tags the same way TBPM seeds its BPM: one
+// tag a rider can keep, rename or delete. It is a starting point, not a
+// taxonomy — ADR-0015 says there is none.
+func metadata(data []byte, filename string) (title, artist, album string, bpm *int16, tags []string) {
 	fallback := strings.TrimSuffix(strings.TrimSpace(filename), ".mp3")
+	tags = []string{}
 	if m, err := tag.ReadFrom(bytes.NewReader(data)); err == nil {
 		title, artist, album = clip(m.Title()), clip(m.Artist()), clip(m.Album())
+		tags = normalizeTags(strings.Split(m.Genre(), "/"))
 		if raw, ok := m.Raw()["TBPM"]; ok {
 			if n, err := strconv.Atoi(strings.TrimSpace(toText(raw))); err == nil && n > 0 && n < 400 {
 				beats := int16(n) //nolint:gosec // bounded to 1..399 on the line above
@@ -209,7 +232,34 @@ func metadata(data []byte, filename string) (title, artist, album string, bpm *i
 	if title == "" {
 		title = "Untitled"
 	}
-	return title, artist, album, bpm
+	return title, artist, album, bpm, tags
+}
+
+/*
+normalizeTags is what makes an array column enough on its own: two riders who
+type "Italo Disco" and "italo disco " mean one tag, and the only thing that can
+make them equal is that the stored string is equal. Lower-cased, collapsed,
+de-duplicated, order preserved so a rider's own list reads the way they typed
+it, and bounded on both axes.
+*/
+func normalizeTags(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := make(map[string]bool, len(in))
+	for _, raw := range in {
+		t := strings.ToLower(strings.Join(strings.Fields(raw), " "))
+		if utf8.RuneCountInString(t) > maxTagRunes {
+			t = string([]rune(t)[:maxTagRunes])
+		}
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+		if len(out) == maxTags {
+			break
+		}
+	}
+	return out
 }
 
 func toText(v any) string {
@@ -238,12 +288,29 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
 		offset = n
 	}
+	// One tag, not a set: narrowing by two at once is a query nobody has asked
+	// for, and the facet row is one click deep.
+	// ponytail: single tag. Take a repeated ?tag= into an `@>` array containment
+	// clause if riders start combining them.
+	tag := ""
+	if picked := normalizeTags([]string{r.URL.Query().Get("tag")}); len(picked) == 1 {
+		tag = picked[0]
+	}
 	rows, err := s.store.Queries.ListTracks(r.Context(), db.ListTracksParams{
 		Search: strings.TrimSpace(r.URL.Query().Get("q")),
+		Tag:    tag,
 		Lim:    int32(limit), Off: int32(offset), //nolint:gosec // bounded above
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
+		return
+	}
+	// The shelf labels, over the whole pool rather than this page: a rider
+	// filtering to one tag still needs the others to get back out.
+	facets, err := s.store.Queries.TrackTagCounts(r.Context())
+	if err != nil {
+		s.log.Error("track tag counts", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
 		return
 	}
@@ -253,10 +320,14 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			ID: row.ID, Sha256: row.Sha256, UploadedBy: row.UploadedBy,
 			Title: row.Title, Artist: row.Artist, Album: row.Album,
 			DurationMs: row.DurationMs, SizeBytes: row.SizeBytes,
-			Bpm: row.Bpm, CreatedAt: row.CreatedAt,
+			Bpm: row.Bpm, Tags: row.Tags, CreatedAt: row.CreatedAt,
 		}, row.UploadedByName))
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"tracks": out})
+	tags := make([]tagJSON, 0, len(facets))
+	for _, f := range facets {
+		tags = append(tags, tagJSON{Tag: f.Tag, Tracks: f.Tracks})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"tracks": out, "tags": tags})
 }
 
 // handleAudio serves the file itself. http.ServeContent gives range requests,
@@ -294,10 +365,11 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Title  string `json:"title"`
-		Artist string `json:"artist"`
-		Album  string `json:"album"`
-		Bpm    *int16 `json:"bpm"`
+		Title  string   `json:"title"`
+		Artist string   `json:"artist"`
+		Album  string   `json:"album"`
+		Bpm    *int16   `json:"bpm"`
+		Tags   []string `json:"tags"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -317,6 +389,10 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	updated, err := s.store.Queries.UpdateTrack(r.Context(), db.UpdateTrackParams{
 		ID: row.ID, UploadedBy: me.ID,
 		Title: title, Artist: clip(req.Artist), Album: clip(req.Album), Bpm: req.Bpm,
+		// Normalized rather than rejected: a rider typing "Italo Disco, italo
+		// disco" made one tag, and telling them off for it would be the
+		// taxonomy ADR-0015 says not to build.
+		Tags: normalizeTags(req.Tags),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// The row exists — s.track found it — so the only way to miss here is

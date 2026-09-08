@@ -16,15 +16,20 @@
 	import {
 		deleteTrack,
 		listTracks,
+		parseTags,
 		saveTrack,
 		trackClock,
 		trackSize,
 		uploadTrack,
 		whyNotUploadable,
+		type PoolTag,
 		type Track,
 	} from '$lib/music/pool';
 
 	let tracks = $state<Track[]>([]);
+	let facets = $state<PoolTag[]>([]);
+	// One tag at a time: the shelf a rider is standing at. '' is the whole pool.
+	let tag = $state('');
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let query = $state('');
@@ -38,7 +43,7 @@
 	// and a skeleton flashing between keystrokes reads as breakage.
 	async function load(q: string, showSkeleton = true) {
 		if (showSkeleton) loading = true;
-		const res = await listTracks(q);
+		const res = await listTracks(q, tag);
 		loading = false;
 		if (!res.ok) {
 			error = res.error.message;
@@ -46,9 +51,17 @@
 		}
 		error = null;
 		tracks = res.data.tracks;
+		// Counted over the whole pool, so the row does not empty out as a rider
+		// narrows — the other shelves are how they get back.
+		facets = res.data.tags;
 	}
 
 	void load('');
+
+	function pick(next: string) {
+		tag = tag === next ? '' : next;
+		void load(query, false);
+	}
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	function search(next: string) {
@@ -95,6 +108,7 @@
 			artist: String(data.get('artist') ?? '').trim(),
 			album: String(data.get('album') ?? '').trim(),
 			bpm: bpm === '' ? null : Number(bpm),
+			tags: parseTags(String(data.get('tags') ?? '')),
 		});
 		if (!res.ok) {
 			error = res.error.message;
@@ -103,6 +117,9 @@
 		error = null;
 		editing = null;
 		tracks = tracks.map((t) => (t.id === track.id ? res.data : t));
+		// An edit can mint a tag or retire the last track wearing one, so the
+		// shelf labels come back from the server rather than being guessed at.
+		void load(query, false);
 	}
 
 	// Undo over confirm is the rule (errors.md), but a delete here destroys the
@@ -119,6 +136,7 @@
 		}
 		error = null;
 		tracks = tracks.filter((t) => t.id !== track.id);
+		void load(query, false); // the last track wearing a tag takes it with it
 	}
 
 	const mine = (track: Track) => track.uploadedBy === account.me?.displayName;
@@ -161,6 +179,26 @@
 		/>
 	</label>
 
+	<!-- The shelf labels. Wide enough to scroll sideways in their own strip
+	     rather than widening the page (ux.md, phone width). -->
+	{#if facets.length}
+		<div class="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+			{#each facets as facet (facet.tag)}
+				<button
+					onclick={() => pick(facet.tag)}
+					aria-pressed={tag === facet.tag}
+					class="shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors {tag ===
+					facet.tag
+						? 'border-neon bg-neon/15 text-fg'
+						: 'border-muted/30 text-muted hover:border-neon/50'}"
+				>
+					{facet.tag}
+					<span class="text-muted/70 ml-1 tabular-nums">{facet.tracks}</span>
+				</button>
+			{/each}
+		</div>
+	{/if}
+
 	{#if error}
 		<div class="mt-4">
 			<Banner tone="error">
@@ -200,6 +238,21 @@
 
 		{#if loading}
 			<Skeleton rows={5} class="mb-2 h-14" />
+		{:else if tracks.length === 0 && tag}
+			<EmptyState>
+				{#snippet icon()}<Music
+						size={20}
+						class="text-muted/60 mb-2"
+					/>{/snippet}
+				<p class="text-sm">
+					Nothing tagged “{tag}”{query ? ` matches “${query}”` : ''}.
+				</p>
+				{#snippet cta()}
+					<button onclick={() => pick(tag)} class="btn btn-secondary"
+						>Show the whole pool</button
+					>
+				{/snippet}
+			</EmptyState>
 		{:else if tracks.length === 0 && query}
 			<EmptyState>
 				{#snippet icon()}<Music
@@ -290,6 +343,19 @@
 										class="input mt-1 w-full font-mono tabular-nums"
 									/>
 								</label>
+								<label class="block sm:col-span-4">
+									<span class="eyebrow">tags</span>
+									<input
+										name="tags"
+										value={track.tags.join(', ')}
+										placeholder="synthwave, warmup, italo disco"
+										class="input mt-1 w-full"
+									/>
+									<span class="text-muted mt-1 block text-xs">
+										Comma-separated, and whatever you like — genre, mood, which
+										part of a ride it suits.
+									</span>
+								</label>
 								<div class="flex gap-2 sm:col-span-4">
 									<button type="submit" class="btn btn-primary btn-xs"
 										>Save</button
@@ -311,6 +377,17 @@
 											: ''}
 										{#if track.uploadedBy}· added by {track.uploadedBy}{/if}
 									</p>
+									{#if track.tags.length}
+										<p class="mt-1 flex flex-wrap gap-1">
+											{#each track.tags as name (name)}
+												<button
+													onclick={() => pick(name)}
+													class="border-muted/25 text-muted hover:border-neon/50 rounded-full border px-1.5 py-0.5 text-[10px]"
+													>{name}</button
+												>
+											{/each}
+										</p>
+									{/if}
 								</div>
 								{#if track.bpm}
 									<span

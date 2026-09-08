@@ -261,6 +261,7 @@ type Track struct {
 	Bpm        *int16
 	CreatedAt  pgtype.Timestamptz
 	Search     interface{}
+	Tags       []string
 }
 
 type User struct {

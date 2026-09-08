@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/audio/audiotest"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -380,5 +384,138 @@ func TestSearchIsTolerantOfWhatRidersType(t *testing.T) {
 	// An empty box is the whole library, not an empty page.
 	if n := found(""); n < 1 {
 		t.Errorf("clearing the search found %d, want the library back", n)
+	}
+}
+
+func TestNormalizeTags(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"case and padding are the same tag", []string{"Italo Disco", " italo disco "}, []string{"italo disco"}},
+		{"inner whitespace collapses", []string{"drum\t\n  and   bass"}, []string{"drum and bass"}},
+		{"empties drop out", []string{"", "   ", "techno"}, []string{"techno"}},
+		{"order is the rider's", []string{"warmup", "acid", "warmup"}, []string{"warmup", "acid"}},
+		{"nothing is an empty list, never nil", nil, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeTags(tc.in)
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("normalizeTags(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+
+	t.Run("bounded on both axes", func(t *testing.T) {
+		long := normalizeTags([]string{strings.Repeat("a", maxTagRunes+50)})
+		if n := utf8.RuneCountInString(long[0]); n != maxTagRunes {
+			t.Errorf("a long tag kept %d runes, want it clipped to %d", n, maxTagRunes)
+		}
+		many := make([]string, maxTags+10)
+		for i := range many {
+			many[i] = fmt.Sprintf("tag%d", i)
+		}
+		if got := normalizeTags(many); len(got) != maxTags {
+			t.Errorf("kept %d tags, want the list capped at %d", len(got), maxTags)
+		}
+	})
+}
+
+// id3v23 wraps `data` in an ID3v2.3 tag carrying one text frame, which is the
+// only way to give a synthetic MP3 a genre for the upload path to read.
+func id3v23(frameID, text string, data []byte) []byte {
+	payload := append([]byte{0x00}, text...) // 0x00 = ISO-8859-1
+	frame := append([]byte(frameID),
+		byte(len(payload)>>24), byte(len(payload)>>16), byte(len(payload)>>8), byte(len(payload)),
+		0x00, 0x00)
+	frame = append(frame, payload...)
+
+	size := len(frame)
+	header := []byte{'I', 'D', '3', 3, 0, 0,
+		byte(size >> 21 & 0x7F), byte(size >> 14 & 0x7F), byte(size >> 7 & 0x7F), byte(size & 0x7F)}
+	return append(append(header, frame...), data...)
+}
+
+func TestTheGenreFrameSeedsTheFirstTags(t *testing.T) {
+	h := setup(t)
+	// "Synthwave/Italo Disco" — one frame, the way a tagger writes two genres.
+	data := id3v23("TCON", "Synthwave/Italo Disco", song(11, 383))
+	body := h.upload(t, "alice", data, "Seeded.mp3")
+
+	tags, _ := body["tags"].([]any)
+	if len(tags) != 2 || tags[0] != "synthwave" || tags[1] != "italo disco" {
+		t.Errorf("tags = %v, want the genre frame split and normalized", body["tags"])
+	}
+}
+
+func TestATrackWithNoGenreCarriesAnEmptyTagList(t *testing.T) {
+	h := setup(t)
+	body := h.upload(t, "alice", song(12, 383), "Bare.mp3")
+	// `[]`, not `null`: the client iterates it without asking which it got.
+	tags, ok := body["tags"].([]any)
+	if !ok || len(tags) != 0 {
+		t.Errorf("tags = %#v, want an empty list", body["tags"])
+	}
+}
+
+func TestTagsFilterThePoolAndCountThemselves(t *testing.T) {
+	h := setup(t)
+	// Tag names unique to this run: the pool is global and `wattroom_test` is
+	// shared, so a facet count is only ever assertable about our own tags.
+	mine := fmt.Sprintf("sprint-%d", time.Now().UnixNano())
+	other := mine + "-cooldown"
+
+	for i, tags := range [][]string{{mine}, {mine, other}, {other}} {
+		track := h.upload(t, "alice", song(byte(13+i), 383), fmt.Sprintf("Tagged %d.mp3", i))
+		id, _ := track["id"].(string)
+		edit, _ := json.Marshal(map[string]any{
+			"title": fmt.Sprintf("Tagged %d", i), "artist": "", "album": "", "bpm": nil, "tags": tags,
+		})
+		if w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusOK {
+			t.Fatalf("tag track %d: %d %s", i, w.Code, w.Body.String())
+		}
+	}
+
+	list := func(query string) []any {
+		t.Helper()
+		w := h.do(t, "alice", http.MethodGet, "/api/tracks?"+query, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("list %q: %d %s", query, w.Code, w.Body.String())
+		}
+		rows, _ := decode(t, w)["tracks"].([]any)
+		return rows
+	}
+
+	if n := len(list("tag=" + url.QueryEscape(mine))); n != 2 {
+		t.Errorf("filtering by %q found %d tracks, want 2", mine, n)
+	}
+	if n := len(list("tag=" + url.QueryEscape(other))); n != 2 {
+		t.Errorf("filtering by %q found %d tracks, want 2", other, n)
+	}
+	// A rider clicking a chip whose name they half-typed gets the same shelf:
+	// the filter normalizes the way the stored tag did.
+	if n := len(list("tag=" + url.QueryEscape("  "+strings.ToUpper(mine)+" "))); n != 2 {
+		t.Errorf("a differently-cased tag found %d tracks, want the same 2", n)
+	}
+	// Search and tag narrow together rather than replacing each other.
+	if n := len(list("tag=" + url.QueryEscape(mine) + "&q=" + url.QueryEscape("Tagged 1"))); n != 1 {
+		t.Errorf("tag and search together found %d, want 1", n)
+	}
+	if n := len(list("tag=" + url.QueryEscape(mine+"-nobody-wears-this"))); n != 0 {
+		t.Errorf("an unworn tag found %d tracks, want 0", n)
+	}
+
+	// The facet row carries the shelf labels with their counts.
+	w := h.do(t, "alice", http.MethodGet, "/api/tracks", nil)
+	facets, _ := decode(t, w)["tags"].([]any)
+	counts := map[string]float64{}
+	for _, item := range facets {
+		row, _ := item.(map[string]any)
+		tag, _ := row["tag"].(string)
+		counts[tag], _ = row["tracks"].(float64)
+	}
+	if counts[mine] != 2 || counts[other] != 2 {
+		t.Errorf("facets = %v/%v for %q/%q, want 2 and 2", counts[mine], counts[other], mine, other)
 	}
 }
