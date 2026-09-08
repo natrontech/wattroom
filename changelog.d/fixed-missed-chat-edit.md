@@ -1,1 +1,0 @@
-- A correction someone made while your connection dropped now reaches you. Edits are announced once and never repeated, so if your socket flapped at that moment you kept reading the old words — and reconnecting could not fix it, only a full page reload could.

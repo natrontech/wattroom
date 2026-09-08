@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.46] - 2026-09-08
+
+### Added
+
+- Every track in the music library now has a button that drops it straight into the jukebox of the room you are in, without leaving the shelf. With no room open the button is not there, and the page says to open one.
+
+### Fixed
+
+- A correction someone made while your connection dropped now reaches you. Edits are announced once and never repeated, so if your socket flapped at that moment you kept reading the old words — and reconnecting could not fix it, only a full page reload could.
+
 ## [2026.09.45] - 2026-09-08
 
 ### Added
@@ -1068,7 +1078,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.45...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.46...HEAD
+[2026.09.46]: https://github.com/natrontech/wattroom/compare/2026.09.45...2026.09.46
 [2026.09.45]: https://github.com/natrontech/wattroom/compare/2026.09.44...2026.09.45
 [2026.09.44]: https://github.com/natrontech/wattroom/compare/2026.09.43...2026.09.44
 [2026.09.43]: https://github.com/natrontech/wattroom/compare/2026.09.42...2026.09.43
