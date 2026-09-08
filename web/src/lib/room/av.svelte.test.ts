@@ -25,6 +25,8 @@ vi.mock('livekit-client', () => {
 	let canPlayback = true;
 	let audioStarts = true;
 	let startAudioCalls = 0;
+	// A handshake that never answers (#1203).
+	let hang = false;
 	class Room {
 		constructor(options: Record<string, unknown> = {}) {
 			roomOptions = options;
@@ -54,6 +56,7 @@ vi.mock('livekit-client', () => {
 			return this;
 		}
 		async connect() {
+			if (hang) await new Promise<never>(() => {});
 			joined = this as FakeRoom;
 		}
 		disconnect() {}
@@ -142,6 +145,10 @@ vi.mock('livekit-client', () => {
 			audioStarts = true;
 			startAudioCalls = 0;
 		},
+		/** The signalling handshake that never completes (#1203). */
+		hangConnect(on: boolean) {
+			hang = on;
+		},
 		/** How many times the app asked the browser to start audio. */
 		startAudioAsks: () => startAudioCalls,
 		/** The browser changing its mind on its own. */
@@ -183,7 +190,7 @@ vi.mock('$lib/room/mic-level', () => ({
 	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
 }));
 
-const { createRoomAv } = await import('./av.svelte');
+const { createRoomAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');
 const { createMicMeter } = vi.mocked(await import('$lib/room/mic-level'));
 const { api } = await import('$lib/api');
 const {
@@ -195,9 +202,11 @@ const {
 	remoteShareAudio,
 	blockAudio,
 	allowAudio,
+	hangConnect,
 	startAudioAsks,
 	playbackChanged,
 } = (await import('livekit-client')) as unknown as {
+	hangConnect: (on: boolean) => void;
 	stopSharingNatively: () => void;
 	dropNatively: () => void;
 	blockAudio: (starts?: boolean) => void;
@@ -652,6 +661,34 @@ describe('createRoomAv', () => {
 				else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
 			}
 		});
+	});
+
+	// #1203: a join that neither connects nor fails left "joining voice…" up
+	// for the rest of the ride — no timeout, no error, no button. The attempt
+	// is bounded now; the rider gets the failed state and its retry.
+	it('gives up on a join that never connects, and says so', async () => {
+		vi.useFakeTimers();
+		hangConnect(true);
+		try {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			void av.join();
+			await vi.advanceTimersByTimeAsync(JOIN_TIMEOUT_MS - 1);
+			expect(av.status).toBe('connecting');
+			await vi.advanceTimersByTimeAsync(2);
+			expect(av.status).toBe('failed');
+			expect(av.error?.message).toMatch(/did not connect in time/);
+			// And the handshake finally answering does not walk in behind it.
+			hangConnect(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.status).toBe('failed');
+			dispose();
+		} finally {
+			hangConnect(false);
+			vi.useRealTimers();
+		}
 	});
 
 	// #646: a join is stamped by LiveKit's server; the takeover used to be
