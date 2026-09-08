@@ -1,1 +1,0 @@
-- The desktop app floats your watts, target and time left in a small window over whatever else is on screen while a ride runs and WattRoom is not in front — and room events now reach you as system notifications there, once you flip the notification switch.
