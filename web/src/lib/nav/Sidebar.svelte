@@ -59,6 +59,7 @@
 	import type { RoomCrew } from '$lib/room/room-data';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Headphones from '@lucide/svelte/icons/headphones';
+	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import Link from '@lucide/svelte/icons/link';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -238,6 +239,18 @@
 		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
 		{@attach contextMenu(() => {
 			if (!open_) return [];
+			// A room open to the crew that you have not walked into yet (#1236)
+			// has no places of yours and no chat you may read: its one action
+			// is the door, and a menu that offered the rest would 403 on click
+			// (ux.md: never render a button that will fail).
+			if (!room.role)
+				return [
+					{
+						label: 'Walk in',
+						icon: DoorOpen,
+						onSelect: () => void goto(`/r/${room.slug}`),
+					},
+				];
 			const entries: MenuEntry[] = places.map((place) => ({
 				label: place.label,
 				icon: place.icon,
