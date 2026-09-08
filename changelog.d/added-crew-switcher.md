@@ -1,2 +1,0 @@
-- **The sidebar shows one crew at a time.** A header above your rooms names the crew you are looking at and switches to another; the room you are connected to stays in the sidebar under "you are in", whichever crew is on screen. The crew you own carries a small shield.
-- **A room row says what you may do there before you open it.** Private rooms you are in carry an eye, private rooms you are not in a lock, and rooms you administer without being in them a sliders mark — and the last two are not links that fail.

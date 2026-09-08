@@ -1,2 +1,0 @@
-- **Your crew has a page.** From the crew header in the sidebar: its rooms with what you may do in each, its people with their crew roles, and — for the owner and admins — make or unmake an admin, ban from the crew, and lift a crew ban with a line saying it restores nothing a room's owner decided. The room's own Unban says the same in the other direction.
-- **The day the crew arrives, it says so once.** A brief notice names your crew — named after you until you rename it — and points at its page, where the name is the heading and a click edits it.

@@ -1,1 +1,0 @@
-- Autoplay's Smart mode now leans toward what your room actually enjoys: finish a track and its artist — or, more loosely, its genre — comes round more often. Skipping builds nothing, and the track you just heard does not come straight back. Each room learns only from its own rides.

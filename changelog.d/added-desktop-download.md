@@ -1,1 +1,0 @@
-- A desktop app is on its way. wattroom.ch/download picks the installer for the computer you are on once one is published, and the app itself says so on the home page when a newer version is out — never mid-ride.

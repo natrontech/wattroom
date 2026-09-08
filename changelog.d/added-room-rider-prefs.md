@@ -1,1 +1,0 @@
-- You now have your own settings for each room, on its settings page: whether planned sessions there reach you by email, and whether you appear on that room's weekly board. They are yours — nobody else sees them and the owner cannot change them. Both start on, so nothing changes until you say so, and leaving a room forgets them.
