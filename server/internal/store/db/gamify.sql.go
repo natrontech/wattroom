@@ -164,7 +164,8 @@ select (
     exists (
         select 1 from memberships a
         join memberships b on a.room_id = b.room_id
-        where a.user_id = $1 and b.user_id = $2
+        where a.user_id = $1 and a.role != 'banned'
+          and b.user_id = $2 and b.role != 'banned'
     )
     or exists (
         select 1 from friendships

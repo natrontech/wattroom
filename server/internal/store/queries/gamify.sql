@@ -58,7 +58,8 @@ select (
     exists (
         select 1 from memberships a
         join memberships b on a.room_id = b.room_id
-        where a.user_id = @viewer and b.user_id = @rider
+        where a.user_id = @viewer and a.role != 'banned'
+          and b.user_id = @rider and b.role != 'banned'
     )
     or exists (
         select 1 from friendships

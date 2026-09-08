@@ -207,3 +207,35 @@ func TestCountsOfTheZeroXpSources(t *testing.T) {
 		t.Fatalf("xp total = %d, want 0 — these sources pay nothing and are counted anyway", body.Xp.Total)
 	}
 }
+
+// A ban keeps the membership row (ADR-0013), so the visibility check has to
+// exclude it explicitly or a banned rider keeps reading the room's trophy
+// cases — and being read back — after the ban (#1109).
+func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
+	s, _, alice, bob := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
+	bobCase := "/api/riders/" + store.UUIDString(bob.ID) + "/trophies"
+
+	room := shareRoom(t, s, alice, bob)
+	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusOK {
+		t.Fatalf("room-mate reading the case: status %d, want 200", rec.Code)
+	}
+
+	ban(t, s, room, bob)
+	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusNotFound {
+		t.Fatalf("banned rider reading the case: status %d, want 404", rec.Code)
+	}
+	// Both sides of the join: the room he was banned from is no longer his
+	// either, so the members he left behind cannot read him through it.
+	if rec, _ := get(t, mux, bobCase, "alice"); rec.Code != http.StatusNotFound {
+		t.Fatalf("reading a banned rider's case: status %d, want 404", rec.Code)
+	}
+
+	// Friendship is the other branch and outlives the ban, which is correct.
+	befriend(t, s, alice, bob)
+	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusOK {
+		t.Fatalf("banned but befriended: status %d, want 200", rec.Code)
+	}
+}
