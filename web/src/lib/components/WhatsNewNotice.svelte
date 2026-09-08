@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { changelog } from '$lib/changelog.svelte';
-	import { highlights, inlineParts } from '$lib/changelog';
+	import { highlights } from '$lib/changelog';
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import type { ReleaseAction } from '$lib/release-actions';
 
 	// The what's-new notice (#345, #631). Home only — ux.md: a changelog is
@@ -49,13 +50,7 @@
 			{#each news.lines as line}
 				<li class="contents">
 					<span class="eyebrow mt-1.5">{line.heading}</span>
-					<span>
-						{#each inlineParts(line.text) as part}
-							{#if part.code}<code class="bg-z1/60 rounded px-1 py-0.5 text-xs"
-									>{part.text}</code
-								>{:else}{part.text}{/if}
-						{/each}
-					</span>
+					<span><MessageText text={line.text} preview={false} /></span>
 				</li>
 			{/each}
 		</ul>
