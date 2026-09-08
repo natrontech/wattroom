@@ -36,7 +36,6 @@
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
-	import type { AvError } from '$lib/room/av.svelte';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -51,21 +50,6 @@
 		live = false,
 		onLeave,
 		onMember,
-		showAv = false,
-		voiceStatus = 'off',
-		micOn = false,
-		camOn = false,
-		sharing = false,
-		onJoin,
-		onMic,
-		onCam,
-		onShare,
-		onLeaveVoice,
-		handedOff = false,
-		onTakeOver,
-		voiceError = null,
-		away = false,
-		onAway,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -75,24 +59,6 @@
 		onLeave?: () => void;
 		/** A rider named in a room's people line — the layout resolves them. */
 		onMember?: (slug: string, name: string) => void;
-		showAv?: boolean;
-		voiceStatus?: 'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
-		micOn?: boolean;
-		camOn?: boolean;
-		sharing?: boolean;
-		/** The way into voice; mic and camera only appear once you are in. */
-		onJoin?: () => void;
-		onMic?: () => void;
-		onCam?: () => void;
-		onShare?: () => void;
-		onLeaveVoice?: () => void;
-		handedOff?: boolean;
-		onTakeOver?: () => void;
-		/** Why the last voice action failed, until the next one clears it. */
-		voiceError?: AvError | null;
-		/** You stepped out (#706) — a statement about YOU, so it lives here. */
-		away?: boolean;
-		onAway?: (next: boolean) => void;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -421,23 +387,5 @@
 		<RoomStrip {pathname} />
 	{/if}
 
-	<YouPanel
-		{pathname}
-		{connectedSlug}
-		{showAv}
-		{voiceStatus}
-		{micOn}
-		{camOn}
-		{sharing}
-		{onJoin}
-		{onMic}
-		{onCam}
-		{onShare}
-		{onLeaveVoice}
-		{handedOff}
-		{voiceError}
-		{onTakeOver}
-		{away}
-		{onAway}
-	/>
+	<YouPanel {pathname} />
 </nav>

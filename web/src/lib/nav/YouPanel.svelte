@@ -1,18 +1,7 @@
 <script lang="ts">
-	// You, pinned to the bottom of the sidebar: who you are, the way into
-	// settings, and — in a room — the AV row.
-	//
-	// Its own file because it is not navigation (#686). The nav above it is
-	// about where you are going; this is about you, and it is the only part
-	// of the sidebar that speaks to the AV chain at all.
-	//
-	// ponytail: eighteen props, every one of them passed straight through from
-	// the layout, because that is what Sidebar already did — this move is
-	// behaviour-preserving and stops there. Reading `roomConnection.current.av`
-	// here instead would delete fifteen of them from Sidebar's interface AND
-	// from the layout's two call sites, which is the real win; it is also an
-	// interface change that alters what /dev/themes previews, so it wants its
-	// own issue rather than riding along with a size fix.
+	// The AV chain is a store, so this reads it rather than being handed
+	// fifteen values through a Sidebar that uses none of them (#1047). Same
+	// pattern as RoomSensorOverview and lib/profile/VoiceAudio.
 	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
@@ -21,9 +10,8 @@
 	import { activeHref } from '$lib/nav/pages';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/room/mic-menu';
-	import { statusOfRider } from '$lib/status';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import type { AvError } from '$lib/room/av.svelte';
+	import { statusOfRider } from '$lib/status';
 	import Coffee from '@lucide/svelte/icons/coffee';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -35,46 +23,44 @@
 	import Video from '@lucide/svelte/icons/video';
 	import VideoOff from '@lucide/svelte/icons/video-off';
 
-	let {
-		pathname,
-		connectedSlug = '',
-		showAv = false,
-		voiceStatus = 'off',
-		micOn = false,
-		camOn = false,
-		sharing = false,
-		onJoin,
-		onMic,
-		onCam,
-		onShare,
-		onLeaveVoice,
-		handedOff = false,
-		voiceError = null,
-		onTakeOver,
-		away = false,
-		onAway,
-	}: {
-		pathname: string;
-		connectedSlug?: string;
-		showAv?: boolean;
-		voiceStatus?: string;
-		micOn?: boolean;
-		camOn?: boolean;
-		sharing?: boolean;
-		onJoin?: () => void;
-		onMic?: () => void;
-		onCam?: () => void;
-		onShare?: () => void;
-		onLeaveVoice?: () => void;
-		handedOff?: boolean;
-		voiceError?: AvError | null;
-		onTakeOver?: () => void;
-		away?: boolean;
-		onAway?: (next: boolean) => void;
-	} = $props();
+	// The route is the one thing the store cannot answer.
+	let { pathname }: { pathname: string } = $props();
 
-	// Derived from `pathname` rather than passed in: the same two lines the
-	// sidebar runs, off the same prop, so nothing can drift between them.
+	const conn = $derived(roomConnection.current);
+	const av = $derived(conn?.av);
+	// A room open at all is what the panel's connected shape keys on — the
+	// same condition the layout used to branch on before it stopped needing to.
+	const connectedSlug = $derived(conn?.slug ?? '');
+	// Both halves, and the connection half is the one that is easy to lose:
+	// the server has to offer voice at all (#219, an account fact), AND there
+	// has to be a room to join. The layout used to supply the second by only
+	// passing `showAv` from its connected branch — read the account alone here
+	// and "Join voice" renders with nothing to join, which is the dead control
+	// ux.md forbids.
+	const showAv = $derived(!!account.me?.avEnabled && !!conn);
+
+	// The way into voice; mic and camera only appear once you are in.
+	const voiceStatus = $derived(av?.status ?? 'off');
+	const micOn = $derived(av?.micOn ?? false);
+	const camOn = $derived(av?.camOn ?? false);
+	const sharing = $derived(av?.sharing ?? false);
+	const handedOff = $derived(av?.handedOff ?? false);
+	/** Why the last voice action failed, until the next one clears it. */
+	const voiceError = $derived(av?.error ?? null);
+	/** You stepped out (#706) — a statement about YOU, so it lives here. */
+	const away = $derived(av?.away ?? false);
+
+	const onJoin = () => void av?.join();
+	const onMic = () => av?.toggleMic();
+	const onCam = () => av?.toggleCam();
+	const onShare = () => void av?.toggleShare();
+	const onLeaveVoice = () => av?.leave();
+	const onTakeOver = () => av?.takeOver();
+	// The CONNECTION's setAway, never av's: it mutes this device AND tells the
+	// room over the socket, and only the pair of them is "away". av.setAway
+	// alone would go quiet without anyone being told.
+	const onAway = (next: boolean) => conn?.setAway(next);
+
 	const destination = $derived(activeHref(pathname));
 	// The dot on your own avatar: away is yours to set, riding is the room's
 	// to report (#1016).
@@ -82,9 +68,7 @@
 		connectedSlug
 			? statusOfRider({
 					away,
-					// The roster, not the metrics map: riding is the room's
-					// window now, and only the roster carries it (#1016).
-					riding: roomConnection.current?.live.tick?.roster.find(
+					riding: conn?.live.tick?.roster.find(
 						(rider) => rider.id === account.me?.id,
 					)?.riding,
 				})

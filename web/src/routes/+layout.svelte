@@ -255,40 +255,19 @@
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
 		>
-			{#if roomConnection.current}
-				{@const av = roomConnection.current.av}
-				<Sidebar
-					pathname={page.url.pathname}
-					rooms={shownRooms}
-					activeSlug={roomSlug}
-					connectedSlug={roomConnection.current.slug}
-					live={roomConnection.current.live.tick?.state.phase === 'running'}
-					onLeave={leaveRoom}
-					onMember={showMember}
-					showAv={!!account.me?.avEnabled}
-					voiceStatus={av.status}
-					micOn={av.micOn}
-					camOn={av.camOn}
-					sharing={av.sharing}
-					onJoin={() => void av.join()}
-					onMic={() => av.toggleMic()}
-					onCam={() => av.toggleCam()}
-					onShare={() => void av.toggleShare()}
-					onLeaveVoice={() => av.leave()}
-					handedOff={av.handedOff}
-					voiceError={av.error}
-					onTakeOver={() => av.takeOver()}
-					away={av.away}
-					onAway={(next) => roomConnection.current?.setAway(next)}
-				/>
-			{:else}
-				<Sidebar
-					pathname={page.url.pathname}
-					rooms={shownRooms}
-					activeSlug={roomSlug}
-					onMember={showMember}
-				/>
-			{/if}
+			<!-- One call, connected or not (#1047). The AV row inside reads the
+			     chain itself now, and what is left answers with optional
+			     chaining: no connection means no connectedSlug, so no room is
+			     "here" and `onLeave` is never reachable. -->
+			<Sidebar
+				pathname={page.url.pathname}
+				rooms={shownRooms}
+				activeSlug={roomSlug}
+				connectedSlug={roomConnection.current?.slug ?? ''}
+				live={roomConnection.current?.live.tick?.state.phase === 'running'}
+				onLeave={leaveRoom}
+				onMember={showMember}
+			/>
 		</div>
 		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
 			{#if !caved}
@@ -317,9 +296,9 @@
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}
 				<ScreenShareNotice
-					sharing={av.sharing}
 					room={sharingRoom}
 					pathname={page.url.pathname}
+					sharing={av.sharing}
 					onStop={() => void av.toggleShare()}
 				/>
 			{/if}
