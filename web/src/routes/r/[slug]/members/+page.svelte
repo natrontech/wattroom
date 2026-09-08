@@ -16,10 +16,12 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import { copyInviteLink } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import Award from '@lucide/svelte/icons/award';
 	import Crown from '@lucide/svelte/icons/crown';
+	import Link from '@lucide/svelte/icons/link';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import UserMinus from '@lucide/svelte/icons/user-minus';
 	import UserX from '@lucide/svelte/icons/user-x';
@@ -352,6 +354,29 @@
 				</li>
 			{/each}
 		</ul>
+	{/if}
+
+	{#if room.code}
+		<!-- "How do I get someone in here?" is asked from the room, so the
+		     answer stands here too (#1236): there is one invite, the crew's,
+		     and this is where the room used to show its own code. -->
+		<h3 class="eyebrow mt-8">invite</h3>
+		<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+			<p class="text-muted min-w-0 flex-1 text-xs">
+				{#if room.crewVisible}
+					Everyone in the crew can walk in. To bring someone new, invite them to
+					the crew — rooms have no codes of their own.
+				{:else}
+					This room is private: crew-mates come in when you let them in above.
+					Someone new joins the crew first.
+				{/if}
+			</p>
+			<button
+				onclick={() => void copyInviteLink(room.code)}
+				class="btn btn-secondary btn-xs shrink-0"
+				><Link size={13} /> Copy invite link</button
+			>
+		</div>
 	{/if}
 
 	{#if room.medals.length > 0}

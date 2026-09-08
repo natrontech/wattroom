@@ -1,0 +1,1 @@
+- A room's Members place says how to get someone new in — invite them to the crew — with the crew's invite link one click away, where the room's own code used to be. (#1236)
