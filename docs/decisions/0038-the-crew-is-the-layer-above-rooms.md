@@ -270,3 +270,28 @@ time-dependent — "who could see this room" would need a history — and the
 one-crew-per-owner migration removes the common reason anyone would want to
 move one. If riders hit this in practice, the revisit is a room *copy*, never a
 move.
+
+## Amendment, 2026-09-08 (#1021): two items for the cutover
+
+[RESEARCH.md §16](../RESEARCH.md) landed after this ADR — the wrong order, and
+§16 says so. It does not overturn anything above; it supports the
+existing-rooms-migrate-private rule with a regulator-tested precedent (the FTC's
+Google Buzz order, §16.3) and raises two items that are
+[#1106](https://github.com/natrontech/wattroom/issues/1106)'s to settle:
+
+1. **There is no crew owner.** This ADR names crew *admins* and no un-removable
+   actor. Every product surveyed in §16.5 has one — Discord's server owner can
+   reach any channel's permissions at all times, which is why lockout there is
+   recoverable. Two crew admins can demote each other and this ADR does not say
+   who still holds the crew. The one-crew-per-owner migration already supplies
+   the obvious row.
+2. **Two ban levels may be one too many.** §16.4: Discord has no per-channel
+   ban at all — exclusion from a channel is a deny in the same permission
+   system as everything else. Keeping one ban at the crew and expressing "out of
+   this room" through the per-room override this ADR already introduces would
+   leave one mechanism to audit instead of two. [#1109](https://github.com/natrontech/wattroom/issues/1109)
+   is evidence the guard is forgettable at one level, let alone two.
+
+Also from §16.2: the single permission expression the cutover needs should be a
+**SQL view** every gate and visibility join selects from, so that a new join
+that forgets it fails to compile rather than silently over-permitting.
