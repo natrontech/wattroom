@@ -1,0 +1,1 @@
+- Every track in the music library now has a button that drops it straight into the jukebox of the room you are in, without leaving the shelf. With no room open the button is not there, and the page says to open one.
