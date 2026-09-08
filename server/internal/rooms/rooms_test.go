@@ -1039,3 +1039,57 @@ func TestBoardIsThisWeekOnly(t *testing.T) {
 		t.Errorf("last fortnight's ride is on this week's board: %v", body["board"])
 	}
 }
+
+// The member settings page renders the room's join code (#1099), so the read
+// that feeds it must never hand the code to somebody outside the room. This
+// is the acceptance box with teeth: the page cannot leak what the API does
+// not give it, and it cannot help if the API does.
+func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Code Guarded")
+	if code == "" {
+		t.Fatal("no code to guard")
+	}
+
+	// A member gets everything the settings page shows: the code, the pack,
+	// the reaction set and the roster.
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("bob join: %d", status)
+	}
+	status, body := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	if status != http.StatusOK {
+		t.Fatalf("member read: %d", status)
+	}
+	if body["code"] != code {
+		t.Errorf("a member cannot see the code they are meant to share: %v", body["code"])
+	}
+	if body["members"] == nil {
+		t.Error("a member got no roster, so the page cannot say who owns the room")
+	}
+
+	// Carol never joined. She may learn the room exists — the slug is a URL —
+	// but not the thing that gets her in.
+	status, body = h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, "")
+	if status == http.StatusOK {
+		if body["code"] != nil {
+			t.Errorf("a non-member read the join code: %v", body["code"])
+		}
+		if body["soundPack"] != nil || body["cheers"] != nil || body["icsToken"] != nil {
+			t.Errorf("a non-member read members-only settings: %v", body)
+		}
+		if body["members"] != nil {
+			t.Errorf("a non-member read the roster: %v", body["members"])
+		}
+	}
+
+	// And a banned rider is not a member, however they got here.
+	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	ban := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bobID)
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", ban); status != http.StatusNoContent {
+		t.Fatalf("ban: %d", status)
+	}
+	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	if status == http.StatusOK && body["code"] != nil {
+		t.Errorf("a banned rider kept the join code: %v", body["code"])
+	}
+}
