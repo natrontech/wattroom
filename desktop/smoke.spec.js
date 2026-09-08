@@ -19,8 +19,16 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 
-/** A host that cannot resolve, so the shell lands on its offline screen. */
-const DEAD_URL = 'http://localhost:1/';
+/**
+ * Nothing listens here, so the shell lands on its offline screen.
+ *
+ * A high unused port on purpose: port 1 is on Chromium's restricted list, so
+ * it fails with ERR_UNSAFE_PORT — which is a blocked port, not a server that
+ * is down. Both reach did-fail-load and the test passed either way, but the
+ * scenario this claims to cover is "the app did not answer", and that is
+ * ERR_CONNECTION_REFUSED.
+ */
+const DEAD_URL = 'http://localhost:45999/';
 
 async function launch(url) {
 	// Its own userData directory, which is what the single-instance lock is
