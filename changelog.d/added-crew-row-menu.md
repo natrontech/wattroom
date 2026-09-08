@@ -1,0 +1,1 @@
+- Right-click the crew at the top of the sidebar for its page, its settings, a copy of its invite link, and leaving it — the same things its page offers, one click closer. (#1257)

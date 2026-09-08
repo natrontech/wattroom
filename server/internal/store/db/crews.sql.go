@@ -622,6 +622,7 @@ with mine as (
 select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
        c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
        (c.image_set_at is not null)::boolean as crew_has_image,
+       coalesce(c.code, '')::text as crew_code,
        exists (select 1 from visible_rooms v
                where v.room_id = r.id and v.user_id = $1)::boolean as enterable,
        (c.owner_id = $1 or exists (select 1 from crew_roles cr
@@ -646,6 +647,7 @@ type ListCrewRoomsForRow struct {
 	CrewIcon     string
 	CrewOwnerID  pgtype.UUID
 	CrewHasImage bool
+	CrewCode     string
 	Enterable    bool
 	Administers  bool
 }
@@ -676,6 +678,7 @@ func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]L
 			&i.CrewIcon,
 			&i.CrewOwnerID,
 			&i.CrewHasImage,
+			&i.CrewCode,
 			&i.Enterable,
 			&i.Administers,
 		); err != nil {

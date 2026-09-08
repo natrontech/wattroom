@@ -25,6 +25,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { inviteLink, joinCrew, leaveCrew } from '$lib/crew';
 	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
@@ -57,7 +58,9 @@
 	import type { RoomCrew } from '$lib/room/room-data';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Headphones from '@lucide/svelte/icons/headphones';
+	import Link from '@lucide/svelte/icons/link';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import Settings from '@lucide/svelte/icons/settings';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
@@ -124,6 +127,69 @@
 	function pick(id: string) {
 		chosen = id;
 		rememberChosenCrew(id);
+	}
+	// The crew's menu (#1257, ux.md): everything about the crew that is a
+	// page or two away, from the row that names it. The click stays the
+	// primary action; nothing here lives only in the menu.
+	function crewEntries(c: RoomCrew): MenuEntry[] {
+		const owned = rooms.filter(
+			(r) => r.crew?.id === c.id && r.role === 'owner',
+		);
+		const entries: MenuEntry[] = [
+			{
+				label: 'People and rooms',
+				icon: Users,
+				onSelect: () => void goto(`/crew/${c.id}`),
+			},
+		];
+		if (c.role === 'owner' || c.role === 'admin')
+			entries.push({
+				label: 'Settings',
+				icon: Settings,
+				onSelect: () => void goto(`/crew/${c.id}/settings`),
+			});
+		if (c.code) {
+			const code = c.code;
+			entries.push({
+				label: 'Copy invite link',
+				icon: Link,
+				onSelect: () =>
+					void navigator.clipboard
+						.writeText(inviteLink(code))
+						.then(() => toasts.push('Invite link copied.')),
+			});
+		}
+		if (c.role !== 'owner')
+			entries.push('separator', {
+				label: 'Leave the crew',
+				icon: LogOut,
+				danger: true,
+				disabled: owned.length > 0,
+				hint: owned.length ? 'you own a room here' : undefined,
+				onSelect: () => void leaveCrewFromRail(c),
+			});
+		return entries;
+	}
+	// The same move the crew page makes (#1228): one call, the connection
+	// dropped if it was to one of the crew's rooms, undo by the code.
+	async function leaveCrewFromRail(c: RoomCrew) {
+		const standing = rooms.some(
+			(r) => r.crew?.id === c.id && r.slug === roomConnection.current?.slug,
+		);
+		const res = await leaveCrew(c.id);
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		if (standing) roomConnection.leave();
+		presence.reload();
+		const code = c.code;
+		toasts.push(`You left ${c.name}.`, {
+			undo: code
+				? () => void joinCrew(code).then(() => presence.reload())
+				: undefined,
+		});
+		void goto('/home');
 	}
 	// The + beside rooms opens the open/join forms in a sheet (#1199).
 	let opening = $state(false);
@@ -395,6 +461,7 @@
 			{#if crews.length > 1}
 				<button
 					onclick={() => (switching = !switching)}
+					{@attach contextMenu(() => crewEntries(crew!))}
 					class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left md:min-h-0 {switching
 						? 'bg-ink/5 text-ink'
 						: 'text-ink'}"
@@ -411,6 +478,7 @@
 				     does not exist. -->
 				<a
 					href="/crew/{crew.id}"
+					{@attach contextMenu(() => crewEntries(crew!))}
 					class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 md:min-h-0"
 					title="the crew — its people and rooms"
 				>
@@ -429,6 +497,7 @@
 									pick(c.id);
 									switching = false;
 								}}
+								{@attach contextMenu(() => crewEntries(c))}
 								class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {now
 									? 'bg-ink/10 text-ink'
 									: 'text-muted hover:bg-ink/5 hover:text-ink'}"

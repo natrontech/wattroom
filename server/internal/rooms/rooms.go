@@ -528,8 +528,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		if room.CrewID.Valid {
 			entry.Crew = &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
-				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage),
-				Role:     crewRoleWord(room.CrewOwned, room.CrewAdmin),
+				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage), Code: room.CrewCode,
+				Role: crewRoleWord(room.CrewOwned, room.CrewAdmin),
 			}
 		}
 		if s.presence != nil {
@@ -575,8 +575,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			ID: store.UUIDString(room.ID), Slug: slug, Name: room.Name, Icon: room.Icon, Access: access,
 			Crew: &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
-				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage),
-				Role:     crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
+				ImageURL: crewImageURL(room.CrewID, room.CrewHasImage), Code: room.CrewCode,
+				Role: crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
 			},
 		})
 	}
