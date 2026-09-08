@@ -35,10 +35,31 @@ decodes it natively, so no transcoding and no ffmpeg in the image.
      someone actually has a library in them — still no transcoding, both
      decode natively in evergreen browsers. -->
 
-**Pool and playlists.** One global pool per instance: every logged-in user
-uploads to it and browses all of it. Quota **2 GB/user** (one config value —
-tune later). Playlists are user-owned, visible to all logged-in users, and
-queueable in any room — it's a crew app, sharing is the point.
+**Pool and playlists.** ~~One global pool per instance: every logged-in user
+uploads to it and browses all of it.~~ **Amended 2026-09-08 (#1095):** the
+pool is **scoped to the uploader**, and a room's autoplay reaches the shelves
+of its own **members**. Quota **2 GB/user** (one config value — tune later).
+Playlists are user-owned — ~~visible to all logged-in users~~, superseded by
+[ADR-0028](0028-room-and-personal-playlists.md), which made them room-owned
+or rider-owned — and queueable in any room.
+
+The original decision was coherent *while one instance meant one crew*: it is
+a crew app and sharing is the point. It stops being coherent the moment
+wattroom.ch carries crews who do not know each other, at which point "global
+per instance" means a library shared with strangers rather than a record
+shelf shared with mates. The fence was never removed; the ground moved out
+from under it. See the copyright posture below, which assumed *private crew*
+all along.
+
+A row is identified by `(uploader, sha256)`, not by content alone — otherwise
+the second person to upload a song gets handed somebody else's row and has
+none of their own. **The file is not scoped**: one blob per `sha256` on disk
+however many shelves point at it, and the delete path is refcounted so the
+bytes go only with the last row. Privacy is what you can see, not how many
+times the bytes are stored.
+
+**Crew scope (Phase 2) is the intended end state**, waiting on #1022's crew
+ADR; it only ever *widens* access from here, never narrows it.
 
 **Metadata.** ID3 tags parsed at upload (`dhowden/tag` — small pure-Go;
 duration comes from the uploading browser's `audio.duration`, no server-side
@@ -65,6 +86,11 @@ accepted deliberately and fenced: login-gated (ADR-0009), never public, no
 federation, no public share links to audio files, uploads only by
 authenticated members. Loosening any of these fences is a new ADR.
 
+**#1095 restored a fence rather than moving one.** *Private crew* is the
+assumption this paragraph rests on, and an instance-wide pool stopped
+supplying it once one instance could hold several crews. Scoping the pool
+is what makes the risk profile above true again.
+
 ## Consequences
 
 - Easier: music sync (trivial vs. YouTube), ducking (direct gain node),
@@ -72,8 +98,17 @@ authenticated members. Loosening any of these fences is a new ADR.
 - Harder: the VM now stores gigabytes of media — disk monitoring matters,
   and backups must decide whether media is included (metadata is; files are
   re-uploadable, so v1 excludes them from backup).
-- Accepted: mp3-only intake; manual BPM tagging; global pool with no
+- Accepted: mp3-only intake; manual BPM tagging; ~~global pool with no
   per-room scoping (metrics privacy is room-scoped, a music library is not
-  metrics); 2 GB quota may need tuning.
+  metrics)~~ — **reversed by #1095**: a music library turned out to be
+  exactly as personal as metrics once an instance could hold strangers;
+  2 GB quota may need tuning.
+- Changed by #1095: **a duplicate is no longer free.** This ADR's storage
+  note said a second upload of the same bytes "stores nothing, and charges
+  nobody — which is also why the quota can be a plain sum of `size_bytes`
+  over a user's own rows". Two shelves holding one song are now both
+  charged while one file sits on disk. That is arguably the right answer —
+  a shelf costs what it holds — but it is a change, and the quota sum is
+  now a statement about a shelf rather than about disk.
 - Amends WATTROOM.md's "jukebox = synced YouTube queue" line (pointer added
   there).

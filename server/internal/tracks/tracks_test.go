@@ -155,26 +155,63 @@ func TestUploadRefusesWhatIsNotAnMp3(t *testing.T) {
 	}
 }
 
-func TestASecondUploadOfTheSameSongStoresNothingNew(t *testing.T) {
+// Since #1095 a shelf is per uploader, so two riders holding one song is two
+// rows over ONE file. This replaces the old "a duplicate makes no second
+// track", which was true only while the pool was one shared library.
+func TestTwoRidersHoldingOneSongShareTheFileNotTheRow(t *testing.T) {
 	h := setup(t)
 	data := song(2, 383)
 	first := h.upload(t, "alice", data, "Shared.mp3")
 
-	// Bob uploads the same bytes: he gets the track that is already there.
+	// Bob uploads the same bytes and gets a row of HIS OWN. Handing back
+	// alice's row would leave his own upload missing from his shelf.
 	w := h.do(t, "bob", http.MethodPost, "/api/tracks?name=Shared.mp3", data)
-	if w.Code != http.StatusOK {
+	if w.Code != http.StatusCreated {
 		t.Fatalf("duplicate upload: %d %s", w.Code, w.Body.String())
 	}
-	if decode(t, w)["id"] != first["id"] {
-		t.Errorf("a duplicate made a second track")
+	bobs := decode(t, w)
+	if bobs["id"] == first["id"] {
+		t.Fatal("bob was handed alice's row")
 	}
-	// And it charged nobody: bob stored no bytes, so his quota is untouched.
+	if bobs["uploadedBy"] != "bob" {
+		t.Errorf("uploadedBy = %v, want bob", bobs["uploadedBy"])
+	}
+
+	// One blob on disk, not two: privacy is what you can see, not how many
+	// times the bytes are stored.
+	sha := Address(data)
+	entries, err := os.ReadDir(filepath.Join(h.dir, sha[:2]))
+	if err != nil {
+		t.Fatalf("read store: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("%d files stored for one sha, want 1", len(entries))
+	}
+
+	// And bob IS charged now — a shelf costs what it holds. This is the
+	// change ADR-0015's "charges nobody" comment no longer describes.
 	used, err := h.store.Queries.TrackQuotaUsed(t.Context(), h.users.byToken["bob"].ID)
 	if err != nil {
 		t.Fatalf("quota: %v", err)
 	}
-	if used != 0 {
-		t.Errorf("bob's quota = %d, want 0 — he stored nothing", used)
+	if used != int64(len(data)) {
+		t.Errorf("bob's quota = %d, want %d — his shelf holds it", used, len(data))
+	}
+}
+
+// The same rider uploading their own song again still gets the row they
+// already have, and no second one.
+func TestAnUploaderReUploadingTheirOwnSongGetsTheSameRow(t *testing.T) {
+	h := setup(t)
+	data := song(11, 383)
+	first := h.upload(t, "alice", data, "MineAgain.mp3")
+
+	w := h.do(t, "alice", http.MethodPost, "/api/tracks?name=MineAgain.mp3", data)
+	if w.Code != http.StatusOK {
+		t.Fatalf("re-upload: %d %s", w.Code, w.Body.String())
+	}
+	if decode(t, w)["id"] != first["id"] {
+		t.Errorf("a rider's own duplicate made a second row")
 	}
 }
 
@@ -188,8 +225,12 @@ func TestAudioIsSignedInOnlyAndSeekable(t *testing.T) {
 	if w := h.do(t, "", http.MethodGet, path, nil); w.Code != http.StatusUnauthorized {
 		t.Errorf("signed out = %d, want 401", w.Code)
 	}
-	// Anyone signed in can play it: one global pool (ADR-0015).
-	w := h.do(t, "bob", http.MethodGet, path, nil)
+	// #1095: another rider's shelf is ABSENT, not forbidden — answering 403
+	// would confirm to a stranger that the id names a real track.
+	if w := h.do(t, "bob", http.MethodGet, path, nil); w.Code != http.StatusNotFound {
+		t.Errorf("bob played alice's track: %d, want 404", w.Code)
+	}
+	w := h.do(t, "alice", http.MethodGet, path, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("play = %d", w.Code)
 	}
@@ -201,7 +242,7 @@ func TestAudioIsSignedInOnlyAndSeekable(t *testing.T) {
 	}
 	// Range requests are the reason the audio is a file rather than a column.
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
-	req.Header.Set("X-Test-User", "bob")
+	req.Header.Set("X-Test-User", "alice")
 	req.Header.Set("Range", "bytes=0-99")
 	ranged := httptest.NewRecorder()
 	h.mux.ServeHTTP(ranged, req)
@@ -220,11 +261,13 @@ func TestOnlyTheUploaderEditsOrDeletes(t *testing.T) {
 	id, _ := track["id"].(string)
 
 	edit := []byte(`{"title":"Renamed","artist":"Someone","album":"","bpm":128}`)
-	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusForbidden {
-		t.Errorf("bob edited alice's track: %d", w.Code)
+	// 404 rather than the old 403 (#1095): alice's track is not bob's to be
+	// refused, it is not his to know about.
+	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusNotFound {
+		t.Errorf("bob edited alice's track: %d, want 404", w.Code)
 	}
-	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusForbidden {
-		t.Errorf("bob deleted alice's track: %d", w.Code)
+	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusNotFound {
+		t.Errorf("bob deleted alice's track: %d, want 404", w.Code)
 	}
 
 	w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, edit)
@@ -292,7 +335,10 @@ func TestMissingTrackIs404AndSignedOutIs401(t *testing.T) {
 	}
 }
 
-func TestListShowsThePoolToEveryone(t *testing.T) {
+// #1095: the shelf is the rider's own. This was TestListShowsThePoolToEveryone
+// and asserted the exact opposite, which was ADR-0015's decision while one
+// instance meant one crew.
+func TestListShowsOnlyYourOwnShelf(t *testing.T) {
 	h := setup(t)
 	h.upload(t, "alice", song(6, 383), "Hers.mp3")
 	h.upload(t, "bob", song(7, 383), "His.mp3")
@@ -309,9 +355,11 @@ func TestListShowsThePoolToEveryone(t *testing.T) {
 		uploader, _ := row["uploadedBy"].(string)
 		titles[title] = uploader
 	}
-	// One global pool: bob sees alice's upload, with her name on it.
-	if titles["Hers"] != "alice" || titles["His"] != "bob" {
-		t.Errorf("pool = %v, want both tracks with their uploaders", titles)
+	if _, leaked := titles["Hers"]; leaked {
+		t.Errorf("bob sees alice's upload: %v", titles)
+	}
+	if titles["His"] != "bob" {
+		t.Errorf("bob cannot see his own upload: %v", titles)
 	}
 }
 
@@ -517,5 +565,156 @@ func TestTagsFilterThePoolAndCountThemselves(t *testing.T) {
 	}
 	if counts[mine] != 2 || counts[other] != 2 {
 		t.Errorf("facets = %v/%v for %q/%q, want 2 and 2", counts[mine], counts[other], mine, other)
+	}
+}
+
+// The blob is refcounted (#1095). One file backs however many shelves hold
+// the song, so deleting a row may only take the file with it when it is the
+// LAST row pointing there. Getting this wrong breaks the other holder's
+// playback, and nothing says so until they press play — there is no error,
+// no log line and no failing request, just silence where a song was.
+func TestDeletingOneShelfsCopyLeavesTheFileForTheOther(t *testing.T) {
+	h := setup(t)
+	data := song(12, 383)
+	sha := Address(data)
+	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
+
+	hersRow := h.upload(t, "alice", data, "Ours.mp3")
+	hisRow := h.upload(t, "bob", data, "Ours.mp3")
+	hers, _ := hersRow["id"].(string)
+	his, _ := hisRow["id"].(string)
+	if hers == his || hers == "" {
+		t.Fatal("one row for two shelves — the rest of this test proves nothing")
+	}
+
+	// Alice deletes hers. Bob still holds it, so the bytes must stay.
+	if w := h.do(t, "alice", http.MethodDelete, "/api/tracks/"+hers, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("alice delete: %d", w.Code)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("the file went with the first row: %v", err)
+	}
+	// And bob can still play it — the point of keeping the file.
+	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+his+"/audio", nil); w.Code != http.StatusOK {
+		t.Errorf("bob's playback broke: %d", w.Code)
+	}
+
+	// Bob deletes his: last row out takes the file.
+	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+his, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("bob delete: %d", w.Code)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the last row left the file behind: %v", err)
+	}
+}
+
+// The facet row is a shelf label, and an unscoped one is a listing of what
+// strangers are into (#1095). It fails quietly: the tag chip appears, and
+// clicking it returns nothing, so it reads as an empty shelf rather than as
+// a leak — while still having named somebody else's taste.
+func TestTagFacetsCountOnlyYourOwnShelf(t *testing.T) {
+	h := setup(t)
+	// Unique to this run: `wattroom_test` is shared between suites, so a
+	// facet assertion is only ever safe about tags nobody else wrote.
+	hers := fmt.Sprintf("herowntag-%d", time.Now().UnixNano())
+
+	track := h.upload(t, "alice", song(20, 383), "Hers.mp3")
+	id, _ := track["id"].(string)
+	edit, _ := json.Marshal(map[string]any{
+		"title": "Hers", "artist": "", "album": "", "bpm": nil, "tags": []string{hers},
+	})
+	if w := h.do(t, "alice", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusOK {
+		t.Fatalf("tag: %d %s", w.Code, w.Body.String())
+	}
+
+	// Bob has a shelf of his own, so his list is not empty for the wrong reason.
+	h.upload(t, "bob", song(21, 383), "His.mp3")
+
+	w := h.do(t, "bob", http.MethodGet, "/api/tracks", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list: %d", w.Code)
+	}
+	facets, _ := decode(t, w)["tags"].([]any)
+	for _, item := range facets {
+		row, _ := item.(map[string]any)
+		if row["tag"] == hers {
+			t.Fatalf("bob's shelf labels name alice's tag: %v", facets)
+		}
+	}
+
+	// And alice still sees her own, so the scoping did not just empty it.
+	w = h.do(t, "alice", http.MethodGet, "/api/tracks", nil)
+	facets, _ = decode(t, w)["tags"].([]any)
+	found := false
+	for _, item := range facets {
+		row, _ := item.(map[string]any)
+		if row["tag"] == hers {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("alice cannot see her own tag: %v", facets)
+	}
+}
+
+// The regression the uploader-only scope would have shipped (#1095). A pool
+// track on a room's deck is fetched from this endpoint by EVERY rider in the
+// room — `AudioDeck.svelte` — so scoping playback to the uploader leaves a
+// queued track playing for its owner and silent for everyone else, with no
+// error anywhere and no test to say so. Playing is what sharing a room
+// permits; browsing is not, and this asserts both halves.
+func TestARoomMateCanPlayYourTrackButNotBrowseYourShelf(t *testing.T) {
+	h := setup(t)
+	track := h.upload(t, "alice", song(22, 383), "Queued.mp3")
+	id, _ := track["id"].(string)
+
+	// Before they share a room, bob cannot even hear it.
+	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
+		t.Errorf("a stranger played it: %d, want 404", w.Code)
+	}
+
+	h.sharedRoom(t, "alice", "bob")
+
+	// Now bob is in a room with alice, so the deck's track plays for him.
+	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusOK {
+		t.Errorf("a room-mate could not play the deck's track: %d", w.Code)
+	}
+	// But her shelf is still hers: not in his list, not his to edit or delete.
+	w := h.do(t, "bob", http.MethodGet, "/api/tracks", nil)
+	list, _ := decode(t, w)["tracks"].([]any)
+	for _, item := range list {
+		if row, _ := item.(map[string]any); row["id"] == id {
+			t.Error("sharing a room put her library on his shelf")
+		}
+	}
+	edit := []byte(`{"title":"Mine now","artist":"","album":"","bpm":null,"tags":[]}`)
+	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusNotFound {
+		t.Errorf("a room-mate edited her track: %d, want 404", w.Code)
+	}
+	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusNotFound {
+		t.Errorf("a room-mate deleted her track: %d, want 404", w.Code)
+	}
+}
+
+// sharedRoom puts two riders in one room, which is the trust boundary the
+// audio endpoint reads.
+func (h *harness) sharedRoom(t *testing.T, a, b string) {
+	t.Helper()
+	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
+		Code: "SHR001", Slug: "shared-" + strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")),
+		Name: "Shared", OwnerID: h.users.byToken[a].ID,
+	})
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
+	})
+	for _, who := range []string{a, b} {
+		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+			RoomID: room.ID, UserID: h.users.byToken[who].ID, Role: "member",
+		}); err != nil {
+			t.Fatalf("membership %s: %v", who, err)
+		}
 	}
 }

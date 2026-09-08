@@ -6,14 +6,45 @@ values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 returning *;
 
 -- name: TrackBySha :one
-select * from tracks where sha256 = $1;
+-- THIS uploader's row for this content (#1095). Scoped, because the point of
+-- the scoping is that a second person uploading a song someone else already
+-- has gets a row of their own rather than a look at theirs.
+select * from tracks where uploaded_by = $1 and sha256 = $2;
 
 -- name: GetTrack :one
-select * from tracks where id = $1;
+-- Scoped (#1095): another shelf's track is not "forbidden", it is absent —
+-- 404 rather than 403, because telling a stranger that a track exists and is
+-- not theirs is itself the leak.
+select * from tracks where id = $1 and uploaded_by = $2;
+
+-- name: TrackPlayableBy :one
+-- The audio endpoint's own resolver (#1095), and deliberately WIDER than
+-- GetTrack: a track is playable by whoever uploaded it, and by anyone who
+-- shares a room with them.
+--
+-- It has to be. A pool track on a room's deck is fetched by EVERY rider in
+-- that room from this endpoint (`AudioDeck.svelte`), so scoping it to the
+-- uploader would leave a queued track playing for its owner and silent for
+-- everyone else — the feature #267 exists for, broken with no error anywhere.
+--
+-- The line this draws is playing versus browsing: sharing a room already
+-- means hearing what the others put on, and #1085 lets a member queue their
+-- own track for the room by hand. It does NOT mean reading their library —
+-- list, search, facets, edit and delete all stay on GetTrack, uploader-only.
+-- A caller still needs the track's uuid, which only the deck hands out.
+select t.* from tracks t
+where t.id = sqlc.arg(id)
+  and (t.uploaded_by = sqlc.arg(user_id)
+       or exists (
+           select 1 from memberships mine
+           join memberships theirs on theirs.room_id = mine.room_id
+           where mine.user_id = sqlc.arg(user_id) and theirs.user_id = t.uploaded_by
+       ));
 
 -- name: ListTracks :many
--- The pool: one global library every signed-in rider browses (ADR-0015),
--- newest first. Carries the uploader's name so a track has a face.
+-- This rider's shelf (#1095 Phase 1 — ADR-0015 amended), newest first.
+-- Carries the uploader's name so a track has a face; it is always their own
+-- for now, and stays a join so Phase 2's crew scope needs no new query.
 --
 -- An empty search returns everything: the browse view and the search view are
 -- one query, so a rider clearing the box gets the library back rather than a
@@ -21,7 +52,8 @@ select * from tracks where id = $1;
 select t.*, u.display_name as uploaded_by_name
 from tracks t
 join users u on u.id = t.uploaded_by
-where (sqlc.arg(search)::text = ''
+where t.uploaded_by = sqlc.arg(uploaded_by)
+  and (sqlc.arg(search)::text = ''
        or t.search @@ websearch_to_tsquery('simple', sqlc.arg(search)::text))
   and (sqlc.arg(tag)::text = '' or sqlc.arg(tag)::text = any(t.tags))
 order by
@@ -45,7 +77,9 @@ where id = $1 and uploaded_by = $2
 returning *;
 
 -- name: TrackTagCounts :many
--- The facet row: every tag in the pool with how many tracks wear it.
+-- The facet row: every tag on THIS rider's shelf with how many tracks wear
+-- it (#1095). Counting over the whole instance would have been a listing of
+-- what strangers are into, which is the leak in miniature.
 --
 -- Counted over the whole pool rather than over the current search, so a rider
 -- narrowing by text still sees the shelf they can jump to. Cheap enough to run
@@ -55,11 +89,26 @@ returning *;
 -- `interface{}` and the handler has to assert what the column already is.
 select tag::text as tag, count(*)::bigint as tracks
 from tracks, unnest(tags) as tag
+where tracks.uploaded_by = $1
 group by tag
 order by tracks desc, tag
 limit 100;
 
 -- name: DeleteTrack :one
--- Returns the sha so the caller can remove the file it addressed. Uploader
--- only; a row that is not yours simply does not match.
-delete from tracks where id = $1 and uploaded_by = $2 returning sha256;
+-- Returns the sha, and whether anyone ELSE still holds that content (#1095).
+-- One blob per sha on disk however many shelves point at it, so the file may
+-- only go with the last row — deleting it while another rider still holds
+-- the row breaks their playback, and nothing says so until they press play.
+--
+-- `others` counts rows excluding the one being deleted BY ID rather than
+-- relying on the delete being visible: a data-modifying CTE's effect is not
+-- visible to the rest of the same statement, so a plain count would include
+-- the row just removed and every delete would look like it had company.
+with gone as (
+    delete from tracks t where t.id = sqlc.arg(id) and t.uploaded_by = sqlc.arg(uploaded_by)
+    returning t.sha256
+)
+select gone.sha256,
+    (select count(*) from tracks t
+     where t.sha256 = gone.sha256 and t.id <> sqlc.arg(id))::bigint as others
+from gone;

@@ -41,14 +41,14 @@ with history as (
         max(p.at) filter (where not p.skipped) as last_played,
         count(*) filter (where p.skipped) as skips
     from track_plays p
-    where p.room_id = $7
+    where p.room_id = $1
     group by p.track_id
 ),
 recent as (
     select p.track_id, t.artist, t.tags
     from track_plays p
     join tracks t on t.id = p.track_id
-    where p.room_id = $7 and not p.skipped
+    where p.room_id = $1 and not p.skipped
     order by p.at desc
     limit $8
 ),
@@ -61,6 +61,7 @@ liked as (
 )
 select t.id, t.title, t.artist, w.weight
 from tracks t
+join memberships m on m.user_id = t.uploaded_by and m.room_id = $1
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (
@@ -72,12 +73,12 @@ cross join lateral (
         0.05
     ) / (1 + coalesce(h.skips, 0))
     * case
-        when $1::float8 <= 0 or t.bpm is null then 1.0
-        when abs(t.bpm - $1::float8)
-                 <= $1::float8 * $2::float8
-          or abs(t.bpm - $1::float8 * 2)
-                 <= $1::float8 * 2 * $2::float8
-        then $3::float8
+        when $2::float8 <= 0 or t.bpm is null then 1.0
+        when abs(t.bpm - $2::float8)
+                 <= $2::float8 * $3::float8
+          or abs(t.bpm - $2::float8 * 2)
+                 <= $2::float8 * 2 * $3::float8
+        then $4::float8
         else 1.0
       end
     * case
@@ -92,23 +93,23 @@ cross join lateral (
         -- ` + "`" + `liked.artists` + "`" + ` above is what guarantees it, and is the ONLY thing
         -- that does — a second ` + "`" + `t.artist <> ''` + "`" + ` here would read as the
         -- guard while the filter quietly did the work.
-        when t.artist = any(l.artists) then $4::float8
-        when t.tags && l.tags then $5::float8
+        when t.artist = any(l.artists) then $5::float8
+        when t.tags && l.tags then $6::float8
         else 1.0
       end)::float8 as weight
 ) w
 order by random() ^ (1.0 / w.weight) desc
-limit $6
+limit $7
 `
 
 type SmartShuffleTracksParams struct {
+	RoomID         pgtype.UUID
 	TargetRpm      float64
 	BpmTolerance   float64
 	BpmBoost       float64
 	ArtistBoost    float64
 	TagBoost       float64
 	Lim            int32
-	RoomID         pgtype.UUID
 	AffinityWindow int32
 }
 
@@ -153,6 +154,14 @@ type SmartShuffleTracksRow struct {
 //
 // History is this room's only (privacy is architecture, WATTROOM.md): what
 // one room finishes is not a fact about the pool, and must not reach another.
+//
+// And the POOL it draws from is this room's members' (#1095). Autoplay is the
+// one path that reaches for a track nobody asked for by name, so an unscoped
+// draw here would put a stranger's upload on the deck without ever appearing
+// on a page or in a search — past every check the issue's own list names.
+// Members rather than the acting rider: a room's shelf is what its people
+// brought, which is already what the room permits (any member may queue their
+// own track for everyone). Phase 2 replaces this join with the crew.
 // `weight` is returned so a headless autoplay log can say WHY a track came
 // up; the ordering is random and unexplainable after the fact otherwise.
 // The last few tracks this room let finish. Bounded, and by COUNT rather
@@ -160,13 +169,13 @@ type SmartShuffleTracksRow struct {
 // that rode yesterday should not come back to a blank slate.
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
 	rows, err := q.db.Query(ctx, smartShuffleTracks,
+		arg.RoomID,
 		arg.TargetRpm,
 		arg.BpmTolerance,
 		arg.BpmBoost,
 		arg.ArtistBoost,
 		arg.TagBoost,
 		arg.Lim,
-		arg.RoomID,
 		arg.AffinityWindow,
 	)
 	if err != nil {
