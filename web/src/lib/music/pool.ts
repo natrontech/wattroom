@@ -16,8 +16,15 @@ export interface Track {
 	durationMs: number;
 	sizeBytes: number;
 	bpm?: number;
+	tags: string[];
 	uploadedBy?: string;
 	createdAt: string;
+}
+
+/** A shelf label: a tag in the pool and how many tracks wear it. */
+export interface PoolTag {
+	tag: string;
+	tracks: number;
 }
 
 /** The pool is capped per rider at 2 GB; the server is the one that enforces it. */
@@ -41,10 +48,13 @@ export function whyNotUploadable(file: File): string | null {
 	return null;
 }
 
-export function listTracks(query: string) {
-	const q = query.trim();
-	return api<{ tracks: Track[] }>(
-		`/api/tracks${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+export function listTracks(query: string, tag = '') {
+	const params = new URLSearchParams();
+	if (query.trim()) params.set('q', query.trim());
+	if (tag) params.set('tag', tag);
+	const qs = params.toString();
+	return api<{ tracks: Track[]; tags: PoolTag[] }>(
+		`/api/tracks${qs ? `?${qs}` : ''}`,
 	);
 }
 
@@ -57,13 +67,36 @@ export function uploadTrack(file: File) {
 
 export function saveTrack(
 	id: string,
-	fields: { title: string; artist: string; album: string; bpm: number | null },
+	fields: {
+		title: string;
+		artist: string;
+		album: string;
+		bpm: number | null;
+		tags: string[];
+	},
 ) {
 	return api<Track>(`/api/tracks/${id}`, { method: 'PATCH', json: fields });
 }
 
 export function deleteTrack(id: string) {
 	return api<null>(`/api/tracks/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * Tags are typed as one comma-separated line, and normalized the way the
+ * server will normalize them — so the chips a rider sees after saving are the
+ * chips the field showed them, rather than a lower-cased surprise.
+ *
+ * ADR-0015: free-form, not a taxonomy. Nothing here rejects a tag; it only
+ * agrees with the server about when two of them are the same one.
+ */
+export function parseTags(line: string): string[] {
+	const seen = new Set<string>();
+	for (const raw of line.split(',')) {
+		const tag = raw.trim().toLowerCase().split(/\s+/).join(' ').slice(0, 40);
+		if (tag) seen.add(tag);
+	}
+	return [...seen].slice(0, 20);
 }
 
 /** m:ss, the way every other duration in the app reads. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	MAX_UPLOAD_BYTES,
+	parseTags,
 	trackClock,
 	trackSize,
 	whyNotUploadable,
@@ -41,5 +42,26 @@ describe('formatting', () => {
 		expect(trackSize(1 << 20)).toBe('1.0 MB');
 		expect(trackSize(4.25 * (1 << 20))).toBe('4.3 MB');
 		expect(trackSize(12.4 * (1 << 20))).toBe('12 MB');
+	});
+});
+
+describe('parseTags', () => {
+	it('agrees with the server about when two tags are one tag', () => {
+		expect(parseTags('Italo Disco, italo disco ,  ITALO   DISCO')).toEqual([
+			'italo disco',
+		]);
+		expect(parseTags('synthwave, Acid,  ')).toEqual(['synthwave', 'acid']);
+	});
+
+	it('is empty rather than a list of nothing', () => {
+		expect(parseTags('')).toEqual([]);
+		expect(parseTags(' , ,, ')).toEqual([]);
+	});
+
+	it('bounds both axes the way the column does', () => {
+		expect(parseTags('a'.repeat(90))[0]).toHaveLength(40);
+		expect(
+			parseTags(Array.from({ length: 30 }, (_, i) => `tag${i}`).join(',')),
+		).toHaveLength(20);
 	});
 });

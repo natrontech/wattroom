@@ -1,0 +1,1 @@
+- Tag anything in the music pool with whatever words suit it — genre, mood, the part of a ride it belongs to. A track arrives wearing whatever genre its file claimed, the tags stay editable like every other field, and the Music page grows a row of shelves you can click to narrow the library down to one of them.
