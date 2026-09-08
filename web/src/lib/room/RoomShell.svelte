@@ -4,23 +4,19 @@
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import type { Crew } from '$lib/room/room-data';
-	import { api } from '$lib/api';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { flatten } from '$lib/workout/engine';
-	import { buildShelf } from '$lib/workout/shelf';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage, sourceLabel } from '$lib/room/stage';
-	import { parseSharedSegments } from '$lib/room/workout';
 	import { createRiders } from '$lib/room/riders.svelte';
 	import { createRoomSounds } from '$lib/room/room-sounds.svelte';
 	import CheerLayer from '$lib/room/CheerLayer.svelte';
 	import Soundboard from '$lib/board/Soundboard.svelte';
-	import FaultBanner from '$lib/room/FaultBanner.svelte';
+	import RoomStatus from '$lib/room/RoomStatus.svelte';
 	import Jukebox from '$lib/room/Jukebox.svelte';
-	import { createCustomStore } from '$lib/workout/custom.svelte';
-	import Banner from '$lib/components/Banner.svelte';
+	import { createSessionSetup } from '$lib/room/session-setup.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
 	import PeopleSheet from '$lib/room/PeopleSheet.svelte';
@@ -316,8 +312,18 @@
 			totalSeconds: total,
 		});
 		live.control('start');
-		setup = false;
+		session.open = false;
 	}
+
+	// ── Session setup (#115) and planned rides (#116) ─────────────────────────
+	// Composed, not owned: the shelf and its ranking, the calendar link, and
+	// starting something already planned (session-setup.svelte.ts).
+	const session = createSessionSetup({
+		slug: () => slug,
+		icsToken: () => icsToken,
+		reset: () => recording.reset(),
+		control: (action, payload) => live.control(action, payload),
+	});
 
 	// ADR-0020: the shell keeps the state, the places render the surface.
 	setRoomContext({
@@ -394,8 +400,8 @@
 		control: (kind, payload, id) =>
 			live.control(kind as never, payload as never, id),
 		openPicker: (intent = 'start') => {
-			setupIntent = intent;
-			setup = true;
+			session.intent = intent;
+			session.open = true;
 		},
 		openTv: () => (tv = true),
 		get stageSources() {
@@ -445,79 +451,14 @@
 		setRole: (userId, next) => onRole(userId, next),
 		ban,
 		removeMember: (userId) => onRemove(userId),
-		startScheduled,
-		copyIcsUrl,
+		startScheduled: session.startScheduled,
+		copyIcsUrl: session.copyIcsUrl,
 		get reminders() {
 			return reminders;
 		},
 	});
 
-	// ── Session setup (#115, redesigned as SessionPicker) ─────────────────────
-	let setup = $state(false);
-	let setupIntent = $state<'start' | 'plan'>('start');
-	const custom = createCustomStore();
-	// Recently ridden first: the rider's history ranks the shelf.
-	let recency = $state<Map<string, number>>(new Map());
-	$effect(() => {
-		if (!setup || recency.size) return;
-		void api<{ rides: { workoutName: string }[] }>('/api/rides').then((res) => {
-			if (!res.ok) return;
-			const ranked = new Map<string, number>();
-			res.data.rides.forEach((ride, i) => {
-				if (!ranked.has(ride.workoutName)) ranked.set(ride.workoutName, i);
-			});
-			recency = ranked;
-		});
-	});
-	const shelf = $derived(
-		buildShelf(custom.all)
-			.map((entry) => ({
-				...entry,
-				recent: recency.has(entry.workout.name),
-			}))
-			.sort(
-				(a, b) =>
-					(recency.get(a.workout.name) ?? 999) -
-					(recency.get(b.workout.name) ?? 999),
-			),
-	);
-	// The quick-start on the lounge floor offers the most recently ridden.
-
-	// ── Planned rides (#116) ──────────────────────────────────────────────────
-	/** Startable a little early and through the grace the server keeps it visible. */
-	function copyIcsUrl() {
-		void navigator.clipboard.writeText(
-			`${location.origin}/api/rooms/${slug}/calendar/${icsToken}.ics`,
-		);
-		toasts.push(
-			'Calendar link copied — subscribe "from URL" in your calendar app.',
-		);
-	}
-
-	// Moving a plan (#258): "move" folds a WhenPicker out under the card row.
-	function startScheduled(entry: (typeof upcoming)[number]) {
-		const segments = parseSharedSegments(entry.workoutJson);
-		const total = segments.reduce(
-			(t, s) => Math.max(t, s.startSeconds + s.seconds),
-			0,
-		);
-		if (total === 0) return;
-		recording.reset();
-		live.control('pick', {
-			name: entry.workoutName,
-			json: entry.workoutJson,
-			totalSeconds: total,
-		});
-		live.control('start');
-	}
-
 	// ── Connection fault + jukebox helpers ────────────────────────────────────
-	let droppedAt = $state<number | null>(null);
-	$effect(() => {
-		if (live.status === 'reconnecting' && droppedAt === null)
-			droppedAt = Date.now();
-		if (live.status === 'live') droppedAt = null;
-	});
 
 	let peopleSheet = $state(false);
 </script>
@@ -526,7 +467,7 @@
 	onkeydown={(e) => {
 		if (e.key === 'Escape') {
 			tv = false;
-			setup = false;
+			session.open = false;
 			peopleSheet = false;
 			focusId = null;
 		}
@@ -549,23 +490,23 @@
 	/>
 {/if}
 
-{#if setup}
+{#if session.open}
 	<SessionPicker
-		{shelf}
-		intent={setupIntent}
+		shelf={session.shelf}
+		intent={session.intent}
 		ftp={profile.current.ftp}
 		busy={adminBusy}
 		gameRunning={!!live.tick?.game}
 		onStart={(workout) => startWorkout(workout)}
 		onPlan={(name, json, at) => {
 			onSchedule(name, json, at);
-			setup = false;
+			session.open = false;
 		}}
 		onStartGame={(id) => {
 			live.control('game', undefined, id);
-			setup = false;
+			session.open = false;
 		}}
-		onClose={() => (setup = false)}
+		onClose={() => (session.open = false)}
 	/>
 {/if}
 
@@ -607,100 +548,7 @@
 			onFire={(clipId) => live.fireClip(clipId)}
 		/>
 
-		<!-- Room-level status belongs to the shell, not to a place: a dropped
-		     connection is true on every one of them, and errors.md wants it
-		     persistent rather than a toast the rider will not see. -->
-		{#if live.status !== 'live'}
-			<div class="shrink-0 px-5 pt-4">
-				<FaultBanner
-					fault={{ kind: 'room', state: 'reconnecting' }}
-					bufferedSeconds={droppedAt
-						? Math.round((Date.now() - droppedAt) / 1000)
-						: 0}
-					onRecover={() => location.reload()}
-				/>
-			</div>
-		{:else if rideCtl.guard !== 'running'}
-			<!-- The rider's own guard, in a room (#788): the group timeline runs
-			     on without them, so nothing else on screen says why their
-			     target went to zero. Ranked above the trainer's own faults for
-			     the same reason auto-pause outranks everything solo — it is the
-			     thing that just happened. -->
-			<div class="shrink-0 px-5 pt-4">
-				<div
-					class="border-neon/40 bg-surface-raised flex items-center gap-4 rounded-lg border px-5 py-3"
-				>
-					{#if rideCtl.guard === 'resuming'}
-						<span
-							class="text-watt glow-text-strong font-display text-3xl font-bold tabular-nums"
-							>{rideCtl.guardResumeIn}</span
-						>
-						<p class="text-sm">Picking back up — ease in.</p>
-					{:else}
-						<p class="text-sm">
-							<span class="font-medium">Paused — you stopped pedalling.</span>
-							<span class="text-muted"
-								>Your targets are released; the room rides on. Start pedalling
-								to pick them back up.</span
-							>
-						</p>
-					{/if}
-				</div>
-			</div>
-		{:else if rideCtl.fault}
-			<!-- The trainer's own state, which the room never showed (#520): the
-			     mock has simulated this banner since #39 and the product could
-			     not reach it, so "Unpair trainer" was the only thing a rider
-			     with no watts had to go on. Ranked above voice — a ride with no
-			     power is broken; a ride with no talking is not. -->
-			<div class="shrink-0 px-5 pt-4">
-				<FaultBanner
-					fault={{ kind: 'trainer', state: rideCtl.fault }}
-					bufferedSeconds={0}
-					onRecover={() => {
-						rideCtl.unpair();
-						void rideCtl.ride(new FtmsTrainer());
-					}}
-				/>
-			</div>
-		{:else if av.status === 'reconnecting'}
-			<!-- Media gapped while the SDK retries (#234). -->
-			<div class="shrink-0 px-5 pt-4">
-				<FaultBanner
-					fault={{ kind: 'voice', state: 'reconnecting' }}
-					bufferedSeconds={0}
-					onRecover={() => void av.join()}
-				/>
-			</div>
-		{:else if av.status === 'live' && av.micFault}
-			<!-- The capture died under an open mic (#640): we publish our own
-			     WebAudio track, so LiveKit never notices and the room hears
-			     silence with the icon still green. One big button back. -->
-			<div class="shrink-0 px-5 pt-4">
-				<FaultBanner
-					fault={{ kind: 'mic', state: 'lost' }}
-					bufferedSeconds={0}
-					onRecover={() => void av.reconnectMic()}
-				/>
-			</div>
-		{/if}
-
-		{#if shared?.phase === 'paused'}
-			<div class="shrink-0 px-5 pt-4">
-				<Banner tone="warn">
-					<p class="flex items-center gap-3 text-xs">
-						<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"
-						></span>
-						<span>
-							<span class="font-medium">The session is paused.</span>
-							<span class="text-muted"
-								>Targets are released — spin easy until the coach resumes.</span
-							>
-						</span>
-					</p>
-				</Banner>
-			</div>
-		{/if}
+		<RoomStatus />
 
 		<!-- The jukebox dock floats over this column's bottom-right and RMF
 		     says nothing may cover the player — so the content reserves the
