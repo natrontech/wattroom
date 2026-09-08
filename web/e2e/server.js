@@ -33,6 +33,14 @@ const go = spawn('go', ['run', '.'], {
 		// The passkey relying party is derived from this (passkey.go): the
 		// ceremony's origin is the page's, which is this proxy, not the API.
 		WATTROOM_BASE_URL: `http://localhost:${WEB_PORT}`,
+		// AV only turns on with all three set (av.FromEnv) — the same devkey/
+		// secret pair make dev-server uses against make infra's LiveKit
+		// container. Without these, voice-duck.spec.ts's rider never sees
+		// avEnabled and ?voice=1 is a no-op.
+		WATTROOM_LIVEKIT_URL:
+			process.env.WATTROOM_LIVEKIT_URL ?? 'ws://localhost:7880',
+		WATTROOM_LIVEKIT_KEY: process.env.WATTROOM_LIVEKIT_KEY ?? 'devkey',
+		WATTROOM_LIVEKIT_SECRET: process.env.WATTROOM_LIVEKIT_SECRET ?? 'secret',
 	},
 	stdio: 'inherit',
 });

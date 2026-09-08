@@ -1,4 +1,19 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * 3 s of pink noise (e2e/fixtures/fake-voice.wav), looped by Chromium's fake
+ * capture device as voice-duck.spec.ts's "remote microphone". The device's
+ * default beep pattern is mostly silence between short beeps — real enough to
+ * flip a state machine once, not real enough to hold a gate open for a
+ * multi-second assertion. Noise rather than a pure tone: a dead-flat sine has
+ * no amplitude variance at all, the one property speech-detection heuristics
+ * anywhere in the chain (WebRTC's own DTX included) key off to tell signal
+ * from silence.
+ */
+const fakeVoiceWav = fileURLToPath(
+	new URL('./e2e/fixtures/fake-voice.wav', import.meta.url),
+);
 
 /**
  * PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
@@ -38,7 +53,11 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			testIgnore: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
+			testIgnore: [
+				'mobile-room.spec.ts',
+				'phone-width.spec.ts',
+				'voice-duck.spec.ts',
+			],
 			use: { ...devices['Desktop Chrome'] },
 		},
 		{
@@ -51,6 +70,32 @@ export default defineConfig({
 			name: 'phone',
 			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Pixel 5'] },
+		},
+		{
+			// voice-duck.spec.ts is the one spec that needs a real microphone
+			// signal rather than none: Chromium's fake capture device (real
+			// audio, not silence) so getUserMedia produces something the mic
+			// gate and the meter actually see. Scoped to its own project —
+			// every other spec keeps the plain Desktop Chrome launch.
+			// No --mute-audio and no zeroed mixer (AGENTS.md's usual "mute
+			// before you play"): this spec's whole point is a real voice
+			// actually being heard, which AGENTS.md itself carves out —
+			// "Unless the audio is the thing under test". A real GitHub
+			// Actions runner has no speaker to reach either way; a developer
+			// running this locally hears one 3 s loop, once, per run.
+			name: 'voice',
+			testMatch: ['voice-duck.spec.ts'],
+			use: {
+				...devices['Desktop Chrome'],
+				launchOptions: {
+					args: [
+						'--use-fake-device-for-media-stream',
+						'--use-fake-ui-for-media-stream',
+						'--autoplay-policy=no-user-gesture-required',
+						`--use-file-for-fake-audio-capture=${fakeVoiceWav}`,
+					],
+				},
+			},
 		},
 	],
 	// Serves the built SPA and proxies /api to the Go server, matching production.
