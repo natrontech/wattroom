@@ -75,6 +75,7 @@ func TestBpmBoostsTheCadenceAndItsDouble(t *testing.T) {
 		rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
 			RoomID: room.ID, Lim: 1000,
 			TargetRpm: rpm, BpmTolerance: bpmTolerance, BpmBoost: bpmBoost,
+			AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 		})
 		if err != nil {
 			t.Fatalf("smart shuffle: %v", err)
