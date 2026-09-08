@@ -46,7 +46,7 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { iconFor } from '$lib/icons';
+	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -165,20 +165,6 @@
 </script>
 
 <!-- A crew's mark: its icon, or its initial in the same box. -->
-{#snippet crewBadge(c: RoomCrew, box: string, icon: number, text: string)}
-	<span
-		class="bg-ink/5 text-ink/80 grid shrink-0 place-items-center {box}"
-		aria-hidden="true"
-	>
-		{#if iconFor(c.icon)}
-			<RoomIcon icon={c.icon} size={icon} />
-		{:else}
-			<span class="font-display font-bold {text}"
-				>{c.name.slice(0, 1).toUpperCase()}</span
-			>
-		{/if}
-	</span>
-{/snippet}
 
 {#snippet roomRow(room: RailRoom)}
 	<!-- Connected and browsing-only are separate visual states. An active
@@ -398,7 +384,7 @@
 		     nothing floats, nothing is rounded, nothing is inset. -->
 		<div class="px-2" bind:this={header}>
 			{#snippet crewRow(c: RoomCrew)}
-				{@render crewBadge(c, 'h-5 w-5 rounded', 13, 'text-[11px]')}
+				<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={20} />
 				<span class="font-display min-w-0 flex-1 truncate text-sm font-bold"
 					>{c.name}</span
 				>
@@ -448,7 +434,12 @@
 									: 'text-muted hover:bg-ink/5 hover:text-ink'}"
 								aria-current={now ? 'true' : undefined}
 							>
-								{@render crewBadge(c, 'h-5 w-5 rounded', 13, 'text-[11px]')}
+								<CrewMark
+									name={c.name}
+									icon={c.icon}
+									imageUrl={c.imageUrl}
+									size={20}
+								/>
 								<span class="min-w-0 flex-1 truncate">{c.name}</span>
 								<span class="text-muted shrink-0 text-[11px]"
 									>{crewLine(c)}</span

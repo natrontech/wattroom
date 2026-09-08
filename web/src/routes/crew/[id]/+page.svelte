@@ -10,9 +10,9 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
+	import CrewMark from '$lib/components/CrewMark.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import IconPicker from '$lib/components/IconPicker.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import {
@@ -25,7 +25,6 @@
 		inviteLink,
 		joinCrew,
 		leaveCrew as leaveCrewApi,
-		renameCrew,
 		setCrewRole,
 		setRoomAccess,
 		transferCrew,
@@ -40,8 +39,8 @@
 	import Crown from '@lucide/svelte/icons/crown';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import Eye from '@lucide/svelte/icons/eye';
-	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Settings from '@lucide/svelte/icons/settings';
 	import Shield from '@lucide/svelte/icons/shield';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import ShieldOff from '@lucide/svelte/icons/shield-off';
@@ -93,48 +92,6 @@
 	const owner = $derived(crew?.role === 'owner');
 	// Opening a room in THIS crew (#1201), for the people who may.
 	let opening = $state(false);
-
-	// The name, editable in place for the owner and admins — the same field
-	// the day-one card has, so a rename never needs a settings page (#1151).
-	let editing = $state(false);
-	let draft = $state('');
-	let field = $state<HTMLInputElement | null>(null);
-	function edit() {
-		if (!crew) return;
-		draft = crew.name;
-		editing = true;
-		queueMicrotask(() => field?.select());
-	}
-	// The icon (#1209): the same set a room picks from, opened from the mark
-	// itself — the one place a rider would look for it.
-	let pickingIcon = $state(false);
-	async function pickCrewIcon(key: string) {
-		if (!crew) return;
-		busy = true;
-		const res = await renameCrew(crew.id, crew.name, key);
-		busy = false;
-		pickingIcon = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		crew = { ...crew, icon: res.data.icon };
-		presence.reload();
-	}
-	async function saveName() {
-		editing = false;
-		const next = draft.trim();
-		if (!crew || !next || next === crew.name) return;
-		busy = true;
-		const res = await renameCrew(crew.id, next);
-		busy = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		crew = { ...crew, name: res.data.name };
-		presence.reload();
-	}
 
 	async function act(
 		person: CrewPerson,
@@ -356,63 +313,17 @@
 		<Skeleton class="mt-6 h-40" />
 	{:else}
 		<header class="flex items-start gap-3">
-			{#snippet mark()}
-				{#if crew?.icon}
-					<RoomIcon icon={crew.icon} size={22} />
-				{:else}
-					<span class="font-display text-xl font-bold"
-						>{crew?.name.slice(0, 1).toUpperCase()}</span
-					>
-				{/if}
-			{/snippet}
-			{#if administers}
-				<button
-					onclick={() => (pickingIcon = !pickingIcon)}
-					disabled={busy}
-					title="change the crew's icon"
-					aria-expanded={pickingIcon}
-					class="bg-ink/5 text-ink/80 hover:bg-ink/10 grid h-12 w-12 shrink-0 place-items-center rounded-xl"
-				>
-					{@render mark()}
-				</button>
-			{:else}
-				<span
-					class="bg-ink/5 text-ink/80 grid h-12 w-12 shrink-0 place-items-center rounded-xl"
-				>
-					{@render mark()}
-				</span>
-			{/if}
+			<CrewMark
+				name={crew.name}
+				icon={crew.icon}
+				imageUrl={crew.imageUrl}
+				size={48}
+				class="rounded-xl"
+			/>
 			<div class="min-w-0 flex-1">
-				{#if editing}
-					<input
-						bind:this={field}
-						bind:value={draft}
-						maxlength="60"
-						class="input font-display w-full max-w-md text-xl font-bold"
-						aria-label="crew name"
-						onkeydown={(e) => {
-							if (e.key === 'Enter') saveName();
-							if (e.key === 'Escape') editing = false;
-						}}
-						onblur={saveName}
-					/>
-				{:else if administers}
-					<button
-						onclick={edit}
-						disabled={busy}
-						class="hover:text-ink flex min-h-11 max-w-full items-center gap-2 text-left"
-						title="rename the crew"
-					>
-						<h1 class="font-display truncate text-2xl font-bold tracking-tight">
-							{crew.name}
-						</h1>
-						<Pencil size={14} class="text-muted shrink-0" aria-hidden="true" />
-					</button>
-				{:else}
-					<h1 class="font-display truncate text-2xl font-bold tracking-tight">
-						{crew.name}
-					</h1>
-				{/if}
+				<h1 class="font-display truncate text-2xl font-bold tracking-tight">
+					{crew.name}
+				</h1>
 				<p class="text-muted text-sm">
 					{crew.rooms.length === 1 ? '1 room' : `${crew.rooms.length} rooms`}
 					· {crew.people.length === 1
@@ -425,23 +336,25 @@
 					{/if}
 				</p>
 			</div>
+			{#if administers}
+				<!-- Name, picture, icon and the invite live in one place (#1237),
+				     the way a room's do; this page is the roster. -->
+				<a
+					href="/crew/{crew.id}/settings"
+					class="btn btn-secondary btn-xs shrink-0"
+					><Settings size={13} /> Settings</a
+				>
+			{/if}
 		</header>
-
-		{#if pickingIcon}
-			<div class="mt-3">
-				<IconPicker
-					value={crew.icon ?? ''}
-					onpick={pickCrewIcon}
-					disabled={busy}
-				/>
-			</div>
-		{/if}
 
 		{#if owner && crew.name === account.me?.displayName}
 			<!-- The migration's placeholder (#1151): said here, where the name
 			     is one click away, until the owner replaces it. -->
 			<p class="text-muted mt-2 text-xs">
-				Named after you until you rename it — click the name.
+				Named after you until you rename it — in <a
+					href="/crew/{crew.id}/settings"
+					class="underline">Settings</a
+				>.
 			</p>
 		{/if}
 

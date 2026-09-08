@@ -36,6 +36,8 @@ export interface Crew {
 	id: string;
 	name: string;
 	icon?: string;
+	/** The crew's logo (#1237), when one is set. */
+	imageUrl?: string;
 	/** The invite (#1236): the crew's code, shared as `/c/{code}`. */
 	code?: string;
 	/** What YOU are to it. */
@@ -115,6 +117,7 @@ export function setRoomAccess(
 export interface CrewDoor {
 	name: string;
 	icon?: string;
+	imageUrl?: string;
 	members: number;
 }
 
@@ -124,7 +127,7 @@ export function crewDoor(
 ): Promise<ApiResult<CrewDoor>> {
 	return loadApi<CrewDoor>(
 		fetcher,
-		`/api/crews/by-code/${encodeURIComponent(code)}`,
+		`/api/crew-doors/${encodeURIComponent(code)}`,
 	);
 }
 
@@ -141,4 +144,20 @@ export function leaveCrew(id: string): Promise<ApiResult<void>> {
 /** The share link a code becomes. */
 export function inviteLink(code: string): string {
 	return `${location.origin}/c/${code}`;
+}
+
+/** The crew's picture (#1237): owner and admins; the same reader as a pasted image. */
+export function setCrewImage(
+	id: string,
+	image: Blob,
+): Promise<ApiResult<{ imageUrl: string }>> {
+	return api<{ imageUrl: string }>(`/api/crews/${id}/image`, {
+		method: 'POST',
+		body: image,
+		headers: { 'content-type': image.type },
+	});
+}
+
+export function clearCrewImage(id: string): Promise<ApiResult<void>> {
+	return api<void>(`/api/crews/${id}/image`, { method: 'DELETE' });
 }

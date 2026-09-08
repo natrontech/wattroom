@@ -5,7 +5,7 @@
 	// back here with the code intact.
 	import { goto } from '$app/navigation';
 	import Logo from '$lib/brand/Logo.svelte';
-	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import CrewMark from '$lib/components/CrewMark.svelte';
 	import { joinCrew } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
@@ -37,18 +37,15 @@
 	<div class="panel w-full max-w-md px-6 py-10 text-center">
 		<Logo size={40} />
 		{#if data.crew}
-			<span
-				class="bg-ink/5 text-ink/80 mx-auto mt-5 grid h-12 w-12 place-items-center rounded-xl"
-				aria-hidden="true"
-			>
-				{#if data.crew.icon}
-					<RoomIcon icon={data.crew.icon} size={22} />
-				{:else}
-					<span class="font-display text-xl font-bold"
-						>{data.crew.name.slice(0, 1).toUpperCase()}</span
-					>
-				{/if}
-			</span>
+			<div class="mt-5 flex justify-center">
+				<CrewMark
+					name={data.crew.name}
+					icon={data.crew.icon}
+					imageUrl={data.crew.imageUrl}
+					size={48}
+					class="rounded-xl"
+				/>
+			</div>
 			<h1 class="font-display mt-3 text-2xl font-bold">{data.crew.name}</h1>
 			<p class="text-muted mt-2 text-sm">
 				You have been invited to ride with this crew{data.crew.members > 1

@@ -801,6 +801,7 @@ select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound
        -- name the second one CrewID_2.
        coalesce(c.name, '')::text as crew_name,
        coalesce(c.icon, '')::text as crew_icon,
+       (c.image_set_at is not null)::boolean as crew_has_image,
        -- What the caller is to the crew, for the switcher's owner mark and
        -- the crew page's door (#1147). Two booleans, not a role word: the
        -- LEFT join makes a CASE nullable and sqlc would hand back *string.
@@ -874,6 +875,7 @@ type ListUserRoomsRow struct {
 	LastChatAt              pgtype.Timestamptz
 	CrewName                string
 	CrewIcon                string
+	CrewHasImage            bool
 	CrewOwned               bool
 	CrewAdmin               bool
 }
@@ -928,6 +930,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.LastChatAt,
 			&i.CrewName,
 			&i.CrewIcon,
+			&i.CrewHasImage,
 			&i.CrewOwned,
 			&i.CrewAdmin,
 		); err != nil {

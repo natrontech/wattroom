@@ -76,6 +76,7 @@ select r.*, m.role,
        -- name the second one CrewID_2.
        coalesce(c.name, '')::text as crew_name,
        coalesce(c.icon, '')::text as crew_icon,
+       (c.image_set_at is not null)::boolean as crew_has_image,
        -- What the caller is to the crew, for the switcher's owner mark and
        -- the crew page's door (#1147). Two booleans, not a role word: the
        -- LEFT join makes a CASE nullable and sqlc would hand back *string.

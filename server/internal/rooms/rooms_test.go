@@ -114,7 +114,7 @@ func (h *harness) createRoom(t *testing.T, owner, name string) (slug, code strin
 	})
 	// The code a test hands round is the CREW's (#1236): the room's opens
 	// nothing any more.
-	return slug, codeOf(h.crewOf(t, slug))
+	return slug, codeOf(h.crewOf(t, slug).Code)
 }
 
 func TestCreateAndJoinFlow(t *testing.T) {
