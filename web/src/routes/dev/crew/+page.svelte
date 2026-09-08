@@ -137,11 +137,14 @@
 			word, different blast radius — so they cannot share a control.
 		</p>
 		<p class="text-muted/80 mt-2 max-w-2xl text-[13px]">
-			Drawn from merged canon, and <span class="text-ink">not settled</span>:
-			RESEARCH.md §16.4 argued for collapsing to one ban level, and #1121 argues
-			back. If that lands, this pair is right as drawn; if the collapse wins,
-			this section is the part of the page that has to be redrawn — room
-			exclusion would become an override, not a ban of its own.
+			Settled in ADR-0038’s third amendment, <span class="text-ink"
+				>against RESEARCH.md §16.4’s own recommendation</span
+			>: §16.4 argued for collapsing to one level on Discord’s precedent, and
+			the amendment declined, because an override-based exclusion would let a
+			crew admin eject someone from a room they never entered — the one power
+			the ADR withholds from them. The forgettable-guard defect §16.4 pointed at
+			is real and is fixed elsewhere: one view every join must select from,
+			rather than one fewer kind of ban.
 		</p>
 		<div class="mt-5 grid gap-4 sm:grid-cols-2">
 			<div class="card p-4">
@@ -149,13 +152,17 @@
 					<Ban size={14} class="text-danger" /> Ban from this room
 				</span>
 				<p class="text-muted mt-1.5 text-[13px]">
-					A room-level act, from the room’s own Members page, by its owner or
-					coach. Keeps the seat: the membership row stays so a rejoin by code
-					lands back on the ban.
+					A room-level act, from the room’s own Members page, by
+					<span class="text-ink/80">its owner — not its coach</span>
+					(SPEC’s roles matrix puts remove/ban/unban on the owner’s column alone,
+					and the amendment’s third argument leans on that row). Keeps the seat: the
+					membership row stays so a rejoin by code lands back on the ban. Severs the
+					live socket and voice on the spot — a ban acts, it is not only state.
 				</p>
 				<p class="text-muted/70 mt-2 text-[13px]">
 					Reaches: <span class="text-ink/80">Thursday Threshold.</span> They stay
-					in Natron and keep every other room.
+					in Natron and keep every other room — a room ban implies nothing at the
+					crew.
 				</p>
 			</div>
 			<div class="card border-danger/40 p-4">
@@ -169,13 +176,47 @@
 				</p>
 				<p class="text-muted/70 mt-2 text-[13px]">
 					Reaches: <span class="text-ink/80">all four Natron rooms</span>, and
-					no code will let them back into any of them.
+					no code will let them back into any of them. A crew ban implies
+					exclusion from every room, and severs sockets and voice across all of
+					them at once.
 				</p>
 				<p class="text-muted/70 mt-2 text-[13px]">
 					<span class="text-ink/80">Never offered for the crew owner.</span> They
 					cannot be demoted, removed or banned by anyone, so the control is absent
 					rather than disabled-with-a-hint — a dead button on the one person it can
 					never apply to invites the question every time somebody reads the list.
+				</p>
+			</div>
+		</div>
+
+		<h3 class="font-display mt-8 text-base font-semibold">
+			Lifting one does not lift the other
+		</h3>
+		<p class="text-muted mt-1 max-w-2xl text-[13px]">
+			The consequence a drawing has to show, not describe. Somebody banned at
+			both levels needs <span class="text-ink">two</span> people to change their mind,
+			and neither act may present itself as undoing the other. A single “unban” affordance
+			would be the design the amendment refuses — so on a rider who carries both,
+			the room’s Members page and the crew’s people list each show only their own,
+			and each says what it does not reach.
+		</p>
+		<div class="mt-4 grid gap-4 sm:grid-cols-2">
+			<div class="card p-4">
+				<span class="eyebrow">room · members</span>
+				<p class="mt-2 text-sm font-medium">Mike Weber</p>
+				<p class="text-muted mt-1 text-[13px]">Banned from this room</p>
+				<button class="btn btn-xs mt-3" disabled>Unban from Thursday</button>
+				<p class="text-muted/70 mt-2 text-[11px]">
+					Still crew-banned afterwards — this does not readmit them.
+				</p>
+			</div>
+			<div class="card p-4">
+				<span class="eyebrow">crew · people</span>
+				<p class="mt-2 text-sm font-medium">Mike Weber</p>
+				<p class="text-muted mt-1 text-[13px]">Banned from the crew</p>
+				<button class="btn btn-xs mt-3" disabled>Unban from Natron</button>
+				<p class="text-muted/70 mt-2 text-[11px]">
+					Restores nothing the room’s owner decided — Thursday stays shut.
 				</p>
 			</div>
 		</div>
