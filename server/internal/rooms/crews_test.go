@@ -449,8 +449,8 @@ func TestRenamingTheCrewIsForItsOwnerAndAdmins(t *testing.T) {
 	_, list := h.call(t, "bob", http.MethodGet, "/api/rooms", "")
 	rooms, _ := list["rooms"].([]any)
 	room, _ := rooms[0].(map[string]any)
-	if c, _ := room["crew"].(map[string]any); c["name"] != "Natron" {
-		t.Errorf("the rename did not reach the room list: %v", room["crew"])
+	if c, _ := room["crew"].(map[string]any); c["name"] != "Natron" || c["code"] != codeOf(crew.Code) {
+		t.Errorf("the room list's crew does not carry the rename and the code: %v", room["crew"])
 	}
 }
 
