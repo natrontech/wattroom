@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.56] - 2026-09-09
+
+### Added
+
+- A room's Members place says how to get someone new in — invite them to the crew — with the crew's invite link one click away, where the room's own code used to be. (#1236)
+
+### Fixed
+
+- A chat line no longer appears twice, or keeps its old words after the author fixed it, for a rider who opened the room in the second the line was sent: the join-time backlog and the live tick each carried a copy and only one of them knew the line's id (#1231).
+
 ## [2026.09.55] - 2026-09-09
 
 ### Changed
@@ -1248,7 +1258,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.55...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.56...HEAD
+[2026.09.56]: https://github.com/natrontech/wattroom/compare/2026.09.55...2026.09.56
 [2026.09.55]: https://github.com/natrontech/wattroom/compare/2026.09.54...2026.09.55
 [2026.09.54]: https://github.com/natrontech/wattroom/compare/2026.09.53...2026.09.54
 [2026.09.53]: https://github.com/natrontech/wattroom/compare/2026.09.52...2026.09.53
