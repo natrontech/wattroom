@@ -47,6 +47,8 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { iconFor } from '$lib/icons';
+	import Modal from '$lib/components/Modal.svelte';
+	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
@@ -115,6 +117,8 @@
 		chosen = id;
 		rememberChosenCrew(id);
 	}
+	// The + beside rooms opens the open/join forms in a sheet (#1199).
+	let opening = $state(false);
 	// The dropdown under the header: the sidebar's full width, like Discord's
 	// server menu, never a popup at the pointer. Closes on a click anywhere
 	// else, on Escape, and on choosing.
@@ -557,11 +561,14 @@
 			{crew && crews.length > 1 ? `rooms · ${crew.name}` : 'rooms'}
 			<!-- Everything /rooms carried beyond the list: open one, or join with
 			     a code (ADR-0020). -->
-			<a
-				href="/home#rooms"
+			<!-- Opens the forms right here (#1199) — Discord's "+ Create
+			     Channel" in the server you are looking at, not a trip to the
+			     bottom of Home. -->
+			<button
+				onclick={() => (opening = true)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title="open a room or join with a code"
-				aria-label="open a room or join with a code"><Plus size={16} /></a
+				aria-label="open a room or join with a code"><Plus size={16} /></button
 			>
 		</div>
 		<ul class="space-y-0.5">
@@ -641,3 +648,14 @@
 
 	<YouPanel {pathname} />
 </nav>
+
+{#if opening}
+	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
+		<!-- Named for the crew a new room actually lands in — the one you own
+		     — not the one on screen, which you may only be a member of. -->
+		<OpenOrJoin
+			compact
+			crew={crews.find((c) => c.role === 'owner')?.name ?? ''}
+		/>
+	</Modal>
+{/if}

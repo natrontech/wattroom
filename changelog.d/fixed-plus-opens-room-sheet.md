@@ -1,0 +1,1 @@
+- **The + beside your rooms does something now.** It opens "Open a room" and "Or join with a code" right there, in the crew you are looking at, instead of pointing at a spot on Home the page could not scroll to. Home's own "Open a room" button and the old /rooms link land on the forms too.

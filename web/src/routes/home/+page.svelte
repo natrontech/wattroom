@@ -9,6 +9,8 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { revealRooms } from '$lib/rooms/reveal';
+	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
@@ -161,6 +163,15 @@
 			kj: Math.round(recent.reduce((sum, ride) => sum + ride.kj, 0)),
 		};
 	});
+
+	// A deep link to the forms — the old /rooms redirect, a shared
+	// /home#rooms — lands on them once the page is up (#1199).
+	$effect(() => {
+		// The forms render once the room list has landed; before that there
+		// is nothing to reveal.
+		if (page.url.hash !== '#rooms' || rooms === null) return;
+		queueMicrotask(revealRooms);
+	});
 </script>
 
 <main class="page">
@@ -216,8 +227,8 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
-			<a href="#rooms" class="btn btn-secondary"
-				><Plus size={15} /> Open a room</a
+			<button onclick={revealRooms} class="btn btn-secondary"
+				><Plus size={15} /> Open a room</button
 			>
 		{/if}
 	</div>
