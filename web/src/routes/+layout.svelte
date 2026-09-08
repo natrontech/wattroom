@@ -290,6 +290,7 @@
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 				onLeave={leaveRoom}
 				onMember={showMember}
+				onSheet={() => (drawer = false)}
 			/>
 		</div>
 		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">

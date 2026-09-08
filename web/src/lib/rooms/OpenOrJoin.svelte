@@ -7,6 +7,23 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { presence } from '$lib/presence.svelte';
 
+	let {
+		compact = false,
+		crew = '',
+	}: {
+		/**
+		 * The sheet the sidebar's + opens (#1199): stacked, no section
+		 * heading, the name field focused — the forms are the same.
+		 */
+		compact?: boolean;
+		/**
+		 * The crew a new room is made in, for the sheet's title: the one YOU
+		 * own — the server puts every new room there (rooms.go handleCreate),
+		 * whichever crew the sidebar is showing.
+		 */
+		crew?: string;
+	} = $props();
+
 	let newRoomName = $state('');
 	let joinCode = $state('');
 	let roomBusy = $state(false);
@@ -50,16 +67,26 @@
 	}
 </script>
 
-<section id="rooms">
-	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-		Your rooms
-	</h2>
+<section id={compact ? undefined : 'rooms'}>
+	{#if !compact}
+		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
+			Your rooms
+		</h2>
+	{/if}
 	{#if roomError}
 		<div class="mt-3"><Banner tone="error">{roomError}</Banner></div>
 	{/if}
-	<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-		<div class="panel p-5">
-			<h3 class="font-display font-bold">Open a room</h3>
+	<div
+		class="grid gap-3 {compact
+			? 'grid-cols-1'
+			: 'mt-3 sm:grid-cols-2 xl:grid-cols-1'}"
+	>
+		<div class={compact ? '' : 'panel p-5'}>
+			<h3 class="font-display font-bold">
+				Open a room{#if compact && crew}<span class="text-muted font-normal"
+						>&nbsp;in {crew}</span
+					>{/if}
+			</h3>
 			<p class="text-muted mt-1 text-xs">
 				Private by default. Share the link or the code with whoever you ride
 				with.
@@ -70,12 +97,14 @@
 					void createRoom();
 				}}
 			>
+				<!-- svelte-ignore a11y_autofocus -->
 				<input
 					id="open-room-name"
 					bind:value={newRoomName}
 					maxlength="60"
 					class="input mt-3 w-full"
 					placeholder="Room name"
+					autofocus={compact}
 				/>
 				<button
 					disabled={roomBusy || !newRoomName.trim() || ownedOut}
@@ -89,8 +118,10 @@
 			</form>
 		</div>
 
-		<div class="panel p-5">
-			<h3 class="font-display font-bold">Join with a code</h3>
+		<div class={compact ? 'border-ink/5 border-t pt-4' : 'panel p-5'}>
+			<h3 class="font-display font-bold">
+				{compact ? 'Or join with a code' : 'Join with a code'}
+			</h3>
 			<p class="text-muted mt-1 text-xs">
 				Six characters, from whoever invited you.
 			</p>
