@@ -28,14 +28,10 @@
 	import { onDestroy } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import {
-		discardRide,
-		openRideBuffer,
-		unfinishedRides,
-		type RideBuffer,
-	} from '$lib/ride/buffer';
+	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 	import Flag from '@lucide/svelte/icons/flag';
+	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
@@ -246,71 +242,6 @@
 				`${failure} This ride is kept on this device — reload to save it from the recovery card.`;
 		});
 	});
-
-	// A ride that never ended is a crash to offer back, not to silently keep.
-	let recoverable = $state<Awaited<ReturnType<typeof unfinishedRides>>>([]);
-	let recovering = $state(false);
-	void unfinishedRides().then((rides) => (recoverable = rides));
-
-	async function downloadRecovered(ride: (typeof recoverable)[number]) {
-		recovering = true;
-		error = null;
-		try {
-			const res = await apiBlob('/api/rides/export', {
-				method: 'POST',
-				json: {
-					startedAt: new Date(ride.startedAt).toISOString(),
-					samples: ride.samples.map((sample, index) => ({
-						second: index,
-						watts: sample.watts,
-						cadence: sample.cadence,
-						heartRate: sample.heartRate,
-					})),
-				},
-			});
-			if (!res.ok) throw new Error(res.error.message);
-			const url = URL.createObjectURL(res.data.blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `wattroom-recovered-${new Date(ride.startedAt).toISOString().slice(0, 10)}.fit`;
-			a.click();
-			URL.revokeObjectURL(url);
-			await discardRide(ride.rideId);
-			recoverable = recoverable.filter((r) => r.rideId !== ride.rideId);
-		} catch (cause) {
-			error = cause instanceof Error ? cause.message : String(cause);
-		} finally {
-			recovering = false;
-		}
-	}
-
-	async function saveRecovered(ride: (typeof recoverable)[number]) {
-		if (!ride.workoutJson) return;
-		recovering = true;
-		error = null;
-		const failure = await uploadRide({
-			workoutName: ride.workoutName,
-			workoutJson: ride.workoutJson,
-			startedAt: new Date(ride.startedAt).toISOString(),
-			samples: ride.samples.map((sample) => ({
-				watts: sample.watts,
-				cadence: sample.cadence,
-				hr: sample.heartRate,
-			})),
-		});
-		recovering = false;
-		if (failure) {
-			error = failure;
-			return;
-		}
-		await discardRide(ride.rideId);
-		recoverable = recoverable.filter((r) => r.rideId !== ride.rideId);
-	}
-
-	async function discardRecovered(rideId: string) {
-		await discardRide(rideId);
-		recoverable = recoverable.filter((r) => r.rideId !== rideId);
-	}
 
 	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
 	// cell is worse than no cell: it reads as a broken strap rather than no strap.
@@ -569,39 +500,7 @@
 				>Measure it with a ramp test</a
 			>
 
-			{#if recoverable.length > 0}
-				{#each recoverable as ride (ride.rideId)}
-					<div
-						class="border-z4/40 bg-z4/10 mt-6 rounded-lg border px-4 py-3 text-left text-sm"
-					>
-						<p>
-							Recovered an unfinished ride — {ride.workoutName},
-							{new Date(ride.startedAt).toLocaleString()},
-							{Math.round(ride.samples.length / 60)} min recorded.
-						</p>
-						<div class="mt-2 flex gap-2">
-							{#if ride.workoutJson}
-								<button
-									onclick={() => saveRecovered(ride)}
-									disabled={recovering}
-									class="btn btn-primary btn-xs">Save to your account</button
-								>
-							{/if}
-							<button
-								onclick={() => downloadRecovered(ride)}
-								disabled={recovering}
-								class="btn {ride.workoutJson
-									? 'btn-secondary'
-									: 'btn-primary'} btn-xs">Download .fit</button
-							>
-							<button
-								onclick={() => discardRecovered(ride.rideId)}
-								class="btn btn-secondary btn-xs">Discard</button
-							>
-						</div>
-					</div>
-				{/each}
-			{/if}
+			<RecoveredRides onError={(message) => (error = message)} />
 		</div>
 	{:else if session.state !== 'done'}
 		<header class="flex items-center gap-4">
