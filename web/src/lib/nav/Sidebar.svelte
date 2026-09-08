@@ -418,7 +418,7 @@
 					class="bg-surface border-ink/5 absolute inset-x-0 top-full z-40 border-b shadow-lg"
 					role="menu"
 				>
-					<ul class="p-2">
+					<ul class="space-y-1 p-2">
 						{#each crews as c (c.id)}
 							{@const now = c.id === here.id}
 							<li>
