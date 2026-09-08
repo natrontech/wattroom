@@ -46,22 +46,35 @@ func (h *harness) join(t *testing.T, who, slug string) {
 }
 
 // accessIn reads the access state the room list reports for slug, "" if the
-// room is not listed at all.
+// room is not listed at all. A row the caller may not enter carries no slug
+// (#1205), so the row is matched by id as well.
 func (h *harness) accessIn(t *testing.T, who, slug string) string {
+	t.Helper()
+	row := h.listedRow(t, who, slug)
+	if row == nil {
+		return ""
+	}
+	access, _ := row["access"].(string)
+	return access
+}
+
+// listedRow is the room list's row for slug, nil when the caller is not
+// handed the room at all.
+func (h *harness) listedRow(t *testing.T, who, slug string) map[string]any {
 	t.Helper()
 	status, body := h.call(t, who, http.MethodGet, "/api/rooms", "")
 	if status != http.StatusOK {
 		t.Fatalf("list rooms: %d", status)
 	}
+	id := store.UUIDString(roomID(t, h, slug))
 	rooms, _ := body["rooms"].([]any)
 	for _, entry := range rooms {
 		room, _ := entry.(map[string]any)
-		if room["slug"] == slug {
-			access, _ := room["access"].(string)
-			return access
+		if room["slug"] == slug || room["id"] == id {
+			return room
 		}
 	}
-	return ""
+	return nil
 }
 
 // kickRecorder is the presence hook with a memory: which rooms a crew ban
@@ -163,6 +176,53 @@ func TestTheRoomListSaysWhatYouMayDoInEachRoom(t *testing.T) {
 	}
 	if got := h.accessIn(t, "bob", open); got != "" {
 		t.Errorf("a room-banned rider is still handed the room as %q", got)
+	}
+}
+
+// The slug is the door — /r/{slug} joins anyone not banned — so a row the
+// caller may not enter must not carry it, on either list that draws one
+// (#1205). Before this, "private — you are not in this room" was only the
+// client declining to render a link.
+func TestARoomYouMayNotEnterKeepsItsSlugToItself(t *testing.T) {
+	h := setup(t)
+	open, _ := h.createRoom(t, "alice", "Crew Door Open")
+	private, _ := h.createRoom(t, "alice", "Crew Door Private")
+	h.makePrivate(t, private)
+	crew := h.crewOf(t, open)
+	h.join(t, "bob", open)
+
+	row := h.listedRow(t, "bob", private)
+	if row == nil {
+		t.Fatal("the private room is not listed to a crew-mate at all")
+	}
+	if _, leaked := row["slug"]; leaked {
+		t.Errorf("the sidebar list hands a crew-mate the locked room's slug: %v", row)
+	}
+	if row["id"] == "" || row["id"] == nil {
+		t.Errorf("the locked row has nothing to be keyed by: %v", row)
+	}
+	if row := h.listedRow(t, "bob", open); row["slug"] != open {
+		t.Errorf("the open room lost its slug: %v", row)
+	}
+
+	_, body := h.call(t, "bob", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	rooms, _ := body["rooms"].([]any)
+	for _, entry := range rooms {
+		room, _ := entry.(map[string]any)
+		_, hasSlug := room["slug"]
+		switch room["access"] {
+		case "locked":
+			if hasSlug {
+				t.Errorf("the crew page hands a crew-mate the locked room's slug: %v", room)
+			}
+		case "open":
+			if !hasSlug {
+				t.Errorf("the crew page's open room lost its slug: %v", room)
+			}
+		}
+	}
+	if len(rooms) != 2 {
+		t.Errorf("the crew page lists %d rooms, want 2", len(rooms))
 	}
 }
 

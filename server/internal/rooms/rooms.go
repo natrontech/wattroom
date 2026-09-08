@@ -251,7 +251,11 @@ type riderPrefsJSON struct {
 }
 
 type roomJSON struct {
-	Slug string `json:"slug"`
+	// The row's key on the list, where a room you cannot enter has no slug
+	// to be keyed by (#1205, doorOf). Not a door: nothing routes by id.
+	ID string `json:"id,omitempty"`
+	// Absent on a list row the caller may not enter — the slug is the door.
+	Slug string `json:"slug,omitempty"`
 	Code string `json:"code,omitempty"` // members only — the code IS the invite
 	Name string `json:"name"`
 	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
@@ -443,8 +447,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		// The palette rides the list (#468): a thread read from outside the
 		// room reacts in the room's own vocabulary without opening the room —
 		// which handleGet would count as reading it.
-		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
-			Cheers: cheerSet(room.Cheers)}
+		entry := roomJSON{ID: store.UUIDString(room.ID), Slug: room.Slug, Name: room.Name, Listed: room.Listed,
+			Icon: room.Icon, Role: room.Role, Cheers: cheerSet(room.Cheers)}
 		entry.MemberCount = int(room.MemberCount)
 		entry.Access = accessOf(room.CrewVisible, true, false)
 		// The sidebar groups by this (ADR-0038, and #1023's option C). Absent
@@ -493,9 +497,9 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, room := range others {
+		slug, access := doorOf(room)
 		out = append(out, roomJSON{
-			Slug: room.Slug, Name: room.Name, Icon: room.Icon,
-			Access: accessOf(room.CrewVisible, room.Enterable, room.Administers),
+			ID: store.UUIDString(room.ID), Slug: slug, Name: room.Name, Icon: room.Icon, Access: access,
 			Crew: &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
 				Role: crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
@@ -637,8 +641,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					AvatarURL: member.AvatarUrl, AvatarPreset: member.AvatarPreset,
 					Role: member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
-					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
-					Badges:   member.Badges,
+					JoinedAt:   member.JoinedAt.Time.Format("2006-01-02"),
+					Badges:     member.Badges,
 					CrewBanned: member.Role == "banned" && crewBanned[member.ID],
 				})
 			}

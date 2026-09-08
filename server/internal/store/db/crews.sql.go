@@ -451,7 +451,7 @@ with mine as (
     union
     select c.id from crews c where c.owner_id = $1
 )
-select r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
+select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
        c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
        exists (select 1 from visible_rooms v
                where v.room_id = r.id and v.user_id = $1)::boolean as enterable,
@@ -467,6 +467,7 @@ order by r.created_at
 `
 
 type ListCrewRoomsForRow struct {
+	ID          pgtype.UUID
 	Slug        string
 	Name        string
 	Icon        string
@@ -495,6 +496,7 @@ func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]L
 	for rows.Next() {
 		var i ListCrewRoomsForRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.Slug,
 			&i.Name,
 			&i.Icon,

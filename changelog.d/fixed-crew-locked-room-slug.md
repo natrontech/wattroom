@@ -1,0 +1,1 @@
+- A room you made private no longer hands its link to crew-mates who are not in it. The sidebar and the crew page showed "private — you are not in this room" but still carried the room's address underneath, and the address is the door: anyone who found it could walk in. Locked rooms now travel without it. (#1205)

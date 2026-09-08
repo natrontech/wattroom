@@ -263,9 +263,9 @@
 
 		<h2 class="eyebrow mt-8">rooms</h2>
 		<ul class="divide-ink/5 panel mt-2 divide-y">
-			{#each crew.rooms as room (room.slug)}
+			{#each crew.rooms as room (room.id)}
 				{@const mark = accessMark(room.access)}
-				{@const open = reachable(room.access)}
+				{@const open = reachable(room.access) && !!room.slug}
 				<li>
 					<svelte:element
 						this={open ? 'a' : 'div'}
