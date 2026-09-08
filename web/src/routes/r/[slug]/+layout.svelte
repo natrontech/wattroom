@@ -125,26 +125,56 @@
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
-			<p class="text-muted mt-2 text-sm">
-				{#if crewName}
-					Open to everyone in {crewName} — that includes you.
-				{:else}
-					You have been invited to ride here.
-				{/if}
-			</p>
-			<button
-				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
-				disabled={busy}
-				class="btn btn-primary btn-lg mt-6"
-				>{crewName ? 'Walk in' : `Join ${room.name}`}</button
-			>
+			{#if room.canEnter}
+				<p class="text-muted mt-2 text-sm">
+					{#if crewName}
+						Open to everyone in {crewName} — that includes you.
+					{:else}
+						This room is yours to walk into.
+					{/if}
+				</p>
+				<button
+					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
+					disabled={busy}
+					class="btn btn-primary btn-lg mt-6">Walk in</button
+				>
+			{:else if room.inCrew}
+				<!-- A crew-mate at a private room (#1236): the room owner or a
+				     crew admin holds the key, and no button here would work. -->
+				<p class="text-muted mt-2 text-sm">
+					This room is private. Its owner can let you in, or open it to the
+					crew.
+				</p>
+			{:else if room.listed}
+				<!-- A listed room is a public door into its crew (ADR-0039,
+				     ADR-0038 amended): joining it joins the crew. -->
+				<p class="text-muted mt-2 text-sm">
+					This room is listed for everyone on WattRoom. Joining it puts you in
+					its crew, and its other open rooms are yours to walk into.
+				</p>
+				<button
+					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
+					disabled={busy}
+					class="btn btn-primary btn-lg mt-6">Join {room.name}</button
+				>
+			{:else}
+				<!-- Rooms have no codes or links of their own (#1236): the way in
+				     is the crew's invite, and the door says so instead of
+				     offering a button that fails. -->
+				<p class="text-muted mt-2 text-sm">
+					This room belongs to a crew you are not in. Ask whoever rides here for
+					the crew's invite link.
+				</p>
+			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
-			<!-- Privacy is architecture (WATTROOM.md): say what the room sees
-			     before the button, not in a policy page after it. -->
-			<p class="text-muted/70 mt-4 text-[11px]">
-				Your watts are visible to this room while you ride here, and nowhere
-				else.
-			</p>
+			{#if room.canEnter || room.listed}
+				<!-- Privacy is architecture (WATTROOM.md): say what the room sees
+				     before the button, not in a policy page after it. -->
+				<p class="text-muted/70 mt-4 text-[11px]">
+					Your watts are visible to this room while you ride here, and nowhere
+					else.
+				</p>
+			{/if}
 		</div>
 	</main>
 {:else if !room}

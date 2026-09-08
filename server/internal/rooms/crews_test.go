@@ -37,12 +37,22 @@ func (h *harness) makePrivate(t *testing.T, slug string) {
 	}
 }
 
-// join is the by-link join, asserted to succeed.
+// enter is the front door (#1236): the crew by its code, then the room by
+// its address. Asserted to succeed at both.
+func (h *harness) enter(t *testing.T, who, code, slug string) {
+	t.Helper()
+	if status, body := h.call(t, who, http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("%s could not join the crew: %d %v", who, status, body)
+	}
+	if status, _ := h.call(t, who, http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("%s could not enter %s: %d", who, slug, status)
+	}
+}
+
+// join enters a room as a crew member would: through the crew's door first.
 func (h *harness) join(t *testing.T, who, slug string) {
 	t.Helper()
-	if status, _ := h.call(t, who, http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
-		t.Fatalf("%s could not join %s: %d", who, slug, status)
-	}
+	h.enter(t, who, codeOf(h.crewOf(t, slug)), slug)
 }
 
 // accessIn reads the access state the room list reports for slug, "" if the
@@ -163,10 +173,13 @@ func TestTheRoomListSaysWhatYouMayDoInEachRoom(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
-	for _, slug := range []string{open, private} {
-		if got := h.accessIn(t, "carol", slug); got != "admin" {
-			t.Errorf("a non-member crew admin reads %s as %q, want admin", slug, got)
-		}
+	// An admin is in the crew (#1236: a row is membership), so the open room
+	// is open to her; the private one she administers without entering.
+	if got := h.accessIn(t, "carol", open); got != "open" {
+		t.Errorf("a crew admin reads the open room as %q, want open", got)
+	}
+	if got := h.accessIn(t, "carol", private); got != "admin" {
+		t.Errorf("a non-member crew admin reads the private room as %q, want admin", got)
 	}
 
 	// A room ban keeps the room off the list entirely, whatever else is true.
@@ -342,14 +355,14 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 		}
 	}
 	// Succession clears the successor's row too: bob, an admin, inherits
-	// when alice's last room goes, and inherits clean.
+	// when alice leaves for good (the purge path), and inherits clean.
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
 		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
-	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+mine, ""); status != http.StatusNoContent {
-		t.Fatalf("delete: %d", status)
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["alice"].ID); err != nil {
+		t.Fatalf("release: %v", err)
 	}
 	if roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID); len(roles) != 0 {
 		t.Errorf("the successor inherited with a role row still on them: %v", roles)
@@ -494,7 +507,17 @@ func TestTheCrewPageShowsAMemberOnlyThePeopleTheyCouldAlreadySee(t *testing.T) {
 	private, _ := h.createRoom(t, "alice", "Crew People Private Room")
 	h.makePrivate(t, private)
 	h.join(t, "bob", open)
-	h.join(t, "carol", private)
+	// carol is let into the private room (#1225): the crew's door, then the
+	// named exception, then the room.
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(h.crewOf(t, open)))); status != http.StatusOK {
+		t.Fatalf("carol could not join the crew: %d", status)
+	}
+	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{RoomID: roomID(t, h, private), UserID: h.users.byToken["carol"].ID}); err != nil {
+		t.Fatalf("grant: %v", err)
+	}
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+private+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("carol could not enter the private room she was let into: %d", status)
+	}
 	path := "/api/crews/" + store.UUIDString(h.crewOf(t, open).ID)
 
 	names := func(who string) []string {
@@ -645,35 +668,41 @@ func TestABannedRowSaysWhetherTheCrewBannedThemToo(t *testing.T) {
 // ADR-0038's second amendment: a crew is never left ownerless. Deleting the
 // last room deletes the crew; an owner who no longer stands in any of its
 // rooms hands it to docs/SPEC.md's successor.
-func TestACrewIsNeverLeftOwnerless(t *testing.T) {
+func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Crew Last Room")
+	slug, code := h.createRoom(t, "alice", "Crew Last Room")
 	crew := h.crewOf(t, slug)
+	h.enter(t, "bob", code, slug)
+
+	// A crew with no rooms left is still a crew (#1236): its people stay, and
+	// its owner opens the next room in it.
 	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
 		t.Fatalf("delete: %d", status)
 	}
-	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err == nil {
-		t.Errorf("a crew with no rooms left survived")
+	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err != nil {
+		t.Fatalf("a crew with no rooms left was deleted: %v", err)
+	}
+	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.byToken["bob"].ID}); role != "member" {
+		t.Errorf("bob's standing went with the room: %q, want member", role)
 	}
 
-	// Bob's room moved into alice's crew (the schema allows it even though
-	// no rider-facing path does yet); alice deletes her last room there.
-	mine, _ := h.createRoom(t, "alice", "Crew Handover Room")
-	theirs, _ := h.createRoom(t, "bob", "Crew Handover Guest Room")
-	crew = h.crewOf(t, mine)
-	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{
-		ID: roomID(t, h, theirs), CrewID: crew.ID, CrewVisible: true,
-	}); err != nil {
-		t.Fatalf("place: %v", err)
-	}
-	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+mine, ""); status != http.StatusNoContent {
-		t.Fatalf("delete: %d", status)
+	// The owner leaving for good — the purge path — hands it to the
+	// longest-standing member (docs/SPEC.md), never leaving it ownerless.
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["alice"].ID); err != nil {
+		t.Fatalf("release: %v", err)
 	}
 	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
 	if err != nil {
-		t.Fatalf("the crew was deleted while bob's room still stood in it: %v", err)
+		t.Fatalf("the crew was deleted while bob still stood in it: %v", err)
 	}
 	if after.OwnerID != h.users.byToken["bob"].ID {
-		t.Errorf("the crew passed to %s, want bob, the one person left in it", store.UUIDString(after.OwnerID))
+		t.Errorf("the crew passed to %s, want bob", store.UUIDString(after.OwnerID))
+	}
+	// And with nobody left to own it, it goes.
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["bob"].ID); err != nil {
+		t.Fatalf("release: %v", err)
+	}
+	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err == nil {
+		t.Errorf("a crew with nobody in it survived")
 	}
 }

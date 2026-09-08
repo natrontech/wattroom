@@ -22,10 +22,7 @@ func (h *harness) rawGet(t *testing.T, path string) (int, string, http.Header) {
 func TestCalendarFeed(t *testing.T) {
 	h := setup(t)
 	slug, code := h.createRoom(t, "alice", "Feed Riders")
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
-		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
-		t.Fatalf("bob join: %d", status)
-	}
+	h.enter(t, "bob", code, slug)
 
 	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
 	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
@@ -94,10 +91,7 @@ func TestCalendarFeed(t *testing.T) {
 func TestRiderCalendarFeed(t *testing.T) {
 	h := setup(t)
 	slug, code := h.createRoom(t, "alice", "Feed Riders")
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
-		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
-		t.Fatalf("bob join: %d", status)
-	}
+	h.enter(t, "bob", code, slug)
 
 	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
 	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)

@@ -20,7 +20,6 @@
 	import { goto } from '$app/navigation';
 	import Award from '@lucide/svelte/icons/award';
 	import Crown from '@lucide/svelte/icons/crown';
-	import Copy from '@lucide/svelte/icons/copy';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import UserMinus from '@lucide/svelte/icons/user-minus';
 	import UserX from '@lucide/svelte/icons/user-x';
@@ -156,11 +155,6 @@
 			);
 		}
 		return entries;
-	}
-
-	async function copyInvite() {
-		await navigator.clipboard.writeText(`${location.origin}/r/${room.slug}`);
-		toasts.push('Invite link copied.');
 	}
 </script>
 
@@ -359,19 +353,6 @@
 			{/each}
 		</ul>
 	{/if}
-
-	<h3 class="eyebrow mt-8">invite</h3>
-	<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
-		<span class="min-w-0">
-			<span class="eyebrow">room code</span>
-			<span class="font-display block text-lg font-bold tracking-widest"
-				>{room.code}</span
-			>
-		</span>
-		<button onclick={copyInvite} class="btn btn-secondary btn-xs ml-auto"
-			><Copy size={13} /> Copy invite link</button
-		>
-	</div>
 
 	{#if room.medals.length > 0}
 		<h3 class="eyebrow mt-8">medal history</h3>

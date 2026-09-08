@@ -31,13 +31,7 @@ test('a rider fixes their line and the room sees the new words', async ({
 	const room = await rooms.open(a, name);
 
 	const b = await riders(B);
-	await b.goto('/home#rooms');
-	await b.locator('#join-code').fill(room.code);
-	await b.getByRole('button', { name: 'Join room' }).click();
-	await expect(
-		b.getByRole('heading', { name }),
-		`${B} never landed in "${name}" with the code ${room.code}`,
-	).toBeVisible({ timeout: 15_000 });
+	await rooms.enter(b, room);
 
 	// Both standing in the room's chat, so both are on the tick.
 	for (const rider of [a, b]) await rider.goto(`/r/${room.slug}/chat`);

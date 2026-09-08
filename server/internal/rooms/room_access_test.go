@@ -38,11 +38,11 @@ func TestACrewAdminOpensARoomToTheCrewWithoutEnteringIt(t *testing.T) {
 	if got := h.accessIn(t, "bob", private); got != "open" {
 		t.Errorf("opened by an admin: bob reads %q, want open", got)
 	}
-	// Opening it admits the CREW, and crew membership follows room membership
-	// (ADR-0038): carol stands in none of its rooms, so for her the row is
-	// still admin — manageable, not enterable. The room's own name is untouched.
-	if got := h.accessIn(t, "carol", private); got != "admin" {
-		t.Errorf("carol reads %q after opening it, want admin still", got)
+	// Opening it admits the crew, and carol's admin row IS crew membership
+	// (#1236), so the room she could only administer is now hers to enter.
+	// The room's own name is untouched.
+	if got := h.accessIn(t, "carol", private); got != "open" {
+		t.Errorf("carol reads %q after opening it, want open", got)
 	}
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+private, "")
 	if body["name"] != "Crew Access Private" || body["crewVisible"] != true {

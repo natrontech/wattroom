@@ -36,6 +36,8 @@ export interface Crew {
 	id: string;
 	name: string;
 	icon?: string;
+	/** The invite (#1236): the crew's code, shared as `/c/{code}`. */
+	code?: string;
 	/** What YOU are to it. */
 	role: CrewRole;
 	ownerId: string;
@@ -107,4 +109,36 @@ export function setRoomAccess(
 		method: 'PATCH',
 		json: { crewVisible },
 	});
+}
+
+/** What a share link shows before the join (#1236): the name, and how many. */
+export interface CrewDoor {
+	name: string;
+	icon?: string;
+	members: number;
+}
+
+export function crewDoor(
+	code: string,
+	fetcher: typeof fetch = fetch,
+): Promise<ApiResult<CrewDoor>> {
+	return loadApi<CrewDoor>(
+		fetcher,
+		`/api/crews/by-code/${encodeURIComponent(code)}`,
+	);
+}
+
+/** The one way in (ADR-0038 amended, #1236): the crew, by its code. */
+export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
+	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
+}
+
+/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
+export function leaveCrew(id: string): Promise<ApiResult<void>> {
+	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
+}
+
+/** The share link a code becomes. */
+export function inviteLink(code: string): string {
+	return `${location.origin}/c/${code}`;
 }

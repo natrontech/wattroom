@@ -65,14 +65,8 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	);
 	expect(patched, `could not set ${B}'s weight to ${B_KG} kg`).toBe(200);
 
-	// B gets in the way a guest does: six characters, no link.
-	await b.goto('/home#rooms');
-	await b.locator('#join-code').fill(room.code);
-	await b.getByRole('button', { name: 'Join room' }).click();
-	await expect(
-		b.getByRole('heading', { name }),
-		`${B} never landed in "${name}" after joining with the code ${room.code}`,
-	).toBeVisible({ timeout: 15_000 });
+	// B gets in the way a guest does: the crew's six characters, then the room.
+	await rooms.enter(b, room);
 
 	// Both on the trainer, both on the Training place — the surface every
 	// assertion below reads.

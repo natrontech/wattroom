@@ -7,7 +7,6 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
@@ -23,6 +22,9 @@
 	} from '$lib/context-menu.svelte';
 	import {
 		fetchCrew,
+		inviteLink,
+		joinCrew,
+		leaveCrew as leaveCrewApi,
 		renameCrew,
 		setCrewRole,
 		setRoomAccess,
@@ -34,6 +36,7 @@
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import Copy from '@lucide/svelte/icons/copy';
 	import Crown from '@lucide/svelte/icons/crown';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -270,53 +273,41 @@
 		];
 	}
 
-	// Leaving the crew (#1228). Crew membership follows room membership
-	// (ADR-0038), so this is leaving every room of the crew you are in — said
-	// so, and done in one move instead of N settings pages. Refused up front
-	// when you own a room here: a room never leaves its crew, so neither can
-	// its owner — hand it on first (#1227). Undo over confirm (errors.md):
-	// the codes are read before leaving, since a non-member cannot read them.
+	// The invite (#1236): the crew's code and its link, every member's to
+	// share — rooms have no codes of their own any more.
+	async function copyInvite() {
+		if (!crew?.code) return;
+		await navigator.clipboard.writeText(inviteLink(crew.code));
+		toasts.push('Invite link copied.');
+	}
+
+	// Leaving the crew (#1228, #1236): one call takes the membership and every
+	// room of the crew you were in. Refused up front when you own a room here:
+	// a room never leaves its crew, so neither can its owner — hand it on
+	// first (#1227). Undo rejoins by the code the client still holds.
 	const myRooms = $derived(
 		presence.rooms.filter((r) => r.crew?.id === crew?.id && !!r.role),
 	);
 	const ownedHere = $derived(myRooms.filter((r) => r.role === 'owner'));
 	async function leaveCrew() {
-		if (!crew || !account.me || ownedHere.length) return;
+		if (!crew || ownedHere.length) return;
 		const leaving = crew;
-		const rooms = myRooms;
+		const standing = myRooms.some(
+			(r) => r.slug === roomConnection.current?.slug,
+		);
 		busy = true;
-		const codes = await Promise.all(
-			rooms.map((r) =>
-				api<{ code?: string }>(`/api/rooms/${r.slug}`).then((res) =>
-					res.ok ? res.data.code : undefined,
-				),
-			),
-		);
-		const results = await Promise.all(
-			rooms.map((r) =>
-				api(`/api/rooms/${r.slug}/members/${account.me?.id}`, {
-					method: 'DELETE',
-				}),
-			),
-		);
+		const res = await leaveCrewApi(leaving.id);
 		busy = false;
-		const failed = results.find((res) => !res.ok);
-		if (failed && !failed.ok) {
-			toasts.push(failed.error.message, { tone: 'error' });
-			presence.reload();
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
-		if (rooms.some((r) => r.slug === roomConnection.current?.slug))
-			roomConnection.leave();
+		if (standing) roomConnection.leave();
 		presence.reload();
-		const rejoin = codes.filter((c): c is string => !!c);
+		const code = leaving.code;
 		toasts.push(`You left ${leaving.name}.`, {
-			undo: rejoin.length
-				? () => {
-						for (const code of rejoin)
-							void api('/api/rooms/join', { method: 'POST', json: { code } });
-						presence.reload();
-					}
+			undo: code
+				? () => void joinCrew(code).then(() => presence.reload())
 				: undefined,
 		});
 		await goto('/home');
@@ -452,6 +443,25 @@
 			<p class="text-muted mt-2 text-xs">
 				Named after you until you rename it — click the name.
 			</p>
+		{/if}
+
+		{#if crew.code}
+			<h2 class="eyebrow mt-8">invite</h2>
+			<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+				<span class="min-w-0">
+					<span class="eyebrow">crew code</span>
+					<span class="font-display block text-lg font-bold tracking-widest"
+						>{crew.code}</span
+					>
+				</span>
+				<span class="text-muted min-w-0 flex-1 text-xs">
+					Anyone with it joins {crew.name} and walks into its open rooms. Rooms have
+					no codes of their own.
+				</span>
+				<button onclick={copyInvite} class="btn btn-secondary btn-xs shrink-0"
+					><Copy size={13} /> Copy invite link</button
+				>
+			</div>
 		{/if}
 
 		<div class="mt-8 flex items-end justify-between gap-3">
@@ -612,7 +622,7 @@
 			</ul>
 		{/if}
 
-		{#if !owner && myRooms.length}
+		{#if !owner}
 			<!-- The way out (#1228): the one thing a member can do to the crew.
 			     Crew membership follows room membership, so it says exactly
 			     what it does, and the danger token sits last (ux.md). -->
@@ -625,12 +635,12 @@
 							: `${ownedHere.length} rooms`} here, and a room never leaves its crew
 						— hand {ownedHere.length === 1 ? 'it' : 'them'} to a member first, then
 						leave.
+					{:else if myRooms.length}
+						Leaving takes you out of {crew.name} and the {myRooms.length === 1
+							? 'room'
+							: `${myRooms.length} rooms`} of it you are in. The code gets you back.
 					{:else}
-						You are in {crew.name} through {myRooms.length === 1
-							? '1 room'
-							: `${myRooms.length} rooms`}. Leaving {myRooms.length === 1
-							? 'it'
-							: 'them all'} is leaving the crew.
+						Leaving takes you out of {crew.name}. The code gets you back.
 					{/if}
 				</p>
 				<button
