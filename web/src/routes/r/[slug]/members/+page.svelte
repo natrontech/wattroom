@@ -3,6 +3,7 @@
 	// half. The people column is the live read: who is here, who is talking,
 	// who is holding target. This is roles, medals and the invite, which is
 	// what /rooms used to carry.
+	import { confirm } from '$lib/confirm.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
@@ -69,13 +70,13 @@
 	// Removing a member has no inverse call — rejoining takes the invite
 	// link, not an undo this app can fire on its own — so it confirms
 	// instead of promising an undo it can't deliver (errors.md).
-	function confirmRemove(member: Member) {
-		if (
-			confirm(
-				`Remove ${member.displayName} from ${room.roomName}? They can rejoin with the room's invite link.`,
-			)
-		)
-			room.removeMember(member.id);
+	async function confirmRemove(member: Member) {
+		const ok = await confirm({
+			title: `Remove ${member.displayName} from ${room.roomName}?`,
+			body: "They can rejoin with the room's invite link.",
+			action: 'Remove',
+		});
+		if (ok) room.removeMember(member.id);
 	}
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
