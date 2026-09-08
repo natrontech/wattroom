@@ -147,3 +147,36 @@ export function dismissIntro(crewId: string): void {
 		/* fine — the card comes back next time, which is the safe direction */
 	}
 }
+
+/**
+ * What a crew you are NOT looking at is doing, summed over its rooms
+ * (#1148): riders with live watts, people in voice, lines unread. Only rooms
+ * you are a member of carry presence, so a crew's pulse is the part of it
+ * you could already see — never a signal from a room you never joined.
+ */
+export interface CrewPulse {
+	riding: number;
+	voice: number;
+	unread: number;
+}
+
+export function crewPulse(
+	rooms: readonly RailRoom[],
+	crewId: string,
+): CrewPulse {
+	return rooms
+		.filter((r) => r.crew?.id === crewId)
+		.reduce(
+			(a, r) => ({
+				riding: a.riding + (r.riding?.length ?? 0),
+				voice: a.voice + (r.voice?.length ?? 0),
+				unread: a.unread + (r.unread ?? 0),
+			}),
+			{ riding: 0, voice: 0, unread: 0 },
+		);
+}
+
+/** A crew doing nothing says nothing: the icon alone, no zeroes. */
+export function quiet(pulse: CrewPulse): boolean {
+	return !pulse.riding && !pulse.voice && !pulse.unread;
+}

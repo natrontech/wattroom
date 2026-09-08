@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crewsOf, currentCrew, sidebarGroups } from './crews';
+import { crewPulse, crewsOf, currentCrew, quiet, sidebarGroups } from './crews';
 import type { RailRoom } from '$lib/room/mockcompat';
 
 const natron = { id: 'c1', name: 'Natron', role: 'owner' as const };
@@ -68,5 +68,33 @@ describe('sidebarGroups', () => {
 
 	it('shows everything when no crew is on screen', () => {
 		expect(sidebarGroups(rooms, null, '').rooms).toHaveLength(4);
+	});
+});
+
+describe('crewPulse', () => {
+	const live: RailRoom[] = [
+		{
+			...room('thursday', natron),
+			riding: ['Sven', 'Lena'],
+			voice: ['Sven'],
+			unread: 3,
+		},
+		{ ...room('lounge', natron), voice: ['David', 'Kim'], unread: 2 },
+		{ ...room('sufferfest', sunday), riding: ['Ana'] },
+		room('orphan'),
+	];
+
+	it('sums riding, voice and unread over the crew rooms only', () => {
+		expect(crewPulse(live, 'c1')).toEqual({ riding: 2, voice: 3, unread: 5 });
+		expect(crewPulse(live, 'c2')).toEqual({ riding: 1, voice: 0, unread: 0 });
+	});
+
+	// Silent if it breaks: a crew with nothing on shows three zeroes on a
+	// surface read at three metres, and nothing errors. Seen red in the PR.
+	it('is quiet only when nothing at all is happening', () => {
+		expect(quiet(crewPulse(live, 'nobody'))).toBe(true);
+		expect(quiet({ riding: 1, voice: 0, unread: 0 })).toBe(false);
+		expect(quiet({ riding: 0, voice: 1, unread: 0 })).toBe(false);
+		expect(quiet({ riding: 0, voice: 0, unread: 1 })).toBe(false);
 	});
 });

@@ -23,11 +23,14 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { account } from '$lib/account.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
 		accessMark,
+		crewPulse,
 		crewsOf,
 		currentCrew,
 		dismissIntro,
@@ -37,7 +40,6 @@
 		rememberChosenCrew,
 		sidebarGroups,
 	} from './crews';
-	import CrewIntro from './CrewIntro.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -132,14 +134,20 @@
 			document.removeEventListener('keydown', key);
 		};
 	});
-	// The day-one card (#1151), once per crew you own. `seen` is state so a
-	// dismissal hides it without a reload.
-	let seen = $state(0);
-	const intro = $derived.by(() => {
-		seen;
-		return crew && crew.role === 'owner' && !introDismissed(crew.id)
-			? crew
-			: null;
+	// The day the crew arrives (#1151), said once and briefly: while the crew
+	// you own still carries the placeholder name the migration gave it, a
+	// toast names it and points at the page where the name is edited. Not a
+	// card in the sidebar — that spent forty pixels on a sentence — and it
+	// makes no claim about visibility, because none changed.
+	$effect(() => {
+		const own = crew;
+		if (!own || own.role !== 'owner' || introDismissed(own.id)) return;
+		if (own.name !== account.me?.displayName) return;
+		dismissIntro(own.id);
+		toasts.push(
+			`Your rooms live in a crew now, named “${own.name}” after you until you rename it.`,
+			{ href: `/crew/${own.id}`, seconds: 8 },
+		);
 	});
 </script>
 
@@ -455,21 +463,42 @@
 			{/if}
 		</div>
 	{/if}
-	{#if intro}
-		<!-- Shown once, after the migration, to the crew's owner (#1151). -->
-		<div class="px-2 pt-2">
-			<CrewIntro
-				id={intro.id}
-				name={intro.name}
-				rooms={rooms.filter((r) => r.crew?.id === intro.id).length}
-				onDismiss={() => {
-					dismissIntro(intro.id);
-					seen += 1;
-				}}
-			/>
+	{#if crew && crews.length > 1}
+		<!-- What the crews you are NOT looking at are doing (#1148): one crew
+		     at a time hides three quarters of the radar, and this row is the
+		     price option C pays back — riding, voice and unread summed over
+		     each crew's rooms, the icon alone when nothing is on. Riding is
+		     live data and takes the watt token; unread is chrome and takes the
+		     muted mark (#568). Wraps rather than scrolls sideways. -->
+		<div
+			class="border-ink/5 flex flex-wrap items-center gap-x-1 gap-y-0.5 border-b px-3 py-1"
+		>
+			{#each crews.filter((c) => c.id !== crew.id) as other (other.id)}
+				{@const pulse = crewPulse(rooms, other.id)}
+				<button
+					onclick={() => pick(other.id)}
+					title="{other.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new"
+					aria-label="{other.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new"
+					class="hover:bg-ink/5 text-muted/80 hover:text-ink flex min-h-7 items-center gap-1 rounded px-1.5 text-[10px]"
+				>
+					{@render crewBadge(other, 'h-5 w-5 rounded', 11, 'text-[10px]')}
+					{#if pulse.riding}
+						<span class="text-watt/90 flex items-center gap-0.5"
+							><RidingBars size={8} />{pulse.riding}</span
+						>
+					{/if}
+					{#if pulse.voice}
+						<span class="flex items-center gap-0.5"
+							><Headphones size={9} />{pulse.voice}</span
+						>
+					{/if}
+					{#if pulse.unread}
+						<span class={UNREAD_COUNT}>{unreadCount(pulse.unread)}</span>
+					{/if}
+				</button>
+			{/each}
 		</div>
 	{/if}
-
 	<div class="min-h-0 flex-1 overflow-y-auto px-2">
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
