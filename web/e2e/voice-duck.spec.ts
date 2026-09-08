@@ -7,8 +7,10 @@ import { signInAs } from './signin';
  * real AudioWorkletNode, lighting the real speaking ring on another rider's
  * tile. speaking.test.ts, duck.test.ts and av.svelte.test.ts all prove the
  * JS around the meter is correct GIVEN a level — vitest's happy-dom has no
- * Web Audio API at all, so nothing anywhere has ever proven the meter itself
- * produces one from a real voice.
+ * Web Audio API at all, so nothing anywhere had proven the meter itself
+ * produces one from a real voice. It didn't: this test is how #1160 was
+ * confirmed real and fixed (av-output.ts, `createMediaStreamSource` over
+ * `createMediaElementSource`).
  *
  * Needs `make infra`'s LiveKit container (e2e/server.js passes the same
  * devkey/secret `make dev-server` uses) and a real microphone signal, so this
@@ -131,15 +133,18 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		).toBeVisible({ timeout: 20_000 });
 
 		// A fresh navigation does not carry the "user activation" a prior
-		// click left on the page it replaced, so LiveKit's playback can start
-		// blocked (#645, av.svelte.ts's "any first click unblocks it") — a
-		// real gesture, not just being on the page, is what starts remote
-		// audio. A keypress rather than a click: a click's actionability wait
-		// (visible, stable, unobscured, hit-testable at that point) is one
-		// more thing that can stall against a page mid-layout, where a key
-		// event has no target to resolve at all.
-		await a.keyboard.press('Space');
-		await b.keyboard.press('Space');
+		// click left on the page it replaced, so remote playback can start
+		// blocked (#645): av.svelte.ts's onFirstGesture listens for exactly
+		// one event, `pointerdown` on `document`, and only that calls
+		// room.startAudio() — the one thing that actually plays the LiveKit
+		// audio elements a Web Audio tap reads from. A real click's own
+		// actionability wait (visible, stable, unobscured, hit-testable) can
+		// stall against a page mid-layout; dispatching the event directly,
+		// the way av.svelte.test.ts's own "any first click unblocks it" test
+		// already does, gets the one signal the app listens for with nothing
+		// to resolve against.
+		await a.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
+		await b.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
 
 		// B's fake microphone is already publishing a continuous tone. On A's
 		// screen, B's tile should light the speaking ring (presence-marks.ts's
