@@ -441,8 +441,18 @@ Electron is not a browser with a title bar. Four things Chrome does for you are 
 ### 15.2 macOS: signing is a correctness requirement, not a polish step
 
 - **Ad-hoc signing breaks capture, silently.** [electron-builder#9529](https://github.com/electron-userland/electron-builder/issues/9529): since **v26.0.13**, ad-hoc-signed macOS builds (`mac.identity: "-"` or the implicit fallback) lose Camera and Microphone — *no prompt, the stream resolves, and no frames or audio arrive*. A regression between 26.0.12 and 26.0.13. This is the worst failure shape this product has: the mic reports `live` and the room hears nothing.
-- **The Hardened Runtime denies by default, and notarization requires it.** So the trap is an app that is signed, notarized, launches clean, and still cannot see the trainer. Entitlements needed: `com.apple.security.cs.allow-jit` (V8 — electron-builder documents it as required to stop framework crashes), `com.apple.security.device.audio-input`, `.device.camera`, `.device.bluetooth`. (*keys stated from Apple's Hardened Runtime documentation; the page did not render for this pass, and only `allow-jit` was corroborated against a primary source — [electron-builder code signing](https://www.electron.build/docs/features/code-signing/code-signing-mac/). Confirm the other three against Apple before the signing PR.*)
-- **Helper processes need their own entitlements file.** #296 states the renderer's microphone lives in an Electron helper, so the entitlements must appear in both `entitlements.mac.plist` and an `.inherit.plist`. **unverified** — this pass did not confirm the inherit file's name or that electron-builder applies one by default. It is cheap to check and expensive to get wrong.
+- **The Hardened Runtime denies by default, and notarization requires it.** So the trap is an app that is signed, notarized, launches clean, and still cannot see the trainer. Four entitlements, each *extracted* from its own page in Apple's entitlement documentation — the page **title** is the evidence, since the bodies do not render for a fetcher:
+
+  | key | Apple's page title |
+  | --- | --- |
+  | [`com.apple.security.cs.allow-jit`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.cs.allow-jit) | "Allow execution of JIT-compiled code entitlement" — V8; electron-builder documents it as required to stop framework crashes |
+  | [`com.apple.security.device.audio-input`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.device.audio-input) | "Audio Input Entitlement" |
+  | [`com.apple.security.device.camera`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.device.camera) | "Camera entitlement" |
+  | [`com.apple.security.device.bluetooth`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.device.bluetooth) | "com.apple.security.device.bluetooth" |
+
+  The method is worth stating because it is the only one that worked: a canonical entitlement URL resolves and a fabricated one (`…device.bluetooth-nonsense-control`) returns 404, so a page existing at the canonical path *is* evidence the key is real. Titles were read; bodies were not.
+
+- **Helper processes need their own entitlements file — confirmed.** electron-builder auto-detects `build/entitlements.mac.plist` **and `build/entitlements.mac.inherit.plist`**, the inherit file applying to child processes (helpers, renderer). The renderer's microphone lives in a helper, so an entitlement present only in the main file leaves the mic dead. From electron-builder v27 the signing options (`hardenedRuntime`, `entitlements`, `entitlementsInherit`) moved under `mac.sign` — pin the config shape to the major actually used. ([electron-builder macOS docs](https://www.electron.build/docs/mac/), [notarization](https://www.electron.build/docs/features/code-signing/notarization/))
 
 ### 15.3 What the shell does not buy, and what it actually does
 
@@ -468,10 +478,10 @@ Playwright's `_electron` fixture can assert the packaged app launches, a window 
 
 ### 15.6 Open before the skeleton PR
 
-1. The three non-JIT entitlement keys, against Apple's own documentation.
-2. Whether electron-builder applies an inherit entitlements file to helpers by default, and its name.
-3. The macOS media-key behaviour.
-4. Which Electron major to pin, and whether macOS system audio through ScreenCaptureKit actually works on it — [ADR-0037](decisions/0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) names this as the thing that would reverse it.
+1. ~~The three non-JIT entitlement keys~~ — **resolved**, see the table in 15.2.
+2. ~~Whether electron-builder applies an inherit entitlements file~~ — **resolved**: `build/entitlements.mac.inherit.plist`, auto-detected, applied to child processes.
+3. The macOS media-key behaviour (15.4) — still carried from #296 unverified.
+4. Which Electron major to pin, and whether macOS system audio through ScreenCaptureKit actually works on it — [ADR-0037](decisions/0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) names this as the thing that would reverse it. This is the one that needs a machine, not a search.
 
 
 ---
