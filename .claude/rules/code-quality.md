@@ -12,7 +12,7 @@ Names describe behavior (`coalesceTick`, `armSprint`); one concept per file; fil
 
 ## When modifying existing code
 
-Read the whole file first; grep for callers before changing a signature and update every call site; update the tests of every function you touched. Changed a protocol struct → `make protocol`, commit both sides.
+Read the whole file first; grep for callers before changing a signature and update every call site; update the tests of every function you touched. **Find every consumer, not the ones the issue names** — an issue saying "X is only read by Y" is a hypothesis, and #1016's `ridingLocked` had a third caller nobody mentioned: the gauge the deploy guard refuses to restart under, which repointing would have let a rollout land mid-interval. A test that fails because you moved code is the test working: make it follow, never loosen it. Changed a protocol struct → `make protocol`, commit both sides.
 
 ## Size discipline
 
@@ -21,6 +21,7 @@ Soft ceilings — split in the same change when crossed: Go files ~400 lines, Sv
 ## Done-checklist for any change
 
 - [ ] No new duplication (function, type, magic number)
+- [ ] Any test written for a silent failure — one that would ship quietly rather than error — was seen to fail: break the code the way it would realistically break, confirm red, restore. A test you never saw fail is decoration
 - [ ] Colors/durations from theme tokens, product numbers from docs/SPEC.md
 - [ ] No dead or commented-out code
 - [ ] `make ci` green
