@@ -252,6 +252,37 @@ func TestTheCrewPageShowsItsPeopleAndItsBansToAdminsOnly(t *testing.T) {
 	}
 }
 
+// Person-visibility follows the rooms you may enter (#1135), on the crew page
+// too: a member sees the crew-mates they share an enterable room with, and
+// not the members of a private room they are outside of. The owner, who acts
+// on people by id, sees everyone.
+func TestTheCrewPageShowsAMemberOnlyThePeopleTheyCouldAlreadySee(t *testing.T) {
+	h := setup(t)
+	open, _ := h.createRoom(t, "alice", "Crew People Open Room")
+	private, _ := h.createRoom(t, "alice", "Crew People Private Room")
+	h.makePrivate(t, private)
+	h.join(t, "bob", open)
+	h.join(t, "carol", private)
+	path := "/api/crews/" + store.UUIDString(h.crewOf(t, open).ID)
+
+	names := func(who string) []string {
+		_, body := h.call(t, who, http.MethodGet, path, "")
+		people, _ := body["people"].([]any)
+		out := []string{}
+		for _, p := range people {
+			person, _ := p.(map[string]any)
+			out = append(out, fmt.Sprint(person["displayName"]))
+		}
+		return out
+	}
+	if got := names("bob"); !slices.Equal(got, []string{"alice", "bob"}) {
+		t.Errorf("bob sees %v — carol is in a private room he cannot enter", got)
+	}
+	if got := names("alice"); !slices.Equal(got, []string{"alice", "bob", "carol"}) {
+		t.Errorf("the owner sees %v, want the whole crew", got)
+	}
+}
+
 // ADR-0038's third amendment, enforced at the API: a crew ban severs every
 // room in the crew on the spot, and lifting a ban at one level leaves the
 // other standing. Both halves over-permit silently if they regress, so this

@@ -328,11 +328,20 @@ from memberships m
 join rooms r on r.id = m.room_id
 join users u on u.id = m.user_id
 where r.crew_id = $1 and m.role <> 'banned'
+  and ($2::boolean
+       or exists (select 1 from visible_rooms v
+                  where v.room_id = r.id and v.user_id = $3))
   and not exists (select 1 from crew_roles cr
                   where cr.crew_id = r.crew_id and cr.user_id = u.id and cr.role = 'banned')
 group by u.id
 order by min(m.joined_at)
 `
+
+type ListCrewPeopleParams struct {
+	CrewID   pgtype.UUID
+	Everyone bool
+	Viewer   pgtype.UUID
+}
 
 type ListCrewPeopleRow struct {
 	ID           pgtype.UUID
@@ -343,11 +352,18 @@ type ListCrewPeopleRow struct {
 	RoomCount    int64
 }
 
-// Everyone the crew's rooms hold, once each (ADR-0038: crew membership
-// follows room membership). A crew ban takes a person off this list even
-// while their room rows stand — they are on the banned list instead.
-func (q *Queries) ListCrewPeople(ctx context.Context, crewID pgtype.UUID) ([]ListCrewPeopleRow, error) {
-	rows, err := q.db.Query(ctx, listCrewPeople, crewID)
+// The crew's people, once each (ADR-0038: crew membership follows room
+// membership). A crew ban takes a person off this list even while their room
+// rows stand — they are on the banned list instead.
+//
+// Person-visibility follows the rooms the VIEWER may enter (#1135), so a
+// plain member sees the crew-mates they share an enterable room with and
+// nobody from a private room they are outside of — `everyone` is false and
+// the join is narrowed to visible_rooms. The owner and admins act on people
+// by id (a ban, an admin grant), so for them it is true and the list is the
+// whole crew.
+func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) ([]ListCrewPeopleRow, error) {
+	rows, err := q.db.Query(ctx, listCrewPeople, arg.CrewID, arg.Everyone, arg.Viewer)
 	if err != nil {
 		return nil, err
 	}

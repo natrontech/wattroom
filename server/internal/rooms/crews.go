@@ -274,7 +274,9 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 			admin[store.UUIDString(row.UserID)] = true
 		}
 	}
-	people, err := s.store.Queries.ListCrewPeople(r.Context(), crew.ID)
+	people, err := s.store.Queries.ListCrewPeople(r.Context(), db.ListCrewPeopleParams{
+		CrewID: crew.ID, Everyone: administers(role), Viewer: user.ID,
+	})
 	if err != nil {
 		s.log.Error("list crew people failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
