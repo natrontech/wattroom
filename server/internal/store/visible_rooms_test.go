@@ -110,8 +110,8 @@ func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string)
 }
 
 // alice owns a crew with two rooms — one open to the crew, one private. bob is
-// a member of the open room only, so he is in the crew by derivation. carol is
-// in a room in a different crew entirely.
+// a member of the open room only, and in the crew by the row the fixture's
+// join writes alongside (#1236). carol is in a room in a different crew.
 func setupCrew(t *testing.T) *crewFixture {
 	t.Helper()
 	f := &crewFixture{st: open(t)}
