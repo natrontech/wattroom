@@ -16,6 +16,7 @@ function load(): {
 	music: number;
 	cues: number;
 	board: number;
+	share: number;
 	duck: number;
 	duckSelf: boolean;
 	riders: Record<string, number>;
@@ -38,6 +39,7 @@ function load(): {
 			music: clamp(raw.music, 0, 100, 70),
 			cues: clamp(raw.cues, 0, 1, 0.7),
 			board: clamp(raw.board, 0, 1, 0.7),
+			share: clamp(raw.share, 0, 1, 1),
 			duck: clamp(raw.duck, 0, 1, DUCK_DEFAULT),
 			duckSelf: raw.duckSelf === true,
 			riders,
@@ -48,6 +50,7 @@ function load(): {
 			music: 70,
 			cues: 0.7,
 			board: 0.7,
+			share: 1,
 			duck: DUCK_DEFAULT,
 			duckSelf: false,
 			riders: {},
@@ -68,6 +71,13 @@ let cues = $state(0.7);
  * down must not cost the rider their countdown.
  */
 let board = $state(0.7);
+/**
+ * Somebody else's computer, coming through the room (#1124, ADR-0037). Its
+ * own channel because ADR-0011 says every audible source gets one — and 1 by
+ * default, because a rider who started a share meant the room to hear it. It
+ * ducks under voice like the jukebox; this is the ceiling that dip sits under.
+ */
+let share = $state(1);
 let duck = $state(DUCK_DEFAULT);
 let duckSelf = $state(false);
 let riders = $state<Record<string, number>>({});
@@ -86,6 +96,7 @@ const initial = load();
 music = initial.music;
 cues = initial.cues;
 board = initial.board;
+share = initial.share;
 duck = initial.duck;
 duckSelf = initial.duckSelf;
 riders = initial.riders;
@@ -95,7 +106,16 @@ setDuckLevel(duck);
 
 function persist() {
 	mixerStorage.write(
-		JSON.stringify({ music, cues, board, duck, duckSelf, riders, names }),
+		JSON.stringify({
+			music,
+			cues,
+			board,
+			share,
+			duck,
+			duckSelf,
+			riders,
+			names,
+		}),
 	);
 }
 
@@ -123,6 +143,14 @@ export const mixer = {
 	},
 	setBoard(v: number) {
 		board = Math.min(1, Math.max(0, v));
+		persist();
+	},
+	/** Shared computer audio, 0–1 — see the note on the state above. */
+	get share() {
+		return share;
+	},
+	setShare(v: number) {
+		share = Math.min(1, Math.max(0, v));
 		persist();
 	},
 	/** Silent while the rider is away — the outputs each read this. */

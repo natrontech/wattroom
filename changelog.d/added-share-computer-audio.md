@@ -1,0 +1,1 @@
+- In the desktop app, sharing your screen now shares what your computer is playing too, so the room hears the same thing you do. It arrives on its own fader and ducks under voices like the jukebox does, and the sharing notice says when the room can hear you as well as see you. Requires macOS 14.2 or Windows; a screen shared from the browser is silent as before.

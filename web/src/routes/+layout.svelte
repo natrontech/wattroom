@@ -300,6 +300,7 @@
 					room={sharingRoom}
 					pathname={page.url.pathname}
 					sharing={av.sharing}
+					sharingAudio={av.sharingAudio}
 					onStop={() => void av.toggleShare()}
 				/>
 			{/if}

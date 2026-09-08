@@ -32,6 +32,14 @@ export interface AvState {
 	 */
 	away: boolean;
 	sharing: boolean;
+	/**
+	 * Whether the share is carrying this machine's SOUND as well as its
+	 * picture (#1124). Its own flag rather than an assumption from `sharing`:
+	 * loopback capture can be refused, unavailable, or silently dead, and a
+	 * rider must not be told the room can hear them when it cannot — nor left
+	 * unaware when it can.
+	 */
+	sharingAudio: boolean;
 	error: AvError | null;
 	/** Who is talking, measured rather than remembered (#987). */
 	speaking: Record<string, boolean>;
@@ -70,6 +78,7 @@ export function createAvState(): AvState {
 		camOn: false,
 		away: false,
 		sharing: false,
+		sharingAudio: false,
 		error: null,
 		speaking: {},
 		dropped: 0,

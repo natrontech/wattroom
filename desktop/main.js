@@ -152,14 +152,28 @@ function installHandlers(win) {
 						const picked = sources.find((s) => s.id === id);
 						// callback({}) is the deny path; a cancelled picker is a
 						// refusal, not an error to surface.
-						callback(picked ? { video: picked } : {});
+						//
+						// 'loopback' is the system-audio half of ADR-0037 (#1124):
+						// what the machine is playing, captured through CoreAudio's
+						// tap on macOS 14.2+ and WASAPI on Windows. Asked for
+						// alongside the video rather than instead of it — the room
+						// hears the machine that is showing it something.
+						callback(picked ? { video: picked, audio: 'loopback' } : {});
 					});
 				})
 				.catch(() => callback({}));
 		},
-		// Loopback audio is the system-audio half of ADR-0037 and is not wired
-		// yet — it needs its own issue and a per-platform check.
-		{ useSystemPicker: false },
+		// The native picker on macOS, our message box everywhere else.
+		//
+		// Not a preference: with an app-supplied picker, macOS creates the
+		// loopback track and never puts data in it (electron#52738) — live
+		// readyState, no error, silence. The system picker is also what raises
+		// the TCC "record system audio" prompt, so without it a rider is never
+		// asked for the permission the capture needs.
+		//
+		// Electron ignores the flag below macOS 15, where the app picker is
+		// still the only one, so this is safe to set for all of darwin.
+		{ useSystemPicker: process.platform === 'darwin' },
 	);
 
 	// 4. Navigation. Remote content that can navigate the shell anywhere is the
