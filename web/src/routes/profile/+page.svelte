@@ -1,12 +1,12 @@
 <script lang="ts">
-	import MixFaders from '$lib/room/MixFaders.svelte';
-	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Zap from '@lucide/svelte/icons/zap';
+	import CoachAccess from '$lib/profile/CoachAccess.svelte';
+	import VoiceAudio from '$lib/profile/VoiceAudio.svelte';
+	import YourData from '$lib/profile/YourData.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
@@ -16,14 +16,12 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
 	import { AVATAR_PRESETS } from '$lib/avatars';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import type { PageData } from './$types';
-	import type { ApiToken } from './+page';
 	import { untrack } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -40,42 +38,6 @@
 	// on failure it simply doesn't render.
 	let trend = $state(untrack(() => data.trend));
 
-	// Coach access tokens (ADR-0017). The secret exists client-side only in
-	// freshToken, until the rider hides it.
-	let apiTokens = $state<ApiToken[]>(untrack(() => data.tokens));
-	let tokenName = $state('');
-	let freshToken = $state<string | null>(null);
-	let tokenError = $state<string | null>(null);
-	async function loadTokens() {
-		const res = await api<{ tokens: ApiToken[] }>('/api/tokens');
-		if (res.ok) apiTokens = res.data?.tokens ?? [];
-	}
-	async function createToken() {
-		const res = await api<ApiToken & { token: string }>('/api/tokens', {
-			method: 'POST',
-			json: { name: tokenName.trim() },
-		});
-		if (!res.ok) {
-			tokenError = res.error.message;
-			return;
-		}
-		tokenError = null;
-		tokenName = '';
-		freshToken = res.data.token;
-		await loadTokens();
-	}
-	async function revokeToken(id: string) {
-		const res = await api<undefined>(`/api/tokens/${id}`, {
-			method: 'DELETE',
-		});
-		if (!res.ok) {
-			tokenError = res.error.message;
-			return;
-		}
-		tokenError = null;
-		apiTokens = apiTokens.filter((entry) => entry.id !== id);
-	}
-
 	// Decorative footer, not ride data: on failure it simply doesn't render.
 	// The release tag is the useful half now (#345); the commit stays for the
 	// case where a build is not a release and reports "dev".
@@ -87,14 +49,6 @@
 	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
-	// The AV chain only exists while you are in a room; the pickers say so
-	// rather than rendering controls that tune nothing.
-	const av = $derived(roomConnection.current?.av);
-	// The store only re-reads devices after a connect or a hot-plug; a rider
-	// choosing a mic here has usually done neither yet (#658).
-	$effect(() => {
-		void av?.refreshDevices();
-	});
 
 	// null = no anchor set; saving null clears it (ADR-0014, device-local).
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
@@ -102,9 +56,6 @@
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
 	let suggestionDismissed = $state(false);
-	let confirmDelete = $state(false);
-	let deleteConfirmation = $state('');
-	let deleting = $state(false);
 
 	// The root layout owns the server → localStorage pull; this only fills
 	// the form fields.
@@ -162,18 +113,6 @@
 				singleSpeed,
 				lthr: lthr ?? undefined,
 			}) ?? 'Saved.';
-	}
-
-	async function deleteAccount() {
-		deleting = true;
-		const res = await api('/api/me', { method: 'DELETE' });
-		deleting = false;
-		if (res.ok) {
-			await account.signOut();
-			location.href = '/';
-		} else {
-			status = 'The deletion did not complete. Nothing was removed.';
-		}
 	}
 
 	const measured = $derived(profile.current.ftpMeasuredAt);
@@ -494,73 +433,7 @@
 		</section>
 
 		<!-- Coach access (ADR-0017): read-only tokens for your own AI/tools. -->
-		<section class="border-muted/15 mt-3 rounded-lg border p-6">
-			<h2 class="font-display font-bold">Coach access</h2>
-			<p class="text-muted mt-1 text-xs">
-				Read-only tokens for your own tools — a personal coach AI can read your
-				progression and rides over the API or MCP (<code
-					class="font-mono text-[11px]">{location.origin}/mcp</code
-				>). Your data only, never anyone else's.
-			</p>
-			{#if freshToken}
-				<div class="border-muted/30 mt-4 rounded-lg border border-dashed p-4">
-					<p class="text-xs font-semibold">
-						Copy it now — it is never shown again.
-					</p>
-					<code class="mt-2 block font-mono text-xs break-all select-all"
-						>{freshToken}</code
-					>
-					<p class="text-muted mt-3 text-[11px]">Hook it up to Claude Code:</p>
-					<code class="mt-1 block font-mono text-[11px] break-all select-all"
-						>claude mcp add --transport http wattroom {location.origin}/mcp
-						--header "Authorization: Bearer {freshToken}"</code
-					>
-					<button
-						onclick={() => (freshToken = null)}
-						class="btn-link mt-3 text-xs">Done, hide it</button
-					>
-				</div>
-			{/if}
-			{#if apiTokens.length > 0}
-				<ul class="mt-4 grid gap-2">
-					{#each apiTokens as entry (entry.id)}
-						<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-							<span class="text-ink font-semibold">{entry.name}</span>
-							<span class="text-muted">
-								created {new Date(entry.createdAt).toLocaleDateString()}
-								{entry.lastUsedAt
-									? `· last used ${new Date(entry.lastUsedAt).toLocaleDateString()}`
-									: '· never used'}
-							</span>
-							<button
-								onclick={() => void revokeToken(entry.id)}
-								class="btn-link ml-auto">Revoke</button
-							>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-			<form
-				class="mt-4 flex flex-wrap gap-2"
-				onsubmit={(e) => {
-					e.preventDefault();
-					void createToken();
-				}}
-			>
-				<input
-					bind:value={tokenName}
-					maxlength="60"
-					placeholder="Token name — e.g. claude coach"
-					class="input w-64"
-				/>
-				<button class="btn btn-secondary" disabled={!tokenName.trim()}
-					>Create token</button
-				>
-			</form>
-			{#if tokenError}
-				<p class="text-muted mt-2 text-xs">{tokenError}</p>
-			{/if}
-		</section>
+		<CoachAccess initial={data.tokens} />
 
 		<!-- Privacy is architecture: say what is true, not what sounds good. -->
 		<!-- ADR-0020 moved these off the rail — they were living in a 208 px
@@ -568,61 +441,7 @@
 		     to be reached for mid-ride after all (#477), so the room carries a
 		     Sound panel with the same GateTune and MixFaders on it. This page
 		     stays the whole thing: the panel is the shortcut, not the home. -->
-		<section class="panel mt-8 p-6">
-			<h2 class="font-display font-bold">Voice &amp; audio</h2>
-			{#if !account.me?.avEnabled}
-				<!-- Capability gating (ux.md): no LiveKit, no voice, so no controls
-				     that would tune something that cannot run. -->
-				<p class="text-muted mt-2 text-sm">
-					Voice and camera are not configured on this server, so there is
-					nothing to tune here yet.
-				</p>
-			{:else}
-				<p class="text-muted mt-1 mb-5 text-sm">
-					Which devices this machine uses, how you transmit, and how loud
-					everything sits under everything else.
-				</p>
-				{#if av}
-					<VoiceSettings
-						micOn={av.micOn}
-						micLevel={av.micLevel}
-						transmitting={av.transmitting}
-						voiceMode={av.mode}
-						gateThreshold={av.gateThreshold}
-						effectiveThreshold={av.effectiveGateThreshold}
-						onVoiceMode={(m) => av.setMode(m)}
-						onGateThreshold={(t) => av.setGateThreshold(t)}
-						micTesting={av.micTesting}
-						onMicTest={() => void av.toggleMicTest()}
-						onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
-						devices={{ mics: av.mics, cams: av.cams, outs: av.outs }}
-						micId={av.micId}
-						camId={av.camId}
-						outId={av.outId}
-						canPickOutput={av.canPickOutput}
-						onDevice={(kind, id) =>
-							kind === 'mic'
-								? void av.setMic(id)
-								: kind === 'cam'
-									? void av.setCam(id)
-									: av.setOut(id)}
-					/>
-				{:else}
-					<!-- The mix needs no room: the cues ring for a DM and a friend
-					     request too, and the you-panel's cue fader (#898) must not
-					     be the only way to reach one (ux.md). Devices and the gate
-					     stay behind a live connection — they have nothing to show
-					     without one. -->
-					<div class="mt-3 max-w-sm">
-						<MixFaders />
-					</div>
-					<p class="text-muted mt-4 text-sm">
-						Open a room to pick devices and set your gate — the meter needs a
-						live mic to show you a level.
-					</p>
-				{/if}
-			{/if}
-		</section>
+		<VoiceAudio />
 
 		<!-- The rest of what the cog carries (ADR-0020): occasional things that
 		     were destinations of their own before the sidebar shrank to three. -->
@@ -660,68 +479,7 @@
 			</ul>
 		</section>
 
-		<section class="border-muted/15 mt-3 rounded-lg border p-6">
-			<h2 class="font-display font-bold">Your data</h2>
-			<ul class="text-muted mt-3 space-y-1.5 text-xs">
-				<li>Rides are private by default — sharing is per ride, and opt-in.</li>
-				<li>
-					Live power is visible only inside a room, only while you're riding it.
-				</li>
-				<li>
-					Voice and camera are never recorded. They pass through and are gone.
-				</li>
-				<li>Heart rate is health data and is treated as such.</li>
-			</ul>
-			<div class="mt-5 flex flex-wrap gap-2">
-				<a href="/api/me/export" class="btn btn-secondary">Export everything</a>
-				<button
-					onclick={() => account.signOut()}
-					class="btn-link self-center text-xs">Sign out</button
-				>
-			</div>
-
-			<!-- The destructive action lives apart from the routine ones (#126). -->
-			<div class="border-ink/5 mt-6 border-t pt-4">
-				<button onclick={() => (confirmDelete = true)} class="btn btn-danger"
-					>Delete account</button
-				>
-			</div>
-
-			{#if confirmDelete}
-				<!-- Confirmation dialogs are for the genuinely destructive only. -->
-				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-5">
-					<p class="text-sm font-medium">
-						This deletes everything, permanently.
-					</p>
-					<p class="text-muted mt-1.5 text-xs leading-relaxed">
-						Every ride and its samples, your power curve, your XP, your medals
-						and memberships. There is no undo and no backup we can restore from
-						— that's the point of a full purge.
-					</p>
-					<label class="mt-4 block">
-						<span class="text-muted text-[11px]">Type DELETE to confirm</span>
-						<input
-							bind:value={deleteConfirmation}
-							class="input mt-1 w-full font-mono"
-						/>
-					</label>
-					<div class="mt-3 flex gap-2">
-						<button
-							onclick={deleteAccount}
-							disabled={deleteConfirmation !== 'DELETE' || deleting}
-							class="btn btn-danger-solid">Delete my account</button
-						>
-						<button
-							onclick={() => {
-								confirmDelete = false;
-								deleteConfirmation = '';
-							}}
-							class="btn btn-secondary">Cancel</button
-						>
-					</div>
-				</div>
-			{/if}
-		</section>
+		<YourData onError={(m) => (status = m)} />
 	{/if}
 
 	<footer class="text-muted/60 mt-10 text-center font-mono text-[11px]">

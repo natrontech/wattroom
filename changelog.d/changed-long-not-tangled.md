@@ -1,0 +1,1 @@
+- Nothing changes for riders: the profile page and the sidebar were split into smaller files behind the scenes, with no change to what either shows or does.
