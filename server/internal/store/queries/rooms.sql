@@ -1,10 +1,7 @@
 -- name: CreateRoom :one
-insert into rooms (code, slug, name, owner_id)
-values ($1, $2, $3, $4)
+insert into rooms (slug, name, owner_id)
+values ($1, $2, $3)
 returning *;
-
--- name: GetRoomByCode :one
-select * from rooms where code = $1;
 
 -- name: GetRoomBySlug :one
 select * from rooms where slug = $1;

@@ -88,9 +88,8 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresenc
 func shareRoom(t *testing.T, st *store.Store, users *fakeUsers, slug string, names ...string) db.Room {
 	t.Helper()
 	owner := users.byToken[names[0]]
-	code := (slug + "AAAAAA")[:6] // rooms.code is exactly six characters
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: code, Slug: slug, Name: slug, OwnerID: owner.ID,
+		Slug: slug, Name: slug, OwnerID: owner.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

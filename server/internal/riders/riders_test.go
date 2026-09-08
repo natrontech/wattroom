@@ -94,7 +94,7 @@ func (h *harness) id(name string) string { return store.UUIDString(h.users.byTok
 func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: (slug + "AAAAAA")[:6], Slug: slug, Name: slug, OwnerID: h.users.byToken[names[0]].ID,
+		Slug: slug, Name: slug, OwnerID: h.users.byToken[names[0]].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

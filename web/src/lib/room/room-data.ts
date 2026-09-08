@@ -81,7 +81,6 @@ export interface Room {
 	icon?: string;
 	cheers?: string[];
 	soundPack?: string;
-	code?: string;
 	role?: string;
 	/** The outsider's two facts (#1236): does the door open, are you in the crew. */
 	canEnter?: boolean;

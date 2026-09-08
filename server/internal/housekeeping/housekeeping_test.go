@@ -101,7 +101,7 @@ func TestSweepPrunesRecapsPastRetentionWithoutAWrite(t *testing.T) {
 	st := open(t)
 	u := user(t, st)
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "HK0001", Slug: "housekeeping-recaps", Name: "Housekeeping", OwnerID: u.ID,
+		Slug: "housekeeping-recaps", Name: "Housekeeping", OwnerID: u.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

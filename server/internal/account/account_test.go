@@ -121,7 +121,7 @@ func gzipped(t *testing.T, raw string) []byte {
 func (h *harness) createRoom(t *testing.T, owner string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "ACCT" + strings.ToUpper(owner[:2]), Slug: "account-test-" + owner, Name: "Account Test", OwnerID: h.id(owner),
+		Slug: "account-test-" + owner, Name: "Account Test", OwnerID: h.id(owner),
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

@@ -109,7 +109,6 @@ func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
 	t.Helper()
 	n := roomSeq.Add(1)
 	room, err := s.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code:    fmt.Sprintf("TR%04d", n),
 		Slug:    fmt.Sprintf("trophy-room-%d", n),
 		Name:    "Trophy Room",
 		OwnerID: members[0].ID,

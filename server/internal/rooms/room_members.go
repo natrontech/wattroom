@@ -88,17 +88,6 @@ func (s *Service) isBanned(r *http.Request, room db.Room, user db.User) bool {
 	return banned
 }
 
-// handleJoinByCode is retired (#1236): the invite is the crew's, and a room
-// code opens nothing. Kept one release so a client built before the cutover
-// hears why rather than a 404, then removed with the column (ADR-0019).
-func (s *Service) handleJoinByCode(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.users.RequireUser(w, r, "Sign in to join."); !ok {
-		return
-	}
-	httpx.WriteFieldError(w, http.StatusBadRequest, "invalid_request",
-		"Room codes are gone — the invite is the crew's now. Ask for the crew's code or link.", "code")
-}
-
 // handleSetRole: owner assigns or removes coach, bans, unbans (matrix:
 // owner-only). A ban also severs the target's live sockets and voice.
 func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
