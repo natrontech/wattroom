@@ -510,7 +510,7 @@
 	{/if}
 	<!-- pt-3: the crew header above has its own borders now, and the logo row's
 	     bottom padding no longer separates it from Home. -->
-	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
+	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-4">
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
 				{@const on = destination === entry.href}
