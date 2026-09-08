@@ -15,6 +15,7 @@
 	import Coffee from '@lucide/svelte/icons/coffee';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import VolumeX from '@lucide/svelte/icons/volume-x';
 	import Mic from '@lucide/svelte/icons/mic';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
@@ -49,6 +50,8 @@
 	const voiceError = $derived(av?.error ?? null);
 	/** You stepped out (#706) — a statement about YOU, so it lives here. */
 	const away = $derived(av?.away ?? false);
+	/** The browser muted this tab and the room went silent (#645). */
+	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
 
 	const onJoin = () => void av?.join();
 	const onMic = () => av?.toggleMic();
@@ -237,6 +240,27 @@
 			class="btn btn-xs mt-2 w-full {away ? 'btn-primary' : 'btn-secondary'}"
 			><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
 		>
+	{/if}
+	{#if showAv && playbackBlocked}
+		<!-- The room is playing and this rider can hear none of it: the browser
+		     refused to start audio with no gesture behind it, and once the
+		     voices run through the bus there is nothing else making a sound
+		     (#645). One press fixes it for the session.
+
+		     Quiet chrome, the same shape the jukebox already uses for the same
+		     refusal — this is not an error the rider made, and magenta means
+		     live data (ADR-0005). Persistent, because it is read a minute
+		     later from three metres away (errors.md). -->
+		<div
+			class="border-ink/10 text-muted mt-2 flex items-center gap-2 rounded border px-2 py-1.5 text-[11px]"
+		>
+			<VolumeX size={13} class="shrink-0" />
+			<span class="min-w-0 flex-1">You cannot hear the room.</span>
+			<button
+				onclick={() => void av?.startPlayback()}
+				class="btn btn-secondary btn-xs shrink-0">Let me hear</button
+			>
+		</div>
 	{/if}
 	{#if showAv && voiceError}
 		<!-- The failure itself, not "voice failed" (#642, errors.md): what

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
@@ -18,9 +18,20 @@ vi.mock('livekit-client', () => {
 	let shared = false;
 	let joined: FakeRoom | null = null;
 	const published: Uint8Array[] = [];
+	// The browser's autoplay verdict (#645): whether a room can play audio when
+	// it connects, whether asking fixes it, and how often it was asked.
+	let canPlayback = true;
+	let audioStarts = true;
+	let startAudioCalls = 0;
 	class Room {
 		constructor(options: Record<string, unknown> = {}) {
 			roomOptions = options;
+		}
+		canPlaybackAudio = canPlayback;
+		async startAudio() {
+			startAudioCalls += 1;
+			this.canPlaybackAudio = audioStarts;
+			this.handlers.get('AudioPlaybackStatusChanged')?.();
 		}
 		handlers = new Map<string, (...args: unknown[]) => void>();
 		remoteParticipants = new Map();
@@ -96,6 +107,29 @@ vi.mock('livekit-client', () => {
 				{ identity },
 			);
 		},
+		/**
+		 * The browser refusing to start audio without a gesture (#645):
+		 * `starts` is whether asking it later works.
+		 */
+		blockAudio(starts = true) {
+			canPlayback = false;
+			audioStarts = starts;
+			startAudioCalls = 0;
+		},
+		allowAudio() {
+			canPlayback = true;
+			audioStarts = true;
+			startAudioCalls = 0;
+		},
+		/** How many times the app asked the browser to start audio. */
+		startAudioAsks: () => startAudioCalls,
+		/** The browser changing its mind on its own. */
+		playbackChanged(can: boolean) {
+			if (!joined) return;
+			(joined as unknown as { canPlaybackAudio: boolean }).canPlaybackAudio =
+				can;
+			joined.handlers.get('AudioPlaybackStatusChanged')?.();
+		},
 		/** Every data packet this tab has broadcast, decoded. */
 		broadcasts() {
 			return published.map((p) => JSON.parse(new TextDecoder().decode(p)));
@@ -131,9 +165,17 @@ const {
 	broadcasts,
 	remoteCamera,
 	remoteVoice,
+	blockAudio,
+	allowAudio,
+	startAudioAsks,
+	playbackChanged,
 } = (await import('livekit-client')) as unknown as {
 	stopSharingNatively: () => void;
 	dropNatively: () => void;
+	blockAudio: (starts?: boolean) => void;
+	allowAudio: () => void;
+	startAudioAsks: () => number;
+	playbackChanged: (can: boolean) => void;
 	broadcasts: () => { t: string; at: number }[];
 	remoteCamera: (
 		identity: string,
@@ -751,6 +793,103 @@ describe('createRoomAv', () => {
 			av.setGateThreshold(1);
 			expect(av.gateThreshold).toBe(GATE_CEIL);
 		});
+		dispose();
+	});
+});
+
+/**
+ * The browser refusing to start audio without a gesture (#645). Nothing was
+ * listening for it: the room played, the rider heard nobody, and no click
+ * anywhere in the app brought it back — `visibilitychange` cannot, because a
+ * tab reloaded in front of you was never hidden.
+ */
+describe('a browser that blocks audio playback', () => {
+	afterEach(() => allowAudio());
+
+	it('says so from the moment it joins, with no event to announce it', async () => {
+		blockAudio();
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		// The rejoins that hit this (#480's refresh, #219's drop-rejoin) get no
+		// AudioPlaybackStatusChanged — they are blocked from the start.
+		expect(av.playbackBlocked).toBe(true);
+		dispose();
+	});
+
+	it('is quiet when the browser is happy', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(av.playbackBlocked).toBe(false);
+		dispose();
+	});
+
+	it('follows the browser changing its mind', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		playbackChanged(false);
+		expect(av.playbackBlocked).toBe(true);
+		playbackChanged(true);
+		expect(av.playbackBlocked).toBe(false);
+		dispose();
+	});
+
+	it('asks the browser to start audio, and goes quiet when it does', async () => {
+		blockAudio();
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.startPlayback();
+		expect(startAudioAsks()).toBe(1);
+		expect(av.playbackBlocked).toBe(false);
+		dispose();
+	});
+
+	// The strip is status, not a toast: it has to still be there if the press
+	// did not take (errors.md).
+	it('stays up when the browser refuses anyway', async () => {
+		blockAudio(false);
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.startPlayback();
+		expect(startAudioAsks()).toBe(1);
+		expect(av.playbackBlocked).toBe(true);
+		dispose();
+	});
+
+	// The half that means most riders never see the strip at all: any click is
+	// a gesture the browser accepts, and "no click anywhere resumed it" was
+	// the actual complaint.
+	it('lets any first click in the app unblock it', async () => {
+		blockAudio();
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(av.playbackBlocked).toBe(true);
+
+		document.dispatchEvent(new Event('pointerdown'));
+		await Promise.resolve();
+		await Promise.resolve();
+		// Only the flag: every store built earlier in this file still holds a
+		// live listener (they are removed by `leave()`, which these tests do
+		// not call), so one dispatch reaches all of them and a global count of
+		// asks says nothing about this one.
+		expect(av.playbackBlocked).toBe(false);
 		dispose();
 	});
 });

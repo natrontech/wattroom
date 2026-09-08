@@ -52,6 +52,13 @@ export interface AvState {
 	 * quiet without reading a toast that has already gone.
 	 */
 	handedOff: boolean;
+	/**
+	 * The browser refused to start audio without a gesture behind it (#645).
+	 * Persistent status, not a toast: the rider is on a bike three metres from
+	 * the screen, and the room has gone silent — it has to still be there when
+	 * they look up (errors.md).
+	 */
+	playbackBlocked: boolean;
 }
 
 /** What the UI watches. */
@@ -68,6 +75,7 @@ export function createAvState(): AvState {
 		dropped: 0,
 		voice: {},
 		handedOff: false,
+		playbackBlocked: false,
 	});
 	return state;
 }
