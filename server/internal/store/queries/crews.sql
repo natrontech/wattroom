@@ -40,3 +40,23 @@ select room_id from visible_rooms where user_id = $1;
 select exists (
     select 1 from visible_rooms where user_id = $1 and room_id = $2
 )::boolean;
+
+-- name: IsBannedFromRoom :one
+-- BOTH levels in one answer (ADR-0038, third amendment). A room ban lives on
+-- the membership row; a crew ban lives on crew_roles and reaches every room in
+-- the crew. Every door asks this one question rather than each remembering
+-- there are two — which is the whole lesson of #1109 and #1114, where four
+-- separate joins each wrote the single-level guard by hand and one omitted it.
+select (
+    exists (
+        select 1 from memberships m
+        where m.room_id = sqlc.arg(room_id) and m.user_id = sqlc.arg(user_id)
+          and m.role = 'banned'
+    )
+    or exists (
+        select 1 from crew_roles cr
+        join rooms r on r.crew_id = cr.crew_id
+        where r.id = sqlc.arg(room_id) and cr.user_id = sqlc.arg(user_id)
+          and cr.role = 'banned'
+    )
+)::boolean;

@@ -477,7 +477,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		// A banned viewer gets the outsider view — the join button tells them.
 		if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 			RoomID: room.ID, UserID: user.ID,
-		}); err == nil && m.Role != "banned" {
+		}); err == nil && m.Role != "banned" && !s.isBanned(r, room, user) {
 			response.Role = m.Role
 			response.Me = &riderPrefsJSON{Notify: m.Notify, OnBoard: m.OnBoard}
 			// Opening the room is reading it (#389): the badge clears here, so
@@ -597,13 +597,27 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 // bannedRefusal is what a banned rider hears at every door they try.
 const bannedRefusal = "The owner removed you from this room."
 
-// isBanned is the join-time gate: a ban survives every re-join path because
-// the membership row itself carries it.
+// isBanned is the gate at every door: a ban survives every re-join path
+// because the membership row itself carries it, and since ADR-0038 a crew ban
+// reaches the same doors from one level up.
+//
+// Both levels are asked as ONE question (IsBannedFromRoom) rather than each
+// caller remembering there are two. #1109 and #1114 were four separate joins
+// that each wrote the single-level guard by hand, and one of them omitted it;
+// a second level doubles that surface unless there is a single place to ask.
+//
+// Fails CLOSED. A lookup error here means "banned" — the alternative is
+// admitting someone to a room because the database hiccuped, and a ban is the
+// one answer that must not degrade towards yes.
 func (s *Service) isBanned(r *http.Request, room db.Room, user db.User) bool {
-	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+	banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	return err == nil && m.Role == "banned"
+	if err != nil {
+		s.log.Error("ban check failed", "err", err, "room", room.Slug)
+		return true
+	}
+	return banned
 }
 
 // handleJoinByCode resolves a 6-char code to its room and joins — the
@@ -903,6 +917,8 @@ const directoryPageSize = 50
 // member of any role — the one gate every room-scoped surface (chat,
 // playlists, RSVP) stands behind (#638). A banned rider holds a row, not a
 // membership, so the ban is refused here the same way the socket refuses it.
+// Since ADR-0038 that includes a ban one level up: a crew ban reaches every
+// room in the crew, and isBanned asks both levels as one question.
 // refusal is the 403 copy, phrased for the surface asking.
 func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
@@ -916,7 +932,7 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	if err != nil || m.Role == "banned" {
+	if err != nil || m.Role == "banned" || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
 	}
@@ -1078,7 +1094,7 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	if err != nil || m.Role == "banned" {
+	if err != nil || m.Role == "banned" || s.isBanned(r, room, user) {
 		return protocol.Rider{}, "", errNotMember
 	}
 	// The level rides along with the rest of the room-visible identity

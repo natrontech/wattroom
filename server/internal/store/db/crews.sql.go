@@ -101,6 +101,39 @@ func (q *Queries) GrantRoomAccess(ctx context.Context, arg GrantRoomAccessParams
 	return err
 }
 
+const isBannedFromRoom = `-- name: IsBannedFromRoom :one
+select (
+    exists (
+        select 1 from memberships m
+        where m.room_id = $1 and m.user_id = $2
+          and m.role = 'banned'
+    )
+    or exists (
+        select 1 from crew_roles cr
+        join rooms r on r.crew_id = cr.crew_id
+        where r.id = $1 and cr.user_id = $2
+          and cr.role = 'banned'
+    )
+)::boolean
+`
+
+type IsBannedFromRoomParams struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// BOTH levels in one answer (ADR-0038, third amendment). A room ban lives on
+// the membership row; a crew ban lives on crew_roles and reaches every room in
+// the crew. Every door asks this one question rather than each remembering
+// there are two — which is the whole lesson of #1109 and #1114, where four
+// separate joins each wrote the single-level guard by hand and one omitted it.
+func (q *Queries) IsBannedFromRoom(ctx context.Context, arg IsBannedFromRoomParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isBannedFromRoom, arg.RoomID, arg.UserID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const revokeRoomAccess = `-- name: RevokeRoomAccess :exec
 delete from room_grants where room_id = $1 and user_id = $2
 `

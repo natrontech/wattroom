@@ -249,9 +249,15 @@ func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
 		return
 	}
+	// Both ban levels (ADR-0038): a crew ban reaches this door too, and asking
+	// it here rather than trusting the membership row is what stopped the
+	// #1109/#1114 class from recurring one level up.
+	banned, banErr := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{
+		RoomID: room.ID, UserID: user.ID,
+	})
 	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
-	}); err != nil || m.Role == "banned" {
+	}); err != nil || m.Role == "banned" || banErr != nil || banned {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to use its jukebox.")
 		return
 	}
