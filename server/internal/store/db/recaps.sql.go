@@ -11,21 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countRecapsNaming = `-- name: CountRecapsNaming :one
-select count(*) from session_recaps
-where riders @> jsonb_build_array(jsonb_build_object('id', $1::text))
-`
-
-// The purge trigger's witness: how many rows still carry this rider's
-// interval. Zero after `delete from users`, which is what the account test
-// asserts against the rows themselves rather than through an API.
-func (q *Queries) CountRecapsNaming(ctx context.Context, dollar_1 string) (int64, error) {
-	row := q.db.QueryRow(ctx, countRecapsNaming, dollar_1)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const exportUserRecaps = `-- name: ExportUserRecaps :many
 select s.workout, s.started_at, s.ended_at, r.name as room_name, r.slug as room_slug,
        (entry ->> 'from')::bigint as joined_at,

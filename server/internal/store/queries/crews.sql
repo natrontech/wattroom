@@ -39,14 +39,6 @@ select count(*) from rooms where crew_id = $1 and owner_id = $2;
 insert into room_grants (room_id, user_id) values ($1, $2)
 on conflict (room_id, user_id) do nothing;
 
--- name: RevokeRoomAccess :exec
-delete from room_grants where room_id = $1 and user_id = $2;
-
--- name: RoomsVisibleTo :many
--- THE gate. Every call site that needs "which rooms may this person enter"
--- selects from the view and never re-derives it (ADR-0038, third amendment).
-select room_id from visible_rooms where user_id = $1;
-
 -- name: CanEnterRoom :one
 select exists (
     select 1 from visible_rooms where user_id = $1 and room_id = $2
@@ -100,9 +92,6 @@ delete from crews where id = $1;
 -- amendment): a crew holding only the departing owner's rooms has nothing
 -- left to own, one holding other people's rooms transfers.
 delete from rooms where owner_id = $1;
-
--- name: CountCrewRooms :one
-select count(*) from rooms where crew_id = $1;
 
 -- name: ListCrewRoomSlugs :many
 select slug from rooms where crew_id = $1;
