@@ -32,7 +32,7 @@
 
 | Capability | Owner | Coach | Member | Spectator (phone) |
 |---|---|---|---|---|
-| Edit room (name, icon, listing, sound pack, reaction set) | ✓ | – | – | – |
+| Edit room (name, icon, listing, sound pack, reaction set, weekly board) | ✓ | – | – | – |
 | Assign/remove coach role | ✓ | – | – | – |
 | Remove / ban / unban member (#223) | ✓ | – | – | – |
 | Pick workout / mode, start countdown, pause/end session | ✓ | ✓ | – | – |

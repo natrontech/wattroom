@@ -99,6 +99,28 @@ group by day
 order by day desc
 limit 12;
 
+-- name: RoomWeekBoard :many
+-- The room's ordered board (#995, ADR-0036) — opt-in, and THIS WEEK ONLY.
+-- The week is the streak's week (Monday-start, date_trunc('week')), so a bad
+-- week is never permanent: RESEARCH.md §14.3 names the stable ordering a
+-- standing crew cannot re-randomise as the failure mode every cited product
+-- avoids by resetting. Members only; the handler proves the room, this proves
+-- the rider is still in it.
+select r.user_id,
+       u.display_name,
+       u.ftp_watts,
+       u.weight_kg,
+       coalesce(sum(r.kj), 0)::bigint as kj,
+       coalesce(sum(r.seconds), 0)::bigint as seconds
+from rides r
+join users u on u.id = r.user_id
+join memberships m on m.room_id = r.room_id and m.user_id = r.user_id
+where r.room_id = $1
+  and r.started_at >= date_trunc('week', now())
+  and m.role <> 'banned'
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg
+order by kj desc, u.display_name asc;
+
 -- name: Best20mIn90Days :one
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides

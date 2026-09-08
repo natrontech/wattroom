@@ -24,6 +24,7 @@
 		icon?: string;
 		cheers?: string[];
 		soundPack?: string;
+		boardEnabled?: boolean;
 		role?: string;
 		code?: string;
 		members?: Member[];
@@ -39,6 +40,7 @@
 	let name = $state('');
 	let listed = $state(false);
 	let pack = $state('base');
+	let boardEnabled = $state(false);
 	let icon = $state('');
 	let cheers = $state<string[]>([]);
 
@@ -53,6 +55,7 @@
 			name = res.data.name;
 			listed = res.data.listed;
 			pack = res.data.soundPack ?? 'base';
+			boardEnabled = res.data.boardEnabled ?? false;
 			// A room from before #447 holds emoji; edited as the keys they mean,
 			// so the next save stores keys.
 			icon = keyFor(res.data.icon ?? '');
@@ -107,6 +110,7 @@
 				name: name.trim(),
 				listed,
 				soundPack: pack,
+				boardEnabled,
 				icon,
 				cheers,
 			},
@@ -338,6 +342,42 @@
 			<p class="text-muted mt-3 text-xs">
 				Custom packs — insider memes, your own klaxon — aren't here yet.
 			</p>
+		</section>
+
+		<!-- Off is the default and turning it on is a deliberate act (ADR-0036):
+		     being in a room must not put a rider on a board. The copy says what
+		     appears and to whom BEFORE it appears — a joiner should be able to
+		     see what this room shares without joining it first. -->
+		<section class="panel mt-3 p-6">
+			<h2 class="font-display font-bold">Weekly board</h2>
+			<p class="text-muted mt-1.5 text-xs">
+				Off by default. Turned on, the Lounge lists everyone's kJ for the
+				current week under the crew's tiles, with their category beside it so it
+				is clear who is comparable. It resets every Monday, it never leaves this
+				room, and nothing is kept from week to week.
+			</p>
+			<label
+				class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {boardEnabled
+					? 'border-ink/40'
+					: 'border-muted/15'}"
+			>
+				<input
+					type="checkbox"
+					bind:checked={boardEnabled}
+					onchange={save}
+					disabled={busy}
+				/>
+				<span class="min-w-0">
+					<span class="block text-sm font-medium"
+						>{boardEnabled ? 'On' : 'Off'}</span
+					>
+					<span class="text-muted block text-xs">
+						{boardEnabled
+							? 'Everyone here can see how the week is going.'
+							: 'The crew tiles show what you did together, and nobody is ranked.'}
+					</span>
+				</span>
+			</label>
 		</section>
 
 		<section class="panel mt-3 p-6">

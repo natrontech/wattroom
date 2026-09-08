@@ -961,3 +961,81 @@ func TestCrewStatsAreMembersOnly(t *testing.T) {
 		t.Errorf("a signed-out visitor can see the crew stats: %v", body["crew"])
 	}
 }
+
+func TestBoardIsOffUntilTheRoomTurnsItOn(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Board Opt In Test")
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob join")
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	h.crewRide(t, "alice", room.ID, time.Now(), 3600)
+	h.crewRide(t, "bob", room.ID, time.Now(), 1800)
+
+	// Being in a room does not put you on a board (ADR-0036).
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if body["board"] != nil {
+		t.Fatalf("a board appeared without anyone enabling it: %v", body["board"])
+	}
+	if enabled, _ := body["boardEnabled"].(bool); enabled {
+		t.Fatalf("boardEnabled is true on a fresh room")
+	}
+
+	// A member cannot switch it on; room settings are the owner's (SPEC matrix).
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Board Opt In Test","listed":false,"boardEnabled":true}`); status != http.StatusForbidden {
+		t.Errorf("a member turned the board on: %d", status)
+	}
+
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Board Opt In Test","listed":false,"boardEnabled":true}`); status != http.StatusOK {
+		t.Fatalf("owner could not enable the board: %d", status)
+	}
+	_, body = h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	board, ok := body["board"].([]any)
+	if !ok || len(board) != 2 {
+		t.Fatalf("board = %v, want two riders", body["board"])
+	}
+	// Ordered by the week's work, and carrying the bracket, not just a rank.
+	first, _ := board[0].(map[string]any)
+	if first["displayName"] != "alice" {
+		t.Errorf("board leader = %v, want alice (more kJ)", first["displayName"])
+	}
+	if first["category"] == nil || first["category"] == "" {
+		t.Errorf("board row carries no category: %v", first)
+	}
+
+	// And a rename must not silently switch it back off.
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Renamed","listed":false}`); status != http.StatusOK {
+		t.Fatalf("rename")
+	}
+	_, body = h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if enabled, _ := body["boardEnabled"].(bool); !enabled {
+		t.Errorf("a rename turned the board off")
+	}
+}
+
+func TestBoardIsThisWeekOnly(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Board Week Test")
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Board Week Test","listed":false,"boardEnabled":true}`); status != http.StatusOK {
+		t.Fatalf("enable board")
+	}
+	// Two weeks ago: a bad week is never permanent, so it must not be counted.
+	h.crewRide(t, "alice", room.ID, time.Now().AddDate(0, 0, -14), 3600)
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if body["board"] != nil {
+		t.Errorf("last fortnight's ride is on this week's board: %v", body["board"])
+	}
+}

@@ -61,8 +61,11 @@ item 6):
   "enrolment by existence" is §14.8's first trap, and Garmin's mandatory group
   challenges (which have a support article titled *"I Am in a Garmin Connect
   Challenge I Did Not Accept"*) are the shipped counter-example.
-- **Turned on per room, by a coach, visibly** — the WHOOP Teams pattern: what
-  the room shares is fixed and legible *before* anyone is inside it.
+- **Turned on per room, by the owner, visibly** — the WHOOP Teams pattern: what
+  the room shares is fixed and legible *before* anyone is inside it. The owner
+  rather than a coach because `docs/SPEC.md`'s matrix already puts *edit room*
+  there and a coach runs sessions; what a room discloses about its members is
+  not a session-running decision.
 - **Weekly reset, no accumulating history.** Strava clubs show this week and
   last, and that is what keeps a bad week from being permanent.
 - **Bracketed by Category**, which is a bracket rather than a rank: it says who

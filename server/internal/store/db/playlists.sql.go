@@ -319,7 +319,7 @@ func (q *Queries) SetActivePlaylist(ctx context.Context, arg SetActivePlaylistPa
 const updateAutoplay = `-- name: UpdateAutoplay :one
 update rooms set autoplay_enabled = $2, autoplay_order = $3,
     autoplay_fixed_video_id = $4, autoplay_fixed_video_title = $5
-where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title
+where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled
 `
 
 type UpdateAutoplayParams struct {
@@ -356,6 +356,7 @@ func (q *Queries) UpdateAutoplay(ctx context.Context, arg UpdateAutoplayParams) 
 		&i.AutoplayPlaylistID,
 		&i.AutoplayFixedVideoID,
 		&i.AutoplayFixedVideoTitle,
+		&i.BoardEnabled,
 	)
 	return i, err
 }

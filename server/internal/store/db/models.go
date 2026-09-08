@@ -206,6 +206,7 @@ type Room struct {
 	AutoplayPlaylistID      pgtype.UUID
 	AutoplayFixedVideoID    string
 	AutoplayFixedVideoTitle string
+	BoardEnabled            bool
 }
 
 type RoomRead struct {
