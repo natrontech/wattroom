@@ -36,6 +36,18 @@ export function formatWhen(iso: string, withDate = false): string {
 	});
 }
 
+/**
+ * When someone joined, to the month: "Sept 2026". The rows that say "since"
+ * (a crew's people, a room's members, the room settings header) all use it,
+ * so they cannot drift apart.
+ */
+export function formatMonth(iso: string): string {
+	return new Date(iso).toLocaleDateString(undefined, {
+		month: 'short',
+		year: 'numeric',
+	});
+}
+
 /** A message's wall-clock time, "23:33" — the stamp beside every chat line. */
 export function formatTime(ms: number): string {
 	return new Date(ms).toLocaleTimeString(undefined, {

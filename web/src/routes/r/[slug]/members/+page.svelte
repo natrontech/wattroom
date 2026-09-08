@@ -10,7 +10,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { statusOfRider } from '$lib/status';
-	import { wkg } from '$lib/format';
+	import { wkg, formatMonth } from '$lib/format';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -228,10 +228,7 @@
 								· {wkg(member.ftpWatts, member.weightKg)} w/kg{/if}
 						{/if}
 						{#if member.joinedAt}
-							· since {new Date(member.joinedAt).toLocaleDateString(undefined, {
-								month: 'short',
-								year: 'numeric',
-							})}
+							· since {formatMonth(member.joinedAt)}
 						{/if}
 					</span>
 				</span>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatMonth } from '$lib/format';
 	// The crew's people and its bans (#1150, #1208, #1212): roles from a
 	// person's menu, the hand-over behind a confirm, and the unban that names
 	// what it does not reach. Split from the page (#1234); the page reloads on
@@ -195,10 +196,7 @@
 					{#if person.rooms}
 						· {person.rooms === 1 ? '1 room' : `${person.rooms} rooms`}
 					{/if}
-					· since {new Date(person.since).toLocaleDateString(undefined, {
-						month: 'short',
-						year: 'numeric',
-					})}
+					· since {formatMonth(person.since)}
 				</span>
 			</span>
 			{#if canAct(person)}
@@ -241,13 +239,7 @@
 						>{person.displayName}</span
 					>
 					<span class="text-muted block text-[11px]"
-						>banned from the crew · {new Date(person.since).toLocaleDateString(
-							undefined,
-							{
-								month: 'short',
-								year: 'numeric',
-							},
-						)}</span
+						>banned from the crew · {formatMonth(person.since)}</span
 					>
 				</span>
 				<!-- Two controls in two places, never one (#1150): this lifts
