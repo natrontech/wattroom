@@ -489,6 +489,88 @@ Playwright's `_electron` fixture can assert the packaged app launches, a window 
 4. Which Electron major to pin, and whether macOS system audio through ScreenCaptureKit actually works on it — [ADR-0037](decisions/0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) names this as the thing that would reverse it. This is the one that needs a machine, not a search.
 
 
+## 16. Inherited permissions and the crew (research for #1021; run of 2026-09-08)
+
+Inline research tier — sourced, no adversarial pass; *extracted* marks a claim read off the primary page rather than a summary. Feeds [ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md) (already merged, which is the wrong order and is noted as such below) and [#1106](https://github.com/natrontech/wattroom/issues/1106), the cutover whose risk this is about.
+
+**The headline**: the chosen model is *stricter* than Discord's in the two places that matter and *more mechanism* in one place Discord deliberately has none. The strictness is defensible and the extra mechanism probably is not. One concrete gap — no un-removable crew owner — has no counterpart in any product torn down here, and it is the finding worth acting on before the cutover.
+
+**Order-of-work note.** ADR-0038 merged before this section landed, which is exactly the failure §15 warned about in the opposite direction. Nothing here is fatal to it, but two findings (16.4, 16.6) argue for an amendment rather than a clean read.
+
+### 16.1 Discord's overwrite algebra, read from the primary source
+
+*extracted* from the [Discord developer permissions docs](https://docs.discord.com/developers/topics/permissions). Overwrites resolve in eight ordered tiers — base `@everyone` guild permissions, guild role permissions, then channel-level `@everyone` deny, `@everyone` allow, role deny, role allow, member deny, member allow — so a **member overwrite has ultimate priority** and a role overwrite beats `@everyone`. Within a tier the computation is:
+
+```
+permissions &= ~deny
+permissions |= allow
+```
+
+**This corrects the most widely repeated claim about Discord permissions.** Community guides state that any role denying a permission wins over another role allowing it. The primary source says the opposite: denies and allows are accumulated across the member's roles into one pair, deny is applied first and allow second, so at the role tier **allow wins**. A model copied from the folklore rather than the spec would be subtly stricter than the thing it is imitating, and the bug would appear as "why can this person not see the room" long after the rule was written.
+
+The trap this creates for us: an eight-tier resolution order is only auditable if it is written down once. Discord's is a documented algorithm with a reference implementation; a hand-rolled equivalent scattered across query `WHERE` clauses is the same algorithm with no single place to read it, which is 16.2's question.
+
+### 16.2 Expressing "rooms this person may enter" once
+
+The industrial answer is [Zanzibar](https://authzed.com/zanzibar), Google's authorization system, and its useful idea is small: rather than duplicating a viewer list onto every document, write a rule that says *to check who may view this, look up its parent and include the parent's viewers*. Inheritance is expressed once, as a relation, not copied.
+
+The industrial *implementation* is not the answer here. Zanzibar exists to serve over ten million checks a second across Drive, YouTube and Photos; the open-source descendants ([SpiceDB](https://authzed.com/), OpenFGA, Topaz) are separate services with their own storage and consistency model. WattRoom's numbers are a handful of crews, tens of rooms and tens of people, and [ADR-0002](decisions/0002-single-vm-compose-deploy.md) is one VM with no extra moving parts.
+
+So: **take Zanzibar's rule-shape, not Zanzibar.** At this size the single expression is a SQL view — `rooms_visible_to(user_id)` — that every gate and every visibility join selects from, so the eight-tier order of 16.1 exists in exactly one file. A view also fails safe in a way a query fragment does not: a new join that forgets it does not silently over-permit, it fails to compile against a table that is not there. Cost at these sizes is not the consideration; auditability is the whole point. A materialized table is the upgrade path if it ever measurably matters, and it will not.
+
+### 16.3 The privacy inversion has a regulator-tested precedent, and it is not a close call
+
+The canonical case is **Google Buzz**, 2010. Buzz auto-connected users from their most frequent Gmail contacts and exposed that list by default; Google received thousands of complaints about public disclosure of contacts that included, per the FTC, ex-spouses, patients, students and employers. The FTC charged that users *"were not adequately informed that the identity of individuals they emailed most frequently would be made public by default"* and that Google *"violated its privacy policies by using information provided for Gmail for another purpose — social networking — without obtaining consumers' permission in advance"* (*extracted*, [FTC press release](https://www.ftc.gov/news-events/news/press-releases/2011/03/ftc-charges-deceptive-privacy-practices-googles-rollout-its-buzz-social-network)).
+
+The remedy is the sentence that matters here. The order requires Google to *"obtain users' consent before sharing their information with third parties if Google changes its products or services in a way that results in information sharing that is contrary to any privacy promises made when the user's information was collected"* (*extracted*, same source).
+
+Read that against the literal reading of crew-visible-by-default: a room created under a schema comment promising *"rooms are private/unlisted by default"* becomes visible to everyone in its owner's other rooms, on upgrade, without being asked. That is the described shape almost exactly — a change to the product that results in sharing contrary to the promise made when the data was collected.
+
+**ADR-0038 already lands on the right side of this**: the crew-visible default applies only to rooms created after the cutover, and existing rooms migrate private with their current membership as named exceptions. This section is the evidence that the derivation was not merely cautious. §14 already carried the sibling case — Strava turned Flyby off for everyone in 2020 and made it opt-in, and few re-enabled it — and the lesson repeats: **a visibility default is easy to loosen once and impossible to walk back.**
+
+### 16.4 Two ban levels is a mechanism the reference implementation deliberately does not have
+
+ADR-0038 specifies bans at both levels: a room ban as it exists today (a `memberships` role that keeps the seat), plus a crew ban that removes a person from every room and prevents rejoining.
+
+Discord, doing the same job at vastly larger scale, has **one**. There is no per-channel ban; the only ban is server-wide. Excluding someone from a single channel is a `View Channel` **deny overwrite** — the same permission mechanism as everything else in 16.1, not a second kind of exclusion.
+
+That is a real argument against the two-level design as written, and it is the shape of finding #1021 asked to be told loudly. The cost of two ban mechanisms is not conceptual, it is that **every visibility join must consult both, forever**, and the failure mode is silent over-permission rather than an error. ADR-0038 already names this cost ("every query that reads `role != 'banned'` must additionally honour the crew ban") and lists the sites; [#1109](https://github.com/natrontech/wattroom/issues/1109) is the proof it is not hypothetical — one of those very queries is *already* missing its single-level guard today, before a second level exists to forget.
+
+**The cheaper shape**, if #1106 wants it: keep **one** ban, at the crew, and express "out of this room" as a deny in the override mechanism ADR-0038 is introducing anyway. One ban, one permission system, one expression to audit — which is also 16.2's view, so the guard cannot be forgotten by a new join. The counter-argument is migration: room bans exist in rows today and would have to become overrides. That is a decision for the cutover, not a fact this pass settles.
+
+### 16.5 The gap with no counterpart: nobody has an un-removable crew owner
+
+Discord's protection against permission lockout is an actor who cannot be locked out: the server **owner** can access any channel's permissions at all times, and `ADMINISTRATOR` *"overrides any potential permission overwrites, so there is nothing to do here"* (*extracted*, [permissions docs](https://docs.discord.com/developers/topics/permissions)). Lockout is a documented, recoverable state precisely because one role is outside the permission system.
+
+**ADR-0038 and #1022 name crew *admins* and never a crew owner.** Rooms keep an owner; the crew layer has only admins, who manage each other's roles. Two admins can therefore demote each other, and there is no stated actor guaranteed to still hold the crew afterwards. Every product surveyed here has that actor. This is a gap in the model rather than a disagreement with it, and it is cheap to close now and awkward later — the migration creates one crew per existing owner, so **the owner it is named after is the obvious crew owner, and the row already exists**.
+
+Note the deliberate divergence beside it, which is *not* a gap: ADR-0038 gives a crew admin who has not joined a room "crew-level things only" — they may not read its contents. Discord's administrator can read everything. Ours is the stricter choice and it is consistent with room-scoped privacy being architecture, but it will surprise anyone who expects Discord's behaviour, and the surprise should be designed for in [#1023](https://github.com/natrontech/wattroom/issues/1023) rather than discovered.
+
+### 16.6 Group size: the caps are smaller than they feel
+
+Community data (*inline*, [CommunityOne](https://blog.communityone.io/master-discord-member-count/)): **90 % of Discord servers have fewer than 15 members**, and **86 % have fewer than 500**. The overwhelmingly common case for a "server" — the object a crew imitates — is a group smaller than a single WattRoom room's comfortable voice size.
+
+Two consequences:
+
+1. **No evidence for a hard social ceiling on a crew** was found in this pass, so no number for SPEC. What the distribution says instead is that the cap is not the interesting number: crews will be small whatever it is, and a cap exists to bound cost and blast radius, not to shape behaviour.
+2. **[ADR-0020](decisions/0020-the-app-takes-discords-shape.md)'s arithmetic survives better than expected.** Its one-column sidebar rests on *"Discord has forty servers of thirty channels. WattRoom has five rooms of five places"*; ADR-0038 makes the tree three deep and asks for that to be re-argued. The distribution says the realistic shape is one or two crews of a few rooms, not forty of thirty — closer to the original arithmetic than to Discord's. #1023 should draw it before anyone concludes the depth forces a second strip.
+
+### 16.7 Naming: *crew* survives outside and collides inside
+
+Outside, the name is good and the alternatives are worse. In cycling, **club** and **team** carry established meanings — a club is the organization, a team is the group that races together and talks tactics ([Cycle-Smart](https://www.cycle-smart.com/library/2017/4/14/choosing-a-club-or-a-team), [Wikipedia: cycling club](https://en.wikipedia.org/wiki/Cycling_club)) — and both are already taken by the products riders use: Strava has clubs, Zwift has clubs. **Crew** is colloquial and carries no organizational or racing baggage, which is what this object wants: a group that hangs out and trains, not an entity that races. Reusing "club" would import an external meaning riders already hold for a different thing.
+
+Inside, it collides, and ADR-0038 records this: `docs/SPEC.md` says *"A room is a crew, not an attendance register"*, WATTROOM.md uses *"Crew-level"* for room-level collective goals, and `crew-chief` is a shipped medal slug earned for sessions **in a room**. The first two are prose the cutover rewords. The third stays, because an earned badge travels ([ADR-0027](decisions/0027-an-earned-badge-travels-progress-stays-home.md)) and renaming a slug is a migration over `medals`.
+
+Not answered by this pass, and left to #1023 rather than guessed: what the private-room state is called, and what a crew admin is called. No external source settles either, and ADR-0020's rule against coining vocabulary makes it a design question, not a research one.
+
+### 16.8 What this leaves for #1106
+
+1. **Add a crew owner** (16.5) — the only finding here that is a gap rather than a trade-off, and the migration already supplies the row.
+2. **Decide one ban level or two** (16.4), knowing the reference implementation chose one and that #1109 shows the guard is already forgettable at one level.
+3. **Build the single permission expression as a view** (16.2), so 16.1's resolution order lives in one file.
+4. Carry the existing-rooms-migrate-private rule (16.3) as settled — it now has a regulator-tested precedent behind it, not just caution.
+
+
 ---
 
 ## Ranked risks to the plan
