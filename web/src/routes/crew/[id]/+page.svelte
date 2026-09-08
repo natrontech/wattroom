@@ -7,6 +7,8 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
+	import { api } from '$lib/api';
+	import { roomConnection } from '$lib/room/connection.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
@@ -266,6 +268,58 @@
 					}),
 			},
 		];
+	}
+
+	// Leaving the crew (#1228). Crew membership follows room membership
+	// (ADR-0038), so this is leaving every room of the crew you are in — said
+	// so, and done in one move instead of N settings pages. Refused up front
+	// when you own a room here: a room never leaves its crew, so neither can
+	// its owner — hand it on first (#1227). Undo over confirm (errors.md):
+	// the codes are read before leaving, since a non-member cannot read them.
+	const myRooms = $derived(
+		presence.rooms.filter((r) => r.crew?.id === crew?.id && !!r.role),
+	);
+	const ownedHere = $derived(myRooms.filter((r) => r.role === 'owner'));
+	async function leaveCrew() {
+		if (!crew || !account.me || ownedHere.length) return;
+		const leaving = crew;
+		const rooms = myRooms;
+		busy = true;
+		const codes = await Promise.all(
+			rooms.map((r) =>
+				api<{ code?: string }>(`/api/rooms/${r.slug}`).then((res) =>
+					res.ok ? res.data.code : undefined,
+				),
+			),
+		);
+		const results = await Promise.all(
+			rooms.map((r) =>
+				api(`/api/rooms/${r.slug}/members/${account.me?.id}`, {
+					method: 'DELETE',
+				}),
+			),
+		);
+		busy = false;
+		const failed = results.find((res) => !res.ok);
+		if (failed && !failed.ok) {
+			toasts.push(failed.error.message, { tone: 'error' });
+			presence.reload();
+			return;
+		}
+		if (rooms.some((r) => r.slug === roomConnection.current?.slug))
+			roomConnection.leave();
+		presence.reload();
+		const rejoin = codes.filter((c): c is string => !!c);
+		toasts.push(`You left ${leaving.name}.`, {
+			undo: rejoin.length
+				? () => {
+						for (const code of rejoin)
+							void api('/api/rooms/join', { method: 'POST', json: { code } });
+						presence.reload();
+					}
+				: undefined,
+		});
+		await goto('/home');
 	}
 
 	const roleWord = (role: CrewPerson['role']) =>
@@ -556,6 +610,35 @@
 					</li>
 				{/each}
 			</ul>
+		{/if}
+
+		{#if !owner && myRooms.length}
+			<!-- The way out (#1228): the one thing a member can do to the crew.
+			     Crew membership follows room membership, so it says exactly
+			     what it does, and the danger token sits last (ux.md). -->
+			<h2 class="eyebrow mt-8">leave</h2>
+			<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+				<p class="text-muted min-w-0 flex-1 text-xs">
+					{#if ownedHere.length}
+						You own {ownedHere.length === 1
+							? ownedHere[0].name
+							: `${ownedHere.length} rooms`} here, and a room never leaves its crew
+						— hand {ownedHere.length === 1 ? 'it' : 'them'} to a member first, then
+						leave.
+					{:else}
+						You are in {crew.name} through {myRooms.length === 1
+							? '1 room'
+							: `${myRooms.length} rooms`}. Leaving {myRooms.length === 1
+							? 'it'
+							: 'them all'} is leaving the crew.
+					{/if}
+				</p>
+				<button
+					onclick={leaveCrew}
+					disabled={busy || !!ownedHere.length}
+					class="btn btn-danger btn-xs shrink-0">Leave the crew</button
+				>
+			</div>
 		{/if}
 	{/if}
 </main>
