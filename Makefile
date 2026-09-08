@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -66,6 +66,21 @@ sqlc: ## regenerate internal/store/db from queries + migrations (commit the resu
 seed: ## seed this checkout's dev database (idempotent)
 	@$(DEV_ENV) ensure-db
 	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_DB="$$WATTROOM_DEV_DSN" go run ./cmd/seed
+
+desktop: ## run the desktop shell against a URL (WATTROOM_URL, default this worktree's web)
+	@cd desktop && pnpm install --silent
+# electron 44 ships no postinstall — its package.json has no `scripts` at all —
+# so the platform binary is not fetched by `pnpm install` and `electron .`
+# starts nothing. install.js is the same script older majors ran themselves;
+# calling it here is version-proof and costs one `test` when it is already there.
+	@cd desktop && [ -d node_modules/electron/dist ] || node node_modules/electron/install.js
+	@eval "$$($(DEV_ENV) print)"; \
+		cd desktop && WATTROOM_URL="$${WATTROOM_URL:-http://localhost:$$WATTROOM_DEV_WEB_PORT}" pnpm start
+
+desktop-smoke: ## the shell's Playwright _electron smoke (no server needed)
+	@cd desktop && pnpm install --silent
+	@cd desktop && [ -d node_modules/electron/dist ] || node node_modules/electron/install.js
+	@cd desktop && pnpm exec playwright test
 
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .
