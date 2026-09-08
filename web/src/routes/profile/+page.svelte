@@ -507,6 +507,7 @@
 				href="https://github.com/natrontech/wattroom"
 				class="hover:text-ink underline">GitHub</a
 			>
+			· <a href="/download" class="hover:text-ink underline">desktop app</a>
 			· by
 			<a href="https://natron.io" class="hover:text-ink underline"
 				>Natron Tech</a

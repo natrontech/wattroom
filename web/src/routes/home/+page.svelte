@@ -19,6 +19,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
+	import DesktopUpdateNotice from '$lib/components/DesktopUpdateNotice.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
@@ -239,6 +240,7 @@
 	{#if changelog.unseen}
 		<div class="mt-6"><WhatsNewNotice /></div>
 	{/if}
+	<DesktopUpdateNotice />
 
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Nothing here needs a click. -->

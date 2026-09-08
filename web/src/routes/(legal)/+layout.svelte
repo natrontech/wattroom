@@ -4,7 +4,8 @@
 	let { children } = $props();
 </script>
 
-<!-- Shared shell for the public legal pages (#232): quiet chrome, no glow. -->
+<!-- Shared shell for the public pages (#232) — legal, privacy, and the
+     desktop app's download (#296): quiet chrome, no glow. -->
 <main class="cave bg-surface text-ink relative min-h-dvh overflow-x-hidden">
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[30dvh] opacity-40"
@@ -25,6 +26,8 @@
 			<a href="/legal" class="hover:text-ink underline">legal notice</a>
 			<span aria-hidden="true">·</span>
 			<a href="/privacy" class="hover:text-ink underline">privacy</a>
+			<span aria-hidden="true">·</span>
+			<a href="/download" class="hover:text-ink underline">desktop app</a>
 			<span aria-hidden="true">·</span>
 			<a
 				href="https://github.com/natrontech/wattroom"

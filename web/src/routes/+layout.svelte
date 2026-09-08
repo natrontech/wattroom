@@ -88,6 +88,7 @@
 			page.url.pathname === '/' ||
 			page.url.pathname === '/legal' ||
 			page.url.pathname === '/privacy' ||
+			page.url.pathname === '/download' ||
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);

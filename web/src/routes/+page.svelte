@@ -187,6 +187,8 @@
 			<span aria-hidden="true">·</span>
 			<span>Chrome or Edge · FTMS smart trainer</span>
 			<span aria-hidden="true">·</span>
+			<a href="/download" class="hover:text-ink underline">desktop app</a>
+			<span aria-hidden="true">·</span>
 			<a href="/legal" class="hover:text-ink underline">legal</a>
 			<span aria-hidden="true">·</span>
 			<a href="/privacy" class="hover:text-ink underline">privacy</a>
