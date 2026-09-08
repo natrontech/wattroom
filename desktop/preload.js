@@ -22,4 +22,7 @@ contextBridge.exposeInMainWorld('wattroom', {
 	version,
 	platform: process.platform,
 	retry: () => ipcRenderer.send('wattroom:retry'),
+	// Held for a ride's duration by workout/wakelock.ts. The browser's own wake
+	// lock keeps the screen on; this keeps the machine from sleeping under it.
+	keepAwake: (on) => ipcRenderer.send('wattroom:keep-awake', on),
 });

@@ -89,3 +89,42 @@ describe('acquireWakeLock', () => {
 		expect(() => acquireWakeLock().release()).not.toThrow();
 	});
 });
+
+/**
+ * The desktop half (#296). The browser lock keeps the screen on; the shell's
+ * blocker keeps the machine from sleeping under it, and a blocker left running
+ * is a laptop that never sleeps again. Feature-detected, so a browser sees
+ * none of this.
+ */
+describe('the desktop shell', () => {
+	it('is told to hold and to let go, around the ride', () => {
+		const env = stub();
+		const calls: boolean[] = [];
+		vi.stubGlobal('wattroom', { keepAwake: (on: boolean) => calls.push(on) });
+
+		const lock = acquireWakeLock();
+		expect(calls).toEqual([true]);
+		lock.release();
+		expect(calls).toEqual([true, false]);
+		expect(env.listening).toBe(false);
+	});
+
+	it('holds even where the browser has no wake lock of its own', () => {
+		// A shell build, or any browser without the API: the screen lock is
+		// unavailable and the machine should still stay awake.
+		vi.stubGlobal('navigator', {});
+		vi.stubGlobal('document', undefined);
+		const calls: boolean[] = [];
+		vi.stubGlobal('wattroom', { keepAwake: (on: boolean) => calls.push(on) });
+
+		const lock = acquireWakeLock();
+		expect(calls).toEqual([true]);
+		lock.release();
+		expect(calls).toEqual([true, false]);
+	});
+
+	it('is absent in a browser, and nothing throws', () => {
+		stub();
+		expect(() => acquireWakeLock().release()).not.toThrow();
+	});
+});

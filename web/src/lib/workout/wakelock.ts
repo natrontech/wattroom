@@ -16,19 +16,40 @@
  * hidden or the OS refuses (low battery); the ride runs identically either way,
  * so there is no error UI — the only cost of a refused lock is the OS screen
  * timeout the rider already has.
+ *
+ * In the desktop shell this also holds the machine awake (#296). The browser
+ * lock keeps the SCREEN on and the browser drops it whenever the document
+ * hides; the shell's power blocker keeps the system from sleeping under it,
+ * which is the half a tab cannot reach. Feature-detected per ADR-0037, so a
+ * browser is unchanged.
  */
 export interface WakeLock {
 	release(): void;
 }
 
+/** The desktop shell, when there is one. ADR-0037: absent means a browser. */
+function shellKeepAwake(on: boolean): void {
+	(
+		globalThis as { wattroom?: { keepAwake?: (on: boolean) => void } }
+	).wattroom?.keepAwake?.(on);
+}
+
 export function acquireWakeLock(): WakeLock {
+	// The shell's blocker is independent of the browser lock below: a build
+	// without navigator.wakeLock should still stop the machine sleeping.
+	shellKeepAwake(true);
+
 	// Unit tests run in node; Web Bluetooth-less browsers may also lack this.
 	if (
 		typeof navigator === 'undefined' ||
 		!navigator.wakeLock ||
 		typeof document === 'undefined'
 	) {
-		return { release() {} };
+		return {
+			release() {
+				shellKeepAwake(false);
+			},
+		};
 	}
 
 	let sentinel: WakeLockSentinel | null = null;
@@ -54,6 +75,7 @@ export function acquireWakeLock(): WakeLock {
 	return {
 		release() {
 			released = true;
+			shellKeepAwake(false);
 			document.removeEventListener('visibilitychange', onVisible);
 			void sentinel?.release().catch(() => {});
 			sentinel = null;

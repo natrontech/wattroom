@@ -16,6 +16,7 @@ const {
 	desktopCapturer,
 	dialog,
 	ipcMain,
+	powerSaveBlocker,
 	shell,
 } = require('electron');
 const path = require('node:path');
@@ -63,6 +64,11 @@ function createWindow() {
 			contextIsolation: true,
 			nodeIntegration: false,
 			sandbox: true,
+			// Chromium throttles timers in a background window. workout/ticker.ts
+			// already keeps the RIDE correct under throttling by reporting
+			// wall-clock elapsed (#51) — this is for everything that has no such
+			// defence: chart animation, the mixer's ramps, metrics polling.
+			backgroundThrottling: false,
 		},
 	});
 
@@ -222,6 +228,35 @@ if (!app.requestSingleInstanceLock()) {
 		if (process.platform !== 'darwin') app.quit();
 	});
 }
+
+// Keep the machine awake while a ride runs (#296). The browser's wake lock
+// holds the SCREEN and is dropped whenever the document hides; this holds the
+// system, which is the half a tab cannot reach. Started and stopped by
+// workout/wakelock.ts, so a ride is the only thing that can hold it.
+let sleepBlockerId = null;
+
+function keepAwake(on) {
+	if (on) {
+		if (sleepBlockerId === null) {
+			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
+		}
+		return;
+	}
+	if (sleepBlockerId !== null) {
+		powerSaveBlocker.stop(sleepBlockerId);
+		sleepBlockerId = null;
+	}
+}
+
+ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
+
+// A renderer that crashes or navigates mid-ride would otherwise leave the
+// machine awake until quit.
+app.on('browser-window-created', (_e, win) => {
+	win.webContents.on('render-process-gone', () => keepAwake(false));
+	win.on('closed', () => keepAwake(false));
+});
+app.on('will-quit', () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
 ipcMain.on('wattroom:retry', (event) => {

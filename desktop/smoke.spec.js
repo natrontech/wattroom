@@ -43,7 +43,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		version: window.wattroom?.version,
 	}));
 	expect(bridge.present).toBe(true);
-	expect(bridge.keys).toEqual(['platform', 'retry', 'version']);
+	expect(bridge.keys).toEqual(['keepAwake', 'platform', 'retry', 'version']);
 	expect(bridge.platform).toBe(process.platform);
 	// Not Electron's version. app.getVersion() returns Electron's when
 	// unpackaged, so this asserts the shell's own — the number the update
@@ -104,6 +104,35 @@ test('the navigation guard refuses another origin', async () => {
 	// leave every external link in the app dead.
 	const opened = await app.evaluate(() => globalThis.__opened);
 	expect(opened).toEqual(['https://example.com/']);
+
+	await app.close();
+});
+
+test('a ride holds the machine awake, and stops holding it', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	const blocking = () =>
+		app.evaluate(({ powerSaveBlocker }) =>
+			powerSaveBlocker
+				.isStarted(0)
+				// ids are sequential from 0; any started blocker is ours, since
+				// the shell starts no other.
+				|| [1, 2, 3].some((id) => powerSaveBlocker.isStarted(id)),
+		);
+
+	// Nothing is riding yet.
+	expect(await blocking()).toBe(false);
+
+	// workout/wakelock.ts calls exactly this for a ride's duration.
+	await win.evaluate(() => window.wattroom.keepAwake(true));
+	await expect.poll(blocking).toBe(true);
+
+	// And releases it when the ride ends — a blocker left running is a laptop
+	// that never sleeps again until quit.
+	await win.evaluate(() => window.wattroom.keepAwake(false));
+	await expect.poll(blocking).toBe(false);
 
 	await app.close();
 });
