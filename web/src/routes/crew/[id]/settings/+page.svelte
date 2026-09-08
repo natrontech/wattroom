@@ -1,7 +1,8 @@
 <script lang="ts">
-	// The crew's settings (#1237), laid out like a room's: what it is called,
-	// what it looks like, and how people get in. Owner and admins; a member
-	// who lands here is told where the roster is. Every control saves on
+	// The crew's settings (#1237), laid out like a room's: what it is called
+	// and what it looks like. Owner and admins; a member who lands here is
+	// told where the roster is. The invite is not here: it is every member's
+	// to share, so its one home is the crew page. Every control saves on
 	// change — no form, no save button (the room settings' rule).
 	import { goto } from '$app/navigation';
 	import Banner from '$lib/components/Banner.svelte';
@@ -11,15 +12,12 @@
 	import {
 		clearCrewImage,
 		fetchCrew,
-		inviteLink,
 		renameCrew,
 		setCrewImage,
 		type Crew,
 	} from '$lib/crew';
-	import { copyInviteLink } from '$lib/crew-flows';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import Copy from '@lucide/svelte/icons/copy';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -197,38 +195,11 @@
 			</div>
 		</section>
 
-		{#if crew.code}
-			<section class="panel mt-3 p-6">
-				<h2 class="font-display font-bold">Invite</h2>
-				<p class="text-muted mt-1.5 text-xs">
-					The one way into {crew.name}. Anyone with the code or the link joins
-					the crew and can walk into its open rooms; rooms have no codes of
-					their own. Every member can share it.
-				</p>
-				<div class="mt-3 flex flex-wrap items-center gap-3">
-					<span class="min-w-0">
-						<span class="eyebrow">crew code</span>
-						<span class="font-display block text-lg font-bold tracking-widest"
-							>{crew.code}</span
-						>
-					</span>
-					<span class="text-muted min-w-0 flex-1 text-xs break-all"
-						>{inviteLink(crew.code)}</span
-					>
-					<button
-						onclick={() => crew?.code && copyInviteLink(crew.code)}
-						class="btn btn-secondary btn-xs shrink-0"
-						><Copy size={13} /> Copy invite link</button
-					>
-				</div>
-			</section>
-		{/if}
-
 		<p class="text-muted mt-6 text-xs">
-			Admins, bans and handing the crew on live on <a
+			The invite, admins, bans and handing the crew on live on <a
 				href="/crew/{crew.id}"
 				class="underline">the crew's page</a
-			>, on each person.
+			>.
 		</p>
 		{#if crew.role === 'owner'}
 			<p class="text-muted mt-1 text-xs">

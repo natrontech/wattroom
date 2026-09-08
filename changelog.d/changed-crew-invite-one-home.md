@@ -1,0 +1,1 @@
+- The crew's invite has one home, the crew page, where every member sees it. Crew settings hold only what the crew is called and looks like, and the invite panel no longer squeezes its sentence into a thin column on a phone.
