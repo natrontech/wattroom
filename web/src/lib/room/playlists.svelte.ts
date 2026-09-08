@@ -39,7 +39,12 @@ export interface SavedPlaylistDetail {
 
 export interface AutoplaySettings {
 	enabled: boolean;
-	order: 'ordered' | 'shuffled';
+	/**
+	 * `ordered`/`shuffled` walk the room's active playlist; `smart` (#269)
+	 * ignores it and draws from the music pool, weighted by what this room
+	 * has been playing and skipping.
+	 */
+	order: 'ordered' | 'shuffled' | 'smart';
 	fixedVideoId?: string;
 	fixedVideoTitle?: string;
 	activePlaylistId?: string;

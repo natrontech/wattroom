@@ -15,7 +15,7 @@ import (
 
 type autoplayJSON struct {
 	Enabled          bool   `json:"enabled"`
-	Order            string `json:"order"` // "ordered" | "shuffled"
+	Order            string `json:"order"` // "ordered" | "shuffled" | "smart"
 	FixedVideoID     string `json:"fixedVideoId,omitempty"`
 	FixedVideoTitle  string `json:"fixedVideoTitle,omitempty"`
 	ActivePlaylistID string `json:"activePlaylistId,omitempty"`
@@ -53,8 +53,8 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	if req.Order != "ordered" && req.Order != "shuffled" {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Autoplay order is either ordered or shuffled.", "order")
+	if !validAutoplayOrder(req.Order) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Autoplay order is ordered, shuffled, or smart.", "order")
 		return
 	}
 	fixedID := strings.TrimSpace(req.FixedVideoID)
@@ -105,12 +105,22 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, autoplayJSONFrom(room))
 }
 
+// validAutoplayOrder: the three things autoplay can mean. "ordered" and
+// "shuffled" walk the room's ACTIVE PLAYLIST; "smart" (#269) ignores it and
+// draws from the music pool instead, weighted by this room's play/skip
+// history. One setting rather than two, because a room picks a source and an
+// order together and never wanted the four-way grid (ux.md's 95% rule).
+func validAutoplayOrder(order string) bool {
+	return order == "ordered" || order == "shuffled" || order == "smart"
+}
+
 // Autoplay implements hub.AutoplaySource (#627): read once per join-onto-an-
 // idle-deck, entirely outside any room lock. fixed, when the room has a
 // pinned starter, always leads; tracks is the active playlist in list order,
 // or freshly shuffled when that's the room's current setting — "shuffled"
-// means shuffled once per trigger, not a smart/history-weighted order (#269
-// is that feature, and a different one).
+// means shuffled once per trigger, not a history-weighted order. "smart"
+// (#269) is the history-weighted one, and it draws from the pool rather than
+// from any playlist.
 func (s *Service) Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool) {
 	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
 	if err != nil || !room.AutoplayEnabled {
@@ -120,7 +130,9 @@ func (s *Service) Autoplay(ctx context.Context, slug string) (fixed *protocol.Ju
 		cmd := protocol.JukeboxCommand{Action: "add", VideoID: room.AutoplayFixedVideoID, Title: room.AutoplayFixedVideoTitle}
 		fixed = &cmd
 	}
-	if room.AutoplayPlaylistID.Valid {
+	if room.AutoplayOrder == "smart" {
+		tracks = s.smartShuffle(ctx, room.ID, slug)
+	} else if room.AutoplayPlaylistID.Valid {
 		if rows, err := s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err == nil {
 			tracks = commandsFromTracks(rows)
 			if room.AutoplayOrder == "shuffled" {

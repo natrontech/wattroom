@@ -81,6 +81,12 @@ type jukebox struct {
 	// The track the last command let finish, for the room to credit once
 	// the lock is released; nil otherwise.
 	finished *playedTrack
+	// What the last command did to a POOL track, for the room to record
+	// once the lock is released (#269); nil otherwise. Deliberately not
+	// folded into finished: that one is the DJ credit — a natural end only,
+	// and YouTube counts — where this one is a pool track leaving the deck
+	// whether it was played through or skipped past.
+	event *trackEvent
 	// Set when the last command ran the deck dry (#676), for the room to
 	// hand to autoplay once the lock is released; the room clears it.
 	idled bool
@@ -114,6 +120,16 @@ type pendingUndo struct {
 type playedTrack struct {
 	riderID string
 	ref     string
+}
+
+// trackEvent is one pool track leaving the deck (#269) — the substrate smart
+// shuffle weights by. queuedBy is who put it there, NOT who pressed skip:
+// "whose track was this" is what a taste model wants (#271), and who did the
+// skipping is already a room-timeline line. Empty when autoplay queued it.
+type trackEvent struct {
+	trackID  string
+	queuedBy string
+	skipped  bool
 }
 
 func newJukebox() *jukebox {
@@ -331,6 +347,9 @@ func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 			return nil, false, ""
 		}
 		skipped := *j.state.Current
+		if skipped.TrackID != "" {
+			j.event = &trackEvent{trackID: skipped.TrackID, queuedBy: j.owners[skipped.ID], skipped: true}
+		}
 		// Skipping a track INSIDE a playlist leaves the entry on the deck,
 		// so its owner outlives the track — dropping the credit here cost
 		// the DJ every track after the first (#467, #615).
@@ -406,6 +425,11 @@ func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 			j.finished = &playedTrack{
 				riderID: owner,
 				ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
+			}
+		}
+		if j.state.Current.TrackID != "" {
+			j.event = &trackEvent{
+				trackID: j.state.Current.TrackID, queuedBy: j.owners[j.state.Current.ID],
 			}
 		}
 		// Every track of a playlist played through is its own credit; the
