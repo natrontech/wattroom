@@ -148,18 +148,18 @@
 		};
 	});
 	// The day the crew arrives (#1151), said once and briefly: while the crew
-	// you own still carries the placeholder name the migration gave it, a
-	// toast names it and points at the page where the name is edited. Not a
-	// card in the sidebar — that spent forty pixels on a sentence — and it
-	// makes no claim about visibility, because none changed.
+	// you own still carries the placeholder name it was made with, a toast
+	// names it and points at the settings page where the name is edited
+	// (#1237). Not a card in the sidebar — that spent forty pixels on a
+	// sentence — and it makes no claim about visibility, because none changed.
 	$effect(() => {
 		const own = crew;
 		if (!own || own.role !== 'owner' || introDismissed(own.id)) return;
 		if (own.name !== account.me?.displayName) return;
 		dismissIntro(own.id);
 		toasts.push(
-			`Your rooms live in a crew now, named “${own.name}” after you until you rename it.`,
-			{ href: `/crew/${own.id}`, seconds: 8 },
+			`Your crew is named “${own.name}” after you until you rename it — in its settings.`,
+			{ href: `/crew/${own.id}/settings`, seconds: 8 },
 		);
 	});
 </script>
