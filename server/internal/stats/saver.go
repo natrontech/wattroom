@@ -117,6 +117,7 @@ func (s *Saver) save(
 		results = append(results, RiderResult{
 			UserID: rider.Rider.ID, JoinOrder: join,
 			Execution: float64(row.Execution),
+			Scored:    row.ExecutionScored,
 			CoV:       SteadyCoV(segments, watts),
 			Best5sWkg: wkg,
 			Completed: true,
@@ -184,7 +185,7 @@ func BuildRideRow(
 		watts[i] = sample.Watts
 		total += sample.Watts
 	}
-	execution, err := Execution(workoutJSON, float64(ftpWatts), samples)
+	execution, scorable, err := Execution(workoutJSON, float64(ftpWatts), samples)
 	if err != nil {
 		return db.CreateRideParams{}, err
 	}
@@ -216,11 +217,14 @@ func BuildRideRow(
 		AvgWatts:    int16((total + len(watts)/2) / len(watts)), //nolint:gosec // samples bounded 0-3000
 		Kj:          int32(kj),                                  //nolint:gosec // bounded by seconds*3000/1000
 		Execution:   float32(execution),
-		FtpWatts:    int16(ftpWatts), //nolint:gosec // schema-bounded 50-600
-		Samples:     buf.Bytes(),
-		Curve:       curveJSON,
-		Xp:          int32(XP(kj, execution)), //nolint:gosec // bounded by kj
-		NormWatts:   &normWatts,
+		// #1143: a ride whose workout prescribed nothing has no execution, and
+		// 0 would read as "executed none of it" rather than "nothing to do".
+		ExecutionScored: scorable,
+		FtpWatts:        int16(ftpWatts), //nolint:gosec // schema-bounded 50-600
+		Samples:         buf.Bytes(),
+		Curve:           curveJSON,
+		Xp:              int32(XP(kj, execution)), //nolint:gosec // bounded by kj
+		NormWatts:       &normWatts,
 	}, nil
 }
 

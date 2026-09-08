@@ -198,8 +198,16 @@
 		>
 		<span class="font-mono text-xs tabular-nums">{ride.avgWatts} W</span>
 		<span class="text-muted font-mono text-xs tabular-nums">{ride.kj} kJ</span>
-		<span class="font-display text-sm font-semibold tabular-nums"
-			>{Math.round(ride.execution * 100)}%</span
+		<!-- A ride whose workout prescribed no target has no execution to show;
+		     the dash says so on hover rather than sitting there unexplained. -->
+		<span
+			class="font-display text-sm font-semibold tabular-nums"
+			title={ride.executionScored === false
+				? 'This workout had no power targets to score'
+				: undefined}
+			>{ride.executionScored === false
+				? '—'
+				: `${Math.round(ride.execution * 100)}%`}</span
 		>
 		{#if server}
 			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->

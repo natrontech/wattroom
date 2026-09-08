@@ -28,6 +28,8 @@ export interface RideDetail {
 	normWatts: number;
 	kj: number;
 	execution: number;
+	/** #1143: false when the workout prescribed nothing to score. */
+	executionScored?: boolean;
 	ftp: number;
 	xp: number;
 	/** The room it was ridden in, or null for a solo ride. */

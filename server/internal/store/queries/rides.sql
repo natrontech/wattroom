@@ -1,14 +1,15 @@
 -- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp, norm_watts
+    seconds, avg_watts, kj, execution, execution_scored,
+    ftp_watts, samples, curve, xp, norm_watts
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 returning id;
 
 -- name: ListUserRides :many
 -- Summary only: the blob stays on disk unless a single ride is opened.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, xp, room_id, shared_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
 order by started_at desc
