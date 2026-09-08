@@ -3,6 +3,19 @@
 - Status: accepted
 - Date: 2026-08-31
 
+> **Amended by [ADR-0028](0028-room-and-personal-playlists.md) (2026-09-05):**
+> playlists are room-owned or rider-owned, not "user-owned and visible to all
+> logged-in users". The Decision paragraph below said the latter for a month
+> after it stopped being true, and was read as evidence that playlists shared
+> the pool's scope problem — they never did (#1097).
+>
+> **Amended by [#1095](https://github.com/natrontech/wattroom/issues/1095)
+> (2026-09-08):** the pool is scoped to the uploader, not global per
+> instance, and a room's autoplay reaches its own members' shelves. The
+> "one global pool per instance" decision and the "no per-room scoping"
+> consequence below are both struck through in place; the reasoning for
+> each is beside it.
+
 ## Context
 
 The jukebox is YouTube-only (WATTROOM.md, locked), and every hard problem it
@@ -60,6 +73,13 @@ times the bytes are stored.
 
 **Crew scope (Phase 2) is the intended end state**, waiting on #1022's crew
 ADR; it only ever *widens* access from here, never narrows it.
+
+**When a playlist can hold a pool track**, its entries inherit the scope
+above — a saved list is not a way around who may hear a shelf. Nothing does
+today: `playlist_tracks` stores `video_id`, so every saved entry is YouTube.
+[#655](https://github.com/natrontech/wattroom/issues/655) is the open ADR for
+making saved playlists multi-source, and is where that rule has to be
+written down rather than inferred from here.
 
 **Metadata.** ID3 tags parsed at upload (`dhowden/tag` — small pure-Go;
 duration comes from the uploading browser's `audio.duration`, no server-side
