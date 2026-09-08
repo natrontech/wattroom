@@ -411,6 +411,23 @@ func TestAnAdminOpensARoomInSomeoneElsesCrew(t *testing.T) {
 	}
 }
 
+// The door (#1236) knows its own: a member following the crew's link again
+// is told they are in and handed the way in; a stranger is not handed the
+// crew's id, which is not theirs to know until they join.
+func TestTheCrewDoorKnowsWhoIsAlreadyIn(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Crew Door Knows")
+	crew := h.crewOf(t, slug)
+	_, stranger := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, "")
+	if stranger["inCrew"] != nil || stranger["id"] != nil {
+		t.Errorf("a stranger at the door learned more than the name: %v", stranger)
+	}
+	_, owner := h.call(t, "alice", http.MethodGet, "/api/crew-doors/"+code, "")
+	if owner["inCrew"] != true || owner["id"] != store.UUIDString(crew.ID) {
+		t.Errorf("the owner at their own door is not told they are in: %v", owner)
+	}
+}
+
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
