@@ -4,6 +4,8 @@ import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { ducking, resetDucking, setDucking } from '$lib/sound/duck';
+import { DUCK_HOLD_MS, shouldDuck } from '$lib/sound/ducking';
 
 vi.mock('$lib/api', () => ({
 	api: vi.fn(async () => ({
@@ -178,10 +180,21 @@ interface FakeRoom {
 // The mic chain wants a real AudioContext; the meter is the one piece of it
 // with a worker behind it, so it is the one piece that has to be faked.
 vi.mock('$lib/room/mic-level', () => ({
-	createMicMeter: async () => ({ out: { connect() {} }, stop() {} }),
+	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
 }));
 
 const { createRoomAv } = await import('./av.svelte');
+const { createMicMeter } = (await import('$lib/room/mic-level')) as {
+	createMicMeter: ReturnType<
+		typeof vi.fn<
+			(
+				ctx: unknown,
+				source: unknown,
+				onLevel: (level: number) => void,
+			) => Promise<{ out: unknown; stop: () => void }>
+		>
+	>;
+};
 const { api } = await import('$lib/api');
 const {
 	stopSharingNatively,
@@ -995,6 +1008,87 @@ describe('a rider who shares their computer as well as their voice', () => {
 			// rider would simply have gone quiet when they stopped sharing.
 			av.setRiderGain('jan', 0.4);
 			expect(gains[0].gain.value).toBe(0.4);
+
+			dispose();
+		});
+	});
+});
+
+// A rider's report (2026-09-08): ducking stopped reacting to somebody else
+// talking, and the ring on their tile went with it. #987/#1001 only proved
+// the meter cannot outlive a dropped voice — nothing anywhere drove a real
+// level through `route()`'s meter branch and checked it reached `av.speaking`
+// keyed by the RIDER, which is what #1124's `identity + ' — share'` suffix
+// touches for every remote voice, not only a shared one.
+describe('a remote voice actually reaching av.speaking', () => {
+	it('rings the rider, not the connection key, once the meter reports level', async () => {
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+
+			createMicMeter.mockImplementationOnce(async (_ctx, source, onLevel) => {
+				onLevel(1);
+				return { out: source, stop() {} };
+			});
+			remoteVoice('jan');
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(av.speaking).toEqual({ jan: true });
+
+			dispose();
+		});
+	});
+});
+
+// connection.svelte.ts's duck effect, wired exactly the way it is wired
+// there: `$effect(() => { setDucking(shouldDuck(...)); return () =>
+// setDucking(false); })`. Its own unconditional cleanup is the pattern
+// duck.ts was written to survive (#988's doc comment on `setDucking`), so a
+// second voice joining — which changes `av.speaking`'s object identity and
+// reruns the effect — must not let the cleanup's `setDucking(false)` outrace
+// the rerun's `setDucking(true)` and park the room unducked mid-conversation.
+describe('the duck effect surviving av.speaking changing shape mid-conversation', () => {
+	afterEach(() => {
+		resetDucking();
+		vi.useRealTimers();
+	});
+
+	it('never lifts the duck while a voice is still going', async () => {
+		vi.useFakeTimers();
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+				$effect(() => {
+					setDucking(shouldDuck(av.speaking, undefined, false));
+					return () => setDucking(false);
+				});
+			});
+			await av.join();
+
+			createMicMeter.mockImplementation(async (_ctx, source, onLevel) => {
+				onLevel(1);
+				return { out: source, stop() {} };
+			});
+
+			remoteVoice('jan');
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(ducking()).toBe(true);
+
+			// A second rider starts talking too: av.speaking gets a fresh
+			// object even though jan, the first voice, never stopped.
+			remoteVoice('mo');
+			await Promise.resolve();
+			await Promise.resolve();
+
+			// jan is still talking throughout — the duck must never lift.
+			vi.advanceTimersByTime(DUCK_HOLD_MS + 100);
+			expect(ducking()).toBe(true);
 
 			dispose();
 		});
