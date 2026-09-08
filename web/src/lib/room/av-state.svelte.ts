@@ -1,0 +1,107 @@
+import type { Room as LiveKitRoom } from 'livekit-client';
+import type { AvError, AvStatus, LiveKitClient } from '$lib/room/av-types';
+
+/**
+ * One room's AV connection, in two named places (#892).
+ *
+ * Four seams have left this store already (#926, #1035, #1051), each behind
+ * an interface its host implements. `wire()` cannot go the same way, and the
+ * reason is these bindings: it ASSIGNS seven of them — `speaking`, `voice`,
+ * `camOn`, `micOn`, `sharing`, `handedOff`, `status` — and an imported `let`
+ * cannot be assigned. `$state` reactivity rides on assignment in the scope
+ * that declared it, so every piece that writes any of this was pinned to the
+ * same file as the `let`. That is the real reason the closure kept growing.
+ *
+ * Fields of a `$state` object have neither limit: they can be written from
+ * anywhere holding the object, and stay reactive. Naming the scope is what
+ * makes the next seam possible; this change deliberately stops there.
+ *
+ * Two containers, and the split is not cosmetic. `AvState` is what the UI
+ * reads, so it is `$state`. `AvConn` is the connection's own bookkeeping and
+ * is deliberately NOT: `$state` proxies deeply, and handing the SDK a proxy
+ * of its own `Room` instead of the `Room` is not a thing to discover in
+ * production.
+ */
+export interface AvState {
+	status: AvStatus;
+	micOn: boolean;
+	camOn: boolean;
+	/**
+	 * Stepped out (#706). What was live when the rider pressed the button
+	 * lives on `AvConn`, so coming back restores that rather than a default.
+	 */
+	away: boolean;
+	sharing: boolean;
+	error: AvError | null;
+	/** Who is talking, measured rather than remembered (#987). */
+	speaking: Record<string, boolean>;
+	/**
+	 * Bumped when LiveKit drops us while live — the connection auto-rejoins
+	 * once with a fresh token (#219: token expiry, transient drops).
+	 */
+	dropped: number;
+	/**
+	 * Who is in voice and whether their mic is open (#151): absent = not in
+	 * voice at all — three states a tile can tell apart at a glance.
+	 */
+	voice: Record<string, 'live' | 'muted'>;
+	/**
+	 * This tab gave the mic and camera to another tab of yours (#293). Not an
+	 * error and not transient — a persistent status with one button back,
+	 * because a rider three metres away must be able to see why they went
+	 * quiet without reading a toast that has already gone.
+	 */
+	handedOff: boolean;
+}
+
+/** What the UI watches. */
+export function createAvState(): AvState {
+	// `$state` has to initialise a declaration, so it cannot be returned inline.
+	const state: AvState = $state({
+		status: 'off',
+		micOn: false,
+		camOn: false,
+		away: false,
+		sharing: false,
+		error: null,
+		speaking: {},
+		dropped: 0,
+		voice: {},
+		handedOff: false,
+	});
+	return state;
+}
+
+/** What the connection keeps for itself. Never reactive — see above. */
+export interface AvConn {
+	/** Loaded only when a rider actually starts AV, after the token lands. */
+	liveKit: LiveKitClient | null;
+	room: LiveKitRoom | null;
+	/** This connection's identity and the rider behind it (#293). */
+	myIdentity: string;
+	me: string;
+	/** The heartbeat behind the "I was in voice here" note (#480). */
+	heartbeat: ReturnType<typeof setInterval> | null;
+	/** What was live when the rider stepped out, so coming back restores it. */
+	micBeforeAway: boolean;
+	camBeforeAway: boolean;
+	/**
+	 * Whether the mic was open when LiveKit dropped us, for the rejoin (#641).
+	 * The Disconnected handler clears `micOn` before the rejoin fires, and a
+	 * rider who muted for a phone call must not come back publishing.
+	 */
+	micBeforeDrop: boolean;
+}
+
+export function createAvConn(): AvConn {
+	return {
+		liveKit: null,
+		room: null,
+		myIdentity: '',
+		me: '',
+		heartbeat: null,
+		micBeforeAway: false,
+		camBeforeAway: false,
+		micBeforeDrop: false,
+	};
+}
