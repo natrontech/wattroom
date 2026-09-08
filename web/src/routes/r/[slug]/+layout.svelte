@@ -115,16 +115,28 @@
 		</div>
 	</main>
 {:else if room && !isMember}
-	<!-- The golden path: someone opened a shared link. One decision, one button. -->
+	<!-- The golden path: someone opened a shared link. One decision, one button.
+	     Or the other door (#1216): a room the sidebar listed as open to your
+	     crew (ADR-0038) — nobody invited you, and the copy must not say so. -->
+	{@const viaCrew = presence.rooms.find((r) => r.slug === room?.slug)}
+	{@const crewName =
+		viaCrew?.access === 'open' ? viaCrew.crew?.name : undefined}
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
-			<p class="text-muted mt-2 text-sm">You have been invited to ride here.</p>
+			<p class="text-muted mt-2 text-sm">
+				{#if crewName}
+					Open to everyone in {crewName} — that includes you.
+				{:else}
+					You have been invited to ride here.
+				{/if}
+			</p>
 			<button
 				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
 				disabled={busy}
-				class="btn btn-primary btn-lg mt-6">Join {room.name}</button
+				class="btn btn-primary btn-lg mt-6"
+				>{crewName ? 'Walk in' : `Join ${room.name}`}</button
 			>
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			<!-- Privacy is architecture (WATTROOM.md): say what the room sees
