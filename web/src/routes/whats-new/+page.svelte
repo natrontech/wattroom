@@ -3,7 +3,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { changelog } from '$lib/changelog.svelte';
-	import { inlineParts } from '$lib/changelog';
+	import MessageText from '$lib/chat/MessageText.svelte';
 
 	// What's new (#345): the changelog the running build shipped with. Reading
 	// it acknowledges the current version, so the home notice stops nagging.
@@ -61,12 +61,7 @@
 						<ul class="mt-2 space-y-2">
 							{#each section.items as item}
 								<li class="text-sm leading-relaxed">
-									{#each inlineParts(item) as part}
-										{#if part.code}<code
-												class="bg-z1/60 rounded px-1 py-0.5 text-xs"
-												>{part.text}</code
-											>{:else}{part.text}{/if}
-									{/each}
+									<MessageText text={item} preview={false} />
 								</li>
 							{/each}
 						</ul>
