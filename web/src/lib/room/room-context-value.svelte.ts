@@ -1,5 +1,3 @@
-import { FtmsTrainer } from '$lib/ble/ftms';
-import { SimulatedTrainer } from '$lib/ble/simulated';
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
@@ -145,9 +143,6 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get segments() {
 			return deps.segments();
 		},
-		get workout() {
-			return connection.workout();
-		},
 		get shared() {
 			return connection.shared();
 		},
@@ -173,23 +168,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get trainer() {
 			return ride.trainer;
 		},
-		get hrSource() {
-			return ride.hrSource;
-		},
-		get rideError() {
-			return ride.error;
-		},
 		get pairing() {
 			return live.pairing;
 		},
-		pair: () => void ride.ride(new FtmsTrainer()),
-		pairSimulated: () =>
-			void ride.ride(
-				new SimulatedTrainer({
-					baseWatts: connection.profile.current.ftp * 0.75,
-				}),
-			),
-		unpair: ride.unpair,
 		control: (kind, payload, id) =>
 			live.control(kind as never, payload as never, id),
 		openPicker: (intent = 'start') => deps.openPicker(intent),
@@ -236,7 +217,6 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get medals() {
 			return props.medals ?? [];
 		},
-		schedule: (name, json, at) => props.onSchedule(name, json, at),
 		reschedule: (id, at) => props.onReschedule(id, at),
 		unschedule: (id) => props.onUnschedule(id),
 		rsvp: (id, going) => props.onRsvp(id, going),
