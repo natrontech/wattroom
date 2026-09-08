@@ -264,7 +264,9 @@
 			<h2 class="font-display font-bold">Leave room</h2>
 			<p class="text-muted mt-1.5 text-xs">
 				You drop off the member list and the room leaves your sidebar. Rides you
-				rode here stay in your history, and the room's code gets you back in.
+				rode here stay in your history{crewVisible
+					? ', and you can walk back in any time — the room is open to the crew'
+					: ', and the owner can let you back in — the room is private'}.
 			</p>
 			<button onclick={leave} disabled={busy} class="btn btn-danger mt-4"
 				>Leave room</button
