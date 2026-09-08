@@ -1,1 +1,0 @@
-- A crew has a settings page: its name, a picture you upload (shown in the sidebar, on the crew's page and at its door), the fallback icon, and the invite code and link in one place. The crew's page keeps the roster and points admins at the settings. (#1237)

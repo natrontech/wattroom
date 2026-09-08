@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.53] - 2026-09-08
+
+### Added
+
+- A crew has a settings page: its name, a picture you upload (shown in the sidebar, on the crew's page and at its door), the fallback icon, and the invite code and link in one place. The crew's page keeps the roster and points admins at the settings. (#1237)
+
+### Fixed
+
+- Editing a chat line right after sending it now reaches everyone in the room. If the fix arrived before the other riders' copies of the line had been saved, it was dropped and they kept reading the old words until a reload. (#1231)
+- The last places that still talked about a room's own code follow the crew: the TV's idle screen shows the crew's code, the settings page and the Members place say what actually lets someone in, and undoing "leave room" walks you back in through the crew instead of failing. (#1236)
+
 ## [2026.09.52] - 2026-09-08
 
 ### Changed
@@ -1216,7 +1227,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.52...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.53...HEAD
+[2026.09.53]: https://github.com/natrontech/wattroom/compare/2026.09.52...2026.09.53
 [2026.09.52]: https://github.com/natrontech/wattroom/compare/2026.09.51...2026.09.52
 [2026.09.51]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.4...2026.09.51
 [2026.09.50]: https://github.com/natrontech/wattroom/compare/2026.09.49...2026.09.50
