@@ -75,7 +75,14 @@ select r.*, m.role,
        -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
        -- name the second one CrewID_2.
        coalesce(c.name, '')::text as crew_name,
-       coalesce(c.icon, '')::text as crew_icon
+       coalesce(c.icon, '')::text as crew_icon,
+       -- What the caller is to the crew, for the switcher's owner mark and
+       -- the crew page's door (#1147). Two booleans, not a role word: the
+       -- LEFT join makes a CASE nullable and sqlc would hand back *string.
+       coalesce(c.owner_id = sqlc.arg(user_id), false)::boolean as crew_owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = r.crew_id and cr.user_id = sqlc.arg(user_id)
+                 and cr.role = 'admin')::boolean as crew_admin
 from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id

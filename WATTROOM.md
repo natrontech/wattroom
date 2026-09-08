@@ -65,7 +65,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 | Fan-out | **Server tick @1 Hz**: all riders coalesced into one message per room per second (n in, 1 out — never n²). Sprint moments burst to 4 Hz for 15 s. Latency budget: pedal → everyone's screen < 500 ms. |
 | Validation | **Own training circle is the alpha.** Success signal: the group keeps *choosing* WattRoom over Zwift+Discord for weekly sessions, unprompted. Widen only after that. |
 | Visual identity | **Neon glow / synthwave.** Near-black surfaces, one hot accent (electric watt-yellow), glowing interval graphs like a night ride, subtle bloom on live numbers. Restraint rule: glow belongs to *data* (graphs, live watts, sprint moments) — chrome UI (buttons, forms, settings) stays flat and quiet, or it tips into kitsch. |
-| Join flow | **Share link is the golden path** (`wattroom.ch/r/velvet-hammer`) + **6-char room code** for cross-device joins, both MVP. **In-app invites** and an **opt-in public room directory** are fast-follows. Rooms are private/unlisted by default; a directory listing is a per-room owner choice, and metrics stay visible only to people who actually join. |
+| Join flow | **Share link is the golden path** (`wattroom.ch/r/velvet-hammer`) + **6-char room code** for cross-device joins, both MVP. **In-app invites** and an **opt-in public room directory** are fast-follows. ~~Rooms are private/unlisted by default~~ **amended by [ADR-0038](docs/decisions/0038-the-crew-is-the-layer-above-rooms.md)**: a new room is visible to its *crew* by default (the rooms that existed at the cutover stayed private, with their members as the exceptions); a directory listing is still a per-room owner choice, and metrics stay visible only to people who actually join. |
 | iOS | **Web-only, forever.** Chrome/Edge on desktop + Android is the training product; no native app, no bridge app planned. iOS users bring a laptop to train, while iOS Safari can use the room's lounge and chat surfaces with trainer affordances gated off. Honest positioning over platform sprawl. |
 | Replay | **Out.** The ride summary (curve, score, medals, graphs) is the record; AV is never recorded regardless. Question closed. |
 | FTP | **All three sources.** Manual entry (the fallback, MVP), **built-in ramp test** (special workout on the existing engine, FTP = 75% of best 1-min), **auto-detect** (server *prompts* when the 90-day curve outgrows the setting — never silently changes it, FTP moves every workout's difficulty). |
@@ -150,7 +150,7 @@ The coach (or a marker in the workout file) arms a 15 s all-out segment. The roo
 
 ### Room streaks & challenges
 
-Crew-level: "8 weeks straight, nobody missed", monthly collective targets ("5 MJ together"). Cooperative pressure — you show up so the *room* doesn't lose the streak.
+Room-level (~~"crew-level"~~ — [ADR-0038](docs/decisions/0038-the-crew-is-the-layer-above-rooms.md) took the word for the layer above rooms): "8 weeks straight, nobody missed", monthly collective targets ("5 MJ together"). Cooperative pressure — you show up so the *room* doesn't lose the streak.
 
 ### Game modes
 

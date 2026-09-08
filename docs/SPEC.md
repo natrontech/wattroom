@@ -6,7 +6,8 @@
 
 | Term | Meaning |
 |---|---|
-| **Room** | Persistent named space with members and roles. Sessions happen *in* rooms. |
+| **Room** | Persistent named space with members and roles. Sessions happen *in* rooms. Every room belongs to exactly one **crew**, permanently. |
+| **Crew** | The layer above rooms ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md)): a name, an icon, its rooms and the people in them. Membership is derived — you are in a crew because you are in one of its rooms — so there is no crew code and no crew join. A crew carries no voice, deck, session, game or metrics; everything live stays the room's. Every rider gets one crew, named after them, made with their first room; the sidebar shows one crew at a time ([ADR-0020](decisions/0020-the-app-takes-discords-shape.md), amended). |
 | **Session** | One group ride in a room: a workout (or game mode) + a shared timeline. |
 | **Coach** | The role driving the shared timeline of a session (pick workout, start countdown, arm sprints). The owner is coach by default and can hand it off. |
 | **Tick** | The 1 Hz server broadcast coalescing every rider's latest sample. 4 Hz during sprint windows. |
@@ -52,7 +53,35 @@
 | Cheers | ✓ | ✓ | ✓ | ✓ |
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
-Membership is uncapped; deleting a room frees a slot.
+Membership is uncapped; deleting a room frees a slot. A rider owns **one
+crew**, made with their first room, so rooms-per-crew is the same 3 — ADR-0038
+asks for two caps and this is the pair: one crew, the room cap inside it.
+
+### Crew roles ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md))
+
+| Capability | Crew owner | Crew admin | Crew member |
+|---|---|---|---|
+| Rename the crew, set its icon | ✓ | ✓ | – |
+| Make / unmake a crew admin | ✓ | ✓ | – |
+| Ban / unban from the crew (#1150) | ✓ | ✓ | – |
+| See the crew's ban list | ✓ | ✓ | – |
+| See the crew's rooms listed, with their access state (#1149) | ✓ | ✓ | ✓ |
+| Enter a room open to the crew | ✓ (if in the crew) | ✓ (if in the crew) | ✓ |
+| Read a room's contents, rename it, ban from it | only as that room's member/owner — never by crew role |
+
+- The **owner** is exactly one person and cannot be demoted, removed or
+  banned; they gain no reading power over rooms they never joined.
+- **Room roles are unchanged.** Coach, room ban and room unban stay the room
+  owner's (matrix above). A crew ban implies exclusion from every room in the
+  crew; a room ban implies nothing at the crew; **lifting one never lifts the
+  other**.
+- A new room is **open to its crew**; rooms that existed at the cutover stayed
+  private with their members as the named exceptions.
+- **Succession**: when the owner deletes their account, or no longer stands in
+  any of the crew's rooms, the crew passes to its longest-standing admin, else
+  its longest-standing member, else the owner of any room left in it. With no
+  room left to own, the crew is deleted. Never the departing owner, never
+  anyone the crew banned, never ownerless.
 
 Room identity & vocabulary (#223, #447): the icon is **one drawn icon from a
 curated set, or none**, stored as its lucide key; the reaction set is **up to
@@ -282,7 +311,7 @@ future trainer that reports none.
 ## Session recap retention (ADR-0034)
 
 - A finished session leaves **one recap** per session: who was in the room, when they arrived, how long they stayed, and whether they rode. **Presence and time only** — never watts, kJ, execution, heart rate or a per-rider workout.
-- **Kept 90 days**, then pruned. Long enough to answer "who rode with us last month"; short enough to stop answering "where was this person in March". A room is a crew, not an attendance register.
+- **Kept 90 days**, then pruned. Long enough to answer "who rode with us last month"; short enough to stop answering "where was this person in March". A room is a group of people, not an attendance register.
 - Readable by the room's **current members** only; leaving the room ends access. Deleting the room takes its recaps with it, and deleting an account removes that rider's interval from every recap that names them.
 - A session that never started leaves nothing. Sitting in a room with no session leaves nothing.
 

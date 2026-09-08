@@ -800,7 +800,14 @@ select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound
        -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
        -- name the second one CrewID_2.
        coalesce(c.name, '')::text as crew_name,
-       coalesce(c.icon, '')::text as crew_icon
+       coalesce(c.icon, '')::text as crew_icon,
+       -- What the caller is to the crew, for the switcher's owner mark and
+       -- the crew page's door (#1147). Two booleans, not a role word: the
+       -- LEFT join makes a CASE nullable and sqlc would hand back *string.
+       coalesce(c.owner_id = $1, false)::boolean as crew_owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = r.crew_id and cr.user_id = $1
+                 and cr.role = 'admin')::boolean as crew_admin
 from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id
@@ -867,6 +874,8 @@ type ListUserRoomsRow struct {
 	LastChatAt              pgtype.Timestamptz
 	CrewName                string
 	CrewIcon                string
+	CrewOwned               bool
+	CrewAdmin               bool
 }
 
 // Banned members keep their row (the ban IS the row) but the room vanishes
@@ -919,6 +928,8 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.LastChatAt,
 			&i.CrewName,
 			&i.CrewIcon,
+			&i.CrewOwned,
+			&i.CrewAdmin,
 		); err != nil {
 			return nil, err
 		}
