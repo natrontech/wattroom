@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -274,5 +275,98 @@ func TestDeliveryStopsAfterItsAttempts(t *testing.T) {
 	})
 	if after.Attempts != maxAttempts {
 		t.Errorf("a failed delivery was swept again: %+v", after)
+	}
+}
+
+/*
+TestRevokeSendsTheTokenInTheBodyNotTheURL is the regression this migration
+exists for (#1093). The interesting failure is silent: a revoke that keeps
+working while leaking the token into a query string passes any test that only
+checks the error, because Strava answers 200 either way.
+
+So the fake asserts the shape rather than the outcome — Basic auth from the
+client, the token in the form body, and nothing token-shaped in the URL.
+*/
+func TestRevokeSendsTheTokenInTheBodyNotTheURL(t *testing.T) {
+	st, _, _ := seedRide(t, "Revoker")
+
+	var gotAuth, gotToken, gotHint, gotQuery string
+	var calls atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /oauth/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "fresh-token", "refresh_token": "refresh-2",
+			"expires_at": time.Now().Add(time.Hour).Unix(),
+		})
+	})
+	mux.HandleFunc("POST /oauth/revoke", func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		gotAuth = r.Header.Get("Authorization")
+		gotQuery = r.URL.RawQuery
+		_ = r.ParseForm()
+		gotToken, gotHint = r.PostFormValue("token"), r.PostFormValue("token_type_hint")
+		w.WriteHeader(http.StatusOK) // revoke is 200 whether or not it knew the token
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	svc := newService(st, srv)
+	svc.revokeURL = srv.URL + "/oauth/revoke"
+	ident, err := st.Queries.GetIdentity(t.Context(),
+		db.GetIdentityParams{Provider: "strava", ProviderUserID: "athlete-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RevokeGrant(t.Context(), ident); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	if calls.Load() != 1 {
+		t.Fatalf("revoke called %d times, want 1", calls.Load())
+	}
+	// The token is the body's, and the URL carries nothing at all.
+	if gotToken != "fresh-token" {
+		t.Errorf("form token = %q, want the refreshed access token", gotToken)
+	}
+	if gotHint != "access_token" {
+		t.Errorf("token_type_hint = %q, want access_token", gotHint)
+	}
+	if gotQuery != "" {
+		t.Errorf("revoke URL carried a query string %q — a token in a URL is what this fixed", gotQuery)
+	}
+	// The client authenticates, not the token: Basic base64("id:secret").
+	if want := "Basic " + base64.StdEncoding.EncodeToString([]byte("id:secret")); gotAuth != want {
+		t.Errorf("Authorization = %q, want %q", gotAuth, want)
+	}
+}
+
+// A non-200 is now an error rather than something swallowed: under the old
+// endpoint a 401 meant "already gone", under revoke it means our client
+// credentials are wrong, and every rider's disconnect would fail quietly.
+func TestRevokeReportsARefusal(t *testing.T) {
+	st, _, _ := seedRide(t, "Refused")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /oauth/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "fresh-token", "refresh_token": "refresh-2",
+			"expires_at": time.Now().Add(time.Hour).Unix(),
+		})
+	})
+	mux.HandleFunc("POST /oauth/revoke", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	svc := newService(st, srv)
+	svc.revokeURL = srv.URL + "/oauth/revoke"
+	ident, err := st.Queries.GetIdentity(t.Context(),
+		db.GetIdentityParams{Provider: "strava", ProviderUserID: "athlete-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RevokeGrant(t.Context(), ident); err == nil {
+		t.Fatal("a 401 from revoke was swallowed — bad client credentials must not read as success")
 	}
 }
