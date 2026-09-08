@@ -5,3 +5,6 @@
 - A track from the pool now shows its length and a moving seek bar in the
   jukebox, and no longer draws an empty black tile on the stage — a pool track
   is heard, not seen, so the stage stays with the riders.
+- "Just played" can put a pool track on again. The replay arrow used to send
+  the row as a YouTube video with no id, which the jukebox refused with "that
+  video link is not playable here".
