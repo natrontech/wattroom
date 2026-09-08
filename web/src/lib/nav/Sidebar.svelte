@@ -23,12 +23,16 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { account } from '$lib/account.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { activeHref, activePlace, pages, placesFor } from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
 		accessMark,
+		crewPulse,
 		crewsOf,
+		quiet,
 		currentCrew,
 		dismissIntro,
 		introDismissed,
@@ -37,7 +41,6 @@
 		rememberChosenCrew,
 		sidebarGroups,
 	} from './crews';
-	import CrewIntro from './CrewIntro.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -132,14 +135,20 @@
 			document.removeEventListener('keydown', key);
 		};
 	});
-	// The day-one card (#1151), once per crew you own. `seen` is state so a
-	// dismissal hides it without a reload.
-	let seen = $state(0);
-	const intro = $derived.by(() => {
-		seen;
-		return crew && crew.role === 'owner' && !introDismissed(crew.id)
-			? crew
-			: null;
+	// The day the crew arrives (#1151), said once and briefly: while the crew
+	// you own still carries the placeholder name the migration gave it, a
+	// toast names it and points at the page where the name is edited. Not a
+	// card in the sidebar — that spent forty pixels on a sentence — and it
+	// makes no claim about visibility, because none changed.
+	$effect(() => {
+		const own = crew;
+		if (!own || own.role !== 'owner' || introDismissed(own.id)) return;
+		if (own.name !== account.me?.displayName) return;
+		dismissIntro(own.id);
+		toasts.push(
+			`Your rooms live in a crew now, named “${own.name}” after you until you rename it.`,
+			{ href: `/crew/${own.id}`, seconds: 8 },
+		);
 	});
 </script>
 
@@ -409,7 +418,7 @@
 					class="bg-surface border-ink/5 absolute inset-x-0 top-full z-40 border-b shadow-lg"
 					role="menu"
 				>
-					<ul class="p-2">
+					<ul class="space-y-1 p-2">
 						{#each crews as c (c.id)}
 							{@const now = c.id === here.id}
 							<li>
@@ -455,22 +464,53 @@
 			{/if}
 		</div>
 	{/if}
-	{#if intro}
-		<!-- Shown once, after the migration, to the crew's owner (#1151). -->
-		<div class="px-2 pt-2">
-			<CrewIntro
-				id={intro.id}
-				name={intro.name}
-				rooms={rooms.filter((r) => r.crew?.id === intro.id).length}
-				onDismiss={() => {
-					dismissIntro(intro.id);
-					seen += 1;
-				}}
-			/>
-		</div>
+	{#if crew && crews.length > 1}
+		<!-- What the crews you are NOT looking at are doing (#1148): one crew
+		     at a time hides three quarters of the radar, and this is the price
+		     option C pays back. One plain line per crew with something on —
+		     riders on watts (the watt token, live data), people in voice,
+		     unread (the muted mark, #568) — and NOTHING for a quiet crew, not
+		     even its icon: when nothing is happening anywhere there is no row
+		     at all. Tapping a line switches to that crew. -->
+		{@const elsewhere = crews
+			.filter((c) => c.id !== crew.id)
+			.map((c) => ({ c, pulse: crewPulse(rooms, c.id) }))
+			.filter((x) => !quiet(x.pulse))}
+		{#if elsewhere.length}
+			<ul class="border-ink/5 border-b py-1">
+				{#each elsewhere as { c, pulse } (c.id)}
+					<li>
+						<button
+							onclick={() => pick(c.id)}
+							class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-8 w-full items-center gap-2 px-4 text-left text-[11px]"
+							title="switch to {c.name}"
+							aria-label="{c.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new — switch to it"
+						>
+							<span class="truncate font-medium">{c.name}</span>
+							<span class="ml-auto flex shrink-0 items-center gap-2">
+								{#if pulse.riding}
+									<span class="text-watt/90 flex items-center gap-1"
+										><RidingBars size={8} />{pulse.riding} riding</span
+									>
+								{/if}
+								{#if pulse.voice}
+									<span class="flex items-center gap-1"
+										><Headphones size={9} />{pulse.voice}</span
+									>
+								{/if}
+								{#if pulse.unread}
+									<span class={UNREAD_COUNT}>{unreadCount(pulse.unread)}</span>
+								{/if}
+							</span>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
-
-	<div class="min-h-0 flex-1 overflow-y-auto px-2">
+	<!-- pt-3: the crew header above has its own borders now, and the logo row's
+	     bottom padding no longer separates it from Home. -->
+	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-4">
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
 				{@const on = destination === entry.href}

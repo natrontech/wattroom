@@ -23,7 +23,6 @@
 		type Crew,
 		type CrewPerson,
 	} from '$lib/crew';
-	import CrewIntro from '$lib/nav/CrewIntro.svelte';
 	import { accessMark, reachable } from '$lib/nav/crews';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
@@ -254,12 +253,12 @@
 			</div>
 		</header>
 
-		{#if owner}
-			<!-- The day-one card, always reachable here for anyone who
-			     dismissed it in the sidebar without reading (#1151). -->
-			<div class="mt-6 max-w-sm">
-				<CrewIntro id={crew.id} name={crew.name} rooms={crew.rooms.length} />
-			</div>
+		{#if owner && crew.name === account.me?.displayName}
+			<!-- The migration's placeholder (#1151): said here, where the name
+			     is one click away, until the owner replaces it. -->
+			<p class="text-muted mt-2 text-xs">
+				Named after you until you rename it — click the name.
+			</p>
 		{/if}
 
 		<h2 class="eyebrow mt-8">rooms</h2>
