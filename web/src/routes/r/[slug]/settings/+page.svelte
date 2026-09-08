@@ -110,7 +110,7 @@
 	// this page. Undo over confirm (errors.md) — the code gets you straight back.
 	async function leave() {
 		if (!room || !account.me) return;
-		const { slug: left, name: leftName, code } = room;
+		const { slug: left, name: leftName } = room;
 		busy = true;
 		const res = await api(`/api/rooms/${left}/members/${account.me.id}`, {
 			method: 'DELETE',
@@ -122,23 +122,20 @@
 		}
 		roomConnection.leave();
 		presence.reload();
-		toasts.push(`You left ${leftName}.`, {
-			undo: code ? () => void rejoin(code) : undefined,
-		});
+		// Undo walks back in through the crew (#1236): the room's door is still
+		// open to a crew member; a private room says so if it is not.
+		toasts.push(`You left ${leftName}.`, { undo: () => void rejoin(left) });
 		await goto('/home');
 	}
 
-	async function rejoin(code: string) {
-		const res = await api<{ slug: string }>('/api/rooms/join', {
-			method: 'POST',
-			json: { code },
-		});
+	async function rejoin(slug: string) {
+		const res = await api(`/api/rooms/${slug}/join`, { method: 'POST' });
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
 		presence.reload();
-		void goto(`/r/${res.data.slug}`);
+		void goto(`/r/${slug}`);
 	}
 
 	async function save() {
@@ -556,7 +553,7 @@
 				role="radiogroup"
 				aria-label="who can find this room"
 			>
-				{#each [{ key: 'members', label: 'Its members', hint: 'Only people you give the code or the link to. Crew-mates see that it exists and that it is private — not a way in.' }, { key: 'crew', label: room.crew ? `The crew — ${room.crew.name}` : 'The crew', hint: 'Everyone in the crew sees it in their sidebar and can walk in without a code. This is how a new room starts.' }, { key: 'everyone', label: 'Everyone on WattRoom', hint: 'Anyone signed in can find it by name in the directory and ask to come in — and the crew sees it too. They see its name and icon, nothing about who rides here or what you did.' }] as const as step (step.key)}
+				{#each [{ key: 'members', label: 'Its members', hint: 'Its members, and the crew-mates you let in from the Members place. The rest of the crew sees that it exists and that it is private — not a way in.' }, { key: 'crew', label: room.crew ? `The crew — ${room.crew.name}` : 'The crew', hint: 'Everyone in the crew sees it in their sidebar and can walk in without a code. This is how a new room starts.' }, { key: 'everyone', label: 'Everyone on WattRoom', hint: 'Anyone signed in can find it by name in the directory and join — which puts them in the crew. They see its name and icon first, nothing about who rides here or what you did.' }] as const as step (step.key)}
 					<button
 						role="radio"
 						aria-checked={reach === step.key}
@@ -655,8 +652,8 @@
 			</ul>
 			<p class="text-muted mt-3 text-xs">
 				Coaches pick the workout, start the countdown, and can pause or end a
-				session. Banning kicks a rider out on the spot — the invite link stops
-				working for them until you unban.
+				session. Banning kicks a rider out on the spot — the room stays shut to
+				them until you unban, whatever the crew lets them into.
 			</p>
 		</section>
 

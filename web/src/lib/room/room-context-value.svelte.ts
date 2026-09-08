@@ -56,6 +56,7 @@ export interface RoomShellProps {
 	icon?: string;
 	/** The room's reaction palette (#223); absent = SidePanel's base set. */
 	cheers?: string[];
+	/** The crew's join code (#1236), for the TV's idle screen. */
 	code?: string;
 	soundPack?: string;
 	members?: AdminMember[];

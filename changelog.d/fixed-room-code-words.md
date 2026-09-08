@@ -1,0 +1,1 @@
+- The last places that still talked about a room's own code follow the crew: the TV's idle screen shows the crew's code, the settings page and the Members place say what actually lets someone in, and undoing "leave room" walks you back in through the crew instead of failing. (#1236)

@@ -72,7 +72,7 @@
 	async function confirmRemove(member: Member) {
 		const ok = await confirm({
 			title: `Remove ${member.displayName} from ${room.roomName}?`,
-			body: "They can rejoin with the room's invite link.",
+			body: 'They stay in the crew and can walk back in if the room is open to it.',
 			action: 'Remove',
 		});
 		if (ok) room.removeMember(member.id);
