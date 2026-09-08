@@ -9,7 +9,8 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { CHEER_ICONS, keyFor, ROOM_ICONS } from '$lib/icons';
+	import { CHEER_ICONS, keyFor } from '$lib/icons';
+	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { play } from '$lib/sound/cues';
 	import { device } from '$lib/device.svelte';
 	import {
@@ -477,35 +478,13 @@
 
 			<div class="mt-4">
 				<span class="eyebrow" id="room-icon-label">room icon</span>
-				<div
-					class="mt-1.5 flex flex-wrap items-center gap-1.5"
-					role="radiogroup"
-					aria-labelledby="room-icon-label"
-				>
-					<button
-						type="button"
-						role="radio"
-						aria-checked={icon === ''}
-						onclick={() => pickIcon('')}
+				<div class="mt-1.5">
+					<IconPicker
+						value={icon}
+						onpick={pickIcon}
 						disabled={busy}
-						class="btn btn-secondary btn-xs {icon === ''
-							? 'ring-neon bg-neon/15 ring-1'
-							: ''}">None</button
-					>
-					{#each Object.entries(ROOM_ICONS) as [key, Icon] (key)}
-						<button
-							type="button"
-							role="radio"
-							aria-checked={icon === key}
-							aria-label={key}
-							title={key}
-							onclick={() => pickIcon(key)}
-							disabled={busy}
-							class="btn btn-secondary btn-xs {icon === key
-								? 'ring-neon bg-neon/15 ring-1'
-								: ''}"><Icon size={16} /></button
-						>
-					{/each}
+						labelledby="room-icon-label"
+					/>
 				</div>
 				<span class="text-muted mt-1.5 block text-xs"
 					>Next to the name everywhere.</span
