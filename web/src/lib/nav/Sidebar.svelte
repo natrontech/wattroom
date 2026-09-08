@@ -27,16 +27,20 @@
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
+		accessMark,
 		crewsOf,
 		currentCrew,
+		dismissIntro,
+		introDismissed,
+		reachable,
 		readChosenCrew,
 		rememberChosenCrew,
 		sidebarGroups,
 	} from './crews';
+	import CrewIntro from './CrewIntro.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
-		openMenu,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { iconFor } from '$lib/icons';
@@ -45,15 +49,15 @@
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
+	import type { RoomCrew } from '$lib/room/room-data';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Check from '@lucide/svelte/icons/check';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
-	import Eye from '@lucide/svelte/icons/eye';
-	import Lock from '@lucide/svelte/icons/lock';
 	import Shield from '@lucide/svelte/icons/shield';
-	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import Users from '@lucide/svelte/icons/users';
 	import { device } from '$lib/device.svelte';
 
 	let {
@@ -95,53 +99,64 @@
 	// What the header says under the name: how many rooms, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
 	// member says nothing, being in it at all is the default.
-	const crewLine = $derived.by(() => {
-		if (!crew) return '';
-		const n = rooms.filter((r) => r.crew?.id === crew.id).length;
+	function crewLine(c: RoomCrew): string {
+		const n = rooms.filter((r) => r.crew?.id === c.id).length;
 		const count = n === 1 ? '1 room' : `${n} rooms`;
-		return crew.role === 'owner'
+		return c.role === 'owner'
 			? `${count} · yours`
-			: crew.role === 'admin'
+			: c.role === 'admin'
 				? `${count} · you admin it`
 				: count;
-	});
+	}
 	function pick(id: string) {
 		chosen = id;
 		rememberChosenCrew(id);
 	}
-	function switcher(event: MouseEvent) {
-		const button = event.currentTarget as HTMLElement;
-		const rect = button.getBoundingClientRect();
-		openMenu(
-			crews.map((c) => ({
-				label: c.name,
-				icon: iconFor(c.icon) ?? undefined,
-				hint:
-					c.id === crew?.id ? 'now' : c.role === 'owner' ? 'yours' : undefined,
-				onSelect: () => pick(c.id),
-			})),
-			rect.left,
-			rect.bottom,
-			button,
-		);
-	}
+	// The dropdown under the header: the sidebar's full width, like Discord's
+	// server menu, never a popup at the pointer. Closes on a click anywhere
+	// else, on Escape, and on choosing.
+	let switching = $state(false);
+	let header = $state<HTMLElement | null>(null);
+	$effect(() => {
+		if (!switching) return;
+		const away = (e: PointerEvent) => {
+			if (!header?.contains(e.target as Node)) switching = false;
+		};
+		const key = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') switching = false;
+		};
+		document.addEventListener('pointerdown', away);
+		document.addEventListener('keydown', key);
+		return () => {
+			document.removeEventListener('pointerdown', away);
+			document.removeEventListener('keydown', key);
+		};
+	});
+	// The day-one card (#1151), once per crew you own. `seen` is state so a
+	// dismissal hides it without a reload.
+	let seen = $state(0);
+	const intro = $derived.by(() => {
+		seen;
+		return crew && crew.role === 'owner' && !introDismissed(crew.id)
+			? crew
+			: null;
+	});
 </script>
 
-<!-- What a row may say about itself without being opened (#1149). Chrome,
-     not live data: muted, never watt, never a glow (ADR-0005). Open draws
-     nothing — the absence of a mark is the state. -->
-{#snippet accessMark(room: RailRoom)}
-	{#if room.access === 'locked'}
-		<Lock size={11} class="text-muted/60 shrink-0" aria-label="private" />
-	{:else if room.access === 'admin'}
-		<SlidersHorizontal
-			size={11}
-			class="text-muted/60 shrink-0"
-			aria-label="yours to administer"
-		/>
-	{:else if room.access === 'private'}
-		<Eye size={11} class="text-muted/60 shrink-0" aria-label="private" />
-	{/if}
+<!-- A crew's mark: its icon, or its initial in the same box. -->
+{#snippet crewBadge(c: RoomCrew, box: string, icon: number, text: string)}
+	<span
+		class="bg-ink/5 text-ink/80 grid shrink-0 place-items-center {box}"
+		aria-hidden="true"
+	>
+		{#if iconFor(c.icon)}
+			<RoomIcon icon={c.icon} size={icon} />
+		{:else}
+			<span class="font-display font-bold {text}"
+				>{c.name.slice(0, 1).toUpperCase()}</span
+			>
+		{/if}
+	</span>
 {/snippet}
 
 {#snippet roomRow(room: RailRoom)}
@@ -154,18 +169,22 @@
 	<!-- Opened: the room whose pages you are on, AND the one you are
 			     standing in — reading a DM or Home while connected must not
 			     fold Training two clicks away (rider report, #416). -->
-	{@const open = room.slug === activeSlug || here}
+	<!-- ...but a crew room you have not joined has no places of yours to
+	     open into: the page it shows is the door, not the room (#1149). -->
+	{@const open = (room.slug === activeSlug && !!room.role) || here}
 	{@const subline = railSubline(room, open)}
 	<!-- A room you cannot enter is not a link that fails (#1149, ux.md):
-		     the row stays, says why, and goes nowhere. -->
-	{@const reachable = room.access !== 'locked' && room.access !== 'admin'}
+		     the row stays, says why, and goes nowhere. The mark is chrome,
+		     not live data: muted, never watt, never a glow (ADR-0005). -->
+	{@const open_ = reachable(room.access)}
+	{@const mark = accessMark(room.access)}
 	<!-- Two levels of the same wash, never one: the open room is a
 		     faint ground, the row you're on a stronger fill on top of it.
 		     Equal tints read as one slab and the selection disappears. -->
 	<li
 		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
 		{@attach contextMenu(() => {
-			if (!reachable) return [];
+			if (!open_) return [];
 			const entries: MenuEntry[] = places.map((place) => ({
 				label: place.label,
 				icon: place.icon,
@@ -190,20 +209,16 @@
 		})}
 	>
 		<svelte:element
-			this={reachable ? 'a' : 'div'}
-			href={reachable ? `/r/${room.slug}` : undefined}
-			title={room.access === 'locked'
-				? 'private — you are not in this room'
-				: room.access === 'admin'
-					? 'yours to administer, not to enter'
-					: undefined}
+			this={open_ ? 'a' : 'div'}
+			href={open_ ? `/r/${room.slug}` : undefined}
+			title={open_ ? undefined : mark?.label}
 			class="block rounded px-2 pt-1.5 {subline === 'people'
 				? 'pb-0'
 				: 'pb-1.5'} {here
 				? 'text-ink'
 				: browsing
 					? 'text-ink/90'
-					: reachable
+					: open_
 						? 'text-muted/70 hover:text-ink'
 						: 'text-muted/45'}"
 		>
@@ -216,11 +231,17 @@
 							? 'font-display text-ink/90 text-[15px] font-medium'
 							: room.unread
 								? 'text-ink/80 text-sm font-medium'
-								: reachable
+								: open_
 									? 'text-muted/70 text-sm'
 									: 'text-muted/45 text-sm'}">{room.name}</span
 				>
-				{@render accessMark(room)}
+				{#if mark}
+					<mark.icon
+						size={11}
+						class="text-muted/60 shrink-0"
+						aria-label={mark.label}
+					/>
+				{/if}
 				{#if here && onLeave}
 					<button
 						onclick={(e) => {
@@ -350,54 +371,103 @@
 	{#if crew}
 		<!-- The crew is the mode the whole column is in (ADR-0020 amended,
 		     #1147), so it sits at the top like Discord's server header, and
-		     the column below keeps exactly the shape it had. With one crew
-		     there is nothing to switch and it is a heading, not a button. -->
-		{#snippet crewHeader()}
-			<span
-				class="bg-ink/5 text-muted grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-			>
-				{#if iconFor(crew.icon)}
-					<RoomIcon icon={crew.icon} size={16} class="text-ink/80" />
-				{:else}
-					<span class="font-display text-ink/80 text-sm font-bold"
-						>{crew.name.slice(0, 1).toUpperCase()}</span
-					>
-				{/if}
-			</span>
-			<span class="min-w-0 flex-1">
-				<span class="flex items-center gap-1.5">
-					<span class="font-display truncate text-sm font-bold"
-						>{crew.name}</span
-					>
-					{#if crew.role === 'owner'}
-						<Shield
-							size={12}
-							class="text-muted/60 shrink-0"
-							aria-label="yours"
-						/>
-					{/if}
-				</span>
-				<span class="text-muted block truncate text-[11px]">{crewLine}</span>
-			</span>
-		{/snippet}
-		{#if crews.length > 1}
+		     the column below keeps exactly the shape it had. -->
+		<div class="relative" bind:this={header}>
 			<button
-				onclick={switcher}
-				class="border-ink/5 hover:bg-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5 text-left"
-				title="switch crew"
-				aria-label="crew: {crew.name} — switch crew"
+				onclick={() => (switching = !switching)}
+				class="border-ink/5 hover:bg-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5 text-left {switching
+					? 'bg-ink/5'
+					: ''}"
+				title={crews.length > 1 ? 'switch crew' : 'the crew'}
+				aria-label="crew: {crew.name}{crews.length > 1 ? ' — switch crew' : ''}"
+				aria-expanded={switching}
+				aria-haspopup="menu"
 			>
-				{@render crewHeader()}
+				{@render crewBadge(crew, 'h-8 w-8 rounded-lg', 16, 'text-sm')}
+				<span class="min-w-0 flex-1">
+					<span class="flex items-center gap-1.5">
+						<span class="font-display truncate text-sm font-bold"
+							>{crew.name}</span
+						>
+						{#if crew.role === 'owner'}
+							<Shield
+								size={12}
+								class="text-muted/60 shrink-0"
+								aria-label="yours"
+							/>
+						{/if}
+					</span>
+					<span class="text-muted block truncate text-[11px]"
+						>{crewLine(crew)}</span
+					>
+				</span>
 				<ChevronsUpDown size={15} class="text-muted shrink-0" />
 			</button>
-		{:else}
-			<div
-				class="border-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5"
-				aria-label="crew: {crew.name}"
-			>
-				{@render crewHeader()}
-			</div>
-		{/if}
+			{#if switching}
+				{@const here = crew}
+				<div
+					class="bg-surface border-ink/5 absolute inset-x-0 top-full z-40 border-b shadow-lg"
+					role="menu"
+				>
+					<ul class="p-2">
+						{#each crews as c (c.id)}
+							{@const now = c.id === here.id}
+							<li>
+								<button
+									role="menuitem"
+									onclick={() => {
+										pick(c.id);
+										switching = false;
+									}}
+									class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-3 rounded px-2 py-1.5 text-left md:min-h-10 {now
+										? 'bg-ink/5 text-ink'
+										: 'text-muted hover:text-ink'}"
+									aria-current={now ? 'true' : undefined}
+								>
+									{@render crewBadge(c, 'h-7 w-7 rounded-md', 14, 'text-xs')}
+									<span class="min-w-0 flex-1">
+										<span class="block truncate text-sm font-medium"
+											>{c.name}</span
+										>
+										<span class="text-muted block truncate text-[10px]"
+											>{crewLine(c)}</span
+										>
+									</span>
+									{#if now}<Check size={14} class="text-muted shrink-0" />{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+					<!-- The crew's own page: its people, its rooms, its name
+					     (#1150, #1151). -->
+					<div class="border-ink/5 border-t p-2">
+						<a
+							href="/crew/{here.id}"
+							role="menuitem"
+							onclick={() => (switching = false)}
+							class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-9"
+						>
+							<Users size={15} class="shrink-0" />
+							<span class="truncate">People and rooms of {here.name}</span>
+						</a>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
+	{#if intro}
+		<!-- Shown once, after the migration, to the crew's owner (#1151). -->
+		<div class="px-2 pt-2">
+			<CrewIntro
+				id={intro.id}
+				name={intro.name}
+				rooms={rooms.filter((r) => r.crew?.id === intro.id).length}
+				onDismiss={() => {
+					dismissIntro(intro.id);
+					seen += 1;
+				}}
+			/>
+		</div>
 	{/if}
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-2">
@@ -444,7 +514,7 @@
 		{/if}
 
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			{crew ? 'rooms' : 'your rooms'}
+			{crew && crews.length > 1 ? `rooms · ${crew.name}` : 'rooms'}
 			<!-- Everything /rooms carried beyond the list: open one, or join with
 			     a code (ADR-0020). -->
 			<a

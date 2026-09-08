@@ -27,6 +27,8 @@ export interface AdminMember {
 	ftpWatts?: number;
 	weightKg?: number;
 	joinedAt?: string;
+	/** A banned row the crew also bans (#1150): Unban here lifts one level. */
+	crewBanned?: boolean;
 }
 
 export interface AdminMedal {

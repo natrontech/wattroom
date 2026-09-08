@@ -1,5 +1,9 @@
+import Eye from '@lucide/svelte/icons/eye';
+import Lock from '@lucide/svelte/icons/lock';
+import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+import type { Icon } from '$lib/icons';
 import type { RailRoom } from '$lib/room/mockcompat';
-import type { RoomCrew } from '$lib/room/room-data';
+import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 /**
  * The crew is a mode the sidebar is in (ADR-0020, amended 2026-09-08; #1147):
@@ -82,5 +86,64 @@ export function rememberChosenCrew(id: string): void {
 		localStorage.setItem(CHOSEN, id);
 	} catch {
 		/* fine — the sidebar opens on the room you are in next time */
+	}
+}
+
+/**
+ * The mark a room row draws for its access state (#1149), shared by the
+ * sidebar and the crew page so the two cannot disagree. Open draws nothing.
+ */
+export function accessMark(
+	access: RoomAccess | undefined,
+): { icon: Icon; label: string } | null {
+	switch (access) {
+		case 'private':
+			return { icon: Eye, label: 'private' };
+		case 'locked':
+			return { icon: Lock, label: 'private — you are not in this room' };
+		case 'admin':
+			return {
+				icon: SlidersHorizontal,
+				label: 'yours to administer, not to enter',
+			};
+		default:
+			return null;
+	}
+}
+
+/** A room you cannot enter is not a link (#1149, ux.md). */
+export function reachable(access: RoomAccess | undefined): boolean {
+	return access !== 'locked' && access !== 'admin';
+}
+
+/**
+ * The day-one card (#1151) is shown once per crew you own and does not
+ * return. ponytail: dismissed per device; a server-side flag is the upgrade
+ * if seeing it twice across devices ever matters.
+ */
+const INTRO = 'wattroom.crew-intro.v1';
+
+function introSeen(): string[] {
+	try {
+		const raw = localStorage.getItem(INTRO);
+		const ids = raw ? (JSON.parse(raw) as unknown) : [];
+		return Array.isArray(ids) ? ids.filter((x) => typeof x === 'string') : [];
+	} catch {
+		return [];
+	}
+}
+
+export function introDismissed(crewId: string): boolean {
+	return introSeen().includes(crewId);
+}
+
+export function dismissIntro(crewId: string): void {
+	try {
+		localStorage.setItem(
+			INTRO,
+			JSON.stringify([...new Set([...introSeen(), crewId])]),
+		);
+	} catch {
+		/* fine — the card comes back next time, which is the safe direction */
 	}
 }

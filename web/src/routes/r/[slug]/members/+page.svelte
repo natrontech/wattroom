@@ -110,8 +110,9 @@
 		if (member.role === 'banned') {
 			if (canAdmin(member))
 				entries.push('separator', {
-					label: 'Unban',
+					label: `Unban from ${room.roomName}`,
 					icon: ShieldBan,
+					hint: member.crewBanned ? 'still crew-banned' : undefined,
 					onSelect: () => unban(member),
 				});
 			return entries;
@@ -253,11 +254,21 @@
 					</span>
 				{/if}
 				{#if member.role === 'banned' && canAdmin(member)}
-					<button
-						onclick={() => unban(member)}
-						disabled={room.adminBusy}
-						class="btn btn-ghost btn-xs shrink-0">Unban</button
-					>
+					<!-- The room's unban lifts the room's ban and nothing else
+					     (ADR-0038, third amendment; #1150). When the crew also
+					     banned them, the row says so before the click, not after. -->
+					<span class="flex shrink-0 flex-col items-end gap-0.5">
+						<button
+							onclick={() => unban(member)}
+							disabled={room.adminBusy}
+							class="btn btn-ghost btn-xs">Unban from {room.roomName}</button
+						>
+						{#if member.crewBanned}
+							<span class="text-muted/70 text-[11px]"
+								>still crew-banned afterwards — this does not readmit them</span
+							>
+						{/if}
+					</span>
 				{:else if isOwner && member.id !== account.me?.id}
 					<button
 						onclick={() => toggleRole(member)}
