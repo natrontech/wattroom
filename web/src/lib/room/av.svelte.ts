@@ -1,6 +1,4 @@
 import type {
-	LocalVideoTrack,
-	RemoteTrack,
 	Room as LiveKitRoom,
 	Track as LiveKitTrack,
 	TrackPublication as LiveKitPublication,
@@ -11,6 +9,10 @@ import { createDeviceChoices } from '$lib/room/av-devices.svelte';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
+import { createAvConn, createAvState } from '$lib/room/av-state.svelte';
+import type { LiveKitClient, Owned } from '$lib/room/av-types';
+
+export type { AvError, AvStatus } from '$lib/room/av-types';
 import { type MediaDevice, describeMediaError } from '$lib/room/media-error';
 import { serverNow } from '$lib/room/server-clock';
 import { createClaims } from '$lib/room/av-claim.svelte';
@@ -24,8 +26,6 @@ import {
 	writeNote,
 } from '$lib/room/rejoin';
 
-type LiveKitClient = typeof import('livekit-client');
-
 /**
  * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
  * token the server mints against the same membership check as the metrics
@@ -37,8 +37,6 @@ type LiveKitClient = typeof import('livekit-client');
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
  */
-export type AvStatus =
-	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
 /**
  * Why the last thing the rider asked of voice did not happen (#642). Not a
@@ -46,51 +44,22 @@ export type AvStatus =
  * sidebar keeps it until the next attempt clears it. `signIn` marks the one
  * failure whose remedy is a page, not a retry.
  */
-export interface AvError {
-	message: string;
-	signIn: boolean;
-}
 
 const VOICE_UNREACHABLE =
 	'Voice could not connect — check your connection and try again.';
 
 export function createRoomAv(slug: string) {
-	// Keep the SDK out of the shell and login chunks. It is loaded only when a
-	// rider actually starts AV, after the token request has succeeded.
-	let liveKit: LiveKitClient | null = null;
-	let status = $state<AvStatus>('off');
-	let micOn = $state(false);
-	let camOn = $state(false);
-	// Stepped out (#706). What was live when the rider pressed the button, so
-	// coming back restores exactly that and not a default: someone who was
-	// listening with the camera off does not return with it on.
-	let away = $state(false);
-	let micBeforeAway = false;
-	let camBeforeAway = false;
-	let sharing = $state(false);
-	let error = $state<AvError | null>(null);
+	// One named place for what the UI watches, one for what the connection
+	// keeps to itself (#892) — av-state.svelte.ts says why they are two, and
+	// why naming them is what the remaining seam needs.
+	const av = createAvState();
+	const conn = createAvConn();
 	/** Record a device the browser refused; a closed share picker says nothing. */
 	function failedMedia(cause: unknown, device: MediaDevice) {
 		const message = describeMediaError(cause, device);
-		if (message) error = { message, signIn: false };
+		if (message) av.error = { message, signIn: false };
 	}
 	const stage = createStage();
-	let speaking = $state<Record<string, boolean>>({});
-	/** Bumped when LiveKit drops us while live — the connection auto-rejoins
-	 * once with a fresh token (#219: token expiry, transient drops). */
-	let dropped = $state(0);
-	/**
-	 * Who is in voice and whether their mic is open (#151): absent = not in
-	 * voice at all — three states a tile can tell apart at a glance.
-	 */
-	let voice = $state<Record<string, 'live' | 'muted'>>({});
-	/**
-	 * This tab gave the mic and camera to another tab of yours (#293). Not an
-	 * error and not transient — a persistent status with one button back,
-	 * because a rider three metres away must be able to see why they went
-	 * quiet without reading a toast that has already gone.
-	 */
-	let handedOff = $state(false);
 
 	// Device selection and the rider-audio bus own their own state now (#892).
 	// The bus reads the chosen sink through a getter: the AudioContext outlives
@@ -105,7 +74,7 @@ export function createRoomAv(slug: string) {
 		() => devices.outId,
 		(identity, level) => {
 			if (talk.level(identity, level, performance.now()))
-				speaking = { ...talk.riders };
+				av.speaking = { ...talk.riders };
 		},
 	);
 
@@ -117,22 +86,22 @@ export function createRoomAv(slug: string) {
 	const chain = createMicChain({
 		devices,
 		publish: async (track) => {
-			await room?.localParticipant.publishTrack(track, {
-				source: liveKit!.Track.Source.Microphone,
+			await conn.room?.localParticipant.publishTrack(track, {
+				source: conn.liveKit!.Track.Source.Microphone,
 			});
 		},
-		unpublish: (track) => room?.localParticipant.unpublishTrack(track),
-		live: () => micOn,
+		unpublish: (track) => conn.room?.localParticipant.unpublishTrack(track),
+		live: () => av.micOn,
 		heard: (level) => {
-			if (talk.level(myIdentity, level, performance.now()))
-				speaking = { ...talk.riders };
+			if (talk.level(conn.myIdentity, level, performance.now()))
+				av.speaking = { ...talk.riders };
 		},
 		silenced: () => {
-			if (talk.drop(myIdentity)) speaking = { ...talk.riders };
+			if (talk.drop(conn.myIdentity)) av.speaking = { ...talk.riders };
 		},
 		captureLost: () => {
-			micOn = false;
-			if (room) setVoice(me, 'muted');
+			av.micOn = false;
+			if (conn.room) setVoice(conn.me, 'muted');
 		},
 	});
 
@@ -143,33 +112,29 @@ export function createRoomAv(slug: string) {
 	async function tryOpenMic() {
 		try {
 			await chain.open();
-			micOn = true;
+			av.micOn = true;
 			// A mic that opens clears the last refusal (#642): the sidebar must
 			// not keep explaining a failure that has since been fixed.
-			error = null;
+			av.error = null;
 		} catch (cause) {
-			micOn = false;
+			av.micOn = false;
 			failedMedia(cause, 'microphone');
 		}
 	}
 
 	function setVoice(id: string, state: 'live' | 'muted' | null) {
-		const next = { ...voice };
+		const next = { ...av.voice };
 		if (state === null) delete next[id];
 		else next[id] = state;
-		voice = next;
+		av.voice = next;
 	}
 
-	let room: LiveKitRoom | null = null;
 	/** This connection's identity and the rider behind it (#293). */
-	let myIdentity = '';
-	let me = '';
 	/**
 	 * Video is keyed by RIDER — the tiles and the stage are — but tagged with
 	 * the connection that published it: when a rider's older tab drops its
 	 * camera, it must not delete the track their newer tab just put up.
 	 */
-	type Owned = { owner: string; track: RemoteTrack | LocalVideoTrack };
 	const videoTracks = new Map<string, Owned>();
 	const screenTracks = new Map<string, Owned>();
 	/** Audio plumbing is per CONNECTION: one element and one gain each. */
@@ -223,17 +188,16 @@ export function createRoomAv(slug: string) {
 	// restamped while the call is live, so an hour of riding still reads as a
 	// refresh, and torn up the moment the rider hangs up.
 	const tab = tabId();
-	let heartbeat: ReturnType<typeof setInterval> | null = null;
 	function noteVoice() {
-		writeNote(tab, { slug, at: Date.now(), mic: micOn });
+		writeNote(tab, { slug, at: Date.now(), mic: av.micOn });
 	}
 	function startNote() {
 		noteVoice();
-		heartbeat ??= setInterval(noteVoice, REJOIN_HEARTBEAT_MS);
+		conn.heartbeat ??= setInterval(noteVoice, REJOIN_HEARTBEAT_MS);
 	}
 	function stopNote() {
-		if (heartbeat !== null) clearInterval(heartbeat);
-		heartbeat = null;
+		if (conn.heartbeat !== null) clearInterval(conn.heartbeat);
+		conn.heartbeat = null;
 	}
 
 	/**
@@ -247,14 +211,14 @@ export function createRoomAv(slug: string) {
 		// participant with the same identity (audit #219) — nor race the
 		// SDK's own retry while it is reconnecting (#234).
 		if (
-			status === 'connecting' ||
-			status === 'live' ||
-			status === 'reconnecting'
+			av.status === 'connecting' ||
+			av.status === 'live' ||
+			av.status === 'reconnecting'
 		)
 			return;
-		void room?.disconnect();
-		status = 'connecting';
-		error = null;
+		void conn.room?.disconnect();
+		av.status = 'connecting';
+		av.error = null;
 		// A fault from a previous call, or from a mic test that died, is not
 		// this join's — it surfaced as "your microphone stopped" on a
 		// listen-only join that never opened one (#824).
@@ -264,9 +228,9 @@ export function createRoomAv(slug: string) {
 			`/api/rooms/${slug}/av-token`,
 		);
 		if (!res.ok) {
-			status = 'failed';
+			av.status = 'failed';
 			// 401 is the one refusal a retry cannot fix (#642).
-			error = {
+			av.error = {
 				message: res.error.message,
 				signIn: res.error.error === 'unauthorized',
 			};
@@ -274,7 +238,7 @@ export function createRoomAv(slug: string) {
 		}
 		try {
 			const client = await import('livekit-client');
-			liveKit = client;
+			conn.liveKit = client;
 			// No audioCaptureDefaults: this room never opens the mic through
 			// LiveKit. captureMic() does, with MIC_CONSTRAINTS (room/capture),
 			// and publishes the processed track — so a second copy here could
@@ -282,48 +246,50 @@ export function createRoomAv(slug: string) {
 			// and this one was already missing autoGainControl (#671). Video
 			// IS LiveKit's own capture (setCameraEnabled), so its defaults
 			// stay.
-			room = new client.Room({
+			conn.room = new client.Room({
 				...(devices.camId
 					? { videoCaptureDefaults: { deviceId: devices.camId } }
 					: {}),
 			});
-			wire(room, client);
-			await room.connect(res.data.url, res.data.token);
-			myIdentity = room.localParticipant.identity;
-			me = riderOf(myIdentity);
-			status = 'live';
+			wire(conn.room, client);
+			await conn.room.connect(res.data.url, res.data.token);
+			conn.myIdentity = conn.room.localParticipant.identity;
+			conn.me = riderOf(conn.myIdentity);
+			av.status = 'live';
 			claims.current = {
-				identity: room.localParticipant.identity,
-				at: room.localParticipant.joinedAt?.getTime() ?? Date.now(),
+				identity: conn.room.localParticipant.identity,
+				at: conn.room.localParticipant.joinedAt?.getTime() ?? Date.now(),
 			};
 			// A tab already in the room could, in principle, hold a newer claim
 			// than this one — check rather than assume newest-connected wins.
-			for (const p of room.remoteParticipants.values())
+			for (const p of conn.room.remoteParticipants.values())
 				claims.consider(asClaimant(p));
 			// Post-permission the labels are real — the pickers can name devices.
 			void devices.refresh();
 			// Mic on by default (SPEC); a denied permission downgrades to
 			// listen-only rather than failing the join.
-			for (const p of room.remoteParticipants.values()) {
-				const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
+			for (const p of conn.room.remoteParticipants.values()) {
+				const pub = p.getTrackPublication(
+					conn.liveKit!.Track.Source.Microphone,
+				);
 				setVoice(riderOf(p.identity), pub && !pub.isMuted ? 'live' : 'muted');
 			}
 			// Away follows the rider across their screens (#706). A voice
 			// reconnect or a second tab joining while the rider is away must not
 			// quietly reopen a microphone the away button just closed.
-			if (wantMic && !away) {
+			if (wantMic && !av.away) {
 				await tryOpenMic();
-				setVoice(me, micOn ? 'live' : 'muted');
+				setVoice(conn.me, av.micOn ? 'live' : 'muted');
 			} else {
-				micOn = false;
-				setVoice(me, 'muted');
+				av.micOn = false;
+				setVoice(conn.me, 'muted');
 			}
 			startNote();
 		} catch {
 			// LiveKit's own message is written for developers; the rider needs
 			// the step that failed and the one thing to try (errors.md).
-			status = 'failed';
-			error = { message: VOICE_UNREACHABLE, signIn: false };
+			av.status = 'failed';
+			av.error = { message: VOICE_UNREACHABLE, signIn: false };
 		}
 	}
 
@@ -343,36 +309,38 @@ export function createRoomAv(slug: string) {
 	 * The Disconnected handler clears `micOn` before the rejoin fires, and a
 	 * rider who muted for a phone call must not come back publishing.
 	 */
-	let micBeforeDrop = false;
 
 	// One rider, several tabs (#293): which one holds the mic, and what a tab
 	// standing down has to put down. The protocol is av-claim.svelte.ts; this
 	// hands it the connection.
 	const claims = createClaims({
-		identity: () => myIdentity,
+		identity: () => conn.myIdentity,
 		now: () => serverNow(),
 		participants: () =>
-			room
-				? [room.localParticipant, ...room.remoteParticipants.values()].map(
-						asClaimant,
-					)
+			conn.room
+				? [
+						conn.room.localParticipant,
+						...conn.room.remoteParticipants.values(),
+					].map(asClaimant)
 				: [],
 		others: () =>
-			room ? [...room.remoteParticipants.values()].map(asClaimant) : [],
+			conn.room
+				? [...conn.room.remoteParticipants.values()].map(asClaimant)
+				: [],
 		announce: (at) => {
-			void room?.localParticipant
+			void conn.room?.localParticipant
 				.publishData(
 					new TextEncoder().encode(JSON.stringify({ t: 'av-claim', at })),
 					{ reliable: true },
 				)
 				.catch(() => {});
 		},
-		handedOff: () => handedOff,
-		setHandedOff: (next) => (handedOff = next),
-		micOn: () => micOn,
+		handedOff: () => av.handedOff,
+		setHandedOff: (next) => (av.handedOff = next),
+		micOn: () => av.micOn,
 		closeMic: () => {
 			chain.close();
-			micOn = false;
+			av.micOn = false;
 		},
 		clearFault: () => chain.clearFault(),
 		closeCam: () => closeCam(),
@@ -387,7 +355,7 @@ export function createRoomAv(slug: string) {
 			source: LiveKitTrack.Source,
 		) => { isMuted: boolean } | undefined;
 	}) {
-		const pub = p.getTrackPublication(liveKit!.Track.Source.Microphone);
+		const pub = p.getTrackPublication(conn.liveKit!.Track.Source.Microphone);
 		return {
 			identity: p.identity,
 			joinedAt: p.joinedAt,
@@ -397,11 +365,11 @@ export function createRoomAv(slug: string) {
 
 	/** Take the mic and camera back into this tab; the others stand down. */
 	async function takeOver({ reopenMic = true } = {}) {
-		if (!room) return;
+		if (!conn.room) return;
 		claims.claim();
-		if (reopenMic && !micOn) {
+		if (reopenMic && !av.micOn) {
 			await tryOpenMic();
-			setVoice(me, micOn ? 'live' : 'muted');
+			setVoice(conn.me, av.micOn ? 'live' : 'muted');
 		}
 		noteVoice();
 	}
@@ -412,21 +380,21 @@ export function createRoomAv(slug: string) {
 	 * tile draws a frame that never arrives.
 	 */
 	async function openCam() {
-		if (camOn || !room) return;
-		camOn = true;
+		if (av.camOn || !conn.room) return;
+		av.camOn = true;
 		try {
-			await room.localParticipant.setCameraEnabled(true);
-			const track = room.localParticipant.getTrackPublication(
-				liveKit!.Track.Source.Camera,
+			await conn.room.localParticipant.setCameraEnabled(true);
+			const track = conn.room.localParticipant.getTrackPublication(
+				conn.liveKit!.Track.Source.Camera,
 			)?.videoTrack;
 			if (track) {
-				videoTracks.set(me, { owner: myIdentity, track });
-				stage.bumpVideo(me);
+				videoTracks.set(conn.me, { owner: conn.myIdentity, track });
+				stage.bumpVideo(conn.me);
 			} else {
 				await closeCam();
 			}
 		} catch (cause) {
-			camOn = false;
+			av.camOn = false;
 			failedMedia(cause, 'camera');
 		}
 	}
@@ -438,8 +406,8 @@ export function createRoomAv(slug: string) {
 	 * and their own mic button still means what it says.
 	 */
 	async function setAway(next: boolean) {
-		if (next === away) return;
-		away = next;
+		if (next === av.away) return;
+		av.away = next;
 		// Stepping out silences the speakers too (#875): voices, the jukebox
 		// and the cues all play to an empty chair otherwise. The faders keep
 		// their values, so coming back restores the mix and not a default.
@@ -447,27 +415,27 @@ export function createRoomAv(slug: string) {
 		output.applyGains();
 		// A rider can step away without joining voice. Keep the state so a
 		// later voice join stays listen-only; there is no capture to change yet.
-		if (!room) return;
-		if (away) {
-			micBeforeAway = micOn;
-			camBeforeAway = camOn;
+		if (!conn.room) return;
+		if (av.away) {
+			conn.micBeforeAway = av.micOn;
+			conn.camBeforeAway = av.camOn;
 			// Stepping away is the rider closing the mic, not losing it.
 			chain.clearFault();
-			if (micOn) {
+			if (av.micOn) {
 				chain.close();
-				micOn = false;
+				av.micOn = false;
 			}
-			setVoice(me, 'muted');
+			setVoice(conn.me, 'muted');
 			noteVoice();
 			await closeCam();
 			return;
 		}
-		if (micBeforeAway && !micOn) {
+		if (conn.micBeforeAway && !av.micOn) {
 			await tryOpenMic();
-			setVoice(me, micOn ? 'live' : 'muted');
+			setVoice(conn.me, av.micOn ? 'live' : 'muted');
 			noteVoice();
 		}
-		if (camBeforeAway && !camOn) {
+		if (conn.camBeforeAway && !av.camOn) {
 			await openCam();
 		}
 	}
@@ -480,14 +448,15 @@ export function createRoomAv(slug: string) {
 	 * page closes (rider report: the camera stopped working in Chrome).
 	 */
 	async function closeCam() {
-		if (!camOn || !room) return;
-		camOn = false;
-		const track = room.localParticipant.getTrackPublication(
-			liveKit!.Track.Source.Camera,
+		if (!av.camOn || !conn.room) return;
+		av.camOn = false;
+		const track = conn.room.localParticipant.getTrackPublication(
+			conn.liveKit!.Track.Source.Camera,
 		)?.videoTrack;
-		await room.localParticipant.setCameraEnabled(false).catch(() => {});
+		await conn.room.localParticipant.setCameraEnabled(false).catch(() => {});
 		track?.mediaStreamTrack?.stop();
-		if (dropOwned(videoTracks, me, myIdentity)) stage.dropVideo(me);
+		if (dropOwned(videoTracks, conn.me, conn.myIdentity))
+			stage.dropVideo(conn.me);
 	}
 
 	function wire(r: LiveKitRoom, client: LiveKitClient) {
@@ -553,7 +522,7 @@ export function createRoomAv(slug: string) {
 				// The meter went with the track, so nothing can report this
 				// voice again — and a flag nothing will ever clear is what
 				// left riders ringed forever (#987).
-				if (talk.drop(participant.identity)) speaking = { ...talk.riders };
+				if (talk.drop(participant.identity)) av.speaking = { ...talk.riders };
 				if (
 					pub.source === client.Track.Source.Microphone &&
 					!claims.micLive(rider, participant.identity)
@@ -567,8 +536,9 @@ export function createRoomAv(slug: string) {
 		// the local stage sits on its last frame while the room sees nothing.
 		r.on(client.RoomEvent.LocalTrackUnpublished, (pub) => {
 			if (pub.source !== client.Track.Source.ScreenShare) return;
-			sharing = false;
-			if (dropOwned(screenTracks, me, myIdentity)) stage.dropScreen(me);
+			av.sharing = false;
+			if (dropOwned(screenTracks, conn.me, conn.myIdentity))
+				stage.dropScreen(conn.me);
 		});
 		const audioState = (p: {
 			identity: string;
@@ -587,14 +557,18 @@ export function createRoomAv(slug: string) {
 			const rider = riderOf(p.identity);
 			// Belt and braces: TrackUnsubscribed normally arrives first and takes
 			// the meter with it, but a connection dropped hard may skip it.
-			if (talk.drop(p.identity)) speaking = { ...talk.riders };
+			if (talk.drop(p.identity)) av.speaking = { ...talk.riders };
 			// Their other tab may still be in the room — one closed tab does not
 			// take a rider out of voice (#293).
 			if (!claims.stillHere(rider, p.identity)) setVoice(rider, null);
 			// The tab that took the mic is gone: this one may have it back, and
 			// it goes back the way it left, without asking (ux.md: recovery is
 			// automatic where it can be).
-			if (handedOff && rider === me && !claims.stillHere(me, myIdentity))
+			if (
+				av.handedOff &&
+				rider === conn.me &&
+				!claims.stillHere(conn.me, conn.myIdentity)
+			)
 				void takeOver({ reopenMic: claims.micBeforeHandoff });
 		});
 		// A camera switched off is a MUTE, not an unpublish — livekit-client
@@ -638,31 +612,31 @@ export function createRoomAv(slug: string) {
 		// SignalReconnecting stays transparent by design (RESEARCH.md): media
 		// keeps flowing while only the signal socket rebuilds.
 		r.on(client.RoomEvent.Reconnecting, () => {
-			if (status === 'live') status = 'reconnecting';
+			if (av.status === 'live') av.status = 'reconnecting';
 		});
 		r.on(client.RoomEvent.Reconnected, () => {
-			if (status === 'reconnecting') status = 'live';
+			if (av.status === 'reconnecting') av.status = 'live';
 		});
 		r.on(client.RoomEvent.Disconnected, () => {
-			const unexpected = status === 'live' || status === 'reconnecting';
+			const unexpected = av.status === 'live' || av.status === 'reconnecting';
 			for (const el of audioElements.values()) el.remove();
 			audioElements.clear();
 			videoTracks.clear();
 			screenTracks.clear();
 			stage.clear();
-			voice = {};
+			av.voice = {};
 			// Nobody is talking to a room you are no longer in — a stale
 			// speaking flag parked music and cues at duck level forever, and
 			// camOn, sharing and micOn all lied about dead tracks (#219, #354).
 			talk.clear();
-			speaking = {};
-			camOn = false;
-			micBeforeDrop = micOn;
-			micOn = false;
-			sharing = false;
-			handedOff = false;
+			av.speaking = {};
+			av.camOn = false;
+			conn.micBeforeDrop = av.micOn;
+			av.micOn = false;
+			av.sharing = false;
+			av.handedOff = false;
 			claims.current = null;
-			room = null;
+			conn.room = null;
 			chain.close();
 			if (unexpected) {
 				// Stop restamping, but leave the note behind: a refresh during
@@ -672,48 +646,48 @@ export function createRoomAv(slug: string) {
 				// room, whose late event must not stop the heartbeat that join
 				// is about to start.
 				stopNote();
-				status = 'off';
-				dropped += 1;
+				av.status = 'off';
+				av.dropped += 1;
 			}
 		});
 	}
 
 	return {
 		get dropped() {
-			return dropped;
+			return av.dropped;
 		},
 		/** What the drop-rejoin should do with the mic: what the rider had. */
 		get micBeforeDrop() {
-			return micBeforeDrop;
+			return conn.micBeforeDrop;
 		},
 		get status() {
-			return status;
+			return av.status;
 		},
 		get micOn() {
-			return micOn;
+			return av.micOn;
 		},
 		get camOn() {
-			return camOn;
+			return av.camOn;
 		},
 		/** Stepped out (#706) — the mic and camera are held down until back. */
 		get away() {
-			return away;
+			return av.away;
 		},
 		setAway,
 		get sharing() {
-			return sharing;
+			return av.sharing;
 		},
 		get error() {
-			return error;
+			return av.error;
 		},
 		get videoOf() {
 			return stage.videoOf;
 		},
 		get speaking() {
-			return speaking;
+			return av.speaking;
 		},
 		get voice() {
-			return voice;
+			return av.voice;
 		},
 		get micLevel() {
 			return chain.level;
@@ -746,7 +720,7 @@ export function createRoomAv(slug: string) {
 		},
 		/** Your mic and camera live in another of your tabs (#293). */
 		get handedOff() {
-			return handedOff;
+			return av.handedOff;
 		},
 		/** Bring them back here. */
 		takeOver: () => takeOver(),
@@ -763,12 +737,15 @@ export function createRoomAv(slug: string) {
 			// The same guards the mic button has (#824): in a tab that stood
 			// down the mic lives elsewhere, and away means closed on purpose —
 			// reconnecting here would publish a second one.
-			if (!room || handedOff || away) {
+			if (!conn.room || av.handedOff || av.away) {
 				chain.clearFault();
 				return;
 			}
 			await tryOpenMic();
-			setVoice(me, micOn || claims.micLive(me, myIdentity) ? 'live' : 'muted');
+			setVoice(
+				conn.me,
+				av.micOn || claims.micLive(conn.me, conn.myIdentity) ? 'live' : 'muted',
+			);
 			noteVoice();
 		},
 		// ── Devices: what's plugged in, what's chosen, and switching live ──────
@@ -803,21 +780,21 @@ export function createRoomAv(slug: string) {
 					chain.stopTest();
 					failedMedia(cause, 'microphone');
 				});
-			} else if (micOn) {
+			} else if (av.micOn) {
 				try {
 					await chain.open();
 				} catch (cause) {
 					// Dropped to muted — and told why, the way a join is (#824).
-					micOn = false;
-					setVoice(me, 'muted');
+					av.micOn = false;
+					setVoice(conn.me, 'muted');
 					failedMedia(cause, 'microphone');
 				}
 			}
 		},
 		async setCam(id: string) {
 			devices.setCam(id);
-			if (camOn && room) {
-				await room.switchActiveDevice('videoinput', id).catch(() => {});
+			if (av.camOn && conn.room) {
+				await conn.room.switchActiveDevice('videoinput', id).catch(() => {});
 			}
 		},
 		setOut(id: string) {
@@ -854,51 +831,55 @@ export function createRoomAv(slug: string) {
 		},
 		join,
 		async toggleMic() {
-			if (!room) return;
+			if (!conn.room) return;
 			if (chain.testing) chain.stopTest();
 			// Pressing the mic in a tab that stood down means "bring it here",
 			// not "publish a second one" — the rail says the mic lives in
 			// another tab, and the button must not quietly contradict it.
-			if (handedOff) {
+			if (av.handedOff) {
 				await takeOver();
 				return;
 			}
-			if (micOn) {
+			if (av.micOn) {
 				chain.close();
-				micOn = false;
+				av.micOn = false;
 			} else {
 				await tryOpenMic();
 			}
-			setVoice(me, micOn || claims.micLive(me, myIdentity) ? 'live' : 'muted');
+			setVoice(
+				conn.me,
+				av.micOn || claims.micLive(conn.me, conn.myIdentity) ? 'live' : 'muted',
+			);
 			noteVoice();
 		},
 		async toggleCam() {
-			if (!room) return;
-			if (camOn) {
+			if (!conn.room) return;
+			if (av.camOn) {
 				await closeCam();
 				return;
 			}
 			await openCam();
 		},
 		async toggleShare() {
-			if (!room) return;
-			sharing = !sharing;
+			if (!conn.room) return;
+			av.sharing = !av.sharing;
 			try {
 				// The browser's picker can be cancelled — trust the publication,
 				// not our intent.
-				await room.localParticipant.setScreenShareEnabled(sharing);
-				const track = room.localParticipant.getTrackPublication(
-					liveKit!.Track.Source.ScreenShare,
+				await conn.room.localParticipant.setScreenShareEnabled(av.sharing);
+				const track = conn.room.localParticipant.getTrackPublication(
+					conn.liveKit!.Track.Source.ScreenShare,
 				)?.videoTrack;
-				if (sharing && track) {
-					screenTracks.set(me, { owner: myIdentity, track });
-					stage.addScreen(me);
+				if (av.sharing && track) {
+					screenTracks.set(conn.me, { owner: conn.myIdentity, track });
+					stage.addScreen(conn.me);
 				} else {
-					sharing = false;
-					if (dropOwned(screenTracks, me, myIdentity)) stage.dropScreen(me);
+					av.sharing = false;
+					if (dropOwned(screenTracks, conn.me, conn.myIdentity))
+						stage.dropScreen(conn.me);
 				}
 			} catch (cause) {
-				sharing = false;
+				av.sharing = false;
 				failedMedia(cause, 'screen');
 			}
 		},
@@ -938,28 +919,28 @@ export function createRoomAv(slug: string) {
 			stopNote();
 			clearNote(tab);
 			// Same for leaving: every local capture goes back to the machine.
-			if (room && liveKit) {
+			if (conn.room && conn.liveKit) {
 				for (const kind of [
-					liveKit.Track.Source.Camera,
-					liveKit.Track.Source.ScreenShare,
+					conn.liveKit.Track.Source.Camera,
+					conn.liveKit.Track.Source.ScreenShare,
 				]) {
-					const pub = room.localParticipant.getTrackPublication(kind);
+					const pub = conn.room.localParticipant.getTrackPublication(kind);
 					pub?.videoTrack?.mediaStreamTrack?.stop();
 				}
 			}
 			chain.close();
-			void room?.disconnect();
-			room = null;
-			status = 'off';
-			error = null;
-			micOn = camOn = sharing = away = false;
+			void conn.room?.disconnect();
+			conn.room = null;
+			av.status = 'off';
+			av.error = null;
+			av.micOn = av.camOn = av.sharing = av.away = false;
 			chain.clearFault();
 			// The room is behind you: its mute goes with it, or the next
 			// room — and every cue outside one — starts silent.
 			mixer.setMuted(false);
-			voice = {};
+			av.voice = {};
 			talk.clear();
-			speaking = {};
+			av.speaking = {};
 			// This av instance dies with the connection: audio graph and
 			// listener go with it, or six room-hops exhaust the browser's
 			// AudioContext budget (audit #219).
