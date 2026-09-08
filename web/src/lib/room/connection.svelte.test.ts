@@ -14,9 +14,18 @@ vi.mock('$lib/sound/cues', async (importOriginal) => ({
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
 // The away effect matches the roster against who you are; without this it
 // never finds you and the test passes for the wrong reason.
-vi.mock('$lib/account.svelte', () => ({
-	account: { me: { id: 'me', displayName: 'Me' }, loaded: true },
-}));
+//
+// Spread from the real module rather than replacing it: a mock that omits an
+// export something else in this tree reads throws INSIDE an effect, which
+// aborts the rest of that flush — so an unrelated test two hundred lines up
+// stops hearing its cue, and the failure names neither cause.
+vi.mock('$lib/account.svelte', async (importOriginal) => {
+	const real = await importOriginal<typeof import('$lib/account.svelte')>();
+	return {
+		...real,
+		account: { ...real.account, me: { id: 'me', displayName: 'Me' } },
+	};
+});
 // A hand-driven socket: the tick is what the ride and the room both read,
 // and the test needs to move it. $state, so a derived that fails to track it
 // is caught rather than papered over by lazy first evaluation.
@@ -103,6 +112,17 @@ class FakeTrainer implements Trainer {
  * A per-page ride disconnected the trainer on the way to /workouts and reset
  * the metrics seq, which the server's ride record then dropped as duplicates.
  */
+/**
+ * Effects, then the async work they start. `av.setAway` awaits the mic and
+ * camera, so a single `tick()` returns before the state it sets has landed —
+ * and a test that reads too early passes or fails on how fast the machine is.
+ */
+async function settle() {
+	await tick();
+	await Promise.resolve();
+	await tick();
+}
+
 describe('roomConnection', () => {
 	afterEach(() => {
 		roomConnection.leave();
@@ -275,26 +295,26 @@ describe('the connection keeps deriving the session after a page dies', () => {
 		});
 
 		fakeTick = roster(false);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(false);
 
 		connection.setAway(true);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(true);
 		expect(fakeLive.aways.at(-1)).toBe(true);
 
 		// The echo of the state we just left. It must change nothing.
 		fakeTick = roster(false);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(true);
 		// And again — a slow round trip is several ticks, not one.
 		fakeTick = roster(false);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(true);
 
 		// The server catches up.
 		fakeTick = roster(true);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(true);
 
 		// …and now the roster is believed again, which is the whole reason
@@ -302,7 +322,7 @@ describe('the connection keeps deriving the session after a page dies', () => {
 		// reach this screen. Ignoring the roster forever would fix the bug by
 		// breaking the feature.
 		fakeTick = roster(false);
-		await tick();
+		await settle();
 		expect(connection.av.away).toBe(false);
 	});
 });
