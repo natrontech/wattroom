@@ -239,6 +239,30 @@ describe('room live chat edits (#865)', () => {
 		});
 	});
 
+	// The save runs off the read loop, so a line's id follows in a later tick
+	// — and an author can hit edit inside that gap. The edit names an id the
+	// other riders' copies do not carry yet; dropped, it never comes back
+	// until a reload (#1231's shape). Held, it lands the moment the id does.
+	it('holds an edit that arrives before the line has its id, and applies it when it lands', () => {
+		const live = createRoomLive('edits-early');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [{ from: 'kim', fromId: 'u1', text: 'warmup at 6', at: 1 }],
+		});
+		tick(socket, {
+			chatEdits: [{ messageId: 'm1', text: 'warmup at 7', editedAt: 42 }],
+		});
+		expect(live.chatLog[0].text).toBe('warmup at 6');
+		tick(socket, { chatIds: [{ fromId: 'u1', at: 1, id: 'm1' }] });
+		expect(live.chatLog).toHaveLength(1);
+		expect(live.chatLog[0]).toMatchObject({
+			id: 'm1',
+			text: 'warmup at 7',
+			editedAt: 42,
+		});
+	});
+
 	it('ignores an edit for a line this client never had', () => {
 		const live = createRoomLive('edits-unknown');
 		const socket = FakeSocket.last!;
