@@ -154,6 +154,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/calendar/{token}", s.handleUserCalendar)
 	mux.HandleFunc("POST /api/calendar/rotate", s.handleRotateUserIcs)
 	mux.HandleFunc("POST /api/rooms/{slug}/join", s.handleJoin)
+	mux.HandleFunc("PATCH /api/rooms/{slug}/me", s.handleSetMyPrefs)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
 }
@@ -216,6 +217,15 @@ type medalJSON struct {
 	AwardedAt string `json:"awardedAt"`
 }
 
+// riderPrefsJSON is what THIS rider has set for this room (#1100) — their
+// own answers, never anybody else's, and absent entirely for a non-member.
+// Grouped under `me` rather than flattened onto the room, so nothing reads
+// like a property of the room that everybody shares.
+type riderPrefsJSON struct {
+	Notify  bool `json:"notify"`
+	OnBoard bool `json:"onBoard"`
+}
+
 type roomJSON struct {
 	Slug string `json:"slug"`
 	Code string `json:"code,omitempty"` // members only — the code IS the invite
@@ -235,6 +245,9 @@ type roomJSON struct {
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
+	// The caller's own preferences for this room (#1100); nil for a
+	// non-member, who has none.
+	Me *riderPrefsJSON `json:"me,omitempty"`
 	// Recent medal history (#28) — members only, room-scoped like everything.
 	Medals []medalJSON `json:"medals,omitempty"`
 	// Crew streak and this month's collective kJ (#29) — cooperative pressure,
@@ -464,6 +477,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			RoomID: room.ID, UserID: user.ID,
 		}); err == nil && m.Role != "banned" {
 			response.Role = m.Role
+			response.Me = &riderPrefsJSON{Notify: m.Notify, OnBoard: m.OnBoard}
 			// Opening the room is reading it (#389): the badge clears here, so
 			// the rail stops shouting about a room you are standing in.
 			if err := s.store.Queries.MarkRoomRead(r.Context(), db.MarkRoomReadParams{
@@ -900,6 +914,41 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 		return db.Room{}, db.User{}, false
 	}
 	return room, user, true
+}
+
+// handleSetMyPrefs writes the caller's own settings for this room (#1100).
+//
+// Whole-object PATCH like the room's own settings: the member view sends its
+// full local state on every change, so there is no partial-update shape to
+// get wrong. There is no {userID} in the path and no user id in the body —
+// the update is keyed on (room, caller), so "a rider cannot set another
+// rider's preferences" is a property of the query rather than a check
+// somebody has to remember.
+//
+// RequireMember answers a non-member with 403, which is what every other
+// room-scoped write does (#638) and what chat, playlists and RSVP already
+// return. A room's existence is not a secret — its slug is a URL, and
+// handleGet gives a non-member the outsider view rather than a 404 — so
+// refusing differently here would be the inconsistency.
+func (s *Service) handleSetMyPrefs(w http.ResponseWriter, r *http.Request) {
+	room, user, ok := s.RequireMember(w, r, "Join the room to set your own preferences for it.")
+	if !ok {
+		return
+	}
+	var req riderPrefsJSON
+	if err := httpx.DecodeStrict(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	prefs, err := s.store.Queries.SetMembershipPrefs(r.Context(), db.SetMembershipPrefsParams{
+		RoomID: room.ID, UserID: user.ID, Notify: req.Notify, OnBoard: req.OnBoard,
+	})
+	if err != nil {
+		s.log.Error("set rider prefs failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, riderPrefsJSON{Notify: prefs.Notify, OnBoard: prefs.OnBoard})
 }
 
 // RequireModerator loads the room and refuses unless the caller is its owner

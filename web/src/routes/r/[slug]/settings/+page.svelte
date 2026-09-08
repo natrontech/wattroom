@@ -25,10 +25,15 @@
 		role: string;
 		joinedAt?: string;
 	}
+	interface RiderPrefs {
+		notify: boolean;
+		onBoard: boolean;
+	}
 	interface Room {
 		slug: string;
 		name: string;
 		listed: boolean;
+		me?: RiderPrefs;
 		icon?: string;
 		cheers?: string[];
 		soundPack?: string;
@@ -51,6 +56,12 @@
 	let boardEnabled = $state(false);
 	let icon = $state('');
 	let cheers = $state<string[]>([]);
+	// The caller's own settings for this room (#1100) — theirs, not the
+	// room's, so they save through their own endpoint and an owner editing
+	// the room never touches them.
+	let notify = $state(true);
+	let onBoard = $state(true);
+	let savingPrefs = $state(false);
 
 	$effect(() => {
 		if (slug) void load(slug);
@@ -63,6 +74,8 @@
 			name = res.data.name;
 			listed = res.data.listed;
 			pack = res.data.soundPack ?? 'base';
+			notify = res.data.me?.notify ?? true;
+			onBoard = res.data.me?.onBoard ?? true;
 			boardEnabled = res.data.boardEnabled ?? false;
 			// A room from before #447 holds emoji; edited as the keys they mean,
 			// so the next save stores keys.
@@ -215,11 +228,86 @@
 	const inviteLink = $derived(room ? `${location.origin}/r/${room.slug}` : '');
 	const soundPackLabel = $derived(packLabel(packs, room?.soundPack));
 
+	// Whole object on every change, like the room's own settings: there is no
+	// partial shape to get wrong, and the response is the truth we keep.
+	async function savePrefs(next: Partial<RiderPrefs>) {
+		if (!room) return;
+		savingPrefs = true;
+		const res = await api<RiderPrefs>(`/api/rooms/${room.slug}/me`, {
+			method: 'PATCH',
+			body: JSON.stringify({ notify, onBoard, ...next }),
+		});
+		savingPrefs = false;
+		if (res.ok) {
+			notify = res.data.notify;
+			onBoard = res.data.onBoard;
+			error = null;
+		} else {
+			// Put the switches back to what the server still holds, so the UI
+			// never shows a preference that did not save.
+			notify = room.me?.notify ?? true;
+			onBoard = room.me?.onBoard ?? true;
+			error = res.error.message;
+		}
+	}
+
 	async function copy(text: string, said: string) {
 		await navigator.clipboard.writeText(text);
 		toasts.push(said);
 	}
 </script>
+
+{#snippet myPrefs()}
+	<!-- The rider's own settings (#1100). Between "the owner decides for
+		     everybody" and "a global app setting" there was nothing, and the
+		     weekly board is the case that shows why: a room-level switch
+		     answers "joining must not put you on a board", and leaves the
+		     same trap standing for everyone already inside when the owner
+		     turns it on (ADR-0036, amended). -->
+	<section class="border-muted/15 mt-4 rounded-lg border p-6">
+		<h2 class="font-display font-bold">Your settings for this room</h2>
+		<p class="text-muted mt-1.5 text-xs">
+			Yours alone — nobody else sees them, and the owner cannot change them.
+		</p>
+		<label
+			class="border-muted/15 mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
+		>
+			<input
+				type="checkbox"
+				bind:checked={notify}
+				onchange={() => savePrefs({ notify })}
+				disabled={savingPrefs}
+			/>
+			<span class="min-w-0">
+				<span class="block text-sm font-medium">Notify me about this room</span>
+				<span class="text-muted block text-xs">
+					Planned sessions here reach you by email. Turning off every room's
+					mail at once lives in your profile.
+				</span>
+			</span>
+		</label>
+		<label
+			class="border-muted/15 mt-2 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
+		>
+			<input
+				type="checkbox"
+				bind:checked={onBoard}
+				onchange={() => savePrefs({ onBoard })}
+				disabled={savingPrefs}
+			/>
+			<span class="min-w-0">
+				<span class="block text-sm font-medium">
+					Include me on the weekly board
+				</span>
+				<span class="text-muted block text-xs">
+					{room?.boardEnabled
+						? "Off keeps your kJ off the room's board. It changes nothing else."
+						: "This room's board is off, so nothing is ranked here yet — this is what happens if the owner turns it on."}
+				</span>
+			</span>
+		</label>
+	</section>
+{/snippet}
 
 {#if error && !room}
 	<main class="grid min-h-full place-items-center px-6">
@@ -314,6 +402,8 @@
 				room.
 			</p>
 		</section>
+
+		{@render myPrefs()}
 
 		<section class="border-muted/15 mt-4 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Leave room</h2>
@@ -472,6 +562,10 @@
 				</span>
 			</label>
 		</section>
+
+		<!-- An owner is a rider too: they are on their own room's board, and
+		     get their own room's mail. Same block as the member view. -->
+		{@render myPrefs()}
 
 		<section class="panel mt-3 p-6">
 			<h2 class="font-display font-bold">Reactions</h2>

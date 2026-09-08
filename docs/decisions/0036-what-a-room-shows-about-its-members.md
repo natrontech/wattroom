@@ -10,6 +10,23 @@
 - Answers: [#995](https://github.com/natrontech/wattroom/issues/995), the first
   of the two decisions [RESEARCH.md §14.9](../RESEARCH.md) says block it
 
+> **Amended by [#1100](https://github.com/natrontech/wattroom/issues/1100)
+> (2026-09-08):** the per-rider board opt-out this ADR deferred now exists, as
+> `memberships.on_board`. The rejected alternative below named its own
+> condition — *"rejected as premature: with no board shipped yet there is
+> nothing to consent to … if per-rider opt-out proves necessary, it is an
+> amendment with a migration, not a rewrite"* — and the board shipped. The
+> room-level opt-in is unchanged and still the first gate; this is the second.
+> Default `true`, so no existing member's experience changed.
+>
+> **Why it proved necessary.** The room-level switch answers this ADR's own
+> first bullet — *"being in a room must not put a rider on a board"* — for
+> somebody **joining**. It does not answer it for everybody already inside
+> when the owner turns the board on, which is the same "enrolment by
+> existence" trap one level up, and it is the level at which Garmin's
+> mandatory group challenges actually bite: nobody joins a challenge, they
+> find they are in one.
+
 ## Context
 
 A room's page showed four tiles — riders, streak, this month, medals. For a
@@ -124,3 +141,9 @@ board shipped yet there is nothing to consent to, and a stored consent record
 that nothing reads is worse than none. When the board lands, the room-level
 opt-in above is the smaller thing that does the job — and if per-rider opt-out
 proves necessary, it is an amendment with a migration, not a rewrite.
+
+> **This is what happened** (#1100): the board landed, the flag stopped being
+> a record nothing reads, and the amendment is `memberships.on_board` with
+> `RoomWeekBoard` filtering on it. The reasoning above is kept rather than
+> rewritten — being right about the *sequence* is why the column exists now
+> and did not exist then.

@@ -233,7 +233,7 @@ func (q *Queries) DeleteScheduledSession(ctx context.Context, arg DeleteSchedule
 }
 
 const getMembership = `-- name: GetMembership :one
-select room_id, user_id, role, joined_at from memberships where room_id = $1 and user_id = $2
+select room_id, user_id, role, joined_at, notify, on_board from memberships where room_id = $1 and user_id = $2
 `
 
 type GetMembershipParams struct {
@@ -249,6 +249,8 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 		&i.UserID,
 		&i.Role,
 		&i.JoinedAt,
+		&i.Notify,
+		&i.OnBoard,
 	)
 	return i, err
 }
@@ -385,7 +387,7 @@ func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, 
 }
 
 const listMembershipsForUser = `-- name: ListMembershipsForUser :many
-select room_id, user_id, role, joined_at from memberships where user_id = $1 and room_id = any($2::uuid[])
+select room_id, user_id, role, joined_at, notify, on_board from memberships where user_id = $1 and room_id = any($2::uuid[])
 `
 
 type ListMembershipsForUserParams struct {
@@ -409,6 +411,8 @@ func (q *Queries) ListMembershipsForUser(ctx context.Context, arg ListMembership
 			&i.UserID,
 			&i.Role,
 			&i.JoinedAt,
+			&i.Notify,
+			&i.OnBoard,
 		); err != nil {
 			return nil, err
 		}
@@ -885,6 +889,39 @@ func (q *Queries) SessionInRoom(ctx context.Context, arg SessionInRoomParams) (p
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const setMembershipPrefs = `-- name: SetMembershipPrefs :one
+update memberships set notify = $3, on_board = $4
+where room_id = $1 and user_id = $2
+returning notify, on_board
+`
+
+type SetMembershipPrefsParams struct {
+	RoomID  pgtype.UUID
+	UserID  pgtype.UUID
+	Notify  bool
+	OnBoard bool
+}
+
+type SetMembershipPrefsRow struct {
+	Notify  bool
+	OnBoard bool
+}
+
+// A rider's own settings for one room (#1100). Keyed on (room, user), so the
+// WHERE clause is the authorization: there is no way to spell another
+// rider's preferences, however the caller addresses the request.
+func (q *Queries) SetMembershipPrefs(ctx context.Context, arg SetMembershipPrefsParams) (SetMembershipPrefsRow, error) {
+	row := q.db.QueryRow(ctx, setMembershipPrefs,
+		arg.RoomID,
+		arg.UserID,
+		arg.Notify,
+		arg.OnBoard,
+	)
+	var i SetMembershipPrefsRow
+	err := row.Scan(&i.Notify, &i.OnBoard)
+	return i, err
 }
 
 const setRsvp = `-- name: SetRsvp :exec

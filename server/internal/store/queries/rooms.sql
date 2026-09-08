@@ -209,3 +209,11 @@ join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
 order by r.created_at;
+
+-- name: SetMembershipPrefs :one
+-- A rider's own settings for one room (#1100). Keyed on (room, user), so the
+-- WHERE clause is the authorization: there is no way to spell another
+-- rider's preferences, however the caller addresses the request.
+update memberships set notify = $3, on_board = $4
+where room_id = $1 and user_id = $2
+returning notify, on_board;

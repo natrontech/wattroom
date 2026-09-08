@@ -127,6 +127,8 @@ type Membership struct {
 	UserID   pgtype.UUID
 	Role     string
 	JoinedAt pgtype.Timestamptz
+	Notify   bool
+	OnBoard  bool
 }
 
 type Passkey struct {

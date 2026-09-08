@@ -1093,3 +1093,163 @@ func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
 		t.Errorf("a banned rider kept the join code: %v", body["code"])
 	}
 }
+
+// A rider's own settings for one room (#1100). The switches are the easy
+// half; what matters is that the two queries downstream actually honour them,
+// because a preference nothing reads is worse than no preference at all —
+// the rider believes they are off the board and they are on it.
+func TestRiderPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Prefs")
+	for _, member := range []string{"bob", "carol"} {
+		if status, _ := h.call(t, member, http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+			t.Fatalf("%s join: %d", member, status)
+		}
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+
+	// Defaults reproduce today's behaviour: nobody is opted out by the
+	// migration. This is the box that a silent opt-out would fail.
+	_, body := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	me, _ := body["me"].(map[string]any)
+	if me == nil || me["notify"] != true || me["onBoard"] != true {
+		t.Fatalf("defaults are not today's behaviour: %v", body["me"])
+	}
+
+	// Bob opts out of both.
+	if status, out := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		`{"notify":false,"onBoard":false}`); status != http.StatusOK {
+		t.Fatalf("set prefs: %d %v", status, out)
+	}
+	_, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	me, _ = body["me"].(map[string]any)
+	if me == nil || me["notify"] != false || me["onBoard"] != false {
+		t.Errorf("preferences did not persist: %v", body["me"])
+	}
+	// Carol is untouched — one rider's choice is not the room's.
+	_, body = h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, "")
+	me, _ = body["me"].(map[string]any)
+	if me == nil || me["notify"] != true || me["onBoard"] != true {
+		t.Errorf("bob's choice reached carol: %v", body["me"])
+	}
+
+	// The mail list honours it. The query needs a deliverable address and the
+	// global flag on, so both are set directly — without them the target list
+	// is empty whatever the preference says, and the assertion below would
+	// pass against a filter that does nothing.
+	for _, who := range []string{"bob", "carol"} {
+		if _, err := h.store.Pool.Exec(t.Context(),
+			"update users set email = $2, notify_planned = true where id = $1",
+			h.users.byToken[who].ID, who+"@example.test"); err != nil {
+			t.Fatalf("give %s an address: %v", who, err)
+		}
+	}
+	// Alice plans, so she is excluded as the planner; bob opted out; carol
+	// should be the only target left.
+	targets, err := h.store.Queries.ListRoomNotifyTargets(t.Context(), db.ListRoomNotifyTargetsParams{
+		RoomID: room.ID, ID: h.users.byToken["alice"].ID,
+	})
+	if err != nil {
+		t.Fatalf("notify targets: %v", err)
+	}
+	var mailedBob, mailedCarol bool
+	for _, target := range targets {
+		mailedBob = mailedBob || target.ID == h.users.byToken["bob"].ID
+		mailedCarol = mailedCarol || target.ID == h.users.byToken["carol"].ID
+	}
+	if mailedBob {
+		t.Error("a rider who turned this room's mail off was still a target")
+	}
+	if !mailedCarol {
+		t.Error("nobody would be mailed, so the opt-out proves nothing")
+	}
+
+	// And the board honours it — proved with a real ride this week, because
+	// an empty board proves nothing about a filter.
+	for _, who := range []string{"bob", "carol"} {
+		h.crewRide(t, who, room.ID, time.Now(), 1800)
+	}
+	rows, err := h.store.Queries.RoomWeekBoard(t.Context(), room.ID)
+	if err != nil {
+		t.Fatalf("board: %v", err)
+	}
+	var sawBob, sawCarol bool
+	for _, row := range rows {
+		sawBob = sawBob || row.UserID == h.users.byToken["bob"].ID
+		sawCarol = sawCarol || row.UserID == h.users.byToken["carol"].ID
+	}
+	if sawBob {
+		t.Error("a rider who opted out is on the board anyway")
+	}
+	if !sawCarol {
+		t.Error("nobody is on the board, so the opt-out proves nothing")
+	}
+}
+
+// The update is keyed on (room, caller), so there is no way to spell another
+// rider's preferences — and a non-member is refused by the same gate every
+// other room-scoped write uses.
+func TestOnlyYouSetYourOwnRoomPrefs(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Not Yours")
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("bob join: %d", status)
+	}
+
+	// Carol never joined.
+	if status, _ := h.call(t, "carol", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		`{"notify":false,"onBoard":false}`); status != http.StatusForbidden {
+		t.Errorf("a non-member set preferences: %d", status)
+	}
+	// Signed out is 401, not 403.
+	if status, _ := h.call(t, "", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		`{"notify":false,"onBoard":false}`); status != http.StatusUnauthorized {
+		t.Errorf("signed out: %d, want 401", status)
+	}
+	// Bob's own write does not reach alice, however he addresses it: the body
+	// carries no user id at all, so a smuggled one is simply refused.
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		fmt.Sprintf(`{"notify":false,"onBoard":false,"userId":%q}`,
+			store.UUIDString(h.users.byToken["alice"].ID))); status != http.StatusBadRequest {
+		t.Errorf("a smuggled userId was accepted: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		`{"notify":false,"onBoard":false}`); status != http.StatusOK {
+		t.Fatalf("bob's own write: %d", status)
+	}
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	me, _ := body["me"].(map[string]any)
+	if me == nil || me["notify"] != true || me["onBoard"] != true {
+		t.Errorf("bob's write changed alice's preferences: %v", body["me"])
+	}
+}
+
+// Leaving drops the membership row, so preferences reset on rejoining. That
+// falls out of where they live rather than being enforced anywhere, which is
+// exactly why it is worth a test — nothing else states it.
+func TestLeavingARoomForgetsYourPreferences(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Forgetful")
+	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("join: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
+		`{"notify":false,"onBoard":false}`); status != http.StatusOK {
+		t.Fatalf("set prefs: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/members/"+bobID, ""); status != http.StatusNoContent {
+		t.Fatalf("leave: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("rejoin: %d", status)
+	}
+	_, body := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	me, _ := body["me"].(map[string]any)
+	if me == nil || me["notify"] != true || me["onBoard"] != true {
+		t.Errorf("rejoining kept the old preferences: %v", body["me"])
+	}
+}

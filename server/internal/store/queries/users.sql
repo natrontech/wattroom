@@ -26,10 +26,17 @@ update users set notify_planned = false where id = $1 and unsub_token = $2;
 -- Members who asked for planned-session email — minus the planner, who knows.
 -- The zone comes along because the time in the mail is formatted per rider
 -- (#858), not once for the whole room.
+--
+-- Two switches, both of which must be on (#1100): `u.notify_planned` is the
+-- rider's global answer and `m.notify` is their answer for THIS room. The
+-- per-room one narrows the global rather than overriding it — a rider who
+-- has turned planned-session mail off everywhere does not start getting it
+-- again by joining somewhere.
 select u.id, u.email, u.unsub_token, u.timezone
 from memberships m
 join users u on u.id = m.user_id
-where m.room_id = $1 and u.notify_planned and u.email is not null and u.id <> $2;
+where m.room_id = $1 and m.notify and u.notify_planned
+  and u.email is not null and u.id <> $2;
 
 -- name: UpdateUserTimezone :exec
 -- Reported by the browser, never typed. Its own statement rather than a field

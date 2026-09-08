@@ -118,6 +118,11 @@ join memberships m on m.room_id = r.room_id and m.user_id = r.user_id
 where r.room_id = $1
   and r.started_at >= date_trunc('week', now())
   and m.role <> 'banned'
+  -- A rider's own opt-out (#1100, amending ADR-0036). The room-level switch
+  -- answers "joining a room must not put you on a board"; this answers the
+  -- same trap one level up, where the owner turns the board on and everybody
+  -- already inside is enrolled by existence.
+  and m.on_board
 group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg
 order by kj desc, u.display_name asc;
 
