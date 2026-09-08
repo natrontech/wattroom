@@ -16,10 +16,12 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 	import {
 		fetchCrew,
 		renameCrew,
 		setCrewRole,
+		transferCrew,
 		type Crew,
 		type CrewPerson,
 	} from '$lib/crew';
@@ -147,6 +149,26 @@
 		person.id !== account.me?.id &&
 		!busy;
 
+	// Handing the crew on (#1208) is the one thing here behind a confirm
+	// rather than an undo toast: the actor cannot take it back — only the
+	// new owner can hand it back to them.
+	let handover = $state<CrewPerson | null>(null);
+	async function handOver() {
+		const to = handover;
+		handover = null;
+		if (!crew || !to) return;
+		busy = true;
+		const res = await transferCrew(crew.id, to.id);
+		busy = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push(`${to.displayName} owns ${crew.name} now. You are an admin.`);
+		presence.reload();
+		await load(crew.id);
+	}
+
 	function personEntries(person: CrewPerson): MenuEntry[] {
 		const entries: MenuEntry[] = personMenu(person.id, goto, {
 			you: person.id === account.me?.id,
@@ -171,13 +193,23 @@
 								`${person.displayName} is a crew admin now.`,
 							),
 					},
-			{
-				label: 'Ban from the crew',
-				icon: ShieldBan,
-				onSelect: () => ban(person),
-				danger: true,
-			},
 		);
+		if (owner)
+			entries.push({
+				label: `Hand the crew to ${person.displayName}`,
+				icon: Crown,
+				onSelect: () => (handover = person),
+			});
+		// A room owner cannot be banned from the crew their room is in (#1212):
+		// the entry stays, says why, and does nothing — never a 409 on click.
+		entries.push({
+			label: 'Ban from the crew',
+			icon: ShieldBan,
+			onSelect: () => ban(person),
+			danger: true,
+			disabled: person.ownsRoom,
+			hint: person.ownsRoom ? 'owns a room here' : undefined,
+		});
 		return entries;
 	}
 
@@ -188,6 +220,27 @@
 <svelte:head>
 	<title>{crew?.name ?? 'Crew'} · WattRoom</title>
 </svelte:head>
+
+{#if handover && crew}
+	<Modal label="Hand the crew on" onclose={() => (handover = null)}>
+		<h2 class="font-display text-lg font-bold">
+			Hand {crew.name} to {handover.displayName}?
+		</h2>
+		<p class="text-muted mt-2 text-sm">
+			They become its owner — the one person nobody can demote, remove or ban —
+			and you stay on as an admin. You cannot take this back; only they can hand
+			it back to you.
+		</p>
+		<div class="mt-4 flex justify-end gap-2">
+			<button onclick={() => (handover = null)} class="btn btn-secondary"
+				>Cancel</button
+			>
+			<button onclick={handOver} disabled={busy} class="btn btn-primary"
+				>Hand it over</button
+			>
+		</div>
+	</Modal>
+{/if}
 
 <main class="page">
 	{#if error}

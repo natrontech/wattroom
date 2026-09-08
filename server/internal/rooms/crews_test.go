@@ -267,6 +267,95 @@ func TestTheOwnerOpensARoomToTheCrewAndShutsIt(t *testing.T) {
 	}
 }
 
+// The deliberate hand-over (#1208): owner only, to someone in the crew, and
+// the old owner stays on as an admin. The new owner's own role row goes with
+// it (#1212) — owner beats every row, and a stale one is a lockout.
+func TestTheOwnerHandsTheCrewOn(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Handover")
+	crew := h.crewOf(t, slug)
+	h.join(t, "bob", slug)
+	path := "/api/crews/" + store.UUIDString(crew.ID) + "/transfer"
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	carol := store.UUIDString(h.users.byToken["carol"].ID)
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+	}); err != nil {
+		t.Fatalf("admin: %v", err)
+	}
+
+	if status, _ := h.call(t, "bob", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, bob)); status != http.StatusForbidden {
+		t.Errorf("an admin handed the crew to themselves: %d, want 403", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, carol)); status != http.StatusBadRequest {
+		t.Errorf("the crew passed to someone outside it: %d, want 400", status)
+	}
+	status, body := h.call(t, "alice", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, bob))
+	if status != http.StatusOK || body["role"] != "admin" {
+		t.Fatalf("hand-over: %d %v", status, body)
+	}
+	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
+	if err != nil || after.OwnerID != h.users.byToken["bob"].ID {
+		t.Fatalf("bob does not own the crew: %v %v", err, after)
+	}
+	roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID)
+	for _, row := range roles {
+		if row.UserID == h.users.byToken["bob"].ID {
+			t.Errorf("the new owner still holds a %s row", row.Role)
+		}
+		if row.UserID == h.users.byToken["alice"].ID && row.Role != "admin" {
+			t.Errorf("the old owner is %s, want admin", row.Role)
+		}
+	}
+	// And it is bob's to hand on now, not alice's.
+	if status, _ := h.call(t, "alice", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, bob)); status != http.StatusForbidden {
+		t.Errorf("the old owner still hands the crew on: %d, want 403", status)
+	}
+}
+
+// A room never leaves its crew, so its owner cannot be banned from it
+// (#1212): the ban would orphan the room, and SPEC's successor of last resort
+// could then be someone the crew banned. The people list says who is exempt
+// so the menu withholds the ban instead of offering one that fails.
+func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
+	h := setup(t)
+	mine, _ := h.createRoom(t, "alice", "Crew Ban Owner Mine")
+	theirs, _ := h.createRoom(t, "bob", "Crew Ban Owner Theirs")
+	crew := h.crewOf(t, mine)
+	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{
+		ID: roomID(t, h, theirs), CrewID: crew.ID, CrewVisible: true,
+	}); err != nil {
+		t.Fatalf("place: %v", err)
+	}
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
+		fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob))
+	if status != http.StatusConflict {
+		t.Errorf("a room owner was banned from the crew: %d, want 409", status)
+	}
+	_, body := h.call(t, "alice", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	people, _ := body["people"].([]any)
+	for _, entry := range people {
+		p, _ := entry.(map[string]any)
+		if p["id"] == bob && p["ownsRoom"] != true {
+			t.Errorf("the people list does not say bob owns a room here: %v", p)
+		}
+	}
+	// Succession clears the successor's row too: bob, an admin, inherits
+	// when alice's last room goes, and inherits clean.
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+	}); err != nil {
+		t.Fatalf("admin: %v", err)
+	}
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+mine, ""); status != http.StatusNoContent {
+		t.Fatalf("delete: %d", status)
+	}
+	if roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID); len(roles) != 0 {
+		t.Errorf("the successor inherited with a role row still on them: %v", roles)
+	}
+}
+
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
