@@ -17,16 +17,33 @@ export interface Medal {
 }
 
 /**
- * What the crew did together (#995, ADR-0036). Cooperative by construction:
+ * What a room's members did together (#995, ADR-0036). Not ADR-0038's crew,
+ * which is the layer ABOVE a room — this is one room's own totals, and it
+ * gave the word up rather than mean two things (#1178).
+ *
+ * Cooperative by construction:
  * sums over the whole room, plus the VIEWER's own turnout — no other rider's
  * ride-derived number is in here.
  */
-export interface Crew {
+export interface Together {
 	seconds: number;
 	sessionsThisMonth: number;
 	sessionsLastMonth: number;
 	/** Oldest first: true where you were in that session. */
 	attended: boolean[];
+}
+
+/**
+ * ADR-0038's crew: the layer above a room, and what the sidebar switches
+ * between. Identity only — a crew carries no voice, deck, session or metrics.
+ *
+ * Members only, so it is absent for a room you are looking at from outside.
+ * Absent too while `crew_id` is nullable, which is one release (#1178).
+ */
+export interface RoomCrew {
+	id: string;
+	name: string;
+	icon?: string;
 }
 
 /**
@@ -54,7 +71,8 @@ export interface Room {
 	medals?: Medal[];
 	streakWeeks?: number;
 	monthKj?: number;
-	crew?: Crew;
+	together?: Together;
+	crew?: RoomCrew;
 	boardEnabled?: boolean;
 	board?: BoardRow[];
 	upcoming?: {

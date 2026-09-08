@@ -163,7 +163,7 @@
 			members={room.members ?? []}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
-			crew={room.crew ?? null}
+			together={room.together ?? null}
 			board={room.board ?? []}
 			monthKj={room.monthKj ?? 0}
 			upcoming={room.upcoming ?? []}

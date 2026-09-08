@@ -1,7 +1,7 @@
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
-import type { BoardRow, Crew } from '$lib/room/room-data';
+import type { BoardRow, Together } from '$lib/room/room-data';
 import type { Segment } from '$lib/workout/types';
 
 /**
@@ -59,7 +59,7 @@ export interface RoomShellProps {
 	members?: AdminMember[];
 	medals?: AdminMedal[];
 	streakWeeks?: number;
-	crew?: Crew | null;
+	together?: Together | null;
 	board?: BoardRow[];
 	monthKj?: number;
 	adminBusy?: boolean;
@@ -196,8 +196,8 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get icsToken() {
 			return props.icsToken ?? '';
 		},
-		get crew() {
-			return props.crew ?? null;
+		get together() {
+			return props.together ?? null;
 		},
 		get board() {
 			return props.board ?? [];

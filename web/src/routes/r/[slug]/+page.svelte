@@ -205,8 +205,8 @@
 	// Describe, never grade (RESEARCH.md §14.8): the crew against its own last
 	// month, in words, with no arrow that reads as a verdict on a quiet month.
 	const monthOnMonth = $derived.by(() => {
-		const now = room.crew?.sessionsThisMonth ?? 0;
-		const then = room.crew?.sessionsLastMonth ?? 0;
+		const now = room.together?.sessionsThisMonth ?? 0;
+		const then = room.together?.sessionsLastMonth ?? 0;
 		if (!then) return 'the first month here';
 		if (now > then) return `up from ${then}`;
 		if (now < then) return `${then} last month`;
@@ -366,9 +366,9 @@
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">together</p>
 					<p class="font-display text-2xl font-bold tabular-nums">
-						{Math.round((room.crew?.seconds ?? 0) / 3600).toLocaleString()}<span
-							class="text-muted ml-1 text-sm">h</span
-						>
+						{Math.round(
+							(room.together?.seconds ?? 0) / 3600,
+						).toLocaleString()}<span class="text-muted ml-1 text-sm">h</span>
 					</p>
 					<p class="text-muted text-[11px]">ridden as a crew</p>
 				</div>
@@ -384,9 +384,9 @@
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">this month</p>
 					<p class="font-display text-2xl font-bold tabular-nums">
-						{room.crew?.sessionsThisMonth ?? 0}<span
+						{room.together?.sessionsThisMonth ?? 0}<span
 							class="text-muted ml-1 text-sm"
-							>session{(room.crew?.sessionsThisMonth ?? 0) === 1
+							>session{(room.together?.sessionsThisMonth ?? 0) === 1
 								? ''
 								: 's'}</span
 						>
@@ -397,9 +397,9 @@
 				</div>
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">showed up</p>
-					{#if room.crew?.attended.length}
+					{#if room.together?.attended.length}
 						<div class="mt-1.5 flex flex-wrap items-center gap-1">
-							{#each room.crew.attended as here, i (i)}
+							{#each room.together.attended as here, i (i)}
 								<!-- A dim fill, not a thin ring: a 10 px outline disappears at
 								     the arm's length this screen is read from (ux.md). -->
 								<span
@@ -410,8 +410,8 @@
 							{/each}
 						</div>
 						<p class="text-muted mt-2 text-[11px]">
-							you, last {room.crew.attended.length} session{room.crew.attended
-								.length === 1
+							you, last {room.together.attended.length} session{room.together
+								.attended.length === 1
 								? ''
 								: 's'}
 						</p>
