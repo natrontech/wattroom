@@ -4,8 +4,17 @@
 	import { GITHUB_MARK } from '$lib/brand/icons';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { goto } from '$app/navigation';
+	import { shellVersion } from '$lib/desktop';
 
 	void account.load();
+
+	// The desktop shell has already been installed: nobody in it needs the
+	// pitch, and it has a sign-in of its own (#1188).
+	$effect(() => {
+		if (account.loaded && !account.me && shellVersion())
+			void goto('/login', { replaceState: true });
+	});
 
 	// The public page's live numbers: riders online right now, and the repo's
 	// stars. Both come from the server (one poll, no visitor calls GitHub); a
