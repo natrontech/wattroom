@@ -111,8 +111,30 @@
 	// the spectator view used to be the other one, and a phone stands in the
 	// framed room itself now (#412).
 	const framed = $derived(
-		!!account.me && !publicPath && page.url.pathname !== '/login',
+		!!account.me &&
+			!publicPath &&
+			page.url.pathname !== '/login' &&
+			// The HUD is a window of its own (#296): numbers only, no sidebar.
+			page.url.pathname !== '/hud',
 	);
+
+	// The ride is running, here or in a room — the cave below and, in the
+	// desktop shell, the floating HUD (ADR-0041): it opens when a ride starts
+	// and closes when it ends, and the shell shows it only while WattRoom is
+	// not the front window.
+	const riding = $derived.by(() => {
+		const phase = roomConnection.current?.live.tick?.state.phase;
+		return (
+			(page.url.pathname.startsWith('/r/') &&
+				(phase === 'countdown' || phase === 'running' || phase === 'paused')) ||
+			soloRide.active
+		);
+	});
+	$effect(() => {
+		(
+			globalThis as { wattroom?: { hud?: (on: boolean) => void } }
+		).wattroom?.hud?.(riding);
+	});
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store
 	// re-fetches — this replaced the shell's 10 s poll.

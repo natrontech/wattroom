@@ -29,4 +29,7 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// Held for a ride's duration by workout/wakelock.ts. The browser's own wake
 	// lock keeps the screen on; this keeps the machine from sleeping under it.
 	keepAwake: (on) => ipcRenderer.send('wattroom:keep-awake', on),
+	// The floating HUD (ADR-0041): opened by the layout when a ride starts,
+	// closed when it ends or from the HUD's own close button.
+	hud: (on) => ipcRenderer.send('wattroom:hud', on),
 });
