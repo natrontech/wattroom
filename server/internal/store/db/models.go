@@ -64,6 +64,21 @@ type ChatReaction struct {
 	Emoji     string
 }
 
+type Crew struct {
+	ID        pgtype.UUID
+	Name      string
+	Icon      string
+	OwnerID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+type CrewRole struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+	Role   string
+	SetAt  pgtype.Timestamptz
+}
+
 type DmImage struct {
 	ID          pgtype.UUID
 	SenderID    pgtype.UUID
@@ -209,6 +224,14 @@ type Room struct {
 	AutoplayFixedVideoID    string
 	AutoplayFixedVideoTitle string
 	BoardEnabled            bool
+	CrewID                  pgtype.UUID
+	CrewVisible             bool
+}
+
+type RoomGrant struct {
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	GrantedAt pgtype.Timestamptz
 }
 
 type RoomRead struct {
@@ -297,6 +320,11 @@ type User struct {
 	EmailVerifyExpires pgtype.Timestamptz
 	EmailRequired      bool
 	Timezone           *string
+}
+
+type VisibleRoom struct {
+	RoomID pgtype.UUID
+	UserID pgtype.UUID
 }
 
 type Workout struct {
