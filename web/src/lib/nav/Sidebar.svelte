@@ -27,10 +27,19 @@
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
+		crewsOf,
+		currentCrew,
+		readChosenCrew,
+		rememberChosenCrew,
+		sidebarGroups,
+	} from './crews';
+	import {
 		contextMenu,
 		MENU_HINT,
+		openMenu,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import { iconFor } from '$lib/icons';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
@@ -40,6 +49,11 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Plus from '@lucide/svelte/icons/plus';
+	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	import Eye from '@lucide/svelte/icons/eye';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Shield from '@lucide/svelte/icons/shield';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import { device } from '$lib/device.svelte';
 
 	let {
@@ -70,7 +84,260 @@
 	// answer, used by the list and by the room's context menu alike.
 	const places = $derived(placesFor(device.narrow));
 	const place = $derived(activeSlug ? activePlace(pathname, activeSlug) : '');
+
+	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one
+	// crew's rooms at a time, chosen here and remembered, with the room you
+	// are standing in pinned above the list when it belongs to another crew.
+	let chosen = $state(readChosenCrew());
+	const crews = $derived(crewsOf(rooms));
+	const crew = $derived(currentCrew(crews, chosen, rooms, connectedSlug));
+	const groups = $derived(sidebarGroups(rooms, crew, connectedSlug));
+	// What the header says under the name: how many rooms, and what you are
+	// to it. Owner is a word here because the shield alone is a small mark;
+	// member says nothing, being in it at all is the default.
+	const crewLine = $derived.by(() => {
+		if (!crew) return '';
+		const n = rooms.filter((r) => r.crew?.id === crew.id).length;
+		const count = n === 1 ? '1 room' : `${n} rooms`;
+		return crew.role === 'owner'
+			? `${count} · yours`
+			: crew.role === 'admin'
+				? `${count} · you admin it`
+				: count;
+	});
+	function pick(id: string) {
+		chosen = id;
+		rememberChosenCrew(id);
+	}
+	function switcher(event: MouseEvent) {
+		const button = event.currentTarget as HTMLElement;
+		const rect = button.getBoundingClientRect();
+		openMenu(
+			crews.map((c) => ({
+				label: c.name,
+				icon: iconFor(c.icon) ?? undefined,
+				hint:
+					c.id === crew?.id ? 'now' : c.role === 'owner' ? 'yours' : undefined,
+				onSelect: () => pick(c.id),
+			})),
+			rect.left,
+			rect.bottom,
+			button,
+		);
+	}
 </script>
+
+<!-- What a row may say about itself without being opened (#1149). Chrome,
+     not live data: muted, never watt, never a glow (ADR-0005). Open draws
+     nothing — the absence of a mark is the state. -->
+{#snippet accessMark(room: RailRoom)}
+	{#if room.access === 'locked'}
+		<Lock size={11} class="text-muted/60 shrink-0" aria-label="private" />
+	{:else if room.access === 'admin'}
+		<SlidersHorizontal
+			size={11}
+			class="text-muted/60 shrink-0"
+			aria-label="yours to administer"
+		/>
+	{:else if room.access === 'private'}
+		<Eye size={11} class="text-muted/60 shrink-0" aria-label="private" />
+	{/if}
+{/snippet}
+
+{#snippet roomRow(room: RailRoom)}
+	<!-- Connected and browsing-only are separate visual states. An active
+		     room still opens into its places in either state. -->
+	{@const reading = pathname === `/messages/r/${room.slug}`}
+	{@const state = roomNavState(room.slug, activeSlug, connectedSlug, reading)}
+	{@const here = state === 'connected'}
+	{@const browsing = state === 'browsing'}
+	<!-- Opened: the room whose pages you are on, AND the one you are
+			     standing in — reading a DM or Home while connected must not
+			     fold Training two clicks away (rider report, #416). -->
+	{@const open = room.slug === activeSlug || here}
+	{@const subline = railSubline(room, open)}
+	<!-- A room you cannot enter is not a link that fails (#1149, ux.md):
+		     the row stays, says why, and goes nowhere. -->
+	{@const reachable = room.access !== 'locked' && room.access !== 'admin'}
+	<!-- Two levels of the same wash, never one: the open room is a
+		     faint ground, the row you're on a stronger fill on top of it.
+		     Equal tints read as one slab and the selection disappears. -->
+	<li
+		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
+		{@attach contextMenu(() => {
+			if (!reachable) return [];
+			const entries: MenuEntry[] = places.map((place) => ({
+				label: place.label,
+				icon: place.icon,
+				onSelect: () => void goto(`/r/${room.slug}${place.path}`),
+			}));
+			// The way in without going in (#484): the list lives here now,
+			// so the way to a room's chat from outside lives here too.
+			entries.push('separator', {
+				label: 'Read the chat',
+				icon: MessageSquare,
+				hint: room.unread ? `${room.unread} new` : undefined,
+				onSelect: () => void goto(`/messages/r/${room.slug}`),
+			});
+			if (here && onLeave)
+				entries.push('separator', {
+					label: 'Leave the room',
+					icon: LogOut,
+					onSelect: onLeave,
+					danger: true,
+				});
+			return entries;
+		})}
+	>
+		<svelte:element
+			this={reachable ? 'a' : 'div'}
+			href={reachable ? `/r/${room.slug}` : undefined}
+			title={room.access === 'locked'
+				? 'private — you are not in this room'
+				: room.access === 'admin'
+					? 'yours to administer, not to enter'
+					: undefined}
+			class="block rounded px-2 pt-1.5 {subline === 'people'
+				? 'pb-0'
+				: 'pb-1.5'} {here
+				? 'text-ink'
+				: browsing
+					? 'text-ink/90'
+					: reachable
+						? 'text-muted/70 hover:text-ink'
+						: 'text-muted/45'}"
+		>
+			<span class="flex items-center gap-2">
+				<RoomIcon icon={room.icon} size={14} />
+				<span
+					class="truncate {here
+						? 'font-display text-ink text-base font-semibold'
+						: browsing
+							? 'font-display text-ink/90 text-[15px] font-medium'
+							: room.unread
+								? 'text-ink/80 text-sm font-medium'
+								: reachable
+									? 'text-muted/70 text-sm'
+									: 'text-muted/45 text-sm'}">{room.name}</span
+				>
+				{@render accessMark(room)}
+				{#if here && onLeave}
+					<button
+						onclick={(e) => {
+							e.preventDefault();
+							onLeave();
+						}}
+						class="text-muted hover:text-ink -my-2 ml-auto grid h-11 w-11 shrink-0 place-items-center md:h-6 md:w-6"
+						title="leave the room"
+						aria-label="leave the room"><LogOut size={16} /></button
+					>
+				{:else if room.unread}
+					<!-- The strongest reason a chat app stays open in a
+						     background window. -->
+					<span
+						class="{UNREAD_COUNT} ml-auto"
+						title="{room.unread} new since you were last here"
+						>{unreadCount(room.unread)}</span
+					>
+				{:else if (room.connected ?? 0) > 0}
+					<span class="ml-auto flex shrink-0 items-center gap-1">
+						<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
+						<span class="text-muted/70 font-mono text-[10px]"
+							>{room.connected}</span
+						>
+					</span>
+				{:else if room.members > 0}
+					<span class="text-muted/50 ml-auto shrink-0 font-mono text-[10px]"
+						>{room.members}</span
+					>
+				{/if}
+			</span>
+			{#if subline === 'session' && room.session}
+				<!-- The late-join radar: what is on, and how far in. -->
+				<span
+					class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
+				>
+					<RidingBars size={9} />
+					{room.session.workoutName} · {room.session.elapsedSec < 60
+						? 'starting'
+						: `${Math.round(room.session.elapsedSec / 60)} min in`}
+				</span>
+			{:else if subline === 'next' && room.next}
+				<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
+					>next: {room.next.workoutName} · {formatWhen(
+						room.next.startsAt,
+					)}</span
+				>
+			{/if}
+		</svelte:element>
+
+		{#if subline === 'people'}
+			{@const people = railPeople(room.riders)}
+			<!-- Who is in there, without going in (#438): Discord lists the
+				     people under a voice channel. It sits OUTSIDE the room's
+				     link — a target of its own, the rail's full width, opening
+				     the roster where each of them has a row (#540). The names
+				     it printed are one right-click away, individually; three
+				     buttons inside a 10 px line would be precision targets on
+				     a bike (ux.md). -->
+			<a
+				href="/r/{room.slug}/members"
+				title="who is here · {MENU_HINT}"
+				class="text-muted/80 hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
+				{@attach contextMenu(() =>
+					railPeopleMenu(
+						room.riders,
+						onMember && ((name) => onMember(room.slug, name)),
+						() => void goto(`/r/${room.slug}/members`),
+					),
+				)}
+			>
+				{#if room.voice?.length}<Headphones size={9} class="shrink-0" />{/if}
+				<span class="truncate">{people.label}</span>
+			</a>
+		{/if}
+
+		{#if open}
+			<!-- What was said while you were in another place (#568): the
+				     room's own unread cannot say it — standing in the room
+				     reads it — so this is the connection's answer, the same one
+				     the people column's bar shows. -->
+			{@const missed =
+				roomConnection.current?.slug === room.slug
+					? roomConnection.current.missed()
+					: null}
+			<!-- The room you are standing in opens. This is Discord's
+				     second column, and it costs one indent instead of one
+				     column (ADR-0020). -->
+			<ul class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5">
+				{#each places as entry (entry.path)}
+					{@const on = room.slug === activeSlug && place === entry.path}
+					<li>
+						<a
+							href="/r/{room.slug}{entry.path}"
+							aria-current={on ? 'page' : undefined}
+							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
+								? 'bg-ink/10 text-ink'
+								: 'text-muted hover:bg-ink/5 hover:text-ink'}"
+						>
+							<entry.icon size={14} class="shrink-0" />
+							<span class="truncate">{entry.label}</span>
+							{#if entry.path === '/training' && live}
+								<span class="ml-auto"><RidingBars size={10} /></span>
+							{:else if entry.path === '/chat' && missed}
+								<span
+									class="{UNREAD_COUNT} ml-auto"
+									title="{missed.count} said while you were elsewhere"
+									>{unreadCount(missed.count)}</span
+								>
+							{/if}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</li>
+{/snippet}
 
 <nav
 	class="bg-surface border-ink/5 flex h-full w-60 shrink-0 flex-col border-r"
@@ -79,6 +346,59 @@
 		<Logo size={22} {live} />
 		<span class="font-display text-sm font-bold">WattRoom</span>
 	</a>
+
+	{#if crew}
+		<!-- The crew is the mode the whole column is in (ADR-0020 amended,
+		     #1147), so it sits at the top like Discord's server header, and
+		     the column below keeps exactly the shape it had. With one crew
+		     there is nothing to switch and it is a heading, not a button. -->
+		{#snippet crewHeader()}
+			<span
+				class="bg-ink/5 text-muted grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+			>
+				{#if iconFor(crew.icon)}
+					<RoomIcon icon={crew.icon} size={16} class="text-ink/80" />
+				{:else}
+					<span class="font-display text-ink/80 text-sm font-bold"
+						>{crew.name.slice(0, 1).toUpperCase()}</span
+					>
+				{/if}
+			</span>
+			<span class="min-w-0 flex-1">
+				<span class="flex items-center gap-1.5">
+					<span class="font-display truncate text-sm font-bold"
+						>{crew.name}</span
+					>
+					{#if crew.role === 'owner'}
+						<Shield
+							size={12}
+							class="text-muted/60 shrink-0"
+							aria-label="yours"
+						/>
+					{/if}
+				</span>
+				<span class="text-muted block truncate text-[11px]">{crewLine}</span>
+			</span>
+		{/snippet}
+		{#if crews.length > 1}
+			<button
+				onclick={switcher}
+				class="border-ink/5 hover:bg-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5 text-left"
+				title="switch crew"
+				aria-label="crew: {crew.name} — switch crew"
+			>
+				{@render crewHeader()}
+				<ChevronsUpDown size={15} class="text-muted shrink-0" />
+			</button>
+		{:else}
+			<div
+				class="border-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5"
+				aria-label="crew: {crew.name}"
+			>
+				{@render crewHeader()}
+			</div>
+		{/if}
+	{/if}
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-2">
 		<ul class="space-y-0.5">
@@ -112,8 +432,19 @@
 			{/each}
 		</ul>
 
+		{#if groups.pinned}
+			<!-- The room you are standing in, whichever crew is on screen: reading
+			     another crew must not fold Training two clicks away (#416). -->
+			<div class="eyebrow px-2 pt-3 pb-1">
+				you are in · {groups.pinned.crew?.name}
+			</div>
+			<ul class="border-ink/5 mb-1 space-y-0.5 border-b pb-2">
+				{@render roomRow(groups.pinned)}
+			</ul>
+		{/if}
+
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			your rooms
+			{crew ? 'rooms' : 'your rooms'}
 			<!-- Everything /rooms carried beyond the list: open one, or join with
 			     a code (ADR-0020). -->
 			<a
@@ -124,197 +455,8 @@
 			>
 		</div>
 		<ul class="space-y-0.5">
-			{#each rooms as room (room.slug)}
-				<!-- Connected and browsing-only are separate visual states. An active
-				     room still opens into its places in either state. -->
-				{@const reading = pathname === `/messages/r/${room.slug}`}
-				{@const state = roomNavState(
-					room.slug,
-					activeSlug,
-					connectedSlug,
-					reading,
-				)}
-				{@const here = state === 'connected'}
-				{@const browsing = state === 'browsing'}
-				<!-- Opened: the room whose pages you are on, AND the one you are
-					     standing in — reading a DM or Home while connected must not
-					     fold Training two clicks away (rider report, #416). -->
-				{@const open = room.slug === activeSlug || here}
-				{@const subline = railSubline(room, open)}
-				<!-- Two levels of the same wash, never one: the open room is a
-				     faint ground, the row you're on a stronger fill on top of it.
-				     Equal tints read as one slab and the selection disappears. -->
-				<li
-					class="rounded-md {here
-						? 'bg-ink/5'
-						: browsing
-							? 'bg-ink/[0.03]'
-							: ''}"
-					{@attach contextMenu(() => {
-						const entries: MenuEntry[] = places.map((place) => ({
-							label: place.label,
-							icon: place.icon,
-							onSelect: () => void goto(`/r/${room.slug}${place.path}`),
-						}));
-						// The way in without going in (#484): the list lives here now,
-						// so the way to a room's chat from outside lives here too.
-						entries.push('separator', {
-							label: 'Read the chat',
-							icon: MessageSquare,
-							hint: room.unread ? `${room.unread} new` : undefined,
-							onSelect: () => void goto(`/messages/r/${room.slug}`),
-						});
-						if (here && onLeave)
-							entries.push('separator', {
-								label: 'Leave the room',
-								icon: LogOut,
-								onSelect: onLeave,
-								danger: true,
-							});
-						return entries;
-					})}
-				>
-					<a
-						href="/r/{room.slug}"
-						class="block rounded px-2 pt-1.5 {subline === 'people'
-							? 'pb-0'
-							: 'pb-1.5'} {here
-							? 'text-ink'
-							: browsing
-								? 'text-ink/90'
-								: 'text-muted/70 hover:text-ink'}"
-					>
-						<span class="flex items-center gap-2">
-							<RoomIcon icon={room.icon} size={14} />
-							<span
-								class="truncate {here
-									? 'font-display text-ink text-base font-semibold'
-									: browsing
-										? 'font-display text-ink/90 text-[15px] font-medium'
-										: room.unread
-											? 'text-ink/80 text-sm font-medium'
-											: 'text-muted/70 text-sm'}">{room.name}</span
-							>
-							{#if here && onLeave}
-								<button
-									onclick={(e) => {
-										e.preventDefault();
-										onLeave();
-									}}
-									class="text-muted hover:text-ink -my-2 ml-auto grid h-11 w-11 shrink-0 place-items-center md:h-6 md:w-6"
-									title="leave the room"
-									aria-label="leave the room"><LogOut size={16} /></button
-								>
-							{:else if room.unread}
-								<!-- The strongest reason a chat app stays open in a
-								     background window. -->
-								<span
-									class="{UNREAD_COUNT} ml-auto"
-									title="{room.unread} new since you were last here"
-									>{unreadCount(room.unread)}</span
-								>
-							{:else if (room.connected ?? 0) > 0}
-								<span class="ml-auto flex shrink-0 items-center gap-1">
-									<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-									<span class="text-muted/70 font-mono text-[10px]"
-										>{room.connected}</span
-									>
-								</span>
-							{:else if room.members > 0}
-								<span
-									class="text-muted/50 ml-auto shrink-0 font-mono text-[10px]"
-									>{room.members}</span
-								>
-							{/if}
-						</span>
-						{#if subline === 'session' && room.session}
-							<!-- The late-join radar: what is on, and how far in. -->
-							<span
-								class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
-							>
-								<RidingBars size={9} />
-								{room.session.workoutName} · {room.session.elapsedSec < 60
-									? 'starting'
-									: `${Math.round(room.session.elapsedSec / 60)} min in`}
-							</span>
-						{:else if subline === 'next' && room.next}
-							<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
-								>next: {room.next.workoutName} · {formatWhen(
-									room.next.startsAt,
-								)}</span
-							>
-						{/if}
-					</a>
-
-					{#if subline === 'people'}
-						{@const people = railPeople(room.riders)}
-						<!-- Who is in there, without going in (#438): Discord lists the
-						     people under a voice channel. It sits OUTSIDE the room's
-						     link — a target of its own, the rail's full width, opening
-						     the roster where each of them has a row (#540). The names
-						     it printed are one right-click away, individually; three
-						     buttons inside a 10 px line would be precision targets on
-						     a bike (ux.md). -->
-						<a
-							href="/r/{room.slug}/members"
-							title="who is here · {MENU_HINT}"
-							class="text-muted/80 hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
-							{@attach contextMenu(() =>
-								railPeopleMenu(
-									room.riders,
-									onMember && ((name) => onMember(room.slug, name)),
-									() => void goto(`/r/${room.slug}/members`),
-								),
-							)}
-						>
-							{#if room.voice?.length}<Headphones
-									size={9}
-									class="shrink-0"
-								/>{/if}
-							<span class="truncate">{people.label}</span>
-						</a>
-					{/if}
-
-					{#if open}
-						<!-- What was said while you were in another place (#568): the
-						     room's own unread cannot say it — standing in the room
-						     reads it — so this is the connection's answer, the same one
-						     the people column's bar shows. -->
-						{@const missed =
-							roomConnection.current?.slug === room.slug
-								? roomConnection.current.missed()
-								: null}
-						<!-- The room you are standing in opens. This is Discord's
-						     second column, and it costs one indent instead of one
-						     column (ADR-0020). -->
-						<ul class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5">
-							{#each places as entry (entry.path)}
-								{@const on = room.slug === activeSlug && place === entry.path}
-								<li>
-									<a
-										href="/r/{room.slug}{entry.path}"
-										aria-current={on ? 'page' : undefined}
-										class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
-											? 'bg-ink/10 text-ink'
-											: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-									>
-										<entry.icon size={14} class="shrink-0" />
-										<span class="truncate">{entry.label}</span>
-										{#if entry.path === '/training' && live}
-											<span class="ml-auto"><RidingBars size={10} /></span>
-										{:else if entry.path === '/chat' && missed}
-											<span
-												class="{UNREAD_COUNT} ml-auto"
-												title="{missed.count} said while you were elsewhere"
-												>{unreadCount(missed.count)}</span
-											>
-										{/if}
-									</a>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</li>
+			{#each groups.rooms as room (room.slug)}
+				{@render roomRow(room)}
 			{/each}
 		</ul>
 
