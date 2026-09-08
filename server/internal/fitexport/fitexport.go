@@ -158,8 +158,27 @@ func Encode(ride Ride) ([]byte, error) {
 		records = append(records, record)
 	}
 
-	elapsed := time.Duration(len(ride.Samples)) * time.Second
+	// Two durations, and they are not the same number once a ride has gaps
+	// (#1140). Garmin's cookbook draws the line and this follows it:
+	//
+	//   elapsed — wall clock, ride start to the end of the last record.
+	//   timer   — time actually recording, which is one second per sample.
+	//
+	// Records are stamped from each sample's own offset, so deriving BOTH
+	// from len(Samples) put the summary's end before the last record whenever
+	// offsets were sparse: two samples at 0 s and 10 s wrote records up to
+	// start+10 and a session ending at start+2. A file can pass byte and CRC
+	// decoding with its summary contradicting its records like that.
+	//
+	// Nothing is invented here. A gap is the absence of samples, which is
+	// stored data — not a pause event we made up. Where offsets are dense the
+	// two are equal and every existing export is byte-identical: the three
+	// callers in this repo all number samples `Second: i`, so this changes
+	// only what the stateless endpoint's own client can already send.
+	last := ride.Samples[len(ride.Samples)-1].Second
+	elapsed := time.Duration(last+1) * time.Second
 	elapsedMillis := narrowU32(elapsed.Milliseconds())
+	timerMillis := narrowU32((time.Duration(len(ride.Samples)) * time.Second).Milliseconds())
 	// Round rather than truncate: importers recompute averages from the records and
 	// round, so truncating here makes our summary disagree with theirs by a watt.
 	// Verified against Strava — 25140 W·s over 120 samples is 210 W, not 209.
@@ -173,7 +192,7 @@ func Encode(ride Ride) ([]byte, error) {
 		SetTimestamp(start.Add(elapsed)).
 		SetStartTime(start).
 		SetTotalElapsedTime(elapsedMillis).
-		SetTotalTimerTime(elapsedMillis).
+		SetTotalTimerTime(timerMillis).
 		SetSport(typedef.SportCycling).
 		SetAvgPower(avgWatts).
 		SetMaxPower(maxWatts).
@@ -185,7 +204,7 @@ func Encode(ride Ride) ([]byte, error) {
 		SetTimestamp(start.Add(elapsed)).
 		SetStartTime(start).
 		SetTotalElapsedTime(elapsedMillis).
-		SetTotalTimerTime(elapsedMillis).
+		SetTotalTimerTime(timerMillis).
 		SetSport(typedef.SportCycling).
 		// Strava reads this to classify the activity as a VirtualRide.
 		SetSubSport(typedef.SubSportVirtualActivity).
@@ -210,7 +229,7 @@ func Encode(ride Ride) ([]byte, error) {
 
 	activityMesg := mesgdef.NewActivity(nil).
 		SetTimestamp(start.Add(elapsed)).
-		SetTotalTimerTime(elapsedMillis).
+		SetTotalTimerTime(timerMillis).
 		SetNumSessions(1).
 		SetType(typedef.ActivityManual).
 		SetEvent(typedef.EventActivity).

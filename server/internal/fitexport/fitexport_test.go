@@ -206,3 +206,100 @@ func TestGoldenFile(t *testing.T) {
 }
 
 const basetypeUint8Invalid = 0xFF
+
+// #1140. Records are stamped from each sample's own offset; both durations
+// used to come from len(Samples). Two samples ten seconds apart wrote records
+// up to start+10 and a session that ended at start+2 — a summary
+// contradicting its own records, in a file that decodes and CRCs cleanly.
+//
+// Reachable through the stateless export (`http.go`), which takes the
+// client's offsets and only checks they are non-negative and increasing. The
+// three callers in this repo all number samples `Second: i`, so this is about
+// what that endpoint's own client can send, and every dense export is
+// unchanged.
+func TestSparseOffsetsKeepTheSummaryAroundTheRecords(t *testing.T) {
+	start := time.Date(2026, 9, 8, 6, 0, 0, 0, time.UTC)
+	ride := Ride{
+		StartedAt: start,
+		Samples: []Sample{
+			{Second: 0, Watts: 200},
+			{Second: 10, Watts: 220},
+			{Second: 30, Watts: 240},
+		},
+	}
+	data, err := Encode(ride)
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	fit, err := decoder.New(bytes.NewReader(data)).Decode()
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	activity := filedef.NewActivity(fit.Messages...)
+	session := activity.Sessions[0]
+
+	// Wall clock: ride start to the end of the last record, 30 s + the second
+	// that record covers.
+	if got, want := session.TotalElapsedTime, uint32(31_000); got != want {
+		t.Errorf("elapsed = %d ms, want %d — the summary must reach the last record", got, want)
+	}
+	// Recording time: three samples, three seconds. A gap is the absence of
+	// samples, which is stored data — not a pause we invented.
+	if got, want := session.TotalTimerTime, uint32(3_000); got != want {
+		t.Errorf("timer = %d ms, want %d — only the seconds actually recorded", got, want)
+	}
+	// The bound that was actually broken: no record may sit past the summary.
+	last := activity.Records[len(activity.Records)-1].Timestamp
+	if end := session.StartTime.Add(time.Duration(session.TotalElapsedTime) * time.Millisecond); last.After(end) {
+		t.Errorf("last record at %v is past the session end %v", last, end)
+	}
+	if len(activity.Records) != len(ride.Samples) {
+		t.Errorf("records = %d, want %d", len(activity.Records), len(ride.Samples))
+	}
+}
+
+// A ride whose first sample is not at zero: the rider's own start time is
+// still when the ride started, so elapsed is measured from it rather than
+// from the first thing that happened to be recorded.
+func TestANonZeroFirstOffsetIsMeasuredFromTheRideStart(t *testing.T) {
+	start := time.Date(2026, 9, 8, 6, 0, 0, 0, time.UTC)
+	data, err := Encode(Ride{
+		StartedAt: start,
+		Samples:   []Sample{{Second: 5, Watts: 200}, {Second: 6, Watts: 210}},
+	})
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	fit, err := decoder.New(bytes.NewReader(data)).Decode()
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	session := filedef.NewActivity(fit.Messages...).Sessions[0]
+	if got, want := session.TotalElapsedTime, uint32(7_000); got != want {
+		t.Errorf("elapsed = %d ms, want %d", got, want)
+	}
+	if got, want := session.TotalTimerTime, uint32(2_000); got != want {
+		t.Errorf("timer = %d ms, want %d", got, want)
+	}
+}
+
+// The continuous ride every durable path actually produces: the two durations
+// agree, and the file is what it was before #1140.
+func TestAContinuousRideHasOneDuration(t *testing.T) {
+	data, err := Encode(fixture())
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	fit, err := decoder.New(bytes.NewReader(data)).Decode()
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	session := filedef.NewActivity(fit.Messages...).Sessions[0]
+	if session.TotalElapsedTime != session.TotalTimerTime {
+		t.Errorf("elapsed %d != timer %d on a ride with no gaps",
+			session.TotalElapsedTime, session.TotalTimerTime)
+	}
+	if got, want := session.TotalTimerTime, uint32(120_000); got != want {
+		t.Errorf("timer = %d ms, want %d", got, want)
+	}
+}
