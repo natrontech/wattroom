@@ -162,6 +162,38 @@ export function createRoomAv(slug: string) {
 		chain.resume();
 		output.resume();
 	}
+
+	/**
+	 * Let the room be heard: resume the graph and tell LiveKit to start the
+	 * elements (#645).
+	 *
+	 * Both halves are needed and neither is enough. `startAudio` plays the
+	 * media elements, but once `createMediaElementSource` has them their sound
+	 * only reaches the speakers through the bus — so a suspended context is
+	 * silence whatever LiveKit does. And resuming the context does not play an
+	 * element the browser refused.
+	 */
+	async function startPlayback() {
+		chain.resume();
+		output.resume();
+		try {
+			await conn.room?.startAudio();
+		} catch {
+			// Still no gesture the browser will accept: the strip stays up,
+			// which is the whole point of it being status rather than a toast.
+		}
+		if (conn.room) av.playbackBlocked = !conn.room.canPlaybackAudio;
+	}
+
+	/**
+	 * Any click, anywhere, is a gesture the browser will accept — so most
+	 * riders never see the strip at all. `once` because the graph only needs
+	 * unblocking once, and a listener on every pointerdown for the life of a
+	 * room is not worth the one it catches.
+	 */
+	function onFirstGesture() {
+		void startPlayback();
+	}
 	/**
 	 * A chosen mic that is no longer plugged in stops being chosen (#640), so
 	 * the next open lands on the default instead of failing on an exact
@@ -178,6 +210,7 @@ export function createRoomAv(slug: string) {
 	function listen() {
 		if (typeof document === 'undefined') return;
 		document.addEventListener('visibilitychange', onVisible);
+		document.addEventListener('pointerdown', onFirstGesture, { once: true });
 		navigator.mediaDevices?.addEventListener('devicechange', onDeviceChange);
 	}
 	listen();
@@ -611,6 +644,16 @@ export function createRoomAv(slug: string) {
 		// while the SDK rebuilds the connection — say so on the dashboard.
 		// SignalReconnecting stays transparent by design (RESEARCH.md): media
 		// keeps flowing while only the signal socket rebuilds.
+		// The browser refused to start audio with no gesture behind it (#645).
+		// LiveKit has an event for exactly this; nothing was listening, so the
+		// room simply went quiet with nothing to press.
+		r.on(client.RoomEvent.AudioPlaybackStatusChanged, () => {
+			av.playbackBlocked = !r.canPlaybackAudio;
+		});
+		// And the state as it already stands: a rejoin that never gets a
+		// gesture (the #480 refresh, the #219 drop-rejoin) is blocked from the
+		// start, and no change event follows to say so.
+		av.playbackBlocked = !r.canPlaybackAudio;
 		r.on(client.RoomEvent.Reconnecting, () => {
 			if (av.status === 'live') av.status = 'reconnecting';
 		});
@@ -719,6 +762,11 @@ export function createRoomAv(slug: string) {
 			return chain.testing;
 		},
 		/** Your mic and camera live in another of your tabs (#293). */
+		/** The browser muted this tab; one press fixes it (#645). */
+		get playbackBlocked() {
+			return av.playbackBlocked;
+		},
+		startPlayback,
 		get handedOff() {
 			return av.handedOff;
 		},
@@ -946,6 +994,7 @@ export function createRoomAv(slug: string) {
 			// AudioContext budget (audit #219).
 			if (typeof document !== 'undefined') {
 				document.removeEventListener('visibilitychange', onVisible);
+				document.removeEventListener('pointerdown', onFirstGesture);
 				navigator.mediaDevices?.removeEventListener(
 					'devicechange',
 					onDeviceChange,
