@@ -76,16 +76,34 @@ test('the navigation guard refuses another origin', async () => {
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 
-	// A redirect to somewhere else is the shape that hands remote content the
-	// shell's permissions; will-navigate has to refuse it and the window has to
-	// stay where it was.
+	// Stub the external open in the MAIN process. Two reasons, and the second
+	// is why this test failed in CI before: most of the app's outbound links
+	// carry no target=_blank, so they arrive at will-navigate and handing them
+	// to the real browser is the correct behaviour — but on a headless runner
+	// shell.openExternal spawns xdg-open, which kept Electron alive and hung
+	// app.close() until the worker teardown timed out. Stubbing also lets this
+	// assert the half that matters most: the URL did not merely fail to load,
+	// it went to the browser instead.
+	await app.evaluate(({ shell }) => {
+		globalThis.__opened = [];
+		shell.openExternal = async (url) => {
+			globalThis.__opened.push(url);
+		};
+	});
+
 	const before = win.url();
 	await win.evaluate(() => {
 		window.location.href = 'https://example.com/';
 	});
 	await new Promise((r) => setTimeout(r, 1500));
+
+	// Blocked in the shell...
 	expect(win.url()).toBe(before);
 	expect(win.url()).not.toContain('example.com');
+	// ...and handed to the browser rather than silently dropped, which would
+	// leave every external link in the app dead.
+	const opened = await app.evaluate(() => globalThis.__opened);
+	expect(opened).toEqual(['https://example.com/']);
 
 	await app.close();
 });
