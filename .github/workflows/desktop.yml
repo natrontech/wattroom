@@ -1,0 +1,66 @@
+# The desktop shell's smoke (#296). Its own workflow so `paths` can gate it:
+# the shell changes rarely, and every other PR would otherwise pay for an
+# Electron binary download to prove nothing.
+#
+# Linux only, deliberately. The shell is platform-independent JavaScript and so
+# is everything the smoke asserts — the preload bridge's keys, Node being
+# unreachable from the renderer, the navigation guard, the offline screen. A
+# macOS runner bills at ten times a Linux one and would re-assert the same
+# facts. What genuinely differs per platform is packaging, signing and TCC,
+# and none of that is exercised here: it belongs to the signing and release
+# workflows, on the platform each one targets.
+#
+# What this cannot cover at all, on any runner: BLE and audio are not testable
+# in CI, and the native chooser is not Playwright-drivable (RESEARCH.md §15.5).
+# The four handlers that are the shell's actual content therefore need a
+# hardware session per OS — a green check here is not a paired trainer.
+name: desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+  # Repeated rather than a YAML anchor: the Actions parser rejects anchors.
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+      # electron@44 ships no `scripts` field at all, so `pnpm install` does not
+      # fetch the platform binary and `electron .` starts nothing. install.js is
+      # the script older majors ran themselves.
+      - name: fetch the Electron binary
+        working-directory: desktop
+        run: test -d node_modules/electron/dist || node node_modules/electron/install.js
+      # Electron needs an X server, and Playwright's _electron launches the real
+      # binary rather than a headless browser.
+      - name: smoke
+        working-directory: desktop
+        run: xvfb-run --auto-servernum pnpm exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-smoke-trace
+          path: desktop/test-results/
+          retention-days: 7
