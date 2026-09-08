@@ -416,6 +416,64 @@ Do **not** coin *ladder*, *board*, or a crew-metric name. §13.2 point 4 already
 2. **Whether a room has an ordered board at all**, and if so its cadence, its bracket and its opt-in. The evidence here recommends *cooperative total by default, ordered board opt-in*; that is a product decision, not a finding.
 3. **Streak and consistency as SPEC terms** — one glossary addition, with the forgiveness rule, since [ADR-0027](decisions/0027-an-earned-badge-travels-progress-stays-home.md) already lets earned things travel and this decides whether consistency is one of them.
 
+## 15. The desktop shell (research for #296; run of 2026-09-08)
+
+Inline research tier — sourced, no adversarial pass; *extracted* marks a claim read off the primary page rather than a summary, and **unverified** marks one carried over from [#296](https://github.com/natrontech/wattroom/issues/296)'s body that this pass did not confirm. Feeds [ADR-0037](decisions/0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) and the `desktop/` skeleton.
+
+**Why this section exists twice.** #296 cites "RESEARCH.md §14" throughout for exactly this material. That §14 was written on `claude/desktop-app-planning-aa6eae`, never merged, and the branch is gone from the remote; §14 was subsequently taken by the social-stats pass (#994). The substance survived only in an issue body. This is the section-number collision [#1021](https://github.com/natrontech/wattroom/issues/1021) warns about, and the lesson is the one it states: **take the number at merge, and land research before the work that cites it.**
+
+### 15.1 The handlers Electron makes mandatory
+
+Electron is not a browser with a title bar. Four things Chrome does for you are absent, and each fails in a way that looks like a bug in WattRoom.
+
+- **`select-bluetooth-device`** — Electron ships no device chooser. *extracted* from [webContents docs](https://www.electronjs.org/docs/latest/api/web-contents): *"If no event listener is added for this event, all bluetooth requests will be cancelled."*
+
+  **This corrects #296**, which says `requestDevice()` "never resolves" without a handler. It is cancelled, so the promise **rejects** — bad, but visible, and `media-error.ts` already turns a rejection into copy. The genuinely dangerous half is the next line: *"If `event.preventDefault` is not called when handling this event, the first available device will be automatically selected."* A handler that forgets `preventDefault` silently pairs whatever answers first — in a room where several riders' sensors are advertising, that is someone else's trainer, with no prompt.
+
+  Upside worth taking: our own picker can filter to FTMS/HR/CSC and remember the last trainer, which Chrome's chooser cannot.
+
+- **`setPermissionRequestHandler`** — **the default is to allow.** Electron approves permission requests unless a handler says otherwise; with remote content that hands camera and microphone to anything that gets the renderer to navigate. ([Doyensec, *Diving Into Electron Web API Permissions*](https://blog.doyensec.com/2022/09/27/electron-api-default-permissions.html); [Electron security tutorial](https://www.electronjs.org/docs/latest/tutorial/security)) Deny by default, allowlist our origin, and pair it with `setWindowOpenHandler` → `openExternal` and a `will-navigate` guard.
+
+- **`setDisplayMediaRequestHandler`** — Electron does not implement standard `getDisplayMedia` without it, so the stage (#280) silently breaks. The handler must also survive cancellation: the picker throws into the handler to signal abort, and an unhandled rejection there leaves the renderer waiting ([electron#47980](https://github.com/electron/electron/issues/47980), [electron#45517](https://github.com/electron/electron/issues/45517)).
+
+- **Info.plist usage descriptions** — `NSBluetoothAlwaysUsageDescription`, `NSMicrophoneUsageDescription`, `NSCameraUsageDescription`, and the audio-capture key for system audio. Necessary, and *not* sufficient — see 15.2.
+
+### 15.2 macOS: signing is a correctness requirement, not a polish step
+
+- **Ad-hoc signing breaks capture, silently.** [electron-builder#9529](https://github.com/electron-userland/electron-builder/issues/9529): since **v26.0.13**, ad-hoc-signed macOS builds (`mac.identity: "-"` or the implicit fallback) lose Camera and Microphone — *no prompt, the stream resolves, and no frames or audio arrive*. A regression between 26.0.12 and 26.0.13. This is the worst failure shape this product has: the mic reports `live` and the room hears nothing.
+- **The Hardened Runtime denies by default, and notarization requires it.** So the trap is an app that is signed, notarized, launches clean, and still cannot see the trainer. Entitlements needed: `com.apple.security.cs.allow-jit` (V8 — electron-builder documents it as required to stop framework crashes), `com.apple.security.device.audio-input`, `.device.camera`, `.device.bluetooth`. (*keys stated from Apple's Hardened Runtime documentation; the page did not render for this pass, and only `allow-jit` was corroborated against a primary source — [electron-builder code signing](https://www.electron.build/docs/features/code-signing/code-signing-mac/). Confirm the other three against Apple before the signing PR.*)
+- **Helper processes need their own entitlements file.** #296 states the renderer's microphone lives in an Electron helper, so the entitlements must appear in both `entitlements.mac.plist` and an `.inherit.plist`. **unverified** — this pass did not confirm the inherit file's name or that electron-builder applies one by default. It is cheap to check and expensive to get wrong.
+
+### 15.3 What the shell does not buy, and what it actually does
+
+The shell is worth building for two capabilities. It is worth being precise about which, because three of the reasons commonly given are already solved in the browser build.
+
+| claim | status |
+| --- | --- |
+| ANT+ | **real** — BLE-only Web Bluetooth cannot reach a proprietary USB protocol behind a vendor driver |
+| system audio into the room | **real on macOS only** — Chrome's `getDisplayMedia` captures tab audio everywhere and full system audio on Windows when sharing a screen |
+| "hold the machine awake" | **already shipped** — [`workout/wakelock.ts`](../web/src/lib/workout/wakelock.ts) (#58) re-requests the lock on every return to visibility |
+| "keep running when hidden" | **already shipped** — [`workout/ticker.ts`](../web/src/lib/workout/ticker.ts) (#51) ticks from a worker and reports wall-clock elapsed, so the ride stays correct even if the worker is throttled |
+| HUD over fullscreen, tray, deep links | real, and genuinely browser-impossible — but conveniences, not the justification |
+
+### 15.4 App-ness, per platform
+
+- **`app.setLoginItemSettings` / `getLoginItemSettings` are macOS and Windows only** — *extracted*, the platform annotation on [app docs](https://www.electronjs.org/docs/latest/api/app) reads `macOS Windows`. Linux launch-at-login means writing a `~/.config/autostart/*.desktop` file ourselves.
+- **Deep links need the single-instance lock.** Without it every `wattroom://` link opens a second window against the same session.
+- **Media keys on macOS** — #296 reports they need Accessibility permission, report success when they did not register, and get routed to whatever is playing audio (the YouTube iframe). **unverified** here. If it holds, register them on Windows/Linux only and spend the effort on a global push-to-talk instead.
+
+### 15.5 Testing, and what it cannot cover
+
+Playwright's `_electron` fixture can assert the packaged app launches, a window opens, `window.wattroom` carries the expected keys, the navigation guard rejects an off-origin URL, and the app quits cleanly — Linux under xvfb. **Native dialogs, the tray and menus are not Playwright-drivable, and BLE and audio are not CI-testable at all**, so the four handlers in 15.1 are exactly the code CI cannot prove. They need a hardware session per OS (docs/HARDWARE-SESSIONS.md). The existing e2e suite stays pointed at the browser build.
+
+### 15.6 Open before the skeleton PR
+
+1. The three non-JIT entitlement keys, against Apple's own documentation.
+2. Whether electron-builder applies an inherit entitlements file to helpers by default, and its name.
+3. The macOS media-key behaviour.
+4. Which Electron major to pin, and whether macOS system audio through ScreenCaptureKit actually works on it — [ADR-0037](decisions/0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) names this as the thing that would reverse it.
+
+
 ---
 
 ## Ranked risks to the plan
