@@ -430,6 +430,71 @@ anchor.
 What is left in the Sound panel is the gate threshold and the mic test — a
 level that is a picture, and the button that makes the picture move.
 
+## Amendment — the crew is a mode, not a level (2026-09-08, #1023, #1146)
+
+[ADR-0038](0038-the-crew-is-the-layer-above-rooms.md) put a crew above rooms and
+flagged, rather than answered, what that does to this ADR: *"the tree is now
+three deep and that arithmetic must be re-argued rather than quietly
+inherited."* [#1023](https://github.com/natrontech/wattroom/issues/1023) ran
+that argument — mockups, iterated, three options drawn on the real
+components — and settled on **Option C: the crew is a mode, not a level.**
+
+**The sidebar shows one crew at a time.** The column below it keeps exactly
+today's two-deep shape — rooms, and the room you are standing in opened into
+its places. `crew → room → place` is a real three-level tree, but the
+navigation does not grow a third indent to show it: the crew becomes a switch
+at the top of the sidebar, not a row inside it. Picking a different crew
+swaps what the column below shows; it does not add a column or a level.
+
+**Why this is an amendment and not a new ADR.** The Decision above concludes
+one column, one frame, no switchable layouts — and that conclusion survives
+unchanged. What does not survive is the arithmetic under it: *"Discord's
+shape is two columns because Discord has forty servers of thirty channels.
+WattRoom has five rooms of five places."* That sentence was counting rooms in
+total; a crew makes it count rooms **per crew** instead, and it is true again
+at that scope. A changed premise holding up an unchanged conclusion is what
+an amendment records; a new ADR would claim the shape itself moved, and it
+did not.
+
+**Two things the mode must not cost, both already promised elsewhere in this
+document:**
+
+- **The room you are standing in is pinned regardless of the crew on
+  screen.** This is not polish — it is the same guarantee as this ADR's
+  *"places are permanent and beside the content,"* and rider report #416 and
+  the `/dev/crew` mock both demonstrated what breaks without it: switching the
+  crew switch while riding must never be able to switch the room out from
+  under you.
+- **The crews you are not looking at must still report themselves.**
+  [ADR-0010](0010-room-first-positioning.md) makes the sidebar the crew's
+  radar — live dot, unread count, who is riding — and a mode that hides three
+  quarters of that radar to show the current crew stops being one. The switch
+  carries the same signal for every crew it is not currently showing.
+
+**What was rejected, and why — including the option that won on paper:**
+
+- **Option A, indent the crew.** A third indent inside the existing column.
+  Rejected because two indents truncate a room name at the sidebar's 240 px
+  width, and because a *shut* crew section is a good compact state but not a
+  good default — most sessions, the crew you are in is the one you want open.
+- **Option B, a 48 px crew rail.** A narrow icon strip beside the sidebar,
+  Discord's own answer to the same problem. Rejected on sight, again — it is
+  the shape this ADR already rejected for rooms, for the same reason: 48 px
+  cannot say "Sweet Spot, 12 min in," and this ADR's whole argument against a
+  rail was never about pixel count, it was about what a rail can show.
+
+**Worth recording honestly, because the exercise found something the
+decision does not use.** Collapsed-A — the indent option, fully shut — was
+the surprise: it is the most compact of the three and still answers "where
+is everyone" at a glance. Option C was chosen anyway, because the pin
+requirement and the radar requirement above matter more than compactness. A
+later reader is better served knowing the choice was not unanimous on the
+evidence than being told it was.
+
+**Not in scope here.** Naming — what the switch calls the object it
+switches between — was explicitly left open by #1023 and is not decided by
+this amendment.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so

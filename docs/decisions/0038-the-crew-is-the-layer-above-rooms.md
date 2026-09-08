@@ -160,8 +160,10 @@ re-derives this list rather than trusting it.
   re-argued rather than quietly inherited. **What is not overturned:** *"voice
   stays a state you carry, not a place you join"* — voice remains per-room, which
   this design preserves by giving the crew no voice at all. Whether the deeper
-  tree changes the column count is [#1023](https://github.com/natrontech/wattroom/issues/1023)'s
-  to draw, not this ADR's to assert.
+  tree changes the column count was [#1023](https://github.com/natrontech/wattroom/issues/1023)'s
+  to draw, not this ADR's to assert — it drew Option C, the crew as a mode
+  rather than a level, recorded in
+  [ADR-0020's 2026-09-08 amendment](0020-the-app-takes-discords-shape.md#amendment--the-crew-is-a-mode-not-a-level-2026-09-08-1023-1146).
 - **WATTROOM.md** — the join-flow/privacy paragraph (line 68) and the ownership
   cap. Per [ADR-0001](0001-adrs-and-founding-decisions.md) that file is edited
   only to mark a decision superseded, and it is **not edited by this PR**: the
