@@ -48,8 +48,8 @@ func (s *Service) TrackEnded(ctx context.Context, slug, trackID, queuedBy string
 
 // smartShuffle is the pool half of autoplay (#269): a weighted draw over
 // every track in the pool, penalised by what THIS room played recently and
-// keeps skipping, and since #270 boosted toward the cadence the room's
-// timeline is asking for. Empty (and silent) when the pool is empty — a room set to
+// keeps skipping, boosted toward the cadence the room's timeline is asking
+// for (#270), and toward what it has lately been finishing (#271). Empty (and silent) when the pool is empty — a room set to
 // smart with nothing uploaded simply has nothing to play, the same answer an
 // empty active playlist already gives.
 func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug string, mood hub.SessionMood) []protocol.JukeboxCommand {
@@ -59,6 +59,7 @@ func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug str
 	rows, err := s.store.Queries.SmartShuffleTracks(ctx, db.SmartShuffleTracksParams{
 		RoomID: roomID, Lim: smartShuffleBatch,
 		TargetRpm: rpm, BpmTolerance: bpmTolerance, BpmBoost: bpmBoost,
+		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
 		s.log.Error("smart shuffle failed", "room", slug, "err", err)

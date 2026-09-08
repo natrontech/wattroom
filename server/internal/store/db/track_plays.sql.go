@@ -36,16 +36,33 @@ func (q *Queries) RecordTrackPlay(ctx context.Context, arg RecordTrackPlayParams
 }
 
 const smartShuffleTracks = `-- name: SmartShuffleTracks :many
+with history as (
+    select p.track_id,
+        max(p.at) filter (where not p.skipped) as last_played,
+        count(*) filter (where p.skipped) as skips
+    from track_plays p
+    where p.room_id = $7
+    group by p.track_id
+),
+recent as (
+    select p.track_id, t.artist, t.tags
+    from track_plays p
+    join tracks t on t.id = p.track_id
+    where p.room_id = $7 and not p.skipped
+    order by p.at desc
+    limit $8
+),
+liked as (
+    select
+        coalesce(array_agg(distinct track_id), '{}') as ids,
+        coalesce(array_agg(distinct artist) filter (where artist <> ''), '{}') as artists,
+        coalesce(array_agg(distinct tag) filter (where tag is not null), '{}') as tags
+    from recent left join lateral unnest(recent.tags) as tag on true
+)
 select t.id, t.title, t.artist, w.weight
 from tracks t
-left join (
-    select track_id,
-        max(at) filter (where not skipped) as last_played,
-        count(*) filter (where skipped) as skips
-    from track_plays
-    where room_id = $1
-    group by track_id
-) h on h.track_id = t.id
+left join history h on h.track_id = t.id
+cross join liked l
 cross join lateral (
     select (greatest(
         case
@@ -55,25 +72,44 @@ cross join lateral (
         0.05
     ) / (1 + coalesce(h.skips, 0))
     * case
-        when $2::float8 <= 0 or t.bpm is null then 1.0
-        when abs(t.bpm - $2::float8)
-                 <= $2::float8 * $3::float8
-          or abs(t.bpm - $2::float8 * 2)
-                 <= $2::float8 * 2 * $3::float8
-        then $4::float8
+        when $1::float8 <= 0 or t.bpm is null then 1.0
+        when abs(t.bpm - $1::float8)
+                 <= $1::float8 * $2::float8
+          or abs(t.bpm - $1::float8 * 2)
+                 <= $1::float8 * 2 * $2::float8
+        then $3::float8
+        else 1.0
+      end
+    * case
+        -- A track the room just finished matches its OWN artist, and lifting
+        -- it here would partly undo the recency penalty that exists to stop
+        -- the room hearing it again. Affinity means "more like that one",
+        -- never "that one again" — so the recency factor keeps this case.
+        when t.id = any(l.ids) then 1.0
+        -- A name is a name; a tag is a hint. Checked in that order so a
+        -- track that is both does not earn the weaker one. An untitled
+        -- artist cannot match another untitled artist: the ` + "`" + `filter` + "`" + ` on
+        -- ` + "`" + `liked.artists` + "`" + ` above is what guarantees it, and is the ONLY thing
+        -- that does — a second ` + "`" + `t.artist <> ''` + "`" + ` here would read as the
+        -- guard while the filter quietly did the work.
+        when t.artist = any(l.artists) then $4::float8
+        when t.tags && l.tags then $5::float8
         else 1.0
       end)::float8 as weight
 ) w
 order by random() ^ (1.0 / w.weight) desc
-limit $5
+limit $6
 `
 
 type SmartShuffleTracksParams struct {
-	RoomID       pgtype.UUID
-	TargetRpm    float64
-	BpmTolerance float64
-	BpmBoost     float64
-	Lim          int32
+	TargetRpm      float64
+	BpmTolerance   float64
+	BpmBoost       float64
+	ArtistBoost    float64
+	TagBoost       float64
+	Lim            int32
+	RoomID         pgtype.UUID
+	AffinityWindow int32
 }
 
 type SmartShuffleTracksRow struct {
@@ -83,39 +119,55 @@ type SmartShuffleTracksRow struct {
 	Weight float64
 }
 
-// ADR-0015's smart shuffle: weighted random over the pool in ONE query,
-// penalising what this room played recently and what it keeps skipping.
+// ADR-0015's smart selection, all of it, as ONE scoring pass: a weighted
+// random draw over the pool where the weight is the product of four factors.
+// No second query, no reranking step, no model (the ADR's ponytail ceiling).
 //
 // The ordering key is `random() ^ (1/weight)` taken descending — weighted
 // sampling without replacement (Efraimidis–Spirakis). A plain
 // `order by random() * weight` is NOT the same thing: it collapses toward
 // picking the heaviest every time, where this draws in proportion.
 //
-// Weight is `recency × skip × bpm`, every number from docs/SPEC.md:
+// Weight is `recency × skip × bpm × affinity`, every number from docs/SPEC.md:
 //
-//	recency: 0.05 the instant a track ends, rising linearly to 1 over 4 h.
-//	         The floor is why it is a penalty and not a ban.
-//	skip:    divided by one more than the times this room skipped it, so
-//	         one skip halves a track's chances and three quarter them.
-//	bpm:     a BOOST (#270) for a track whose tempo fits the cadence the
-//	         room is turning, at that cadence or at double it — the same
-//	         beat, felt one pedal stroke at a time instead of two. A boost
-//	         rather than a penalty on the rest, so an untagged pool and an
-//	         idle room both draw exactly as they did before it existed:
-//	         target_rpm 0 means no session, and a null bpm means nobody has
-//	         said, and neither is a reason to bury a track.
+//	recency:  0.05 the instant a track ends, rising linearly to 1 over 4 h.
+//	          The floor is why it is a penalty and not a ban.
+//	skip:     divided by one more than the times this room skipped it, so
+//	          one skip halves a track's chances and three quarter them.
+//	bpm:      a BOOST (#270) for a track whose tempo fits the cadence the
+//	          room is turning, at that cadence or at double it — the same
+//	          beat, felt one pedal stroke at a time instead of two.
+//	affinity: a BOOST (#271) for a track that resembles what this room has
+//	          lately played THROUGH — same artist, or a tag in common. Same
+//	          artist is the strong signal and earns more: tags are
+//	          free-form with no taxonomy (ADR-0015), so a broad one says
+//	          much less than a name does. A track the room just finished is
+//	          excluded from its own affinity: "more like that", not "that
+//	          again", which is what the recency penalty already answers.
 //
-// History is this room's only (privacy is architecture, WATTROOM.md) — a
-// room with none weights everything at 1, which is a plain random draw.
+// Every one of them is a boost or a penalty on a base of 1, so each is
+// individually switch-off-able by its own inputs: no session means no BPM
+// preference, an empty history means no affinity and no penalties, and a
+// room with none of it draws uniformly at random. That is the pre-#269
+// behaviour, reached by the arithmetic rather than by a branch.
+//
+// History is this room's only (privacy is architecture, WATTROOM.md): what
+// one room finishes is not a fact about the pool, and must not reach another.
 // `weight` is returned so a headless autoplay log can say WHY a track came
 // up; the ordering is random and unexplainable after the fact otherwise.
+// The last few tracks this room let finish. Bounded, and by COUNT rather
+// than by time: a room's taste is the last things it enjoyed, and a room
+// that rode yesterday should not come back to a blank slate.
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
 	rows, err := q.db.Query(ctx, smartShuffleTracks,
-		arg.RoomID,
 		arg.TargetRpm,
 		arg.BpmTolerance,
 		arg.BpmBoost,
+		arg.ArtistBoost,
+		arg.TagBoost,
 		arg.Lim,
+		arg.RoomID,
+		arg.AffinityWindow,
 	)
 	if err != nil {
 		return nil, err

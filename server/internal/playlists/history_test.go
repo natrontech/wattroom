@@ -22,9 +22,13 @@ func (h *harness) track(t *testing.T, uploader, title string) string {
 	if _, err := rand.Read(raw[:]); err != nil {
 		t.Fatalf("sha: %v", err)
 	}
+	// Its own artist and no tags, so a track is unrelated to every other one
+	// unless a test deliberately relates them. Sharing an artist here would
+	// hand every fixture #271's affinity boost and quietly triple the
+	// recency and skip numbers the tests below are actually about.
 	row, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
 		Sha256: hex.EncodeToString(raw[:]), UploadedBy: h.users[uploader].ID,
-		Title: title, Artist: "Darude", Album: "Before the Storm",
+		Title: title, Artist: "Artist of " + title, Album: "Before the Storm",
 		DurationMs: 225000, SizeBytes: 4_000_000, Tags: []string{},
 	})
 	if err != nil {
@@ -48,6 +52,7 @@ func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 		// wattroom_test is shared: ask for more than the pool can plausibly
 		// hold, so a neighbouring suite's tracks cannot push ours out of range.
 		RoomID: room.ID, Lim: 1000,
+		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
 		t.Fatalf("smart shuffle: %v", err)
