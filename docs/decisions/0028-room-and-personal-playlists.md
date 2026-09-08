@@ -4,6 +4,19 @@
 - Date: 2026-09-05
 - Extends: [ADR-0026](0026-a-playlist-is-one-queue-entry.md), which decides a
   pasted YouTube playlist is one transient queue entry
+- Supersedes: [ADR-0015](0015-self-hosted-music-pool.md)'s "playlists are
+  user-owned, visible to all logged-in users" sentence. Room-owned or
+  rider-owned is the rule; 0015 said otherwise for a month and misled a
+  reader into nearly filing a scope bug against working code (#1097)
+
+> **Note (2026-09-08):** a saved entry is a `video_id` — YouTube only — so no
+> playlist can hold a self-hosted pool track today. When
+> [#655](https://github.com/natrontech/wattroom/issues/655) makes saved
+> playlists multi-source, an entry pointing at a pool track inherits that
+> pool's scope (per uploader since
+> [#1095](https://github.com/natrontech/wattroom/issues/1095)), and #655's
+> ADR is where that has to be said. A playlist must not become a way around
+> who may hear a shelf.
 
 ## Context
 
