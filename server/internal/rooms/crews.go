@@ -53,7 +53,9 @@ type crewPersonJSON struct {
 }
 
 type crewRoomJSON struct {
-	Slug   string `json:"slug"`
+	ID string `json:"id"`
+	// Absent on a row the caller may not enter — see doorOf.
+	Slug   string `json:"slug,omitempty"`
 	Name   string `json:"name"`
 	Icon   string `json:"icon,omitempty"`
 	Access string `json:"access"`
@@ -183,6 +185,20 @@ func accessOf(crewVisible, enterable, administers bool) string {
 	}
 }
 
+// doorOf is what a crew-room row you are NOT in may say about where its
+// door is. The slug IS the door: /r/{slug} joins anyone who is not banned,
+// which is the share-link front door ADR-0038 keeps. So a row the caller
+// cannot enter names the room by id and keeps the slug to itself (#1205) —
+// "private, you are not in this room" has to hold on the wire, not only in
+// which rows the client declines to draw as links.
+func doorOf(row db.ListCrewRoomsForRow) (slug, access string) {
+	access = accessOf(row.CrewVisible, row.Enterable, row.Administers)
+	if row.Enterable {
+		slug = row.Slug
+	}
+	return slug, access
+}
+
 // crewByID loads the crew at {id} and refuses unless the caller is in it,
 // administers it or owns it. 404 rather than 403 for everyone else: a crew is
 // reached only through one of its rooms, so its existence is not public the
@@ -243,7 +259,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	for _, room := range mine {
 		if room.CrewID == crew.ID {
 			out.Rooms = append(out.Rooms, crewRoomJSON{
-				Slug: room.Slug, Name: room.Name, Icon: room.Icon,
+				ID: store.UUIDString(room.ID), Slug: room.Slug, Name: room.Name, Icon: room.Icon,
 				Access: accessOf(room.CrewVisible, true, false),
 			})
 		}
@@ -256,9 +272,9 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, room := range others {
 		if room.CrewID == crew.ID {
+			slug, access := doorOf(room)
 			out.Rooms = append(out.Rooms, crewRoomJSON{
-				Slug: room.Slug, Name: room.Name, Icon: room.Icon,
-				Access: accessOf(room.CrewVisible, room.Enterable, room.Administers),
+				ID: store.UUIDString(room.ID), Slug: slug, Name: room.Name, Icon: room.Icon, Access: access,
 			})
 		}
 	}

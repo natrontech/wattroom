@@ -40,7 +40,13 @@ export interface RailRoom {
 	name: string;
 	/** Owner-set identity mark (#223), an icon key (#447); '' = none. */
 	icon?: string;
+	/**
+	 * The door. A room you may not enter comes with no slug (#1205): the
+	 * server keeps it, and this holds the room's id instead — a stable key
+	 * for the row that routes nowhere, which is the point.
+	 */
 	slug: string;
+	id?: string;
 	live: boolean;
 	members: number;
 	/** Riders connected right now (server presence). */

@@ -22,7 +22,9 @@ export interface CrewPerson {
 }
 
 export interface CrewRoom {
-	slug: string;
+	id: string;
+	/** Absent when you may not enter — the slug is the door (#1205). */
+	slug?: string;
 	name: string;
 	icon?: string;
 	access: RoomAccess;
