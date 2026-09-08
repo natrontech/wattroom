@@ -20,6 +20,8 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { serverNow } from '$lib/room/server-clock';
 	import { listening } from '$lib/room/listening.svelte';
+	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { toasts } from '$lib/toast.svelte';
 
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
 	const DRIFT_SEC = 0.6;
@@ -52,11 +54,24 @@
 	$effect(() => {
 		const el = audio;
 		const now = deck;
-		if (!el || !now?.current?.trackId) return;
+		if (!el || !now?.current?.trackId) {
+			// The deck left the pool track, or this rider sat out: the seek bar
+			// must not keep the length of a track that is no longer on it.
+			if (loaded) {
+				loaded = '';
+				playerInfo.duration = 0;
+				playerInfo.drift = 0;
+			}
+			return;
+		}
 
 		// A repeat of the same track arrives with a new anchor — a new play,
 		// not the one already loaded.
 		if (loaded !== now.current.trackId || loadedAnchor !== now.anchorMs) {
+			// A different file: its length arrives with its metadata, and until
+			// then the bar must not keep drawing the last track's. A repeat of
+			// the same file reloads nothing, so its length simply stands.
+			if (loaded !== now.current.trackId) playerInfo.duration = 0;
 			loaded = now.current.trackId;
 			loadedAnchor = now.anchorMs;
 			el.currentTime = playheadAt(now, serverNow());
@@ -64,6 +79,7 @@
 
 		if (!now.playing) {
 			if (!el.paused) el.pause();
+			playerInfo.drift = 0;
 			// A scrub while paused moves the anchor and nothing else re-seeks
 			// a stopped deck (#647).
 			const target = playheadAt(now, serverNow());
@@ -73,6 +89,7 @@
 		}
 
 		const target = playheadAt(now, serverNow());
+		playerInfo.drift = el.currentTime - target;
 		// Only clients know how long a track is — the server holds an anchor,
 		// not a timeline. A deck left playing to a room where nobody can
 		// actually hear it runs its playhead off the end forever, because
@@ -100,6 +117,27 @@
 			anchorMs: now.anchorMs,
 		});
 	}
+
+	// The length is the element's to report — the server holds an anchor, not
+	// a timeline — and the seek bar and the rail draw against it. Only the
+	// YouTube dock used to say, so a pool track showed no progress (#1141).
+	function measured() {
+		const seconds = audio?.duration ?? 0;
+		playerInfo.duration = Number.isFinite(seconds) ? seconds : 0;
+	}
+
+	// A track the server no longer has — deleted from the pool while it was on
+	// the deck (#1132) — 404s, and the element fires `error` in place of
+	// `ended`: nothing would ever say the play was over, and the whole room
+	// sat on it. Same answer the dock gives an unplayable video: say so, and
+	// report the end — the anchor makes every rider's report but the first
+	// an echo.
+	function failed() {
+		toasts.push(
+			`“${deck?.current?.title ?? 'That track'}” could not be played here — skipped.`,
+		);
+		reportEnded();
+	}
 </script>
 
 {#if track && !silent}
@@ -110,5 +148,7 @@
 		src="/api/tracks/{track}/audio"
 		preload="auto"
 		onended={reportEnded}
+		onerror={failed}
+		ondurationchange={measured}
 	></audio>
 {/if}
