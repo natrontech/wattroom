@@ -1,0 +1,1 @@
+- **A crew ban now empties the sidebar too.** Being banned from a crew closed every door into its rooms — joining, opening, settings — except one: the room list your own sidebar reads still handed you the room. Nothing behind it would open, but it should not have been listed, and now it is not.
