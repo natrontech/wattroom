@@ -1,7 +1,7 @@
 {
   "name": "wattroom-desktop",
   "productName": "WattRoom",
-  "version": "0.1.0",
+  "version": "2026.09.1",
   "private": true,
   "description": "The WattRoom desktop shell — a window around the deployed web app.",
   "license": "AGPL-3.0-only",
