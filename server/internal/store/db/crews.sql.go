@@ -197,10 +197,9 @@ const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
 select id, name, icon, owner_id, created_at from crews where owner_id = $1 order by created_at limit 1
 `
 
-// The crew a room is created into. One crew per owner, made with their first
-// room and named after them — the migration's rule, applied to accounts that
-// arrive after it. ponytail: a rider owns one crew; choosing a crew on room
-// creation is the upgrade if a second one is ever wanted.
+// The crew a room is created into when the caller names none (#1201). One
+// crew per owner, made with their first room and named after them — the
+// migration's rule, applied to accounts that arrive after it.
 func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew, error) {
 	row := q.db.QueryRow(ctx, getCrewOwnedBy, ownerID)
 	var i Crew
@@ -210,6 +209,45 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.Icon,
 		&i.OwnerID,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRoomInCrew = `-- name: GetRoomInCrew :one
+select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1 and crew_id = $2
+`
+
+type GetRoomInCrewParams struct {
+	ID     pgtype.UUID
+	CrewID pgtype.UUID
+}
+
+// A room addressed by id inside its crew (#1226): the crew page holds no slug
+// for a room the caller may not enter (#1205), and the one thing a crew admin
+// may do to such a room is set who may.
+func (q *Queries) GetRoomInCrew(ctx context.Context, arg GetRoomInCrewParams) (Room, error) {
+	row := q.db.QueryRow(ctx, getRoomInCrew, arg.ID, arg.CrewID)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
+		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
+		&i.BoardEnabled,
+		&i.CrewID,
+		&i.CrewVisible,
 	)
 	return i, err
 }
@@ -624,6 +662,22 @@ type SetCrewRoleParams struct {
 // which is what makes them un-removable (ADR-0038, second amendment).
 func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, setCrewRole, arg.CrewID, arg.UserID, arg.Role)
+	return err
+}
+
+const setRoomCrewVisible = `-- name: SetRoomCrewVisible :exec
+update rooms set crew_visible = $2 where id = $1
+`
+
+type SetRoomCrewVisibleParams struct {
+	ID          pgtype.UUID
+	CrewVisible bool
+}
+
+// The one permission a crew admin holds over a room they never joined
+// (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
+func (q *Queries) SetRoomCrewVisible(ctx context.Context, arg SetRoomCrewVisibleParams) error {
+	_, err := q.db.Exec(ctx, setRoomCrewVisible, arg.ID, arg.CrewVisible)
 	return err
 }
 

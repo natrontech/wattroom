@@ -92,3 +92,19 @@ export function transferCrew(
 		json: { userId },
 	});
 }
+
+/**
+ * Open a room to the crew or shut it, by id (#1226) — the one permission a
+ * crew admin holds over a room they never joined, and the row they hold
+ * carries no slug (#1205).
+ */
+export function setRoomAccess(
+	crewId: string,
+	roomId: string,
+	crewVisible: boolean,
+): Promise<ApiResult<void>> {
+	return api<void>(`/api/crews/${crewId}/rooms/${roomId}/access`, {
+		method: 'PATCH',
+		json: { crewVisible },
+	});
+}
