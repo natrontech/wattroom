@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import type { Segment, Workout } from '$lib/workout/types';
+import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
 import type { BoardRow, Crew } from '$lib/room/room-data';
 import type {
@@ -41,7 +41,6 @@ export interface RoomContext {
 	readonly you: RoomRider;
 	readonly block: Block | null;
 	readonly segments: Segment[];
-	readonly workout: Workout | null;
 	readonly shared:
 		| {
 				phase: string;
@@ -62,17 +61,12 @@ export interface RoomContext {
 	readonly bias: number;
 	nudgeBias(step: number): void;
 	readonly trainer: unknown;
-	readonly hrSource: 'heart-rate' | 'trainer' | null;
-	readonly rideError: string | null;
 	/**
 	 * Which sensors this tab holds, and where the rider's other screens hold
 	 * the rest (#610). Server truth — a place renders "paired on your phone"
 	 * from this, never from its own click.
 	 */
 	readonly pairing: SensorPairing | undefined;
-	pair(): void;
-	pairSimulated(): void;
-	unpair(): void;
 
 	control(kind: string, payload?: unknown, id?: string): void;
 	openPicker(intent?: 'start' | 'plan'): void;
@@ -120,7 +114,6 @@ export interface RoomContext {
 		badges?: string[];
 	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
-	schedule(name: string, json: string, startsAt: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
 	/** Say you are in for a planned session, or take it back (#450). */
