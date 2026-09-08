@@ -24,7 +24,7 @@ func (h *harness) track(t *testing.T, uploader, title string) string {
 	row, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
 		Sha256: hex.EncodeToString(raw[:]), UploadedBy: h.users[uploader].ID,
 		Title: title, Artist: "Darude", Album: "Before the Storm",
-		DurationMs: 225000, SizeBytes: 4_000_000,
+		DurationMs: 225000, SizeBytes: 4_000_000, Tags: []string{},
 	})
 	if err != nil {
 		t.Fatalf("create track: %v", err)
@@ -44,7 +44,9 @@ func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 		t.Fatalf("room: %v", err)
 	}
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-		RoomID: room.ID, Lim: 100,
+		// wattroom_test is shared: ask for more than the pool can plausibly
+		// hold, so a neighbouring suite's tracks cannot push ours out of range.
+		RoomID: room.ID, Lim: 1000,
 	})
 	if err != nil {
 		t.Fatalf("smart shuffle: %v", err)
@@ -134,13 +136,25 @@ func TestSmartAutoplayQueuesPoolTracks(t *testing.T) {
 	if !ok || len(tracks) == 0 {
 		t.Fatalf("smart autoplay found nothing: ok=%v tracks=%+v", ok, tracks)
 	}
+	// The SHAPE is what this test owns: every entry is a pool track, not a
+	// video. Which one leads is a weighted random draw over a pool this suite
+	// shares with every other — asserting an order here would be asserting the
+	// RNG, and the weights have their own deterministic tests above.
+	found := false
 	for _, cmd := range tracks {
 		if cmd.TrackID == "" || cmd.VideoID != "" {
 			t.Fatalf("smart autoplay queued a video, not a pool track: %+v", cmd)
 		}
+		if cmd.TrackID == track {
+			found = true
+			if cmd.Title != "Sandstorm" {
+				t.Errorf("title = %q, want the pool row's own", cmd.Title)
+			}
+		}
 	}
-	if tracks[0].TrackID != track || tracks[0].Title != "Sandstorm" {
-		t.Errorf("wrong track: %+v", tracks[0])
+	if !found && len(tracks) < smartShuffleBatch {
+		// Only a full batch is allowed to have crowded it out.
+		t.Errorf("the room's own track missed a batch of %d: %+v", len(tracks), tracks)
 	}
 }
 

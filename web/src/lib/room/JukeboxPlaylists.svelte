@@ -150,8 +150,8 @@
 				>
 			</div>
 			<p class="text-muted mt-1 text-[10px] leading-relaxed">
-				Plays something whenever the deck is idle: when someone joins, and
-				again each time it runs out.
+				Plays something whenever the deck is idle: when someone joins, and again
+				each time it runs out.
 				{#if !canManage}Only the room's coach or owner can change it.{/if}
 			</p>
 			<div
@@ -192,8 +192,8 @@
 			     that this mode then ignores. -->
 			{#if autoplay.order === 'smart'}
 				<p class="text-muted mt-1.5 text-[10px]">
-					Picks from the music library, quietest on what this room just
-					played or keeps skipping.
+					Picks from the music library, quietest on what this room just played
+					or keeps skipping.
 				</p>
 			{:else if !autoplay.activePlaylistId}
 				<p class="text-muted mt-1.5 text-[10px]">
