@@ -257,7 +257,8 @@ where t.id = $1
        or exists (
            select 1 from memberships mine
            join memberships theirs on theirs.room_id = mine.room_id
-           where mine.user_id = $2 and theirs.user_id = t.uploaded_by
+           where mine.user_id = $2 and mine.role != 'banned'
+             and theirs.user_id = t.uploaded_by and theirs.role != 'banned'
        ))
 `
 

@@ -35,7 +35,7 @@ update users set notify_planned = false where id = $1 and unsub_token = $2;
 select u.id, u.email, u.unsub_token, u.timezone
 from memberships m
 join users u on u.id = m.user_id
-where m.room_id = $1 and m.notify and u.notify_planned
+where m.room_id = $1 and m.role != 'banned' and m.notify and u.notify_planned
   and u.email is not null and u.id <> $2;
 
 -- name: UpdateUserTimezone :exec
