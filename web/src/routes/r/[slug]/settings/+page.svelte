@@ -203,31 +203,6 @@
 		void goto('/rooms');
 	}
 
-	async function setRole(userId: string, role: string): Promise<boolean> {
-		busy = true;
-		const res = await api(`/api/rooms/${slug}/role`, {
-			method: 'POST',
-			json: { userId, role },
-		});
-		busy = false;
-		if (!res.ok) {
-			error = res.error.message;
-			return false;
-		}
-		if (slug) void load(slug);
-		return true;
-	}
-
-	// Banning is reversible (Unban sets the role right back), so it gets an
-	// undo toast rather than a confirm dialog (errors.md).
-	async function ban(member: Member) {
-		const { id, displayName, role: previousRole } = member;
-		if (await setRole(id, 'banned'))
-			toasts.push(`Banned ${displayName}.`, {
-				undo: () => void setRole(id, previousRole),
-			});
-	}
-
 	// Packs are parameter sets, not downloads — custom ones are a fast-follow (WATTROOM.md).
 	const packs = [
 		{
@@ -611,51 +586,15 @@
 			>
 		</section>
 
-		<section class="panel mt-3 p-6">
-			<h2 class="font-display font-bold">Who's in here</h2>
-			<ul class="divide-ink/5 mt-3 divide-y">
-				{#each room.members ?? [] as member (member.id)}
-					<li class="flex items-center gap-3 py-2.5">
-						<span class="text-sm {member.role === 'banned' ? 'text-muted' : ''}"
-							>{member.displayName}</span
-						>
-						<span class="eyebrow">{member.role}</span>
-						{#if member.role === 'banned'}
-							<button
-								onclick={() => setRole(member.id, 'member')}
-								disabled={busy}
-								class="btn btn-secondary btn-xs ml-auto">Unban</button
-							>
-						{:else if member.role !== 'owner'}
-							<span class="ml-auto flex gap-1.5">
-								<button
-									onclick={() =>
-										setRole(
-											member.id,
-											member.role === 'coach' ? 'member' : 'coach',
-										)}
-									disabled={busy}
-									class="btn btn-secondary btn-xs"
-									>{member.role === 'coach'
-										? 'Remove coach'
-										: 'Make coach'}</button
-								>
-								<button
-									onclick={() => ban(member)}
-									disabled={busy}
-									class="btn btn-danger btn-xs">Ban</button
-								>
-							</span>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-			<p class="text-muted mt-3 text-xs">
-				Coaches pick the workout, start the countdown, and can pause or end a
-				session. Banning kicks a rider out on the spot — the room stays shut to
-				them until you unban, whatever the crew lets them into.
-			</p>
-		</section>
+		<!-- Roles and bans are the Members place's (#703, #666): the roster with
+		     its menu is there, and a second copy here drifted (#1265). One line
+		     points at it; nothing here duplicates it. -->
+		<p class="text-muted mt-6 text-xs">
+			Coaches, bans and handing the room on live on <a
+				href="/r/{room.slug}/members"
+				class="underline">Members</a
+			>, on each person.
+		</p>
 
 		<section class="border-muted/15 mt-3 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Delete room</h2>
