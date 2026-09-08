@@ -35,8 +35,9 @@ docs: ADR-0003 …
 Work lives in issues on milestones (M0 onward); nobody (human or agent) works untracked.
 
 1. `gh issue view <n> --comments`, `gh pr list`, `git worktree list` — if it's assigned, claimed, has an open PR, or matches a branch name someone has a worktree on, coordinate there instead of duplicating. The draft PR is the claim and often exists with the issue thread still empty (#280 → #284 and #294); a worktree branch with no commits yet has no ref and no PR for either command to find, which is how one test got written three times (#297, #302, #304, #305).
-2. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment.
-3. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
-4. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
+2. **Cut the branch before you claim** — `git checkout -b feat/<slug> origin/main`, or the `git worktree add` that does both. The worktree branch is the signal step 1 looks for and the only one that shows instantly; claiming by comment first means emitting it last, and that gap is where the collisions happen (#1003, #267). Re-run step 1 after reading the code, before the first edit.
+3. Claim: `gh issue edit <n> --add-assignee @me` + a one-line approach comment. Standing down instead? Say "proceed, do not stand down on account of my comment" — two agents each deferring to the other leaves the issue undone.
+4. Progress, blockers, and findings go in the issue/PR thread — not chat apps. Decisions in threads still get an ADR.
+5. Out-of-scope discoveries → new issue (right milestone + label), never PR scope-creep.
 
 Labels — **area**: `ble` `rooms` `workouts` `game-modes` `jukebox` `infra` `docs` `design`. **Kind**: `bug` `enhancement` `security` `feedback` (a rider report from the in-app flag button — ADR-0006; the `pickup-feedback` skill works this queue). **State**: `blocked` (waiting on another issue — the body names which), `backlog` (parked — ask first), `needs-human-input` (a decision a contributor must make — **do not implement what the issue says**; it usually records one person's opening position and wants push-back). **Process**: `no-changelog` (PR is invisible to riders — exempt from the CHANGELOG check), `good-first-issue`.
