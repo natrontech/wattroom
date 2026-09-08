@@ -1,0 +1,1 @@
+- A room's settings page no longer carries a second copy of the member list. Coaches, bans and handing the room on live on the Members place, on each person's menu, and the settings page points there. (#1265)
