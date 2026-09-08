@@ -23,6 +23,7 @@
 		fetchCrew,
 		renameCrew,
 		setCrewRole,
+		setRoomAccess,
 		transferCrew,
 		type Crew,
 		type CrewPerson,
@@ -32,6 +33,8 @@
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
+	import DoorOpen from '@lucide/svelte/icons/door-open';
+	import Eye from '@lucide/svelte/icons/eye';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Shield from '@lucide/svelte/icons/shield';
@@ -234,6 +237,37 @@
 		return entries;
 	}
 
+	// A room row's menu (#1226): crew owner and admins open a room to the crew
+	// or shut it — "crew admins manage room permissions" (ADR-0038), and the
+	// one thing the `admin` access state is for. The primary click stays the
+	// door; this holds the permission.
+	function roomEntries(room: Crew['rooms'][number]): MenuEntry[] {
+		if (!administers || !crew) return [];
+		const crewId = crew.id;
+		const open = room.access === 'open';
+		return [
+			{
+				label: open ? 'Make private' : 'Open to the crew',
+				icon: open ? Eye : DoorOpen,
+				onSelect: () =>
+					void setRoomAccess(crewId, room.id, !open).then((res) => {
+						if (!res.ok) {
+							toasts.push(res.error.message, { tone: 'error' });
+							return;
+						}
+						toasts.push(
+							open
+								? `${room.name} is private now — its members, and whoever you let in.`
+								: `${room.name} is open to the crew.`,
+							{ undo: () => void setRoomAccess(crewId, room.id, open) },
+						);
+						presence.reload();
+						void load(crewId);
+					}),
+			},
+		];
+	}
+
 	const roleWord = (role: CrewPerson['role']) =>
 		role === 'owner' ? 'owner' : role === 'admin' ? 'admin' : 'member';
 </script>
@@ -380,7 +414,10 @@
 			{#each crew.rooms as room (room.id)}
 				{@const mark = accessMark(room.access)}
 				{@const open = reachable(room.access) && !!room.slug}
-				<li>
+				<li
+					title={administers ? MENU_HINT : undefined}
+					{@attach contextMenu(() => roomEntries(room))}
+				>
 					<svelte:element
 						this={open ? 'a' : 'div'}
 						href={open ? `/r/${room.slug}` : undefined}

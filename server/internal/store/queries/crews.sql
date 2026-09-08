@@ -224,3 +224,14 @@ where r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
 -- rooms remain (their owners crew-banned, say), and the rule must always name
 -- somebody while there is a room to own. A room always has an owner.
 select owner_id from rooms where crew_id = $1 and owner_id <> $2 order by created_at limit 1;
+
+-- name: GetRoomInCrew :one
+-- A room addressed by id inside its crew (#1226): the crew page holds no slug
+-- for a room the caller may not enter (#1205), and the one thing a crew admin
+-- may do to such a room is set who may.
+select * from rooms where id = $1 and crew_id = $2;
+
+-- name: SetRoomCrewVisible :exec
+-- The one permission a crew admin holds over a room they never joined
+-- (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
+update rooms set crew_visible = $2 where id = $1;

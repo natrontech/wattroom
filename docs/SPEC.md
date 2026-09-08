@@ -70,6 +70,7 @@ running it — ADR-0038 asks for two caps and this is the pair.
 | See the crew's ban list                                                         | ✓                                                     | ✓                  | –           |
 | Open a room in the crew (#1201)                                                 | ✓                                                     | ✓                  | –           |
 | See the crew's rooms listed, with their access state (#1149)                    | ✓                                                     | ✓                  | ✓           |
+| Open a room to the crew or shut it, without entering it (#1226)                 | ✓                                                     | ✓                  | –           |
 | Enter a room open to the crew                                                   | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |
 | Read a room's contents, rename it, ban from it                                  | only as that room's member/owner — never by crew role |
 

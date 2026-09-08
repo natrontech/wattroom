@@ -1,0 +1,1 @@
+- A crew's owner and admins can open any of the crew's rooms to the crew, or make it private again, from the crew page — including rooms they have never entered. The room's contents stay its members'; only who may walk in changes. (#1226)
