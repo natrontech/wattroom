@@ -27,7 +27,8 @@ The standard is **375 × 812**, and it applies to every surface outside a room. 
 - **Never put a pixel width on an SVG you also measure.** `width={W}` beside `bind:clientWidth` props open the very container it measures, so the chart latches at its widest and never comes back down — a 600px initial `$state` stayed 600 on a 375px phone. Use `width="100%"` with the `viewBox`, and keep any floor below the narrowest real column (#1008).
 - **Do not assert `documentElement.scrollWidth <= clientWidth`.** The shell's `overflow-hidden` columns absorb it: a chart 307px too wide left the document at exactly 375 and the check green. Measure the page body.
 - **Stacking order is a decision.** Source order puts sidebars first; on a phone the primary work comes first. The workout editor must not stack library-first.
-- Tap targets stay ≥ 44px, and the last item must clear the browser chrome.
+- **Tap targets: 24px is the floor, 44px is for riding.** WCAG 2.2 SC 2.5.8 (AA) requires 24×24 CSS px; the 44×44 in SC 2.5.5 is **AAA**, and it is the number the mid-ride rule above is really about — a sweating rider at arm's length, not someone on a sofa. Measured at 375px, the kit gives: `btn-lg` **44**, plain `btn` 36–38, `btn-xs` 28–30, `btn-link` 16 (inline text, an explicit SC 2.5.8 exception). So `btn-xs` is conformant on a browse surface and `btn-lg` is the variant that clears the enhanced bar — reach for it on controls a rider uses **while pedalling**, not everywhere. Stating a flat 44 here was wrong: it condemned every button in the app including the default one, which is how a rule gets ignored rather than followed (#1088).
+- The last item must clear the browser chrome.
 
 ## Keyboard focus
 
