@@ -32,6 +32,7 @@
 		accessMark,
 		crewPulse,
 		crewsOf,
+		quiet,
 		currentCrew,
 		dismissIntro,
 		introDismissed,
@@ -465,39 +466,47 @@
 	{/if}
 	{#if crew && crews.length > 1}
 		<!-- What the crews you are NOT looking at are doing (#1148): one crew
-		     at a time hides three quarters of the radar, and this row is the
-		     price option C pays back — riding, voice and unread summed over
-		     each crew's rooms, the icon alone when nothing is on. Riding is
-		     live data and takes the watt token; unread is chrome and takes the
-		     muted mark (#568). Wraps rather than scrolls sideways. -->
-		<div
-			class="border-ink/5 flex flex-wrap items-center gap-x-1 gap-y-0.5 border-b px-3 py-1"
-		>
-			{#each crews.filter((c) => c.id !== crew.id) as other (other.id)}
-				{@const pulse = crewPulse(rooms, other.id)}
-				<button
-					onclick={() => pick(other.id)}
-					title="{other.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new"
-					aria-label="{other.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new"
-					class="hover:bg-ink/5 text-muted/80 hover:text-ink flex min-h-7 items-center gap-1 rounded px-1.5 text-[10px]"
-				>
-					{@render crewBadge(other, 'h-5 w-5 rounded', 11, 'text-[10px]')}
-					{#if pulse.riding}
-						<span class="text-watt/90 flex items-center gap-0.5"
-							><RidingBars size={8} />{pulse.riding}</span
+		     at a time hides three quarters of the radar, and this is the price
+		     option C pays back. One plain line per crew with something on —
+		     riders on watts (the watt token, live data), people in voice,
+		     unread (the muted mark, #568) — and NOTHING for a quiet crew, not
+		     even its icon: when nothing is happening anywhere there is no row
+		     at all. Tapping a line switches to that crew. -->
+		{@const elsewhere = crews
+			.filter((c) => c.id !== crew.id)
+			.map((c) => ({ c, pulse: crewPulse(rooms, c.id) }))
+			.filter((x) => !quiet(x.pulse))}
+		{#if elsewhere.length}
+			<ul class="border-ink/5 border-b py-1">
+				{#each elsewhere as { c, pulse } (c.id)}
+					<li>
+						<button
+							onclick={() => pick(c.id)}
+							class="hover:bg-ink/5 text-muted hover:text-ink flex min-h-8 w-full items-center gap-2 px-4 text-left text-[11px]"
+							title="switch to {c.name}"
+							aria-label="{c.name} — {pulse.riding} riding, {pulse.voice} in voice, {pulse.unread} new — switch to it"
 						>
-					{/if}
-					{#if pulse.voice}
-						<span class="flex items-center gap-0.5"
-							><Headphones size={9} />{pulse.voice}</span
-						>
-					{/if}
-					{#if pulse.unread}
-						<span class={UNREAD_COUNT}>{unreadCount(pulse.unread)}</span>
-					{/if}
-				</button>
-			{/each}
-		</div>
+							<span class="truncate font-medium">{c.name}</span>
+							<span class="ml-auto flex shrink-0 items-center gap-2">
+								{#if pulse.riding}
+									<span class="text-watt/90 flex items-center gap-1"
+										><RidingBars size={8} />{pulse.riding} riding</span
+									>
+								{/if}
+								{#if pulse.voice}
+									<span class="flex items-center gap-1"
+										><Headphones size={9} />{pulse.voice}</span
+									>
+								{/if}
+								{#if pulse.unread}
+									<span class={UNREAD_COUNT}>{unreadCount(pulse.unread)}</span>
+								{/if}
+							</span>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2">
 		<ul class="space-y-0.5">

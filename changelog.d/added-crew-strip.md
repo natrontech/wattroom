@@ -1,1 +1,1 @@
-- **The crews you are not looking at still report in.** A thin row under the crew header shows each other crew's icon with what is happening across its rooms — riders on watts, people in voice, lines you have not read — and nothing but the icon when it is quiet. Tap one to switch.
+- **The crews you are not looking at still report in.** When another crew has something on — riders on watts, people in voice, lines you have not read — one line under the crew header says so, and tapping it switches. A quiet crew says nothing at all.
