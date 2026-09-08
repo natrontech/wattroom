@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
-import type { BoardRow, Crew } from '$lib/room/room-data';
+import type { BoardRow, Together } from '$lib/room/room-data';
 import type {
 	GameState,
 	RoomEvent,
@@ -97,7 +97,7 @@ export interface RoomContext {
 	readonly icsToken: string;
 	readonly streakWeeks: number;
 	readonly monthKj: number;
-	readonly crew: Crew | null;
+	readonly together: Together | null;
 	readonly board: BoardRow[];
 	readonly adminBusy: boolean;
 	readonly members: {

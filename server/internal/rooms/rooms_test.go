@@ -858,9 +858,9 @@ func TestRoomsListHandlesARoomWithNoPlanAndNoChat(t *testing.T) {
 	}
 }
 
-// crewRide writes one summary row into a room, back-dated, so the crew tiles
+// roomRide writes one summary row into a room, back-dated, so the crew tiles
 // have sessions to count. Distinct days are what a session is (#995).
-func (h *harness) crewRide(t *testing.T, user string, room pgtype.UUID, at time.Time, seconds int32) {
+func (h *harness) roomRide(t *testing.T, user string, room pgtype.UUID, at time.Time, seconds int32) {
 	t.Helper()
 	if _, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
 		UserID: h.users.byToken[user].ID, RoomID: room, WorkoutName: "Openers",
@@ -872,7 +872,7 @@ func (h *harness) crewRide(t *testing.T, user string, room pgtype.UUID, at time.
 	}
 }
 
-func TestCrewStatsAreCooperativeAndOwn(t *testing.T) {
+func TestTogetherStatsAreCooperativeAndOwn(t *testing.T) {
 	h := setup(t)
 	slug, code := h.createRoom(t, "alice", "Crew Stats Test")
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join",
@@ -886,26 +886,26 @@ func TestCrewStatsAreCooperativeAndOwn(t *testing.T) {
 
 	now := time.Now()
 	// Two riders in one session is ONE session, and both their seconds count.
-	h.crewRide(t, "alice", room.ID, now.Add(-2*time.Hour), 1800)
-	h.crewRide(t, "bob", room.ID, now.Add(-2*time.Hour), 1200)
+	h.roomRide(t, "alice", room.ID, now.Add(-2*time.Hour), 1800)
+	h.roomRide(t, "bob", room.ID, now.Add(-2*time.Hour), 1200)
 	// A second session this month, alice only.
-	h.crewRide(t, "alice", room.ID, now.AddDate(0, 0, -3), 600)
+	h.roomRide(t, "alice", room.ID, now.AddDate(0, 0, -3), 600)
 	// And one last month, so the month-on-month figure has something behind it.
-	h.crewRide(t, "bob", room.ID, now.AddDate(0, -1, 0).AddDate(0, 0, -1), 900)
+	h.roomRide(t, "bob", room.ID, now.AddDate(0, -1, 0).AddDate(0, 0, -1), 900)
 
 	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
 	if status != http.StatusOK {
 		t.Fatalf("get room: %d", status)
 	}
-	crew, ok := body["crew"].(map[string]any)
+	together, ok := body["together"].(map[string]any)
 	if !ok {
-		t.Fatalf("no crew stats: %v", body)
+		t.Fatalf("no together stats: %v", body)
 	}
 	number := func(field string) float64 {
 		t.Helper()
-		got, ok := crew[field].(float64)
+		got, ok := together[field].(float64)
 		if !ok {
-			t.Fatalf("crew.%s is %T, not a number: %v", field, crew[field], crew)
+			t.Fatalf("together.%s is %T, not a number: %v", field, together[field], together)
 		}
 		return got
 	}
@@ -925,9 +925,9 @@ func TestCrewStatsAreCooperativeAndOwn(t *testing.T) {
 	attended := func(who string) []bool {
 		t.Helper()
 		_, body := h.call(t, who, http.MethodGet, "/api/rooms/"+slug, "")
-		stats, ok := body["crew"].(map[string]any)
+		stats, ok := body["together"].(map[string]any)
 		if !ok {
-			t.Fatalf("%s sees no crew stats: %v", who, body)
+			t.Fatalf("%s sees no together stats: %v", who, body)
 		}
 		raw, ok := stats["attended"].([]any)
 		if !ok {
@@ -952,15 +952,72 @@ func TestCrewStatsAreCooperativeAndOwn(t *testing.T) {
 	}
 }
 
-func TestCrewStatsAreMembersOnly(t *testing.T) {
+// Renamed with the field (#1178): what a room did together is `together` now,
+// because ADR-0038 took `crew` for the layer above a room. The assertion is
+// unchanged — only the key it reads, which is what following a rename means.
+func TestTogetherStatsAreMembersOnly(t *testing.T) {
 	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Crew Privacy Test")
-	if _, body := h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, ""); body["crew"] != nil {
-		t.Errorf("a non-member can see the crew stats: %v", body["crew"])
+	slug, _ := h.createRoom(t, "alice", "Together Privacy Test")
+	if _, body := h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, ""); body["together"] != nil {
+		t.Errorf("a non-member can see what the room did together: %v", body["together"])
 	}
-	if _, body := h.call(t, "", http.MethodGet, "/api/rooms/"+slug, ""); body["crew"] != nil {
-		t.Errorf("a signed-out visitor can see the crew stats: %v", body["crew"])
+	if _, body := h.call(t, "", http.MethodGet, "/api/rooms/"+slug, ""); body["together"] != nil {
+		t.Errorf("a signed-out visitor can see what the room did together: %v", body["together"])
 	}
+}
+
+// The crew rides the room payload so the sidebar can group by it without a
+// second request (#1178). Members only, on the same rule as the join code:
+// crew membership follows room membership, so someone outside the room is
+// outside its crew and its name is not theirs to read.
+func TestTheCrewIsOnTheRoomAndMembersOnly(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Field Test")
+	h.putInCrew(t, slug, "Natron")
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	crew, _ := body["crew"].(map[string]any)
+	if crew == nil {
+		t.Fatalf("a member cannot see the room's crew: %v", body["crew"])
+	}
+	if crew["name"] != "Natron" {
+		t.Errorf("crew name = %v, want Natron", crew["name"])
+	}
+	if crew["id"] == nil || crew["id"] == "" {
+		t.Error("the crew has no id, so a sidebar cannot group by it")
+	}
+
+	for _, who := range []struct{ name, as string }{
+		{"a non-member", "carol"}, {"a signed-out visitor", ""},
+	} {
+		if _, body := h.call(t, who.as, http.MethodGet, "/api/rooms/"+slug, ""); body["crew"] != nil {
+			t.Errorf("%s can see the room's crew: %v", who.name, body["crew"])
+		}
+	}
+}
+
+// The list is what the sidebar actually reads, and it carries the crew from a
+// join rather than a lookup per room — this query's own comment is about the
+// 1+4N round trips it already replaced once.
+func TestTheRoomListCarriesTheCrew(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew List Test")
+	h.putInCrew(t, slug, "Natron")
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+	rooms, _ := body["rooms"].([]any)
+	for _, entry := range rooms {
+		room, _ := entry.(map[string]any)
+		if room["slug"] != slug {
+			continue
+		}
+		crew, _ := room["crew"].(map[string]any)
+		if crew == nil || crew["name"] != "Natron" {
+			t.Fatalf("the room list does not name the room's crew: %v", room["crew"])
+		}
+		return
+	}
+	t.Fatal("the room is missing from its owner's list")
 }
 
 func TestBoardIsOffUntilTheRoomTurnsItOn(t *testing.T) {
@@ -974,8 +1031,8 @@ func TestBoardIsOffUntilTheRoomTurnsItOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
-	h.crewRide(t, "alice", room.ID, time.Now(), 3600)
-	h.crewRide(t, "bob", room.ID, time.Now(), 1800)
+	h.roomRide(t, "alice", room.ID, time.Now(), 3600)
+	h.roomRide(t, "bob", room.ID, time.Now(), 1800)
 
 	// Being in a room does not put you on a board (ADR-0036).
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
@@ -1033,7 +1090,7 @@ func TestBoardIsThisWeekOnly(t *testing.T) {
 		t.Fatalf("enable board")
 	}
 	// Two weeks ago: a bad week is never permanent, so it must not be counted.
-	h.crewRide(t, "alice", room.ID, time.Now().AddDate(0, 0, -14), 3600)
+	h.roomRide(t, "alice", room.ID, time.Now().AddDate(0, 0, -14), 3600)
 
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
 	if body["board"] != nil {
@@ -1171,7 +1228,7 @@ func TestRiderPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
 	// And the board honours it — proved with a real ride this week, because
 	// an empty board proves nothing about a filter.
 	for _, who := range []string{"bob", "carol"} {
-		h.crewRide(t, who, room.ID, time.Now(), 1800)
+		h.roomRide(t, who, room.ID, time.Now(), 1800)
 	}
 	rows, err := h.store.Queries.RoomWeekBoard(t.Context(), room.ID)
 	if err != nil {

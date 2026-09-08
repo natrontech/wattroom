@@ -168,11 +168,11 @@ func (s *Service) Register(mux *http.ServeMux) {
 // — which orders nobody — or the CALLER's own turnout. No other rider's
 // ride-derived number appears, which is what keeps this side of ADR-0034's
 // line without a per-rider consent set.
-type crewJSON struct {
+type togetherJSON struct {
 	// Seconds ridden in this room by everyone, ever. The cooperative total
 	// RESEARCH.md §14.4 recommends as the room's primary number.
 	Seconds int64 `json:"seconds"`
-	// Sessions this month and last, so the crew is ranked against its own past
+	// Sessions this month and last, so the room is ranked against its own past
 	// rather than its members against each other (§14.3).
 	SessionsThisMonth int64 `json:"sessionsThisMonth"`
 	SessionsLastMonth int64 `json:"sessionsLastMonth"`
@@ -180,6 +180,19 @@ type crewJSON struct {
 	// Their own attendance and nobody else's — §14.8 forbids a strip that
 	// grades anyone, and one that can only describe you cannot become a ladder.
 	Attended []bool `json:"attended"`
+}
+
+// ADR-0038's crew: the layer above this room, and the thing the sidebar
+// switches between. Identity only — a crew carries no voice, no deck, no
+// session and no metrics, so there is nothing else here to send.
+//
+// Members only, like the code and the sound pack. Crew membership follows room
+// membership, so someone who is not in this room is not in its crew and has no
+// business knowing what the crew is called.
+type roomCrewJSON struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Icon string `json:"icon,omitempty"`
 }
 
 // One rider's week on a room's ordered board (#995, ADR-0036). Category is a
@@ -256,9 +269,19 @@ type roomJSON struct {
 	// no individual numbers anywhere in it.
 	StreakWeeks int   `json:"streakWeeks"`
 	MonthKj     int64 `json:"monthKj"`
-	// What the crew did together (#995, ADR-0036). Members only, like every
-	// other room number, and cooperative by construction — see crewJSON.
-	Crew *crewJSON `json:"crew,omitempty"`
+	// What this room's members did together (#995, ADR-0036). Members only,
+	// like every other room number, and cooperative by construction — see
+	// togetherJSON.
+	//
+	// Named `together`, not `crew`: ADR-0038 took that word for the layer
+	// ABOVE a room, and this is the opposite thing — one room's own totals.
+	// The rename is the cost ADR-0038 predicted when it recorded that "crew"
+	// was already in use meaning the people in one room.
+	Together *togetherJSON `json:"together,omitempty"`
+	// The crew this room belongs to (ADR-0038). It takes the `crew` name that
+	// togetherJSON above gave up (#1178) — the word means the layer above a
+	// room now, and one payload cannot spend it on both.
+	Crew *roomCrewJSON `json:"crew,omitempty"`
 	// Whether this room has turned its ordered board on (ADR-0036). Off is the
 	// default and stays the default: being in a room must not put a rider on a
 	// board. Members only, like the setting it mirrors.
@@ -380,6 +403,13 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
 			Cheers: cheerSet(room.Cheers)}
 		entry.MemberCount = int(room.MemberCount)
+		// The sidebar groups by this (ADR-0038, and #1023's option C). Absent
+		// while crew_id is still nullable, which is one release only.
+		if room.CrewID.Valid {
+			entry.Crew = &roomCrewJSON{
+				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
+			}
+		}
 		if s.presence != nil {
 			entry.RoomPresence = s.presence.Presence(room.Slug)
 		}
@@ -417,15 +447,15 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 // code is the invite, so it stays inside the room); anyone else with the link
 // gets just enough to decide to join. Metrics privacy is not at stake here —
 // nothing live crosses this endpoint.
-// crew reads what the room did together. Soft-fails to nil like the streak and
-// month-kJ reads beside it: a stats query that cannot answer is a tile that
-// does not render, never a room that will not open.
-func (s *Service) crew(ctx context.Context, roomID, viewer pgtype.UUID) *crewJSON {
+// together reads what the room's members did together. Soft-fails to nil like
+// the streak and month-kJ reads beside it: a stats query that cannot answer is
+// a tile that does not render, never a room that will not open.
+func (s *Service) together(ctx context.Context, roomID, viewer pgtype.UUID) *togetherJSON {
 	totals, err := s.store.Queries.RoomCrewTotals(ctx, roomID)
 	if err != nil {
 		return nil
 	}
-	out := &crewJSON{
+	out := &togetherJSON{
 		Seconds:           totals.Seconds,
 		SessionsThisMonth: totals.SessionsThisMonth,
 		SessionsLastMonth: totals.SessionsLastMonth,
@@ -546,7 +576,20 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
 				response.MonthKj = kj
 			}
-			response.Crew = s.crew(r.Context(), room.ID, user.ID)
+			response.Together = s.together(r.Context(), room.ID, user.ID)
+			// The crew, for members only and on the same rule as the code and
+			// the sound pack: crew membership follows room membership, so
+			// someone outside this room is outside its crew and the crew's
+			// name is not theirs to read. Soft-fails to absent like the reads
+			// above — a crew that cannot be looked up is a switcher entry that
+			// does not render, never a room that will not open.
+			if room.CrewID.Valid {
+				if crew, err := s.store.Queries.GetCrew(r.Context(), room.CrewID); err == nil {
+					response.Crew = &roomCrewJSON{
+						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon,
+					}
+				}
+			}
 			response.BoardEnabled = room.BoardEnabled
 			if room.BoardEnabled {
 				response.Board = s.board(r.Context(), room.ID)

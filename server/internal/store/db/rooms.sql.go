@@ -791,9 +791,19 @@ select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound
        coalesce(last.text, '')::text as last_chat_text,
        coalesce(last.display_name, '')::text as last_chat_from,
        last.image_id as last_chat_image_id,
-       last.created_at as last_chat_at
+       last.created_at as last_chat_at,
+       -- The crew this room belongs to (ADR-0038), joined rather than fetched
+       -- per room: this query's own comment is about the 1+4N it replaced, and
+       -- the sidebar's switcher would have reintroduced exactly that. LEFT,
+       -- because crew_id is nullable for one release (ADR-0038's fourth
+       -- amendment) and a room without one must still list.
+       -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
+       -- name the second one CrewID_2.
+       coalesce(c.name, '')::text as crew_name,
+       coalesce(c.icon, '')::text as crew_icon
 from memberships m
 join rooms r on r.id = m.room_id
+left join crews c on c.id = r.crew_id
 left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
@@ -810,6 +820,19 @@ left join lateral (
     limit 1
 ) last on true
 where m.user_id = $1 and m.role != 'banned'
+  -- The room ban is the membership row; the CREW ban is not, and this list
+  -- was the door that still opened after one (#1178). Asked through
+  -- visible_rooms rather than by writing the crew-ban predicate out here:
+  -- ADR-0038's third amendment makes that view the only place allowed to
+  -- answer "is this person excluded here", precisely so a join like this one
+  -- cannot quietly disagree with the other five.
+  --
+  -- Still membership-scoped, deliberately: this is your nav, not everything
+  -- you may enter. Crew rooms you have not joined are the switcher's to show.
+  and exists (
+      select 1 from visible_rooms v
+      where v.room_id = r.id and v.user_id = m.user_id
+  )
 order by m.joined_at desc
 `
 
@@ -842,6 +865,8 @@ type ListUserRoomsRow struct {
 	LastChatFrom            string
 	LastChatImageID         pgtype.UUID
 	LastChatAt              pgtype.Timestamptz
+	CrewName                string
+	CrewIcon                string
 }
 
 // Banned members keep their row (the ban IS the row) but the room vanishes
@@ -892,6 +917,8 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.LastChatFrom,
 			&i.LastChatImageID,
 			&i.LastChatAt,
+			&i.CrewName,
+			&i.CrewIcon,
 		); err != nil {
 			return nil, err
 		}
