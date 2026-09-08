@@ -138,7 +138,30 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 		});
 		return read();
 	});
-	const routes = crewId ? [...ROUTES, `/crew/${crewId}`] : ROUTES;
+	// Its settings (#1237) and its door (#1236) hang off the same crew: the
+	// settings are the owner's, which this rider is, and the door takes the
+	// crew's code, which the crew payload carries for members.
+	const crewCode = crewId
+		? await page.evaluate(
+				async (id) =>
+					String(
+						(
+							(await (await fetch(`/api/crews/${id}`)).json()) as {
+								code?: string;
+							}
+						).code ?? '',
+					),
+				crewId,
+			)
+		: '';
+	const routes = crewId
+		? [
+				...ROUTES,
+				`/crew/${crewId}`,
+				`/crew/${crewId}/settings`,
+				...(crewCode ? [`/c/${crewCode}`] : []),
+			]
+		: ROUTES;
 
 	const wide: string[] = [];
 	for (const route of routes) {
