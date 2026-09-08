@@ -234,7 +234,8 @@ The migration is additive where it can be, per
 crew-membership tables, a `crew_id` on `rooms`. `crew_id` cannot be nullable
 forever — crewless rooms do not exist — but it is added nullable, backfilled by
 the one-crew-per-owner rule, and only then constrained, all inside the one
-release. Nothing is dropped: the per-user room cap's enforcement stops being
+release. *(Corrected by the fourth amendment below: the constraint waits a
+release.)* Nothing is dropped: the per-user room cap's enforcement stops being
 read before its inputs go away, and `memberships` keeps its shape. A rollback to
 the previous image finds every row it wrote still readable, and loses the crew
 layer rather than the rooms. Migrations are created with `make migration`
@@ -423,3 +424,38 @@ from every room in it and prevents rejoining.
 it becomes infrastructure the whole cutover depends on. That is the trade —
 complexity concentrated in one tested place rather than spread thin across every
 join, which is the arrangement the four bugs argue for.
+
+## Amendment, 2026-09-08 (#1106): `rooms.crew_id` stays nullable for one release
+
+The migration paragraph above says `crew_id` is added nullable, backfilled, and
+*"only then constrained, all inside the one release"*. **That is wrong**, and
+[ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md) outranks it.
+
+The previous release's `CreateRoom` inserts `(code, slug, name, owner_id)` and
+knows nothing about the column. A `not null` with no default therefore leaves a
+rolled-back image **unable to create any room at all** — and ADR-0019 is
+explicit that nullable-only is *"the single load-bearing rule of the whole
+document... the only reason retagging to `PREVIOUS` is safe"*. Constraining in
+the same release trades the rollback path for a schema tidiness that nothing
+needs yet.
+
+So: **`crew_id` is added nullable and stays nullable for this release.**
+Crewless rooms are forbidden in code from the cutover — every creation path
+sets it, and the backfill leaves none behind — and the `not null` is the
+contract half, one release later, exactly like `identities.refresh_token`
+([#1038](https://github.com/natrontech/wattroom/issues/1038)).
+
+Nothing else in that paragraph changes: the backfill, the one-crew-per-owner
+rule, and the rollback-loses-the-crew-layer-not-the-rooms property all hold, and
+they hold *better* with the column nullable.
+
+Two related columns follow the same reasoning and are called out because they
+are easy to get backwards:
+
+- **`rooms.crew_visible` defaults to `false`**, which is both the privacy-safe
+  value (the first amendment's existing-rooms-migrate-private rule) and the one
+  that lets a rolled-back release keep creating rooms.
+- **`crews.owner_id` is `on delete restrict`, never `cascade`.** `rooms.owner_id`
+  cascades, which is right for a room and fatal for a crew holding other
+  people's rooms. Restrict makes a purge that forgot to transfer ownership fail
+  loudly instead of leaving an ownerless crew.
