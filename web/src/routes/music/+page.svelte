@@ -1,5 +1,6 @@
 <script lang="ts">
-	// The music pool (#268, ADR-0015): one library the whole instance shares.
+	// The music pool (#268, ADR-0015 amended): your own record shelf, heard in
+	// every room you may enter — never a library shared with strangers.
 	// Browse it, search it, drop MP3s on it, fix whatever the tags got wrong.
 	//
 	// Playlists are not here yet — they need tables #1064 deliberately did not
