@@ -44,7 +44,19 @@ export interface RoomCrew {
 	id: string;
 	name: string;
 	icon?: string;
+	/**
+	 * What you are to the crew. `owner` is the un-removable one (ADR-0038,
+	 * second amendment); it earns a small mark, not a louder row.
+	 */
+	role?: 'owner' | 'admin' | 'member';
 }
+
+/**
+ * What a room row may say about itself without being opened (#1149). `open`
+ * draws nothing — the absence of a mark is the state. `locked` and `admin`
+ * are the two you cannot enter, and a row in either is not a link.
+ */
+export type RoomAccess = 'open' | 'private' | 'locked' | 'admin';
 
 /**
  * One rider's week on a room's opt-in board (#995, ADR-0036). Category is a

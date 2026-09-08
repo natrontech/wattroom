@@ -370,7 +370,7 @@
 							(room.together?.seconds ?? 0) / 3600,
 						).toLocaleString()}<span class="text-muted ml-1 text-sm">h</span>
 					</p>
-					<p class="text-muted text-[11px]">ridden as a crew</p>
+					<p class="text-muted text-[11px]">ridden together</p>
 				</div>
 				<div class="panel px-4 py-3">
 					<p class="eyebrow">streak</p>

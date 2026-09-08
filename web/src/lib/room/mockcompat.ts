@@ -1,3 +1,5 @@
+import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
+
 /**
  * Import surface for the designed components (#39 → real): everything they
  * used from the dev mock, sourced from the real modules. The dev mock keeps
@@ -68,4 +70,8 @@ export interface RailRoom {
 	cheers?: string[];
 	/** owner | coach | member — the ownership cap counts against it. */
 	role?: string;
+	/** The crew this room belongs to (ADR-0038) — what the sidebar switches between. */
+	crew?: RoomCrew;
+	/** What you may do here without opening it (#1149). Absent = open. */
+	access?: RoomAccess;
 }

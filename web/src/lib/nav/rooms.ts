@@ -1,6 +1,7 @@
 import { api } from '$lib/api';
 import type { RoomPresence } from '$lib/protocol';
 import type { RailRoom } from '$lib/room/mockcompat';
+import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 interface RoomEntry extends RoomPresence {
 	slug: string;
@@ -12,6 +13,8 @@ interface RoomEntry extends RoomPresence {
 	nextSession?: { workoutName: string; startsAt: string };
 	lastChat?: RailRoom['lastChat'];
 	cheers?: string[];
+	crew?: RoomCrew;
+	access?: RoomAccess;
 }
 
 /** The rail's rooms, and the ownership cap they are counted against. */
@@ -51,6 +54,8 @@ export async function fetchRailRooms(): Promise<RailRoomList> {
 		lastChat: room.lastChat,
 		cheers: room.cheers,
 		role: room.role,
+		crew: room.crew,
+		access: room.access,
 	}));
 	return { rooms, maxOwned: res.data.maxOwned ?? 0 };
 }
