@@ -3,9 +3,6 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import type { BoardRow, Crew } from '$lib/room/room-data';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { flatten } from '$lib/workout/engine';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
@@ -24,100 +21,30 @@
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { setRoomContext } from '$lib/room/context';
+	import {
+		roomContextValue,
+		type RoomShellProps,
+	} from '$lib/room/room-context-value.svelte';
 	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { remindersFor } from '$lib/room/reminders';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
 
-	interface AdminMember {
-		id: string;
-		displayName: string;
-		role: string;
-		avatarUrl?: string;
-		avatarPreset?: string;
-		totalXp?: number;
-		ftpWatts?: number;
-		weightKg?: number;
-		joinedAt?: string;
-	}
-	interface AdminMedal {
-		kind: string;
-		rider: string;
-		awardedAt: string;
-	}
-	let {
-		children,
-		slug,
-		role,
-		roomName,
-		icon = '',
-		cheers = undefined,
-		code = '',
-		soundPack = 'base',
-		members = [],
-		medals = [],
-		streakWeeks = 0,
-		crew = null,
-		board = [],
-		monthKj = 0,
-		adminBusy = false,
-		onRole,
-		onRemove,
-		upcoming = [],
-		onSchedule,
-		onReschedule,
-		onUnschedule,
-		onRsvp,
-		icsToken = '',
-		onRotateIcs,
-	}: {
-		/** The place standing in the content column. */
-		children: import('svelte').Snippet;
-		slug: string;
-		role: string;
-		roomName: string;
-		/** Owner-set identity mark (#223) — an icon key (#447). */
-		icon?: string;
-		/** The room's reaction palette (#223); absent = SidePanel's base set. */
-		cheers?: string[];
-		code?: string;
-		soundPack?: string;
-		members?: AdminMember[];
-		medals?: AdminMedal[];
-		streakWeeks?: number;
-		crew?: Crew | null;
-		board?: BoardRow[];
-		monthKj?: number;
-		adminBusy?: boolean;
-		onRole: (userId: string, role: string) => void;
-		onRemove: (userId: string) => void;
-		upcoming?: {
-			id: string;
-			workoutName: string;
-			workoutJson: string;
-			startsAt: string;
-			createdBy: string;
-		}[];
-		onSchedule: (name: string, json: string, startsAt: string) => void;
-		onReschedule: (id: string, startsAt: string) => void;
-		onUnschedule: (id: string) => void;
-		onRsvp: (id: string, going: boolean) => void;
-		/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
-		icsToken?: string;
-		onRotateIcs: () => void;
-	} = $props();
+	let props: RoomShellProps = $props();
 
 	// The log lives on the Chat place now (#504, mock A), so the column shows
 	// what was said while you were elsewhere. The room's own unread cannot say
 	// it — standing in the room counts as reading it (#468) — so "seen" is
 	// the Chat place being open, and everything before you joined is history.
-	const chatPlace = $derived(activePlace(page.url.pathname, slug) === '/chat');
+	const chatPlace = $derived(
+		activePlace(page.url.pathname, props.slug) === '/chat',
+	);
 
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
-	const connection = roomConnection.join(slug);
+	const connection = roomConnection.join(props.slug);
 	const live = connection.live;
 
 	// The connection owns the log and what you have not seen of it (#568) —
@@ -155,7 +82,7 @@
 		const back = shouldRejoinVoice({
 			notes: readNotes(),
 			tab: tabId(),
-			slug,
+			slug: props.slug,
 			avEnabled: !!account.me?.avEnabled,
 			now: Date.now(),
 		});
@@ -167,7 +94,7 @@
 	// The room's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
 	$effect(() => {
-		if (soundPack === 'silent') {
+		if (props.soundPack === 'silent') {
 			setMuted(true);
 			return () => setMuted(false);
 		}
@@ -177,7 +104,7 @@
 	// new one, the page's fetched prop is frozen at open (rider report).
 	const myRole = $derived(
 		live.tick?.roster.find((rider) => rider.id === account.me?.id)?.role ??
-			role,
+			props.role,
 	);
 	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
 
@@ -186,10 +113,11 @@
 	// the Members page and settings' ban list (#666).
 	function ban(userId: string, name: string) {
 		const previousRole =
-			members.find((member) => member.id === userId)?.role ?? 'member';
-		onRole(userId, 'banned');
+			(props.members ?? []).find((member) => member.id === userId)?.role ??
+			'member';
+		props.onRole(userId, 'banned');
 		toasts.push(`Banned ${name}.`, {
-			undo: () => onRole(userId, previousRole),
+			undo: () => props.onRole(userId, previousRole),
 		});
 	}
 
@@ -208,14 +136,14 @@
 	// recording, the roster, and the reminders — each its own module, the
 	// shell wiring them to the connection. ─────────────────────────────────
 	const summary = createSummary({
-		slug: () => slug,
+		slug: () => props.slug,
 		recording,
 		phase: () => shared?.phase,
 		myName: () => account.me?.displayName,
 		myExecution: () => you.execution,
 	});
 	const reminders = $derived(
-		remindersFor(upcoming, live.tick?.at ?? Date.now()),
+		remindersFor(props.upcoming ?? [], live.tick?.at ?? Date.now()),
 	);
 
 	// The roster with live numbers on it, plus you and the block you are in —
@@ -321,147 +249,43 @@
 	// Composed, not owned: the shelf and its ranking, the calendar link, and
 	// starting something already planned (session-setup.svelte.ts).
 	const session = createSessionSetup({
-		slug: () => slug,
-		icsToken: () => icsToken,
+		slug: () => props.slug,
+		icsToken: () => props.icsToken ?? '',
 		reset: () => recording.reset(),
 		control: (action, payload) => live.control(action, payload),
 	});
 
 	// ADR-0020: the shell keeps the state, the places render the surface.
-	setRoomContext({
-		get slug() {
-			return slug;
-		},
-		get roomName() {
-			return roomName;
-		},
-		get icon() {
-			return icon;
-		},
-		get code() {
-			return code;
-		},
-		get cheers() {
-			return cheers;
-		},
-		get riders() {
-			return riders;
-		},
-		get you() {
-			return you;
-		},
-		get block() {
-			return block;
-		},
-		get segments() {
-			return segments;
-		},
-		get workout() {
-			return connection.workout();
-		},
-		get shared() {
-			return shared;
-		},
-		get phase() {
-			return phase;
-		},
-		get canControl() {
-			return canControl;
-		},
-		get myRole() {
-			return myRole;
-		},
-		get sprint() {
-			return live.tick?.sprint;
-		},
-		get game() {
-			return live.tick?.game;
-		},
-		get bias() {
-			return rideCtl.bias;
-		},
-		nudgeBias: rideCtl.nudgeBias,
-		get trainer() {
-			return rideCtl.trainer;
-		},
-		get hrSource() {
-			return rideCtl.hrSource;
-		},
-		get rideError() {
-			return rideCtl.error;
-		},
-		get pairing() {
-			return live.pairing;
-		},
-		pair: () => void rideCtl.ride(new FtmsTrainer()),
-		pairSimulated: () =>
-			void rideCtl.ride(
-				new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
-			),
-		unpair: rideCtl.unpair,
-		control: (kind, payload, id) =>
-			live.control(kind as never, payload as never, id),
-		openPicker: (intent = 'start') => {
-			session.intent = intent;
-			session.open = true;
-		},
-		openTv: () => (tv = true),
-		get stageSources() {
-			return stageSources;
-		},
-		get onStage() {
-			return onStage;
-		},
-		pickStage: (key) => av.setStage(key),
-		attachStage: (node, key) => av.attachStage(node, key),
-		attachVideo: (id, node) => av.attach(id, node),
-		videoOf: (id) => av.videoOf[id],
-		get focusId() {
-			return focusId;
-		},
-		setFocus: (id) => (focusId = id),
-		poke: (id) => live.poke(id),
-		get upcoming() {
-			return upcoming;
-		},
-		get icsToken() {
-			return icsToken;
-		},
-		get crew() {
-			return crew;
-		},
-		get board() {
-			return board;
-		},
-		get streakWeeks() {
-			return streakWeeks;
-		},
-		get monthKj() {
-			return monthKj;
-		},
-		get adminBusy() {
-			return adminBusy;
-		},
-		get members() {
-			return members;
-		},
-		get medals() {
-			return medals;
-		},
-		schedule: (name, json, at) => onSchedule(name, json, at),
-		reschedule: (id, at) => onReschedule(id, at),
-		unschedule: (id) => onUnschedule(id),
-		rsvp: (id, going) => onRsvp(id, going),
-		rotateIcs: () => onRotateIcs(),
-		setRole: (userId, next) => onRole(userId, next),
-		ban,
-		removeMember: (userId) => onRemove(userId),
-		startScheduled: session.startScheduled,
-		copyIcsUrl: session.copyIcsUrl,
-		get reminders() {
-			return reminders;
-		},
-	});
+	// `props` goes in as the reactive object, not as its values: the context's
+	// getters read through it on access, which is what keeps a place live when
+	// the page re-fetches members or a planned session. The warning is about
+	// capturing a value here, and this captures the reference — proved by
+	// room-context-value.test.ts rather than argued.
+	// svelte-ignore state_referenced_locally
+	setRoomContext(
+		roomContextValue({
+			props,
+			connection,
+			roster,
+			segments: () => segments,
+			phase: () => phase,
+			canControl: () => canControl,
+			myRole: () => myRole,
+			stageSources: () => stageSources,
+			onStage: () => onStage,
+			reminders: () => reminders,
+			focusId: () => focusId,
+			setFocus: (id) => (focusId = id),
+			openTv: () => (tv = true),
+			openPicker: (intent = 'start') => {
+				session.intent = intent;
+				session.open = true;
+			},
+			ban,
+			startScheduled: session.startScheduled,
+			copyIcsUrl: session.copyIcsUrl,
+		}),
+	);
 
 	// ── Connection fault + jukebox helpers ────────────────────────────────────
 
@@ -486,8 +310,8 @@
 		total={shared?.totalSeconds ?? 0}
 		elapsed={shared?.elapsed ?? 0}
 		{block}
-		{roomName}
-		{code}
+		roomName={props.roomName}
+		code={props.code}
 		live={phase === 'live'}
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
@@ -500,11 +324,11 @@
 		shelf={session.shelf}
 		intent={session.intent}
 		ftp={profile.current.ftp}
-		busy={adminBusy}
+		busy={props.adminBusy}
 		gameRunning={!!live.tick?.game}
 		onStart={(workout) => startWorkout(workout)}
 		onPlan={(name, json, at) => {
-			onSchedule(name, json, at);
+			props.onSchedule(name, json, at);
 			session.open = false;
 		}}
 		onStartGame={(id) => {
@@ -525,12 +349,12 @@
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
-			subtitle="{roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
+			subtitle="{props.roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
 			samples={recording.samples}
 			ftp={you.ftp}
 			execution={you.execution}
 			medal={summary.medal}
-			{roomName}
+			roomName={props.roomName}
 		>
 			{#snippet actions()}
 				<button onclick={() => summary.dismiss()} class="btn btn-secondary"
@@ -565,7 +389,7 @@
 				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'
 				: ''}
 		>
-			{@render children()}
+			{@render props.children()}
 		</div>
 	</main>
 
@@ -580,20 +404,20 @@
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
-		{members}
+		members={props.members}
 		{missed}
-		onOpenChat={() => void goto(`/r/${slug}/chat`)}
+		onOpenChat={() => void goto(`/r/${props.slug}/chat`)}
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
 		onBan={myRole === 'owner' ? ban : undefined}
-		{cheers}
+		cheers={props.cheers}
 	>
 		{#snippet player()}
 			<Jukebox
 				jukebox={live.tick?.jukebox}
 				send={live.jukebox}
 				refusal={live.jukeboxRefusal}
-				{slug}
+				slug={props.slug}
 			/>
 		{/snippet}
 	</SidePanel>
