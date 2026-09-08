@@ -1,1 +1,0 @@
-- A track from the music pool can go in the room's queue beside YouTube links and plays for everyone in sync, like anything else on the deck. It shows as a card rather than a video — there is nothing to watch — and the queue interleaves the two sources in one list.
