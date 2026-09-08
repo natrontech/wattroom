@@ -49,26 +49,28 @@ func (q *Queries) CreateMedal(ctx context.Context, arg CreateMedalParams) error 
 const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp, norm_watts
+    seconds, avg_watts, kj, execution, execution_scored,
+    ftp_watts, samples, curve, xp, norm_watts
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 returning id
 `
 
 type CreateRideParams struct {
-	UserID      pgtype.UUID
-	RoomID      pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Samples     []byte
-	Curve       []byte
-	Xp          int32
-	NormWatts   *int16
+	UserID          pgtype.UUID
+	RoomID          pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	FtpWatts        int16
+	Samples         []byte
+	Curve           []byte
+	Xp              int32
+	NormWatts       *int16
 }
 
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
@@ -81,6 +83,7 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.AvgWatts,
 		arg.Kj,
 		arg.Execution,
+		arg.ExecutionScored,
 		arg.FtpWatts,
 		arg.Samples,
 		arg.Curve,
@@ -222,7 +225,7 @@ func (q *Queries) FinishRideExport(ctx context.Context, arg FinishRideExportPara
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -236,24 +239,25 @@ type GetRideParams struct {
 }
 
 type GetRideRow struct {
-	ID          pgtype.UUID
-	UserID      pgtype.UUID
-	RoomID      pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Samples     []byte
-	SharedAt    pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	Curve       []byte
-	Xp          int32
-	NormWatts   *int16
-	RoomSlug    string
-	RoomName    string
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	RoomID          pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	FtpWatts        int16
+	Samples         []byte
+	SharedAt        pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	Curve           []byte
+	Xp              int32
+	NormWatts       *int16
+	ExecutionScored bool
+	RoomSlug        string
+	RoomName        string
 }
 
 // The one per-ride blob read ADR-0016 allows: a rider opening a single ride
@@ -280,6 +284,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.Curve,
 		&i.Xp,
 		&i.NormWatts,
+		&i.ExecutionScored,
 		&i.RoomSlug,
 		&i.RoomName,
 	)
@@ -672,7 +677,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const listUserRides = `-- name: ListUserRides :many
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, xp, room_id, shared_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
 order by started_at desc
@@ -685,17 +690,18 @@ type ListUserRidesParams struct {
 }
 
 type ListUserRidesRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Xp          int32
-	RoomID      pgtype.UUID
-	SharedAt    pgtype.Timestamptz
+	ID              pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	FtpWatts        int16
+	Xp              int32
+	RoomID          pgtype.UUID
+	SharedAt        pgtype.Timestamptz
 }
 
 // Summary only: the blob stays on disk unless a single ride is opened.
@@ -716,6 +722,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.AvgWatts,
 			&i.Kj,
 			&i.Execution,
+			&i.ExecutionScored,
 			&i.FtpWatts,
 			&i.Xp,
 			&i.RoomID,

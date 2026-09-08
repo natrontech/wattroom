@@ -94,8 +94,11 @@ type rideDetailJSON struct {
 	NormWatts   int     `json:"normWatts"`
 	Kj          int     `json:"kj"`
 	Execution   float64 `json:"execution"`
-	Ftp         int     `json:"ftp"`
-	Xp          int     `json:"xp"`
+	// #1143: false when the workout prescribed nothing to score, so a client
+	// shows "not scored" rather than a percentage that means nothing.
+	ExecutionScored bool `json:"executionScored"`
+	Ftp             int  `json:"ftp"`
+	Xp              int  `json:"xp"`
 	// The room it was ridden in; nil for a solo ride.
 	Room *roomJSON `json:"room"`
 	// Medals this ride won, SPEC kinds — empty for a solo or unmedalled ride.
@@ -155,7 +158,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts),
 		NormWatts: normWatts(row), Kj: int(row.Kj),
-		Execution: float64(row.Execution), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
+		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Medals:  make([]medalJSON, 0, len(medalRows)),
 		Samples: []sampleJSON{},
 	}

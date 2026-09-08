@@ -43,7 +43,7 @@ func TestExecutionPerfectRide(t *testing.T) {
 	// FTP 200: hard blocks want 200 W, easy 100 W. Ride exactly on target;
 	// warmup and cooldown power is irrelevant to the score.
 	samples := ride(flat(1, 60), flat(200, 30), flat(100, 30), flat(200, 30), flat(100, 30), flat(1, 60))
-	got, err := Execution(workoutJSON, 200, samples)
+	got, _, err := Execution(workoutJSON, 200, samples)
 	if err != nil || got != 1 {
 		t.Fatalf("perfect ride scored %v (%v)", got, err)
 	}
@@ -53,7 +53,7 @@ func TestExecutionWeightsIntensity(t *testing.T) {
 	// Nail the hard blocks (weight 1.0), miss the easy ones (weight 0.5):
 	// 2·1.0 / (2·1.0 + 2·0.5) = 2/3 — not the unweighted 1/2 (SPEC weighting).
 	samples := ride(flat(1, 60), flat(200, 30), flat(300, 30), flat(200, 30), flat(300, 30))
-	got, err := Execution(workoutJSON, 200, samples)
+	got, _, err := Execution(workoutJSON, 200, samples)
 	if err != nil || math.Abs(got-2.0/3.0) > 0.01 {
 		t.Fatalf("weighted score: %v (%v)", got, err)
 	}
@@ -63,14 +63,14 @@ func TestExecutionExcludesUnriddenSeconds(t *testing.T) {
 	// 0 W through one hard block: those seconds drop out (the auto-pause
 	// exclusion) rather than scoring as misses.
 	samples := ride(flat(1, 60), flat(200, 30), flat(100, 30), flat(0, 30), flat(100, 30))
-	got, err := Execution(workoutJSON, 200, samples)
+	got, _, err := Execution(workoutJSON, 200, samples)
 	if err != nil || got != 1 {
 		t.Fatalf("unridden seconds scored: %v (%v)", got, err)
 	}
 }
 
 func TestExecutionJunkJSON(t *testing.T) {
-	if _, err := Execution("{", 200, flat(200, 10)); err == nil {
+	if _, _, err := Execution("{", 200, flat(200, 10)); err == nil {
 		t.Fatal("junk json accepted")
 	}
 }
@@ -132,7 +132,7 @@ func TestExecutionScoresAgainstTheRidersOwnTarget(t *testing.T) {
 	// At −20 % the hard blocks want 160 W and the easy ones 80 W.
 	samples := ride(flat(1, 60), biased(160, 30, 0.8), biased(80, 30, 0.8),
 		biased(160, 30, 0.8), biased(80, 30, 0.8))
-	got, err := Execution(workoutJSON, 200, samples)
+	got, _, err := Execution(workoutJSON, 200, samples)
 	if err != nil || got != 1 {
 		t.Fatalf("a rider who nailed their own targets scored %v (%v)", got, err)
 	}
@@ -141,7 +141,7 @@ func TestExecutionScoresAgainstTheRidersOwnTarget(t *testing.T) {
 	// which is the honest reading of "did you ride the plan you were on".
 	over := ride(flat(1, 60), biased(200, 30, 0.8), biased(100, 30, 0.8),
 		biased(200, 30, 0.8), biased(100, 30, 0.8))
-	if got, err := Execution(workoutJSON, 200, over); err != nil || got != 0 {
+	if got, _, err := Execution(workoutJSON, 200, over); err != nil || got != 0 {
 		t.Fatalf("riding 25%% over their own target scored %v (%v)", got, err)
 	}
 }
@@ -151,18 +151,50 @@ func TestExecutionWeightsByThePrescribedIntensity(t *testing.T) {
 	// dialling down must not also quietly reduce how much a hard block counts
 	// for, or bias would move the score twice.
 	easy := Execution
-	full, err := easy(workoutJSON, 200, ride(flat(1, 60), flat(200, 30), flat(300, 30), flat(200, 30), flat(300, 30)))
+	full, _, err := easy(workoutJSON, 200, ride(flat(1, 60), flat(200, 30), flat(300, 30), flat(200, 30), flat(300, 30)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The same ride at −20 %: on target for the hard blocks, 87 % over on the
 	// easy ones. Same shape, so the same weighted score.
-	down, err := easy(workoutJSON, 200, ride(flat(1, 60), biased(160, 30, 0.8), biased(240, 30, 0.8),
+	down, _, err := easy(workoutJSON, 200, ride(flat(1, 60), biased(160, 30, 0.8), biased(240, 30, 0.8),
 		biased(160, 30, 0.8), biased(240, 30, 0.8)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if math.Abs(full-down) > 0.001 {
 		t.Errorf("bias changed the weighting: %v vs %v", full, down)
+	}
+}
+
+// #1143: the three cases Execution must tell apart.
+func TestExecutionDistinguishesNothingToScoreFromPerfect(t *testing.T) {
+	const scorable = `{"name":"t","steps":[
+		{"type":"warmup","seconds":60,"from":0.4,"to":0.7},
+		{"type":"steady","seconds":60,"target":1.0}]}`
+	const unscorable = `{"name":"t","steps":[
+		{"type":"warmup","seconds":60,"from":0.4,"to":0.7},
+		{"type":"sprint","seconds":30},
+		{"type":"cooldown","seconds":60,"from":0.6,"to":0.4}]}`
+
+	// A rider with no power against targets that existed executed none of it.
+	score, ok, err := Execution(scorable, 200, ride(flat(0, 120)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Error("a workout with a steady step is scorable")
+	}
+	if score != 0 {
+		t.Errorf("no power against real targets scored %v, want 0", score)
+	}
+
+	// A workout that prescribes nothing is not scorable, whatever was ridden.
+	_, ok, err = Execution(unscorable, 200, ride(flat(200, 150)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Error("a workout of warmup, sprint and cooldown has nothing to score")
 	}
 }

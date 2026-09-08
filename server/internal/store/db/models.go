@@ -177,22 +177,23 @@ type PlaylistTrack struct {
 }
 
 type Ride struct {
-	ID          pgtype.UUID
-	UserID      pgtype.UUID
-	RoomID      pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Samples     []byte
-	SharedAt    pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	Curve       []byte
-	Xp          int32
-	NormWatts   *int16
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	RoomID          pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	FtpWatts        int16
+	Samples         []byte
+	SharedAt        pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	Curve           []byte
+	Xp              int32
+	NormWatts       *int16
+	ExecutionScored bool
 }
 
 type RideExport struct {

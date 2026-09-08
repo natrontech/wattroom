@@ -97,7 +97,13 @@
 					{ label: 'work', value: `${ride.kj} kJ` },
 					{ label: 'average', value: `${ride.avgWatts} W` },
 					{ label: 'normalised', value: `${ride.normWatts} W` },
-					{ label: 'execution', value: `${Math.round(ride.execution * 100)}%` },
+					{
+						label: 'execution',
+						value:
+							ride.executionScored === false
+								? 'not scored'
+								: `${Math.round(ride.execution * 100)}%`,
+					},
 					{ label: 'earned', value: `${ride.xp} XP` },
 				]
 			: [],

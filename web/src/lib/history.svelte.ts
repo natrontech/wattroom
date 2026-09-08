@@ -18,6 +18,8 @@ export interface RideRecord {
 	kj: number;
 	avgWatts: number;
 	execution: number;
+	/** #1143: false when the workout prescribed nothing to score. */
+	executionScored?: boolean;
 	ftp: number;
 }
 
@@ -38,6 +40,8 @@ function parse(value: unknown): RideRecord[] {
 				kj: typeof r.kj === 'number' ? r.kj : 0,
 				avgWatts: r.avgWatts,
 				execution: typeof r.execution === 'number' ? r.execution : 0,
+				// Absent on a ride saved before #1143 — those all had a score.
+				executionScored: r.executionScored !== false,
 				ftp: typeof r.ftp === 'number' ? r.ftp : 0,
 			},
 		];
