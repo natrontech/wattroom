@@ -34,6 +34,7 @@ export interface RoomContext {
 	readonly slug: string;
 	readonly roomName: string;
 	readonly icon: string;
+	/** The crew's join code (#1236); '' for a non-member. */
 	readonly code: string;
 	readonly cheers: string[] | undefined;
 

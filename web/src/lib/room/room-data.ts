@@ -46,6 +46,8 @@ export interface RoomCrew {
 	icon?: string;
 	/** The crew's logo (#1237), drawn before the icon and the initial. */
 	imageUrl?: string;
+	/** The crew's join code (#1236) — members only; the TV shows it idle. */
+	code?: string;
 	/**
 	 * What you are to the crew. `owner` is the un-removable one (ADR-0038,
 	 * second amendment); it earns a small mark, not a louder row.

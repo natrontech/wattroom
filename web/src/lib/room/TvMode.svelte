@@ -32,7 +32,8 @@
 		workoutName?: string;
 		/** A session is running — the HUD only exists then (#125). */
 		live?: boolean;
-		/** Join code for the lounge screen: TVs are where the code is most useful. */
+		/** The crew's join code for the lounge screen (#1236): TVs are where a
+		 * code is most useful, and the crew's is the only one there is. */
 		code?: string;
 	} = $props();
 
@@ -61,7 +62,7 @@
 			</p>
 			{#if code}
 				<p class="text-muted mt-[6vh] text-[1.8vh] tracking-[0.2em] uppercase">
-					join code
+					crew code
 				</p>
 				<p
 					class="font-display mt-[1vh] text-[7vh] leading-none font-bold tracking-[0.3em] tabular-nums"

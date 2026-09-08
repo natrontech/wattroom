@@ -200,7 +200,7 @@
 			roomName={room.name}
 			icon={room.icon ?? ''}
 			cheers={room.cheers}
-			code={room.code ?? ''}
+			code={room.crew?.code ?? ''}
 			soundPack={room.soundPack ?? 'base'}
 			members={room.members ?? []}
 			crewVisible={room.crewVisible ?? false}
@@ -291,9 +291,10 @@
 					json: { userId, role: nextRole },
 				})}
 			onRemove={(userId: string) => {
-				// No inverse call exists — rejoining takes the invite link, so
-				// the call site confirms before firing rather than promising an
-				// undo this can't deliver (errors.md).
+				// No inverse call exists — a removed rider walks back in from
+				// the crew only if the room is open to it, so the call site
+				// confirms before firing rather than promising an undo this
+				// can't deliver (errors.md).
 				const name = room?.members?.find((m) => m.id === userId)?.displayName;
 				act(
 					`/api/rooms/${room?.slug}/members/${userId}`,

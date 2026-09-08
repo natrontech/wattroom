@@ -199,6 +199,9 @@ type roomCrewJSON struct {
 	// The crew's logo (#1237), when one is set: the mark every surface draws
 	// before falling back to the icon, then the initial.
 	ImageURL string `json:"imageUrl,omitempty"`
+	// The crew's join code (#1236), members only — the room's own code opens
+	// nothing now, and the TV shows this one when the lounge is idle.
+	Code string `json:"code,omitempty"`
 	// What the caller is to the crew: owner | admin | member. The switcher's
 	// owner mark reads it; it is small because the guarantee behind it is
 	// about permissions, not a reading power (ADR-0038, second amendment).
@@ -752,7 +755,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 					response.Crew = &roomCrewJSON{
 						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
-						ImageURL: crewImageURL(crew.ID, crew.HasImage),
+						ImageURL: crewImageURL(crew.ID, crew.HasImage), Code: codeOf(crew.Code),
 					}
 				}
 			}

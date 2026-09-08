@@ -565,8 +565,9 @@
 					onSheet?.();
 				}}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title="open a room or join with a code"
-				aria-label="open a room or join with a code"><Plus size={16} /></button
+				title="open a room or join a crew with a code"
+				aria-label="open a room or join a crew with a code"
+				><Plus size={16} /></button
 			>
 		</div>
 		<ul class="space-y-0.5">

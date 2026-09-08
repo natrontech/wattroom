@@ -158,10 +158,14 @@ func TestCreateAndJoinFlow(t *testing.T) {
 		t.Fatalf("a crew member could not walk in: %d", status)
 	}
 
-	// A member sees everything.
+	// A member sees everything — including the crew's code on the room, which
+	// is what the TV shows when the lounge is idle (#1236).
 	status, body = h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
 	if status != http.StatusOK || body["role"] != "member" {
 		t.Fatalf("member view: %d %v", status, body)
+	}
+	if c, _ := body["crew"].(map[string]any); c["code"] != code {
+		t.Errorf("the room's crew does not carry the crew's code for members: %v", body["crew"])
 	}
 	if members, _ := body["members"].([]any); len(members) != 2 {
 		t.Fatalf("expected 2 members, got %v", body["members"])
