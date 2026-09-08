@@ -1,0 +1,1 @@
+- A chat line no longer appears twice, or keeps its old words after the author fixed it, for a rider who opened the room in the second the line was sent: the join-time backlog and the live tick each carried a copy and only one of them knew the line's id (#1231).
