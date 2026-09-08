@@ -25,9 +25,10 @@ import Users from '@lucide/svelte/icons/users';
  * off — which reads as a label on the section beside it, not as a way to go
  * somewhere.
  *
- * Music earns one on the same test (#268): the pool is instance-wide while
- * every jukebox is room-scoped, so a rider uploading to it or searching it is
- * not standing in a room — and a destination reachable only from inside one is
+ * Music earns one on the same test (#268): the shelf is the rider's own
+ * (ADR-0015, amended — it reaches the rooms they may enter) while every
+ * jukebox is room-scoped, so a rider uploading to it or searching it is not
+ * standing in a room — and a destination reachable only from inside one is
  * not reachable when you want it. It is not the "second half" of any page
  * here, which is what the retirements above all had in common.
  */
