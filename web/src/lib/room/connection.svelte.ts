@@ -18,6 +18,8 @@ import { parseSharedWorkout } from '$lib/room/workout';
 import { play } from '$lib/sound/cues';
 import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';
+import { applyAway, noEcho, pressed } from '$lib/room/away-echo';
+
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
@@ -107,6 +109,20 @@ function connect(slug: string): Connection {
 	let sharedOf!: () => SessionState | undefined;
 	let segmentsOf!: () => Segment[];
 	let workoutOf!: () => Workout | null;
+	/**
+	 * The away state this screen has asked for and not yet seen echoed
+	 * (#1128), and when it asked. Null means "believe the roster". Outside the
+	 * effect root because the button that writes it lives on the returned
+	 * object, and the effect that reads it lives inside.
+	 */
+	/**
+	 * What this screen pressed and has not yet seen echoed (#1128). Outside
+	 * the effect root because the button that writes it lives on the returned
+	 * object and the effect that reads it lives inside; the rule itself is in
+	 * `away-echo.ts`, where it can be tested without an AV stack.
+	 */
+	let awayEcho = noEcho;
+
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
 		// property of standing in the room, exactly like the socket and the
@@ -168,11 +184,28 @@ function connect(slug: string): Connection {
 		// updates itself immediately in RoomShell; this is what also mutes the
 		// desktop when the phone pressed it, and restores each tab to what that
 		// tab had live before.
+		//
+		// It must not apply an echo of the state we just left (#1128). Our own
+		// press is optimistic — local first, message second — and the tick
+		// already in flight still carries the OLD value. Applying it ran the
+		// come-back branch a fifth of a second after the rider pressed Away:
+		// the mix unmuted and the mic re-opened itself, so the button read as
+		// doing nothing while the room went on hearing them.
+		//
+		// So a press records what it is waiting for, and the roster is ignored
+		// until it agrees — bounded, so a message the server never answers
+		// cannot pin this rider's away state to a wish forever. `away-echo.ts`
+		// holds the rule and its tests; this is the two lines that call it.
 		$effect(() => {
 			const mine = live.tick?.roster.find(
 				(rider) => rider.id === account.me?.id,
 			);
-			if (mine) void av.setAway(!!mine.away);
+			if (!mine) return;
+			const server = !!mine.away;
+			const step = applyAway(server, awayEcho);
+			awayEcho = step.echo;
+			if (!step.apply) return;
+			void av.setAway(server);
 		});
 
 		$effect(() => {
@@ -438,6 +471,9 @@ function connect(slug: string): Connection {
 		 * sends it now lives in the sidebar, which has no room context.
 		 */
 		setAway(next: boolean) {
+			// What we are waiting for the server to echo (#1128), so the tick
+			// already in flight cannot undo the press that produced it.
+			awayEcho = pressed(next);
 			void av.setAway(next);
 			live.setAway(next);
 		},
