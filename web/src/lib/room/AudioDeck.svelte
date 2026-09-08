@@ -73,6 +73,15 @@
 		}
 
 		const target = playheadAt(now, serverNow());
+		// Only clients know how long a track is — the server holds an anchor,
+		// not a timeline. A deck left playing to a room where nobody can
+		// actually hear it runs its playhead off the end forever, because
+		// `ended` fires on playback and playback never happened. Whoever
+		// notices says the track is over, exactly as the YouTube path does.
+		if (el.duration > 0 && target >= el.duration) {
+			reportEnded();
+			return;
+		}
 		if (Math.abs(el.currentTime - target) > DRIFT_SEC) el.currentTime = target;
 		// Autoplay can be refused before the rider has clicked anything; the
 		// room's existing unblock path (#1062) is what recovers it, so this

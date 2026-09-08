@@ -14,6 +14,7 @@
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
+	import Music from '@lucide/svelte/icons/music';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
@@ -224,47 +225,60 @@
 		     under that. One thing per line reads at arm's length; a thumbnail
 		     beside a truncated title and four identical grey buttons did not. -->
 		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
-			<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
-			     the player clears RMF's 200×200 at the column's width, and the
-			     height is clamped rather than tied to the panel's width — a
-			     dragged-wide panel gave the picture 300 px and left the chat a
-			     sliver (rider report).
-
-			     The hole is ALWAYS MOUNTED, never rendered conditionally: the
-			     stage taking the player and giving it back would then mount and
-			     unmount this offer, which is what turned a pre-existing effect
-			     loop fatal in 2026.09.9 (#494). When the stage or TV outranks
-			     the column it is hidden instead — display:none, so the element
-			     and its attachment stay put while the box stops costing the
-			     column 200 px for a picture of a video already on screen (#504).
-
-			     Hiding withdraws the offer, because a zero rect is not a seat.
-			     That is wanted — the seat must never be won at zero height, or
-			     the player flies into a sliver — and it is why `elsewhere` asks
-			     whether a HIGHER surface is offering rather than who holds the
-			     player. Hiding changes the holder, so deciding by holder closes
-			     the loop: hidden, withdrawn, holder changes, shown again.
-			     Measured, that was effect_update_depth_exceeded within a second
-			     of the stage appearing. -->
-			<div
-				class="bg-surface relative w-full overflow-hidden rounded-lg {elsewhere
-					? 'hidden'
-					: ''}"
-				style="height: clamp(200px, 24vh, 240px)"
-				{@attach seat}
-			>
-				<img
-					src={thumbnailFor(current.videoId)}
-					alt=""
-					loading="lazy"
-					referrerpolicy="no-referrer"
-					class="h-full w-full object-cover opacity-60"
-				/>
-				<span
-					class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
-					>The player docks here.</span
+			{#if current.trackId}
+				<!-- A pool track has no player to seat (#267): RMF's tile rules
+				     bind only while a YouTube entry plays, so this one is heard
+				     and not seen. The mark stands in for the art, at the same
+				     height, so the column does not jump between sources. -->
+				<div
+					class="bg-surface text-muted grid w-full place-items-center rounded-lg"
+					style="height: clamp(200px, 24vh, 240px)"
 				>
-			</div>
+					<Music size={28} />
+				</div>
+			{:else}
+				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
+				     the player clears RMF's 200×200 at the column's width, and the
+				     height is clamped rather than tied to the panel's width — a
+				     dragged-wide panel gave the picture 300 px and left the chat a
+				     sliver (rider report).
+
+				     The hole is ALWAYS MOUNTED, never rendered conditionally: the
+				     stage taking the player and giving it back would then mount and
+				     unmount this offer, which is what turned a pre-existing effect
+				     loop fatal in 2026.09.9 (#494). When the stage or TV outranks
+				     the column it is hidden instead — display:none, so the element
+				     and its attachment stay put while the box stops costing the
+				     column 200 px for a picture of a video already on screen (#504).
+
+				     Hiding withdraws the offer, because a zero rect is not a seat.
+				     That is wanted — the seat must never be won at zero height, or
+				     the player flies into a sliver — and it is why `elsewhere` asks
+				     whether a HIGHER surface is offering rather than who holds the
+				     player. Hiding changes the holder, so deciding by holder closes
+				     the loop: hidden, withdrawn, holder changes, shown again.
+				     Measured, that was effect_update_depth_exceeded within a second
+				     of the stage appearing. -->
+				<div
+					class="bg-surface relative w-full overflow-hidden rounded-lg {elsewhere
+						? 'hidden'
+						: ''}"
+					style="height: clamp(200px, 24vh, 240px)"
+					{@attach seat}
+				>
+					<img
+						src={thumbnailFor(current.videoId)}
+						alt=""
+						loading="lazy"
+						referrerpolicy="no-referrer"
+						class="h-full w-full object-cover opacity-60"
+					/>
+					<span
+						class="bg-paper/70 text-muted absolute inset-x-0 bottom-0 px-2 py-1 text-[10px]"
+						>The player docks here.</span
+					>
+				</div>
+			{/if}
 			<!-- The hint sits on the words, never over the player (RMF). -->
 			<div class="min-w-0" title={MENU_HINT}>
 				{#if setTracks}
