@@ -20,6 +20,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { serverNow } from '$lib/room/server-clock';
 	import { listening } from '$lib/room/listening.svelte';
+	import { toasts } from '$lib/toast.svelte';
 
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
 	const DRIFT_SEC = 0.6;
@@ -100,6 +101,19 @@
 			anchorMs: now.anchorMs,
 		});
 	}
+
+	// A track the server no longer has — deleted from the pool while it was on
+	// the deck (#1132) — 404s, and the element fires `error` in place of
+	// `ended`: nothing would ever say the play was over, and the whole room
+	// sat on it. Same answer the dock gives an unplayable video: say so, and
+	// report the end — the anchor makes every rider's report but the first
+	// an echo.
+	function failed() {
+		toasts.push(
+			`“${deck?.current?.title ?? 'That track'}” could not be played here — skipped.`,
+		);
+		reportEnded();
+	}
 </script>
 
 {#if track && !silent}
@@ -110,5 +124,6 @@
 		src="/api/tracks/{track}/audio"
 		preload="auto"
 		onended={reportEnded}
+		onerror={failed}
 	></audio>
 {/if}
