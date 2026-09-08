@@ -1,0 +1,1 @@
+- A room's settings header said "you joined 2026-09-08"; it now reads "you joined Sept 2026", the way a crew's people and a room's members already say "since".

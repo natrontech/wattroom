@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatMonth } from '$lib/format';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
@@ -208,7 +209,7 @@
 			<p class="text-muted text-xs">
 				{members}
 				{members === 1 ? 'member' : 'members'} · {owner} owns it{#if joined}{' '}
-					· you joined {joined}{/if}
+					· you joined {formatMonth(joined)}{/if}
 			</p>
 		</header>
 		{#if error}
