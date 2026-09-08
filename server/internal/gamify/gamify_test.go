@@ -3,9 +3,11 @@ package gamify
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -95,4 +97,62 @@ func earned(t *testing.T, s *Service, user db.User) map[string]bool {
 		out[row.Key] = true
 	}
 	return out
+}
+
+// roomSeq keeps the 6-char code and the slug unique across the package —
+// both are unique columns and the rooms outlive nothing but their test.
+var roomSeq atomic.Int32
+
+// shareRoom puts the riders in a fresh room (the first one owns it) and
+// returns its id, so a test can ban one of them afterwards.
+func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
+	t.Helper()
+	n := roomSeq.Add(1)
+	room, err := s.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
+		Code:    fmt.Sprintf("TR%04d", n),
+		Slug:    fmt.Sprintf("trophy-room-%d", n),
+		Name:    "Trophy Room",
+		OwnerID: members[0].ID,
+	})
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = s.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
+	})
+	for i, m := range members {
+		role := "member"
+		if i == 0 {
+			role = "owner"
+		}
+		if err := s.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+			RoomID: room.ID, UserID: m.ID, Role: role,
+		}); err != nil {
+			t.Fatalf("membership: %v", err)
+		}
+	}
+	return room.ID
+}
+
+func ban(t *testing.T, s *Service, room pgtype.UUID, user db.User) {
+	t.Helper()
+	if err := s.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+		RoomID: room, UserID: user.ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("ban: %v", err)
+	}
+}
+
+func befriend(t *testing.T, s *Service, a, b db.User) {
+	t.Helper()
+	if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+		RequesterID: a.ID, AddresseeID: b.ID,
+	}); err != nil {
+		t.Fatalf("friend request: %v", err)
+	}
+	if _, err := s.store.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{
+		RequesterID: a.ID, AddresseeID: b.ID,
+	}); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
 }
