@@ -43,14 +43,17 @@
 #    compares `app.getVersion()` — which reads that file — against the newest
 #    release tag. If they disagree, every install nags forever.
 #
-# ── Still missing before anything goes public ─────────────────────────────────
+# ── Artifact names ────────────────────────────────────────────────────────────
 #
-# THE APP HAS NO ICON. A local build is proven to work and produces
-# `WattRoom-<version>-arm64.dmg`, but with Electron's default icon, because
-# `web/static/favicon.svg` is drawn for 16–32px and whether that mark is the
-# app icon at 512px is a design decision, not a build one. electron-builder
-# takes `build/icon.png` at 512×512 or larger and generates the rest. Ship an
-# installer without it and the dock shows a generic Electron atom.
+# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-0.1.0-mac-arm64.dmg`,
+# `WattRoom-0.1.0-win-x64.exe`, `WattRoom-0.1.0-linux-x64.AppImage`. No spaces,
+# because electron-builder's default Windows name is `WattRoom Setup 0.1.0.exe`
+# and a download URL with a space in it is one more thing to get wrong. The
+# web app's /download page finds each installer by extension, so the names
+# can change; the extensions cannot.
+#
+# The icon is `desktop/build/icon.png`, rendered from `icon.svg` beside it —
+# electron-builder generates the .icns and .ico from the 1024px PNG.
 #
 # ── Why macOS refuses to build unsigned ───────────────────────────────────────
 #
