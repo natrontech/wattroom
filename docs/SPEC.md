@@ -64,13 +64,14 @@ running it — ADR-0038 asks for two caps and this is the pair.
 
 | Capability                                                                      | Crew owner                                            | Crew admin         | Crew member |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------ | ----------- |
-| Rename the crew, set its icon                                                   | ✓                                                     | ✓                  | –           |
+| Rename the crew, set its icon and picture (#1237)                               | ✓                                                     | ✓                  | –           |
 | Make / unmake a crew admin                                                      | ✓                                                     | ✓                  | –           |
 | Ban / unban from the crew (#1150) — never someone who owns a room in it (#1212) | ✓                                                     | ✓                  | –           |
 | Hand the crew to someone in it (#1208)                                          | ✓                                                     | –                  | –           |
 | See the crew's ban list                                                         | ✓                                                     | ✓                  | –           |
 | Open a room in the crew (#1201)                                                 | ✓                                                     | ✓                  | –           |
 | Invite to the crew — share its code or link (#1236)                             | ✓                                                     | ✓                  | ✓           |
+| Leave the crew (#1228) — the owner hands it on first                            | –                                                     | ✓                  | ✓           |
 | See the crew's rooms listed, with their access state (#1149)                    | ✓                                                     | ✓                  | ✓           |
 | Open a room to the crew or shut it, without entering it (#1226)                 | ✓                                                     | ✓                  | –           |
 | Enter a room open to the crew                                                   | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |

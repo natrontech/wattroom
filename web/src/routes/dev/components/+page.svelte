@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
+	import CrewMark from '$lib/components/CrewMark.svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import MedalCard from '$lib/components/MedalCard.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -89,6 +91,12 @@
 		secondsLeft: 134,
 		next: { label: 'Active recovery', watts: 146, seconds: 300 },
 	};
+	// The kit's icon picker, live: pick one and the mark beside it follows.
+	let galleryIcon = $state('zap');
+	// A 2×2 magenta PNG, so the picture branch of the mark shows without a
+	// network round trip.
+	const galleryPicture =
+		'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGP4/58BATcAKAAyAP//AAAAAElFTkSuQmCC';
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
@@ -138,6 +146,48 @@
 			<SmilePlus size={20} />
 		</button>
 		<button class="btn-link text-xs">Measure it with a ramp test</button>
+	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Crew mark</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		A crew's face everywhere it is drawn (#1237): the picture when there is one,
+		else the icon, else the initial — the switcher, the crew page and the door
+		all use this one component so they cannot disagree.
+	</p>
+	<div class="mt-4 flex flex-wrap items-end gap-6">
+		<div class="text-center">
+			<CrewMark
+				name="Natron"
+				imageUrl={galleryPicture}
+				size={40}
+				class="rounded-lg"
+			/>
+			<p class="text-muted mt-1.5 text-[11px]">picture</p>
+		</div>
+		<div class="text-center">
+			<CrewMark name="Natron" icon={galleryIcon} size={40} class="rounded-lg" />
+			<p class="text-muted mt-1.5 text-[11px]">icon</p>
+		</div>
+		<div class="text-center">
+			<CrewMark name="Natron" size={40} class="rounded-lg" />
+			<p class="text-muted mt-1.5 text-[11px]">initial</p>
+		</div>
+		<div class="text-center">
+			<CrewMark name="Natron" icon={galleryIcon} size={20} />
+			<p class="text-muted mt-1.5 text-[11px]">20 px, the sidebar's</p>
+		</div>
+	</div>
+
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
+		Icon picker
+	</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		The curated set as a radiogroup (#447): a room's mark and a crew's come from
+		the same set through the same control (#1209). Saves on pick — no form
+		around it.
+	</p>
+	<div class="mt-4">
+		<IconPicker value={galleryIcon} onpick={(key) => (galleryIcon = key)} />
 	</div>
 
 	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Avatar</h2>
