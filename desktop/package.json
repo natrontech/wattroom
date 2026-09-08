@@ -14,7 +14,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "electron": "^44.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "26.16.1"
   },
   "build": {
     "appId": "ch.wattroom.desktop",
@@ -65,6 +65,9 @@
     },
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
   },
-  "author": "Natron Tech AG",
+  "author": {
+    "name": "Natron Tech AG",
+    "email": "info@natron.io"
+  },
   "repository": "https://github.com/natrontech/wattroom"
 }
