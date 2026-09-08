@@ -14,7 +14,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "electron": "^44.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "26.16.1"
   },
   "build": {
     "appId": "ch.wattroom.desktop",
