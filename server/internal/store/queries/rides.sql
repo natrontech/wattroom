@@ -245,3 +245,15 @@ limit sqlc.arg(max_rows)::int;
 select state, attempts, last_error, remote_id
 from ride_exports
 where ride_id = $1 and destination = $2;
+
+-- name: RequeueRideExport :execrows
+-- The rider pressing "try again" on a delivery that ran out of attempts
+-- (#1158). Back to pending with the counter cleared, so the ordinary sweep
+-- picks it up on its next pass and no second code path exists.
+--
+-- `state = 'failed'` is the guard, not decoration: a delivery still pending
+-- is already going to be tried, and one that succeeded must not be re-sent —
+-- pressing a stale button twice would put the ride on Strava twice.
+update ride_exports
+set state = 'pending', attempts = 0, last_error = null, updated_at = now()
+where ride_id = $1 and destination = $2 and state = 'failed';

@@ -65,6 +65,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
 	mux.HandleFunc("GET /api/rides/{id}", s.handleGet)
 	mux.HandleFunc("GET /api/rides/{id}/export", s.handleExport)
+	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }

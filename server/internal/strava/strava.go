@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,7 +16,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -43,6 +46,11 @@ type Service struct {
 	httpc     *http.Client
 	now       func() time.Time
 	pollEvery time.Duration
+	// A rate limit is against the application, so it parks every delivery
+	// rather than one (#1158). Guarded because the sweep goroutine and a
+	// RideSaved goroutine both read it.
+	holdMu    sync.Mutex
+	holdUntil time.Time
 }
 
 // New returns nil when the Strava app is not configured — the saver treats a
@@ -71,10 +79,19 @@ const Destination = "strava"
 const (
 	// Attempts before a delivery is declared failed and stops being swept.
 	maxAttempts = 5
-	// How quiet a pending row must be before the sweep picks it up again. The
-	// backoff is attempts × this — a Strava outage is retried over hours, not
-	// hammered for a minute.
+	// How quiet a pending row must be before the sweep picks it up again, and
+	// the first step of the backoff.
 	retryBase = 5 * time.Minute
+	// The ceiling on one delivery's wait, so a widening backoff stays a
+	// backoff rather than becoming a retirement.
+	retryCap = 2 * time.Hour
+	// How long every delivery waits when Strava says slow down, absent a
+	// usable Retry-After. Their limits are quarter-hourly, so anything
+	// shorter is asking again inside the same window.
+	defaultRateLimitHold = 15 * time.Minute
+	// …and the most we will honour from the header, so a stray value cannot
+	// park uploads for a day.
+	maxRateLimitHold = time.Hour
 	// Deliveries started per sweep. A backlog drains over several sweeps
 	// rather than opening a hundred uploads at once.
 	sweepBatch = 20
@@ -115,6 +132,9 @@ func (s *Service) Sweep(ctx context.Context) {
 }
 
 func (s *Service) sweepOnce(ctx context.Context) {
+	if s.held() {
+		return
+	}
 	due, err := s.store.Queries.ListRideExportsDue(ctx, db.ListRideExportsDueParams{
 		Before:  pgtype.Timestamptz{Time: s.now().Add(-retryBase), Valid: true},
 		MaxRows: sweepBatch,
@@ -124,10 +144,9 @@ func (s *Service) sweepOnce(ctx context.Context) {
 		return
 	}
 	for _, row := range due {
-		// attempts × retryBase: the more a delivery has failed, the longer it
-		// waits. The query has already applied the first step of that; this is
-		// the widening, off the same injectable clock.
-		if row.UpdatedAt.Time.After(s.now().Add(-time.Duration(row.Attempts) * retryBase)) {
+		// The widening, off the same injectable clock; the query has already
+		// applied the first step of it.
+		if row.UpdatedAt.Time.After(s.now().Add(-backoffFor(row.Attempts))) {
 			continue
 		}
 		attemptCtx, cancel := context.WithTimeout(ctx, attemptBudget)
@@ -136,13 +155,82 @@ func (s *Service) sweepOnce(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
+		// A rate limit mid-batch stops the batch. Working through the other
+		// nineteen is the behaviour that provoked it.
+		if s.held() {
+			return
+		}
 	}
+}
+
+// backoffFor is how long a delivery waits after N failed attempts.
+//
+// Exponential, not linear (#1158). `attempts × retryBase` gave 5 + 10 + 15 +
+// 20 minutes, so all five attempts were gone about fifty minutes after the
+// first failure — while the comment above retryBase promised an outage was
+// "retried over hours, not hammered for a minute". Doubling keeps the same
+// five attempts and makes that sentence true; the cap stops it running away.
+func backoffFor(attempts int32) time.Duration {
+	if attempts < 1 {
+		return retryBase
+	}
+	wait := retryBase << min(attempts-1, 16)
+	return min(wait, retryCap)
+}
+
+// rateLimited is Strava telling us to slow down. It is NOT a delivery
+// failure: nothing about the ride is wrong, and spending one of five
+// attempts on it turns their throttle into our data loss (#1158).
+type rateLimited struct{ after time.Duration }
+
+func (e *rateLimited) Error() string {
+	return fmt.Sprintf("rate limited, retry after %s", e.after)
+}
+
+// retryAfterOf reads the header if it is there, and otherwise picks a wait
+// long enough to be worth calling a wait. Strava's limits are quarter-hourly,
+// so a minute is the smallest number that means anything.
+func retryAfterOf(res *http.Response) time.Duration {
+	if v := res.Header.Get("Retry-After"); v != "" {
+		if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs > 0 {
+			return min(time.Duration(secs)*time.Second, maxRateLimitHold)
+		}
+	}
+	return defaultRateLimitHold
+}
+
+// holdFor parks every delivery, not just this one. A rate limit is against
+// the APPLICATION, so continuing down the batch is precisely the hammering —
+// and a backlog is exactly when a batch is full, which is exactly after an
+// outage.
+func (s *Service) holdFor(d time.Duration) {
+	s.holdMu.Lock()
+	defer s.holdMu.Unlock()
+	until := s.now().Add(d)
+	if until.After(s.holdUntil) {
+		s.holdUntil = until
+	}
+}
+
+// held says whether we are still inside a hold.
+func (s *Service) held() bool {
+	s.holdMu.Lock()
+	defer s.holdMu.Unlock()
+	return s.now().Before(s.holdUntil)
 }
 
 // deliver runs one attempt and records what happened to it.
 func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
 	activityID, err := s.upload(ctx, rideID)
+	var limit *rateLimited
 	switch {
+	case errors.As(err, &limit):
+		// No FailRideExport: being told to slow down is not the delivery
+		// failing, so it costs no attempt and the row stays pending exactly
+		// as it was. The whole sweep waits instead.
+		s.holdFor(limit.after)
+		s.log.Warn("strava rate limited, holding deliveries",
+			"for", limit.after, "ride", store.UUIDString(rideID))
 	case err != nil:
 		s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
 		message := err.Error()
@@ -361,6 +449,9 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(res.Body, 200))
+		if res.StatusCode == http.StatusTooManyRequests {
+			return 0, &rateLimited{after: retryAfterOf(res)}
+		}
 		return 0, fmt.Errorf("upload: status %d: %s", res.StatusCode, snippet)
 	}
 	var up struct {
@@ -393,6 +484,22 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) (*int
 		res, err := s.httpc.Do(req)
 		if err != nil {
 			return nil, err
+		}
+		// The status, before the body (#1158). `post` has always done this;
+		// here an error response decoded to a zero-value struct — no
+		// activity id, no error — which the loop below read as "still
+		// processing" and polled again. At a 2 s poll inside a 90 s budget
+		// that answered one 429 with about forty-five more requests, times
+		// twenty deliveries a sweep, aimed at an endpoint that had just said
+		// stop.
+		if res.StatusCode != http.StatusOK {
+			snippet, _ := io.ReadAll(io.LimitReader(res.Body, 200))
+			retryAfter := retryAfterOf(res)
+			_ = res.Body.Close()
+			if res.StatusCode == http.StatusTooManyRequests {
+				return nil, &rateLimited{after: retryAfter}
+			}
+			return nil, fmt.Errorf("upload %d status %d: %s", uploadID, res.StatusCode, snippet)
 		}
 		var status struct {
 			ActivityID *int64 `json:"activity_id"`

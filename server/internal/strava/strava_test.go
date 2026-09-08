@@ -370,3 +370,173 @@ func TestRevokeReportsARefusal(t *testing.T) {
 		t.Fatal("a 401 from revoke was swallowed — bad client credentials must not read as success")
 	}
 }
+
+// rateLimitedStrava answers the poll with 429 until `until` polls have gone
+// by, then succeeds. `polls` counts every request that reached it, which is
+// the number under test.
+func rateLimitedStrava(t *testing.T, retryAfter string) (*httptest.Server, *atomic.Int64) {
+	t.Helper()
+	var polls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /oauth/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "fresh-token", "refresh_token": "next-refresh",
+			"expires_at": time.Now().Add(time.Hour).Unix(),
+		})
+	})
+	mux.HandleFunc("POST /api/v3/uploads", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": 777})
+	})
+	mux.HandleFunc("GET /api/v3/uploads/777", func(w http.ResponseWriter, _ *http.Request) {
+		polls.Add(1)
+		if retryAfter != "" {
+			w.Header().Set("Retry-After", retryAfter)
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"message":"Rate Limit Exceeded"}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv, &polls
+}
+
+// #1158's first point, and the silent one: `await` decoded the body without
+// looking at the status, so a 429 became a zero-value struct — no activity
+// id, no error — which the loop read as "still processing" and polled again.
+// At 2 s a poll inside a 90 s budget that is ~45 requests answering one "stop".
+//
+// Nothing errors when this regresses. The delivery still fails, eventually,
+// for a plausible-looking reason; only the request count gives it away.
+func TestARateLimitIsNotPolledFortyFiveTimes(t *testing.T) {
+	st, _, rideID := seedRide(t, "strava-429")
+	srv, polls := rateLimitedStrava(t, "")
+	svc := newService(st, srv)
+	svc.pollEvery = time.Millisecond
+
+	// Bounded, because the failure this guards against is an unbounded loop:
+	// without the status check the poll runs until the attempt budget, so an
+	// unbounded context would make a regression HANG rather than fail. A test
+	// that hangs is a test nobody reads.
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	svc.deliver(ctx, rideID)
+
+	if got := polls.Load(); got != 1 {
+		t.Errorf("polled %d times after a 429; want 1 — the status must end the loop", got)
+	}
+}
+
+// …and it costs no attempt. Being told to slow down is not the delivery
+// failing, and spending one of five on it turns their throttle into our data
+// loss.
+func TestARateLimitCostsNoAttempt(t *testing.T) {
+	st, _, rideID := seedRide(t, "strava-429-attempt")
+	srv, _ := rateLimitedStrava(t, "")
+	svc := newService(st, srv)
+
+	svc.deliver(t.Context(), rideID)
+
+	row, err := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if err != nil {
+		t.Fatalf("no delivery record: %v", err)
+	}
+	if row.Attempts != 0 {
+		t.Errorf("attempts = %d after a rate limit; want 0", row.Attempts)
+	}
+	if row.State != "pending" {
+		t.Errorf("state = %q after a rate limit; want pending", row.State)
+	}
+	// And the whole sweep waits, rather than working through the other
+	// nineteen deliveries at the endpoint that just said stop.
+	if !svc.held() {
+		t.Error("a rate limit did not hold the sweep")
+	}
+}
+
+// Retry-After is honoured when it is there, and bounded when it is silly.
+func TestRetryAfterIsHonouredAndBounded(t *testing.T) {
+	for _, tc := range []struct {
+		name, header string
+		want         time.Duration
+	}{
+		{"absent", "", defaultRateLimitHold},
+		{"seconds", "120", 2 * time.Minute},
+		{"nonsense", "soon", defaultRateLimitHold},
+		{"absurd", "999999", maxRateLimitHold},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res := &http.Response{Header: http.Header{}}
+			if tc.header != "" {
+				res.Header.Set("Retry-After", tc.header)
+			}
+			if got := retryAfterOf(res); got != tc.want {
+				t.Errorf("retryAfterOf(%q) = %v, want %v", tc.header, got, tc.want)
+			}
+		})
+	}
+}
+
+// #1158's third point. `attempts × retryBase` spent all five attempts in
+// about fifty minutes, while the comment above retryBase promised an outage
+// was "retried over hours, not hammered for a minute".
+func TestTheBackoffIsMeasuredInHours(t *testing.T) {
+	var total time.Duration
+	for attempt := int32(1); attempt < maxAttempts; attempt++ {
+		step := backoffFor(attempt)
+		if attempt > 1 && step <= backoffFor(attempt-1) {
+			t.Errorf("attempt %d waits %v, no longer than the one before", attempt, step)
+		}
+		total += step
+	}
+	if total < time.Hour {
+		t.Errorf("all %d attempts spent in %v — the comment says hours", maxAttempts, total)
+	}
+	if got := backoffFor(40); got != retryCap {
+		t.Errorf("backoff runs away to %v; want it capped at %v", got, retryCap)
+	}
+}
+
+// An outage longer than the ceiling must not lose the ride. This is the
+// acceptance criterion the retry exists for: five attempts over a couple of
+// hours covers most outages and not all, and what happened then was a dead
+// row and a message telling the rider to reconnect an account nobody had
+// disconnected.
+func TestAnOutagePastTheCeilingIsRecoverable(t *testing.T) {
+	st, _, rideID := seedRide(t, "strava-outage")
+	down, _, _ := flakyStrava(t)
+	svc := newService(st, down)
+	for i := 0; i < maxAttempts; i++ {
+		svc.deliver(t.Context(), rideID)
+	}
+	row, _ := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if row.State != "failed" {
+		t.Fatalf("state = %q, want failed — the rest of this proves nothing", row.State)
+	}
+
+	// The rider presses it.
+	n, err := st.Queries.RequeueRideExport(t.Context(), db.RequeueRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if err != nil || n != 1 {
+		t.Fatalf("requeue: rows=%d err=%v", n, err)
+	}
+	back, _ := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if back.State != "pending" || back.Attempts != 0 {
+		t.Fatalf("requeued row = %+v, want pending with a clear counter", back)
+	}
+
+	// Pressing it again is refused: a delivery already queued must not be
+	// queued twice, and one that went through must never be re-sent.
+	if n, _ := st.Queries.RequeueRideExport(t.Context(), db.RequeueRideExportParams{
+		RideID: rideID, Destination: Destination,
+	}); n != 0 {
+		t.Errorf("a pending delivery was requeued again (%d rows)", n)
+	}
+}

@@ -792,6 +792,32 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 	return items, nil
 }
 
+const requeueRideExport = `-- name: RequeueRideExport :execrows
+update ride_exports
+set state = 'pending', attempts = 0, last_error = null, updated_at = now()
+where ride_id = $1 and destination = $2 and state = 'failed'
+`
+
+type RequeueRideExportParams struct {
+	RideID      pgtype.UUID
+	Destination string
+}
+
+// The rider pressing "try again" on a delivery that ran out of attempts
+// (#1158). Back to pending with the counter cleared, so the ordinary sweep
+// picks it up on its next pass and no second code path exists.
+//
+// `state = 'failed'` is the guard, not decoration: a delivery still pending
+// is already going to be tried, and one that succeeded must not be re-sent —
+// pressing a stale button twice would put the ride on Strava twice.
+func (q *Queries) RequeueRideExport(ctx context.Context, arg RequeueRideExportParams) (int64, error) {
+	result, err := q.db.Exec(ctx, requeueRideExport, arg.RideID, arg.Destination)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const roomCrewTotals = `-- name: RoomCrewTotals :one
 select coalesce(sum(seconds), 0)::bigint as seconds,
        count(distinct started_at::date) filter (
