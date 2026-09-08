@@ -279,17 +279,15 @@ existing-rooms-migrate-private rule with a regulator-tested precedent (the FTC's
 Google Buzz order, §16.3), settles the crew owner below, and leaves one item
 open for [#1106](https://github.com/natrontech/wattroom/issues/1106).
 
-**Still open — two ban levels may be one too many.** §16.4: Discord has no
-per-channel ban at all; exclusion from a channel is a deny in the same
-permission system as everything else. Keeping one ban at the crew and
-expressing "out of this room" through the per-room override this ADR already
-introduces would leave one mechanism to audit instead of two.
-[#1109](https://github.com/natrontech/wattroom/issues/1109) is evidence the
-guard is forgettable at one level, let alone two. Not decided here.
+**Two ban levels may be one too many.** §16.4: Discord has no per-channel ban
+at all; exclusion from a channel is a deny in the same permission system as
+everything else. *Settled in the third amendment below — both levels stay, and
+the single expression is what fixes the forgettable guard.*
 
 **Also from §16.2**: the single permission expression the cutover needs should
 be a **SQL view** every gate and visibility join selects from, so a new join
-that forgets it fails to compile rather than silently over-permitting.
+that forgets it fails to compile rather than silently over-permitting. *The
+third amendment below promotes this from advice to a requirement.*
 
 ## Amendment, 2026-09-08 (#1106): a crew has an owner
 
@@ -359,3 +357,69 @@ following room membership.
 A crew whose rooms are all gone has no members and nothing to own; it is
 deleted rather than left ownerless.
 
+## Amendment, 2026-09-08 (#1106): bans stay at two levels, read through one expression
+
+[RESEARCH.md §16.4](../RESEARCH.md) argued the other way, and this amendment does
+not take its recommendation. §16.4 is right about Discord — there is no
+per-channel ban, and channel exclusion is a `View Channel` deny overwrite in the
+same permission system as everything else — but the inference does not transfer,
+for three WattRoom-specific reasons that pass did not check.
+
+**1. It would silently grant a power this ADR explicitly denies.** The decision
+above lets a crew admin who has not joined a room *"manage its permissions and
+see it listed"* while forbidding them to *"rename it, **ban from it**, delete
+it, or read its contents"*. Collapsing the room ban into the override mechanism
+makes those two the same operation, so a non-member crew admin could eject
+someone from a room they have never entered by setting an override — exactly the
+power that sentence withholds. Discord has no such line to protect: its
+`ADMINISTRATOR` bypasses every overwrite anyway, so nothing there rests on the
+distinction this design is built on.
+
+**2. A ban is not only state.** `docs/SPEC.md`: a ban *"survives rejoin via link
+or code, **severs the live socket and voice on the spot**, and only the owner
+sees the ban list"*. The middle clause is imperative — a permission override is a
+fact a later query reads, while a ban also *does* something at the moment it is
+applied. Collapsing the two either loses that or smuggles an action into the
+permission layer, and the second is worse than the duplication it saves.
+
+**3. It would move a room owner's power to the crew.** SPEC's roles matrix puts
+*remove / ban / unban member* on the owner's column alone. If exclusion becomes
+an override, then whoever manages room permissions may exclude — which is crew
+admins. That is a change to who moderates a room, not a refactor, and nothing in
+the crew model asks for it.
+
+### What actually fixes the defect §16.4 points at
+
+Its evidence is real: [#1109](https://github.com/natrontech/wattroom/issues/1109)
+and [#1114](https://github.com/natrontech/wattroom/issues/1114) are four separate
+joins that each forgot `role != 'banned'`, at *one* level. But the failure is not
+that there are too many kinds of ban — it is that the guard is written out by
+hand in every query needing it, so a new join can omit it and nothing fails.
+
+**The count of levels is not what makes a guard forgettable; the count of places
+it is written is.** So the answer is §16.2's single expression, and it is now
+load-bearing rather than advice: **one `rooms_visible_to`-style view is the only
+place allowed to answer "is this person excluded here", and it reads both
+levels.** A join that forgets it selects from a table that is not there — a
+compile error instead of a silent widening. That retires the whole class at
+either level count.
+
+### The decision, and how the levels relate
+
+**Both levels stay.** A room ban is what it is today: a `memberships` role, set
+by the room's owner. A crew ban is new, set at the crew, and removes a person
+from every room in it and prevents rejoining.
+
+- A crew ban **implies** exclusion from every room in the crew. A room ban
+  implies nothing at the crew.
+- **Lifting one does not lift the other.** Unbanning at the crew restores nothing
+  a room owner decided; unbanning in a room does not readmit someone the crew
+  banned. Separate decisions by separate people, and neither may silently
+  overrule the other.
+- A crew ban carries the same imperative half at crew scope: it severs live
+  sockets and voice in every room of the crew when it is applied.
+
+**Accepted cost.** The view's definition is more complex than one predicate, and
+it becomes infrastructure the whole cutover depends on. That is the trade —
+complexity concentrated in one tested place rather than spread thin across every
+join, which is the arrangement the four bugs argue for.

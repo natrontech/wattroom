@@ -538,6 +538,10 @@ That is a real argument against the two-level design as written, and it is the s
 
 **The cheaper shape**, if #1106 wants it: keep **one** ban, at the crew, and express "out of this room" as a deny in the override mechanism ADR-0038 is introducing anyway. One ban, one permission system, one expression to audit — which is also 16.2's view, so the guard cannot be forgotten by a new join. The counter-argument is migration: room bans exist in rows today and would have to become overrides. That is a decision for the cutover, not a fact this pass settles.
 
+> **Resolved, and this recommendation was not taken** ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md), amended 2026-09-08). The Discord finding above stands; the inference from it does not, for three WattRoom-specific reasons this pass did not check. ADR-0038 lets a non-member crew admin *manage a room's permissions* while explicitly forbidding them to *ban from it* — so making exclusion an override collapses two operations the design deliberately separates, and grants the withheld one. `docs/SPEC.md` also defines a ban as more than state: it "severs the live socket and voice on the spot", which an override does not do. And SPEC's roles matrix puts ban/unban on the room owner alone, so the change would move moderation from the room to the crew.
+>
+> The correction to draw from it: **the count of ban levels is not what made the guard forgettable — the count of places it is written by hand is.** #1109 and #1114 are four joins that each omitted it at *one* level. So 16.2's single expression is the fix, and ADR-0038 now makes it load-bearing: one view is the only place allowed to answer "is this person excluded here", and it reads both levels.
+
 ### 16.5 The gap with no counterpart: nobody has an un-removable crew owner
 
 Discord's protection against permission lockout is an actor who cannot be locked out: the server **owner** can access any channel's permissions at all times, and `ADMINISTRATOR` *"overrides any potential permission overwrites, so there is nothing to do here"* (*extracted*, [permissions docs](https://docs.discord.com/developers/topics/permissions)). Lockout is a documented, recoverable state precisely because one role is outside the permission system.
@@ -565,9 +569,9 @@ Not answered by this pass, and left to #1023 rather than guessed: what the priva
 
 ### 16.8 What this leaves for #1106
 
-1. **Add a crew owner** (16.5) — the only finding here that is a gap rather than a trade-off, and the migration already supplies the row.
-2. **Decide one ban level or two** (16.4), knowing the reference implementation chose one and that #1109 shows the guard is already forgettable at one level.
-3. **Build the single permission expression as a view** (16.2), so 16.1's resolution order lives in one file.
+1. ~~**Add a crew owner** (16.5)~~ — **resolved**: ADR-0038 amended, and the migration supplies the row. Deletion turned out to force the design; the ADR has it.
+2. ~~**Decide one ban level or two** (16.4)~~ — **resolved**: both levels stay, and the single expression in (3) is what fixes the forgettable guard. See the note in 16.4 for why this section's own recommendation was not taken.
+3. **Build the single permission expression as a view** (16.2), so 16.1's resolution order lives in one file. Promoted from advice to a requirement by the ban-levels decision — it is now the thing that stops (2) being a hazard.
 4. Carry the existing-rooms-migrate-private rule (16.3) as settled — it now has a regulator-tested precedent behind it, not just caution.
 
 
