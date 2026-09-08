@@ -1,0 +1,1 @@
+- Self-hosters can turn the server's log up: `WATTROOM_LOG_LEVEL=debug` now actually prints debug lines, which it never did — an internal filter dropped every one of them before they reached the log. Unset still means info, and a rider's feedback report keeps the same lines it always did.

@@ -25,7 +25,15 @@ func NewLogRing(inner slog.Handler) *LogRing {
 	return &LogRing{inner: inner, lines: make([]string, ringSize)}
 }
 
+// ringFloor is what the REPORT keeps: Info and above, whatever stdout is set
+// to. Debug is for somebody watching a terminal, and 400 lines of it would
+// push the lines a rider's report actually needs out of the ring.
+const ringFloor = slog.LevelInfo
+
 func (l *LogRing) capture(r slog.Record) {
+	if r.Level < ringFloor {
+		return
+	}
 	line := fmt.Sprintf("%s %s %s", r.Time.UTC().Format(time.RFC3339), r.Level, r.Message)
 	r.Attrs(func(a slog.Attr) bool {
 		line += " " + a.Key + "=" + a.Value.String()
@@ -48,10 +56,17 @@ func (l *LogRing) Handle(ctx context.Context, r slog.Record) error {
 	return l.inner.Handle(ctx, r)
 }
 
-// Enabled from Info up regardless of the inner handler: the ring is the
-// report's memory and must capture even what stdout filters.
-func (l *LogRing) Enabled(_ context.Context, level slog.Level) bool {
-	return level >= slog.LevelInfo
+// Enabled is the ring's own floor OR the inner handler's — never the ring's
+// alone. Being the OUTER handler, slog asks this first, so pinning it at Info
+// dropped every Debug record before stdout was ever consulted and made every
+// `log.Debug` call in the server dead code (#1098). The cue lines #152 wrote
+// "for headless diagnosis" have never once been printed.
+//
+// The comment this replaces said the ring "must capture even what stdout
+// filters", which is true and is served by capture() running ahead of the
+// inner handler in Handle — not by refusing records here.
+func (l *LogRing) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= ringFloor || l.inner.Enabled(ctx, level)
 }
 func (l *LogRing) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &ringChild{ring: l, inner: l.inner.WithAttrs(attrs)}
@@ -73,8 +88,8 @@ func (c *ringChild) Handle(ctx context.Context, r slog.Record) error {
 	}
 	return c.inner.Handle(ctx, r)
 }
-func (c *ringChild) Enabled(_ context.Context, level slog.Level) bool {
-	return level >= slog.LevelInfo
+func (c *ringChild) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= ringFloor || c.inner.Enabled(ctx, level)
 }
 func (c *ringChild) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &ringChild{ring: c.ring, inner: c.inner.WithAttrs(attrs)}
