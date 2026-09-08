@@ -16,13 +16,21 @@
 // unless one is given, which is what exercises the offline path.
 const { test, expect, _electron: electron } = require('@playwright/test');
 const path = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
 
 /** A host that cannot resolve, so the shell lands on its offline screen. */
 const DEAD_URL = 'http://localhost:1/';
 
 async function launch(url) {
+	// Its own userData directory, which is what the single-instance lock is
+	// keyed on. Without this the lock is shared by every checkout on the
+	// machine, so `make desktop` running in one worktree makes a smoke run in
+	// another quit on startup — the same collision #552 fixed for ports and
+	// databases, and this repo runs worktrees in parallel by design.
+	const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'wattroom-smoke-'));
 	return electron.launch({
-		args: [path.join(__dirname, 'main.js')],
+		args: [path.join(__dirname, 'main.js'), `--user-data-dir=${userData}`],
 		env: { ...process.env, WATTROOM_URL: url },
 	});
 }

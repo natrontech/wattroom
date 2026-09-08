@@ -1,0 +1,214 @@
+# Build the desktop shell and publish it (#296, ADR-0037).
+#
+# NOT RUNNABLE YET — it needs secrets and a repository that do not exist. Every
+# one is listed under "Setup" below, and the workflow fails with the specific
+# missing name rather than a stack trace. This file is the checklist.
+#
+# Two entry points, deliberately:
+#
+#   workflow_dispatch  builds and leaves the installers as workflow artifacts.
+#                      Publishes nothing and needs no releases repo — this is
+#                      how you prove signing works before anything is public.
+#   tag desktop-v*     builds and publishes a release to the releases repo.
+#
+# `desktop-v*` is a second tag namespace, deliberately uncoupled from the
+# server's CalVer tags (ADR-0019, ADR-0037): the VM converges on the newest
+# server release, and the shell must not be dragged along by a deploy that
+# changed no native code.
+#
+# ── Setup ─────────────────────────────────────────────────────────────────────
+#
+# 1. Create the public repo `natrontech/wattroom-releases`. Source stays
+#    private; GitHub carries the download bandwidth and its `releases/latest`
+#    JSON is the update feed the shell polls.
+#
+# 2. Repository secrets on THIS repo:
+#
+#    RELEASES_REPO_TOKEN   a fine-grained PAT with Contents: read and write on
+#                          natrontech/wattroom-releases, and nothing else.
+#    MACOS_CERT_P12        base64 of the Developer ID Application .p12
+#                          `base64 -i cert.p12 | pbcopy`
+#    MACOS_CERT_PASSWORD   the password used when exporting that .p12.
+#                          Avoid special characters — electron-builder does not
+#                          escape it.
+#    APPLE_API_KEY_P8      base64 of the App Store Connect .p8 key. Preferred
+#                          over an Apple ID and app-specific password: it does
+#                          not expire on a password change and is scopeable.
+#    APPLE_API_KEY_ID      the key's Key ID.
+#    APPLE_API_ISSUER      the issuer UUID from App Store Connect.
+#    APPLE_TEAM_ID         the 10-character team id.
+#
+# 3. Bump `desktop/package.json` version, then tag `desktop-v<that version>`.
+#    The guard below refuses a mismatch, because the shell's update check
+#    compares `app.getVersion()` — which reads that file — against the newest
+#    release tag. If they disagree, every install nags forever.
+#
+# ── Still missing before anything goes public ─────────────────────────────────
+#
+# THE APP HAS NO ICON. A local build is proven to work and produces
+# `WattRoom-<version>-arm64.dmg`, but with Electron's default icon, because
+# `web/static/favicon.svg` is drawn for 16–32px and whether that mark is the
+# app icon at 512px is a design decision, not a build one. electron-builder
+# takes `build/icon.png` at 512×512 or larger and generates the rest. Ship an
+# installer without it and the dock shows a generic Electron atom.
+#
+# ── Why macOS refuses to build unsigned ───────────────────────────────────────
+#
+# The plan in #296 mentions a first unsigned pre-release. That is safe on
+# Windows and Linux and NOT safe on macOS: electron-builder ≥ 26.0.13
+# ad-hoc-signed builds lose camera and microphone with no prompt, a stream that
+# resolves, and no frames (RESEARCH.md §15.2, electron-builder#9529). A rider
+# would install it, join a room, and be silently mute.
+#
+# ADR-0037 therefore signs macOS from the first build, and this workflow fails
+# rather than producing a dmg with a dead microphone. For an unsigned crew
+# pre-release, run the dispatch and hand out the Windows and Linux artifacts.
+name: desktop-release
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: the tag and the shell's version agree
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#desktop-v}"
+          pkg=$(node -p "require('./desktop/package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag desktop-v$tag does not match desktop/package.json version $pkg" >&2
+            echo "The shell's update check compares app.getVersion() — which reads" >&2
+            echo "package.json — against the newest release tag. A mismatch makes" >&2
+            echo "every install nag forever. Bump the file, or retag." >&2
+            exit 1
+          fi
+          echo "version $pkg matches the tag"
+
+  build:
+    needs: guard
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # arm64 only. macos-15-intel is the last x86_64 macOS runner and
+          # retires in August 2027, so an Intel dmg is a bonus with an expiry
+          # date rather than a target to design around.
+          - os: macos-latest
+            artifact: macos-arm64
+          - os: windows-latest
+            artifact: windows-x64
+          - os: ubuntu-latest
+            artifact: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Fail here rather than four minutes later inside electron-builder, and
+      # name what is missing. See the header for why unsigned is not an option
+      # on this platform.
+      - name: macOS signing secrets are present
+        if: runner.os == 'macOS'
+        env:
+          CERT: ${{ secrets.MACOS_CERT_P12 }}
+          KEY: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          missing=""
+          [ -n "$CERT" ] || missing="$missing MACOS_CERT_P12"
+          [ -n "$KEY" ] || missing="$missing APPLE_API_KEY_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::missing macOS signing secret(s):$missing" >&2
+            echo "" >&2
+            echo "An ad-hoc-signed macOS build loses camera and microphone with no" >&2
+            echo "prompt and no error (RESEARCH.md 15.2, electron-builder#9529), so" >&2
+            echo "this refuses to produce one. ADR-0037 signs macOS from v1." >&2
+            echo "" >&2
+            echo "For an unsigned crew build, take the Windows and Linux artifacts" >&2
+            echo "from a workflow_dispatch run instead." >&2
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+      # electron@44 ships no `scripts` field, so pnpm install does not fetch
+      # the platform binary.
+      - name: fetch the Electron binary
+        working-directory: desktop
+        shell: bash
+        run: test -d node_modules/electron/dist || node node_modules/electron/install.js
+
+      # The .p8 is passed as base64; electron-builder decodes it. If a future
+      # major goes back to expecting a path, this is the line to change.
+      - name: build
+        working-directory: desktop
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # electron-builder publishes on its own when it sees a token; this
+          # workflow publishes explicitly, cross-repo, in the job below.
+          GH_TOKEN: ''
+        run: pnpm exec electron-builder --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.artifact }}
+          # The installers only. electron-builder also leaves unpacked app
+          # directories here, which are hundreds of megabytes and not shippable.
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    # Tags publish; a dispatch stops at the artifacts above, so the pipeline
+    # can be proven before anything is public.
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: publish to the releases repo
+        env:
+          # A PAT, not GITHUB_TOKEN: the release lands in a DIFFERENT repo, and
+          # the job token cannot reach it.
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::RELEASES_REPO_TOKEN is not set" >&2
+            echo "The installers built and are attached to this run; nothing was" >&2
+            echo "published. See this workflow's header for the setup steps." >&2
+            exit 1
+          fi
+          ls -la installers
+          gh release create "$TAG" installers/* \
+            --repo natrontech/wattroom-releases \
+            --title "WattRoom ${TAG#desktop-v}" \
+            --generate-notes
