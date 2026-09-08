@@ -1,0 +1,1 @@
+- fixed: the speaking ring and voice ducking now react to a teammate's voice — they never actually worked for any remote rider before this

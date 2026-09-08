@@ -235,7 +235,7 @@ function withOutputGraph<T>(
 				connect() {},
 			};
 		}
-		createMediaElementSource() {
+		createMediaStreamSource() {
 			return { connect() {}, disconnect() {} };
 		}
 		createGain() {
