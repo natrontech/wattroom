@@ -8,7 +8,10 @@
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { CHEER_ICONS, keyFor } from '$lib/icons';
+	import { keyFor } from '$lib/icons';
+	import RoomMyPrefs from './RoomMyPrefs.svelte';
+	import RoomReach from './RoomReach.svelte';
+	import RoomReactions from './RoomReactions.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { play } from '$lib/sound/cues';
 	import { device } from '$lib/device.svelte';
@@ -46,19 +49,6 @@
 		members?: Member[];
 	}
 
-	/**
-	 * Who can find the room, as one ladder (#1204). The server keeps two
-	 * columns — listed is the public directory, crewVisible the crew's
-	 * sidebar — but a room listed to strangers and hidden from its own crew
-	 * is not a state anyone means, so the page walks them as one question.
-	 */
-	type Reach = 'members' | 'crew' | 'everyone';
-	const REACH: Record<Reach, { crewVisible: boolean; listed: boolean }> = {
-		members: { crewVisible: false, listed: false },
-		crew: { crewVisible: true, listed: false },
-		everyone: { crewVisible: true, listed: true },
-	};
-
 	const slug = $derived(page.params.slug);
 	let room = $state<Room | null>(null);
 	let error = $state<string | null>(null);
@@ -73,12 +63,6 @@
 	let boardEnabled = $state(false);
 	let icon = $state('');
 	let cheers = $state<string[]>([]);
-	// The caller's own settings for this room (#1100) — theirs, not the
-	// room's, so they save through their own endpoint and an owner editing
-	// the room never touches them.
-	let notify = $state(true);
-	let onBoard = $state(true);
-	let savingPrefs = $state(false);
 
 	$effect(() => {
 		if (slug) void load(slug);
@@ -92,8 +76,6 @@
 			listed = res.data.listed;
 			crewVisible = res.data.crewVisible ?? false;
 			pack = res.data.soundPack ?? 'base';
-			notify = res.data.me?.notify ?? true;
-			onBoard = res.data.me?.onBoard ?? true;
 			boardEnabled = res.data.boardEnabled ?? false;
 			// A room from before #447 holds emoji; edited as the keys they mean,
 			// so the next save stores keys.
@@ -166,31 +148,6 @@
 		void save();
 	}
 
-	const reach = $derived<Reach>(
-		listed ? 'everyone' : crewVisible ? 'crew' : 'members',
-	);
-	function setReach(next: Reach) {
-		({ crewVisible, listed } = REACH[next]);
-		void save();
-	}
-
-	// The palette caps at 8 (docs/SPEC.md); [] tells the server "base set".
-	const MAX_CHEERS = 8;
-	const full = $derived(cheers.length >= MAX_CHEERS);
-	// The curated set — plus whatever an older room still holds that is not
-	// in it, so it can be taken out. Nothing new can be added outside the set.
-	const palette = $derived([
-		...Object.keys(CHEER_ICONS),
-		...cheers.filter((c) => !(c in CHEER_ICONS)),
-	]);
-
-	function toggleCheer(key: string) {
-		if (cheers.includes(key)) cheers = cheers.filter((c) => c !== key);
-		else if (!full) cheers = [...cheers, key];
-		else return;
-		void save();
-	}
-
 	async function remove() {
 		busy = true;
 		const res = await api(`/api/rooms/${slug}`, { method: 'DELETE' });
@@ -225,82 +182,7 @@
 	const members = $derived(memberCount(roster));
 	const joined = $derived(joinedOn(roster, account.me?.id));
 	const soundPackLabel = $derived(packLabel(packs, room?.soundPack));
-
-	// Whole object on every change, like the room's own settings: there is no
-	// partial shape to get wrong, and the response is the truth we keep.
-	async function savePrefs(next: Partial<RiderPrefs>) {
-		if (!room) return;
-		savingPrefs = true;
-		const res = await api<RiderPrefs>(`/api/rooms/${room.slug}/me`, {
-			method: 'PATCH',
-			body: JSON.stringify({ notify, onBoard, ...next }),
-		});
-		savingPrefs = false;
-		if (res.ok) {
-			notify = res.data.notify;
-			onBoard = res.data.onBoard;
-			error = null;
-		} else {
-			// Put the switches back to what the server still holds, so the UI
-			// never shows a preference that did not save.
-			notify = room.me?.notify ?? true;
-			onBoard = room.me?.onBoard ?? true;
-			error = res.error.message;
-		}
-	}
 </script>
-
-{#snippet myPrefs()}
-	<!-- The rider's own settings (#1100). Between "the owner decides for
-		     everybody" and "a global app setting" there was nothing, and the
-		     weekly board is the case that shows why: a room-level switch
-		     answers "joining must not put you on a board", and leaves the
-		     same trap standing for everyone already inside when the owner
-		     turns it on (ADR-0036, amended). -->
-	<section class="border-muted/15 mt-4 rounded-lg border p-6">
-		<h2 class="font-display font-bold">Your settings for this room</h2>
-		<p class="text-muted mt-1.5 text-xs">
-			Yours alone — nobody else sees them, and the owner cannot change them.
-		</p>
-		<label
-			class="border-muted/15 mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
-		>
-			<input
-				type="checkbox"
-				bind:checked={notify}
-				onchange={() => savePrefs({ notify })}
-				disabled={savingPrefs}
-			/>
-			<span class="min-w-0">
-				<span class="block text-sm font-medium">Notify me about this room</span>
-				<span class="text-muted block text-xs">
-					Planned sessions here reach you by email. Turning off every room's
-					mail at once lives in your profile.
-				</span>
-			</span>
-		</label>
-		<label
-			class="border-muted/15 mt-2 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3"
-		>
-			<input
-				type="checkbox"
-				bind:checked={onBoard}
-				onchange={() => savePrefs({ onBoard })}
-				disabled={savingPrefs}
-			/>
-			<span class="min-w-0">
-				<span class="block text-sm font-medium">
-					Include me on the weekly board
-				</span>
-				<span class="text-muted block text-xs">
-					{room?.boardEnabled
-						? "Off keeps your kJ off the room's board. It changes nothing else."
-						: "This room's board is off, so nothing is ranked here yet — this is what happens if the owner turns it on."}
-				</span>
-			</span>
-		</label>
-	</section>
-{/snippet}
 
 {#if error && !room}
 	<main class="grid min-h-full place-items-center px-6">
@@ -372,7 +254,11 @@
 			</p>
 		</section>
 
-		{@render myPrefs()}
+		<RoomMyPrefs
+			slug={room.slug}
+			me={room.me}
+			boardEnabled={room.boardEnabled}
+		/>
 
 		<section class="border-muted/15 mt-4 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Leave room</h2>
@@ -510,81 +396,23 @@
 			</label>
 		</section>
 
-		<!-- The one control that takes a room from private to findable — by
-		     its crew (#1204, ADR-0038) or by people who have never been in it
-		     (#1118, ADR-0039). Worded as the privacy choice it is rather than
-		     as two checkboxes, and it says what each step actually does —
-		     including the half riders assume and should not: being findable
-		     is not being readable. -->
-		<section class="panel mt-3 p-6">
-			<h2 class="font-display font-bold">Who can find this room</h2>
-			<p class="text-muted mt-1.5 text-xs">
-				Finding is not joining and it is not reading. Whichever you pick, the
-				chat, the members and the numbers stay for people who are actually in
-				here.
-			</p>
-			<div
-				class="mt-3 space-y-2"
-				role="radiogroup"
-				aria-label="who can find this room"
-			>
-				{#each [{ key: 'members', label: 'Its members', hint: 'Its members, and the crew-mates you let in from the Members place. The rest of the crew sees that it exists and that it is private — not a way in.' }, { key: 'crew', label: room.crew ? `The crew — ${room.crew.name}` : 'The crew', hint: 'Everyone in the crew sees it in their sidebar and can walk in without a code. This is how a new room starts.' }, { key: 'everyone', label: 'Everyone on WattRoom', hint: 'Anyone signed in can find it by name in the directory and join — which puts them in the crew. They see its name and icon first, nothing about who rides here or what you did.' }] as const as step (step.key)}
-					<button
-						role="radio"
-						aria-checked={reach === step.key}
-						onclick={() => setReach(step.key)}
-						disabled={busy}
-						class="flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left {reach ===
-						step.key
-							? 'ring-neon border-neon/40 bg-neon/10 ring-1'
-							: 'border-muted/15'}"
-					>
-						<span class="min-w-0">
-							<span class="block text-sm font-medium">{step.label}</span>
-							<span class="text-muted block text-xs">{step.hint}</span>
-						</span>
-					</button>
-				{/each}
-			</div>
-		</section>
+		<RoomReach
+			bind:listed
+			bind:crewVisible
+			crewName={room.crew?.name}
+			{busy}
+			onchange={save}
+		/>
 
 		<!-- An owner is a rider too: they are on their own room's board, and
 		     get their own room's mail. Same block as the member view. -->
-		{@render myPrefs()}
+		<RoomMyPrefs
+			slug={room.slug}
+			me={room.me}
+			boardEnabled={room.boardEnabled}
+		/>
 
-		<section class="panel mt-3 p-6">
-			<h2 class="font-display font-bold">Reactions</h2>
-			<p class="text-muted mt-1.5 text-xs">
-				The room's reaction vocabulary — cheers mid-ride, reactions on chat. Up
-				to {MAX_CHEERS}; the first four are the mid-ride buttons.
-			</p>
-			<div class="mt-3 flex flex-wrap items-center gap-1.5">
-				{#each palette as key (key)}
-					{@const pressed = cheers.includes(key)}
-					<button
-						type="button"
-						aria-pressed={pressed}
-						aria-label={key}
-						title={pressed ? `remove ${key}` : full ? 'the set is full' : key}
-						onclick={() => toggleCheer(key)}
-						disabled={busy || (!pressed && full)}
-						class="border-muted/25 rounded-full border p-2 {pressed
-							? 'ring-neon bg-neon/15 ring-1'
-							: 'hover:border-muted/60'} disabled:cursor-not-allowed disabled:opacity-40"
-						><CheerIcon cheer={key} size={18} /></button
-					>
-				{/each}
-				<span class="text-muted ml-1 text-xs tabular-nums"
-					>{cheers.length} of {MAX_CHEERS}</span
-				>
-			</div>
-			<button
-				onclick={() => ((cheers = []), void save())}
-				disabled={busy}
-				class="btn-link mt-3 text-xs disabled:opacity-40"
-				>Reset to the base set</button
-			>
-		</section>
+		<RoomReactions bind:cheers {busy} onchange={save} />
 
 		<!-- Roles and bans are the Members place's (#703, #666): the roster with
 		     its menu is there, and a second copy here drifted (#1265). One line
