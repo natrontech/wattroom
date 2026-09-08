@@ -65,6 +65,9 @@
     },
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
   },
-  "author": "Natron Tech AG",
+  "author": {
+    "name": "Natron Tech AG",
+    "email": "info@natron.io"
+  },
   "repository": "https://github.com/natrontech/wattroom"
 }
