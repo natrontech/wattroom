@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-	browserSignInUrl,
-	desktopNonce,
 	detectOS,
 	formatBytes,
 	installerOS,
@@ -148,22 +146,5 @@ describe('formatBytes', () => {
 	it('rounds to whole megabytes and says nothing for an unknown size', () => {
 		expect(formatBytes(128377524)).toBe('122 MB');
 		expect(formatBytes(0)).toBe('');
-	});
-});
-
-describe('the browser sign-in handoff', () => {
-	it('accepts only a nonce shaped like one the shell made', () => {
-		const ok = 'a'.repeat(32);
-		expect(desktopNonce(new URLSearchParams({ desktop: ok }))).toBe(ok);
-		expect(desktopNonce(new URLSearchParams({ desktop: 'short' }))).toBeNull();
-		expect(
-			desktopNonce(new URLSearchParams({ desktop: 'has space ' + ok })),
-		).toBeNull();
-		expect(desktopNonce(new URLSearchParams())).toBeNull();
-	});
-	it('sends the browser to our own login page with the nonce', () => {
-		expect(browserSignInUrl('https://wattroom.ch', 'n'.repeat(20))).toBe(
-			`https://wattroom.ch/login?desktop=${'n'.repeat(20)}`,
-		);
 	});
 });

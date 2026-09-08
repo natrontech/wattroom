@@ -18,19 +18,19 @@ const {
 	ipcMain,
 	powerSaveBlocker,
 	shell,
-} = require("electron");
-const path = require("node:path");
+} = require('electron');
+const path = require('node:path');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
-const APP_URL = process.env.WATTROOM_URL || "https://wattroom.ch";
+const APP_URL = process.env.WATTROOM_URL || 'https://wattroom.ch';
 const APP_ORIGIN = new URL(APP_URL).origin;
 
 // app.getVersion() returns ELECTRON's version when unpackaged, so it would
 // report 44.x in dev and 0.1.0 in a build — and the update check compares this
 // against the newest release tag. Read the manifest directly: main is not
 // sandboxed, and this is the same number in both.
-const SHELL_VERSION = require("./package.json").version;
+const SHELL_VERSION = require('./package.json').version;
 
 // The last trainer a rider chose, so the chooser can skip itself next time.
 // In memory only: a file would be state to migrate, and re-picking once per
@@ -51,10 +51,10 @@ function createWindow() {
 		width: 1280,
 		height: 860,
 		minWidth: 380,
-		backgroundColor: "#0a0118", // --color-surface, so the first paint is not white
+		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
 		webPreferences: {
-			preload: path.join(__dirname, "preload.js"),
+			preload: path.join(__dirname, 'preload.js'),
 			// The preload is sandboxed and cannot read package.json, so the
 			// version arrives as a switch it can parse off process.argv.
 			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
@@ -72,7 +72,7 @@ function createWindow() {
 		},
 	});
 
-	win.once("ready-to-show", () => win.show());
+	win.once('ready-to-show', () => win.show());
 	installHandlers(win);
 	load(win);
 	return win;
@@ -93,16 +93,14 @@ function installHandlers(win) {
 	//    that forgets preventDefault the FIRST device is selected silently —
 	//    which in a room of advertising sensors is someone else's trainer.
 	//    RESEARCH.md §15.1.
-	win.webContents.on("select-bluetooth-device", (event, devices, callback) => {
+	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
 		event.preventDefault();
 
 		if (devices.length === 0) {
-			callback(""); // rejects in the renderer; media-error.ts has copy for it
+			callback(''); // rejects in the renderer; media-error.ts has copy for it
 			return;
 		}
-		const remembered = devices.find(
-			(d) => d.deviceId === lastBluetoothDeviceId,
-		);
+		const remembered = devices.find((d) => d.deviceId === lastBluetoothDeviceId);
 		if (remembered) {
 			callback(remembered.deviceId);
 			return;
@@ -111,14 +109,14 @@ function installHandlers(win) {
 		// FTMS/HR/CSC, so everything offered here is pairable.
 		chooseFrom(
 			win,
-			"Pair a sensor",
+			'Pair a sensor',
 			devices.map((d) => ({
 				label: d.deviceName || d.deviceId,
 				value: d.deviceId,
 			})),
 		).then((deviceId) => {
 			if (deviceId) lastBluetoothDeviceId = deviceId;
-			callback(deviceId || "");
+			callback(deviceId || '');
 		});
 	});
 
@@ -126,17 +124,15 @@ function installHandlers(win) {
 	//    hands camera and microphone to anything that gets the renderer to
 	//    navigate. Deny by default, allow our own origin the things a room
 	//    actually needs.
-	const ALLOWED = new Set(["media", "clipboard-sanitized-write", "fullscreen"]);
+	const ALLOWED = new Set(['media', 'clipboard-sanitized-write', 'fullscreen']);
 	ses.setPermissionRequestHandler((contents, permission, callback) => {
 		callback(isOurs(contents.getURL()) && ALLOWED.has(permission));
 	});
 	// The check half: most web APIs check first and only request if denied, so
 	// a handler on one and not the other is a gate with a hole in it.
-	ses.setPermissionCheckHandler(
-		(contents, permission, origin) =>
-			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? "")) &&
-			ALLOWED.has(permission),
-	);
+	ses.setPermissionCheckHandler((contents, permission, origin) =>
+		(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
+		ALLOWED.has(permission));
 
 	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
 	//    without this the stage (#280) silently breaks. It must also survive
@@ -145,12 +141,12 @@ function installHandlers(win) {
 	ses.setDisplayMediaRequestHandler(
 		(request, callback) => {
 			desktopCapturer
-				.getSources({ types: ["screen", "window"] })
+				.getSources({ types: ['screen', 'window'] })
 				.then((sources) => {
 					if (sources.length === 0) return callback({});
 					return chooseFrom(
 						win,
-						"Share a screen",
+						'Share a screen',
 						sources.map((s) => ({ label: s.name, value: s.id })),
 					).then((id) => {
 						const picked = sources.find((s) => s.id === id);
@@ -162,7 +158,7 @@ function installHandlers(win) {
 						// tap on macOS 14.2+ and WASAPI on Windows. Asked for
 						// alongside the video rather than instead of it — the room
 						// hears the machine that is showing it something.
-						callback(picked ? { video: picked, audio: "loopback" } : {});
+						callback(picked ? { video: picked, audio: 'loopback' } : {});
 					});
 				})
 				.catch(() => callback({}));
@@ -177,16 +173,16 @@ function installHandlers(win) {
 		//
 		// Electron ignores the flag below macOS 15, where the app picker is
 		// still the only one, so this is safe to set for all of darwin.
-		{ useSystemPicker: process.platform === "darwin" },
+		{ useSystemPicker: process.platform === 'darwin' },
 	);
 
 	// 4. Navigation. Remote content that can navigate the shell anywhere is the
 	//    same hole as the permission default, one step removed.
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (/^https?:/.test(url)) void shell.openExternal(url);
-		return { action: "deny" };
+		return { action: 'deny' };
 	});
-	win.webContents.on("will-navigate", (event, url) => {
+	win.webContents.on('will-navigate', (event, url) => {
 		if (isOurs(url)) return;
 		event.preventDefault();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
@@ -194,15 +190,12 @@ function installHandlers(win) {
 
 	// The server-down screen. A shell whose remote never answers is a white
 	// rectangle with no way out, which errors.md forbids.
-	win.webContents.on(
-		"did-fail-load",
-		(event, code, description, url, isMain) => {
-			if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
-			void win.webContents.loadFile(path.join(__dirname, "offline.html"), {
-				query: { url: APP_URL, reason: description || String(code) },
-			});
-		},
-	);
+	win.webContents.on('did-fail-load', (event, code, description, url, isMain) => {
+		if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
+		void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
+			query: { url: APP_URL, reason: description || String(code) },
+		});
+	});
 }
 
 /**
@@ -216,83 +209,22 @@ function installHandlers(win) {
 async function chooseFrom(win, title, options) {
 	const shown = options.slice(0, 8);
 	const { response } = await dialog.showMessageBox(win, {
-		type: "question",
+		type: 'question',
 		title,
 		message: title,
-		buttons: [...shown.map((o) => o.label), "Cancel"],
+		buttons: [...shown.map((o) => o.label), 'Cancel'],
 		cancelId: shown.length,
 		defaultId: 0,
 	});
 	return shown[response]?.value ?? null;
 }
 
-// wattroom:// — the way back into the app from the system browser (#1188).
-//
-// Sign-in happens in the browser, because it cannot happen here: Electron has
-// no WebAuthn UI, so a passkey request never resolves, and Google refuses
-// OAuth from an Electron window outright. The web app opens
-// /login?desktop=<nonce> in the browser, the rider signs in there however
-// they like, and the page comes back through wattroom://auth/<token>. All
-// the shell does with it is load /login?handoff=<token> on its own origin;
-// the page redeems the token with the nonce it kept, and the server mints
-// this window its own session. Nothing else is accepted: an unknown path or
-// an odd-looking token is dropped, not loaded.
-const DEEP_LINK_TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
-
-function deepLinkTarget(link) {
-	let url;
-	try {
-		url = new URL(link);
-	} catch {
-		return null;
-	}
-	if (url.protocol !== "wattroom:" || url.hostname !== "auth") return null;
-	const token = url.pathname.replace(/^\//, "");
-	if (!DEEP_LINK_TOKEN.test(token)) return null;
-	// APP_ORIGIN, not APP_URL: a WATTROOM_URL with a trailing slash made this
-	// `//login`, which the smoke caught.
-	return `${APP_ORIGIN}/login?handoff=${encodeURIComponent(token)}`;
-}
-
-// macOS delivers the link before the window exists when the app was not
-// running; hold it until ready-to-show.
-let pendingDeepLink = null;
-
-function openDeepLink(link) {
-	const target = deepLinkTarget(link);
-	if (!target) return;
-	const [win] = BrowserWindow.getAllWindows();
-	if (!win) {
-		pendingDeepLink = target;
-		return;
-	}
-	if (win.isMinimized()) win.restore();
-	win.focus();
-	win.loadURL(target).catch(() => {
-		/* did-fail-load shows the offline screen */
-	});
-}
-
-const deepLinkIn = (argv) => argv.find((a) => a.startsWith("wattroom://"));
-
-app.setAsDefaultProtocolClient("wattroom");
-app.on("open-url", (event, link) => {
-	event.preventDefault();
-	openDeepLink(link);
-});
-
 // One instance. Without this every wattroom:// link opens a second window
-// against the same session; on Windows and Linux the link arrives as the
-// second instance's argv.
+// against the same session, and the deep-link work later depends on it.
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
-	app.on("second-instance", (_event, argv) => {
-		const link = deepLinkIn(argv);
-		if (link) {
-			openDeepLink(link);
-			return;
-		}
+	app.on('second-instance', () => {
 		const [win] = BrowserWindow.getAllWindows();
 		if (!win) return;
 		if (win.isMinimized()) win.restore();
@@ -300,22 +232,14 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.whenReady().then(() => {
-		const win = createWindow();
-		// A cold start from a link, on Windows and Linux.
-		const link = deepLinkIn(process.argv);
-		if (link) pendingDeepLink = deepLinkTarget(link);
-		if (pendingDeepLink) {
-			const target = pendingDeepLink;
-			pendingDeepLink = null;
-			win.once("ready-to-show", () => void win.loadURL(target).catch(() => {}));
-		}
-		app.on("activate", () => {
+		createWindow();
+		app.on('activate', () => {
 			if (BrowserWindow.getAllWindows().length === 0) createWindow();
 		});
 	});
 
-	app.on("window-all-closed", () => {
-		if (process.platform !== "darwin") app.quit();
+	app.on('window-all-closed', () => {
+		if (process.platform !== 'darwin') app.quit();
 	});
 }
 
@@ -328,7 +252,7 @@ let sleepBlockerId = null;
 function keepAwake(on) {
 	if (on) {
 		if (sleepBlockerId === null) {
-			sleepBlockerId = powerSaveBlocker.start("prevent-display-sleep");
+			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
 		}
 		return;
 	}
@@ -338,18 +262,18 @@ function keepAwake(on) {
 	}
 }
 
-ipcMain.on("wattroom:keep-awake", (_event, on) => keepAwake(Boolean(on)));
+ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
 
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
-app.on("browser-window-created", (_e, win) => {
-	win.webContents.on("render-process-gone", () => keepAwake(false));
-	win.on("closed", () => keepAwake(false));
+app.on('browser-window-created', (_e, win) => {
+	win.webContents.on('render-process-gone', () => keepAwake(false));
+	win.on('closed', () => keepAwake(false));
 });
-app.on("will-quit", () => keepAwake(false));
+app.on('will-quit', () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
-ipcMain.on("wattroom:retry", (event) => {
+ipcMain.on('wattroom:retry', (event) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (win) load(win);
 });

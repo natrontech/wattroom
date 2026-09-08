@@ -62,7 +62,7 @@ liked as (
 select t.id, t.title, t.artist, w.weight
 from tracks t
 join memberships m on m.user_id = t.uploaded_by and m.room_id = $1
-    and m.role != 'banned'
+join visible_rooms v on v.room_id = m.room_id and v.user_id = m.user_id
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (
@@ -168,6 +168,11 @@ type SmartShuffleTracksRow struct {
 // The last few tracks this room let finish. Bounded, and by COUNT rather
 // than by time: a room's taste is the last things it enjoyed, and a room
 // that rode yesterday should not come back to a blank slate.
+// The shelves of the room's own MEMBERS, confirmed on purpose in #1103 over
+// the crew: crew membership follows room membership, so a crew-wide draw
+// would put a shelf into the rotation of rooms its owner never entered.
+// Members who may still enter, through visible_rooms — a crew-banned member
+// keeps their row but not their say in what the room plays (ADR-0038).
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
 	rows, err := q.db.Query(ctx, smartShuffleTracks,
 		arg.RoomID,

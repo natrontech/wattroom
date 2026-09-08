@@ -255,10 +255,10 @@ select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms,
 where t.id = $1
   and (t.uploaded_by = $2
        or exists (
-           select 1 from memberships mine
-           join memberships theirs on theirs.room_id = mine.room_id
-           where mine.user_id = $2 and mine.role != 'banned'
-             and theirs.user_id = t.uploaded_by and theirs.role != 'banned'
+           select 1 from visible_rooms mine
+           join visible_rooms theirs on theirs.room_id = mine.room_id
+           where mine.user_id = $2
+             and theirs.user_id = t.uploaded_by
        ))
 `
 
@@ -269,7 +269,7 @@ type TrackPlayableByParams struct {
 
 // The audio endpoint's own resolver (#1095), and deliberately WIDER than
 // GetTrack: a track is playable by whoever uploaded it, and by anyone who
-// shares a room with them.
+// may enter a room its uploader may enter.
 //
 // It has to be. A pool track on a room's deck is fetched by EVERY rider in
 // that room from this endpoint (`AudioDeck.svelte`), so scoping it to the
@@ -281,6 +281,15 @@ type TrackPlayableByParams struct {
 // own track for the room by hand. It does NOT mean reading their library —
 // list, search, facets, edit and delete all stay on GetTrack, uploader-only.
 // A caller still needs the track's uuid, which only the deck hands out.
+//
+// "Shares a room" is asked of visible_rooms since ADR-0038 (#1103, Phase 2 of
+// #1095): the pair may both ENTER one room, which is the crew scope the ADR
+// intends — a room open to its crew counts for everyone in the crew — and is
+// the same rule person-visibility follows (#1135). It also retires the
+// hand-written `role != 'banned'` this query carried: a crew ban leaves the
+// membership row in place, so that guard let a crew-banned rider keep
+// fetching a crew-mate's bytes. Widening only, per the issue: nobody who
+// could hear a track before loses it, except the banned.
 func (q *Queries) TrackPlayableBy(ctx context.Context, arg TrackPlayableByParams) (Track, error) {
 	row := q.db.QueryRow(ctx, trackPlayableBy, arg.ID, arg.UserID)
 	var i Track

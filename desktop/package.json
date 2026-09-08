@@ -1,81 +1,73 @@
 {
-	"name": "wattroom-desktop",
-	"productName": "WattRoom",
-	"version": "2026.09.2",
-	"private": true,
-	"description": "The WattRoom desktop shell \u2014 a window around the deployed web app.",
-	"license": "AGPL-3.0-only",
-	"main": "main.js",
-	"packageManager": "pnpm@10.32.1",
-	"scripts": {
-		"start": "electron .",
-		"dist": "electron-builder"
-	},
-	"devDependencies": {
-		"@playwright/test": "^1.63.0",
-		"electron": "^44.0.0",
-		"electron-builder": "26.16.1"
-	},
-	"build": {
-		"appId": "ch.wattroom.desktop",
-		"productName": "WattRoom",
-		"files": [
-			"main.js",
-			"preload.js",
-			"offline.html",
-			"package.json"
-		],
-		"mac": {
-			"category": "public.app-category.healthcare-fitness",
-			"target": [
-				{
-					"target": "dmg",
-					"arch": [
-						"universal"
-					]
-				}
-			],
-			"hardenedRuntime": true,
-			"entitlements": "build/entitlements.mac.plist",
-			"entitlementsInherit": "build/entitlements.mac.inherit.plist",
-			"extendInfo": {
-				"NSBluetoothAlwaysUsageDescription": "WattRoom connects to your trainer and heart-rate strap over Bluetooth.",
-				"NSMicrophoneUsageDescription": "WattRoom uses your microphone for the room's voice channel.",
-				"NSCameraUsageDescription": "WattRoom uses your camera so your crew can see you ride.",
-				"NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the room."
-			},
-			"notarize": true
-		},
-		"win": {
-			"target": [
-				{
-					"target": "nsis",
-					"arch": [
-						"x64"
-					]
-				}
-			]
-		},
-		"linux": {
-			"target": [
-				"AppImage",
-				"deb"
-			],
-			"category": "Utility"
-		},
-		"artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-		"protocols": [
-			{
-				"name": "WattRoom",
-				"schemes": [
-					"wattroom"
-				]
-			}
-		]
-	},
-	"author": {
-		"name": "Natron Tech AG",
-		"email": "info@natron.io"
-	},
-	"repository": "https://github.com/natrontech/wattroom"
+  "name": "wattroom-desktop",
+  "productName": "WattRoom",
+  "version": "2026.09.2",
+  "private": true,
+  "description": "The WattRoom desktop shell — a window around the deployed web app.",
+  "license": "AGPL-3.0-only",
+  "main": "main.js",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "electron": "^44.0.0",
+    "electron-builder": "26.16.1"
+  },
+  "build": {
+    "appId": "ch.wattroom.desktop",
+    "productName": "WattRoom",
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.healthcare-fitness",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "WattRoom connects to your trainer and heart-rate strap over Bluetooth.",
+        "NSMicrophoneUsageDescription": "WattRoom uses your microphone for the room's voice channel.",
+        "NSCameraUsageDescription": "WattRoom uses your camera so your crew can see you ride.",
+        "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the room."
+      },
+      "notarize": true
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  },
+  "author": {
+    "name": "Natron Tech AG",
+    "email": "info@natron.io"
+  },
+  "repository": "https://github.com/natrontech/wattroom"
 }
