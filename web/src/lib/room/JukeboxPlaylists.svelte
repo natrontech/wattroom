@@ -2,6 +2,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';
@@ -149,8 +150,8 @@
 				>
 			</div>
 			<p class="text-muted mt-1 text-[10px] leading-relaxed">
-				Plays the active room playlist whenever the deck is idle: when someone
-				joins, and again each time it runs out.
+				Plays something whenever the deck is idle: when someone joins, and again
+				each time it runs out.
 				{#if !canManage}Only the room's coach or owner can change it.{/if}
 			</p>
 			<div
@@ -176,8 +177,25 @@
 						? 'ring-neon bg-neon/15 ring-1'
 						: 'text-muted'}"><Shuffle size={12} /> Shuffled</button
 				>
+				<button
+					role="radio"
+					aria-checked={autoplay.order === 'smart'}
+					onclick={() => saveAutoplay({ order: 'smart' })}
+					disabled={savingAutoplay || !canManage}
+					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'smart'
+						? 'ring-neon bg-neon/15 ring-1'
+						: 'text-muted'}"><Sparkles size={12} /> Smart</button
+				>
 			</div>
-			{#if !autoplay.activePlaylistId}
+			<!-- Smart draws from the music pool, so an active playlist is not
+			     what it is missing — saying so would send a rider to set one
+			     that this mode then ignores. -->
+			{#if autoplay.order === 'smart'}
+				<p class="text-muted mt-1.5 text-[10px]">
+					Picks from the music library, quietest on what this room just played
+					or keeps skipping.
+				</p>
+			{:else if !autoplay.activePlaylistId}
 				<p class="text-muted mt-1.5 text-[10px]">
 					No active playlist yet — set one from a room playlist's menu.
 				</p>

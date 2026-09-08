@@ -51,6 +51,20 @@ type AutoplaySource interface {
 	Autoplay(ctx context.Context, slug string) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
 }
 
+// TrackHistory hears what a room did with a pool track (#269, ADR-0015):
+// played it through, or skipped past it. Defined here, where it is consumed;
+// the playlists service implements it. Nil means no history is kept, and
+// smart shuffle degrades to a plain random draw — which is exactly what an
+// empty history already weights to.
+//
+// Called outside every room lock, from the goroutine that ran the deck
+// command, and BEFORE the same command's autoplay refill: the implementation
+// may block briefly on its own write, and should, or the track that just
+// ended is not yet in the history the refill weights against.
+type TrackHistory interface {
+	TrackEnded(ctx context.Context, slug, trackID, queuedBy string, skipped bool)
+}
+
 // MinRideSamples is the saver's threshold: fewer than a minute of samples is
 // a misclick, not a ride — the same rule the client's crash recovery uses.
 const MinRideSamples = 60
@@ -125,6 +139,7 @@ type Hub struct {
 	// dry enqueues, one worker reads the room's active playlist and seeds
 	// the deck.
 	playlists AutoplaySource
+	history   TrackHistory
 	autoplays chan autoplayJob
 }
 
@@ -160,6 +175,10 @@ func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
 // SetPlaylistSource wires autoplay's read side in (#627), like SetChatKeeper.
 // Nil stays valid — autoplay just never fires.
 func (h *Hub) SetPlaylistSource(k AutoplaySource) { h.playlists = k }
+
+// SetTrackHistory wires the play/skip log smart shuffle reads (#269) — like
+// every other keeper, before the first room exists.
+func (h *Hub) SetTrackHistory(k TrackHistory) { h.history = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
@@ -199,6 +218,21 @@ func (h *Hub) autoplayWorker() {
 		}
 		job.rm.applyAutoplay(fixed, tracks, ok, h.now())
 	}
+}
+
+// recordTrackEvent logs one pool track the deck finished with (#269). The
+// deck has already moved on, so nothing is waiting on this — but it runs
+// before the refill that reads it back, which is why it is not fired into a
+// goroutine. The timeout bounds a rider's WS read loop; a history line lost
+// to a slow database costs one nudge in a weighting, so it is logged and
+// dropped rather than retried.
+func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
+	if h.history == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	h.history.TrackEnded(ctx, slug, ev.trackID, ev.queuedBy, ev.skipped)
 }
 
 // triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
@@ -366,6 +400,7 @@ func (h *Hub) room(slug string) *room {
 		rm = newRoom(slug)
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug, true) }
+		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
 		rm.xp = h.xp
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed

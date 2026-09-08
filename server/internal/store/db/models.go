@@ -264,6 +264,15 @@ type Track struct {
 	Tags       []string
 }
 
+type TrackPlay struct {
+	ID       pgtype.UUID
+	TrackID  pgtype.UUID
+	RoomID   pgtype.UUID
+	QueuedBy pgtype.UUID
+	Skipped  bool
+	At       pgtype.Timestamptz
+}
+
 type User struct {
 	ID                 pgtype.UUID
 	DisplayName        string

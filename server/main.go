@@ -182,7 +182,8 @@ func main() {
 		playlistsService := playlists.New(st, authService, roomsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)
-		playlistsService.SetLive(h) // #627
+		h.SetTrackHistory(playlistsService) // #269, what smart shuffle weights by
+		playlistsService.SetLive(h)         // #627
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.

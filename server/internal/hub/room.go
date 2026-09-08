@@ -65,6 +65,11 @@ type room struct {
 	// Asks autoplay to refill the deck after a command ran it dry (#676).
 	// Called outside the room lock; nil for a room nobody wired.
 	deckIdled func()
+	// Records a pool track the deck just played through or skipped (#269),
+	// the substrate smart shuffle weights by. Called outside the room lock
+	// and BEFORE deckIdled, so the track that just ended is already in the
+	// history the refill weights against; nil for a room nobody wired.
+	deckPlayed func(trackEvent)
 	// Voice (#467): who is in the channel now, folded to rider ids by the
 	// hub from LiveKit's state, and how long each of them was in it while
 	// the timeline ran — the session voice bonus's input. Bounded by the
@@ -382,9 +387,14 @@ func (rm *room) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 	}
 	played := rm.music.finished
 	rm.music.finished = nil
+	ev := rm.music.event
+	rm.music.event = nil
 	idled := rm.music.idled
 	rm.music.idled = false
 	rm.mu.Unlock()
+	if ev != nil && rm.deckPlayed != nil {
+		rm.deckPlayed(*ev)
+	}
 	if idled && rm.deckIdled != nil {
 		rm.deckIdled()
 	}
