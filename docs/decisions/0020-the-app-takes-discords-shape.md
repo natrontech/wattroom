@@ -485,6 +485,16 @@ is part of the shape rather than a later enhancement.
   column spells out, and the eye still has to work out which strip a click
   belongs to.
 
+**Naming is not settled by this amendment.** #1023 asked for the word *crew*
+itself to be argued — the request was *"also regarding namings etc."* — and
+that argument did not happen. It matters more than it sounds: ADR-0038 records
+that the word is already in use meaning the opposite thing (`docs/SPEC.md`'s
+*"a room is a crew, not an attendance register"*, and the shipped `crew-chief`
+medal slug, which is a data migration rather than a string change). This
+amendment settles the **shape** and takes no position on what the switch calls
+the thing it switches between. The cheapest moment to change the name is before
+a sidebar header ships with it in.
+
 **The evidence was not unanimous, and pretending otherwise would age badly.**
 Collapsed, the indent option is the *most* compact of the three and still
 answers "where is everyone" through a per-crew pulse — a genuinely good state,
