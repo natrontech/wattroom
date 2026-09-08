@@ -139,7 +139,11 @@
 
 		{#if crew.code}
 			<h2 class="eyebrow mt-8">invite</h2>
-			<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+			<!-- Stacked on a phone: the sentence between the code and the
+			     button squeezed into a six-line column at 375px. -->
+			<div
+				class="panel mt-2 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center"
+			>
 				<span class="min-w-0">
 					<span class="eyebrow">crew code</span>
 					<span class="font-display block text-lg font-bold tracking-widest"
@@ -152,7 +156,7 @@
 				</span>
 				<button
 					onclick={() => crew?.code && copyInviteLink(crew.code)}
-					class="btn btn-secondary btn-xs shrink-0"
+					class="btn btn-secondary btn-xs shrink-0 self-start sm:self-auto"
 					><Copy size={13} /> Copy invite link</button
 				>
 			</div>
