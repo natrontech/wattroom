@@ -74,7 +74,9 @@ export const crews: MockCrew[] = [
 				name: 'Sprint Club',
 				icon: 'rocket',
 				members: 6,
-				access: 'open',
+				// Private with the viewer inside — what every room looks like the day
+				// after the migration, and the only room here that draws that mark.
+				access: 'private',
 			},
 			{
 				slug: 'coaches',
