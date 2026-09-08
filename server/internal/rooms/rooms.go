@@ -159,6 +159,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/rooms/{slug}/me", s.handleSetMyPrefs)
 	mux.HandleFunc("POST /api/rooms/{slug}/role", s.handleSetRole)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
+	s.registerCrews(mux)
 }
 
 // --- responses ---
@@ -193,6 +194,10 @@ type roomCrewJSON struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon,omitempty"`
+	// What the caller is to the crew: owner | admin | member. The switcher's
+	// owner mark reads it; it is small because the guarantee behind it is
+	// about permissions, not a reading power (ADR-0038, second amendment).
+	Role string `json:"role,omitempty"`
 }
 
 // One rider's week on a room's ordered board (#995, ADR-0036). Category is a
@@ -224,6 +229,10 @@ type memberJSON struct {
 	// the room's page can show the crew what each other have done. Earned is
 	// all there is: progress never leaves its owner.
 	Badges []string `json:"badges,omitempty"`
+	// A banned row that is ALSO banned at the crew (#1150): the owner's Unban
+	// here lifts the room ban and nothing else, and the row has to say so
+	// before they click expecting it to be over. Owner-only, like the row.
+	CrewBanned bool `json:"crewBanned,omitempty"`
 }
 
 type medalJSON struct {
@@ -282,6 +291,10 @@ type roomJSON struct {
 	// togetherJSON above gave up (#1178) — the word means the layer above a
 	// room now, and one payload cannot spend it on both.
 	Crew *roomCrewJSON `json:"crew,omitempty"`
+	// What the caller may do here without opening it (#1149): open |
+	// private | locked | admin. List view only — a room you are looking at
+	// has already answered by rendering.
+	Access string `json:"access,omitempty"`
 	// Whether this room has turned its ordered board on (ADR-0036). Off is the
 	// default and stays the default: being in a room must not put a rider on a
 	// board. Members only, like the setting it mirrors.
@@ -314,6 +327,19 @@ type lastChatJSON struct {
 	// The line was an image (#279) — it has no text to preview.
 	HasImage bool  `json:"hasImage,omitempty"`
 	At       int64 `json:"at"`
+}
+
+// crewRoleWord turns the two booleans the list query carries into the word
+// the payload speaks. Member is the derived case — being in the room at all.
+func crewRoleWord(owner, admin bool) string {
+	switch {
+	case owner:
+		return "owner"
+	case admin:
+		return "admin"
+	default:
+		return "member"
+	}
 }
 
 // --- handlers ---
@@ -379,8 +405,25 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"The room could not be created. Try again.")
 		return
 	}
+	// New rooms are created inside a crew and are open to it (ADR-0038):
+	// the rider's own, made with their first room. Crew-visible is set here
+	// and not by the column's default, which is false so that a rolled-back
+	// image and a forgotten INSERT both fail towards private.
+	crew, err := s.crewFor(r.Context(), user)
+	if err == nil {
+		err = s.store.Queries.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
+			ID: room.ID, CrewID: crew.ID, CrewVisible: true,
+		})
+	}
+	if err != nil {
+		s.log.Error("room crew placement failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The room could not be created. Try again.")
+		return
+	}
 	httpx.WriteJSON(w, http.StatusCreated, roomJSON{
 		Slug: room.Slug, Code: room.Code, Name: room.Name, Listed: room.Listed, Role: "owner",
+		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "owner"},
 	})
 }
 
@@ -403,11 +446,13 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		entry := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon, Role: room.Role,
 			Cheers: cheerSet(room.Cheers)}
 		entry.MemberCount = int(room.MemberCount)
+		entry.Access = accessOf(room.CrewVisible, true, false)
 		// The sidebar groups by this (ADR-0038, and #1023's option C). Absent
 		// while crew_id is still nullable, which is one release only.
 		if room.CrewID.Valid {
 			entry.Crew = &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
+				Role: crewRoleWord(room.CrewOwned, room.CrewAdmin),
 			}
 		}
 		if s.presence != nil {
@@ -436,6 +481,26 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		out = append(out, entry)
+	}
+	// The crew's rooms you are NOT in (#1149): open ones you could walk into,
+	// private ones you can see exist, and ones you administer without
+	// reading. Name, icon, crew and state — no presence and no counts, since
+	// every live signal is members-only and these are rooms you never joined.
+	others, err := s.store.Queries.ListCrewRoomsFor(r.Context(), user.ID)
+	if err != nil {
+		s.log.Error("list crew rooms failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rooms could not be loaded.")
+		return
+	}
+	for _, room := range others {
+		out = append(out, roomJSON{
+			Slug: room.Slug, Name: room.Name, Icon: room.Icon,
+			Access: accessOf(room.CrewVisible, room.Enterable, room.Administers),
+			Crew: &roomCrewJSON{
+				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,
+				Role: crewRoleWord(room.CrewOwnerID == user.ID, room.Administers),
+			},
+		})
 	}
 	// maxOwned rides the list so the frontend gates on the server's number
 	// instead of its own copy (#603) — a hint that disagrees with what the
@@ -551,6 +616,16 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
 				return
 			}
+			// Which banned rows are also crew-banned (#1150), owner-only like
+			// the ban list itself. One query, not one per row.
+			crewBanned := map[pgtype.UUID]bool{}
+			if m.Role == "owner" && room.CrewID.Valid {
+				if ids, err := s.store.Queries.ListCrewBans(r.Context(), room.CrewID); err == nil {
+					for _, id := range ids {
+						crewBanned[id] = true
+					}
+				}
+			}
 			for _, member := range members {
 				// The ban list is a moderation surface, not roster gossip —
 				// only the owner sees who is out.
@@ -564,6 +639,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt: member.JoinedAt.Time.Format("2006-01-02"),
 					Badges:   member.Badges,
+					CrewBanned: member.Role == "banned" && crewBanned[member.ID],
 				})
 			}
 			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
@@ -585,8 +661,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			// does not render, never a room that will not open.
 			if room.CrewID.Valid {
 				if crew, err := s.store.Queries.GetCrew(r.Context(), room.CrewID); err == nil {
+					role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 					response.Crew = &roomCrewJSON{
-						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon,
+						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
 					}
 				}
 			}
@@ -811,6 +888,9 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if s.presence != nil {
 		s.presence.CloseRoom(room.Slug)
 	}
+	// The crew it left may now have nothing to own, or an owner who is in
+	// none of its rooms (ADR-0038, second amendment).
+	s.settleCrew(r.Context(), room.CrewID)
 	s.log.Info("room deleted", "room", room.Slug)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)

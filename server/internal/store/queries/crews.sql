@@ -60,3 +60,140 @@ select (
           and cr.role = 'banned'
     )
 )::boolean;
+
+-- name: GetCrewOwnedBy :one
+-- The crew a room is created into. One crew per owner, made with their first
+-- room and named after them — the migration's rule, applied to accounts that
+-- arrive after it. ponytail: a rider owns one crew; choosing a crew on room
+-- creation is the upgrade if a second one is ever wanted.
+select * from crews where owner_id = $1 order by created_at limit 1;
+
+-- name: PlaceRoomInCrew :exec
+-- Crewless rooms are forbidden in code from the cutover (ADR-0038). A
+-- separate statement rather than a wider CreateRoom: fifteen call sites make
+-- rooms directly and none of them is a creation path a rider can reach.
+update rooms set crew_id = $2, crew_visible = $3 where id = $1;
+
+-- name: UpdateCrew :one
+update crews set name = $2, icon = $3 where id = $1 returning *;
+
+-- name: ListCrewsOwnedBy :many
+select * from crews where owner_id = $1 order by created_at;
+
+-- name: DeleteCrew :exec
+delete from crews where id = $1;
+
+-- name: DeleteRoomsOwnedBy :exec
+-- The purge's first step, done explicitly rather than left to the cascade so
+-- the crew's fate is decided by the rooms that REMAIN (ADR-0038, second
+-- amendment): a crew holding only the departing owner's rooms has nothing
+-- left to own, one holding other people's rooms transfers.
+delete from rooms where owner_id = $1;
+
+-- name: CountCrewRooms :one
+select count(*) from rooms where crew_id = $1;
+
+-- name: ListCrewRoomSlugs :many
+select slug from rooms where crew_id = $1;
+
+-- name: CrewRoleOf :one
+-- One word for what a person is to a crew. Owner beats everything (they
+-- cannot be banned — ADR-0038's second amendment), a ban beats an admin row
+-- that was never cleared, and membership is derived from the rooms.
+select case
+    when c.owner_id = sqlc.arg(user_id) then 'owner'
+    when exists (select 1 from crew_roles cr
+                 where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'banned') then 'banned'
+    when exists (select 1 from crew_roles cr
+                 where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin') then 'admin'
+    when exists (select 1 from memberships m join rooms r on r.id = m.room_id
+                 where r.crew_id = c.id and m.user_id = sqlc.arg(user_id) and m.role <> 'banned') then 'member'
+    else ''
+end::text
+from crews c where c.id = sqlc.arg(crew_id);
+
+-- name: ListCrewRoles :many
+select * from crew_roles where crew_id = $1;
+
+-- name: ListCrewPeople :many
+-- Everyone the crew's rooms hold, once each (ADR-0038: crew membership
+-- follows room membership). A crew ban takes a person off this list even
+-- while their room rows stand — they are on the banned list instead.
+select u.id, u.display_name, u.avatar_url, u.avatar_preset,
+       min(m.joined_at)::timestamptz as since,
+       count(distinct m.room_id)::bigint as room_count
+from memberships m
+join rooms r on r.id = m.room_id
+join users u on u.id = m.user_id
+where r.crew_id = sqlc.arg(crew_id) and m.role <> 'banned'
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = r.crew_id and cr.user_id = u.id and cr.role = 'banned')
+group by u.id
+order by min(m.joined_at);
+
+-- name: ListCrewBanned :many
+select u.id, u.display_name, u.avatar_url, u.avatar_preset, cr.set_at
+from crew_roles cr
+join users u on u.id = cr.user_id
+where cr.crew_id = $1 and cr.role = 'banned'
+order by cr.set_at;
+
+-- name: ListCrewBans :many
+select user_id from crew_roles where crew_id = $1 and role = 'banned';
+
+-- name: ListCrewRoomsFor :many
+-- The crew's rooms you hold NO membership in, for the sidebar (#1149): a
+-- crew's list carries rooms you cannot enter and rooms you administer
+-- without reading, and a row has to say which without being opened.
+-- `enterable` is asked of visible_rooms and nowhere else (ADR-0038, third
+-- amendment). A room ban keeps you off this list entirely — a banned
+-- membership row is still a row — and so does a crew ban.
+with mine as (
+    select r.crew_id from memberships m join rooms r on r.id = m.room_id
+    where m.user_id = sqlc.arg(user_id) and m.role <> 'banned' and r.crew_id is not null
+    union
+    select cr.crew_id from crew_roles cr where cr.user_id = sqlc.arg(user_id) and cr.role = 'admin'
+    union
+    select c.id from crews c where c.owner_id = sqlc.arg(user_id)
+)
+select r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
+       c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
+       exists (select 1 from visible_rooms v
+               where v.room_id = r.id and v.user_id = sqlc.arg(user_id))::boolean as enterable,
+       (c.owner_id = sqlc.arg(user_id) or exists (select 1 from crew_roles cr
+               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin'))::boolean as administers
+from rooms r
+join crews c on c.id = r.crew_id
+where r.crew_id in (select crew_id from mine)
+  and not exists (select 1 from memberships m where m.room_id = r.id and m.user_id = sqlc.arg(user_id))
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = r.crew_id and cr.user_id = sqlc.arg(user_id) and cr.role = 'banned')
+order by r.created_at;
+
+-- name: PickCrewSuccessor :one
+-- docs/SPEC.md's succession rule: the longest-standing admin, else the
+-- longest-standing member, among the people in the crew's remaining rooms;
+-- never the departing owner, never anyone the crew banned. No row means
+-- nobody is left and the crew is deleted rather than left ownerless.
+select m.user_id
+from memberships m
+join rooms r on r.id = m.room_id
+where r.crew_id = sqlc.arg(crew_id) and m.user_id <> sqlc.arg(departing) and m.role <> 'banned'
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = r.crew_id and cr.user_id = m.user_id and cr.role = 'banned')
+group by m.user_id
+order by exists (select 1 from crew_roles cr
+                 where cr.crew_id = sqlc.arg(crew_id) and cr.user_id = m.user_id and cr.role = 'admin') desc,
+         min(m.joined_at)
+limit 1;
+
+-- name: CountCrewMembershipsOf :one
+-- Is this person still IN the crew — a live membership in any of its rooms.
+select count(*) from memberships m join rooms r on r.id = m.room_id
+where r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
+
+-- name: FirstRoomOwnerInCrew :one
+-- The successor of last resort: PickCrewSuccessor can come back empty while
+-- rooms remain (their owners crew-banned, say), and the rule must always name
+-- somebody while there is a room to own. A room always has an owner.
+select owner_id from rooms where crew_id = $1 and owner_id <> $2 order by created_at limit 1;

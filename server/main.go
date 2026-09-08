@@ -146,6 +146,8 @@ func main() {
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
+		// A purge hands the rider's crews on before the row goes (ADR-0038).
+		accountService.SetCrews(roomsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
 		// without it the profile hides the whole notifications section.
 		if notifier := notify.New(st, log, baseURL); notifier != nil {

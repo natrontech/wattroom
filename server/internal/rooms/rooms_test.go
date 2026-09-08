@@ -69,6 +69,11 @@ func setup(t *testing.T) *harness {
 		}
 		users.byToken[name] = u
 		t.Cleanup(func() {
+			// Rooms and crews first: crews.owner_id is ON DELETE RESTRICT, so
+			// a user who made a room through the API owns a crew and cannot
+			// go until it does (ADR-0038).
+			_, _ = st.Pool.Exec(context.Background(), "delete from rooms where owner_id = $1", u.ID)
+			_, _ = st.Pool.Exec(context.Background(), "delete from crews where owner_id = $1", u.ID)
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
 	}

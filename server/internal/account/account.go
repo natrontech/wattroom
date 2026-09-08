@@ -9,12 +9,15 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -34,11 +37,20 @@ type Alerter interface {
 	AccountDeleted(user db.User)
 }
 
+// CrewReleaser is what the purge needs from rooms (ADR-0038, second
+// amendment): crews.owner_id is ON DELETE RESTRICT, so every crew the rider
+// owns is handed on or removed before the row goes. Inside the purge's own
+// transaction, so a transfer that fails leaves the account exactly as it was.
+type CrewReleaser interface {
+	ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) error
+}
+
 type Service struct {
 	store    *store.Store
 	sessions Sessions
 	log      *slog.Logger
 	alerter  Alerter
+	crews    CrewReleaser
 }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
@@ -48,6 +60,10 @@ func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
 // SetAlerter wires the notify capability in after construction, the shape
 // auth.SetMailer already uses.
 func (s *Service) SetAlerter(a Alerter) { s.alerter = a }
+
+// SetCrews wires the crew hand-over in; without it a rider who owns a crew
+// cannot be purged, which the RESTRICT makes loud rather than silent.
+func (s *Service) SetCrews(c CrewReleaser) { s.crews = c }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me/export", s.handleExport)
@@ -275,7 +291,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := s.store.Queries.DeleteUser(r.Context(), user.ID); err != nil {
+	if err := s.purge(r.Context(), user.ID); err != nil {
 		s.log.Error("account delete failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The deletion did not complete. Nothing was removed — try again.")
 		return
@@ -290,6 +306,31 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		s.alerter.AccountDeleted(user)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// purge is the delete, in one transaction: the rider's own rooms first
+// (explicitly, so the crews they own are judged by the rooms that remain),
+// then every crew they own is handed on or removed, then the row — and the
+// schema's cascades take the rest as before.
+func (s *Service) purge(ctx context.Context, user pgtype.UUID) error {
+	tx, err := s.store.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.DeleteRoomsOwnedBy(ctx, user); err != nil {
+		return fmt.Errorf("rooms: %w", err)
+	}
+	if s.crews != nil {
+		if err := s.crews.ReleaseCrews(ctx, q, user); err != nil {
+			return fmt.Errorf("crews: %w", err)
+		}
+	}
+	if err := q.DeleteUser(ctx, user); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // mapRows turns a query's rows into the shape the export writes: the reader's
