@@ -19,6 +19,7 @@
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Lock from '@lucide/svelte/icons/lock';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import Shield from '@lucide/svelte/icons/shield';
 
 	let { shape }: { shape: 'indent' | 'rail' | 'switcher' } = $props();
 
@@ -153,6 +154,13 @@
 				class="font-display truncate text-[13px] font-semibold tracking-wide uppercase"
 				>{c.name}</span
 			>
+			<!-- The crew you own. Un-removable, and the reason a crew can never be
+			     locked out — but NOT a reading power (ADR-0038's 2026-09-08
+			     amendment is explicit that it is stricter than Discord here), so
+			     it is a small mark rather than a louder row. -->
+			{#if c.role === 'owner'}
+				<Shield size={11} class="text-muted/60 shrink-0" />
+			{/if}
 			<!-- A collapsed crew still has to answer "where is everyone" (#1023).
 			     The pulse is the sum of what its rooms are doing. -->
 			{#if shut && (pulse.riding || pulse.voice || pulse.unread)}
@@ -196,6 +204,9 @@
 		>
 			<RoomIcon icon={crew.icon} size={16} />
 			<span class="font-display truncate text-sm font-bold">{crew.name}</span>
+			{#if crew.role === 'owner'}
+				<Shield size={12} class="text-muted/60 shrink-0" />
+			{/if}
 			<ChevronsUpDown size={14} class="text-muted ml-auto shrink-0" />
 		</button>
 		<!-- What the other crews are doing while you are not looking at them —

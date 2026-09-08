@@ -34,8 +34,13 @@ export type MockCrew = {
 	slug: string;
 	name: string;
 	icon: string;
-	/** Viewer's crew role — what inherits into every room below (ADR-0038). */
-	role: 'admin' | 'member';
+	/**
+	 * Viewer's crew role — what inherits into every room below (ADR-0038).
+	 * `owner` is the un-removable one added by the 2026-09-08 amendment: it
+	 * cannot be demoted, removed or banned, and always reaches the crew's and
+	 * its rooms' permissions. It is deliberately NOT a reading power.
+	 */
+	role: 'owner' | 'admin' | 'member';
 	rooms: MockRoom[];
 };
 
@@ -44,7 +49,7 @@ export const crews: MockCrew[] = [
 		slug: 'natron',
 		name: 'Natron',
 		icon: 'zap',
-		role: 'admin',
+		role: 'owner',
 		rooms: [
 			{
 				slug: 'thursday',

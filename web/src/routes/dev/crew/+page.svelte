@@ -58,7 +58,7 @@
 		{
 			icon: SlidersHorizontal,
 			label: 'Yours to administer, not to read',
-			body: 'A crew admin who never joined: manage its permissions, see it listed. Not rename, not ban, not enter, not read.',
+			body: 'A crew admin — or the crew owner — who never joined: manage its permissions, see it listed. Not rename, not ban, not enter, not read. The owner’s row looks exactly like the admin’s, and that is the point: the 2026-09-08 amendment makes the anti-lockout guarantee about permissions, not contents, deliberately stricter than Discord’s ADMINISTRATOR. Drawing the owner a way in would be drawing a decision the ADR refused.',
 		},
 	];
 </script>
@@ -136,6 +136,13 @@
 			removes a person from every room in the crew and prevents rejoining. Same
 			word, different blast radius — so they cannot share a control.
 		</p>
+		<p class="text-muted/80 mt-2 max-w-2xl text-[13px]">
+			Drawn from merged canon, and <span class="text-ink">not settled</span>:
+			RESEARCH.md §16.4 argued for collapsing to one ban level, and #1121 argues
+			back. If that lands, this pair is right as drawn; if the collapse wins,
+			this section is the part of the page that has to be redrawn — room
+			exclusion would become an override, not a ban of its own.
+		</p>
 		<div class="mt-5 grid gap-4 sm:grid-cols-2">
 			<div class="card p-4">
 				<span class="flex items-center gap-2 text-sm font-medium">
@@ -164,6 +171,12 @@
 					Reaches: <span class="text-ink/80">all four Natron rooms</span>, and
 					no code will let them back into any of them.
 				</p>
+				<p class="text-muted/70 mt-2 text-[13px]">
+					<span class="text-ink/80">Never offered for the crew owner.</span> They
+					cannot be demoted, removed or banned by anyone, so the control is absent
+					rather than disabled-with-a-hint — a dead button on the one person it can
+					never apply to invites the question every time somebody reads the list.
+				</p>
 			</div>
 		</div>
 	</section>
@@ -185,9 +198,16 @@
 					<Pencil size={13} class="text-muted ml-auto shrink-0" />
 				</span>
 				<p class="text-muted/70 mt-2 text-[11px]">
-					3 rooms · named after you · rename it
+					3 rooms · you own it · rename it
 				</p>
 			</div>
+			<p class="text-muted max-w-md text-[13px]">
+				The row this screen creates is the <span class="text-ink">owner</span> row,
+				and that is the more important half of it: one crew per existing room owner
+				means the migration supplies an un-removable actor for every crew without
+				backfilling one, so no arrangement of roles can leave a crew that nobody can
+				fix.
+			</p>
 			<p class="text-muted max-w-md text-[13px]">
 				Two things this screen must not do. It must not present the name as a
 				decision already made — “Jan’s crew” is a placeholder wearing a real
