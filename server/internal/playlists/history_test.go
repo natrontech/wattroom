@@ -110,8 +110,11 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 // only as another room mysteriously avoiding a song.
 func TestSmartShuffleHistoryIsRoomScoped(t *testing.T) {
 	h := setup(t)
+	// Both rooms are alice's: since #1095 a room's smart draw only reaches
+	// tracks its own MEMBERS uploaded, so a room bob owns would not see this
+	// track at all and the test would pass for the wrong reason.
 	loud := h.room(t, "alice")
-	quiet := h.room(t, "bob")
+	quiet := h.room(t, "alice")
 	track := h.track(t, "alice", "Divisive")
 
 	for range 3 {

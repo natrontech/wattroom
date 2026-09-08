@@ -106,8 +106,11 @@ func TestAffinityFollowsWhatTheRoomFinishes(t *testing.T) {
 // the pool holds. What one crew is into must not reach another room.
 func TestAffinityIsRoomScoped(t *testing.T) {
 	h := setup(t)
+	// Both alice's, for the same reason as TestSmartShuffleHistoryIsRoomScoped:
+	// #1095 scopes the draw to the room's members' uploads, so a room bob owns
+	// would see nothing here and prove nothing about history isolation.
 	theirs := h.room(t, "alice")
-	ours := h.room(t, "bob")
+	ours := h.room(t, "alice")
 
 	played := h.trackLike(t, "alice", "Their Favourite", "Justice", "french-house")
 	sibling := h.trackLike(t, "alice", "Its Sibling", "Justice", "electro")

@@ -94,12 +94,12 @@ func (s *Service) me(w http.ResponseWriter, r *http.Request) (db.User, bool) {
 }
 
 type trackJSON struct {
-	Id         string `json:"id"`
-	Title      string `json:"title"`
-	Artist     string `json:"artist,omitempty"`
-	Album      string `json:"album,omitempty"`
-	DurationMs int32  `json:"durationMs"`
-	SizeBytes  int32  `json:"sizeBytes"`
+	Id         string   `json:"id"`
+	Title      string   `json:"title"`
+	Artist     string   `json:"artist,omitempty"`
+	Album      string   `json:"album,omitempty"`
+	DurationMs int32    `json:"durationMs"`
+	SizeBytes  int32    `json:"sizeBytes"`
 	Bpm        int16    `json:"bpm,omitempty"`
 	Tags       []string `json:"tags"`
 	UploadedBy string   `json:"uploadedBy,omitempty"`
@@ -156,10 +156,15 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Already in the pool: hand back the track that is there. Not an error —
-	// a rider uploading a song the crew already has has got what they wanted.
+	// Already on THIS rider's shelf: hand back the row that is there. Not an
+	// error — they uploaded a song they already had and have what they
+	// wanted. Somebody else holding the same content is not this check's
+	// business any more (#1095): they get a row of their own below, and
+	// `put` skips the write because the bytes are already on disk.
 	sha := Address(data)
-	if existing, err := s.store.Queries.TrackBySha(r.Context(), sha); err == nil {
+	if existing, err := s.store.Queries.TrackBySha(r.Context(), db.TrackByShaParams{
+		UploadedBy: me.ID, Sha256: sha,
+	}); err == nil {
 		httpx.WriteJSON(w, http.StatusOK, toJSON(existing, ""))
 		return
 	} else if !errors.Is(err, pgx.ErrNoRows) {
@@ -278,7 +283,8 @@ func clip(s string) string {
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.me(w, r); !ok {
+	me, ok := s.me(w, r)
+	if !ok {
 		return
 	}
 	limit, offset := defaultLimit, 0
@@ -297,9 +303,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		tag = picked[0]
 	}
 	rows, err := s.store.Queries.ListTracks(r.Context(), db.ListTracksParams{
-		Search: strings.TrimSpace(r.URL.Query().Get("q")),
-		Tag:    tag,
-		Lim:    int32(limit), Off: int32(offset), //nolint:gosec // bounded above
+		UploadedBy: me.ID,
+		Search:     strings.TrimSpace(r.URL.Query().Get("q")),
+		Tag:        tag,
+		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // bounded above
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)
@@ -308,7 +315,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	// The shelf labels, over the whole pool rather than this page: a rider
 	// filtering to one tag still needs the others to get back out.
-	facets, err := s.store.Queries.TrackTagCounts(r.Context())
+	facets, err := s.store.Queries.TrackTagCounts(r.Context(), me.ID)
 	if err != nil {
 		s.log.Error("track tag counts", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
@@ -334,10 +341,14 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 // seeking and caching for free — which is the whole reason ADR-0015 puts the
 // audio on disk rather than in a bytea column.
 func (s *Service) handleAudio(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.me(w, r); !ok {
+	me, ok := s.me(w, r)
+	if !ok {
 		return
 	}
-	row, ok := s.track(w, r)
+	// Not s.track: playing is wider than browsing (#1095). Every rider in a
+	// room fetches whatever pool track the deck is on, so an uploader-only
+	// scope here would play a queued track for its owner and nobody else.
+	row, ok := s.playable(w, r, me)
 	if !ok {
 		return
 	}
@@ -360,7 +371,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, ok := s.track(w, r)
+	row, ok := s.track(w, r, me)
 	if !ok {
 		return
 	}
@@ -414,11 +425,11 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, ok := s.track(w, r)
+	row, ok := s.track(w, r, me)
 	if !ok {
 		return
 	}
-	sha, err := s.store.Queries.DeleteTrack(r.Context(), db.DeleteTrackParams{
+	gone, err := s.store.Queries.DeleteTrack(r.Context(), db.DeleteTrackParams{
 		ID: row.ID, UploadedBy: me.ID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -431,24 +442,53 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be deleted.")
 		return
 	}
-	if err := s.remove(sha); err != nil {
+	// One blob per sha however many shelves hold it (#1095), so the file goes
+	// only with the LAST row that points at it. Removing it while somebody
+	// else still holds the row would break their playback, and nothing would
+	// say so until they pressed play.
+	if gone.Others > 0 {
+		s.log.Info("track row deleted, file kept", "sha", gone.Sha256, "othersHolding", gone.Others)
+	} else if err := s.remove(gone.Sha256); err != nil {
 		// The row is gone, which is what the rider asked for. A file nothing
 		// points at is disk to reclaim, not a failed request to report.
-		s.log.Error("track file remove", "err", err, "sha", sha)
+		s.log.Error("track file remove", "err", err, "sha", gone.Sha256)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// track resolves {id} and 404s on anything that is not a real track. Ownership
-// is the queries' job, so that a track someone else uploaded reads as forbidden
-// rather than missing.
-func (s *Service) track(w http.ResponseWriter, r *http.Request) (db.Track, bool) {
+// playable resolves {id} for LISTENING: the caller's own track, or one
+// uploaded by somebody they share a room with. Same 404-not-403 rule as
+// track() — a track outside the caller's reach is absent, not refused.
+func (s *Service) playable(w http.ResponseWriter, r *http.Request, me db.User) (db.Track, bool) {
 	var id pgtype.UUID
 	if err := id.Scan(r.PathValue("id")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That track does not exist.")
 		return db.Track{}, false
 	}
-	row, err := s.store.Queries.GetTrack(r.Context(), id)
+	row, err := s.store.Queries.TrackPlayableBy(r.Context(), db.TrackPlayableByParams{ID: id, UserID: me.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That track does not exist.")
+		return db.Track{}, false
+	}
+	if err != nil {
+		s.log.Error("track playable", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be read.")
+		return db.Track{}, false
+	}
+	return row, true
+}
+
+// track resolves {id} within the caller's own shelf and 404s on everything
+// else (#1095). Scoping lives in the query, so a track belonging to someone
+// else is not "forbidden" — it is absent. That distinction is the point:
+// answering 403 would confirm to a stranger that the id names a real track.
+func (s *Service) track(w http.ResponseWriter, r *http.Request, me db.User) (db.Track, bool) {
+	var id pgtype.UUID
+	if err := id.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That track does not exist.")
+		return db.Track{}, false
+	}
+	row, err := s.store.Queries.GetTrack(r.Context(), db.GetTrackParams{ID: id, UploadedBy: me.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That track does not exist.")
 		return db.Track{}, false

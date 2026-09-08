@@ -173,7 +173,7 @@
 	<header class="flex flex-wrap items-center gap-4">
 		<h1 class="font-display text-2xl font-bold tracking-tight">Music</h1>
 		<p class="text-muted text-xs">
-			One library, shared by everyone here. 2 GB each.
+			Your own library. Everything here plays in any room you are in. 2 GB.
 		</p>
 		<label class="btn btn-primary ml-auto cursor-pointer">
 			<Upload size={14} /> Add MP3s
@@ -298,7 +298,7 @@
 						class="text-muted/60 mb-2"
 					/>{/snippet}
 				<p class="text-sm">
-					This is the crew's record shelf. Everything here plays in any room's
+					This is your record shelf. Everything here plays in any room's
 					jukebox, with no video tile in the way.
 				</p>
 				{#snippet cta()}

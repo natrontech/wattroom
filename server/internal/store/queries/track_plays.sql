@@ -38,6 +38,14 @@ values ($1, $2, $3, $4);
 --
 -- History is this room's only (privacy is architecture, WATTROOM.md): what
 -- one room finishes is not a fact about the pool, and must not reach another.
+--
+-- And the POOL it draws from is this room's members' (#1095). Autoplay is the
+-- one path that reaches for a track nobody asked for by name, so an unscoped
+-- draw here would put a stranger's upload on the deck without ever appearing
+-- on a page or in a search — past every check the issue's own list names.
+-- Members rather than the acting rider: a room's shelf is what its people
+-- brought, which is already what the room permits (any member may queue their
+-- own track for everyone). Phase 2 replaces this join with the crew.
 -- `weight` is returned so a headless autoplay log can say WHY a track came
 -- up; the ordering is random and unexplainable after the fact otherwise.
 with history as (
@@ -68,6 +76,7 @@ liked as (
 )
 select t.id, t.title, t.artist, w.weight
 from tracks t
+join memberships m on m.user_id = t.uploaded_by and m.room_id = sqlc.arg(room_id)
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (

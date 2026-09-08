@@ -62,7 +62,14 @@ func (q *Queries) CreateTrack(ctx context.Context, arg CreateTrackParams) (Track
 }
 
 const deleteTrack = `-- name: DeleteTrack :one
-delete from tracks where id = $1 and uploaded_by = $2 returning sha256
+with gone as (
+    delete from tracks t where t.id = $1 and t.uploaded_by = $2
+    returning t.sha256
+)
+select gone.sha256,
+    (select count(*) from tracks t
+     where t.sha256 = gone.sha256 and t.id <> $1)::bigint as others
+from gone
 `
 
 type DeleteTrackParams struct {
@@ -70,21 +77,41 @@ type DeleteTrackParams struct {
 	UploadedBy pgtype.UUID
 }
 
-// Returns the sha so the caller can remove the file it addressed. Uploader
-// only; a row that is not yours simply does not match.
-func (q *Queries) DeleteTrack(ctx context.Context, arg DeleteTrackParams) (string, error) {
+type DeleteTrackRow struct {
+	Sha256 string
+	Others int64
+}
+
+// Returns the sha, and whether anyone ELSE still holds that content (#1095).
+// One blob per sha on disk however many shelves point at it, so the file may
+// only go with the last row — deleting it while another rider still holds
+// the row breaks their playback, and nothing says so until they press play.
+//
+// `others` counts rows excluding the one being deleted BY ID rather than
+// relying on the delete being visible: a data-modifying CTE's effect is not
+// visible to the rest of the same statement, so a plain count would include
+// the row just removed and every delete would look like it had company.
+func (q *Queries) DeleteTrack(ctx context.Context, arg DeleteTrackParams) (DeleteTrackRow, error) {
 	row := q.db.QueryRow(ctx, deleteTrack, arg.ID, arg.UploadedBy)
-	var sha256 string
-	err := row.Scan(&sha256)
-	return sha256, err
+	var i DeleteTrackRow
+	err := row.Scan(&i.Sha256, &i.Others)
+	return i, err
 }
 
 const getTrack = `-- name: GetTrack :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where id = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where id = $1 and uploaded_by = $2
 `
 
-func (q *Queries) GetTrack(ctx context.Context, id pgtype.UUID) (Track, error) {
-	row := q.db.QueryRow(ctx, getTrack, id)
+type GetTrackParams struct {
+	ID         pgtype.UUID
+	UploadedBy pgtype.UUID
+}
+
+// Scoped (#1095): another shelf's track is not "forbidden", it is absent —
+// 404 rather than 403, because telling a stranger that a track exists and is
+// not theirs is itself the leak.
+func (q *Queries) GetTrack(ctx context.Context, arg GetTrackParams) (Track, error) {
+	row := q.db.QueryRow(ctx, getTrack, arg.ID, arg.UploadedBy)
 	var i Track
 	err := row.Scan(
 		&i.ID,
@@ -107,23 +134,25 @@ const listTracks = `-- name: ListTracks :many
 select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, t.search, t.tags, u.display_name as uploaded_by_name
 from tracks t
 join users u on u.id = t.uploaded_by
-where ($1::text = ''
-       or t.search @@ websearch_to_tsquery('simple', $1::text))
-  and ($2::text = '' or $2::text = any(t.tags))
+where t.uploaded_by = $1
+  and ($2::text = ''
+       or t.search @@ websearch_to_tsquery('simple', $2::text))
+  and ($3::text = '' or $3::text = any(t.tags))
 order by
     -- Ranked when there is a query, newest when there is not.
-    case when $1::text = '' then 0
-         else ts_rank(t.search, websearch_to_tsquery('simple', $1::text))
+    case when $2::text = '' then 0
+         else ts_rank(t.search, websearch_to_tsquery('simple', $2::text))
     end desc,
     t.created_at desc
-limit $4 offset $3
+limit $5 offset $4
 `
 
 type ListTracksParams struct {
-	Search string
-	Tag    string
-	Off    int32
-	Lim    int32
+	UploadedBy pgtype.UUID
+	Search     string
+	Tag        string
+	Off        int32
+	Lim        int32
 }
 
 type ListTracksRow struct {
@@ -142,14 +171,16 @@ type ListTracksRow struct {
 	UploadedByName string
 }
 
-// The pool: one global library every signed-in rider browses (ADR-0015),
-// newest first. Carries the uploader's name so a track has a face.
+// This rider's shelf (#1095 Phase 1 — ADR-0015 amended), newest first.
+// Carries the uploader's name so a track has a face; it is always their own
+// for now, and stays a join so Phase 2's crew scope needs no new query.
 //
 // An empty search returns everything: the browse view and the search view are
 // one query, so a rider clearing the box gets the library back rather than a
 // second code path that might disagree with the first.
 func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListTracksRow, error) {
 	rows, err := q.db.Query(ctx, listTracks,
+		arg.UploadedBy,
 		arg.Search,
 		arg.Tag,
 		arg.Off,
@@ -188,11 +219,69 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 }
 
 const trackBySha = `-- name: TrackBySha :one
-select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where sha256 = $1
+select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where uploaded_by = $1 and sha256 = $2
 `
 
-func (q *Queries) TrackBySha(ctx context.Context, sha256 string) (Track, error) {
-	row := q.db.QueryRow(ctx, trackBySha, sha256)
+type TrackByShaParams struct {
+	UploadedBy pgtype.UUID
+	Sha256     string
+}
+
+// THIS uploader's row for this content (#1095). Scoped, because the point of
+// the scoping is that a second person uploading a song someone else already
+// has gets a row of their own rather than a look at theirs.
+func (q *Queries) TrackBySha(ctx context.Context, arg TrackByShaParams) (Track, error) {
+	row := q.db.QueryRow(ctx, trackBySha, arg.UploadedBy, arg.Sha256)
+	var i Track
+	err := row.Scan(
+		&i.ID,
+		&i.Sha256,
+		&i.UploadedBy,
+		&i.Title,
+		&i.Artist,
+		&i.Album,
+		&i.DurationMs,
+		&i.SizeBytes,
+		&i.Bpm,
+		&i.CreatedAt,
+		&i.Search,
+		&i.Tags,
+	)
+	return i, err
+}
+
+const trackPlayableBy = `-- name: TrackPlayableBy :one
+select t.id, t.sha256, t.uploaded_by, t.title, t.artist, t.album, t.duration_ms, t.size_bytes, t.bpm, t.created_at, t.search, t.tags from tracks t
+where t.id = $1
+  and (t.uploaded_by = $2
+       or exists (
+           select 1 from memberships mine
+           join memberships theirs on theirs.room_id = mine.room_id
+           where mine.user_id = $2 and theirs.user_id = t.uploaded_by
+       ))
+`
+
+type TrackPlayableByParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// The audio endpoint's own resolver (#1095), and deliberately WIDER than
+// GetTrack: a track is playable by whoever uploaded it, and by anyone who
+// shares a room with them.
+//
+// It has to be. A pool track on a room's deck is fetched by EVERY rider in
+// that room from this endpoint (`AudioDeck.svelte`), so scoping it to the
+// uploader would leave a queued track playing for its owner and silent for
+// everyone else — the feature #267 exists for, broken with no error anywhere.
+//
+// The line this draws is playing versus browsing: sharing a room already
+// means hearing what the others put on, and #1085 lets a member queue their
+// own track for the room by hand. It does NOT mean reading their library —
+// list, search, facets, edit and delete all stay on GetTrack, uploader-only.
+// A caller still needs the track's uuid, which only the deck hands out.
+func (q *Queries) TrackPlayableBy(ctx context.Context, arg TrackPlayableByParams) (Track, error) {
+	row := q.db.QueryRow(ctx, trackPlayableBy, arg.ID, arg.UserID)
 	var i Track
 	err := row.Scan(
 		&i.ID,
@@ -227,6 +316,7 @@ func (q *Queries) TrackQuotaUsed(ctx context.Context, uploadedBy pgtype.UUID) (i
 const trackTagCounts = `-- name: TrackTagCounts :many
 select tag::text as tag, count(*)::bigint as tracks
 from tracks, unnest(tags) as tag
+where tracks.uploaded_by = $1
 group by tag
 order by tracks desc, tag
 limit 100
@@ -237,7 +327,9 @@ type TrackTagCountsRow struct {
 	Tracks int64
 }
 
-// The facet row: every tag in the pool with how many tracks wear it.
+// The facet row: every tag on THIS rider's shelf with how many tracks wear
+// it (#1095). Counting over the whole instance would have been a listing of
+// what strangers are into, which is the leak in miniature.
 //
 // Counted over the whole pool rather than over the current search, so a rider
 // narrowing by text still sees the shelf they can jump to. Cheap enough to run
@@ -245,8 +337,8 @@ type TrackTagCountsRow struct {
 // millisecond, and there is no page of tags to paginate.
 // The cast is not decoration: without it sqlc types an unnested element as
 // `interface{}` and the handler has to assert what the column already is.
-func (q *Queries) TrackTagCounts(ctx context.Context) ([]TrackTagCountsRow, error) {
-	rows, err := q.db.Query(ctx, trackTagCounts)
+func (q *Queries) TrackTagCounts(ctx context.Context, uploadedBy pgtype.UUID) ([]TrackTagCountsRow, error) {
+	rows, err := q.db.Query(ctx, trackTagCounts, uploadedBy)
 	if err != nil {
 		return nil, err
 	}
