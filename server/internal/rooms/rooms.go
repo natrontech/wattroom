@@ -262,6 +262,10 @@ type roomJSON struct {
 	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing
 	// surface offers the toggle until the directory exists.
 	Listed bool `json:"listed"`
+	// Open to its crew (ADR-0038): crew-mates see it in their sidebar and
+	// walk in without a code. The owner's to set (#1204); members only,
+	// like the code — and absent for false, which is what a non-member gets.
+	CrewVisible bool `json:"crewVisible,omitempty"`
 	// Emoji identity mark (#223) — public like the name.
 	Icon string `json:"icon,omitempty"`
 	// Owner-set cue set ('base' | 'silent') — members only, like the code.
@@ -672,6 +676,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			response.BoardEnabled = room.BoardEnabled
+			response.CrewVisible = room.CrewVisible
 			if room.BoardEnabled {
 				response.Board = s.board(r.Context(), room.ID)
 			}
@@ -798,6 +803,9 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		Cheers    *[]string `json:"cheers"` // nil keeps, [] resets to base
 		// nil keeps: a rename must not silently switch the board on or off.
 		BoardEnabled *bool `json:"boardEnabled"`
+		// nil keeps, for the same reason — and because an older client's
+		// rename must not shut a room its crew could walk into (#1204).
+		CrewVisible *bool `json:"crewVisible"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -856,9 +864,13 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if req.BoardEnabled != nil {
 		boardEnabled = *req.BoardEnabled
 	}
+	crewVisible := room.CrewVisible
+	if req.CrewVisible != nil {
+		crewVisible = *req.CrewVisible
+	}
 	updated, err := s.store.Queries.UpdateRoom(r.Context(), db.UpdateRoomParams{
 		ID: room.ID, Name: req.Name, Listed: req.Listed, SoundPack: req.SoundPack,
-		Icon: icon, Cheers: cheers, BoardEnabled: boardEnabled,
+		Icon: icon, Cheers: cheers, BoardEnabled: boardEnabled, CrewVisible: crewVisible,
 	})
 	if err != nil {
 		s.log.Error("room update failed", "err", err, "room", room.Slug)
@@ -870,7 +882,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Icon: updated.Icon,
 		Listed: updated.Listed, SoundPack: updated.SoundPack,
 		Cheers: cheerSet(updated.Cheers), Role: "owner",
-		BoardEnabled: updated.BoardEnabled,
+		BoardEnabled: updated.BoardEnabled, CrewVisible: updated.CrewVisible,
 	})
 }
 

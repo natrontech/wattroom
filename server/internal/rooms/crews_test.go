@@ -226,6 +226,47 @@ func TestARoomYouMayNotEnterKeepsItsSlugToItself(t *testing.T) {
 	}
 }
 
+// The one control ADR-0038's privacy inversion rests on (#1204): the owner
+// opens a room to the crew when they mean to, and shuts it again. A
+// crew-mate's access follows on the next list, and a PATCH that does not
+// mention the field — an older client's rename — keeps what was set.
+func TestTheOwnerOpensARoomToTheCrewAndShutsIt(t *testing.T) {
+	h := setup(t)
+	open, _ := h.createRoom(t, "alice", "Crew Ladder Open")
+	private, _ := h.createRoom(t, "alice", "Crew Ladder Private")
+	h.makePrivate(t, private)
+	h.join(t, "bob", open)
+	path := "/api/rooms/" + private
+
+	if got := h.accessIn(t, "bob", private); got != "locked" {
+		t.Fatalf("before: bob reads %q, want locked", got)
+	}
+	status, body := h.call(t, "alice", http.MethodPatch, path, `{"name":"Crew Ladder Private","listed":false,"crewVisible":true}`)
+	if status != http.StatusOK || body["crewVisible"] != true {
+		t.Fatalf("open to the crew: %d %v", status, body)
+	}
+	if got := h.accessIn(t, "bob", private); got != "open" {
+		t.Errorf("opened: bob reads %q, want open", got)
+	}
+	// An older client's rename says nothing about the crew and changes nothing.
+	if status, body := h.call(t, "alice", http.MethodPatch, path, `{"name":"Renamed","listed":false}`); status != http.StatusOK || body["crewVisible"] != true {
+		t.Errorf("a rename shut the room: %d %v", status, body)
+	}
+	if status, body := h.call(t, "alice", http.MethodGet, path, ""); status != http.StatusOK || body["crewVisible"] != true {
+		t.Errorf("the owner's GET does not say the room is open: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, path, `{"name":"Renamed","listed":false,"crewVisible":false}`); status != http.StatusOK {
+		t.Fatalf("shut: %d", status)
+	}
+	if got := h.accessIn(t, "bob", private); got != "locked" {
+		t.Errorf("shut: bob reads %q, want locked", got)
+	}
+	// A member of the crew, not the room's owner: not theirs to set.
+	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+open, `{"name":"x","listed":false,"crewVisible":false}`); status != http.StatusForbidden {
+		t.Errorf("a member set the crew visibility: %d, want 403", status)
+	}
+}
+
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)

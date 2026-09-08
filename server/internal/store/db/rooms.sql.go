@@ -1063,7 +1063,7 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 
 const updateRoom = `-- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
-                 board_enabled = $7
+                 board_enabled = $7, crew_visible = $8
 where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
@@ -1075,6 +1075,7 @@ type UpdateRoomParams struct {
 	Icon         string
 	Cheers       string
 	BoardEnabled bool
+	CrewVisible  bool
 }
 
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
@@ -1086,6 +1087,7 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		arg.Icon,
 		arg.Cheers,
 		arg.BoardEnabled,
+		arg.CrewVisible,
 	)
 	var i Room
 	err := row.Scan(
