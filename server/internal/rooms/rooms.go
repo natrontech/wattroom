@@ -359,6 +359,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Name string `json:"name"`
+		// The crew to open it in (#1201); empty means your own.
+		CrewID string `json:"crewId"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -378,6 +380,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolved before the room row exists, so a refusal leaves nothing behind.
+	crew, crewRole, ok := s.creationCrew(w, r, user, req.CrewID)
+	if !ok {
+		return
+	}
 	// Slug and code both need uniqueness; retry on collision rather than
 	// checking first — the constraint is the check. Every new room's slug
 	// carries a random suffix (#694): the name alone must not be enough to
@@ -413,16 +420,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"The room could not be created. Try again.")
 		return
 	}
-	// New rooms are created inside a crew and are open to it (ADR-0038):
-	// the rider's own, made with their first room. Crew-visible is set here
-	// and not by the column's default, which is false so that a rolled-back
-	// image and a forgotten INSERT both fail towards private.
-	crew, err := s.crewFor(r.Context(), user)
-	if err == nil {
-		err = s.store.Queries.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
-			ID: room.ID, CrewID: crew.ID, CrewVisible: true,
-		})
-	}
+	// New rooms are created inside a crew and are open to it (ADR-0038).
+	// Crew-visible is set here and not by the column's default, which is
+	// false so that a rolled-back image and a forgotten INSERT both fail
+	// towards private.
+	err = s.store.Queries.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
+		ID: room.ID, CrewID: crew.ID, CrewVisible: true,
+	})
 	if err != nil {
 		s.log.Error("room crew placement failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
@@ -431,8 +435,51 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusCreated, roomJSON{
 		Slug: room.Slug, Code: room.Code, Name: room.Name, Listed: room.Listed, Role: "owner",
-		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "owner"},
+		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: crewRole},
 	})
+}
+
+// creationCrew is the crew a new room lands in (#1201): the one the caller
+// named, when they own or administer it — Discord's Manage Channels, so a
+// group's second and third rooms can be opened by the people running it
+// rather than only by whoever happened to make the first — else the
+// caller's own, made with their first room. Refused, not redirected, when
+// they may not: a room quietly landing in the wrong crew is the confusion
+// #1201 describes.
+func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.User, crewID string) (db.Crew, string, bool) {
+	if crewID == "" {
+		crew, err := s.crewFor(r.Context(), user)
+		if err != nil {
+			s.log.Error("own crew lookup failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+				"The room could not be created. Try again.")
+			return db.Crew{}, "", false
+		}
+		return crew, "owner", true
+	}
+	id, err := store.ParseUUID(crewID)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a crew.", "crewId")
+		return db.Crew{}, "", false
+	}
+	crew, err := s.store.Queries.GetCrew(r.Context(), id)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No crew lives here.", "crewId")
+		return db.Crew{}, "", false
+	}
+	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+	if err != nil {
+		s.log.Error("crew role lookup failed", "err", err, "crew", crewID)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The room could not be created. Try again.")
+		return db.Crew{}, "", false
+	}
+	if !administers(role) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden",
+			"Only the crew's owner or an admin can open a room in it — ask them, or open one in your own crew.")
+		return db.Crew{}, "", false
+	}
+	return crew, role, true
 }
 
 func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {

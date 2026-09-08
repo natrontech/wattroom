@@ -5,11 +5,13 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
+	import Select from '$lib/components/Select.svelte';
+	import { creationCrew, crewsOf, openableCrews } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
 
 	let {
 		compact = false,
-		crew = '',
+		crewId,
 	}: {
 		/**
 		 * The sheet the sidebar's + opens (#1199): stacked, no section
@@ -17,12 +19,17 @@
 		 */
 		compact?: boolean;
 		/**
-		 * The crew a new room is made in, for the sheet's title: the one YOU
-		 * own — the server puts every new room there (rooms.go handleCreate),
-		 * whichever crew the sidebar is showing.
+		 * The crew to open the room in (#1201) — the one on screen. Honoured
+		 * when you own or administer it, else the room lands in your own.
 		 */
-		crew?: string;
+		crewId?: string;
 	} = $props();
+
+	// Where the room lands, and the picker that appears only when there is a
+	// choice to make — most riders administer one crew (ux.md, the 95% rule).
+	const openable = $derived(openableCrews(crewsOf(presence.rooms)));
+	let picked = $state<string | undefined>(undefined);
+	const target = $derived(creationCrew(openable, picked ?? crewId));
 
 	let newRoomName = $state('');
 	let joinCode = $state('');
@@ -48,7 +55,9 @@
 		roomBusy = true;
 		const res = await api<{ slug: string }>('/api/rooms', {
 			method: 'POST',
-			json: { name: newRoomName },
+			json: target
+				? { name: newRoomName, crewId: target.id }
+				: { name: newRoomName },
 		});
 		roomBusy = false;
 		if (res.ok) void goto(`/r/${res.data.slug}`);
@@ -83,14 +92,24 @@
 	>
 		<div class={compact ? '' : 'panel p-5'}>
 			<h3 class="font-display font-bold">
-				Open a room{#if compact && crew}<span class="text-muted font-normal"
-						>&nbsp;in {crew}</span
+				Open a room{#if target && openable.length === 1}<span
+						class="text-muted font-normal">&nbsp;in {target.name}</span
 					>{/if}
 			</h3>
 			<p class="text-muted mt-1 text-xs">
-				Private by default. Share the link or the code with whoever you ride
-				with.
+				Open to the crew from the start; share the link or the code with anyone
+				else.
 			</p>
+			{#if openable.length > 1}
+				<div class="mt-3">
+					<Select
+						label="crew"
+						options={openable.map((c) => ({ value: c.id, label: c.name }))}
+						value={target?.id}
+						onchange={(v) => (picked = v)}
+					/>
+				</div>
+			{/if}
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();

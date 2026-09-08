@@ -11,12 +11,13 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import Modal from '$lib/components/Modal.svelte';
 	import {
 		fetchCrew,
 		renameCrew,
@@ -31,6 +32,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Pencil from '@lucide/svelte/icons/pencil';
+	import Plus from '@lucide/svelte/icons/plus';
 	import Shield from '@lucide/svelte/icons/shield';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import ShieldOff from '@lucide/svelte/icons/shield-off';
@@ -80,6 +82,8 @@
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
 	const owner = $derived(crew?.role === 'owner');
+	// Opening a room in THIS crew (#1201), for the people who may.
+	let opening = $state(false);
 
 	// The name, editable in place for the owner and admins — the same field
 	// the day-one card has, so a rename never needs a settings page (#1151).
@@ -242,6 +246,12 @@
 	</Modal>
 {/if}
 
+{#if opening && crew}
+	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
+		<OpenOrJoin compact crewId={crew.id} />
+	</Modal>
+{/if}
+
 <main class="page">
 	{#if error}
 		<Banner>{error}</Banner>
@@ -314,7 +324,16 @@
 			</p>
 		{/if}
 
-		<h2 class="eyebrow mt-8">rooms</h2>
+		<div class="mt-8 flex items-end justify-between gap-3">
+			<h2 class="eyebrow">rooms</h2>
+			{#if administers}
+				<button
+					onclick={() => (opening = true)}
+					class="btn btn-secondary btn-xs"
+					><Plus size={13} /> Open a room here</button
+				>
+			{/if}
+		</div>
 		<ul class="divide-ink/5 panel mt-2 divide-y">
 			{#each crew.rooms as room (room.id)}
 				{@const mark = accessMark(room.access)}

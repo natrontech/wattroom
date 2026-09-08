@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { crewPulse, crewsOf, currentCrew, quiet, sidebarGroups } from './crews';
+import {
+	creationCrew,
+	crewPulse,
+	crewsOf,
+	currentCrew,
+	openableCrews,
+	quiet,
+	sidebarGroups,
+} from './crews';
 import type { RailRoom } from '$lib/room/mockcompat';
 
 const natron = { id: 'c1', name: 'Natron', role: 'owner' as const };
@@ -96,5 +104,23 @@ describe('crewPulse', () => {
 		expect(quiet({ riding: 1, voice: 0, unread: 0 })).toBe(false);
 		expect(quiet({ riding: 0, voice: 1, unread: 0 })).toBe(false);
 		expect(quiet({ riding: 0, voice: 0, unread: 1 })).toBe(false);
+	});
+});
+
+describe('creationCrew', () => {
+	const admined = { id: 'c3', name: 'Tuesday', role: 'admin' as const };
+	const crews = [natron, sunday, admined];
+
+	it('offers the crews you own or administer, never one you only ride in', () => {
+		expect(openableCrews(crews).map((c) => c.id)).toEqual(['c1', 'c3']);
+	});
+	it('lands in the crew on screen when you may open rooms there', () => {
+		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');
+	});
+	it('falls back to your own crew when the one on screen is not yours to open in', () => {
+		expect(creationCrew(openableCrews(crews), 'c2')?.id).toBe('c1');
+	});
+	it('is null before the room list has landed', () => {
+		expect(creationCrew([], 'c1')).toBeNull();
 	});
 });

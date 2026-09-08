@@ -356,6 +356,48 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 	}
 }
 
+// A room opened in a crew you administer lands there and is open to it
+// (#1201) — so a group's second room is not only its founder's to make. A
+// plain member is refused rather than redirected to their own crew.
+func TestAnAdminOpensARoomInSomeoneElsesCrew(t *testing.T) {
+	h := setup(t)
+	first, _ := h.createRoom(t, "alice", "Crew Second Room Seed")
+	crew := h.crewOf(t, first)
+	h.join(t, "bob", first)
+	h.join(t, "carol", first)
+	body := fmt.Sprintf(`{"name":"Crew Games Night","crewId":%q}`, store.UUIDString(crew.ID))
+
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms", body); status != http.StatusForbidden {
+		t.Fatalf("a member opened a room in the crew: %d, want 403", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms", `{"name":"x","crewId":"not-a-crew"}`); status != http.StatusBadRequest {
+		t.Errorf("a garbage crew id: %d, want 400", status)
+	}
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+	}); err != nil {
+		t.Fatalf("admin: %v", err)
+	}
+	status, created := h.call(t, "bob", http.MethodPost, "/api/rooms", body)
+	if status != http.StatusCreated {
+		t.Fatalf("an admin could not open a room in the crew: %d %v", status, created)
+	}
+	slug, _ := created["slug"].(string)
+	t.Cleanup(func() { _, _ = h.store.Pool.Exec(t.Context(), "delete from rooms where slug = $1", slug) })
+	if c, _ := created["crew"].(map[string]any); c["id"] != store.UUIDString(crew.ID) || c["role"] != "admin" {
+		t.Errorf("the room landed in %v, want alice's crew with bob as admin", created["crew"])
+	}
+	if h.crewOf(t, slug).ID != crew.ID {
+		t.Errorf("the room's crew_id is not alice's crew")
+	}
+	if got := h.accessIn(t, "carol", slug); got != "open" {
+		t.Errorf("a crew-mate reads the new room as %q, want open", got)
+	}
+	if got := h.accessIn(t, "bob", slug); got != "open" {
+		t.Errorf("its owner reads the new room as %q, want open", got)
+	}
+}
+
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)

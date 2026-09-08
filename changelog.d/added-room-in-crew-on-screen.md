@@ -1,0 +1,1 @@
+- A crew's owner and admins can open rooms in it — not only the person who made it. The sidebar's + opens the room in the crew you are looking at when you may, the crew page has "Open a room here", and a rider who runs more than one crew picks which. Members still open rooms in their own crew. (#1201)
