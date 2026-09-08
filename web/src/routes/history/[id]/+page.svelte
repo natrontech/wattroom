@@ -63,6 +63,24 @@
 		exporting = false;
 	}
 
+	// #1158. A delivery that ran out of attempts used to be a dead row and a
+	// sentence blaming a disconnection that had usually not happened. This is
+	// the one big button errors.md asks for; the server's own sweep does the
+	// rest, so there is no second delivery path.
+	let retrying = $state(false);
+	let retryError = $state<string | null>(null);
+	async function retryExport() {
+		if (!ride) return;
+		retrying = true;
+		retryError = null;
+		const res = await api(`/api/rides/${encodeURIComponent(id)}/export/retry`, {
+			method: 'POST',
+		});
+		if (res.ok) await load(id);
+		else retryError = res.error.message;
+		retrying = false;
+	}
+
 	async function load(which: string) {
 		const res = await fetchRide(which);
 		if (res.ok) {
@@ -299,9 +317,21 @@
 					{:else if ride.export.state === 'pending'}
 						Waiting to reach Strava — it is retried on its own, nothing to do.
 					{:else}
-						Could not be sent to Strava.
-						{ride.export.error ?? ''} Your ride is safe here; reconnect Strava in
-						your profile if you disconnected it.
+						<!-- The cause is almost always Strava being briefly away,
+						     not a disconnection — so the copy no longer guesses at
+						     one, and the action it offers is the one that helps. -->
+						Could not be sent to Strava — it was tried several times over a couple
+						of hours.
+						{ride.export.error ?? ''} Your ride is safe here.
+						<button
+							onclick={retryExport}
+							disabled={retrying}
+							class="btn btn-secondary btn-xs mt-2 block"
+							>{retrying ? 'Queueing…' : 'Try sending it again'}</button
+						>
+						{#if retryError}
+							<span class="text-danger mt-1.5 block">{retryError}</span>
+						{/if}
 					{/if}
 				</p>
 			</section>

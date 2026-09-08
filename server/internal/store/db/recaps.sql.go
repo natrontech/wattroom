@@ -141,7 +141,14 @@ delete from session_recaps where ended_at < now() - make_interval(days => $1::in
 
 // The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
 // register: this is what stops the table answering "where was this person in
-// March". Swept on write, like PruneChat — the table never grows past it.
+// March".
+//
+// Run by internal/housekeeping, NOT on write. This used to be swept when a
+// session ended, by analogy with PruneChat — and the analogy does not hold
+// (#1153). PruneChat's bound is 500 messages, and only a write can exceed a
+// count, so pruning on write is exactly sufficient there. This bound is time,
+// which expires a row with no write involved, so a room that stopped holding
+// sessions kept its recaps forever — the one case the bound exists for.
 func (q *Queries) PruneSessionRecaps(ctx context.Context, dollar_1 int32) error {
 	_, err := q.db.Exec(ctx, pruneSessionRecaps, dollar_1)
 	return err
