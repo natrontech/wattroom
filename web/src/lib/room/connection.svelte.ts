@@ -18,19 +18,8 @@ import { parseSharedWorkout } from '$lib/room/workout';
 import { play } from '$lib/sound/cues';
 import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';
+import { applyAway, noEcho, pressed } from '$lib/room/away-echo';
 
-/**
- * How many disagreeing ticks a screen tolerates before believing the roster
- * again (#1128) — the bound on waiting for the server to echo a press it may
- * never have received.
- *
- * Counted in TICKS, not milliseconds. Ticks are what actually arrive, and a
- * wall clock measures how busy the machine is instead: a five-second window
- * expired inside a single test on a loaded CI runner while the same test
- * passed locally, which is a bound that means one thing on a laptop and
- * another under load. Five ticks is five chances to agree, whenever they come.
- */
-const AWAY_ECHO_TICKS = 5;
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
@@ -126,8 +115,13 @@ function connect(slug: string): Connection {
 	 * effect root because the button that writes it lives on the returned
 	 * object, and the effect that reads it lives inside.
 	 */
-	let awayWanted: boolean | null = null;
-	let awayWaited = 0;
+	/**
+	 * What this screen pressed and has not yet seen echoed (#1128). Outside
+	 * the effect root because the button that writes it lives on the returned
+	 * object and the effect that reads it lives inside; the rule itself is in
+	 * `away-echo.ts`, where it can be tested without an AV stack.
+	 */
+	let awayEcho = noEcho;
 
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
@@ -199,20 +193,18 @@ function connect(slug: string): Connection {
 		// doing nothing while the room went on hearing them.
 		//
 		// So a press records what it is waiting for, and the roster is ignored
-		// until it agrees. `awayWaited` bounds that: a message the server never
-		// answers (a socket that dropped mid-send) must not pin this rider's
-		// away state to a wish forever — after five disagreeing ticks the
-		// server's truth wins again, which is also how a reconnect heals.
+		// until it agrees — bounded, so a message the server never answers
+		// cannot pin this rider's away state to a wish forever. `away-echo.ts`
+		// holds the rule and its tests; this is the two lines that call it.
 		$effect(() => {
 			const mine = live.tick?.roster.find(
 				(rider) => rider.id === account.me?.id,
 			);
 			if (!mine) return;
 			const server = !!mine.away;
-			if (awayWanted !== null) {
-				if (server !== awayWanted && ++awayWaited <= AWAY_ECHO_TICKS) return;
-				awayWanted = null;
-			}
+			const step = applyAway(server, awayEcho);
+			awayEcho = step.echo;
+			if (!step.apply) return;
 			void av.setAway(server);
 		});
 
@@ -481,8 +473,7 @@ function connect(slug: string): Connection {
 		setAway(next: boolean) {
 			// What we are waiting for the server to echo (#1128), so the tick
 			// already in flight cannot undo the press that produced it.
-			awayWanted = next;
-			awayWaited = 0;
+			awayEcho = pressed(next);
 			void av.setAway(next);
 			live.setAway(next);
 		},
