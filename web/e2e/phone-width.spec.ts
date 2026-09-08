@@ -21,6 +21,7 @@ const ROUTES = [
 	'/home',
 	'/workouts',
 	'/workouts/edit',
+	'/music',
 	'/history',
 	'/rooms',
 	'/friends',
@@ -62,9 +63,59 @@ async function seedARide(page: Page): Promise<void> {
 	if (!ok) throw new Error('could not seed a ride for the chart pages');
 }
 
+/**
+ * And a rider with an empty music pool has no shelf row, which is the widest
+ * thing on /music. Same trap as the ride above: without this the route sits in
+ * ROUTES asserting nothing — confirmed by deleting the strip's `overflow-x-auto`
+ * and watching the spec stay green.
+ */
+async function seedATaggedTrack(page: Page): Promise<void> {
+	const ok: true | string = await page.evaluate(async () => {
+		// MPEG 1 Layer III, 128 kbps at 44.1 kHz: a 417-byte frame, repeated.
+		// The server measures the duration off these frames, so they have to be
+		// real ones rather than a blob named .mp3.
+		const frame = new Uint8Array(417);
+		frame.set([0xff, 0xfb, 0x90, 0x00]);
+		const mp3 = new Uint8Array(417 * 40);
+		for (let i = 0; i < 40; i++) mp3.set(frame, i * 417);
+
+		const upload = await fetch('/api/tracks?name=Phone%20Width.mp3', {
+			method: 'POST',
+			body: mp3,
+		});
+		if (!upload.ok) return `upload ${upload.status}`;
+		const track = await upload.json();
+		// Enough shelves to be wider than 375px several times over — the strip
+		// has to be scrolling something for its own overflow to be tested.
+		const patch = await fetch(`/api/tracks/${track.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				title: 'Phone Width',
+				artist: '',
+				album: '',
+				bpm: null,
+				tags: [
+					'synthwave',
+					'darksynth',
+					'italo disco',
+					'techno',
+					'ambient',
+					'warm up',
+					'cool down',
+					'threshold',
+				],
+			}),
+		});
+		return patch.ok ? true : `patch ${patch.status}`;
+	});
+	if (ok !== true) throw new Error(`could not seed a tagged track: ${ok}`);
+}
+
 test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 	await signInAs(page, 'Phone Width', '/home');
 	await seedARide(page);
+	await seedATaggedTrack(page);
 
 	const wide: string[] = [];
 	for (const route of ROUTES) {

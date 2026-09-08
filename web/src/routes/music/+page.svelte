@@ -382,7 +382,7 @@
 											{#each track.tags as name (name)}
 												<button
 													onclick={() => pick(name)}
-													class="border-muted/25 text-muted hover:border-neon/50 rounded-full border px-1.5 py-0.5 text-[10px]"
+													class="border-muted/25 text-muted hover:border-neon/50 rounded-full border px-2 py-1.5 text-[11px]"
 													>{name}</button
 												>
 											{/each}
