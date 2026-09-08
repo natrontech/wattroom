@@ -18,6 +18,14 @@ import { parseSharedWorkout } from '$lib/room/workout';
 import { play } from '$lib/sound/cues';
 import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';
+
+/**
+ * How long a screen waits for the server to echo its own away press before
+ * believing the roster again (#1128). Ticks are 1 Hz, so this is several of
+ * them — long enough that a slow round trip is not mistaken for a lost one,
+ * short enough that a genuinely lost message heals inside a rest interval.
+ */
+const AWAY_ECHO_MS = 5000;
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
@@ -107,6 +115,15 @@ function connect(slug: string): Connection {
 	let sharedOf!: () => SessionState | undefined;
 	let segmentsOf!: () => Segment[];
 	let workoutOf!: () => Workout | null;
+	/**
+	 * The away state this screen has asked for and not yet seen echoed
+	 * (#1128), and when it asked. Null means "believe the roster". Outside the
+	 * effect root because the button that writes it lives on the returned
+	 * object, and the effect that reads it lives inside.
+	 */
+	let awayWanted: boolean | null = null;
+	let awaySentAt = 0;
+
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
 		// property of standing in the room, exactly like the socket and the
@@ -168,11 +185,31 @@ function connect(slug: string): Connection {
 		// updates itself immediately in RoomShell; this is what also mutes the
 		// desktop when the phone pressed it, and restores each tab to what that
 		// tab had live before.
+		//
+		// It must not apply an echo of the state we just left (#1128). Our own
+		// press is optimistic — local first, message second — and the tick
+		// already in flight still carries the OLD value. Applying it ran the
+		// come-back branch a fifth of a second after the rider pressed Away:
+		// the mix unmuted and the mic re-opened itself, so the button read as
+		// doing nothing while the room went on hearing them.
+		//
+		// So a press records what it is waiting for, and the roster is ignored
+		// until it agrees. `awaySentAt` bounds that: a message the server never
+		// answers (a socket that dropped mid-send) must not pin this rider's
+		// away state to a wish forever — after the window the server's truth
+		// wins again, which is also how a reconnect heals.
 		$effect(() => {
 			const mine = live.tick?.roster.find(
 				(rider) => rider.id === account.me?.id,
 			);
-			if (mine) void av.setAway(!!mine.away);
+			if (!mine) return;
+			const server = !!mine.away;
+			if (awayWanted !== null) {
+				const stale = Date.now() - awaySentAt > AWAY_ECHO_MS;
+				if (server !== awayWanted && !stale) return;
+				awayWanted = null;
+			}
+			void av.setAway(server);
 		});
 
 		$effect(() => {
@@ -438,6 +475,10 @@ function connect(slug: string): Connection {
 		 * sends it now lives in the sidebar, which has no room context.
 		 */
 		setAway(next: boolean) {
+			// What we are waiting for the server to echo (#1128), so the tick
+			// already in flight cannot undo the press that produced it.
+			awayWanted = next;
+			awaySentAt = Date.now();
 			void av.setAway(next);
 			live.setAway(next);
 		},

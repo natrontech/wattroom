@@ -507,6 +507,17 @@ export function createRoomAv(slug: string) {
 			setVoice(conn.me, 'muted');
 			noteVoice();
 			await closeCam();
+			// And the screen goes with them (#1128). A rider who stepped out is
+			// not watching what their machine is showing the room, which is the
+			// same argument as the camera's — and one step worse, because a
+			// screen keeps disclosing after they walk off (#563).
+			//
+			// Deliberately NOT restored on return, unlike the mic and camera:
+			// those come back to what this tab had live, and a share is a thing
+			// the rider pointed at something. Re-publishing a window they left
+			// ten minutes ago, without them asking, is how a private tab
+			// reaches a room. Coming back offers the button, not the share.
+			if (av.sharing) await stopShare();
 			return;
 		}
 		if (conn.micBeforeAway && !av.micOn) {
@@ -517,6 +528,21 @@ export function createRoomAv(slug: string) {
 		if (conn.camBeforeAway && !av.camOn) {
 			await openCam();
 		}
+	}
+
+	/**
+	 * Stop sharing, whoever asked — the button, or stepping away (#1128).
+	 * One place, so the two cannot drift apart on what stopping means.
+	 */
+	async function stopShare() {
+		if (!conn.room) return;
+		av.sharing = false;
+		av.sharingAudio = false;
+		await conn.room.localParticipant
+			.setScreenShareEnabled(false)
+			.catch(() => {});
+		if (dropOwned(screenTracks, conn.me, conn.myIdentity))
+			stage.dropScreen(conn.me);
 	}
 
 	/**

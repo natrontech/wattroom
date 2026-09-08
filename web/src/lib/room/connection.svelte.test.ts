@@ -12,6 +12,11 @@ vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	play: (id: string) => played.push(id),
 }));
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
+// The away effect matches the roster against who you are; without this it
+// never finds you and the test passes for the wrong reason.
+vi.mock('$lib/account.svelte', () => ({
+	account: { me: { id: 'me', displayName: 'Me' }, loaded: true },
+}));
 // A hand-driven socket: the tick is what the ride and the room both read,
 // and the test needs to move it. $state, so a derived that fails to track it
 // is caught rather than papered over by lazy first evaluation.
@@ -46,6 +51,10 @@ const fakeLive = {
 	jukebox() {},
 	control() {},
 	cheer() {},
+	aways: [] as boolean[],
+	setAway(next: boolean) {
+		this.aways.push(next);
+	},
 };
 vi.mock('$lib/room/live.svelte', () => ({ createRoomLive: () => fakeLive }));
 vi.mock('livekit-client', () => ({
@@ -247,5 +256,53 @@ describe('the connection keeps deriving the session after a page dies', () => {
 		expect(connection.shared()?.phase).toBe('running');
 		expect(connection.segments()).toHaveLength(1);
 		expect(connection.workout()?.name).toBe('Threshold');
+	});
+
+	// #1128, and the regression test that matters most. Pressing Away is
+	// optimistic — local first, message second — so the tick ALREADY IN
+	// FLIGHT still carries away:false. Applying it ran the come-back branch a
+	// fifth of a second later: the mix unmuted and the mic re-opened itself,
+	// and the button read as doing nothing while the room went on hearing
+	// the rider.
+	it('is not undone by the tick that was already in flight', async () => {
+		const connection = roomConnection.join('lounge');
+		// `state` as well as the roster: another effect reads
+		// `live.tick.state.phase` on every tick, and a fixture without it
+		// throws past the assertions rather than failing them.
+		const roster = (away: boolean) => ({
+			state: { phase: 'idle' },
+			roster: [{ id: 'me', displayName: 'Me', away }],
+		});
+
+		fakeTick = roster(false);
+		await tick();
+		expect(connection.av.away).toBe(false);
+
+		connection.setAway(true);
+		await tick();
+		expect(connection.av.away).toBe(true);
+		expect(fakeLive.aways.at(-1)).toBe(true);
+
+		// The echo of the state we just left. It must change nothing.
+		fakeTick = roster(false);
+		await tick();
+		expect(connection.av.away).toBe(true);
+		// And again — a slow round trip is several ticks, not one.
+		fakeTick = roster(false);
+		await tick();
+		expect(connection.av.away).toBe(true);
+
+		// The server catches up.
+		fakeTick = roster(true);
+		await tick();
+		expect(connection.av.away).toBe(true);
+
+		// …and now the roster is believed again, which is the whole reason
+		// this effect exists (#807): away pressed on the rider's phone has to
+		// reach this screen. Ignoring the roster forever would fix the bug by
+		// breaking the feature.
+		fakeTick = roster(false);
+		await tick();
+		expect(connection.av.away).toBe(false);
 	});
 });
