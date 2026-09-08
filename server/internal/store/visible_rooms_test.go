@@ -62,7 +62,6 @@ func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pg
 	t.Helper()
 	n := roomSeq.Add(1) % 10000
 	r, err := f.st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code:    fmt.Sprintf("VR%04d", n),
 		Slug:    fmt.Sprintf("%s-%d", slug, n),
 		Name:    slug,
 		OwnerID: owner,

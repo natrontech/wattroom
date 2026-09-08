@@ -185,7 +185,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			}); err != nil {
 				s.log.Warn("mark room read failed", "err", err, "room", room.Slug)
 			}
-			response.Code = room.Code
 			response.SoundPack = room.SoundPack
 			response.Cheers = cheerSet(room.Cheers)
 			response.IcsToken = room.IcsToken

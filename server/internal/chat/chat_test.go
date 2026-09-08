@@ -59,7 +59,7 @@ func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
 		})
 	}
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "CHAT01", Slug: "chat-cave", Name: "Chat Cave", OwnerID: users.byToken["alice"].ID,
+		Slug: "chat-cave", Name: "Chat Cave", OwnerID: users.byToken["alice"].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -195,7 +195,7 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	alice := users.byToken["alice"]
 	// A second room the message does NOT live in.
 	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "CHAT02", Slug: "other-cave", Name: "Other", OwnerID: alice.ID,
+		Slug: "other-cave", Name: "Other", OwnerID: alice.ID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -282,7 +282,7 @@ func TestChatImages(t *testing.T) {
 	// The room is the privacy boundary: the same id through another room's
 	// slug must 404 even for a member of that room.
 	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "CHAT03", Slug: "img-cave", Name: "Img", OwnerID: alice.ID,
+		Slug: "img-cave", Name: "Img", OwnerID: alice.ID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -339,7 +339,7 @@ func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	svc, mux, users, _ := setup(t)
 	alice := users.byToken["alice"]
 	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "CHAT04", Slug: "far-cave", Name: "Far", OwnerID: alice.ID,
+		Slug: "far-cave", Name: "Far", OwnerID: alice.ID,
 	})
 	if err != nil {
 		t.Fatal(err)

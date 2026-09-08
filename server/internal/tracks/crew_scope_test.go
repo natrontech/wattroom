@@ -41,7 +41,7 @@ func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, 
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		// A prefix nothing else in the suite uses: rooms.code is unique
 		// across the whole shared wattroom_test.
-		Code: fmt.Sprintf("CS%04d", n), Slug: fmt.Sprintf("crew-scope-%d-%s", n, slug),
+		Slug: fmt.Sprintf("crew-scope-%d-%s", n, slug),
 		Name: "Crew Scope", OwnerID: h.users.byToken[owner].ID,
 	})
 	if err != nil {

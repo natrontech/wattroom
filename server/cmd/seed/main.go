@@ -39,8 +39,8 @@ func run(ctx context.Context, dsn string) error {
 	}
 	defer st.Close()
 
-	// Idempotency the lazy way: one room with a fixed code marks a seeded DB.
-	if _, err := st.Queries.GetRoomByCode(ctx, "VELVET"); err == nil {
+	// Idempotency the lazy way: one room with a fixed slug marks a seeded DB.
+	if _, err := st.Queries.GetRoomBySlug(ctx, "velvet-hammer"); err == nil {
 		return nil
 	}
 
@@ -58,7 +58,7 @@ func run(ctx context.Context, dsn string) error {
 	}
 
 	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{
-		Code: "VELVET", Slug: "velvet-hammer", Name: "Velvet Hammer", OwnerID: jan.ID,
+		Slug: "velvet-hammer", Name: "Velvet Hammer", OwnerID: jan.ID,
 	})
 	if err != nil {
 		return fmt.Errorf("room: %w", err)

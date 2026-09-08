@@ -124,7 +124,6 @@ type roomJSON struct {
 	ID string `json:"id,omitempty"`
 	// Absent on a list row the caller may not enter — the slug is the door.
 	Slug string `json:"slug,omitempty"`
-	Code string `json:"code,omitempty"` // members only — the code IS the invite
 	Name string `json:"name"`
 	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
 	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing

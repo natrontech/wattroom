@@ -105,25 +105,19 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 }
 
 const createRoom = `-- name: CreateRoom :one
-insert into rooms (code, slug, name, owner_id)
-values ($1, $2, $3, $4)
+insert into rooms (slug, name, owner_id)
+values ($1, $2, $3)
 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type CreateRoomParams struct {
-	Code    string
 	Slug    string
 	Name    string
 	OwnerID pgtype.UUID
 }
 
 func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error) {
-	row := q.db.QueryRow(ctx, createRoom,
-		arg.Code,
-		arg.Slug,
-		arg.Name,
-		arg.OwnerID,
-	)
+	row := q.db.QueryRow(ctx, createRoom, arg.Slug, arg.Name, arg.OwnerID)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -253,37 +247,6 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 		&i.JoinedAt,
 		&i.Notify,
 		&i.OnBoard,
-	)
-	return i, err
-}
-
-const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where code = $1
-`
-
-func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
-	row := q.db.QueryRow(ctx, getRoomByCode, code)
-	var i Room
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.Slug,
-		&i.Name,
-		&i.OwnerID,
-		&i.Listed,
-		&i.CreatedAt,
-		&i.SoundPack,
-		&i.Icon,
-		&i.Cheers,
-		&i.IcsToken,
-		&i.AutoplayEnabled,
-		&i.AutoplayOrder,
-		&i.AutoplayPlaylistID,
-		&i.AutoplayFixedVideoID,
-		&i.AutoplayFixedVideoTitle,
-		&i.BoardEnabled,
-		&i.CrewID,
-		&i.CrewVisible,
 	)
 	return i, err
 }
@@ -848,7 +811,7 @@ order by m.joined_at desc
 
 type ListUserRoomsRow struct {
 	ID                      pgtype.UUID
-	Code                    string
+	Code                    *string
 	Slug                    string
 	Name                    string
 	OwnerID                 pgtype.UUID

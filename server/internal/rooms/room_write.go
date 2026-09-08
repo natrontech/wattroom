@@ -62,7 +62,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	for attempt := 0; ; attempt++ {
 		slug := slugify(req.Name) + "-" + randomCode(4)
 		created, err := s.store.Queries.CreateRoom(r.Context(), db.CreateRoomParams{
-			Code: randomCode(6), Slug: strings.ToLower(slug), Name: req.Name, OwnerID: user.ID,
+			Slug: strings.ToLower(slug), Name: req.Name, OwnerID: user.ID,
 		})
 		if err == nil {
 			room = created
@@ -100,7 +100,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, roomJSON{
-		Slug: room.Slug, Code: room.Code, Name: room.Name, Listed: room.Listed, Role: "owner",
+		Slug: room.Slug, Name: room.Name, Listed: room.Listed, Role: "owner",
 		Crew: &roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, ImageURL: crewImageURL(crew.ID, crew.HasImage), Role: crewRole},
 	})
 }
@@ -239,7 +239,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.changed()
 	httpx.WriteJSON(w, http.StatusOK, roomJSON{
-		Slug: updated.Slug, Code: updated.Code, Name: updated.Name, Icon: updated.Icon,
+		Slug: updated.Slug, Name: updated.Name, Icon: updated.Icon,
 		Listed: updated.Listed, SoundPack: updated.SoundPack,
 		Cheers: cheerSet(updated.Cheers), Role: "owner",
 		BoardEnabled: updated.BoardEnabled, CrewVisible: updated.CrewVisible,

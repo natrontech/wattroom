@@ -116,7 +116,6 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms", s.handleCreate)
 	mux.HandleFunc("GET /api/rooms", s.handleMine)
-	mux.HandleFunc("POST /api/rooms/join", s.handleJoinByCode)
 	mux.HandleFunc("GET /api/rooms/directory", s.handleDirectory)
 	mux.HandleFunc("GET /api/rooms/{slug}", s.handleGet)
 	mux.HandleFunc("PATCH /api/rooms/{slug}", s.handleUpdate)

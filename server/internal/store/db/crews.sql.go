@@ -93,9 +93,9 @@ type CreateCrewParams struct {
 	Code    *string
 }
 
-// The crew (ADR-0038, #1106). Crew membership is derived from room membership
-// and is deliberately not stored, so there is no CreateCrewMembership here —
-// only the two facts room membership cannot imply: an admin grant and a ban.
+// The crew (ADR-0038, #1106; amended #1236). Crew membership is a row in
+// crew_roles — member, admin or banned — written by the crew's door (JoinCrew)
+// and read by everything else. The owner is crews.owner_id and holds no row.
 func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, createCrew, arg.Name, arg.OwnerID, arg.Code)
 	var i Crew

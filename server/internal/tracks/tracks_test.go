@@ -701,7 +701,7 @@ func TestARoomMateCanPlayYourTrackButNotBrowseYourShelf(t *testing.T) {
 func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "SHR001", Slug: "shared-" + strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")),
+		Slug: "shared-" + strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")),
 		Name: "Shared", OwnerID: h.users.byToken[a].ID,
 	})
 	if err != nil {

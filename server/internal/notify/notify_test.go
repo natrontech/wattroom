@@ -66,7 +66,7 @@ func setup(t *testing.T) *harness {
 	}
 
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: "NTFY42", Slug: "notify-test", Name: "Velvet Hammer", OwnerID: h.planner.ID,
+		Slug: "notify-test", Name: "Velvet Hammer", OwnerID: h.planner.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
