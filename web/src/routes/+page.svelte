@@ -133,6 +133,9 @@
 				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded-lg px-7 py-3 text-sm font-semibold"
 				>Open your first room</a
 			>
+			<a href="/download" class="btn-link mt-3 text-xs"
+				>or get the desktop app</a
+			>
 
 			{#if live && live.online > 0}
 				<p

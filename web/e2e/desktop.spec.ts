@@ -114,3 +114,48 @@ test('in a browser, home never mentions the desktop build', async ({
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	await expect(page.getByText(/is out — you are on/)).toHaveCount(0);
 });
+
+test('in a browser on a desk, home offers the app once — for this machine', async ({
+	browser,
+}) => {
+	const context = await browser.newContext({
+		userAgent:
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+	});
+	const page = await context.newPage();
+	await page.route(FEED, (route) => route.fulfill({ json: RELEASE }));
+	await signInAs(page, 'Desktop Offer', '/home');
+
+	const button = page.getByRole('link', { name: /Download for Windows/ });
+	await expect(button).toBeVisible();
+	await expect(button).toHaveAttribute(
+		'href',
+		'https://dl.test/WattRoom-0.2.0-win-x64.exe',
+	);
+	// The sidebar's permanent way in, beside the one-time panel.
+	await expect(
+		page.getByRole('link', { name: 'Get the desktop app' }),
+	).toBeVisible();
+
+	await page.getByRole('button', { name: 'Not now' }).click();
+	await expect(button).toHaveCount(0);
+	await page.reload();
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await expect(page.getByRole('link', { name: /Download for/ })).toHaveCount(0);
+	await context.close();
+});
+
+test('inside the shell, home never offers the app it is', async ({ page }) => {
+	await page.route(FEED, (route) => route.fulfill({ json: RELEASE }));
+	await page.addInitScript(() => {
+		Object.assign(window, {
+			wattroom: { version: '0.2.0', platform: 'win32' },
+		});
+	});
+	await signInAs(page, 'Desktop Inside', '/home');
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await expect(page.getByRole('link', { name: /Download for/ })).toHaveCount(0);
+	await expect(
+		page.getByRole('link', { name: 'Get the desktop app' }),
+	).toHaveCount(0);
+});
