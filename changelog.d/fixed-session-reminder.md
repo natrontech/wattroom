@@ -1,0 +1,1 @@
+- A planned session now says so in the room's chat as it comes due — "Sweet Spot 3×12 starts at Tue 19:00", ten minutes ahead. The line was built when planning first reached the timeline and never actually appeared.

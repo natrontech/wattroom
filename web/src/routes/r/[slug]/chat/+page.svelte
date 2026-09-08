@@ -13,5 +13,8 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
-	<RoomThread slug={room.slug} />
+	<!-- The room's own reminders ride this thread (#359): the hub cannot
+	     send them, so the client derives them from the same upcoming list
+	     the plan card renders. -->
+	<RoomThread slug={room.slug} reminders={room.reminders} />
 </div>
