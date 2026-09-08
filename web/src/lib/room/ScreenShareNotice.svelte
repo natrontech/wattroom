@@ -14,11 +14,14 @@
 
 	let {
 		sharing,
+		sharingAudio = false,
 		room,
 		pathname,
 		onStop,
 	}: {
 		sharing: boolean;
+		/** Whether the room can HEAR the machine too (#1124). */
+		sharingAudio?: boolean;
 		room: { slug: string; name?: string } | null;
 		pathname: string;
 		onStop: () => void;
@@ -55,7 +58,10 @@
 		></span>
 		<MonitorUp size={16} class="text-danger shrink-0" />
 		<p class="min-w-0 flex-1 truncate text-sm">
-			<span class="font-medium">You're sharing your screen</span>
+			<span class="font-medium"
+				>You're sharing your screen{#if sharingAudio}
+					and its sound{/if}</span
+			>
 			<span class="text-muted">
 				{#if notice.href}
 					with <a href={notice.href} class="underline">{notice.room}</a>

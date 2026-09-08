@@ -1,6 +1,7 @@
 import { createMicMeter, type MicMeter } from '$lib/room/mic-level';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { riderOf } from '$lib/room/tabs';
+import { onDuck } from '$lib/sound/duck';
 
 /**
  * Everyone else's voice, on its way to your speakers (#152, #179).
@@ -39,13 +40,26 @@ export function createRiderOutput(
 	const gains = new Map<string, GainNode>();
 	const sources = new Map<string, MediaElementAudioSourceNode>();
 	const meters = new Map<string, MicMeter>();
+	// Which keys carry a shared machine's audio rather than a voice (#1124).
+	// A Set rather than a suffix on the key, so nothing has to parse a string
+	// to know what it is holding.
+	const shares = new Set<string>();
+	// How far shared audio is dipped right now. Voices are never ducked —
+	// ducking exists to get music out from under them (ADR-0011), and a
+	// second voice is not music.
+	let duckFactor = 1;
 
 	/**
 	 * A rider's voice as it should sound right now: their fader, or nothing
 	 * while you are away (#875) — the room does not play to an empty chair.
 	 */
-	function gainFor(identity: string) {
-		return mixer.muted ? 0 : mixer.riderGain(riderOf(identity));
+	function gainFor(key: string) {
+		if (mixer.muted) return 0;
+		// A shared machine is the "music" profile of ADR-0011: its own mixer
+		// channel, and it ducks under voice like the jukebox does. A rider's
+		// voice takes their fader and is never dipped.
+		if (shares.has(key)) return mixer.share * duckFactor;
+		return mixer.riderGain(riderOf(key));
 	}
 
 	function applySink() {
@@ -58,10 +72,30 @@ export function createRiderOutput(
 			});
 	}
 
+	// One duck for the whole app (#988) — this graph is told when to move,
+	// it does not run a timer of its own.
+	const stopDucking = onDuck(({ down }) => {
+		duckFactor = down ? mixer.duck : 1;
+		if (!ctx) return;
+		for (const [key, gain] of gains) {
+			if (!shares.has(key)) continue;
+			gain.gain.setTargetAtTime(gainFor(key), ctx.currentTime, 0.02);
+		}
+	});
+
 	return {
 		applySink,
-		/** Put one connection's audio element on the bus. */
-		route(identity: string, el: HTMLAudioElement) {
+		/**
+		 * Put one connection's audio element on the bus.
+		 *
+		 * `key` is the identity for a voice and something else for anything
+		 * else that rider publishes — a map keyed by identity ALONE silently
+		 * replaced one with the other, so a rider sharing their computer's
+		 * audio lost their voice on everyone's speakers (#1124). `share` says
+		 * which fader the key answers to.
+		 */
+		route(key: string, el: HTMLAudioElement, share = false) {
+			const identity = key;
 			try {
 				if (!ctx) {
 					ctx = new AudioContext();
@@ -76,6 +110,7 @@ export function createRiderOutput(
 					bus.release.value = 0.25;
 					bus.connect(ctx.destination);
 				}
+				if (share) shares.add(identity);
 				const source = ctx.createMediaElementSource(el);
 				const gain = ctx.createGain();
 				gain.gain.value = gainFor(identity);
@@ -89,7 +124,10 @@ export function createRiderOutput(
 				// so `out` is what carries on to the gain either way, and the
 				// whole chain reaches the destination — an unconnected meter is
 				// never pulled.
-				if (!onLevel) {
+				// No meter on a share: the talk detector decides who is SPEAKING,
+				// and a rider whose computer is playing music is not. Ringing
+				// them would be the machine talking with their face on it.
+				if (!onLevel || share) {
 					source.connect(gain);
 				} else {
 					const level = (value: number) => onLevel(identity, value);
@@ -117,19 +155,20 @@ export function createRiderOutput(
 			}
 		},
 		/** One connection left. */
-		drop(identity: string) {
-			meters.get(identity)?.stop();
-			meters.delete(identity);
-			gains.get(identity)?.disconnect();
-			gains.delete(identity);
-			sources.get(identity)?.disconnect();
-			sources.delete(identity);
+		drop(key: string) {
+			meters.get(key)?.stop();
+			meters.delete(key);
+			gains.get(key)?.disconnect();
+			gains.delete(key);
+			sources.get(key)?.disconnect();
+			sources.delete(key);
+			shares.delete(key);
 		},
 		/** Ramp every live voice to its current fader; a jump would zipper (#179). */
 		applyGains() {
 			if (!ctx) return;
-			for (const [identity, gain] of gains)
-				gain.gain.setTargetAtTime(gainFor(identity), ctx.currentTime, 0.02);
+			for (const [key, gain] of gains)
+				gain.gain.setTargetAtTime(gainFor(key), ctx.currentTime, 0.02);
 		},
 		/**
 		 * Browsers may suspend audio graphs in long-hidden tabs; coming back
@@ -139,6 +178,8 @@ export function createRiderOutput(
 			if (ctx?.state === 'suspended') void ctx.resume();
 		},
 		close() {
+			stopDucking();
+			shares.clear();
 			for (const meter of meters.values()) meter.stop();
 			meters.clear();
 			for (const gain of gains.values()) gain.disconnect();

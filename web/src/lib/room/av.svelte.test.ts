@@ -56,6 +56,25 @@ vi.mock('livekit-client', () => {
 		}
 		disconnect() {}
 	}
+	function remoteAudio(identity: string, source: string) {
+		const el = document.createElement('audio');
+		joined?.handlers.get('TrackSubscribed')?.(
+			{ kind: 'audio', attach: () => el, detach: () => [el] },
+			{ kind: 'audio', source, isMuted: false },
+			{ identity },
+		);
+		return {
+			el,
+			end() {
+				joined?.handlers.get('TrackUnsubscribed')?.(
+					{ kind: 'audio', attach: () => el, detach: () => [el] },
+					{ kind: 'audio', source, isMuted: false },
+					{ identity },
+				);
+			},
+		};
+	}
+
 	return {
 		Room,
 		// The rider hitting Chrome's own "Stop sharing" bar: LiveKit ends the
@@ -97,15 +116,15 @@ vi.mock('livekit-client', () => {
 		},
 		/** A remote rider's microphone arriving: an audio track to attach. */
 		remoteVoice(identity: string) {
-			joined?.handlers.get('TrackSubscribed')?.(
-				{
-					kind: 'audio',
-					attach: () => document.createElement('audio'),
-					detach: () => [],
-				},
-				{ kind: 'audio', source: 'microphone', isMuted: false },
-				{ identity },
-			);
+			return remoteAudio(identity, 'microphone');
+		},
+		/**
+		 * The same rider's COMPUTER arriving (#1124) — a second audio track
+		 * from one identity, which is the case that used to overwrite the
+		 * first.
+		 */
+		remoteShareAudio(identity: string) {
+			return remoteAudio(identity, 'screen_share_audio');
 		},
 		/**
 		 * The browser refusing to start audio without a gesture (#645):
@@ -141,6 +160,11 @@ vi.mock('livekit-client', () => {
 				Microphone: 'microphone',
 				Camera: 'camera',
 				ScreenShare: 'screen_share',
+				// #1124. Without this the fake reproduced the bug rather than
+				// the fix: `pub.source === Track.Source.ScreenShareAudio`
+				// compared against undefined, so a share's audio took the
+				// voice's key and quietly replaced it.
+				ScreenShareAudio: 'screen_share_audio',
 			},
 			Kind: { Audio: 'audio', Video: 'video' },
 		},
@@ -165,6 +189,7 @@ const {
 	broadcasts,
 	remoteCamera,
 	remoteVoice,
+	remoteShareAudio,
 	blockAudio,
 	allowAudio,
 	startAudioAsks,
@@ -181,7 +206,11 @@ const {
 		identity: string,
 		muted?: boolean,
 	) => { mute: () => void; unmute: () => void };
-	remoteVoice: (identity: string) => void;
+	remoteVoice: (identity: string) => { el: HTMLAudioElement; end: () => void };
+	remoteShareAudio: (identity: string) => {
+		el: HTMLAudioElement;
+		end: () => void;
+	};
 };
 
 /** Every fader on the output side, in the order the graph built them. */
@@ -908,5 +937,66 @@ describe('a browser that blocks audio playback', () => {
 		// asks says nothing about this one.
 		expect(av.playbackBlocked).toBe(false);
 		dispose();
+	});
+});
+
+// #1124: a rider can publish TWO audio tracks — their voice and their
+// machine. Everything that held remote audio was keyed by identity alone, so
+// the second arrival replaced the first: sharing your computer took your
+// voice off everyone's speakers, with nothing anywhere saying so, and the
+// only symptom was a rider who had stopped being audible.
+// NOT covered here, deliberately rather than by oversight: that a share is
+// kept off the talk meter, so a rider's machine playing music does not ring
+// them as speaking. The guard is one clause in av-output's `route`, and this
+// fake never runs a meter at all — createMicMeter needs an AudioWorklet — so
+// a test for it passed with the clause deleted. A test that cannot fail is
+// worse than none: it claims the ground is covered.
+describe('a rider who shares their computer as well as their voice', () => {
+	it('keeps both on the bus, on their own faders', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+
+			remoteVoice('jan');
+			expect(gains).toHaveLength(1);
+			remoteShareAudio('jan');
+			// Two gains, not one replaced: the voice survived the share.
+			expect(gains).toHaveLength(2);
+
+			// And they answer to different faders. Turning jan down must not
+			// turn their music down with them, and vice versa.
+			av.setRiderGain('jan', 0);
+			av.setShareGain(0.5);
+			expect(gains[0].gain.value).toBe(0);
+			expect(gains[1].gain.value).toBe(0.5);
+
+			dispose();
+		});
+	});
+
+	it('takes only the share away when the share ends', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+
+			remoteVoice('jan');
+			const share = remoteShareAudio('jan');
+			expect(gains).toHaveLength(2);
+
+			share.end();
+			// The voice is still routed — its fader still answers. A drop keyed
+			// by identity would have taken the voice out with the share, and a
+			// rider would simply have gone quiet when they stopped sharing.
+			av.setRiderGain('jan', 0.4);
+			expect(gains[0].gain.value).toBe(0.4);
+
+			dispose();
+		});
 	});
 });

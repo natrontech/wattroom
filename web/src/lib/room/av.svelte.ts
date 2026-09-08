@@ -155,6 +155,21 @@ export function createRoomAv(slug: string) {
 	const screenTracks = new Map<string, Owned>();
 	/** Audio plumbing is per CONNECTION: one element and one gain each. */
 	const audioElements = new Map<string, HTMLAudioElement>();
+	/**
+	 * A rider's voice and a rider's shared machine are two audio tracks from
+	 * one identity, so anything holding them per rider needs both halves of
+	 * the name (#1124). The suffix, not a separate map: every caller here
+	 * already has the publication's source in hand.
+	 */
+	function audioKey(
+		identity: string,
+		source: unknown,
+		lk: { Track: { Source: { ScreenShareAudio: unknown } } },
+	) {
+		return source === lk.Track.Source.ScreenShareAudio
+			? identity + ' \u2014 share'
+			: identity;
+	}
 	/** Forget a rider's track only if this connection is the one that owns it. */
 	function dropOwned(map: Map<string, Owned>, rider: string, owner: string) {
 		if (map.get(rider)?.owner !== owner) return false;
@@ -558,10 +573,20 @@ export function createRoomAv(slug: string) {
 				}
 			}
 			if (track.kind === client.Track.Kind.Audio) {
+				// A rider can publish TWO audio tracks — their voice and their
+				// machine (#1124) — so both maps are keyed by source as well as
+				// identity. Keyed by identity alone, the second arrival replaced
+				// the first: sharing your screen took your voice off everyone's
+				// speakers, with nothing anywhere saying so.
+				const key = audioKey(participant.identity, pub.source, client);
 				const el = track.attach() as HTMLAudioElement;
-				audioElements.set(participant.identity, el);
+				audioElements.set(key, el);
 				document.body.appendChild(el);
-				output.route(participant.identity, el);
+				output.route(
+					key,
+					el,
+					pub.source === client.Track.Source.ScreenShareAudio,
+				);
 				// Mute here is unpublish, not track-mute (the gate owns the gain),
 				// so the mic chip must follow the publication itself — Muted/
 				// Unmuted never fire and ParticipantConnected ran pre-publish.
@@ -580,9 +605,10 @@ export function createRoomAv(slug: string) {
 				}
 			}
 			if (track.kind === client.Track.Kind.Audio) {
+				const key = audioKey(participant.identity, pub.source, client);
 				track.detach().forEach((el) => el.remove());
-				audioElements.delete(participant.identity);
-				output.drop(participant.identity);
+				audioElements.delete(key);
+				output.drop(key);
 				// The meter went with the track, so nothing can report this
 				// voice again — and a flag nothing will ever clear is what
 				// left riders ringed forever (#987).
@@ -751,6 +777,10 @@ export function createRoomAv(slug: string) {
 		get sharing() {
 			return av.sharing;
 		},
+		/** Whether the room can hear this machine as well as see it (#1124). */
+		get sharingAudio() {
+			return av.sharingAudio;
+		},
 		get error() {
 			return av.error;
 		},
@@ -908,6 +938,15 @@ export function createRoomAv(slug: string) {
 			mixer.setRiderGain(id, v, name);
 			output.applyGains();
 		},
+		/**
+		 * The same, for whatever machine is being shared into the room
+		 * (#1124). One fader for all of them: a rider is hearing one room, and
+		 * two people sharing at once is not the case to build a mixer for.
+		 */
+		setShareGain(v: number) {
+			mixer.setShare(v);
+			output.applyGains();
+		},
 		join,
 		async toggleMic() {
 			if (!conn.room) return;
@@ -945,20 +984,41 @@ export function createRoomAv(slug: string) {
 			try {
 				// The browser's picker can be cancelled — trust the publication,
 				// not our intent.
-				await conn.room.localParticipant.setScreenShareEnabled(av.sharing);
+				// The machine's audio rides along with the picture (#1124). Its
+				// profile is ADR-0011's "music", not "voice": processing off,
+				// because noise suppression and AGC are tuned for a person
+				// talking and wreck anything else. LiveKit publishes it as its
+				// own ScreenShareAudio track; nothing here has to.
+				await conn.room.localParticipant.setScreenShareEnabled(av.sharing, {
+					audio: {
+						autoGainControl: false,
+						echoCancellation: false,
+						noiseSuppression: false,
+					},
+				});
 				const track = conn.room.localParticipant.getTrackPublication(
 					conn.liveKit!.Track.Source.ScreenShare,
 				)?.videoTrack;
 				if (av.sharing && track) {
 					screenTracks.set(conn.me, { owner: conn.myIdentity, track });
 					stage.addScreen(conn.me);
+					// Whether the machine's sound went with the picture. Read
+					// from the publication rather than assumed from asking:
+					// loopback is refused, missing or dead on plenty of
+					// platforms, and telling a rider the room can hear them
+					// when it cannot is the worse half of getting this wrong.
+					av.sharingAudio = !!conn.room.localParticipant.getTrackPublication(
+						conn.liveKit!.Track.Source.ScreenShareAudio,
+					);
 				} else {
 					av.sharing = false;
+					av.sharingAudio = false;
 					if (dropOwned(screenTracks, conn.me, conn.myIdentity))
 						stage.dropScreen(conn.me);
 				}
 			} catch (cause) {
 				av.sharing = false;
+				av.sharingAudio = false;
 				failedMedia(cause, 'screen');
 			}
 		},
