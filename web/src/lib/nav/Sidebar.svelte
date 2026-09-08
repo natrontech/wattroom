@@ -92,6 +92,19 @@
 	const crews = $derived(crewsOf(rooms));
 	const crew = $derived(currentCrew(crews, chosen, rooms, connectedSlug));
 	const groups = $derived(sidebarGroups(rooms, crew, connectedSlug));
+	// What the header says under the name: how many rooms, and what you are
+	// to it. Owner is a word here because the shield alone is a small mark;
+	// member says nothing, being in it at all is the default.
+	const crewLine = $derived.by(() => {
+		if (!crew) return '';
+		const n = rooms.filter((r) => r.crew?.id === crew.id).length;
+		const count = n === 1 ? '1 room' : `${n} rooms`;
+		return crew.role === 'owner'
+			? `${count} · yours`
+			: crew.role === 'admin'
+				? `${count} · you admin it`
+				: count;
+	});
 	function pick(id: string) {
 		chosen = id;
 		rememberChosenCrew(id);
@@ -334,6 +347,59 @@
 		<span class="font-display text-sm font-bold">WattRoom</span>
 	</a>
 
+	{#if crew}
+		<!-- The crew is the mode the whole column is in (ADR-0020 amended,
+		     #1147), so it sits at the top like Discord's server header, and
+		     the column below keeps exactly the shape it had. With one crew
+		     there is nothing to switch and it is a heading, not a button. -->
+		{#snippet crewHeader()}
+			<span
+				class="bg-ink/5 text-muted grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+			>
+				{#if iconFor(crew.icon)}
+					<RoomIcon icon={crew.icon} size={16} class="text-ink/80" />
+				{:else}
+					<span class="font-display text-ink/80 text-sm font-bold"
+						>{crew.name.slice(0, 1).toUpperCase()}</span
+					>
+				{/if}
+			</span>
+			<span class="min-w-0 flex-1">
+				<span class="flex items-center gap-1.5">
+					<span class="font-display truncate text-sm font-bold"
+						>{crew.name}</span
+					>
+					{#if crew.role === 'owner'}
+						<Shield
+							size={12}
+							class="text-muted/60 shrink-0"
+							aria-label="yours"
+						/>
+					{/if}
+				</span>
+				<span class="text-muted block truncate text-[11px]">{crewLine}</span>
+			</span>
+		{/snippet}
+		{#if crews.length > 1}
+			<button
+				onclick={switcher}
+				class="border-ink/5 hover:bg-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5 text-left"
+				title="switch crew"
+				aria-label="crew: {crew.name} — switch crew"
+			>
+				{@render crewHeader()}
+				<ChevronsUpDown size={15} class="text-muted shrink-0" />
+			</button>
+		{:else}
+			<div
+				class="border-ink/5 flex min-h-14 w-full items-center gap-3 border-y px-4 py-2.5"
+				aria-label="crew: {crew.name}"
+			>
+				{@render crewHeader()}
+			</div>
+		{/if}
+	{/if}
+
 	<div class="min-h-0 flex-1 overflow-y-auto px-2">
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
@@ -365,52 +431,6 @@
 				</li>
 			{/each}
 		</ul>
-
-		{#if crew}
-			<!-- The crew you are looking at, and the way to look at another
-			     (#1147). The column below it keeps exactly the shape it had:
-			     the third level of the tree costs a header, not an indent. -->
-			<div class="mt-3 px-1">
-				{#if crews.length > 1}
-					<button
-						onclick={switcher}
-						class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded px-2 py-2 text-left md:min-h-9"
-						title="switch crew"
-						aria-label="crew: {crew.name} — switch crew"
-					>
-						<RoomIcon icon={crew.icon} size={16} />
-						<span class="font-display truncate text-sm font-bold"
-							>{crew.name}</span
-						>
-						{#if crew.role === 'owner'}
-							<Shield
-								size={12}
-								class="text-muted/60 shrink-0"
-								aria-label="yours"
-							/>
-						{/if}
-						<ChevronsUpDown size={14} class="text-muted ml-auto shrink-0" />
-					</button>
-				{:else}
-					<div
-						class="flex min-h-11 w-full items-center gap-2 px-2 py-2 md:min-h-9"
-						aria-label="crew: {crew.name}"
-					>
-						<RoomIcon icon={crew.icon} size={16} />
-						<span class="font-display truncate text-sm font-bold"
-							>{crew.name}</span
-						>
-						{#if crew.role === 'owner'}
-							<Shield
-								size={12}
-								class="text-muted/60 shrink-0"
-								aria-label="yours"
-							/>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		{/if}
 
 		{#if groups.pinned}
 			<!-- The room you are standing in, whichever crew is on screen: reading
