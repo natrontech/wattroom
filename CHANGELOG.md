@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.43] - 2026-09-08
+
+### Added
+
+- The music pool has its server side: upload MP3s to a library the whole instance shares, with 2 GB per rider. Titles, artists and albums come from the file's own tags and stay editable, uploading a song the crew already has takes no extra space, and only whoever uploaded a track can change or remove it.
+- A room can now turn on a weekly board: everyone's kJ for the current week, listed under the crew's tiles with each rider's category beside it. It is off until the room's owner switches it on, it resets every Monday, and nothing carries over between weeks — being in a room does not put you on a board.
+
+### Fixed
+
+- A browser that blocks audio no longer leaves you silently cut off from the room. It used to be unrecoverable: once the voices run through WattRoom's own mixer, a blocked tab hears nobody and no click anywhere brought it back. Now the first click anywhere in the app restores it, and if that has not happened yet the sidebar says "You cannot hear the room" with a button that fixes it.
+- Taking back a skipped track or playlist now says so in the room's chat — "Kim put Sandstorm back". The undo worked, but the log recorded only the skip, which left it saying the opposite of what happened.
+- A planned session now says so in the room's chat as it comes due — "Sweet Spot 3×12 starts at Tue 19:00", ten minutes ahead. The line was built when planning first reached the timeline and never actually appeared.
+
 ## [2026.09.42] - 2026-09-08
 
 ### Added
@@ -1042,7 +1055,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.42...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.43...HEAD
+[2026.09.43]: https://github.com/natrontech/wattroom/compare/2026.09.42...2026.09.43
 [2026.09.42]: https://github.com/natrontech/wattroom/compare/2026.09.41...2026.09.42
 [2026.09.41]: https://github.com/natrontech/wattroom/compare/2026.09.40...2026.09.41
 [2026.09.40]: https://github.com/natrontech/wattroom/compare/2026.09.39...2026.09.40
