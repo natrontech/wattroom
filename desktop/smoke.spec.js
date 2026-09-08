@@ -61,6 +61,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	}));
 	expect(bridge.present).toBe(true);
 	expect(bridge.keys).toEqual([
+		'hud',
 		'keepAwake',
 		'platform',
 		'retry',
@@ -169,6 +170,49 @@ test('a wattroom://auth link loads the handoff on our origin, and nothing else d
 	expect(nav[0]).toBe(
 		`${DEAD_URL.replace(/\/$/, '')}/login?handoff=abcdefghijklmnopqrstuvwxyz0123456789`,
 	);
+
+	await app.close();
+});
+
+test('the HUD is a second window on our origin, opened and closed by the app', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	await app.evaluate(({ app }) => {
+		globalThis.__hudNav = [];
+		app.on('browser-window-created', (_e, w) =>
+			w.webContents.on('did-start-navigation', (e) => {
+				if (e.isMainFrame) globalThis.__hudNav.push(e.url);
+			}),
+		);
+	});
+	await win.evaluate(() => window.wattroom.hud(true));
+	await new Promise((r) => setTimeout(r, 1500));
+	const windows = await app.evaluate(
+		({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+	);
+	expect(windows).toBe(2);
+	// /hud on the app's origin, in the same session.
+	expect(await app.evaluate(() => globalThis.__hudNav)).toEqual([
+		`${DEAD_URL.replace(/\/$/, '')}/hud`,
+	]);
+	// Idempotent: a second open does not stack windows.
+	await win.evaluate(() => window.wattroom.hud(true));
+	await new Promise((r) => setTimeout(r, 300));
+	expect(
+		await app.evaluate(
+			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+		),
+	).toBe(2);
+
+	await win.evaluate(() => window.wattroom.hud(false));
+	await new Promise((r) => setTimeout(r, 500));
+	expect(
+		await app.evaluate(
+			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+		),
+	).toBe(1);
 
 	await app.close();
 });

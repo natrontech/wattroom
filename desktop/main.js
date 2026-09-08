@@ -17,6 +17,7 @@ const {
 	dialog,
 	ipcMain,
 	powerSaveBlocker,
+	screen,
 	shell,
 } = require('electron');
 const path = require('node:path');
@@ -94,6 +95,12 @@ function createWindow() {
 	});
 
 	win.once('ready-to-show', () => win.show());
+	// The HUD shows only while this window is NOT in front (ADR-0041): in
+	// front, the riding screen has the numbers, and floating them over the
+	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
+	win.on('focus', () => hudWindow?.hide());
+	win.on('blur', () => hudWindow?.showInactive());
+	win.on('closed', () => setHud(false));
 	installHandlers(win);
 	load(win);
 	return win;
@@ -147,7 +154,15 @@ function installHandlers(win) {
 	//    hands camera and microphone to anything that gets the renderer to
 	//    navigate. Deny by default, allow our own origin the things a room
 	//    actually needs.
-	const ALLOWED = new Set(['media', 'clipboard-sanitized-write', 'fullscreen']);
+	// 'notifications' too (#296): the app's own switch (lib/notify) asks for
+	// it, and a shell that answered no left every room event silent — the one
+	// thing a desktop app is expected to do better than a tab.
+	const ALLOWED = new Set([
+		'media',
+		'clipboard-sanitized-write',
+		'fullscreen',
+		'notifications',
+	]);
 	ses.setPermissionRequestHandler((contents, permission, callback) => {
 		callback(isOurs(contents.getURL()) && ALLOWED.has(permission));
 	});
@@ -201,17 +216,7 @@ function installHandlers(win) {
 		{ useSystemPicker: process.platform === 'darwin' },
 	);
 
-	// 4. Navigation. Remote content that can navigate the shell anywhere is the
-	//    same hole as the permission default, one step removed.
-	win.webContents.setWindowOpenHandler(({ url }) => {
-		if (/^https?:/.test(url)) void shell.openExternal(url);
-		return { action: 'deny' };
-	});
-	win.webContents.on('will-navigate', (event, url) => {
-		if (isOurs(url)) return;
-		event.preventDefault();
-		if (/^https?:/.test(url)) void shell.openExternal(url);
-	});
+	guardNavigation(win);
 
 	// The server-down screen. A shell whose remote never answers is a white
 	// rectangle with no way out, which errors.md forbids.
@@ -224,6 +229,23 @@ function installHandlers(win) {
 			});
 		},
 	);
+}
+
+/**
+ * 4. Navigation. Remote content that can navigate a window anywhere is the
+ * same hole as the permission default, one step removed. Every window the
+ * shell opens gets this — the main one and the HUD.
+ */
+function guardNavigation(win) {
+	win.webContents.setWindowOpenHandler(({ url }) => {
+		if (/^https?:/.test(url)) void shell.openExternal(url);
+		return { action: 'deny' };
+	});
+	win.webContents.on('will-navigate', (event, url) => {
+		if (isOurs(url)) return;
+		event.preventDefault();
+		if (/^https?:/.test(url)) void shell.openExternal(url);
+	});
 }
 
 /**
@@ -246,6 +268,69 @@ async function chooseFrom(win, title, options) {
 	});
 	return shown[response]?.value ?? null;
 }
+
+// The HUD (#296, ADR-0041): the rider's own numbers in a small frameless
+// window that floats over everything else — for the rider who alt-tabbed to
+// a film mid-interval. The web app opens it when a ride starts and closes it
+// when the ride ends; it loads /hud on our origin, in the same session, and
+// that page mirrors the riding screen through a BroadcastChannel. This
+// process only decides WHEN it is visible: never while the main window is in
+// front (see createWindow). The page's own close button sends hud(false),
+// and it stays closed until the next ride starts.
+const HUD_SIZE = { width: 320, height: 132 };
+let hudWindow = null;
+
+function setHud(on) {
+	if (!on) {
+		if (hudWindow && !hudWindow.isDestroyed()) hudWindow.close();
+		hudWindow = null;
+		return;
+	}
+	if (hudWindow) return;
+	const main = BrowserWindow.getAllWindows()[0];
+	if (!main) return;
+	hudWindow = new BrowserWindow({
+		...HUD_SIZE,
+		frame: false,
+		alwaysOnTop: true,
+		resizable: false,
+		minimizable: false,
+		maximizable: false,
+		fullscreenable: false,
+		skipTaskbar: true,
+		backgroundColor: '#0a0118',
+		show: false,
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.js'),
+			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
+			contextIsolation: true,
+			nodeIntegration: false,
+			sandbox: true,
+			backgroundThrottling: false,
+		},
+	});
+	// Above full-screen apps too, and on every desktop — that is the point.
+	hudWindow.setAlwaysOnTop(true, 'floating');
+	hudWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	// Top-right of the display the app is on, a finger's width in.
+	const { workArea } = screen.getDisplayMatching(main.getBounds());
+	hudWindow.setPosition(
+		workArea.x + workArea.width - HUD_SIZE.width - 16,
+		workArea.y + 16,
+	);
+	guardNavigation(hudWindow);
+	hudWindow.on('closed', () => {
+		hudWindow = null;
+	});
+	hudWindow.once('ready-to-show', () => {
+		if (hudWindow && !main.isFocused()) hudWindow.showInactive();
+	});
+	hudWindow.loadURL(`${APP_ORIGIN}/hud`).catch(() => {
+		/* a HUD that cannot load is closed by the next hud(false) */
+	});
+}
+
+ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
 
 // wattroom:// — the way back into the app from the system browser (#1188).
 //
@@ -295,6 +380,10 @@ function openDeepLink(link) {
 }
 
 const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
+
+// Windows shows a notification only for an app with a model id; without
+// this every new Notification() from the renderer is dropped on the floor.
+if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
 
 app.setAsDefaultProtocolClient('wattroom');
 app.on('open-url', (event, link) => {

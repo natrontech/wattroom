@@ -9,6 +9,7 @@
 	 * the flag notice, which is four seconds of its own chrome and nothing
 	 * else's business.
 	 */
+	import { publishHud } from '$lib/hud/feed';
 	import Flag from '@lucide/svelte/icons/flag';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
@@ -55,6 +56,12 @@
 		flagNotice = true;
 		setTimeout(() => (flagNotice = false), 4000);
 	}
+
+	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
+	// second window to mirror — the shell's overlay, or another tab.
+	$effect(() => {
+		publishHud({ watts, target, remaining, label: workout.name });
+	});
 </script>
 
 <header class="flex items-center gap-4">
