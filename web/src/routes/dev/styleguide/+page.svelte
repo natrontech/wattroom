@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { TOKENS, type Theme } from '$lib/palette';
-	import { THEMES } from '$lib/themes';
+	import {
+		DEFAULT_DARK_ID,
+		DEFAULT_WHITE_ID,
+		THEMES,
+		themeById,
+	} from '$lib/themes';
 
 	function themeStyle(theme: Theme): string {
 		return [
@@ -8,6 +13,16 @@
 			...TOKENS.map((token) => `--color-${token}: ${theme.tokens[token]}`),
 		].join(';');
 	}
+
+	// Both families at once, so the ladder can be compared rather than described
+	// (ADR-0040). Each side carries a full token set inline via themeStyle: a
+	// bare `color-scheme` on a subtree resolves the outer light-dark() of a token
+	// but not the var(--color-ink) inside it, which comes from :root — so the
+	// panel would draw the light family's alpha over the dark family's ink.
+	const depthFamilies = [
+		{ label: 'paper', theme: themeById(DEFAULT_WHITE_ID)! },
+		{ label: 'cave', theme: themeById(DEFAULT_DARK_ID)! },
+	];
 
 	const surfaces = [
 		{ name: 'surface', cls: 'bg-surface', use: 'page background' },
@@ -284,5 +299,60 @@
 		<code class="text-ink/80">page</code> — defined once in app.css. Icons are
 		Lucide (<code class="text-ink/80">@lucide/svelte</code>), not unicode
 		glyphs.
+	</p>
+
+	<!-- Depth (ADR-0040). The point of this section is the comparison, so it
+	     draws the ladder in both families side by side: on paper the shadow is
+	     the only thing separating a card from the page, and in the cave it is
+	     almost nothing. Judge it here rather than reading the hex. -->
+	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Depth</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		Four rungs, and a boundary rather than a lightness step (ADR-0040). The
+		white family cannot spend lightness on separation — that is the headroom the
+		shared zone ramp needs for contrast — so on paper the shadow carries it and
+		in the cave the lightness step already does.
+	</p>
+	<div class="mt-4 grid gap-4 sm:grid-cols-2">
+		{#each depthFamilies as family (family.label)}
+			<div
+				class="bg-surface overflow-hidden rounded-lg p-5"
+				style={themeStyle(family.theme)}
+			>
+				<p class="eyebrow">{family.label} · page</p>
+				<div class="panel mt-3 p-4">
+					<p class="text-meta text-ink">panel · surface-raised + edge</p>
+					<div
+						class="bg-surface-sunken border-edge-subtle mt-3 rounded border p-3"
+					>
+						<p class="text-mini text-muted">
+							sunken · the well inside it, edge-subtle divides within
+						</p>
+					</div>
+					<div class="overlay mt-3 p-3">
+						<p class="text-mini text-muted">overlay · what floats above</p>
+					</div>
+					<input
+						class="input mt-3 w-full"
+						placeholder="edge-strong · aim here"
+					/>
+				</div>
+			</div>
+		{/each}
+	</div>
+	<p class="text-muted mt-3 max-w-2xl text-xs">
+		Surfaces <code class="text-ink/80">bg-surface-sunken</code>,
+		<code class="text-ink/80">bg-surface-overlay</code>; edges
+		<code class="text-ink/80">border-edge-subtle</code> /
+		<code class="text-ink/80">border-edge</code> /
+		<code class="text-ink/80">border-edge-strong</code>; elevation
+		<code class="text-ink/80">shadow-raised</code> /
+		<code class="text-ink/80">shadow-overlay</code>; utilities
+		<code class="text-ink/80">panel</code>,
+		<code class="text-ink/80">overlay</code>,
+		<code class="text-ink/80">rule</code>. Below
+		<code class="text-ink/80">text-xs</code>:
+		<span class="text-meta">text-meta 13</span> ·
+		<span class="text-mini">text-mini 11</span> ·
+		<span class="text-micro">text-micro 10</span>.
 	</p>
 </main>
