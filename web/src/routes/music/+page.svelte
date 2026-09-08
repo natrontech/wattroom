@@ -13,6 +13,9 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { roomConnection } from '$lib/room/connection.svelte';
+	import { presence } from '$lib/presence.svelte';
+	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,
 		listTracks,
@@ -119,6 +122,28 @@
 		}
 		error = null;
 		tracks = tracks.filter((t) => t.id !== track.id);
+	}
+
+	// The room the rider is standing in: the connection outlives navigation
+	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
+	// else would need a room picker, and a rider in one room wants that one.
+	const room = $derived(roomConnection.current);
+	// The rail knows the name; the connection holds only the slug.
+	const roomName = $derived(
+		room
+			? (presence.rooms.find((r) => r.slug === room.slug)?.name ?? room.slug)
+			: '',
+	);
+
+	function queue(track: { id: string; title: string; artist?: string }) {
+		if (!room) return;
+		room.live.jukebox({
+			action: 'add',
+			trackId: track.id,
+			title: track.title,
+			artist: track.artist,
+		});
+		toasts.push(`Queued “${track.title}”.`);
 	}
 
 	const mine = (track: Track) => track.uploadedBy === account.me?.displayName;
@@ -326,6 +351,18 @@
 								>
 								<!-- Capability gating (ux.md): somebody else's track shows no
 								     controls rather than buttons that would 403. -->
+								<!-- Capability gating again (ux.md): with no room open there
+								     is nowhere to queue, so the button is not drawn — the
+								     line under the list says why. -->
+								{#if room}
+									<button
+										onclick={() => queue(track)}
+										aria-label="Queue {track.title}"
+										title="Queue in {roomName}"
+										class="btn btn-secondary btn-xs shrink-0"
+										><ListPlus size={13} /></button
+									>
+								{/if}
 								{#if mine(track)}
 									<button
 										onclick={() => (editing = track.id)}
@@ -343,6 +380,14 @@
 					</li>
 				{/each}
 			</ul>
+			{#if !room}
+				<!-- The page promises these play in a room; with none open there
+				     is nothing to queue into, so it says how rather than drawing
+				     a button that cannot work (ux.md). -->
+				<p class="text-muted mt-3 text-xs">
+					Open a room to queue any of these into its jukebox.
+				</p>
+			{/if}
 		{/if}
 	</div>
 </main>
