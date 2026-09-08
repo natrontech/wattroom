@@ -65,6 +65,7 @@ export interface RoomShellProps {
 	crewOutside?: AdminMember[];
 	onGrant: (userId: string) => void;
 	onRevoke: (userId: string) => void;
+	onTransfer: (userId: string) => void;
 	medals?: AdminMedal[];
 	streakWeeks?: number;
 	together?: Together | null;
@@ -233,6 +234,7 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		},
 		grant: (userId) => props.onGrant(userId),
 		revoke: (userId) => props.onRevoke(userId),
+		transfer: (userId) => props.onTransfer(userId),
 		get medals() {
 			return props.medals ?? [];
 		},

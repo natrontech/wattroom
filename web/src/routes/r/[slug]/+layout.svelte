@@ -194,6 +194,18 @@
 			}}
 			onRevoke={(userId: string) =>
 				act(`/api/rooms/${room?.slug}/grants/${userId}`, { method: 'DELETE' })}
+			onTransfer={(userId: string) => {
+				const name = room?.members?.find((m) => m.id === userId)?.displayName;
+				act(
+					`/api/rooms/${room?.slug}/transfer`,
+					{ json: { userId } },
+					{
+						message: name
+							? `${name} owns ${room?.name} now. You are a coach.`
+							: 'Room handed on.',
+					},
+				);
+			}}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
 			together={room.together ?? null}

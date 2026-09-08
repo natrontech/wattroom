@@ -127,6 +127,8 @@ export interface RoomContext {
 	/** Let a crew-mate in, or take the door back before they used it. */
 	grant(userId: string): void;
 	revoke(userId: string): void;
+	/** Hand the room to a member (#1227); you stay on as a coach. */
+	transfer(userId: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
 	/** Say you are in for a planned session, or take it back (#450). */

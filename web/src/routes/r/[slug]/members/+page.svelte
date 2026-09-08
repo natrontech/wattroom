@@ -91,6 +91,17 @@
 	}
 	const unban = (member: Member) => room.setRole(member.id, 'member');
 
+	// Handing the room on (#1227) is the one thing here the actor cannot
+	// take back — only the new owner can — so a confirm, not an undo toast.
+	async function confirmTransfer(member: Member) {
+		const ok = await confirm({
+			title: `Hand ${room.roomName} to ${member.displayName}?`,
+			body: 'They become its owner and you stay on as a coach. You cannot take this back; only they can hand it back to you.',
+			action: 'Hand it over',
+		});
+		if (ok) room.transfer(member.id);
+	}
+
 	// Their page and their DM on every member (#486), plus the paperwork the
 	// row already offers an owner — remove above ban, ban last, both after a
 	// separator (#666: ban belongs where the griefer is met, not three
@@ -123,6 +134,11 @@
 					label: roleLabel(member),
 					icon: member.role === 'coach' ? UserMinus : Crown,
 					onSelect: () => toggleRole(member),
+				},
+				{
+					label: `Hand the room to ${member.displayName}`,
+					icon: Crown,
+					onSelect: () => confirmTransfer(member),
 				},
 				'separator',
 				{

@@ -1046,6 +1046,23 @@ func (q *Queries) SetRsvp(ctx context.Context, arg SetRsvpParams) error {
 	return err
 }
 
+const transferRoom = `-- name: TransferRoom :exec
+update rooms set owner_id = $2 where id = $1
+`
+
+type TransferRoomParams struct {
+	ID      pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+// The room changes hands (#1227). Always with both membership rows
+// rewritten in the same transaction: the owner column and the 'owner'
+// role are two answers to one question and must not disagree.
+func (q *Queries) TransferRoom(ctx context.Context, arg TransferRoomParams) error {
+	_, err := q.db.Exec(ctx, transferRoom, arg.ID, arg.OwnerID)
+	return err
+}
+
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec
 update memberships set role = $3 where room_id = $1 and user_id = $2
 `
