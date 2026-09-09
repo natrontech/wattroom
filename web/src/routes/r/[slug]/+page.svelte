@@ -6,6 +6,7 @@
 	// stage above it only when someone is actually sharing. Tapping a tile
 	// focuses that rider: what "video-first" used to be a whole layout for,
 	// as a tap rather than a mode you have to remember you are in.
+	import { copyInviteLink } from '$lib/crew-flows';
 	import { account } from '$lib/account.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import Stage from '$lib/room/Stage.svelte';
@@ -25,6 +26,7 @@
 	import PanelRight from '@lucide/svelte/icons/panel-right';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
+	import Link from '@lucide/svelte/icons/link';
 
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
@@ -486,9 +488,19 @@
 						><CalendarClock size={14} /> Plan a session</button
 					>
 				{/if}
-				<a href="/r/{room.slug}/members" class="btn btn-ghost"
-					><UserPlus size={14} /> Invite</a
-				>
+				<!-- The invite is the crew's (#1236): one click copies its link.
+				     Without the code — never for a member, but the row must not
+				     render a button that fails — the Members place says how. -->
+				{#if room.code}
+					<button
+						onclick={() => copyInviteLink(room.code)}
+						class="btn btn-ghost"><Link size={14} /> Copy invite link</button
+					>
+				{:else}
+					<a href="/r/{room.slug}/members" class="btn btn-ghost"
+						><UserPlus size={14} /> Invite</a
+					>
+				{/if}
 			</div>
 		</section>
 	{/if}

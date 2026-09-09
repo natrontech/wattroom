@@ -1,0 +1,1 @@
+- The Lounge's "Invite" button copies the crew's invite link in one click instead of sending you to the Members place to find it there.

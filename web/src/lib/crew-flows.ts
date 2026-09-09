@@ -40,6 +40,17 @@ export async function leaveCrewFlow(
  * page, its settings, the crew row's menu (#1236, #1257) — with the one toast.
  */
 export async function copyInviteLink(code: string): Promise<void> {
-	await navigator.clipboard.writeText(inviteLink(code));
+	const link = inviteLink(code);
+	try {
+		await navigator.clipboard.writeText(link);
+	} catch {
+		// A clipboard the browser refused (no permission, no focus) is not a
+		// dead end: the link itself is the feedback (errors.md).
+		toasts.push(`Could not copy — the link is ${link}`, {
+			tone: 'error',
+			seconds: 12,
+		});
+		return;
+	}
 	toasts.push('Invite link copied.');
 }
