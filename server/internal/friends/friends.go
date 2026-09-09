@@ -240,6 +240,14 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		user, err := s.store.Queries.GetUserByFriendCode(r.Context(), code)
 		if err != nil {
+			// Friend codes are eight characters; a crew's invite code is six
+			// (rooms/crews.go). The one people paste into the wrong box is
+			// the crew's, and "double-check it with them" sends them back to
+			// a friend who gave them the right code for a different door.
+			if len(code) == 6 {
+				httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "That looks like a crew's code — a crew is joined from Home. Friend codes are eight characters.", "code")
+				return
+			}
 			httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No rider has that code — double-check it with them.", "code")
 			return
 		}
