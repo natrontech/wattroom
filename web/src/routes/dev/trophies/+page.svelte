@@ -161,9 +161,7 @@
 
 <main class="page">
 	<p class="eyebrow">mock · gamification (#450)</p>
-	<h1 class="font-display mt-2 text-3xl font-bold tracking-tight">
-		Trophy case
-	</h1>
+	<h1 class="page-title mt-2">Trophy case</h1>
 	<p class="text-muted mt-1 max-w-2xl text-sm">
 		Levels and medals exist. This adds achievements — riding ones and lounge
 		ones — XP for being around, and room events. Every number is a proposal for
@@ -190,9 +188,7 @@
 
 	<section class="mt-8">
 		<div class="flex items-baseline gap-3">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Achievements
-			</h2>
+			<h2 class="eyebrow">Achievements</h2>
 			<span class="text-muted/70 text-[11px]">6 of 12</span>
 		</div>
 		<ul class="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
@@ -227,15 +223,11 @@
 
 	<div class="mt-8 grid gap-8 xl:grid-cols-2">
 		<section>
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Where XP comes from
-			</h2>
+			<h2 class="eyebrow">Where XP comes from</h2>
 			<div class="table-wrap panel mt-3 overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
-						<tr
-							class="text-muted text-left text-[10px] tracking-widest uppercase"
-						>
+						<tr class="eyebrow text-left">
 							<th class="px-4 py-2">source</th><th class="px-4 py-2">rule</th
 							><th class="px-4 py-2">status</th>
 						</tr>
@@ -262,9 +254,7 @@
 		</section>
 
 		<section>
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				A room event
-			</h2>
+			<h2 class="eyebrow">A room event</h2>
 			<div class="panel mt-3 p-5">
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<h3 class="font-display text-lg font-bold">{event.name}</h3>

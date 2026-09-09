@@ -45,7 +45,7 @@
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Ramp test</h1>
+	<h1 class="page-title">Ramp test</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		The one workout whose point is to end. Starts at {START} W, adds {STEP} W every
 		minute, and stops when you can't hold the step. Your FTP is 75 % of your best
@@ -80,9 +80,7 @@
 						>
 						<span class="text-muted text-xl">W</span>
 					</div>
-					<p class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-						your power
-					</p>
+					<p class="eyebrow mt-2">your power</p>
 				</div>
 				<div class="text-right">
 					<div
@@ -90,9 +88,7 @@
 					>
 						{target}
 					</div>
-					<p class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-						hold this
-					</p>
+					<p class="eyebrow mt-2">hold this</p>
 				</div>
 			</div>
 
@@ -110,9 +106,7 @@
 		</div>
 	{:else}
 		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
-			<p class="text-muted text-[10px] tracking-[0.2em] uppercase">
-				your new FTP
-			</p>
+			<p class="eyebrow">your new FTP</p>
 			<div class="mt-2 flex items-baseline gap-2">
 				<span
 					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"

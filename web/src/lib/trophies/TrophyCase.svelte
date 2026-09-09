@@ -32,9 +32,7 @@
 	<TrophyShelf {trophies} />
 
 	<section>
-		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-			Where XP comes from
-		</h2>
+		<h2 class="eyebrow">Where XP comes from</h2>
 		<p class="text-muted mt-0.5 max-w-2xl text-xs">
 			Riding pays best by a wide margin; the rest rewards being around. Being in
 			voice is what counts — the server cannot hear who talks.
@@ -42,9 +40,7 @@
 		<div class="panel mt-3 overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead>
-					<tr
-						class="text-muted text-left text-[10px] tracking-widest uppercase"
-					>
+					<tr class="eyebrow text-left">
 						<th class="px-4 py-2">source</th>
 						<th class="px-4 py-2">rule</th>
 						<th class="px-4 py-2 text-right">earned</th>

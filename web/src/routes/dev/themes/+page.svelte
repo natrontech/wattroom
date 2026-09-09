@@ -44,7 +44,7 @@
 
 <main class="px-6 py-10">
 	<header class="max-w-3xl">
-		<h1 class="font-display text-3xl font-bold tracking-tight">Themes</h1>
+		<h1 class="page-title">Themes</h1>
 		<p class="text-muted mt-2 text-sm leading-relaxed">
 			Every theme the catalogue defines, painted with its own tokens against the
 			surfaces that carry colour — the rail around a live tile, the whole ramp

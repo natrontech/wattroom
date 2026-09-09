@@ -31,7 +31,7 @@
 >
 
 <main class="page">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Settings</h1>
+	<h1 class="page-title">Settings</h1>
 	<!-- The sections, as a row of links: one address each, the current one
 	     lit. Wraps on a phone; never scrolls sideways (ux.md). -->
 	<nav class="mt-4 flex flex-wrap gap-1" aria-label="settings sections">

@@ -32,16 +32,14 @@
 </script>
 
 <main class="mx-auto max-w-2xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Room settings</h1>
+	<h1 class="page-title">Room settings</h1>
 	<p class="text-muted mt-2 text-sm">
 		Owner only — coaches run sessions, owners shape the room.
 	</p>
 
 	<section class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6">
 		<label class="block">
-			<span class="text-muted text-[10px] tracking-wider uppercase"
-				>room name</span
-			>
+			<span class="eyebrow">room name</span>
 			<input
 				bind:value={name}
 				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
@@ -85,9 +83,7 @@
 			{#each members as member (member.name)}
 				<li class="flex items-center gap-3 py-2.5">
 					<span class="text-sm">{member.name}</span>
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>{member.role}</span
-					>
+					<span class="eyebrow">{member.role}</span>
 					{#if member.role !== 'owner'}
 						<button
 							class="border-muted/25 hover:border-muted/60 ml-auto rounded border px-3 py-1.5 text-xs"

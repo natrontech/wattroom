@@ -229,6 +229,12 @@ body {
 	@apply text-muted text-[10px] tracking-[0.2em] uppercase;
 }
 
+/* The page's own title (#1697): one spelling, so the nineteen h1s that
+   retyped it cannot drift apart. Extras (a margin, truncate) ride beside it. */
+@utility page-title {
+	@apply font-display text-3xl font-bold tracking-tight;
+}
+
 /* Page rhythm (ADR-0020, amended in #417). Pages fill the content column:
    one padding, no width cap. Pages used to pick their own max-w and centre
    it; then one capped width anchored left — which on a wide screen read as a

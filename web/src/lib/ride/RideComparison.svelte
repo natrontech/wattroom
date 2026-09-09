@@ -47,9 +47,7 @@
 
 <section>
 	<div class="flex items-baseline gap-3">
-		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-			Against your best
-		</h2>
+		<h2 class="eyebrow">Against your best</h2>
 		<!-- ADR-0016: every load-derived surface says what it is scoped to. -->
 		<span class="text-muted/70 text-[11px]">based on your WattRoom rides</span>
 	</div>
@@ -78,9 +76,7 @@
 		<div class="panel mt-3 overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead>
-					<tr
-						class="text-muted text-left text-[10px] tracking-widest uppercase"
-					>
+					<tr class="eyebrow text-left">
 						<th class="px-4 py-2"></th>
 						<th class="px-4 py-2 text-right">this ride</th>
 						<th class="px-4 py-2 text-right">your best · {bestWhen}</th>

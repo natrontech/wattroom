@@ -10,7 +10,7 @@
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Brand</h1>
+	<h1 class="page-title">Brand</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Locked in <a
 			href="https://github.com/natrontech/wattroom/blob/main/docs/decisions"
@@ -19,7 +19,7 @@
 		white.
 	</p>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Lockups</h2>
+	<h2 class="eyebrow mt-12">Lockups</h2>
 	<!-- The full lockup needs a whole row: at size 72 it is ~410px wide. -->
 	<div class="mt-4 grid gap-3">
 		<div
@@ -41,9 +41,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		The mark, alive
-	</h2>
+	<h2 class="eyebrow mt-12">The mark, alive</h2>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Idle the bars sit still; while a session runs they move — nav, TV mode,
 		anywhere the mark appears. Placeholder loop here; the real one is driven by
@@ -72,7 +70,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Favicon</h2>
+	<h2 class="eyebrow mt-12">Favicon</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
 			<div class="flex items-center gap-2 rounded-t-md bg-[#2b2b31] px-3 py-2">
@@ -90,7 +88,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Type</h2>
+	<h2 class="eyebrow mt-12">Type</h2>
 	<div class="border-muted/15 bg-surface-raised mt-4 rounded-lg border p-6">
 		<div class="flex items-baseline gap-2">
 			<span
@@ -105,7 +103,7 @@
 					<div class="font-display text-xl font-semibold tabular-nums">
 						{metric.value}
 					</div>
-					<div class="text-muted text-[10px] tracking-wider uppercase">
+					<div class="eyebrow">
 						{metric.label}
 					</div>
 				</div>

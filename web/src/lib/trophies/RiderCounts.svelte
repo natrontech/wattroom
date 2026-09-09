@@ -46,9 +46,7 @@
 </script>
 
 <section>
-	<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-		What you have done here
-	</h2>
+	<h2 class="eyebrow">What you have done here</h2>
 
 	{#if nothingYet}
 		<div class="mt-3">

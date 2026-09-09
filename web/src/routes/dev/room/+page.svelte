@@ -224,9 +224,7 @@
 						>
 							{formatClock(room.elapsed)}
 						</div>
-						<div class="text-muted text-[10px] tracking-wider uppercase">
-							elapsed
-						</div>
+						<div class="eyebrow">elapsed</div>
 					</div>
 				{/if}
 			</header>
@@ -380,9 +378,7 @@
 								class="font-display text-lg leading-none font-semibold tabular-nums"
 								>{readout.value}</span
 							>
-							<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
-								>{readout.label}</span
-							>
+							<span class="eyebrow ml-1">{readout.label}</span>
 						</div>
 					{/each}
 					<div class="text-right">
@@ -391,9 +387,7 @@
 								zone
 							]}">Z{zone}</span
 						>
-						<span class="text-muted ml-1 text-[10px] tracking-wider uppercase"
-							>zone</span
-						>
+						<span class="eyebrow ml-1">zone</span>
 					</div>
 				</div>
 

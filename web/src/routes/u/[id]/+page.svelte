@@ -334,11 +334,7 @@
 				{#if rider.sharedRides}
 					<section>
 						<div class="flex items-baseline gap-3">
-							<h2
-								class="text-muted text-xs font-semibold tracking-widest uppercase"
-							>
-								Activity
-							</h2>
+							<h2 class="eyebrow">Activity</h2>
 							<span class="text-muted/70 flex items-center gap-1 text-[11px]"
 								><Eye size={11} />
 								{rider.friend === 'self'
@@ -434,11 +430,7 @@
 				     shelf, by name, so the same list twice is one too many. -->
 				{#if medalKinds.length > 0 && rider.friend !== 'self'}
 					<section>
-						<h2
-							class="text-muted text-xs font-semibold tracking-widest uppercase"
-						>
-							Medals
-						</h2>
+						<h2 class="eyebrow">Medals</h2>
 						<ul class="mt-3 grid grid-cols-2 gap-2">
 							{#each medalKinds as [kind, count] (kind)}
 								<li class="panel flex items-center gap-2.5 px-3 py-2.5">
@@ -458,11 +450,7 @@
 				{/if}
 
 				<section>
-					<h2
-						class="text-muted text-xs font-semibold tracking-widest uppercase"
-					>
-						Rooms in common
-					</h2>
+					<h2 class="eyebrow">Rooms in common</h2>
 					{#if rider.roomsInCommon.length === 0}
 						<p class="text-muted mt-3 text-xs">
 							{rider.friend === 'self'

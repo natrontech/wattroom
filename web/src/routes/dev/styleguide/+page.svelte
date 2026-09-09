@@ -70,16 +70,14 @@
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Styleguide</h1>
+	<h1 class="page-title">Styleguide</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Tokens live in <code class="text-ink/80">src/app.css</code>; the identity
 		that fixes their values is ADR-0005.
 	</p>
 
 	<!-- Surfaces -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Surfaces &amp; accent
-	</h2>
+	<h2 class="eyebrow mt-12">Surfaces &amp; accent</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each surfaces as token, i (token.name)}
 			<div class="border-muted/15 overflow-hidden rounded-lg border">
@@ -96,9 +94,7 @@
 	</div>
 
 	<!-- Every catalogue entry, rendered under its own complete token set. -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Full theme catalogue
-	</h2>
+	<h2 class="eyebrow mt-12">Full theme catalogue</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		Each card overrides all colour tokens. The live wattage is the right use of
 		glow; glowing structural chrome is deliberately shown as the wrong use.
@@ -131,7 +127,7 @@
 							>
 								312
 							</div>
-							<div class="text-muted text-[10px] uppercase">live watts</div>
+							<div class="eyebrow">live watts</div>
 						</div>
 						<div class="border-muted/20 rounded border p-3">
 							<div class="text-danger text-[10px] font-semibold uppercase">
@@ -140,9 +136,7 @@
 							<div class="text-neon glow-text mt-2 text-4xl font-bold">
 								Grid
 							</div>
-							<div class="text-muted text-[10px] uppercase">
-								chrome must stay flat
-							</div>
+							<div class="eyebrow">chrome must stay flat</div>
 						</div>
 					</div>
 				</div>
@@ -156,9 +150,7 @@
 	</div>
 
 	<!-- Zones -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Power zones
-	</h2>
+	<h2 class="eyebrow mt-12">Power zones</h2>
 	<div class="border-muted/15 mt-4 overflow-hidden rounded-lg border">
 		{#each zones as zone (zone.n)}
 			<div
@@ -175,9 +167,7 @@
 	</div>
 
 	<!-- Glow scale -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Glow scale
-	</h2>
+	<h2 class="eyebrow mt-12">Glow scale</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-3">
 		{#each glows as glow (glow.name)}
 			<div class="border-muted/15 bg-surface-raised rounded-lg border p-6">
@@ -208,9 +198,7 @@
 	</div>
 
 	<!-- The restraint rule, made concrete -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Data glows, chrome doesn't
-	</h2>
+	<h2 class="eyebrow mt-12">Data glows, chrome doesn't</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		<div class="border-z4/40 bg-surface-raised rounded-lg border p-6">
 			<div class="text-z4 text-xs font-medium tracking-wider uppercase">
@@ -221,9 +209,7 @@
 					<div class="text-watt glow-text text-5xl font-bold tabular-nums">
 						312
 					</div>
-					<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
-						watts
-					</div>
+					<div class="eyebrow mt-1">watts</div>
 				</div>
 				<button
 					class="border-muted/30 hover:border-muted/60 rounded border px-4 py-2 text-sm"
@@ -241,9 +227,7 @@
 			<div class="mt-5 flex items-end gap-6">
 				<div>
 					<div class="text-ink text-5xl font-bold tabular-nums">312</div>
-					<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
-						watts
-					</div>
+					<div class="eyebrow mt-1">watts</div>
 				</div>
 				<button
 					class="bg-watt glow-text text-paper rounded px-4 py-2 text-sm font-semibold"
@@ -258,7 +242,7 @@
 
 	<!-- Chrome components: the kit utilities from app.css. These ARE the
 	     definitions — never retype the class strings at a call site. -->
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Chrome</h2>
+	<h2 class="eyebrow mt-12">Chrome</h2>
 	<div class="panel mt-4 flex flex-wrap items-center gap-3 p-6">
 		<button class="btn btn-primary">Primary</button>
 		<button class="btn btn-secondary">Secondary</button>

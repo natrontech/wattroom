@@ -211,7 +211,7 @@
 	<!-- The mock's header (ADR-0020): a greeting, one sentence on what is
 	     happening, and the one thing to do about it. Home is the between-
 	     rides surface, so the first thing it says is where the ride is. -->
-	<h1 class="font-display text-3xl font-bold tracking-tight">
+	<h1 class="page-title">
 		{greeting}, {account.me?.displayName?.split(' ')[0] ?? 'rider'}.
 	</h1>
 	{#if headline}
@@ -379,11 +379,7 @@
 			<div class="min-w-0 space-y-8">
 				<!-- Around right now: the reason to open the app — people. -->
 				<section>
-					<h2
-						class="text-muted text-xs font-semibold tracking-widest uppercase"
-					>
-						Around right now
-					</h2>
+					<h2 class="eyebrow">Around right now</h2>
 					{#if busy.length > 0}
 						<div class="mt-3 grid gap-3">
 							{#each busy as room (room.slug)}
@@ -474,11 +470,7 @@
 		     the room whose session it is. -->
 				<section id="sessions">
 					<div class="flex items-baseline gap-3">
-						<h2
-							class="text-muted text-xs font-semibold tracking-widest uppercase"
-						>
-							What's next
-						</h2>
+						<h2 class="eyebrow">What's next</h2>
 					</div>
 					{#if planned.length > 0}
 						<div class="panel mt-3">

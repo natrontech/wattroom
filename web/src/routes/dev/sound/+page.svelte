@@ -32,7 +32,7 @@
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Sound</h1>
+	<h1 class="page-title">Sound</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Synthesised with Web Audio rather than sampled — synthwave is oscillators,
 		filters and envelopes, so there is nothing to license, nothing to download,
@@ -44,8 +44,7 @@
 		class="border-muted/15 bg-surface-raised mt-6 flex flex-wrap items-center gap-6 rounded-lg border p-5"
 	>
 		<label class="flex items-center gap-3">
-			<span class="text-muted text-[10px] tracking-wider uppercase">volume</span
-			>
+			<span class="eyebrow">volume</span>
 			<input type="range" {...UNIT_FADER} bind:value={volume} />
 			<span class="w-8 font-mono text-xs tabular-nums"
 				>{Math.round(volume * 100)}</span

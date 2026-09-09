@@ -120,7 +120,7 @@
 	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
 		<!-- Library -->
 		<aside>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">library</h2>
+			<h2 class="eyebrow">library</h2>
 			<ul class="mt-3 space-y-1">
 				{#each library as entry, i (i)}
 					<li>
@@ -144,7 +144,7 @@
 
 		<!-- Steps -->
 		<section>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">steps</h2>
+			<h2 class="eyebrow">steps</h2>
 			<ul class="mt-3 space-y-1.5">
 				{#each workout.steps as step, i (i)}
 					<li>
@@ -189,16 +189,14 @@
 
 		<!-- Inspector -->
 		<aside>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">step</h2>
+			<h2 class="eyebrow">step</h2>
 			{#if current}
 				<div
 					class="border-muted/15 bg-surface-raised mt-3 space-y-4 rounded-lg border p-4"
 				>
 					{#if current.type !== 'repeat'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>duration (s)</span
-							>
+							<span class="eyebrow">duration (s)</span>
 							<input
 								type="number"
 								min="5"
@@ -211,9 +209,7 @@
 
 					{#if current.type === 'steady'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>target (% FTP)</span
-							>
+							<span class="eyebrow">target (% FTP)</span>
 							<input
 								type="number"
 								min="30"
@@ -231,9 +227,7 @@
 						</label>
 					{:else if current.type === 'repeat'}
 						<label class="block">
-							<span class="text-muted text-[10px] tracking-wider uppercase"
-								>repeats</span
-							>
+							<span class="eyebrow">repeats</span>
 							<input
 								type="number"
 								min="1"
@@ -254,9 +248,7 @@
 						<div class="grid grid-cols-2 gap-3">
 							{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}
 								<label class="block">
-									<span class="text-muted text-[10px] tracking-wider uppercase"
-										>{field.label} (%)</span
-									>
+									<span class="eyebrow">{field.label} (%)</span>
 									<input
 										type="number"
 										min="20"

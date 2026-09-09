@@ -130,9 +130,7 @@
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">
-		Hardware session
-	</h1>
+	<h1 class="page-title">Hardware session</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		#10: pair a real trainer over FTMS, confirm power and cadence arrive,
 		confirm ERG holds a target. Chrome or Edge only — Web Bluetooth needs a user
@@ -241,9 +239,7 @@
 			>
 				{sample?.watts ?? '—'}
 			</div>
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				watts
-			</div>
+			<div class="eyebrow mt-2">watts</div>
 		</div>
 		<div>
 			<div
@@ -251,9 +247,7 @@
 			>
 				{sample?.cadence ?? '—'}
 			</div>
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				rpm
-			</div>
+			<div class="eyebrow mt-2">rpm</div>
 		</div>
 		<div>
 			<div
@@ -262,9 +256,7 @@
 				{speed !== null ? speed.toFixed(1) : '—'}
 			</div>
 			<!-- Slope resistance is derived from this, so a tall single cog makes 2% brutal. -->
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				kph (virtual)
-			</div>
+			<div class="eyebrow mt-2">kph (virtual)</div>
 		</div>
 		<div>
 			<div
@@ -272,9 +264,7 @@
 			>
 				{lastAck !== null ? lastAck : '—'}
 			</div>
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				ack ms
-			</div>
+			<div class="eyebrow mt-2">ack ms</div>
 		</div>
 		<div>
 			<div
@@ -282,9 +272,7 @@
 			>
 				{samples}
 			</div>
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				samples
-			</div>
+			<div class="eyebrow mt-2">samples</div>
 		</div>
 		<div>
 			<div
@@ -295,9 +283,7 @@
 			>
 				{frames}
 			</div>
-			<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
-				frames
-			</div>
+			<div class="eyebrow mt-2">frames</div>
 		</div>
 	</div>
 	{#if frames > 0 && samples === 0}

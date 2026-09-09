@@ -84,9 +84,7 @@
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">
-		The sensor card
-	</h1>
+	<h1 class="page-title">The sensor card</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		One card answers "is my trainer connected?" on /settings/equipment, /ride,
 		/ramp and in the Training place. The real one is below — pick a state.
