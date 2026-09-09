@@ -196,8 +196,8 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 
 ## Stats formulas (defaults — tune in alpha)
 
-- **Tolerance band**: within ±5 % of target power, floor ±10 W (beginners at 100 W targets need the floor).
-- **Execution score** (per ride): `% of riding seconds inside the band`, weighted by step intensity (each second weighs `target/FTP`, so nailing VO2 intervals counts more than nailing recovery). Warmup/cooldown/freeride excluded. Auto-paused time excluded.
+- **Tolerance band**: within ±5 % of target power, floor ±10 W (beginners at 100 W targets need the floor). The target is the rider's **own**: the prescribed fraction × their bias (0.8–1.2, set during the ride, #795), so the band follows the plan they were actually on; the weight below stays the prescribed intensity.
+- **Execution score** (per ride): `% of riding seconds inside the band`, weighted by step intensity (each second weighs `target/FTP`, so nailing VO2 intervals counts more than nailing recovery). Warmup/cooldown/freeride excluded. Auto-paused time excluded. Because the band is biased, execution is not like-for-like between riders — one at 0.8 rides 20 % easier and can still score 1.0; Metronome and the execution bonus reward riding the plan you set, not the hardest plan.
 - **XP**: `1 kJ = 1 XP`, plus per-ride bonus `execution% × 50`, plus streak bonus `25 × current-week-streak` (capped at 250). Level thresholds: level n requires `500 × n^1.6` cumulative XP (a winter of 3 rides/week ≈ level 25–30).
 - **Category** from best 20-min w/kg over rolling 90 days: **D < 2.5, C 2.5–3.2, B 3.2–4.0, A ≥ 4.0**. Recompute on ride completion; category changes announce in the room (up: fanfare; down: silently).
 - **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve.
@@ -329,7 +329,7 @@ future trainer that reports none.
 ## Medals (per group session)
 
 - **Diesel** — lowest power variability (coefficient of variation) across steady steps
-- **Metronome** — best execution score
+- **Metronome** — best execution score (each against their own biased targets — see Stats formulas)
 - **Hammer** — best 5 s w/kg
 - **Lanterne Rouge** — last on the final sprint/podium metric but completed the session
 - Ties: earlier joiner wins. Minimum 3 riders for medals (default — tune in alpha).
