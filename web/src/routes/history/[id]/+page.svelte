@@ -39,10 +39,16 @@
 	// Both are secondary to the ride itself, so they load beside it and their
 	// absence costs one section rather than the page.
 	let rides = $state<RideRecord[] | null>(null);
+	let ridesError = $state<string | null>(null);
 	let progression = $state<Progression | null>(null);
-	void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
-		if (res.ok) rides = res.data.rides;
-	});
+	function loadRides() {
+		ridesError = null;
+		void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
+			if (res.ok) rides = res.data.rides;
+			else ridesError = res.error.message;
+		});
+	}
+	loadRides();
 	void fetchProgression().then((res) => {
 		if (res.ok) progression = res.data;
 	});
@@ -266,6 +272,8 @@
 			<RideComparison
 				{ride}
 				{rides}
+				error={ridesError}
+				onRetry={loadRides}
 				d30={progression?.curve.d30.best20m}
 				d90={progression?.curve.d90.best20m}
 			/>

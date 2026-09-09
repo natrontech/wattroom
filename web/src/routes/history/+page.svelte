@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
 	import {
@@ -36,6 +37,17 @@
 	// #110. They have no samples, so they cannot become account rides — they
 	// stay listed here until cleared.
 	const device = createHistoryStore();
+
+	async function clearDevice() {
+		const n = device.all.length;
+		const ok = await confirm({
+			title: `Clear ${n} device ride${n === 1 ? '' : 's'}?`,
+			body: 'These summaries exist only on this device — nothing can bring them back.',
+			action: 'Clear them',
+			cancel: 'Keep them',
+		});
+		if (ok) device.clear();
+	}
 
 	let rides = $state<ServerRide[] | null>(untrack(() => data.rides));
 	let error = $state<string | null>(untrack(() => data.ridesError));
@@ -391,7 +403,9 @@
 				{@render rideRow(ride)}
 			{/each}
 		</ul>
-		<button onclick={() => device.clear()} class="btn btn-danger mt-4"
+		<!-- The only copy there is: a confirm, as errors.md keeps for the
+		     genuinely destructive (audit 2026-09-09). -->
+		<button onclick={() => void clearDevice()} class="btn btn-danger mt-4"
 			>Clear device rides</button
 		>
 	{/if}

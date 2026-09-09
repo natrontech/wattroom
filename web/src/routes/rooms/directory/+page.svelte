@@ -20,12 +20,22 @@
 
 	let rooms = $state<Entry[] | null>(null);
 	let error = $state<string | null>(null);
+	// The server pages at fifty (room_directory.go) and the page never asked
+	// for the next one: rooms past the 50th were unreachable (audit 2026-09-09).
+	const PAGE = 50;
+	let more = $state(false);
 
-	async function load() {
+	async function load(offset = 0) {
 		error = null;
-		const res = await api<{ rooms: Entry[] }>('/api/rooms/directory');
-		if (res.ok) rooms = res.data.rooms;
-		else error = res.error.message;
+		const res = await api<{ rooms: Entry[] }>(
+			`/api/rooms/directory${offset ? `?offset=${offset}` : ''}`,
+		);
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
+		rooms = offset ? [...(rooms ?? []), ...res.data.rooms] : res.data.rooms;
+		more = res.data.rooms.length === PAGE;
 	}
 
 	$effect(() => {
@@ -94,5 +104,11 @@
 				</li>
 			{/each}
 		</ul>
+		{#if more}
+			<button
+				onclick={() => void load(rooms?.length ?? 0)}
+				class="btn btn-secondary btn-xs mt-3">Show more</button
+			>
+		{/if}
 	{/if}
 </main>

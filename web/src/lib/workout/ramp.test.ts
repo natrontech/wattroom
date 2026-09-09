@@ -7,9 +7,26 @@ import {
 	buildRampTest,
 	ftpFromRamp,
 	RAMP,
+	rampBlown,
 	rampFailed,
 	rampUsable,
 } from './ramp';
+
+// The warm-up has a target too (35→50 % FTP), so the raw detector would end a
+// test five seconds in on a rider still spinning up. The page asks this one.
+describe('rampBlown', () => {
+	const stalled = Array.from({ length: RAMP.failSeconds }, () => ({
+		watts: 0,
+		target: 70,
+	}));
+	it('never trips during the warm-up', () => {
+		expect(rampBlown(5, stalled)).toBe(false);
+		expect(rampBlown(RAMP.warmupSeconds - 1, stalled)).toBe(false);
+	});
+	it('trips once a step has a real target', () => {
+		expect(rampBlown(RAMP.warmupSeconds + 30, stalled)).toBe(true);
+	});
+});
 import { validateWorkout } from './validate';
 
 describe('buildRampTest', () => {

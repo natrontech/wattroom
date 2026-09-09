@@ -6,6 +6,7 @@
 	// Describe, never grade (ADR-0016). A negative delta takes the muted token,
 	// never --color-danger: danger means something is wrong, and a lighter day
 	// is not wrong.
+	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { bestOfWorkout, compareRows, curveSentence } from './compare';
@@ -15,10 +16,15 @@
 		rides,
 		d30,
 		d90,
+		error = null,
+		onRetry,
 	}: {
 		ride: RideRecord;
-		/** Every ride the rider has; null while it is still loading or failed. */
+		/** Every ride the rider has; null while it is still loading. */
 		rides: RideRecord[] | null;
+		/** Why they could not be loaded, when they could not (audit 2026-09-09). */
+		error?: string | null;
+		onRetry?: () => void;
 		d30?: number;
 		d90?: number;
 	} = $props();
@@ -47,8 +53,19 @@
 		<span class="text-muted/70 text-[11px]">based on your WattRoom rides</span>
 	</div>
 
-	{#if rides === null}
-		<p class="text-muted mt-3 text-xs">Your other rides could not be loaded.</p>
+	{#if error}
+		<div class="mt-3">
+			<Banner tone="error">
+				{error}
+				{#snippet action()}
+					{#if onRetry}
+						<button onclick={onRetry} class="btn-link text-xs">Retry</button>
+					{/if}
+				{/snippet}
+			</Banner>
+		</div>
+	{:else if rides === null}
+		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading your rides…</p>
 	{:else if !best}
 		<div class="mt-3">
 			<EmptyState>

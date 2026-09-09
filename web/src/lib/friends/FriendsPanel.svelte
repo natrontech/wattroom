@@ -7,6 +7,7 @@
 	import UserX from '@lucide/svelte/icons/user-x';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -120,14 +121,29 @@
 </script>
 
 <section class="mt-6">
-	{#if error}
-		<p class="text-danger mt-3 text-xs">{error}</p>
-	{/if}
-
 	{#if list === null}
-		<!-- errors.md: never blank while a fetch is in flight. -->
-		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading friends…</p>
+		{#if error}
+			<!-- The list never arrived: the way back, not a red line over
+			     "Loading…" for good (errors.md; audit 2026-09-09). -->
+			<div class="mt-3">
+				<Banner tone="error">
+					{error}
+					{#snippet action()}
+						<button
+							onclick={() => void friends.reload()}
+							class="btn-link text-xs">Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
+		{:else}
+			<!-- errors.md: never blank while a fetch is in flight. -->
+			<p class="text-muted mt-3 text-xs" aria-busy="true">Loading friends…</p>
+		{/if}
 	{:else}
+		{#if error}
+			<p class="text-danger mt-3 text-xs">{error}</p>
+		{/if}
 		<!-- Formation is code-only (ADR-0012 amendment): no user listing
 		     exists — so this IS the way a friend is added, and it sat under the
 		     whole list (#1017). A rider who came here to add someone scrolled

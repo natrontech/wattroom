@@ -2,6 +2,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -20,7 +21,7 @@
 		buildRampTest,
 		ftpFromRamp,
 		RAMP,
-		rampFailed,
+		rampBlown,
 		rampUsable,
 	} from '$lib/workout/ramp';
 
@@ -77,7 +78,7 @@
 			watts: s.watts,
 			target: current.info.targetWatts ?? 0,
 		}));
-		if (rampFailed(trailing)) {
+		if (rampBlown(current.elapsed, trailing)) {
 			current.stop();
 			done = true;
 		}
@@ -131,6 +132,21 @@
 		if (message) error = message;
 		else saved = true;
 	}
+	// One mis-tap on the rail at minute 14 must not lose the number: the same
+	// confirm /ride has, only while the test is alive.
+	guardLeaving(
+		() =>
+			!!session &&
+			!done &&
+			session.state !== 'done' &&
+			session.state !== 'idle',
+		{
+			title: 'Stop the ramp test and leave?',
+			body: 'The test cannot be resumed — its number is lost.',
+			action: 'Stop the test',
+			cancel: 'Keep going',
+		},
+	);
 	// This page is the session's only owner: leaving mid-test ends it, or the
 	// trainer holds a step with nobody watching and the frame stays caved.
 	onDestroy(() => session?.stop());

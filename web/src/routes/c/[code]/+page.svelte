@@ -3,8 +3,9 @@
 	// One decision, one button — the shape the room's door had when it was
 	// the golden path. Signed-out visitors meet the login gate first and come
 	// back here with the code intact.
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import Logo from '$lib/brand/Logo.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import { joinCrew } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
@@ -15,6 +16,7 @@
 	let error = $state<string | null>(null);
 
 	async function join() {
+		error = null;
 		busy = true;
 		const res = await joinCrew(data.code);
 		busy = false;
@@ -81,6 +83,18 @@
 					while you ride in it, and nowhere else.
 				</p>
 			{/if}
+		{:else if data.errorCode && data.errorCode !== 'not_found'}
+			<div class="mt-6 text-left">
+				<Banner tone="error">
+					{data.error}
+					{#snippet action()}
+						<button
+							onclick={() => void invalidateAll()}
+							class="btn-link text-xs">Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
 		{:else}
 			<p class="mt-6 text-sm">{data.error}</p>
 			<a
