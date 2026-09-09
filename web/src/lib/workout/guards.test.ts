@@ -18,6 +18,28 @@ describe('createPersonalGuards', () => {
 		expect(guards.released).toBe(true);
 	});
 
+	// #1798: the counters are seconds, as docs/SPEC.md names the thresholds,
+	// and a trainer notifying twice a second used to reach auto-pause in 1.5 s
+	// and the spiral release in 2.5 s. The second sample of a second stands
+	// for no time; transitions still fire on it.
+	it('counts seconds, not notifications', () => {
+		const guards = createPersonalGuards();
+		for (let s = 0; s < DEFAULTS.pauseAfterSeconds - 1; s++) {
+			expect(guards.sample(stopped, 200, 1)).toBe(false);
+			expect(guards.sample(stopped, 200, 0)).toBe(false);
+		}
+		expect(guards.sample(stopped, 200, 1)).toBe(true);
+		expect(guards.phase).toBe('autopaused');
+
+		const spiral = createPersonalGuards();
+		for (let s = 0; s < DEFAULTS.spiralAfterSeconds - 1; s++) {
+			expect(spiral.sample(grinding, 200, 1)).toBe(false);
+			expect(spiral.sample(grinding, 200, 0)).toBe(false);
+		}
+		expect(spiral.sample(grinding, 200, 1)).toBe(true);
+		expect(spiral.spiralActive).toBe(true);
+	});
+
 	it('counts down before resuming rather than snapping back', () => {
 		const guards = createPersonalGuards();
 		for (let i = 0; i < DEFAULTS.pauseAfterSeconds; i++)
