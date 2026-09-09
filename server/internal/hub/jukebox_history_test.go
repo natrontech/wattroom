@@ -1,6 +1,11 @@
 package hub
 
 import (
+	"context"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -23,6 +28,8 @@ func TestDeckReportsWhatHappenedToAPoolTrack(t *testing.T) {
 		wantEvent   bool
 		wantSkipped bool
 		wantQueued  string
+		// The video the event names; empty means a library track (poolTrack).
+		wantVideo string
 	}{
 		{
 			name:      "played through",
@@ -47,19 +54,19 @@ func TestDeckReportsWhatHappenedToAPoolTrack(t *testing.T) {
 			wantEvent: true, wantQueued: "",
 		},
 		{
-			// A YouTube entry is not pool history: it has no row in `tracks`
-			// to weight, and recording it would insert against a uuid that
-			// does not exist.
-			name:      "a video ending is not pool history",
+			// A video is history too since #1432 — by its id and title, so
+			// "just played" can be rebuilt after a restart. It carries no
+			// track id: smart shuffle joins on that and never sees it.
+			name:      "a video ending is history by its id",
 			queue:     func(j *jukebox) { add(j, "dQw4w9WgXcQ", jat(0)) },
 			end:       endedCmd,
-			wantEvent: false,
+			wantEvent: true, wantVideo: "dQw4w9WgXcQ", wantQueued: "r-jan",
 		},
 		{
-			name:      "a video skipped is not pool history",
+			name:      "a video skipped is history too",
 			queue:     func(j *jukebox) { add(j, "dQw4w9WgXcQ", jat(0)) },
 			end:       func(*jukebox) protocol.JukeboxCommand { return protocol.JukeboxCommand{Action: "skip"} },
-			wantEvent: false,
+			wantEvent: true, wantVideo: "dQw4w9WgXcQ", wantSkipped: true, wantQueued: "r-jan",
 		},
 		{
 			// The stale-client end #1080 already refuses: it must not record
@@ -91,8 +98,12 @@ func TestDeckReportsWhatHappenedToAPoolTrack(t *testing.T) {
 			if j.event == nil {
 				t.Fatal("nothing recorded")
 			}
-			if j.event.trackID != poolTrack {
-				t.Errorf("track = %q, want %q", j.event.trackID, poolTrack)
+			if tc.wantVideo != "" {
+				if j.event.videoID != tc.wantVideo || j.event.trackID != "" {
+					t.Errorf("video = %q track = %q, want video %q", j.event.videoID, j.event.trackID, tc.wantVideo)
+				}
+			} else if j.event.trackID != poolTrack || j.event.videoID != "" {
+				t.Errorf("track = %q video = %q, want track %q", j.event.trackID, j.event.videoID, poolTrack)
 			}
 			if j.event.skipped != tc.wantSkipped {
 				t.Errorf("skipped = %v, want %v", j.event.skipped, tc.wantSkipped)
@@ -133,5 +144,46 @@ func TestTheRoomDrainsEachDeckEventOnce(t *testing.T) {
 	}
 	if seen[0].trackID != poolTrack || !seen[0].skipped {
 		t.Errorf("wrong event: %+v", seen[0])
+	}
+}
+
+// fakeHistory stands in for the playlists log (#1432): it remembers what it
+// was told and hands back a canned "just played".
+type fakeHistory struct {
+	recent []protocol.JukeboxEntry
+	told   []Play
+}
+
+func (f *fakeHistory) TrackEnded(_ context.Context, _ string, play Play) {
+	f.told = append(f.told, play)
+}
+func (f *fakeHistory) Recent(context.Context, string, int) []protocol.JukeboxEntry {
+	return f.recent
+}
+
+// A room the hub creates shows what the log remembers, until it plays
+// something of its own (#1432). Autoplay's plays are named as autoplay's.
+func TestANewRoomSeedsJustPlayedFromTheLog(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	log := &fakeHistory{recent: []protocol.JukeboxEntry{
+		{VideoID: "dQw4w9WgXcQ", Title: "Last night's closer", AddedBy: "kim"},
+		{TrackID: poolTrack, Title: "Sandstorm", Artist: "Darude"},
+	}}
+	h.SetTrackHistory(log)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/seeded-room", "jan:owner")
+
+	deck := tickUntil(t, conn, "the seeded history", func(d protocol.JukeboxState) bool { return len(d.History) == 2 })
+	if deck.History[0].VideoID != "dQw4w9WgXcQ" || deck.History[0].AddedBy != "kim" || deck.History[0].ID == "" {
+		t.Fatalf("first seeded row: %+v", deck.History[0])
+	}
+	if deck.History[1].TrackID != poolTrack || deck.History[1].AddedBy != autoplayActor {
+		t.Fatalf("autoplay's play should carry autoplay's name: %+v", deck.History[1])
+	}
+	if deck.History[0].ID == deck.History[1].ID {
+		t.Fatalf("seeded rows need distinct ids for the keyed list: %+v", deck.History)
 	}
 }

@@ -196,8 +196,11 @@ func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 		return nil, false, ""
 	}
 	skipped := *j.state.Current
-	if skipped.TrackID != "" {
-		j.event = &trackEvent{trackID: skipped.TrackID, queuedBy: j.owners[skipped.ID], skipped: true}
+	// What left the deck, for the play log (#269, #1432): a library track by
+	// id, a video by id and title — a set's current track, never the set.
+	j.event = &trackEvent{
+		trackID: skipped.TrackID, videoID: skipped.VideoID, title: skipped.Title,
+		queuedBy: j.owners[skipped.ID], skipped: true,
 	}
 	// Skipping a track INSIDE a playlist leaves the entry on the deck,
 	// so its owner outlives the track — dropping the credit here cost
@@ -282,10 +285,9 @@ func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 			ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
 		}
 	}
-	if j.state.Current.TrackID != "" {
-		j.event = &trackEvent{
-			trackID: j.state.Current.TrackID, queuedBy: j.owners[j.state.Current.ID],
-		}
+	j.event = &trackEvent{
+		trackID: j.state.Current.TrackID, videoID: j.state.Current.VideoID,
+		title: j.state.Current.Title, queuedBy: j.owners[j.state.Current.ID],
 	}
 	// Every track of a playlist played through is its own credit; the
 	// owner only leaves when the ENTRY does (#615).

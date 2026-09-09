@@ -128,6 +128,8 @@ type playedTrack struct {
 // skipping is already a room-timeline line. Empty when autoplay queued it.
 type trackEvent struct {
 	trackID  string
+	videoID  string
+	title    string
 	queuedBy string
 	skipped  bool
 }
@@ -263,6 +265,26 @@ func (j *jukebox) remember() {
 	if len(j.state.History) > maxHistory {
 		j.state.History = j.state.History[:maxHistory]
 	}
+}
+
+// seedHistory fills an empty "just played" with what the database remembers
+// (#1432) — a fresh hub after a deploy, the first socket into a room. Only
+// while nothing has been played since: a room that has already moved on
+// keeps its own memory.
+func (j *jukebox) seedHistory(entries []protocol.JukeboxEntry) {
+	if len(j.state.History) > 0 || len(entries) == 0 {
+		return
+	}
+	if len(entries) > maxHistory {
+		entries = entries[:maxHistory]
+	}
+	for i := range entries {
+		entries[i].ID = "seed-" + strconv.Itoa(i)
+		if entries[i].AddedBy == "" {
+			entries[i].AddedBy = autoplayActor
+		}
+	}
+	j.state.History = entries
 }
 
 // advance moves the deck on by one track: to the next track of the playlist

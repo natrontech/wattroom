@@ -301,6 +301,8 @@ type TrackPlay struct {
 	QueuedBy pgtype.UUID
 	Skipped  bool
 	At       pgtype.Timestamptz
+	VideoID  string
+	Title    string
 }
 
 type User struct {
