@@ -128,6 +128,10 @@
 	);
 </script>
 
+<svelte:head
+	><title>{ride?.workoutName ?? 'Ride'} · Rides · WattRoom</title></svelte:head
+>
+
 <main class="page">
 	<a
 		href="/history"

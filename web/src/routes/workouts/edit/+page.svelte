@@ -153,6 +153,11 @@
 	}
 </script>
 
+<svelte:head
+	><title>{workout.name || 'New workout'} · Workouts · WattRoom</title
+	></svelte:head
+>
+
 <svelte:window onkeydown={keys} />
 
 <main class="page">

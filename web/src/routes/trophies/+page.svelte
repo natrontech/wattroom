@@ -38,6 +38,8 @@
 	);
 </script>
 
+<svelte:head><title>Trophy case · WattRoom</title></svelte:head>
+
 <main class="page">
 	<h1 class="font-display text-2xl leading-tight font-bold">Trophy case</h1>
 	<p class="text-muted text-xs">

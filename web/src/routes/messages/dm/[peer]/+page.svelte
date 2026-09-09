@@ -130,6 +130,8 @@
 	});
 </script>
 
+<svelte:head><title>{peerName} · WattRoom</title></svelte:head>
+
 <!-- The header: who they are, whether they are around, and the one thing
      you want from a friend who is riding — the way in. -->
 <header

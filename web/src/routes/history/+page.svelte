@@ -166,6 +166,8 @@
 	}
 </script>
 
+<svelte:head><title>Rides · WattRoom</title></svelte:head>
+
 {#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
 	<li
 		id="ride-{ride.id}"

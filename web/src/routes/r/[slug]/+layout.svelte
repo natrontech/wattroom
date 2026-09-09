@@ -102,6 +102,8 @@
 	// rather than on a redirect that no longer happens.
 </script>
 
+<svelte:head><title>{room?.name ?? 'Room'} · WattRoom</title></svelte:head>
+
 {#if error && !room}
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">

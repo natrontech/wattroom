@@ -6,6 +6,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 </script>
 
+<svelte:head><title>Messages · WattRoom</title></svelte:head>
+
 <EmptyState variant="page">
 	{#snippet icon()}
 		<MessagesSquare size={28} class="opacity-60" />

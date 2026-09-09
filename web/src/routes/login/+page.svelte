@@ -155,6 +155,8 @@
 	}
 </script>
 
+<svelte:head><title>Sign in · WattRoom</title></svelte:head>
+
 <main
 	class="cave bg-surface text-ink relative grid min-h-dvh place-items-center px-6"
 >
