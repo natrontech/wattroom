@@ -12,15 +12,20 @@
 
 	let {
 		onRiderGain,
+		onShareGain,
 	}: {
 		/** Resets go through av, so a rider still in voice hears the change. */
 		onRiderGain?: (id: string, gain: number) => void;
+		/** The same for a shared machine, so it dips while the drag happens. */
+		onShareGain?: (gain: number) => void;
 	} = $props();
 
 	// Through av when there is one, so a rider still in voice is heard at the
 	// new level the moment it moves.
 	const setRider = (id: string, gain: number) =>
 		onRiderGain ? onRiderGain(id, gain) : mixer.setRiderGain(id, gain);
+	const setShare = (gain: number) =>
+		onShareGain ? onShareGain(gain) : mixer.setShare(gain);
 
 	// Taken once, on purpose: unity forgets a rider (mixer.svelte.ts), so a
 	// live list would delete the row under the thumb the moment a drag passed
@@ -78,6 +83,25 @@
 			applyLevels();
 		}}
 		class="mt-0.5 w-full"
+	/>
+</label>
+<!-- Somebody else's computer, coming through the room (#1124, #1699). The
+     mixer, the gain and the dip under voice all shipped with the share; the
+     fader did not, so the loudest thing in the room was the one channel a
+     rider could only turn down by asking the person sharing it. -->
+<label class="mt-2 block text-xs">
+	<span class="text-muted"
+		>shared screens · <span class="font-display tabular-nums"
+			>{Math.round(mixer.share * 100)}%</span
+		></span
+	>
+	<input
+		type="range"
+		{...UNIT_FADER}
+		value={mixer.share}
+		oninput={(e) => setShare(Number(e.currentTarget.value))}
+		class="mt-0.5 w-full"
+		aria-label="how loud a shared screen's sound is"
 	/>
 </label>
 <label class="mt-2 block text-xs">

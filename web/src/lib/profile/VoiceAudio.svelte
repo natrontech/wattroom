@@ -46,6 +46,7 @@
 				micTesting={av.micTesting}
 				onMicTest={() => void av.toggleMicTest()}
 				onRiderGain={(id, gain) => av.setRiderGain(id, gain)}
+				onShareGain={(gain) => av.setShareGain(gain)}
 				devices={{ mics: av.mics, cams: av.cams, outs: av.outs }}
 				micId={av.micId}
 				camId={av.camId}

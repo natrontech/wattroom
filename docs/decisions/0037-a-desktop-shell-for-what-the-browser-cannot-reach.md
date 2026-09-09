@@ -176,3 +176,27 @@ provider parses. And a release now carries what the updater reads beside the
 installers — the manifests, the blockmaps, and on macOS a `.zip` next to the
 `.dmg`, because Squirrel.Mac installs from the zip. The first build with the
 updater cannot itself be reached by it; the one before has none.
+
+## Amendment, 2026-09-09 (#1699): the machine's sound is offered, not assumed
+
+The shell answered every `getDisplayMedia` with `audio: 'loopback'` alongside
+the picture — #1124's reading of "system audio into the room". A rider
+reported the result from Windows: sharing one window sent the whole machine.
+
+Loopback has no per-window tap. It is the output device: the rider's
+notifications, whatever else they have playing, and the room's own voices and
+jukebox, delayed and sent back into the room they came from. Chrome at least
+puts that on screen as a checkbox in its own picker; an app-supplied picker
+that asks nothing is the shell being more aggressive than the browser it
+wraps, on the one platform where the Context above says the browser was
+already enough. **The picker asks. Off unless it is ticked, and worded for
+what the tap actually takes** — the rider chose a window, and the machine is
+more than they chose.
+
+It asks on Windows only, which is the honest half of the same point. This
+handler runs on macOS only below 15 — above it the system picker takes over
+and asks for audio itself — and an app-supplied picker there gets a loopback
+track with no data in it ([electron#52738](https://github.com/electron/electron/issues/52738)),
+so the room was being told it could hear a machine it could not. Linux
+Chromium has no loopback at all. macOS system audio, the capability that
+justified this ADR, is unaffected: it arrives through the system picker.
