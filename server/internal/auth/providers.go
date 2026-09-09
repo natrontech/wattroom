@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
@@ -56,8 +59,10 @@ func providersFromEnv(baseURL string) map[string]provider {
 	}
 
 	// Not OAuth: a local-only session for machines with no registered apps.
-	// Never set WATTROOM_DEV_LOGIN in production — it is an unauthenticated door.
-	if os.Getenv("WATTROOM_DEV_LOGIN") == "1" {
+	// Never set WATTROOM_DEV_LOGIN in production — it is an unauthenticated
+	// door, and it opens on a local origin only (#1603); DevLoginMisconfigured
+	// is what refuses to boot when it is asked for anywhere else.
+	if os.Getenv("WATTROOM_DEV_LOGIN") == "1" && localOrigin(baseURL) {
 		out["dev"] = provider{id: "dev"}
 	}
 
@@ -149,4 +154,31 @@ func getJSON(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token, url str
 		return fmt.Errorf("auth: decode identity: %w", err)
 	}
 	return nil
+}
+
+// localOrigin is where the dev login may open: localhost and its aliases, and
+// the private ranges a phone on the same Wi-Fi reaches a dev box on
+// (docs/HARDWARE-SESSIONS.md). A public host never qualifies.
+func localOrigin(baseURL string) bool {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
+}
+
+// DevLoginMisconfigured is the boot check (#1603, ADR-0035's posture): asking
+// for the dev login on a public origin is refused loudly rather than
+// warned about and honoured — a warning in a log nobody reads is how an
+// unauthenticated door reaches production.
+func DevLoginMisconfigured(baseURL string) error {
+	if os.Getenv("WATTROOM_DEV_LOGIN") != "1" || localOrigin(baseURL) {
+		return nil
+	}
+	return fmt.Errorf("WATTROOM_DEV_LOGIN=1 with a public base URL %q: the dev login is an unauthenticated door and opens on localhost or a private address only", baseURL)
 }
