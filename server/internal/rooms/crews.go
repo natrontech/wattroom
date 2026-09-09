@@ -62,9 +62,14 @@ type crewJSON struct {
 	// member sees it — inviting is every member's (docs/SPEC.md).
 	Code string `json:"code,omitempty"`
 	// The caller's own role: owner | admin | member.
-	Role    string           `json:"role"`
-	OwnerID string           `json:"ownerId"`
-	Rooms   []crewRoomJSON   `json:"rooms"`
+	Role    string         `json:"role"`
+	OwnerID string         `json:"ownerId"`
+	Rooms   []crewRoomJSON `json:"rooms"`
+	// How many are in the crew — the door's number. `people` below is the
+	// part of them the caller may see (#1135), which is shorter for a plain
+	// member; labelling that list as the crew's size said "2 people" to
+	// someone who had just read "12 are in it" (audit 2026-09-09).
+	Members int64            `json:"members"`
 	People  []crewPersonJSON `json:"people"`
 	// Admins and the owner only — a ban list is a moderation surface, not
 	// roster gossip, the same rule the room's Members place applies.
@@ -236,6 +241,12 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("list crew people failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
 		return
+	}
+	out.Members = int64(len(people))
+	if members, err := s.store.Queries.CountCrewMembers(r.Context(), crew.ID); err == nil {
+		out.Members = int64(members)
+	} else {
+		s.log.Warn("crew member count failed", "err", err, "crew", store.UUIDString(crew.ID))
 	}
 	for _, p := range people {
 		id := store.UUIDString(p.ID)

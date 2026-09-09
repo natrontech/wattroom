@@ -761,3 +761,173 @@ func TestJoinCrewNamesAFriendCodeForWhatItIs(t *testing.T) {
 		t.Fatalf("crew-shaped miss: %d %v, want the plain 404", status, body)
 	}
 }
+
+// onRoster reads the room's page as its owner and says whether userID is on
+// the members list.
+func (h *harness) onRoster(t *testing.T, slug, userID string) bool {
+	t.Helper()
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	members, _ := body["members"].([]any)
+	for _, m := range members {
+		if row, ok := m.(map[string]any); ok && row["id"] == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// Joining is the one way in (ADR-0038 amended): a crew role is for someone
+// already in the crew. The role endpoint's upsert used to admit anyone an
+// admin named by user id (audit 2026-09-09); a ban stays pre-emptive.
+func TestACrewRoleIsForSomeoneAlreadyIn(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Crew Role Stranger")
+	crew := h.crewOf(t, slug)
+	crewID := store.UUIDString(crew.ID)
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	for _, role := range []string{"member", "admin"} {
+		status, body := h.call(t, "alice", http.MethodPost, "/api/crews/"+crewID+"/role", fmt.Sprintf(`{"userId":%q,"role":%q}`, bob, role))
+		if status != http.StatusBadRequest || body["field"] != "userId" {
+			t.Errorf("a stranger was made %s: %d %v", role, status, body)
+		}
+	}
+	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crews/"+crewID, ""); status != http.StatusNotFound {
+		t.Errorf("bob reads the crew after the refusals: %d", status)
+	}
+	// Keeping someone out is not letting them in.
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+crewID+"/role", fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("pre-emptive ban: %d", status)
+	}
+	_, door := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, "")
+	if door["banned"] != true || door["id"] != nil {
+		t.Errorf("the door does not tell a banned rider so: %v", door)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusForbidden {
+		t.Errorf("a pre-emptive ban did not hold at the code: %d", status)
+	}
+}
+
+// A crew ban removes a person from every room in the crew (ADR-0038, third
+// amendment) — the rows too: left behind they stayed on every roster, and
+// lifting the ban handed every room back (audit 2026-09-09).
+func TestACrewBanTakesTheRoomMembershipsWithIt(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Ban Roster")
+	crew := h.crewOf(t, slug)
+	h.join(t, "bob", slug)
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	crewPath := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
+	if !h.onRoster(t, slug, bob) {
+		t.Fatal("bob never made the roster")
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, crewPath, fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("crew ban: %d", status)
+	}
+	if h.onRoster(t, slug, bob) {
+		t.Error("a crew-banned rider is still on the room's roster")
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, crewPath, fmt.Sprintf(`{"userId":%q,"role":"member"}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("crew unban: %d", status)
+	}
+	// Lifting the ban restores plain crew membership, not the rooms.
+	if h.onRoster(t, slug, bob) {
+		t.Error("lifting the crew ban put the rider back in the room")
+	}
+	_, door := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	if door["role"] != nil || door["inCrew"] != true {
+		t.Errorf("after the unban bob's door reads %v, want in the crew and outside the room", door)
+	}
+}
+
+func TestJoiningTheCrewAnswersMember(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Crew Join Answers")
+	status, body := h.call(t, "bob", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code))
+	if status != http.StatusOK || body["role"] != "member" {
+		t.Errorf("a fresh join answered %d %v, want member", status, body["role"])
+	}
+}
+
+// The day someone joined is theirs to keep: promoting or unbanning them used
+// to restamp it, which also made the founding member the newest for
+// succession (audit 2026-09-09). And the crew's size is the crew's, not the
+// visible list's.
+func TestARoleChangeKeepsTheJoinDate(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Since")
+	crew := h.crewOf(t, slug)
+	crewID := store.UUIDString(crew.ID)
+	h.join(t, "bob", slug)
+	bobID := h.users.byToken["bob"].ID
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update crew_roles set joined_at = '2026-01-15', set_at = '2026-01-15' where crew_id = $1 and user_id = $2", crew.ID, bobID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+	bob := store.UUIDString(bobID)
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+crewID+"/role", fmt.Sprintf(`{"userId":%q,"role":"admin"}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("promote: %d", status)
+	}
+	_, body := h.call(t, "alice", http.MethodGet, "/api/crews/"+crewID, "")
+	people, _ := body["people"].([]any)
+	for _, p := range people {
+		if row, ok := p.(map[string]any); ok && row["id"] == bob && row["since"] != "2026-01-15" {
+			t.Errorf("promotion restamped bob's since to %v", row["since"])
+		}
+	}
+	if body["members"] != float64(2) {
+		t.Errorf("members = %v, want 2", body["members"])
+	}
+}
+
+// Leaving (#1228): the owner is refused, and for everyone else the crew row
+// and every room membership in the crew go in one move, with the sockets.
+// Nothing covered the endpoint (audit 2026-09-09).
+func TestLeavingTheCrew(t *testing.T) {
+	h := setup(t)
+	kicks := &kickRecorder{}
+	h.svc.SetPresence(kicks)
+	first, _ := h.createRoom(t, "alice", "Crew Leave One")
+	second, _ := h.createRoom(t, "alice", "Crew Leave Two")
+	crewID := store.UUIDString(h.crewOf(t, first).ID)
+	h.join(t, "bob", first)
+	h.join(t, "bob", second)
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+crewID+"/leave", ""); status != http.StatusBadRequest {
+		t.Errorf("the owner left: %d", status)
+	}
+	kicks.kicked = nil
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+crewID+"/leave", ""); status != http.StatusNoContent {
+		t.Fatalf("leave: %d", status)
+	}
+	slices.Sort(kicks.kicked)
+	want := []string{first, second}
+	slices.Sort(want)
+	if !slices.Equal(kicks.kicked, want) {
+		t.Errorf("leaving severed %v, want %v", kicks.kicked, want)
+	}
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	for _, slug := range []string{first, second} {
+		if h.onRoster(t, slug, bob) {
+			t.Errorf("bob is still on %s's roster", slug)
+		}
+	}
+	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crews/"+crewID, ""); status != http.StatusNotFound {
+		t.Errorf("bob still reads the crew: %d", status)
+	}
+}
+
+// A room never leaves its crew, so neither can its owner (#1227).
+func TestARoomOwnerCannotLeaveTheCrew(t *testing.T) {
+	h := setup(t)
+	mine, _ := h.createRoom(t, "alice", "Crew Leave Owner Mine")
+	theirs, _ := h.createRoom(t, "bob", "Crew Leave Owner Theirs")
+	crew := h.crewOf(t, mine)
+	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{
+		ID: roomID(t, h, theirs), CrewID: crew.ID, CrewVisible: true,
+	}); err != nil {
+		t.Fatalf("place: %v", err)
+	}
+	h.join(t, "bob", mine)
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/leave", ""); status != http.StatusConflict {
+		t.Errorf("a room owner left the crew: %d", status)
+	}
+}

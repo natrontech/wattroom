@@ -106,6 +106,21 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			"Your own crew role is not yours to change.")
 		return
 	}
+	standing, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: target})
+	if err != nil {
+		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+		return
+	}
+	// Joining is the one way in (ADR-0038 amended): a role is for someone
+	// already in the crew, never a door for a user id off a profile link —
+	// the upsert used to admit strangers (audit 2026-09-09). A ban may be
+	// pre-emptive: it keeps someone out, which is not letting them in.
+	if standing == "" && req.Role != "banned" {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A crew role is for someone already in the crew — share the code instead.", "userId")
+		return
+	}
 	if req.Role == "banned" {
 		// A room never leaves its crew, so its owner cannot either (#1212):
 		// banning them would orphan a room nobody else can moderate, and
@@ -132,6 +147,14 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Role == "banned" {
+		// A crew ban removes a person from every room in the crew (ADR-0038,
+		// third amendment) — the rows, not only the sockets: left behind
+		// they kept the person on every roster and in every member count,
+		// and lifting the ban handed all of it back, coach roles included
+		// (audit 2026-09-09). Room bans stay; LeaveCrewRooms skips them.
+		if err := s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: target}); err != nil {
+			s.log.Error("crew ban room sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
+		}
 		slugs, err := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
 		if err != nil {
 			s.log.Error("crew rooms lookup failed", "err", err, "crew", store.UUIDString(crew.ID))

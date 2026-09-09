@@ -1,8 +1,11 @@
 package rooms
 
 import (
+	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -20,6 +23,14 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
+		// A wrong code and a database that could not be asked are different
+		// answers: the second used to read as the first, which hid the
+		// client's own retry (audit 2026-09-09).
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.log.Error("crew door lookup failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The door could not be opened. Try again.")
+			return
+		}
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
 		return
 	}
@@ -32,7 +43,15 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 	// way in rather than a Join that would do nothing: the id is theirs to
 	// know, and only then.
 	if user, signedIn := s.users.User(r); signedIn {
-		if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID}); err == nil && role != "" && role != "banned" {
+		role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+		switch {
+		case err != nil:
+		case role == "banned":
+			// Said at the door rather than on the click: a ban survives the
+			// code (docs/SPEC.md), so the Join it withholds would only have
+			// been refused (audit 2026-09-09).
+			out["banned"] = true
+		case role != "":
 			out["inCrew"] = true
 			out["id"] = store.UUIDString(crew.ID)
 		}
@@ -59,6 +78,11 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	code := strings.ToUpper(strings.TrimSpace(req.Code))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.log.Error("crew code lookup failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			return
+		}
 		// A crew's code is six characters; a friend code is eight
 		// (friends.go), and the one pasted into the wrong box is a friend's.
 		if len(code) == 8 {
@@ -86,6 +110,8 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 		}
 		s.log.Info("crew joined", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
 		s.changed()
+		// The role AFTER the join: the row just written (audit 2026-09-09).
+		role = "member"
 	}
 	httpx.WriteJSON(w, http.StatusOK, roomCrewJSON{Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role})
 }

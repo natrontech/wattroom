@@ -91,6 +91,11 @@ func (s *Service) handleCrewDoorImage(w http.ResponseWriter, r *http.Request) {
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.log.Error("crew door image lookup failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The image could not be loaded.")
+			return
+		}
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
 		return
 	}

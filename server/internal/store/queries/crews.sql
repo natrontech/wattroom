@@ -172,7 +172,7 @@ select * from crew_roles where crew_id = $1;
 with people as (
     select c.owner_id as user_id, c.created_at as since from crews c where c.id = sqlc.arg(crew_id)
     union all
-    select cr.user_id, cr.set_at from crew_roles cr
+    select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
     where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
 )
 select u.id, u.display_name, u.avatar_url,
@@ -239,7 +239,7 @@ limit 1000; -- an engineering bound (#1416): three rooms per owner, crew-sized c
 select cr.user_id
 from crew_roles cr
 where cr.crew_id = sqlc.arg(crew_id) and cr.user_id <> sqlc.arg(departing) and cr.role in ('admin', 'member')
-order by (cr.role = 'admin') desc, cr.set_at
+order by (cr.role = 'admin') desc, coalesce(cr.joined_at, cr.set_at)
 limit 1;
 
 -- name: FirstRoomOwnerInCrew :one
