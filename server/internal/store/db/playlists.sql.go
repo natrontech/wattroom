@@ -375,7 +375,7 @@ func (q *Queries) ShiftPlaylistPositions(ctx context.Context, playlistID pgtype.
 
 const updateAutoplay = `-- name: UpdateAutoplay :one
 update rooms set autoplay_enabled = $2, autoplay_order = $3
-where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
+where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
 `
 
 type UpdateAutoplayParams struct {
@@ -403,8 +403,6 @@ func (q *Queries) UpdateAutoplay(ctx context.Context, arg UpdateAutoplayParams) 
 		&i.AutoplayEnabled,
 		&i.AutoplayOrder,
 		&i.AutoplayPlaylistID,
-		&i.AutoplayFixedVideoID,
-		&i.AutoplayFixedVideoTitle,
 		&i.BoardEnabled,
 		&i.CrewID,
 		&i.CrewVisible,

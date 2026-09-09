@@ -214,24 +214,22 @@ type RideExport struct {
 }
 
 type Room struct {
-	ID                      pgtype.UUID
-	Slug                    string
-	Name                    string
-	OwnerID                 pgtype.UUID
-	Listed                  bool
-	CreatedAt               pgtype.Timestamptz
-	SoundPack               string
-	Icon                    string
-	Cheers                  string
-	IcsToken                string
-	AutoplayEnabled         bool
-	AutoplayOrder           string
-	AutoplayPlaylistID      pgtype.UUID
-	AutoplayFixedVideoID    string
-	AutoplayFixedVideoTitle string
-	BoardEnabled            bool
-	CrewID                  pgtype.UUID
-	CrewVisible             bool
+	ID                 pgtype.UUID
+	Slug               string
+	Name               string
+	OwnerID            pgtype.UUID
+	Listed             bool
+	CreatedAt          pgtype.Timestamptz
+	SoundPack          string
+	Icon               string
+	Cheers             string
+	IcsToken           string
+	AutoplayEnabled    bool
+	AutoplayOrder      string
+	AutoplayPlaylistID pgtype.UUID
+	BoardEnabled       bool
+	CrewID             pgtype.UUID
+	CrewVisible        bool
 }
 
 type RoomGrant struct {
