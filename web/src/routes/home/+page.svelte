@@ -295,7 +295,7 @@
 		<!-- The one tile that opens: the level's receipts live in the trophy
 		     case (#467). -->
 		<a
-			href="/trophies"
+			href="/u/me"
 			class="panel hover:border-muted/40 block px-4 py-3"
 			title="Trophy case: medals, achievements, where your XP comes from"
 		>

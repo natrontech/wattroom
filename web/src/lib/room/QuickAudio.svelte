@@ -50,7 +50,7 @@
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">
 			The levels you reach for mid-ride. Everything else lives on <a
-				href="/profile"
+				href="/settings/voice"
 				class="underline">Voice &amp; audio</a
 			>.
 		</p>

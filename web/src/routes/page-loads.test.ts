@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { load as loadHistory, type HistoryPageData } from './history/+page';
-import { load as loadProfile, type ProfilePageData } from './profile/+page';
+import { load as loadSettings } from './settings/+layout';
+import { load as loadData } from './settings/data/+page';
+import {
+	load as loadProfile,
+	type ProfilePageData,
+} from './settings/profile/+page';
 import { load as loadRoom } from './r/[slug]/+layout';
 import { load as loadRider, type RiderPageData } from './u/[id]/+page';
 import type { RoomLoadData } from '$lib/room/room-data';
@@ -36,17 +41,30 @@ describe('route page loads', () => {
 		expect(data.progression?.category).toBe('D');
 	});
 
-	it('starts profile requests together and returns their data', async () => {
-		const { fetch, calls } = fetchMap({
-			'/api/progression': { rides: [] },
-			'/api/tokens': { tokens: [] },
+	// Settings is a tree now (#1330): each section loads only what it draws,
+	// and the version footer is the layout's.
+	it('the Profile section loads the trend and nothing else', async () => {
+		const { fetch, calls } = fetchMap({ '/api/progression': { rides: [] } });
+		const data = (await loadProfile({ fetch } as never)) as ProfilePageData;
+		expect(calls).toEqual(['/api/progression']);
+		expect(data.trend).toEqual([]);
+	});
+
+	it('the Your data section loads the tokens', async () => {
+		const { fetch, calls } = fetchMap({ '/api/tokens': { tokens: [] } });
+		const data = (await loadData({ fetch } as never)) as { tokens: unknown[] };
+		expect(calls).toEqual(['/api/tokens']);
+		expect(data.tokens).toEqual([]);
+	});
+
+	it('the settings layout reads the build for its footer', async () => {
+		const { fetch } = fetchMap({
 			'/api/version': { commit: 'abc123', version: '2026.09.1' },
 		});
-		const data = (await loadProfile({ fetch } as never)) as ProfilePageData;
-
-		expect(calls).toEqual(['/api/progression', '/api/tokens', '/api/version']);
-		expect(data.trend).toEqual([]);
-		expect(data.tokens).toEqual([]);
+		const data = (await loadSettings({ fetch } as never)) as {
+			version: string | null;
+			release: string | null;
+		};
 		expect(data.version).toBe('abc123');
 		expect(data.release).toBe('2026.09.1');
 	});

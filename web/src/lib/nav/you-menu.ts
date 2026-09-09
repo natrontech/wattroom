@@ -93,7 +93,7 @@ export function youMenu(
 			onSelect: () => id && go(`/u/${id}`),
 			disabled: !id,
 		},
-		{ label: 'Settings', icon: Settings, onSelect: () => go('/profile') },
+		{ label: 'Settings', icon: Settings, onSelect: () => go('/settings') },
 		'separator',
 		cueFader(),
 		...(duck ? [duck] : []),

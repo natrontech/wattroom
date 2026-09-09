@@ -132,13 +132,13 @@
 		<!-- Everything that is a setting rather than a destination: profile,
 		     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 		<a
-			href="/profile"
+			href="/settings"
 			class="grid h-11 w-11 place-items-center rounded md:h-7 md:w-7 {destination ===
-				undefined && pathname.startsWith('/profile')
+				undefined && pathname.startsWith('/settings')
 				? 'text-ink'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-			title="settings"
-			aria-label="settings"><Settings size={16} /></a
+			title="Settings"
+			aria-label="Settings"><Settings size={16} /></a
 		>
 	</div>
 	{#if showAv}

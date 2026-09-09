@@ -42,7 +42,7 @@
 						done: ridden,
 						label: 'Pair your trainer',
 						hint: 'or ride simulated once to see the room work',
-						href: '/pair',
+						href: '/settings/equipment',
 					},
 					{
 						done: named,

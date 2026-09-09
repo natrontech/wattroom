@@ -8,7 +8,7 @@
 	// (#686 — long, not tangled).
 	import { api } from '$lib/api';
 	import { untrack } from 'svelte';
-	import type { ApiToken } from '../../routes/profile/+page';
+	import type { ApiToken } from '../../routes/settings/data/+page';
 
 	let { initial }: { initial: ApiToken[] } = $props();
 
