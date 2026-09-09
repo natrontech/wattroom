@@ -6,6 +6,11 @@
 	import { describeBlock } from '$lib/room/view';
 	import Banner from '$lib/components/Banner.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
+	import RampResult from './RampResult.svelte';
+	import { createRideFlags } from '$lib/ride/flags.svelte';
+	import RideFlags from '$lib/ride/RideFlags.svelte';
+	import TvOverlay from '$lib/room/TvOverlay.svelte';
+	import Flag from '@lucide/svelte/icons/flag';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
@@ -18,10 +23,8 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { sensors } from '$lib/sensors.svelte';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
-	import { pushProfile } from '$lib/profile-sync.svelte';
-	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import {
 		createRideSession,
 		SIGNAL_LOST_MS,
@@ -30,7 +33,6 @@
 	import { uploadRide } from '$lib/ride/save';
 	import {
 		buildRampTest,
-		ftpFromRamp,
 		RAMP,
 		RAMP_TAKES,
 		rampBlown,
@@ -42,9 +44,17 @@
 
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let done = $state(false);
+	// The ⚑ and the TV, as /ride has them (#1799, ADR-0046): a ramp that goes
+	// wrong is exactly what the flag exists to report.
+	const flags = createRideFlags('/ramp');
+	let tv = $state(false);
+	let flagNotice = $state(false);
+	function flag() {
+		flags.recorder.flag();
+		flagNotice = true;
+		setTimeout(() => (flagNotice = false), 4000);
+	}
 	let error = $state<string | null>(null);
-	let saved = $state(false);
-	let lthrSaved = $state(false);
 	// The test is a ride (#1540): buffered like one and saved like one, so
 	// fifteen maximal minutes reach the history, count as load, and survive
 	// a crash at minute fourteen.
@@ -62,8 +72,6 @@
 	async function begin(trainer: Trainer) {
 		error = null;
 		done = false;
-		saved = false;
-		lthrSaved = false;
 		// One trainer, one rider (#521): the room now holds its BLE connection
 		// for as long as you stand in it, so a solo ride has to take it back
 		// rather than open a second control channel to the same hardware. A
@@ -90,8 +98,15 @@
 				readings: () => sensors.readings,
 				onRecord: (sample) => {
 					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
+					flags.recorder.tick({
+						watts: sample.watts,
+						cadence: sample.cadence,
+						target: session?.target ?? 0,
+						state: session?.state ?? '',
+					});
 				},
 			});
+			flags.riding(trainer.name, 'starting the ramp test');
 			await next.start();
 			session = next;
 		} catch (cause) {
@@ -170,17 +185,9 @@
 		rideStatus = null;
 		recorded = false;
 		done = false;
-		saved = false;
-		lthrSaved = false;
 		error = null;
 	}
 
-	const result = $derived(
-		session
-			? ftpFromRamp(session.recording.map((s) => s.watts))
-			: { best: 0, ftp: 0 },
-	);
-	const wkg = $derived((result.ftp / profile.current.kg).toFixed(2));
 	const usable = $derived(rampUsable(session?.elapsed ?? 0));
 	const stepsDone = $derived(
 		Math.max(
@@ -214,43 +221,6 @@
 	const rampCeiling = $derived(
 		(RAMP.startWatts + RAMP.steps * RAMP.stepWatts) / profile.current.ftp,
 	);
-
-	// LTHR suggestion (ADR-0014): a maximal ramp ends near HRmax, and the
-	// SPEC's field estimate is 90 % of that. Suggested, never auto-applied —
-	// the same posture as FTP suggestions.
-	const maxHr = $derived(
-		(session?.recording ?? []).reduce(
-			(peak, sample) => Math.max(peak, sample.heartRate ?? 0),
-			0,
-		),
-	);
-	const suggestedLthr = $derived.by(() => {
-		const estimate = Math.round(0.9 * maxHr);
-		return estimate >= PROFILE_LIMITS.minLthr &&
-			estimate <= PROFILE_LIMITS.maxLthr
-			? estimate
-			: 0;
-	});
-	// The account first, like the FTP below (#1571): the anchor used to live
-	// in this browser alone, and the desktop app read "—" the same evening.
-	async function saveLthr() {
-		const message =
-			(await pushProfile({ lthr: suggestedLthr })) ??
-			profile.update({ lthr: suggestedLthr });
-		if (message) error = message;
-		else lthrSaved = true;
-	}
-
-	// The account first, this browser second (#1543): the other order
-	// reported "Saved" on a push that never landed, and the next boot pulled
-	// the old number back over the new one.
-	async function saveFtp() {
-		const message =
-			(await pushProfile({ ftpWatts: result.ftp })) ??
-			profile.update({ ftp: result.ftp, ftpMeasuredAt: Date.now() });
-		if (message) error = message;
-		else saved = true;
-	}
 
 	// The ride half of the test, once — from the effect below and from
 	// onDestroy, the same two doors /ride has.
@@ -419,15 +389,34 @@
 				eyebrow={stepEyebrow}
 			>
 				{#snippet controls()}
-					<button
-						onclick={() => {
-							session?.stop();
-							done = true;
-						}}
-						class="btn btn-secondary btn-lg shrink-0">I'm done</button
-					>
+					<div class="flex flex-wrap items-center justify-end gap-2">
+						<button onclick={() => (tv = true)} class="btn btn-secondary btn-lg"
+							>TV</button
+						>
+						<button
+							onclick={() => {
+								session?.stop();
+								done = true;
+							}}
+							class="btn btn-secondary btn-lg">I'm done</button
+						>
+						<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
+						<button
+							onclick={flag}
+							class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 place-items-center rounded border"
+							aria-label="Flag a problem"><Flag size={18} /></button
+						>
+					</div>
 				{/snippet}
 			</RideHeader>
+
+			{#if flagNotice}
+				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
+				<p class="text-muted mt-2 text-xs">
+					Flagged — after the test this sends your last two minutes of ride data
+					and logs to the developers. Only yours, nobody else's.
+				</p>
+			{/if}
 
 			<!-- The guard states and the dropout, as /ride says them (#1799):
 			     mid-ramp the resistance can vanish for ten seconds on purpose. -->
@@ -479,86 +468,54 @@
 				steps before the number means anything.
 			</p>
 			{@render rideLine()}
+			<RideFlags {flags} />
 			<div class="mt-6 flex gap-2">
 				<button onclick={restart} class="btn btn-primary">Test again</button>
 				<a href="/workouts" class="btn btn-secondary">Ride something else</a>
 			</div>
 		</div>
 	{:else}
-		<div class="panel mt-8 p-8">
-			<p class="eyebrow">your new FTP</p>
-			<div class="mt-2 flex items-baseline gap-2">
-				<span
-					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
-					>{result.ftp}</span
-				>
-				<span class="text-muted text-xl">W</span>
-			</div>
-			<p class="text-muted mt-4 text-xs leading-relaxed">
-				Best minute was {result.best} W, and FTP is {Math.round(
-					RAMP.ftpFraction * 100,
-				)} % of that. You lasted {formatClock(session.elapsed)} — {stepsDone}
-				steps. Every workout you ride from here scales to this number —
-				<a href="/workouts" class="underline">the library</a>
-				and <a href="/home" class="underline">what your rooms have planned</a> already
-				do.
-			</p>
-			<p class="mt-3 text-sm">
-				That's <span class={ZONE_TEXT[zoneOf(result.ftp, result.ftp)]}
-					>{wkg} w/kg</span
-				>
-				at {profile.current.kg} kg.
-			</p>
+		<!-- The number, and what to do with it: its own component (#1799),
+		     which also keeps this page under the ceiling. -->
+		<RampResult {session} {stepsDone} onRestart={restart}>
 			{@render rideLine()}
-
-			{#if error}
-				<div class="mt-4"><Banner tone="error">{error}</Banner></div>
-			{/if}
-
-			{#if saved}
-				<p
-					class="border-z4/40 bg-z4/10 mt-6 rounded-lg border px-4 py-3 text-sm"
-				>
-					Saved. Every workout now scales to {result.ftp} W.
-				</p>
-				<a href="/workouts" class="btn btn-secondary mt-3">Pick a workout</a>
-			{:else}
-				<div class="mt-6 flex gap-2">
-					<button
-						onclick={saveFtp}
-						disabled={result.ftp === 0}
-						class="btn btn-primary">Save {result.ftp} W</button
-					>
-					<button onclick={restart} class="btn btn-secondary">Test again</button
-					>
-					<!-- Never silently change FTP: it moves every workout's difficulty. -->
-					<a
-						href="/settings/profile"
-						class="text-muted hover:text-ink self-center py-2 text-xs underline"
-						>Keep my current {profile.current.ftp} W</a
-					>
-				</div>
-			{/if}
-
-			{#if suggestedLthr > 0}
-				<div class="border-ink/5 mt-6 border-t pt-4">
-					{#if lthrSaved}
-						<p class="text-z4 text-xs">
-							LTHR set to {suggestedLthr} bpm — your heart-rate zones now follow it.
-						</p>
-					{:else}
-						<p class="text-muted text-xs">
-							Your heart rate peaked at {maxHr} bpm — that puts your LTHR around
-							{suggestedLthr} bpm{profile.current.lthr
-								? ` (currently ${profile.current.lthr})`
-								: ''}.
-						</p>
-						<button onclick={saveLthr} class="btn btn-secondary btn-xs mt-2"
-							>Set LTHR to {suggestedLthr}</button
-						>
-					{/if}
-				</div>
-			{/if}
-		</div>
+			<RideFlags {flags} />
+		</RampResult>
 	{/if}
 </main>
+
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
+
+{#if session && !done && session.state !== 'done' && tv}
+	<!-- The room's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->
+	<TvOverlay
+		riders={[
+			{
+				id: 'you',
+				name: 'You',
+				ftp: profile.current.ftp,
+				kg: profile.current.kg,
+				you: true,
+				coach: false,
+				cameraOn: false,
+				muted: false,
+				speaking: false,
+				hue: 0,
+				watts: session.sample?.watts ?? 0,
+				cadence: session.sample?.cadence ?? 0,
+				hr: session.sample?.heartRate ?? 0,
+				stale: false,
+				target: session.target,
+				trace: session.trace,
+			},
+		]}
+		segments={session.segments}
+		total={session.total}
+		elapsed={session.elapsed}
+		{block}
+		roomName={workout.name}
+		workoutName={block?.label ?? ''}
+		live
+		onExit={() => (tv = false)}
+	/>
+{/if}

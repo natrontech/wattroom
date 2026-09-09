@@ -26,7 +26,8 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
+	import { createRideFlags } from '$lib/ride/flags.svelte';
+	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
@@ -103,28 +104,9 @@
 	}
 
 	let buffer: RideBuffer | undefined;
-	const recorder = createFlightRecorder();
+	// The ⚑ and what it sends afterwards (#52), shared with /ramp.
+	const flags = createRideFlags('/ride');
 	let tv = $state(false);
-	let sentFlags = $state(0);
-	let sending = $state(false);
-
-	async function sendFlags() {
-		if (!session) return;
-		sending = true;
-		for (const flag of recorder.flags.slice(sentFlags)) {
-			const res = await recorder.submit(flag, {
-				route: '/ride',
-				trainer: trainerName,
-			});
-			if (res.ok) sentFlags++;
-			else {
-				error = res.error.message;
-				break;
-			}
-		}
-		sending = false;
-	}
-	let trainerName = $state('simulated');
 
 	// Paired before the ride, not by starting it (#611): the paired-devices
 	// grid below owns the trainer until Start hands it to the session.
@@ -151,8 +133,7 @@
 				// recovery card rather than only exported (#794).
 				workoutJson: JSON.stringify(workout),
 			});
-			trainerName = trainer.name;
-			recorder.event('ride', `starting ${workout.name}`);
+			flags.riding(trainer.name, `starting ${workout.name}`);
 			const next = createRideSession({
 				trainer,
 				workout,
@@ -168,7 +149,7 @@
 				}),
 				onRecord: (sample) => {
 					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
-					recorder.tick({
+					flags.recorder.tick({
 						watts: sample.watts,
 						cadence: sample.cadence,
 						target: session?.target ?? 0,
@@ -473,7 +454,7 @@
 			{watts}
 			{target}
 			{signalLost}
-			onFlag={() => recorder.flag()}
+			onFlag={() => flags.recorder.flag()}
 			onTv={() => (tv = true)}
 		/>
 	{/if}
@@ -540,34 +521,7 @@
 							<div class="mt-2"><Banner tone="error">{error}</Banner></div>
 						{/if}
 
-						{#if recorder.flags.length > sentFlags}
-							<div class="border-muted/15 mt-4 grid gap-2 border-t pt-3">
-								<span class="eyebrow">your flags</span>
-								{#each recorder.flags.slice(sentFlags) as flag (flag.clientMs)}
-									<div class="flex items-center gap-2">
-										<span class="text-muted font-mono text-xs"
-											>{new Date(flag.clientMs).toLocaleTimeString()}</span
-										>
-										<input
-											bind:value={flag.note}
-											placeholder="what went wrong? (optional)"
-											aria-label="what went wrong"
-											class="input input-xs min-w-0 flex-1"
-										/>
-									</div>
-								{/each}
-								<button
-									onclick={sendFlags}
-									disabled={sending}
-									class="btn btn-secondary justify-self-start"
-									>{sending ? 'Sending…' : 'Send to the developers'}</button
-								>
-							</div>
-						{:else if sentFlags > 0}
-							<p class="text-z4 mt-3 text-xs">
-								Thanks — {sentFlags} flag{sentFlags > 1 ? 's' : ''} sent.
-							</p>
-						{/if}
+						<RideFlags {flags} />
 					</div>
 				{/snippet}
 			</SessionSummary>
