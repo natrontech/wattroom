@@ -30,8 +30,11 @@ const (
 	minSamples   = 60          // under a minute is a misclick, the saver's rule
 	maxBodyBytes = 4 << 20
 	maxWatts     = 3000
-	maxCadence   = 250
-	maxHR        = 250
+	// The rider's trim, as workout/guards bounds it and protocol.BiasOr clamps it.
+	minBias    = 0.8
+	maxBias    = 1.2
+	maxCadence = 250
+	maxHR      = 250
 )
 
 type UserSource interface {
@@ -77,6 +80,12 @@ type sampleJSON struct {
 	Watts   int `json:"watts"`
 	HR      int `json:"hr,omitempty"`
 	Cadence int `json:"cadence,omitempty"`
+	// The trim this second was ridden at (#1530). The room's samples have
+	// carried it since #795 and a solo ride's did not, so the same ride
+	// scored one number on the summary and another on its own page: the live
+	// meter bands the BIASED target and this side re-scored the workout as
+	// written. Absent (0) is a ride with no trim — protocol.BiasOr's default.
+	Bias float64 `json:"bias,omitempty"`
 }
 
 type createRequest struct {
@@ -271,8 +280,16 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 				"A sample is out of range — watts 0-3000, cadence 0-250, heart rate 0-250.", "samples")
 			return
 		}
+		// The bounds are the trim's own (workout/guards DEFAULTS.biasMin/Max,
+		// and what protocol.BiasOr clamps to) rather than numbers invented
+		// here; 0 is a sample from a ride that sends none.
+		if sample.Bias != 0 && (sample.Bias < minBias || sample.Bias > maxBias) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"A sample's bias is out of range — 0.8 to 1.2.", "samples")
+			return
+		}
 		samples[i] = protocol.RiderMetrics{
-			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Seq: i,
+			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Seq: i,
 		}
 	}
 

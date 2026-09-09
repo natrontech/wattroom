@@ -1,0 +1,1 @@
+- The execution score on a saved ride now matches the one you watched while riding it. Trimming the intensity used to leave the two disagreeing — the ride screen banded your trimmed target, and the ride's own page re-scored the workout as written, so a rider who eased off 5 % finished at 100 % and found 93 % a click later, with the XP to match.

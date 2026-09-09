@@ -107,6 +107,26 @@ describe('a sprint block', () => {
 	});
 });
 
+describe('the recording', () => {
+	// The live meter bands the BIASED target; the server re-scores the saved
+	// ride and bands whatever bias each sample carries. A recording that keeps
+	// no trim is scored against the workout as written, and the rider is handed
+	// an execution they never saw (#1530).
+	it('keeps the trim each second was ridden at', async () => {
+		const session = ride();
+		await session.start();
+		for (let i = 0; i < 4; i++) {
+			if (i === 2) session.nudgeBias(-DEFAULTS.biasStep);
+			session.onSample({ watts: 200, cadence: 90, at: i * 1000 });
+			session.tick();
+		}
+		const biases = session.recording.map((sample) => sample.bias);
+		expect(biases).toHaveLength(4);
+		expect(biases[0]).toBe(1);
+		expect(biases.at(-1)).toBeCloseTo(1 - DEFAULTS.biasStep, 5);
+	});
+});
+
 describe('toleranceBand', () => {
 	it('is ±5 % of target with a ±10 W floor', () => {
 		expect(toleranceBand(300)).toBe(15);
