@@ -4,8 +4,10 @@ package httpx
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type ErrorResponse struct {
@@ -67,4 +69,22 @@ func ReadImageUpload(w http.ResponseWriter, r *http.Request) (data []byte, mime 
 	}
 	WriteError(w, http.StatusBadRequest, "validation_error", "Only PNG, JPEG, WebP, or GIF images can be sent.")
 	return nil, "", false
+}
+
+// ServeImage writes a stored upload back out. The URL is stable and the bytes
+// may change, so the ETag is the set time and the browser revalidates — a 304
+// costs one round trip, and a re-upload shows at once everywhere. Rider-
+// supplied bytes from the app's own origin are never re-interpreted as HTML,
+// whatever passed the sniff.
+func ServeImage(w http.ResponseWriter, r *http.Request, mime string, data []byte, setAt time.Time) {
+	etag := fmt.Sprintf(`"%d"`, setAt.UnixMilli())
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "private, no-cache")
+	_, _ = w.Write(data)
 }

@@ -17,6 +17,318 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.66] - 2026-09-09
+
+### Added
+
+- Your own calendar link is on Home, under What's next: one subscription that carries every session planned in every room you are in, and follows you when you join or leave a room. It was built as the calendar the app offers first and then never offered — the Sessions place only had the room's link, so a rider in four rooms subscribed four times. The room's link stays for what it is, a club schedule to hand to people outside the room, and says so.
+
+### Changed
+
+- The Friends page says what a friend actually sees: that you are online, in a room, or riding — never what you are pushing.
+- Handing a room over and banning someone from it no longer hide behind a right-click: an owner's Members row has a ⋯ button that opens the same menu. On the crew's page, every room row shows its owner and admins an "Open to the crew" / "Make private" button — the row an admin came to act on used to look disabled with its only action in the menu.
+- Small things on the pages outside a room: the Friends page's dismiss, cancel and remove are proper buttons, the ramp test's "I'm done" is sized for a hand on the bars, and its errors read like everywhere else's.
+
+### Removed
+
+- The old addresses `/profile`, `/pair` and `/trophies` are gone: they have redirected to `/settings/profile`, `/settings/equipment` and `/u/me` since 2026.09.63, every link the app and its emails send has pointed at the new ones since 2026.09.64, and a bookmark from before that now lands on "no such page" rather than a silent hop.
+
+### Fixed
+
+- The ramp test no longer ends itself during the warm-up: five seconds of spinning up, or soft-pedalling under the warm-up's target, used to count as blowing up and land on "you stopped after 0:05". Leaving a running ramp test asks first, the way leaving a ride does. The Friends page, the ride comparison, the sign-in gate and a crew's invite link all say when something could not be loaded and offer a retry, instead of "loading…" forever, "could not be loaded" while still loading, "no sign-in providers are configured" for a server that could not be reached, or a dead invite for a network blip. Clearing the rides kept only on this device asks first. The public rooms directory shows more than its first fifty rooms.
+- A workout saved through the API is held to the same rules as one built in the editor — step lengths, targets, watts, cadence and heart-rate bands, repeat counts — so nothing can be stored that your shelf then refuses to show; the refusal names the step. The editor, in turn, now says when a workout would run longer than a day (the server's limit) instead of letting Save be refused. If older saved workouts cannot be read by this version, the Workouts page says how many rather than hiding them.
+- Workouts: the server now refuses a workout that would expand past the engine's limits (more than 50 repeats, nested deeper than four, more than 200 blocks) instead of trying to build it — the editor already enforced those numbers, the API did not. Your shelf says when it could not be loaded, with a retry, on the Workouts page and in a room's session picker, instead of claiming you have no workouts. Opening a saved workout that could not be found no longer lets Save overwrite it with a blank sheet, and loading a library copy saves beside the workout you opened, never over it. Undoing a delete says so if it fails; starting a planned session whose workout can no longer be read says so instead of doing nothing; a database hiccup while saving is a "try again", not "that workout does not exist".
+
+## [2026.09.65] - 2026-09-09
+
+### Added
+
+- A planned session has a right-click menu (long-press on touch), like a rider's tile or a track: say you're in or out, copy the link to the room's Sessions place, and — for a coach — start it now, move it or cancel it, with the greyed entries saying why ("not due yet", "a session is running"). The buttons stay where they were; the menu is the shortcut.
+
+### Changed
+
+- Your profile picture is yours to change: Settings › Profile now takes an upload (PNG, JPEG, WebP or GIF, shrunk before it leaves your browser). The row of preset icons is gone — a rider who had picked one shows their sign-in photo again, or their initial.
+- The Sessions place tells a member what sessions are and who plans them instead of asking them to plan one; there is one "Plan" button, not two; a long list of riders who are in ends in "+N more"; past sessions sit flush with the panels above them. A room's Members row removes with a proper button. A room's settings page confirms a delete through the same dialog as everything else and toasts a refused save where the control is, then re-reads the room so the form does not keep values the server declined. A crew with no rooms says what a room is and who opens one; the leave button knows you own a room here before the room list has landed; "Make admin" reads the same in the row and its menu; the settings page says what actually happens to a crew when its owner goes.
+- Session times say "Today 19:30" and "Tomorrow 19:30" the way the planner's picker does, wherever a planned session is named — the Sessions place, the Lounge card, the sidebar, the chat line and the toasts; beyond that, the weekday as before. Home's "What's next" now carries the date too, so next week's session no longer reads like tomorrow's, and its row opens the room's Sessions place.
+
+### Fixed
+
+- Demoting a crew admin to member, or lifting a crew ban, no longer drops them out of the crew: membership is kept, as the crew page and its rooms expect. Inside a room, a refused action — a hand-over over the cap, a plan the server declined, an RSVP on a session that is gone — now says why in a toast instead of doing nothing. Planning, moving and RSVPing confirm with a toast; cancelling a planned session asks first (its RSVPs go with it and the old undo quietly created a new session and mailed everyone again) and is called "cancel" everywhere. "Start now" is offered only while nothing is running, so it can no longer wipe your own recording mid-ride, and a phone never sees the planning controls. A moved session is reminded again for its new time. A failed load of the planned sessions is an error, not an empty "plan the first session". The crew page keeps what it shows if a background refresh fails and offers a retry when the first load does; picking a crew icon keeps the name you were typing.
+- The Members place counts a rider's medals for real: every medal the room ever awarded them, by rider. It used to match display names over the 24 most recent awards, so the number shrank as the room rode on and two riders with one name shared a count.
+
+## [2026.09.64] - 2026-09-09
+
+### Changed
+
+- The "direct messages" heading in the sidebar now folds the list away and
+  back, and remembers it on this device. A folded list still shows a dot when
+  someone wrote. (#1359)
+- Your own rider page says each number once: the level and its lifetime XP sit in the header, achievements sit beside your rides, and the medals list no longer repeats the shelf below it. A new account sees one empty state with the way to fill it, and a trophy case that failed to load says so with a retry. The row with your name in the sidebar opens your page and lights up while you are on it. The settings sections share one panel, and Equipment's buttons are sized for browsing, not for the bike.
+
+### Fixed
+
+- A room row in the sidebar that says "12 min in" now lands on Training, where the ride is, instead of the Lounge — unless you are already standing in that room.
+- Connecting Strava, GitHub or Google from Settings shows its outcome again — connected, already taken, already linked, or failed — which the move to /settings had silently dropped. The room's Sound panel's link to Voice & audio now closes the panel and lands on the gate. Notifications say when a browser cannot show them or has blocked them instead of a blank section or a button that does nothing; a failed load of your coach tokens says so with a retry instead of reading as "no tokens"; your own rider page no longer draws the achievements twice, and a failed look-up of who you are shows an error instead of loading forever. Emails and alerts from the server point at the new settings address.
+
+## [2026.09.63] - 2026-09-09
+
+### Added
+
+- Every end links forward: a finished ride's summary offers "See your ride" — the ride's own page — as soon as it is saved, in a room and solo; the room's summary shows after any session, not only long ones; the ramp result points at the workouts and plans its new FTP rescaled; Home's recent rides open the ride itself; the room's Sessions place lists past sessions; and a room's door you cannot open has a way back.
+- Home shows one notice at a time — your new account, the desktop app, then what's new — and dismissing one reveals the next, instead of stacking up to four above your numbers. A rider who owns a crew gets a short getting-set-up card (pair your trainer, name your crew, invite someone) that crosses each step off as it is done and leaves when the last one is. "Open a room" opens the form instead of scrolling to it, and the empty Friends heading is gone.
+
+### Changed
+
+- The crew is now the first row of the sidebar, drawn as the header it is,
+  and the WattRoom logo left the column: the tab and the title bar carry it,
+  and your avatar already shows when you ride. Room names are set in the same
+  type as the rest of the navigation, with the room you are in a step bolder,
+  and "direct messages" shows that it goes somewhere. (#1327)
+- The Lounge holds the room's action: a coach starts the session there with the same controls Training has, a rider joins a running one from there, and "Join the ride" from Home or a rider's page lands on Training, where the numbers are. Planning a session has one home, Sessions; the Lounge links there.
+- Settings have an address: /settings, with a section per page — Profile, Equipment (your sensors and the ramp test), Voice & audio, Appearance, Notifications, Your data — so every part can be linked to, and the sidebar's gear says Settings and lights while you are in any of them. The trophy case moved onto your own rider page, /u/me. /profile, /pair and /trophies forward there for one release.
+- A room's unread count is now the way to read its chat without walking in;
+  the right-click entry that used to be the only door is gone. (#1328)
+
+## [2026.09.62] - 2026-09-09
+
+### Changed
+
+- Your voice goes out clean: no noise suppression, Opus at full bandwidth, and no comfort noise between sentences. The gate still keeps the fan out of the room while you are not talking, and echo cancellation stays on for riders on speakers.
+
+### Fixed
+
+- A clip fired from the soundboard can be stopped: press the glowing pad, or its key, again and everyone in the room hears it end. Before, the only way out of a wrong pad was to wait it out.
+- Every voice in the room is heard once again. From your first click after joining, each rider's voice was also playing a second time a few milliseconds behind itself — the phaser sound, and the doubling when hopping between rooms — and the per-rider fader only caught one of the two.
+
+## [2026.09.61] - 2026-09-09
+
+### Fixed
+
+- The message box of a conversation that is not open yet says where things stand — you asked and they have not answered, they asked and it is your move, or you are not friends yet — instead of "add them" in every case.
+- Every page names its browser tab now — "Home · WattRoom", the room's name for any of its places, the workout or ride you are looking at, the friend you are messaging — instead of the bare address on most of them.
+- A ride the server refuses for good — under a minute — no longer comes back on the recovery card after every reload, and the words stop promising a save that would be refused again; Rides' "on this device only" now says both reasons a summary can end up there.
+
+## [2026.09.60] - 2026-09-09
+
+### Fixed
+
+- Pasting a friend's eight-character code into "Join a crew with a code" now says it looks like a friend code and that friends are added on the Friends page, instead of "no crew has that code".
+- A conversation with someone who is not your friend yet says so under the message box, with the box disabled, instead of refusing the line after you typed it.
+- A conversation opened from a notification, a pasted link or a reload no longer says "Message them…" with a "T" for a face until the first line arrives: the page looks the rider up and shows their name and picture straight away.
+- The download page, opened from a desktop app that updates itself, no longer reads as if you had to download the newer build by hand: it says the app is fetching it and that the restart is on Home.
+- Pasting a crew's six-character invite code into the friend-code box now says it looks like a crew's code and that a crew is joined from Home, instead of "no rider has that code — double-check it with them".
+- Home's "Join a crew with a code" no longer trims a pasted friend code to six characters and sends it: it says the eight characters look like a friend code and points at Friends.
+- The Lounge's "Invite" button copies the crew's invite link in one click instead of sending you to the Members place to find it there.
+- The room's calendar link on the Sessions place is a proper row now — one line saying every planned session lands in your calendar app, and a "Copy calendar link" button — instead of an eleven-pixel link floating under the list.
+
+## [2026.09.59] - 2026-09-09
+
+### Added
+
+- The desktop app updates itself: the next release downloads in the background and installs when you restart, with a _Restart to update_ note on home once it is ready. Never during a ride. The 2026.09.4 build is the last one you install by hand.
+
+## [2026.09.58] - 2026-09-09
+
+### Added
+
+- Opening a crew's invite link while signed out now shows whose crew you are joining on the sign-in screen — its name, picture and how many ride there — instead of a bare sign-in page; signing in still lands you on the crew's door.
+
+### Fixed
+
+- What's new and the release notice render **bold** lead-ins as bold instead of showing the asterisks; release notes and chat now share one inline-markup renderer.
+
+## [2026.09.57] - 2026-09-09
+
+### Changed
+
+- The crew's invite has one home, the crew page, where every member sees it. Crew settings hold only what the crew is called and looks like, and the invite panel no longer squeezes its sentence into a thin column on a phone.
+
+### Fixed
+
+- Home's "nobody's around" line no longer tells a rider with rooms to open one: it says the rooms are quiet, and keeps the open-a-room nudge for someone who has none yet.
+- Leaving a room no longer promises that "the room's code gets you back in" — rooms have had no codes since the invite became the crew's. It now says what is true: an open room you can walk back into, a private one the owner lets you back into.
+- A room's settings header said "you joined 2026-09-08"; it now reads "you joined Sept 2026", the way a crew's people and a room's members already say "since".
+
+## [2026.09.56] - 2026-09-09
+
+### Added
+
+- A room's Members place says how to get someone new in — invite them to the crew — with the crew's invite link one click away, where the room's own code used to be. (#1236)
+
+### Fixed
+
+- A chat line no longer appears twice, or keeps its old words after the author fixed it, for a rider who opened the room in the second the line was sent: the join-time backlog and the live tick each carried a copy and only one of them knew the line's id (#1231).
+
+## [2026.09.55] - 2026-09-09
+
+### Changed
+
+- A room's settings page no longer carries a second copy of the member list. Coaches, bans and handing the room on live on the Members place, on each person's menu, and the settings page points there. (#1265)
+
+### Fixed
+
+- Following your own crew's invite link no longer offers you a "Join" that does nothing: the door says you are in and opens the crew. (#1236)
+- Right-clicking a crew room you have not walked into yet offers "Walk in" instead of places and a chat you could not read. (#1236)
+
+## [2026.09.54] - 2026-09-09
+
+### Added
+
+- Right-click the crew at the top of the sidebar for its page, its settings, a copy of its invite link, and leaving it — the same things its page offers, one click closer. (#1257)
+
+### Changed
+
+- Home tells a rider without a crew that their first room makes one, named after them, before they open it — and the note that follows links straight to the crew's settings, where the rename lives. The "no code?" line says that joining a listed room joins its crew. (#1151, #1236)
+
+## [2026.09.53] - 2026-09-08
+
+### Added
+
+- A crew has a settings page: its name, a picture you upload (shown in the sidebar, on the crew's page and at its door), the fallback icon, and the invite code and link in one place. The crew's page keeps the roster and points admins at the settings. (#1237)
+
+### Fixed
+
+- Editing a chat line right after sending it now reaches everyone in the room. If the fix arrived before the other riders' copies of the line had been saved, it was dropped and they kept reading the old words until a reload. (#1231)
+- The last places that still talked about a room's own code follow the crew: the TV's idle screen shows the crew's code, the settings page and the Members place say what actually lets someone in, and undoing "leave room" walks you back in through the crew instead of failing. (#1236)
+
+## [2026.09.52] - 2026-09-08
+
+### Changed
+
+- Inviting people happens at the crew now, not per room. A crew has a six-character code and a share link; whoever joins with it can walk into the crew's open rooms, and a room the owner made private still admits only its members and whoever was let in. Room codes and room links are gone from the app — settings and the Members place point at the crew's invite instead — and "Join with a code" on Home takes a crew code. Rooms listed in the directory stay a public door; joining one joins its crew. (#1236)
+
+## [2026.09.51] - 2026-09-08
+
+### Added
+
+- A crew's owner and admins can open any of the crew's rooms to the crew, or make it private again, from the crew page — including rooms they have never entered. The room's contents stay its members'; only who may walk in changes. (#1226)
+- A crew can have an icon: its owner or an admin clicks the crew's mark on the crew page and picks one from the same set rooms use. The sidebar switcher and the crew strip draw it. (#1209)
+- The desktop app is now offered where you will see it: once on the home page with the installer for your computer, as a quiet row at the bottom of the sidebar, and under the landing page's sign-in. Not on a phone, and never inside the app itself.
+- The desktop app floats your watts, target and time left in a small window over whatever else is on screen while a ride runs and WattRoom is not in front — and room events now reach you as system notifications there, once you flip the notification switch.
+- A crew's page has a "Leave the crew" button for members: it leaves every room of the crew you are in, in one move, with an undo. It says up front when you own a room there and have to hand it on first. (#1228)
+- Notifications finally reach you: a message, someone arriving, a session starting or a poke, whenever the window is hidden or behind another app. The desktop app has them on from the start; in a browser, turn them on from your profile. A click lands in the conversation, and on a Mac the desktop app lets you reply right from the notification.
+- The owner of a private room can let one crew-mate in without opening the room to the whole crew: the Members place lists crew-mates outside the room with a "Let in" button, and who has been let in but not walked in yet. They see the room in their sidebar and join themselves — being let in is not joining. (#1224)
+- A room's owner can hand it to one of its members — right-click them on the Members place. You stay on as a coach. Until now a room could never change hands, and it vanished for everyone the day its owner deleted their account. (#1227)
+
+### Changed
+
+- The crew switcher at the top of the sidebar is a plain row like Home and Friends below it, and opening it lists your crews in place instead of dropping a card. With one crew the row simply opens the crew's page. (#1238)
+
+### Fixed
+
+- Joining voice can no longer sit at "joining voice…" for the rest of a ride. If the connection neither opens nor fails within twenty seconds, voice reports that it did not connect in time and offers "Try voice again". (#1203)
+
+## [2026.09.50] - 2026-09-08
+
+### Added
+
+- A crew's owner can hand it to someone in it — right-click a person on the crew page. You stay on as an admin. Until now the only ways a crew changed hands were deleting your account or leaving every one of its rooms. (#1208)
+- A room's owner now chooses who can find it in one place: its members only, the whole crew, or everyone on WattRoom. Rooms from before crews arrived were private and stayed that way with no way to open them; the settings page's "Who can find this room" now has the crew as its middle step, and a room made for the crew can be shut again. (#1204)
+- A crew's owner and admins can open rooms in it — not only the person who made it. The sidebar's + opens the room in the crew you are looking at when you may, the crew page has "Open a room here", and a rider who runs more than one crew picks which. Members still open rooms in their own crew. (#1201)
+
+### Changed
+
+- Opening a room your crew left open no longer greets you with "You have been invited to ride here" — it says the room is open to everyone in the crew, you included, and the button reads "Walk in". The invitation wording stays for share links. (#1216)
+
+### Fixed
+
+- A room you made private no longer hands its link to crew-mates who are not in it. The sidebar and the crew page showed "private — you are not in this room" but still carried the room's address underneath, and the address is the door: anyone who found it could walk in. Locked rooms now travel without it. (#1205)
+- Someone who owns a room in a crew can no longer be banned from that crew: a room never leaves its crew, and banning its owner left a room nobody could moderate and an owner locked out of their own room. Any crew whose owner carried a stale ban is repaired on upgrade. (#1212)
+
+## [2026.09.49] - 2026-09-08
+
+### Fixed
+
+- **The + beside your rooms does something now.** It opens "Open a room" and "Or join with a code" right there, in the crew you are looking at, instead of pointing at a spot on Home the page could not scroll to. Home's own "Open a room" button and the old /rooms link land on the forms too.
+- fixed: the speaking ring and voice ducking now react to a teammate's voice — they never actually worked for any remote rider before this
+
+## [2026.09.48] - 2026-09-08
+
+### Changed
+
+- The desktop app draws its own title bar in the app's colours — no more white strip over a dark room — and opens on a first screen made for a desk: the live-room scene beside one sign-in button.
+
+### Fixed
+
+- The desktop app signs you in through your browser: one button opens wattroom.ch there, you use your passkey, GitHub or Strava as usual, and the app picks the session up on its own. Signing in inside the app's own window never worked — passkeys hung and GitHub or Strava stranded you in the browser.
+
+## [2026.09.47] - 2026-09-08
+
+### Added
+
+- Autoplay's Smart mode now leans toward what your room actually enjoys: finish a track and its artist — or, more loosely, its genre — comes round more often. Skipping builds nothing, and the track you just heard does not come straight back. Each room learns only from its own rides.
+- Smart autoplay now matches the music to the work: while a session is running it favours tracks whose tempo fits the cadence the current block is asking for, at that cadence or at double it. Tracks with no BPM are never buried for it, and a room with nothing running picks exactly as before.
+- **Your crew has a door now.** Every room is made inside your crew and open to it; your room list says what you may do in each of the crew's rooms — open, private and you are in it, private and you are not, or yours to administer without reading; a crew can be renamed; a crew admin can ban from the whole crew, which severs every room at once, and lifting a crew ban never lifts a room ban or the other way round. Deleting your account now hands your crew on instead of failing.
+- **Your crew has a page.** From the crew header in the sidebar: its rooms with what you may do in each, its people with their crew roles, and — for the owner and admins — make or unmake an admin, ban from the crew, and lift a crew ban with a line saying it restores nothing a room's owner decided. The room's own Unban says the same in the other direction.
+- **The day the crew arrives, it says so once.** A brief notice names your crew — named after you until you rename it — and points at its page, where the name is the heading and a click edits it.
+- **The crews you are not looking at still report in.** When another crew has something on — riders on watts, people in voice, lines you have not read — one line under the crew header says so, and tapping it switches. A quiet crew says nothing at all.
+- **The sidebar shows one crew at a time.** A header above your rooms names the crew you are looking at and switches to another; the room you are connected to stays in the sidebar under "you are in", whichever crew is on screen. The crew you own carries a small shield.
+- **A room row says what you may do there before you open it.** Private rooms you are in carry an eye, private rooms you are not in a lock, and rooms you administer without being in them a sliders mark — and the last two are not links that fail.
+- Groundwork for crews, the layer above rooms: a group can be in one place
+  while doing different things, each in its own room. Nothing changes for
+  riders yet — this release only lays the tables down, and every existing
+  room keeps exactly the visibility it had.
+- A desktop app is on its way. wattroom.ch/download picks the installer for the computer you are on once one is published, and the app itself says so on the home page when a newer version is out — never mid-ride.
+- Rooms can list themselves. An owner can now make a room findable by name in a new directory at **Find a room**, linked from the join card — and every room stays invite-only until its owner says otherwise. Being findable is not being readable: people who have not joined see a room's name and icon, and nothing about who rides there or what they did.
+- You now have your own settings for each room, on its settings page: whether planned sessions there reach you by email, and whether you appear on that room's weekly board. They are yours — nobody else sees them and the owner cannot change them. Both start on, so nothing changes until you say so, and leaving a room forgets them.
+- In the desktop app, sharing your screen now shares what your computer is playing too, so the room hears the same thing you do. It arrives on its own fader and ducks under voices like the jukebox does, and the sharing notice says when the room can hear you as well as see you. Requires macOS 14.2 or Windows; a screen shared from the browser is silent as before.
+- Autoplay has a third mode, **Smart**: instead of looping a playlist it picks from your music library, quietest on the tracks the room just played or keeps skipping. Each room learns on its own — what one room skips changes nothing anywhere else.
+- Tag anything in the music pool with whatever words suit it — genre, mood, the part of a ride it belongs to. A track arrives wearing whatever genre its file claimed, the tags stay editable like every other field, and the Music page grows a row of shelves you can click to narrow the library down to one of them.
+
+### Changed
+
+- "Are you sure?" questions — ending a session, leaving a live ride, removing a member, disconnecting Strava, deleting a track from the pool — now open WattRoom's own dialog instead of the browser's plain grey prompt, with the action named on the button.
+- Who can see your profile, trophies and shared rides is now decided in one
+  place rather than by four separate queries that each had to remember the
+  rules. Nothing changes about who that is today; a ban — of either kind —
+  now reliably ends it everywhere at once.
+- Room settings is worth opening when you don't own the room. It used to say only that you cannot change anything; now it shows the room's join code and invite link with copy buttons, who owns it, how many ride there, and what the room is set to — sound pack, weekly board, reactions. Leaving is still there, still last.
+
+### Fixed
+
+- **Away works.** Pressing it used to flip your status and then quietly undo itself a moment later — your mic stayed live, the room kept hearing you, and your speakers came back on. It now sticks: the mic and camera close and stay closed, a screen you were sharing stops, and coming back restores the mic and camera you had. A share is not resumed for you; the button is there when you want it.
+- Self-hosters can turn the server's log up: `WATTROOM_LOG_LEVEL=debug` now actually prints debug lines, which it never did — an internal filter dropped every one of them before they reached the log. Unset still means info, and a rider's feedback report keeps the same lines it always did.
+- A ride the workout gave nothing to score no longer reports a perfect
+  execution. It used to read 100 %, pay the full execution XP bonus, and take
+  the Metronome medal — and a rider whose power meter dropped out took
+  Diesel and Lanterne Rouge with it, off people who had actually ridden.
+  Those medals now go to riders who reported power, and history shows a dash
+  where there was nothing to score.
+- Two things WattRoom promised to delete now actually get deleted. Session
+  recaps past their 90 days were only swept when a session ended, so a room
+  that went quiet kept them indefinitely; expired sign-in sessions were never
+  removed at all. Neither could be read by anyone, but both were kept longer
+  than intended.
+- Deleting a pool track while a room is playing it no longer freezes the room's
+  jukebox on it. The deck now reports the dead track as over and moves on to the
+  next thing in the queue, with a toast saying which track could not be played,
+  exactly as it already does for a YouTube video that refuses to play.
+- A track from the pool now shows its length and a moving seek bar in the
+  jukebox, and no longer draws an empty black tile on the stage — a pool track
+  is heard, not seen, so the stage stays with the riders.
+- "Just played" can put a pool track on again. The replay arrow used to send
+  the row as a YouTube video with no id, which the jukebox refused with "that
+  video link is not playable here".
+- **A Strava outage no longer loses your ride's upload.** It used to give up about fifty minutes after the first failure, and answer Strava asking us to slow down by asking ~45 more times a second later. Uploads now back off over hours, a rate limit pauses every delivery instead of costing an attempt, and a ride that still could not be sent has a **Try sending it again** button — the old message blamed a disconnection that had usually not happened.
+
+### Security
+
+- A ban now reaches everywhere it should. A rider banned from a room could
+  still stream the tracks its members had uploaded, have their own music
+  drawn into the room's autoplay, and receive its planned-session emails —
+  the last with no way to stop it from outside the room. All three now stop
+  at the ban, and the room's own members are unaffected.
+- **A ban now reaches the trophy case.** Being banned from a room kept the seat occupied, which is deliberate — rejoining by link or code lands you back on the ban. But the trophy-case check read that seat as a shared room, so a banned rider could still open the case of everyone left in the room, and be opened by them. The rider page above it already said no. Both now agree. Friendship is a separate door and still opens: a banned ex-room-mate who is also an accepted friend keeps the access friendship gave them.
+- Groundwork for crews: a ban can now be set for a whole crew, and every door
+  that already refused a room ban refuses it too — joining by link or by code,
+  the room itself, the live socket, the jukebox and a rider's own room
+  settings. Nothing changes for existing rooms, which have no crew ban to
+  honour.
+- **A crew ban now empties the sidebar too.** Being banned from a crew closed every door into its rooms — joining, opening, settings — except one: the room list your own sidebar reads still handed you the room. Nothing behind it would open, but it should not have been listed, and now it is not.
+- **Your music reaches the crew — and stops at a crew ban.** A track plays for anyone who may enter a room its uploader may enter, so a room open to your crew shares its members' music with everyone in the crew; browsing a shelf stays the uploader's alone. A rider banned from the crew could still fetch a crew-mate's audio through a membership row the ban leaves in place; they cannot now, and their shelf leaves the room's autoplay with them.
+- **The music library is yours, not the whole server's.** Until now every signed-in person on an instance could browse, play and queue every track anyone had ever uploaded — fine when one instance meant one crew, wrong once it does not. Your shelf is now your own, and a room's autoplay reaches only what its own members brought. Nothing was deleted: a song two people uploaded is two entries over one stored file, and a track you uploaded is still yours.
+- Disconnecting Strava now revokes the grant through Strava's `oauth/revoke` endpoint, which carries your token in the request body rather than in the URL. A token in a URL is a token in somebody's proxy log; it never should have been there. A revoke that Strava refuses is now reported instead of passed over in silence.
+
 ## [2026.09.46] - 2026-09-08
 
 ### Added
@@ -1078,7 +1390,27 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.46...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.66...HEAD
+[2026.09.66]: https://github.com/natrontech/wattroom/compare/2026.09.65...2026.09.66
+[2026.09.65]: https://github.com/natrontech/wattroom/compare/2026.09.64...2026.09.65
+[2026.09.64]: https://github.com/natrontech/wattroom/compare/2026.09.63...2026.09.64
+[2026.09.63]: https://github.com/natrontech/wattroom/compare/2026.09.62...2026.09.63
+[2026.09.62]: https://github.com/natrontech/wattroom/compare/2026.09.61...2026.09.62
+[2026.09.61]: https://github.com/natrontech/wattroom/compare/2026.09.60...2026.09.61
+[2026.09.60]: https://github.com/natrontech/wattroom/compare/2026.09.59...2026.09.60
+[2026.09.59]: https://github.com/natrontech/wattroom/compare/2026.09.58...2026.09.59
+[2026.09.58]: https://github.com/natrontech/wattroom/compare/2026.09.57...2026.09.58
+[2026.09.57]: https://github.com/natrontech/wattroom/compare/2026.09.56...2026.09.57
+[2026.09.56]: https://github.com/natrontech/wattroom/compare/2026.09.55...2026.09.56
+[2026.09.55]: https://github.com/natrontech/wattroom/compare/2026.09.54...2026.09.55
+[2026.09.54]: https://github.com/natrontech/wattroom/compare/2026.09.53...2026.09.54
+[2026.09.53]: https://github.com/natrontech/wattroom/compare/2026.09.52...2026.09.53
+[2026.09.52]: https://github.com/natrontech/wattroom/compare/2026.09.51...2026.09.52
+[2026.09.51]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.4...2026.09.51
+[2026.09.50]: https://github.com/natrontech/wattroom/compare/2026.09.49...2026.09.50
+[2026.09.49]: https://github.com/natrontech/wattroom/compare/2026.09.48...2026.09.49
+[2026.09.48]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.3...2026.09.48
+[2026.09.47]: https://github.com/natrontech/wattroom/compare/desktop-v2026.09.2...2026.09.47
 [2026.09.46]: https://github.com/natrontech/wattroom/compare/2026.09.45...2026.09.46
 [2026.09.45]: https://github.com/natrontech/wattroom/compare/2026.09.44...2026.09.45
 [2026.09.44]: https://github.com/natrontech/wattroom/compare/2026.09.43...2026.09.44

@@ -84,14 +84,6 @@ export function releaseToAnnounce(
 	return releases.find((r) => r.version === current) ?? null;
 }
 
-/** Split on backticks so a call site can render the odd runs as code. */
-export function inlineParts(text: string): { code: boolean; text: string }[] {
-	return text
-		.split('`')
-		.map((part, i) => ({ code: i % 2 === 1, text: part }))
-		.filter((part) => part.text !== '');
-}
-
 /**
  * The releases a rider never got a notice for — everything between the one
  * being announced and the last one they saw (#631). WattRoom ships

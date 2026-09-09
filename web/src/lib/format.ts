@@ -26,13 +26,48 @@ export function formatDuration(seconds: number): string {
 	return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
 }
 
-/** Session times: "Thu 18:30", with day/month when the date matters. */
-export function formatWhen(iso: string, withDate = false): string {
-	return new Date(iso).toLocaleString(undefined, {
+/**
+ * Session times: "Today 18:30", "Tomorrow 18:30", else "Thu 18:30" — with
+ * day/month when the date matters. The picker teaches Today and Tomorrow,
+ * so the row that follows says them back rather than "Tue 09/09".
+ */
+export function formatWhen(
+	iso: string,
+	withDate = false,
+	now = Date.now(),
+): string {
+	const then = new Date(iso);
+	const time = then.toLocaleTimeString(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+	const daysAway = calendarDaysApart(new Date(now), then);
+	if (daysAway === 0) return `Today ${time}`;
+	if (daysAway === 1) return `Tomorrow ${time}`;
+	return then.toLocaleString(undefined, {
 		weekday: 'short',
 		...(withDate ? { day: '2-digit', month: '2-digit' } : {}),
 		hour: '2-digit',
 		minute: '2-digit',
+	});
+}
+
+/** Whole calendar days from `from` to `to` in local time; negative for the past. */
+function calendarDaysApart(from: Date, to: Date): number {
+	const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+	const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+	return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+/**
+ * When someone joined, to the month: "Sept 2026". The rows that say "since"
+ * (a crew's people, a room's members, the room settings header) all use it,
+ * so they cannot drift apart.
+ */
+export function formatMonth(iso: string): string {
+	return new Date(iso).toLocaleDateString(undefined, {
+		month: 'short',
+		year: 'numeric',
 	});
 }
 

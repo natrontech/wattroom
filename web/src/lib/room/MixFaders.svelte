@@ -4,7 +4,7 @@
 	// never fights these faders.
 	//
 	// Rendered by both homes of the mix (#477): the room's quick panel and
-	// /profile's Voice & audio page. One set of faders, two surfaces.
+	// /settings/voice. One set of faders, two surfaces.
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
 	import { applyLevels } from '$lib/sound/board.svelte';

@@ -23,14 +23,20 @@ const ROUTES = [
 	'/workouts/edit',
 	'/music',
 	'/history',
-	'/rooms',
 	'/friends',
 	'/messages',
-	'/sessions',
-	'/pair',
-	'/profile',
-	'/trophies',
+	'/ramp',
+	'/settings/profile',
+	'/settings/equipment',
+	'/settings/voice',
+	'/settings/appearance',
+	'/settings/notifications',
+	'/settings/data',
 	'/whats-new',
+	'/rooms/directory',
+	'/download',
+	'/legal',
+	'/privacy',
 ];
 
 test.use({ viewport: PHONE });
@@ -117,19 +123,110 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 	await seedARide(page);
 	await seedATaggedTrack(page);
 
+	// The crew's page (#1150, #1151) is reached by id, so it is found rather
+	// than listed: every rider owns one crew from their first room.
+	const crewId = await page.evaluate(async () => {
+		const read = async () => {
+			const res = await fetch('/api/rooms');
+			const body = (await res.json()) as {
+				rooms: { crew?: { id: string } }[];
+			};
+			return body.rooms.find((r) => r.crew)?.crew?.id ?? null;
+		};
+		// This rider is reused across runs (signin.ts), so the room it opens
+		// on the first run is found on every later one — never a second.
+		const found = await read();
+		if (found) return found;
+		await fetch('/api/rooms', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ name: 'Phone Width Crew' }),
+		});
+		return read();
+	});
+	// Its settings (#1237) and its door (#1236) hang off the same crew: the
+	// settings are the owner's, which this rider is, and the door takes the
+	// crew's code, which the crew payload carries for members.
+	const crewCode = crewId
+		? await page.evaluate(
+				async (id) =>
+					String(
+						(
+							(await (await fetch(`/api/crews/${id}`)).json()) as {
+								code?: string;
+							}
+						).code ?? '',
+					),
+				crewId,
+			)
+		: '';
+	// The pages reached by an id rather than listed: your own rider page,
+	// the ride seeded above, and the room's thread read from outside — the
+	// three that carry the widest things a rider sees without a room.
+	const byId = await page.evaluate(async () => {
+		const me = (await (await fetch('/api/me')).json()) as { id?: string };
+		const rides = (await (await fetch('/api/rides')).json()) as {
+			rides?: { id: string }[];
+		};
+		const rooms = (await (await fetch('/api/rooms')).json()) as {
+			rooms: { slug?: string }[];
+		};
+		return {
+			me: me.id ?? '',
+			ride: rides.rides?.[0]?.id ?? '',
+			room: rooms.rooms.find((r) => r.slug)?.slug ?? '',
+		};
+	});
+	const routes = [
+		...ROUTES,
+		...(byId.me ? [`/u/${byId.me}`] : []),
+		...(byId.ride ? [`/history/${byId.ride}`] : []),
+		...(byId.room ? [`/messages/r/${byId.room}`] : []),
+		...(crewId ? [`/crew/${crewId}`, `/crew/${crewId}/settings`] : []),
+		...(crewCode ? [`/c/${crewCode}`] : []),
+	];
+	// The id-reached pages are the point of the seeding above: a run where
+	// none of them resolved would pass while asserting nothing about them.
+	expect(byId, 'the seeded ride, the room and your own page resolve').toEqual(
+		expect.objectContaining({
+			me: expect.stringMatching(/.+/),
+			ride: expect.stringMatching(/.+/),
+			room: expect.stringMatching(/.+/),
+		}),
+	);
+
 	const wide: string[] = [];
-	for (const route of ROUTES) {
+	for (const route of routes) {
 		await page.goto(route);
 		const body = page.getByTestId('page-body');
 		await expect(body).toBeVisible();
 		// The charts size themselves from their measured container, so read
 		// after layout has settled rather than on the first frame.
 		await page.waitForTimeout(300);
-		const excess = await body.evaluate(
-			(el) => el.scrollWidth - el.clientWidth,
-		);
+		const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
 		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
 	}
 
+	expect(wide, 'pages wider than a 375px phone').toEqual([]);
+});
+
+/**
+ * The two pages a rider meets first, and the two most likely to be opened on
+ * a phone from a pasted link — reached signed out, so outside the shell that
+ * gives everything else `page-body`. Out there the document is the page, and
+ * the document's own width is the honest measure.
+ */
+test('the landing and the gate fit a phone', async ({ page }) => {
+	const wide: string[] = [];
+	for (const route of ['/', '/login']) {
+		await page.goto(route);
+		await page.waitForTimeout(300);
+		const excess = await page.evaluate(
+			() =>
+				document.documentElement.scrollWidth -
+				document.documentElement.clientWidth,
+		);
+		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
+	}
 	expect(wide, 'pages wider than a 375px phone').toEqual([]);
 });

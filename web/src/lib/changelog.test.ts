@@ -3,7 +3,6 @@ import {
 	actionsFor,
 	headline,
 	highlights,
-	inlineParts,
 	parseChangelog,
 	releasedOnly,
 	releaseToAnnounce,
@@ -89,27 +88,6 @@ describe('releasedOnly', () => {
 			'2026.09.2',
 			'2026.09.1',
 		]);
-	});
-});
-
-describe('inlineParts', () => {
-	it('marks the backticked runs as code', () => {
-		expect(inlineParts('The `.fit` export.')).toEqual([
-			{ code: false, text: 'The ' },
-			{ code: true, text: '.fit' },
-			{ code: false, text: ' export.' },
-		]);
-	});
-
-	it('handles an item that starts with code', () => {
-		expect(inlineParts('`/metrics` is no longer public.')).toEqual([
-			{ code: true, text: '/metrics' },
-			{ code: false, text: ' is no longer public.' },
-		]);
-	});
-
-	it('leaves plain text alone', () => {
-		expect(inlineParts('Rooms.')).toEqual([{ code: false, text: 'Rooms.' }]);
 	});
 });
 

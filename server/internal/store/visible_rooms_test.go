@@ -54,10 +54,17 @@ func (f *crewFixture) user(t *testing.T, name string) pgtype.UUID {
 	return u.ID
 }
 
-func (f *crewFixture) room(t *testing.T, code, slug string, owner pgtype.UUID, crew pgtype.UUID, crewVisible bool) pgtype.UUID {
+// rooms.code is unique across the WHOLE test database, which every package
+// shares. The "VR" prefix keeps these clear of the other harnesses' codes —
+// playlists derives its own from the owner's initial (alice -> "A00001"), and
+// an earlier version of this helper generated exactly that and collided.
+func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pgtype.UUID, crewVisible bool) pgtype.UUID {
 	t.Helper()
+	n := roomSeq.Add(1) % 10000
 	r, err := f.st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: code, Slug: slug, Name: slug, OwnerID: owner,
+		Slug:    fmt.Sprintf("%s-%d", slug, n),
+		Name:    slug,
+		OwnerID: owner,
 	})
 	if err != nil {
 		t.Fatalf("create room %s: %v", slug, err)
@@ -80,6 +87,16 @@ func (f *crewFixture) join(t *testing.T, room, user pgtype.UUID, role string) {
 	}); err != nil {
 		t.Fatalf("membership: %v", err)
 	}
+	// Crew membership is a row since #1236, written by the crew's door
+	// before any room's; the fixture writes it too, except for the crew's
+	// owner, who holds no row (#1212).
+	if _, err := f.st.Pool.Exec(t.Context(), `
+		insert into crew_roles (crew_id, user_id, role)
+		select r.crew_id, $2, 'member' from rooms r join crews c on c.id = r.crew_id
+		where r.id = $1 and c.owner_id <> $2
+		on conflict do nothing`, room, user); err != nil {
+		t.Fatalf("crew membership: %v", err)
+	}
 }
 
 func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string) {
@@ -92,16 +109,11 @@ func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string)
 }
 
 // alice owns a crew with two rooms — one open to the crew, one private. bob is
-// a member of the open room only, so he is in the crew by derivation. carol is
-// in a room in a different crew entirely.
+// a member of the open room only, and in the crew by the row the fixture's
+// join writes alongside (#1236). carol is in a room in a different crew.
 func setupCrew(t *testing.T) *crewFixture {
 	t.Helper()
 	f := &crewFixture{st: open(t)}
-	// A counter, not a hash of t.Name(): rooms.code is unique with a
-	// char_length = 6 check, and two tests whose names happen to be the same
-	// length would have collided on it.
-	seq := fmt.Sprintf("%05d", roomSeq.Add(1)%100000)
-
 	f.alice = f.user(t, "alice")
 	f.bob = f.user(t, "bob")
 	f.carol = f.user(t, "carol")
@@ -123,9 +135,9 @@ func setupCrew(t *testing.T) *crewFixture {
 		_, _ = f.st.Pool.Exec(context.Background(), "delete from crews where id = $1", other.ID)
 	})
 
-	f.openRoom = f.room(t, "A"+seq, "open-"+seq, f.alice, f.crew, true)
-	f.private = f.room(t, "B"+seq, "priv-"+seq, f.alice, f.crew, false)
-	f.elsewhere = f.room(t, "C"+seq, "else-"+seq, f.carol, other.ID, true)
+	f.openRoom = f.room(t, "open", f.alice, f.crew, true)
+	f.private = f.room(t, "priv", f.alice, f.crew, false)
+	f.elsewhere = f.room(t, "else", f.carol, other.ID, true)
 	f.join(t, f.openRoom, f.bob, "member")
 	return f
 }

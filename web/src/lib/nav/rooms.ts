@@ -1,9 +1,12 @@
 import { api } from '$lib/api';
 import type { RoomPresence } from '$lib/protocol';
 import type { RailRoom } from '$lib/room/mockcompat';
+import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 interface RoomEntry extends RoomPresence {
-	slug: string;
+	id?: string;
+	/** Absent on a row you may not enter — the slug is the door (#1205). */
+	slug?: string;
 	name: string;
 	icon?: string;
 	memberCount?: number;
@@ -12,6 +15,8 @@ interface RoomEntry extends RoomPresence {
 	nextSession?: { workoutName: string; startsAt: string };
 	lastChat?: RailRoom['lastChat'];
 	cheers?: string[];
+	crew?: RoomCrew;
+	access?: RoomAccess;
 }
 
 /** The rail's rooms, and the ownership cap they are counted against. */
@@ -33,7 +38,10 @@ export async function fetchRailRooms(): Promise<RailRoomList> {
 	const rooms = res.data.rooms.map((room) => ({
 		name: room.name,
 		icon: room.icon,
-		slug: room.slug,
+		id: room.id,
+		// A slugless row keys by its id: never '' — an empty slug would read
+		// as the room you are connected to when you are connected to none.
+		slug: room.slug ?? room.id ?? '',
 		live: room.phase === 'running' || room.phase === 'countdown',
 		members: room.memberCount ?? 0,
 		connected: room.connected ?? 0,
@@ -51,6 +59,8 @@ export async function fetchRailRooms(): Promise<RailRoomList> {
 		lastChat: room.lastChat,
 		cheers: room.cheers,
 		role: room.role,
+		crew: room.crew,
+		access: room.access,
 	}));
 	return { rooms, maxOwned: res.data.maxOwned ?? 0 };
 }

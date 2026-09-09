@@ -9,6 +9,7 @@
 	import RoomShell from '$lib/room/RoomShell.svelte';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
+	import { formatWhen } from '$lib/format';
 
 	let { children } = $props();
 
@@ -80,7 +81,10 @@
 		const res = await api(path, { method: 'POST', ...init });
 		busy = false;
 		if (!res.ok) {
-			error = res.error.message;
+			// Inside the room the shell is up and `error` has no surface, so a
+			// refused action is a toast (errors.md) — it used to vanish, and
+			// with it the reason a hand-over or a plan did nothing.
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
 		if (slug) void load(slug);
@@ -102,6 +106,8 @@
 	// rather than on a redirect that no longer happens.
 </script>
 
+<svelte:head><title>{room?.name ?? 'Room'} · WattRoom</title></svelte:head>
+
 {#if error && !room}
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
@@ -115,24 +121,72 @@
 		</div>
 	</main>
 {:else if room && !isMember}
-	<!-- The golden path: someone opened a shared link. One decision, one button. -->
+	<!-- The golden path: someone opened a shared link. One decision, one button.
+	     Or the other door (#1216): a room the sidebar listed as open to your
+	     crew (ADR-0038) — nobody invited you, and the copy must not say so. -->
+	{@const viaCrew = presence.rooms.find((r) => r.slug === room?.slug)}
+	{@const crewName =
+		viaCrew?.access === 'open' ? viaCrew.crew?.name : undefined}
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
-			<p class="text-muted mt-2 text-sm">You have been invited to ride here.</p>
-			<button
-				onclick={() => act(`/api/rooms/${room?.slug}/join`)}
-				disabled={busy}
-				class="btn btn-primary btn-lg mt-6">Join {room.name}</button
-			>
+			{#if room.canEnter}
+				<p class="text-muted mt-2 text-sm">
+					{#if crewName}
+						Open to everyone in {crewName} — that includes you.
+					{:else}
+						This room is yours to walk into.
+					{/if}
+				</p>
+				<button
+					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
+					disabled={busy}
+					class="btn btn-primary btn-lg mt-6">Walk in</button
+				>
+			{:else if room.inCrew}
+				<!-- A crew-mate at a private room (#1236): the room owner or a
+				     crew admin holds the key, and no button here would work. -->
+				<p class="text-muted mt-2 text-sm">
+					This room is private. Its owner can let you in, or open it to the
+					crew.
+				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your rooms</a
+				>
+			{:else if room.listed}
+				<!-- A listed room is a public door into its crew (ADR-0039,
+				     ADR-0038 amended): joining it joins the crew. -->
+				<p class="text-muted mt-2 text-sm">
+					This room is listed for everyone on WattRoom. Joining it puts you in
+					its crew, and its other open rooms are yours to walk into.
+				</p>
+				<button
+					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
+					disabled={busy}
+					class="btn btn-primary btn-lg mt-6">Join {room.name}</button
+				>
+			{:else}
+				<!-- Rooms have no codes or links of their own (#1236): the way in
+				     is the crew's invite, and the door says so instead of
+				     offering a button that fails. -->
+				<p class="text-muted mt-2 text-sm">
+					This room belongs to a crew you are not in. Ask whoever rides here for
+					the crew's invite link.
+				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your crews</a
+				>
+			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
-			<!-- Privacy is architecture (WATTROOM.md): say what the room sees
-			     before the button, not in a policy page after it. -->
-			<p class="text-muted/70 mt-4 text-[11px]">
-				Your watts are visible to this room while you ride here, and nowhere
-				else.
-			</p>
+			{#if room.canEnter || room.listed}
+				<!-- Privacy is architecture (WATTROOM.md): say what the room sees
+				     before the button, not in a policy page after it. -->
+				<p class="text-muted/70 mt-4 text-[11px]">
+					Your watts are visible to this room while you ride here, and nowhere
+					else.
+				</p>
+			{/if}
 		</div>
 	</main>
 {:else if !room}
@@ -158,12 +212,45 @@
 			roomName={room.name}
 			icon={room.icon ?? ''}
 			cheers={room.cheers}
-			code={room.code ?? ''}
+			code={room.crew?.code ?? ''}
 			soundPack={room.soundPack ?? 'base'}
 			members={room.members ?? []}
+			crewVisible={room.crewVisible ?? false}
+			invited={room.invited ?? []}
+			crewOutside={room.crewOutside ?? []}
+			onGrant={(userId: string) => {
+				const name = room?.crewOutside?.find(
+					(m) => m.id === userId,
+				)?.displayName;
+				act(
+					`/api/rooms/${room?.slug}/grants`,
+					{ json: { userId } },
+					{
+						message: name ? `${name} can walk in now.` : 'Let in.',
+						undo: () =>
+							void act(`/api/rooms/${room?.slug}/grants/${userId}`, {
+								method: 'DELETE',
+							}),
+					},
+				);
+			}}
+			onRevoke={(userId: string) =>
+				act(`/api/rooms/${room?.slug}/grants/${userId}`, { method: 'DELETE' })}
+			onTransfer={(userId: string) => {
+				const name = room?.members?.find((m) => m.id === userId)?.displayName;
+				act(
+					`/api/rooms/${room?.slug}/transfer`,
+					{ json: { userId } },
+					{
+						message: name
+							? `${name} owns ${room?.name} now. You are a coach.`
+							: 'Room handed on.',
+					},
+				);
+			}}
 			medals={room.medals ?? []}
 			streakWeeks={room.streakWeeks ?? 0}
-			crew={room.crew ?? null}
+			together={room.together ?? null}
 			board={room.board ?? []}
 			monthKj={room.monthKj ?? 0}
 			upcoming={room.upcoming ?? []}
@@ -172,42 +259,38 @@
 				workoutJson: string,
 				startsAt: string,
 			) =>
-				act(`/api/rooms/${room?.slug}/schedule`, {
-					json: { workoutName, workoutJson, startsAt },
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule`,
+					{ json: { workoutName, workoutJson, startsAt } },
+					{ message: `Planned for ${formatWhen(startsAt, true)}.` },
+				)}
 			onReschedule={(id: string, startsAt: string) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}`, {
-					method: 'PATCH',
-					json: { startsAt },
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule/${id}`,
+					{ method: 'PATCH', json: { startsAt } },
+					{ message: `Moved to ${formatWhen(startsAt, true)}.` },
+				)}
 			onUnschedule={(id: string) => {
-				// Captured before the DELETE so undo can re-POST the same plan —
-				// the server has no "restore" for a row it just dropped.
+				// No undo: the DELETE takes every RSVP with it and a re-POST
+				// would be a new session with a new mail, which is what the
+				// old undo did. The place confirms before calling (errors.md).
 				const entry = room?.upcoming?.find((u) => u.id === id);
 				act(
 					`/api/rooms/${room?.slug}/schedule/${id}`,
 					{ method: 'DELETE' },
 					{
 						message: entry
-							? `Removed “${entry.workoutName}” from the plan.`
-							: 'Session removed.',
-						undo: entry
-							? () =>
-									void act(`/api/rooms/${room?.slug}/schedule`, {
-										json: {
-											workoutName: entry.workoutName,
-											workoutJson: entry.workoutJson,
-											startsAt: entry.startsAt,
-										},
-									})
-							: undefined,
+							? `Cancelled “${entry.workoutName}”.`
+							: 'Session cancelled.',
 					},
 				);
 			}}
 			onRsvp={(id: string, going: boolean) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
-					method: going ? 'PUT' : 'DELETE',
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule/${id}/rsvp`,
+					{ method: going ? 'PUT' : 'DELETE' },
+					{ message: going ? "You're in." : "You're out." },
+				)}
 			icsToken={room.icsToken ?? ''}
 			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
 			adminBusy={busy}
@@ -216,9 +299,10 @@
 					json: { userId, role: nextRole },
 				})}
 			onRemove={(userId: string) => {
-				// No inverse call exists — rejoining takes the invite link, so
-				// the call site confirms before firing rather than promising an
-				// undo this can't deliver (errors.md).
+				// No inverse call exists — a removed rider walks back in from
+				// the crew only if the room is open to it, so the call site
+				// confirms before firing rather than promising an undo this
+				// can't deliver (errors.md).
 				const name = room?.members?.find((m) => m.id === userId)?.displayName;
 				act(
 					`/api/rooms/${room?.slug}/members/${userId}`,

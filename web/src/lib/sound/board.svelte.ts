@@ -26,6 +26,13 @@ const sounding = new Map<
 	{ source: AudioBufferSourceNode; gain: GainNode; clipGain: number }
 >();
 
+/**
+ * Each rider's newest play or stop. A play is still fetching its clip when a
+ * stop — or the next play — for the same rider lands; whichever came last
+ * wins, so a stop cannot be outrun by the audio it was meant for (#1321).
+ */
+const latest = new Map<string, object>();
+
 function clipUrl(clipId: string): string {
 	return `/api/board/clips/${clipId}/audio`;
 }
@@ -159,10 +166,12 @@ async function play(
 ): Promise<void> {
 	const audio = bus();
 	if (!audio) return;
+	const claim = {};
+	latest.set(riderId, claim);
 	const buffer = await load(clipId);
-	if (!buffer) return;
+	if (!buffer || latest.get(riderId) !== claim) return;
 
-	stop(riderId);
+	silence(riderId);
 	const start = Math.max(0, (edit?.startMs ?? 0) / 1000);
 	const end = edit?.endMs ? edit.endMs / 1000 : buffer.duration;
 	const kept = Math.max(0.01, Math.min(buffer.duration, end) - start);
@@ -188,7 +197,13 @@ async function play(
 	const source = audio.ctx.createBufferSource();
 	source.buffer = buffer;
 	source.connect(gain);
-	const mine = auditioning;
+	// Only this rider's own audition of this clip is the loop's to restart:
+	// pinning whatever was being auditioned to another rider's clip made
+	// their fire ending start this rider's loop over from the top.
+	const mine =
+		auditioning?.clipId === clipId && auditioning.riderId === riderId
+			? auditioning
+			: null;
 	source.onended = () => {
 		if (sounding.get(riderId)?.source === source) sounding.delete(riderId);
 		gain.disconnect();
@@ -202,15 +217,23 @@ async function play(
 	sounding.set(riderId, { source, gain, clipGain });
 	// Where the playhead is, for the face that draws one. Written here because
 	// this is the only place that knows when the audio actually started.
-	if (auditioning?.clipId === clipId && auditioning.riderId === riderId) {
-		auditioning.startedAt = now;
-		auditioning.kept = kept;
+	if (mine) {
+		mine.startedAt = now;
+		mine.kept = kept;
 	}
 	source.start(now, start, kept);
 }
 
-/** Stop what one rider has sounding — the retrigger rule, and leaving a room. */
+/**
+ * Stop what one rider has sounding, or is about to: the retrigger rule, a
+ * stop from the tick (#1321), and leaving a room.
+ */
 export function stop(riderId: string): void {
+	latest.set(riderId, {});
+	silence(riderId);
+}
+
+function silence(riderId: string): void {
 	const live = sounding.get(riderId);
 	if (!live) return;
 	sounding.delete(riderId);
@@ -223,7 +246,7 @@ export function stop(riderId: string): void {
 
 export function stopAll(): void {
 	auditioning = null;
-	for (const riderId of [...sounding.keys()]) stop(riderId);
+	for (const riderId of [...latest.keys()]) stop(riderId);
 }
 
 /**
@@ -245,6 +268,7 @@ export function applyLevels(): void {
 /** Test seam: the caches are module-level, so a test needs a way to reset. */
 export function forget(): void {
 	stopAll();
+	latest.clear();
 	decoded.clear();
 	loading.clear();
 }

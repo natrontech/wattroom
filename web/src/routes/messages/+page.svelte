@@ -6,6 +6,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 </script>
 
+<svelte:head><title>Messages · WattRoom</title></svelte:head>
+
 <EmptyState variant="page">
 	{#snippet icon()}
 		<MessagesSquare size={28} class="opacity-60" />
@@ -13,7 +15,7 @@
 	<p class="font-display text-ink mt-3 text-base font-bold">Messages</p>
 	<p class="mt-1 text-sm">
 		Every room's chat and your notes between friends. Pick a friend in the
-		sidebar, or right-click one of your rooms and read its chat — from here a
-		room reads and writes without joining it.
+		sidebar, or the unread count on one of your rooms to read its chat — from
+		here a room reads and writes without joining it.
 	</p>
 </EmptyState>

@@ -11,7 +11,7 @@
 	 * the only thing in the feature with no menu (#981, ux.md). The primary
 	 * action stays on click — nothing below is reachable ONLY from the menu.
 	 */
-	import { Pause, Play, Plus } from '@lucide/svelte';
+	import { Pause, Play, Plus, Square } from '@lucide/svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -79,7 +79,20 @@
 
 	function padMenu(slot: number, clip: Clip): MenuEntry[] {
 		const sounding = previewing() === clip.id;
+		// Pressing the pad again is the stop (#1321); the menu only says so.
+		const stop: MenuEntry[] =
+			mine === slot
+				? [
+						{
+							label: 'Stop',
+							hint: 'everyone hears it end',
+							icon: Square,
+							onSelect: () => onPress(slot, false),
+						},
+					]
+				: [];
 		return [
+			...stop,
 			{
 				label: sounding ? 'Stop the preview' : 'Preview',
 				hint: 'only you',
@@ -147,9 +160,11 @@
 					over = null;
 				}}
 				onclick={(e) => onPress(slot, e.altKey)}
-				title={clip
-					? `${clip.name}${clip.key ? ` — key ${clip.key.toUpperCase()}` : ''} · alt-click to hear it yourself · ${MENU_HINT}`
-					: `Pad ${slot} is empty — add a clip`}
+				title={!clip
+					? `Pad ${slot} is empty — add a clip`
+					: playing
+						? `stop ${clip.name} — everyone hears it end`
+						: `${clip.name}${clip.key ? ` — key ${clip.key.toUpperCase()}` : ''} · alt-click to hear it yourself · ${MENU_HINT}`}
 				class="relative flex h-23 w-full flex-col gap-1 overflow-hidden rounded border p-2 text-left {target
 					? 'border-neon border-dashed'
 					: clip

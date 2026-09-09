@@ -20,7 +20,7 @@ friends; the badges are the substance the level is an aggregate of, and nobody
 can see them.
 
 ADR-0024 settled who may look at a rider page, and set the rule for what it
-shows: *what a room already shows them* — "the page collects them, it does not
+shows: _what a room already shows them_ — "the page collects them, it does not
 extend them". Achievements are the first fact that has no room to be collected
 from. Unlike a medal, which is won in a room and stays in that room, an
 achievement is account-lifetime and earned across every room a rider has ever
@@ -41,7 +41,7 @@ The catalogue is not uniform, which is the whole difficulty:
 
 **An earned badge is visible to everyone the rider's page already opens to.**
 No new audience: ADR-0024's gate is unchanged — a shared live room, an accepted
-friendship, or a pending request *from* the rider; everyone else still gets the
+friendship, or a pending request _from_ the rider; everyone else still gets the
 same 404 an unknown id gets. The badge travels because it is identity, the same
 argument that already carries the level and lifetime XP onto that page.
 
@@ -86,10 +86,23 @@ rider, and the two are not the same object.
 - A room's Members place may sort and compare its own members' badges. Nothing
   outside a room may.
 - Habit badges (Sunrise Club, Night Shift) are the sharpest edge here: they
-  imply *when* a rider rides. They stay in, because five occurrences across a
+  imply _when_ a rider rides. They stay in, because five occurrences across a
   lifetime is not a schedule, and a room-mate can already see them ride. If a
   rider ever objects in practice, the escape is per-badge suppression by the
   earner — not a global toggle, and not a redefinition of the catalogue.
 - Revisit trigger: an achievement that cannot be stated as a binary without
   leaking the number behind it. Such an entry does not belong in the catalogue
   while this ADR stands.
+
+## Amendment, 2026-09-09 (#1330): home is your own rider page now
+
+The decision above names `/trophies` as the one place progress renders. That
+page is gone: ADR-0020's sixth amendment made `/u/me` your rider page and moved
+the trophy case onto it — identity, not a setting — and `/trophies` redirects
+there for one release. Nothing else in this decision moves. Progress bars,
+"n of 10" and the counts still render in exactly one place, and it is still
+yours alone: the own page, reached as `friend: "self"`, draws the case with
+its progress; every other rider's page draws the bare earned grid, and the
+server strips `progress` and zeroes `counts` for anyone who is not you. The
+double grid the merge first produced (the case's own grid plus the bare one)
+was the audit's first finding and went with the same fix.

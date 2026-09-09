@@ -13,9 +13,9 @@ const ride = {
 };
 
 describe('uploadRide', () => {
-	it('reports nothing to say when the ride is on the account', async () => {
-		api.mockResolvedValueOnce({ ok: true, data: {} });
-		expect(await uploadRide(ride)).toBe(null);
+	it('hands back the saved ride when it is on the account', async () => {
+		api.mockResolvedValueOnce({ ok: true, data: { id: 'r-1' } });
+		expect(await uploadRide(ride)).toEqual({ saved: { id: 'r-1' } });
 		expect(api).toHaveBeenCalledWith('/api/rides', {
 			method: 'POST',
 			json: ride,
@@ -32,6 +32,24 @@ describe('uploadRide', () => {
 				message: 'That ride could not be saved.',
 			},
 		});
-		expect(await uploadRide(ride)).toBe('That ride could not be saved.');
+		expect(await uploadRide(ride)).toEqual({
+			failure: { message: 'That ride could not be saved.', final: false },
+		});
+	});
+
+	it('marks a refusal the server will repeat as final', async () => {
+		// A ride under a minute (rides.go) is refused every time it is sent:
+		// the buffer must not offer it back, and the words must not promise a
+		// retry (#794's recovery card).
+		api.mockResolvedValueOnce({
+			ok: false,
+			error: {
+				error: 'validation_error',
+				message: 'A ride under a minute is not saved.',
+			},
+		});
+		expect(await uploadRide(ride)).toEqual({
+			failure: { message: 'A ride under a minute is not saved.', final: true },
+		});
 	});
 });

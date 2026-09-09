@@ -125,7 +125,7 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 func (s *Service) handleVerifyEmailForm(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("t") == "" {
 		s.verifyOutcome(w, http.StatusBadRequest, "That link is incomplete",
-			"Use the link from the email, or ask for a new one in your WattRoom profile.")
+			"Use the link from the email, or ask for a new one in your WattRoom settings.")
 		return
 	}
 	// No action attribute: the form posts back to this same URL, token and
@@ -141,14 +141,14 @@ func (s *Service) handleVerifyEmailForm(w http.ResponseWriter, r *http.Request) 
 // offers the way to a fresh link.
 func (s *Service) verifyOutcome(w http.ResponseWriter, status int, heading, line string) {
 	httpx.WritePage(w, status, heading, httpx.PageBody(heading, line,
-		httpx.PageLink(s.baseURL+"/profile", "Back to WattRoom")))
+		httpx.PageLink(s.baseURL+"/settings/profile", "Back to WattRoom")))
 }
 
 func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("t")
 	if token == "" {
 		s.verifyOutcome(w, http.StatusBadRequest, "That link is incomplete",
-			"Use the link from the email, or ask for a new one in your WattRoom profile.")
+			"Use the link from the email, or ask for a new one in your WattRoom settings.")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 		// Expired, already used, or never ours — all the same answer, and
 		// none of them says whether an account exists.
 		s.verifyOutcome(w, http.StatusNotFound, "That link has expired or was already used",
-			"Ask for a new one in your WattRoom profile.")
+			"Ask for a new one in your WattRoom settings.")
 		return
 	default:
 		var pgErr *pgconn.PgError

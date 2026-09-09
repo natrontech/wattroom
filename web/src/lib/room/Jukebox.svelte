@@ -505,12 +505,17 @@
 			>
 			<ul class="mt-1.5 flex flex-col gap-1.5 opacity-70">
 				{#each history as entry (entry.id)}
+					<!-- A pool track's row carries a trackId and no videoId (#267); the
+					     hub takes the pool branch whenever one is set. Sending only the
+					     videoId made the hub read it as a blank YouTube add (#1144). -->
 					<JukeboxTrack
 						{entry}
 						onRequeue={() =>
 							send({
 								action: 'add',
 								videoId: entry.videoId,
+								trackId: entry.trackId,
+								artist: entry.artist,
 								title: entry.title,
 							})}
 					/>

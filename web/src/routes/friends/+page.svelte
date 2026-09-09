@@ -10,8 +10,8 @@
 <main class="page">
 	<h1 class="font-display text-2xl font-bold tracking-tight">Friends</h1>
 	<p class="text-muted mt-1 text-sm">
-		Trade codes to see when each other are around. Presence is room-scoped —
-		friends see that you're riding, never what you're pushing.
+		Trade codes to see when each other are around — online, in a room, riding.
+		Friends see that, never what you're pushing.
 	</p>
 	<FriendsPanel />
 </main>

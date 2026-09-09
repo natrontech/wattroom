@@ -14,7 +14,6 @@ export interface DmHead {
 	peerId: string;
 	peerName: string;
 	peerAvatarUrl?: string;
-	peerAvatarPreset?: string;
 	peerTotalXp?: number;
 	text: string;
 	/** The latest line was an image (#285) — it has no text to preview. */
@@ -48,7 +47,6 @@ async function poll() {
 			id: head.peerId,
 			name: head.peerName,
 			avatarUrl: head.peerAvatarUrl,
-			avatarPreset: head.peerAvatarPreset,
 			totalXp: head.peerTotalXp,
 		})),
 	);
@@ -66,6 +64,11 @@ async function poll() {
 			title: head.peerName,
 			body: headPreview(head),
 			href: `/messages/dm/${head.peerId}`,
+			reply: {
+				placeholder: `Reply to ${head.peerName}`,
+				send: (text) =>
+					api(`/api/dms/${head.peerId}`, { method: 'POST', json: { text } }),
+			},
 			reading: dm.open?.id === head.peerId && !document.hidden,
 		});
 	}

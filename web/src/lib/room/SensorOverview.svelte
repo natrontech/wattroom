@@ -30,7 +30,7 @@
 <script lang="ts">
 	// The one sensor card, everywhere a rider asks "is my trainer connected?"
 	// (#1000). It used to be three components — this grid, `TrainerButton`'s
-	// bare buttons in a running session, and `DeviceSlot`'s rows on /pair, the
+	// bare buttons in a running session, and `DeviceSlot`'s rows on /settings/equipment, the
 	// last of which could not pair a trainer at all. Same state machine
 	// underneath all three (`sensor-status.ts`); only the drawing had forked,
 	// so only the drawing was merged.

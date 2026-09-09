@@ -1,7 +1,9 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -20,7 +22,7 @@
 		buildRampTest,
 		ftpFromRamp,
 		RAMP,
-		rampFailed,
+		rampBlown,
 		rampUsable,
 	} from '$lib/workout/ramp';
 
@@ -77,7 +79,7 @@
 			watts: s.watts,
 			target: current.info.targetWatts ?? 0,
 		}));
-		if (rampFailed(trailing)) {
+		if (rampBlown(current.elapsed, trailing)) {
 			current.stop();
 			done = true;
 		}
@@ -131,10 +133,27 @@
 		if (message) error = message;
 		else saved = true;
 	}
+	// One mis-tap on the rail at minute 14 must not lose the number: the same
+	// confirm /ride has, only while the test is alive.
+	guardLeaving(
+		() =>
+			!!session &&
+			!done &&
+			session.state !== 'done' &&
+			session.state !== 'idle',
+		{
+			title: 'Stop the ramp test and leave?',
+			body: 'The test cannot be resumed — its number is lost.',
+			action: 'Stop the test',
+			cancel: 'Keep going',
+		},
+	);
 	// This page is the session's only owner: leaving mid-test ends it, or the
 	// trainer holds a step with nobody watching and the frame stays caved.
 	onDestroy(() => session?.stop());
 </script>
+
+<svelte:head><title>Ramp test · WattRoom</title></svelte:head>
 
 <main class="page">
 	<h1 class="font-display text-3xl font-bold tracking-tight">Ramp test</h1>
@@ -183,7 +202,7 @@
 		</div>
 
 		{#if error}
-			<p class="text-danger mt-4 text-sm">{error}</p>
+			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 		{/if}
 
 		<div class="mt-6 flex gap-2">
@@ -260,8 +279,7 @@
 						session?.stop();
 						done = true;
 					}}
-					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-2.5 text-sm"
-					>I'm done</button
+					class="btn btn-secondary btn-lg">I'm done</button
 				>
 			</div>
 		</div>
@@ -292,7 +310,10 @@
 				Best minute was {result.best} W, and FTP is {Math.round(
 					RAMP.ftpFraction * 100,
 				)} % of that. You lasted {formatClock(session.elapsed)} — {stepsDone}
-				steps. Every workout you ride from here scales to this number.
+				steps. Every workout you ride from here scales to this number —
+				<a href="/workouts" class="underline">the library</a>
+				and <a href="/home" class="underline">what your rooms have planned</a> already
+				do.
 			</p>
 			<p class="mt-3 text-sm">
 				That's <span class={ZONE_TEXT[zoneOf(result.ftp, result.ftp)]}
@@ -302,7 +323,7 @@
 			</p>
 
 			{#if error}
-				<p class="text-danger mt-4 text-sm">{error}</p>
+				<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 			{/if}
 
 			{#if saved}
@@ -322,7 +343,7 @@
 					<a href="/ramp" class="btn btn-secondary">Test again</a>
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
-						href="/profile"
+						href="/settings/profile"
 						class="text-muted hover:text-ink self-center py-2 text-xs underline"
 						>Keep my current {profile.current.ftp} W</a
 					>

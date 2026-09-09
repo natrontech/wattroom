@@ -105,29 +105,22 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 }
 
 const createRoom = `-- name: CreateRoom :one
-insert into rooms (code, slug, name, owner_id)
-values ($1, $2, $3, $4)
-returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
+insert into rooms (slug, name, owner_id)
+values ($1, $2, $3)
+returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type CreateRoomParams struct {
-	Code    string
 	Slug    string
 	Name    string
 	OwnerID pgtype.UUID
 }
 
 func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error) {
-	row := q.db.QueryRow(ctx, createRoom,
-		arg.Code,
-		arg.Slug,
-		arg.Name,
-		arg.OwnerID,
-	)
+	row := q.db.QueryRow(ctx, createRoom, arg.Slug, arg.Name, arg.OwnerID)
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -257,39 +250,8 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 	return i, err
 }
 
-const getRoomByCode = `-- name: GetRoomByCode :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where code = $1
-`
-
-func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) {
-	row := q.db.QueryRow(ctx, getRoomByCode, code)
-	var i Room
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.Slug,
-		&i.Name,
-		&i.OwnerID,
-		&i.Listed,
-		&i.CreatedAt,
-		&i.SoundPack,
-		&i.Icon,
-		&i.Cheers,
-		&i.IcsToken,
-		&i.AutoplayEnabled,
-		&i.AutoplayOrder,
-		&i.AutoplayPlaylistID,
-		&i.AutoplayFixedVideoID,
-		&i.AutoplayFixedVideoTitle,
-		&i.BoardEnabled,
-		&i.CrewID,
-		&i.CrewVisible,
-	)
-	return i, err
-}
-
 const getRoomByID = `-- name: GetRoomByID :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1
 `
 
 func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error) {
@@ -297,7 +259,6 @@ func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error)
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -320,7 +281,7 @@ func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error)
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = $1
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -328,7 +289,6 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -351,7 +311,7 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 }
 
 const getRoomsBySlugs = `-- name: GetRoomsBySlugs :many
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = any($1::text[])
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = any($1::text[])
 `
 
 // Batched sibling of GetRoomBySlug (#687): the friends panel resolves every
@@ -367,7 +327,6 @@ func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, 
 		var i Room
 		if err := rows.Scan(
 			&i.ID,
-			&i.Code,
 			&i.Slug,
 			&i.Name,
 			&i.OwnerID,
@@ -536,7 +495,7 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const listRoomMembers = `-- name: ListRoomMembers :many
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.avatar_preset, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, m.role, m.joined_at,
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, m.role, m.joined_at,
     user_total_xp(u.id)::bigint as total_xp,
     coalesce((select array_agg(a.key order by a.earned_at)
               from achievements a where a.user_id = u.id), '{}')::text[] as badges
@@ -558,7 +517,6 @@ type ListRoomMembersRow struct {
 	NotifyPlanned      bool
 	UnsubToken         pgtype.UUID
 	FriendCode         string
-	AvatarPreset       *string
 	IcsToken           string
 	AccentPalette      *string
 	ColorScheme        *string
@@ -599,7 +557,6 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 			&i.NotifyPlanned,
 			&i.UnsubToken,
 			&i.FriendCode,
-			&i.AvatarPreset,
 			&i.IcsToken,
 			&i.AccentPalette,
 			&i.ColorScheme,
@@ -770,7 +727,7 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, r.board_enabled, r.crew_id, r.crew_visible, m.role,
+select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, r.board_enabled, r.crew_id, r.crew_visible, m.role,
        (select count(*) from memberships mm
          where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
        (select count(*)
@@ -791,9 +748,29 @@ select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound
        coalesce(last.text, '')::text as last_chat_text,
        coalesce(last.display_name, '')::text as last_chat_from,
        last.image_id as last_chat_image_id,
-       last.created_at as last_chat_at
+       last.created_at as last_chat_at,
+       -- The crew this room belongs to (ADR-0038), joined rather than fetched
+       -- per room: this query's own comment is about the 1+4N it replaced, and
+       -- the sidebar's switcher would have reintroduced exactly that. LEFT,
+       -- because crew_id is nullable for one release (ADR-0038's fourth
+       -- amendment) and a room without one must still list.
+       -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
+       -- name the second one CrewID_2.
+       coalesce(c.name, '')::text as crew_name,
+       coalesce(c.icon, '')::text as crew_icon,
+       (c.image_set_at is not null)::boolean as crew_has_image,
+       -- The crew's code rides the rail (#1257): every member may share it.
+       coalesce(c.code, '')::text as crew_code,
+       -- What the caller is to the crew, for the switcher's owner mark and
+       -- the crew page's door (#1147). Two booleans, not a role word: the
+       -- LEFT join makes a CASE nullable and sqlc would hand back *string.
+       coalesce(c.owner_id = $1, false)::boolean as crew_owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = r.crew_id and cr.user_id = $1
+                 and cr.role = 'admin')::boolean as crew_admin
 from memberships m
 join rooms r on r.id = m.room_id
+left join crews c on c.id = r.crew_id
 left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
@@ -810,12 +787,24 @@ left join lateral (
     limit 1
 ) last on true
 where m.user_id = $1 and m.role != 'banned'
+  -- The room ban is the membership row; the CREW ban is not, and this list
+  -- was the door that still opened after one (#1178). Asked through
+  -- visible_rooms rather than by writing the crew-ban predicate out here:
+  -- ADR-0038's third amendment makes that view the only place allowed to
+  -- answer "is this person excluded here", precisely so a join like this one
+  -- cannot quietly disagree with the other five.
+  --
+  -- Still membership-scoped, deliberately: this is your nav, not everything
+  -- you may enter. Crew rooms you have not joined are the switcher's to show.
+  and exists (
+      select 1 from visible_rooms v
+      where v.room_id = r.id and v.user_id = m.user_id
+  )
 order by m.joined_at desc
 `
 
 type ListUserRoomsRow struct {
 	ID                      pgtype.UUID
-	Code                    string
 	Slug                    string
 	Name                    string
 	OwnerID                 pgtype.UUID
@@ -842,6 +831,12 @@ type ListUserRoomsRow struct {
 	LastChatFrom            string
 	LastChatImageID         pgtype.UUID
 	LastChatAt              pgtype.Timestamptz
+	CrewName                string
+	CrewIcon                string
+	CrewHasImage            bool
+	CrewCode                string
+	CrewOwned               bool
+	CrewAdmin               bool
 }
 
 // Banned members keep their row (the ban IS the row) but the room vanishes
@@ -865,7 +860,6 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 		var i ListUserRoomsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Code,
 			&i.Slug,
 			&i.Name,
 			&i.OwnerID,
@@ -892,6 +886,12 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.LastChatFrom,
 			&i.LastChatImageID,
 			&i.LastChatAt,
+			&i.CrewName,
+			&i.CrewIcon,
+			&i.CrewHasImage,
+			&i.CrewCode,
+			&i.CrewOwned,
+			&i.CrewAdmin,
 		); err != nil {
 			return nil, err
 		}
@@ -904,7 +904,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 }
 
 const rescheduleSession = `-- name: RescheduleSession :one
-update scheduled_sessions set starts_at = $3
+update scheduled_sessions set starts_at = $3, reminded_at = null
 where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
 `
 
@@ -914,6 +914,9 @@ type RescheduleSessionParams struct {
 	StartsAt pgtype.Timestamptz
 }
 
+// A moved session is reminded again for its new time: the claim above is
+// keyed on reminded_at, and a move past an already-sent reminder used to
+// leave the real start with no mail at all.
 func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, rescheduleSession, arg.ID, arg.RoomID, arg.StartsAt)
 	var i ScheduledSession
@@ -1008,6 +1011,23 @@ func (q *Queries) SetRsvp(ctx context.Context, arg SetRsvpParams) error {
 	return err
 }
 
+const transferRoom = `-- name: TransferRoom :exec
+update rooms set owner_id = $2 where id = $1
+`
+
+type TransferRoomParams struct {
+	ID      pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+// The room changes hands (#1227). Always with both membership rows
+// rewritten in the same transaction: the owner column and the 'owner'
+// role are two answers to one question and must not disagree.
+func (q *Queries) TransferRoom(ctx context.Context, arg TransferRoomParams) error {
+	_, err := q.db.Exec(ctx, transferRoom, arg.ID, arg.OwnerID)
+	return err
+}
+
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec
 update memberships set role = $3 where room_id = $1 and user_id = $2
 `
@@ -1025,8 +1045,8 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 
 const updateRoom = `-- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
-                 board_enabled = $7
-where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
+                 board_enabled = $7, crew_visible = $8
+where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type UpdateRoomParams struct {
@@ -1037,6 +1057,7 @@ type UpdateRoomParams struct {
 	Icon         string
 	Cheers       string
 	BoardEnabled bool
+	CrewVisible  bool
 }
 
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
@@ -1048,11 +1069,11 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 		arg.Icon,
 		arg.Cheers,
 		arg.BoardEnabled,
+		arg.CrewVisible,
 	)
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,

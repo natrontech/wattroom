@@ -107,7 +107,7 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 }
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, avatar_preset, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone from users where friend_code = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone from users where friend_code = $1
 `
 
 // The formation gate (ADR-0012 amendment): knowing the code IS the permission
@@ -127,7 +127,6 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 		&i.NotifyPlanned,
 		&i.UnsubToken,
 		&i.FriendCode,
-		&i.AvatarPreset,
 		&i.IcsToken,
 		&i.AccentPalette,
 		&i.ColorScheme,
@@ -176,7 +175,7 @@ func (q *Queries) ListFriendDeclines(ctx context.Context, requesterID pgtype.UUI
 }
 
 const listFriendships = `-- name: ListFriendships :many
-select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url, u.avatar_preset,
+select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url,
     user_total_xp(u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
@@ -185,14 +184,13 @@ order by u.display_name
 `
 
 type ListFriendshipsRow struct {
-	Status       string
-	RequesterID  pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	ID           pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	TotalXp      int64
+	Status      string
+	RequesterID pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	TotalXp     int64
 }
 
 // All rows involving me, resolved to the other person. Avatar + lifetime XP
@@ -214,7 +212,6 @@ func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) 
 			&i.ID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.TotalXp,
 		); err != nil {
 			return nil, err

@@ -29,6 +29,15 @@ func (q *Queries) CanEnterRoom(ctx context.Context, arg CanEnterRoomParams) (boo
 	return column_1, err
 }
 
+const clearCrewImage = `-- name: ClearCrewImage :exec
+update crews set image_mime = null, image = null, image_set_at = null where id = $1
+`
+
+func (q *Queries) ClearCrewImage(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearCrewImage, id)
+	return err
+}
+
 const clearCrewRole = `-- name: ClearCrewRole :exec
 delete from crew_roles where crew_id = $1 and user_id = $2
 `
@@ -38,26 +47,59 @@ type ClearCrewRoleParams struct {
 	UserID pgtype.UUID
 }
 
+// The new owner's row goes (crews.owner_id is their role now); nothing else
+// clears a row — a member's row IS their membership (#1236).
 func (q *Queries) ClearCrewRole(ctx context.Context, arg ClearCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, clearCrewRole, arg.CrewID, arg.UserID)
 	return err
 }
 
+const countCrewMembers = `-- name: CountCrewMembers :one
+select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin')
+`
+
+func (q *Queries) CountCrewMembers(ctx context.Context, crewID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countCrewMembers, crewID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countRoomsOwnedInCrew = `-- name: CountRoomsOwnedInCrew :one
+select count(*) from rooms where crew_id = $1 and owner_id = $2
+`
+
+type CountRoomsOwnedInCrewParams struct {
+	CrewID  pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+// A room never leaves its crew, so its owner cannot be banned from it (#1212):
+// the ban would orphan the room, and the successor of last resort could then
+// hand the crew to someone it banned.
+func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwnedInCrewParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoomsOwnedInCrew, arg.CrewID, arg.OwnerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCrew = `-- name: CreateCrew :one
 
-insert into crews (name, owner_id) values ($1, $2) returning id, name, icon, owner_id, created_at
+insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
 `
 
 type CreateCrewParams struct {
 	Name    string
 	OwnerID pgtype.UUID
+	Code    *string
 }
 
-// The crew (ADR-0038, #1106). Crew membership is derived from room membership
-// and is deliberately not stored, so there is no CreateCrewMembership here —
-// only the two facts room membership cannot imply: an admin grant and a ban.
+// The crew (ADR-0038, #1106; amended #1236). Crew membership is a row in
+// crew_roles — member, admin or banned — written by the crew's door (JoinCrew)
+// and read by everything else. The owner is crews.owner_id and holds no row.
 func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, error) {
-	row := q.db.QueryRow(ctx, createCrew, arg.Name, arg.OwnerID)
+	row := q.db.QueryRow(ctx, createCrew, arg.Name, arg.OwnerID, arg.Code)
 	var i Crew
 	err := row.Scan(
 		&i.ID,
@@ -65,16 +107,168 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 		&i.Icon,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
 	)
 	return i, err
 }
 
-const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at from crews where id = $1
+const crewRoleOf = `-- name: CrewRoleOf :one
+select case
+    when c.owner_id = $1 then 'owner'
+    else coalesce((select cr.role from crew_roles cr
+                   where cr.crew_id = c.id and cr.user_id = $1), '')
+end::text
+from crews c where c.id = $2
 `
 
-func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (Crew, error) {
+type CrewRoleOfParams struct {
+	UserID pgtype.UUID
+	CrewID pgtype.UUID
+}
+
+// One word for what a person is to a crew. Owner beats everything (they
+// cannot be banned — ADR-0038's second amendment); every other word is the
+// row (#1236: membership is stored, not derived from the rooms).
+func (q *Queries) CrewRoleOf(ctx context.Context, arg CrewRoleOfParams) (string, error) {
+	row := q.db.QueryRow(ctx, crewRoleOf, arg.UserID, arg.CrewID)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const deleteCrew = `-- name: DeleteCrew :exec
+delete from crews where id = $1
+`
+
+func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCrew, id)
+	return err
+}
+
+const deleteRoomsOwnedBy = `-- name: DeleteRoomsOwnedBy :exec
+delete from rooms where owner_id = $1
+`
+
+// The purge's first step, done explicitly rather than left to the cascade so
+// the crew's fate is decided by the rooms that REMAIN (ADR-0038, second
+// amendment): a crew holding only the departing owner's rooms has nothing
+// left to own, one holding other people's rooms transfers.
+func (q *Queries) DeleteRoomsOwnedBy(ctx context.Context, ownerID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRoomsOwnedBy, ownerID)
+	return err
+}
+
+const firstRoomOwnerInCrew = `-- name: FirstRoomOwnerInCrew :one
+select owner_id from rooms where crew_id = $1 and owner_id <> $2 order by created_at limit 1
+`
+
+type FirstRoomOwnerInCrewParams struct {
+	CrewID  pgtype.UUID
+	OwnerID pgtype.UUID
+}
+
+// The successor of last resort: PickCrewSuccessor can come back empty while
+// rooms remain (their owners crew-banned, say), and the rule must always name
+// somebody while there is a room to own. A room always has an owner.
+func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerInCrewParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, firstRoomOwnerInCrew, arg.CrewID, arg.OwnerID)
+	var owner_id pgtype.UUID
+	err := row.Scan(&owner_id)
+	return owner_id, err
+}
+
+const getCrew = `-- name: GetCrew :one
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1
+`
+
+type GetCrewRow struct {
+	ID        pgtype.UUID
+	Name      string
+	Icon      string
+	OwnerID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Code      *string
+	HasImage  bool
+}
+
+// Everything but the image bytes (#1237): GetCrewImage serves those.
+func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, error) {
 	row := q.db.QueryRow(ctx, getCrew, id)
+	var i GetCrewRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Icon,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.Code,
+		&i.HasImage,
+	)
+	return i, err
+}
+
+const getCrewByCode = `-- name: GetCrewByCode :one
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where code = $1
+`
+
+type GetCrewByCodeRow struct {
+	ID        pgtype.UUID
+	Name      string
+	Icon      string
+	OwnerID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	Code      *string
+	HasImage  bool
+}
+
+// The crew's door (#1236). A code is a secret: the caller learns the crew it
+// names and nothing about codes that do not exist.
+func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (GetCrewByCodeRow, error) {
+	row := q.db.QueryRow(ctx, getCrewByCode, code)
+	var i GetCrewByCodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Icon,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.Code,
+		&i.HasImage,
+	)
+	return i, err
+}
+
+const getCrewImage = `-- name: GetCrewImage :one
+select image_mime, image, image_set_at from crews where id = $1 and image is not null
+`
+
+type GetCrewImageRow struct {
+	ImageMime  *string
+	Image      []byte
+	ImageSetAt pgtype.Timestamptz
+}
+
+// The blob alone: GetCrew selects * and every crew read would otherwise carry
+// up to 2 MB it never shows.
+func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImageRow, error) {
+	row := q.db.QueryRow(ctx, getCrewImage, id)
+	var i GetCrewImageRow
+	err := row.Scan(&i.ImageMime, &i.Image, &i.ImageSetAt)
+	return i, err
+}
+
+const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at limit 1
+`
+
+// The crew a room is created into when the caller names none (#1201). One
+// crew per owner, made with their first room and named after them — the
+// migration's rule, applied to accounts that arrive after it.
+func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew, error) {
+	row := q.db.QueryRow(ctx, getCrewOwnedBy, ownerID)
 	var i Crew
 	err := row.Scan(
 		&i.ID,
@@ -82,6 +276,48 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (Crew, error) {
 		&i.Icon,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
+	)
+	return i, err
+}
+
+const getRoomInCrew = `-- name: GetRoomInCrew :one
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1 and crew_id = $2
+`
+
+type GetRoomInCrewParams struct {
+	ID     pgtype.UUID
+	CrewID pgtype.UUID
+}
+
+// A room addressed by id inside its crew (#1226): the crew page holds no slug
+// for a room the caller may not enter (#1205), and the one thing a crew admin
+// may do to such a room is set who may.
+func (q *Queries) GetRoomInCrew(ctx context.Context, arg GetRoomInCrewParams) (Room, error) {
+	row := q.db.QueryRow(ctx, getRoomInCrew, arg.ID, arg.CrewID)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
+		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.AutoplayFixedVideoID,
+		&i.AutoplayFixedVideoTitle,
+		&i.BoardEnabled,
+		&i.CrewID,
+		&i.CrewVisible,
 	)
 	return i, err
 }
@@ -96,6 +332,8 @@ type GrantRoomAccessParams struct {
 	UserID pgtype.UUID
 }
 
+// The named exception into a private room (ADR-0038, #1224): a door, not a
+// membership — the person still walks in themselves.
 func (q *Queries) GrantRoomAccess(ctx context.Context, arg GrantRoomAccessParams) error {
 	_, err := q.db.Exec(ctx, grantRoomAccess, arg.RoomID, arg.UserID)
 	return err
@@ -134,6 +372,442 @@ func (q *Queries) IsBannedFromRoom(ctx context.Context, arg IsBannedFromRoomPara
 	return column_1, err
 }
 
+const joinCrew = `-- name: JoinCrew :exec
+insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member')
+on conflict (crew_id, user_id) do nothing
+`
+
+type JoinCrewParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
+// conflict: joining never lifts a ban and never demotes an admin.
+func (q *Queries) JoinCrew(ctx context.Context, arg JoinCrewParams) error {
+	_, err := q.db.Exec(ctx, joinCrew, arg.CrewID, arg.UserID)
+	return err
+}
+
+const leaveCrewRole = `-- name: LeaveCrewRole :exec
+delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned'
+`
+
+type LeaveCrewRoleParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Leaving takes the member or admin row, never a ban.
+func (q *Queries) LeaveCrewRole(ctx context.Context, arg LeaveCrewRoleParams) error {
+	_, err := q.db.Exec(ctx, leaveCrewRole, arg.CrewID, arg.UserID)
+	return err
+}
+
+const leaveCrewRooms = `-- name: LeaveCrewRooms :exec
+delete from memberships m using rooms r
+where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned'
+`
+
+type LeaveCrewRoomsParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// ...and every room membership in the crew, in one statement.
+func (q *Queries) LeaveCrewRooms(ctx context.Context, arg LeaveCrewRoomsParams) error {
+	_, err := q.db.Exec(ctx, leaveCrewRooms, arg.CrewID, arg.UserID)
+	return err
+}
+
+const listCrewBanned = `-- name: ListCrewBanned :many
+select u.id, u.display_name, u.avatar_url, cr.set_at
+from crew_roles cr
+join users u on u.id = cr.user_id
+where cr.crew_id = $1 and cr.role = 'banned'
+order by cr.set_at
+`
+
+type ListCrewBannedRow struct {
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	SetAt       pgtype.Timestamptz
+}
+
+func (q *Queries) ListCrewBanned(ctx context.Context, crewID pgtype.UUID) ([]ListCrewBannedRow, error) {
+	rows, err := q.db.Query(ctx, listCrewBanned, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewBannedRow
+	for rows.Next() {
+		var i ListCrewBannedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.AvatarUrl,
+			&i.SetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewBans = `-- name: ListCrewBans :many
+select user_id from crew_roles where crew_id = $1 and role = 'banned'
+`
+
+func (q *Queries) ListCrewBans(ctx context.Context, crewID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listCrewBans, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewPeople = `-- name: ListCrewPeople :many
+with people as (
+    select c.owner_id as user_id, c.created_at as since from crews c where c.id = $1
+    union all
+    select cr.user_id, cr.set_at from crew_roles cr
+    where cr.crew_id = $1 and cr.role in ('member', 'admin')
+)
+select u.id, u.display_name, u.avatar_url,
+       p.since::timestamptz as since,
+       (select count(*) from memberships m join rooms r on r.id = m.room_id
+         where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
+       exists (select 1 from memberships m join rooms r on r.id = m.room_id
+                where r.crew_id = $1 and m.user_id = u.id and m.role = 'owner')::boolean as owns_room
+from people p
+join users u on u.id = p.user_id
+where $2::boolean
+   or u.id = $3
+   or exists (select 1 from memberships m
+              join rooms r on r.id = m.room_id
+              join visible_rooms v on v.room_id = r.id and v.user_id = $3
+              where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')
+order by p.since
+`
+
+type ListCrewPeopleParams struct {
+	CrewID   pgtype.UUID
+	Everyone bool
+	Viewer   pgtype.UUID
+}
+
+type ListCrewPeopleRow struct {
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	Since       pgtype.Timestamptz
+	RoomCount   int64
+	OwnsRoom    bool
+}
+
+// The crew's people (#1236: the owner plus every member and admin row), each
+// with how many of the crew's rooms hold them and whether they own one there.
+//
+// Person-visibility follows the rooms the VIEWER may enter (#1135): a plain
+// member sees the crew-mates they share an enterable room with (and
+// themselves); the owner and admins act on people by id, so for them
+// `everyone` is true and the list is the whole crew.
+func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) ([]ListCrewPeopleRow, error) {
+	rows, err := q.db.Query(ctx, listCrewPeople, arg.CrewID, arg.Everyone, arg.Viewer)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewPeopleRow
+	for rows.Next() {
+		var i ListCrewPeopleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.AvatarUrl,
+			&i.Since,
+			&i.RoomCount,
+			&i.OwnsRoom,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewRoles = `-- name: ListCrewRoles :many
+select crew_id, user_id, role, set_at from crew_roles where crew_id = $1
+`
+
+func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]CrewRole, error) {
+	rows, err := q.db.Query(ctx, listCrewRoles, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrewRole
+	for rows.Next() {
+		var i CrewRole
+		if err := rows.Scan(
+			&i.CrewID,
+			&i.UserID,
+			&i.Role,
+			&i.SetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewRoomSlugs = `-- name: ListCrewRoomSlugs :many
+select slug from rooms where crew_id = $1
+`
+
+func (q *Queries) ListCrewRoomSlugs(ctx context.Context, crewID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCrewRoomSlugs, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var slug string
+		if err := rows.Scan(&slug); err != nil {
+			return nil, err
+		}
+		items = append(items, slug)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewRoomsFor = `-- name: ListCrewRoomsFor :many
+with mine as (
+    select cr.crew_id from crew_roles cr where cr.user_id = $1 and cr.role in ('member', 'admin')
+    union
+    select c.id from crews c where c.owner_id = $1
+)
+select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
+       c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
+       (c.image_set_at is not null)::boolean as crew_has_image,
+       coalesce(c.code, '')::text as crew_code,
+       exists (select 1 from visible_rooms v
+               where v.room_id = r.id and v.user_id = $1)::boolean as enterable,
+       (c.owner_id = $1 or exists (select 1 from crew_roles cr
+               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin'))::boolean as administers
+from rooms r
+join crews c on c.id = r.crew_id
+where r.crew_id in (select crew_id from mine)
+  and not exists (select 1 from memberships m where m.room_id = r.id and m.user_id = $1)
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = r.crew_id and cr.user_id = $1 and cr.role = 'banned')
+order by r.created_at
+`
+
+type ListCrewRoomsForRow struct {
+	ID           pgtype.UUID
+	Slug         string
+	Name         string
+	Icon         string
+	CrewVisible  bool
+	CrewID       pgtype.UUID
+	CrewName     string
+	CrewIcon     string
+	CrewOwnerID  pgtype.UUID
+	CrewHasImage bool
+	CrewCode     string
+	Enterable    bool
+	Administers  bool
+}
+
+// The crew's rooms you hold NO membership in, for the sidebar (#1149): a
+// crew's list carries rooms you cannot enter and rooms you administer
+// without reading, and a row has to say which without being opened.
+// `enterable` is asked of visible_rooms and nowhere else (ADR-0038, third
+// amendment). A room ban keeps you off this list entirely — a banned
+// membership row is still a row — and so does a crew ban.
+func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]ListCrewRoomsForRow, error) {
+	rows, err := q.db.Query(ctx, listCrewRoomsFor, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewRoomsForRow
+	for rows.Next() {
+		var i ListCrewRoomsForRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Icon,
+			&i.CrewVisible,
+			&i.CrewID,
+			&i.CrewName,
+			&i.CrewIcon,
+			&i.CrewOwnerID,
+			&i.CrewHasImage,
+			&i.CrewCode,
+			&i.Enterable,
+			&i.Administers,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewsOwnedBy = `-- name: ListCrewsOwnedBy :many
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at
+`
+
+func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
+	rows, err := q.db.Query(ctx, listCrewsOwnedBy, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Crew
+	for rows.Next() {
+		var i Crew
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Icon,
+			&i.OwnerID,
+			&i.CreatedAt,
+			&i.Code,
+			&i.ImageMime,
+			&i.Image,
+			&i.ImageSetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoomGrantees = `-- name: ListRoomGrantees :many
+select u.id, u.display_name, u.avatar_url, g.granted_at
+from room_grants g
+join users u on u.id = g.user_id
+where g.room_id = $1
+  and not exists (select 1 from memberships m where m.room_id = g.room_id and m.user_id = g.user_id)
+order by g.granted_at
+`
+
+type ListRoomGranteesRow struct {
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	GrantedAt   pgtype.Timestamptz
+}
+
+// People let into a private room who have not walked in yet. A grant is moot
+// once they join — membership admits — so joined people drop off this list.
+func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]ListRoomGranteesRow, error) {
+	rows, err := q.db.Query(ctx, listRoomGrantees, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoomGranteesRow
+	for rows.Next() {
+		var i ListRoomGranteesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.AvatarUrl,
+			&i.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pickCrewSuccessor = `-- name: PickCrewSuccessor :one
+select cr.user_id
+from crew_roles cr
+where cr.crew_id = $1 and cr.user_id <> $2 and cr.role in ('admin', 'member')
+order by (cr.role = 'admin') desc, cr.set_at
+limit 1
+`
+
+type PickCrewSuccessorParams struct {
+	CrewID    pgtype.UUID
+	Departing pgtype.UUID
+}
+
+// docs/SPEC.md's succession rule: the longest-standing admin, else the
+// longest-standing member (#1236: the rows, not the rooms); never the
+// departing owner, never anyone the crew banned. No row means nobody is left
+// and the crew is deleted rather than left ownerless.
+func (q *Queries) PickCrewSuccessor(ctx context.Context, arg PickCrewSuccessorParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, pickCrewSuccessor, arg.CrewID, arg.Departing)
+	var user_id pgtype.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
+const placeRoomInCrew = `-- name: PlaceRoomInCrew :exec
+update rooms set crew_id = $2, crew_visible = $3 where id = $1
+`
+
+type PlaceRoomInCrewParams struct {
+	ID          pgtype.UUID
+	CrewID      pgtype.UUID
+	CrewVisible bool
+}
+
+// Crewless rooms are forbidden in code from the cutover (ADR-0038). A
+// separate statement rather than a wider CreateRoom: fifteen call sites make
+// rooms directly and none of them is a creation path a rider can reach.
+func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
+	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
+	return err
+}
+
 const revokeRoomAccess = `-- name: RevokeRoomAccess :exec
 delete from room_grants where room_id = $1 and user_id = $2
 `
@@ -148,30 +822,19 @@ func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessPara
 	return err
 }
 
-const roomsVisibleTo = `-- name: RoomsVisibleTo :many
-select room_id from visible_rooms where user_id = $1
+const setCrewImage = `-- name: SetCrewImage :exec
+update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1
 `
 
-// THE gate. Every call site that needs "which rooms may this person enter"
-// selects from the view and never re-derives it (ADR-0038, third amendment).
-func (q *Queries) RoomsVisibleTo(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, roomsVisibleTo, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var room_id pgtype.UUID
-		if err := rows.Scan(&room_id); err != nil {
-			return nil, err
-		}
-		items = append(items, room_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type SetCrewImageParams struct {
+	ID        pgtype.UUID
+	ImageMime *string
+	Image     []byte
+}
+
+func (q *Queries) SetCrewImage(ctx context.Context, arg SetCrewImageParams) error {
+	_, err := q.db.Exec(ctx, setCrewImage, arg.ID, arg.ImageMime, arg.Image)
+	return err
 }
 
 const setCrewRole = `-- name: SetCrewRole :exec
@@ -185,10 +848,26 @@ type SetCrewRoleParams struct {
 	Role   string
 }
 
-// Admin or banned. The owner is crews.owner_id and cannot be expressed here,
+// Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
 // which is what makes them un-removable (ADR-0038, second amendment).
 func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, setCrewRole, arg.CrewID, arg.UserID, arg.Role)
+	return err
+}
+
+const setRoomCrewVisible = `-- name: SetRoomCrewVisible :exec
+update rooms set crew_visible = $2 where id = $1
+`
+
+type SetRoomCrewVisibleParams struct {
+	ID          pgtype.UUID
+	CrewVisible bool
+}
+
+// The one permission a crew admin holds over a room they never joined
+// (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
+func (q *Queries) SetRoomCrewVisible(ctx context.Context, arg SetRoomCrewVisibleParams) error {
+	_, err := q.db.Exec(ctx, setRoomCrewVisible, arg.ID, arg.CrewVisible)
 	return err
 }
 
@@ -205,7 +884,39 @@ type TransferCrewParams struct {
 // amendment). crews.owner_id is ON DELETE RESTRICT, so the purge path MUST run
 // this before deleting a user or the deletion fails loudly — which is the
 // intended behaviour, not a bug to work around.
+//
+// Always through makeOwner in Go, never alone: the new owner's crew_roles row
+// has to go with it (#1212). Owner beats every role in CrewRoleOf, but
+// visible_rooms and IsBannedFromRoom read the row without asking who owns
+// the crew, so a banned row left on an owner locks them out of their rooms.
 func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) error {
 	_, err := q.db.Exec(ctx, transferCrew, arg.ID, arg.OwnerID)
 	return err
+}
+
+const updateCrew = `-- name: UpdateCrew :one
+update crews set name = $2, icon = $3 where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
+`
+
+type UpdateCrewParams struct {
+	ID   pgtype.UUID
+	Name string
+	Icon string
+}
+
+func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, error) {
+	row := q.db.QueryRow(ctx, updateCrew, arg.ID, arg.Name, arg.Icon)
+	var i Crew
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Icon,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
+	)
+	return i, err
 }

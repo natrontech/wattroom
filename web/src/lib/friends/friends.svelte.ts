@@ -15,7 +15,6 @@ export interface Friend {
 	id: string;
 	name: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	totalXp?: number;
 	status: 'accepted' | 'pending_in' | 'pending_out';
 	/** The friendship row's creation time — what dedupes the announcement. */

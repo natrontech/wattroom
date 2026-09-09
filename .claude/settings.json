@@ -41,6 +41,19 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '(.tool_input.file_path // .tool_input.notebook_path // empty)' | { read -r f; [ -z \"$f\" ] && exit 0; case \"$f\" in \"$CLAUDE_PROJECT_DIR\"/*|\"$CLAUDE_PROJECT_DIR\") printf '%s' \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"AGENTS.md requires a worktree, a branch and a draft PR before the first edit (see Working on the issue board). This path resolves inside the canonical clone ($CLAUDE_PROJECT_DIR), not an isolated worktree. Run: git worktree add ../wattroom-worktrees/<slug> -b <type>/<slug>  from $CLAUDE_PROJECT_DIR, then edit inside that worktree instead.\\\"}}\" ;; esac; }",
+            "timeout": 10,
+            "statusMessage": "Checking worktree…"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

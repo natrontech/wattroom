@@ -1,7 +1,8 @@
 <script lang="ts">
 	// The ways back into this account, and the offer to add one (#719).
 	// Connecting is a top-level navigation, not a fetch: it leaves for the
-	// provider and comes back to /profile?link=<outcome>.
+	// provider and comes back to /settings/profile?link=<outcome>.
+	import { confirm } from '$lib/confirm.svelte';
 	import { page } from '$app/state';
 	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
 	import Banner from '$lib/components/Banner.svelte';
@@ -36,9 +37,13 @@
 	// upstream, which no toast can put right.
 	async function disconnect(id: string) {
 		const name = providerName[id] ?? id;
-		const extra =
-			id === 'strava' ? ' Ride upload to Strava stops with it.' : '';
-		if (!confirm(`Disconnect ${name} from this account?${extra}`)) return;
+		const ok = await confirm({
+			title: `Disconnect ${name} from this account?`,
+			body:
+				id === 'strava' ? 'Ride upload to Strava stops with it.' : undefined,
+			action: `Disconnect ${name}`,
+		});
+		if (!ok) return;
 
 		disconnecting = id;
 		disconnectError = '';

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { changelog } from '$lib/changelog.svelte';
-	import { highlights, inlineParts } from '$lib/changelog';
+	import { highlights } from '$lib/changelog';
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import type { ReleaseAction } from '$lib/release-actions';
 
 	// The what's-new notice (#345, #631). Home only — ux.md: a changelog is
@@ -34,7 +35,9 @@
 </script>
 
 {#if release && news}
-	<section class="panel px-5 py-4">
+	<!-- Its own top margin: on Home it stands in the notice slot (#1333),
+	     where every notice renders an element of its own or nothing. -->
+	<section class="panel mt-6 px-5 py-4">
 		<div class="flex flex-wrap items-baseline gap-x-3">
 			<p class="eyebrow">what's new</p>
 			<p class="font-display text-sm font-bold">{release.version}</p>
@@ -49,13 +52,7 @@
 			{#each news.lines as line}
 				<li class="contents">
 					<span class="eyebrow mt-1.5">{line.heading}</span>
-					<span>
-						{#each inlineParts(line.text) as part}
-							{#if part.code}<code class="bg-z1/60 rounded px-1 py-0.5 text-xs"
-									>{part.text}</code
-								>{:else}{part.text}{/if}
-						{/each}
-					</span>
+					<span><MessageText text={line.text} preview={false} /></span>
 				</li>
 			{/each}
 		</ul>

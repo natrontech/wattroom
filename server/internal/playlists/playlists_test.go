@@ -125,7 +125,7 @@ func (h *harness) room(t *testing.T, owner string) (slug string) {
 	h.roomSeq++
 	slug = fmt.Sprintf("test-room-%s-%s-%d", strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")), owner, h.roomSeq)
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: fmt.Sprintf("%c%05d", owner[0]-32, h.roomSeq), Slug: slug, Name: "Test Room", OwnerID: ownerUser.ID,
+		Slug: slug, Name: "Test Room", OwnerID: ownerUser.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

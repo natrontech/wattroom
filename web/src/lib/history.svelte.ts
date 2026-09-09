@@ -1,6 +1,8 @@
 /**
- * Local ride history (#14). Rides are private by default (WATTROOM.md), and until
- * there is a database they never leave the device at all.
+ * The device-only leftovers of ride history (#14, then #110): summaries the
+ * server refused — under a minute — or never received because it was
+ * unreachable when the ride ended. Every ride the server took lives on the
+ * account; this store holds what could not move there.
  *
  * Stores the summary rather than the samples: a full 1 Hz recording of an hour is
  * ~3600 entries, and localStorage is a few megabytes shared with everything else.
@@ -18,6 +20,8 @@ export interface RideRecord {
 	kj: number;
 	avgWatts: number;
 	execution: number;
+	/** #1143: false when the workout prescribed nothing to score. */
+	executionScored?: boolean;
 	ftp: number;
 }
 
@@ -38,6 +42,8 @@ function parse(value: unknown): RideRecord[] {
 				kj: typeof r.kj === 'number' ? r.kj : 0,
 				avgWatts: r.avgWatts,
 				execution: typeof r.execution === 'number' ? r.execution : 0,
+				// Absent on a ride saved before #1143 — those all had a score.
+				executionScored: r.executionScored !== false,
 				ftp: typeof r.ftp === 'number' ? r.ftp : 0,
 			},
 		];

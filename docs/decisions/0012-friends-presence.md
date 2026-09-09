@@ -11,7 +11,7 @@ Date: 2026-08-31 · Status: accepted (#147)
 
 Every privacy rule in WATTROOM.md is room-scoped by construction. A friends
 list ("who's around right now") is the first feature that shows presence
-*outside* a room — visible-by-default personal data with no room to scope it
+_outside_ a room — visible-by-default personal data with no room to scope it
 to. #147 requires the visibility questions answered before code.
 
 ## Decision
@@ -102,10 +102,16 @@ OS notification on a hidden tab.
   ask was answered, which they could already infer by asking again; they
   learn nothing about the other rider, and nothing reaches anyone else.
 - Storage is a `friend_declines` tombstone (requester, addressee, time),
-  written when the addressee deletes a *pending* request they did not
+  written when the addressee deletes a _pending_ request they did not
   send. Cancelling your own ask and unfriending stay silent, exactly as
   before — the same DELETE, three different meanings, decided by who owns
   the pending row.
 - The tombstone is cleared whenever the two of them form a request or a
   friendship again, in either direction, so an old dismissal cannot
   resurface on a device that had never heard it.
+
+## Amendment — online means the app is open (2026-09-09, #1398)
+
+The decision above says a friend's presence is "connected to a room right now, or not", and that "online" means in a room. Since #251 (the lobby socket) and #807 that is no longer what the code says or what a friend sees: `friends.go` reports **online** as "the app is open" — the lobby socket is up, Slack's green dot — as a state of its own beside **in a room** and **riding**. This amendment records that as decided, because the ADR exists to be the privacy record for the first presence that leaves a room.
+
+Why it is acceptable: it is still friends-only (mutual, formed by code, never a listing), still a boolean with no metrics behind it, and still says nothing about what you are pushing; the room is named only when the viewer is a member of it (`friends.go`). ADR-0010's "no ambient presence" deferred a global surface for strangers; an accepted friend seeing that you are around is the thing a friend list is for. What has not changed: room-scoped metrics, nothing recorded, and a friend who wants to be invisible has the same answer as before — close the app.

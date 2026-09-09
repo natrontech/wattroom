@@ -15,10 +15,11 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 	import { uploadRide } from '$lib/ride/save';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { page } from '$app/state';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
@@ -51,12 +52,14 @@
 	const profile = createProfileStore();
 	const history = createHistoryStore();
 	// The profile is FTP's only home — the field below writes through to it, so a
-	// rider who corrects the number here does not find the old one on /profile.
+	// rider who corrects the number here does not find the old one on /settings/profile.
 	const ftp = $derived(profile.current.ftp);
 	let recorded = false;
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
+	// The ride on the account, once it is: the summary's way forward (#1331).
+	let savedId = $state<string | null>(null);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
@@ -210,17 +213,23 @@
 				cadence: sample.cadence,
 				hr: sample.heartRate,
 			})),
-		}).then((failure) => {
-			if (!failure) {
+		}).then((outcome) => {
+			if ('saved' in outcome) {
 				// The ride is on the account: NOW it stops being a ride to
 				// recover. Ending the buffer before the server answered is
 				// what used to make a failed save vanish (#794).
 				ended?.end();
+				savedId = outcome.saved.id || null;
 				return;
 			}
-			// The buffer keeps every sample and stays unfinished, so the ride
-			// is offered back below with a Save that retries this POST. The
-			// local summary is the second copy, not the only one.
+			const { failure } = outcome;
+			// A refusal the server will repeat — under a minute — is not a
+			// ride to recover either: offering it back would refuse it again
+			// on every reload. Its summary still lands on the device below.
+			if (failure.final) ended?.end();
+			// Otherwise the buffer keeps every sample and stays unfinished, so
+			// the ride is offered back below with a Save that retries this
+			// POST. The local summary is the second copy, not the only one.
 			const localFailure = history.add({
 				id: `${current.startedAt.getTime()}`,
 				workoutName: workout.name,
@@ -231,7 +240,9 @@
 			});
 			error =
 				localFailure ??
-				`${failure} This ride is kept on this device — reload to save it from the recovery card.`;
+				(failure.final
+					? `${failure.message} Its summary stays on this device.`
+					: `${failure.message} This ride is kept on this device — reload to save it from the recovery card.`);
 		});
 	});
 
@@ -331,12 +342,7 @@
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);
-			const url = URL.createObjectURL(res.data.blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = res.data.filename ?? 'ride.fit';
-			link.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(res.data.blob, res.data.filename ?? 'ride.fit');
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		} finally {
@@ -344,31 +350,24 @@
 		}
 	}
 	// A stray tap on the rail mid-ride must not eat the ride (#126): one
-	// confirm, only while the session is actually alive. The browser-level
-	// unload guard rides along for tab closes.
-	const riding = () =>
-		!!session && session.state !== 'done' && session.state !== 'idle';
-	beforeNavigate((navigation) => {
-		if (
-			riding() &&
-			navigation.type !== 'leave' &&
-			!confirm('End the ride and leave? The summary and .fit are lost.')
-		) {
-			navigation.cancel();
-		}
-	});
-	$effect(() => {
-		const handler = (event: BeforeUnloadEvent) => {
-			if (riding()) event.preventDefault();
-		};
-		window.addEventListener('beforeunload', handler);
-		return () => window.removeEventListener('beforeunload', handler);
-	});
+	// confirm, only while the session is actually alive, and the browser's
+	// unload guard for tab closes — shared with /ramp.
+	guardLeaving(
+		() => !!session && session.state !== 'done' && session.state !== 'idle',
+		{
+			title: 'End the ride and leave?',
+			body: 'The summary and the .fit file are lost.',
+			action: 'End the ride',
+			cancel: 'Keep riding',
+		},
+	);
 	// This page is the session's only owner: leaving it ends the ride, as the
 	// confirm above promises — or the trainer holds a target with nobody
 	// watching and the frame stays caved.
 	onDestroy(() => session?.stop());
 </script>
+
+<svelte:head><title>{workout.name} · Ride · WattRoom</title></svelte:head>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
@@ -436,11 +435,18 @@
 				{#snippet actions()}
 					<div class="panel px-5 py-4">
 						<div class="flex flex-wrap items-center gap-2">
+							<!-- The end links forward (#1331): the ride's own page first,
+							     the export and the next workout after it. -->
+							{#if savedId}
+								<a href="/history/{savedId}" class="btn btn-primary"
+									>See your ride</a
+								>
+							{/if}
 							<button
 								onclick={downloadFit}
 								disabled={downloading}
 								data-testid="download-fit"
-								class="btn btn-primary"
+								class="btn {savedId ? 'btn-secondary' : 'btn-primary'}"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
 							<a href="/workouts" class="btn btn-secondary"

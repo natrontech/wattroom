@@ -34,6 +34,20 @@ describe('formatClockLong', () => {
 });
 
 describe('formatWhen', () => {
+	// The picker's words, said back (#1375): the same clock, three heads.
+	it('says Today and Tomorrow, and the weekday beyond', () => {
+		const now = new Date(2026, 8, 9, 10, 0).getTime();
+		const at = (dayOffset: number) =>
+			new Date(2026, 8, 9 + dayOffset, 19, 30).toISOString();
+		expect(formatWhen(at(0), true, now)).toMatch(/^Today /);
+		expect(formatWhen(at(1), true, now)).toMatch(/^Tomorrow /);
+		expect(formatWhen(at(2), true, now)).not.toMatch(/^(Today|Tomorrow)/);
+		expect(formatWhen(at(-1), false, now)).not.toMatch(/^(Today|Tomorrow)/);
+		// Late tonight is still today, however few hours are left.
+		expect(
+			formatWhen(new Date(2026, 8, 9, 23, 50).toISOString(), true, now),
+		).toMatch(/^Today /);
+	});
 	it('includes the date only when asked', () => {
 		const iso = '2026-08-31T18:30:00Z';
 		expect(formatWhen(iso)).not.toBe('');

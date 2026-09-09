@@ -1,7 +1,7 @@
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
-import type { BoardRow, Crew } from '$lib/room/room-data';
+import type { BoardRow, Together } from '$lib/room/room-data';
 import type { Segment } from '$lib/workout/types';
 
 /**
@@ -22,25 +22,18 @@ export interface AdminMember {
 	displayName: string;
 	role: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	totalXp?: number;
 	ftpWatts?: number;
 	weightKg?: number;
 	joinedAt?: string;
+	/** A banned row the crew also bans (#1150): Unban here lifts one level. */
+	crewBanned?: boolean;
 }
 
 export interface AdminMedal {
 	kind: string;
 	rider: string;
 	awardedAt: string;
-}
-
-export interface PlannedSession {
-	id: string;
-	workoutName: string;
-	workoutJson: string;
-	startsAt: string;
-	createdBy: string;
 }
 
 /** RoomShell's props. Named here because the context is built from them. */
@@ -54,18 +47,26 @@ export interface RoomShellProps {
 	icon?: string;
 	/** The room's reaction palette (#223); absent = SidePanel's base set. */
 	cheers?: string[];
+	/** The crew's join code (#1236), for the TV's idle screen. */
 	code?: string;
 	soundPack?: string;
 	members?: AdminMember[];
+	/** The private room's door list (#1224): let in, and outside. */
+	crewVisible?: boolean;
+	invited?: AdminMember[];
+	crewOutside?: AdminMember[];
+	onGrant: (userId: string) => void;
+	onRevoke: (userId: string) => void;
+	onTransfer: (userId: string) => void;
 	medals?: AdminMedal[];
 	streakWeeks?: number;
-	crew?: Crew | null;
+	together?: Together | null;
 	board?: BoardRow[];
 	monthKj?: number;
 	adminBusy?: boolean;
 	onRole: (userId: string, role: string) => void;
 	onRemove: (userId: string) => void;
-	upcoming?: PlannedSession[];
+	upcoming?: RoomContext['upcoming'];
 	onSchedule: (name: string, json: string, startsAt: string) => void;
 	onReschedule: (id: string, startsAt: string) => void;
 	onUnschedule: (id: string) => void;
@@ -193,11 +194,14 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get upcoming() {
 			return props.upcoming ?? [];
 		},
+		get recaps() {
+			return live.recaps;
+		},
 		get icsToken() {
 			return props.icsToken ?? '';
 		},
-		get crew() {
-			return props.crew ?? null;
+		get together() {
+			return props.together ?? null;
 		},
 		get board() {
 			return props.board ?? [];
@@ -214,6 +218,18 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get members() {
 			return props.members ?? [];
 		},
+		get crewVisible() {
+			return props.crewVisible ?? false;
+		},
+		get invited() {
+			return props.invited ?? [];
+		},
+		get crewOutside() {
+			return props.crewOutside ?? [];
+		},
+		grant: (userId) => props.onGrant(userId),
+		revoke: (userId) => props.onRevoke(userId),
+		transfer: (userId) => props.onTransfer(userId),
 		get medals() {
 			return props.medals ?? [];
 		},

@@ -34,9 +34,13 @@ const MAX_DIMENSION = 1600;
 /**
  * Shrink a pasted image to a WebP the upload cap never bites; GIFs pass
  * through untouched (recompression would freeze the animation). Null when
- * the blob can't be sent (over-cap GIF, decode failure).
+ * the blob can't be sent (over-cap GIF, decode failure). An avatar passes a
+ * smaller edge: it is never drawn above 76px.
  */
-export async function compressImage(file: Blob): Promise<Blob | null> {
+export async function compressImage(
+	file: Blob,
+	maxDimension = MAX_DIMENSION,
+): Promise<Blob | null> {
 	if (file.type === 'image/gif') {
 		return file.size <= MAX_IMAGE_BYTES ? file : null;
 	}
@@ -44,7 +48,7 @@ export async function compressImage(file: Blob): Promise<Blob | null> {
 		const bitmap = await createImageBitmap(file);
 		const scale = Math.min(
 			1,
-			MAX_DIMENSION / Math.max(bitmap.width, bitmap.height),
+			maxDimension / Math.max(bitmap.width, bitmap.height),
 		);
 		const canvas = document.createElement('canvas');
 		canvas.width = Math.round(bitmap.width * scale);

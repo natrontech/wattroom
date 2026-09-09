@@ -126,7 +126,6 @@
 			<Avatar
 				name={rider.name}
 				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
-				preset={avatarOf.get(rider.id)?.avatarPreset}
 				xp={avatarOf.get(rider.id)?.totalXp}
 				status={statusOfRider(rider)}
 				size={22}
@@ -199,7 +198,6 @@
 			<Avatar
 				name={member.displayName}
 				avatarUrl={member.avatarUrl}
-				preset={member.avatarPreset}
 				xp={member.totalXp}
 				status="offline"
 				size={22}

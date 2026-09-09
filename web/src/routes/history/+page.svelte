@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
 	import {
@@ -31,10 +32,22 @@
 	import type { ServerRide } from './+page';
 
 	let { data }: { data: PageData } = $props();
-	// Device-only leftovers: summaries saved while the server was unreachable
-	// (or from before #110). They have no samples, so they cannot become
-	// account rides — they stay listed here until cleared.
+	// Device-only leftovers: summaries the server did not take — refused for
+	// being under a minute, saved while it was unreachable, or from before
+	// #110. They have no samples, so they cannot become account rides — they
+	// stay listed here until cleared.
 	const device = createHistoryStore();
+
+	async function clearDevice() {
+		const n = device.all.length;
+		const ok = await confirm({
+			title: `Clear ${n} device ride${n === 1 ? '' : 's'}?`,
+			body: 'These summaries exist only on this device — nothing can bring them back.',
+			action: 'Clear them',
+			cancel: 'Keep them',
+		});
+		if (ok) device.clear();
+	}
 
 	let rides = $state<ServerRide[] | null>(untrack(() => data.rides));
 	let error = $state<string | null>(untrack(() => data.ridesError));
@@ -83,7 +96,7 @@
 		} satisfies MenuItem,
 	];
 
-	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
+	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
 
 	async function load() {
@@ -165,6 +178,8 @@
 	}
 </script>
 
+<svelte:head><title>Rides · WattRoom</title></svelte:head>
+
 {#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
 	<li
 		id="ride-{ride.id}"
@@ -198,8 +213,16 @@
 		>
 		<span class="font-mono text-xs tabular-nums">{ride.avgWatts} W</span>
 		<span class="text-muted font-mono text-xs tabular-nums">{ride.kj} kJ</span>
-		<span class="font-display text-sm font-semibold tabular-nums"
-			>{Math.round(ride.execution * 100)}%</span
+		<!-- A ride whose workout prescribed no target has no execution to show;
+		     the dash says so on hover rather than sitting there unexplained. -->
+		<span
+			class="font-display text-sm font-semibold tabular-nums"
+			title={ride.executionScored === false
+				? 'This workout had no power targets to score'
+				: undefined}
+			>{ride.executionScored === false
+				? '—'
+				: `${Math.round(ride.execution * 100)}%`}</span
 		>
 		{#if server}
 			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->
@@ -372,15 +395,17 @@
 	{#if device.all.length > 0}
 		<h2 class="eyebrow mt-10">on this device only</h2>
 		<p class="text-muted mt-1 text-xs">
-			Saved while the server was unreachable — summaries only, so they can't
-			move to your account.
+			Summaries the server did not take — a ride under a minute, or one finished
+			while it was unreachable. They can't move to your account.
 		</p>
 		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
 				{@render rideRow(ride)}
 			{/each}
 		</ul>
-		<button onclick={() => device.clear()} class="btn btn-danger mt-4"
+		<!-- The only copy there is: a confirm, as errors.md keeps for the
+		     genuinely destructive (audit 2026-09-09). -->
+		<button onclick={() => void clearDevice()} class="btn btn-danger mt-4"
 			>Clear device rides</button
 		>
 	{/if}

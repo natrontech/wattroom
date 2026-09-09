@@ -16,11 +16,25 @@ import (
 // counts more than nailing recovery. Warmup/cooldown/freeride excluded; a
 // second with no power is a second not ridden and is excluded too (the
 // auto-pause exclusion, seen from the server side).
-func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics) (float64, error) {
+//
+// scorable says whether the WORKOUT prescribed anything to score, which is a
+// different question from how the rider did. Three cases, and #1143 was the
+// first two being answered as the third:
+//
+//   - the workout asks for targets and the rider hit some → the score
+//   - the workout asks for targets and the rider produced no power on any of
+//     them → 0, which is honest: they executed none of it
+//   - the workout asks for nothing (only warmup, cooldown and sprints — no
+//     steady step) → scorable is false and the score is meaningless. It used
+//     to return 1 here, a PERFECT score for a ride nobody could score, which
+//     was then stored, paid as XP, and won the Metronome medal off riders who
+//     had actually ridden the intervals.
+func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics) (score float64, scorable bool, err error) {
 	segments, err := workout.Parse(workoutJSON)
 	if err != nil {
-		return 0, fmt.Errorf("stats: workout json: %w", err)
+		return 0, false, fmt.Errorf("stats: workout json: %w", err)
 	}
+	scorable = Scorable(segments)
 	var weight, inBand float64
 	for second, sample := range samples {
 		target, scored := workout.TargetAt(segments, ftp, second)
@@ -40,9 +54,25 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 		}
 	}
 	if weight == 0 {
-		return 1, nil
+		// No second counted. Either the workout had nothing to score
+		// (scorable is false and the caller must not use this number), or the
+		// rider produced no power against targets that existed — and 0 is the
+		// honest answer to that one.
+		return 0, scorable, nil
 	}
-	return inBand / weight, nil
+	return inBand / weight, scorable, nil
+}
+
+// Scorable reports whether a workout prescribes any second the execution score
+// can be computed from. Only a steady step carries a target (workout.TargetAt);
+// warmup, cooldown, ramp and sprint ask for effort rather than a number.
+func Scorable(segments []workout.Segment) bool {
+	for _, seg := range segments {
+		if seg.Kind == "steady" && (seg.Watts > 0 || seg.Target > 0) {
+			return true
+		}
+	}
+	return false
 }
 
 // Curve is the best-effort power curve (SPEC windows).

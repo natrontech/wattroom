@@ -1,14 +1,15 @@
 -- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
-    seconds, avg_watts, kj, execution, ftp_watts, samples, curve, xp, norm_watts
+    seconds, avg_watts, kj, execution, execution_scored,
+    ftp_watts, samples, curve, xp, norm_watts
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 returning id;
 
 -- name: ListUserRides :many
 -- Summary only: the blob stays on disk unless a single ride is opened.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, ftp_watts, xp, room_id, shared_at
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
 order by started_at desc
@@ -51,6 +52,15 @@ join users u on u.id = m.user_id
 where m.room_id = $1
 order by m.awarded_at desc
 limit $2;
+
+-- name: CountRoomMedalsByRider :many
+-- Every medal this room ever awarded, per rider — the roster's count. The
+-- recent list above is capped and carries names; a count matched on those
+-- decayed as the room rode and merged two riders with one name (#1371).
+select user_id, count(*)::int as medals
+from medals
+where room_id = $1
+group by user_id;
 
 -- name: ListUserRideWeeks :many
 -- Distinct ISO weeks with at least one ride, newest first — the streak input.
@@ -244,3 +254,15 @@ limit sqlc.arg(max_rows)::int;
 select state, attempts, last_error, remote_id
 from ride_exports
 where ride_id = $1 and destination = $2;
+
+-- name: RequeueRideExport :execrows
+-- The rider pressing "try again" on a delivery that ran out of attempts
+-- (#1158). Back to pending with the counter cleared, so the ordinary sweep
+-- picks it up on its next pass and no second code path exists.
+--
+-- `state = 'failed'` is the guard, not decoration: a delivery still pending
+-- is already going to be tried, and one that succeeded must not be re-sent —
+-- pressing a stale button twice would put the ride on Strava twice.
+update ride_exports
+set state = 'pending', attempts = 0, last_error = null, updated_at = now()
+where ride_id = $1 and destination = $2 and state = 'failed';

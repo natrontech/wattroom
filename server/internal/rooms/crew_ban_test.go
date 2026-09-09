@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -22,12 +24,26 @@ import (
 // independently sufficient, and a test that set both would prove neither.
 func (h *harness) crewBan(t *testing.T, slug, user string) {
 	t.Helper()
+	crewID := h.putInCrew(t, slug, "Crew "+slug)
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crewID, UserID: h.users.byToken[user].ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("crew ban: %v", err)
+	}
+}
+
+// putInCrew creates a crew owned by the room's owner and moves the room into
+// it, returning the crew's id. The migration does this for every existing room
+// (ADR-0038); tests make rooms after it, so they do it themselves.
+func (h *harness) putInCrew(t *testing.T, slug, name string) pgtype.UUID {
+	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
+	code := randomCode(6)
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: "Crew " + slug, OwnerID: room.OwnerID,
+		Name: name, OwnerID: room.OwnerID, Code: &code,
 	})
 	if err != nil {
 		t.Fatalf("create crew: %v", err)
@@ -39,19 +55,13 @@ func (h *harness) crewBan(t *testing.T, slug, user string) {
 		"update rooms set crew_id = $2 where id = $1", room.ID, crew.ID); err != nil {
 		t.Fatalf("place room in crew: %v", err)
 	}
-	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken[user].ID, Role: "banned",
-	}); err != nil {
-		t.Fatalf("crew ban: %v", err)
-	}
+	return crew.ID
 }
 
 func TestACrewBanClosesEveryRoomDoor(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Velvet Hammer")
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
-		t.Fatalf("bob could not join: %d", status)
-	}
+	h.join(t, "bob", slug)
 
 	// Each door, open before the crew ban. Without this the test would pass
 	// against a door that was broken all along.
@@ -96,9 +106,7 @@ func TestACrewBanClosesEveryRoomDoor(t *testing.T) {
 func TestACrewBanTakesTheInsiderViewAway(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Velvet Hammer")
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
-		t.Fatalf("bob could not join: %d", status)
-	}
+	h.join(t, "bob", slug)
 	_, before := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
 	if before["role"] != "member" {
 		t.Fatalf("bob was not a member before the ban (%v) — test proves nothing", before["role"])
@@ -120,14 +128,17 @@ func TestACrewBanTakesTheInsiderViewAway(t *testing.T) {
 // the case that regresses if a door reads memberships directly.
 func TestACrewBanSurvivesRejoining(t *testing.T) {
 	h := setup(t)
-	slug, code := h.createRoom(t, "alice", "Velvet Hammer")
+	slug, _ := h.createRoom(t, "alice", "Velvet Hammer")
 	h.crewBan(t, slug, "bob")
+	// crewBan re-homes the room in a crew of its own; the ban and the code
+	// under test are that crew's.
+	code := codeOf(h.crewOf(t, slug).Code)
 
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
 		t.Errorf("a crew-banned rider joined by link: %d", status)
 	}
 	body := fmt.Sprintf(`{"code":%q}`, code)
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/join", body); status != http.StatusForbidden {
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join", body); status != http.StatusForbidden {
 		t.Errorf("a crew-banned rider joined by code: %d", status)
 	}
 }
@@ -138,9 +149,7 @@ func TestACrewBanTouchesNobodyElse(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Velvet Hammer")
 	for _, who := range []string{"bob", "carol"} {
-		if status, _ := h.call(t, who, http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
-			t.Fatalf("%s could not join: %d", who, status)
-		}
+		h.join(t, who, slug)
 	}
 	h.crewBan(t, slug, "bob")
 
@@ -151,4 +160,44 @@ func TestACrewBanTouchesNobodyElse(t *testing.T) {
 	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/me", prefs); status != http.StatusOK {
 		t.Errorf("banning bob shut the owner out of her own room: %d", status)
 	}
+}
+
+// The sidebar is a door too, and it was not in the list above. `ListUserRooms`
+// filters `m.role != 'banned'` — the ROOM ban, which a crew ban deliberately
+// does not set (the helper above leaves the membership row untouched). So a
+// crew-banned rider could still be handed the room in their own room list,
+// which is where #1178 puts the crew's name and icon.
+func TestACrewBanTakesTheRoomOutOfTheList(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Velvet Hammer")
+	h.join(t, "bob", slug)
+	if !listsRoom(t, h, "bob", slug) {
+		t.Fatal("bob's room list is missing the room before the ban — the test would prove nothing")
+	}
+
+	h.crewBan(t, slug, "bob")
+
+	if listsRoom(t, h, "bob", slug) {
+		t.Error("a crew-banned rider is still handed the room in their own room list")
+	}
+}
+
+// listsRoom asks GET /api/rooms as user and says whether slug is in it. The
+// endpoint answers with an object — {"rooms": [...], "maxOwned": n} — not a
+// bare array, which is worth stating because decoding it as one yields an
+// empty list rather than an error.
+func listsRoom(t *testing.T, h *harness, user, slug string) bool {
+	t.Helper()
+	status, body := h.call(t, user, http.MethodGet, "/api/rooms", "")
+	if status != http.StatusOK {
+		t.Fatalf("list rooms: %d", status)
+	}
+	rooms, _ := body["rooms"].([]any)
+	for _, entry := range rooms {
+		room, _ := entry.(map[string]any)
+		if room["slug"] == slug {
+			return true
+		}
+	}
+	return false
 }

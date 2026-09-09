@@ -42,6 +42,31 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # voice-duck.spec.ts's real LiveKit connection (#1171). A GitHub Actions
+      # service container has no `command:` override, unlike docker-compose.yml's
+      # `--dev`, so the devkey/secret pair e2e/server.js already defaults to
+      # (matching make dev-server) comes from an explicit `keys:` in the config
+      # instead. `node_ip: 127.0.0.1` is the same fix docker-compose.yml uses for
+      # macOS Docker Desktop's 172.x advertisement problem — here it is what
+      # makes the runner's own browser (outside the container, same as the host
+      # browser in local dev) able to reach the published RTC ports at all.
+      livekit:
+        image: livekit/livekit-server:v1.13
+        env:
+          LIVEKIT_CONFIG: |
+            port: 7880
+            rtc:
+              tcp_port: 7881
+              port_range_start: 51000
+              port_range_end: 51050
+              use_external_ip: false
+              node_ip: 127.0.0.1
+            keys:
+              devkey: secret
+        ports:
+          - '7880:7880'
+          - '7881:7881'
+          - '51000-51050:51000-51050/udp'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6

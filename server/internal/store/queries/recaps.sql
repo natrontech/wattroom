@@ -24,7 +24,14 @@ order by r.ended_at;
 -- name: PruneSessionRecaps :exec
 -- The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
 -- register: this is what stops the table answering "where was this person in
--- March". Swept on write, like PruneChat — the table never grows past it.
+-- March".
+--
+-- Run by internal/housekeeping, NOT on write. This used to be swept when a
+-- session ended, by analogy with PruneChat — and the analogy does not hold
+-- (#1153). PruneChat's bound is 500 messages, and only a write can exceed a
+-- count, so pruning on write is exactly sufficient there. This bound is time,
+-- which expires a row with no write involved, so a room that stopped holding
+-- sessions kept its recaps forever — the one case the bound exists for.
 delete from session_recaps where ended_at < now() - make_interval(days => $1::int);
 
 -- name: ExportUserRecaps :many
@@ -42,9 +49,3 @@ cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at;
 
--- name: CountRecapsNaming :one
--- The purge trigger's witness: how many rows still carry this rider's
--- interval. Zero after `delete from users`, which is what the account test
--- asserts against the rows themselves rather than through an API.
-select count(*) from session_recaps
-where riders @> jsonb_build_array(jsonb_build_object('id', $1::text));

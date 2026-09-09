@@ -6,9 +6,12 @@ package customworkouts
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -57,6 +60,11 @@ func checkDefinition(name string, raw json.RawMessage) (code, message, field str
 	}
 	if name == "" || len(name) > 80 {
 		return "validation_error", "A workout name has to be 1-80 characters.", "name"
+	}
+	// Then the editor's own bounds, so the API cannot store what the shelf
+	// will refuse to read. Validate's error is written for the rider.
+	if err := workout.Validate(string(raw)); err != nil {
+		return "validation_error", err.Error(), "workout"
 	}
 	total := 0
 	for _, segment := range segments {
@@ -155,8 +163,15 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	row, err := s.store.Queries.UpdateWorkout(r.Context(), db.UpdateWorkoutParams{
 		ID: id, OwnerID: user.ID, Name: name, Author: user.DisplayName, Definition: req.Workout,
 	})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That workout does not exist.")
+		return
+	}
+	if err != nil {
+		// Like create and delete: a database failure is logged and a 500, not
+		// a rider told their workout does not exist (audit 2026-09-09).
+		s.log.Error("workout update failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The workout could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, workoutJSON{

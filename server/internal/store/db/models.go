@@ -65,11 +65,15 @@ type ChatReaction struct {
 }
 
 type Crew struct {
-	ID        pgtype.UUID
-	Name      string
-	Icon      string
-	OwnerID   pgtype.UUID
-	CreatedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+	Name       string
+	Icon       string
+	OwnerID    pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
+	Code       *string
+	ImageMime  *string
+	Image      []byte
+	ImageSetAt pgtype.Timestamptz
 }
 
 type CrewRole struct {
@@ -177,22 +181,23 @@ type PlaylistTrack struct {
 }
 
 type Ride struct {
-	ID          pgtype.UUID
-	UserID      pgtype.UUID
-	RoomID      pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Samples     []byte
-	SharedAt    pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	Curve       []byte
-	Xp          int32
-	NormWatts   *int16
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	RoomID          pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	FtpWatts        int16
+	Samples         []byte
+	SharedAt        pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	Curve           []byte
+	Xp              int32
+	NormWatts       *int16
+	ExecutionScored bool
 }
 
 type RideExport struct {
@@ -208,7 +213,6 @@ type RideExport struct {
 
 type Room struct {
 	ID                      pgtype.UUID
-	Code                    string
 	Slug                    string
 	Name                    string
 	OwnerID                 pgtype.UUID
@@ -310,7 +314,6 @@ type User struct {
 	NotifyPlanned      bool
 	UnsubToken         pgtype.UUID
 	FriendCode         string
-	AvatarPreset       *string
 	IcsToken           string
 	AccentPalette      *string
 	ColorScheme        *string
@@ -320,6 +323,13 @@ type User struct {
 	EmailVerifyExpires pgtype.Timestamptz
 	EmailRequired      bool
 	Timezone           *string
+}
+
+type UserAvatar struct {
+	UserID pgtype.UUID
+	Mime   string
+	Image  []byte
+	SetAt  pgtype.Timestamptz
 }
 
 type VisibleRoom struct {

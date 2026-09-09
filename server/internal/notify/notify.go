@@ -154,7 +154,7 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 %s: %s/r/%s
 
 You get this because session emails are switched on in your WattRoom
-profile. Turn them off: %s`,
+settings. Turn them off: %s`,
 			room.Name, verb, workoutName, detail, closing, s.baseURL, room.Slug, unsub)
 		m := mail{
 			To: *t.Email, Subject: subject, Heading: heading,
@@ -240,14 +240,14 @@ func unsubParams(r *http.Request) (id, token pgtype.UUID, ok bool) {
 func (s *Service) handleUnsubscribeForm(w http.ResponseWriter, r *http.Request) {
 	if _, _, ok := unsubParams(r); !ok {
 		s.unsubOutcome(w, http.StatusBadRequest, "That link is incomplete",
-			"Use the link from the email, or switch emails off in your WattRoom profile.")
+			"Use the link from the email, or switch emails off in your WattRoom settings.")
 		return
 	}
 	// No action attribute: the form posts back to this same URL, query and
 	// all — nothing request-derived is ever written into the HTML.
 	httpx.WritePage(w, http.StatusOK, "Unsubscribe", httpx.PageBody(
 		"Stop WattRoom session emails?",
-		"You can turn them back on any time in your profile.",
+		"You can turn them back on any time in your settings.",
 		`<form method="post"><button>Unsubscribe</button></form>`))
 }
 
@@ -255,14 +255,14 @@ func (s *Service) handleUnsubscribeForm(w http.ResponseWriter, r *http.Request) 
 // answer is a page in the app's shell, not JSON (#832).
 func (s *Service) unsubOutcome(w http.ResponseWriter, status int, heading, line string) {
 	httpx.WritePage(w, status, heading, httpx.PageBody(heading, line,
-		httpx.PageLink(s.baseURL+"/profile", "Back to WattRoom")))
+		httpx.PageLink(s.baseURL+"/settings/profile", "Back to WattRoom")))
 }
 
 func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	id, token, ok := unsubParams(r)
 	if !ok {
 		s.unsubOutcome(w, http.StatusBadRequest, "That link is incomplete",
-			"Use the link from the email, or switch emails off in your WattRoom profile.")
+			"Use the link from the email, or switch emails off in your WattRoom settings.")
 		return
 	}
 	rows, err := s.store.Queries.UnsubscribePlanned(r.Context(), db.UnsubscribePlannedParams{
@@ -280,7 +280,7 @@ func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.unsubOutcome(w, http.StatusOK, "Done — no more session emails",
-		"Turn them back on any time in your WattRoom profile.")
+		"Turn them back on any time in your WattRoom settings.")
 }
 
 // SendEmailVerification puts the confirm link in front of a rider (#781).
@@ -321,7 +321,7 @@ a WattRoom account, ignore this — nothing happens until someone follows it.`, 
 // this — for a replaced address that is the row as it was *before* the
 // replacement, which is the whole point of the alert.
 func (s *Service) AccountAlert(user db.User, heading, line string) {
-	s.alert(user, heading, line, "Check your account", s.baseURL+"/profile")
+	s.alert(user, heading, line, "Check your account", s.baseURL+"/settings/profile")
 }
 
 // AccountDeleted is the receipt for a purge. Same template, but nothing to
@@ -361,7 +361,7 @@ func alertMail(user db.User, heading, line, action, url string) (mail, bool) {
 	text := line
 	if action != "" {
 		body = append(body,
-			"If that was you, there is nothing to do. If it was not, open your profile and check what your account signs in with.")
+			"If that was you, there is nothing to do. If it was not, open your settings and check what your account signs in with.")
 		text += "\n\nIf that was you, there is nothing to do. If it was not, check what your\naccount signs in with: " + url
 	}
 	return mail{

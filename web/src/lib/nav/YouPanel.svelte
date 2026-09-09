@@ -65,6 +65,10 @@
 	const onAway = (next: boolean) => conn?.setAway(next);
 
 	const destination = $derived(activeHref(pathname));
+	const onOwnPage = $derived(
+		pathname === '/u/me' ||
+			(!!account.me && pathname === `/u/${account.me.id}`),
+	);
 	// The dot on your own avatar: away is yours to set, riding is the room's
 	// to report (#1016).
 	const myStatus = $derived(
@@ -87,21 +91,24 @@
      these are tapped from a bike (ux.md). -->
 <div
 	class="border-ink/5 border-t px-3 py-2.5"
-	{@attach contextMenu(() => youMenu(account.me?.id, goto))}
+	{@attach contextMenu(() => youMenu(goto))}
 >
 	<div class="flex items-center gap-2" title={MENU_HINT}>
-		<!-- Your own rider page (#575). Everywhere else in the app an avatar
-		     opens /u/<id>; yours was the one that did not, and the gear
-		     beside it goes to settings — which are titled "Profile". -->
+		<!-- Your own rider page (#575), at its own address (#1330): /u/me
+		     needs no id, so the row is a link before the account has landed
+		     — and it lights there the way every other row lights on its
+		     page. -->
 		<a
-			href={account.me ? `/u/${account.me.id}` : undefined}
-			class="mr-auto flex min-w-0 items-center gap-2"
+			href="/u/me"
+			aria-current={onOwnPage ? 'page' : undefined}
+			class="mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1 {onOwnPage
+				? 'bg-ink/10'
+				: 'hover:bg-ink/5'}"
 			title="your rider page"
 		>
 			<Avatar
 				name={account.me?.displayName ?? ''}
 				avatarUrl={account.me?.avatarUrl}
-				preset={account.me?.avatarPreset}
 				xp={account.me?.totalXp}
 				status={myStatus}
 				size={26}
@@ -132,13 +139,13 @@
 		<!-- Everything that is a setting rather than a destination: profile,
 		     sensors, ramp test, devices, the mixer, the gate, the theme. -->
 		<a
-			href="/profile"
+			href="/settings"
 			class="grid h-11 w-11 place-items-center rounded md:h-7 md:w-7 {destination ===
-				undefined && pathname.startsWith('/profile')
+				undefined && pathname.startsWith('/settings')
 				? 'text-ink'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-			title="settings"
-			aria-label="settings"><Settings size={16} /></a
+			title="Settings"
+			aria-label="Settings"><Settings size={16} /></a
 		>
 	</div>
 	{#if showAv}

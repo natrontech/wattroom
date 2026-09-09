@@ -38,9 +38,19 @@
 	import Toasts from '$lib/components/Toasts.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
+	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
+	import { shellTitleBar } from '$lib/desktop';
+	import { notify } from '$lib/notify.svelte';
 
 	let { children } = $props();
+
+	// The desktop shell hides the OS title bar and this app draws the strip
+	// (#1188): the window's handle, in the app's own colour. 0 in a browser.
+	const titleBar = shellTitleBar();
+	// Notifications answer back (ADR-0042): a click lands in the
+	// conversation, a reply from the shell's own notification is sent.
+	notify.listen((href) => void goto(href));
 
 	void account.load();
 	// Before the routing effect below replaces the URL and takes ?new= with it.
@@ -88,6 +98,7 @@
 			page.url.pathname === '/' ||
 			page.url.pathname === '/legal' ||
 			page.url.pathname === '/privacy' ||
+			page.url.pathname === '/download' ||
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
@@ -104,8 +115,30 @@
 	// the spectator view used to be the other one, and a phone stands in the
 	// framed room itself now (#412).
 	const framed = $derived(
-		!!account.me && !publicPath && page.url.pathname !== '/login',
+		!!account.me &&
+			!publicPath &&
+			page.url.pathname !== '/login' &&
+			// The HUD is a window of its own (#296): numbers only, no sidebar.
+			page.url.pathname !== '/hud',
 	);
+
+	// The ride is running, here or in a room — the cave below and, in the
+	// desktop shell, the floating HUD (ADR-0041): it opens when a ride starts
+	// and closes when it ends, and the shell shows it only while WattRoom is
+	// not the front window.
+	const riding = $derived.by(() => {
+		const phase = roomConnection.current?.live.tick?.state.phase;
+		return (
+			(page.url.pathname.startsWith('/r/') &&
+				(phase === 'countdown' || phase === 'running' || phase === 'paused')) ||
+			soloRide.active
+		);
+	});
+	$effect(() => {
+		(
+			globalThis as { wattroom?: { hud?: (on: boolean) => void } }
+		).wattroom?.hud?.(riding);
+	});
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store
 	// re-fetches — this replaced the shell's 10 s poll.
@@ -212,8 +245,21 @@
 </script>
 
 <svelte:head>
+	<!-- The default every page inherits; a page names itself over it. -->
+	<title>WattRoom</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
+
+{#if titleBar}
+	<!-- The window's handle: drag, double-click to zoom. It sits over every
+	     page, and the framed layout below starts under it so the traffic
+	     lights and the Windows controls never land on the sidebar's logo. -->
+	<div
+		class="fixed inset-x-0 top-0 z-60"
+		style="height: {titleBar}px; -webkit-app-region: drag"
+		aria-hidden="true"
+	></div>
+{/if}
 
 {#if !account.loaded && !publicPath}
 	<!-- Hold the frame while /api/me answers — no gated flash, no login flash. -->
@@ -233,7 +279,10 @@
 				ridePhase === 'running' ||
 				ridePhase === 'paused')) ||
 		soloRide.active}
-	<div class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}">
+	<div
+		class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}"
+		style={titleBar ? `padding-top: ${titleBar}px` : ''}
+	>
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
 		     rooms, the places inside the room you are standing in, messages and
 		     you. Owned here so navigating out of a room does not swap instances
@@ -255,6 +304,7 @@
 			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
+			style={titleBar ? `top: ${titleBar}px` : ''}
 		>
 			<!-- One call, connected or not (#1047). The AV row inside reads the
 			     chain itself now, and what is left answers with optional
@@ -268,6 +318,7 @@
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 				onLeave={leaveRoom}
 				onMember={showMember}
+				onSheet={() => (drawer = false)}
 			/>
 		</div>
 		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -349,3 +400,4 @@
 <Toasts />
 <ImageViewer />
 <ContextMenuHost />
+<ConfirmHost />

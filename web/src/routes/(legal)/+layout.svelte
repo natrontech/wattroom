@@ -1,17 +1,28 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
+	import { shellTitleBar } from '$lib/desktop';
 
 	let { children } = $props();
+	// Under the desktop shell's drag strip (#1188); 0 in a browser.
+	const titleBar = shellTitleBar();
 </script>
 
-<!-- Shared shell for the public legal pages (#232): quiet chrome, no glow. -->
+<!-- Shared shell for the public pages (#232) — legal, privacy, and the
+     desktop app's download (#296): quiet chrome, no glow. -->
 <main class="cave bg-surface text-ink relative min-h-dvh overflow-x-hidden">
 	<div
 		class="bg-gridlines pointer-events-none absolute inset-x-0 top-0 h-[30dvh] opacity-40"
 		aria-hidden="true"
 	></div>
 
-	<div class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16">
+	<!-- The phone-width guard (e2e/phone-width.spec.ts) measures this
+	     container on every public page too: main's overflow-x-hidden would
+	     only hide a page that grew sideways, not stop it. -->
+	<div
+		data-testid="page-body"
+		class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16"
+		style={titleBar ? `padding-top: ${titleBar + 20}px` : ''}
+	>
 		<header class="flex items-center justify-between">
 			<a href="/" aria-label="WattRoom home"><Logo size={28} wordmark /></a>
 			<a href="/home" class="btn-link text-xs">to the rooms</a>
@@ -25,6 +36,8 @@
 			<a href="/legal" class="hover:text-ink underline">legal notice</a>
 			<span aria-hidden="true">·</span>
 			<a href="/privacy" class="hover:text-ink underline">privacy</a>
+			<span aria-hidden="true">·</span>
+			<a href="/download" class="hover:text-ink underline">desktop app</a>
 			<span aria-hidden="true">·</span>
 			<a
 				href="https://github.com/natrontech/wattroom"

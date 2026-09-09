@@ -18,6 +18,7 @@
 	import { api } from '$lib/api';
 	import { fetchProgression, type Progression } from '$lib/progression';
 	import { apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 	import { zoneSeconds } from '$lib/ride/stats';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
@@ -39,10 +40,16 @@
 	// Both are secondary to the ride itself, so they load beside it and their
 	// absence costs one section rather than the page.
 	let rides = $state<RideRecord[] | null>(null);
+	let ridesError = $state<string | null>(null);
 	let progression = $state<Progression | null>(null);
-	void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
-		if (res.ok) rides = res.data.rides;
-	});
+	function loadRides() {
+		ridesError = null;
+		void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
+			if (res.ok) rides = res.data.rides;
+			else ridesError = res.error.message;
+		});
+	}
+	loadRides();
 	void fetchProgression().then((res) => {
 		if (res.ok) progression = res.data;
 	});
@@ -53,14 +60,27 @@
 		exportError = null;
 		const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/export`);
 		if (res.ok) {
-			const url = URL.createObjectURL(res.data.blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = res.data.filename ?? `wattroom-${id}.fit`;
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(res.data.blob, res.data.filename ?? `wattroom-${id}.fit`);
 		} else exportError = res.error.message;
 		exporting = false;
+	}
+
+	// #1158. A delivery that ran out of attempts used to be a dead row and a
+	// sentence blaming a disconnection that had usually not happened. This is
+	// the one big button errors.md asks for; the server's own sweep does the
+	// rest, so there is no second delivery path.
+	let retrying = $state(false);
+	let retryError = $state<string | null>(null);
+	async function retryExport() {
+		if (!ride) return;
+		retrying = true;
+		retryError = null;
+		const res = await api(`/api/rides/${encodeURIComponent(id)}/export/retry`, {
+			method: 'POST',
+		});
+		if (res.ok) await load(id);
+		else retryError = res.error.message;
+		retrying = false;
 	}
 
 	async function load(which: string) {
@@ -97,12 +117,22 @@
 					{ label: 'work', value: `${ride.kj} kJ` },
 					{ label: 'average', value: `${ride.avgWatts} W` },
 					{ label: 'normalised', value: `${ride.normWatts} W` },
-					{ label: 'execution', value: `${Math.round(ride.execution * 100)}%` },
+					{
+						label: 'execution',
+						value:
+							ride.executionScored === false
+								? 'not scored'
+								: `${Math.round(ride.execution * 100)}%`,
+					},
 					{ label: 'earned', value: `${ride.xp} XP` },
 				]
 			: [],
 	);
 </script>
+
+<svelte:head
+	><title>{ride?.workoutName ?? 'Ride'} · Rides · WattRoom</title></svelte:head
+>
 
 <main class="page">
 	<a
@@ -271,6 +301,8 @@
 			<RideComparison
 				{ride}
 				{rides}
+				error={ridesError}
+				onRetry={loadRides}
 				d30={progression?.curve.d30.best20m}
 				d90={progression?.curve.d90.best20m}
 			/>
@@ -326,9 +358,21 @@
 					{:else if ride.export.state === 'pending'}
 						Waiting to reach Strava — it is retried on its own, nothing to do.
 					{:else}
-						Could not be sent to Strava.
-						{ride.export.error ?? ''} Your ride is safe here; reconnect Strava in
-						your profile if you disconnected it.
+						<!-- The cause is almost always Strava being briefly away,
+						     not a disconnection — so the copy no longer guesses at
+						     one, and the action it offers is the one that helps. -->
+						Could not be sent to Strava — it was tried several times over a couple
+						of hours.
+						{ride.export.error ?? ''} Your ride is safe here.
+						<button
+							onclick={retryExport}
+							disabled={retrying}
+							class="btn btn-secondary btn-xs mt-2 block"
+							>{retrying ? 'Queueing…' : 'Try sending it again'}</button
+						>
+						{#if retryError}
+							<span class="text-danger mt-1.5 block">{retryError}</span>
+						{/if}
 					{/if}
 				</p>
 			</section>

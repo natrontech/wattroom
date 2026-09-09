@@ -5,7 +5,7 @@
 	// dead mic.
 	//
 	// Rendered by both homes of the gate (#477): the room's quick panel and
-	// /profile's Voice & audio page.
+	// /settings/voice.
 	import GateMeter from '$lib/room/GateMeter.svelte';
 
 	let {

@@ -142,3 +142,24 @@ func TestWorkoutValidation(t *testing.T) {
 		}
 	}
 }
+
+// The editor's per-step bounds hold at the API too (audit 2026-09-09): what
+// the shelf would refuse to read is refused before it is stored.
+func TestWorkoutStepBoundsMatchTheEditor(t *testing.T) {
+	mux, _ := setup(t)
+	for name, body := range map[string]string{
+		"a two-second step":                    `{"workout":{"name":"Blink","author":"x","steps":[{"type":"steady","seconds":2,"target":0.8}]}}`,
+		"a 2500 % target":                      `{"workout":{"name":"Sun","author":"x","steps":[{"type":"steady","seconds":600,"target":25}]}}`,
+		"a step type the engine does not know": `{"workout":{"name":"Free","author":"x","steps":[{"type":"freeride","seconds":600}]}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			status, resp := call(t, mux, "alice", http.MethodPost, "/api/workouts", body)
+			if status != http.StatusBadRequest || resp["error"] != "validation_error" {
+				t.Fatalf("stored it: %d %v", status, resp)
+			}
+			if msg, _ := resp["message"].(string); !strings.HasPrefix(msg, "Step 1") {
+				t.Errorf("message %q does not name the step", msg)
+			}
+		})
+	}
+}

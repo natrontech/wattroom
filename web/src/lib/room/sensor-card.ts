@@ -4,7 +4,7 @@ import type { PairState } from '$lib/room/sensor-status';
  * What one sensor card says and offers, for a given state.
  *
  * Split out of the component (#1000) because one card now draws four
- * surfaces in two layouts — the grid on /pair, /ride, /ramp and the Training
+ * surfaces in two layouts — the grid on /settings/equipment, /ride, /ramp and the Training
  * place, the strip in a running session's header — and the seven states have
  * to read identically in both. It is also the only way to test the mapping
  * without a component-rendering dependency the repo does not have.

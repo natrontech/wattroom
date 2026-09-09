@@ -11,7 +11,12 @@ export function focusTrap(node: HTMLElement): { destroy(): void } {
 				'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
 			),
 		);
-	(focusables()[0] ?? node).focus();
+	// After the current flush, not now: Modal's portal attachment runs after
+	// this action (a parent's effects follow its children's) and moves the
+	// dialog to <body>, and moving a subtree blurs whatever it holds — so a
+	// synchronous focus here left every dialog open with focus on <body>
+	// (#1138).
+	queueMicrotask(() => (focusables()[0] ?? node).focus());
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key !== 'Tab') return;
 		const items = focusables();

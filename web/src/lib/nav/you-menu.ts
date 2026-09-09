@@ -81,19 +81,12 @@ function speakers(): MenuEntry[] {
 	];
 }
 
-export function youMenu(
-	id: string | undefined,
-	go: (href: string) => void,
-): MenuEntry[] {
+export function youMenu(go: (href: string) => void): MenuEntry[] {
 	const duck = duckFader();
 	return [
-		{
-			label: 'Your rider page',
-			icon: User,
-			onSelect: () => id && go(`/u/${id}`),
-			disabled: !id,
-		},
-		{ label: 'Settings', icon: Settings, onSelect: () => go('/profile') },
+		// /u/me (#1330): yours without knowing your id, so never greyed.
+		{ label: 'Your rider page', icon: User, onSelect: () => go('/u/me') },
+		{ label: 'Settings', icon: Settings, onSelect: () => go('/settings') },
 		'separator',
 		cueFader(),
 		...(duck ? [duck] : []),

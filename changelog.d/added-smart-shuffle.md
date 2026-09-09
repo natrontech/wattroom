@@ -1,1 +1,0 @@
-- Autoplay has a third mode, **Smart**: instead of looping a playlist it picks from your music library, quietest on the tracks the room just played or keeps skipping. Each room learns on its own — what one room skips changes nothing anywhere else.

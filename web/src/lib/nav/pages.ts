@@ -16,7 +16,7 @@ import Users from '@lucide/svelte/icons/users';
  * Four, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
  * second half of "what is happening" (Home), `/progression` the chart half of
  * a ride log split down the middle, `/ramp` a workout you start rather than a
- * page you visit, and `/pair` is set up once. A sidebar that lists everything
+ * page you visit, and `/settings/equipment` is set up once. A sidebar that lists everything
  * lists nothing.
  *
  * Friends earns a row because ADR-0020 made it a place and nothing drew it as
@@ -25,9 +25,10 @@ import Users from '@lucide/svelte/icons/users';
  * off — which reads as a label on the section beside it, not as a way to go
  * somewhere.
  *
- * Music earns one on the same test (#268): the pool is instance-wide while
- * every jukebox is room-scoped, so a rider uploading to it or searching it is
- * not standing in a room — and a destination reachable only from inside one is
+ * Music earns one on the same test (#268): the shelf is the rider's own
+ * (ADR-0015, amended — it reaches the rooms they may enter) while every
+ * jukebox is room-scoped, so a rider uploading to it or searching it is not
+ * standing in a room — and a destination reachable only from inside one is
  * not reachable when you want it. It is not the "second half" of any page
  * here, which is what the retirements above all had in common.
  */

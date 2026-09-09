@@ -34,23 +34,50 @@
 #    APPLE_API_KEY_P8      base64 of the App Store Connect .p8 key. Preferred
 #                          over an Apple ID and app-specific password: it does
 #                          not expire on a password change and is scopeable.
+#                          notarytool takes a PATH, so a step below decodes it
+#                          to a file first — electron-builder does not.
+#    MACOS_CERT_P12        must be a "Developer ID Application" certificate.
+#                          An "Apple Development" one signs, and then fails
+#                          notarization and Gatekeeper; the gate after the
+#                          build names the identity it found.
 #    APPLE_API_KEY_ID      the key's Key ID.
 #    APPLE_API_ISSUER      the issuer UUID from App Store Connect.
 #    APPLE_TEAM_ID         the 10-character team id.
 #
-# 3. Bump `desktop/package.json` version, then tag `desktop-v<that version>`.
-#    The guard below refuses a mismatch, because the shell's update check
-#    compares `app.getVersion()` — which reads that file — against the newest
-#    release tag. If they disagree, every install nags forever.
+# 3. `make desktop-release`. Versions are CalVer like the server's (ADR-0019),
+#    computed from the existing `desktop-v*` tags — in this namespace, so a
+#    server release never drags the shell along (ADR-0037, amended) — and
+#    with the month unpadded (`2026.9.5`): everything that reads the shell's
+#    version parses semver, which forbids the zero. The script writes the number into `desktop/package.json`
+#    through a pull request, merges it, then tags `desktop-v<version>`. The
+#    guard below refuses a tag that disagrees with the file, because the
+#    shell reports that file's version as `window.wattroom.version` and the
+#    update notice compares it against the newest release tag. If they
+#    disagree, every install nags forever.
 #
-# ── Still missing before anything goes public ─────────────────────────────────
+# ── Artifact names ────────────────────────────────────────────────────────────
 #
-# THE APP HAS NO ICON. A local build is proven to work and produces
-# `WattRoom-<version>-arm64.dmg`, but with Electron's default icon, because
-# `web/static/favicon.svg` is drawn for 16–32px and whether that mark is the
-# app icon at 512px is a design decision, not a build one. electron-builder
-# takes `build/icon.png` at 512×512 or larger and generates the rest. Ship an
-# installer without it and the dock shows a generic Electron atom.
+# `${productName}-${version}-${os}-${arch}.${ext}` — `WattRoom-2026.9.1-mac-universal.dmg`,
+# `WattRoom-2026.9.1-win-x64.exe`, `WattRoom-2026.9.1-linux-x86_64.AppImage`.
+# No spaces, because electron-builder's default Windows name has one, and a
+# download URL with a space in it is one more thing to get wrong.
+#
+# The /download page finds each installer by extension, so the names can
+# change but the extensions cannot.
+#
+# The icon is `desktop/build/icon.png`, rendered from `icon.svg` beside it —
+# electron-builder generates the .icns and .ico from the 1024px PNG.
+#
+# ── Self-update ───────────────────────────────────────────────────────────────
+#
+# The shell updates itself (#1303, ADR-0037 amended): electron-updater reads
+# `latest-mac.yml` / `latest.yml` / `latest-linux.yml` from GitHub's
+# `releases/latest/download` alias and downloads the matching installer —
+# the .zip on macOS, the .exe on Windows, the .AppImage on Linux — with the
+# .blockmap making it differential. All of those are uploaded above, so a
+# release with an installer but no manifest is not a thing this workflow can
+# produce. The first build carrying the updater cannot itself be reached by
+# it: the previous one has no updater.
 #
 # ── Why macOS refuses to build unsigned ───────────────────────────────────────
 #
@@ -91,6 +118,15 @@ jobs:
             exit 1
           fi
           echo "version $pkg matches the tag"
+      - name: the version is semver, or the packaged app crashes at launch
+        run: |
+          pkg=$(node -p "require('./desktop/package.json').version")
+          if ! echo "$pkg" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::desktop/package.json version $pkg is not semver" >&2
+            echo "electron-updater parses it at launch and throws on a leading zero" >&2
+            echo "(2026.09.4 did, #1303). CalVer here is unpadded: 2026.9.4." >&2
+            exit 1
+          fi
 
   build:
     needs: guard
@@ -98,11 +134,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # arm64 only. macos-15-intel is the last x86_64 macOS runner and
-          # retires in August 2027, so an Intel dmg is a bonus with an expiry
-          # date rather than a target to design around.
+          # One universal dmg, not one per architecture: the machine by the
+          # trainer is often the old laptop, and a 2019 MacBook cannot open an
+          # arm64 build at all. A user agent does not say which Mac it is, so
+          # two dmgs would mean the rider guessing on /download; one file that
+          # runs on both costs ~2x the download, once. Built on the arm64
+          # runner — electron-builder fetches both Electron binaries and merges
+          # them — so it does not depend on macos-15-intel, which retires in
+          # August 2027.
           - os: macos-latest
-            artifact: macos-arm64
+            artifact: macos-universal
           - os: windows-latest
             artifact: windows-x64
           - os: ubuntu-latest
@@ -152,15 +193,26 @@ jobs:
         shell: bash
         run: test -d node_modules/electron/dist || node node_modules/electron/install.js
 
-      # The .p8 is passed as base64; electron-builder decodes it. If a future
-      # major goes back to expecting a path, this is the line to change.
+      # notarytool wants the .p8 as a file path; the secret is its base64. The
+      # first dispatch handed it the text and notarytool said "the file
+      # couldn't be opened". tr strips the newline a pasted secret carries,
+      # which macOS base64 rejects. CSC_LINK is different: electron-builder
+      # does decode base64 there.
+      - name: App Store Connect key to a file
+        if: runner.os == 'macOS'
+        env:
+          KEY_B64: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          printf '%s' "$KEY_B64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/AuthKey.p8"
+          test -s "$RUNNER_TEMP/AuthKey.p8" || { echo "::error::APPLE_API_KEY_P8 did not decode to a file" >&2; exit 1; }
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
       - name: build
         working-directory: desktop
         shell: bash
         env:
           CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -169,16 +221,43 @@ jobs:
           GH_TOKEN: ''
         run: pnpm exec electron-builder --publish never
 
+      # What a rider's Mac will do with it. codesign shows which identity
+      # signed — an "Apple Development" .p12 signs happily and fails here, by
+      # name, instead of at the rider's first launch. spctl is Gatekeeper's own
+      # verdict on the notarized, stapled app.
+      - name: the app passes Gatekeeper
+        if: runner.os == 'macOS'
+        working-directory: desktop
+        run: |
+          app=dist/mac-universal/WattRoom.app
+          archs=$(lipo -archs "$app/Contents/MacOS/WattRoom")
+          case "$archs" in
+            *x86_64*arm64* | *arm64*x86_64*) echo "universal: $archs" ;;
+            *) echo "::error::the app is not universal — lipo says: $archs" >&2; exit 1 ;;
+          esac
+          codesign -dvv "$app" 2>&1 | grep '^Authority=' | head -3
+          if ! codesign -dvv "$app" 2>&1 | grep -q '^Authority=Developer ID Application'; then
+            echo "::error::signed with something other than a Developer ID Application certificate — export that one as MACOS_CERT_P12" >&2
+            exit 1
+          fi
+          spctl --assess --type execute --verbose=2 "$app"
+
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.artifact }}
-          # The installers only. electron-builder also leaves unpacked app
-          # directories here, which are hundreds of megabytes and not shippable.
+          # The installers, and what the shell's self-update reads (#1303):
+          # the latest*.yml manifests, the .blockmap files that make an update
+          # differential, and on macOS the .zip that Squirrel.Mac installs
+          # from. electron-builder also leaves unpacked app directories here,
+          # hundreds of megabytes and not shippable.
           path: |
             desktop/dist/*.dmg
+            desktop/dist/*.zip
             desktop/dist/*.exe
             desktop/dist/*.AppImage
             desktop/dist/*.deb
+            desktop/dist/*.blockmap
+            desktop/dist/latest*.yml
           if-no-files-found: error
           retention-days: 7
 

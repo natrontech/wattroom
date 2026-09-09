@@ -32,8 +32,8 @@ import {
  * socket. AV is transit-only and never recorded (locked privacy decision) —
  * nothing here persists anything.
  *
- * Mic starts on with browser noiseSuppression + echoCancellation (SPEC room
- * audio defaults); camera starts off. Track ownership: LiveKit owns the media
+ * Mic starts on with browser echoCancellation + autoGainControl and no noise
+ * suppression (SPEC room audio defaults, ADR-0043); camera starts off. Track ownership: LiveKit owns the media
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
  *
@@ -62,6 +62,18 @@ import {
 
 const VOICE_UNREACHABLE =
 	'Voice could not connect — check your connection and try again.';
+/**
+ * A join that neither connects nor fails (#1203): a browser that never
+ * delivers the gesture the SDK is waiting for, a webview, a network that
+ * swallows the handshake. LiveKit bounds its own peer connection, but the
+ * whole attempt was not bounded, so "joining voice…" could sit there for the
+ * rest of the ride with nothing telling the rider or the code. Long enough
+ * for a slow handshake on a bad link, short enough that a rider mid-warmup
+ * gets a button back.
+ */
+export const JOIN_TIMEOUT_MS = 20_000;
+const VOICE_STUCK =
+	'Voice did not connect in time — try again, and tap or click anywhere first if the browser is waiting for you.';
 
 export function createRoomAv(slug: string) {
 	// One named place for what the UI watches, one for what the connection
@@ -102,8 +114,16 @@ export function createRoomAv(slug: string) {
 	const chain = createMicChain({
 		devices,
 		publish: async (track) => {
+			const lk = conn.liveKit!;
 			await conn.room?.localParticipant.publishTrack(track, {
-				source: conn.liveKit!.Track.Source.Microphone,
+				source: lk.Track.Source.Microphone,
+				// Full-band Opus at 96 kbps, not the SDK's 48 (#1340): the room
+				// is asked to sound like a voice in the room, and a rider's
+				// uplink has that to spare. No DTX: the gate already sends
+				// digital silence, and Opus's comfort-noise transitions over it
+				// are what the ear reads as "noise reduction".
+				audioPreset: lk.AudioPresets.musicHighQuality,
+				dtx: false,
 			});
 		},
 		unpublish: (track) => conn.room?.localParticipant.unpublishTrack(track),
@@ -199,10 +219,10 @@ export function createRoomAv(slug: string) {
 	 * elements (#645).
 	 *
 	 * Both halves are needed and neither is enough. `startAudio` plays the
-	 * media elements, but once `createMediaElementSource` has them their sound
-	 * only reaches the speakers through the bus — so a suspended context is
-	 * silence whatever LiveKit does. And resuming the context does not play an
-	 * element the browser refused.
+	 * media elements, but their sound reaches the speakers only through the
+	 * bus (av-output.ts holds them at volume 0 — `startAudio` unmutes them,
+	 * #1339) — so a suspended context is silence whatever LiveKit does. And
+	 * resuming the context does not play an element the browser refused.
 	 */
 	async function startPlayback() {
 		chain.resume();
@@ -288,9 +308,30 @@ export function createRoomAv(slug: string) {
 		// listen-only join that never opened one (#824).
 		chain.clearFault();
 		listen();
+		// The attempt is bounded as a whole (#1203). When the deadline lands
+		// first the rider gets the failed state and its retry; whatever the
+		// stuck step resolves to afterwards finds the join no longer
+		// connecting and stands down. Anything else that moves the status
+		// meanwhile — leave(), say — is the same signal.
+		const stale = () => av.status !== 'connecting';
+		const deadline = setTimeout(() => {
+			if (stale()) return;
+			av.status = 'failed';
+			av.error = { message: VOICE_STUCK, signIn: false };
+			void conn.room?.disconnect();
+		}, JOIN_TIMEOUT_MS);
+		try {
+			await joinAttempt(wantMic, stale);
+		} finally {
+			clearTimeout(deadline);
+		}
+	}
+
+	async function joinAttempt(wantMic: boolean, stale: () => boolean) {
 		const res = await api<{ url: string; token: string }>(
 			`/api/rooms/${slug}/av-token`,
 		);
+		if (stale()) return;
 		if (!res.ok) {
 			av.status = 'failed';
 			// 401 is the one refusal a retry cannot fix (#642).
@@ -332,6 +373,12 @@ export function createRoomAv(slug: string) {
 			});
 			wire(conn.room, client);
 			await conn.room.connect(res.data.url, res.data.token);
+			if (stale()) {
+				// The deadline (or a leave) beat the handshake: do not walk into
+				// a room the rider was already told did not open.
+				void conn.room.disconnect();
+				return;
+			}
 			conn.myIdentity = conn.room.localParticipant.identity;
 			conn.me = riderOf(conn.myIdentity);
 			av.status = 'live';
@@ -365,6 +412,7 @@ export function createRoomAv(slug: string) {
 			}
 			startNote();
 		} catch {
+			if (stale()) return;
 			// LiveKit's own message is written for developers; the rider needs
 			// the step that failed and the one thing to try (errors.md).
 			av.status = 'failed';
@@ -507,6 +555,17 @@ export function createRoomAv(slug: string) {
 			setVoice(conn.me, 'muted');
 			noteVoice();
 			await closeCam();
+			// And the screen goes with them (#1128). A rider who stepped out is
+			// not watching what their machine is showing the room, which is the
+			// same argument as the camera's — and one step worse, because a
+			// screen keeps disclosing after they walk off (#563).
+			//
+			// Deliberately NOT restored on return, unlike the mic and camera:
+			// those come back to what this tab had live, and a share is a thing
+			// the rider pointed at something. Re-publishing a window they left
+			// ten minutes ago, without them asking, is how a private tab
+			// reaches a room. Coming back offers the button, not the share.
+			if (av.sharing) await stopShare();
 			return;
 		}
 		if (conn.micBeforeAway && !av.micOn) {
@@ -517,6 +576,21 @@ export function createRoomAv(slug: string) {
 		if (conn.camBeforeAway && !av.camOn) {
 			await openCam();
 		}
+	}
+
+	/**
+	 * Stop sharing, whoever asked — the button, or stepping away (#1128).
+	 * One place, so the two cannot drift apart on what stopping means.
+	 */
+	async function stopShare() {
+		if (!conn.room) return;
+		av.sharing = false;
+		av.sharingAudio = false;
+		await conn.room.localParticipant
+			.setScreenShareEnabled(false)
+			.catch(() => {});
+		if (dropOwned(screenTracks, conn.me, conn.myIdentity))
+			stage.dropScreen(conn.me);
 	}
 
 	/**

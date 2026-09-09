@@ -10,13 +10,9 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
-	"runtime/debug"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,6 +31,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/friends"
 	"github.com/natrontech/wattroom/server/internal/gamify"
 	"github.com/natrontech/wattroom/server/internal/gifs"
+	"github.com/natrontech/wattroom/server/internal/housekeeping"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
@@ -145,6 +142,8 @@ func main() {
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
+		// A purge hands the rider's crews on before the row goes (ADR-0038).
+		accountService.SetCrews(roomsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
 		// without it the profile hides the whole notifications section.
 		if notifier := notify.New(st, log, baseURL); notifier != nil {
@@ -192,6 +191,9 @@ func main() {
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.
 		chatService.SetLive(h)
+		// The deletions no write can trigger (#1153, #1163). Sessions and
+		// recaps are both bounded by TIME, which nothing but a clock enforces.
+		housekeeping.Run(context.Background(), st, log)
 		// What a finished session leaves behind (ADR-0034). The hub writes
 		// through it when a session ends; the backlog reads it back, so the
 		// card survives the reload every other timeline entry does not.
@@ -292,218 +294,4 @@ func main() {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
 	}
-}
-
-// issuerOrNil keeps the nil-interface trap out of main: a nil *GitHubIssuer
-// wrapped in the interface would not be nil.
-func issuerOrNil() feedback.Issuer {
-	if g := feedback.GitHubFromEnv(); g != nil {
-		return g
-	}
-	return nil
-}
-
-// healthzHandler answers the one question the maintenance page and the deploy
-// gate both ask: can this binary serve? It used to write "ok" unconditionally,
-// which made it useless for either (ADR-0019). No store configured is
-// solo-ride mode — genuinely healthy, not degraded — but a store that has been
-// configured and cannot be reached is not.
-func healthzHandler(st *store.Store, log *slog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if st != nil {
-			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-			defer cancel()
-			if err := st.Pool.Ping(ctx); err != nil {
-				log.Error("healthz: database unreachable", "err", err)
-				http.Error(w, "database unreachable", http.StatusServiceUnavailable)
-				return
-			}
-		}
-		_, _ = w.Write([]byte("ok"))
-	}
-}
-
-// versionHandler reports which build is running. The Go toolchain stamps
-// vcs.* into any `go build` from a git checkout, so there are no ldflags to
-// maintain; `go run` (dev) carries no stamp and reports "dev".
-func versionHandler() http.HandlerFunc {
-	commit, builtAt := "dev", ""
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		var dirty bool
-		for _, s := range bi.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				commit = s.Value
-				if len(commit) > 7 {
-					commit = commit[:7]
-				}
-			case "vcs.time":
-				builtAt = s.Value
-			case "vcs.modified":
-				dirty = s.Value == "true"
-			}
-		}
-		if dirty && commit != "dev" {
-			commit += "+dirty"
-		}
-	}
-	// Docker images build from a gitless context, so no vcs stamp lands in
-	// the binary; the publish workflow hands the sha in as WATTROOM_BUILD_SHA.
-	if commit == "dev" {
-		if sha := os.Getenv("WATTROOM_BUILD_SHA"); sha != "" && sha != "dev" {
-			commit = sha
-			if len(commit) > 7 {
-				commit = commit[:7]
-			}
-		}
-	}
-	// A tagged build carries its tag; :main and dev builds carry "dev" and must
-	// keep carrying it — the updater compares this against the tag it asked for
-	// (ADR-0019), so "some build of main" has to compare unequal to every
-	// release rather than accidentally matching one.
-	version := os.Getenv("WATTROOM_VERSION")
-	if version == "" {
-		version = "dev"
-	}
-	body, _ := json.Marshal(map[string]string{"version": version, "commit": commit, "builtAt": builtAt})
-	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	}
-}
-
-// immutablePrefix is the SvelteKit build's content-hashed output. A file
-// under it never changes meaning: a new build writes a new name, so a stale
-// copy is unreachable rather than wrong. index.html is deliberately NOT in
-// here — it is the fallback that names the current hashes, and spaHandler
-// rewrites it per request to splice in og meta.
-const immutablePrefix = "/_app/immutable/"
-
-// spaHandler serves the embedded SvelteKit build; SPA-route fallbacks get
-// index.html with og meta spliced in at request time (the embedded FS is
-// read-only, and only the server knows what a /r/{slug} link points at).
-func spaHandler(social *og.Service) http.Handler {
-	dist, err := fs.Sub(webdist, "webdist")
-	if err != nil {
-		panic(err)
-	}
-	return serveSPA(dist, social)
-}
-
-// serveSPA is spaHandler with the build handed in, so a test can supply one:
-// a dev checkout embeds an empty webdist, and the branch that matters most
-// here is the one that only fires for a file that exists.
-func serveSPA(dist fs.FS, social *og.Service) http.Handler {
-	fileServer := http.FileServerFS(dist)
-	index, _ := fs.ReadFile(dist, "index.html") // nil before `make web` (dev placeholder)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if p := strings.TrimPrefix(r.URL.Path, "/"); p != "" && p != "index.html" {
-			if _, err := fs.Stat(dist, p); err == nil {
-				// An embedded file has a zero ModTime, so http.ServeContent
-				// emits neither Last-Modified nor ETag: without a header of
-				// our own the browser has no validator to revalidate with and
-				// re-downloads the whole shell on every cold load. SvelteKit
-				// hashes everything under _app/immutable/ into its filename,
-				// which is exactly what an immutable cache wants — the same
-				// header chat and DM images already carry. Pinning these for a
-				// year is only safe while the document naming them
-				// revalidates; see the fallback below (#966).
-				if strings.HasPrefix(r.URL.Path, immutablePrefix) {
-					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-				} else {
-					// Everything else keeps its name across builds —
-					// favicon.png, changelog.md — so with no validator either
-					// it must be revalidated, not guessed at (#966).
-					w.Header().Set("Cache-Control", "no-cache")
-				}
-				fileServer.ServeHTTP(w, r)
-				return
-			}
-		}
-		if index == nil {
-			r.URL.Path = "/" // no frontend build embedded; keep the old 404-ish behavior
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-		// The document that names the current hashes has to be re-checked on
-		// every visit. It went out with no directive and no validator, so a
-		// browser was free to keep it — and once the hashes it names are
-		// pinned for a year, a rider is stuck on that release until they hard
-		// reload (#966). `no-cache` is "store it, but ask first", not "do not
-		// store": the shell is a few KB and only it has to be revalidated.
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(social.Inject(index, r))
-	})
-}
-
-// pollStars keeps the repo's star count fresh in the background so the landing
-// page reads one number from us instead of every visitor calling GitHub —
-// unauthenticated api.github.com allows 60 requests an hour per address, and
-// no visitor's address needs to reach GitHub for a star count. Zero means
-// unknown (not fetched yet, or GitHub unreachable) and the page hides it.
-// ponytail: fixed 15 min refresh, no ETag — stars are not a live metric.
-func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
-	var stars atomic.Int64
-	safego.Supervise(log, time.Now, "github stars poll", ctx.Done(), func() {
-		for {
-			n, err := fetchStars(ctx)
-			if err != nil {
-				log.Warn("github stars unavailable", "err", err)
-			} else {
-				stars.Store(n)
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(15 * time.Minute):
-			}
-		}
-	})
-	return &stars
-}
-
-// sweepExpiredSessions deletes rows already invisible to GetSessionUser
-// (expires_at <= now()) once at startup and then once a day, so the
-// sessions table stops growing monotonically with every sign-in (#673).
-// ponytail: process-lifetime goroutine — the server has no shutdown context.
-func sweepExpiredSessions(ctx context.Context, st *store.Store, log *slog.Logger) {
-	ticker := time.NewTicker(24 * time.Hour)
-	defer ticker.Stop()
-	for {
-		if err := st.Queries.DeleteExpiredSessions(ctx); err != nil {
-			log.Warn("expired session sweep failed", "err", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
-}
-
-func fetchStars(ctx context.Context) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://api.github.com/repos/natrontech/wattroom", nil)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = res.Body.Close() }()
-	if res.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("github answered %s", res.Status)
-	}
-	var body struct {
-		Stars int64 `json:"stargazers_count"`
-	}
-	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&body); err != nil {
-		return 0, err
-	}
-	return body.Stars, nil
 }

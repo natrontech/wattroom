@@ -131,7 +131,8 @@
 			session-reminder emails, so they see your address — but only if you saved one.
 		</li>
 		<li>
-			<!-- TODO(#36): name the VM hosting provider here once it is picked. -->
+			<!-- The provider and jurisdiction are the operator's to name (#1297); until
+			     then this says who runs it without saying where. -->
 			<strong class="text-ink font-medium">Infrastructure.</strong> The service runs
 			on servers operated for Natron Tech AG; DNS is provided by Cloudflare. IP addresses
 			appear in technical server logs, which we keep briefly for operations and security

@@ -72,7 +72,8 @@ bytes go only with the last row. Privacy is what you can see, not how many
 times the bytes are stored.
 
 **Crew scope (Phase 2) is the intended end state**, waiting on #1022's crew
-ADR; it only ever *widens* access from here, never narrows it.
+ADR; it only ever *widens* access from here, never narrows it. *Landed —
+see the 2026-09-08 amendment below.*
 
 **When a playlist can hold a pool track**, its entries inherit the scope
 above — a saved list is not a way around who may hear a shelf. Nothing does
@@ -132,3 +133,35 @@ is what makes the risk profile above true again.
   now a statement about a shelf rather than about disk.
 - Amends WATTROOM.md's "jukebox = synced YouTube queue" line (pointer added
   there).
+
+## Amendment, 2026-09-08 (#1103): Phase 2 — the pool's reach follows the rooms you may enter
+
+Phase 1 (#1095) drew the playing-versus-browsing line and set *playing* to
+"the uploader, and anyone who shares a room with them". Phase 2 keeps the
+line and re-derives the reach from the crew ([ADR-0038](0038-the-crew-is-the-layer-above-rooms.md)):
+
+- **A track plays for whoever may enter a room its uploader may enter**,
+  asked of `visible_rooms` — the single expression ADR-0038's third
+  amendment makes the only place allowed to answer that. A room open to its
+  crew counts for everyone in the crew, so joining one of a crew's rooms is
+  enough to hear what its members put on the deck of any room you could
+  walk into. This is the same rule person-visibility follows (#1135), and
+  it is *widening only*: nobody who could hear a track before loses it.
+- **Except the banned.** The old join read `memberships.role != 'banned'`
+  by hand. A crew ban leaves the membership row in place, so a crew-banned
+  rider kept fetching a crew-mate's bytes — the door #1126 did not list.
+  Routing the reach through the view closes it, at both levels.
+- **Autoplay's draw stays on the room's members**, not the crew — confirmed
+  on purpose, against the option the issue held open. Crew membership
+  follows room membership, so a crew-wide draw would put a shelf into the
+  rotation of rooms its owner never entered, which is the "my music plays
+  in a room I left" surprise at a larger radius. The member join goes
+  through `visible_rooms` too: a member the crew banned loses their say in
+  what the room plays.
+- **Browsing is not widened.** List, search, facets, edit and delete stay
+  uploader-only on `GetTrack`. Sharing a crew means hearing what its people
+  put on, not reading their libraries.
+
+The copyright fence above holds: reach is still bounded by rooms people were
+let into, one code at a time. Nothing here makes a file reachable to anyone
+who was not already permitted into a room with its uploader.

@@ -38,7 +38,11 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			testIgnore: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
+			testIgnore: [
+				'mobile-room.spec.ts',
+				'phone-width.spec.ts',
+				'voice-duck.spec.ts',
+			],
 			use: { ...devices['Desktop Chrome'] },
 		},
 		{
@@ -51,6 +55,39 @@ export default defineConfig({
 			name: 'phone',
 			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Pixel 5'] },
+		},
+		{
+			// voice-duck.spec.ts is the one spec that needs a real microphone
+			// signal rather than none. The signal itself is a live tone —
+			// voice-duck.spec.ts overrides getUserMedia with an OscillatorNode
+			// routed into a MediaStreamAudioDestinationNode, not a recording
+			// played through Chromium's own fake-file-capture device: a
+			// generated sound is guaranteed non-silent for as long as this
+			// page's Web Audio keeps running, where a looped file depends on
+			// Chromium's own fake device correctly decoding and looping it (a
+			// dependency, not a guarantee — the file-based device is the
+			// harder-to-reason-about half of the two). The launch flags below
+			// only cover what a script-supplied stream cannot: auto-granting
+			// the getUserMedia prompt and letting audio start without a
+			// user-gesture wait. Scoped to its own project — every other spec
+			// keeps the plain Desktop Chrome launch.
+			// No --mute-audio and no zeroed mixer (AGENTS.md's usual "mute
+			// before you play"): this spec's whole point is a real voice
+			// actually being heard, which AGENTS.md itself carves out —
+			// "Unless the audio is the thing under test". A real GitHub
+			// Actions runner has no speaker to reach either way; a developer
+			// running this locally hears one short tone, once, per run.
+			name: 'voice',
+			testMatch: ['voice-duck.spec.ts'],
+			use: {
+				...devices['Desktop Chrome'],
+				launchOptions: {
+					args: [
+						'--use-fake-ui-for-media-stream',
+						'--autoplay-policy=no-user-gesture-required',
+					],
+				},
+			},
 		},
 	],
 	// Serves the built SPA and proxies /api to the Go server, matching production.

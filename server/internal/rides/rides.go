@@ -65,6 +65,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
 	mux.HandleFunc("GET /api/rides/{id}", s.handleGet)
 	mux.HandleFunc("GET /api/rides/{id}/export", s.handleExport)
+	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }
@@ -90,8 +91,11 @@ type rideJSON struct {
 	AvgWatts    int     `json:"avgWatts"`
 	Kj          int     `json:"kj"`
 	Execution   float64 `json:"execution"`
-	Ftp         int     `json:"ftp"`
-	Xp          int     `json:"xp"`
+	// #1143: false when the workout prescribed nothing to score, so a client
+	// shows "not scored" rather than a percentage that means nothing.
+	ExecutionScored bool `json:"executionScored"`
+	Ftp             int  `json:"ftp"`
+	Xp              int  `json:"xp"`
 	// True for rides ridden in a room — the list marks them.
 	Room bool `json:"room,omitempty"`
 	// The per-ride opt-in (WATTROOM.md privacy, ADR-0024): friends see this
@@ -118,7 +122,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 			StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
-			Execution: float64(row.Execution), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
+			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
@@ -247,6 +251,6 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		ID: store.UUIDString(id), WorkoutName: req.WorkoutName,
 		StartedAt: req.StartedAt.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
-		Execution: float64(row.Execution), Ftp: int(user.FtpWatts), Xp: int(row.Xp),
+		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(user.FtpWatts), Xp: int(row.Xp),
 	})
 }

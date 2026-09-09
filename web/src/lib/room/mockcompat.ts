@@ -1,3 +1,5 @@
+import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
+
 /**
  * Import surface for the designed components (#39 → real): everything they
  * used from the dev mock, sourced from the real modules. The dev mock keeps
@@ -38,7 +40,13 @@ export interface RailRoom {
 	name: string;
 	/** Owner-set identity mark (#223), an icon key (#447); '' = none. */
 	icon?: string;
+	/**
+	 * The door. A room you may not enter comes with no slug (#1205): the
+	 * server keeps it, and this holds the room's id instead — a stable key
+	 * for the row that routes nowhere, which is the point.
+	 */
 	slug: string;
+	id?: string;
 	live: boolean;
 	members: number;
 	/** Riders connected right now (server presence). */
@@ -68,4 +76,8 @@ export interface RailRoom {
 	cheers?: string[];
 	/** owner | coach | member — the ownership cap counts against it. */
 	role?: string;
+	/** The crew this room belongs to (ADR-0038) — what the sidebar switches between. */
+	crew?: RoomCrew;
+	/** What you may do here without opening it (#1149). Absent = open. */
+	access?: RoomAccess;
 }

@@ -13,9 +13,9 @@ import { people } from '$lib/people.svelte';
 export interface Me {
 	id: string;
 	displayName: string;
+	/** The sign-in photo until the rider uploads one (#1353); then the
+	 * server's own address, versioned so a replaced picture refetches. */
 	avatarUrl?: string;
-	/** Picked preset id (#253); absent = OAuth photo, then initial. */
-	avatarPreset?: string;
 	/** Lifetime XP — level and ring derive from it (docs/SPEC.md). */
 	totalXp?: number;
 	ftpWatts: number;
@@ -54,6 +54,10 @@ function createAccountStore() {
 	let me = $state<Me | null>(null);
 	let providers = $state<string[]>([]);
 	let loaded = $state(false);
+	// The last providers read failed to reach the server at all — a first
+	// load on a restarting server used to read as "no providers configured"
+	// (audit 2026-09-09).
+	let unreachable = $state(false);
 
 	/**
 	 * Which load is the current question. Home, the room layout, the landing
@@ -85,8 +89,15 @@ function createAccountStore() {
 			}
 			// Any failure (404 = server running without a database) stays hidden;
 			// an unreachable server keeps whatever we were last told.
-			if (provRes.ok) providers = provRes.data.providers ?? [];
-			else if (provRes.error.error !== 'network') providers = [];
+			if (provRes.ok) {
+				providers = provRes.data.providers ?? [];
+				unreachable = false;
+			} else if (provRes.error.error === 'network') {
+				unreachable = true;
+			} else {
+				providers = [];
+				unreachable = false;
+			}
 		} finally {
 			if (mine === asked) loaded = true;
 		}
@@ -123,6 +134,9 @@ function createAccountStore() {
 		get loaded() {
 			return loaded;
 		},
+		get unreachable() {
+			return unreachable;
+		},
 		load,
 		/** Returns a field-keyed error message, or null on success. */
 		async save(next: {
@@ -132,10 +146,21 @@ function createAccountStore() {
 			stravaUpload?: boolean;
 			email?: string;
 			notifyPlanned?: boolean;
-			/** "" clears the pick (back to the photo); absent keeps it. */
-			avatarPreset?: string;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** The rider's own picture (#1353) — the same reader as a pasted image. */
+		async setAvatar(image: Blob): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/avatar', {
+				method: 'POST',
+				body: image,
+				headers: { 'content-type': image.type },
+			});
 			if (res.ok) {
 				me = res.data;
 				return null;

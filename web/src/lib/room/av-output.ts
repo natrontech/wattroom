@@ -6,10 +6,34 @@ import { onDuck } from '$lib/sound/duck';
 /**
  * Everyone else's voice, on its way to your speakers (#152, #179).
  *
- * media-element → per-rider gain → one limiter → destination. The gain is
+ * media-stream → per-rider gain → one limiter → destination. The gain is
  * what lets a quiet teammate go ABOVE unity, which `element.volume` cannot —
  * it caps at 1. The limiter exists because of that: faders reach ×2, and two
  * boosted voices summing past 1.0 would hard-clip at the DAC.
+ *
+ * The graph taps `el.srcObject` with `createMediaStreamSource`, not the
+ * element itself with `createMediaElementSource` (#1160, a rider report: the
+ * speaking ring and ducking stopped reacting to real voices). A
+ * `MediaElementAudioSourceNode` built on an element whose `srcObject` is a
+ * live WebRTC `MediaStream` reads back silence in Chromium — reproduced with
+ * `RTCPeerConnection.getStats()` showing real, continuous RTP arriving
+ * (audioLevel ~0.5, packetsLost 0) and the element itself genuinely playing
+ * (`currentTime` advancing in real time) while the tapped node still read
+ * exactly zero the whole time. `createMediaStreamSource` on the identical
+ * stream, at the identical moment, read real signal. The element still has
+ * to exist (LiveKit's own attach/detach and the browser's playback-permission
+ * bookkeeping want one), but it must not also play on its own: since nothing
+ * here commandeers its native output the way `createMediaElementSource`
+ * does, an audible element sounds a second, unfadered, undirected copy of
+ * every voice alongside the one this graph controls — a few milliseconds
+ * apart, which is a comb filter, which is the "phaser" riders reported
+ * (#1339).
+ *
+ * Muting the element is not enough to stop that. `Room.startAudio()` sets
+ * `muted = false` on every attached element before it plays them — the app
+ * calls it on the first click after a join (#645) and LiveKit calls it
+ * itself when a screen share brings audio (#1124) — so the element is held
+ * silent by `volume = 0` as well, which nothing in the SDK touches.
  *
  * Split out of av.svelte.ts (#892). Nothing here is reactive — the graph is
  * imperative WebAudio state, and the callers already know when to re-apply.
@@ -38,7 +62,7 @@ export function createRiderOutput(
 	let ctx: AudioContext | null = null;
 	let bus: DynamicsCompressorNode | null = null;
 	const gains = new Map<string, GainNode>();
-	const sources = new Map<string, MediaElementAudioSourceNode>();
+	const sources = new Map<string, MediaStreamAudioSourceNode>();
 	const meters = new Map<string, MicMeter>();
 	// Which keys carry a shared machine's audio rather than a voice (#1124).
 	// A Set rather than a suffix on the key, so nothing has to parse a string
@@ -83,6 +107,17 @@ export function createRiderOutput(
 		}
 	});
 
+	/** One connection left: its nodes come off the bus and out of the maps. */
+	function drop(key: string) {
+		meters.get(key)?.stop();
+		meters.delete(key);
+		gains.get(key)?.disconnect();
+		gains.delete(key);
+		sources.get(key)?.disconnect();
+		sources.delete(key);
+		shares.delete(key);
+	}
+
 	return {
 		applySink,
 		/**
@@ -110,13 +145,26 @@ export function createRiderOutput(
 					bus.release.value = 0.25;
 					bus.connect(ctx.destination);
 				}
+				// A key routed twice is a voice heard twice (#1339): the first
+				// graph would stay wired to the bus with nothing left holding
+				// its handle. Before the share flag goes on: the drop takes it off.
+				if (gains.has(identity)) drop(identity);
 				if (share) shares.add(identity);
-				const source = ctx.createMediaElementSource(el);
+				const source = ctx.createMediaStreamSource(el.srcObject as MediaStream);
 				const gain = ctx.createGain();
 				gain.gain.value = gainFor(identity);
 				gain.connect(bus);
 				gains.set(identity, gain);
 				sources.set(identity, source);
+				// Tapping the stream, not the element, leaves the element's own
+				// output live in parallel — silence it once the graph that
+				// replaces that output is actually wired, so a routing failure
+				// below still falls back to the element's native, unfadered
+				// playback rather than to silence. Both knobs: `startAudio()`
+				// flips `muted` back (see the top of this file); `volume` it
+				// leaves alone.
+				el.muted = true;
+				el.volume = 0;
 				// The meter goes in ahead of the fader, so what it reads is the
 				// voice as sent rather than as this listener chose to hear it —
 				// turning somebody down must not stop them lighting up. The
@@ -151,19 +199,14 @@ export function createRiderOutput(
 						});
 				}
 			} catch {
-				// routing failed: the element still plays at unity — degraded, not broken
+				// routing failed: unmute so the element still plays at unity —
+				// degraded (no fader, no meter), not silent.
+				el.muted = false;
+				el.volume = 1;
 			}
 		},
 		/** One connection left. */
-		drop(key: string) {
-			meters.get(key)?.stop();
-			meters.delete(key);
-			gains.get(key)?.disconnect();
-			gains.delete(key);
-			sources.get(key)?.disconnect();
-			sources.delete(key);
-			shares.delete(key);
-		},
+		drop,
 		/** Ramp every live voice to its current fader; a jump would zipper (#179). */
 		applyGains() {
 			if (!ctx) return;

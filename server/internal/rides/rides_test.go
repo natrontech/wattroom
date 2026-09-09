@@ -95,7 +95,7 @@ func (h *harness) roomRide(t *testing.T, id, medal string) pgtype.UUID {
 	}
 	alice := h.users.byToken["alice"].ID
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: strings.ToUpper(id[:6]), Slug: "ride-" + id[:8], Name: "Pain Cave", OwnerID: alice,
+		Slug: "ride-" + id[:8], Name: "Pain Cave", OwnerID: alice,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

@@ -7,10 +7,14 @@
 	// was 758 lines and this was the largest section that owed it nothing
 	// (#686 — long, not tangled).
 	import { api } from '$lib/api';
+	import Banner from '$lib/components/Banner.svelte';
 	import { untrack } from 'svelte';
-	import type { ApiToken } from '../../routes/profile/+page';
+	import type { ApiToken } from '../../routes/settings/data/+page';
 
-	let { initial }: { initial: ApiToken[] } = $props();
+	let {
+		initial,
+		initialError = null,
+	}: { initial: ApiToken[]; initialError?: string | null } = $props();
 
 	// A seed, not a binding: the list is ours to own once mounted, which
 	// is what `untrack` says out loud (the page used the same idiom).
@@ -18,10 +22,16 @@
 	let name = $state('');
 	let fresh = $state<string | null>(null);
 	let error = $state<string | null>(null);
+	// The list failed to load (#1330's audit): said above the form, with the
+	// retry, rather than rendered as an empty list.
+	let loadError = $state<string | null>(untrack(() => initialError));
 
 	async function load() {
 		const res = await api<{ tokens: ApiToken[] }>('/api/tokens');
-		if (res.ok) tokens = res.data?.tokens ?? [];
+		if (res.ok) {
+			tokens = res.data?.tokens ?? [];
+			loadError = null;
+		} else loadError = res.error.message;
 	}
 
 	async function create() {
@@ -50,7 +60,7 @@
 	}
 </script>
 
-<section class="border-muted/15 mt-3 rounded-lg border p-6">
+<section class="panel mt-8 p-6">
 	<h2 class="font-display font-bold">Coach access</h2>
 	<p class="text-muted mt-1 text-xs">
 		Read-only tokens for your own tools — a personal coach AI can read your
@@ -74,6 +84,18 @@
 			<button onclick={() => (fresh = null)} class="btn-link mt-3 text-xs"
 				>Done, hide it</button
 			>
+		</div>
+	{/if}
+	{#if loadError}
+		<div class="mt-4">
+			<Banner tone="error">
+				{loadError}
+				{#snippet action()}
+					<button onclick={() => void load()} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
+			</Banner>
 		</div>
 	{/if}
 	{#if tokens.length > 0}

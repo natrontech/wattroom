@@ -3,23 +3,27 @@
 	// half. The people column is the live read: who is here, who is talking,
 	// who is holding target. This is roles, medals and the invite, which is
 	// what /rooms used to carry.
+	import { confirm } from '$lib/confirm.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { statusOfRider } from '$lib/status';
-	import { wkg } from '$lib/format';
+	import { wkg, formatMonth } from '$lib/format';
 	import {
-		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
+		contextMenu,
+		openMenu,
 	} from '$lib/context-menu.svelte';
+	import { copyInviteLink } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import Award from '@lucide/svelte/icons/award';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Crown from '@lucide/svelte/icons/crown';
-	import Copy from '@lucide/svelte/icons/copy';
+	import Link from '@lucide/svelte/icons/link';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import UserMinus from '@lucide/svelte/icons/user-minus';
 	import UserX from '@lucide/svelte/icons/user-x';
@@ -27,9 +31,6 @@
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
-
-	const medalsOf = (name: string) =>
-		room.medals.filter((m) => m.rider === name).length;
 
 	// A room's own crew comparing itself is the ONE ladder WATTROOM.md
 	// allows — "your crew's ladder, not the internet's" — and ADR-0027
@@ -69,13 +70,13 @@
 	// Removing a member has no inverse call — rejoining takes the invite
 	// link, not an undo this app can fire on its own — so it confirms
 	// instead of promising an undo it can't deliver (errors.md).
-	function confirmRemove(member: Member) {
-		if (
-			confirm(
-				`Remove ${member.displayName} from ${room.roomName}? They can rejoin with the room's invite link.`,
-			)
-		)
-			room.removeMember(member.id);
+	async function confirmRemove(member: Member) {
+		const ok = await confirm({
+			title: `Remove ${member.displayName} from ${room.roomName}?`,
+			body: 'They stay in the crew and can walk back in if the room is open to it.',
+			action: 'Remove',
+		});
+		if (ok) room.removeMember(member.id);
 	}
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
@@ -89,6 +90,17 @@
 		});
 	}
 	const unban = (member: Member) => room.setRole(member.id, 'member');
+
+	// Handing the room on (#1227) is the one thing here the actor cannot
+	// take back — only the new owner can — so a confirm, not an undo toast.
+	async function confirmTransfer(member: Member) {
+		const ok = await confirm({
+			title: `Hand ${room.roomName} to ${member.displayName}?`,
+			body: 'They become its owner and you stay on as a coach. You cannot take this back; only they can hand it back to you.',
+			action: 'Hand it over',
+		});
+		if (ok) room.transfer(member.id);
+	}
 
 	// Their page and their DM on every member (#486), plus the paperwork the
 	// row already offers an owner — remove above ban, ban last, both after a
@@ -109,8 +121,9 @@
 		if (member.role === 'banned') {
 			if (canAdmin(member))
 				entries.push('separator', {
-					label: 'Unban',
+					label: `Unban from ${room.roomName}`,
 					icon: ShieldBan,
+					hint: member.crewBanned ? 'still crew-banned' : undefined,
 					onSelect: () => unban(member),
 				});
 			return entries;
@@ -121,6 +134,11 @@
 					label: roleLabel(member),
 					icon: member.role === 'coach' ? UserMinus : Crown,
 					onSelect: () => toggleRole(member),
+				},
+				{
+					label: `Hand the room to ${member.displayName}`,
+					icon: Crown,
+					onSelect: () => confirmTransfer(member),
 				},
 				'separator',
 				{
@@ -138,11 +156,6 @@
 			);
 		}
 		return entries;
-	}
-
-	async function copyInvite() {
-		await navigator.clipboard.writeText(`${location.origin}/r/${room.slug}`);
-		toasts.push('Invite link copied.');
 	}
 </script>
 
@@ -170,7 +183,7 @@
 
 	<ul class="divide-ink/5 panel divide-y">
 		{#each ordered as member (member.id)}
-			{@const medals = medalsOf(member.displayName)}
+			{@const medals = member.medals ?? 0}
 			{@const badges = badgesOf(member)}
 			{@const here = room.riders.find((r) => r.id === member.id)}
 			<li
@@ -183,7 +196,6 @@
 					<Avatar
 						name={member.displayName}
 						avatarUrl={member.avatarUrl}
-						preset={member.avatarPreset}
 						xp={member.totalXp}
 						status={here ? statusOfRider(here) : 'offline'}
 						ring="var(--color-surface-raised)"
@@ -214,10 +226,7 @@
 								· {wkg(member.ftpWatts, member.weightKg)} w/kg{/if}
 						{/if}
 						{#if member.joinedAt}
-							· since {new Date(member.joinedAt).toLocaleDateString(undefined, {
-								month: 'short',
-								year: 'numeric',
-							})}
+							· since {formatMonth(member.joinedAt)}
 						{/if}
 					</span>
 				</span>
@@ -252,11 +261,21 @@
 					</span>
 				{/if}
 				{#if member.role === 'banned' && canAdmin(member)}
-					<button
-						onclick={() => unban(member)}
-						disabled={room.adminBusy}
-						class="btn btn-ghost btn-xs shrink-0">Unban</button
-					>
+					<!-- The room's unban lifts the room's ban and nothing else
+					     (ADR-0038, third amendment; #1150). When the crew also
+					     banned them, the row says so before the click, not after. -->
+					<span class="flex shrink-0 flex-col items-end gap-0.5">
+						<button
+							onclick={() => unban(member)}
+							disabled={room.adminBusy}
+							class="btn btn-ghost btn-xs">Unban from {room.roomName}</button
+						>
+						{#if member.crewBanned}
+							<span class="text-muted/70 text-[11px]"
+								>still crew-banned afterwards — this does not readmit them</span
+							>
+						{/if}
+					</span>
 				{:else if isOwner && member.id !== account.me?.id}
 					<button
 						onclick={() => toggleRole(member)}
@@ -266,26 +285,110 @@
 					<button
 						onclick={() => confirmRemove(member)}
 						disabled={room.adminBusy}
-						class="text-muted hover:text-danger shrink-0 text-[11px]"
-						>remove</button
+						class="btn btn-ghost btn-xs text-danger shrink-0">Remove</button
+					>
+					<!-- The rest of the owner's paperwork — hand over, ban — has a
+					     visible way in: nothing lives only in a menu (ux.md, #1372).
+					     The same menu the right-click opens, so the two cannot
+					     disagree. -->
+					<button
+						onclick={(e) => {
+							const at = e.currentTarget.getBoundingClientRect();
+							openMenu(
+								memberMenu(member),
+								at.left,
+								at.bottom + 4,
+								e.currentTarget,
+							);
+						}}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0"
+						aria-label="more actions for {member.displayName}"
+						title="hand the room over · ban"><Ellipsis size={14} /></button
 					>
 				{/if}
 			</li>
 		{/each}
 	</ul>
 
-	<h3 class="eyebrow mt-8">invite</h3>
-	<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
-		<span class="min-w-0">
-			<span class="eyebrow">room code</span>
-			<span class="font-display block text-lg font-bold tracking-widest"
-				>{room.code}</span
+	{#if isOwner && !room.crewVisible && (room.invited.length || room.crewOutside.length)}
+		<!-- A private room's named exceptions (ADR-0038, #1224). A grant is a
+		     door, not a membership: they see the room in their sidebar and walk
+		     in themselves — being let in is not joining, so nothing of theirs
+		     is shown here until they do. -->
+		<h3 class="eyebrow mt-8">let in from the crew</h3>
+		<p class="text-muted mt-1 text-xs">
+			This room is private. A crew-mate you let in sees it in their sidebar and
+			can walk in — they still join themselves. Open the room to the whole crew
+			in Settings instead if that is what you mean.
+		</p>
+		<ul class="divide-ink/5 panel mt-2 divide-y">
+			{#each room.invited as person (person.id)}
+				<li class="flex min-h-11 items-center gap-3 px-4 py-2">
+					<Avatar
+						name={person.displayName}
+						avatarUrl={person.avatarUrl}
+						ring="var(--color-surface-raised)"
+						size={28}
+					/>
+					<span class="min-w-0 flex-1">
+						<span class="block truncate text-sm">{person.displayName}</span>
+						<span class="text-muted block text-[11px]">let in · not in yet</span
+						>
+					</span>
+					<button
+						onclick={() => room.revoke(person.id)}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0">Take back</button
+					>
+				</li>
+			{/each}
+			{#each room.crewOutside as person (person.id)}
+				<li class="flex min-h-11 items-center gap-3 px-4 py-2">
+					<Avatar
+						name={person.displayName}
+						avatarUrl={person.avatarUrl}
+						ring="var(--color-surface-raised)"
+						size={28}
+					/>
+					<span class="min-w-0 flex-1">
+						<span class="block truncate text-sm">{person.displayName}</span>
+						<span class="text-muted block text-[11px]"
+							>in the crew, not in this room</span
+						>
+					</span>
+					<button
+						onclick={() => room.grant(person.id)}
+						disabled={room.adminBusy}
+						class="btn btn-secondary btn-xs shrink-0">Let in</button
+					>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+
+	{#if room.code}
+		<!-- "How do I get someone in here?" is asked from the room, so the
+		     answer stands here too (#1236): there is one invite, the crew's,
+		     and this is where the room used to show its own code. -->
+		<h3 class="eyebrow mt-8">invite</h3>
+		<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+			<p class="text-muted min-w-0 flex-1 text-xs">
+				{#if room.crewVisible}
+					Everyone in the crew can walk in. To bring someone new, invite them to
+					the crew — rooms have no codes of their own.
+				{:else}
+					This room is private: crew-mates come in when you let them in above.
+					Someone new joins the crew first.
+				{/if}
+			</p>
+			<button
+				onclick={() => void copyInviteLink(room.code)}
+				class="btn btn-secondary btn-xs shrink-0"
+				><Link size={13} /> Copy invite link</button
 			>
-		</span>
-		<button onclick={copyInvite} class="btn btn-secondary btn-xs ml-auto"
-			><Copy size={13} /> Copy invite link</button
-		>
-	</div>
+		</div>
+	{/if}
 
 	{#if room.medals.length > 0}
 		<h3 class="eyebrow mt-8">medal history</h3>

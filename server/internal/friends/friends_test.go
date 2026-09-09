@@ -88,9 +88,8 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresenc
 func shareRoom(t *testing.T, st *store.Store, users *fakeUsers, slug string, names ...string) db.Room {
 	t.Helper()
 	owner := users.byToken[names[0]]
-	code := (slug + "AAAAAA")[:6] // rooms.code is exactly six characters
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Code: code, Slug: slug, Name: slug, OwnerID: owner.ID,
+		Slug: slug, Name: slug, OwnerID: owner.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -176,6 +175,15 @@ func TestFriendLifecycle(t *testing.T) {
 	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
 	if code, _ := call(t, mux, "", http.MethodGet, "/api/friends"); code != http.StatusUnauthorized {
 		t.Fatalf("unauthed list: %d", code)
+	}
+	// A six-character code is a crew's, pasted into the wrong box: still a
+	// 404, but the words send them to Home, not back to their friend.
+	crewShaped := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/friends", strings.NewReader(`{"code":"ab12cd"}`))
+	crewShaped.Header.Set("X-Test-User", "alice")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, crewShaped)
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "crew") {
+		t.Fatalf("crew-shaped code: %d %s, want 404 naming the crew", rec.Code, rec.Body.String())
 	}
 	if code := request(t, mux, "alice", "NOTACODE"); code != http.StatusNotFound {
 		t.Fatalf("unknown code: %d", code)

@@ -25,6 +25,58 @@ type medalJSON struct {
 	AwardedAt string `json:"awardedAt"`
 }
 
+// exportDestination is the one provider today; the column exists so a second
+// is a row rather than a schema change (#799). Named here so the retry and
+// the read cannot drift onto different strings.
+const exportDestination = "strava"
+
+// handleRetryExport puts a delivery that ran out of attempts back in the
+// queue (#1158).
+//
+// It exists because no backoff survives an outage longer than itself: five
+// attempts over a couple of hours covers most of them and not all, and what
+// was there before was a dead row and a message telling the rider to
+// reconnect an account that was never disconnected. This is the one big
+// button errors.md asks for — the sweep does the rest, so there is no second
+// delivery path to keep in step with the first.
+func (s *Service) handleRetryExport(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a ride id.")
+		return
+	}
+	// The ride first, so somebody else's ride is not-found rather than a
+	// silent no-op that reads like success.
+	if _, err := s.store.Queries.GetRide(r.Context(), db.GetRideParams{ID: id, UserID: user.ID}); errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
+		return
+	} else if err != nil {
+		s.log.Error("ride retry read failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		return
+	}
+	rows, err := s.store.Queries.RequeueRideExport(r.Context(), db.RequeueRideExportParams{
+		RideID: id, Destination: exportDestination,
+	})
+	if err != nil {
+		s.log.Error("ride retry failed", "err", err, "ride", store.UUIDString(id))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be queued. Try again.")
+		return
+	}
+	if rows == 0 {
+		// Nothing failed to retry: either it is already queued, or it went
+		// through. Saying so beats a 200 that promises something happened.
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			"That ride is not waiting to be sent — it either went through or is already queued.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -94,8 +146,11 @@ type rideDetailJSON struct {
 	NormWatts   int     `json:"normWatts"`
 	Kj          int     `json:"kj"`
 	Execution   float64 `json:"execution"`
-	Ftp         int     `json:"ftp"`
-	Xp          int     `json:"xp"`
+	// #1143: false when the workout prescribed nothing to score, so a client
+	// shows "not scored" rather than a percentage that means nothing.
+	ExecutionScored bool `json:"executionScored"`
+	Ftp             int  `json:"ftp"`
+	Xp              int  `json:"xp"`
 	// The room it was ridden in; nil for a solo ride.
 	Room *roomJSON `json:"room"`
 	// Medals this ride won, SPEC kinds — empty for a solo or unmedalled ride.
@@ -155,7 +210,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts),
 		NormWatts: normWatts(row), Kj: int(row.Kj),
-		Execution: float64(row.Execution), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
+		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Medals:  make([]medalJSON, 0, len(medalRows)),
 		Samples: []sampleJSON{},
 	}
@@ -170,9 +225,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	// A missing row is the answer for every ride nobody tried to send.
 	if export, exportErr := s.store.Queries.GetRideExport(r.Context(), db.GetRideExportParams{
-		RideID: id, Destination: "strava",
+		RideID: id, Destination: exportDestination,
 	}); exportErr == nil {
-		out.Export = &exportJSON{Destination: "strava", State: export.State}
+		out.Export = &exportJSON{Destination: exportDestination, State: export.State}
 		if export.RemoteID != nil {
 			out.Export.RemoteID = *export.RemoteID
 		}

@@ -60,37 +60,6 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) (i
 	return result.RowsAffected(), nil
 }
 
-const listLibraryWorkouts = `-- name: ListLibraryWorkouts :many
-select id, owner_id, name, author, definition, created_at from workouts where owner_id is null order by name
-`
-
-func (q *Queries) ListLibraryWorkouts(ctx context.Context) ([]Workout, error) {
-	rows, err := q.db.Query(ctx, listLibraryWorkouts)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Workout
-	for rows.Next() {
-		var i Workout
-		if err := rows.Scan(
-			&i.ID,
-			&i.OwnerID,
-			&i.Name,
-			&i.Author,
-			&i.Definition,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listUserWorkouts = `-- name: ListUserWorkouts :many
 select id, owner_id, name, author, definition, created_at from workouts where owner_id = $1 order by created_at desc
 `

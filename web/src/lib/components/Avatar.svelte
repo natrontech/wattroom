@@ -1,14 +1,11 @@
 <script lang="ts">
 	import Coffee from '@lucide/svelte/icons/coffee';
-	import { presetById } from '$lib/avatars';
 	import { levelFromXp, levelProgress } from '$lib/level';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import type { PresenceStatus } from '$lib/status';
 
-	// One avatar everywhere (#253): preset disc → OAuth photo → initial.
-	// Presets are neon-outline discs — the accent color at low mix over the
-	// raised surface, icon stroked in the token itself — not filled pastels;
-	// chrome stays quiet (ADR-0005). With xp set, a violet progress ring
+	// One avatar everywhere (#253): the picture → initial. The initial sits
+	// on a quiet disc — chrome, not data (ADR-0005). With xp set, a violet progress ring
 	// wraps the disc and a level chip sits on the rim; chips need ~28px to
 	// stay legible, below that the ring alone carries the level.
 	//
@@ -19,7 +16,6 @@
 	let {
 		name,
 		avatarUrl = null,
-		preset = null,
 		xp = null,
 		status = null,
 		size = 40,
@@ -27,7 +23,6 @@
 	}: {
 		name: string;
 		avatarUrl?: string | null;
-		preset?: string | null;
 		xp?: number | null;
 		/** Where they are ($lib/status.ts); null draws no badge at all. */
 		status?: PresenceStatus | null;
@@ -36,7 +31,6 @@
 		ring?: string;
 	} = $props();
 
-	const chosen = $derived(preset ? presetById(preset) : undefined);
 	const level = $derived(xp == null ? null : levelFromXp(xp));
 	const stroke = $derived(Math.max(2, Math.round(size / 20)));
 	const radius = $derived((size - stroke) / 2);
@@ -63,13 +57,9 @@
 			.filter(Boolean)
 			.join(' · '),
 	);
-	const disc = $derived(
-		chosen
-			? `background:color-mix(in oklab, ${chosen.bg} 16%, var(--color-surface-raised));` +
-					`border:1px solid color-mix(in oklab, ${chosen.bg} 55%, transparent);color:${chosen.bg}`
-			: `background:var(--color-surface-raised);` +
-					`border:1px solid color-mix(in oklab, var(--color-muted) 30%, transparent);color:var(--color-muted)`,
-	);
+	const disc =
+		`background:var(--color-surface-raised);` +
+		`border:1px solid color-mix(in oklab, var(--color-muted) 30%, transparent);color:var(--color-muted)`;
 </script>
 
 <span
@@ -82,12 +72,9 @@
 		'offline'
 			? 'opacity-50'
 			: ''}"
-		style="inset:{inset}px;{avatarUrl && !chosen ? '' : disc}"
+		style="inset:{inset}px;{avatarUrl ? '' : disc}"
 	>
-		{#if chosen}
-			{@const Icon = chosen.icon}
-			<Icon size={Math.round((size - inset * 2) * 0.52)} />
-		{:else if avatarUrl}
+		{#if avatarUrl}
 			<img
 				src={avatarUrl}
 				alt={name}

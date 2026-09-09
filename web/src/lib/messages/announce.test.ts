@@ -9,6 +9,8 @@ vi.mock('$lib/notify.svelte', () => ({
 	notify: {
 		push: (title: string, body: string) => pushed.push({ title, body }),
 	},
+	// The real rule (ADR-0042): hidden, or not the front window.
+	away: () => document.hidden || !document.hasFocus(),
 }));
 
 import { announce } from './announce';
@@ -34,11 +36,15 @@ vi.stubGlobal('localStorage', {
 	clear: () => store.clear(),
 });
 
-const hide = (hidden: boolean) =>
+// A visible tab is also the front window here — the case that toasts. A
+// hidden one is not looking twice over.
+const hide = (hidden: boolean) => {
 	Object.defineProperty(document, 'hidden', {
 		value: hidden,
 		configurable: true,
 	});
+	document.hasFocus = () => !hidden;
+};
 
 beforeEach(() => {
 	played.length = 0;

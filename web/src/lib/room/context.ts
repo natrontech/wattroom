@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
-import type { BoardRow, Crew } from '$lib/room/room-data';
+import type { BoardRow, Together } from '$lib/room/room-data';
 import type {
 	GameState,
 	RoomEvent,
@@ -34,6 +34,7 @@ export interface RoomContext {
 	readonly slug: string;
 	readonly roomName: string;
 	readonly icon: string;
+	/** The crew's join code (#1236); '' for a non-member. */
 	readonly code: string;
 	readonly cheers: string[] | undefined;
 
@@ -94,10 +95,12 @@ export interface RoomContext {
 		/** Who said they are in (#450), first to say so first. */
 		going?: { id: string; displayName: string }[];
 	}[];
+	/** What already happened here (ADR-0034): the recaps, oldest first. */
+	readonly recaps: import('$lib/protocol').SessionRecap[];
 	readonly icsToken: string;
 	readonly streakWeeks: number;
 	readonly monthKj: number;
-	readonly crew: Crew | null;
+	readonly together: Together | null;
 	readonly board: BoardRow[];
 	readonly adminBusy: boolean;
 	readonly members: {
@@ -105,15 +108,31 @@ export interface RoomContext {
 		displayName: string;
 		role: string;
 		avatarUrl?: string;
-		avatarPreset?: string;
 		totalXp?: number;
 		ftpWatts?: number;
 		weightKg?: number;
 		joinedAt?: string;
 		/** Earned achievement keys (#703). Never progress — ADR-0027. */
 		badges?: string[];
+		/** Medals this room awarded them, lifetime (#1371). */
+		medals?: number;
+		/** A banned row the crew also bans (#1150). */
+		crewBanned?: boolean;
 	}[];
 	readonly medals: { kind: string; rider: string; awardedAt: string }[];
+	/** Open to its crew (ADR-0038). */
+	readonly crewVisible: boolean;
+	/**
+	 * A private room's named exceptions (#1224), owner only: crew-mates let
+	 * in who have not walked in yet, and the crew-mates outside.
+	 */
+	readonly invited: RoomContext['members'];
+	readonly crewOutside: RoomContext['members'];
+	/** Let a crew-mate in, or take the door back before they used it. */
+	grant(userId: string): void;
+	revoke(userId: string): void;
+	/** Hand the room to a member (#1227); you stay on as a coach. */
+	transfer(userId: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
 	/** Say you are in for a planned session, or take it back (#450). */

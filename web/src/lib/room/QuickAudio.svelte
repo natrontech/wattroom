@@ -5,7 +5,7 @@
 	// over music you cannot hear them through, which is mid-interval, and the
 	// cog is a navigation out of the room onto a page that also holds FTP.
 	//
-	// A shortcut, never the only way (ux.md): /profile keeps the full page,
+	// A shortcut, never the only way (ux.md): /settings/voice keeps the full page,
 	// with push-to-talk's explanation and the rest. A modal
 	// rather than a popover because the targets have to survive being tapped
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
@@ -50,7 +50,8 @@
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">
 			The levels you reach for mid-ride. Everything else lives on <a
-				href="/profile"
+				href="/settings/voice#gate"
+				onclick={() => (soundPanel.open = false)}
 				class="underline">Voice &amp; audio</a
 			>.
 		</p>

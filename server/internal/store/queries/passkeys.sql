@@ -6,9 +6,6 @@ returning *;
 -- name: ListUserPasskeys :many
 select * from passkeys where user_id = $1 order by created_at;
 
--- name: GetPasskey :one
-select * from passkeys where credential_id = $1;
-
 -- name: TouchPasskey :exec
 -- Every login rewrites the record: the signature counter inside it moves, and
 -- go-webauthn hands back the credential it validated with.

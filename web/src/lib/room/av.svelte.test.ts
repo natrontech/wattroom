@@ -4,6 +4,8 @@ import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { ducking, resetDucking, setDucking } from '$lib/sound/duck';
+import { DUCK_HOLD_MS, shouldDuck } from '$lib/sound/ducking';
 
 vi.mock('$lib/api', () => ({
 	api: vi.fn(async () => ({
@@ -23,6 +25,11 @@ vi.mock('livekit-client', () => {
 	let canPlayback = true;
 	let audioStarts = true;
 	let startAudioCalls = 0;
+	// Every remote audio element the SDK has attached (#1339): the real
+	// startAudio() walks them and unmutes each before playing it.
+	const attached: HTMLAudioElement[] = [];
+	// A handshake that never answers (#1203).
+	let hang = false;
 	class Room {
 		constructor(options: Record<string, unknown> = {}) {
 			roomOptions = options;
@@ -30,6 +37,7 @@ vi.mock('livekit-client', () => {
 		canPlaybackAudio = canPlayback;
 		async startAudio() {
 			startAudioCalls += 1;
+			for (const el of attached) el.muted = false;
 			this.canPlaybackAudio = audioStarts;
 			this.handlers.get('AudioPlaybackStatusChanged')?.();
 		}
@@ -52,12 +60,14 @@ vi.mock('livekit-client', () => {
 			return this;
 		}
 		async connect() {
+			if (hang) await new Promise<never>(() => {});
 			joined = this as FakeRoom;
 		}
 		disconnect() {}
 	}
 	function remoteAudio(identity: string, source: string) {
 		const el = document.createElement('audio');
+		attached.push(el);
 		joined?.handlers.get('TrackSubscribed')?.(
 			{ kind: 'audio', attach: () => el, detach: () => [el] },
 			{ kind: 'audio', source, isMuted: false },
@@ -66,6 +76,7 @@ vi.mock('livekit-client', () => {
 		return {
 			el,
 			end() {
+				attached.splice(attached.indexOf(el), 1);
 				joined?.handlers.get('TrackUnsubscribed')?.(
 					{ kind: 'audio', attach: () => el, detach: () => [el] },
 					{ kind: 'audio', source, isMuted: false },
@@ -140,6 +151,10 @@ vi.mock('livekit-client', () => {
 			audioStarts = true;
 			startAudioCalls = 0;
 		},
+		/** The signalling handshake that never completes (#1203). */
+		hangConnect(on: boolean) {
+			hang = on;
+		},
 		/** How many times the app asked the browser to start audio. */
 		startAudioAsks: () => startAudioCalls,
 		/** The browser changing its mind on its own. */
@@ -155,6 +170,8 @@ vi.mock('livekit-client', () => {
 		},
 		// Every RoomEvent.X is just its own name to the wiring under test.
 		RoomEvent: new Proxy({}, { get: (_, key) => key }),
+		// What the mic is published with (#1340); the wiring only passes it on.
+		AudioPresets: { musicHighQuality: { maxBitrate: 96_000 } },
 		Track: {
 			Source: {
 				Microphone: 'microphone',
@@ -178,10 +195,11 @@ interface FakeRoom {
 // The mic chain wants a real AudioContext; the meter is the one piece of it
 // with a worker behind it, so it is the one piece that has to be faked.
 vi.mock('$lib/room/mic-level', () => ({
-	createMicMeter: async () => ({ out: { connect() {} }, stop() {} }),
+	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
 }));
 
-const { createRoomAv } = await import('./av.svelte');
+const { createRoomAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');
+const { createMicMeter } = vi.mocked(await import('$lib/room/mic-level'));
 const { api } = await import('$lib/api');
 const {
 	stopSharingNatively,
@@ -192,9 +210,11 @@ const {
 	remoteShareAudio,
 	blockAudio,
 	allowAudio,
+	hangConnect,
 	startAudioAsks,
 	playbackChanged,
 } = (await import('livekit-client')) as unknown as {
+	hangConnect: (on: boolean) => void;
 	stopSharingNatively: () => void;
 	dropNatively: () => void;
 	blockAudio: (starts?: boolean) => void;
@@ -214,7 +234,7 @@ const {
 };
 
 /** Every fader on the output side, in the order the graph built them. */
-type FakeGain = { gain: { value: number } };
+type FakeGain = { gain: { value: number }; disconnected: boolean };
 function withOutputGraph<T>(
 	run: (gains: FakeGain[]) => Promise<T>,
 ): Promise<T> {
@@ -232,7 +252,7 @@ function withOutputGraph<T>(
 				connect() {},
 			};
 		}
-		createMediaElementSource() {
+		createMediaStreamSource() {
 			return { connect() {}, disconnect() {} };
 		}
 		createGain() {
@@ -243,8 +263,11 @@ function withOutputGraph<T>(
 						node.gain.value = target;
 					},
 				},
+				disconnected: false,
 				connect() {},
-				disconnect() {},
+				disconnect() {
+					node.disconnected = true;
+				},
 			};
 			gains.push(node);
 			return node;
@@ -651,6 +674,34 @@ describe('createRoomAv', () => {
 		});
 	});
 
+	// #1203: a join that neither connects nor fails left "joining voice…" up
+	// for the rest of the ride — no timeout, no error, no button. The attempt
+	// is bounded now; the rider gets the failed state and its retry.
+	it('gives up on a join that never connects, and says so', async () => {
+		vi.useFakeTimers();
+		hangConnect(true);
+		try {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			void av.join();
+			await vi.advanceTimersByTimeAsync(JOIN_TIMEOUT_MS - 1);
+			expect(av.status).toBe('connecting');
+			await vi.advanceTimersByTimeAsync(2);
+			expect(av.status).toBe('failed');
+			expect(av.error?.message).toMatch(/did not connect in time/);
+			// And the handshake finally answering does not walk in behind it.
+			hangConnect(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.status).toBe('failed');
+			dispose();
+		} finally {
+			hangConnect(false);
+			vi.useRealTimers();
+		}
+	});
+
 	// #646: a join is stamped by LiveKit's server; the takeover used to be
 	// stamped by the browser. yieldsTo compares the two as numbers, so a
 	// clock a minute behind made "use this tab instead" read older than the
@@ -951,6 +1002,56 @@ describe('a browser that blocks audio playback', () => {
 // fake never runs a meter at all — createMicMeter needs an AudioWorklet — so
 // a test for it passed with the clause deleted. A test that cannot fail is
 // worse than none: it claims the ground is covered.
+describe('a remote voice is heard once (#1339)', () => {
+	// The voice reaches the speakers through the bus, tapped off the SDK's
+	// element — which must therefore stay silent itself. LiveKit's own
+	// startAudio() unmutes every attached element before playing it (the
+	// fake does exactly that), and the app calls it on the first click after
+	// a join: from then on every voice sounded twice, a few milliseconds
+	// apart, which is the phaser riders reported.
+	it("stays silent on its element through the browser's start-audio", async () => {
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			const { el } = remoteVoice('jan');
+			expect(el.volume).toBe(0);
+			await av.startPlayback();
+			expect(el.muted).toBe(false); // the SDK did what it does —
+			expect(el.volume).toBe(0); // and the element still makes no sound
+			av.leave();
+			dispose();
+		});
+	});
+
+	// A subscription that arrives again for a key still on the bus — no
+	// unsubscribe between — would leave the first graph wired and audible
+	// with nothing holding its handle: the other way to hear a voice twice.
+	it('takes the first graph down when the same key is routed again', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			remoteVoice('jan');
+			remoteVoice('jan');
+			expect(gains.map((g) => g.disconnected)).toEqual([true, false]);
+			// A re-routed share is still a share: the drop that clears the
+			// first graph must not also clear the flag that picks its fader.
+			mixer.setShare(0.5);
+			remoteShareAudio('jan');
+			remoteShareAudio('jan');
+			expect(gains.at(-1)?.gain.value).toBe(0.5);
+			mixer.setShare(1);
+			av.leave();
+			dispose();
+		});
+	});
+});
+
 describe('a rider who shares their computer as well as their voice', () => {
 	it('keeps both on the bus, on their own faders', async () => {
 		await withOutputGraph(async (gains) => {
@@ -995,6 +1096,87 @@ describe('a rider who shares their computer as well as their voice', () => {
 			// rider would simply have gone quiet when they stopped sharing.
 			av.setRiderGain('jan', 0.4);
 			expect(gains[0].gain.value).toBe(0.4);
+
+			dispose();
+		});
+	});
+});
+
+// A rider's report (2026-09-08): ducking stopped reacting to somebody else
+// talking, and the ring on their tile went with it. #987/#1001 only proved
+// the meter cannot outlive a dropped voice — nothing anywhere drove a real
+// level through `route()`'s meter branch and checked it reached `av.speaking`
+// keyed by the RIDER, which is what #1124's `identity + ' — share'` suffix
+// touches for every remote voice, not only a shared one.
+describe('a remote voice actually reaching av.speaking', () => {
+	it('rings the rider, not the connection key, once the meter reports level', async () => {
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+
+			createMicMeter.mockImplementationOnce(async (_ctx, source, onLevel) => {
+				onLevel(1);
+				return { kind: 'analyser', out: source, stop() {} };
+			});
+			remoteVoice('jan');
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(av.speaking).toEqual({ jan: true });
+
+			dispose();
+		});
+	});
+});
+
+// connection.svelte.ts's duck effect, wired exactly the way it is wired
+// there: `$effect(() => { setDucking(shouldDuck(...)); return () =>
+// setDucking(false); })`. Its own unconditional cleanup is the pattern
+// duck.ts was written to survive (#988's doc comment on `setDucking`), so a
+// second voice joining — which changes `av.speaking`'s object identity and
+// reruns the effect — must not let the cleanup's `setDucking(false)` outrace
+// the rerun's `setDucking(true)` and park the room unducked mid-conversation.
+describe('the duck effect surviving av.speaking changing shape mid-conversation', () => {
+	afterEach(() => {
+		resetDucking();
+		vi.useRealTimers();
+	});
+
+	it('never lifts the duck while a voice is still going', async () => {
+		vi.useFakeTimers();
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+				$effect(() => {
+					setDucking(shouldDuck(av.speaking, undefined, false));
+					return () => setDucking(false);
+				});
+			});
+			await av.join();
+
+			createMicMeter.mockImplementation(async (_ctx, source, onLevel) => {
+				onLevel(1);
+				return { kind: 'analyser', out: source, stop() {} };
+			});
+
+			remoteVoice('jan');
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(ducking()).toBe(true);
+
+			// A second rider starts talking too: av.speaking gets a fresh
+			// object even though jan, the first voice, never stopped.
+			remoteVoice('mo');
+			await Promise.resolve();
+			await Promise.resolve();
+
+			// jan is still talking throughout — the duck must never lift.
+			vi.advanceTimersByTime(DUCK_HOLD_MS + 100);
+			expect(ducking()).toBe(true);
 
 			dispose();
 		});

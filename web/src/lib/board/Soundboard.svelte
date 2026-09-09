@@ -23,7 +23,7 @@
 	} from '@lucide/svelte';
 	import { dragPane } from '$lib/pane';
 	import { account } from '$lib/account.svelte';
-	import { board, type Clip } from '$lib/board/clips.svelte';
+	import { board, keptMillis, type Clip } from '$lib/board/clips.svelte';
 	import { isToggle } from '$lib/board/toggle-key.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
 	import { modals } from '$lib/modals.svelte';
@@ -32,6 +32,7 @@
 		applyLevels,
 		fire as playClip,
 		preview,
+		stop,
 		stopAll,
 	} from '$lib/sound/board.svelte';
 	import { UNIT_FADER } from '$lib/sound/fader';
@@ -43,10 +44,13 @@
 	let {
 		fires,
 		onFire,
+		onStop,
 	}: {
 		/** This tick's fires, so the strip can say who pressed what. */
 		fires: Board[] | undefined;
 		onFire: (clipId: string) => void;
+		/** End your own clip for the whole room (#1321). */
+		onStop: () => void;
 	} = $props();
 
 	const PANE = 'soundboard';
@@ -61,13 +65,21 @@
 		// Playing is not the panel's job to be open for: a rider who hid the
 		// board still hears the room — this component stays mounted and
 		// renders nothing while it is closed.
+		let newest: Board | undefined;
 		for (const shot of batch) {
+			const from = shot.fromId ?? '';
+			// A fire with no clip is that rider stopping their own voice (#1321).
+			if (!shot.clipId) {
+				stop(from);
+				continue;
+			}
 			// Only your OWN clips carry an edit here — a board is one rider's, so
 			// somebody else's trim rides with their audio, not with the fire.
 			const known = board.clips.find((c) => c.id === shot.clipId);
-			void playClip(shot.clipId, shot.fromId ?? '', known);
+			void playClip(shot.clipId, from, known);
+			newest = shot;
 		}
-		const newest = batch[batch.length - 1];
+		if (!newest) return;
 		last = {
 			from: newest.from ?? 'someone',
 			// Only your own clips have names here — a board is one rider's.
@@ -77,7 +89,7 @@
 	});
 
 	// Playing is per rider, not per pad: what YOUR pad shows is your own fire.
-	let mine = $state<{ pad: number; until: number } | undefined>();
+	let mine = $state<{ clipId: string; pad?: number } | undefined>();
 
 	const me = $derived(account.me?.id ?? '');
 	const face = $derived(boardPanel.face);
@@ -107,15 +119,21 @@
 		else fireClip(clip);
 	}
 
-	/** Fire by key or by tap — both land here, so both light the pad. */
+	/**
+	 * Fire by key or by tap — both land here, so both light the pad. The same
+	 * press while it still sounds is the stop (#1321): the room hears it end.
+	 */
+	let glow: ReturnType<typeof setTimeout> | undefined;
 	function fireClip(clip: Clip) {
+		clearTimeout(glow);
+		if (mine?.clipId === clip.id) {
+			onStop();
+			mine = undefined;
+			return;
+		}
 		onFire(clip.id);
-		const pad = clip.pad;
-		if (pad === undefined) return;
-		mine = { pad, until: Date.now() + clip.millis };
-		setTimeout(() => {
-			if (mine?.pad === pad) mine = undefined;
-		}, clip.millis);
+		mine = { clipId: clip.id, pad: clip.pad };
+		glow = setTimeout(() => (mine = undefined), keptMillis(clip));
 	}
 
 	function keys(event: KeyboardEvent) {

@@ -30,7 +30,7 @@ test('a passkey registers, and signs the rider back in where they were going', a
 		},
 	});
 
-	await signInAs(page, 'Passkey Rider', '/profile');
+	await signInAs(page, 'Passkey Rider', '/settings/profile');
 	const name = `virtual ${Date.now() % 100000}`;
 	await page.getByPlaceholder('Phone, YubiKey…').fill(name);
 	await page.getByRole('button', { name: 'Add a passkey' }).click();
@@ -41,9 +41,9 @@ test('a passkey registers, and signs the rider back in where they were going', a
 	// Out, and back in with nothing but the key — landing where the link
 	// pointed, not on /rooms (#824).
 	await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
-	await page.goto('/login?next=%2Fprofile');
+	await page.goto('/login?next=%2Fsettings%2Fprofile');
 	await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
-	await expect(page).toHaveURL(/\/profile$/);
+	await expect(page).toHaveURL(/\/settings\/profile$/);
 	await expect(row).toBeVisible();
 	await expect(row).toContainText('last used');
 

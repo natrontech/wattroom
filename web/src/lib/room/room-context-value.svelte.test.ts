@@ -62,6 +62,9 @@ function shellProps(): RoomShellProps {
 		adminBusy: false,
 		onRole: () => {},
 		onRemove: () => {},
+		onGrant: () => {},
+		onRevoke: () => {},
+		onTransfer: () => {},
 		onSchedule: () => {},
 		onReschedule: () => {},
 		onUnschedule: () => {},
@@ -99,7 +102,7 @@ describe('roomContextValue (#686)', () => {
 		expect(ctx.icon).toBe('');
 		expect(ctx.code).toBe('');
 		expect(ctx.icsToken).toBe('');
-		expect(ctx.crew).toBeNull();
+		expect(ctx.together).toBeNull();
 		expect(ctx.streakWeeks).toBe(0);
 		expect(ctx.monthKj).toBe(0);
 		expect(ctx.medals).toEqual([]);

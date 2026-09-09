@@ -180,8 +180,10 @@
 	// The jukebox video is a stage source, and it leads (#316): what the room
 	// is watching together belongs in the room, never in a window pasted over
 	// the cam grid. A rider who wants a share instead picks it.
+	// A pool track is heard, not seen (#267): no picture, so no seat — offering
+	// one drew a black tile the dock never flew into (#1141).
 	const stageSources = $derived([
-		...(live.tick?.jukebox?.current
+		...(live.tick?.jukebox?.current?.videoId
 			? [
 					{
 						key: 'jukebox',
@@ -322,6 +324,8 @@
 {#if session.open}
 	<SessionPicker
 		shelf={session.shelf}
+		shelfError={session.custom.error}
+		onRetryShelf={() => void session.custom.retry()}
 		intent={session.intent}
 		ftp={profile.current.ftp}
 		busy={props.adminBusy}
@@ -339,7 +343,7 @@
 	/>
 {/if}
 
-{#if shared?.phase === 'done' && recording.samples.length >= 60 && !summary.dismissed}
+{#if shared?.phase === 'done' && recording.samples.length > 0 && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
 	     and nothing said so — a modal is the room telling you it is over. -->
@@ -357,9 +361,18 @@
 			roomName={props.roomName}
 		>
 			{#snippet actions()}
-				<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-					>Back to the lounge</button
-				>
+				<div class="flex flex-wrap gap-2">
+					<!-- The end links forward (#1331): the ride the room saved for
+					     you, found by the session it belongs to once the save lands. -->
+					{#if summary.rideId}
+						<a href="/history/{summary.rideId}" class="btn btn-primary"
+							>See your ride</a
+						>
+					{/if}
+					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
+						>Back to the lounge</button
+					>
+				</div>
 			{/snippet}
 		</SessionSummary>
 	</Modal>
@@ -375,6 +388,7 @@
 		<Soundboard
 			fires={live.tick?.board}
 			onFire={(clipId) => live.fireClip(clipId)}
+			onStop={() => live.stopClip()}
 		/>
 
 		<RoomStatus />
@@ -383,7 +397,11 @@
 		     says nothing may cover the player — so the content reserves the
 		     dock's footprint rather than the player sitting on live data.
 		     Seated on the lounge's stage it is content, and needs no gutter. -->
+		<!-- The place's body: scrolls down, never sideways, and named so the
+		     phone-width walk of the places can measure it (#1376). Not
+		     page-body — the root layout's wraps this whole shell. -->
 		<div
+			data-testid="place-body"
 			class="min-h-0 flex-1 overflow-y-auto"
 			style={live.tick?.jukebox?.current && !stageSlot.seated
 				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'

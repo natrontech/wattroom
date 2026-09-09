@@ -1,5 +1,8 @@
 <script lang="ts">
 	import Copy from '@lucide/svelte/icons/copy';
+	import Banner from '$lib/components/Banner.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Play from '@lucide/svelte/icons/play';
@@ -50,7 +53,12 @@
 			if (err) toasts.push(err, { tone: 'error' });
 			else
 				toasts.push(`Deleted “${workout.name}”.`, {
-					undo: () => void custom.save(workout),
+					// The undo re-creates it; a refusal has to be said, or the
+					// workout is gone with the toast.
+					undo: () =>
+						void custom.save(workout).then((r) => {
+							if (r.error) toasts.push(r.error, { tone: 'error' });
+						}),
 				});
 		});
 	}
@@ -93,12 +101,14 @@
 	);
 </script>
 
+<svelte:head><title>Workouts · WattRoom</title></svelte:head>
+
 <main class="page">
 	<div class="flex items-center gap-3">
 		<div>
 			<h1 class="font-display text-2xl leading-tight font-bold">Workouts</h1>
 			<p class="text-muted text-xs">
-				{library.length} sessions · every target scales to your FTP
+				{library.length} curated workouts · every target scales to your FTP
 			</p>
 		</div>
 	</div>
@@ -111,13 +121,34 @@
 				>New workout</a
 			>
 		</div>
-		{#if custom.all.length === 0}
-			<p
-				class="text-muted border-muted/10 mt-2 rounded-lg border border-dashed px-5 py-4 text-xs"
-			>
-				Nothing yet. Build one from scratch, or open any workout below and save
-				a copy — it lands on your account and follows you to any device.
-			</p>
+		{#if custom.error}
+			<!-- A shelf that could not be read is not an empty shelf (errors.md). -->
+			<div class="mt-2">
+				<Banner tone="error">
+					{custom.error}
+					{#snippet action()}
+						<button onclick={() => void custom.retry()} class="btn-link text-xs"
+							>Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
+		{:else if !custom.loaded}
+			<div class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+				<Skeleton class="h-24" rows={2} />
+			</div>
+		{:else if custom.all.length === 0}
+			<div class="mt-2">
+				<EmptyState>
+					Nothing yet. Build one from scratch, or open any workout below and
+					save a copy — it lands on your account and follows you to any device.
+					{#snippet cta()}
+						<a href="/workouts/edit" class="btn btn-primary btn-xs"
+							>Build a workout</a
+						>
+					{/snippet}
+				</EmptyState>
+			</div>
 		{:else}
 			<ul class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
 				{#each custom.all as entry (entry.id)}
@@ -145,6 +176,14 @@
 					</li>
 				{/each}
 			</ul>
+		{/if}
+		{#if custom.dropped > 0}
+			<p class="text-muted mt-2 text-xs">
+				{custom.dropped === 1
+					? 'One saved workout'
+					: `${custom.dropped} saved workouts`} could not be read by this version
+				and {custom.dropped === 1 ? 'is' : 'are'} not shown.
+			</p>
 		{/if}
 	</section>
 

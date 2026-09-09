@@ -14,10 +14,10 @@ nothing between two of them.
 That shape fights the thing the app is for. A group that trains together also
 chats, and sometimes games — and a room already holds exactly one of each of
 those. Not as a single stated principle, but as the sum of several:
-`docs/SPEC.md` defines a session as *"one group ride in a room"*,
+`docs/SPEC.md` defines a session as _"one group ride in a room"_,
 [ADR-0018](0018-one-music-surface-drop-the-jam-card.md) gives a room one music
 surface, [ADR-0022](0022-room-events-are-ephemeral.md) one scrollback,
-[ADR-0020](0020-the-app-takes-discords-shape.md) *"one conversation"*, and
+[ADR-0020](0020-the-app-takes-discords-shape.md) _"one conversation"_, and
 `ServerTick` a single `Game` and `Sprint`. So a group doing three things needs
 three rooms, and today that means three join codes handed round, three
 membership lists that drift, three ban lists, and no object anywhere that says
@@ -33,11 +33,11 @@ all of them at once. Whatever is added has to sit strictly above the room.
 **A crew is the layer above rooms.** It exists so a group can be in one place
 while doing different things, each in its own room.
 
-| | |
-| --- | --- |
-| a crew carries | name, icon, membership, its rooms, a crew-wide chat |
-| a crew never carries | voice, jukebox deck, session, game state, metrics |
-| a room stays | one activity: one session, one deck, one game, one conversation, one privacy scope |
+|                      |                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| a crew carries       | name, icon, membership, its rooms, a crew-wide chat                                |
+| a crew never carries | voice, jukebox deck, session, game state, metrics                                  |
+| a room stays         | one activity: one session, one deck, one game, one conversation, one privacy scope |
 
 The second row is the whole design. Everything a room owns stays owned by the
 room, so all five constraints above — plus medals and the room streak — are
@@ -53,7 +53,7 @@ live.
   single crew named after them, renameable immediately. This is what makes
   permanent binding survivable — people arrive already grouped, rather than
   holding N one-room crews they can never merge.
-- **Caps**: the per-user *room* cap is replaced by a per-user **crew** cap plus
+- **Caps**: the per-user _room_ cap is replaced by a per-user **crew** cap plus
   a **rooms-per-crew** cap. Both numbers are `docs/SPEC.md`'s to set and are
   never invented in code. One constraint on them is already fixed by the
   migration above: SPEC today allows a user to own 3 rooms, and one crew per
@@ -128,12 +128,12 @@ owns getting it right. What is there today is four call sites, and they are not
 four of a kind — the cutover should not treat them as one change applied four
 times:
 
-| site | what it actually gates | banned-guarded |
-| --- | --- | --- |
-| `queries/riders.sql` `ListRoomsInCommon` | rooms in common — the gate for the whole rider page | yes |
-| `queries/gamify.sql` `SharesRoomOrFriends` | who may see a trophy case | **no** — see below |
-| `queries/rides.sql` `RoomWeekBoard` | the room's weekly board, not a person-visibility gate | yes |
-| `queries/export.sql` `ExportUserRooms` | the caller's own account export, not a viewer gate at all | n/a |
+| site                                       | what it actually gates                                    | banned-guarded     |
+| ------------------------------------------ | --------------------------------------------------------- | ------------------ |
+| `queries/riders.sql` `ListRoomsInCommon`   | rooms in common — the gate for the whole rider page       | yes                |
+| `queries/gamify.sql` `SharesRoomOrFriends` | who may see a trophy case                                 | **no** — see below |
+| `queries/rides.sql` `RoomWeekBoard`        | the room's weekly board, not a person-visibility gate     | yes                |
+| `queries/export.sql` `ExportUserRooms`     | the caller's own account export, not a viewer gate at all | n/a                |
 
 Only the first two are visibility gates that this decision changes. The board is
 room-scoped by ADR-0036 and stays so (below); the export returns the caller's own
@@ -154,21 +154,23 @@ re-derives this list rather than trusting it.
 ### What this supersedes or amends
 
 - **[ADR-0020](0020-the-app-takes-discords-shape.md)** — its sidebar sizing
-  argument is amended. *"Discord's shape is two columns because Discord has forty
-  servers of thirty channels. WattRoom has five rooms of five places"* was the
+  argument is amended. _"Discord's shape is two columns because Discord has forty
+  servers of thirty channels. WattRoom has five rooms of five places"_ was the
   reason for one column; the tree is now three deep and that arithmetic must be
-  re-argued rather than quietly inherited. **What is not overturned:** *"voice
-  stays a state you carry, not a place you join"* — voice remains per-room, which
+  re-argued rather than quietly inherited. **What is not overturned:** _"voice
+  stays a state you carry, not a place you join"_ — voice remains per-room, which
   this design preserves by giving the crew no voice at all. Whether the deeper
   tree changes the column count is [#1023](https://github.com/natrontech/wattroom/issues/1023)'s
-  to draw, not this ADR's to assert.
+  to draw, not this ADR's to assert. **Answered, 2026-09-08**: it does not — the
+  column stays one and the crew becomes a mode it is in, recorded in
+  [ADR-0020's amendment](0020-the-app-takes-discords-shape.md).
 - **WATTROOM.md** — the join-flow/privacy paragraph (line 68) and the ownership
   cap. Per [ADR-0001](0001-adrs-and-founding-decisions.md) that file is edited
   only to mark a decision superseded, and it is **not edited by this PR**: the
   marking lands with the cutover that makes it true. Doing it now would make the
   founding record describe a repo that does not exist.
 - **`docs/SPEC.md`** — the roles matrix, the cap numbers, and a glossary entry
-  for *crew*. Same timing: the cutover edits it.
+  for _crew_. Same timing: the cutover edits it.
 - **[ADR-0015](0015-self-hosted-music-pool.md) / [#1095](https://github.com/natrontech/wattroom/issues/1095)** —
   the pool is per uploader today. A crew is the scope Phase 2
   ([#1103](https://github.com/natrontech/wattroom/issues/1103)) widens it to, and
@@ -180,7 +182,7 @@ re-derives this list rather than trusting it.
 
 ADR-0036 asks this ADR to say whether the board's scope becomes the crew. **It
 does not**, and ADR-0036's own reasoning is why: it puts the board off by
-default because *"being in a room must not put a rider on a board"* —
+default because _"being in a room must not put a rider on a board"_ —
 enrolment by existence, RESEARCH.md §14.8's first trap. A crew-scoped board
 would reinstate exactly that at a larger radius: joining room A by its code
 would place a rider on a board beside people from rooms B–E they never entered
@@ -189,12 +191,12 @@ and cannot see. The room stays the unit, and `rooms.board_enabled`
 
 ### "Crew" is already in the vocabulary, and that is a cost, not a saving
 
-The name was chosen because WATTROOM.md already says *"your crew's ladder, not
-the internet's"*. But the word is in use today meaning **the people in one
+The name was chosen because WATTROOM.md already says _"your crew's ladder, not
+the internet's"_. But the word is in use today meaning **the people in one
 room**, which is the opposite of the new object:
 
-- `docs/SPEC.md:285` — *"A room is a crew, not an attendance register."*
-- `WATTROOM.md:153` — *"Crew-level:"* introduces room-level collective goals.
+- `docs/SPEC.md:285` — _"A room is a crew, not an attendance register."_
+- `WATTROOM.md:153` — _"Crew-level:"_ introduces room-level collective goals.
 - `docs/SPEC.md:187` — the **`crew-chief`** medal, earned for pressing start on
   20 sessions in a room.
 
@@ -234,8 +236,8 @@ The migration is additive where it can be, per
 crew-membership tables, a `crew_id` on `rooms`. `crew_id` cannot be nullable
 forever — crewless rooms do not exist — but it is added nullable, backfilled by
 the one-crew-per-owner rule, and only then constrained, all inside the one
-release. *(Corrected by the fourth amendment below: the constraint waits a
-release.)* Nothing is dropped: the per-user room cap's enforcement stops being
+release. _(Corrected by the fourth amendment below: the constraint waits a
+release.)_ Nothing is dropped: the per-user room cap's enforcement stops being
 read before its inputs go away, and `memberships` keeps its shape. A rollback to
 the previous image finds every row it wrote still readable, and loses the crew
 layer rather than the rooms. Migrations are created with `make migration`
@@ -258,18 +260,21 @@ that holds at one level and not the other, is a privacy failure rather than a
 missing feature. That is a deliberate trade of release size against the one
 class of bug this design could produce, and it is why
 [#1021](https://github.com/natrontech/wattroom/issues/1021) researches how
-inherited-permission models fail *before* the cutover rather than after.
+inherited-permission models fail _before_ the cutover rather than after.
 
 **The tree gets deeper and navigation gets harder**, which ADR-0020 spent a
 whole decision avoiding. [#1023](https://github.com/natrontech/wattroom/issues/1023)
-iterates on that before any implementation issue exists.
+iterated on that before any implementation issue existed, and
+[ADR-0020's 2026-09-08 amendment](0020-the-app-takes-discords-shape.md) is the
+answer: one crew at a time, so the navigation stays two deep while the tree is
+three.
 
 **Permanent room–crew binding is the sharpest constraint here.** A room in the
 wrong crew can only be recreated, losing its code, slug, medals and streak. It
 is accepted because a movable room makes every visibility rule above
 time-dependent — "who could see this room" would need a history — and the
 one-crew-per-owner migration removes the common reason anyone would want to
-move one. If riders hit this in practice, the revisit is a room *copy*, never a
+move one. If riders hit this in practice, the revisit is a room _copy_, never a
 move.
 
 ## Amendment, 2026-09-08 (#1021): what §16 changed
@@ -282,20 +287,20 @@ open for [#1106](https://github.com/natrontech/wattroom/issues/1106).
 
 **Two ban levels may be one too many.** §16.4: Discord has no per-channel ban
 at all; exclusion from a channel is a deny in the same permission system as
-everything else. *Settled in the third amendment below — both levels stay, and
-the single expression is what fixes the forgettable guard.*
+everything else. _Settled in the third amendment below — both levels stay, and
+the single expression is what fixes the forgettable guard._
 
 **Also from §16.2**: the single permission expression the cutover needs should
 be a **SQL view** every gate and visibility join selects from, so a new join
-that forgets it fails to compile rather than silently over-permitting. *The
-third amendment below promotes this from advice to a requirement.*
+that forgets it fails to compile rather than silently over-permitting. _The
+third amendment below promotes this from advice to a requirement._
 
 ## Amendment, 2026-09-08 (#1106): a crew has an owner
 
-The decision above named crew *admins* and no un-removable actor, so two admins
+The decision above named crew _admins_ and no un-removable actor, so two admins
 could demote each other with nothing stating who still held the crew. §16.5
 found no product with that shape: Discord's permission lockout is a documented,
-*recoverable* state precisely because the server owner sits outside the
+_recoverable_ state precisely because the server owner sits outside the
 permission system. This settles it, ahead of the design (#1023), because it is a
 question about the model rather than about how the tree is drawn.
 
@@ -307,7 +312,7 @@ leave a crew with nobody able to fix it.
 **The owner is not a super-reader.** They gain no ability to read a room's
 contents without joining it — the same line this ADR already draws for crew
 admins, and deliberately stricter than Discord, whose `ADMINISTRATOR`
-*"overrides any potential permission overwrites"*. The anti-lockout guarantee is
+_"overrides any potential permission overwrites"_. The anti-lockout guarantee is
 about **permissions, not contents**, and keeping those separate is what stops a
 crew owner becoming a way to read every room in the crew.
 
@@ -327,11 +332,11 @@ crew's owner**, and no backfill has to invent one.
 Room ownership does not transfer today (`rooms/rooms.go:777`) and
 `rooms.owner_id` is `on delete cascade` (`00001_init.sql:26`), so deleting an
 account deletes the rooms it owns. That is coherent for a room: it is one
-person's, and WATTROOM.md's *delete-account (full purge)* promise is worth more
+person's, and WATTROOM.md's _delete-account (full purge)_ promise is worth more
 than the room.
 
-**It is not coherent for a crew**, because a crew holds rooms *other people
-own*, and this ADR binds a room to its crew permanently. A crew that cascaded
+**It is not coherent for a crew**, because a crew holds rooms _other people
+own_, and this ADR binds a room to its crew permanently. A crew that cascaded
 with its owner would destroy other people's rooms, and those rooms cannot be
 moved out of the way first. Three options, and canon rules out two:
 
@@ -367,24 +372,24 @@ same permission system as everything else — but the inference does not transfe
 for three WattRoom-specific reasons that pass did not check.
 
 **1. It would silently grant a power this ADR explicitly denies.** The decision
-above lets a crew admin who has not joined a room *"manage its permissions and
-see it listed"* while forbidding them to *"rename it, **ban from it**, delete
-it, or read its contents"*. Collapsing the room ban into the override mechanism
+above lets a crew admin who has not joined a room _"manage its permissions and
+see it listed"_ while forbidding them to _"rename it, **ban from it**, delete
+it, or read its contents"_. Collapsing the room ban into the override mechanism
 makes those two the same operation, so a non-member crew admin could eject
 someone from a room they have never entered by setting an override — exactly the
 power that sentence withholds. Discord has no such line to protect: its
 `ADMINISTRATOR` bypasses every overwrite anyway, so nothing there rests on the
 distinction this design is built on.
 
-**2. A ban is not only state.** `docs/SPEC.md`: a ban *"survives rejoin via link
+**2. A ban is not only state.** `docs/SPEC.md`: a ban _"survives rejoin via link
 or code, **severs the live socket and voice on the spot**, and only the owner
-sees the ban list"*. The middle clause is imperative — a permission override is a
-fact a later query reads, while a ban also *does* something at the moment it is
+sees the ban list"_. The middle clause is imperative — a permission override is a
+fact a later query reads, while a ban also _does_ something at the moment it is
 applied. Collapsing the two either loses that or smuggles an action into the
 permission layer, and the second is worse than the duplication it saves.
 
 **3. It would move a room owner's power to the crew.** SPEC's roles matrix puts
-*remove / ban / unban member* on the owner's column alone. If exclusion becomes
+_remove / ban / unban member_ on the owner's column alone. If exclusion becomes
 an override, then whoever manages room permissions may exclude — which is crew
 admins. That is a change to who moderates a room, not a refactor, and nothing in
 the crew model asks for it.
@@ -393,7 +398,7 @@ the crew model asks for it.
 
 Its evidence is real: [#1109](https://github.com/natrontech/wattroom/issues/1109)
 and [#1114](https://github.com/natrontech/wattroom/issues/1114) are four separate
-joins that each forgot `role != 'banned'`, at *one* level. But the failure is not
+joins that each forgot `role != 'banned'`, at _one_ level. But the failure is not
 that there are too many kinds of ban — it is that the guard is written out by
 hand in every query needing it, so a new join can omit it and nothing fails.
 
@@ -428,14 +433,14 @@ join, which is the arrangement the four bugs argue for.
 ## Amendment, 2026-09-08 (#1106): `rooms.crew_id` stays nullable for one release
 
 The migration paragraph above says `crew_id` is added nullable, backfilled, and
-*"only then constrained, all inside the one release"*. **That is wrong**, and
+_"only then constrained, all inside the one release"_. **That is wrong**, and
 [ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md) outranks it.
 
 The previous release's `CreateRoom` inserts `(code, slug, name, owner_id)` and
 knows nothing about the column. A `not null` with no default therefore leaves a
 rolled-back image **unable to create any room at all** — and ADR-0019 is
-explicit that nullable-only is *"the single load-bearing rule of the whole
-document... the only reason retagging to `PREVIOUS` is safe"*. Constraining in
+explicit that nullable-only is _"the single load-bearing rule of the whole
+document... the only reason retagging to `PREVIOUS` is safe"_. Constraining in
 the same release trades the rollback path for a schema tidiness that nothing
 needs yet.
 
@@ -447,7 +452,7 @@ contract half, one release later, exactly like `identities.refresh_token`
 
 Nothing else in that paragraph changes: the backfill, the one-crew-per-owner
 rule, and the rollback-loses-the-crew-layer-not-the-rooms property all hold, and
-they hold *better* with the column nullable.
+they hold _better_ with the column nullable.
 
 Two related columns follow the same reasoning and are called out because they
 are easy to get backwards:
@@ -459,3 +464,77 @@ are easy to get backwards:
   cascades, which is right for a room and fatal for a crew holding other
   people's rooms. Restrict makes a purge that forgot to transfer ownership fail
   loudly instead of leaving an ownerless crew.
+
+## Amendment, 2026-09-08 (#1236): the invite is the crew's
+
+The decision above says _"Crew membership follows room membership. There is no
+separate crew join, no crew code, no invite object"_, and that _"the first room
+is always entered by its own code or share link"_. Jan, reviewing the shipped
+model the same day: _"there should only be possible for the invite on crew
+level, not on rooms level — rooms are like channels."_
+
+He is right, and the Context section of this ADR already said why: a group
+doing three things had _"three join codes handed round, three membership lists
+that drift"_. Keeping the door on every room kept the three codes; it only added
+a name for the group that holds them. [ADR-0020](0020-the-app-takes-discords-shape.md)
+took Discord's shape, and Discord's door is on the server, never on a channel.
+This amendment moves the door where the shape says it goes.
+
+### Decision
+
+- **A crew has a join code and a share link** (`/c/{code}`). Joining the crew is
+  the one way in. The door page names the crew, and says what joining shows
+  (nothing until you enter a room — metrics stay visible only to people who
+  actually join a room, WATTROOM.md).
+- **Crew membership is stored.** `crew_roles.role` gains `member`; the cutover
+  backfills one row per distinct (crew, live room member) so nobody's standing
+  changes on upgrade. A rider may be in a crew and in none of its rooms yet.
+  The derivation above stops being the source of truth; the view reads the row.
+- **Rooms are channels.** A room open to the crew is walked into by any crew
+  member. A private room admits its members and its named exceptions (the
+  grants of #1225) — the room-level control that remains is _who may enter a
+  private channel_, which is access, not invitation. `POST /api/rooms/{slug}/join`
+  requires that the caller may enter (`visible_rooms`), so the slug stops being
+  a door: #1205 hid it from crew-mates, this retires the class.
+- **Room codes and room share links leave the product surface**: the settings
+  page's code and link, the Members place's invite box, and Home's "Join with a
+  code" (which becomes the crew's). The `rooms.code` column stays one release
+  ([ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)); joining by a
+  room code is refused with the reason, not silently redirected. _Done in two
+  halves: 2026.09.57 stopped minting and sending codes and made the column
+  nullable (#1281); the release after dropped it (#1282)._
+- **A listed room ([ADR-0039](0039-the-public-room-directory.md)) is a public
+  door into its crew.** Joining it joins the crew, then the room. ADR-0039's
+  reading stands — the directory shows a door and no window — and what the door
+  opens onto is the crew. The settings ladder's "Everyone on WattRoom" step says
+  so, since a room owner listing a room is opening the crew.
+- **Leaving the crew** removes the member row and every room membership in one
+  move (#1228 already made it one move on the client).
+- **Lifting a crew ban restores plain crew membership**, the way a room unban
+  restores plain room membership (docs/SPEC.md). What it does not restore is
+  unchanged: nothing a room owner decided.
+
+### What does not change
+
+The owner and the successor rule, the caps, the two ban levels read through one
+view, crew admins managing room permissions, the room as the unit of session,
+deck, game, conversation and metrics. `/r/{slug}` stays the room's address and
+the Walk-in door for crew members. The LiveKit room names and the ICS tokens are
+untouched.
+
+### Migration and rollback
+
+Expand only, as before: `crews.code` is added nullable with a unique index and
+backfilled with a random 6-character code per crew; `crew_roles.role`'s check
+widens to admit `member`; the member rows are backfilled. A rolled-back image
+finds every row readable and joins by room code as it did, since `rooms.code`
+is still there. `not null` on `crews.code` and the drop of `rooms.code` are the
+contract half, one release later.
+
+### Supersedes
+
+"Joining is unchanged, and the ordering is the part that reads as broken" above,
+in full. docs/SPEC.md's glossary entry for _crew_ and WATTROOM.md's join-flow
+row (line 68), both marked by the cutover PR rather than by this one, on the
+same reasoning as the first cutover: the founding record should describe a repo
+that exists.

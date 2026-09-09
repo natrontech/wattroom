@@ -1,10 +1,7 @@
 -- name: CreateRoom :one
-insert into rooms (code, slug, name, owner_id)
-values ($1, $2, $3, $4)
+insert into rooms (slug, name, owner_id)
+values ($1, $2, $3)
 returning *;
-
--- name: GetRoomByCode :one
-select * from rooms where code = $1;
 
 -- name: GetRoomBySlug :one
 select * from rooms where slug = $1;
@@ -66,9 +63,29 @@ select r.*, m.role,
        coalesce(last.text, '')::text as last_chat_text,
        coalesce(last.display_name, '')::text as last_chat_from,
        last.image_id as last_chat_image_id,
-       last.created_at as last_chat_at
+       last.created_at as last_chat_at,
+       -- The crew this room belongs to (ADR-0038), joined rather than fetched
+       -- per room: this query's own comment is about the 1+4N it replaced, and
+       -- the sidebar's switcher would have reintroduced exactly that. LEFT,
+       -- because crew_id is nullable for one release (ADR-0038's fourth
+       -- amendment) and a room without one must still list.
+       -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
+       -- name the second one CrewID_2.
+       coalesce(c.name, '')::text as crew_name,
+       coalesce(c.icon, '')::text as crew_icon,
+       (c.image_set_at is not null)::boolean as crew_has_image,
+       -- The crew's code rides the rail (#1257): every member may share it.
+       coalesce(c.code, '')::text as crew_code,
+       -- What the caller is to the crew, for the switcher's owner mark and
+       -- the crew page's door (#1147). Two booleans, not a role word: the
+       -- LEFT join makes a CASE nullable and sqlc would hand back *string.
+       coalesce(c.owner_id = sqlc.arg(user_id), false)::boolean as crew_owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = r.crew_id and cr.user_id = sqlc.arg(user_id)
+                 and cr.role = 'admin')::boolean as crew_admin
 from memberships m
 join rooms r on r.id = m.room_id
+left join crews c on c.id = r.crew_id
 -- NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
 -- a little past its time, and the read is the cleanup.
 left join lateral (
@@ -87,6 +104,19 @@ left join lateral (
     limit 1
 ) last on true
 where m.user_id = sqlc.arg(user_id) and m.role != 'banned'
+  -- The room ban is the membership row; the CREW ban is not, and this list
+  -- was the door that still opened after one (#1178). Asked through
+  -- visible_rooms rather than by writing the crew-ban predicate out here:
+  -- ADR-0038's third amendment makes that view the only place allowed to
+  -- answer "is this person excluded here", precisely so a join like this one
+  -- cannot quietly disagree with the other five.
+  --
+  -- Still membership-scoped, deliberately: this is your nav, not everything
+  -- you may enter. Crew rooms you have not joined are the switcher's to show.
+  and exists (
+      select 1 from visible_rooms v
+      where v.room_id = r.id and v.user_id = m.user_id
+  )
 order by m.joined_at desc;
 
 -- name: GetMembership :one
@@ -99,7 +129,7 @@ select * from memberships where user_id = sqlc.arg(user_id) and room_id = any(sq
 
 -- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
-                 board_enabled = $7
+                 board_enabled = $7, crew_visible = $8
 where id = $1 returning *;
 
 -- name: DeleteRoom :exec
@@ -153,7 +183,10 @@ where reminded_at is null
 returning id, room_id, workout_name, starts_at;
 
 -- name: RescheduleSession :one
-update scheduled_sessions set starts_at = $3
+-- A moved session is reminded again for its new time: the claim above is
+-- keyed on reminded_at, and a move past an already-sent reminder used to
+-- leave the real start with no mail at all.
+update scheduled_sessions set starts_at = $3, reminded_at = null
 where id = $1 and room_id = $2 returning *;
 
 -- name: ListRoomCalendar :many
@@ -172,6 +205,12 @@ where id = $1 returning ics_token;
 
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;
+
+-- name: TransferRoom :exec
+-- The room changes hands (#1227). Always with both membership rows
+-- rewritten in the same transaction: the owner column and the 'owner'
+-- role are two answers to one question and must not disagree.
+update rooms set owner_id = $2 where id = $1;
 
 -- name: ListUserCalendar :many
 -- Every room the rider is in, one list (#325). $2 is the horizon and is the

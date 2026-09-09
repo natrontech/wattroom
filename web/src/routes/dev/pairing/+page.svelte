@@ -3,7 +3,7 @@
 	// machine that has Bluetooth and a trainer attached.
 	//
 	// It used to mock the pairing screen with its own components (#1000): a
-	// second drawing of a screen that now exists for real at /pair, which is
+	// second drawing of a screen that now exists for real at /settings/equipment, which is
 	// exactly how the three UIs happened. This drives the REAL card instead —
 	// the slot is injected, so every state is one click away and none of them
 	// can drift from what a rider sees.
@@ -58,8 +58,8 @@
 		The sensor card
 	</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
-		One card answers "is my trainer connected?" on /pair, /ride, /ramp and in
-		the Training place. The real one is below — pick a state.
+		One card answers "is my trainer connected?" on /settings/equipment, /ride,
+		/ramp and in the Training place. The real one is below — pick a state.
 	</p>
 
 	<div class="mt-5 flex flex-wrap gap-2">
@@ -113,7 +113,9 @@
 		<Logo size={40} />
 		<div>
 			<p class="text-sm">
-				The real screen is <a href="/pair" class="underline">/pair</a>.
+				The real screen is <a href="/settings/equipment" class="underline"
+					>/settings/equipment</a
+				>.
 			</p>
 			<p class="text-muted mt-1 text-xs">
 				WattRoom talks to your trainer straight from this browser — nothing is
