@@ -6,16 +6,14 @@
 	// to it, not how the log scrolls or the box sends.
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
-	import ImageIcon from '@lucide/svelte/icons/image';
-	import ImagePlay from '@lucide/svelte/icons/image-play';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import { onMount, tick, type Snippet } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { type Snippet } from 'svelte';
+	import {} from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
@@ -23,13 +21,12 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import GifPicker from '$lib/chat/GifPicker.svelte';
-	import type { Gif } from '$lib/chat/gifs';
-	import ImageChip from '$lib/chat/ImageChip.svelte';
+	import type {} from '$lib/chat/gifs';
 	import { parseInline } from '$lib/chat/inline';
 	import MessageText from '$lib/chat/MessageText.svelte';
+	import Composer from '$lib/messages/Composer.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
-	import { createPendingImage } from '$lib/chat/pending-image.svelte';
+	import {} from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { account } from '$lib/account.svelte';
 	import {
@@ -184,43 +181,6 @@
 			});
 		}
 		return items;
-	}
-
-	let draft = $state('');
-	let composer = $state<HTMLInputElement | null>(null);
-	// The account gate can mount this thread after initial navigation finished.
-	onMount(() => composer?.focus({ preventScroll: true }));
-	// Navigation includes switching peers in the reused DM page. Live updates
-	// must never take focus back from another control the rider chose.
-	afterNavigate(async () => {
-		await tick();
-		composer?.focus({ preventScroll: true });
-	});
-	let sending = $state(false);
-	let sendError = $state<string | null>(null);
-	const pending = createPendingImage((refusal) => (sendError = refusal));
-	let filePicker = $state<HTMLInputElement | null>(null);
-
-	async function send() {
-		const text = draft.trim();
-		const image = pending.take();
-		if (!text && !image) return;
-		draft = '';
-		sending = true;
-		const refused = await source.send(text, image);
-		sending = false;
-		sendError = refused;
-		if (refused) draft = text; // a refused message is not a deleted one
-	}
-
-	// A picked GIF is its own message, not something typed into the draft:
-	// the URL IS the message, and MessageText draws it (#279, #878).
-	let gifOpen = $state(false);
-	async function sendGif(gif: Gif) {
-		gifOpen = false;
-		sending = true;
-		sendError = await source.send(gif.url);
-		sending = false;
 	}
 </script>
 
@@ -438,71 +398,9 @@
 	</div>
 </div>
 
-<div class="border-ink/5 relative shrink-0 border-t px-5 py-3">
-	{#if gifOpen}
-		<GifPicker
-			onPick={(gif) => void sendGif(gif)}
-			onClose={() => (gifOpen = false)}
-		/>
-	{/if}
-	{#if sendError || extraSendError || (source.error && timeline.length > 0)}
-		<div class="mb-2">
-			<Banner tone="error">{sendError ?? extraSendError ?? source.error}</Banner
-			>
-		</div>
-	{/if}
-	<ImageChip image={pending.current} onClear={pending.clear} />
-	<form
-		class="flex items-center gap-2"
-		onsubmit={(e) => {
-			e.preventDefault();
-			void send();
-		}}
-	>
-		<input
-			bind:this={filePicker}
-			type="file"
-			accept="image/*"
-			class="hidden"
-			onchange={(e) => {
-				pending.pick(e.currentTarget.files?.[0]);
-				e.currentTarget.value = '';
-			}}
-		/>
-		<button
-			type="button"
-			onclick={() => filePicker?.click()}
-			class="text-muted hover:text-ink rounded p-1"
-			aria-label="attach an image"
-			title="attach an image (or paste one)"><ImageIcon size={16} /></button
-		>
-		<!-- Gated on the server having a Tenor key (ux.md): no button that
-		     opens a picker with nothing behind it. -->
-		{#if account.me?.gifsEnabled}
-			<button
-				type="button"
-				onclick={() => (gifOpen = !gifOpen)}
-				data-gif-toggle
-				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
-				aria-label="send a GIF"
-				aria-expanded={gifOpen}
-				title="send a GIF"><ImagePlay size={16} /></button
-			>
-		{/if}
-		<input
-			bind:this={composer}
-			bind:value={draft}
-			onpaste={pending.paste}
-			maxlength="500"
-			placeholder={composerPlaceholder}
-			class="input min-w-0 flex-1"
-		/>
-		<button
-			disabled={sending || (!draft.trim() && !pending.current)}
-			class="btn btn-primary">Send</button
-		>
-	</form>
-	{#if composerHint}
-		<p class="text-muted/70 mt-1.5 text-[10px]">{composerHint}</p>
-	{/if}
-</div>
+<Composer
+	send={source.send}
+	placeholder={composerPlaceholder}
+	hint={composerHint}
+	error={extraSendError ?? (timeline.length > 0 ? source.error : null)}
+/>
