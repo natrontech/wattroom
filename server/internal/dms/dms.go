@@ -9,11 +9,13 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -25,14 +27,42 @@ type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
+// The ceilings on what one account may write (#1818): a friend who turns
+// hostile, a compromised account or a scripted client could fill a thread
+// as fast as HTTP allowed and park a gigabyte of images per pair. Engineering
+// bounds, not SPEC numbers: a line a second is the room's own rule (#1762),
+// and sixty pictures an hour is more than any conversation sends.
+const (
+	linesPerMinute = 60
+	uploadsPerHour = 60
+)
+
 type Service struct {
 	store *store.Store
 	users UserSource
 	log   *slog.Logger
+	// Per account: sends, edits and reactions share one; uploads have their own.
+	lines   *budget.Budget[pgtype.UUID]
+	uploads *budget.Budget[pgtype.UUID]
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+	return &Service{
+		store: st, users: users, log: log,
+		lines:   budget.New[pgtype.UUID](linesPerMinute, time.Minute),
+		uploads: budget.New[pgtype.UUID](uploadsPerHour, time.Hour),
+	}
+}
+
+// overLine answers 429 when the account has written its minute's worth. The
+// copy does not blame the input: the rider's move is to wait (errors.md).
+func (s *Service) overLine(w http.ResponseWriter, me pgtype.UUID) bool {
+	if s.lines.Spend(me) {
+		return false
+	}
+	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+		"That is a lot of messages in one minute — a moment, then send it again.")
+	return true
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -61,7 +91,7 @@ func (s *Service) peer(w http.ResponseWriter, r *http.Request) (db.User, pgtype.
 
 func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	var req struct {
@@ -119,7 +149,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 // new text up on their next poll.
 func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	mid, err := store.ParseUUID(r.PathValue("messageId"))
@@ -175,7 +205,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 // the peer's next poll (thread.svelte.ts refreshes reactions every load).
 func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	var req struct {

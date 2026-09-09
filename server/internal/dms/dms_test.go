@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -48,6 +51,58 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 	mux := http.NewServeMux()
 	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
 	return mux, st, users
+}
+
+// One account's writes are bounded (#1818): sends, edits and reactions
+// share a minute's ceiling, uploads an hour's, and the refusal is a 429 that
+// blames nothing — another account is not held back by it.
+func TestDmWritesAreBoundedPerAccount(t *testing.T) {
+	st := storetest.Open(t)
+	users := &testx.Users{ByToken: map[string]db.User{}}
+	for _, name := range []string{"alice", "bob"} {
+		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: name, FtpWatts: 200, WeightKg: 75})
+		if err != nil {
+			t.Fatal(err)
+		}
+		users.ByToken[name] = u
+		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
+	}
+	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
+		t.Fatal(err)
+	}
+	svc := New(st, users, slog.New(slog.DiscardHandler))
+	svc.lines = budget.New[pgtype.UUID](2, time.Minute)
+	svc.uploads = budget.New[pgtype.UUID](1, time.Hour)
+	mux := http.NewServeMux()
+	svc.Register(mux)
+	alice, bob := store.UUIDString(users.ByToken["alice"].ID), store.UUIDString(users.ByToken["bob"].ID)
+
+	for i := 0; i < 2; i++ {
+		if code, _ := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"hi"}`); code != http.StatusOK {
+			t.Fatalf("send %d: %d", i, code)
+		}
+	}
+	code, body := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"one more"}`)
+	if code != http.StatusTooManyRequests || body["error"] != "rate_limited" {
+		t.Fatalf("the third line in a minute: %d %v", code, body)
+	}
+	// A reaction spends the same minute — and bob's minute is his own.
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob+"/reactions", `{"messageId":"`+alice+`","emoji":"🔥"}`); code != http.StatusTooManyRequests {
+		t.Fatalf("a reaction past the ceiling: %d", code)
+	}
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice, `{"text":"still here"}`); code != http.StatusOK {
+		t.Fatalf("bob held back by alice's ceiling: %d", code)
+	}
+	// Uploads have their own hour.
+	if code, _ := postImage(t, mux, "alice", bob, tinyPNG); code != http.StatusOK {
+		t.Fatalf("first upload: %d", code)
+	}
+	if code, _ := postImage(t, mux, "alice", bob, tinyPNG); code != http.StatusTooManyRequests {
+		t.Fatalf("the second upload in an hour: %d", code)
+	}
 }
 
 func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (int, map[string]any) {
