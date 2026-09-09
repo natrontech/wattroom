@@ -90,7 +90,7 @@ func TestBannedMemberRefusedAtChat(t *testing.T) {
 	if status, _ := post(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat", `{"text":"before"}`); status != http.StatusOK {
 		t.Fatalf("member post before ban: %d", status)
 	}
-	if err := svc.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := svc.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room.ID, UserID: users.byToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatal(err)

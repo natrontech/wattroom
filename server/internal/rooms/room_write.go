@@ -40,7 +40,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	// docs/SPEC.md ownership cap: 3 owned rooms; membership is uncapped and
 	// deleting a room frees the slot. 409 — the state, not the request, refuses.
-	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), user.ID); err == nil && owned >= maxOwnedRooms {
+	owned, err := s.store.Queries.CountOwnedRooms(r.Context(), user.ID)
+	if err != nil {
+		// Closed, not open (audit 2026-09-09): a failed count used to wave
+		// the cap through.
+		s.log.Error("owned rooms count failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		return
+	}
+	if owned >= maxOwnedRooms {
 		httpx.WriteError(w, http.StatusConflict, "conflict",
 			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
 		return
@@ -77,7 +85,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
+	err = s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
 		RoomID: room.ID, UserID: user.ID, Role: "owner",
 	})
 	if err != nil {

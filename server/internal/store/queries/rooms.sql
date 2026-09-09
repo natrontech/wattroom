@@ -136,11 +136,12 @@ where id = $1 returning *;
 -- Memberships and medals cascade; rides keep their history (room_id set null).
 delete from rooms where id = $1;
 
--- name: UpdateMembershipRole :exec
+-- name: UpdateMembershipRole :execrows
 update memberships set role = $3 where room_id = $1 and user_id = $2;
 
--- name: DeleteMembership :exec
+-- name: DeleteMembership :execrows
 -- A banned row is the ban (#637): leaving must never delete it, whoever asks.
+-- Rows, so a caller can tell a delete that declined from one that landed.
 delete from memberships where room_id = $1 and user_id = $2 and role != 'banned';
 
 -- name: CreateScheduledSession :one

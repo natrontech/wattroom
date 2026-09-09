@@ -65,7 +65,12 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target})
-	if err != nil || banned {
+	if err != nil {
+		s.log.Error("grant ban check failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The grant did not go through. Try again.")
+		return
+	}
+	if banned {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
 			"They are banned from this room. Unban them first if you mean it.")
 		return

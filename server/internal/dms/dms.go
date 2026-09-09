@@ -5,11 +5,13 @@
 package dms
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -89,10 +91,16 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	sent, err := s.store.Queries.SendDm(r.Context(), db.SendDmParams{
 		SenderID: me.ID, RecipientID: peer, Text: text, ImageID: image,
 	})
-	if err != nil {
-		// Zero rows back = the friendship gate refused (pgx.ErrNoRows) — the
-		// one way a valid request lands here.
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Zero rows back = the friendship gate refused — the one way a valid
+		// request lands here.
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only message accepted friends.")
+		return
+	}
+	if err != nil {
+		// Not "not friends": the database did not answer (audit 2026-09-09).
+		s.log.Error("dm send failed", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be sent. Try again.")
 		return
 	}
 	if err := s.store.Queries.PruneDms(r.Context(), db.PruneDmsParams{

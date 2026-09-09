@@ -177,7 +177,7 @@ func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateSchedule
 	return i, err
 }
 
-const deleteMembership = `-- name: DeleteMembership :exec
+const deleteMembership = `-- name: DeleteMembership :execrows
 delete from memberships where room_id = $1 and user_id = $2 and role != 'banned'
 `
 
@@ -187,9 +187,13 @@ type DeleteMembershipParams struct {
 }
 
 // A banned row is the ban (#637): leaving must never delete it, whoever asks.
-func (q *Queries) DeleteMembership(ctx context.Context, arg DeleteMembershipParams) error {
-	_, err := q.db.Exec(ctx, deleteMembership, arg.RoomID, arg.UserID)
-	return err
+// Rows, so a caller can tell a delete that declined from one that landed.
+func (q *Queries) DeleteMembership(ctx context.Context, arg DeleteMembershipParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMembership, arg.RoomID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteRoom = `-- name: DeleteRoom :exec
@@ -1028,7 +1032,7 @@ func (q *Queries) TransferRoom(ctx context.Context, arg TransferRoomParams) erro
 	return err
 }
 
-const updateMembershipRole = `-- name: UpdateMembershipRole :exec
+const updateMembershipRole = `-- name: UpdateMembershipRole :execrows
 update memberships set role = $3 where room_id = $1 and user_id = $2
 `
 
@@ -1038,9 +1042,12 @@ type UpdateMembershipRoleParams struct {
 	Role   string
 }
 
-func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembershipRoleParams) error {
-	_, err := q.db.Exec(ctx, updateMembershipRole, arg.RoomID, arg.UserID, arg.Role)
-	return err
+func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembershipRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMembershipRole, arg.RoomID, arg.UserID, arg.Role)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateRoom = `-- name: UpdateRoom :one

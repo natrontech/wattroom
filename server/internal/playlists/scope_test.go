@@ -103,7 +103,7 @@ func TestSmartShuffleDropsABannedRidersShelf(t *testing.T) {
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
-	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room.ID, UserID: h.users["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)

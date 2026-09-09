@@ -149,7 +149,7 @@ func buildICS(calName, host string, events []icsEvent) string {
 			e.id, icsTime(e.stamp), icsTime(e.start), icsTime(e.start.Add(e.length)),
 			icsEscape(e.summary),
 			icsEscape("Planned by "+e.planner+" in "+e.roomName+"."),
-			icsEscape(e.roomName), host, e.roomSlug)
+			icsEscape(e.roomName), icsEscape(host), e.roomSlug)
 	}
 	b.WriteString("END:VCALENDAR\r\n")
 	return b.String()

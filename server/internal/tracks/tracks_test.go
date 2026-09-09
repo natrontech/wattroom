@@ -734,7 +734,7 @@ func TestABannedRiderCannotPlayTheRoomsTracks(t *testing.T) {
 		t.Fatalf("bob could not play it before the ban (%d) — test proves nothing", w.Code)
 	}
 
-	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room.ID, UserID: h.users.byToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)

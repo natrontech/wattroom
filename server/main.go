@@ -109,6 +109,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", healthzHandler(st, log))
+	// Public on purpose, like /api/live below: the registered gauges are
+	// aggregate-only by construction (metrics.go refuses a GaugeVec, so no
+	// slug or rider reaches this route), and a scraper cannot sign in.
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /api/version", versionHandler())
 	// The client owns the ride until there is somewhere to persist it (#15); this
