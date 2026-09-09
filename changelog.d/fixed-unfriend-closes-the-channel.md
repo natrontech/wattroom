@@ -1,0 +1,1 @@
+- Removing a friend now closes the conversation the way it was meant to: it leaves both riders' message lists, they stop receiving each other's current name, picture and level, and the thread's history stays readable with the box shut and a line saying why — instead of an open box whose Send was refused.

@@ -30,14 +30,31 @@
 	// reload — has no head yet and nobody told dm.show the name, so the page
 	// read "them" until the first line. Their page knows who they are.
 	let fetchedName = $state<string | null>(null);
-	// Messages are for accepted friends (dms.go). A conversation that exists
-	// was one; reached cold, the rider's page says where the friendship
-	// stands, and a page that will not open (nothing shared) is a stranger.
-	// Null while unknown — the box stays open rather than flickering shut.
-	let friendship = $state<Rider['friend'] | 'stranger' | null>(null);
+	// Messages are for accepted friends (dms.go). The friends list every
+	// page holds is the first word on where it stands (#1814: the head used
+	// to short-circuit the lookup, so an ex-friend's box stayed open and Send
+	// answered 403); the rider's page is the cold-load fallback, and a page
+	// that will not open (nothing shared) is a stranger. Null while unknown —
+	// the box stays open rather than flickering shut.
+	let fetched = $state<Rider['friend'] | 'stranger' | null>(null);
+	const listed = $derived(
+		friends.list?.find((f) => f.id === peerId)?.status ?? null,
+	);
+	// The list's word, else the page's; null while neither has answered, so
+	// the box opens once and never flickers shut — a list that has not seen
+	// a friendship made a minute ago is not a reason to disable the input
+	// under the focus the composer just took.
+	const friendship = $derived<Rider['friend'] | 'stranger' | null>(
+		listed ?? fetched,
+	);
 	// The reason the box is shut, in the words of where the ask stands: a
 	// request already sent is not "add them", it is "wait for them".
 	const lock = $derived.by(() => {
+		// A thread with lines and no friendship is a friendship that ended
+		// (ADR-0012: the channel closes with it): what was said stays, the
+		// box is shut, and the copy must not read as "you share nothing".
+		if (history && (friendship === 'none' || friendship === 'stranger'))
+			return `You and ${peerName} are no longer friends — what was said stays, the box is shut.`;
 		switch (friendship) {
 			case 'pending_out':
 				return `You asked ${peerName} to be friends — messages open once they accept.`;
@@ -58,18 +75,24 @@
 			(dm.open?.name && dm.open.name !== 'them' ? dm.open.name : undefined),
 	);
 	const peerName = $derived(knownName ?? fetchedName ?? 'them');
+	let asked = '';
 	$effect(() => {
 		const id = peerId;
-		fetchedName = null;
-		friendship = null;
-		if (!id || knownName) return;
+		if (asked !== id) {
+			fetchedName = null;
+			fetched = null;
+		}
+		// Nothing left to learn: the list says friend and the head says name.
+		if (!id || (knownName && listed === 'accepted')) return;
+		if (asked === id) return;
+		asked = id;
 		void fetchRider(id).then((res) => {
 			if (!res.ok) {
-				if (res.error.error === 'not_found') friendship = 'stranger';
+				if (res.error.error === 'not_found') fetched = 'stranger';
 				return;
 			}
 			if (res.data.id !== id) return;
-			friendship = res.data.friend;
+			fetched = res.data.friend;
 			fetchedName = res.data.displayName;
 			people.learn([
 				{
@@ -85,6 +108,8 @@
 	const status = $derived(statusOf(presence.rooms, peerId, friends.list));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
+	// Lines on screen: what tells an ended friendship from a stranger's.
+	const history = $derived((thread?.timeline.length ?? 0) > 0);
 	$effect(() => {
 		const id = peerId;
 		if (!id) {
