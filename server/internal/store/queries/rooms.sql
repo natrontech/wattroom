@@ -198,9 +198,17 @@ returning id, room_id, workout_name, starts_at;
 -- name: RescheduleSession :one
 -- A moved session is reminded again for its new time: the claim above is
 -- keyed on reminded_at, and a move past an already-sent reminder used to
--- leave the real start with no mail at all.
-update scheduled_sessions set starts_at = $3, reminded_at = null
-where id = $1 and room_id = $2 returning *;
+-- leave the real start with no mail at all. The reminder stays armed as it
+-- was when the time did not change (#1639), and the old start comes back
+-- so the handler can tell a move from a no-op.
+update scheduled_sessions
+set starts_at = $3,
+    reminded_at = case when starts_at = $3 then reminded_at else null end
+where id = $1 and room_id = $2
+returning *;
+
+-- name: GetScheduledSessionStart :one
+select starts_at from scheduled_sessions where id = $1 and room_id = $2;
 
 -- name: ListRoomCalendar :many
 -- The iCal feed (#245): unlike the in-room list, it keeps a month of history

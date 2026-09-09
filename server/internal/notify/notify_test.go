@@ -3,7 +3,9 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -350,8 +352,11 @@ func TestSendReportsAPIFailure(t *testing.T) {
 	defer srv.Close()
 	s := service(h, srv.URL)
 	err := s.send(t.Context(), mail{To: "x@example.test", Subject: "s", Text: "t", Unsub: "https://u"})
-	if err == nil || !strings.Contains(err.Error(), "invalid from") {
-		t.Fatalf("err = %v, want the API detail surfaced", err)
+	// The status is the error and the body is kept aside (#1643): what gets
+	// logged never carries the provider's words, which can name an address.
+	var refused *sendError
+	if !errors.As(err, &refused) || !strings.Contains(refused.Detail(), "invalid from") || strings.Contains(err.Error(), "invalid from") {
+		t.Fatalf("err = %v, want the status alone with the detail aside", err)
 	}
 }
 
@@ -449,5 +454,82 @@ func TestAccountDeletedReceiptHasNothingToPress(t *testing.T) {
 	}
 	if len(m.Body) != 1 {
 		t.Fatalf("receipt body = %q, want just the line", m.Body)
+	}
+}
+
+// A room name with a line break in it used to write its own lines under the
+// operator's signature — in the subject, which becomes a header, and in the
+// text part (#1640). The HTML part was already safe.
+func TestSessionMailCollapsesControlCharacters(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	room := h.room
+	room.Name = "Velvet\r\nBcc: victim@example.test\nHammer"
+	s.sessionMail(t.Context(), room, "Openers\x00", time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local), h.planner.ID, sessionPlanned)
+	if len(fake.payloads) != 1 {
+		t.Fatalf("sent %d", len(fake.payloads))
+	}
+	subject := fmt.Sprint(fake.payloads[0]["subject"])
+	text := fmt.Sprint(fake.payloads[0]["text"])
+	if strings.ContainsAny(subject, "\r\n\x00") || !strings.Contains(subject, "Velvet Bcc: victim@example.test Hammer") {
+		t.Fatalf("subject %q", subject)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "Bcc:") {
+			t.Fatalf("the text part grew a line of the room's making: %q", text)
+		}
+	}
+}
+
+// The per-room ceiling (#1639): a coach rescheduling in a loop mailed every
+// member each time.
+func TestSessionMailCeilingPerRoom(t *testing.T) {
+	h := setup(t)
+	s := service(h, "http://127.0.0.1:1")
+	s.sessions = budget.New[pgtype.UUID](2, time.Hour)
+	for i := 0; i < 2; i++ {
+		if !s.allowSessionMail(h.room) {
+			t.Fatalf("mail %d should be allowed", i)
+		}
+	}
+	if s.allowSessionMail(h.room) {
+		t.Fatal("the third is over the ceiling")
+	}
+	other := h.room
+	other.ID = pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	if !s.allowSessionMail(other) {
+		t.Fatal("another room has its own window")
+	}
+}
+
+// ADR-0030: security mail does not come from the bulk sender's address
+// (#1642), so a filter on the bulk sender cannot catch the alarm.
+func TestAlarmsShipFromTheirOwnSender(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	s.alertFrom = "WattRoom security <alerts@example.test>"
+	// The opted-in member is the one the harness gave a verified address.
+	rider, err := h.store.Queries.GetUser(t.Context(), h.optIn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := alertMail(rider, "h", "l", "", ""); !ok {
+		t.Fatalf("the harness's member has no verified address: %v", rider.Email)
+	}
+	s.AccountAlert(rider, "A passkey was added", "one line")
+	deadline := time.Now().Add(3 * time.Second)
+	for len(fake.payloads) == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	if len(fake.payloads) != 1 || fmt.Sprint(fake.payloads[0]["from"]) != s.alertFrom {
+		t.Fatalf("alarm from %v, want the alarm's own sender", fake.payloads)
 	}
 }

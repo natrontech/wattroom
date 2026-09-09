@@ -23,6 +23,7 @@ import (
 // plain text that goes out beside it. Exported field names because a template
 // cannot read unexported ones.
 type mail struct {
+	From    string // empty: the bulk sender; the alarm and the verification set their own
 	To      string
 	Subject string
 	Heading string   // what happened, in ink — chrome, never the glow

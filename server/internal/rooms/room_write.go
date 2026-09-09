@@ -3,6 +3,7 @@ package rooms
 import (
 	"net/http"
 	"strings"
+	"unicode"
 
 	"fmt"
 
@@ -33,9 +34,9 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 {
+	if req.Name == "" || len(req.Name) > 60 || hasControl(req.Name) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A room name has to be 1-60 characters.", "name")
+			"A room name has to be 1-60 characters on one line.", "name")
 		return
 	}
 	// Resolved before the room row exists, so a refusal leaves nothing behind.
@@ -216,9 +217,9 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 {
+	if req.Name == "" || len(req.Name) > 60 || hasControl(req.Name) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A room name has to be 1-60 characters.", "name")
+			"A room name has to be 1-60 characters on one line.", "name")
 		return
 	}
 	if req.SoundPack == "" {
@@ -317,4 +318,10 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("room deleted", "room", room.Slug)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// hasControl reports a line break or another control character in text a
+// mail will carry as a subject (#1640).
+func hasControl(text string) bool {
+	return strings.ContainsFunc(text, unicode.IsControl)
 }

@@ -151,9 +151,9 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.WorkoutName = strings.TrimSpace(req.WorkoutName)
-	if req.WorkoutName == "" || len(req.WorkoutName) > 80 {
+	if req.WorkoutName == "" || len(req.WorkoutName) > 80 || hasControl(req.WorkoutName) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A workout name has to be 1-80 characters.", "workoutName")
+			"A workout name has to be 1-80 characters on one line.", "workoutName")
 		return
 	}
 	if segments, err := workout.Parse(req.WorkoutJSON); err != nil || len(segments) == 0 {
@@ -219,6 +219,17 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 			"A session is planned between now and three months out.", "startsAt")
 		return
 	}
+	// The time it had, before the move: a move to the same time is not a
+	// move (#1639) — it used to mail the whole room "Moved:" and re-arm the
+	// reminder on every call.
+	before, err := s.store.Queries.GetScheduledSessionStart(r.Context(), db.GetScheduledSessionStartParams{
+		ID: id, RoomID: room.ID,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Error("reschedule lookup failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be moved. Try again.")
+		return
+	}
 	row, err := s.store.Queries.RescheduleSession(r.Context(), db.RescheduleSessionParams{
 		ID: id, RoomID: room.ID, StartsAt: pgTime(req.StartsAt),
 	})
@@ -231,10 +242,12 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be moved. Try again.")
 		return
 	}
-	if s.notifier != nil {
-		s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
+	if !before.Time.Equal(req.StartsAt) {
+		if s.notifier != nil {
+			s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
+		}
+		s.announce(room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
 	}
-	s.announce(room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
 	w.WriteHeader(http.StatusNoContent)
 }
 

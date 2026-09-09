@@ -1,62 +1,39 @@
 package auth
 
 import (
-	"errors"
-	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/natrontech/wattroom/server/internal/budget"
 )
 
-func TestMailBudgetIsPerAccountAndReopens(t *testing.T) {
+// The ceiling on the mail one account can cause (#827), and the window
+// turning — the mechanics live in package budget now, shared with the
+// sign-in doors and the session mail.
+func testUUID(n byte) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte{n}, Valid: true} }
+
+func TestMailBudget(t *testing.T) {
 	b := newMailBudget()
-	rider := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
-	other := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
-
-	for i := range verifyMailsPerWindow {
-		if !b.spend(rider) {
-			t.Fatalf("refused at %d, want room for %d", i, verifyMailsPerWindow)
+	user := testUUID(1)
+	for i := 0; i < verifyMailsPerWindow; i++ {
+		if !b.Spend(user) {
+			t.Fatalf("spend %d refused inside the window", i)
 		}
 	}
-	if b.spend(rider) {
-		t.Fatal("spent past the ceiling")
+	if b.Spend(user) {
+		t.Fatal("one past the ceiling was allowed")
 	}
-	// One account's spending is not everybody's.
-	if !b.spend(other) {
-		t.Fatal("a spent account blocked a different one")
+	if !b.Spend(testUUID(2)) {
+		t.Fatal("another account has its own window")
 	}
 
-	b.mu.Lock()
-	w := b.m[rider]
-	w.until = time.Now().Add(-time.Second)
-	b.m[rider] = w
-	b.mu.Unlock()
-
-	if !b.spend(rider) {
-		t.Fatal("the window never reopened")
+	short := budget.New[string](1, 30*time.Millisecond)
+	if !short.Spend("k") || short.Spend("k") {
+		t.Fatal("one spend per window")
 	}
-}
-
-// The ceiling has to sit on the path that actually sends, which is the part a
-// unit test of the counter cannot prove.
-func TestVerificationMailStopsAtTheCeiling(t *testing.T) {
-	s := testService(t)
-	mailer := &fakeMailer{}
-	s.SetMailer(mailer)
-	user := testUser(t, s)
-
-	// A different address every time is what walks past the same-address
-	// resend cooldown — the hole the ceiling exists to close.
-	for i := range verifyMailsPerWindow {
-		if _, err := s.startEmailVerification(t.Context(), user, fmt.Sprintf("rider%d@example.test", i)); err != nil {
-			t.Fatalf("start %d: %v", i, err)
-		}
-	}
-	if _, err := s.startEmailVerification(t.Context(), user, "one-too-many@example.test"); !errors.Is(err, errTooManyVerifications) {
-		t.Fatalf("err = %v, want the ceiling", err)
-	}
-	if mailer.calls != verifyMailsPerWindow {
-		t.Fatalf("sent %d mails, want %d", mailer.calls, verifyMailsPerWindow)
+	time.Sleep(40 * time.Millisecond)
+	if !short.Spend("k") {
+		t.Fatal("the window did not turn")
 	}
 }
