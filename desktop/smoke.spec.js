@@ -249,3 +249,54 @@ test('a ride holds the machine awake, and stops holding it', async () => {
 
 	await app.close();
 });
+
+test('the chooser waits for the scan instead of answering its empty first list', async () => {
+	// #1545: Electron emits `select-bluetooth-device` the moment the scan
+	// starts, before anything has advertised, and again for every device it
+	// hears. Answering that first list with '' cancels the request — which is
+	// how the shell shipped unable to pair a trainer at all. The event is a
+	// plain EventEmitter emit, so the handler can be exercised without a radio.
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	const emit = (devices) =>
+		app.evaluate(
+			async ({ BrowserWindow, dialog }, list) => {
+				dialog.showMessageBox = async (_win, options) => {
+					globalThis.__buttons = options.buttons;
+					return { response: 0 };
+				};
+				const { webContents } = BrowserWindow.getAllWindows()[0];
+				return await new Promise((resolve) => {
+					const held = setTimeout(() => resolve('held'), 1500);
+					webContents.emit(
+						'select-bluetooth-device',
+						{ preventDefault() {} },
+						list,
+						(deviceId) => {
+							clearTimeout(held);
+							resolve(`answered:${deviceId}`);
+						},
+					);
+				});
+			},
+			devices,
+		);
+
+	// The launch warm-up (warmBluetooth) is a Bluetooth request of our own, and
+	// the handler answers it rather than showing a picker. Wait it out first, or
+	// this test reads its answer as the bug.
+	await expect.poll(() => emit([]), { timeout: 15_000 }).toBe('held');
+
+	// A device turns up mid-scan: the picker opens on the list as it is now,
+	// and the chooser is answered with what the rider pressed.
+	expect(
+		await emit([{ deviceId: 'kickr-1', deviceName: 'KICKR CORE 1234' }]),
+	).toBe('answered:kickr-1');
+	expect(
+		await app.evaluate(() => globalThis.__buttons),
+	).toEqual(['KICKR CORE 1234', 'Cancel']);
+
+	await app.close();
+});

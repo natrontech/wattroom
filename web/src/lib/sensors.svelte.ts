@@ -1,4 +1,5 @@
 import { createCadenceSensor } from '$lib/ble/cadence';
+import { pairError } from '$lib/ble/pair-error';
 import { createHeartRateSensor } from '$lib/ble/heartrate';
 import { createPowerMeterSensor } from '$lib/ble/cyclingpower';
 import { createSimulatedSensor } from '$lib/ble/simulated-sensor';
@@ -87,7 +88,7 @@ export const sensors = {
 			slots[kind].name = sensor.name;
 		} catch (cause) {
 			live.delete(kind);
-			slots[kind].error = message(cause);
+			slots[kind].error = pairError(cause);
 		}
 	},
 
@@ -97,14 +98,3 @@ export const sensors = {
 		slots[kind] = blank(kind);
 	},
 };
-
-/**
- * Web Bluetooth's own errors are the useful ones — "User cancelled the requestDevice
- * chooser" says exactly what happened. Only the unrecognised case gets a rewrite.
- */
-function message(cause: unknown): string {
-	if (cause instanceof DOMException && cause.name === 'NotFoundError')
-		return 'No device picked. Wake the sensor — spin the cranks or press its button — and try again.';
-	if (cause instanceof Error) return cause.message;
-	return 'Could not connect to that sensor.';
-}

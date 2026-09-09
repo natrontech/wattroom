@@ -1,3 +1,4 @@
+import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
 import { serverNow } from '$lib/room/server-clock';
@@ -217,7 +218,7 @@ export function createRide(deps: RideDeps) {
 			);
 			trainer = next;
 		} catch (cause) {
-			error = cause instanceof Error ? cause.message : String(cause);
+			error = pairError(cause);
 			for (const off of unsubscribe) off();
 			unsubscribe = [];
 		}
