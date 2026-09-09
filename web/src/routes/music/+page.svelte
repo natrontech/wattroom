@@ -1,10 +1,11 @@
 <script lang="ts">
-	// The music pool (#268, ADR-0015 amended): your own record shelf, heard in
-	// every room you may enter — never a library shared with strangers.
-	// Browse it, search it, drop MP3s on it, fix whatever the tags got wrong.
+	// The music library (#268, ADR-0015 amended): your own uploaded tracks,
+	// heard in every room you may enter — never shared with strangers. Browse
+	// it, search it, drop MP3s on it, fix whatever the tags got wrong. Riders
+	// read "library" everywhere (#1420); the code keeps calling it the pool.
 	//
-	// Playlists are not here yet — they need tables #1064 deliberately did not
-	// create, and their naming is the decision #655 is sitting on.
+	// Playlists are not here yet — #1426 makes a saved playlist hold a library
+	// track, and this page grows them after.
 	import { confirm } from '$lib/confirm.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
@@ -98,7 +99,7 @@
 			const already = tracks.some((t) => t.id === res.data.id);
 			toasts.push(
 				already
-					? `“${res.data.title}” was already in the pool.`
+					? `“${res.data.title}” was already in your library.`
 					: `Added “${res.data.title}”.`,
 			);
 			if (!already) tracks = [res.data, ...tracks];
@@ -131,7 +132,7 @@
 	// file — there is nothing to undo to. That is the case the rule exempts.
 	async function remove(track: Track) {
 		const ok = await confirm({
-			title: `Delete “${track.title}” from the pool?`,
+			title: `Delete “${track.title}” from your library?`,
 			body: 'The file goes with it. This cannot be undone.',
 			action: 'Delete track',
 		});
@@ -203,7 +204,7 @@
 			value={query}
 			oninput={(event) => search(event.currentTarget.value)}
 			placeholder="Search titles, artists, albums"
-			aria-label="Search the music pool"
+			aria-label="Search your library"
 			class="input w-full pl-9"
 		/>
 	</label>
@@ -244,7 +245,7 @@
 	     folder of MP3s should not have to aim. -->
 	<div
 		role="region"
-		aria-label="Music pool"
+		aria-label="Your library"
 		ondragover={(event) => {
 			event.preventDefault();
 			dragging = true;
@@ -278,7 +279,7 @@
 				</p>
 				{#snippet cta()}
 					<button onclick={() => pick(tag)} class="btn btn-secondary"
-						>Show the whole pool</button
+						>Show the whole library</button
 					>
 				{/snippet}
 			</EmptyState>
@@ -302,8 +303,8 @@
 						class="text-muted/60 mb-2"
 					/>{/snippet}
 				<p class="text-sm">
-					This is your record shelf. Everything here plays in any room's
-					jukebox, with no video tile in the way.
+					This is your library. Everything here plays in any room's jukebox,
+					with no video tile in the way.
 				</p>
 				{#snippet cta()}
 					<label class="btn btn-primary cursor-pointer">

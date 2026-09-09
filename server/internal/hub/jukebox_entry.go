@@ -85,7 +85,7 @@ func (r jukeboxRefusal) message() string {
 	case refusalInvalidTrack:
 		return "That playlist contains a video this jukebox cannot play — choose another playlist or video."
 	case refusalInvalidTrackID:
-		return "That track is not one from the music pool — pick it from the library and try again."
+		return "That track is not in your library — pick it from the Music page and try again."
 	default:
 		return "That track could not be added — check the link and try again."
 	}

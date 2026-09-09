@@ -85,7 +85,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) me(w http.ResponseWriter, r *http.Request) (db.User, bool) {
-	return s.auth.RequireUser(w, r, "Sign in to use the music pool.")
+	return s.auth.RequireUser(w, r, "Sign in to use your library.")
 }
 
 type trackJSON struct {
@@ -172,7 +172,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
 		return
 	}
 	// The shelf labels, over the whole pool rather than this page: a rider
@@ -180,7 +180,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	facets, err := s.store.Queries.TrackTagCounts(r.Context(), me.ID)
 	if err != nil {
 		s.log.Error("track tag counts", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
 		return
 	}
 	out := make([]trackJSON, 0, len(rows))
