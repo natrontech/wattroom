@@ -1,0 +1,1 @@
+- The download page, opened from a desktop app that updates itself, no longer reads as if you had to download the newer build by hand: it says the app is fetching it and that the restart is on Home.
