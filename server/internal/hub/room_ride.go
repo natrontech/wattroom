@@ -97,12 +97,34 @@ func (rm *room) cheer(c protocol.Cheer) {
 	}
 }
 
+// firing is one clip a rider still has going, and when it started (#1681).
+type firing struct {
+	clipID string
+	at     time.Time
+}
+
+// soundingCeiling is how long the room assumes a fire is still sounding.
+// SPEC caps a clip at 60 s, so nothing can outlive this — and nothing needs
+// to be shorter: the listener fetches the clip and stops at its real end, so
+// over-reporting here costs a joiner one metadata fetch that plays nothing.
+const soundingCeiling = 60 * time.Second
+
 // fire queues one soundboard press for the next tick. Bounded like cheers:
 // the per-rider limit already makes a flood rare, and the bound is what makes
 // "rare" not matter.
+//
+// It also remembers the press. The tick's batch is drained every second, but
+// the airhorn is not over in a second: a rider who joins halfway through one
+// has no fire to read, and used to arrive into a room where somebody was
+// visibly playing nothing.
 func (rm *room) fire(b protocol.Board) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	if b.ClipID == "" {
+		delete(rm.sounding, b.FromID)
+	} else {
+		rm.sounding[b.FromID] = firing{clipID: b.ClipID, at: rm.now()}
+	}
 	// A stop after a stop, with nothing of the rider's fired in between, says
 	// nothing new. Dropping it is what lets a stop skip the cooldown without
 	// letting one rider fill the tick with them.

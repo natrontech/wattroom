@@ -432,6 +432,7 @@
 		     wants it (#877); it plays whether or not it is on screen. -->
 		<Soundboard
 			fires={live.tick?.board}
+			roster={live.tick?.roster}
 			onFire={(clipId) => live.fireClip(clipId)}
 			onStop={() => live.stopClip()}
 		/>

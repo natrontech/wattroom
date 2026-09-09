@@ -1,3 +1,4 @@
+import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block, type RoomRider } from '$lib/room/view';
 import { targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
@@ -99,6 +100,10 @@ export function createRiders(deps: RiderDeps) {
 				sharing: deps.av.stageSources.some(
 					(source) => source.kind === 'screen' && source.id === rider.id,
 				),
+				// What this machine is actually playing of theirs, not what the
+				// tick says they fired: the mark must go out when the sound does,
+				// and only the audio knows when that is (#1681).
+				sounding: isSounding(rider.id),
 				inVoice: rider.id in deps.av.voice || serverVoice.has(rider.id),
 				muted: deps.av.voice[rider.id] === 'muted',
 				speaking: !!deps.av.speaking[rider.id],

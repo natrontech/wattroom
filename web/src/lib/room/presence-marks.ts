@@ -34,6 +34,17 @@ export const MUTED_MARK = 'text-muted shrink-0';
 /** Sharing a screen (#664): the stage picker's glyph, as quiet as the mic. */
 export const SHARE_MARK = MUTED_MARK;
 
+/**
+ * Firing a soundboard clip right now (#1681). Quiet chrome like the mic and
+ * the screen — a clip is something a rider is doing, not live data, so it
+ * never reaches for `watt` and never glows (ADR-0005).
+ *
+ * The room could hear an airhorn and see nobody playing one: the only thing
+ * that said whose it was lived inside the board's own panel, which the rider
+ * who has learnt the keys has closed.
+ */
+export const BOARD_MARK = MUTED_MARK;
+
 /** Explicitly stepped out: quiet structural chrome, never live-data watt. */
 export const AWAY_MARK =
 	'bg-surface/85 text-muted rounded-full px-1.5 py-0.5 text-[9px] font-medium tracking-wider uppercase';

@@ -88,6 +88,42 @@ func (q *Queries) GetBoardClip(ctx context.Context, id pgtype.UUID) (GetBoardCli
 	return i, err
 }
 
+const getBoardClipMeta = `-- name: GetBoardClipMeta :one
+select user_id, name, duration_ms, start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms
+from board_clips where id = $1
+`
+
+type GetBoardClipMetaRow struct {
+	UserID     pgtype.UUID
+	Name       string
+	DurationMs int32
+	StartMs    int32
+	EndMs      int32
+	GainDb     float32
+	FadeInMs   int32
+	FadeOutMs  int32
+}
+
+// What a LISTENER needs to know about somebody else's clip: its name for the
+// strip and its edit for playback. Never selects `bytes` — the audio is a
+// separate fetch, and this one is asked for every clip anyone in the room
+// fires.
+func (q *Queries) GetBoardClipMeta(ctx context.Context, id pgtype.UUID) (GetBoardClipMetaRow, error) {
+	row := q.db.QueryRow(ctx, getBoardClipMeta, id)
+	var i GetBoardClipMetaRow
+	err := row.Scan(
+		&i.UserID,
+		&i.Name,
+		&i.DurationMs,
+		&i.StartMs,
+		&i.EndMs,
+		&i.GainDb,
+		&i.FadeInMs,
+		&i.FadeOutMs,
+	)
+	return i, err
+}
+
 const getBoardClipSource = `-- name: GetBoardClipSource :one
 select duration_ms from board_clips where id = $1 and user_id = $2
 `

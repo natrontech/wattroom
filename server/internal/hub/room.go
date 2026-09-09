@@ -29,14 +29,18 @@ type room struct {
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
 	board   []protocol.Board                 // this second's soundboard fires, drained the same way
-	chat    []protocol.ChatLine              // this second's lines, drained each tick (#146)
-	reacts  []protocol.ChatReactionCount     // this second's changed reaction totals (#201)
-	edits   []protocol.ChatEdit              // this second's rewritten lines (#865)
-	chatIDs []protocol.ChatID                // ids the async save assigned (#219)
-	events  eventLog                         // what the room did, drained each tick (#321)
-	session *session
-	record  *accumulator
-	music   *jukebox
+	// What each rider still has sounding, so a rider who joins mid-clip both
+	// hears it and sees who fired it (#1681). Unlike `board` this is NOT
+	// drained: a fire is one tick, but the sound it started is not.
+	sounding map[string]firing
+	chat     []protocol.ChatLine          // this second's lines, drained each tick (#146)
+	reacts   []protocol.ChatReactionCount // this second's changed reaction totals (#201)
+	edits    []protocol.ChatEdit          // this second's rewritten lines (#865)
+	chatIDs  []protocol.ChatID            // ids the async save assigned (#219)
+	events   eventLog                     // what the room did, drained each tick (#321)
+	session  *session
+	record   *accumulator
+	music    *jukebox
 	// riders ever seen this session, so someone who left before the end still
 	// gets their ride; saved guards against persisting one session twice.
 	sprint   *sprint
@@ -205,6 +209,7 @@ func newRoom(slug string) *room {
 		voiceNow:      make(map[string]struct{}),
 		voiceMs:       make(map[string]int64),
 		present:       make(map[string]*span),
+		sounding:      make(map[string]firing),
 		away:          make(map[string]struct{}),
 		departed:      make(map[string]time.Time),
 		departedNames: make(map[string]string),
@@ -291,6 +296,10 @@ func (rm *room) leave(c *client) {
 		// Away is presence, and the rider is no longer present (#706).
 		// Left behind, it would greet them as away on the next join.
 		delete(rm.away, c.rider.ID)
+		// Their clip left with them: every listener stops it on the leave,
+		// so a stale entry would only tell the next joiner to start a sound
+		// nobody else can hear.
+		delete(rm.sounding, c.rider.ID)
 		// Not announced yet: the tick says so once the grace window is out.
 		rm.departed[c.rider.ID] = rm.now()
 		rm.departedNames[c.rider.ID] = c.rider.Name

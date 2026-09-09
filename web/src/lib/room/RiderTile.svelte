@@ -10,8 +10,10 @@
 	import { personMenu } from '$lib/person-menu';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import Drum from '@lucide/svelte/icons/drum';
 	import {
 		AWAY_MARK,
+		BOARD_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
 		SHARE_MARK,
@@ -180,6 +182,15 @@
 				class={SHARE_MARK}
 				aria-label="sharing a screen"
 				title="sharing a screen"
+			/>
+		{/if}
+		{#if rider.sounding}
+			<!-- The board's own drum (#1681), so an airhorn has a face on it. -->
+			<Drum
+				size={12}
+				class={BOARD_MARK}
+				aria-label="playing a sound"
+				title="playing a sound"
 			/>
 		{/if}
 	</div>
