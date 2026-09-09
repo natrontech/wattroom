@@ -1,1 +1,0 @@
-- Two riders with the same display name no longer break TV mode or the execution meter mid-ride.

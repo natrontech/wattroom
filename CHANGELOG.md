@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.74] - 2026-09-09
+
+### Fixed
+
+- An uploaded track on the deck now shows its length and a working seek bar from the first second, for every rider in the room — one still loading the file, muted or sitting out included. The waveform seat draws a plain line until the track's own shape has been read, instead of a placeholder that looked like one (#1509).
+- Two riders with the same display name no longer break TV mode or the execution meter mid-ride.
+- The app loads faster on a slow link: the server compresses its own scripts, styles and pages instead of leaving that to a proxy, and the shell and the changelog are revalidated with a tag instead of re-downloaded on every visit.
+
 ## [2026.09.73] - 2026-09-09
 
 ### Fixed
@@ -1534,7 +1542,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.73...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.74...HEAD
+[2026.09.74]: https://github.com/natrontech/wattroom/compare/2026.09.73...2026.09.74
 [2026.09.73]: https://github.com/natrontech/wattroom/compare/2026.09.72...2026.09.73
 [2026.09.72]: https://github.com/natrontech/wattroom/compare/2026.09.71...2026.09.72
 [2026.09.71]: https://github.com/natrontech/wattroom/compare/2026.09.70...2026.09.71
