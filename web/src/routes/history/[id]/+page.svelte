@@ -417,8 +417,12 @@
 				<h2 class="eyebrow">where it went</h2>
 				<p class="panel text-muted mt-3 px-4 py-3 text-xs">
 					{#if ride.export.state === 'delivered'}
-						On Strava{#if ride.export.remoteId}
-							as
+						<!-- {' '}: Svelte trims a block's leading whitespace, so the
+						     newline before "as" vanished and the sentence read "On
+						     Stravaas activity …" on every exported ride (#1532). The
+						     space cannot live outside the block — there is none to
+						     spare before the full stop when there is no id. -->
+						On Strava{#if ride.export.remoteId}{' '}as
 							<a
 								class="underline"
 								href="https://www.strava.com/activities/{ride.export.remoteId}"
