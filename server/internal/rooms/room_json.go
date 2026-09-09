@@ -66,6 +66,9 @@ type roomCrewJSON struct {
 	// owner mark reads it; it is small because the guarantee behind it is
 	// about permissions, not a reading power (ADR-0038, second amendment).
 	Role string `json:"role,omitempty"`
+	// A person has named it (#1151): until then it carries the owner's name
+	// and the set-up step stays open. Carried on the crews list only.
+	Named bool `json:"named,omitempty"`
 }
 
 // One rider's week on a room's ordered board (#995, ADR-0036). Category is a

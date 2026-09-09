@@ -8,7 +8,7 @@ insert into crews (name, owner_id, code) values ($1, $2, $3) returning *;
 -- name: GetCrewByCode :one
 -- The crew's door (#1236). A code is a secret: the caller learns the crew it
 -- names and nothing about codes that do not exist.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where code = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where code = $1;
 
 -- name: JoinCrew :exec
 -- Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
@@ -30,7 +30,7 @@ select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'a
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
@@ -118,7 +118,11 @@ select * from crews where owner_id = $1 order by created_at limit 1;
 update rooms set crew_id = $2, crew_visible = $3 where id = $1;
 
 -- name: UpdateCrew :one
-update crews set name = $2, icon = $3 where id = $1 returning *;
+-- A changed name is a person naming the crew; an icon pick with the same name
+-- is not (audit 2026-09-09).
+update crews set name = $2, icon = $3,
+       renamed_at = case when name <> $2 then now() else renamed_at end
+where id = $1 returning *;
 
 -- name: SetCrewImage :exec
 update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1;
@@ -210,6 +214,7 @@ select user_id from crew_roles where crew_id = $1 and role = 'banned';
 select c.id, c.name, c.icon,
        (c.image_set_at is not null)::boolean as has_image,
        coalesce(c.code, '')::text as code,
+       (c.renamed_at is not null)::boolean as named,
        (c.owner_id = sqlc.arg(user_id))::boolean as owned,
        exists (select 1 from crew_roles cr
                where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin

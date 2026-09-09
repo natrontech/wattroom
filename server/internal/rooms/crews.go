@@ -71,6 +71,8 @@ type crewJSON struct {
 	// someone who had just read "12 are in it" (audit 2026-09-09).
 	Members int64            `json:"members"`
 	People  []crewPersonJSON `json:"people"`
+	// A person has named it (#1151) — the placeholder hint goes when true.
+	Named bool `json:"named"`
 	// Admins and the owner only — a ban list is a moderation surface, not
 	// roster gossip, the same rule the room's Members place applies.
 	Banned []crewPersonJSON `json:"banned,omitempty"`
@@ -190,6 +192,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role, Code: codeOf(crew.Code),
 		ImageURL: crewImageURL(crew.ID, crew.HasImage),
 		OwnerID:  store.UUIDString(crew.OwnerID),
+		Named:    crew.Named,
 		Rooms:    []crewRoomJSON{}, People: []crewPersonJSON{},
 	}
 	// The rooms, with what the CALLER may do in each — the same four states

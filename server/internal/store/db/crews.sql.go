@@ -86,7 +86,7 @@ func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwned
 
 const createCrew = `-- name: CreateCrew :one
 
-insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
+insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at
 `
 
 type CreateCrewParams struct {
@@ -111,6 +111,7 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 		&i.ImageMime,
 		&i.Image,
 		&i.ImageSetAt,
+		&i.RenamedAt,
 	)
 	return i, err
 }
@@ -181,7 +182,7 @@ func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerIn
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where id = $1
 `
 
 type GetCrewRow struct {
@@ -192,6 +193,7 @@ type GetCrewRow struct {
 	CreatedAt pgtype.Timestamptz
 	Code      *string
 	HasImage  bool
+	Named     bool
 }
 
 // Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -206,12 +208,13 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, erro
 		&i.CreatedAt,
 		&i.Code,
 		&i.HasImage,
+		&i.Named,
 	)
 	return i, err
 }
 
 const getCrewByCode = `-- name: GetCrewByCode :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where code = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where code = $1
 `
 
 type GetCrewByCodeRow struct {
@@ -222,6 +225,7 @@ type GetCrewByCodeRow struct {
 	CreatedAt pgtype.Timestamptz
 	Code      *string
 	HasImage  bool
+	Named     bool
 }
 
 // The crew's door (#1236). A code is a secret: the caller learns the crew it
@@ -237,6 +241,7 @@ func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (GetCrewByCod
 		&i.CreatedAt,
 		&i.Code,
 		&i.HasImage,
+		&i.Named,
 	)
 	return i, err
 }
@@ -261,7 +266,7 @@ func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImag
 }
 
 const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at limit 1
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at from crews where owner_id = $1 order by created_at limit 1
 `
 
 // The crew a room is created into when the caller names none (#1201). One
@@ -280,6 +285,7 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.ImageMime,
 		&i.Image,
 		&i.ImageSetAt,
+		&i.RenamedAt,
 	)
 	return i, err
 }
@@ -700,6 +706,7 @@ const listCrewsFor = `-- name: ListCrewsFor :many
 select c.id, c.name, c.icon,
        (c.image_set_at is not null)::boolean as has_image,
        coalesce(c.code, '')::text as code,
+       (c.renamed_at is not null)::boolean as named,
        (c.owner_id = $1)::boolean as owned,
        exists (select 1 from crew_roles cr
                where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
@@ -717,6 +724,7 @@ type ListCrewsForRow struct {
 	Icon     string
 	HasImage bool
 	Code     string
+	Named    bool
 	Owned    bool
 	Admin    bool
 }
@@ -740,6 +748,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 			&i.Icon,
 			&i.HasImage,
 			&i.Code,
+			&i.Named,
 			&i.Owned,
 			&i.Admin,
 		); err != nil {
@@ -754,7 +763,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 }
 
 const listCrewsOwnedBy = `-- name: ListCrewsOwnedBy :many
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at from crews where owner_id = $1 order by created_at
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at from crews where owner_id = $1 order by created_at
 `
 
 func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
@@ -776,6 +785,7 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 			&i.ImageMime,
 			&i.Image,
 			&i.ImageSetAt,
+			&i.RenamedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -961,7 +971,9 @@ func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) erro
 }
 
 const updateCrew = `-- name: UpdateCrew :one
-update crews set name = $2, icon = $3 where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at
+update crews set name = $2, icon = $3,
+       renamed_at = case when name <> $2 then now() else renamed_at end
+where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at
 `
 
 type UpdateCrewParams struct {
@@ -970,6 +982,8 @@ type UpdateCrewParams struct {
 	Icon string
 }
 
+// A changed name is a person naming the crew; an icon pick with the same name
+// is not (audit 2026-09-09).
 func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, updateCrew, arg.ID, arg.Name, arg.Icon)
 	var i Crew
@@ -983,6 +997,7 @@ func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, e
 		&i.ImageMime,
 		&i.Image,
 		&i.ImageSetAt,
+		&i.RenamedAt,
 	)
 	return i, err
 }

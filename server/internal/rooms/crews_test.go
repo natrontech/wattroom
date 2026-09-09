@@ -858,6 +858,42 @@ func TestACrewBanTakesTheRoomMembershipsWithIt(t *testing.T) {
 	}
 }
 
+// Naming the crew is the server's word (#1151, audit 2026-09-09): a rename
+// sets it, an icon pick with the same name does not, and the owner renaming
+// THEMSELVES changes nothing — the client used to compare the two names.
+func TestACrewIsNamedByRenamingIt(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Named Room")
+	crew := h.crewOf(t, slug)
+	crewID := store.UUIDString(crew.ID)
+	named := func() any {
+		_, body := h.call(t, "alice", http.MethodGet, "/api/crews/"+crewID, "")
+		return body["named"]
+	}
+	if named() != false {
+		t.Fatalf("a fresh crew reads as named: %v", named())
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/crews/"+crewID, fmt.Sprintf(`{"name":%q,"icon":"flame"}`, crew.Name)); status != http.StatusOK {
+		t.Fatalf("icon pick: %d", status)
+	}
+	if named() != false {
+		t.Errorf("an icon pick with the same name counted as naming it")
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/crews/"+crewID, `{"name":"Wadlichlepfer"}`); status != http.StatusOK {
+		t.Fatalf("rename: %d", status)
+	}
+	if named() != true {
+		t.Errorf("a rename did not name the crew")
+	}
+	_, list := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+	crews, _ := list["crews"].([]any)
+	for _, c := range crews {
+		if row, ok := c.(map[string]any); ok && row["id"] == crewID && row["named"] != true {
+			t.Errorf("the room list's crew row does not say it is named: %v", row)
+		}
+	}
+}
+
 func TestJoiningTheCrewAnswersMember(t *testing.T) {
 	h := setup(t)
 	_, code := h.createRoom(t, "alice", "Crew Join Answers")

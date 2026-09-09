@@ -74,6 +74,7 @@ type Crew struct {
 	ImageMime  *string
 	Image      []byte
 	ImageSetAt pgtype.Timestamptz
+	RenamedAt  pgtype.Timestamptz
 }
 
 type CrewRole struct {
