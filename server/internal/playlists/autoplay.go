@@ -13,19 +13,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
+// The fixed start — one pinned video that played before the playlist — is
+// gone (#1422, the 95 % rule): the columns stay one release for the rollback
+// path (ADR-0019) and #1430 drops them.
 type autoplayJSON struct {
 	Enabled          bool   `json:"enabled"`
 	Order            string `json:"order"` // "ordered" | "shuffled" | "smart"
-	FixedVideoID     string `json:"fixedVideoId,omitempty"`
-	FixedVideoTitle  string `json:"fixedVideoTitle,omitempty"`
 	ActivePlaylistID string `json:"activePlaylistId,omitempty"`
 }
 
 func autoplayJSONFrom(room db.Room) autoplayJSON {
-	out := autoplayJSON{
-		Enabled: room.AutoplayEnabled, Order: room.AutoplayOrder,
-		FixedVideoID: room.AutoplayFixedVideoID, FixedVideoTitle: room.AutoplayFixedVideoTitle,
-	}
+	out := autoplayJSON{Enabled: room.AutoplayEnabled, Order: room.AutoplayOrder}
 	if room.AutoplayPlaylistID.Valid {
 		out.ActivePlaylistID = store.UUIDString(room.AutoplayPlaylistID)
 	}
@@ -57,17 +55,8 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Autoplay order is ordered, shuffled, or smart.", "order")
 		return
 	}
-	fixedID := strings.TrimSpace(req.FixedVideoID)
-	fixedTitle := clip(strings.TrimSpace(req.FixedVideoTitle), 200)
-	if fixedID == "" {
-		fixedTitle = ""
-	} else if !hub.ValidVideoID(fixedID) {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a video this jukebox can play.", "fixedVideoId")
-		return
-	}
 	if _, err := s.store.Queries.UpdateAutoplay(r.Context(), db.UpdateAutoplayParams{
 		ID: sc.room.ID, AutoplayEnabled: req.Enabled, AutoplayOrder: req.Order,
-		AutoplayFixedVideoID: fixedID, AutoplayFixedVideoTitle: fixedTitle,
 	}); err != nil {
 		s.log.Error("update autoplay failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Autoplay could not be saved. Try again.")
@@ -115,21 +104,16 @@ func validAutoplayOrder(order string) bool {
 }
 
 // Autoplay implements hub.AutoplaySource (#627): read once per join-onto-an-
-// idle-deck, entirely outside any room lock. fixed, when the room has a
-// pinned starter, always leads; tracks is the active playlist in list order,
-// or freshly shuffled when that's the room's current setting — "shuffled"
-// means shuffled once per trigger, not a history-weighted order. "smart"
-// (#269) is the history-weighted one, and it draws from the pool rather than
-// from any playlist — weighted, since #270, toward the cadence `mood` says
-// the room is turning right now.
-func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMood) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool) {
+// idle-deck, entirely outside any room lock. tracks is the active playlist in
+// list order, or freshly shuffled when that's the room's current setting —
+// "shuffled" means shuffled once per trigger, not a history-weighted order.
+// "smart" (#269) is the history-weighted one, and it draws from the library
+// rather than from any playlist — weighted, since #270, toward the cadence
+// `mood` says the room is turning right now.
+func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMood) (tracks []protocol.JukeboxCommand, ok bool) {
 	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
 	if err != nil || !room.AutoplayEnabled {
-		return nil, nil, false
-	}
-	if room.AutoplayFixedVideoID != "" && hub.ValidVideoID(room.AutoplayFixedVideoID) {
-		cmd := protocol.JukeboxCommand{Action: "add", VideoID: room.AutoplayFixedVideoID, Title: room.AutoplayFixedVideoTitle}
-		fixed = &cmd
+		return nil, false
 	}
 	if room.AutoplayOrder == "smart" {
 		tracks = s.smartShuffle(ctx, room.ID, slug, mood)
@@ -143,8 +127,8 @@ func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMoo
 			}
 		}
 	}
-	if fixed == nil && len(tracks) == 0 {
-		return nil, nil, false
+	if len(tracks) == 0 {
+		return nil, false
 	}
-	return fixed, tracks, true
+	return tracks, true
 }

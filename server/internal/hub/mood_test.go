@@ -98,7 +98,7 @@ func TestAutoplayIsToldWhatTheRoomIsRiding(t *testing.T) {
 	rm.session.state(h.now())
 	rm.mu.Unlock()
 
-	h.triggerAutoplay(rm, "mood-room", false)
+	h.triggerAutoplay(rm, "mood-room")
 
 	select {
 	case got := <-spy.seen:

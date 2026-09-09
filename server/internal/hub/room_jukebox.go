@@ -44,17 +44,13 @@ func (rm *room) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 // manual add — or another join's own trigger racing this one — may have
 // already filled the deck by the time this runs, and the last one to the
 // lock backs off rather than doubling the queue.
-func (rm *room) applyAutoplay(fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool, now time.Time) {
+func (rm *room) applyAutoplay(tracks []protocol.JukeboxCommand, ok bool, now time.Time) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if !ok || rm.music.state.Current != nil {
 		return
 	}
-	cmds := tracks
-	if fixed != nil {
-		cmds = append([]protocol.JukeboxCommand{*fixed}, tracks...)
-	}
-	for _, cmd := range cmds {
+	for _, cmd := range tracks {
 		events, added := rm.music.apply(cmd, "", autoplayActor, now)
 		if !added {
 			break

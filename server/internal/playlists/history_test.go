@@ -141,7 +141,7 @@ func TestSmartAutoplayQueuesPoolTracks(t *testing.T) {
 		t.Fatalf("set smart: %d %v", code, body)
 	}
 
-	_, tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+	tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
 	if !ok || len(tracks) == 0 {
 		t.Fatalf("smart autoplay found nothing: ok=%v tracks=%+v", ok, tracks)
 	}

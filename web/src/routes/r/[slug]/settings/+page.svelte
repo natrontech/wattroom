@@ -13,6 +13,7 @@
 	import RoomMyPrefs from './RoomMyPrefs.svelte';
 	import RoomReach from './RoomReach.svelte';
 	import RoomReactions from './RoomReactions.svelte';
+	import RoomAutoplay from './RoomAutoplay.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { play } from '$lib/sound/cues';
 	import { confirm } from '$lib/confirm.svelte';
@@ -273,6 +274,11 @@
 			</p>
 		</section>
 
+		<!-- Autoplay is the coach's as much as the owner's (SPEC roles matrix),
+		     so the one setting a coach may change on this page is live for
+		     them and read-only for everyone else. -->
+		<RoomAutoplay slug={room.slug} canManage={room.role === 'coach'} />
+
 		<RoomMyPrefs
 			slug={room.slug}
 			me={room.me}
@@ -375,6 +381,8 @@
 				Custom packs — insider memes, your own klaxon — aren't here yet.
 			</p>
 		</section>
+
+		<RoomAutoplay slug={room.slug} canManage={true} />
 
 		<!-- Off is the default and turning it on is a deliberate act (ADR-0036):
 		     being in a room must not put a rider on a board. The copy says what
