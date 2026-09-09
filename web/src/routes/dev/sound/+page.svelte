@@ -1,11 +1,6 @@
 <script lang="ts">
-	import {
-		CUES,
-		play,
-		playCountdown,
-		setMuted,
-		type CueId,
-	} from '$lib/sound/cues';
+	import { play, playCountdown, setMuted } from '$lib/sound/cues';
+	import { CUES, type CueId } from '$lib/sound/cue-catalogue';
 	import { setDucking } from '$lib/sound/duck';
 	import { UNIT_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';

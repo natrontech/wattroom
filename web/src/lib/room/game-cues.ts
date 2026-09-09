@@ -1,5 +1,5 @@
 import type { GameState } from '$lib/protocol';
-import type { CueId } from '$lib/sound/cues';
+import type { CueId } from '$lib/sound/cue-catalogue';
 
 /**
  * What a game mode should say out loud, given how its state just moved (#845).
