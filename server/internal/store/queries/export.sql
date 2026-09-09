@@ -65,3 +65,13 @@ select amount, source, ref, at from xp_events where user_id = $1 order by at;
 
 -- name: ExportUserAchievements :many
 select key, earned_at from achievements where user_id = $1 order by earned_at;
+
+-- name: ExportUserMedals :many
+-- The rider's own medals (#1550): the room that awarded them, and the ride
+-- named by its start so a row lines up with rides.json.
+select m.kind, m.awarded_at, rm.name as room_name, r.started_at as ride_started_at
+from medals m
+join rooms rm on rm.id = m.room_id
+join rides r on r.id = m.ride_id
+where m.user_id = $1
+order by m.awarded_at;

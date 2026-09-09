@@ -204,7 +204,7 @@ update rides set norm_watts = $2 where id = $1;
 -- at once grows with how long someone has used WattRoom, which is the one
 -- kind of growth an alpha cannot outrun (#894).
 select id, workout_name, started_at, seconds, avg_watts, kj, execution,
-       ftp_watts, xp, curve
+       execution_scored, norm_watts, ftp_watts, xp, curve, room_id, shared_at
 from rides where user_id = $1 order by started_at;
 
 -- name: GetRideSamples :one

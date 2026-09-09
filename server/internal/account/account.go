@@ -15,6 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -144,23 +145,43 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Every column the ride page shows (#1550): the export's scope is what
+	// the rider can already see, and four of these were missing.
 	summaries := make([]map[string]any, 0, len(rides))
 	for _, ride := range rides {
+		var normWatts any
+		if ride.NormWatts != nil {
+			normWatts = *ride.NormWatts
+		}
 		summaries = append(summaries, map[string]any{
-			"workoutName": ride.WorkoutName,
-			"startedAt":   ride.StartedAt.Time,
-			"seconds":     ride.Seconds,
-			"avgWatts":    ride.AvgWatts,
-			"kj":          ride.Kj,
-			"execution":   ride.Execution,
-			"ftpWatts":    ride.FtpWatts,
-			"xp":          ride.Xp,
-			"curve":       json.RawMessage(ride.Curve),
+			"workoutName":       ride.WorkoutName,
+			"startedAt":         ride.StartedAt.Time,
+			"seconds":           ride.Seconds,
+			"avgWatts":          ride.AvgWatts,
+			"normWatts":         normWatts,
+			"kj":                ride.Kj,
+			"execution":         ride.Execution,
+			"executionScored":   ride.ExecutionScored,
+			"ftpWatts":          ride.FtpWatts,
+			"xp":                ride.Xp,
+			"inARoom":           ride.RoomID.Valid,
+			"sharedWithFriends": ride.SharedAt.Valid,
+			"curve":             json.RawMessage(ride.Curve),
 		})
 	}
 	if !writeJSON("rides.json", summaries) {
 		return
 	}
+
+	// What went in and what did not (#1550): once the first byte is out,
+	// every failure below yields a valid, openable, incomplete zip under a
+	// 200. The manifest, written last, is how a rider tells the two apart —
+	// and its absence says the archive was cut short.
+	type entry struct {
+		Name string `json:"name"`
+		Ok   bool   `json:"ok"`
+	}
+	manifest := []entry{{"profile.json", true}, {"rides.json", true}}
 
 	// Everything else the account holds (#696). One query per category, each
 	// user-scoped and each mapped to the keys a person reads rather than the
@@ -247,20 +268,32 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				return map[string]any{"trophy": row.Key, "earnedAt": row.EarnedAt.Time}
 			})
 		}},
+		{"medals.json", func() (any, error) {
+			// Shown on the ride and rider pages, purged with the account —
+			// and never exported until #1550.
+			rows, err := s.store.Queries.ExportUserMedals(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserMedalsRow) any {
+				return map[string]any{"medal": row.Kind, "room": row.RoomName,
+					"rideStartedAt": row.RideStartedAt.Time, "awardedAt": row.AwardedAt.Time}
+			})
+		}},
 	} {
 		rows, err := cat.rows()
 		if err != nil {
 			s.log.Error("export category failed", "category", cat.name, "err", err)
+			manifest = append(manifest, entry{cat.name, false})
 			continue
 		}
 		if !writeJSON(cat.name, rows) {
 			return
 		}
+		manifest = append(manifest, entry{cat.name, true})
 	}
 
 	// One blob at a time: read, stream into the zip, let it go. Held together
 	// in one slice, a rider's whole history is in memory at once — and that
 	// number grows every month they keep riding (#894).
+	samplesWritten := 0
 	for _, ride := range rides {
 		blob, err := s.store.Queries.GetRideSamples(r.Context(), db.GetRideSamplesParams{
 			ID: ride.ID, UserID: user.ID,
@@ -281,7 +314,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		// The blob was written by us and is size-bounded at write time; copy is fine.
 		_, _ = io.Copy(f, zr) //nolint:gosec // own bounded data
 		_ = zr.Close()
+		samplesWritten++
 	}
+	writeJSON("manifest.json", map[string]any{
+		"generatedAt": time.Now().UTC(),
+		"categories":  manifest,
+		"samples":     map[string]int{"rides": len(rides), "written": samplesWritten},
+		"complete":    samplesWritten == len(rides) && !slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok }),
+	})
 }
 
 // handleDelete is the purge. The confirmation lives client-side (a typed

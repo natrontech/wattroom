@@ -546,6 +546,12 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("achievement: %v", err)
 	}
+	medalRide := h.createRide(t, "alice", room, "Openers", gzipped(t, `[]`))
+	if err := h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{
+		RoomID: room, UserID: h.id("alice"), RideID: medalRide, Kind: "diesel",
+	}); err != nil {
+		t.Fatalf("medal: %v", err)
+	}
 
 	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
 	if rec.Code != http.StatusOK {
@@ -581,6 +587,12 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		"workouts.json":         "My Openers",
 		"xp.json":               "bucket-1",
 		"trophies.json":         "first-ride",
+		"medals.json":           "diesel",
+		// Every field the ride page shows (#1550).
+		"rides.json": "\"sharedWithFriends\"",
+		// Written last, naming every category: its presence is what says
+		// the archive was not cut short (#1550).
+		"manifest.json": "\"complete\": true",
 	} {
 		body, ok := files[name]
 		if !ok {
