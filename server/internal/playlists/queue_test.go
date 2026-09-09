@@ -15,6 +15,10 @@ func TestQueueTracksAtOnce(t *testing.T) {
 	two := h.track(t, "alice", "Two")
 	bobs := h.track(t, "bob", "Bob's")
 
+	// A tempo the deck can match a block's cadence against (#1431): the bridge
+	// dropped it, so a track queued this way was the one the matcher never saw.
+	tempo := h.trackBpm(t, "alice", "Tempo", 128)
+
 	h.live.tracks = nil
 	code, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue",
 		`{"trackIds":["`+one+`","`+bobs+`","not-a-uuid","`+two+`"]}`)
@@ -26,6 +30,15 @@ func TestQueueTracksAtOnce(t *testing.T) {
 	}
 	if h.live.slug != slug || h.live.addedBy != "alice" {
 		t.Fatalf("bridge addressed %q as %q", h.live.slug, h.live.addedBy)
+	}
+
+	h.live.tracks = nil
+	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue",
+		`{"trackIds":["`+tempo+`"]}`); code != http.StatusOK {
+		t.Fatalf("queue the tempo track: %d", code)
+	}
+	if len(h.live.tracks) != 1 || h.live.tracks[0].Bpm != 128 {
+		t.Fatalf("bpm reaching the bridge: %+v", h.live.tracks)
 	}
 
 	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue", `{"trackIds":[]}`); code != http.StatusBadRequest {

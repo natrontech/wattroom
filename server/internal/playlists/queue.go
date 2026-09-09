@@ -49,9 +49,18 @@ func (s *Service) handleQueueTracks(w http.ResponseWriter, r *http.Request) {
 			skipped++
 			continue
 		}
+		// Bpm travels with the track (#1511): playlist replay, history and
+		// smart shuffle all carry it, and this bridge did not — so a track
+		// queued from the Music page reached the deck untagged and the
+		// block-cadence match (#1431) never fired for it. Nil is a track
+		// nobody has tagged, which is a 0 on the wire, not a zero tempo.
+		bpm := 0
+		if track.Bpm != nil {
+			bpm = int(*track.Bpm)
+		}
 		cmds = append(cmds, protocol.JukeboxCommand{
 			Action: "add", TrackID: store.UUIDString(track.ID), Title: track.Title, Artist: track.Artist,
-			DurationMs: int(track.DurationMs),
+			Bpm: bpm, DurationMs: int(track.DurationMs),
 		})
 	}
 	if s.live == nil {
