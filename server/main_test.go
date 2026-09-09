@@ -252,12 +252,17 @@ func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
 		t.Fatalf("the shell: %d", rec.Code)
 	}
 	for header, want := range map[string]string{
-		"Content-Security-Policy": "frame-ancestors 'none'",
-		"X-Content-Type-Options":  "nosniff",
-		"Referrer-Policy":         "strict-origin-when-cross-origin",
+		"Content-Security-Policy":   enforcedCSP,
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "strict-origin-when-cross-origin",
+		"Strict-Transport-Security": "max-age=31536000",
 	} {
 		if got := rec.Header().Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
+	}
+	// The full policy rides report-only until a ride has run under it (#1737).
+	if got := rec.Header().Get("Content-Security-Policy-Report-Only"); got != reportOnlyCSP || !strings.Contains(got, "frame-src https://www.youtube-nocookie.com") {
+		t.Errorf("report-only CSP = %q", got)
 	}
 }
