@@ -442,8 +442,11 @@
 					{#if planned.length > 0}
 						<div class="panel mt-3">
 							{#each planned as room (room.slug)}
+								<!-- The date too: this is the one list that spans rooms and
+								     weeks, and "Tue 19:00" could not tell next week's from
+								     tomorrow's. Same destination as the Lounge's card. -->
 								<a
-									href="/r/{room.slug}"
+									href="/r/{room.slug}/sessions"
 									class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
 								>
 									<CalendarClock size={15} class="text-muted shrink-0" />
@@ -452,7 +455,7 @@
 											{room.next?.workoutName}
 										</p>
 										<p class="text-muted text-xs">
-											{formatWhen(room.next?.startsAt ?? '')} · {room.name}
+											{formatWhen(room.next?.startsAt ?? '', true)} · {room.name}
 										</p>
 									</div>
 								</a>
