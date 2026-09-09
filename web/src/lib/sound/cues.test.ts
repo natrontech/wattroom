@@ -176,3 +176,49 @@ describe('cue ducking follows the SPEC envelope (#675)', () => {
 		expect(scheduled[0]?.value).toBeCloseTo(0.7 * DUCK_DEFAULT);
 	});
 });
+
+/**
+ * The context browsers start suspended (#1681). A refused `resume()` was never
+ * retried and nothing listened for a keystroke — so a rider who fired a pad
+ * without having clicked anything heard silence, and opening the board's panel
+ * (a click) was what secretly fixed it.
+ */
+describe('the suspended context', () => {
+	beforeEach(() => {
+		scheduled.length = 0;
+		now = 0;
+	});
+
+	it('resumes on a keystroke, not only on a click', async () => {
+		const resumes: string[] = [];
+		class Suspended extends FakeAudioContext {
+			state = 'suspended';
+			resume = async () => void resumes.push('resume');
+		}
+		vi.stubGlobal('AudioContext', Suspended);
+		const cues = await freshCues();
+		cues.play('go'); // opens the bus, and asks once on its own
+		resumes.length = 0;
+
+		document.dispatchEvent(new Event('keydown'));
+		expect(resumes).toHaveLength(1);
+		document.dispatchEvent(new Event('pointerdown'));
+		expect(resumes).toHaveLength(2);
+
+		vi.stubGlobal('AudioContext', FakeAudioContext);
+	});
+
+	// A listener for the life of the page is not worth the one gesture it
+	// catches: once the context runs, both come off.
+	it('stops listening once it is running', async () => {
+		const cues = await freshCues();
+		cues.play('go');
+		const off = vi.spyOn(document, 'removeEventListener');
+		document.dispatchEvent(new Event('pointerdown'));
+		expect(off.mock.calls.map(([kind]) => kind)).toEqual([
+			'pointerdown',
+			'keydown',
+		]);
+		off.mockRestore();
+	});
+});

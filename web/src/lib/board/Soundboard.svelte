@@ -30,7 +30,10 @@
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import {
 		applyLevels,
+		catchUp,
 		fire as playClip,
+		keepOnly,
+		nameOf,
 		preview,
 		stop,
 		stopAll,
@@ -39,15 +42,21 @@
 	import BoardFace from '$lib/board/BoardFace.svelte';
 	import ClipsFace from '$lib/board/ClipsFace.svelte';
 	import TrimFace from '$lib/board/TrimFace.svelte';
-	import type { Board } from '$lib/protocol';
+	import type { Board, Rider } from '$lib/protocol';
 
 	let {
 		fires,
+		roster,
 		onFire,
 		onStop,
 	}: {
 		/** This tick's fires, so the strip can say who pressed what. */
 		fires: Board[] | undefined;
+		/**
+		 * Who is in the room, carrying what each of them still has sounding
+		 * (#1681) — a fire is one tick, the clip it started is not.
+		 */
+		roster: Rider[] | undefined;
 		onFire: (clipId: string) => void;
 		/** End your own clip for the whole room (#1321). */
 		onStop: () => void;
@@ -55,37 +64,51 @@
 
 	const PANE = 'soundboard';
 
-	let last = $state<{ from: string; name: string; at: number } | undefined>();
+	let last = $state<{ from: string; clipId: string; at: number } | undefined>();
 	let seenTick: Board[] | undefined;
 
+	// This tick's fires and then the room's standing state, in one effect so
+	// the order is the file's rather than Svelte's: a fire and the roster
+	// entry it just created arrive together, and the catch-up below must see
+	// the fire's claim already staked or it restarts the clip a beat in.
 	$effect(() => {
 		const batch = fires;
-		if (!batch || batch.length === 0 || batch === seenTick) return;
-		seenTick = batch;
+		const present = roster ?? [];
 		// Playing is not the panel's job to be open for: a rider who hid the
 		// board still hears the room — this component stays mounted and
 		// renders nothing while it is closed.
-		let newest: Board | undefined;
-		for (const shot of batch) {
-			const from = shot.fromId ?? '';
-			// A fire with no clip is that rider stopping their own voice (#1321).
-			if (!shot.clipId) {
-				stop(from);
-				continue;
+		if (batch && batch.length > 0 && batch !== seenTick) {
+			seenTick = batch;
+			let newest: Board | undefined;
+			for (const shot of batch) {
+				const from = shot.fromId ?? '';
+				// A fire with no clip is that rider stopping their own voice (#1321).
+				if (!shot.clipId) {
+					stop(from);
+					continue;
+				}
+				// No edit passed: the clip's trim, gain and fades come from the
+				// server with its audio, so the room hears what its owner cut
+				// rather than the whole uploaded minute.
+				void playClip(shot.clipId, from);
+				newest = shot;
 			}
-			// Only your OWN clips carry an edit here — a board is one rider's, so
-			// somebody else's trim rides with their audio, not with the fire.
-			const known = board.clips.find((c) => c.id === shot.clipId);
-			void playClip(shot.clipId, from, known);
-			newest = shot;
+			if (newest) {
+				last = {
+					from: newest.from ?? 'someone',
+					clipId: newest.clipId,
+					at: Date.now(),
+				};
+			}
 		}
-		if (!newest) return;
-		last = {
-			from: newest.from ?? 'someone',
-			// Only your own clips have names here — a board is one rider's.
-			name: board.clips.find((c) => c.id === newest.clipId)?.name ?? 'a sound',
-			at: Date.now(),
-		};
+		// A rider whose clip is still going when you walk in (#1681), and a
+		// rider whose clip must stop because they walked out.
+		keepOnly(present.map((rider) => rider.id));
+		for (const rider of present) {
+			if (rider.sounding) {
+				void catchUp(rider.sounding, rider.id, rider.soundingMs ?? 0);
+			}
+		}
 	});
 
 	// Playing is per rider, not per pad: what YOUR pad shows is your own fire.
@@ -264,7 +287,7 @@
 					<span class="text-ink/85 truncate">{last.from}</span>
 					<span class="shrink-0">fired</span>
 					<span class="font-display text-ink/85 min-w-0 flex-1 truncate"
-						>{last.name}</span
+						>{nameOf(last.clipId) ?? 'a sound'}</span
 					>
 				</p>
 			{/if}

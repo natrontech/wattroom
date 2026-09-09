@@ -64,8 +64,12 @@ vi.mock('$lib/sound/mixer.svelte', () => ({
 }));
 
 const {
+	catchUp,
 	fire,
 	forget,
+	isSounding,
+	keepOnly,
+	nameOf,
 	preview,
 	previewAt,
 	previewing,
@@ -85,13 +89,28 @@ const trim = (startMs: number, endMs: number) => ({
 	fadeOutMs: 0,
 });
 
+/**
+ * What the server says about a clip, by id — the description a LISTENER has
+ * no other way to know (#1681). Untouched, a clip is the whole 4 s source
+ * under a name.
+ */
+const served = new Map<string, Record<string, unknown>>();
+const describe_ = (clipId: string) => ({
+	name: 'CLIP',
+	millis: 4000,
+	...trim(0, 0),
+	...(served.get(clipId) ?? {}),
+});
+
 beforeEach(() => {
 	now = 0;
 	started.length = 0;
 	ended = undefined;
-	vi.stubGlobal('fetch', async () => ({
+	served.clear();
+	vi.stubGlobal('fetch', async (url: string) => ({
 		ok: true,
 		arrayBuffer: async () => new ArrayBuffer(8),
+		json: async () => describe_(url.split('/')[4]),
 	}));
 	forget();
 	// After forget: stopping the previous test's leftovers is not this test's.
@@ -197,5 +216,88 @@ describe('stop', () => {
 		ended?.();
 		await new Promise((r) => setTimeout(r, 5));
 		expect(started).toHaveLength(passes);
+	});
+});
+
+/**
+ * The listener's half of a fire (#1681). A clip's trim, gain and fades used to
+ * be read out of the firer's own library, which nobody else has — so the room
+ * heard the whole uploaded source at raw level, and the rider who cut it was
+ * the only person who heard the cut.
+ */
+describe('what a listener plays', () => {
+	it("applies the owner's trim to somebody else's clip", async () => {
+		served.set('clip-a', trim(500, 1500));
+		await fire('clip-a', 'rider-other');
+		expect(started).toEqual([{ start: 0.5, kept: 1 }]);
+	});
+
+	it('names the clip once it has been heard', async () => {
+		expect(nameOf('clip-a')).toBeNull();
+		served.set('clip-a', { name: 'AIRHORN' });
+		await fire('clip-a', 'rider-other');
+		expect(nameOf('clip-a')).toBe('AIRHORN');
+	});
+
+	// The trim face auditions an edit it has not saved: that one still wins.
+	it('lets an unsaved edit outrank the stored one', async () => {
+		served.set('clip-a', trim(500, 1500));
+		await preview('clip-a', ME, trim(2000, 3000));
+		expect(started).toEqual([{ start: 2, kept: 1 }]);
+	});
+
+	it('says who is making a noise, and stops saying it when they stop', async () => {
+		expect(isSounding('rider-other')).toBe(false);
+		await fire('clip-a', 'rider-other');
+		expect(isSounding('rider-other')).toBe(true);
+		stop('rider-other');
+		expect(isSounding('rider-other')).toBe(false);
+	});
+});
+
+/**
+ * Joining mid-clip (#1681). A fire is one tick and gone, so the roster carries
+ * what each rider still has sounding and how far in the room already is.
+ */
+describe('catching up', () => {
+	it('starts what is left of a clip already running', async () => {
+		await catchUp('clip-a', 'rider-other', 1000);
+		expect(started).toEqual([{ start: 1, kept: 3 }]);
+	});
+
+	it('counts the offset from inside the trim, not the source', async () => {
+		served.set('clip-a', trim(500, 2500));
+		await catchUp('clip-a', 'rider-other', 500);
+		expect(started).toEqual([{ start: 1, kept: 1.5 }]);
+	});
+
+	it('plays nothing for a clip the room has already finished', async () => {
+		served.set('clip-a', trim(0, 1000));
+		await catchUp('clip-a', 'rider-other', 2000);
+		expect(started).toHaveLength(0);
+	});
+
+	// The roster keeps saying so for as long as the hub assumes the clip runs,
+	// so this is asked every tick — and must not restart what the fire began.
+	it('leaves a clip this machine is already playing alone', async () => {
+		await fire('clip-a', 'rider-other');
+		await catchUp('clip-a', 'rider-other', 900);
+		expect(started).toHaveLength(1);
+	});
+
+	it('does start their NEXT clip', async () => {
+		await fire('clip-a', 'rider-other');
+		await catchUp('clip-b', 'rider-other', 0);
+		expect(started).toHaveLength(2);
+	});
+
+	// Nothing else would ever end it: a stop is a message from a socket that
+	// has gone.
+	it('stops a rider who left the room mid-clip', async () => {
+		await fire('clip-a', 'rider-other');
+		await fire('clip-b', ME);
+		keepOnly([ME]);
+		expect(isSounding('rider-other')).toBe(false);
+		expect(isSounding(ME)).toBe(true);
 	});
 });

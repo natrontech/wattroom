@@ -1,0 +1,1 @@
+- The room now hears a soundboard clip the way its owner cut it — the trim, gain and fades travel with the audio, so everyone else stopped getting the whole uploaded minute at raw level. A rider firing a clip wears a mark on their tile, the strip names the clip whoever owns it, and a rider who joins mid-clip picks it up part-way through instead of arriving into silence.

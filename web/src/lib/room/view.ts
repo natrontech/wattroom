@@ -16,6 +16,8 @@ export interface RoomRider {
 	cameraOn: boolean;
 	/** Their screen is live in the room (#664) — marked on the tile, since the stage need not move. */
 	sharing?: boolean;
+	/** A soundboard clip of theirs is playing on THIS machine right now (#1681). */
+	sounding?: boolean;
 	/** In the voice channel at all — absent mic ≠ muted mic (#151). */
 	inVoice?: boolean;
 	muted: boolean;

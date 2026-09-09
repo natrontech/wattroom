@@ -72,6 +72,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/board/clips/{id}/name", s.handleName)
 	mux.HandleFunc("PUT /api/board/clips/{id}/key", s.handleKey)
 	mux.HandleFunc("PUT /api/board/clips/{id}/edit", s.handleEdit)
+	mux.HandleFunc("GET /api/board/clips/{id}", s.handleMeta)
 	mux.HandleFunc("GET /api/board/clips/{id}/audio", s.handleAudio)
 }
 
@@ -261,6 +262,60 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 // MaxGainDb is as far as a clip can be pushed either way. Past this a rider is
 // fixing a bad export with the wrong tool, and the room pays for it.
 const MaxGainDb = 12
+
+// heardJSON is one clip as a LISTENER sees it: its name, and the edit that
+// says what actually plays. Everything else on a clip — pad, key, quota,
+// bytes — belongs to its owner and stays in the library listing.
+type heardJSON struct {
+	Name   string `json:"name"`
+	Millis int    `json:"millis"`
+	editJSON
+}
+
+// handleMeta answers "what am I about to play, and what is it called" for a
+// clip somebody else fired. Without it a listener had only the id: no trim,
+// no gain, no fades, so a rider who cut their airhorn to two seconds was the
+// only person in the room who heard two seconds — everybody else got the
+// whole uploaded minute, at the raw level, under the name "a sound".
+//
+// The edit travels here rather than on the fire (ADR-0033's tick path)
+// because the room is not the only place it is needed: a rider walking in
+// mid-clip has no fire to read it off.
+func (s *Service) handleMeta(w http.ResponseWriter, r *http.Request) {
+	me, ok := s.me(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	clip, err := s.store.Queries.GetBoardClipMeta(r.Context(), id)
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	if !s.canHear(store.UUIDString(me.ID), store.UUIDString(clip.UserID)) {
+		// The same 404 the audio gives a stranger, for the same reason.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
+		return
+	}
+	// The edit is immutable per fetch but not per clip: the owner can retrim
+	// it, so this is revalidated rather than cached for a year like the audio.
+	w.Header().Set("Cache-Control", "private, no-cache")
+	httpx.WriteJSON(w, http.StatusOK, heardJSON{
+		Name:   clip.Name,
+		Millis: int(clip.DurationMs),
+		editJSON: editJSON{
+			StartMillis: int(clip.StartMs),
+			EndMillis:   int(clip.EndMs),
+			GainDb:      float64(clip.GainDb),
+			FadeInMs:    int(clip.FadeInMs),
+			FadeOutMs:   int(clip.FadeOutMs),
+		},
+	})
+}
 
 // handleAudio serves the bytes to anyone the owner is currently in a room
 // with, and to the owner wherever they are. This is ADR-0033's authorization

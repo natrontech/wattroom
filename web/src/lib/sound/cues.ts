@@ -46,10 +46,35 @@ function settle(ms: number): void {
 	else glideTo(master.gain, level(), ctx.currentTime, ms);
 }
 
+/**
+ * Resume a context the browser started suspended. Registered on the first
+ * gesture of either kind and removed once it takes (#1681).
+ *
+ * `ensure` already asks on every play, but a refused `resume()` is never
+ * retried — and the ask arrives a tick after the press, inside a WebSocket
+ * message rather than the gesture. Nothing was listening for a KEY at all,
+ * which is the board's whole pitch: hitting a pad without looking. So a rider
+ * who had not happened to click anything heard nothing — their own clip or
+ * anyone else's — until they opened the panel, which is a click.
+ */
+function unlock(): void {
+	if (!ctx) return;
+	if (ctx.state !== 'running') {
+		void ctx.resume();
+		return;
+	}
+	document.removeEventListener('pointerdown', unlock);
+	document.removeEventListener('keydown', unlock);
+}
+
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	if (typeof window === 'undefined') return null;
 	if (!ctx) {
 		ctx = new AudioContext();
+		// Only once something has asked for sound: a page that never makes one
+		// gets no listeners and no context to resume.
+		document.addEventListener('pointerdown', unlock);
+		document.addEventListener('keydown', unlock);
 		master = ctx.createGain();
 		// A limiter after the master (#152): cues pile up — klaxon, a cheer
 		// burst and a block change can land in the same second — and a summed

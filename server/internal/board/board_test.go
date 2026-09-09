@@ -240,6 +240,50 @@ func TestAudioIsGatedOnSharingARoom(t *testing.T) {
 	}
 }
 
+// What a listener needs to play somebody else's clip the way its owner cut it
+// (#1681): the name and the edit, behind the same gate as the audio. Reading
+// the trim out of your own library instead is why everyone but the firer heard
+// the whole uploaded source.
+func TestMetaIsGatedLikeTheAudioAndCarriesTheEdit(t *testing.T) {
+	mux, users, rooms := setup(t)
+	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
+	alice := store.UUIDString(users.byToken["alice"].ID)
+	bob := store.UUIDString(users.byToken["bob"].ID)
+	cara := store.UUIDString(users.byToken["cara"].ID)
+
+	edit := []byte(`{"startMs":500,"endMs":3000,"gainDb":2.5,"fadeInMs":50,"fadeOutMs":300}`)
+	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/edit", edit); rec.Code != http.StatusNoContent {
+		t.Fatalf("saving the edit = %d", rec.Code)
+	}
+
+	rooms.at = map[string]string{alice: "threshold", bob: "threshold", cara: "backyard"}
+	rec := do(t, mux, "bob", "GET", "/api/board/clips/"+clip.ID, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a rider in the room = %d; want 200", rec.Code)
+	}
+	var got heardJSON
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.Name != "AIRHORN" || got.StartMillis != 500 || got.EndMillis != 3000 ||
+		got.GainDb != 2.5 || got.FadeInMs != 50 || got.FadeOutMs != 300 {
+		t.Errorf("listener sees %+v; want the edit alice saved", got)
+	}
+	if got.Millis != 10004 {
+		t.Errorf("source length = %d; want the uploaded 10004", got.Millis)
+	}
+
+	if rec := do(t, mux, "cara", "GET", "/api/board/clips/"+clip.ID, nil); rec.Code != http.StatusNotFound {
+		t.Errorf("another room = %d; want 404", rec.Code)
+	}
+	if rec := do(t, mux, "", "GET", "/api/board/clips/"+clip.ID, nil); rec.Code != http.StatusUnauthorized {
+		t.Errorf("signed out = %d; want 401", rec.Code)
+	}
+	if rec := do(t, mux, "alice", "GET", "/api/board/clips/"+clip.ID, nil); rec.Code != http.StatusOK {
+		t.Errorf("the owner = %d; want 200", rec.Code)
+	}
+}
+
 // A source longer than the ceiling is accepted and lands already trimmed to
 // it: the rider opens the editor to choose WHICH minute, and until they do the
 // clip can still never play past SPEC's minute (#934).

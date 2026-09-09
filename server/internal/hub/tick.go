@@ -176,6 +176,10 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				rider := c.rider
 				_, rider.Away = rm.away[c.rider.ID]
 				_, rider.Riding = pedalling[c.rider.ID]
+				// And what their board still has going, so a rider who joined
+				// mid-clip catches up (#1681). Read here rather than drained:
+				// a fire is one tick, the sound it started is not.
+				rider.Sounding, rider.SoundingMs = rm.soundingLocked(c.rider.ID, now())
 				tick.Roster = append(tick.Roster, rider)
 			}
 		}

@@ -368,6 +368,15 @@ type Rider struct {
 	// which flickered, and the friends page decided it from "a trainer is
 	// talking", which never went out at all.
 	Riding bool `json:"riding,omitempty"`
+	// What this rider's soundboard has playing right now, and how far into it
+	// the room already is (#1681). A fire is one tick and gone
+	// (ADR-0022/0033), so a rider who walked in halfway through a clip heard
+	// silence and saw nobody playing anything; this is the same press, still
+	// true a second later. The clip's real length is the listener's to know —
+	// they fetch it — so the hub holds this for at most one clip's ceiling and
+	// the client stops at the clip's own end.
+	Sounding   string `json:"sounding,omitempty"`
+	SoundingMs int64  `json:"soundingMs,omitempty"`
 }
 
 // SessionState is the shared timeline, server-owned. Late joiners need no

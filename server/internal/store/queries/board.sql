@@ -17,6 +17,14 @@ order by created_at desc;
 -- "does the listener share a room with the owner" and only the hub knows it.
 select user_id, bytes from board_clips where id = $1;
 
+-- name: GetBoardClipMeta :one
+-- What a LISTENER needs to know about somebody else's clip: its name for the
+-- strip and its edit for playback. Never selects `bytes` — the audio is a
+-- separate fetch, and this one is asked for every clip anyone in the room
+-- fires.
+select user_id, name, duration_ms, start_ms, end_ms, gain_db, fade_in_ms, fade_out_ms
+from board_clips where id = $1;
+
 -- name: BoardClipBytes :one
 -- The quota, asked before every upload. Postgres sums the lengths; the bytes
 -- themselves never leave the database for this.

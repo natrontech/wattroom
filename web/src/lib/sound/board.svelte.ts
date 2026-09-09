@@ -8,13 +8,27 @@
  * limiter (`bus()`), so an airhorn and a klaxon in the same second are squashed
  * together rather than clipping.
  */
+import { SvelteMap } from 'svelte/reactivity';
 import { bus } from '$lib/sound/cues';
 import { peaksOf } from '$lib/sound/peaks';
 import { mixer } from '$lib/sound/mixer.svelte';
 import type { Edit } from '$lib/board/clips.svelte';
 
-const decoded = new Map<string, AudioBuffer>();
-const loading = new Map<string, Promise<AudioBuffer | null>>();
+/**
+ * A clip as a LISTENER knows it: the audio, its name, and the edit that says
+ * what actually plays. All three come from the server, for everyone's clips
+ * including your own — the room must hear one rider's airhorn the same way
+ * they do. Reading the trim out of your own library instead meant the firer
+ * was the only person who heard their two-second cut; everyone else got the
+ * whole uploaded minute, at raw level, called "a sound".
+ */
+interface Heard extends Edit {
+	buffer: AudioBuffer;
+	name: string;
+}
+
+const decoded = new SvelteMap<string, Heard>();
+const loading = new Map<string, Promise<Heard | null>>();
 
 /**
  * What each rider has sounding right now. SPEC's retrigger rule lives here: a
@@ -22,23 +36,43 @@ const loading = new Map<string, Promise<AudioBuffer | null>>();
  * voice — without it a 1 s cooldown would bound how often a 60 s clip starts
  * and nothing about how many are playing.
  */
-const sounding = new Map<
+const sounding = new SvelteMap<
 	string,
 	{ source: AudioBufferSourceNode; gain: GainNode; clipGain: number }
 >();
 
 /**
+ * Reactive so a tile can wear the mark: who in this room is making a noise
+ * right now (#1681). It ends when the audio does, which is why it is this map
+ * and not the server's word — the hub holds a fire for the ceiling, not for
+ * the clip's real length.
+ */
+export function isSounding(riderId: string): boolean {
+	return sounding.has(riderId);
+}
+
+/**
  * Each rider's newest play or stop. A play is still fetching its clip when a
  * stop — or the next play — for the same rider lands; whichever came last
  * wins, so a stop cannot be outrun by the audio it was meant for (#1321).
+ *
+ * It carries the clip as well as the claim, because "what is this rider
+ * already meant to be playing" is the question `catchUp` asks every tick —
+ * and asking `sounding` instead would restart a clip still being fetched.
  */
-const latest = new Map<string, object>();
+const latest = new Map<string, { token: object; clipId: string }>();
 
-function clipUrl(clipId: string): string {
-	return `/api/board/clips/${clipId}/audio`;
+/**
+ * What a clip is called, once it has been heard. Reactive, so the strip that
+ * names it can be written before the fetch lands. Null while unknown — for
+ * everyone's clips including your own, which is what stops the room reading
+ * "a sound" for every clip but the one whose owner is looking at the strip.
+ */
+export function nameOf(clipId: string): string | null {
+	return decoded.get(clipId)?.name ?? null;
 }
 
-async function load(clipId: string): Promise<AudioBuffer | null> {
+async function load(clipId: string): Promise<Heard | null> {
 	const already = decoded.get(clipId);
 	if (already) return already;
 	const inFlight = loading.get(clipId);
@@ -48,11 +82,18 @@ async function load(clipId: string): Promise<AudioBuffer | null> {
 	if (!audio) return null;
 	const attempt = (async () => {
 		try {
-			const res = await fetch(clipUrl(clipId));
-			if (!res.ok) return null;
-			const buffer = await audio.ctx.decodeAudioData(await res.arrayBuffer());
-			decoded.set(clipId, buffer);
-			return buffer;
+			// Together: the bytes are the slow half and the description is the
+			// half a strip needs, and neither is any use without the other.
+			const [sound, meta] = await Promise.all([
+				fetch(`/api/board/clips/${clipId}/audio`),
+				fetch(`/api/board/clips/${clipId}`),
+			]);
+			if (!sound.ok || !meta.ok) return null;
+			const described = (await meta.json()) as Omit<Heard, 'buffer'>;
+			const buffer = await audio.ctx.decodeAudioData(await sound.arrayBuffer());
+			const heard = { ...described, buffer };
+			decoded.set(clipId, heard);
+			return heard;
 		} catch {
 			// A clip that will not load is a clip that makes no sound. The
 			// pad says nothing: there is no recovery a rider mid-ride could
@@ -88,15 +129,29 @@ export function prefetch(clipIds: string[]): void {
  * two ramps. Nothing is re-encoded, so an edit stays undoable forever and
  * costs no second copy of the file.
  */
-export async function fire(
-	clipId: string,
-	riderId: string,
-	edit?: Edit,
-): Promise<void> {
+export async function fire(clipId: string, riderId: string): Promise<void> {
 	// A fire from the room ends whatever the rider was auditioning: one rider
 	// is one voice, and the tick outranks a preview.
 	if (riderId === auditioning?.riderId) auditioning = null;
-	return play(clipId, riderId, edit);
+	return play(clipId, riderId);
+}
+
+/**
+ * Start a clip the room is already partway through (#1681): a rider who joins
+ * mid-airhorn, whose tick says so on the roster rather than in this second's
+ * fires. `sinceMs` is how much of it the room has already heard.
+ *
+ * A no-op once this machine is already on that rider's clip, so it can be
+ * called from every tick — the roster keeps saying so for as long as the hub
+ * assumes the clip is running, and the fire that started it arrives first.
+ */
+export async function catchUp(
+	clipId: string,
+	riderId: string,
+	sinceMs: number,
+): Promise<void> {
+	if (latest.get(riderId)?.clipId === clipId) return;
+	return play(clipId, riderId, undefined, sinceMs);
 }
 
 /**
@@ -118,6 +173,18 @@ export async function preview(
 	const token = {};
 	auditioning = { clipId, riderId, edit, loop, token };
 	return play(clipId, riderId, edit);
+}
+
+/**
+ * Stop everyone this machine is playing who is no longer in the room. Their
+ * clip left with them: nothing else will ever stop it, because a stop is a
+ * message from a socket that has gone.
+ */
+export function keepOnly(riderIds: string[]): void {
+	const present = new Set(riderIds);
+	for (const riderId of [...sounding.keys()]) {
+		if (!present.has(riderId)) stop(riderId);
+	}
 }
 
 /** What this machine is auditioning, for the button that says so. */
@@ -164,35 +231,48 @@ async function play(
 	clipId: string,
 	riderId: string,
 	edit?: Edit,
+	sinceMs = 0,
 ): Promise<void> {
 	const audio = bus();
 	if (!audio) return;
-	const claim = {};
+	const claim = { token: {}, clipId };
 	latest.set(riderId, claim);
-	const buffer = await load(clipId);
-	if (!buffer || latest.get(riderId) !== claim) return;
+	const heard = await load(clipId);
+	if (!heard || latest.get(riderId) !== claim) return;
 
 	silence(riderId);
-	const start = Math.max(0, (edit?.startMs ?? 0) / 1000);
-	const end = edit?.endMs ? edit.endMs / 1000 : buffer.duration;
+	// The server's edit unless the caller brought one: only the trim face
+	// does, auditioning a change it has not saved yet.
+	const applied = edit ?? heard;
+	const buffer = heard.buffer;
+	const start = Math.max(0, applied.startMs / 1000);
+	const end = applied.endMs ? applied.endMs / 1000 : buffer.duration;
 	const kept = Math.max(0.01, Math.min(buffer.duration, end) - start);
+	// How much of it the room has already heard. A clip that finished before
+	// this machine got the news is simply not played.
+	const into = Math.max(0, sinceMs / 1000);
+	if (into >= kept) return;
+	const left = kept - into;
 	const gain = audio.ctx.createGain();
 	// The clip's own gain multiplies the rider's level rather than replacing
 	// it, so a fader move later still scales what the editor asked for.
-	const clipGain = Math.pow(10, (edit?.gainDb ?? 0) / 20);
+	const clipGain = Math.pow(10, applied.gainDb / 20);
 	const peak = levelFor(riderId) * clipGain;
 	const now = audio.ctx.currentTime;
-	const fadeIn = Math.min((edit?.fadeInMs ?? 0) / 1000, kept / 2);
-	const fadeOut = Math.min((edit?.fadeOutMs ?? 0) / 1000, kept / 2);
-	if (fadeIn > 0) {
+	const fadeIn = Math.min(applied.fadeInMs / 1000, kept / 2);
+	const fadeOut = Math.min(applied.fadeOutMs / 1000, kept / 2);
+	// ponytail: joining mid-clip skips the fade-in rather than entering it
+	// part-way. The room is already past the attack — a second ramp from
+	// silence would be a fade nobody else heard.
+	if (fadeIn > 0 && into === 0) {
 		gain.gain.setValueAtTime(0, now);
 		gain.gain.linearRampToValueAtTime(peak, now + fadeIn);
 	} else {
 		gain.gain.setValueAtTime(peak, now);
 	}
-	if (fadeOut > 0) {
-		gain.gain.setValueAtTime(peak, now + kept - fadeOut);
-		gain.gain.linearRampToValueAtTime(0, now + kept);
+	if (fadeOut > 0 && left > fadeOut) {
+		gain.gain.setValueAtTime(peak, now + left - fadeOut);
+		gain.gain.linearRampToValueAtTime(0, now + left);
 	}
 	gain.connect(audio.input);
 	const source = audio.ctx.createBufferSource();
@@ -222,7 +302,7 @@ async function play(
 		mine.startedAt = now;
 		mine.kept = kept;
 	}
-	source.start(now, start, kept);
+	source.start(now, start + into, left);
 }
 
 /**
@@ -230,7 +310,7 @@ async function play(
  * stop from the tick (#1321), and leaving a room.
  */
 export function stop(riderId: string): void {
-	latest.set(riderId, {});
+	latest.set(riderId, { token: {}, clipId: '' });
 	silence(riderId);
 }
 
@@ -283,7 +363,7 @@ export async function peaks(
 	clipId: string,
 	buckets: number,
 ): Promise<number[] | null> {
-	const buffer = await load(clipId);
-	if (!buffer) return null;
-	return peaksOf(buffer.getChannelData(0), buckets);
+	const heard = await load(clipId);
+	if (!heard) return null;
+	return peaksOf(heard.buffer.getChannelData(0), buckets);
 }
