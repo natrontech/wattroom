@@ -1,10 +1,13 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -141,5 +144,90 @@ func TestSPACachesHashedAssetsOnly(t *testing.T) {
 		if got := rec.Header().Get("Cache-Control"); got != tc.want {
 			t.Errorf("%s: Cache-Control = %q, want %q", tc.path, got, tc.want)
 		}
+	}
+}
+
+// Every non-hashed file and the shell carry a validator (audit 2026-09-09):
+// "no-cache" with nothing to revalidate against re-downloaded the 114 KB
+// changelog on every visit to /home, and the shell on every cold load.
+func TestSPARevalidatesWithAnETag(t *testing.T) {
+	dist := fstest.MapFS{
+		"index.html":   {Data: []byte("<html><head></head></html>")},
+		"changelog.md": {Data: []byte("# 2026.09.73\n- something")},
+	}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+	for _, path := range []string{"/changelog.md", "/", "/r/velvet-hammer"} {
+		first := httptest.NewRecorder()
+		handler.ServeHTTP(first, httptest.NewRequestWithContext(t.Context(), "GET", path, nil))
+		tag := first.Header().Get("ETag")
+		if first.Code != 200 || tag == "" {
+			t.Fatalf("%s: status %d, ETag %q — want 200 with a validator", path, first.Code, tag)
+		}
+		again := httptest.NewRequestWithContext(t.Context(), "GET", path, nil)
+		again.Header.Set("If-None-Match", tag)
+		second := httptest.NewRecorder()
+		handler.ServeHTTP(second, again)
+		if second.Code != http.StatusNotModified {
+			t.Errorf("%s: a matching If-None-Match answered %d, want 304", path, second.Code)
+		}
+		if second.Body.Len() != 0 {
+			t.Errorf("%s: a 304 carried %d bytes of body", path, second.Body.Len())
+		}
+	}
+}
+
+// The binary compresses its own text (audit 2026-09-09): the eager shell is
+// 2.75× smaller gzipped, and leaving that to an edge in another repo meant
+// nothing here could tell when it was missing.
+func TestSPACompressesTextForClientsThatAskForIt(t *testing.T) {
+	script := strings.Repeat("console.log('a long enough line to compress');\n", 40)
+	dist := fstest.MapFS{
+		"index.html":                   {Data: []byte("<html><head></head><body>shell</body></html>")},
+		"_app/immutable/chunks/abc.js": {Data: []byte(script)},
+		"favicon.png":                  {Data: []byte("not really a png")},
+	}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+	get := func(path, accept string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), "GET", path, nil)
+		if accept != "" {
+			req.Header.Set("Accept-Encoding", accept)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+	// Text, asked for gzip: encoded, marked, and the bytes round-trip.
+	for _, path := range []string{"/_app/immutable/chunks/abc.js", "/", "/r/velvet-hammer"} {
+		rec := get(path, "gzip, deflate, br")
+		if rec.Code != 200 || rec.Header().Get("Content-Encoding") != "gzip" || rec.Header().Get("Vary") != "Accept-Encoding" {
+			t.Fatalf("%s: %d %q vary=%q, want 200 gzip", path, rec.Code, rec.Header().Get("Content-Encoding"), rec.Header().Get("Vary"))
+		}
+		zr, err := gzip.NewReader(rec.Body)
+		if err != nil {
+			t.Fatalf("%s: body is not gzip: %v", path, err)
+		}
+		plain, _ := io.ReadAll(zr)
+		if path == "/_app/immutable/chunks/abc.js" && string(plain) != script {
+			t.Errorf("%s: the script did not round-trip", path)
+		}
+		if rec.Header().Get("Content-Length") != "" {
+			t.Errorf("%s: a compressed response kept the raw Content-Length", path)
+		}
+	}
+	// Not asked for: raw. A picture: raw. A 304: no encoding claimed.
+	if rec := get("/_app/immutable/chunks/abc.js", ""); rec.Header().Get("Content-Encoding") != "" || rec.Body.String() != script {
+		t.Errorf("a client that did not ask got %q", rec.Header().Get("Content-Encoding"))
+	}
+	if rec := get("/favicon.png", "gzip"); rec.Header().Get("Content-Encoding") != "" {
+		t.Errorf("a png was compressed")
+	}
+	tag := get("/", "gzip").Header().Get("ETag")
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("If-None-Match", tag)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotModified || rec.Header().Get("Content-Encoding") != "" {
+		t.Errorf("a 304 answered %d with encoding %q", rec.Code, rec.Header().Get("Content-Encoding"))
 	}
 }
