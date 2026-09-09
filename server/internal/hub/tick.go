@@ -179,14 +179,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				// And what their board still has going, so a rider who joined
 				// mid-clip catches up (#1681). Read here rather than drained:
 				// a fire is one tick, the sound it started is not.
-				if live, ok := rm.sounding[c.rider.ID]; ok {
-					if since := now().Sub(live.at); since < soundingCeiling {
-						rider.Sounding = live.clipID
-						rider.SoundingMs = since.Milliseconds()
-					} else {
-						delete(rm.sounding, c.rider.ID)
-					}
-				}
+				rider.Sounding, rider.SoundingMs = rm.soundingLocked(c.rider.ID, now())
 				tick.Roster = append(tick.Roster, rider)
 			}
 		}

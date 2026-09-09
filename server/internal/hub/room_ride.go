@@ -144,6 +144,26 @@ func (rm *room) fire(b protocol.Board) {
 	}
 }
 
+// soundingLocked is what one rider still has playing, for the roster: the clip
+// and how far into it the room already is. Empty once nothing is, or once the
+// ceiling has passed — the entry is dropped then, so a room that ran for hours
+// holds one per rider who fired, not one per fire.
+func (rm *room) soundingLocked(riderID string, now time.Time) (string, int64) {
+	live, ok := rm.sounding[riderID]
+	if !ok {
+		return "", 0
+	}
+	since := now.Sub(live.at)
+	if since >= soundingCeiling {
+		delete(rm.sounding, riderID)
+		return "", 0
+	}
+	if since < 0 {
+		since = 0
+	}
+	return live.clipID, since.Milliseconds()
+}
+
 // mood is what this room's timeline is asking for right now (#270), for the
 // autoplay read that happens outside the lock. Taken under the lock and
 // returned by value: the caller must not hold a pointer into live state.
