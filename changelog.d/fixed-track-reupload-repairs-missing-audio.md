@@ -1,1 +1,0 @@
-- Uploading a track you already have now writes the audio back if the server has lost the file, so a track that skips instead of playing is repaired by re-uploading it — deleting it first is no longer needed.
