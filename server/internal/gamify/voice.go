@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/safego"
@@ -82,6 +84,7 @@ func runVoiceClock(ctx context.Context, voice VoiceSource, ledger loungeLedger, 
 			tickCtx, cancel := context.WithTimeout(ctx, voicePoll)
 			clock.tick(tickCtx, voice.VoiceRiderIDs(), now())
 			cancel()
+			jobmetrics.Ran("voice clock", nil)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 
 	// The zone database, embedded rather than the host's (#858): session mail
@@ -268,7 +269,15 @@ func main() {
 		// The landing page's live numbers, public because the page is: riders
 		// online right now and the repo's stars. Counts only — no identities,
 		// nothing room-scoped.
-		stars := pollStars(ctx, log)
+		// Polled only where a repo is configured (audit 2026-09-09): a
+		// self-hoster's box made 96 unsolicited calls a day to fetch a star
+		// count for someone else's repository, with no way to turn it off.
+		// wattroom.ch sets WATTROOM_GITHUB_REPO for the feedback issues
+		// already; a box without it shows no count.
+		stars := new(atomic.Int64)
+		if repo := os.Getenv("WATTROOM_GITHUB_REPO"); repo != "" {
+			stars = pollStars(ctx, log, repo)
+		}
 		mux.HandleFunc("GET /api/live", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(struct {

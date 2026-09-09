@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+
 	"github.com/natrontech/wattroom/server/internal/safego"
 )
 
@@ -28,6 +30,7 @@ func (s *Service) StartReconciler(ctx context.Context) {
 				return
 			case <-ticker.C:
 				s.reconcile(ctx)
+				jobmetrics.Ran("livekit reconciler", nil)
 			}
 		}
 	})

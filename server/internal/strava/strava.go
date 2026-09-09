@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/safego"
@@ -136,6 +138,7 @@ func (s *Service) sweepOnce(ctx context.Context) {
 		Before:  pgtype.Timestamptz{Time: s.now().Add(-retryBase), Valid: true},
 		MaxRows: sweepBatch,
 	})
+	jobmetrics.Ran("strava delivery sweep", err)
 	if err != nil {
 		s.log.Warn("strava sweep query failed", "err", err)
 		return
