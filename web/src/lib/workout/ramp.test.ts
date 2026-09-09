@@ -26,6 +26,15 @@ describe('rampBlown', () => {
 	it('trips once a step has a real target', () => {
 		expect(rampBlown(RAMP.warmupSeconds + 30, stalled)).toBe(true);
 	});
+	// #1794: a dropout freezes the recording under a climbing target, and the
+	// spiral guard releases the target on purpose — neither is the rider
+	// blowing up, and the test used to end on both and offer the number.
+	it('holds its fire while the window is stale or the target is released', () => {
+		const at = RAMP.warmupSeconds + 30;
+		expect(rampBlown(at, stalled, { stale: true })).toBe(false);
+		expect(rampBlown(at, stalled, { released: true })).toBe(false);
+		expect(rampBlown(at, stalled, {})).toBe(true);
+	});
 });
 import { validateWorkout } from './validate';
 

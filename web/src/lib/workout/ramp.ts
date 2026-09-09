@@ -33,6 +33,14 @@ export const RAMP = {
 } as const;
 
 /**
+ * How long the test takes, said the same way on every surface that offers it
+ * (#1799: /ramp said 12–18, /workouts and /settings/equipment said 20). Not a
+ * SPEC number — it is where riders tend to fail: five minutes of warm-up plus
+ * seven to thirteen steps.
+ */
+export const RAMP_TAKES = 'about 12–18 minutes';
+
+/**
  * Is the result meaningful? A ramp abandoned in the warmup produces arithmetic, not
  * a measurement, and offering to save it is worse than offering nothing.
  */
@@ -91,7 +99,15 @@ export function ftpFromRamp(watts: number[]): { ftp: number; best: number } {
 export function rampBlown(
 	elapsedSeconds: number,
 	recent: { watts: number; target: number }[],
+	/**
+	 * Two windows that look like a rider blowing up and are not (#1794):
+	 * `released` while the spiral guard has dropped the target on purpose, and
+	 * `stale` while no sample has landed — a dropout freezes the recording
+	 * while the clock, and the target stamped on those rows, keeps climbing.
+	 */
+	{ released = false, stale = false } = {},
 ): boolean {
+	if (released || stale) return false;
 	return elapsedSeconds >= RAMP.warmupSeconds && rampFailed(recent);
 }
 
