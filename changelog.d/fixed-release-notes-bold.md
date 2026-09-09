@@ -1,1 +1,0 @@
-- What's new and the release notice render **bold** lead-ins as bold instead of showing the asterisks; release notes and chat now share one inline-markup renderer.

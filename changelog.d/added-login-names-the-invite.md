@@ -1,1 +1,0 @@
-- Opening a crew's invite link while signed out now shows whose crew you are joining on the sign-in screen — its name, picture and how many ride there — instead of a bare sign-in page; signing in still lands you on the crew's door.

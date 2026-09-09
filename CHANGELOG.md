@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.58] - 2026-09-09
+
+### Added
+
+- Opening a crew's invite link while signed out now shows whose crew you are joining on the sign-in screen — its name, picture and how many ride there — instead of a bare sign-in page; signing in still lands you on the crew's door.
+
+### Fixed
+
+- What's new and the release notice render **bold** lead-ins as bold instead of showing the asterisks; release notes and chat now share one inline-markup renderer.
+
 ## [2026.09.57] - 2026-09-09
 
 ### Changed
@@ -1270,7 +1280,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.57...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.58...HEAD
+[2026.09.58]: https://github.com/natrontech/wattroom/compare/2026.09.57...2026.09.58
 [2026.09.57]: https://github.com/natrontech/wattroom/compare/2026.09.56...2026.09.57
 [2026.09.56]: https://github.com/natrontech/wattroom/compare/2026.09.55...2026.09.56
 [2026.09.55]: https://github.com/natrontech/wattroom/compare/2026.09.54...2026.09.55
