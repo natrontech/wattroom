@@ -215,15 +215,40 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// everyone in it — roster, metrics, game state — and marshalling it
 		// per client put the same work N times on the critical path between
 		// one slow socket and the next (#670).
-		payload, err := json.Marshal(protocol.ServerMessage{Tick: &tick})
+		//
+		// The workout definition is the one exception (#1710): the shared
+		// payload names it by hash, and the JSON itself goes only to a socket
+		// that has not seen this hash — its first tick, and the tick after a
+		// pick — in a full copy marshalled once, lazily, and only then.
+		lean := tick
+		lean.State.WorkoutJSON = ""
+		payload, err := json.Marshal(protocol.ServerMessage{Tick: &lean})
 		if err != nil {
 			// Half a tick is worse than none: skip the broadcast and say so.
 			logger(log).Error("tick could not be marshalled", "room", rm.slug, "err", err)
 			payload = nil
 		}
+		var full []byte
+		var fullErr error
 		for _, c := range clients {
 			if payload != nil {
-				c.send(payload)
+				frame, carries := payload, false
+				if c.workoutSent != tick.State.WorkoutHash {
+					if full == nil && fullErr == nil {
+						if full, fullErr = json.Marshal(protocol.ServerMessage{Tick: &tick}); fullErr != nil {
+							logger(log).Error("full tick could not be marshalled", "room", rm.slug, "err", fullErr)
+						}
+					}
+					if full != nil {
+						frame, carries = full, true
+					}
+				}
+				// Marked heard only when the definition was actually queued: a
+				// dropped frame (slow socket) leaves it owed, and the next tick
+				// tries again rather than believing it arrived.
+				if c.send(frame) && carries {
+					c.workoutSent = tick.State.WorkoutHash
+				}
 			}
 			// Addressed to this socket alone, so it cannot be folded into the
 			// tick — but it rides the same queue, so it keeps its order.

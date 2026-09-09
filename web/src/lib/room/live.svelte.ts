@@ -35,6 +35,9 @@ export function createRoomLive(slug: string) {
 	// module of its own; the socket hands it every tick.
 	const chat = createChatLog();
 	let tick = $state<ServerTick | null>(null);
+	// The last workout definition heard, by hash (#1710): the server sends
+	// the JSON only on the tick that changes it and names it on every other.
+	let workoutHeard: { hash: string; json: string } | null = null;
 	// Finished sessions (ADR-0034). Unlike everything else here these are
 	// durable: the backlog seeds them and the tick adds the one written while
 	// this rider was standing in the room.
@@ -196,6 +199,20 @@ export function createRoomLive(slug: string) {
 				// Before anything reads it: the tick's own timestamp is what
 				// keeps the jukebox playhead on server time (#286).
 				observeServerTime(msg.tick.at);
+				// Filled back in before anything reads it, so nothing
+				// downstream knows the definition stopped riding every tick.
+				const state = msg.tick.state;
+				if (state?.workoutJson) {
+					workoutHeard = {
+						hash: state.workoutHash ?? '',
+						json: state.workoutJson,
+					};
+				} else if (
+					state?.workoutHash &&
+					state.workoutHash === workoutHeard?.hash
+				) {
+					state.workoutJson = workoutHeard.json;
+				}
 				tick = msg.tick;
 				// The ack before the session follows it: the closing tick's
 				// own seq is what says whether the tail was heard (#1536).

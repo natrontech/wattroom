@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"hash/fnv"
+	"strconv"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -19,6 +21,7 @@ type session struct {
 	phase        string
 	workoutName  string
 	workoutJSON  string
+	workoutHash  string
 	totalSeconds int
 	// The instant the timeline (or countdown) started, and time carried over
 	// from before the last pause.
@@ -42,6 +45,7 @@ func (s *session) pick(name, workoutJSON string, totalSeconds int) bool {
 		return false
 	}
 	s.workoutName, s.workoutJSON, s.totalSeconds = name, workoutJSON, totalSeconds
+	s.workoutHash = workoutHash(workoutJSON)
 	if segments, err := workout.Parse(workoutJSON); err == nil && len(segments) > 0 {
 		last := segments[len(segments)-1]
 		s.totalSeconds = last.Start + last.Seconds
@@ -103,7 +107,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		if remaining > 0 {
 			return protocol.SessionState{
 				Phase: "countdown", CountdownRemaining: remaining,
-				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, TotalSeconds: s.totalSeconds,
+				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
 			}
 		}
 		// The countdown elapsed; the timeline started the instant it hit zero.
@@ -132,8 +136,20 @@ func (s *session) state(now time.Time) protocol.SessionState {
 
 	return protocol.SessionState{
 		Phase: s.phase, Elapsed: elapsed,
-		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, TotalSeconds: s.totalSeconds,
+		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
 	}
+}
+
+// workoutHash names a definition on the wire (#1710): the tick carries it
+// every second, and the JSON itself only reaches a socket that has not seen
+// this hash. Not a security property — a name, so FNV is plenty.
+func workoutHash(workoutJSON string) string {
+	if workoutJSON == "" {
+		return ""
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(workoutJSON))
+	return strconv.FormatUint(h.Sum64(), 36)
 }
 
 // apply runs one control message; the caller has already checked the role.

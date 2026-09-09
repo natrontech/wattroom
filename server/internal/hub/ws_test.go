@@ -580,6 +580,50 @@ func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
 	}
 }
 
+// The workout definition rides only the tick that changes it and the first
+// tick a socket gets (#1710); every other tick names it by hash. It used to
+// ride every tick — 64 KiB at up to 4 Hz, re-parsed by every client.
+func TestTheWorkoutRidesOnlyTheTickThatChangesIt(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/lean"
+
+	coach := dial(t, url, "jan:owner")
+	if tick := readTick(t, coach); tick.State.WorkoutHash != "" || tick.State.WorkoutJSON != "" {
+		t.Fatalf("an idle room names a workout: %+v", tick.State)
+	}
+	pick := protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: wsWorkout, TotalSeconds: 120}
+	if err := wsjson.Write(t.Context(), coach, protocol.ClientMessage{Control: &pick}); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	// The tick that carries the pick carries the definition...
+	var tick protocol.ServerTick
+	deadline := time.Now().Add(5 * time.Second)
+	for tick.State.WorkoutHash == "" {
+		if time.Now().After(deadline) {
+			t.Fatal("the pick never reached the tick")
+		}
+		tick = readTick(t, coach)
+	}
+	if tick.State.WorkoutJSON != wsWorkout {
+		t.Fatalf("the pick's tick did not carry the definition: %+v", tick.State)
+	}
+	hash := tick.State.WorkoutHash
+	// ...and the next one names it only.
+	next := readTick(t, coach)
+	if next.State.WorkoutHash != hash || next.State.WorkoutJSON != "" {
+		t.Fatalf("the tick after the pick: %+v", next.State)
+	}
+	// A late joiner has not heard it: their first tick has it in full.
+	late := dial(t, url, "sven:member")
+	if first := readTick(t, late); first.State.WorkoutJSON != wsWorkout || first.State.WorkoutHash != hash {
+		t.Fatalf("a late joiner's first tick: %+v", first.State)
+	}
+}
+
 // A workout the WS pick check accepts (audit 2026-09-09): "{}" used to pass
 // because the hub never looked.
 const wsWorkout = `{"steps":[{"type":"steady","seconds":120,"target":0.8}]}`

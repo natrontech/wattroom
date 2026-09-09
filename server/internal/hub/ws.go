@@ -53,6 +53,9 @@ type client struct {
 	// read under rm.mu like the rest of the socket's room state.
 	tab    string
 	device string
+	// The workout hash this socket last received the definition for (#1710).
+	// Owned by the tick loop: read and written there alone.
+	workoutSent string
 }
 
 // Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
@@ -296,11 +299,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 // send queues one already-marshalled frame, never blocking: a socket that has
 // stopped reading misses ticks alone rather than taxing the room (#670).
-func (c *client) send(frame []byte) {
+func (c *client) send(frame []byte) bool {
 	select {
 	case c.out <- frame:
+		return true
 	default:
 		metricDroppedFrames.Inc()
+		return false
 	}
 }
 
