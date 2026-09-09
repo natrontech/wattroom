@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cardView } from './sensor-card';
 
 /**
- * The state→render mapping for all seven states one card can be in (#1000).
+ * The state→render mapping for every state one card can be in (#1000).
  * The rule under every case: never a control that would fail, always a reason.
  */
 describe('cardView', () => {
@@ -19,6 +19,27 @@ describe('cardView', () => {
 		const view = cardView({ state: 'connecting', supported: true });
 		expect(view.note).toBe('Connecting…');
 		expect(view.button).toBeUndefined();
+	});
+
+	it('gives a reconnecting device a way out, not just a spinner (#1716)', () => {
+		const view = cardView({ state: 'reconnecting', supported: true });
+		expect(view).toMatchObject({
+			note: 'Reconnecting…',
+			tone: 'danger',
+			// A strap whose battery died retries every thirty seconds forever;
+			// without this there was nothing on the card to press.
+			button: { label: 'Forget', variant: 'forget' },
+		});
+	});
+
+	it('keeps a reconnecting device this screen’s, whatever another claims', () => {
+		const view = cardView({
+			state: 'reconnecting',
+			supported: true,
+			elsewhere: 'on your phone',
+		});
+		expect(view.note).toBe('Reconnecting…');
+		expect(view.instead).toBeUndefined();
 	});
 
 	it('goes live once connected', () => {

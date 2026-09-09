@@ -5,11 +5,11 @@
 	 * The trainer card's view-model, injected by whoever owns the trainer.
 	 *
 	 * Two owners, and they are not alike (#611): a room holds its connection
-	 * for as long as you stand in it (`RoomSensorOverview`), while a solo
-	 * pre-ride screen pairs one it has not started riding yet
-	 * (`lib/ride/solo-trainer.svelte.ts`). The three read-only sensors below
-	 * the trainer are the same singleton on every screen, so they stay wired
-	 * inside this component.
+	 * for as long as you stand in it (`RoomSensorOverview`), while the solo
+	 * one holds a trainer paired but not yet ridden
+	 * (`lib/ride/solo-trainer.svelte.ts`). Both live above the router, and so
+	 * do the three read-only sensors below the trainer — those are the same
+	 * singleton on every screen, so they stay wired inside this component.
 	 */
 	export interface TrainerSlot {
 		state: PairState;
@@ -41,11 +41,7 @@
 	import { device } from '$lib/device.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
 	import { cardView } from '$lib/room/sensor-card';
-	import {
-		type Pairing,
-		sensorReading,
-		sensorState,
-	} from '$lib/room/sensor-status';
+	import { sensorReading, sensorState } from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Bike from '@lucide/svelte/icons/bike';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
@@ -71,14 +67,6 @@
 	} = $props();
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-
-	let pairing = $state<Pairing>(null);
-
-	async function pairSensor(kind: SensorKind) {
-		pairing = kind;
-		await sensors.pair(kind);
-		pairing = null;
-	}
 
 	const SENSORS: { kind: SensorKind; label: string; icon: typeof Zap }[] = [
 		{ kind: 'heart-rate', label: 'Heart rate', icon: HeartPulse },
@@ -192,12 +180,21 @@
 				     say what is being paired. -->
 				<!-- Riding size (ux.md): this is the strip a rider sees mid-session,
 				     and re-pairing a dropped trainer is the one big button
-				     errors.md asks for (#1412). -->
-				<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
-					>{trainerView.button.variant === 'primary'
-						? 'Pair trainer'
-						: trainerView.button.label}</button
-				>
+				     errors.md asks for (#1412). The variant decides which button
+				     this is — a reconnecting trainer offers the way out, and
+				     wiring that to onPair opened the chooser instead (#1716). -->
+				{#if trainerView.button.variant === 'forget'}
+					<p class="text-danger text-xs">{trainerView.note}</p>
+					<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
+						>{trainerView.button.label} trainer</button
+					>
+				{:else}
+					<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
+						>{trainerView.button.variant === 'primary'
+							? 'Pair trainer'
+							: trainerView.button.label}</button
+					>
+				{/if}
 				{#if trainer.onSimulate}
 					<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs"
 						>Ride simulated</button
@@ -234,11 +231,11 @@
 					label: sensor.label,
 					icon: sensor.icon,
 					required: false,
-					state: sensorState(sensor.kind, pairing),
+					state: sensorState(sensor.kind),
 					device: slot.name,
 					reading: sensorReading(sensor.kind),
 					elsewhere: elsewhere[sensor.kind],
-					onPair: () => void pairSensor(sensor.kind),
+					onPair: () => void sensors.pair(sensor.kind),
 					onForget: () => void sensors.forget(sensor.kind),
 				})}
 			{/each}

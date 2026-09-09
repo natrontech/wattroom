@@ -1,0 +1,2 @@
+- Your trainer stays paired when you walk around the app. Pairing on Settings › Equipment and then opening Ride showed "Not connected" over a trainer that was still connected, and pairing again put two connections on one machine.
+- A heart-rate strap or power meter that drops now reconnects itself, the way the trainer always has, instead of quietly reverting to "Not connected".

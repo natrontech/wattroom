@@ -48,6 +48,7 @@ export function createRide(deps: RideDeps) {
 	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
 	let status = $state<TrainerStatus>('disconnected');
 	let lastSampleAt = $state(0);
+	let pairing = $state(false);
 	let unsubscribe: (() => void)[] = [];
 
 	/**
@@ -179,8 +180,14 @@ export function createRide(deps: RideDeps) {
 	});
 
 	async function ride(next: Trainer) {
+		if (pairing) return;
+		// Release before attach (#1716): pairing over a live trainer used to
+		// leave the first one connected and reattaching, so the hardware had
+		// two GATT clients both asking for control.
+		if (trainer) unpair();
 		error = null;
 		lastSampleAt = 0;
+		pairing = true;
 		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
 			await next.connect();
@@ -221,6 +228,8 @@ export function createRide(deps: RideDeps) {
 			error = pairError(cause);
 			for (const off of unsubscribe) off();
 			unsubscribe = [];
+		} finally {
+			pairing = false;
 		}
 	}
 	/** Re-pairing is one button (rider report): drop the trainer and release
@@ -247,6 +256,10 @@ export function createRide(deps: RideDeps) {
 		},
 		get error() {
 			return error;
+		},
+		/** The chooser is open (#1716) — one answer, not one per component. */
+		get pairing() {
+			return pairing;
 		},
 		get hrSource() {
 			return hrSource;

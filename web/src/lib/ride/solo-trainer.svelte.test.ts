@@ -13,7 +13,8 @@ vi.mock('$lib/room/connection.svelte', () => ({
 	},
 }));
 
-const { createSoloTrainer } = await import('./solo-trainer.svelte');
+const { createSoloTrainer, soloTrainer } =
+	await import('./solo-trainer.svelte');
 
 class FakeTrainer implements Trainer {
 	status: TrainerStatus = 'disconnected';
@@ -145,6 +146,27 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 			expect(slot.state).toBe('idle');
 			expect(slot.reading).toBeUndefined();
 			expect(trainer.listeners).toBe(0);
+		});
+	});
+
+	// #1716: three screens each built their own slot, so pairing on
+	// /settings/equipment and walking to /ride showed "Not connected" over a
+	// trainer that was still connected — and pairing again put two GATT
+	// clients on one machine.
+	it('is one trainer for the whole app, not one per screen', () => {
+		expect(soloTrainer()).toBe(soloTrainer());
+	});
+
+	it('hangs the old trainer up before pairing another', async () => {
+		await withSlot(async (slot) => {
+			const first = new FakeTrainer('Kickr Core');
+			await slot.pair(first);
+			const second = new FakeTrainer('Tacx Neo');
+			await slot.pair(second);
+
+			expect(first.disconnects).toBe(1);
+			expect(first.listeners).toBe(0);
+			expect(slot.trainer).toBe(second);
 		});
 	});
 

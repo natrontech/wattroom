@@ -11,7 +11,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/room/sensor-claim';
@@ -21,10 +21,11 @@
 
 	// A room holds its BLE connection for as long as you stand in one (#521),
 	// and this page could not see it (#565) — so when there IS a room, its
-	// trainer is the one to show. With no room, the page pairs its own, the
-	// way /ride does: `solo.pair` takes the hardware back from a room first,
-	// so the two owners can never both hold it.
-	const solo = createSoloTrainer();
+	// trainer is the one to show. With no room, it is the app's one solo
+	// trainer (#1716), the same object /ride and /ramp read: `solo.pair` takes
+	// the hardware back from a room first, so the two owners can never both
+	// hold it.
+	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(roomConnection.current?.ride);
 	const roomHolds = $derived(!!ride?.trainer);
@@ -35,14 +36,12 @@
 	);
 
 	const roomTrainerState = $derived(
-		trainerState(
-			{
-				trainer: ride?.trainer ?? null,
-				fault: ride?.fault ?? null,
-				error: ride?.error ?? null,
-			},
-			null,
-		),
+		trainerState({
+			trainer: ride?.trainer ?? null,
+			fault: ride?.fault ?? null,
+			error: ride?.error ?? null,
+			pairing: ride?.pairing ?? false,
+		}),
 	);
 
 	async function pairTrainer() {

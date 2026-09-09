@@ -1,0 +1,1 @@
+- A trainer or sensor that is reconnecting says so on its card, in the fault colour, with a button to give up on it — instead of an endless "Connecting…" with nothing to press.

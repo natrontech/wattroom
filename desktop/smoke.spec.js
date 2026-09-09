@@ -65,8 +65,10 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'installUpdate',
 		'keepAwake',
 		'notify',
+		'onBleScan',
 		'onNotification',
 		'onUpdate',
+		'pickDevice',
 		'platform',
 		'retry',
 		'titleBar',
@@ -136,6 +138,82 @@ test('the navigation guard refuses another origin', async () => {
 	const opened = await app.evaluate(() => globalThis.__opened);
 	expect(opened).toEqual(['https://example.com/']);
 
+	await app.close();
+});
+
+/**
+ * The chooser's own rules (#1545, #1716), which is the half of
+ * `select-bluetooth-device` that CI *can* prove: no radio here, only the
+ * state machine that decides when a scan is answered and what the app is
+ * told. Both of its rules have broken in production — one shipped a shell
+ * that could not pair anything at all.
+ */
+test('the Bluetooth chooser holds the scan open and streams it to the app', async () => {
+	const app = await launch(DEAD_URL);
+	await app.firstWindow();
+
+	const seen = await app.evaluate(
+		async ({ BrowserWindow, dialog, ipcMain }) => {
+			// If the handshake below ever stops working this takes the native
+			// fallback, and an un-stubbed message box would hang the run for a
+			// minute instead of failing.
+			dialog.showMessageBox = async () => ({ response: 1 });
+
+			const win = BrowserWindow.getAllWindows()[0];
+			// What the preload does on load: registering onBleScan is the app
+			// saying it can draw the picker itself.
+			ipcMain.emit('wattroom:ble-picker-ready');
+
+			const sent = [];
+			const pass = win.webContents.send.bind(win.webContents);
+			win.webContents.send = (channel, payload) => {
+				if (channel === 'wattroom:ble-scan') sent.push(payload);
+				else pass(channel, payload);
+			};
+
+			const answers = [];
+			const scan = (devices) =>
+				win.webContents.emit(
+					'select-bluetooth-device',
+					{ preventDefault() {} },
+					devices,
+					(deviceId) => answers.push(deviceId),
+				);
+
+			// Electron emits the moment the scan starts — ~130 ms in, before
+			// anything can have advertised — then again per device heard.
+			scan([]);
+			scan([{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' }]);
+			scan([
+				{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' },
+				{ deviceId: 'b', deviceName: '' },
+			]);
+			const answeredWhileScanning = answers.length;
+
+			ipcMain.emit('wattroom:ble-pick', {}, 'a');
+			// A late answer from a picker whose request is over must not settle
+			// the next one.
+			ipcMain.emit('wattroom:ble-pick', {}, 'b');
+			return { sent, answeredWhileScanning, answers };
+		},
+	);
+
+	// Answering that first empty list is a cancel: the shell shipped unable
+	// to pair anything at all that way (#1545).
+	expect(seen.answeredWhileScanning).toBe(0);
+	expect(seen.sent).toEqual([
+		[],
+		[{ id: 'a', name: 'KICKR CORE 8F2A' }],
+		[
+			{ id: 'a', name: 'KICKR CORE 8F2A' },
+			// A device that advertises no name is offered by its id rather
+			// than as a blank row nobody can tell apart.
+			{ id: 'b', name: 'b' },
+		],
+		// The shell closes the picker when it has its answer.
+		null,
+	]);
+	expect(seen.answers).toEqual(['a']);
 	await app.close();
 });
 
@@ -250,53 +328,55 @@ test('a ride holds the machine awake, and stops holding it', async () => {
 	await app.close();
 });
 
-test('the chooser waits for the scan instead of answering its empty first list', async () => {
+test('the native fallback still pairs a web app too old to draw the picker', async () => {
 	// #1545: Electron emits `select-bluetooth-device` the moment the scan
 	// starts, before anything has advertised, and again for every device it
 	// hears. Answering that first list with '' cancels the request — which is
 	// how the shell shipped unable to pair a trainer at all. The event is a
 	// plain EventEmitter emit, so the handler can be exercised without a radio.
+	//
+	// This is now the path taken when the loaded app never registered
+	// onBleScan (#1716) — the shell and the app release on separate trains,
+	// and the offline screen this launches on is exactly such an app.
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 
 	const emit = (devices) =>
-		app.evaluate(
-			async ({ BrowserWindow, dialog }, list) => {
-				dialog.showMessageBox = async (_win, options) => {
-					globalThis.__buttons = options.buttons;
-					return { response: 0 };
-				};
-				const { webContents } = BrowserWindow.getAllWindows()[0];
-				return await new Promise((resolve) => {
-					const held = setTimeout(() => resolve('held'), 1500);
-					webContents.emit(
-						'select-bluetooth-device',
-						{ preventDefault() {} },
-						list,
-						(deviceId) => {
-							clearTimeout(held);
-							resolve(`answered:${deviceId}`);
-						},
-					);
-				});
-			},
-			devices,
-		);
+		app.evaluate(async ({ BrowserWindow, dialog }, list) => {
+			dialog.showMessageBox = async (_win, options) => {
+				globalThis.__buttons = options.buttons;
+				return { response: 0 };
+			};
+			const { webContents } = BrowserWindow.getAllWindows()[0];
+			return await new Promise((resolve) => {
+				const held = setTimeout(() => resolve('held'), 1500);
+				webContents.emit(
+					'select-bluetooth-device',
+					{ preventDefault() {} },
+					list,
+					(deviceId) => {
+						clearTimeout(held);
+						resolve(`answered:${deviceId}`);
+					},
+				);
+			});
+		}, devices);
 
 	// The launch warm-up (warmBluetooth) is a Bluetooth request of our own, and
 	// the handler answers it rather than showing a picker. Wait it out first, or
 	// this test reads its answer as the bug.
 	await expect.poll(() => emit([]), { timeout: 15_000 }).toBe('held');
 
-	// A device turns up mid-scan: the picker opens on the list as it is now,
-	// and the chooser is answered with what the rider pressed.
+	// A device turns up mid-scan: the message box opens on the list as it is
+	// now, and the chooser is answered with what the rider pressed.
 	expect(
 		await emit([{ deviceId: 'kickr-1', deviceName: 'KICKR CORE 1234' }]),
 	).toBe('answered:kickr-1');
-	expect(
-		await app.evaluate(() => globalThis.__buttons),
-	).toEqual(['KICKR CORE 1234', 'Cancel']);
+	expect(await app.evaluate(() => globalThis.__buttons)).toEqual([
+		'KICKR CORE 1234',
+		'Cancel',
+	]);
 
 	await app.close();
 });

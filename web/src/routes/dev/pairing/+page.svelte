@@ -9,6 +9,8 @@
 	// can drift from what a rider sees.
 	import Logo from '$lib/brand/Logo.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import DevicePicker from '$lib/ble/DevicePicker.svelte';
+	import type { BleDevice } from '$lib/ble/device-picker.svelte';
 	import type { PairState } from '$lib/room/sensor-status';
 
 	type Case = {
@@ -31,6 +33,11 @@
 			reading: '214 W · 88 rpm',
 		},
 		{
+			name: 'reconnecting (#1716)',
+			state: 'reconnecting',
+			device: 'KICKR CORE 8F2A',
+		},
+		{
 			name: 'silent (#520)',
 			state: 'connected',
 			device: 'KICKR CORE 8F2A',
@@ -51,6 +58,29 @@
 
 	let picked = $state(0);
 	const now = $derived(CASES[picked]);
+
+	// The desktop shell's device picker (#1716). Only the shell ever feeds it,
+	// so these are the states nobody can see in a browser — and the empty scan
+	// is the one a rider hits most.
+	const SCANS: { name: string; devices: BleDevice[] }[] = [
+		{ name: 'listening, nothing yet', devices: [] },
+		{ name: 'one trainer', devices: [{ id: 'a', name: 'KICKR CORE 8F2A' }] },
+		{
+			name: 'a gym full of sensors',
+			devices: [
+				{ id: 'a', name: 'KICKR CORE 8F2A' },
+				{ id: 'b', name: 'Polar H10 6B31C42D' },
+				{ id: 'c', name: 'TACX NEO 2T 04512' },
+				{ id: 'd', name: 'Wahoo TICKR 3F9E' },
+			],
+		},
+		{
+			name: 'a device with no name',
+			devices: [{ id: 'e', name: '4C:65:A8:D1:22:9F' }],
+		},
+	];
+	let scan = $state.raw<BleDevice[] | null>(null);
+	let answered = $state<string | null>(null);
 </script>
 
 <main class="mx-auto max-w-3xl px-6 py-10">
@@ -106,6 +136,34 @@
 			}}
 		/>
 	</div>
+
+	<p class="eyebrow mt-10">the desktop shell's device picker</p>
+	<p class="text-muted mt-1 max-w-xl text-xs">
+		Electron ships no Bluetooth chooser, so the app draws one and the shell
+		feeds it the scan as it finds things. In a browser Chrome draws its own and
+		this never opens — which is why it lives here.
+	</p>
+	<div class="mt-3 flex flex-wrap items-center gap-2">
+		{#each SCANS as item (item.name)}
+			<button
+				onclick={() => {
+					answered = null;
+					scan = item.devices;
+				}}
+				class="btn btn-xs btn-secondary">{item.name}</button
+			>
+		{/each}
+		{#if answered}
+			<span class="text-muted text-xs">answered: {answered}</span>
+		{/if}
+	</div>
+	<DevicePicker
+		devices={scan}
+		onpick={(id) => {
+			answered = id ?? 'cancelled';
+			scan = null;
+		}}
+	/>
 
 	<div
 		class="border-muted/10 mt-10 flex items-center gap-5 rounded-lg border border-dashed p-6"

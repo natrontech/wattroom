@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import {
@@ -128,7 +128,7 @@
 
 	// Paired before the ride, not by starting it (#611): the paired-devices
 	// grid below owns the trainer until Start hands it to the session.
-	const solo = createSoloTrainer();
+	const solo = soloTrainer();
 
 	async function begin(trainer: Trainer) {
 		error = null;
