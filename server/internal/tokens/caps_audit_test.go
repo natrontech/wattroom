@@ -1,27 +1,26 @@
 package tokens
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
-// errors.md's 404 for a bearer credential (#1415): a malformed id, and —
-// the whole cross-account defence — another account's id.
-func TestTokenDeleteIs404ForMalformedAndForeignIds(t *testing.T) {
+// The cap is a per-account ceiling, so a 429 (errors.md), not a 409
+// (audit 2026-09-09).
+func TestTheTokenCapIsA429(t *testing.T) {
 	mux, _ := setup(t)
-	code, body := call(t, mux, "alice", http.MethodPost, "/api/tokens", `{"name":"coach"}`)
-	if code != http.StatusCreated {
-		t.Fatalf("create: %d %v", code, body)
+	for i := 0; i < maxTokensPerUser; i++ {
+		if code, body := call(t, mux, "alice", http.MethodPost, "/api/tokens", fmt.Sprintf(`{"name":"coach %d"}`, i)); code != http.StatusCreated {
+			t.Fatalf("token %d: %d %v", i, code, body)
+		}
 	}
-	id, _ := body["id"].(string)
-	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/tokens/not-a-uuid", ""); code != http.StatusNotFound {
-		t.Errorf("malformed id: %d, want 404", code)
+	code, body := call(t, mux, "alice", http.MethodPost, "/api/tokens", `{"name":"one too many"}`)
+	if code != http.StatusTooManyRequests || body["error"] != "rate_limited" {
+		t.Fatalf("the eleventh token: %d %v, want 429 rate_limited", code, body)
 	}
-	if code, _ := call(t, mux, "bob", http.MethodDelete, "/api/tokens/"+id, ""); code != http.StatusNotFound {
-		t.Errorf("another account's token: %d, want 404", code)
-	}
-	// Alice's own still works, so the 404 above was scoping, not a bug.
-	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/tokens/"+id, ""); code != http.StatusNoContent {
-		t.Errorf("own token: %d, want 204", code)
+	if msg, _ := body["message"].(string); !strings.Contains(msg, "revoke") {
+		t.Errorf("message %q does not say what to do", msg)
 	}
 }

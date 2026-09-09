@@ -6,8 +6,13 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"log/slog"
 	"net/http"
 	"time"
@@ -23,14 +28,25 @@ type TokenSource interface {
 	FromRequest(r *http.Request) (db.User, bool)
 }
 
+const (
+	// Per account a minute (#1758): a tool call touches the token's row and
+	// may scan a year of rides. The sign-in ceiling for the 401 path.
+	callsPerWindow     = 60
+	strangersPerWindow = 30
+	callTimeout        = 10 * time.Second
+)
+
 type Service struct {
-	store  *store.Store
-	tokens TokenSource
-	log    *slog.Logger
+	calls     *budget.Budget[string]
+	strangers *budget.Budget[string]
+	store     *store.Store
+	tokens    TokenSource
+	log       *slog.Logger
 }
 
 func New(st *store.Store, tokens TokenSource, log *slog.Logger) *Service {
-	return &Service{store: st, tokens: tokens, log: log}
+	return &Service{store: st, tokens: tokens, log: log,
+		calls: budget.New[string](callsPerWindow, time.Minute), strangers: budget.New[string](strangersPerWindow, time.Minute)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -52,15 +68,35 @@ type rpcError struct {
 func (s *Service) handle(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.tokens.FromRequest(r)
 	if !ok {
+		// A guess at a token spends the address's window (#1758).
+		if s.strangers != nil && !s.strangers.Spend(httpx.ClientIP(r)) {
+			httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", "Too many tries from this address — give it a minute.")
+			return
+		}
 		w.Header().Set("WWW-Authenticate", "Bearer")
-		http.Error(w, `{"error":"unauthorized","message":"A personal token from your profile goes in the Authorization header."}`,
-			http.StatusUnauthorized)
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "A personal token from your settings goes in the Authorization header.")
+		return
+	}
+	// Every call touches the token's row and may scan a year of rides: a
+	// read token was a write amplifier with no ceiling (#1758).
+	if s.calls != nil && !s.calls.Spend(store.UUIDString(user.ID)) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", "Too many calls in one minute — give it a moment.")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req rpcRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.reply(w, nil, nil, &rpcError{Code: -32700, Message: "parse error"})
+		var tooBig *http.MaxBytesError
+		switch {
+		case errors.As(err, &tooBig):
+			s.reply(w, nil, nil, &rpcError{Code: -32600, Message: "request too large"})
+		case isBatch(err):
+			// Batching left the protocol in 2025-06-18; refusing is right, and
+			// -32600 says what was wrong with the request.
+			s.reply(w, nil, nil, &rpcError{Code: -32600, Message: "batch requests are not supported"})
+		default:
+			s.reply(w, nil, nil, &rpcError{Code: -32700, Message: "parse error"})
+		}
 		return
 	}
 	// Notifications (no id) are acknowledged and dropped — nothing stateful
@@ -82,7 +118,10 @@ func (s *Service) handle(w http.ResponseWriter, r *http.Request) {
 	case "tools/list":
 		s.reply(w, req.ID, map[string]any{"tools": toolList}, nil)
 	case "tools/call":
-		s.call(w, r.Context(), req, user)
+		// A tool runs for as long as the database takes otherwise (#1758).
+		ctx, cancel := context.WithTimeout(r.Context(), callTimeout)
+		defer cancel()
+		s.call(w, ctx, req, user)
 	default:
 		s.reply(w, req.ID, nil, &rpcError{Code: -32601, Message: "method not found"})
 	}
@@ -132,6 +171,11 @@ func (s *Service) call(w http.ResponseWriter, ctx context.Context, req rpcReques
 		s.reply(w, req.ID, nil, &rpcError{Code: -32602, Message: "unknown tool"})
 		return
 	}
+	var invalid errInvalidParams
+	if errors.As(err, &invalid) {
+		s.reply(w, req.ID, nil, &rpcError{Code: -32602, Message: string(invalid)})
+		return
+	}
 	if err != nil {
 		s.log.Error("mcp tool failed", "tool", params.Name, "err", err)
 		s.reply(w, req.ID, nil, &rpcError{Code: -32603, Message: "internal error"})
@@ -147,44 +191,83 @@ func (s *Service) call(w http.ResponseWriter, ctx context.Context, req rpcReques
 	}, nil)
 }
 
+// errInvalidParams is a refusal the caller can act on; call answers it as
+// -32602 with the sentence, never as an internal error.
+type errInvalidParams string
+
+func (e errInvalidParams) Error() string { return string(e) }
+
 func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMessage) (any, error) {
-	limit := int32(30)
-	if len(args) > 0 {
+	params := db.ListUserRidesParams{UserID: user.ID, Limit: 30}
+	if len(args) > 0 && string(args) != "null" {
 		var in struct {
-			Limit int32 `json:"limit"`
+			Limit  *int32 `json:"limit"`
+			Before string `json:"before"`
 		}
-		if err := json.Unmarshal(args, &in); err == nil && in.Limit >= 1 && in.Limit <= 200 {
-			limit = in.Limit
+		dec := json.NewDecoder(bytes.NewReader(args))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			return nil, errInvalidParams("arguments must be an object with limit (1-200) and before (RFC 3339)")
+		}
+		// Out of range used to fall silently back to 30 (#1758): a model that
+		// asked for 200 and got 30 concluded the rider has 30 rides.
+		if in.Limit != nil {
+			if *in.Limit < 1 || *in.Limit > 200 {
+				return nil, errInvalidParams("limit must be 1-200")
+			}
+			params.Limit = *in.Limit
+		}
+		if in.Before != "" {
+			at, err := time.Parse(time.RFC3339, in.Before)
+			if err != nil {
+				return nil, errInvalidParams("before must be an RFC 3339 time")
+			}
+			params.Before = pgtype.Timestamptz{Time: at, Valid: true}
 		}
 	}
-	rows, err := s.store.Queries.ListUserRides(ctx, db.ListUserRidesParams{
-		UserID: user.ID, Limit: limit,
-	})
+	rows, err := s.store.Queries.ListUserRides(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+	// The HTTP list's fields (ADR-0017: the tools mirror it), the id included
+	// so a follow-up can name a ride, and `more` with the last start as the
+	// next `before`.
 	type ride struct {
-		Workout   string  `json:"workout"`
-		Date      string  `json:"date"`
-		Seconds   int     `json:"seconds"`
-		AvgWatts  int     `json:"avgWatts"`
-		Kj        int     `json:"kj"`
-		Execution float64 `json:"execution"`
-		Room      bool    `json:"room"`
+		ID                string  `json:"id"`
+		Workout           string  `json:"workout"`
+		Date              string  `json:"date"`
+		Seconds           int     `json:"seconds"`
+		AvgWatts          int     `json:"avgWatts"`
+		Kj                int     `json:"kj"`
+		Execution         float64 `json:"execution"`
+		ExecutionScored   bool    `json:"executionScored"`
+		Ftp               int     `json:"ftp"`
+		Xp                int     `json:"xp"`
+		Room              bool    `json:"room"`
+		SharedWithFriends bool    `json:"sharedWithFriends"`
 	}
 	out := make([]ride, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, ride{
-			Workout: row.WorkoutName, Date: row.StartedAt.Time.Format(time.RFC3339),
+			ID: store.UUIDString(row.ID), Workout: row.WorkoutName, Date: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds: int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
-			Execution: float64(row.Execution), Room: row.RoomID.Valid,
+			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
+			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
-	return map[string]any{"rides": out}, nil
+	return map[string]any{"rides": out, "more": len(rows) == int(params.Limit)}, nil
+}
+
+// isBatch says whether the body began a JSON array — a batch, which the
+// protocol no longer has.
+func isBatch(err error) bool {
+	var ute *json.UnmarshalTypeError
+	return errors.As(err, &ute) && ute.Value == "array"
 }
 
 func (s *Service) reply(w http.ResponseWriter, id json.RawMessage, result any, rpcErr *rpcError) {
-	body := map[string]any{"jsonrpc": "2.0"}
+	// "id": null when the request's id could not be read (JSON-RPC 2.0 §5).
+	body := map[string]any{"jsonrpc": "2.0", "id": nil}
 	if id != nil {
 		body["id"] = id
 	}

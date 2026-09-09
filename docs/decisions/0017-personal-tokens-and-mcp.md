@@ -45,3 +45,27 @@ the coach can read it — and nothing more.
   the SDK swap.
 - last_used_at gives riders a "is this token dead?" signal on the profile at
   the cost of one row update per authenticated call — fine at alpha scale.
+
+## Amendment — what a bearer reaches, and what it never does (2026-09-09, #1757)
+
+Tokens are minted on **Settings › Data**, not the profile page. A bearer
+authenticates `GET /api/progression`, `GET /api/rides`, `GET /api/rides/best`,
+`GET /api/me/trophies` and `POST /mcp` (whose two tools, `get_progression` and
+`list_rides`, mirror the first two). It never authenticates a write, and since
+#1746 never a route keyed on another rider's id.
+
+Two rulings the original text did not make:
+
+- **Heart rate never crosses a bearer.** ADR-0008 keeps HR out of any shared
+  artifact, and a rider's own model provider is a third party; the per-second
+  record (`GET /api/rides/{id}`) and the `.fit` (`…/export`) refuse a bearer
+  with a 403. A per-token opt-in, or the capability column below, is the
+  relaxation on offer (#1760) — not the default.
+- **Nothing Strava handed back crosses a bearer either.** The delivery record
+  (`export.remoteId`, `export.error`) rides only the detail, which a bearer
+  cannot open; RESEARCH §13.5 names ingestion into a context window, and the
+  cost of being wrong is asymmetric.
+
+The MCP transport budgets calls per account and guesses per address, bounds
+a tool call to ten seconds, and refuses a batch with `-32600` (batching left
+the protocol in 2025-06-18).

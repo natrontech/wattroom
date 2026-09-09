@@ -513,3 +513,23 @@ func TestBestRideOfWorkout(t *testing.T) {
 		t.Fatalf("bob sees alice's best: %v", body)
 	}
 }
+
+// A personal token reads summaries only (#1757, ADR-0008): the per-second
+// record and the .fit refuse a bearer whatever source authenticated it.
+func TestABearerNeverReadsTheRecord(t *testing.T) {
+	h := setup(t)
+	id := h.save(t, "alice", 120, 200)
+	for _, path := range []string{"/api/rides/" + id, "/api/rides/" + id + "/export"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+		req.Header.Set("X-Test-User", "alice")
+		req.Header.Set("Authorization", "Bearer wrt_"+strings.Repeat("0", 64))
+		rec := httptest.NewRecorder()
+		h.mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s with a bearer: %d, want 403", path, rec.Code)
+		}
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides", ""); status != http.StatusOK {
+		t.Fatalf("the summary list: %d", status)
+	}
+}
