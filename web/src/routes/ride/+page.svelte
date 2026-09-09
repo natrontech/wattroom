@@ -4,7 +4,6 @@
 	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import { zoneOf } from '$lib/components/zones';
 	import { createRideSession } from '$lib/workout/session.svelte';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
@@ -26,8 +25,9 @@
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
-	import RideTv from '$lib/ride/RideTv.svelte';
+	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
+	import { describeBlock } from '$lib/room/view';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
@@ -301,9 +301,40 @@
 			nowMs - session.sample.at > 3000,
 	);
 
+	// The block, derived once for both screens that draw it — the riding
+	// surface and the TV (ADR-0046).
+	const block = $derived(
+		session && session.segments.length > 0
+			? describeBlock(session.info, session.segments, workout, ftp)
+			: null,
+	);
+
+	/**
+	 * You, in the shape the TV renders (#1632). The room's TV takes a roster and
+	 * a solo ride is a roster of one — which is the whole convergence: one TV
+	 * screen, the tiles simply absent when nobody else is riding.
+	 */
+	const tvRider = $derived({
+		id: 'you',
+		name: 'You',
+		ftp,
+		kg: profile.current.kg,
+		you: true,
+		coach: false,
+		cameraOn: false,
+		muted: false,
+		speaking: false,
+		hue: 0,
+		watts: session?.sample?.watts ?? 0,
+		cadence: session?.sample?.cadence ?? 0,
+		hr: session?.sample?.heartRate ?? 0,
+		stale: false,
+		target: session?.target ?? 0,
+		trace: session?.trace ?? [],
+	});
+
 	const watts = $derived(session?.sample?.watts ?? 0);
 	const target = $derived(session?.target ?? 0);
-	const zone = $derived(zoneOf(watts, ftp));
 	const remaining = $derived(session ? session.total - session.elapsed : 0);
 
 	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
@@ -403,6 +434,7 @@
 	{:else if session.state !== 'done'}
 		<RidingScreen
 			{session}
+			{block}
 			{workout}
 			{ftp}
 			kg={profile.current.kg}
@@ -417,15 +449,17 @@
 	{/if}
 
 	{#if session && session.state !== 'done' && tv}
-		<!-- Solo TV (#126): the same truth at 3-metre size. -->
-		<RideTv
-			{session}
-			{workout}
-			{ftp}
-			{remaining}
-			{watts}
-			{target}
-			{zone}
+		<!-- The room's TV, riding alone (#1632, ADR-0046): the same screen at
+		     3 m, with the roster column absent because there is nobody in it. -->
+		<TvOverlay
+			riders={[tvRider]}
+			segments={session.segments}
+			total={session.total}
+			elapsed={session.elapsed}
+			{block}
+			roomName={workout.name}
+			workoutName={block?.label ?? ''}
+			live
 			onExit={() => (tv = false)}
 		/>
 	{/if}

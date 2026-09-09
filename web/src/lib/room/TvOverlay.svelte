@@ -1,5 +1,4 @@
 <script lang="ts">
-	import RoomStatus from '$lib/room/RoomStatus.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import GamePanel from '$lib/room/GamePanel.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
@@ -8,6 +7,7 @@
 	import { TV_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
 	import type { Block, RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
+	import type { Snippet } from 'svelte';
 
 	// TV mode's frame (#460, #686): the fullscreen surface, the way out of it,
 	// and the seat the jukebox dock flies to while it is up. `TvMode` itself
@@ -31,6 +31,7 @@
 		playing = false,
 		sprint = null,
 		game = null,
+		status,
 		onExit,
 	}: {
 		riders: RoomRider[];
@@ -49,6 +50,12 @@
 		sprint?: SprintState | null;
 		/** The running game (#1589): a room on the TV saw the HUD through it. */
 		game?: GameState | null;
+		/**
+		 * Ride-critical status. A snippet, not `RoomStatus` outright, because
+		 * this frame is the solo ride's TV too now (#1632) and RoomStatus reads
+		 * a room context a solo ride has no business having.
+		 */
+		status?: Snippet;
 		onExit: () => void;
 	} = $props();
 
@@ -82,7 +89,7 @@
 	     auto-pause while the instrument kept looking confident. Clear of
 	     the player's seat in the top-right. -->
 	<div class="absolute top-[2vh] right-[30vw] left-[3vw] z-10">
-		<RoomStatus />
+		{@render status?.()}
 	</div>
 	{#if sprint}
 		<div class="absolute inset-x-[12vw] top-[14vh] z-10">
