@@ -32,6 +32,10 @@ export interface RideDetail {
 	executionScored?: boolean;
 	ftp: number;
 	xp: number;
+	/** Per-ride opt-in (ADR-0024): shown and flipped on the page (#1691). */
+	sharedWithFriends: boolean;
+	/** The ride's own power curve (SPEC), absent when none was stored. */
+	curve?: { best5s: number; best1m: number; best5m: number; best20m: number };
 	/** The room it was ridden in, or null for a solo ride. */
 	room: { slug: string; name: string } | null;
 	medals: RideMedal[];

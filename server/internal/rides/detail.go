@@ -1,6 +1,7 @@
 package rides
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -153,6 +154,11 @@ type rideDetailJSON struct {
 	ExecutionScored bool `json:"executionScored"`
 	Ftp             int  `json:"ftp"`
 	Xp              int  `json:"xp"`
+	// Per-ride opt-in (ADR-0024): the page shows and flips it (#1691).
+	SharedWithFriends bool `json:"sharedWithFriends"`
+	// The ride's own power curve (SPEC), computed at save; nil when the
+	// stored blob has none (#1691).
+	Curve *stats.Curve `json:"curve,omitempty"`
 	// The room it was ridden in; nil for a solo ride.
 	Room *roomJSON `json:"room"`
 	// Medals this ride won, SPEC kinds — empty for a solo or unmedalled ride.
@@ -213,8 +219,13 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts),
 		NormWatts: normWatts(row), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-		Medals:  make([]medalJSON, 0, len(medalRows)),
-		Samples: []sampleJSON{},
+		Medals:            make([]medalJSON, 0, len(medalRows)),
+		SharedWithFriends: row.SharedAt.Valid,
+		Samples:           []sampleJSON{},
+	}
+	var curve stats.Curve
+	if json.Unmarshal(row.Curve, &curve) == nil && curve.Best5s > 0 {
+		out.Curve = &curve
 	}
 	if row.RoomID.Valid {
 		out.Room = &roomJSON{Slug: row.RoomSlug, Name: row.RoomName}

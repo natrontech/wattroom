@@ -313,6 +313,21 @@ func TestRideDetail(t *testing.T) {
 	if medals, _ := body["medals"].([]any); len(medals) != 0 {
 		t.Fatalf("medals on a solo ride: %v", medals)
 	}
+	// The page shows and flips the share state, and the ride's own curve
+	// (#1691): 120 s flat at 200 W has a 5 s and a 1 min best, no 5 min.
+	if body["sharedWithFriends"] != false {
+		t.Fatalf("a fresh ride is not private: %v", body["sharedWithFriends"])
+	}
+	curve, _ := body["curve"].(map[string]any)
+	if curve["best5s"] != float64(200) || curve["best1m"] != float64(200) || curve["best5m"] != float64(0) {
+		t.Fatalf("curve: %v", body["curve"])
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodPatch, path, `{"sharedWithFriends":true}`); status != http.StatusOK {
+		t.Fatalf("share: %d", status)
+	}
+	if _, body := call(t, h.mux, "alice", http.MethodGet, path, ""); body["sharedWithFriends"] != true {
+		t.Fatalf("the detail does not say the ride is shared: %v", body["sharedWithFriends"])
+	}
 }
 
 func TestRideDetailNamesItsRoomAndMedals(t *testing.T) {

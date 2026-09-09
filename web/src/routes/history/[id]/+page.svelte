@@ -23,6 +23,9 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Users from '@lucide/svelte/icons/users';
+	import { setRideShared } from '$lib/ride/share';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const id = $derived(page.params.id ?? '');
@@ -54,7 +57,6 @@
 			} else ridesError = res.error.message;
 		});
 	}
-	loadRides();
 	// Its failure is one line under the comparison, not vanished bests (#1555).
 	let progressionError = $state<string | null>(null);
 	function loadProgression() {
@@ -101,6 +103,9 @@
 			ride = res.data;
 			error = null;
 			missing = false;
+			// The best of this workout needs the workout's name (#1687): asked
+			// before the ride had loaded, the server refused an empty one.
+			loadRides();
 			return;
 		}
 		missing = res.error.error === 'not_found';
@@ -113,6 +118,8 @@
 		error = null;
 		missing = false;
 		exportError = null;
+		best = null;
+		bestLoaded = false;
 		if (which) void load(which);
 	});
 
@@ -120,6 +127,17 @@
 	const trace = $derived(
 		ride
 			? ride.samples.map((sample, second) => ({ t: second, w: sample.watts }))
+			: [],
+	);
+	/** SPEC's four curve windows as the page's cells (#1691). */
+	const curveCells = $derived<[string, number][]>(
+		ride?.curve
+			? [
+					['best 5 s', ride.curve.best5s],
+					['best 1 min', ride.curve.best1m],
+					['best 5 min', ride.curve.best5m],
+					['best 20 min', ride.curve.best20m],
+				]
 			: [],
 	);
 	const stats = $derived(
@@ -211,10 +229,24 @@
 					{/if}
 				</p>
 			</div>
+			<!-- The per-ride opt-in, where a rider decides a ride is worth
+			     showing (#1691, ADR-0024): undo over confirm. -->
+			<button
+				onclick={() =>
+					ride && void setRideShared(ride, !ride.sharedWithFriends)}
+				aria-pressed={ride.sharedWithFriends}
+				class="btn btn-secondary btn-xs ml-auto"
+			>
+				{#if ride.sharedWithFriends}
+					<Users size={13} /> Shared with friends
+				{:else}
+					<Lock size={13} /> Private
+				{/if}
+			</button>
 			<button
 				onclick={() => void downloadFit()}
 				disabled={exporting || ride.samples.length === 0}
-				class="btn btn-secondary btn-xs ml-auto disabled:opacity-50"
+				class="btn btn-secondary btn-xs disabled:opacity-50"
 			>
 				<Download size={13} />
 				{exporting ? 'Preparing…' : 'Download FIT'}
@@ -308,6 +340,25 @@
 				</div>
 			{/each}
 		</section>
+
+		{#if ride.curve}
+			<!-- The ride's own curve (SPEC's four windows, #1691): computed at
+			     save and in the export, and never shown until now. -->
+			<section class="mt-3 grid gap-3 sm:grid-cols-4">
+				{#each curveCells as [label, watts] (label)}
+					<div class="panel p-5">
+						<div
+							class="font-display text-2xl leading-none font-bold tabular-nums"
+						>
+							{#if watts > 0}{watts}<span class="text-muted ml-1 text-sm"
+									>W</span
+								>{:else}<span class="text-muted">–</span>{/if}
+						</div>
+						<div class="eyebrow mt-2">{label}</div>
+					</div>
+				{/each}
+			</section>
+		{/if}
 
 		<div class="mt-6">
 			<RideComparison
