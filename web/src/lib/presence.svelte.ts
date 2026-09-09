@@ -104,8 +104,17 @@ function connect() {
 	socket.onclose = () => {
 		if (stopped) return;
 		attempts += 1;
-		reconnect = setTimeout(connect, Math.min(1000 * 2 ** attempts, 10_000));
+		// Jittered (#1741): a server restart brought the whole fleet back in
+		// lockstep at 2 s, 4 s, 8 s.
+		const wait = Math.min(1000 * 2 ** attempts, 10_000) * (0.5 + Math.random());
+		reconnect = setTimeout(connect, wait);
 	};
+}
+
+function onVisible() {
+	if (document.visibilityState !== 'visible' || stopped) return;
+	void refresh();
+	connect();
 }
 
 export const presence = {
@@ -143,12 +152,18 @@ export const presence = {
 		stopped = false;
 		void refresh();
 		connect();
+		// A tab that wakes from sleep has a socket the browser may not report
+		// dead for a while and dots drawn with full confidence (#1741): on
+		// becoming visible, re-fetch and re-dial — a live socket makes the
+		// dial a no-op.
+		document.addEventListener('visibilitychange', onVisible);
 		// ponytail: 60 s fallback poll behind the push — covers a dead socket
 		// and keeps "32 min in" from freezing when nothing else changes.
 		fallback = setInterval(() => void refresh(), 60_000);
 	},
 	stop() {
 		stopped = true;
+		document.removeEventListener('visibilitychange', onVisible);
 		// Signing out and back in starts the world over — the first list a new
 		// session sees must not blip once per room.
 		announced = false;
