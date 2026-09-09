@@ -20,6 +20,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 					? 'Could not tell who you are — reload to try again.'
 					: me.error.message,
 				trophies: null,
+				trophiesError: null,
 			};
 		}
 		id = me.data.id;
@@ -33,6 +34,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		rider: riderResult.ok ? riderResult.data : null,
 		riderError: riderResult.ok ? null : riderResult.error.message,
 		trophies: trophiesResult.ok ? trophiesResult.data : null,
+		trophiesError: trophiesResult.ok ? null : trophiesResult.error.message,
 	};
 };
 
@@ -41,4 +43,6 @@ export type RiderPageData = {
 	rider: Rider | null;
 	riderError: string | null;
 	trophies: Trophies | null;
+	/** Read on your own page only: there the case is the page (#1330). */
+	trophiesError: string | null;
 };

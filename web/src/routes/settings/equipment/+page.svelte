@@ -121,14 +121,14 @@
 	</dl>
 
 	<div class="mt-8 flex flex-wrap items-center gap-3">
-		<a href="/workouts" class="btn btn-primary btn-lg">Pick a workout</a>
+		<a href="/workouts" class="btn btn-primary">Pick a workout</a>
 		{#if canSimulate()}
 			<!-- Same reason SimulatedTrainer exists: the dashboard has to be
 			     buildable without a strap on your chest. Dev equipment (#123),
 			     behind the one gate every surface now shares. -->
 			<button
 				onclick={() => void sensors.pair('heart-rate', true)}
-				class="btn btn-secondary btn-lg">Simulate a strap</button
+				class="btn btn-secondary">Simulate a strap</button
 			>
 		{/if}
 	</div>

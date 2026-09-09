@@ -4,7 +4,7 @@ import type { createRide } from '$lib/room/ride.svelte';
 import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
 
 /**
- * The pairing state machine, in one place: `/pair` and the Training place's
+ * The pairing state machine, in one place: `/settings/equipment` and the Training place's
  * paired-devices overview both read the trainer and the three read-only
  * sensors, and used to compute "idle vs connecting vs connected vs failed"
  * twice from the same underlying stores (code-quality.md).

@@ -14,7 +14,7 @@ import type {
  *
  * A module singleton rather than a per-component store, because a BLE connection is
  * expensive to establish and belongs to the session, not to a screen: a rider pairs
- * a strap on /pair and expects it still connected when they start riding. Nothing
+ * a strap in Settings › Equipment and expects it still connected when they start riding. Nothing
  * persists — Web Bluetooth grants do not survive a reload, and pretending otherwise
  * would mean showing a paired device that is not there.
  */

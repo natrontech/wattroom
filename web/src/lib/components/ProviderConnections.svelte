@@ -1,7 +1,7 @@
 <script lang="ts">
 	// The ways back into this account, and the offer to add one (#719).
 	// Connecting is a top-level navigation, not a fetch: it leaves for the
-	// provider and comes back to /profile?link=<outcome>.
+	// provider and comes back to /settings/profile?link=<outcome>.
 	import { confirm } from '$lib/confirm.svelte';
 	import { page } from '$app/state';
 	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
