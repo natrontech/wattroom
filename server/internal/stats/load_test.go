@@ -140,6 +140,17 @@ func TestFormZone(t *testing.T) {
 		{0, "grey"},
 		{-20, "optimal"},
 		{-35, "high_risk"},
+		// The boundaries (#1692): a band is closed at its low edge, so the
+		// number SPEC names belongs to the band above it — except the top,
+		// where transition begins strictly past +20.
+		{20.01, "transition"},
+		{20, "fresh"},
+		{5, "fresh"},
+		{4.99, "grey"},
+		{-10, "grey"},
+		{-10.01, "optimal"},
+		{-30, "optimal"},
+		{-30.01, "high_risk"},
 	}
 	for _, tt := range tests {
 		if got := FormZone(tt.pct); got != tt.want {
