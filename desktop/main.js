@@ -620,7 +620,9 @@ ipcMain.on('wattroom:notify', (event, n) => {
 		if (!event.sender.isDestroyed())
 			event.sender.send('wattroom:notification', {
 				...payload,
-				reply: clip(reply, 2000),
+				// The server's own ceiling for a line (dms.go: 500 runes), so a
+				// long reply is refused by the field, not silently by the send.
+				reply: clip(reply, 500),
 			});
 	});
 	note.show();

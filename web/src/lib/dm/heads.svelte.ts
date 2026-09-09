@@ -68,8 +68,13 @@ async function poll() {
 			href: `/messages/dm/${head.peerId}`,
 			reply: {
 				placeholder: `Reply to ${head.peerName}`,
-				send: (text) =>
-					api(`/api/dms/${head.peerId}`, { method: 'POST', json: { text } }),
+				send: async (text) => {
+					const res = await api(`/api/dms/${head.peerId}`, {
+						method: 'POST',
+						json: { text },
+					});
+					return res.ok ? null : res.error.message;
+				},
 			},
 			reading: dm.open?.id === head.peerId && !away(),
 		});

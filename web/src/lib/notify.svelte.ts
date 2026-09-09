@@ -14,6 +14,7 @@
  * carries a reply field; in a browser a click does the same and there is no
  * reply.
  */
+import { toasts } from '$lib/toast.svelte';
 const KEY = 'wattroom.notify.v1'; // '1' on, '0' off; the shell's default is on
 
 interface ShellNotification {
@@ -56,6 +57,11 @@ let enabled = $state(
 /** How a notification answers back: the placeholder, and where the text goes. */
 export interface ReplyTo {
 	placeholder: string;
+	/**
+	 * Sends the text. A STRING result is the refusal and is said out loud
+	 * (#1815); anything else — null, a boolean, whatever the caller's own
+	 * send returns — is success.
+	 */
 	send: (text: string) => Promise<unknown> | unknown;
 }
 const replies = new Map<string, ReplyTo['send']>();
@@ -64,6 +70,20 @@ let navigate: (href: string) => void = () => {};
 /** Nobody is looking at this window: hidden, or not the front one. */
 export function away(): boolean {
 	return document.hidden || !document.hasFocus();
+}
+
+// A reply from the notification field, and its refusal (#1815): the promise
+// used to be voided, so a reply refused — unfriended, too long, offline —
+// vanished with nothing said. This is the one path a message could disappear
+// on without a trace; now it is a toast that keeps the words and leads to
+// the thread.
+async function answer(tag: string, href: string | undefined, text: string) {
+	const refusal = await replies.get(tag)?.(text);
+	if (typeof refusal !== 'string') return;
+	toasts.push(`Not sent — ${refusal} Your reply: “${text}”`, {
+		tone: 'error',
+		href,
+	});
 }
 
 function send(
@@ -170,7 +190,7 @@ export const notify = {
 	listen(go: (href: string) => void) {
 		navigate = go;
 		bridge()?.onNotification?.(({ tag, href, reply }) => {
-			if (reply) void replies.get(tag)?.(reply);
+			if (reply) void answer(tag, href, reply);
 			else if (href) navigate(href);
 		});
 	},
