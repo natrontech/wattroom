@@ -22,6 +22,34 @@ groups:
         annotations:
           summary: 'Riders are connected but no room ticks are flowing'
 
+      # A supervised loop the supervisor abandoned (audit 2026-09-09): a
+      # room's clock, a queue worker or a sweep is gone for good, and the
+      # only other trace is a log line nobody reads.
+      - alert: WattroomGoroutineGaveUp
+        expr: increase(wattroom_goroutine_gaveup_total[15m]) > 0
+        labels: { severity: page }
+        annotations:
+          summary: 'A supervised loop gave up after repeated panics — check the server log for "gave up"'
+
+      # A minute-cadence job that has not succeeded in fifteen: reminders,
+      # Strava deliveries, the voice clock, the LiveKit reconciler.
+      - alert: WattroomMinuteJobStale
+        expr: >-
+          time() - wattroom_job_last_success_timestamp_seconds{job=~"session reminders|strava delivery sweep|voice clock|livekit reconciler"} > 900
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: 'Background job {{ $labels.job }} has not succeeded in 15 minutes'
+
+      # The daily sweeps: three days without a success is a stopped ticker,
+      # not a quiet day.
+      - alert: WattroomDailyJobStale
+        expr: >-
+          time() - wattroom_job_last_success_timestamp_seconds{job=~"housekeeping .*"} > 259200
+        labels: { severity: warn }
+        annotations:
+          summary: 'Daily sweep {{ $labels.job }} has not succeeded in three days'
+
       # absent() guard: a scrape that stopped must not read as a healthy
       # service. This one is safe to ship now — the target exists.
       - alert: WattroomDown

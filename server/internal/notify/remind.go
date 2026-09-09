@@ -10,6 +10,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -56,6 +58,7 @@ func (s *Service) remindDue(ctx context.Context) {
 	claimCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	due, err := s.store.Queries.ClaimSessionsToRemind(claimCtx)
 	cancel()
+	jobmetrics.Ran("session reminders", err)
 	if err != nil {
 		s.log.Error("claiming sessions to remind failed", "err", err)
 		return

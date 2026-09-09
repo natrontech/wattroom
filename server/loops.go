@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 	// The zone database, embedded rather than the host's (#858): session mail
 	// formats times in each rider's zone, and a distroless image is not where
 	// that should depend on what the base layer happens to ship.
@@ -31,6 +32,7 @@ func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 	safego.Supervise(log, time.Now, "github stars poll", ctx.Done(), func() {
 		for {
 			n, err := fetchStars(ctx)
+			jobmetrics.Ran("github stars poll", err)
 			if err != nil {
 				log.Warn("github stars unavailable", "err", err)
 			} else {

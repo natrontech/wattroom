@@ -10,11 +10,23 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // A loop that panics more than Budget times inside Window is a deterministic
 // bug, not bad luck: Supervise stops relaunching it and says so, rather than
 // spin the same crash. Operational guards, not product numbers.
+// gaveUp counts loops the supervisor abandoned — the one signal that a
+// room's clock, a queue worker or a sweep is gone for good, and until this
+// it was a log line nothing alerted on (audit 2026-09-09). No label: a
+// room's slug must not reach the metrics route.
+var gaveUp = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "wattroom_goroutine_gaveup_total",
+	Help: "Supervised loops abandoned after repeated panics.",
+})
+
 const (
 	Budget = 3
 	Window = time.Minute
@@ -86,6 +98,7 @@ func supervise(log *slog.Logger, now func() time.Time, where string, stop <-chan
 		panics = append(recent, at)
 		if len(panics) > Budget {
 			logger(log).Error("goroutine gave up after repeated panics", "where", where, "panics", len(panics), "window", Window)
+			gaveUp.Inc()
 			return true
 		}
 		logger(log).Warn("goroutine restarted after a panic", "where", where, "panics", len(panics))

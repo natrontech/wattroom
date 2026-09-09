@@ -17,6 +17,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+
 	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -113,6 +115,7 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 		sweepCtx, cancel := context.WithTimeout(ctx, sweepBudget)
 		err := s.run(sweepCtx, st)
 		cancel()
+		jobmetrics.Ran("housekeeping "+s.name, err)
 		if err != nil {
 			log.Warn("housekeeping sweep failed", "sweep", s.name, "err", err)
 		}
