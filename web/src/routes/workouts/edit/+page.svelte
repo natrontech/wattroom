@@ -38,9 +38,14 @@
 
 	// ?from= copies a library workout as a starting point; ?w= edits a saved
 	// one — the shelf lives on the account now, so ?w= hydrates when it lands.
-	const editingId = page.url.searchParams.get('w');
+	// State, not a constant: it is the PUT target, and it has to be cleared the
+	// moment the sheet stops being that workout — a hydration miss or a loaded
+	// copy used to keep it, so Save overwrote the saved workout with a fresh
+	// sheet (audit 2026-09-09).
+	const requestedId = page.url.searchParams.get('w');
+	let editingId = $state(requestedId);
 	const fromId = page.url.searchParams.get('from') ?? '';
-	const source = editingId ? undefined : byId(fromId)?.workout;
+	const source = requestedId ? undefined : byId(fromId)?.workout;
 
 	let workout = $state<Workout>(
 		source
@@ -51,21 +56,30 @@
 					steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
 				},
 	);
-	let hydrated = $state(!editingId);
+	let hydrated = $state(!requestedId);
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;
+		if (custom.error) {
+			// Not hydrated, and Save stays off: a sheet the shelf could not
+			// read must not be saved over it.
+			status = `${custom.error} Saving waits until it loads.`;
+			return;
+		}
 		const saved = editingId ? custom.byId(editingId)?.workout : undefined;
 		if (saved) {
 			workout = $state.snapshot(saved) as Workout;
 			history.reset({ workout: $state.snapshot(workout) as Workout, selected });
-		} else status = 'That saved workout was not found — this starts fresh.';
+		} else {
+			status = 'That saved workout was not found — this starts fresh.';
+			editingId = null;
+		}
 		hydrated = true;
 	});
 	// Selection is a path into the step tree: [i] top-level, [i, j] inside a
 	// repeat — that's what makes repeat children editable in the same inspector.
 	let selected = $state<number[] | null>([0]);
 	let status = $state<string | null>(
-		!editingId && fromId && !source
+		!requestedId && fromId && !source
 			? 'That workout link didn’t match anything — this starts fresh.'
 			: null,
 	);
@@ -131,6 +145,8 @@
 	function load(next: Workout, asCopy: boolean) {
 		workout = structuredClone($state.snapshot(next) as Workout);
 		if (asCopy) workout.name = `${next.name} (copy)`;
+		// A copy is a new workout: it saves beside the one you opened, never over it.
+		editingId = null;
 		selected = null;
 		// The toast keeps its place — a load's effect is off-screen, in the
 		// library column — but it undoes through the same stack ⌘Z does, so the
@@ -173,8 +189,10 @@
 		</span>
 		<div class="ml-auto flex items-center gap-3">
 			<a href="/workouts" class="text-muted hover:text-ink text-sm">Cancel</a>
-			<button onclick={save} disabled={!check.ok} class="btn btn-primary"
-				>Save</button
+			<button
+				onclick={save}
+				disabled={!check.ok || !hydrated}
+				class="btn btn-primary">Save</button
 			>
 		</div>
 	</header>

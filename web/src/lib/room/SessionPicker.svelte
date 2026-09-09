@@ -31,8 +31,13 @@
 		onPlan,
 		onStartGame,
 		onClose,
+		shelfError = null,
+		onRetryShelf,
 	}: {
 		shelf: ShelfEntry[];
+		/** Why your own workouts are missing from the shelf, when they are. */
+		shelfError?: string | null;
+		onRetryShelf?: () => void;
 		ftp: number;
 		/** Which question opened it: ride now, or put it on the calendar. The
 		 *  old single modal answered both at once, in two stacked sections
@@ -207,6 +212,17 @@
 						aria-label="find a workout"
 					/>
 				</div>
+				{#if shelfError}
+					<!-- The curated list still draws; the rider is told theirs are
+					     missing rather than picking the wrong thing (errors.md). -->
+					<p class="text-danger px-3 py-2 text-xs">
+						Your own workouts could not be loaded.
+						{#if onRetryShelf}
+							<button onclick={onRetryShelf} class="btn-link ml-1">Retry</button
+							>
+						{/if}
+					</p>
+				{/if}
 				<ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
 					{#each groups as group (group.label)}
 						<li class="eyebrow px-3 pt-3 pb-1">{group.label}</li>

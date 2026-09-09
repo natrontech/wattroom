@@ -3,7 +3,24 @@
 // pipeline (#25) and the hub's live execution meter (#27).
 package workout
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+)
+
+// The engine's ceilings, the same numbers the web editor's LIMITS enforce
+// (validate.ts). They were client-only, which is not a boundary: a 200-byte
+// POST nesting repeats could expand to billions of segments on the one VM
+// (audit 2026-09-09).
+const (
+	maxDepth    = 4
+	maxRepeats  = 50
+	maxSegments = 200
+)
+
+// ErrTooBig is a workout the engine refuses to expand: too many repeats,
+// nested too deep, or more blocks than any ride has.
+var ErrTooBig = errors.New("workout expands past the engine's limits")
 
 // Step mirrors the docs/SPEC.md workout JSON — the same shape the web engine runs.
 type Step struct {
@@ -48,21 +65,38 @@ func Parse(workoutJSON string) ([]Segment, error) {
 	if err := json.Unmarshal([]byte(workoutJSON), &d); err != nil {
 		return nil, err
 	}
-	out, _ := flatten(d.Steps, 0)
-	return out, nil
+	budget := maxSegments
+	out, _, err := flatten(d.Steps, 0, 0, &budget)
+	return out, err
 }
 
-func flatten(steps []Step, at int) ([]Segment, int) {
+func flatten(steps []Step, at, depth int, budget *int) ([]Segment, int, error) {
+	if depth > maxDepth {
+		return nil, at, ErrTooBig
+	}
 	out := []Segment{}
 	for _, s := range steps {
 		switch s.Type {
 		case "repeat":
+			if s.Times < 0 || s.Times > maxRepeats {
+				return nil, at, ErrTooBig
+			}
 			for i := 0; i < s.Times; i++ {
-				inner, next := flatten(s.Steps, at)
+				inner, next, err := flatten(s.Steps, at, depth+1, budget)
+				if err != nil {
+					return nil, at, err
+				}
 				out = append(out, inner...)
 				at = next
 			}
 		default:
+			if s.Seconds < 0 {
+				return nil, at, ErrTooBig
+			}
+			*budget--
+			if *budget < 0 {
+				return nil, at, ErrTooBig
+			}
 			out = append(out, Segment{
 				Kind: s.Type, Start: at, Seconds: s.Seconds,
 				Target: s.Target, Watts: s.Watts, From: s.From, To: s.To,
@@ -71,7 +105,7 @@ func flatten(steps []Step, at int) ([]Segment, int) {
 			at += s.Seconds
 		}
 	}
-	return out, at
+	return out, at, nil
 }
 
 // TargetAt is the shared timeline's target for one rider at one second.

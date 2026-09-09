@@ -51,6 +51,10 @@ function readLegacy(): CustomWorkout[] {
 export function createCustomStore() {
 	let entries = $state<CustomWorkout[]>([]);
 	let loaded = $state(false);
+	// Why the last read failed, until one succeeds: a shelf that could not
+	// be read is not an empty shelf (errors.md), and every surface that draws
+	// it used to say "nothing yet" (audit 2026-09-09).
+	let error = $state<string | null>(null);
 
 	async function refresh(): Promise<void> {
 		const res = await api<{ workouts: unknown[] }>('/api/workouts');
@@ -59,6 +63,9 @@ export function createCustomStore() {
 			entries = (res.data?.workouts ?? []).flatMap(
 				(entry) => parseEntry(entry) ?? [],
 			);
+			error = null;
+		} else {
+			error = res.error.message;
 		}
 		loaded = true;
 	}
@@ -92,6 +99,11 @@ export function createCustomStore() {
 		get loaded(): boolean {
 			return loaded;
 		},
+		/** The last read's failure, or null; `retry()` reads again. */
+		get error(): string | null {
+			return error;
+		},
+		retry: refresh,
 		get all(): CustomWorkout[] {
 			return [...entries].sort((a, b) => b.savedAt - a.savedAt);
 		},

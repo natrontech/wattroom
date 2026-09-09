@@ -324,6 +324,8 @@
 {#if session.open}
 	<SessionPicker
 		shelf={session.shelf}
+		shelfError={session.custom.error}
+		onRetryShelf={() => void session.custom.retry()}
 		intent={session.intent}
 		ftp={profile.current.ftp}
 		busy={props.adminBusy}
