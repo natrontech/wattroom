@@ -17,6 +17,21 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.78] - 2026-09-09
+
+### Changed
+
+- The end-of-ride summary shows how it went — your power second by second against your FTP line — and, after a group session, who rode with you and how each held target. The power curve only lists the windows the ride was long enough for and says which need a longer ride, instead of showing dashes.
+
+### Fixed
+
+- From tonight's first rides: the ramp test's gauge is scaled to the test's own top instead of your current FTP × 1.5, so the bar keeps moving through the hard steps rather than pinning early; the "Single-speed setup (Zwift Cog)" checkbox now says what it does — "Sprints stay in ERG — don't make me shift" — with a hint, and hides the sprint grade it makes irrelevant; the execution bars in the room's roster carry their name; and the FTP trend chart explains what it needs before it can draw a line worth reading.
+
+### Security
+
+- Sign-in follow-ups: passkey sign-in and the monitor's token are limited per address so one stranger cannot lock everyone out or guess forever; removing a passkey or disconnecting a provider signs the account out everywhere else, and Settings › Profile has a "Sign out everywhere else" button for the day an alarm mail arrives; and the address confirmation's "Send again" counts down the two-minute window instead of appearing to send and doing nothing.
+- Sign-in hardening: the developer login only opens on a local address and never answers a cross-site request, an unknown API path answers a proper 404 instead of the app shell, every response tells browsers the app may not be framed and that a link's full address is not passed on to other sites, the confirm-address page is never cached or leaked through a referrer, and checking whether an address is already taken now costs the same budget as sending a mail.
+
 ## [2026.09.77] - 2026-09-09
 
 ### Fixed
@@ -1586,7 +1601,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.77...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.78...HEAD
+[2026.09.78]: https://github.com/natrontech/wattroom/compare/2026.09.77...2026.09.78
 [2026.09.77]: https://github.com/natrontech/wattroom/compare/2026.09.76...2026.09.77
 [2026.09.76]: https://github.com/natrontech/wattroom/compare/2026.09.75...2026.09.76
 [2026.09.75]: https://github.com/natrontech/wattroom/compare/2026.09.74...2026.09.75

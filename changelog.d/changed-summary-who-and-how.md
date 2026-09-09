@@ -1,1 +1,0 @@
-- The end-of-ride summary shows how it went — your power second by second against your FTP line — and, after a group session, who rode with you and how each held target. The power curve only lists the windows the ride was long enough for and says which need a longer ride, instead of showing dashes.
