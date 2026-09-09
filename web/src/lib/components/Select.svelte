@@ -4,6 +4,7 @@
 	// sized for a rider mid-interval; keyboard and screen-reader behaviour is
 	// part of the component, not a follow-up.
 	import { dropsUp } from './select-drop';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 
 	let {
 		options,
@@ -27,6 +28,12 @@
 	// the last device is then unreachable (#945). Measured on open, not in an
 	// effect: the trigger does not move while the list is up.
 	let above = $state(false);
+	// The APG select-only combobox: focus stays on the trigger (or the
+	// filter) while the arrows move `active`, so aria-activedescendant names
+	// the row and the trigger's name carries the value — a reader used to
+	// hear "trainer, button" and nothing about which one (audit 2026-09-09).
+	const uid = $props.id();
+	const optionId = (i: number) => `${uid}-o${i}`;
 
 	const selected = $derived(
 		options.find((option) => option.value === value) ?? options[0],
@@ -117,9 +124,12 @@
 	<button
 		bind:this={trigger}
 		type="button"
+		role="combobox"
 		aria-haspopup="listbox"
 		aria-expanded={open}
-		aria-label={label}
+		aria-controls={open ? `${uid}-list` : undefined}
+		aria-label="{label}: {selected?.label ?? ''}"
+		aria-activedescendant={open ? optionId(active) : undefined}
 		{onkeydown}
 		onclick={() => (open ? (open = false) : openList())}
 		class="flex min-h-11 w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm {open
@@ -127,7 +137,7 @@
 			: 'border-muted/25 hover:border-muted/60'}"
 	>
 		<span class="min-w-0 flex-1 truncate">{selected?.label ?? ''}</span>
-		<span class="text-muted text-[10px]">▾</span>
+		<ChevronDown size={14} class="text-muted shrink-0" />
 	</button>
 
 	{#if open}
@@ -151,18 +161,26 @@
 							onkeydown(e);
 					}}
 					placeholder="Filter…"
+					aria-label="filter {label}"
+					aria-controls="{uid}-list"
+					aria-activedescendant={optionId(active)}
 					class="placeholder:text-muted/60 border-ink/5 w-full border-b bg-transparent px-3 py-2 text-xs outline-none"
 					{@attach (node) => node.focus()}
 				/>
 			{/if}
 			<ul
 				bind:this={list}
+				id="{uid}-list"
 				role="listbox"
 				aria-label={label}
 				class="max-h-64 overflow-y-auto py-1"
 			>
 				{#each shown as option, i (option.value)}
-					<li role="option" aria-selected={option.value === value}>
+					<li
+						id={optionId(i)}
+						role="option"
+						aria-selected={option.value === value}
+					>
 						<button
 							type="button"
 							tabindex="-1"

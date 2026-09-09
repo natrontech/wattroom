@@ -179,12 +179,14 @@
 	{/if}
 	{#if switching}
 		{@const here = crew}
-		<ul class="mt-0.5 space-y-0.5" role="menu">
+		<!-- A list, not a menu: role="menu" promises arrow-key walking and
+		     Home/End, and a reader that hears the promise finds Tab instead
+		     (audit 2026-09-09). Plain buttons in a list say what they are. -->
+		<ul class="mt-0.5 space-y-0.5">
 			{#each crews as c (c.id)}
 				{@const now = c.id === here.id}
 				<li>
 					<button
-						role="menuitem"
 						onclick={() => {
 							onpick(c.id);
 							switching = false;
@@ -212,7 +214,6 @@
 			<li>
 				<a
 					href="/crew/{here.id}"
-					role="menuitem"
 					onclick={() => (switching = false)}
 					class="text-muted hover:bg-ink/5 hover:text-ink flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0"
 				>

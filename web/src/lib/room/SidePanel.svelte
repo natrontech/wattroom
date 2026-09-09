@@ -122,7 +122,7 @@
 							class="text-muted shrink-0"
 						/>{/if}
 					{#if rider.speaking}
-						<Mic size={11} class="text-z4 shrink-0 animate-pulse" />
+						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
 					{:else if rider.muted}
 						<MicOff size={11} class="text-muted/50 shrink-0" />
 					{/if}

@@ -77,7 +77,7 @@
 >
 	<span
 		class="h-2.5 w-2.5 shrink-0 rounded-full {recovering
-			? 'bg-z5 animate-pulse'
+			? 'bg-z5 motion-safe:animate-pulse'
 			: 'bg-danger'}"
 	></span>
 	<div class="min-w-0">

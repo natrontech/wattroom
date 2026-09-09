@@ -130,6 +130,7 @@
 			onpaste={pending.paste}
 			maxlength="500"
 			{placeholder}
+			aria-label={placeholder}
 			disabled={!!lock}
 			class="input min-w-0 flex-1"
 		/>

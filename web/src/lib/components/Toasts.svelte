@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { toasts } from '$lib/toast.svelte';
+	import X from '@lucide/svelte/icons/x';
 </script>
 
 <!-- Above MobileNav's bar on phones, bottom-center on desks. -->
 <div
 	class="pointer-events-none fixed bottom-16 left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 md:bottom-6"
-	aria-live="polite"
 >
 	{#each toasts.items as toast (toast.id)}
 		<div
+			role={toast.tone === 'error' ? 'alert' : 'status'}
 			class="panel pointer-events-auto flex w-full items-center gap-3 px-4 py-3 text-sm shadow-lg {toast.tone ===
 			'error'
 				? 'border-danger/40'
@@ -35,9 +36,9 @@
 				>
 			{/if}
 			<button
-				class="text-muted hover:text-ink shrink-0"
+				class="icon-btn text-muted hover:text-ink -my-2 -mr-2 h-8 w-8"
 				aria-label="Dismiss"
-				onclick={() => toasts.dismiss(toast.id)}>×</button
+				onclick={() => toasts.dismiss(toast.id)}><X size={14} /></button
 			>
 		</div>
 	{/each}

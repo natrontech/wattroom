@@ -127,6 +127,7 @@
 			bind:value={name}
 			maxlength="60"
 			placeholder="Token name — e.g. claude coach"
+			aria-label="token name"
 			class="input w-64"
 		/>
 		<button class="btn btn-secondary" disabled={!name.trim()}

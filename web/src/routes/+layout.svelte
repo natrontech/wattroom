@@ -300,6 +300,17 @@
 {:else if gated}
 	<!-- redirecting -->
 {:else if framed}
+	<!-- The first Tab on any page offers the page itself: the sidebar is
+	     forty rows deep on a desk and a keyboard rider walked all of them to
+	     reach the workout list (audit 2026-09-09). -->
+	<a
+		href="#page-body"
+		class="focus:bg-surface-raised focus:text-ink sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-70 focus:rounded focus:px-3 focus:py-2 focus:text-sm"
+		onclick={(e) => {
+			e.preventDefault();
+			document.getElementById('page-body')?.focus();
+		}}>Skip to the page</a
+	>
 	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
 	     a desk surface and follows the theme — the lights go down when the
 	     session starts, and come back up when it ends. A solo ride or ramp
@@ -402,7 +413,12 @@
 			     Named so the phone-width spec can assert exactly that — the
 			     document cannot, because this element absorbs the overflow and
 			     leaves documentElement.scrollWidth equal to its clientWidth (#1008). -->
-			<div data-testid="page-body" class="min-h-0 flex-1 overflow-y-auto">
+			<div
+				id="page-body"
+				data-testid="page-body"
+				tabindex="-1"
+				class="min-h-0 flex-1 overflow-y-auto outline-none"
+			>
 				{@render children()}
 			</div>
 		</div>
