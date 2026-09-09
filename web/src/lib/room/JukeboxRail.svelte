@@ -13,7 +13,11 @@
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import {
+		deckDuration,
+		IN_SYNC_SEC,
+		playerInfo,
+	} from '$lib/room/jukebox-player.svelte';
 	import { listening } from '$lib/room/listening.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
@@ -42,9 +46,10 @@
 		const timer = setInterval(() => (nowMs = serverNow()), 250);
 		return () => clearInterval(timer);
 	});
+	const duration = $derived(deckDuration(current));
 	const progress = $derived(
-		jukebox?.current?.trackId && playerInfo.duration > 0
-			? playheadAt(jukebox, nowMs, playerInfo.duration) / playerInfo.duration
+		jukebox?.current?.trackId && duration > 0
+			? playheadAt(jukebox, nowMs, duration) / duration
 			: 0,
 	);
 	// The room's own pages carry the people column at xl, and that column
@@ -65,7 +70,7 @@
 			current
 				? { videoId: current.videoId, anchorMs: jukebox!.anchorMs }
 				: null,
-			playerInfo.duration,
+			duration,
 		);
 	}
 	function nudge(seconds: number) {
@@ -73,8 +78,8 @@
 		conn?.live.jukebox({
 			action: 'seek',
 			positionSec: clampSeek(
-				playheadAt(jukebox, serverNow(), playerInfo.duration) + seconds,
-				playerInfo.duration,
+				playheadAt(jukebox, serverNow(), duration) + seconds,
+				duration,
 			),
 		});
 	}

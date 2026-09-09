@@ -51,6 +51,7 @@ func (s *Service) handleQueueTracks(w http.ResponseWriter, r *http.Request) {
 		}
 		cmds = append(cmds, protocol.JukeboxCommand{
 			Action: "add", TrackID: store.UUIDString(track.ID), Title: track.Title, Artist: track.Artist,
+			DurationMs: int(track.DurationMs),
 		})
 	}
 	if s.live == nil {

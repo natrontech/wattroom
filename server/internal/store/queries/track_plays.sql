@@ -13,6 +13,7 @@ select p.track_id, p.video_id, p.title, p.skipped,
     coalesce(t.title, '')::text as track_title,
     coalesce(t.artist, '')::text as track_artist,
     coalesce(t.bpm, 0)::int as track_bpm,
+    coalesce(t.duration_ms, 0)::int as track_duration_ms,
     coalesce(u.display_name, '')::text as queued_by_name
 from track_plays p
 left join tracks t on t.id = p.track_id
@@ -91,7 +92,7 @@ liked as (
         coalesce(array_agg(distinct tag) filter (where tag is not null), '{}') as tags
     from recent left join lateral unnest(recent.tags) as tag on true
 )
-select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, w.weight
+select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, t.duration_ms, w.weight
 from tracks t
 -- The shelves of the room's own MEMBERS, confirmed on purpose in #1103 over
 -- the crew: crew membership follows room membership, so a crew-wide draw

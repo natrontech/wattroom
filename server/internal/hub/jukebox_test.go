@@ -440,3 +440,28 @@ func TestAPoolTrackEndsOnItsOwnID(t *testing.T) {
 		t.Errorf("should have advanced to the video, got %+v", got)
 	}
 }
+
+// A library track's length rides along its add and is bounded like a seek (#1509).
+func TestAddCarriesALibraryTrackLength(t *testing.T) {
+	cases := []struct {
+		name     string
+		in, want int
+	}{
+		{"measured", 192_914, 192_914},
+		{"unknown", 0, 0},
+		{"past six hours", maxSeekSec*1000 + 1, 0},
+		{"negative", -5, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			j := newJukebox()
+			cmd := protocol.JukeboxCommand{Action: "add", TrackID: poolTrack, Title: "Sandstorm", DurationMs: tc.in}
+			if !accepted(j, cmd, "r-jan", "jan", jat(0)) {
+				t.Fatal("add refused")
+			}
+			if got := j.snapshot().Current.DurationMs; got != tc.want {
+				t.Fatalf("durationMs = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

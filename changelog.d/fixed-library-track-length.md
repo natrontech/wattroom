@@ -1,0 +1,1 @@
+- An uploaded track on the deck now shows its length and a working seek bar from the first second, for every rider in the room — one still loading the file, muted or sitting out included. The waveform seat draws a plain line until the track's own shape has been read, instead of a placeholder that looked like one (#1509).

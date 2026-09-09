@@ -199,6 +199,7 @@
 		title: string;
 		artist?: string;
 		bpm?: number;
+		durationMs?: number;
 	}) {
 		if (!room) return;
 		room.live.jukebox({
@@ -207,6 +208,7 @@
 			title: track.title,
 			artist: track.artist,
 			bpm: track.bpm,
+			durationMs: track.durationMs,
 		});
 		toasts.push(`Queued “${track.title}”.`);
 	}
