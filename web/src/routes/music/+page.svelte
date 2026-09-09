@@ -7,6 +7,12 @@
 	// Playlists are not here yet — #1426 makes a saved playlist hold a library
 	// track, and this page grows them after.
 	import { confirm } from '$lib/confirm.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import Pencil from '@lucide/svelte/icons/pencil';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -170,6 +176,32 @@
 	}
 
 	const mine = (track: Track) => track.uploadedBy === account.me?.displayName;
+
+	// Every object with more than one action gets a menu (ux.md, #465): the
+	// buttons stay, the menu is the shortcut. Queue only when there is a room
+	// to queue into, edit and delete only on your own rows — the same gating
+	// the buttons have, so nothing in the menu can fail on click.
+	function menu(track: Track): MenuEntry[] {
+		const entries: MenuEntry[] = [];
+		if (room)
+			entries.push({
+				label: `Queue in ${roomName}`,
+				icon: ListPlus,
+				onSelect: () => queue(track),
+			});
+		if (mine(track))
+			entries.push(
+				{ label: 'Edit', icon: Pencil, onSelect: () => (editing = track.id) },
+				'separator',
+				{
+					label: 'Delete',
+					icon: Trash2,
+					danger: true,
+					onSelect: () => void remove(track),
+				},
+			);
+		return entries;
+	}
 </script>
 
 <svelte:head><title>Music · WattRoom</title></svelte:head>
@@ -325,7 +357,11 @@
 		{:else}
 			<ul class="space-y-2">
 				{#each tracks as track (track.id)}
-					<li class="panel px-4 py-3">
+					<li
+						class="panel px-4 py-3"
+						title={menu(track).length ? MENU_HINT : undefined}
+						{@attach contextMenu(() => menu(track))}
+					>
 						{#if editing === track.id}
 							<!-- Editable in place: real-world tags are garbage and
 							     edit-beats-cleanup (ADR-0015). -->
