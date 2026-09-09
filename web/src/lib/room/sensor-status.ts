@@ -18,7 +18,8 @@ import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
  * own word for "the browser's picker is open", which no helper here has ever
  * returned — so nothing is lost by naming the four directly.
  */
-export type PairState = 'idle' | 'connecting' | 'connected' | 'failed';
+export type PairState =
+	'idle' | 'connecting' | 'reconnecting' | 'connected' | 'failed';
 
 /**
  * #520's fault states, said as the same four-state machine every slot uses.
@@ -36,16 +37,18 @@ export function trainerState(
 ): PairState {
 	if (ride.pairing) return 'connecting';
 	if (!ride.trainer) return ride.error ? 'failed' : 'idle';
-	return ride.fault === 'reconnecting' ? 'connecting' : 'connected';
+	return ride.fault === 'reconnecting' ? 'reconnecting' : 'connected';
 }
 
 export function sensorState(kind: SensorKind): PairState {
 	if (sensors.pairing === kind) return 'connecting';
 	const slot = sensors.slot(kind);
 	if (slot.status === 'connected') return 'connected';
-	// Reattaching after a dropout (#1716). Without this a strap that slipped
-	// read as never paired — a ride-critical error drawn as nothing.
-	if (slot.status === 'connecting') return 'connecting';
+	// Reattaching after a dropout (#1716). Not 'connecting': the chooser is
+	// not open, nothing is waiting on the rider, and without a state of its
+	// own a strap that slipped read as never paired — a fault drawn as
+	// nothing, and no way to give up on it.
+	if (slot.status === 'connecting') return 'reconnecting';
 	if (slot.error) return 'failed';
 	return 'idle';
 }

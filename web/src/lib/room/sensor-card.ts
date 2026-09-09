@@ -43,6 +43,18 @@ export function cardView(args: {
 			button: { label: 'Forget', variant: 'forget' },
 		};
 
+	// A link we are actively retrying is this screen's, whatever another
+	// screen claims — and the way out has to be on the card (#1716). Left to
+	// 'Connecting…' with no button, a strap whose battery died sat there
+	// retrying every thirty seconds with nothing a rider could press.
+	if (args.state === 'reconnecting')
+		return {
+			shape: 'note',
+			note: 'Reconnecting…',
+			tone: 'danger',
+			button: { label: 'Forget', variant: 'forget' },
+		};
+
 	if (args.elsewhere)
 		return {
 			shape: 'note',

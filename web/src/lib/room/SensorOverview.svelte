@@ -180,12 +180,21 @@
 				     say what is being paired. -->
 				<!-- Riding size (ux.md): this is the strip a rider sees mid-session,
 				     and re-pairing a dropped trainer is the one big button
-				     errors.md asks for (#1412). -->
-				<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
-					>{trainerView.button.variant === 'primary'
-						? 'Pair trainer'
-						: trainerView.button.label}</button
-				>
+				     errors.md asks for (#1412). The variant decides which button
+				     this is — a reconnecting trainer offers the way out, and
+				     wiring that to onPair opened the chooser instead (#1716). -->
+				{#if trainerView.button.variant === 'forget'}
+					<p class="text-danger text-xs">{trainerView.note}</p>
+					<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
+						>{trainerView.button.label} trainer</button
+					>
+				{:else}
+					<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
+						>{trainerView.button.variant === 'primary'
+							? 'Pair trainer'
+							: trainerView.button.label}</button
+					>
+				{/if}
 				{#if trainer.onSimulate}
 					<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs"
 						>Ride simulated</button

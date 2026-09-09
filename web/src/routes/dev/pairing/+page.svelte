@@ -33,6 +33,11 @@
 			reading: '214 W · 88 rpm',
 		},
 		{
+			name: 'reconnecting (#1716)',
+			state: 'reconnecting',
+			device: 'KICKR CORE 8F2A',
+		},
+		{
 			name: 'silent (#520)',
 			state: 'connected',
 			device: 'KICKR CORE 8F2A',
