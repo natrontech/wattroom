@@ -98,9 +98,7 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 			"That provider is not connected to this account.")
 		return
 	default:
-		s.log.Error("identity lookup failed", "provider", provider, "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That provider could not be disconnected. Try again.")
+		httpx.Fail(w, s.log, "identity lookup failed", err, "That provider could not be disconnected. Try again.", "provider", provider)
 		return
 	}
 
@@ -124,9 +122,7 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 	})
 	switch {
 	case err != nil:
-		s.log.Error("identity delete failed", "provider", provider, "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That provider could not be disconnected. Try again.")
+		httpx.Fail(w, s.log, "identity delete failed", err, "That provider could not be disconnected. Try again.", "provider", provider)
 	case last:
 		httpx.WriteError(w, http.StatusConflict, "conflict", lastCredentialMessage)
 	case rows == 0:

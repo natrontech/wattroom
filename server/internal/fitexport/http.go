@@ -84,9 +84,7 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 		data, err := Encode(ride)
 		if err != nil {
 			// The ride passed validation, so a failure here is ours, not the rider's.
-			log.Error("fit export: encode failed", "err", err, "samples", len(ride.Samples))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-				"Your ride could not be turned into a file. It is still on this device — try again.")
+			httpx.Fail(w, log, "fit export: encode failed", err, "Your ride could not be turned into a file. It is still on this device — try again.", "samples", len(ride.Samples))
 			return
 		}
 

@@ -310,9 +310,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	ident, err := p.fetch(ctx, p.config, tok)
 	if err != nil {
-		s.log.Error("identity fetch failed", "provider", p.id, "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Signing in worked but reading your profile did not. Try again.")
+		httpx.Fail(w, s.log, "identity fetch failed", err, "Signing in worked but reading your profile did not. Try again.", "provider", p.id)
 		return
 	}
 
@@ -329,9 +327,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	user, created, err := s.upsert(r, p, ident, tok)
 	if err != nil {
-		s.log.Error("identity upsert failed", "provider", p.id, "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your account could not be created. Try again.")
+		httpx.Fail(w, s.log, "identity upsert failed", err, "Your account could not be created. Try again.", "provider", p.id)
 		return
 	}
 
