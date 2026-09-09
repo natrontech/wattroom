@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.83] - 2026-09-09
+
+### Fixed
+
+- The sidebar's rooms list says what a room is and how the first one gets opened when a crew has none yet, and a crew page you cannot see offers the way home instead of a Retry that could never succeed.
+- The desktop app's floating HUD now keeps showing your numbers when you switch to the room's chat or lounge mid-session, or leave the solo ride page, and it says when the trainer's signal or the room's connection is lost instead of showing a confident 0. TV mode can be opened from the Training place, the home page's "this week" tile no longer flashes 0 rides while your rides load, a signed-out HUD window says to sign in on the main window, and What's new no longer mistakes a missing changelog for a build older than the first release.
+- The jukebox deck draws a library track's real envelope instead of a flat wall of full-height bars — a mastered song clips in every bucket, so the waveform now reads the energy of each slice rather than its loudest sample.
+
+### Security
+
+- Making a room private from the crew page now also takes it out of the public directory, and the directory only ever opens rooms that are open to their crew; leaving a crew, being banned from it, or being removed from a room revokes the personal invitation into its private rooms, as the leave dialog always promised. Guesses at a crew code are limited per address the way sign-in attempts are, and codes are drawn evenly. Banning someone from a crew asks first and says which rooms they lose, instead of an undo that gave back the role and none of the rooms; a rider removed from a room no longer appears as coming to its sessions; and a crew is never handed to someone it banned.
+
 ## [2026.09.82] - 2026-09-09
 
 ### Fixed
@@ -1643,7 +1655,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.82...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.83...HEAD
+[2026.09.83]: https://github.com/natrontech/wattroom/compare/2026.09.82...2026.09.83
 [2026.09.82]: https://github.com/natrontech/wattroom/compare/2026.09.81...2026.09.82
 [2026.09.81]: https://github.com/natrontech/wattroom/compare/2026.09.80...2026.09.81
 [2026.09.80]: https://github.com/natrontech/wattroom/compare/2026.09.79...2026.09.80
