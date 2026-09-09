@@ -208,7 +208,6 @@
 			<Avatar
 				name={rider.name}
 				avatarUrl={face?.avatarUrl}
-				preset={face?.avatarPreset}
 				xp={face?.totalXp}
 				status={rider.away ? 'away' : rider.riding ? 'riding' : null}
 				size={44}

@@ -1,0 +1,1 @@
+- Your profile picture is yours to change: Settings › Profile now takes an upload (PNG, JPEG, WebP or GIF, shrunk before it leaves your browser). The row of preset icons is gone — a rider who had picked one shows their sign-in photo again, or their initial.

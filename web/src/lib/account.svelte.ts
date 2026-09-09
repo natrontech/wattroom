@@ -13,9 +13,9 @@ import { people } from '$lib/people.svelte';
 export interface Me {
 	id: string;
 	displayName: string;
+	/** The sign-in photo until the rider uploads one (#1353); then the
+	 * server's own address, versioned so a replaced picture refetches. */
 	avatarUrl?: string;
-	/** Picked preset id (#253); absent = OAuth photo, then initial. */
-	avatarPreset?: string;
 	/** Lifetime XP — level and ring derive from it (docs/SPEC.md). */
 	totalXp?: number;
 	ftpWatts: number;
@@ -132,10 +132,21 @@ function createAccountStore() {
 			stravaUpload?: boolean;
 			email?: string;
 			notifyPlanned?: boolean;
-			/** "" clears the pick (back to the photo); absent keeps it. */
-			avatarPreset?: string;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** The rider's own picture (#1353) — the same reader as a pasted image. */
+		async setAvatar(image: Blob): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/avatar', {
+				method: 'POST',
+				body: image,
+				headers: { 'content-type': image.type },
+			});
 			if (res.ok) {
 				me = res.data;
 				return null;

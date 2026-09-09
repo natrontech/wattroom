@@ -87,7 +87,6 @@
 		id: string;
 		name: string;
 		avatarUrl?: string;
-		avatarPreset?: string;
 		totalXp?: number;
 		status: string;
 		online?: boolean;
@@ -410,7 +409,6 @@
 										<Avatar
 											name={friend.name}
 											avatarUrl={friend.avatarUrl}
-											preset={friend.avatarPreset}
 											xp={friend.totalXp}
 											size={20}
 										/>

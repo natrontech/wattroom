@@ -173,7 +173,6 @@
 				<Avatar
 					name={person.displayName}
 					avatarUrl={person.avatarUrl}
-					preset={person.avatarPreset}
 					ring="var(--color-surface-raised)"
 					size={32}
 				/>
@@ -230,7 +229,6 @@
 				<Avatar
 					name={person.displayName}
 					avatarUrl={person.avatarUrl}
-					preset={person.avatarPreset}
 					ring="var(--color-surface-raised)"
 					size={32}
 				/>

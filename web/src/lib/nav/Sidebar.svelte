@@ -484,7 +484,6 @@
 							<Avatar
 								name={head.peerName}
 								avatarUrl={head.peerAvatarUrl}
-								preset={head.peerAvatarPreset}
 								xp={head.peerTotalXp}
 								status={statusOf(presence.rooms, head.peerId)}
 								size={20}

@@ -127,6 +127,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/verify-email", s.handleVerifyEmail)
 	mux.HandleFunc("GET /api/me", s.handleMe)
 	mux.HandleFunc("PATCH /api/me", s.handleUpdateMe)
+	mux.HandleFunc("POST /api/me/avatar", s.handleSetAvatar)
 	mux.HandleFunc("PATCH /api/me/appearance", s.handleUpdateAppearance)
 	// Reported by the browser, not chosen by the rider (#858). timezone.go.
 	mux.HandleFunc("PUT /api/me/timezone", s.handleUpdateTimezone)

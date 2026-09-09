@@ -71,7 +71,7 @@ delete from room_grants where room_id = $1 and user_id = $2;
 -- name: ListRoomGrantees :many
 -- People let into a private room who have not walked in yet. A grant is moot
 -- once they join — membership admits — so joined people drop off this list.
-select u.id, u.display_name, u.avatar_url, u.avatar_preset, g.granted_at
+select u.id, u.display_name, u.avatar_url, g.granted_at
 from room_grants g
 join users u on u.id = g.user_id
 where g.room_id = $1
@@ -173,7 +173,7 @@ with people as (
     select cr.user_id, cr.set_at from crew_roles cr
     where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
 )
-select u.id, u.display_name, u.avatar_url, u.avatar_preset,
+select u.id, u.display_name, u.avatar_url,
        p.since::timestamptz as since,
        (select count(*) from memberships m join rooms r on r.id = m.room_id
          where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
@@ -190,7 +190,7 @@ where sqlc.arg(everyone)::boolean
 order by p.since;
 
 -- name: ListCrewBanned :many
-select u.id, u.display_name, u.avatar_url, u.avatar_preset, cr.set_at
+select u.id, u.display_name, u.avatar_url, cr.set_at
 from crew_roles cr
 join users u on u.id = cr.user_id
 where cr.crew_id = $1 and cr.role = 'banned'

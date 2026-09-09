@@ -22,7 +22,7 @@ where (requester_id = $1 and addressee_id = $2)
 -- All rows involving me, resolved to the other person. Avatar + lifetime XP
 -- ride along for the friend rows' avatars (#253); created_at is what makes a
 -- request announceable exactly once, in exactly one tab (#876).
-select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url, u.avatar_preset,
+select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url,
     user_total_xp(u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end

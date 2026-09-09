@@ -268,7 +268,6 @@
 									<Avatar
 										name={face?.name ?? message.from}
 										avatarUrl={face?.avatarUrl}
-										preset={face?.avatarPreset}
 										xp={face?.totalXp}
 										status={statusOf(presence.rooms, message.fromId ?? '')}
 										size={28}

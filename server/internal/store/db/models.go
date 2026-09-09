@@ -326,6 +326,13 @@ type User struct {
 	Timezone           *string
 }
 
+type UserAvatar struct {
+	UserID pgtype.UUID
+	Mime   string
+	Image  []byte
+	SetAt  pgtype.Timestamptz
+}
+
 type VisibleRoom struct {
 	RoomID pgtype.UUID
 	UserID pgtype.UUID

@@ -109,7 +109,6 @@
 			<Avatar
 				name={account.me?.displayName ?? ''}
 				avatarUrl={account.me?.avatarUrl}
-				preset={account.me?.avatarPreset}
 				xp={account.me?.totalXp}
 				status={myStatus}
 				size={26}

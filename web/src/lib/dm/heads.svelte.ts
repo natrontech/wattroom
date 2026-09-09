@@ -14,7 +14,6 @@ export interface DmHead {
 	peerId: string;
 	peerName: string;
 	peerAvatarUrl?: string;
-	peerAvatarPreset?: string;
 	peerTotalXp?: number;
 	text: string;
 	/** The latest line was an image (#285) — it has no text to preview. */
@@ -48,7 +47,6 @@ async function poll() {
 			id: head.peerId,
 			name: head.peerName,
 			avatarUrl: head.peerAvatarUrl,
-			avatarPreset: head.peerAvatarPreset,
 			totalXp: head.peerTotalXp,
 		})),
 	);

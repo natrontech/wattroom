@@ -217,7 +217,6 @@
 						<Avatar
 							name={friend.name}
 							avatarUrl={friend.avatarUrl}
-							preset={friend.avatarPreset}
 							xp={friend.totalXp}
 							status={friend.inRoom
 								? 'riding'

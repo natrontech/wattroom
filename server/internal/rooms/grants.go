@@ -122,7 +122,7 @@ func (s *Service) exceptions(ctx context.Context, room db.Room, owner db.User, m
 		inRoom[g.ID] = true
 		invited = append(invited, memberJSON{
 			ID: store.UUIDString(g.ID), DisplayName: g.DisplayName,
-			AvatarURL: g.AvatarUrl, AvatarPreset: g.AvatarPreset, Role: "invited",
+			AvatarURL: g.AvatarUrl, Role: "invited",
 			JoinedAt: g.GrantedAt.Time.Format("2006-01-02"),
 		})
 	}
@@ -139,7 +139,7 @@ func (s *Service) exceptions(ctx context.Context, room db.Room, owner db.User, m
 		}
 		outside = append(outside, memberJSON{
 			ID: store.UUIDString(p.ID), DisplayName: p.DisplayName,
-			AvatarURL: p.AvatarUrl, AvatarPreset: p.AvatarPreset, Role: "crew",
+			AvatarURL: p.AvatarUrl, Role: "crew",
 		})
 	}
 	return invited, outside

@@ -81,11 +81,10 @@ type boardRowJSON struct {
 }
 
 type memberJSON struct {
-	ID           string  `json:"id"`
-	DisplayName  string  `json:"displayName"`
-	AvatarURL    *string `json:"avatarUrl,omitempty"`
-	AvatarPreset *string `json:"avatarPreset,omitempty"`
-	Role         string  `json:"role"`
+	ID          string  `json:"id"`
+	DisplayName string  `json:"displayName"`
+	AvatarURL   *string `json:"avatarUrl,omitempty"`
+	Role        string  `json:"role"`
 	// Room-visible rider facts (#207) — the same numbers the roster already
 	// shows on tiles; rides and history stay private. Lifetime XP joined
 	// them in #253: the level is room-visible identity, the rides are not.

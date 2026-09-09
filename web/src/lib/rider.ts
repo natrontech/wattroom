@@ -29,7 +29,6 @@ export interface Rider {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	since: string;
 	totalXp: number;
 	totalKj: number;

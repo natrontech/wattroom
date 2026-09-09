@@ -151,7 +151,7 @@ select count(*) from dm_reactions where message_id = $1 and emoji = $2;
 -- name: ListDmHeads :many
 -- The conversation list: my peers with their latest line, newest first.
 select distinct on (peer.id)
-    peer.id as peer_id, peer.display_name, peer.avatar_url, peer.avatar_preset,
+    peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
     m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m

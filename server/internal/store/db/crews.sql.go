@@ -419,7 +419,7 @@ func (q *Queries) LeaveCrewRooms(ctx context.Context, arg LeaveCrewRoomsParams) 
 }
 
 const listCrewBanned = `-- name: ListCrewBanned :many
-select u.id, u.display_name, u.avatar_url, u.avatar_preset, cr.set_at
+select u.id, u.display_name, u.avatar_url, cr.set_at
 from crew_roles cr
 join users u on u.id = cr.user_id
 where cr.crew_id = $1 and cr.role = 'banned'
@@ -427,11 +427,10 @@ order by cr.set_at
 `
 
 type ListCrewBannedRow struct {
-	ID           pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	SetAt        pgtype.Timestamptz
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	SetAt       pgtype.Timestamptz
 }
 
 func (q *Queries) ListCrewBanned(ctx context.Context, crewID pgtype.UUID) ([]ListCrewBannedRow, error) {
@@ -447,7 +446,6 @@ func (q *Queries) ListCrewBanned(ctx context.Context, crewID pgtype.UUID) ([]Lis
 			&i.ID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.SetAt,
 		); err != nil {
 			return nil, err
@@ -491,7 +489,7 @@ with people as (
     select cr.user_id, cr.set_at from crew_roles cr
     where cr.crew_id = $1 and cr.role in ('member', 'admin')
 )
-select u.id, u.display_name, u.avatar_url, u.avatar_preset,
+select u.id, u.display_name, u.avatar_url,
        p.since::timestamptz as since,
        (select count(*) from memberships m join rooms r on r.id = m.room_id
          where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
@@ -515,13 +513,12 @@ type ListCrewPeopleParams struct {
 }
 
 type ListCrewPeopleRow struct {
-	ID           pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	Since        pgtype.Timestamptz
-	RoomCount    int64
-	OwnsRoom     bool
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	Since       pgtype.Timestamptz
+	RoomCount   int64
+	OwnsRoom    bool
 }
 
 // The crew's people (#1236: the owner plus every member and admin row), each
@@ -544,7 +541,6 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 			&i.ID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.Since,
 			&i.RoomCount,
 			&i.OwnsRoom,
@@ -726,7 +722,7 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 }
 
 const listRoomGrantees = `-- name: ListRoomGrantees :many
-select u.id, u.display_name, u.avatar_url, u.avatar_preset, g.granted_at
+select u.id, u.display_name, u.avatar_url, g.granted_at
 from room_grants g
 join users u on u.id = g.user_id
 where g.room_id = $1
@@ -735,11 +731,10 @@ order by g.granted_at
 `
 
 type ListRoomGranteesRow struct {
-	ID           pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	GrantedAt    pgtype.Timestamptz
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	GrantedAt   pgtype.Timestamptz
 }
 
 // People let into a private room who have not walked in yet. A grant is moot
@@ -757,7 +752,6 @@ func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]L
 			&i.ID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.GrantedAt,
 		); err != nil {
 			return nil, err

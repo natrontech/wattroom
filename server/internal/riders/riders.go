@@ -49,6 +49,32 @@ func New(st *store.Store, users UserSource, presence PresenceSource, log *slog.L
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/riders/{id}", s.handleGet)
+	mux.HandleFunc("GET /api/riders/{id}/avatar", s.handleAvatar)
+}
+
+// handleAvatar serves a rider's uploaded picture (#1353) to anyone signed in:
+// the face is what every roster, thread and friends list already shows, so it
+// carries none of the page's shared-room gate.
+func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.users.RequireUser(w, r, "Sign in to see a rider's picture."); !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a rider id.")
+		return
+	}
+	img, err := s.store.Queries.GetUserAvatar(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such picture.")
+		return
+	}
+	if err != nil {
+		s.log.Error("avatar read failed", "err", err, "rider", r.PathValue("id"))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be loaded.")
+		return
+	}
+	httpx.ServeImage(w, r, img.Mime, img.Image, img.SetAt.Time)
 }
 
 type roomRef struct {
@@ -88,10 +114,9 @@ type sharedRideJSON struct {
 }
 
 type riderJSON struct {
-	ID           string  `json:"id"`
-	DisplayName  string  `json:"displayName"`
-	AvatarURL    *string `json:"avatarUrl,omitempty"`
-	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	ID          string  `json:"id"`
+	DisplayName string  `json:"displayName"`
+	AvatarURL   *string `json:"avatarUrl,omitempty"`
 	// Account creation — "riding here since March 2026".
 	Since string `json:"since"`
 	// Lifetime sums: level derives from XP client-side (docs/SPEC.md).
@@ -171,9 +196,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	out := riderJSON{
 		ID: store.UUIDString(rider.ID), DisplayName: rider.DisplayName,
-		AvatarURL: rider.AvatarUrl, AvatarPreset: rider.AvatarPreset,
-		Since:   rider.CreatedAt.Time.Format(time.RFC3339),
-		TotalXp: totals.TotalXp, TotalKj: totals.TotalKj, Rides: totals.Rides,
+		AvatarURL: rider.AvatarUrl,
+		Since:     rider.CreatedAt.Time.Format(time.RFC3339),
+		TotalXp:   totals.TotalXp, TotalKj: totals.TotalKj, Rides: totals.Rides,
 		Medals: medals, RoomsInCommon: inCommon,
 		Friend: friend, CanAdd: friend == "none",
 	}

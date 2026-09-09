@@ -13,7 +13,6 @@ export interface CrewPerson {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	role: CrewRole | 'banned';
 	/** First joined any of the crew's rooms — or, on the ban list, banned on. */
 	since: string;

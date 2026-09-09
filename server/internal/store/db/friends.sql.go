@@ -176,7 +176,7 @@ func (q *Queries) ListFriendDeclines(ctx context.Context, requesterID pgtype.UUI
 }
 
 const listFriendships = `-- name: ListFriendships :many
-select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url, u.avatar_preset,
+select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url,
     user_total_xp(u.id)::bigint as total_xp
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
@@ -185,14 +185,13 @@ order by u.display_name
 `
 
 type ListFriendshipsRow struct {
-	Status       string
-	RequesterID  pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	ID           pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	TotalXp      int64
+	Status      string
+	RequesterID pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	ID          pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	TotalXp     int64
 }
 
 // All rows involving me, resolved to the other person. Avatar + lifetime XP
@@ -214,7 +213,6 @@ func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) 
 			&i.ID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.TotalXp,
 		); err != nil {
 			return nil, err
