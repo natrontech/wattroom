@@ -1,0 +1,1 @@
+- The desktop app updates itself: it fetches the next release in the background and installs it when you quit, or when you press *Restart to update* on Home — never mid-ride. The build that brings this (desktop 2026.09.5) is the last one you install by hand.

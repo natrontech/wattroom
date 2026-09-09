@@ -11,6 +11,9 @@
     "start": "electron .",
     "dist": "electron-builder"
   },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "electron": "^44.0.0",
@@ -30,6 +33,12 @@
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "universal"
           ]
@@ -70,6 +79,12 @@
         "schemes": [
           "wattroom"
         ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/natrontech/wattroom-releases/releases/latest/download"
       }
     ]
   },

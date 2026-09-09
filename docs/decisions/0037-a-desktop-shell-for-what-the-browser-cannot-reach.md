@@ -7,8 +7,8 @@
   0004 itself set
 - Constrained by: WATTROOM.md's **iOS row — "web-only, forever"**, which this
   does not touch, and [0019](0019-tagged-releases-and-a-self-converging-vm.md),
-  whose CalVer tags this deliberately does not share *(amended below: the
-  scheme is shared, the tags are not)*
+  whose CalVer tags this deliberately does not share _(amended below: the
+  scheme is shared, the tags are not)_
 - Answers: [#296](https://github.com/natrontech/wattroom/issues/296)
 
 ## Context
@@ -27,7 +27,7 @@ What the browser genuinely cannot do:
   protocol over USB, behind a vendor driver that claims the device. There is no
   web path, which is why ADR-0004 named ANT+ in trigger 3 itself.
 - **System audio on macOS.** Precisely: Chrome's `getDisplayMedia` captures
-  *tab* audio on every platform, and full system audio on Windows when the
+  _tab_ audio on every platform, and full system audio on Windows when the
   rider shares a screen. The gap is macOS, where Chrome offers no system-audio
   capture at all. Narrower than "impossible in a browser" — and worth stating
   narrowly, because an overstated premise is one counter-example away from
@@ -43,14 +43,14 @@ background-throttling as unreliable. Both are solved in this repo already:
   visibility, working around the exact trap — the browser drops the lock when
   the document hides and never restores it.
 - [`web/src/lib/workout/ticker.ts`](../../web/src/lib/workout/ticker.ts) (#51)
-  runs the ride's clock on a worker so it keeps firing in a hidden tab, *and*
+  runs the ride's clock on a worker so it keeps firing in a hidden tab, _and_
   reports elapsed wall-clock seconds so the ride advances correctly even if the
   worker is throttled anyway. `server-clock.ts`, `game-cues.ts`, `mic-level.ts`
   and `JukeboxDock.svelte` each handle throttling on their own terms.
 
 A shell justified on those would be claiming credit for work the browser build
 already did, and would leave the real justification — two capabilities, not
-five — undefended. The shell may still *improve* them. It is not why it exists.
+five — undefended. The shell may still _improve_ them. It is not why it exists.
 
 ## Decision
 
@@ -70,7 +70,7 @@ Four things this fixes in place:
    in a browser and always will. This is what keeps ADR-0004's actual holding
    — "click this link to spectate/join is a core product loop that only the web
    delivers" — true rather than nominal. A capability that can only be reached
-   by installing is an addition; a *link* that requires installing is a
+   by installing is an addition; a _link_ that requires installing is a
    regression, and is out of bounds.
 3. **The web app feature-detects.** `window.wattroom?.…` absent means browser
    behaviour, so there is no version negotiation between shell and app, and no
@@ -78,22 +78,23 @@ Four things this fixes in place:
 4. **A separate version namespace.** `desktop-v*` tags, deliberately uncoupled
    from ADR-0019's CalVer release tags: the VM converges on the newest server
    release, and the shell must not be dragged along by a deploy that changed no
-   native code. *(Amended below: the numbers inside that namespace are CalVer
-   too.)*
+   native code. _(Amended below: the numbers inside that namespace are CalVer
+   too.)_
 
 **macOS is signed and notarized from the first build; Windows ships unsigned
 until it costs installs.** The Apple membership is already held, and on macOS
 signing is not a polish step — TCC attribution gates Bluetooth and the
-microphone, so an unsigned build risks a trainer and a mic that fail *silently*,
+microphone, so an unsigned build risks a trainer and a mic that fail _silently_,
 which is the worst failure mode this product has. Windows keeps the SmartScreen
 prompt and pays for it in the download page's copy. Revisit trigger for Windows:
 the first installer handed to someone outside the training circle, or the first
 person who bounces off it.
 
-**Updates are an in-app nudge, never an OS auto-updater, and never mid-ride.**
-A thin shell changes a few times a year; a quiet banner that links to the
+**~~Updates are an in-app nudge, never an OS auto-updater, and never mid-ride.~~**
+~~A thin shell changes a few times a year; a quiet banner that links to the
 release page is proportionate, and `ux.md` forbids interrupting a rider
-mid-interval regardless.
+mid-interval regardless.~~ _Superseded by the 2026-09-09 amendment below: the
+shell updates itself. "Never mid-ride" stands._
 
 ## Consequences
 
@@ -115,7 +116,7 @@ mid-interval regardless.
   keeping the shell on the current major is a maintenance commitment, not a
   nice-to-have.
 - **Electron's defaults are unsafe for remote content and must be closed
-  explicitly.** Its permission handler defaults to *allow*, and it ships no
+  explicitly.** Its permission handler defaults to _allow_, and it ships no
   Bluetooth chooser at all, so `requestDevice()` never resolves without a
   handler. These are not polish items — one is a known CVE shape and the other
   is the trainer not connecting. They are the skeleton PR's actual content.
@@ -133,7 +134,7 @@ mid-interval regardless.
 
 The first release went out as `desktop-v0.1.0`, and the number was wrong for
 the same reason ADR-0019 gave up on semver: nothing about a thin shell has a
-major, a minor or a patch. What a rider or an operator wants to know is *when*
+major, a minor or a patch. What a rider or an operator wants to know is _when_
 this build is from, and whether it is older than the one on the download page.
 
 So the shell's versions are `YYYY.0M.MICRO`, exactly the server's scheme, and
@@ -150,3 +151,40 @@ version string read `2026.9.1`. The tag, `desktop/package.json` and the update
 notice carry `2026.09.1`. It is the same number, the download page finds
 installers by extension, and the notice compares numerically — the
 `2026.9.1`/`2026.09.1` pair is tested equal.
+
+## Amendment, 2026-09-09 (#1303): the shell updates itself
+
+The decision above chose a nudge over an auto-updater because _"a thin shell
+changes a few times a year."_ Jan, after a day on the installed build: four
+shell releases in one day, and each one meant a download and a drag to
+Applications. The premise was wrong for this phase of the project, and the
+nudge was the wrong deal for the rider it was meant to spare.
+
+**So the shell updates itself.** `electron-updater` reads the releases repo on
+launch and every four hours, downloads the next release in the background, and
+installs it when the app quits. The home page's nudge becomes _Restart to
+update_ once a download is ready; before that it stays the download link it
+was. Nothing installs mid-ride: the install is the rider's click, on home,
+which a ride never shows — or their own quit. That half of the original
+decision is untouched.
+
+Three things the pipeline had to change for it, recorded because each one is a
+trap on its own:
+
+- **The feed is the generic provider** pointed at
+  `https://github.com/natrontech/wattroom-releases/releases/latest/download`,
+  not electron-updater's GitHub provider: that one expects `v<semver>` tags,
+  and ours are `desktop-v<CalVer>` (the amendment above). GitHub serves the
+  newest release's assets at that path by name, so `latest-mac.yml`,
+  `latest.yml` and `latest-linux.yml` there are the feed.
+- **The workflow publishes what the updater reads**, not only the installers:
+  the `latest*.yml` manifests electron-builder writes, the `.blockmap` files
+  that make updates differential, and on macOS a `.zip` beside the `.dmg` —
+  Squirrel.Mac installs from the zip, never the dmg. `build.publish` in
+  `desktop/package.json` exists only so electron-builder emits those files;
+  `--publish never` still uploads nothing from the build job.
+- **The first build carrying the updater cannot itself be reached by it.**
+  `desktop-v2026.09.4` has no updater, so .4 → .5 is one last manual install,
+  and .5 → .6 is the first self-update. Windows stays unsigned (the decision
+  above), which electron-updater tolerates — it verifies a publisher only when
+  one is configured — and Linux updates the AppImage, never the deb.

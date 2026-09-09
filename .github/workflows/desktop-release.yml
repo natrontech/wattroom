@@ -19,8 +19,10 @@
 # ── Setup ─────────────────────────────────────────────────────────────────────
 #
 # 1. Create the public repo `natrontech/wattroom-releases`. Source stays
-#    private; GitHub carries the download bandwidth and its `releases/latest`
-#    JSON is the update feed the shell polls.
+#    private; GitHub carries the download bandwidth, its `releases/latest`
+#    JSON is what /download and the home page read, and
+#    `releases/latest/download/latest-*.yml` is the feed the shell's updater
+#    reads (#1303) — so the manifests, blockmaps and the mac zip ship too.
 #
 # 2. Repository secrets on THIS repo:
 #
@@ -86,7 +88,7 @@ name: desktop-release
 
 on:
   push:
-    tags: ['desktop-v*']
+    tags: ["desktop-v*"]
   workflow_dispatch:
 
 permissions:
@@ -201,7 +203,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # electron-builder publishes on its own when it sees a token; this
           # workflow publishes explicitly, cross-repo, in the job below.
-          GH_TOKEN: ''
+          GH_TOKEN: ""
         run: pnpm exec electron-builder --publish never
 
       # What a rider's Mac will do with it. codesign shows which identity
@@ -228,13 +230,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.artifact }}
-          # The installers only. electron-builder also leaves unpacked app
-          # directories here, which are hundreds of megabytes and not shippable.
+          # The installers, and what the updater needs beside them (#1303):
+          # the `latest*.yml` manifests electron-updater reads, the
+          # `.blockmap` files that make an update differential, and on macOS
+          # the zip Squirrel.Mac installs from. electron-builder also leaves
+          # unpacked app directories here, which are hundreds of megabytes
+          # and not shippable.
           path: |
             desktop/dist/*.dmg
+            desktop/dist/*.zip
             desktop/dist/*.exe
             desktop/dist/*.AppImage
             desktop/dist/*.deb
+            desktop/dist/*.blockmap
+            desktop/dist/latest*.yml
           if-no-files-found: error
           retention-days: 7
 

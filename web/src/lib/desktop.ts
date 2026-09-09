@@ -155,6 +155,47 @@ export function latestRelease(): Promise<DesktopRelease | null> {
 	return latest;
 }
 
+// ── The shell updating itself (#1303, ADR-0037 amended) ──────────────────
+//
+// The shell downloads the next release on its own and installs it on quit.
+// The app's part is small: ask whether a build is waiting, hear when one
+// lands, and offer the restart from home — never mid-ride. A shell older
+// than #1303 has none of these keys and the app keeps its download link.
+
+type Shell = {
+	updateReady?: () => Promise<unknown>;
+	onUpdateReady?: (cb: (version: unknown) => void) => void;
+	installUpdate?: () => void;
+};
+const shell = (): Shell | undefined =>
+	(globalThis as { wattroom?: Shell }).wattroom;
+
+/** The version the shell has downloaded and holds for the next restart, else null. */
+export async function shellUpdateReady(): Promise<string | null> {
+	const fn = shell()?.updateReady;
+	if (typeof fn !== 'function') return null;
+	try {
+		const v = await fn();
+		return typeof v === 'string' && v !== '' ? v : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Called with the version once a download lands while this page is open. */
+export function onShellUpdateReady(cb: (version: string) => void): void {
+	const fn = shell()?.onUpdateReady;
+	if (typeof fn !== 'function') return;
+	fn((v) => {
+		if (typeof v === 'string' && v !== '') cb(v);
+	});
+}
+
+/** Quit and install what is waiting. The shell ignores it when nothing is. */
+export function installShellUpdate(): void {
+	shell()?.installUpdate?.();
+}
+
 // ── Signing in from the shell (#1188, ADR-0040) ──────────────────────────
 //
 // The shell cannot sign a rider in (no WebAuthn UI; Google refuses OAuth from

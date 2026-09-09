@@ -20,19 +20,20 @@ const {
 	powerSaveBlocker,
 	screen,
 	shell,
-} = require('electron');
-const path = require('node:path');
+} = require("electron");
+const path = require("node:path");
+const { autoUpdater } = require("electron-updater");
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
-const APP_URL = process.env.WATTROOM_URL || 'https://wattroom.ch';
+const APP_URL = process.env.WATTROOM_URL || "https://wattroom.ch";
 const APP_ORIGIN = new URL(APP_URL).origin;
 
 // app.getVersion() returns ELECTRON's version when unpackaged, so it would
 // report 44.x in dev and 0.1.0 in a build — and the update check compares this
 // against the newest release tag. Read the manifest directly: main is not
 // sandboxed, and this is the same number in both.
-const SHELL_VERSION = require('./package.json').version;
+const SHELL_VERSION = require("./package.json").version;
 
 // The OS title bar is hidden and the web app draws the strip (#1188): macOS
 // drew a white bar over a dark app, and a bar the app owns follows its theme
@@ -60,21 +61,21 @@ function createWindow() {
 		width: 1280,
 		height: 860,
 		minWidth: 380,
-		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
+		backgroundColor: "#0a0118", // --color-surface, so the first paint is not white
 		show: false,
-		titleBarStyle: 'hidden',
+		titleBarStyle: "hidden",
 		trafficLightPosition: { x: 14, y: (TITLE_BAR_PX - 12) / 2 },
 		// Windows and Linux keep the native window controls, drawn over the
 		// app's strip in the surface colour. ponytail: the colour is the dark
 		// theme's; a light-theme rider there sees a dark control box until the
 		// app tells the shell its scheme.
 		titleBarOverlay: {
-			color: '#0a0118',
-			symbolColor: '#ffffff',
+			color: "#0a0118",
+			symbolColor: "#ffffff",
 			height: TITLE_BAR_PX,
 		},
 		webPreferences: {
-			preload: path.join(__dirname, 'preload.js'),
+			preload: path.join(__dirname, "preload.js"),
 			// The preload is sandboxed and cannot read package.json, so the
 			// version arrives as a switch it can parse off process.argv.
 			additionalArguments: [
@@ -95,13 +96,13 @@ function createWindow() {
 		},
 	});
 
-	win.once('ready-to-show', () => win.show());
+	win.once("ready-to-show", () => win.show());
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
 	// front, the riding screen has the numbers, and floating them over the
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
-	win.on('focus', () => hudWindow?.hide());
-	win.on('blur', () => hudWindow?.showInactive());
-	win.on('closed', () => setHud(false));
+	win.on("focus", () => hudWindow?.hide());
+	win.on("blur", () => hudWindow?.showInactive());
+	win.on("closed", () => setHud(false));
 	installHandlers(win);
 	load(win);
 	return win;
@@ -122,11 +123,11 @@ function installHandlers(win) {
 	//    that forgets preventDefault the FIRST device is selected silently —
 	//    which in a room of advertising sensors is someone else's trainer.
 	//    RESEARCH.md §15.1.
-	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
+	win.webContents.on("select-bluetooth-device", (event, devices, callback) => {
 		event.preventDefault();
 
 		if (devices.length === 0) {
-			callback(''); // rejects in the renderer; media-error.ts has copy for it
+			callback(""); // rejects in the renderer; media-error.ts has copy for it
 			return;
 		}
 		const remembered = devices.find(
@@ -140,14 +141,14 @@ function installHandlers(win) {
 		// FTMS/HR/CSC, so everything offered here is pairable.
 		chooseFrom(
 			win,
-			'Pair a sensor',
+			"Pair a sensor",
 			devices.map((d) => ({
 				label: d.deviceName || d.deviceId,
 				value: d.deviceId,
 			})),
 		).then((deviceId) => {
 			if (deviceId) lastBluetoothDeviceId = deviceId;
-			callback(deviceId || '');
+			callback(deviceId || "");
 		});
 	});
 
@@ -159,10 +160,10 @@ function installHandlers(win) {
 	// it, and a shell that answered no left every room event silent — the one
 	// thing a desktop app is expected to do better than a tab.
 	const ALLOWED = new Set([
-		'media',
-		'clipboard-sanitized-write',
-		'fullscreen',
-		'notifications',
+		"media",
+		"clipboard-sanitized-write",
+		"fullscreen",
+		"notifications",
 	]);
 	ses.setPermissionRequestHandler((contents, permission, callback) => {
 		callback(isOurs(contents.getURL()) && ALLOWED.has(permission));
@@ -171,7 +172,7 @@ function installHandlers(win) {
 	// a handler on one and not the other is a gate with a hole in it.
 	ses.setPermissionCheckHandler(
 		(contents, permission, origin) =>
-			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
+			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? "")) &&
 			ALLOWED.has(permission),
 	);
 
@@ -182,12 +183,12 @@ function installHandlers(win) {
 	ses.setDisplayMediaRequestHandler(
 		(request, callback) => {
 			desktopCapturer
-				.getSources({ types: ['screen', 'window'] })
+				.getSources({ types: ["screen", "window"] })
 				.then((sources) => {
 					if (sources.length === 0) return callback({});
 					return chooseFrom(
 						win,
-						'Share a screen',
+						"Share a screen",
 						sources.map((s) => ({ label: s.name, value: s.id })),
 					).then((id) => {
 						const picked = sources.find((s) => s.id === id);
@@ -199,7 +200,7 @@ function installHandlers(win) {
 						// tap on macOS 14.2+ and WASAPI on Windows. Asked for
 						// alongside the video rather than instead of it — the room
 						// hears the machine that is showing it something.
-						callback(picked ? { video: picked, audio: 'loopback' } : {});
+						callback(picked ? { video: picked, audio: "loopback" } : {});
 					});
 				})
 				.catch(() => callback({}));
@@ -214,7 +215,7 @@ function installHandlers(win) {
 		//
 		// Electron ignores the flag below macOS 15, where the app picker is
 		// still the only one, so this is safe to set for all of darwin.
-		{ useSystemPicker: process.platform === 'darwin' },
+		{ useSystemPicker: process.platform === "darwin" },
 	);
 
 	guardNavigation(win);
@@ -222,10 +223,10 @@ function installHandlers(win) {
 	// The server-down screen. A shell whose remote never answers is a white
 	// rectangle with no way out, which errors.md forbids.
 	win.webContents.on(
-		'did-fail-load',
+		"did-fail-load",
 		(event, code, description, url, isMain) => {
 			if (!isMain || code === -3) return; // -3 is an aborted load, not a failure
-			void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
+			void win.webContents.loadFile(path.join(__dirname, "offline.html"), {
 				query: { url: APP_URL, reason: description || String(code) },
 			});
 		},
@@ -240,9 +241,9 @@ function installHandlers(win) {
 function guardNavigation(win) {
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (/^https?:/.test(url)) void shell.openExternal(url);
-		return { action: 'deny' };
+		return { action: "deny" };
 	});
-	win.webContents.on('will-navigate', (event, url) => {
+	win.webContents.on("will-navigate", (event, url) => {
 		if (isOurs(url)) return;
 		event.preventDefault();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
@@ -260,10 +261,10 @@ function guardNavigation(win) {
 async function chooseFrom(win, title, options) {
 	const shown = options.slice(0, 8);
 	const { response } = await dialog.showMessageBox(win, {
-		type: 'question',
+		type: "question",
 		title,
 		message: title,
-		buttons: [...shown.map((o) => o.label), 'Cancel'],
+		buttons: [...shown.map((o) => o.label), "Cancel"],
 		cancelId: shown.length,
 		defaultId: 0,
 	});
@@ -299,10 +300,10 @@ function setHud(on) {
 		maximizable: false,
 		fullscreenable: false,
 		skipTaskbar: true,
-		backgroundColor: '#0a0118',
+		backgroundColor: "#0a0118",
 		show: false,
 		webPreferences: {
-			preload: path.join(__dirname, 'preload.js'),
+			preload: path.join(__dirname, "preload.js"),
 			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
 			contextIsolation: true,
 			nodeIntegration: false,
@@ -311,7 +312,7 @@ function setHud(on) {
 		},
 	});
 	// Above full-screen apps too, and on every desktop — that is the point.
-	hudWindow.setAlwaysOnTop(true, 'floating');
+	hudWindow.setAlwaysOnTop(true, "floating");
 	hudWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 	// Top-right of the display the app is on, a finger's width in.
 	const { workArea } = screen.getDisplayMatching(main.getBounds());
@@ -320,10 +321,10 @@ function setHud(on) {
 		workArea.y + 16,
 	);
 	guardNavigation(hudWindow);
-	hudWindow.on('closed', () => {
+	hudWindow.on("closed", () => {
 		hudWindow = null;
 	});
-	hudWindow.once('ready-to-show', () => {
+	hudWindow.once("ready-to-show", () => {
 		if (hudWindow && !main.isFocused()) hudWindow.showInactive();
 	});
 	hudWindow.loadURL(`${APP_ORIGIN}/hud`).catch(() => {
@@ -331,7 +332,7 @@ function setHud(on) {
 	});
 }
 
-ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
+ipcMain.on("wattroom:hud", (_event, on) => setHud(Boolean(on)));
 
 // Notifications (ADR-0042). The web app's lib/notify decides WHETHER to
 // notify — enabled, nobody looking — and sends the words here, because the
@@ -339,12 +340,12 @@ ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
 // field (macOS) and hand a click back to the app with the conversation it
 // belongs to. Everything is clipped and the href must be a path on our
 // origin: remote content chooses the words, never where the app goes.
-const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+const clip = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
 const ownPath = (v) =>
-	typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') ? v : '';
+	typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : "";
 
-ipcMain.on('wattroom:notify', (event, n) => {
-	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
+ipcMain.on("wattroom:notify", (event, n) => {
+	if (!Notification.isSupported() || !n || typeof n !== "object") return;
 	const title = clip(n.title, 120);
 	if (!title) return;
 	const payload = { tag: clip(n.tag, 80), href: ownPath(n.href) };
@@ -352,22 +353,22 @@ ipcMain.on('wattroom:notify', (event, n) => {
 	const note = new Notification({
 		title,
 		body: clip(n.body, 400),
-		hasReply: placeholder !== '',
+		hasReply: placeholder !== "",
 		replyPlaceholder: placeholder || undefined,
 	});
 	const win = BrowserWindow.fromWebContents(event.sender);
-	note.on('click', () => {
+	note.on("click", () => {
 		if (win && !win.isDestroyed()) {
 			if (win.isMinimized()) win.restore();
 			win.show();
 			win.focus();
 		}
 		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', payload);
+			event.sender.send("wattroom:notification", payload);
 	});
-	note.on('reply', (_e, reply) => {
+	note.on("reply", (_e, reply) => {
 		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', {
+			event.sender.send("wattroom:notification", {
 				...payload,
 				reply: clip(reply, 2000),
 			});
@@ -395,8 +396,8 @@ function deepLinkTarget(link) {
 	} catch {
 		return null;
 	}
-	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
-	const token = url.pathname.replace(/^\//, '');
+	if (url.protocol !== "wattroom:" || url.hostname !== "auth") return null;
+	const token = url.pathname.replace(/^\//, "");
 	if (!DEEP_LINK_TOKEN.test(token)) return null;
 	// APP_ORIGIN, not APP_URL: a WATTROOM_URL with a trailing slash made this
 	// `//login`, which the smoke caught.
@@ -422,14 +423,14 @@ function openDeepLink(link) {
 	});
 }
 
-const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
+const deepLinkIn = (argv) => argv.find((a) => a.startsWith("wattroom://"));
 
 // Windows shows a notification only for an app with a model id; without
 // this every new Notification() from the renderer is dropped on the floor.
-if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
+if (process.platform === "win32") app.setAppUserModelId("ch.wattroom.desktop");
 
-app.setAsDefaultProtocolClient('wattroom');
-app.on('open-url', (event, link) => {
+app.setAsDefaultProtocolClient("wattroom");
+app.on("open-url", (event, link) => {
 	event.preventDefault();
 	openDeepLink(link);
 });
@@ -440,7 +441,7 @@ app.on('open-url', (event, link) => {
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
-	app.on('second-instance', (_event, argv) => {
+	app.on("second-instance", (_event, argv) => {
 		const link = deepLinkIn(argv);
 		if (link) {
 			openDeepLink(link);
@@ -454,21 +455,22 @@ if (!app.requestSingleInstanceLock()) {
 
 	app.whenReady().then(() => {
 		const win = createWindow();
+		startUpdates();
 		// A cold start from a link, on Windows and Linux.
 		const link = deepLinkIn(process.argv);
 		if (link) pendingDeepLink = deepLinkTarget(link);
 		if (pendingDeepLink) {
 			const target = pendingDeepLink;
 			pendingDeepLink = null;
-			win.once('ready-to-show', () => void win.loadURL(target).catch(() => {}));
+			win.once("ready-to-show", () => void win.loadURL(target).catch(() => {}));
 		}
-		app.on('activate', () => {
+		app.on("activate", () => {
 			if (BrowserWindow.getAllWindows().length === 0) createWindow();
 		});
 	});
 
-	app.on('window-all-closed', () => {
-		if (process.platform !== 'darwin') app.quit();
+	app.on("window-all-closed", () => {
+		if (process.platform !== "darwin") app.quit();
 	});
 }
 
@@ -481,7 +483,7 @@ let sleepBlockerId = null;
 function keepAwake(on) {
 	if (on) {
 		if (sleepBlockerId === null) {
-			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
+			sleepBlockerId = powerSaveBlocker.start("prevent-display-sleep");
 		}
 		return;
 	}
@@ -491,18 +493,70 @@ function keepAwake(on) {
 	}
 }
 
-ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
+ipcMain.on("wattroom:keep-awake", (_event, on) => keepAwake(Boolean(on)));
 
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
-app.on('browser-window-created', (_e, win) => {
-	win.webContents.on('render-process-gone', () => keepAwake(false));
-	win.on('closed', () => keepAwake(false));
+app.on("browser-window-created", (_e, win) => {
+	win.webContents.on("render-process-gone", () => keepAwake(false));
+	win.on("closed", () => keepAwake(false));
 });
-app.on('will-quit', () => keepAwake(false));
+app.on("will-quit", () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
-ipcMain.on('wattroom:retry', (event) => {
+ipcMain.on("wattroom:retry", (event) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (win) load(win);
+});
+
+// Updates (#1303, ADR-0037 amended): the shell updates itself. Four shell
+// releases in one day made "a download and a drag to Applications" the
+// wrong deal, so electron-updater reads the releases repo on launch and
+// every few hours, downloads the next build in the background, and installs
+// it when the app quits. The install is never forced and never mid-ride: the
+// web app's home page turns its nudge into "Restart to update" once a
+// download is ready, and only that click (or the rider's own quit) applies
+// it. A ride never shows home.
+//
+// The generic provider, not the GitHub one: electron-updater's GitHub
+// provider expects `v<semver>` tags and ours are `desktop-v<CalVer>`.
+// `releases/latest/download/<file>` is GitHub's stable URL for the newest
+// release's assets, so the feed is `latest-mac.yml` and friends at that
+// path — which desktop-release.yml now publishes beside the installers.
+const UPDATE_FEED =
+	"https://github.com/natrontech/wattroom-releases/releases/latest/download";
+const UPDATE_EVERY_MS = 4 * 60 * 60 * 1000;
+/** The version downloaded and waiting for a restart, or null. */
+let updateReady = null;
+
+function startUpdates() {
+	// Unpackaged means `electron .` from node_modules: nothing to update, and
+	// electron-updater would only log that it cannot find app-update.yml.
+	if (!app.isPackaged) return;
+	autoUpdater.setFeedURL({ provider: "generic", url: UPDATE_FEED });
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.on("update-downloaded", (info) => {
+		updateReady = info.version;
+		for (const win of BrowserWindow.getAllWindows()) {
+			if (!win.isDestroyed())
+				win.webContents.send("wattroom:update-ready", updateReady);
+		}
+	});
+	// A failed check is not the rider's problem and not a toast (errors.md):
+	// the next check is a few hours away and the download page still works.
+	autoUpdater.on("error", (err) => {
+		console.warn("update check failed:", err?.message ?? err);
+	});
+	const check = () => autoUpdater.checkForUpdates().catch(() => {});
+	// Not in the first seconds — the window is still loading the app.
+	setTimeout(check, 15_000);
+	// ponytail: a plain interval; a laptop asleep past one just checks on the
+	// next tick after it wakes.
+	setInterval(check, UPDATE_EVERY_MS);
+}
+
+ipcMain.handle("wattroom:update-ready", () => updateReady);
+ipcMain.on("wattroom:install-update", () => {
+	if (updateReady) autoUpdater.quitAndInstall();
 });
