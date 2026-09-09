@@ -341,14 +341,6 @@ function guardNavigation(win) {
 }
 
 /**
- * A chooser with no UI of its own. `dialog.showMessageBox` is native, needs no
- * renderer, and cannot drift from the app's theme because it has none.
- *
- * ponytail: caps at eight entries plus Cancel — past that a message box is the
- * wrong control, and the answer is the renderer-side picker RESEARCH.md §15.1
- * describes, not a longer list of buttons.
- */
-/**
  * Whether the machine's sound can ride along with the picture (#1124, #1699).
  *
  * Windows only, and not a preference: this handler runs on macOS only below
@@ -370,7 +362,16 @@ function canShareSound() {
 const SOUND_ASK =
 	"Send this machine's sound too — everything it plays, not just what you pick";
 
-/** @returns the chosen value (null if cancelled) and the checkbox, if asked. */
+/**
+ * A chooser with no UI of its own. `dialog.showMessageBox` is native, needs no
+ * renderer, and cannot drift from the app's theme because it has none.
+ *
+ * ponytail: caps at eight entries plus Cancel — past that a message box is the
+ * wrong control, and the answer is the renderer-side picker RESEARCH.md §15.1
+ * describes, not a longer list of buttons.
+ *
+ * @returns the chosen value (null if cancelled), and the checkbox if asked.
+ */
 async function chooseFrom(win, title, options, checkboxLabel = null) {
 	const shown = options.slice(0, 8);
 	const { response, checkboxChecked } = await dialog.showMessageBox(win, {
