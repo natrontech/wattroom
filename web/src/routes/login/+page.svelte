@@ -141,7 +141,7 @@
 			});
 			return;
 		}
-		void goto(takeNext() ?? '/rooms', { replaceState: true });
+		void goto(takeNext() ?? '/home', { replaceState: true });
 	});
 
 	// Which button this browser used last (#784) — the cheapest answer to
