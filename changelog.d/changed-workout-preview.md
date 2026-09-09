@@ -1,0 +1,1 @@
+- A planned workout is drawn the same way everywhere: the room's next session and your own saved workouts now show the interval graph the curated shelf shows, with the zones it spends time in named beside it.
