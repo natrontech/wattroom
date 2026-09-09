@@ -129,6 +129,41 @@ func TestSweepPrunesRecapsPastRetentionWithoutAWrite(t *testing.T) {
 	}
 }
 
+// A dismissal's tombstone goes with the recaps (#1654): one past retention is
+// swept, one inside it stays to tell a device that has not heard it.
+func TestSweepPrunesOldFriendDeclines(t *testing.T) {
+	st := open(t)
+	asker, dismisser := user(t, st), user(t, st)
+	third := user(t, st)
+	for _, row := range []struct {
+		addressee db.User
+		age       time.Duration
+	}{{dismisser, time.Duration(recap.RetentionDays+1) * 24 * time.Hour}, {third, time.Hour}} {
+		if _, err := st.Pool.Exec(t.Context(),
+			"insert into friend_declines (requester_id, addressee_id, declined_at) values ($1, $2, $3)",
+			asker.ID, row.addressee.ID, stamp(time.Now().Add(-row.age))); err != nil {
+			t.Fatalf("decline: %v", err)
+		}
+	}
+	left := func() int {
+		var n int
+		if err := st.Pool.QueryRow(t.Context(),
+			"select count(*) from friend_declines where requester_id = $1", asker.ID).Scan(&n); err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		return n
+	}
+	if left() != 2 {
+		t.Fatalf("expected both tombstones before the sweep, got %d — test proves nothing", left())
+	}
+
+	housekeeping.Once(t.Context(), st, quiet())
+
+	if n := left(); n != 1 {
+		t.Errorf("after the sweep %d tombstones remain, want 1 (the one inside retention)", n)
+	}
+}
+
 // A failing sweep is logged, never fatal: they share a schedule and nothing
 // else, and a housekeeping error must not be able to take the server down.
 func TestAFailingSweepIsSurvivable(t *testing.T) {

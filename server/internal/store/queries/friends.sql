@@ -55,6 +55,23 @@ where d.requester_id = $1;
 insert into friendships (requester_id, addressee_id) values ($1, $2)
 on conflict do nothing;
 
+-- name: PruneFriendDeclines :execrows
+-- A dismissal is said once (ADR-0012 amendment); the tombstone exists so a
+-- device that never heard it is told. Past the recap retention nothing is
+-- left to tell (#1654).
+delete from friend_declines
+ where ctid in (select ctid from friend_declines
+                 where declined_at < now() - make_interval(days => $1::int)
+                 limit 10000);
+
+-- name: ExportUserFriendDeclines :many
+-- Mine to hear, so mine to export: the asks of mine that were dismissed.
+select u.display_name, d.declined_at
+from friend_declines d
+join users u on u.id = d.addressee_id
+where d.requester_id = $1
+order by d.declined_at;
+
 -- name: ClearFriendDeclines :exec
 -- A request or an acceptance between the two of them settles the pair —
 -- either direction, so an old dismissal cannot resurface later.

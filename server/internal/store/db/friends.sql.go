@@ -82,6 +82,40 @@ func (q *Queries) DeleteFriendship(ctx context.Context, arg DeleteFriendshipPara
 	return result.RowsAffected(), nil
 }
 
+const exportUserFriendDeclines = `-- name: ExportUserFriendDeclines :many
+select u.display_name, d.declined_at
+from friend_declines d
+join users u on u.id = d.addressee_id
+where d.requester_id = $1
+order by d.declined_at
+`
+
+type ExportUserFriendDeclinesRow struct {
+	DisplayName string
+	DeclinedAt  pgtype.Timestamptz
+}
+
+// Mine to hear, so mine to export: the asks of mine that were dismissed.
+func (q *Queries) ExportUserFriendDeclines(ctx context.Context, requesterID pgtype.UUID) ([]ExportUserFriendDeclinesRow, error) {
+	rows, err := q.db.Query(ctx, exportUserFriendDeclines, requesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserFriendDeclinesRow
+	for rows.Next() {
+		var i ExportUserFriendDeclinesRow
+		if err := rows.Scan(&i.DisplayName, &i.DeclinedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFriendship = `-- name: GetFriendship :one
 select requester_id, addressee_id, status, created_at from friendships
 where (requester_id = $1 and addressee_id = $2)
@@ -244,6 +278,24 @@ type NoteFriendDeclineParams struct {
 func (q *Queries) NoteFriendDecline(ctx context.Context, arg NoteFriendDeclineParams) error {
 	_, err := q.db.Exec(ctx, noteFriendDecline, arg.RequesterID, arg.AddresseeID)
 	return err
+}
+
+const pruneFriendDeclines = `-- name: PruneFriendDeclines :execrows
+delete from friend_declines
+ where ctid in (select ctid from friend_declines
+                 where declined_at < now() - make_interval(days => $1::int)
+                 limit 10000)
+`
+
+// A dismissal is said once (ADR-0012 amendment); the tombstone exists so a
+// device that never heard it is told. Past the recap retention nothing is
+// left to tell (#1654).
+func (q *Queries) PruneFriendDeclines(ctx context.Context, dollar_1 int32) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneFriendDeclines, dollar_1)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const restoreFriendRequest = `-- name: RestoreFriendRequest :exec

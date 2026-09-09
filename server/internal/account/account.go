@@ -227,6 +227,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"status": row.Status, "since": row.CreatedAt.Time}
 			})
 		}},
+		{"dismissed-requests.json", func() (any, error) {
+			// The asks of mine that were dismissed (ADR-0012 amendment): told
+			// to me, so mine to take along (#1654).
+			rows, err := s.store.Queries.ExportUserFriendDeclines(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserFriendDeclinesRow) any {
+				return map[string]any{"name": row.DisplayName, "at": row.DeclinedAt.Time}
+			})
+		}},
 		{"playlists.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserPlaylists(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserPlaylistsRow) any {

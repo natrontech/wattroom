@@ -508,6 +508,12 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	mustChat("alice", "starting in five")
 	mustChat("bob", "bobs own line")
 	h.befriend(t, "alice", "bob")
+	// Alice asked carol, and carol dismissed (#1654): told to alice, so hers.
+	if err := h.store.Queries.NoteFriendDecline(t.Context(), db.NoteFriendDeclineParams{
+		RequesterID: h.id("alice"), AddresseeID: h.id("carol"),
+	}); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
 	h.sendDm(t, "alice", "bob", "see you at 7")
 	h.sendDm(t, "bob", "alice", "bring legs")
 	if _, err := h.store.Queries.CreatePlaylist(t.Context(), db.CreatePlaylistParams{
@@ -578,16 +584,18 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	// Every category, and the content that proves the query ran rather than
 	// an empty array being written.
 	for name, want := range map[string]string{
-		"chat.json":             "starting in five",
-		"messages.json":         "bring legs",
-		"friends.json":          "bob",
-		"playlists.json":        "Threshold bangers",
-		"planned-sessions.json": "Sweet Spot",
-		"rooms.json":            "account-test-alice",
-		"workouts.json":         "My Openers",
-		"xp.json":               "bucket-1",
-		"trophies.json":         "first-ride",
-		"medals.json":           "diesel",
+		"chat.json":     "starting in five",
+		"messages.json": "bring legs",
+		"friends.json":  "bob",
+		// The ask of alice's that carol dismissed (#1654).
+		"dismissed-requests.json": "carol",
+		"playlists.json":          "Threshold bangers",
+		"planned-sessions.json":   "Sweet Spot",
+		"rooms.json":              "account-test-alice",
+		"workouts.json":           "My Openers",
+		"xp.json":                 "bucket-1",
+		"trophies.json":           "first-ride",
+		"medals.json":             "diesel",
 		// Every field the ride page shows (#1550).
 		"rides.json": "\"sharedWithFriends\"",
 		// Written last, naming every category: its presence is what says

@@ -176,6 +176,13 @@ select (
           and ((requester_id = $1 and addressee_id = $2)
             or (requester_id = $2 and addressee_id = $1))
     )
+    or exists (
+        -- ADR-0024: a pending request *from* them opens their page, "see who
+        -- before you accept", and the case is part of that page (#1654). A
+        -- pending ask *to* them is not a door.
+        select 1 from friendships
+        where status = 'pending' and requester_id = $2 and addressee_id = $1
+    )
 )::boolean
 `
 
