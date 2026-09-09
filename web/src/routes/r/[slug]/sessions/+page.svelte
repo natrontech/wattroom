@@ -3,12 +3,12 @@
 	// tiles, visible only in the lounge; it has a URL now, and /sessions —
 	// the cross-room list — folded into Home (#388).
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import ZoneBar from '$lib/components/ZoneBar.svelte';
+	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { parseSharedSegments } from '$lib/room/workout';
+	import { segmentsDuration } from '$lib/workout/engine';
 	import { confirm } from '$lib/confirm.svelte';
 	import {
 		contextMenu,
@@ -43,12 +43,7 @@
 	let moveAt = $state('');
 
 	const minutes = (json: string) =>
-		Math.round(
-			parseSharedSegments(json).reduce(
-				(t, seg) => Math.max(t, seg.startSeconds + seg.seconds),
-				0,
-			) / 60,
-		);
+		Math.round(segmentsDuration(parseSharedSegments(json)) / 60);
 
 	/** Due enough to offer "start now" — the same window the card always used. */
 	const due = (iso: string) => Date.parse(iso) - Date.now() < 15 * 60_000;
@@ -270,12 +265,15 @@
 							>
 						</div>
 					{/if}
-					<div class="mt-2">
-						<ZoneBar
-							seconds={plannedZoneSeconds(
-								parseSharedSegments(entry.workoutJson),
-								room.you.ftp,
-							)}
+					<!-- The workout as the shelf draws it (#1525): a stacked bar
+					     said how long each zone lasts and never what the session
+					     looks like — where the efforts are, and how long. -->
+					<div class="mt-3">
+						<WorkoutPreview
+							segments={parseSharedSegments(entry.workoutJson)}
+							ftp={room.you.ftp}
+							compact={i > 0}
+							legendClass="mb-1.5"
 						/>
 					</div>
 				</li>
