@@ -124,7 +124,7 @@ export async function prepareRoomAv(): Promise<void> {
 function connect(slug: string): Connection {
 	if (!createRoomAv) {
 		throw new Error(
-			'the room AV is not loaded — the room layout prepares it before the shell joins (#1514)',
+			'the room AV is not loaded — the room layout prepares it before the shell joins',
 		);
 	}
 	const live = createRoomLive(slug);
