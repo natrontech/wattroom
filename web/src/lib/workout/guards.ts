@@ -70,6 +70,15 @@ export function createPersonalGuards() {
 		get released() {
 			return phase === 'autopaused' || spiralSeconds > 0;
 		},
+		/**
+		 * Whether a second counts for the score: no guard up in any form —
+		 * not paused, not counting back in, not released. What the sample
+		 * carries as `released` on the wire and in the record (#1796), so the
+		 * saved ride and the room's meter leave out what the live meter did.
+		 */
+		get scoring() {
+			return phase === 'running' && spiralSeconds === 0;
+		},
 		/** Is the rider turning the pedals at all? The caller's accounting wants it. */
 		pedalling(sample: GuardSample): boolean {
 			return (

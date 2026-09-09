@@ -39,6 +39,15 @@ export interface RiderMetrics {
    * clock, or one recorded before this existed; those score by index.
    */
   clock?: number /* int */;
+  /**
+   * The rider's own guard had the trainer off the target this second
+   * (#1796): auto-pause, the resume countdown, the spiral release. The
+   * live meter on the client never scores such a second; the saved ride
+   * and the room's live score used to, against the full target — a spiral
+   * trip was ten pedalling seconds against no resistance, out of band by
+   * construction. Absent means scored.
+   */
+  released?: boolean;
 }
 /**
  * SprintScore is one rider's place on the mini-podium.

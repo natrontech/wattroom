@@ -97,6 +97,13 @@ func TestLiveScoreSkipsStoppedSeconds(t *testing.T) {
 	if w := acc.byRider["jan"].weight; w <= before {
 		t.Fatal("a 25 W second without cadence was not scored")
 	}
+	// A pedalling second the rider's guard released (#1796) is left out too:
+	// the trainer was off the target on purpose, so it cannot be a miss.
+	before = acc.byRider["jan"].weight
+	acc.add("jan", protocol.RiderMetrics{Watts: 60, Cadence: 70, Released: true, Seq: 4}, segments, 200, 4)
+	if w := acc.byRider["jan"].weight; w != before {
+		t.Fatal("a released second was scored")
+	}
 }
 
 // The WS pick is held to the API's rules (audit 2026-09-09).

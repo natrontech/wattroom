@@ -277,6 +277,31 @@ func TestRideListMarksAFailedDelivery(t *testing.T) {
 	}
 }
 
+// A second the rider's guard released is carried on the sample and left out
+// of the score (#1796): a spiral trip at 40 W against a 200 W block used to
+// read as ten misses on the ride page and none on the meter.
+func TestSoloRideSkipsReleasedSeconds(t *testing.T) {
+	h := setup(t)
+	var samples []string
+	for i := 0; i < 90; i++ {
+		samples = append(samples, fmt.Sprintf(`{"watts":200,"cadence":90,"clock":%d}`, i))
+	}
+	for i := 90; i < 120; i++ {
+		samples = append(samples, fmt.Sprintf(`{"watts":40,"cadence":70,"clock":%d,"released":true}`, i))
+	}
+	body := fmt.Sprintf(
+		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":120,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
+		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		strings.Join(samples, ","))
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, got)
+	}
+	if execution, _ := got["execution"].(float64); execution < 0.99 {
+		t.Fatalf("released seconds counted against the ride: %v", got["execution"])
+	}
+}
+
 // The list is paged by start (#1549): the second page begins strictly
 // before the oldest row the client holds.
 func TestRideListPagesByStart(t *testing.T) {

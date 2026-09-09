@@ -15,7 +15,13 @@ describe('wireMetrics', () => {
 
 	it('drops heart rate at the door when sharing is off — everything else untouched', () => {
 		const wire = wireMetrics(metrics, false);
-		expect(wire).toEqual({ watts: 210, cadence: 88, hr: 0, bias: 1 });
+		expect(wire).toEqual({
+			watts: 210,
+			cadence: 88,
+			hr: 0,
+			bias: 1,
+			released: false,
+		});
 	});
 
 	it('resumes the moment sharing is back on — the toggle is per sample', () => {

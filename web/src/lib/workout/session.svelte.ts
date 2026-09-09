@@ -77,6 +77,7 @@ export interface RideOptions {
 		cadence: number;
 		heartRate: number;
 		bias: number;
+		released: boolean;
 	}) => void;
 }
 
@@ -148,6 +149,12 @@ export function createRideSession({
 		 * 100 % on the summary and 93 % on the ride's own page.
 		 */
 		bias: number;
+		/**
+		 * The guard had the trainer off the target this second (#1796):
+		 * paused, counting back in, or released. The live score skips it;
+		 * so must the saved one.
+		 */
+		released: boolean;
 	}[] = [];
 	let recordedSeconds = 0;
 	// The wall-clock second the record last admitted a sample for: a trainer
@@ -297,6 +304,20 @@ export function createRideSession({
 		// that stopped, not by the second's first.
 		const second = Math.floor(raw.at / 1000);
 		const admit = second > lastRecordedSecond;
+
+		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
+		// the trainer holds is zero exactly when a guard is already up. Before
+		// the record below, so the second that trips a guard is stamped as
+		// the guard's (#1796) — the same answer the live score gives it.
+		const pedalling = guards.pedalling(next);
+		if (state !== 'idle') {
+			// The same per-second gate the record uses (#1798): the guards count
+			// seconds, and a trainer notifies more than once a second.
+			const actuate = guards.sample(next, info.targetWatts ?? 0, admit ? 1 : 0);
+			syncGuards();
+			if (actuate) applyTarget();
+		}
+
 		if (admit) {
 			lastRecordedSecond = second;
 			const recorded = {
@@ -307,22 +328,12 @@ export function createRideSession({
 				// Reaches the .fit export now that a strap can be paired (#11, #44).
 				heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
 				bias,
+				released: !guards.scoring,
 			};
 			recording.push(recorded);
 			onRecord?.(recorded);
 			trace.push({ t: clockSeconds, w: next.watts });
 			if (trace.length > 900) trace.shift();
-		}
-
-		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
-		// the trainer holds is zero exactly when a guard is already up.
-		const pedalling = guards.pedalling(next);
-		if (state !== 'idle') {
-			// The same per-second gate the record uses (#1798): the guards count
-			// seconds, and a trainer notifies more than once a second.
-			const actuate = guards.sample(next, info.targetWatts ?? 0, admit ? 1 : 0);
-			syncGuards();
-			if (actuate) applyTarget();
 		}
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
