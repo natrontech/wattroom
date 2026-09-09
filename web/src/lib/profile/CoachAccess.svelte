@@ -8,6 +8,9 @@
 	// (#686 — long, not tangled).
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
+	import Copy from '@lucide/svelte/icons/copy';
+	import { confirm } from '$lib/confirm.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 	import type { ApiToken } from '../../routes/settings/data/+page';
 
@@ -49,15 +52,47 @@
 		await load();
 	}
 
-	async function revoke(id: string) {
-		const res = await api<undefined>(`/api/tokens/${id}`, { method: 'DELETE' });
+	// A confirm, not an undo (errors.md): the row is deleted and the secret
+	// cannot be reissued, and whatever the rider connected with it stops
+	// working — one click used to do that in silence (#1759).
+	async function revoke(entry: ApiToken) {
+		const sure = await confirm({
+			title: `Revoke “${entry.name}”?`,
+			body: 'Whatever you connected with it stops working, and the token cannot be shown again — you would create a new one.',
+			action: 'Revoke',
+			cancel: 'Keep',
+		});
+		if (!sure) return;
+		const res = await api<undefined>(`/api/tokens/${entry.id}`, {
+			method: 'DELETE',
+		});
 		if (!res.ok) {
 			error = res.error.message;
 			return;
 		}
 		error = null;
-		tokens = tokens.filter((entry) => entry.id !== id);
+		tokens = tokens.filter((t) => t.id !== entry.id);
+		toasts.push(`Revoked “${entry.name}”.`);
 	}
+
+	// "Copy it now" with nothing to press was a long-press-and-drag on a phone
+	// against a 68-character string, and getting it wrong cost the token.
+	async function copy(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			toasts.push('Copied.');
+		} catch {
+			toasts.push('Could not copy — select the text and copy it yourself.', {
+				tone: 'error',
+				seconds: 8,
+			});
+		}
+	}
+	const mcpAdd = $derived(
+		fresh
+			? `claude mcp add --transport http wattroom ${location.origin}/mcp --header "Authorization: Bearer ${fresh}"`
+			: '',
+	);
 </script>
 
 <section class="panel mt-8 p-6">
@@ -73,14 +108,27 @@
 			<p class="text-xs font-semibold">
 				Copy it now — it is never shown again.
 			</p>
-			<code class="mt-2 block font-mono text-xs break-all select-all"
-				>{fresh}</code
-			>
+			<div class="mt-2 flex items-start gap-2">
+				<code class="min-w-0 flex-1 font-mono text-xs break-all select-all"
+					>{fresh}</code
+				>
+				<button
+					onclick={() => void copy(fresh ?? '')}
+					class="btn btn-secondary btn-xs shrink-0"
+					aria-label="copy the token"><Copy size={12} /> Copy</button
+				>
+			</div>
 			<p class="text-muted mt-3 text-[11px]">Hook it up to Claude Code:</p>
-			<code class="mt-1 block font-mono text-[11px] break-all select-all"
-				>claude mcp add --transport http wattroom {location.origin}/mcp --header
-				"Authorization: Bearer {fresh}"</code
-			>
+			<div class="mt-1 flex items-start gap-2">
+				<code class="min-w-0 flex-1 font-mono text-[11px] break-all select-all"
+					>{mcpAdd}</code
+				>
+				<button
+					onclick={() => void copy(mcpAdd)}
+					class="btn btn-secondary btn-xs shrink-0"
+					aria-label="copy the command"><Copy size={12} /> Copy</button
+				>
+			</div>
 			<button onclick={() => (fresh = null)} class="btn-link mt-3 text-xs"
 				>Done, hide it</button
 			>
@@ -109,12 +157,15 @@
 							? `· last used ${new Date(entry.lastUsedAt).toLocaleDateString()}`
 							: '· never used'}
 					</span>
-					<button onclick={() => void revoke(entry.id)} class="btn-link ml-auto"
+					<button onclick={() => void revoke(entry)} class="btn-link ml-auto"
 						>Revoke</button
 					>
 				</li>
 			{/each}
 		</ul>
+	{/if}
+	{#if error}
+		<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 	{/if}
 	<form
 		class="mt-4 flex flex-wrap gap-2"
@@ -134,7 +185,4 @@
 			>Create token</button
 		>
 	</form>
-	{#if error}
-		<div class="mt-2"><Banner tone="error">{error}</Banner></div>
-	{/if}
 </section>
