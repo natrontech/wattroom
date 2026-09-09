@@ -23,6 +23,7 @@ const ROUTES = [
 	'/workouts/edit',
 	'/music',
 	'/history',
+	'/ride',
 	'/friends',
 	'/messages',
 	'/ramp',

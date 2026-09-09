@@ -37,8 +37,9 @@
 	} = $props();
 
 	const seconds = $derived(samples.length);
+	// Floored like the server's column — XP derives from it on both sides.
 	const kj = $derived(
-		Math.round(samples.reduce((sum, s) => sum + s.watts, 0) / 1000),
+		Math.floor(samples.reduce((sum, s) => sum + s.watts, 0) / 1000),
 	);
 	const np = $derived(normalizedPower(samples));
 	const zones = $derived(zoneSeconds(samples, ftp));

@@ -38,6 +38,7 @@
 		onReplay,
 		onFtp,
 		onError,
+		onSaved,
 	}: {
 		workout: Workout;
 		/** What this effort is, in one line — the library's own words. */
@@ -53,6 +54,8 @@
 		onReplay: () => void;
 		onFtp: (next: number) => void;
 		onError: (message: string | null) => void;
+		/** A recovered ride reached the account (#1544). */
+		onSaved?: (ride: { startedAt: number }) => void;
 	} = $props();
 </script>
 
@@ -165,5 +168,5 @@
 		>Measure it with a ramp test</a
 	>
 
-	<RecoveredRides {onError} />
+	<RecoveredRides {onError} {onSaved} />
 </div>

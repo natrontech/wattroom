@@ -43,14 +43,19 @@ export function curvePoints(
 	];
 }
 
+/** docs/SPEC.md: under this the rolling-4th-power estimate is not meaningful. */
+const NP_MIN_SECONDS = 20 * 60;
+
 /**
  * Normalised power: 30 s rolling average, fourth power, mean, fourth root —
- * the standard Coggan definition. Under 30 s of riding it is just the average.
+ * the standard Coggan definition. Under 20 minutes it is the plain average,
+ * as the server stores it (docs/SPEC.md) — the two used to part company on
+ * every ride between 30 s and 20 min, both labelled "normalised" (#1542).
  */
 export function normalizedPower(samples: RideSample[]): number {
 	const watts = samples.map((s) => s.watts);
 	if (watts.length === 0) return 0;
-	if (watts.length < 30) {
+	if (watts.length < NP_MIN_SECONDS) {
 		return Math.round(watts.reduce((a, b) => a + b, 0) / watts.length);
 	}
 	let sum = 0;
