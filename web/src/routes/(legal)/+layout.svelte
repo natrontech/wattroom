@@ -15,7 +15,11 @@
 		aria-hidden="true"
 	></div>
 
+	<!-- The phone-width guard (e2e/phone-width.spec.ts) measures this
+	     container on every public page too: main's overflow-x-hidden would
+	     only hide a page that grew sideways, not stop it. -->
 	<div
+		data-testid="page-body"
 		class="relative z-10 mx-auto w-full max-w-2xl px-6 pt-5 pb-16"
 		style={titleBar ? `padding-top: ${titleBar + 20}px` : ''}
 	>
