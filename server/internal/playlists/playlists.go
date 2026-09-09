@@ -69,6 +69,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/playlists/{id}", s.handleDeleteRoomPlaylist)
 	mux.HandleFunc("POST /api/rooms/{slug}/playlists/{id}/tracks", s.handleAddRoomTrack)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/playlists/{id}/tracks/{trackID}", s.handleDeleteRoomTrack)
+	mux.HandleFunc("PUT /api/rooms/{slug}/playlists/{id}/tracks/{trackID}/position", s.handleMoveRoomTrack)
 	mux.HandleFunc("POST /api/rooms/{slug}/playlists/{id}/queue", s.handleQueuePlaylist)
 	mux.HandleFunc("GET /api/rooms/{slug}/autoplay", s.handleGetAutoplay)
 	mux.HandleFunc("PATCH /api/rooms/{slug}/autoplay", s.handleUpdateAutoplay)
@@ -80,6 +81,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/playlists/{id}", s.handleDeletePersonalPlaylist)
 	mux.HandleFunc("POST /api/playlists/{id}/tracks", s.handleAddPersonalTrack)
 	mux.HandleFunc("DELETE /api/playlists/{id}/tracks/{trackID}", s.handleDeletePersonalTrack)
+	mux.HandleFunc("PUT /api/playlists/{id}/tracks/{trackID}/position", s.handleMovePersonalTrack)
 }
 
 // scope is who the caller is allowed to touch: a room they belong to, or

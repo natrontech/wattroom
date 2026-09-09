@@ -127,6 +127,18 @@ export function createPlaylistStore(base: string) {
 			await refresh();
 			return null;
 		},
+		/** Puts one entry at `index` (#1428) — the queue's move, on the shelf. */
+		async moveTrack(
+			id: string,
+			trackId: string,
+			index: number,
+		): Promise<string | null> {
+			const res = await api(`${base}/${id}/tracks/${trackId}/position`, {
+				method: 'PUT',
+				json: { index },
+			});
+			return res.ok ? null : res.error.message;
+		},
 	};
 }
 

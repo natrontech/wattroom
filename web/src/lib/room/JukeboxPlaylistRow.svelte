@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 	import ListMusic from '@lucide/svelte/icons/list-music';
@@ -75,6 +77,42 @@
 			return;
 		}
 		await load();
+	}
+
+	// Reorder (#1428) lives in the track's menu, like the queue's own moves
+	// (#661): the row is too narrow for arrows beside a readable title.
+	async function moveTrack(trackId: string, index: number) {
+		const message = await store.moveTrack(playlist.id, trackId, index);
+		if (message) {
+			error = message;
+			return;
+		}
+		await load();
+	}
+
+	function trackMenu(track: SavedTrack, i: number): MenuEntry[] {
+		const entries: MenuEntry[] = [];
+		const last = (tracks?.length ?? 0) - 1;
+		if (i > 0)
+			entries.push({
+				label: 'Move up',
+				icon: ArrowUp,
+				onSelect: () => void moveTrack(track.id, i - 1),
+			});
+		if (i < last)
+			entries.push({
+				label: 'Move down',
+				icon: ArrowDown,
+				onSelect: () => void moveTrack(track.id, i + 1),
+			});
+		if (canManage)
+			entries.push('separator', {
+				label: 'Remove',
+				icon: Trash2,
+				onSelect: () => void removeTrack(track.id),
+				danger: true,
+			});
+		return entries;
 	}
 
 	async function removeTrack(trackId: string) {
@@ -211,8 +249,11 @@
 				</p>
 			{:else}
 				<ul class="flex flex-col gap-1">
-					{#each tracks as track (track.id)}
-						<li class="group flex min-w-0 items-center gap-1.5">
+					{#each tracks as track, i (track.id)}
+						<li
+							class="group flex min-w-0 items-center gap-1.5"
+							{@attach contextMenu(() => trackMenu(track, i))}
+						>
 							{#if track.trackId}
 								<!-- A library entry: the mark the queue's own rows use. -->
 								<div
