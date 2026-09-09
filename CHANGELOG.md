@@ -17,6 +17,21 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.75] - 2026-09-09
+
+### Added
+
+- The navigation sidebar's width is yours to set: drag its right edge, the
+  way the room's people-and-chat panel already resizes from its left edge, and
+  it stays where you put it on this device.
+
+### Fixed
+
+- Screen readers hear more of the app: banners and toasts announce themselves when they appear (errors interrupt, the rest waits), dropdowns say which value they hold and which row the arrows are on, the sidebar names the room you are in, every message thread is a log, and unlabelled inputs (room name, crew code, the chat composer, passkey and token names, the flag note) have names. The first Tab on any page offers "Skip to the page" past the sidebar. Cheers, the recording dot and the paused-session pulse hold still when the system asks for reduced motion, and the small edit/copy/react and reaction buttons grew to the 24 px floor.
+- The two resizable seams — the room's panel and the navigation sidebar — can be moved from the keyboard: Tab to the divider, then the arrow keys move it a step at a time.
+- Keyboard use in a room works as it should: with push-to-talk on, Space still clicks a button you tabbed to (a mouse-focused button leaves Space to the mic as before); the phone's closed navigation drawer no longer catches Tab or scrolls the page, opens with focus on its first row, and closes on Escape; the email gate, TV mode and the people sheet keep focus inside them and hand it back; a confirm dialog focuses Cancel first instead of the irreversible action; and Escape closes one layer at a time instead of every open one.
+- When the room connection stays down past the 15 seconds the app spends retrying, the banner now says so and grows one big Reconnect button that dials at once — for the rider whose Wi-Fi just came back on another network. It no longer reloads the page, which would have dropped the trainer mid-ride. The automatic retry keeps running underneath either way.
+
 ## [2026.09.74] - 2026-09-09
 
 ### Fixed
@@ -1542,7 +1557,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.74...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.75...HEAD
+[2026.09.75]: https://github.com/natrontech/wattroom/compare/2026.09.74...2026.09.75
 [2026.09.74]: https://github.com/natrontech/wattroom/compare/2026.09.73...2026.09.74
 [2026.09.73]: https://github.com/natrontech/wattroom/compare/2026.09.72...2026.09.73
 [2026.09.72]: https://github.com/natrontech/wattroom/compare/2026.09.71...2026.09.72
