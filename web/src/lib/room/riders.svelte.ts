@@ -38,6 +38,17 @@ export function createRiders(deps: RiderDeps) {
 		string,
 		{ watts: number; cadence: number; hr: number; at: number }
 	>();
+	// A rider's hue is a function of their id, which never changes; it was
+	// hashed from scratch on every tick for every rider (audit 2026-09-09).
+	const hues = new Map<string, number>();
+	function hueOf(id: string): number {
+		let hue = hues.get(id);
+		if (hue === undefined) {
+			hue = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+			hues.set(id, hue);
+		}
+		return hue;
+	}
 
 	const riders = $derived.by((): RoomRider[] => {
 		const tick = deps.live.tick;
@@ -93,10 +104,7 @@ export function createRiders(deps: RiderDeps) {
 				speaking: !!deps.av.speaking[rider.id],
 				away: !!rider.away,
 				riding: !!rider.riding,
-				hue: [...rider.id].reduce(
-					(h, c) => (h * 31 + c.charCodeAt(0)) % 360,
-					7,
-				),
+				hue: hueOf(rider.id),
 				watts: metrics?.watts ?? held?.watts ?? 0,
 				cadence: metrics?.cadence ?? held?.cadence ?? 0,
 				hr: metrics?.hr ?? held?.hr ?? 0,
