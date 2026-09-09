@@ -7,6 +7,7 @@
 		formatBytes,
 		isNewer,
 		latestRelease,
+		shellSelfUpdates,
 		shellVersion,
 		type DesktopRelease,
 		type OS,
@@ -81,7 +82,11 @@
 {#if shell}
 	<p class="panel mt-6 px-4 py-3 text-sm">
 		You are on the desktop app <span class="font-mono">{shell}</span>
-		{#if newer && release}
+		{#if newer && release && shellSelfUpdates()}
+			<!-- The shell fetches it itself (#1303); the restart is on Home. -->
+			— <span class="font-medium">{release.version} is out.</span> The app is fetching
+			it on its own; restart when Home offers it.
+		{:else if newer && release}
 			— <span class="font-medium">{release.version} is out.</span>
 		{:else if release}
 			— the newest there is.

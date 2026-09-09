@@ -41,6 +41,17 @@ export function shellVersion(): string | null {
 }
 
 /**
+ * Whether the shell fetches its own updates (#1303): a shell from
+ * desktop-v2026.9.5 on exposes installUpdate; an older one still needs the
+ * download link.
+ */
+export function shellSelfUpdates(): boolean {
+	const shell = (globalThis as { wattroom?: { installUpdate?: unknown } })
+		.wattroom;
+	return typeof shell?.installUpdate === 'function';
+}
+
+/**
  * The height of the strip the app draws where the shell hid the OS title bar
  * (#1188), or 0 in a browser and in a shell old enough to keep its own bar.
  */
