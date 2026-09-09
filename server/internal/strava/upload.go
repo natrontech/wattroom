@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -47,7 +48,7 @@ func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) (*int64, error
 	}
 	token, err := s.freshToken(ctx, ident)
 	if err != nil {
-		return nil, fmt.Errorf("token: %w", err)
+		return nil, fmt.Errorf("%w: %w", errToken, err)
 	}
 
 	fit, err := s.encode(ride)
@@ -142,7 +143,7 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 		if res.StatusCode == http.StatusTooManyRequests {
 			return 0, &rateLimited{after: retryAfterOf(res)}
 		}
-		return 0, fmt.Errorf("upload: status %d: %s", res.StatusCode, snippet)
+		return 0, &uploadRefused{status: res.StatusCode, snippet: string(snippet)}
 	}
 	var up struct {
 		ID    int64  `json:"id"`
@@ -189,7 +190,7 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) (*int
 			if res.StatusCode == http.StatusTooManyRequests {
 				return nil, &rateLimited{after: retryAfter}
 			}
-			return nil, fmt.Errorf("upload %d status %d: %s", uploadID, res.StatusCode, snippet)
+			return nil, &uploadRefused{status: res.StatusCode, snippet: string(snippet), uploadID: uploadID}
 		}
 		var status struct {
 			ActivityID *int64 `json:"activity_id"`
@@ -207,5 +208,41 @@ func (s *Service) await(ctx context.Context, token string, uploadID int64) (*int
 			s.log.Info("strava upload complete", "activity", *status.ActivityID)
 			return status.ActivityID, nil
 		}
+	}
+}
+
+// errToken marks a failure to sign in to Strava on the rider's behalf — the
+// class the rider can do something about (reconnect).
+var errToken = errors.New("token")
+
+// uploadRefused is Strava's own answer, kept whole for the log line and
+// never for the rider (audit 2026-09-09).
+type uploadRefused struct {
+	status   int
+	snippet  string
+	uploadID int64
+}
+
+func (e *uploadRefused) Error() string {
+	if e.uploadID != 0 {
+		return fmt.Sprintf("upload %d status %d: %s", e.uploadID, e.status, e.snippet)
+	}
+	return fmt.Sprintf("upload: status %d: %s", e.status, e.snippet)
+}
+
+// exportFailure is what a rider is told (rides/detail.go serves last_error
+// verbatim): one sentence per class, with the move that class has. The
+// provider's response text, the key's env var and pgx stay in the log.
+func exportFailure(err error) string {
+	var refused *uploadRefused
+	switch {
+	case errors.Is(err, errToken):
+		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Your data, then retry."
+	case errors.As(err, &refused) && (refused.status == http.StatusUnauthorized || refused.status == http.StatusForbidden):
+		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Your data, then retry."
+	case errors.As(err, &refused) && refused.status < 500:
+		return "Strava did not accept the file — retry, or export the .fit and upload it by hand."
+	default:
+		return "Strava could not be reached. It will be retried; you can also retry now."
 	}
 }

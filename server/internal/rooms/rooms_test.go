@@ -502,7 +502,7 @@ func TestBanFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
-	if err := h.store.Queries.DeleteMembership(t.Context(), db.DeleteMembershipParams{
+	if _, err := h.store.Queries.DeleteMembership(t.Context(), db.DeleteMembershipParams{
 		RoomID: room.ID, UserID: h.users.byToken["bob"].ID,
 	}); err != nil {
 		t.Fatalf("delete membership: %v", err)

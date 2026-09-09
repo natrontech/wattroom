@@ -152,7 +152,9 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		limit = min(n, maxLimit)
 	}
 	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
-		offset = n
+		// Clamped inside int32 (audit 2026-09-09): the narrowing below wrapped
+		// negative past 2^31 and Postgres refused the read.
+		offset = min(n, 1_000_000)
 	}
 	// One tag, not a set: narrowing by two at once is a query nobody has asked
 	// for, and the facet row is one click deep.
@@ -166,7 +168,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		UploadedBy: me.ID,
 		Search:     strings.TrimSpace(r.URL.Query().Get("q")),
 		Tag:        tag,
-		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // bounded above
+		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // limit and offset both clamped above
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)

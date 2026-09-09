@@ -188,7 +188,7 @@ func TestSessionMailSkipsABannedMember(t *testing.T) {
 		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
 	}
 
-	if err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: h.room.ID, UserID: h.optIn.ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)

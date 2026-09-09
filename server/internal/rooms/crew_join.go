@@ -103,12 +103,19 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You own this crew — hand it to someone first, then leave.")
 		return
 	}
-	if owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID}); err != nil || owned > 0 {
+	owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
+	if err != nil {
+		// Fail closed, and say so — not "you own a room" (audit 2026-09-09).
+		s.log.Error("crew leave owner check failed", "err", err, "crew", store.UUIDString(crew.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Leaving did not go through. Try again.")
+		return
+	}
+	if owned > 0 {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
 		return
 	}
 	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
-	err := s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	err = s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
