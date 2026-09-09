@@ -19,6 +19,7 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import Stage from '$lib/room/Stage.svelte';
+	import RoomFlag from '$lib/room/RoomFlag.svelte';
 	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import { device } from '$lib/device.svelte';
 	import { followedRider } from '$lib/room/follow';
@@ -102,6 +103,7 @@
 		<div class="mt-2 flex flex-wrap items-center gap-2 empty:mt-0">
 			<SessionControls compact />
 			<RoomSensorOverview compact />
+			<RoomFlag />
 		</div>
 	</header>
 

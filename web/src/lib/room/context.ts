@@ -62,6 +62,8 @@ export interface RoomContext {
 	readonly bias: number;
 	nudgeBias(step: number): void;
 	readonly trainer: unknown;
+	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
+	readonly trainerName: string;
 	/**
 	 * Which sensors this tab holds, and where the rider's other screens hold
 	 * the rest (#610). Server truth — a place renders "paired on your phone"
