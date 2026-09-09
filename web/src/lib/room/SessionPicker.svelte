@@ -376,7 +376,7 @@
 						<button
 							onclick={() => onStartGame(game.id)}
 							disabled={gameRunning}
-							class="btn btn-secondary btn-xs mt-3 self-start disabled:opacity-40"
+							class="btn btn-secondary btn-lg mt-3 self-start disabled:opacity-40"
 							>Start game</button
 						>
 					</div>

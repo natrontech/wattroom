@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { serverNow } from '$lib/room/server-clock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
@@ -26,9 +27,11 @@
 	const profile = createProfileStore();
 	const mode = $derived(gameMode(game.mode));
 
-	let now = $state(Date.now());
+	// The server's clock, like the sprint (#1411): roundEndsAtMs is server
+	// time, and a laptop seconds off counted the round down wrong (#1588).
+	let now = $state(serverNow());
 	$effect(() => {
-		const id = setInterval(() => (now = Date.now()), 500);
+		const id = setInterval(() => (now = serverNow()), 500);
 		return () => clearInterval(id);
 	});
 	const roundLeft = $derived(
@@ -66,7 +69,13 @@
 	// nothing when Team Relay handed them the front.
 </script>
 
-<div class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5">
+<div
+	class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5"
+	role="status"
+	aria-label="{mode?.label ?? game.mode}, {game.phase === 'done'
+		? 'finished'
+		: 'running'}"
+>
 	<div class="flex items-center gap-3">
 		<span class="font-display flex items-center gap-2 font-bold">
 			{#if mode}<mode.icon size={16} class="text-neon shrink-0" />{/if}

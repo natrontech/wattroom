@@ -167,10 +167,12 @@ export function createRoomSounds(deps: SoundDeps) {
 	});
 	// Watt Golf's run-in is a clock, not a state change: which second was
 	// last spoken is all that is kept, so a re-render stays quiet.
-	let gameNow = $state(Date.now());
+	// Server time (#1588): Watt Golf's hole is a server timestamp, and the
+	// rider is blind by design — a fast laptop counted the wrong second in.
+	let gameNow = $state(serverNow());
 	$effect(() => {
 		if (!deps.game()) return;
-		const id = setInterval(() => (gameNow = Date.now()), 500);
+		const id = setInterval(() => (gameNow = serverNow()), 500);
 		return () => clearInterval(id);
 	});
 	let heardGolfSecond = -1;

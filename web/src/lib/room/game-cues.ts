@@ -23,8 +23,8 @@ export interface GameCue {
 
 /**
  * Modes whose round boundary is a new target with nothing else announcing it.
- * Watt Golf has its own run-in countdown and Sprint Roulette is already the
- * klaxon's job, so neither wants a second cue on the same moment.
+ * Watt Golf has its own run-in countdown and Sprint Roulette has its klaxon
+ * below, so neither wants a second cue on the same moment.
  */
 const RAMP_MODES = new Set(['backyard-ramp', 'collective-ramp']);
 
@@ -71,6 +71,18 @@ export function gameCues(
 	// A ramp round: the line climbs, so this is a target change too.
 	if (RAMP_MODES.has(now.mode) && now.round && now.round !== before.round)
 		cues.push({ id: 'block' });
+
+	// Sprint Roulette's klaxon (#1587): nothing sounded it — the shell's
+	// klaxon is keyed on the room's own sprint, which this mode never sets.
+	// The window appears on the tick three seconds before it opens, so that
+	// tick IS the klaxon; the 3-2-1 and the gun follow once the start rides
+	// the wire (#1578).
+	if (
+		now.mode === 'sprint-roulette' &&
+		now.roundEndsAtMs &&
+		now.roundEndsAtMs !== before.roundEndsAtMs
+	)
+		cues.push({ id: 'klaxon' });
 
 	// The podium, once — guarded by the phase moving rather than by the
 	// panel remembering, so a second game gets its fanfare back (#834).
