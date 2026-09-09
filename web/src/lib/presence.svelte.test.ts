@@ -136,3 +136,41 @@ describe('a room you are not standing in', () => {
 		expect(announced[0]).toMatchObject({ tag: 'chat-velvet', reading: false });
 	});
 });
+
+// The feed survives its socket (#1742): a drop re-dials with a jittered
+// backoff and refreshes on the reopen, and a tab that comes back re-fetches
+// and re-dials at once instead of drawing a frozen feed with confidence.
+describe('the presence feed survives its socket (#1742)', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		fetches = 0;
+	});
+	afterEach(() => {
+		presence.stop();
+		vi.useRealTimers();
+	});
+
+	it('re-dials after a drop, and refreshes on the reopen', () => {
+		presence.start();
+		const first = socket!;
+		fetches = 0;
+		first.onclose?.();
+		// The backoff holds the dial: two seconds at most, jittered by half.
+		expect(socket).toBe(first);
+		vi.advanceTimersByTime(3_100);
+		expect(socket).not.toBe(first);
+		socket!.onopen?.();
+		expect(fetches).toBe(1);
+	});
+
+	it('re-fetches and re-dials when the tab becomes visible', () => {
+		presence.start();
+		fetches = 0;
+		// A zombie: the socket is dead and the browser never said so.
+		socket!.close();
+		const dead = socket!;
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(fetches).toBe(1);
+		expect(socket).not.toBe(dead);
+	});
+});
