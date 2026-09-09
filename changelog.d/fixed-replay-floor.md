@@ -1,0 +1,1 @@
+- After a Wi-Fi drop in a room, the reconnect replays every sample from the last one the server confirmed — the seconds the browser thought it had sent while the connection was already dead used to be missing from the saved ride.

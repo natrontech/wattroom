@@ -1,16 +1,23 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const buffered = vi.hoisted(() => ({ rows: [] as { watts: number }[] }));
+const buffered = vi.hoisted(() => ({
+	rows: [] as { watts: number }[],
+	since: [] as number[],
+}));
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: async () => ({
 		append(row: { watts: number }) {
 			buffered.rows.push(row);
 		},
 		end() {},
-		since: async () => [],
+		since: async (seq: number) => {
+			buffered.since.push(seq);
+			return [];
+		},
 	}),
 }));
+vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'u1' } } }));
 
 /** A room socket that is dialled but never answers until the test says so. */
 class FakeSocket {
@@ -120,6 +127,31 @@ describe('room live ride buffer', () => {
 		await vi.advanceTimersByTimeAsync(500);
 		live.sendMetrics({ watts: 230 });
 		expect(buffered.rows.map((r) => r.watts)).toEqual([200, 230]);
+		vi.useRealTimers();
+	});
+
+	it('replays from the last seq the hub said it received, not the last one stamped (#1467)', async () => {
+		vi.useFakeTimers();
+		buffered.since.length = 0;
+		const live = createRoomLive('floor');
+		await vi.advanceTimersByTimeAsync(0);
+		const socket = FakeSocket.last!;
+		socket.open();
+		for (let i = 0; i < 5; i++) live.sendMetrics({ watts: 200 });
+		// The hub's last word before the drop: it has seq 3.
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: { at: Date.now(), riders: { u1: { watts: 200, seq: 3 } } },
+			}),
+		});
+		// Stamped and "sent" into a pipe that never drained.
+		live.sendMetrics({ watts: 200 });
+		socket.close();
+		socket.onclose?.();
+		await vi.advanceTimersByTimeAsync(2_500);
+		FakeSocket.last!.open();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.since).toEqual([3]);
 		vi.useRealTimers();
 	});
 });

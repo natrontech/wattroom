@@ -8,6 +8,7 @@ import type {
 	ServerMessage,
 	ServerTick,
 } from '$lib/protocol';
+import { account } from '$lib/account.svelte';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createChatLog, type BacklogMessage } from '$lib/room/chat-log.svelte';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
@@ -74,7 +75,13 @@ export function createRoomLive(slug: string) {
 	// server's ride record dedupes against, and the client's counter must not
 	// be able to restart inside it.
 	let seq = 0;
-	let lastSeq = 0;
+	// The last seq the hub said it received from this rider — every tick
+	// carries the latest metrics per rider, seq included. The replay starts
+	// there, not at the last one this tab stamped: on a silent drop the socket
+	// reports success for tens of seconds of samples it never delivered, and
+	// starting past them lost them for good (#1467). The overlap dedupes by
+	// seq on the server, so over-replaying costs nothing.
+	let acked = 0;
 	let gapSeq: number | null = null;
 	// One row a second (#791, audit 2026-09-09): the buffer is what a replay
 	// sends and what a recovered .fit reads as one row per second, and a
@@ -143,6 +150,9 @@ export function createRoomLive(slug: string) {
 				// keeps the jukebox playhead on server time (#286).
 				observeServerTime(msg.tick.at);
 				tick = msg.tick;
+				const me = account.me?.id;
+				const mine = me ? msg.tick.riders?.[me] : undefined;
+				if (mine) acked = mine.seq;
 				if (msg.tick.recap) {
 					// The session that just ended left a card (ADR-0034), on
 					// the tick after its row landed. Riders who were not here
@@ -175,7 +185,7 @@ export function createRoomLive(slug: string) {
 		socket.onclose = () => {
 			if (closed) return;
 			// Remember where the stream broke; the replay starts there.
-			if (gapSeq === null) gapSeq = lastSeq;
+			if (gapSeq === null) gapSeq = acked;
 			// Ride-critical errors are persistent status, never toasts
 			// (.claude/rules/errors.md) — and recovery is automatic.
 			status = 'reconnecting';
@@ -251,7 +261,6 @@ export function createRoomLive(slug: string) {
 		/** Stamps the sample with this session's next seq, then sends it. */
 		sendMetrics(sample: Omit<RiderMetrics, 'seq'>) {
 			const metrics: RiderMetrics = { ...sample, seq: ++seq };
-			lastSeq = metrics.seq;
 			const at = Date.now();
 			const second = Math.floor(at / 1000);
 			if (second > bufferedSecond) {
