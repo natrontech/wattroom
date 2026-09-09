@@ -152,6 +152,26 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		await a.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
 		await b.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
 
+		// That startAudio() also unmutes every remote audio element the SDK
+		// attached (#1339). The voice reaches the speakers through the app's
+		// bus, tapped off that element — so the element itself has to stay
+		// silent through the unmute, or the room hears every voice twice, a
+		// few milliseconds apart: the phaser riders reported.
+		await expect
+			.poll(
+				() =>
+					a.evaluate(() =>
+						[...document.querySelectorAll('audio')]
+							.filter((el) => el.srcObject instanceof MediaStream)
+							.map((el) => ({ muted: el.muted, volume: el.volume })),
+					),
+				{
+					message: `${B}'s voice element on ${A}'s screen is audible on its own after startAudio — the room hears the voice twice`,
+					timeout: 10_000,
+				},
+			)
+			.toEqual([{ muted: false, volume: 0 }]);
+
 		// B's fake microphone is already publishing a continuous tone. On A's
 		// screen, B's tile should light the speaking ring (presence-marks.ts's
 		// tileFrame) once that level reaches av.speaking through the real

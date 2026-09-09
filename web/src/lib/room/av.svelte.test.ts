@@ -25,6 +25,9 @@ vi.mock('livekit-client', () => {
 	let canPlayback = true;
 	let audioStarts = true;
 	let startAudioCalls = 0;
+	// Every remote audio element the SDK has attached (#1339): the real
+	// startAudio() walks them and unmutes each before playing it.
+	const attached: HTMLAudioElement[] = [];
 	// A handshake that never answers (#1203).
 	let hang = false;
 	class Room {
@@ -34,6 +37,7 @@ vi.mock('livekit-client', () => {
 		canPlaybackAudio = canPlayback;
 		async startAudio() {
 			startAudioCalls += 1;
+			for (const el of attached) el.muted = false;
 			this.canPlaybackAudio = audioStarts;
 			this.handlers.get('AudioPlaybackStatusChanged')?.();
 		}
@@ -63,6 +67,7 @@ vi.mock('livekit-client', () => {
 	}
 	function remoteAudio(identity: string, source: string) {
 		const el = document.createElement('audio');
+		attached.push(el);
 		joined?.handlers.get('TrackSubscribed')?.(
 			{ kind: 'audio', attach: () => el, detach: () => [el] },
 			{ kind: 'audio', source, isMuted: false },
@@ -71,6 +76,7 @@ vi.mock('livekit-client', () => {
 		return {
 			el,
 			end() {
+				attached.splice(attached.indexOf(el), 1);
 				joined?.handlers.get('TrackUnsubscribed')?.(
 					{ kind: 'audio', attach: () => el, detach: () => [el] },
 					{ kind: 'audio', source, isMuted: false },
@@ -164,6 +170,8 @@ vi.mock('livekit-client', () => {
 		},
 		// Every RoomEvent.X is just its own name to the wiring under test.
 		RoomEvent: new Proxy({}, { get: (_, key) => key }),
+		// What the mic is published with (#1340); the wiring only passes it on.
+		AudioPresets: { musicHighQuality: { maxBitrate: 96_000 } },
 		Track: {
 			Source: {
 				Microphone: 'microphone',
@@ -226,7 +234,7 @@ const {
 };
 
 /** Every fader on the output side, in the order the graph built them. */
-type FakeGain = { gain: { value: number } };
+type FakeGain = { gain: { value: number }; disconnected: boolean };
 function withOutputGraph<T>(
 	run: (gains: FakeGain[]) => Promise<T>,
 ): Promise<T> {
@@ -255,8 +263,11 @@ function withOutputGraph<T>(
 						node.gain.value = target;
 					},
 				},
+				disconnected: false,
 				connect() {},
-				disconnect() {},
+				disconnect() {
+					node.disconnected = true;
+				},
 			};
 			gains.push(node);
 			return node;
@@ -991,6 +1002,56 @@ describe('a browser that blocks audio playback', () => {
 // fake never runs a meter at all — createMicMeter needs an AudioWorklet — so
 // a test for it passed with the clause deleted. A test that cannot fail is
 // worse than none: it claims the ground is covered.
+describe('a remote voice is heard once (#1339)', () => {
+	// The voice reaches the speakers through the bus, tapped off the SDK's
+	// element — which must therefore stay silent itself. LiveKit's own
+	// startAudio() unmutes every attached element before playing it (the
+	// fake does exactly that), and the app calls it on the first click after
+	// a join: from then on every voice sounded twice, a few milliseconds
+	// apart, which is the phaser riders reported.
+	it("stays silent on its element through the browser's start-audio", async () => {
+		await withOutputGraph(async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			const { el } = remoteVoice('jan');
+			expect(el.volume).toBe(0);
+			await av.startPlayback();
+			expect(el.muted).toBe(false); // the SDK did what it does —
+			expect(el.volume).toBe(0); // and the element still makes no sound
+			av.leave();
+			dispose();
+		});
+	});
+
+	// A subscription that arrives again for a key still on the bus — no
+	// unsubscribe between — would leave the first graph wired and audible
+	// with nothing holding its handle: the other way to hear a voice twice.
+	it('takes the first graph down when the same key is routed again', async () => {
+		await withOutputGraph(async (gains) => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			remoteVoice('jan');
+			remoteVoice('jan');
+			expect(gains.map((g) => g.disconnected)).toEqual([true, false]);
+			// A re-routed share is still a share: the drop that clears the
+			// first graph must not also clear the flag that picks its fader.
+			mixer.setShare(0.5);
+			remoteShareAudio('jan');
+			remoteShareAudio('jan');
+			expect(gains.at(-1)?.gain.value).toBe(0.5);
+			mixer.setShare(1);
+			av.leave();
+			dispose();
+		});
+	});
+});
+
 describe('a rider who shares their computer as well as their voice', () => {
 	it('keeps both on the bus, on their own faders', async () => {
 		await withOutputGraph(async (gains) => {

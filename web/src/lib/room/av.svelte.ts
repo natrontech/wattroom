@@ -32,8 +32,8 @@ import {
  * socket. AV is transit-only and never recorded (locked privacy decision) —
  * nothing here persists anything.
  *
- * Mic starts on with browser noiseSuppression + echoCancellation (SPEC room
- * audio defaults); camera starts off. Track ownership: LiveKit owns the media
+ * Mic starts on with browser echoCancellation + autoGainControl and no noise
+ * suppression (SPEC room audio defaults, ADR-0043); camera starts off. Track ownership: LiveKit owns the media
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
  *
@@ -114,8 +114,16 @@ export function createRoomAv(slug: string) {
 	const chain = createMicChain({
 		devices,
 		publish: async (track) => {
+			const lk = conn.liveKit!;
 			await conn.room?.localParticipant.publishTrack(track, {
-				source: conn.liveKit!.Track.Source.Microphone,
+				source: lk.Track.Source.Microphone,
+				// Full-band Opus at 96 kbps, not the SDK's 48 (#1340): the room
+				// is asked to sound like a voice in the room, and a rider's
+				// uplink has that to spare. No DTX: the gate already sends
+				// digital silence, and Opus's comfort-noise transitions over it
+				// are what the ear reads as "noise reduction".
+				audioPreset: lk.AudioPresets.musicHighQuality,
+				dtx: false,
 			});
 		},
 		unpublish: (track) => conn.room?.localParticipant.unpublishTrack(track),
@@ -211,10 +219,10 @@ export function createRoomAv(slug: string) {
 	 * elements (#645).
 	 *
 	 * Both halves are needed and neither is enough. `startAudio` plays the
-	 * media elements, but once `createMediaElementSource` has them their sound
-	 * only reaches the speakers through the bus — so a suspended context is
-	 * silence whatever LiveKit does. And resuming the context does not play an
-	 * element the browser refused.
+	 * media elements, but their sound reaches the speakers only through the
+	 * bus (av-output.ts holds them at volume 0 — `startAudio` unmutes them,
+	 * #1339) — so a suspended context is silence whatever LiveKit does. And
+	 * resuming the context does not play an element the browser refused.
 	 */
 	async function startPlayback() {
 		chain.resume();

@@ -6,8 +6,8 @@ import type { LocalVideoTrack, RemoteTrack } from 'livekit-client';
  * socket. AV is transit-only and never recorded (locked privacy decision) —
  * nothing here persists anything.
  *
- * Mic starts on with browser noiseSuppression + echoCancellation (SPEC room
- * audio defaults); camera starts off. Track ownership: LiveKit owns the media
+ * Mic starts on with browser echoCancellation + autoGainControl and no noise
+ * suppression (SPEC room audio defaults, ADR-0043); camera starts off. Track ownership: LiveKit owns the media
  * elements' streams, this store owns attachment points keyed by rider id so
  * the dashboard can put faces on the tiles it already has.
  *

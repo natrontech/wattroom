@@ -10,8 +10,11 @@ describe('mic capture constraints (#555)', () => {
 		expect(MIC_CONSTRAINTS.autoGainControl).toBe(true);
 	});
 
-	it('keeps the browser DSP the gate assumes', () => {
-		expect(MIC_CONSTRAINTS.noiseSuppression).toBe(true);
+	it('keeps echo cancellation — the one DSP a rider on speakers needs', () => {
 		expect(MIC_CONSTRAINTS.echoCancellation).toBe(true);
+	});
+
+	it('sends the voice without noise suppression (ADR-0043, #1340)', () => {
+		expect(MIC_CONSTRAINTS.noiseSuppression).toBe(false);
 	});
 });
