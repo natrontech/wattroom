@@ -8,6 +8,8 @@ package notify
 
 import (
 	"context"
+	"github.com/natrontech/wattroom/server/internal/safego"
+	"sync"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/jobmetrics"
@@ -63,22 +65,32 @@ func (s *Service) remindDue(ctx context.Context) {
 		s.log.Error("claiming sessions to remind failed", "err", err)
 		return
 	}
+	// A budget per session, not one minute shared across the batch (audit
+	// 2026-09-09), and the sessions in flight together (#1641): a hundred
+	// claimed sessions on a slow provider ran serially for longer than the
+	// ticker, which coalesces, and anything starting meanwhile left the
+	// hour window unreminded. The claim already marked every row, so the
+	// batch is drained here whatever it costs — bounded by the pool.
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, reminderWorkers)
 	for _, session := range due {
-		// A budget per session, not one minute shared across the batch
-		// (audit 2026-09-09): a popular slot on a slow mail provider ran the
-		// shared budget out partway down the list, and every session after
-		// it was claimed and never mailed.
-		one, cancel := context.WithTimeout(ctx, reminderBudget)
-		room, err := s.store.Queries.GetRoomByID(one, session.RoomID)
-		if err != nil {
-			s.log.Error("reminder room lookup failed", "err", err, "session", session.ID)
-			cancel()
-			continue
-		}
-		s.log.Info("session reminder", "room", room.Slug, "workout", session.WorkoutName)
-		s.sessionMail(one, room, session.WorkoutName, session.StartsAt.Time, noActor, sessionReminder)
-		cancel()
+		slots <- struct{}{}
+		wg.Add(1)
+		safego.Go(s.log, "session reminder", func() {
+			defer wg.Done()
+			defer func() { <-slots }()
+			one, cancel := context.WithTimeout(ctx, reminderBudget)
+			defer cancel()
+			room, err := s.store.Queries.GetRoomByID(one, session.RoomID)
+			if err != nil {
+				s.log.Error("reminder room lookup failed", "err", err, "session", session.ID)
+				return
+			}
+			s.log.Info("session reminder", "room", room.Slug, "workout", session.WorkoutName)
+			s.sessionMail(one, room, session.WorkoutName, session.StartsAt.Time, noActor, sessionReminder)
+		})
 	}
+	wg.Wait()
 	if len(due) > 0 {
 		s.log.Info("session reminders claimed", "sessions", len(due))
 	}
@@ -87,3 +99,6 @@ func (s *Service) remindDue(ctx context.Context) {
 // reminderBudget bounds one session's reminder mail — every target, at the
 // mailer's own per-request timeout.
 const reminderBudget = 2 * time.Minute
+
+// reminderWorkers is how many sessions are mailed at once (#1641).
+const reminderWorkers = 8

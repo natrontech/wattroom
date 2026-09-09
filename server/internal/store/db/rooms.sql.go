@@ -360,6 +360,22 @@ func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, 
 	return items, nil
 }
 
+const getScheduledSessionStart = `-- name: GetScheduledSessionStart :one
+select starts_at from scheduled_sessions where id = $1 and room_id = $2
+`
+
+type GetScheduledSessionStartParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+func (q *Queries) GetScheduledSessionStart(ctx context.Context, arg GetScheduledSessionStartParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getScheduledSessionStart, arg.ID, arg.RoomID)
+	var starts_at pgtype.Timestamptz
+	err := row.Scan(&starts_at)
+	return starts_at, err
+}
+
 const listListedRooms = `-- name: ListListedRooms :many
 select r.slug, r.name, r.icon
 from rooms r
@@ -910,8 +926,11 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 }
 
 const rescheduleSession = `-- name: RescheduleSession :one
-update scheduled_sessions set starts_at = $3, reminded_at = null
-where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
+update scheduled_sessions
+set starts_at = $3,
+    reminded_at = case when starts_at = $3 then reminded_at else null end
+where id = $1 and room_id = $2
+returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
 `
 
 type RescheduleSessionParams struct {
@@ -922,7 +941,9 @@ type RescheduleSessionParams struct {
 
 // A moved session is reminded again for its new time: the claim above is
 // keyed on reminded_at, and a move past an already-sent reminder used to
-// leave the real start with no mail at all.
+// leave the real start with no mail at all. The reminder stays armed as it
+// was when the time did not change (#1639), and the old start comes back
+// so the handler can tell a move from a no-op.
 func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, rescheduleSession, arg.ID, arg.RoomID, arg.StartsAt)
 	var i ScheduledSession

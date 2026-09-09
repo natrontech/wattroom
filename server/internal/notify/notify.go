@@ -9,11 +9,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -28,28 +31,61 @@ type Service struct {
 	log     *slog.Logger
 	baseURL string
 	from    string
-	key     string
-	apiURL  string
-	httpc   *http.Client
+	// The alarm's own sender (#1642, ADR-0030): a filter or a throttle on
+	// the bulk sender must not take the alarm down with it.
+	alertFrom string
+	key       string
+	apiURL    string
+	httpc     *http.Client
+	// How much session mail one room may cause an hour (#1639): a coach
+	// rescheduling in a loop mailed every member each time, unbounded.
+	sessions *budget.Budget[pgtype.UUID]
 }
+
+// The ceiling on handler-triggered session mail per room. The clock's own
+// reminder is not counted: it is once per session by construction.
+const (
+	sessionMailsPerWindow = 10
+	sessionMailWindow     = time.Hour
+)
 
 func New(st *store.Store, log *slog.Logger, baseURL string) *Service {
 	key := os.Getenv("WATTROOM_RESEND_KEY")
 	if key == "" {
 		return nil
 	}
+	svc := Bare(st, log, baseURL)
+	svc.key = key
+	return svc
+}
+
+// Bare is the service with no way to send (#1643): what the unsubscribe
+// link needs — a link already in a rider's inbox has to keep working after
+// the sending key is unset or rotated, and RFC 8058 obliges us to honour it.
+func Bare(st *store.Store, log *slog.Logger, baseURL string) *Service {
 	from := os.Getenv("WATTROOM_MAIL_FROM")
 	if from == "" {
 		from = "WattRoom <rides@wattroom.ch>"
 	}
+	alertFrom := os.Getenv("WATTROOM_ALERT_FROM")
+	if alertFrom == "" {
+		alertFrom = from
+	}
 	return &Service{
-		store: st, log: log, baseURL: baseURL, from: from, key: key,
-		apiURL: "https://api.resend.com/emails",
-		httpc:  &http.Client{Timeout: 15 * time.Second},
+		store: st, log: log, baseURL: baseURL, from: from, alertFrom: alertFrom,
+		apiURL:   "https://api.resend.com/emails",
+		httpc:    &http.Client{Timeout: 15 * time.Second},
+		sessions: budget.New[pgtype.UUID](sessionMailsPerWindow, sessionMailWindow),
 	}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
+	s.RegisterUnsubscribe(mux)
+}
+
+// RegisterUnsubscribe mounts the two unsubscribe routes; they need the store
+// and nothing else, so a Bare service mounts them too.
+func (s *Service) RegisterUnsubscribe(mux *http.ServeMux) {
 	// GET shows a confirm button instead of flipping the setting: mail
 	// scanners prefetch GET links and would unsubscribe riders silently.
 	mux.HandleFunc("GET /api/notify/unsubscribe", s.handleUnsubscribeForm)
@@ -89,15 +125,59 @@ func (s *Service) SessionCancelled(room db.Room, workoutName string, startsAt ti
 }
 
 func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
-	// Guarded (#651): a mail-provider panic must not cost a ride.
+	if !s.allowSessionMail(room) {
+		return
+	}
+	// Guarded (#651): a mail-provider panic must not cost a ride. The outer
+	// ceiling is generous because every target has its own below (#1641).
 	safego.Go(s.log, "session mail "+room.Slug, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		s.sessionMail(ctx, room, workoutName, startsAt, planner, change)
 	})
 }
 
+// allowSessionMail is the per-room ceiling (#1639): past it a plan, a move or
+// a cancellation still lands in the room and on the timeline, and simply
+// mails nobody until the window turns — logged, never a failed request.
+func (s *Service) allowSessionMail(room db.Room) bool {
+	if s.sessions == nil || s.sessions.Spend(room.ID) {
+		return true
+	}
+	s.log.Warn("session mail ceiling reached", "room", room.Slug)
+	return false
+}
+
+// targetBudget bounds one rider's mail — the mailer's own per-request
+// timeout with headroom — so a slow provider costs one member their mail,
+// never every member after them (#1641).
+const targetBudget = 20 * time.Second
+
+// oneLine is rider-supplied text as a subject or a text-part line may carry
+// it (#1640): control characters collapse to a space. The HTML part goes
+// through html/template; the subject becomes a header and the text part is
+// rendered as written, and a room name with a newline in it used to write
+// its own extra lines under the operator's signature.
+func oneLine(text string) string {
+	var out strings.Builder
+	spaced := false
+	for _, r := range text {
+		if unicode.IsControl(r) {
+			if !spaced {
+				out.WriteRune(' ')
+				spaced = true
+			}
+			continue
+		}
+		out.WriteRune(r)
+		spaced = false
+	}
+	return strings.TrimSpace(out.String())
+}
+
 func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
+	room.Name = oneLine(room.Name)
+	workoutName = oneLine(workoutName)
 	targets, err := s.store.Queries.ListRoomNotifyTargets(ctx, db.ListRoomNotifyTargetsParams{
 		RoomID: room.ID, ID: planner,
 	})
@@ -178,7 +258,10 @@ settings. Turn them off: %s`,
 			// so they are what glows.
 			m.Lead = workoutName + " — " + when
 		}
-		if err := s.send(ctx, m); err != nil {
+		one, cancel := context.WithTimeout(ctx, targetBudget)
+		err := s.send(one, m)
+		cancel()
+		if err != nil {
 			s.log.Warn("session email failed", "err", err, "room", room.Slug)
 		}
 	}
@@ -193,8 +276,12 @@ func (s *Service) send(ctx context.Context, m mail) error {
 	// Both parts in one call (#838): a client that will not render HTML, or a
 	// rider who told it not to, still gets the words — and the text part is
 	// the copy that was already written and already good.
+	from := s.from
+	if m.From != "" {
+		from = m.From
+	}
 	body := map[string]any{
-		"from": s.from, "to": []string{m.To}, "subject": m.Subject,
+		"from": from, "to": []string{m.To}, "subject": m.Subject,
 		"text": m.Text, "html": rendered,
 	}
 	// Only bulk mail carries the header. A transactional mail — the address
@@ -224,7 +311,7 @@ func (s *Service) send(ctx context.Context, m mail) error {
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode >= 300 {
 		detail, _ := io.ReadAll(io.LimitReader(res.Body, 512))
-		return fmt.Errorf("resend: %s: %s", res.Status, detail)
+		return &sendError{status: res.Status, detail: string(detail)}
 	}
 	return nil
 }
@@ -296,7 +383,8 @@ The link works once and expires in a day. If you did not add this address to
 a WattRoom account, ignore this — nothing happens until someone follows it.`, link)
 	// No Lead: nothing in this mail is live data, so nothing in it glows.
 	return s.send(ctx, mail{
-		To: to, Subject: "Confirm your WattRoom email address",
+		From: s.alertFrom,
+		To:   to, Subject: "Confirm your WattRoom email address",
 		Heading: "Confirm your email address",
 		Body: []string{
 			"Confirm this address so WattRoom can get you back into your account if you ever lose the way you sign in.",
@@ -338,6 +426,7 @@ func (s *Service) alert(user db.User, heading, line, action, url string) {
 	if !ok {
 		return
 	}
+	m.From = s.alertFrom
 	// Guarded and detached like the session mails: a mail provider must never
 	// be on the path of an account action, and must never fail one.
 	safego.Go(s.log, "account alert", func() {
@@ -369,3 +458,15 @@ func alertMail(user db.User, heading, line, action, url string) (mail, bool) {
 		Action: action, URL: url, Text: text,
 	}, true
 }
+
+// sendError is the provider refusing. Its Error() is the status alone
+// (#1643): the error is logged, into the ring the feedback report carries,
+// and the provider's body can name an address. The body stays on Detail for
+// whoever holds the error and wants it.
+type sendError struct {
+	status string
+	detail string
+}
+
+func (e *sendError) Error() string  { return "resend: " + e.status }
+func (e *sendError) Detail() string { return e.detail }

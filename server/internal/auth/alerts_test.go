@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -96,5 +97,36 @@ func TestRefusedDisconnectDoesNotAlert(t *testing.T) {
 	}
 	if got := mailer.sent(t); len(got) != 0 {
 		t.Fatalf("a refused disconnect alerted %+v", got)
+	}
+}
+
+// Removing the address is the replacement alarm without the confirmation
+// step (#1638): the address being removed hears about it, or a stolen
+// session mutes every later alarm in one call.
+func TestClearingTheAddressAlertsIt(t *testing.T) {
+	s := testService(t)
+	user, mailer := verifiable(t, s, "keep@example.test")
+	if w := confirm(t, s, mailer.token(t)); w.Code != http.StatusOK {
+		t.Fatalf("confirm = %d: %s", w.Code, w.Body.String())
+	}
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me",
+		strings.NewReader(`{"displayName":"x","ftpWatts":250,"weightKg":80,"email":""}`))
+	req.AddCookie(rec.Result().Cookies()[0])
+	w := httptest.NewRecorder()
+	s.handleUpdateMe(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("clear = %d: %s", w.Code, w.Body.String())
+	}
+	got := mailer.sent(t)
+	if len(got) != 1 || got[0].to != "keep@example.test" || !strings.Contains(got[0].line, "removed") {
+		t.Fatalf("alerts = %+v, want one to the address being removed", got)
+	}
+	after, err := s.store.Queries.GetUser(t.Context(), user.ID)
+	if err != nil || after.Email != nil {
+		t.Fatalf("the address should be gone after the alarm: %v %v", after.Email, err)
 	}
 }

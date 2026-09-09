@@ -13,6 +13,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
@@ -59,6 +60,10 @@ var errEmailTaken = errors.New("email verified on another account")
 // point of the exercise.
 var errTooManyVerifications = errors.New("verification mail budget spent")
 
+// errMailSend is the transport refusing (#1643): the one failure the rider
+// should hear as "the email could not be sent" rather than as a save error.
+var errMailSend = errors.New("verification mail not sent")
+
 // startEmailVerification stores the pending address with a hashed single-use
 // token and mails the link out. The rider's current address is untouched until
 // they follow it.
@@ -79,7 +84,7 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 	// somebody's, which is worth exactly as much to a stranger (#1605): the
 	// taken check used to sit above the budget, an existence oracle at
 	// request rate for any signed-in account.
-	if !s.verifyMail.spend(user.ID) {
+	if !s.verifyMail.Spend(user.ID) {
 		return db.User{}, errTooManyVerifications
 	}
 	taken, err := s.store.Queries.EmailVerifiedElsewhere(ctx, db.EmailVerifiedElsewhereParams{
@@ -115,7 +120,9 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 		}); undo != nil {
 			s.log.Error("undoing a failed verification start", "err", undo)
 		}
-		return db.User{}, err
+		// Charged for a mail that never left (#1643).
+		s.verifyMail.Refund(user.ID)
+		return db.User{}, fmt.Errorf("%w: %w", errMailSend, err)
 	}
 	return updated, nil
 }
@@ -229,16 +236,25 @@ func (s *Service) emailUpdate(ctx context.Context, w http.ResponseWriter, user d
 	case errors.Is(err, errTooManyVerifications):
 		httpx.WriteFieldError(w, http.StatusTooManyRequests, "rate_limited",
 			"That is a lot of confirmation emails in one hour. Wait an hour, then try again.", "email")
+	case errors.Is(err, errMailSend):
+		s.log.Error("confirmation mail not sent", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The confirmation email could not be sent. Try again.")
 	default:
 		s.log.Error("starting email verification failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The confirmation email could not be sent. Try again.")
+			"Your profile could not be saved. Try again.")
 	}
 	return db.User{}, false
 }
 
-// clearEmail drops the address and everything that vouched for it.
+// clearEmail drops the address and everything that vouched for it — after
+// telling that address (#1638): removal is the replacement alarm of
+// ADR-0030 with the confirmation step removed, and without it a stolen
+// session could mute every later alarm and destroy recovery in one call.
 func (s *Service) clearEmail(ctx context.Context, w http.ResponseWriter, user db.User) (db.User, bool) {
+	s.alert(user, "The email address was removed from your account",
+		"The recovery address on your WattRoom account was removed. Without one there is no way back into the account if every passkey and sign-in provider is lost, and no more alarms like this one.")
 	updated, err := s.store.Queries.ClearUserEmail(ctx, user.ID)
 	if err != nil {
 		s.log.Error("clearing email failed", "err", err)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 )
 
@@ -38,8 +39,8 @@ func ipOf(r *http.Request) string {
 
 // throttle answers 429 and reports true when this address has spent its
 // window on `b`. A nil budget (a bare test service) never throttles.
-func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget[string]) bool {
-	if b == nil || b.spend(ipOf(r)) {
+func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget.Budget[string]) bool {
+	if b == nil || b.Spend(ipOf(r)) {
 		return false
 	}
 	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",

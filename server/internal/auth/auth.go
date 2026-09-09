@@ -16,6 +16,7 @@ package auth
 
 import (
 	"crypto/subtle"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -77,7 +78,7 @@ type Service struct {
 	// How much confirmation mail one account may cause (#827). budget.go.
 	verifyMail *mailBudget
 	// Per-address ceilings on the unauthenticated sign-in doors (#1606).
-	loginBudget, syntheticBudget *budget[string]
+	loginBudget, syntheticBudget *budget.Budget[string]
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -96,8 +97,8 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 		// nil one would be a panic waiting for the day a mailer appears.
 		verifyMail: newMailBudget(),
 		// The doors a stranger can knock on (#1606).
-		loginBudget:     newBudget[string](loginAttemptsPerWindow, loginWindow),
-		syntheticBudget: newBudget[string](syntheticPerWindow, loginWindow),
+		loginBudget:     budget.New[string](loginAttemptsPerWindow, loginWindow),
+		syntheticBudget: budget.New[string](syntheticPerWindow, loginWindow),
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")

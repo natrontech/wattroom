@@ -16,10 +16,23 @@ import (
 type fakeNotifier struct {
 	mu        sync.Mutex
 	cancelled []string
+	moved     []string
 }
 
-func (f *fakeNotifier) SessionPlanned(db.Room, string, time.Time, pgtype.UUID)     {}
-func (f *fakeNotifier) SessionRescheduled(db.Room, string, time.Time, pgtype.UUID) {}
+func (f *fakeNotifier) SessionPlanned(db.Room, string, time.Time, pgtype.UUID) {}
+
+func (f *fakeNotifier) SessionRescheduled(_ db.Room, workoutName string, _ time.Time, _ pgtype.UUID) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.moved = append(f.moved, workoutName)
+}
+
+func (f *fakeNotifier) movedTo(t *testing.T) []string {
+	t.Helper()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.moved...)
+}
 
 func (f *fakeNotifier) SessionCancelled(_ db.Room, workoutName string, _ time.Time, _ pgtype.UUID) {
 	f.mu.Lock()
@@ -77,5 +90,36 @@ func TestUnscheduleMailsTheRoom(t *testing.T) {
 	}
 	if got := notifier.sent(t); len(got) != 1 {
 		t.Fatalf("cancellations = %v, want the stale one to have mailed nobody", got)
+	}
+}
+
+// A move to the same time is not a move (#1639): it used to mail the whole
+// room "Moved:" and re-arm the reminder on every call.
+func TestRescheduleToTheSameTimeMailsNobody(t *testing.T) {
+	h := setup(t)
+	notifier := &fakeNotifier{}
+	h.svc.SetNotifier(notifier)
+	slug, _ := h.createRoom(t, "alice", "Movers")
+	at := time.Now().Add(3 * time.Hour).UTC().Truncate(time.Second)
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	status, got := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+		fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, at.Format(time.RFC3339)))
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, got)
+	}
+	id, _ := got["id"].(string)
+	same := fmt.Sprintf(`{"startsAt":%q}`, at.Format(time.RFC3339))
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+id, same); status != http.StatusNoContent {
+		t.Fatalf("same-time move: %d", status)
+	}
+	if got := notifier.movedTo(t); len(got) != 0 {
+		t.Fatalf("an unchanged time mailed %v", got)
+	}
+	later := fmt.Sprintf(`{"startsAt":%q}`, at.Add(time.Hour).Format(time.RFC3339))
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+id, later); status != http.StatusNoContent {
+		t.Fatalf("real move: %d", status)
+	}
+	if got := notifier.movedTo(t); len(got) != 1 {
+		t.Fatalf("a real move mails once, got %v", got)
 	}
 }

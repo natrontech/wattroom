@@ -191,6 +191,10 @@ func main() {
 			// other session mails ride the handler that caused them (#841).
 			safego.Supervise(log, time.Now, "session reminders", ctx.Done(),
 				func() { notifier.RemindLoop(ctx) })
+		} else {
+			// The unsubscribe link in a rider's inbox outlives the sending key
+			// (#1643): it needs the store, not the key.
+			notify.Bare(st, log, baseURL).RegisterUnsubscribe(mux)
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
