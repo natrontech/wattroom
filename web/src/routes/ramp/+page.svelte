@@ -327,7 +327,7 @@
 					<a href="/ramp" class="btn btn-secondary">Test again</a>
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
-						href="/profile"
+						href="/settings/profile"
 						class="text-muted hover:text-ink self-center py-2 text-xs underline"
 						>Keep my current {profile.current.ftp} W</a
 					>

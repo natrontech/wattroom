@@ -25,6 +25,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
 	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
+	import TrophyCase from '$lib/trophies/TrophyCase.svelte';
 	import {
 		fetchTrophies,
 		XP_SOURCES,
@@ -37,7 +38,6 @@
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Radio from '@lucide/svelte/icons/radio';
-	import Trophy from '@lucide/svelte/icons/trophy';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
 	import { untrack } from 'svelte';
@@ -45,7 +45,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const id = $derived(page.params.id ?? '');
+	// The resolved id: the loader turns /u/me into yours (#1330).
+	const id = $derived(
+		page.params.id === 'me' ? (data.id ?? '') : (page.params.id ?? ''),
+	);
 	let rider = $state<Rider | null>(untrack(() => data.rider));
 	// The badges behind the level (#701, ADR-0027). Same audience as the
 	// page — the endpoint's own gate is SharesRoomOrFriends — so a failure
@@ -243,10 +246,7 @@
 				{#if rider.friend === 'self'}
 					<!-- Your own page is where you look for your trophies (#575);
 					     Home's level tile was the only way in. -->
-					<a href="/trophies" class="btn btn-secondary"
-						><Trophy size={15} /> Trophy case</a
-					>
-					<a href="/profile" class="btn btn-secondary"
+					<a href="/settings/profile" class="btn btn-secondary"
 						><Pencil size={15} /> Edit profile</a
 					>
 				{:else if rider.friend === 'accepted'}
@@ -382,6 +382,8 @@
 						counts={trophies.counts}
 						achievements={trophies.achievements}
 					/>
+					<!-- The trophy case lives here now (#1330): identity, not settings. -->
+					<TrophyCase {trophies} />
 				{/if}
 
 				{#if trophies}
