@@ -17,6 +17,31 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.69] - 2026-09-09
+
+### Added
+
+- Pick several tracks in your library at once: a checkbox on every row, then
+  queue them all in the room you are in or save them all to a playlist in
+  one go.
+- Your playlists are on the Music page now, beside your tracks: make one,
+  open it to see and reorder what is in it, add to it by searching your
+  library or pasting a link, and queue it when a room is open. Until now they
+  were only reachable inside a room's jukebox.
+- Anything in the queue, in "just played" or in your library can be saved
+  to a playlist from its right-click menu — "Save to «Threshold Tuesdays»",
+  one line per room playlist and per playlist of your own. Under up next,
+  "Save as a playlist" keeps what the room is hearing tonight, the deck and
+  everything behind it, as a new room playlist named for today.
+
+### Fixed
+
+- A room session whose last rider closed the tab before the timeline ran out is saved when it ends, dated when it ran — it used to wait for the next visitor and take their date, or never save at all. A reconnect's replay is refused from a screen that no longer holds the trainer, carries up to an hour instead of ten minutes, and a long replay or a large workout pick no longer closes the socket.
+- A solo ride whose save timed out and was then saved from the recovery card no longer lands on your history twice. Leaving the ride page mid-ride saves what you rode instead of leaving it for the recovery card. The room ride buffer keeps one row a second however fast the trainer reports, so a replayed drop and a recovered .fit no longer count double, and joining rooms no longer pushes an unsaved solo ride out of the crash buffer.
+- After a Wi-Fi drop in a room, the reconnect replays every sample from the last one the server confirmed — the seconds the browser thought it had sent while the connection was already dead used to be missing from the saved ride.
+- A solo ride records one sample per second however often the trainer reports, so its duration, kJ, power curve and XP no longer scale with the trainer's notification rate. A friend's shared ride and the rides trend say "not scored" instead of "0 % on target" for a session whose workout prescribed nothing.
+- The score a ride is saved with excludes the same stopped seconds the live meter does (under 5 rpm and under 20 W), so the number you watched all session is the number you keep. Medals need two riders who actually rode: one working power meter beside two dead ones could take Diesel, Hammer and Lanterne Rouge at once. A sprint podium ranks only riders with five seconds in the window, never a two-second burst. Streak weeks are counted in one timezone on both sides, so riding last week counts as last week wherever the server sits. Saving the same ride twice — a retry after a lost answer, on your own or in a room — no longer makes two rides, two helpings of XP or two medals.
+
 ## [2026.09.68] - 2026-09-09
 
 ### Added
@@ -1465,7 +1490,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.68...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.69...HEAD
+[2026.09.69]: https://github.com/natrontech/wattroom/compare/2026.09.68...2026.09.69
 [2026.09.68]: https://github.com/natrontech/wattroom/compare/2026.09.67...2026.09.68
 [2026.09.67]: https://github.com/natrontech/wattroom/compare/2026.09.66...2026.09.67
 [2026.09.66]: https://github.com/natrontech/wattroom/compare/2026.09.65...2026.09.66
