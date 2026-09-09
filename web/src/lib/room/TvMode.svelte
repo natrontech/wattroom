@@ -116,7 +116,7 @@
 
 			<!-- The room, one row per rider. No faces: at 3 m you read names and numbers. -->
 			<section class="flex w-[34vw] flex-col justify-center gap-[1.6vh]">
-				{#each others as rider (rider.name)}
+				{#each others as rider (rider.id)}
 					{@const riderZone = zoneOf(rider.watts, rider.ftp)}
 					<div class="flex items-center gap-[1.2vw]">
 						<span class="w-[7vw] truncate text-[2.6vh]">{rider.name}</span>

@@ -12,6 +12,10 @@
 	const ranked = $derived(
 		[...riders]
 			.map((rider) => ({
+				// Keyed by id below: display names are not unique (audit
+				// 2026-09-09), and two riders sharing one threw in the keyed
+				// each and tore the meter down mid-ride.
+				id: rider.id,
 				name: rider.name,
 				you: rider.you,
 				// No score until something scorable was ridden (#1454): a dash,
@@ -29,7 +33,7 @@
 <div class="bg-surface-raised ring-ink/10 rounded-lg p-4 ring-1">
 	<p class="eyebrow">execution</p>
 	<ul class="mt-3 space-y-1.5">
-		{#each ranked as entry (entry.name)}
+		{#each ranked as entry (entry.id)}
 			<li class="flex items-center gap-2.5" data-testid="execution-row">
 				<span
 					class="w-12 shrink-0 truncate text-[11px] {entry.you
