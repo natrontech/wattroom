@@ -17,6 +17,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.85] - 2026-09-09
+
+### Added
+
+- A ride's page now shows whether the ride is shared with your friends and flips it in one tap, and shows the ride's own best 5-second, 1-minute, 5-minute and 20-minute power, which was stored and exported but never displayed.
+
+### Fixed
+
+- The room no longer leaves a band of empty space at the bottom of every place while a pool track is playing or the mix is muted — the gutter was reserved for a video player that is not on screen. In the Chat place it pushed the message box a third of the way up the pane.
+- Sharing a screen from the desktop app no longer sends everything the machine
+  is playing without asking. The picker offers the sound as a checkbox, off
+  unless you tick it, so a shared window stays a shared window and your
+  notifications, your calls and the room's own voices stay out of the room.
+  And whoever is listening can turn a shared screen down: the mix has a fader
+  for it now, beside music, cues and the soundboard.
+
 ## [2026.09.84] - 2026-09-09
 
 ### Fixed
@@ -1664,7 +1680,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.84...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.85...HEAD
+[2026.09.85]: https://github.com/natrontech/wattroom/compare/2026.09.84...2026.09.85
 [2026.09.84]: https://github.com/natrontech/wattroom/compare/2026.09.83...2026.09.84
 [2026.09.83]: https://github.com/natrontech/wattroom/compare/2026.09.82...2026.09.83
 [2026.09.82]: https://github.com/natrontech/wattroom/compare/2026.09.81...2026.09.82
