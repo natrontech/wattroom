@@ -1,0 +1,1 @@
+- The Lounge holds the room's action: a coach starts the session there with the same controls Training has, a rider joins a running one from there, and "Join the ride" from Home or a rider's page lands on Training, where the numbers are. Planning a session has one home, Sessions; the Lounge links there.

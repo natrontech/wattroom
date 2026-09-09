@@ -275,8 +275,12 @@
 				{#if rider.presence.room && rider.friend !== 'self'}
 					<!-- Your own page reached the app in #575; "Join them" on it
 					     offered to join the room you are already standing in. -->
-					<a href="/r/{rider.presence.room.slug}" class="btn btn-accent"
-						><Radio size={15} /> Join them</a
+					<!-- Riding: the ride is joined on Training (#1332). -->
+					<a
+						href="/r/{rider.presence.room.slug}{rider.presence.riding
+							? '/training'
+							: ''}"
+						class="btn btn-accent"><Radio size={15} /> Join them</a
 					>
 				{/if}
 			</div>
