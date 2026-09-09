@@ -1,1 +1,0 @@
-- When the room connection stays down past the 15 seconds the app spends retrying, the banner now says so and grows one big Reconnect button that dials at once — for the rider whose Wi-Fi just came back on another network. It no longer reloads the page, which would have dropped the trainer mid-ride. The automatic retry keeps running underneath either way.
