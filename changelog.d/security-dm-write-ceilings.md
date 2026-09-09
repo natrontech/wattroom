@@ -1,0 +1,1 @@
+- Security: direct messages now have a ceiling per account — sixty lines, edits or reactions a minute and sixty pictures an hour — so one account cannot flood a friend's thread or fill the server with images. Past it, the app asks you to wait a moment.

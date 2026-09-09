@@ -23,6 +23,12 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Before the bytes are read (#1818): the ceiling is the cheap check.
+	if !s.uploads.Spend(me.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"That is a lot of pictures in one hour — wait a while, then try again.")
+		return
+	}
 	data, mime, ok := httpx.ReadImageUpload(w, r)
 	if !ok {
 		return
