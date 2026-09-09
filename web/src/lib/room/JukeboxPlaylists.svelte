@@ -126,7 +126,7 @@
 					: "No personal playlists yet — yours to build, queueable in any room you're in."}
 			</p>
 		{:else}
-			<ul class="flex flex-col gap-1.5">
+			<ul class="flex flex-col gap-0.5">
 				{#each store.all as playlist (playlist.id)}
 					<JukeboxPlaylistRow
 						{playlist}

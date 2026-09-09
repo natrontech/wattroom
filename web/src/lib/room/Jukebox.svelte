@@ -422,32 +422,40 @@
 
 			<!-- Still your ears, one line down: sitting out is a local decision
 			     about a local player (#989, ADR-0018), so it belongs under the
-			     fader and nowhere near the transport above it. -->
-			<div class="flex min-w-0 items-center gap-1.5 text-[11px]">
+			     fader and nowhere near the transport above it. Icons at the
+			     transport's own size (#1423): two lines of text were the
+			     smallest targets in the column, on the one row that is only
+			     ever pressed mid-ride. Both verbs stay visible — the menu is
+			     never the only way (ux.md). -->
+			<div class="flex min-w-0 items-center justify-end gap-1 text-[11px]">
 				{#if listening.out}
-					<button
-						onclick={() => listening.rejoin()}
-						class="btn btn-secondary btn-xs"
-						title="back in with the room, from wherever it has got to"
-						><Headphones size={12} /> Rejoin</button
-					>
-					<span class="text-muted min-w-0 truncate"
+					<span class="text-muted min-w-0 flex-1 truncate"
 						>{listening.mode === 'skip'
 							? 'back on the next track'
 							: 'the room is listening'}</span
 					>
+					<button
+						onclick={() => listening.rejoin()}
+						class="text-ink icon-btn"
+						aria-label="rejoin the music"
+						title="Rejoin — back in with the room, from wherever it has got to"
+						><Headphones size={17} /></button
+					>
 				{:else}
+					<span class="text-muted/70 min-w-0 flex-1 truncate">yours only</span>
 					<button
 						onclick={() => stepOut('skip')}
-						class="btn btn-ghost btn-xs text-muted"
-						title="sit this one out — back automatically on the next track"
-						><Hourglass size={12} /> Skip for me</button
+						class="text-muted hover:text-ink icon-btn"
+						aria-label="skip this one for me"
+						title="Skip for me — back automatically on the next track"
+						><Hourglass size={17} /></button
 					>
 					<button
 						onclick={() => stepOut('stop')}
-						class="btn btn-ghost btn-xs text-muted"
-						title="stop the music for you — the room keeps playing"
-						><HeadphoneOff size={12} /> Stop for me</button
+						class="text-muted hover:text-ink icon-btn"
+						aria-label="stop the music for me"
+						title="Stop for me — the room keeps playing"
+						><HeadphoneOff size={17} /></button
 					>
 				{/if}
 			</div>
@@ -460,8 +468,6 @@
 	{/if}
 
 	<JukeboxAdd {send} {refusal} />
-
-	<JukeboxPlaylists {slug} />
 
 	{#if queue.length}
 		<div class="min-w-0">
@@ -497,6 +503,10 @@
 			</p>
 		</div>
 	{/if}
+
+	<!-- What is saved comes after what is live (#1423): the queue is what the
+	     room is about to hear; the playlists are where it can reach next. -->
+	<JukeboxPlaylists {slug} />
 
 	{#if history.length}
 		<details class="min-w-0">

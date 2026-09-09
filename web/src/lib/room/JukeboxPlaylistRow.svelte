@@ -164,16 +164,16 @@
 	}
 </script>
 
-<li
-	class="border-muted/15 min-w-0 rounded-lg border"
-	{@attach contextMenu(menu)}
->
-	<div class="flex min-w-0 items-center gap-2 px-2.5 py-2">
+<!-- A row, not a card (#1423): the queue's rows above it have no border, and
+     a bordered box per playlist was the one thing in the column drawn as an
+     object of its own. Same left edge as the queue rows. -->
+<li class="min-w-0" {@attach contextMenu(menu)}>
+	<div class="flex min-w-0 items-center gap-2 py-1">
 		<button
 			onclick={toggle}
 			aria-expanded={open}
 			aria-label={open ? 'hide tracks' : 'show tracks'}
-			class="text-muted hover:text-ink grid h-7 w-6 shrink-0 place-items-center"
+			class="text-muted hover:text-ink grid h-9 w-6 shrink-0 place-items-center"
 		>
 			{#if open}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
 		</button>
@@ -209,7 +209,9 @@
 	</div>
 
 	{#if open}
-		<div class="border-muted/15 min-w-0 border-t px-2.5 py-2">
+		<!-- Folded open the way a queued set opens (JukeboxTrack): indented
+		     under its row on a hairline, not boxed. -->
+		<div class="border-muted/20 mt-1 mb-1.5 ml-3 min-w-0 border-l pl-3">
 			{#if tracks === null}
 				<p class="text-muted text-[11px]">Loading…</p>
 			{:else if tracks.length === 0}
@@ -270,5 +272,5 @@
 		</div>
 	{/if}
 
-	{#if error}<p class="text-danger px-2.5 pb-2 text-[11px]">{error}</p>{/if}
+	{#if error}<p class="text-danger pb-1 text-[11px]">{error}</p>{/if}
 </li>
