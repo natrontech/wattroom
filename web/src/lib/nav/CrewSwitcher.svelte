@@ -1,10 +1,12 @@
 <script lang="ts">
-	// The crew header and its switcher (ADR-0020 amended, #1147; #1238): the
-	// crew is the mode the sidebar is in, so its row sits at the top like
-	// Discord's server header — drawn as one more nav row, not a boxed card:
-	// the same 16 px left edge, the same icon slot and label as Home below
-	// it. Opening it expands the crews in place, plain rows at the same
-	// indentation; nothing floats, nothing is rounded, nothing is inset.
+	// The crew header and its switcher (ADR-0020 amended, #1147; #1238;
+	// #1327): the crew is the mode the sidebar is in, so its row is the
+	// column's first — the header, the way Discord's server name is — drawn
+	// as one more nav row, not a boxed card: the same 16 px left edge, the
+	// same icon slot and label as Home below it, one step larger because it
+	// holds everything under it. Opening it expands the crews in place, plain
+	// rows at the same indentation; nothing floats, nothing is rounded,
+	// nothing is inset.
 	// Under it, one line per crew you are NOT looking at with something on
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
 	import CrewMark from '$lib/components/CrewMark.svelte';
@@ -134,10 +136,11 @@
      edge, the same icon slot and label as Home below it. Opening it
      expands the crews in place, plain rows at the same indentation;
      nothing floats, nothing is rounded, nothing is inset. -->
-<div class="px-2" bind:this={header}>
+<div class="px-2 pt-2" bind:this={header}>
 	{#snippet crewRow(c: RoomCrew)}
-		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={20} />
-		<span class="font-display min-w-0 flex-1 truncate text-sm font-bold"
+		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={24} />
+		<span
+			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
 			>{c.name}</span
 		>
 		{#if c.role === 'owner'}
@@ -148,7 +151,7 @@
 		<button
 			onclick={() => (switching = !switching)}
 			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left md:min-h-0 {switching
+			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
 				? 'bg-ink/5 text-ink'
 				: 'text-ink'}"
 			title="switch crew"
@@ -165,7 +168,7 @@
 		<a
 			href="/crew/{crew.id}"
 			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 md:min-h-0"
+			class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 md:min-h-0"
 			title="the crew — its people and rooms"
 		>
 			{@render crewRow(crew)}
