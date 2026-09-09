@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -75,8 +76,8 @@ func TestAffinityFollowsWhatTheRoomFinishes(t *testing.T) {
 		}
 	}
 
-	h.svc.TrackEnded(t.Context(), slug, played, "", false)
-	h.svc.TrackEnded(t.Context(), slug, otherNoArtist, "", false)
+	h.svc.TrackEnded(t.Context(), slug, hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(t.Context(), slug, hub.Play{TrackID: otherNoArtist, QueuedBy: "", Skipped: false})
 	got := h.affinityWeights(t, slug)
 
 	for _, tc := range []struct {
@@ -114,7 +115,7 @@ func TestAffinityIsRoomScoped(t *testing.T) {
 
 	played := h.trackLike(t, "alice", "Their Favourite", "Justice", "french-house")
 	sibling := h.trackLike(t, "alice", "Its Sibling", "Justice", "electro")
-	h.svc.TrackEnded(t.Context(), theirs, played, "", false)
+	h.svc.TrackEnded(t.Context(), theirs, hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
 
 	if w := h.affinityWeights(t, theirs)[sibling]; math.Abs(w-artistBoost) > 0.01 {
 		t.Errorf("the room that finished it: sibling weighs %v, want %v", w, artistBoost)
@@ -132,7 +133,7 @@ func TestASkipBuildsNoAffinity(t *testing.T) {
 
 	skipped := h.trackLike(t, "alice", "Rejected", "Justice", "french-house")
 	sibling := h.trackLike(t, "alice", "Its Sibling", "Justice", "electro")
-	h.svc.TrackEnded(t.Context(), slug, skipped, "", true)
+	h.svc.TrackEnded(t.Context(), slug, hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
 
 	got := h.affinityWeights(t, slug)
 	if w := got[sibling]; math.Abs(w-1.0) > 0.01 {

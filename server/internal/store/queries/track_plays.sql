@@ -1,8 +1,25 @@
 -- name: RecordTrackPlay :exec
--- One thing a room did with a pool track (#269). Called from outside the
--- room lock, after the deck has already moved on — nothing waits on it.
-insert into track_plays (track_id, room_id, queued_by, skipped)
-values ($1, $2, $3, $4);
+-- One thing a room did with a track (#269, #1432): a library track by id or
+-- a video by its YouTube id and title. Called from outside the room lock,
+-- after the deck has already moved on — nothing waits on it.
+insert into track_plays (track_id, room_id, queued_by, skipped, video_id, title)
+values ($1, $2, $3, $4, $5, $6);
+
+-- name: RecentRoomPlays :many
+-- The room's "just played" as the database remembers it (#1432), newest
+-- first, both kinds. A library row reads the track's current title and
+-- artist; a deleted file took its rows with it.
+select p.track_id, p.video_id, p.title, p.skipped,
+    coalesce(t.title, '')::text as track_title,
+    coalesce(t.artist, '')::text as track_artist,
+    coalesce(t.bpm, 0)::int as track_bpm,
+    coalesce(u.display_name, '')::text as queued_by_name
+from track_plays p
+left join tracks t on t.id = p.track_id
+left join users u on u.id = p.queued_by
+where p.room_id = $1 and (p.track_id is not null or p.video_id <> '')
+order by p.at desc
+limit $2;
 
 -- name: SmartShuffleTracks :many
 -- ADR-0015's smart selection, all of it, as ONE scoring pass: a weighted

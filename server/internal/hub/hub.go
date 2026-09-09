@@ -64,7 +64,24 @@ type AutoplaySource interface {
 // may block briefly on its own write, and should, or the track that just
 // ended is not yet in the history the refill weights against.
 type TrackHistory interface {
-	TrackEnded(ctx context.Context, slug, trackID, queuedBy string, skipped bool)
+	TrackEnded(ctx context.Context, slug string, play Play)
+	// Recent is the room's "just played" as the log remembers it (#1432),
+	// newest first, at most n — what a room the hub has just created shows
+	// until it plays something of its own. Called from the autoplay worker,
+	// outside every lock.
+	Recent(ctx context.Context, slug string, n int) []protocol.JukeboxEntry
+}
+
+// Play is one thing a deck finished with (#269, #1432): a library track by
+// id, or a video by its YouTube id and the title the deck showed. QueuedBy
+// is who queued it — empty for autoplay — and Skipped says whether the room
+// let it end or pushed past it.
+type Play struct {
+	TrackID  string
+	VideoID  string
+	Title    string
+	QueuedBy string
+	Skipped  bool
 }
 
 // MinRideSamples is the saver's threshold: fewer than a minute of samples is
@@ -154,6 +171,9 @@ type Hub struct {
 type autoplayJob struct {
 	rm   *room
 	slug string
+	// A room the hub just created (#1432): read its "just played" from the
+	// log instead of an autoplay plan.
+	seed bool
 }
 
 // chatSave is one line awaiting persistence — enough to save it and to
@@ -215,6 +235,17 @@ func (h *Hub) saveWorker() {
 // ponytail: one worker for the whole hub, same call as chat's.
 func (h *Hub) autoplayWorker() {
 	for job := range h.autoplays {
+		if job.seed {
+			if h.history != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				entries := h.history.Recent(ctx, job.slug, maxHistory)
+				cancel()
+				job.rm.mu.Lock()
+				job.rm.music.seedHistory(entries)
+				job.rm.mu.Unlock()
+			}
+			continue
+		}
 		// Read the mood at the moment of the REFILL, not when the job was
 		// queued: the worker can lag a busy hub, and a block that has since
 		// ended is not what the room is riding.
@@ -235,7 +266,10 @@ func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	h.history.TrackEnded(ctx, slug, ev.trackID, ev.queuedBy, ev.skipped)
+	h.history.TrackEnded(ctx, slug, Play{
+		TrackID: ev.trackID, VideoID: ev.videoID, Title: ev.title,
+		QueuedBy: ev.queuedBy, Skipped: ev.skipped,
+	})
 }
 
 // triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
@@ -411,6 +445,15 @@ func (h *Hub) room(slug string) *room {
 		rm.voiceNow = h.voiceRidersLocked(slug)
 		h.rooms[slug] = rm
 		h.launchRoom(rm)
+		// Its "just played" from the log (#1432), on the worker: a DB read
+		// never happens under a lock, and a full queue simply leaves the
+		// history empty until the room plays something.
+		if h.history != nil {
+			select {
+			case h.autoplays <- autoplayJob{rm: rm, slug: slug, seed: true}:
+			default:
+			}
+		}
 	}
 	return rm
 }

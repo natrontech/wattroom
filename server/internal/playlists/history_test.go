@@ -78,10 +78,10 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 	longAgo := h.track(t, "alice", "Played this morning")
 
 	ctx := t.Context()
-	h.svc.TrackEnded(ctx, slug, skipped, store.UUIDString(h.users["alice"].ID), true)
-	h.svc.TrackEnded(ctx, slug, skipped, "", true)
-	h.svc.TrackEnded(ctx, slug, justPlayed, "", false)
-	h.svc.TrackEnded(ctx, slug, longAgo, "", false)
+	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: skipped, QueuedBy: store.UUIDString(h.users["alice"].ID), Skipped: true})
+	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
+	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: justPlayed, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: longAgo, QueuedBy: "", Skipped: false})
 	// Age that last one past the 4 h recency window without waiting for it.
 	if _, err := h.store.Pool.Exec(ctx,
 		"update track_plays set at = now() - interval '5 hours' where track_id = $1", longAgo,
@@ -119,7 +119,7 @@ func TestSmartShuffleHistoryIsRoomScoped(t *testing.T) {
 	track := h.track(t, "alice", "Divisive")
 
 	for range 3 {
-		h.svc.TrackEnded(t.Context(), loud, track, "", true)
+		h.svc.TrackEnded(t.Context(), loud, hub.Play{TrackID: track, QueuedBy: "", Skipped: true})
 	}
 
 	if got := h.weights(t, loud)[track]; math.Abs(got-0.25) > 0.01 {

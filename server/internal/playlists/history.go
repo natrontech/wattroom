@@ -21,9 +21,15 @@ const smartShuffleBatch = 10
 // played through or skipped past, recorded room-scoped. Best-effort — a lost
 // line costs one nudge in a weighting, and the deck has already moved on, so
 // nothing here is worth failing a rider's command over.
-func (s *Service) TrackEnded(ctx context.Context, slug, trackID, queuedBy string, skipped bool) {
-	track, err := store.ParseUUID(trackID)
-	if err != nil {
+func (s *Service) TrackEnded(ctx context.Context, slug string, play hub.Play) {
+	var track pgtype.UUID
+	if play.TrackID != "" {
+		id, err := store.ParseUUID(play.TrackID)
+		if err != nil {
+			return
+		}
+		track = id
+	} else if !hub.ValidVideoID(play.VideoID) {
 		return
 	}
 	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
@@ -34,16 +40,49 @@ func (s *Service) TrackEnded(ctx context.Context, slug, trackID, queuedBy string
 	// Autoplay queued it, so nobody did: the column stays null rather than
 	// crediting the room's taste to whoever happened to be listening.
 	var by pgtype.UUID
-	if queuedBy != "" {
-		if id, err := store.ParseUUID(queuedBy); err == nil {
+	if play.QueuedBy != "" {
+		if id, err := store.ParseUUID(play.QueuedBy); err == nil {
 			by = id
 		}
 	}
-	if err := s.store.Queries.RecordTrackPlay(ctx, db.RecordTrackPlayParams{
-		TrackID: track, RoomID: room.ID, QueuedBy: by, Skipped: skipped,
-	}); err != nil {
-		s.log.Error("track history: record failed", "room", slug, "track", trackID, "err", err)
+	videoID, title := "", ""
+	if !track.Valid {
+		videoID, title = play.VideoID, clip(play.Title, 200)
 	}
+	if err := s.store.Queries.RecordTrackPlay(ctx, db.RecordTrackPlayParams{
+		TrackID: track, RoomID: room.ID, QueuedBy: by, Skipped: play.Skipped,
+		VideoID: videoID, Title: title,
+	}); err != nil {
+		s.log.Error("track history: record failed", "room", slug, "track", play.TrackID, "video", play.VideoID, "err", err)
+	}
+}
+
+// Recent implements hub.TrackHistory's other half (#1432): the room's "just
+// played" as the log remembers it, newest first. A library row's title and
+// artist are the track's own today; a video's are what the deck showed.
+// Ids and the autoplay name are the hub's to fill in.
+func (s *Service) Recent(ctx context.Context, slug string, n int) []protocol.JukeboxEntry {
+	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+	if err != nil {
+		return nil
+	}
+	rows, err := s.store.Queries.RecentRoomPlays(ctx, db.RecentRoomPlaysParams{RoomID: room.ID, Limit: int32(n)}) //nolint:gosec // maxHistory-sized
+	if err != nil {
+		s.log.Error("track history: recent failed", "room", slug, "err", err)
+		return nil
+	}
+	out := make([]protocol.JukeboxEntry, 0, len(rows))
+	for _, r := range rows {
+		e := protocol.JukeboxEntry{AddedBy: r.QueuedByName}
+		if r.TrackID.Valid {
+			e.TrackID = store.UUIDString(r.TrackID)
+			e.Title, e.Artist, e.Bpm = r.TrackTitle, r.TrackArtist, int(r.TrackBpm)
+		} else {
+			e.VideoID, e.Title = r.VideoID, r.Title
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // smartShuffle is the pool half of autoplay (#269): a weighted draw over

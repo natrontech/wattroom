@@ -11,9 +11,71 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const recentRoomPlays = `-- name: RecentRoomPlays :many
+select p.track_id, p.video_id, p.title, p.skipped,
+    coalesce(t.title, '')::text as track_title,
+    coalesce(t.artist, '')::text as track_artist,
+    coalesce(t.bpm, 0)::int as track_bpm,
+    coalesce(u.display_name, '')::text as queued_by_name
+from track_plays p
+left join tracks t on t.id = p.track_id
+left join users u on u.id = p.queued_by
+where p.room_id = $1 and (p.track_id is not null or p.video_id <> '')
+order by p.at desc
+limit $2
+`
+
+type RecentRoomPlaysParams struct {
+	RoomID pgtype.UUID
+	Limit  int32
+}
+
+type RecentRoomPlaysRow struct {
+	TrackID      pgtype.UUID
+	VideoID      string
+	Title        string
+	Skipped      bool
+	TrackTitle   string
+	TrackArtist  string
+	TrackBpm     int32
+	QueuedByName string
+}
+
+// The room's "just played" as the database remembers it (#1432), newest
+// first, both kinds. A library row reads the track's current title and
+// artist; a deleted file took its rows with it.
+func (q *Queries) RecentRoomPlays(ctx context.Context, arg RecentRoomPlaysParams) ([]RecentRoomPlaysRow, error) {
+	rows, err := q.db.Query(ctx, recentRoomPlays, arg.RoomID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RecentRoomPlaysRow
+	for rows.Next() {
+		var i RecentRoomPlaysRow
+		if err := rows.Scan(
+			&i.TrackID,
+			&i.VideoID,
+			&i.Title,
+			&i.Skipped,
+			&i.TrackTitle,
+			&i.TrackArtist,
+			&i.TrackBpm,
+			&i.QueuedByName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordTrackPlay = `-- name: RecordTrackPlay :exec
-insert into track_plays (track_id, room_id, queued_by, skipped)
-values ($1, $2, $3, $4)
+insert into track_plays (track_id, room_id, queued_by, skipped, video_id, title)
+values ($1, $2, $3, $4, $5, $6)
 `
 
 type RecordTrackPlayParams struct {
@@ -21,16 +83,21 @@ type RecordTrackPlayParams struct {
 	RoomID   pgtype.UUID
 	QueuedBy pgtype.UUID
 	Skipped  bool
+	VideoID  string
+	Title    string
 }
 
-// One thing a room did with a pool track (#269). Called from outside the
-// room lock, after the deck has already moved on — nothing waits on it.
+// One thing a room did with a track (#269, #1432): a library track by id or
+// a video by its YouTube id and title. Called from outside the room lock,
+// after the deck has already moved on — nothing waits on it.
 func (q *Queries) RecordTrackPlay(ctx context.Context, arg RecordTrackPlayParams) error {
 	_, err := q.db.Exec(ctx, recordTrackPlay,
 		arg.TrackID,
 		arg.RoomID,
 		arg.QueuedBy,
 		arg.Skipped,
+		arg.VideoID,
+		arg.Title,
 	)
 	return err
 }
