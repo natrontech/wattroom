@@ -290,7 +290,9 @@ function watchForUpdates(win) {
 	({ autoUpdater } = require('electron-updater'));
 	autoUpdater.autoDownload = true;
 	autoUpdater.autoInstallOnAppQuit = true;
-	autoUpdater.logger = null;
+	// stdout: nothing in a Dock launch, everything when run from a terminal —
+	// which is how "why did it not update" gets answered in a minute.
+	autoUpdater.logger = console;
 	autoUpdater.on('update-downloaded', (info) => {
 		updateReady = { version: info.version };
 		if (!win.isDestroyed())
@@ -301,9 +303,21 @@ function watchForUpdates(win) {
 		// is a few hours away and the nudge on home still shows the download.
 		console.warn('update check failed:', err?.message ?? err);
 	});
-	const check = () => void autoUpdater.checkForUpdates().catch(() => {});
-	setTimeout(check, 15_000);
-	setInterval(check, 6 * 60 * 60 * 1000);
+	// On macOS closing the window leaves the app running, and a click on the
+	// Dock icon brings the window back without a launch — so a check tied to
+	// launch alone can sit six hours behind a release the rider is waiting
+	// for. Check when the app comes back into view too, at most once every
+	// ten minutes.
+	let lastCheck = 0;
+	const check = (force = false) => {
+		if (!force && Date.now() - lastCheck < 10 * 60 * 1000) return;
+		lastCheck = Date.now();
+		void autoUpdater.checkForUpdates().catch(() => {});
+	};
+	setTimeout(() => check(true), 15_000);
+	setInterval(() => check(true), 6 * 60 * 60 * 1000);
+	app.on('activate', () => check());
+	win.on('focus', () => check());
 }
 
 // The renderer asks on mount, in case the download finished before it did.
