@@ -353,7 +353,18 @@
 				method: 'POST',
 				json: {
 					startedAt: session.startedAt.toISOString(),
-					samples: session.recording,
+					// The four fields a .fit row is made of, named rather than the
+					// whole recording: the encoder's decoder disallows unknown
+					// fields, so anything else the recording grows — the bias
+					// added for #1530 was the first — refuses the export outright.
+					// `recovered.ts` has always mapped it this way; this was the
+					// path passing the raw object.
+					samples: session.recording.map((sample) => ({
+						second: sample.second,
+						watts: sample.watts,
+						cadence: sample.cadence,
+						heartRate: sample.heartRate,
+					})),
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);
