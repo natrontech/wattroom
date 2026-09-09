@@ -21,6 +21,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import type { Block } from '$lib/room/view';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
@@ -86,24 +87,25 @@
 			     px past the viewport and the ⚑ — the last button — could not be
 			     reached at all. -->
 			<div class="flex flex-wrap items-center justify-end gap-2">
+				<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
+				     while pedalling); these used to retype the chrome by hand. -->
 				<button
 					onclick={() => session.extend(60)}
-					class="border-muted/25 hover:border-muted/60 h-11 rounded border px-4 text-sm"
-					>+1 min</button
+					class="btn btn-secondary btn-lg">+1 min</button
 				>
+				<!-- Nothing to skip to on the last block: disabled with the
+				     reason, never a click that does nothing (ux.md, #1799). -->
 				<button
 					onclick={() => session.skip()}
-					class="border-muted/25 hover:border-muted/60 h-11 rounded border px-4 text-sm"
+					disabled={session.info.segmentIndex + 1 >= session.segments.length}
+					title={session.info.segmentIndex + 1 >= session.segments.length
+						? 'Last block — End ride instead'
+						: undefined}
+					class="btn btn-secondary btn-lg disabled:opacity-40"
 					>Skip block</button
 				>
-				<button
-					onclick={onTv}
-					class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink h-11 rounded border px-4 text-sm"
-					>TV</button
-				>
-				<button
-					onclick={() => session.stop()}
-					class="border-muted/25 text-muted hover:border-muted/60 hover:text-ink h-11 rounded border px-4 text-sm"
+				<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
+				<button onclick={() => session.stop()} class="btn btn-secondary btn-lg"
 					>End ride</button
 				>
 				<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
@@ -159,7 +161,15 @@
 	<!-- The focus slot takes the free height rather than sitting under the
 	     header with a screen of nothing below it (#1531: "two thirds empty"). -->
 	<section class="grid min-h-0 flex-1 content-center">
-		<Instrument {watts} {target} {ftp} />
+		{#if session.sprint}
+			<!-- A sprint block takes the focus, solo as in a room (#1793,
+			     ADR-0046): the count-in, the window and your watts, where the
+			     instrument used to read "no target — spin easy" for fifteen
+			     seconds of all-out. No roster: nobody else is here. -->
+			<SprintMoment sprint={session.sprint} myWatts={watts} />
+		{:else}
+			<Instrument {watts} {target} {ftp} />
+		{/if}
 	</section>
 
 	<SecondaryRow

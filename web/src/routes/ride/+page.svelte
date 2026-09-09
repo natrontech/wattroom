@@ -478,6 +478,7 @@
 			{block}
 			roomName={workout.name}
 			workoutName={block?.label ?? ''}
+			sprint={session.sprint}
 			live
 			onExit={() => (tv = false)}
 		/>
