@@ -38,7 +38,10 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 	var weight, inBand float64
 	for second, sample := range samples {
 		target, scored := workout.TargetAt(segments, ftp, second)
-		if !scored || target <= 0 || sample.Watts <= 0 {
+		// SPEC's stopped predicate, the same one the live meter asks (#795):
+		// excluding only 0 W here scored a soft-pedalled second as a miss
+		// that the meter had dropped (audit 2026-09-09).
+		if !scored || target <= 0 || !sample.Pedalling() {
 			continue
 		}
 		// The same rule the live score uses (hub/accumulator): the band is

@@ -83,6 +83,7 @@ func (s *Saver) save(
 	saved := 0
 	results := make([]RiderResult, 0, len(riders))
 	rideIDs := make(map[string]pgtype.UUID)
+	alreadySaved := map[string]bool{}
 	kept := make([]savedRide, 0, len(riders))
 	for join, rider := range riders {
 		if len(rider.Samples) < hub.MinRideSamples {
@@ -95,6 +96,14 @@ func (s *Saver) save(
 			continue
 		}
 		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
+		// A retry after a commit whose answer was lost must not insert the
+		// rider's ride — or their medals — twice (audit 2026-09-09).
+		if existing, err := q.FindRideAt(ctx, db.FindRideAtParams{UserID: row.UserID, StartedAt: row.StartedAt}); err == nil {
+			s.log.Info("ride already saved", "rider", rider.Rider.ID, "ride", store.UUIDString(existing))
+			rideIDs[rider.Rider.ID] = existing
+			alreadySaved[rider.Rider.ID] = true
+			continue
+		}
 		rideID, err := q.CreateRide(ctx, row)
 		if err != nil {
 			return fmt.Errorf("stats: insert ride: %w", err)
@@ -128,7 +137,7 @@ func (s *Saver) save(
 	// medals or without its rides — never half.
 	for kind, userID := range Medals(results) {
 		uid, err := store.ParseUUID(userID)
-		if err != nil {
+		if err != nil || alreadySaved[userID] {
 			continue
 		}
 		err = q.CreateMedal(ctx, db.CreateMedalParams{
