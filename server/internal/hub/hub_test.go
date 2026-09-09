@@ -107,8 +107,13 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 		t.Fatalf("out-of-bounds sample was recorded: %d", got)
 	}
 
-	// A new session is a new ride.
-	rm.control(protocol.Control{Action: "start"}, "jan", time.Unix(100, 0))
+	// A new session is a new ride — a start the running session refuses
+	// resets nothing (audit 2026-09-09), so end it and pick again first.
+	rm.control(protocol.Control{Action: "end"}, "jan", time.Unix(100, 0))
+	rm.session.pick("Openers", "{}", 600)
+	if !rm.control(protocol.Control{Action: "start"}, "jan", time.Unix(101, 0)) {
+		t.Fatal("the restart was refused")
+	}
 	if got := rm.record.count("jan"); got != 0 {
 		t.Fatalf("record survived a session restart: %d", got)
 	}

@@ -148,6 +148,12 @@ func (rm *room) armIfRunning(now time.Time) bool {
 func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// The session answers first: a start the phase refuses — a stale coach
+	// tab, two coaches racing the countdown — used to wipe the running
+	// ride's record and roster before hearing no (audit 2026-09-09).
+	if !rm.session.apply(c, now) {
+		return false
+	}
 	// A new start is a new ride: the record must not blend two sessions.
 	if c.Action == "start" {
 		rm.record.reset()
@@ -161,5 +167,5 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 		rm.presentSince = time.Time{}
 		rm.startedBy = riderID
 	}
-	return rm.session.apply(c, now)
+	return true
 }
