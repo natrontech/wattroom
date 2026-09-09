@@ -30,6 +30,10 @@ func (h *Hub) SetLobbyAuth(auth func(*http.Request) (userID string, ok bool)) {
 	h.lobbyAuth = auth
 }
 
+// lobbyKeepalive is how often a quiet lobby socket is pinged; a peer that
+// does not answer within the write timeout is gone.
+const lobbyKeepalive = 30 * time.Second
+
 // HandleLobbyWS holds one client's lobby socket open until it drops.
 func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 	if h.lobbyAuth == nil {
@@ -67,16 +71,32 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 
 	done := make(chan struct{})
 	safego.Go(h.log, "lobby writer", func() {
-		// Writer: exits when the reader below returns (done) or a write fails.
+		// Writer: exits when the reader below returns (done), a write fails,
+		// or a ping goes unanswered. The ping is the keepalive (#1740, #1506):
+		// a socket that died without a close frame — a sleeping laptop, a NAT
+		// drop, a phone losing signal — used to hold the rider online for
+		// every friend until TCP noticed, if ever, and leak their socket
+		// budget. Closing the conn here is what unblocks the reader below.
+		keepalive := time.NewTicker(lobbyKeepalive)
+		defer keepalive.Stop()
 		for {
 			select {
 			case <-done:
 				return
+			case <-keepalive.C:
+				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+				err := conn.Ping(ctx)
+				cancel()
+				if err != nil {
+					_ = conn.CloseNow()
+					return
+				}
 			case <-c.ping:
 				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 				err := conn.Write(ctx, websocket.MessageText, []byte("{}"))
 				cancel()
 				if err != nil {
+					_ = conn.CloseNow()
 					return
 				}
 			}

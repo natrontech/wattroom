@@ -26,7 +26,13 @@
 
 	let query = $state('');
 	const threads = $derived(
-		orderThreads(presence.rooms, dmHeads.heads, (id) => dmHeads.unread(id)),
+		// A crew room you may not enter is a row that would fail on click
+		// (#1741); the rail feed carries it for the crew, not for this list.
+		orderThreads(
+			presence.rooms.filter((r) => !!r.role),
+			dmHeads.heads,
+			(id) => dmHeads.unread(id),
+		),
 	);
 	const shown = $derived.by(() => {
 		const q = query.trim().toLowerCase();

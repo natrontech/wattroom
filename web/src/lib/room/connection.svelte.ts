@@ -1,6 +1,7 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import { announce } from '$lib/messages/announce';
+import { shouldAnnounce } from '$lib/notify-once';
 import { away, notify } from '$lib/notify.svelte';
 import { presence } from '$lib/presence.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
@@ -117,6 +118,10 @@ function connect(slug: string): Connection {
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
+	// The room's name for a notification's title (#1741); the slug stands in
+	// until the rail feed has named it.
+	const roomName = () =>
+		presence.rooms.find((r) => r.slug === slug)?.name ?? slug;
 	let known: Set<string> | null = null;
 	// Blip only for lines newer than the connection itself — the backlog can
 	// never replay, and the log's length cap can never freeze the notifier
@@ -222,6 +227,17 @@ function connect(slug: string): Connection {
 		// until it agrees — bounded, so a message the server never answers
 		// cannot pin this rider's away state to a wish forever. `away-echo.ts`
 		// holds the rule and its tests; this is the two lines that call it.
+		// A reconnect re-declares away on open (live.svelte.ts), but the hub
+		// dropped it with the last socket and a tick in between says
+		// away:false — with nothing pressed, the echo was unarmed and that
+		// tick re-opened the camera of a rider not at the bike (#1740). Arm
+		// it as a press, so the first ticks that disagree are waited out.
+		let wasLive = live.status === 'live';
+		$effect(() => {
+			const nowLive = live.status === 'live';
+			if (nowLive && !wasLive && av.away) awayEcho = pressed(true);
+			wasLive = nowLive;
+		});
 		$effect(() => {
 			const mine = live.tick?.roster.find(
 				(rider) => rider.id === account.me?.id,
@@ -237,7 +253,12 @@ function connect(slug: string): Connection {
 		$effect(() => {
 			const roster = live.tick?.roster ?? [];
 			const ids = new Set(roster.map((rider) => rider.id));
-			if (live.status !== 'live') return;
+			// Coming back announces the whole outage in one burst otherwise
+			// (#1741) — the away and voice effects below already forget.
+			if (live.status !== 'live') {
+				known = null;
+				return;
+			}
 			if (known === null) {
 				known = ids;
 				return;
@@ -245,10 +266,13 @@ function connect(slug: string): Connection {
 			const before = known;
 			known = ids;
 			const arrived = roster.filter((rider) => !before.has(rider.id));
+			const at = live.tick?.at ?? Date.now();
 			if (arrived.length > 0) {
+				// Once per tag across tabs, and the room's name, not its slug.
+				if (!shouldAnnounce(`join-${slug}-${at}`, at)) return;
 				play('join');
 				notify.push(
-					slug,
+					roomName(),
 					`${arrived.map((rider) => rider.name).join(', ')} joined the room`,
 					`join-${slug}`,
 					{ href: `/r/${slug}` },
@@ -479,12 +503,14 @@ function connect(slug: string): Connection {
 				before !== 'countdown' &&
 				before !== 'paused'
 			) {
-				notify.push(
-					slug,
-					'The session is starting — saddle up',
-					`session-${slug}`,
-					{ href: `/r/${slug}/training` },
-				);
+				const at = live.tick?.at ?? Date.now();
+				if (shouldAnnounce(`session-${slug}-${at}`, at))
+					notify.push(
+						roomName(),
+						'The session is starting — saddle up',
+						`session-${slug}`,
+						{ href: `/r/${slug}/training` },
+					);
 			}
 		});
 	});

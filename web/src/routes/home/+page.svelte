@@ -9,6 +9,7 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
 	import { othersIn } from '$lib/status';
 	import { page } from '$app/state';
@@ -111,27 +112,13 @@
 
 	// Friends who are around right now — a room list answers "where", this
 	// answers "who" (ADR-0012: presence, never watts).
-	interface FriendHead {
-		id: string;
-		name: string;
-		avatarUrl?: string;
-		totalXp?: number;
-		status: string;
-		online?: boolean;
-		inRoom?: boolean;
-		room?: string;
-		roomName?: string;
-	}
-	let friends = $state<FriendHead[]>([]);
-	$effect(() => {
-		presence.version;
-		if (!account.me) return;
-		void api<{ friends: FriendHead[] }>('/api/friends').then((res) => {
-			if (res.ok) friends = res.data.friends;
-		});
-	});
+	// The friends the app already keeps (#1740): this page used to fetch its
+	// own copy on every ping — and filter it on a status the server never
+	// sends, so the row never rendered for anyone.
 	const friendsOnline = $derived(
-		friends.filter((f) => f.status === 'friends' && f.online),
+		(friends.list ?? []).filter(
+			(f) => f.status === 'accepted' && (f.online || f.inRoom),
+		),
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
