@@ -207,6 +207,6 @@
 		</footer>
 	</main>
 {:else}
-	<!-- Redirecting to /rooms (the layout owns that effect). -->
+	<!-- Redirecting to /home (the layout owns that effect). -->
 	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
 {/if}

@@ -18,6 +18,7 @@
 	import { api } from '$lib/api';
 	import { fetchProgression, type Progression } from '$lib/progression';
 	import { apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 	import { zoneSeconds } from '$lib/ride/stats';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
@@ -59,12 +60,7 @@
 		exportError = null;
 		const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/export`);
 		if (res.ok) {
-			const url = URL.createObjectURL(res.data.blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = res.data.filename ?? `wattroom-${id}.fit`;
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(res.data.blob, res.data.filename ?? `wattroom-${id}.fit`);
 		} else exportError = res.error.message;
 		exporting = false;
 	}

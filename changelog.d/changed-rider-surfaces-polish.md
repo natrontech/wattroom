@@ -1,0 +1,1 @@
+- Small things on the pages outside a room: the Friends page's dismiss, cancel and remove are proper buttons, the ramp test's "I'm done" is sized for a hand on the bars, and its errors read like everywhere else's.

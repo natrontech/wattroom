@@ -5,6 +5,7 @@
 	// error is the page's persistent status and never this card's own toast
 	// (.claude/rules/errors.md — the rider is on a bike).
 	import { apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 	import { discardRide, unfinishedRides } from '$lib/ride/buffer';
 	import {
 		exportFilename,
@@ -34,12 +35,7 @@
 				json: exportPayload(ride),
 			});
 			if (!res.ok) throw new Error(res.error.message);
-			const url = URL.createObjectURL(res.data.blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = exportFilename(ride);
-			a.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(res.data.blob, exportFilename(ride));
 			await forget(ride.rideId);
 		} catch (cause) {
 			onError(cause instanceof Error ? cause.message : String(cause));

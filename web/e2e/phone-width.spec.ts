@@ -23,7 +23,6 @@ const ROUTES = [
 	'/workouts/edit',
 	'/music',
 	'/history',
-	'/rooms',
 	'/friends',
 	'/messages',
 	'/ramp',
@@ -208,5 +207,26 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
 	}
 
+	expect(wide, 'pages wider than a 375px phone').toEqual([]);
+});
+
+/**
+ * The two pages a rider meets first, and the two most likely to be opened on
+ * a phone from a pasted link — reached signed out, so outside the shell that
+ * gives everything else `page-body`. Out there the document is the page, and
+ * the document's own width is the honest measure.
+ */
+test('the landing and the gate fit a phone', async ({ page }) => {
+	const wide: string[] = [];
+	for (const route of ['/', '/login']) {
+		await page.goto(route);
+		await page.waitForTimeout(300);
+		const excess = await page.evaluate(
+			() =>
+				document.documentElement.scrollWidth -
+				document.documentElement.clientWidth,
+		);
+		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
+	}
 	expect(wide, 'pages wider than a 375px phone').toEqual([]);
 });

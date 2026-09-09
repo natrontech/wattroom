@@ -14,7 +14,7 @@ export function rememberNext(path: string | null): void {
 			sessionStorage.removeItem(KEY);
 		}
 	} catch {
-		// blocked storage: the rider just lands on /rooms instead
+		// blocked storage: the rider just lands on /home instead
 	}
 }
 
