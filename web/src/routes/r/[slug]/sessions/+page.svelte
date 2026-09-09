@@ -8,14 +8,24 @@
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { confirm } from '$lib/confirm.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Copy from '@lucide/svelte/icons/copy';
+	import Link from '@lucide/svelte/icons/link';
+	import Play from '@lucide/svelte/icons/play';
 	import Plus from '@lucide/svelte/icons/plus';
+	import UserCheck from '@lucide/svelte/icons/user-check';
+	import UserMinus from '@lucide/svelte/icons/user-minus';
 
 	const room = useRoom();
 	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
@@ -46,6 +56,68 @@
 		entry.going ?? [];
 	const youAreIn = (entry: { going?: { id: string; displayName: string }[] }) =>
 		going(entry).some((who) => who.id === room.you.id);
+
+	/** The place's address, for a chat or a calendar note. */
+	function copyLink() {
+		const link = `${location.origin}/r/${room.slug}/sessions`;
+		void navigator.clipboard.writeText(link).then(
+			() => toasts.push('Link copied.'),
+			() =>
+				toasts.push(`Could not copy — the link is ${link}`, {
+					tone: 'error',
+					seconds: 12,
+				}),
+		);
+	}
+
+	// The row's right-click (ux.md, #1373): the buttons keep the primary
+	// actions, this holds every one of them plus the link the row has no
+	// room for. A coach's entries name why they are greyed.
+	function planEntries(entry: (typeof room.upcoming)[number]): MenuEntry[] {
+		const inn = youAreIn(entry);
+		const entries: MenuEntry[] = [
+			{
+				label: inn ? "I'm out" : "I'm in",
+				icon: inn ? UserMinus : UserCheck,
+				onSelect: () => room.rsvp(entry.id, !inn),
+				disabled: room.adminBusy,
+			},
+			{ label: 'Copy link', icon: Link, onSelect: copyLink },
+		];
+		if (!manages) return entries;
+		const startable = due(entry.startsAt) && room.phase === 'lounge';
+		entries.push(
+			'separator',
+			{
+				label: 'Start now',
+				icon: Play,
+				onSelect: () => room.startScheduled(entry),
+				disabled: !startable || room.adminBusy,
+				hint: startable
+					? undefined
+					: room.phase !== 'lounge'
+						? 'a session is running'
+						: 'not due yet',
+			},
+			{
+				label: 'Move…',
+				icon: CalendarClock,
+				onSelect: () => {
+					movingId = entry.id;
+					moveAt = '';
+				},
+			},
+			'separator',
+			{
+				label: 'Cancel the session',
+				icon: CircleX,
+				onSelect: () => void cancelPlan(entry),
+				danger: true,
+				disabled: room.adminBusy,
+			},
+		);
+		return entries;
+	}
 
 	/** No inverse exists — the RSVPs go with it — so it asks first (errors.md). */
 	async function cancelPlan(entry: {
@@ -104,7 +176,11 @@
 	{:else}
 		<ul class="space-y-2">
 			{#each room.upcoming as entry, i (entry.id)}
-				<li class="panel px-4 py-3 {i === 0 ? 'border-neon/40' : ''}">
+				<li
+					class="panel px-4 py-3 {i === 0 ? 'border-neon/40' : ''}"
+					title={MENU_HINT}
+					{@attach contextMenu(() => planEntries(entry))}
+				>
 					<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<CalendarClock size={16} class="text-muted shrink-0" />
 						<div class="min-w-0 flex-1">

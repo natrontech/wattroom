@@ -1,0 +1,1 @@
+- A planned session has a right-click menu (long-press on touch), like a rider's tile or a track: say you're in or out, copy the link to the room's Sessions place, and — for a coach — start it now, move it or cancel it, with the greyed entries saying why ("not due yet", "a session is running"). The buttons stay where they were; the menu is the shortcut.
