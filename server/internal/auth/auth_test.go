@@ -105,7 +105,7 @@ func TestExpiredSessionsAreSwept(t *testing.T) {
 		}
 	}
 
-	if err := s.store.Queries.DeleteExpiredSessions(t.Context()); err != nil {
+	if _, err := s.store.Queries.DeleteExpiredSessions(t.Context()); err != nil {
 		t.Fatalf("delete expired sessions: %v", err)
 	}
 

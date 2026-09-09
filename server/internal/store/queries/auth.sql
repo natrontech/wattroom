@@ -14,7 +14,8 @@ where provider = $1 and provider_user_id = $2;
 -- (#697). Bounded by the number of third-party connections, not by riders.
 -- name: ListPlaintextRefreshTokens :many
 select provider, provider_user_id, refresh_token from identities
-where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null;
+where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null
+limit 500; -- a page (audit 2026-09-09); the backfill loops while pages are full
 
 -- Seal one row in place. The plaintext goes in the same statement it is
 -- replaced by, so a crash mid-backfill leaves every row either sealed or
@@ -36,8 +37,10 @@ where s.token_hash = $1 and s.expires_at > now();
 -- name: DeleteSession :exec
 delete from sessions where token_hash = $1;
 
--- name: DeleteExpiredSessions :exec
-delete from sessions where expires_at <= now();
+-- name: DeleteExpiredSessions :execrows
+-- Bounded (audit 2026-09-09): the caller loops while a batch comes back full.
+delete from sessions
+ where ctid in (select ctid from sessions where expires_at <= now() limit 10000);
 
 -- name: ListUserProviders :many
 select provider from identities where user_id = $1 order by created_at;

@@ -120,8 +120,11 @@ func (q *Queries) ListRoomRecaps(ctx context.Context, arg ListRoomRecapsParams) 
 	return items, nil
 }
 
-const pruneSessionRecaps = `-- name: PruneSessionRecaps :exec
-delete from session_recaps where ended_at < now() - make_interval(days => $1::int)
+const pruneSessionRecaps = `-- name: PruneSessionRecaps :execrows
+delete from session_recaps
+ where ctid in (select ctid from session_recaps
+                 where ended_at < now() - make_interval(days => $1::int)
+                 limit 10000)
 `
 
 // The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
@@ -134,15 +137,24 @@ delete from session_recaps where ended_at < now() - make_interval(days => $1::in
 // count, so pruning on write is exactly sufficient there. This bound is time,
 // which expires a row with no write involved, so a room that stopped holding
 // sessions kept its recaps forever — the one case the bound exists for.
-func (q *Queries) PruneSessionRecaps(ctx context.Context, dollar_1 int32) error {
-	_, err := q.db.Exec(ctx, pruneSessionRecaps, dollar_1)
-	return err
+//
+// Bounded (audit 2026-09-09): one unbounded delete in one transaction on the
+// first sweep after a long gap is the shape every other durable path avoids;
+// the caller loops while a batch comes back full.
+func (q *Queries) PruneSessionRecaps(ctx context.Context, dollar_1 int32) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneSessionRecaps, dollar_1)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const saveSessionRecap = `-- name: SaveSessionRecap :one
 
 insert into session_recaps (room_id, workout, started_at, ended_at, riders)
 values ($1, $2, $3, $4, $5)
+on conflict (room_id, started_at) do update
+    set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
 returning id, created_at
 `
 
@@ -163,6 +175,8 @@ type SaveSessionRecapRow struct {
 // long. Presence and time only — no watts, no kJ, no execution, no heart rate
 // and no per-rider workout reach this table, which is what lets it be durable
 // at all while WATTROOM.md's metrics rules stay untouched.
+// Idempotent on (room, started_at): the keeper retries (audit 2026-09-09),
+// and the second write of the same session updates rather than duplicates.
 func (q *Queries) SaveSessionRecap(ctx context.Context, arg SaveSessionRecapParams) (SaveSessionRecapRow, error) {
 	row := q.db.QueryRow(ctx, saveSessionRecap,
 		arg.RoomID,

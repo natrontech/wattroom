@@ -55,13 +55,18 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 	return err
 }
 
-const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
-delete from sessions where expires_at <= now()
+const deleteExpiredSessions = `-- name: DeleteExpiredSessions :execrows
+delete from sessions
+ where ctid in (select ctid from sessions where expires_at <= now() limit 10000)
 `
 
-func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, deleteExpiredSessions)
-	return err
+// Bounded (audit 2026-09-09): the caller loops while a batch comes back full.
+func (q *Queries) DeleteExpiredSessions(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteIdentity = `-- name: DeleteIdentity :execrows
@@ -178,6 +183,7 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 const listPlaintextRefreshTokens = `-- name: ListPlaintextRefreshTokens :many
 select provider, provider_user_id, refresh_token from identities
 where refresh_token is not null and refresh_token <> '' and refresh_token_enc is null
+limit 500
 `
 
 type ListPlaintextRefreshTokensRow struct {
@@ -233,6 +239,7 @@ func (q *Queries) ListUserProviders(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const sealRefreshToken = `-- name: SealRefreshToken :exec
+
 update identities set refresh_token_enc = $3, refresh_token = null
 where provider = $1 and provider_user_id = $2
 `
@@ -243,6 +250,7 @@ type SealRefreshTokenParams struct {
 	RefreshTokenEnc []byte
 }
 
+// a page (audit 2026-09-09); the backfill loops while pages are full
 // Seal one row in place. The plaintext goes in the same statement it is
 // replaced by, so a crash mid-backfill leaves every row either sealed or
 // untouched, never neither.
