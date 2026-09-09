@@ -84,6 +84,18 @@ export function ftpFromRamp(watts: number[]): { ftp: number; best: number } {
 }
 
 /**
+ * The page's decision: blown only once the warm-up is over. The warm-up has a
+ * target too, and the detector used to fire five seconds into a test on a
+ * rider still spinning up (audit 2026-09-09).
+ */
+export function rampBlown(
+	elapsedSeconds: number,
+	recent: { watts: number; target: number }[],
+): boolean {
+	return elapsedSeconds >= RAMP.warmupSeconds && rampFailed(recent);
+}
+
+/**
  * Has the rider blown? True once power has sat well under target for long enough.
  * The caller passes the trailing samples; keeping the decision pure makes it
  * testable without a trainer.

@@ -363,6 +363,20 @@
 				<p class="text-muted mt-6 text-[11px]">
 					No passwords — use an account you already have.
 				</p>
+			{:else if account.loaded && account.unreachable}
+				<!-- Not "unconfigured": the question never reached the server. -->
+				<div class="mx-auto mt-8 max-w-sm text-left">
+					<Banner tone="error">
+						The server could not be reached — check your connection and try
+						again.
+						{#snippet action()}
+							<button
+								onclick={() => void account.load()}
+								class="btn-link text-xs">Retry</button
+							>
+						{/snippet}
+					</Banner>
+				</div>
 			{:else if account.loaded}
 				<!-- Capability gating: no providers, no dead buttons — say why. A
 				     passkey is only ever added from an account that already exists,

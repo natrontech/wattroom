@@ -54,6 +54,10 @@ function createAccountStore() {
 	let me = $state<Me | null>(null);
 	let providers = $state<string[]>([]);
 	let loaded = $state(false);
+	// The last providers read failed to reach the server at all — a first
+	// load on a restarting server used to read as "no providers configured"
+	// (audit 2026-09-09).
+	let unreachable = $state(false);
 
 	/**
 	 * Which load is the current question. Home, the room layout, the landing
@@ -85,8 +89,15 @@ function createAccountStore() {
 			}
 			// Any failure (404 = server running without a database) stays hidden;
 			// an unreachable server keeps whatever we were last told.
-			if (provRes.ok) providers = provRes.data.providers ?? [];
-			else if (provRes.error.error !== 'network') providers = [];
+			if (provRes.ok) {
+				providers = provRes.data.providers ?? [];
+				unreachable = false;
+			} else if (provRes.error.error === 'network') {
+				unreachable = true;
+			} else {
+				providers = [];
+				unreachable = false;
+			}
 		} finally {
 			if (mine === asked) loaded = true;
 		}
@@ -122,6 +133,9 @@ function createAccountStore() {
 		},
 		get loaded() {
 			return loaded;
+		},
+		get unreachable() {
+			return unreachable;
 		},
 		load,
 		/** Returns a field-keyed error message, or null on success. */

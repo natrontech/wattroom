@@ -18,8 +18,7 @@
 	import { uploadRide } from '$lib/ride/save';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
-	import { beforeNavigate, goto } from '$app/navigation';
-	import { confirm } from '$lib/confirm.svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { page } from '$app/state';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
@@ -355,34 +354,17 @@
 		}
 	}
 	// A stray tap on the rail mid-ride must not eat the ride (#126): one
-	// confirm, only while the session is actually alive. The browser-level
-	// unload guard rides along for tab closes.
-	const riding = () =>
-		!!session && session.state !== 'done' && session.state !== 'idle';
-	// The guard must cancel synchronously and the dialog answers later, so a
-	// "yes" re-issues the navigation with the guard stood down.
-	let leaving = false;
-	beforeNavigate((navigation) => {
-		if (!riding() || navigation.type === 'leave' || leaving) return;
-		navigation.cancel();
-		void confirm({
+	// confirm, only while the session is actually alive, and the browser's
+	// unload guard for tab closes — shared with /ramp.
+	guardLeaving(
+		() => !!session && session.state !== 'done' && session.state !== 'idle',
+		{
 			title: 'End the ride and leave?',
 			body: 'The summary and the .fit file are lost.',
 			action: 'End the ride',
 			cancel: 'Keep riding',
-		}).then((ok) => {
-			if (!ok || !navigation.to) return;
-			leaving = true;
-			void goto(navigation.to.url);
-		});
-	});
-	$effect(() => {
-		const handler = (event: BeforeUnloadEvent) => {
-			if (riding()) event.preventDefault();
-		};
-		window.addEventListener('beforeunload', handler);
-		return () => window.removeEventListener('beforeunload', handler);
-	});
+		},
+	);
 	// This page is the session's only owner: leaving it ends the ride, as the
 	// confirm above promises — or the trainer holds a target with nobody
 	// watching and the frame stays caved.
