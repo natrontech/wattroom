@@ -137,6 +137,7 @@ func TestUpdateMeRejectsJunk(t *testing.T) {
 		"name":    `{"displayName":"","ftpWatts":250,"weightKg":80}`,
 		"unknown": `{"displayName":"x","ftpWatts":250,"weightKg":80,"admin":true}`,
 		"email":   `{"displayName":"x","ftpWatts":250,"weightKg":80,"email":"not-an-address"}`,
+		"lthr":    `{"displayName":"x","ftpWatts":250,"weightKg":80,"lthr":300}`,
 	} {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me", strings.NewReader(body))
 		req.AddCookie(cookie)
@@ -944,5 +945,43 @@ func TestAfterSignIn(t *testing.T) {
 	}
 	if got := afterSignIn("github", true); got != "/?new=github" {
 		t.Errorf("new account goes to %q", got)
+	}
+}
+
+// LTHR follows the account (#1571): it used to live in one browser's
+// localStorage, and the rider who measured it on the web opened the desktop
+// app to "—". Set, kept when absent, cleared by zero.
+func TestUpdateMeCarriesLthr(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	rec := httptest.NewRecorder()
+	if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	cookie := rec.Result().Cookies()[0]
+	patch := func(body string) meResponse {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPatch, "/api/me", strings.NewReader(body))
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		s.handleUpdateMe(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("patch %s = %d: %s", body, w.Code, w.Body.String())
+		}
+		var got meResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return got
+	}
+	if got := patch(`{"displayName":"x","ftpWatts":250,"weightKg":80,"lthr":166}`); got.Lthr == nil || *got.Lthr != 166 {
+		t.Fatalf("set: %+v", got.Lthr)
+	}
+	// A client that predates the field keeps the anchor.
+	if got := patch(`{"displayName":"x","ftpWatts":255,"weightKg":80}`); got.Lthr == nil || *got.Lthr != 166 {
+		t.Fatalf("absent should keep: %+v", got.Lthr)
+	}
+	if got := patch(`{"displayName":"x","ftpWatts":255,"weightKg":80,"lthr":0}`); got.Lthr != nil {
+		t.Fatalf("zero should clear: %d", *got.Lthr)
 	}
 }

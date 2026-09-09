@@ -53,6 +53,9 @@
 		const me = account.me;
 		if (!me) return;
 		ftp = me.ftpWatts;
+		// The anchor follows the account too (#1571); an account without one
+		// leaves whatever this browser holds until the pull pushes it up.
+		if (me.lthr != null) lthr = me.lthr;
 		kg = me.weightKg;
 		name = me.displayName;
 		// A pending address is the one the rider last asked for — show that,
@@ -68,6 +71,8 @@
 				displayName: name || account.me.displayName,
 				ftpWatts: nextFtp,
 				weightKg: kg,
+				// On the account since #1571; an empty field clears it.
+				lthr: lthr ?? 0,
 				// Only where the section renders — an omitted field keeps the
 				// server's current value. The address travels only when the
 				// rider changed it: an unchanged one re-sent past the resend

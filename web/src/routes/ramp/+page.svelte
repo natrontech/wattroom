@@ -143,8 +143,12 @@
 			? estimate
 			: 0;
 	});
-	function saveLthr() {
-		const message = profile.update({ lthr: suggestedLthr });
+	// The account first, like the FTP below (#1571): the anchor used to live
+	// in this browser alone, and the desktop app read "—" the same evening.
+	async function saveLthr() {
+		const message =
+			(await pushProfile({ lthr: suggestedLthr })) ??
+			profile.update({ lthr: suggestedLthr });
 		if (message) error = message;
 		else lthrSaved = true;
 	}

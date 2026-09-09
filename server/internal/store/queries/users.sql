@@ -15,7 +15,7 @@ select * from users where id = $1;
 -- email_verified_at still set (#824).
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    notify_planned = $6
+    notify_planned = $6, lthr = sqlc.narg('lthr')::smallint
 where id = $1
 returning *;
 

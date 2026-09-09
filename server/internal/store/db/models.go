@@ -326,6 +326,7 @@ type User struct {
 	EmailVerifyExpires pgtype.Timestamptz
 	EmailRequired      bool
 	Timezone           *string
+	Lthr               *int16
 }
 
 type UserAvatar struct {
