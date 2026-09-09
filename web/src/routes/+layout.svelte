@@ -101,6 +101,8 @@
 			page.url.pathname === '/legal' ||
 			page.url.pathname === '/privacy' ||
 			page.url.pathname === '/download' ||
+			// The HUD says "sign in on the main window" itself (#1667).
+			page.url.pathname === '/hud' ||
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);

@@ -14,6 +14,12 @@ export interface HudSnapshot {
 	remaining: number;
 	/** The workout, or the room and its workout. */
 	label: string;
+	/**
+	 * What the riding screen would be shouting about (#1665): the trainer's
+	 * signal is gone, or the room's socket is. A HUD that shows a confident
+	 * 0 for a dropped trainer is worse than none (errors.md).
+	 */
+	fault?: 'trainer' | 'room';
 }
 
 const CHANNEL = 'wattroom.hud';

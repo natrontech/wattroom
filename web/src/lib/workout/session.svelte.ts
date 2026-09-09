@@ -1,4 +1,5 @@
 import { arbitrate } from '$lib/ble/arbitrate';
+import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
@@ -22,6 +23,9 @@ export function toleranceBand(target: number): number {
 }
 
 export type RideState = 'idle' | 'running' | 'autopaused' | 'resuming' | 'done';
+
+/** Past this without a sample the dashboard, and the HUD, say so (#37). */
+export const SIGNAL_LOST_MS = 3000;
 
 /**
  * The frame caves while a solo session is live (ADR-0020: the ride is the
@@ -220,6 +224,7 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
+		publish();
 		// The record and the score admit one sample per ride second; the
 		// guards below look at every one — a stop is noticed by the sample
 		// that stopped, not by the second's first.
@@ -277,7 +282,23 @@ export function createRideSession({
 	 * reports the seconds it actually covers (#51) — the ride catches up in a jump
 	 * rather than running slow for as long as the tab stays hidden.
 	 */
+	// The HUD feed (ADR-0041, #1665): the session publishes, not the screen,
+	// so the floating window follows the ride off /ride — and carries the
+	// fault the screen would be shouting about.
+	function publish() {
+		if (state === 'idle' || state === 'done') return;
+		publishHud({
+			watts: sample?.watts ?? 0,
+			target,
+			remaining: Math.max(0, total - clockSeconds),
+			label: workout.name,
+			fault:
+				sample && now() - sample.at > SIGNAL_LOST_MS ? 'trainer' : undefined,
+		});
+	}
+
 	function tick(seconds = 1) {
+		publish();
 		if (state === 'resuming') {
 			const actuate = guards.tick(seconds);
 			syncGuards();

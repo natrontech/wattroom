@@ -4,7 +4,10 @@
 	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import { createRideSession } from '$lib/workout/session.svelte';
+	import {
+		createRideSession,
+		SIGNAL_LOST_MS,
+	} from '$lib/workout/session.svelte';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
 	import { createCustomStore } from '$lib/workout/custom.svelte';
@@ -298,7 +301,7 @@
 		!!session &&
 			session.state !== 'done' &&
 			!!session.sample &&
-			nowMs - session.sample.at > 3000,
+			nowMs - session.sample.at > SIGNAL_LOST_MS,
 	);
 
 	// The block, derived once for both screens that draw it — the riding
@@ -335,7 +338,6 @@
 
 	const watts = $derived(session?.sample?.watts ?? 0);
 	const target = $derived(session?.target ?? 0);
-	const remaining = $derived(session ? session.total - session.elapsed : 0);
 
 	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
 	async function downloadFit() {
@@ -439,7 +441,6 @@
 			{ftp}
 			kg={profile.current.kg}
 			lthr={profile.current.lthr}
-			{remaining}
 			{watts}
 			{target}
 			{signalLost}

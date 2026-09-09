@@ -2,6 +2,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import { formatClock } from '$lib/format';
 	import { isStale, subscribeHud, type HudSnapshot } from '$lib/hud/feed';
+	import { account } from '$lib/account.svelte';
 
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
 	// own — the shell floats it over whatever else is on screen while a ride
@@ -43,7 +44,14 @@
 			aria-label="Close the HUD"><X size={14} /></button
 		>
 	{/if}
-	{#if quiet || !snapshot}
+	{#if account.loaded && !account.me}
+		<!-- #1667: the layout's gate would open the sign-in page in this
+		     320 px box, and the shell cannot complete one anyway (ADR-0040). -->
+		<p class="eyebrow">wattroom</p>
+		<p class="text-muted mt-1 text-sm" data-testid="hud-signed-out">
+			Sign in on the main window.
+		</p>
+	{:else if quiet || !snapshot}
 		<p class="eyebrow">wattroom</p>
 		<p class="text-muted mt-1 text-sm" data-testid="hud-quiet">
 			Waiting for a ride…
@@ -68,6 +76,13 @@
 				>
 			{/if}
 		</div>
+		{#if snapshot.fault}
+			<p class="text-danger mt-1 text-xs" data-testid="hud-fault">
+				{snapshot.fault === 'trainer'
+					? 'Trainer signal lost — reconnecting'
+					: 'Room connection lost — reconnecting'}
+			</p>
+		{/if}
 		<p class="text-muted mt-2 text-xs tabular-nums" data-testid="hud-remaining">
 			{formatClock(snapshot.remaining)} left
 		</p>

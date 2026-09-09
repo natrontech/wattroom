@@ -1,10 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
+
+const hud = vi.hoisted(() => ({
+	published: [] as Array<{ watts: number; fault?: string }>,
+}));
+vi.mock('$lib/hud/feed', () => ({
+	publishHud: (s: { watts: number; fault?: string }) => {
+		hud.published.push(s);
+	},
+}));
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import {
 	createRideSession,
 	DEFAULTS,
 	soloRide,
 	toleranceBand,
+	SIGNAL_LOST_MS,
 } from './session.svelte';
 import type { Workout } from './types';
 
@@ -402,5 +412,36 @@ describe('the ride record', () => {
 		session.onSample({ watts: 210, cadence: 90, at: 1000 });
 		expect(session.recording.length).toBe(2);
 		session.stop();
+	});
+});
+
+// The HUD feed comes from the session, not the screen (#1665): it follows
+// the ride off /ride, and it says when the trainer has gone quiet instead
+// of showing a confident 0.
+describe('the HUD feed (#1665)', () => {
+	it('publishes each tick, with the fault the screen would show', async () => {
+		vi.useFakeTimers();
+		let t = 0;
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({
+			trainer,
+			workout,
+			ftp: 200,
+			now: () => t,
+		});
+		await session.start();
+		hud.published.length = 0;
+		session.onSample({ watts: 150, cadence: 90, at: 0 });
+		session.tick();
+		expect(hud.published.at(-1)).toMatchObject({ watts: 150 });
+		expect(hud.published.at(-1)?.fault).toBeUndefined();
+
+		t = SIGNAL_LOST_MS + 1000;
+		session.tick();
+		expect(hud.published.at(-1)).toMatchObject({
+			watts: 150,
+			fault: 'trainer',
+		});
+		vi.useRealTimers();
 	});
 });

@@ -82,7 +82,9 @@ export const changelog = {
 				api<{ version?: string }>('/api/version'),
 				fetch('/changelog.md').then((r) => (r.ok ? r.text() : null)),
 			]);
-			if (text === null) {
+			// The SPA answers any unknown path with index.html and 200 (#1667):
+			// a missing file would read as "no releases yet", not as a failure.
+			if (text === null || !text.trimStart().startsWith('# Changelog')) {
 				failed = true;
 				return;
 			}

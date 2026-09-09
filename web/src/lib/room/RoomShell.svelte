@@ -6,6 +6,7 @@
 	import { account } from '$lib/account.svelte';
 	import { flatten } from '$lib/workout/engine';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { publishHud } from '$lib/hud/feed';
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage, sourceLabel } from '$lib/room/stage';
 	import { createRiders } from '$lib/room/riders.svelte';
@@ -157,6 +158,27 @@
 
 	// The roster with live numbers on it, plus you and the block you are in —
 	// one module, fed by ticks (riders.svelte.ts).
+	// The HUD feed (ADR-0041, #1665): published from the room, not the
+	// Training place, so the floating window follows the ride to Chat or the
+	// Lounge, and says what RoomStatus would.
+	$effect(() => {
+		const phase = live.tick?.state.phase;
+		if (phase !== 'countdown' && phase !== 'running' && phase !== 'paused')
+			return;
+		const you = roster.you;
+		publishHud({
+			watts: you.watts,
+			target: you.target,
+			remaining: Math.max(
+				0,
+				(shared?.totalSeconds ?? 0) - (shared?.elapsed ?? 0),
+			),
+			label: shared?.workoutName || 'Room ride',
+			fault:
+				live.status !== 'live' ? 'room' : rideCtl.fault ? 'trainer' : undefined,
+		});
+	});
+
 	const roster = createRiders({
 		live,
 		av,

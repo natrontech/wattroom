@@ -13,6 +13,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
+	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import RoomFlag from '$lib/room/RoomFlag.svelte';
 	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
@@ -21,7 +22,6 @@
 	import TrainingPhone from '$lib/room/TrainingPhone.svelte';
 	import { device } from '$lib/device.svelte';
 	import { pictureKey } from '$lib/room/stage';
-	import { publishHud } from '$lib/hud/feed';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
 	import { serverNow } from '$lib/room/server-clock';
@@ -31,18 +31,6 @@
 	const total = $derived(room.shared?.totalSeconds ?? 0);
 	const elapsed = $derived(room.shared?.elapsed ?? 0);
 
-	// The HUD feed (ADR-0041): your own numbers, once a second, for the
-	// floating window or another tab to mirror. Solo rides publish from
-	// RidingScreen; a room publishes here, where "you" is resolved.
-	$effect(() => {
-		if (!room.you) return;
-		publishHud({
-			watts: room.you.watts,
-			target: room.you.target,
-			remaining: Math.max(0, total - elapsed),
-			label: room.shared?.workoutName ?? 'Room ride',
-		});
-	});
 	// A shared SCREEN takes the focus; the jukebox never does — it has one
 	// player instance and it lives on the dock (RMF: no auto-advance offscreen).
 	const share = $derived(
@@ -178,6 +166,13 @@
 				{/snippet}
 				{#snippet controls()}
 					<SessionControls compact />
+					<!-- The 3 m view, from the place the rider is on (#1667): the
+					     Lounge had the only button, off the numbers, mid-interval. -->
+					<button
+						onclick={() => room.openTv()}
+						class="btn btn-ghost btn-xs"
+						aria-label="TV mode"><MonitorUp size={13} /> TV</button
+					>
 					<RoomFlag />
 				{/snippet}
 			</RideHeader>
