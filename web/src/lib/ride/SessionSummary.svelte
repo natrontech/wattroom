@@ -29,7 +29,8 @@
 		subtitle: string;
 		samples: RideSample[];
 		ftp: number;
-		execution: number;
+		/** Absent when nothing scorable was ridden: shown as a dash, no bonus (#1454). */
+		execution?: number;
 		medal?: Medal;
 		roomName?: string;
 		actions?: Snippet;
@@ -43,7 +44,7 @@
 	const zones = $derived(zoneSeconds(samples, ftp));
 	const totalZoneSeconds = $derived(zones.reduce((a, b) => a + b, 0));
 	const curve = $derived(curvePoints(samples));
-	const xp = $derived(rideXp(kj, execution));
+	const xp = $derived(rideXp(kj, execution ?? 0));
 
 	// A medal announces itself once (SPEC: promotions announce, drops do not).
 	let cheered = false;
@@ -66,7 +67,7 @@
 
 	<!-- Headline numbers first: what you did, how well, what it earned. -->
 	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		{#each [{ label: 'duration', value: formatClock(seconds) }, { label: 'work', value: `${kj} kJ` }, { label: 'execution', value: `${Math.round(execution * 100)}%` }, { label: 'normalised', value: `${np} W` }] as stat (stat.label)}
+		{#each [{ label: 'duration', value: formatClock(seconds) }, { label: 'work', value: `${kj} kJ` }, { label: 'execution', value: execution === undefined ? '—' : `${Math.round(execution * 100)}%` }, { label: 'normalised', value: `${np} W` }] as stat (stat.label)}
 			<div class="panel p-5">
 				<div class="font-display text-3xl leading-none font-bold tabular-nums">
 					{stat.value}
@@ -124,7 +125,7 @@
 					</li>
 					<li class="flex">
 						<span>execution bonus</span><span class="ml-auto"
-							>+{Math.round(execution * 50)}</span
+							>+{Math.round((execution ?? 0) * 50)}</span
 						>
 					</li>
 				</ul>

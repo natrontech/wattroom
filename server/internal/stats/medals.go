@@ -30,6 +30,17 @@ type RiderResult struct {
 	Completed bool
 }
 
+// Completed is docs/SPEC.md's "but completed the session" (Lanterne Rouge):
+// the rider's record reaches the workout's final segment. It was hard-coded
+// true, so it was no criterion at all (audit 2026-09-09). A workout with no
+// segments has nothing to complete.
+func Completed(segments []workout.Segment, samples int) bool {
+	if len(segments) == 0 {
+		return true
+	}
+	return samples > segments[len(segments)-1].Start
+}
+
 // Medals awards per docs/SPEC.md. Fewer than three riders: no medals at all.
 func Medals(results []RiderResult) map[string]string {
 	completed := make([]RiderResult, 0, len(results))

@@ -104,7 +104,7 @@ export function createRiders(deps: RiderDeps) {
 				paused: false,
 				lateJoined: false,
 				target,
-				execution: tick.execution?.[rider.id] ?? 1,
+				execution: tick.execution?.[rider.id],
 				trace: you ? deps.recording.trace : [],
 				eliminated: tick.game?.riders?.[rider.id]?.eliminated,
 			};
@@ -131,7 +131,7 @@ export function createRiders(deps: RiderDeps) {
 			paused: false,
 			lateJoined: false,
 			target: 0,
-			execution: 1,
+			execution: undefined,
 			trace: deps.recording.trace,
 		},
 	);

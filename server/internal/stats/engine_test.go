@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 const workoutJSON = `{"name":"t","steps":[
@@ -66,6 +67,37 @@ func TestExecutionExcludesUnriddenSeconds(t *testing.T) {
 	got, _, err := Execution(workoutJSON, 200, samples)
 	if err != nil || got != 1 {
 		t.Fatalf("unridden seconds scored: %v (%v)", got, err)
+	}
+}
+
+func TestExecutionBandFloorsAtTenWatts(t *testing.T) {
+	// SPEC: ±5 % of target, floor ±10 W. At 60 W the 5 % band is 3 W; the
+	// floor makes it 10: 66 W is in, 72 W is out. Nothing exercised the
+	// floor before — every case used targets where 5 % is already ≥ 10 W
+	// (audit 2026-09-09).
+	const easy = `{"name":"e","steps":[{"type":"steady","seconds":30,"target":0.3}]}`
+	if got, _, err := Execution(easy, 200, flat(66, 30)); err != nil || got != 1 {
+		t.Fatalf("66 W against 60 W (floor ±10) scored %v (%v), want 1", got, err)
+	}
+	if got, _, err := Execution(easy, 200, flat(72, 30)); err != nil || got != 0 {
+		t.Fatalf("72 W against 60 W (floor ±10) scored %v (%v), want 0", got, err)
+	}
+}
+
+func TestCompletedReachesTheFinalSegment(t *testing.T) {
+	segments, err := workout.Parse(workoutJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// warmup 60 + 2×(30+30) + cooldown 60: the cooldown starts at 180.
+	if Completed(segments, 180) {
+		t.Error("a ride that stopped as the final segment began counts as completed")
+	}
+	if !Completed(segments, 181) {
+		t.Error("a ride into the final segment does not count as completed")
+	}
+	if !Completed(nil, 0) {
+		t.Error("a workout with no segments has nothing to complete")
 	}
 }
 

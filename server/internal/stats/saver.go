@@ -129,7 +129,7 @@ func (s *Saver) save(
 			Scored:    row.ExecutionScored,
 			CoV:       SteadyCoV(segments, watts),
 			Best5sWkg: wkg,
-			Completed: true,
+			Completed: Completed(segments, len(rider.Samples)),
 		})
 	}
 

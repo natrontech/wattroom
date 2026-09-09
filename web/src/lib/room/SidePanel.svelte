@@ -147,13 +147,13 @@
 					{:else if rider.muted}
 						<MicOff size={11} class="text-muted/50 shrink-0" />
 					{/if}
-					{#if live && rider.watts > 0}
+					{#if live && rider.watts > 0 && rider.execution !== undefined}
 						<span class="text-muted shrink-0 text-[10px] tabular-nums"
 							>{Math.round(rider.execution * 100)}%</span
 						>
 					{/if}
 				</span>
-				{#if live && rider.watts > 0}
+				{#if live && rider.watts > 0 && rider.execution !== undefined}
 					<!-- Execution moved off the training surface (ADR-0020): how well
 				     everyone is holding target is roster data, and this is the
 				     roster. It also gives the column a job mid-ride, when nobody

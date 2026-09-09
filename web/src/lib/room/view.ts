@@ -36,7 +36,8 @@ export interface RoomRider {
 	paused: boolean;
 	lateJoined: boolean;
 	target: number;
-	execution: number;
+	/** The live score; absent until something scorable was ridden (#1454). */
+	execution?: number;
 	trace: { t: number; w: number }[];
 	eliminated?: boolean;
 }

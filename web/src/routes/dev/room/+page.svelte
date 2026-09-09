@@ -104,7 +104,7 @@
 		{ label: 'rpm', value: String(you.cadence) },
 		{ label: 'bpm', value: String(you.hr) },
 		{ label: 'w/kg', value: (you.watts / you.kg).toFixed(1) },
-		{ label: 'exec', value: `${Math.round(you.execution * 100)}%` },
+		{ label: 'exec', value: `${Math.round((you.execution ?? 0) * 100)}%` },
 	]);
 </script>
 

@@ -1,0 +1,1 @@
+- The live execution meter shows a dash until something scorable has been ridden, instead of a 100 % the saved ride then contradicts; Lanterne Rouge's "but completed the session" now means the ride reached the workout's final segment.

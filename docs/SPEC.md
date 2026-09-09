@@ -331,7 +331,7 @@ future trainer that reports none.
 - **Diesel** — lowest power variability (coefficient of variation) across steady steps
 - **Metronome** — best execution score
 - **Hammer** — best 5 s w/kg
-- **Lanterne Rouge** — last on the final sprint/podium metric but completed the session
+- **Lanterne Rouge** — last on the final sprint/podium metric but completed the session (their ride reaches the workout's final segment)
 - Ties: earlier joiner wins. Minimum 3 riders for medals (default — tune in alpha).
 
 ## Session recap retention (ADR-0034)

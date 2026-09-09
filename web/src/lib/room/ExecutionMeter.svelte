@@ -14,10 +14,15 @@
 			.map((rider) => ({
 				name: rider.name,
 				you: rider.you,
-				pct: Math.round(rider.execution * 100),
+				// No score until something scorable was ridden (#1454): a dash,
+				// never a 100 % the saved ride will contradict.
+				pct:
+					rider.execution === undefined
+						? null
+						: Math.round(rider.execution * 100),
 				inBand: targetState(rider).inBand,
 			}))
-			.sort((a, b) => b.pct - a.pct),
+			.sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1)),
 	);
 </script>
 
@@ -33,7 +38,7 @@
 				>
 				<div class="flex-1" data-testid="execution-bar">
 					<ProgressBar
-						pct={entry.pct}
+						pct={entry.pct ?? 0}
 						track="bg-surface"
 						fill="{entry.you
 							? 'bg-watt'
@@ -48,7 +53,7 @@
 					title={entry.inBand ? 'in band' : 'off target'}
 				></span>
 				<span class="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums"
-					>{entry.pct}%</span
+					>{entry.pct === null ? '—' : `${entry.pct}%`}</span
 				>
 			</li>
 		{/each}

@@ -141,7 +141,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
-					out[id] = rm.record.execution(id)
+					if score, scored := rm.record.execution(id); scored {
+						out[id] = score
+					}
 				}
 				return out
 			}(),
