@@ -126,11 +126,18 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 var rideBodies atomic.Int64
 
 func rideBody(seconds, watts int) string {
+	return rideBodyAt(seconds, watts, time.Now().Add(-time.Hour-time.Duration(rideBodies.Add(1))*time.Second))
+}
+
+// rideBodyAt is rideBody with the start chosen by the test. The counter above
+// keeps starts apart by one second per call, which a slow race-detector run
+// can undo by crossing a second boundary between two calls — and the server
+// then dedupes the second ride as a retry of the first (200, not 201).
+func rideBodyAt(seconds, watts int, start time.Time) string {
 	samples := make([]string, seconds)
 	for i := range samples {
 		samples[i] = fmt.Sprintf(`{"watts":%d,"cadence":90}`, watts)
 	}
-	start := time.Now().Add(-time.Hour - time.Duration(rideBodies.Add(1))*time.Second)
 	return fmt.Sprintf(
 		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":%d,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
 		seconds, start.Format(time.RFC3339), strings.Join(samples, ","))
@@ -140,9 +147,11 @@ func rideBody(seconds, watts int) string {
 // before the oldest row the client holds.
 func TestRideListPagesByStart(t *testing.T) {
 	h := setup(t)
-	for range 3 {
-		if status, _ := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200)); status != http.StatusCreated {
-			t.Fatalf("save: %d", status)
+	base := time.Now().Add(-2 * time.Hour)
+	for i := range 3 {
+		body := rideBodyAt(120, 200, base.Add(time.Duration(i)*10*time.Minute))
+		if status, _ := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body); status != http.StatusCreated {
+			t.Fatalf("save %d: %d", i, status)
 		}
 	}
 	status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
