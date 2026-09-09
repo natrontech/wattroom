@@ -86,6 +86,10 @@ type sampleJSON struct {
 	// meter bands the BIASED target and this side re-scored the workout as
 	// written. Absent (0) is a ride with no trim — protocol.BiasOr's default.
 	Bias float64 `json:"bias,omitempty"`
+	// The workout second this sample was ridden at (#1733); the score keys on
+	// it, so a pause mid-block no longer shifts every later second onto the
+	// wrong block. Absent (0 throughout) scores by index, as before.
+	Clock int `json:"clock,omitempty"`
 }
 
 type createRequest struct {
@@ -288,8 +292,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 				"A sample's bias is out of range — 0.8 to 1.2.", "samples")
 			return
 		}
+		// A workout second past the six-hour ceiling is no second of any
+		// workout this saves — the same bound the sample count has.
+		if sample.Clock < 0 || sample.Clock > maxSamples {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+				"A sample's workout second is out of range.", "samples")
+			return
+		}
 		samples[i] = protocol.RiderMetrics{
-			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Seq: i,
+			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Seq: i,
 		}
 	}
 

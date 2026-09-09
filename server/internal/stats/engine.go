@@ -36,7 +36,14 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 	}
 	scorable = Scorable(segments)
 	var weight, inBand float64
-	for second, sample := range samples {
+	keyed := clockKeyed(samples)
+	for i, sample := range samples {
+		// The workout second: what the sample says when the ride stamped one
+		// (#1733), the array index otherwise (a room ride, or an old record).
+		second := i
+		if keyed {
+			second = sample.Clock
+		}
 		target, scored := workout.TargetAt(segments, ftp, second)
 		// SPEC's stopped predicate, the same one the live meter asks (#795):
 		// excluding only 0 W here scored a soft-pedalled second as a miss
@@ -64,6 +71,19 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 		return 0, scorable, nil
 	}
 	return inBand / weight, scorable, nil
+}
+
+// clockKeyed says whether the ride stamped its samples with the workout second
+// (protocol.RiderMetrics.Clock). Any non-zero stamp is the signal: a client
+// that sends the field sends it on every sample, and the only sample it is
+// legitimately 0 on is the first.
+func clockKeyed(samples []protocol.RiderMetrics) bool {
+	for _, sample := range samples {
+		if sample.Clock > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Scorable reports whether a workout prescribes any second the execution score

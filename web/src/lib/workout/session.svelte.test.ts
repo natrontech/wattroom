@@ -201,6 +201,32 @@ describe('createRideSession', () => {
 		session.stop();
 	});
 
+	it('stamps each recorded sample with the workout second, which stops while auto-paused', async () => {
+		// #1733: the record counts wall seconds; the score is keyed on the
+		// workout clock, so a stop mid-block must not shift what follows.
+		const session = ride();
+		await session.start();
+		for (let at = 0; at < 15; at++) {
+			const riding = at < 5;
+			session.onSample({
+				watts: riding ? 200 : 0,
+				cadence: riding ? 90 : 0,
+				at: at * 1000,
+			});
+			session.tick();
+		}
+		expect(session.state).toBe('autopaused');
+		const seconds = session.recording.map((sample) => sample.second);
+		const clocks = session.recording.map((sample) => sample.clock);
+		expect(seconds).toEqual([...Array(15).keys()]);
+		expect(clocks.slice(0, 5)).toEqual([0, 1, 2, 3, 4]);
+		// The wall clock reached 14; the workout clock stopped with the rider
+		// and held there for every stopped second after the pause engaged.
+		expect(clocks.at(-1)).toBeLessThan(seconds.at(-1)!);
+		expect(new Set(clocks.slice(-5)).size).toBe(1);
+		session.stop();
+	});
+
 	it('skip jumps to the next block', async () => {
 		const session = ride();
 		await session.start();

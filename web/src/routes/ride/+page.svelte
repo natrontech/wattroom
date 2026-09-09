@@ -251,6 +251,9 @@
 				// server re-scores the ride against the workout as written and
 				// hands back an execution the rider never saw.
 				bias: sample.bias,
+				// The workout second it was ridden at (#1733): the server scores
+				// by it, so a pause mid-block no longer shifts the rest.
+				clock: sample.clock,
 			})),
 		}).then((outcome) => {
 			saving = false;
