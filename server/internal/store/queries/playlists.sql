@@ -66,7 +66,7 @@ where r.id = $1 and exists (select 1 from playlists p where p.id = $2 and p.room
 update rooms set autoplay_playlist_id = null where id = $1;
 
 -- name: UpdateAutoplay :one
--- autoplay_fixed_video_id/_title are no longer written (#1422); the columns
--- stay one release for the rollback path and #1430 drops them.
+-- autoplay_fixed_video_id/_title stopped being written in #1422 and were
+-- dropped one release later (#1430, ADR-0019 expand/contract).
 update rooms set autoplay_enabled = $2, autoplay_order = $3
 where id = $1 returning *;
