@@ -7,6 +7,8 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import { rememberNext, takeNext } from '$lib/auth/next';
+	import CrewMark from '$lib/components/CrewMark.svelte';
+	import { crewDoor, type CrewDoor } from '$lib/crew';
 	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
 	import Banner from '$lib/components/Banner.svelte';
 	import * as passkeys from '$lib/passkeys';
@@ -39,6 +41,24 @@
 	// with a nonce, the stash is this page again so the handoff can happen.
 	const nextAfterSignIn = () =>
 		nonce ? `/login?desktop=${nonce}` : page.url.searchParams.get('next');
+
+	// A rider who arrived by a crew's invite link (#1236) meets this gate
+	// first, and the gate should say what is on the other side: the door is
+	// public, so it is one read away. Anything else in `next` stays a path.
+	const inviteCode = $derived(
+		/^\/c\/([A-Za-z0-9]{6})$/.exec(
+			page.url.searchParams.get('next') ?? '',
+		)?.[1] ?? null,
+	);
+	let invite = $state<CrewDoor | null>(null);
+	$effect(() => {
+		const code = inviteCode;
+		invite = null;
+		if (!code) return;
+		void crewDoor(code).then((res) => {
+			if (res.ok && inviteCode === code) invite = res.data;
+		});
+	});
 
 	let browserOpened = $state(false);
 	let handoffError = $state('');
@@ -177,6 +197,33 @@
 			<p class="text-muted mt-3 text-sm {shell ? 'lg:hidden' : ''}">
 				Train together, not alone.
 			</p>
+			{#if invite}
+				<!-- The invite is the reason they are here: name the crew before
+				     asking for anything. Sign-in lands them on its door (#1236). -->
+				<div
+					class="border-muted/20 mt-6 flex items-center gap-3 rounded-lg border px-4 py-3 text-left"
+				>
+					<CrewMark
+						name={invite.name}
+						icon={invite.icon}
+						imageUrl={invite.imageUrl}
+						size={36}
+						class="rounded-lg"
+					/>
+					<p class="min-w-0 text-sm">
+						You are invited to <span class="font-display font-bold"
+							>{invite.name}</span
+						>
+						<span class="text-muted"
+							>· {invite.members === 1
+								? '1 rider'
+								: `${invite.members} riders`}</span
+						>
+						<span class="text-muted block text-xs">Sign in and you are in.</span
+						>
+					</p>
+				</div>
+			{/if}
 			{#if shell}
 				<div class="hidden text-left lg:block">
 					<p class="eyebrow">the desktop app</p>
