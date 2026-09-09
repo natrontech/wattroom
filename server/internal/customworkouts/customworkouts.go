@@ -98,8 +98,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListUserWorkouts(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list workouts failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your workouts could not be loaded.")
+		httpx.Fail(w, s.log, "list workouts failed", err, "Your workouts could not be loaded.")
 		return
 	}
 	out := make([]workoutJSON, 0, len(rows))
@@ -131,8 +130,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		OwnerID: user.ID, Name: name, Author: user.DisplayName, Definition: req.Workout,
 	})
 	if err != nil {
-		s.log.Error("create workout failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The workout could not be saved. Try again.")
+		httpx.Fail(w, s.log, "create workout failed", err, "The workout could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, workoutJSON{
@@ -173,8 +171,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Like create and delete: a database failure is logged and a 500, not
 		// a rider told their workout does not exist (audit 2026-09-09).
-		s.log.Error("workout update failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The workout could not be saved. Try again.")
+		httpx.Fail(w, s.log, "workout update failed", err, "The workout could not be saved. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, workoutJSON{
@@ -195,8 +192,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.DeleteWorkout(r.Context(), db.DeleteWorkoutParams{ID: id, OwnerID: user.ID})
 	if err != nil {
-		s.log.Error("delete workout failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The workout could not be deleted. Try again.")
+		httpx.Fail(w, s.log, "delete workout failed", err, "The workout could not be deleted. Try again.")
 		return
 	}
 	if rows == 0 {

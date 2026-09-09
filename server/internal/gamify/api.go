@@ -141,8 +141,7 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 		shares, err := s.store.Queries.SharesRoomOrFriends(r.Context(),
 			db.SharesRoomOrFriendsParams{Viewer: viewer.ID, Rider: rider})
 		if err != nil {
-			s.log.Error("trophies visibility check failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
+			httpx.Fail(w, s.log, "trophies visibility check failed", err, "The trophy case could not be loaded.")
 			return
 		}
 		if !shares {
@@ -161,8 +160,7 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 func (s *Service) write(w http.ResponseWriter, r *http.Request, userID, viewer pgtype.UUID) {
 	out, err := s.Trophies(r.Context(), userID)
 	if err != nil {
-		s.log.Error("trophies failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
+		httpx.Fail(w, s.log, "trophies failed", err, "The trophy case could not be loaded.")
 		return
 	}
 	self := userID == viewer
@@ -174,8 +172,7 @@ func (s *Service) write(w http.ResponseWriter, r *http.Request, userID, viewer p
 		shared, err := s.store.Queries.CountRiderMedalsInCommon(r.Context(),
 			db.CountRiderMedalsInCommonParams{Rider: userID, Viewer: viewer})
 		if err != nil {
-			s.log.Error("scoped medal tally failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
+			httpx.Fail(w, s.log, "scoped medal tally failed", err, "The trophy case could not be loaded.")
 			return
 		}
 		out.Medals = medalsJSON{}

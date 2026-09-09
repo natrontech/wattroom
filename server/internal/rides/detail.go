@@ -58,16 +58,14 @@ func (s *Service) handleRetryExport(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That ride is not one of yours.")
 		return
 	} else if err != nil {
-		s.log.Error("ride retry read failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		httpx.Fail(w, s.log, "ride retry read failed", err, "That ride could not be loaded.")
 		return
 	}
 	rows, err := s.store.Queries.RequeueRideExport(r.Context(), db.RequeueRideExportParams{
 		RideID: id, Destination: exportDestination,
 	})
 	if err != nil {
-		s.log.Error("ride retry failed", "err", err, "ride", store.UUIDString(id))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be queued. Try again.")
+		httpx.Fail(w, s.log, "ride retry failed", err, "That could not be queued. Try again.", "ride", store.UUIDString(id))
 		return
 	}
 	if rows == 0 {
@@ -96,8 +94,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("ride export read failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		httpx.Fail(w, s.log, "ride export read failed", err, "That ride could not be loaded.")
 		return
 	}
 	if len(row.Samples) == 0 {
@@ -106,8 +103,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics, err := stats.DecodeSamples(row.Samples)
 	if err != nil {
-		s.log.Error("ride export samples unreadable", "err", err, "ride", store.UUIDString(row.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride's samples could not be read.")
+		httpx.Fail(w, s.log, "ride export samples unreadable", err, "That ride's samples could not be read.", "ride", store.UUIDString(row.ID))
 		return
 	}
 	if len(metrics) == 0 {
@@ -120,8 +116,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := fitexport.Encode(fitexport.Ride{StartedAt: row.StartedAt.Time, Samples: samples})
 	if err != nil {
-		s.log.Error("ride export encode failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be exported.")
+		httpx.Fail(w, s.log, "ride export encode failed", err, "That ride could not be exported.")
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.ant.fit")
@@ -202,14 +197,12 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("ride read failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		httpx.Fail(w, s.log, "ride read failed", err, "That ride could not be loaded.")
 		return
 	}
 	medalRows, err := s.store.Queries.ListRideMedals(r.Context(), id)
 	if err != nil {
-		s.log.Error("ride medals read failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That ride could not be loaded.")
+		httpx.Fail(w, s.log, "ride medals read failed", err, "That ride could not be loaded.")
 		return
 	}
 
@@ -289,8 +282,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	n, err := s.store.Queries.DeleteRide(r.Context(), db.DeleteRideParams{ID: id, UserID: user.ID})
 	if err != nil {
-		s.log.Error("ride delete failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be deleted. It is still there — try again.")
+		httpx.Fail(w, s.log, "ride delete failed", err, "The ride could not be deleted. It is still there — try again.")
 		return
 	}
 	if n == 0 {

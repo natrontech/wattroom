@@ -168,8 +168,7 @@ func (s *Service) roomBySlug(w http.ResponseWriter, r *http.Request) (db.Room, b
 		return db.Room{}, false
 	}
 	if err != nil {
-		s.log.Error("room lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
+		httpx.Fail(w, s.log, "room lookup failed", err, "The room could not be loaded.")
 		return db.Room{}, false
 	}
 	return room, true

@@ -109,14 +109,12 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListBoardClips(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("list board clips", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your clips could not be loaded.")
+		httpx.Fail(w, s.log, "list board clips", err, "Your clips could not be loaded.", "user", store.UUIDString(me.ID))
 		return
 	}
 	used, err := s.store.Queries.BoardClipBytes(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("board quota", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your clips could not be loaded.")
+		httpx.Fail(w, s.log, "board quota", err, "Your clips could not be loaded.", "user", store.UUIDString(me.ID))
 		return
 	}
 	out := listJSON{Clips: make([]clipJSON, 0, len(rows)), Used: used, Limit: MaxRiderBytes}
@@ -183,21 +181,18 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// (#1413): parallel uploads each read the same "used" and each landed.
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("board begin", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		httpx.Fail(w, s.log, "board begin", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
 	if err := q.LockUser(r.Context(), me.ID); err != nil {
-		s.log.Error("board lock", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		httpx.Fail(w, s.log, "board lock", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	used, err := q.BoardClipBytes(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("board quota", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		httpx.Fail(w, s.log, "board quota", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	// Not 429: the rider's move is to delete something, not to wait — so this
@@ -217,13 +212,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		EndMs: int32(defaultEnd), //nolint:gosec // 0 or MaxClipMillis
 	})
 	if err != nil {
-		s.log.Error("save board clip", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		httpx.Fail(w, s.log, "save board clip", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		s.log.Error("board commit", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		httpx.Fail(w, s.log, "board commit", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, clipJSON{
@@ -248,8 +241,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	n, err := s.store.Queries.DeleteBoardClip(r.Context(), db.DeleteBoardClipParams{ID: id, UserID: me.ID})
 	if err != nil {
-		s.log.Error("delete board clip", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be deleted.")
+		httpx.Fail(w, s.log, "delete board clip", err, "The clip could not be deleted.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {

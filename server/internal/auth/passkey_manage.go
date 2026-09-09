@@ -24,9 +24,7 @@ func (s *Service) handleListPasskeys(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListUserPasskeys(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("passkey list failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your passkeys could not be loaded. Try again.")
+		httpx.Fail(w, s.log, "passkey list failed", err, "Your passkeys could not be loaded. Try again.")
 		return
 	}
 	out := make([]passkeyResponse, 0, len(rows))
@@ -67,9 +65,7 @@ func (s *Service) handleRenamePasskey(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, pgx.ErrNoRows):
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That passkey is not on this account.")
 	default:
-		s.log.Error("passkey rename failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be renamed. Try again.")
+		httpx.Fail(w, s.log, "passkey rename failed", err, "That passkey could not be renamed. Try again.")
 	}
 }
 
@@ -90,9 +86,7 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 	})
 	switch {
 	case err != nil:
-		s.log.Error("passkey delete failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be removed. Try again.")
+		httpx.Fail(w, s.log, "passkey delete failed", err, "That passkey could not be removed. Try again.")
 	case last:
 		httpx.WriteError(w, http.StatusConflict, "conflict", lastCredentialMessage)
 	case rows == 0:

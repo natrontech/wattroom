@@ -237,13 +237,9 @@ func (s *Service) emailUpdate(ctx context.Context, w http.ResponseWriter, user d
 		httpx.WriteFieldError(w, http.StatusTooManyRequests, "rate_limited",
 			"That is a lot of confirmation emails in one hour. Wait an hour, then try again.", "email")
 	case errors.Is(err, errMailSend):
-		s.log.Error("confirmation mail not sent", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The confirmation email could not be sent. Try again.")
+		httpx.Fail(w, s.log, "confirmation mail not sent", err, "The confirmation email could not be sent. Try again.")
 	default:
-		s.log.Error("starting email verification failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your profile could not be saved. Try again.")
+		httpx.Fail(w, s.log, "starting email verification failed", err, "Your profile could not be saved. Try again.")
 	}
 	return db.User{}, false
 }
@@ -257,9 +253,7 @@ func (s *Service) clearEmail(ctx context.Context, w http.ResponseWriter, user db
 		"The recovery address on your WattRoom account was removed. Without one there is no way back into the account if every passkey and sign-in provider is lost, and no more alarms like this one.")
 	updated, err := s.store.Queries.ClearUserEmail(ctx, user.ID)
 	if err != nil {
-		s.log.Error("clearing email failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your profile could not be saved. Try again.")
+		httpx.Fail(w, s.log, "clearing email failed", err, "Your profile could not be saved. Try again.")
 		return db.User{}, false
 	}
 	return updated, true

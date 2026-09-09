@@ -126,8 +126,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListUserRides(r.Context(), params)
 	if err != nil {
-		s.log.Error("list rides failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rides could not be loaded.")
+		httpx.Fail(w, s.log, "list rides failed", err, "Your rides could not be loaded.")
 		return
 	}
 	out := make([]rideJSON, 0, len(rows))
@@ -179,8 +178,7 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("best ride failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rides could not be loaded.")
+		httpx.Fail(w, s.log, "best ride failed", err, "Your rides could not be loaded.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": rideJSONOf(db.ListUserRidesRow(row))})
@@ -211,8 +209,7 @@ func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
 		Shared: *body.SharedWithFriends, ID: id, UserID: user.ID,
 	})
 	if err != nil {
-		s.log.Error("ride share failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be updated.")
+		httpx.Fail(w, s.log, "ride share failed", err, "The ride could not be updated.")
 		return
 	}
 	if n == 0 {
@@ -292,15 +289,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// the ride has no key of its own.
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("solo ride save begin failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		httpx.Fail(w, s.log, "solo ride save begin failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
 	if err := q.LockUser(r.Context(), user.ID); err != nil {
-		s.log.Error("solo ride save lock failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		httpx.Fail(w, s.log, "solo ride save lock failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if existing, err := q.FindRideAt(r.Context(), db.FindRideAtParams{UserID: user.ID, StartedAt: row.StartedAt}); err == nil {
@@ -310,13 +305,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := q.CreateRide(r.Context(), row)
 	if err != nil {
-		s.log.Error("solo ride save failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		httpx.Fail(w, s.log, "solo ride save failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		s.log.Error("solo ride save commit failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		httpx.Fail(w, s.log, "solo ride save commit failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if s.uploader != nil {

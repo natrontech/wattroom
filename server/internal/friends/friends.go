@@ -101,8 +101,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListFriendships(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("list friendships", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+		httpx.Fail(w, s.log, "list friendships", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
 		return
 	}
 
@@ -133,8 +132,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 		roomList, err := s.store.Queries.GetRoomsBySlugs(r.Context(), slugs)
 		if err != nil {
-			s.log.Error("get rooms by slugs", "err", err, "user", store.UUIDString(me.ID))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+			httpx.Fail(w, s.log, "get rooms by slugs", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
 			return
 		}
 		roomIDs := make([]pgtype.UUID, 0, len(roomList))
@@ -147,8 +145,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 				UserID: me.ID, RoomIds: roomIDs,
 			})
 			if err != nil {
-				s.log.Error("list memberships for user", "err", err, "user", store.UUIDString(me.ID))
-				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+				httpx.Fail(w, s.log, "list memberships for user", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
 				return
 			}
 			for _, m := range memberships {
@@ -192,8 +189,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// the rider who dismissed one never sees that they did.
 	declineRows, err := s.store.Queries.ListFriendDeclines(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("list friend declines", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your friends could not be loaded.")
+		httpx.Fail(w, s.log, "list friend declines", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
 		return
 	}
 	declines := make([]declineJSON, 0, len(declineRows))
@@ -284,8 +280,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("create friend request", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The request could not be sent.")
+		httpx.Fail(w, s.log, "create friend request", err, "The request could not be sent.", "user", store.UUIDString(me.ID))
 		return
 	}
 	s.clearDeclines(r, me.ID, target)
@@ -303,8 +298,7 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 		RequesterID: target, AddresseeID: me.ID,
 	})
 	if err != nil {
-		s.log.Error("accept friend request", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The request could not be accepted.")
+		httpx.Fail(w, s.log, "accept friend request", err, "The request could not be accepted.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {
@@ -327,8 +321,7 @@ func (s *Service) handleRestore(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
 		RequesterID: target, AddresseeID: me.ID,
 	}); err != nil {
-		s.log.Error("restore friend request", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be undone.")
+		httpx.Fail(w, s.log, "restore friend request", err, "That could not be undone.", "user", store.UUIDString(me.ID))
 		return
 	}
 	s.clearDeclines(r, me.ID, target)
@@ -355,8 +348,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		RequesterID: me.ID, AddresseeID: target,
 	})
 	if err != nil {
-		s.log.Error("delete friendship", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be removed.")
+		httpx.Fail(w, s.log, "delete friendship", err, "That could not be removed.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {

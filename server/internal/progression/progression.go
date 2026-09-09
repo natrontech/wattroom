@@ -154,8 +154,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := Summary(r.Context(), s.store.Queries, user)
 	if err != nil {
-		s.log.Error("progression summary failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your progression could not be loaded.")
+		httpx.Fail(w, s.log, "progression summary failed", err, "Your progression could not be loaded.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)

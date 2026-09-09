@@ -104,9 +104,7 @@ func (s *Service) handleDesktopHandoff(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		s.log.Error("handoff token", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Could not hand this sign-in to the app. Try again.")
+		httpx.Fail(w, s.log, "handoff token", err, "Could not hand this sign-in to the app. Try again.")
 		return
 	}
 	tok := base64.RawURLEncoding.EncodeToString(raw)
@@ -144,9 +142,7 @@ func (s *Service) handleDesktopRedeem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.startSession(w, r, user.ID); err != nil {
-		s.log.Error("session create failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Signed in, but the session could not be saved. Try again.")
+		httpx.Fail(w, s.log, "session create failed", err, "Signed in, but the session could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), user))

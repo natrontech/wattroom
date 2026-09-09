@@ -50,8 +50,7 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: target})
 	if err != nil {
-		s.log.Error("crew role lookup failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "That did not work. Try again.", "room", room.Slug)
 		return
 	}
 	switch role {
@@ -66,8 +65,7 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 	}
 	banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target})
 	if err != nil {
-		s.log.Error("grant ban check failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The grant did not go through. Try again.")
+		httpx.Fail(w, s.log, "grant ban check failed", err, "The grant did not go through. Try again.", "room", room.Slug)
 		return
 	}
 	if banned {
@@ -76,8 +74,7 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.GrantRoomAccess(r.Context(), db.GrantRoomAccessParams{RoomID: room.ID, UserID: target}); err != nil {
-		s.log.Error("grant failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
+		httpx.Fail(w, s.log, "grant failed", err, "That did not work. Try again.", "room", room.Slug)
 		return
 	}
 	s.changed()
@@ -98,8 +95,7 @@ func (s *Service) handleRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.RevokeRoomAccess(r.Context(), db.RevokeRoomAccessParams{RoomID: room.ID, UserID: target}); err != nil {
-		s.log.Error("revoke failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
+		httpx.Fail(w, s.log, "revoke failed", err, "That did not work. Try again.", "room", room.Slug)
 		return
 	}
 	s.changed()

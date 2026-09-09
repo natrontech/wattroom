@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -98,4 +99,13 @@ func ServeImage(w http.ResponseWriter, r *http.Request, mime string, data []byte
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "private, no-cache")
 	_, _ = w.Write(data)
+}
+
+// Fail is the one shape for "something on our side broke" (#1695): the
+// internal detail goes to the log with its context keys, the rider gets a
+// curated sentence and a 500 — never err.Error() (errors.md). It stood
+// written out 207 times before it had a name.
+func Fail(w http.ResponseWriter, log *slog.Logger, what string, err error, message string, kv ...any) {
+	log.Error(what, append([]any{"err", err}, kv...)...)
+	WriteError(w, http.StatusInternalServerError, "internal_error", message)
 }

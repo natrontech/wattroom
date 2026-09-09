@@ -35,8 +35,7 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 	// it opens onto the crew: joining it joins the crew first.
 	can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID})
 	if err != nil {
-		s.log.Error("enter check failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+		httpx.Fail(w, s.log, "enter check failed", err, "Joining did not work. Try again.", "room", room.Slug)
 		return
 	}
 	if !can {
@@ -50,16 +49,14 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		}
 		role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID})
 		if err != nil {
-			s.log.Error("crew role lookup failed", "err", err, "room", room.Slug)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			httpx.Fail(w, s.log, "crew role lookup failed", err, "Joining did not work. Try again.", "room", room.Slug)
 			return
 		}
 		// The crew's owner holds no role row by design; writing one listed
 		// them twice and crashed the crew page's keyed list (#1671).
 		if role == "" {
 			if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: room.CrewID, UserID: user.ID}); err != nil {
-				s.log.Error("crew join via listed room failed", "err", err, "room", room.Slug)
-				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+				httpx.Fail(w, s.log, "crew join via listed room failed", err, "Joining did not work. Try again.", "room", room.Slug)
 				return
 			}
 		}
@@ -70,8 +67,7 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: user.ID, Role: "member",
 	})
 	if err != nil {
-		s.log.Error("join failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+		httpx.Fail(w, s.log, "join failed", err, "Joining did not work. Try again.", "room", room.Slug)
 		return
 	}
 	s.changed()
@@ -138,8 +134,7 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: target, Role: req.Role,
 	})
 	if err != nil {
-		s.log.Error("role update failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+		httpx.Fail(w, s.log, "role update failed", err, "The role could not be changed.", "room", room.Slug)
 		return
 	}
 	if changed == 0 {
@@ -197,8 +192,7 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: target,
 	})
 	if err != nil {
-		s.log.Error("remove member failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
+		httpx.Fail(w, s.log, "remove member failed", err, "That did not work. Try again.", "room", room.Slug)
 		return
 	}
 	if removed == 0 {
@@ -249,8 +243,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{RoomID: room.ID, UserID: target})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		s.log.Error("transfer membership check failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		httpx.Fail(w, s.log, "transfer membership check failed", err, "The hand-over did not go through. Try again.", "room", room.Slug)
 		return
 	}
 	if err != nil || m.Role == "banned" {
@@ -262,8 +255,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	// is a 500 and a log line, never "they are banned" or a cap waved through.
 	banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target})
 	if err != nil {
-		s.log.Error("transfer ban check failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		httpx.Fail(w, s.log, "transfer ban check failed", err, "The hand-over did not go through. Try again.", "room", room.Slug)
 		return
 	}
 	if banned {
@@ -273,8 +265,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("room transfer begin failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
+		httpx.Fail(w, s.log, "room transfer begin failed", err, "The room could not be handed on.", "room", room.Slug)
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
@@ -282,14 +273,12 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	// The cap, counted with the new owner's row locked (#1413): a hand-over
 	// racing their own create used to count past it.
 	if err := q.LockUser(r.Context(), target); err != nil {
-		s.log.Error("transfer lock failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		httpx.Fail(w, s.log, "transfer lock failed", err, "The hand-over did not go through. Try again.", "room", room.Slug)
 		return
 	}
 	owned, err := q.CountOwnedRooms(r.Context(), target)
 	if err != nil {
-		s.log.Error("transfer cap check failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		httpx.Fail(w, s.log, "transfer cap check failed", err, "The hand-over did not go through. Try again.", "room", room.Slug)
 		return
 	}
 	if owned >= maxOwnedRooms {
@@ -308,8 +297,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit(r.Context())
 	}
 	if err != nil {
-		s.log.Error("room transfer failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
+		httpx.Fail(w, s.log, "room transfer failed", err, "The room could not be handed on.", "room", room.Slug)
 		return
 	}
 	if s.presence != nil {

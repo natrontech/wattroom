@@ -106,8 +106,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	switch targetRole, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: target}); {
 	case err != nil:
-		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The crew could not be handed on.", "crew", store.UUIDString(crew.ID))
 		return
 	case targetRole == "banned":
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
@@ -120,8 +119,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("crew transfer begin failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		httpx.Fail(w, s.log, "crew transfer begin failed", err, "The crew could not be handed on.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
@@ -134,8 +132,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit(r.Context())
 	}
 	if err != nil {
-		s.log.Error("crew transfer failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be handed on.")
+		httpx.Fail(w, s.log, "crew transfer failed", err, "The crew could not be handed on.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	s.log.Info("crew handed on", "crew", store.UUIDString(crew.ID), "from", store.UUIDString(actor.ID), "to", req.UserID)

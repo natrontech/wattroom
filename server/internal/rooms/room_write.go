@@ -51,23 +51,20 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// unsynchronised write. 409 — the state, not the request, refuses.
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("room create begin failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		httpx.Fail(w, s.log, "room create begin failed", err, "The room could not be opened. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
 	if err := q.LockUser(r.Context(), user.ID); err != nil {
-		s.log.Error("room create lock failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		httpx.Fail(w, s.log, "room create lock failed", err, "The room could not be opened. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	owned, err := q.CountOwnedRooms(r.Context(), user.ID)
 	if err != nil {
 		// Closed, not open (audit 2026-09-09): a failed count used to wave
 		// the cap through.
-		s.log.Error("owned rooms count failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		httpx.Fail(w, s.log, "owned rooms count failed", err, "The room could not be opened. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	if owned >= maxOwnedRooms {
@@ -88,9 +85,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		slug := slugify(req.Name) + "-" + randomCode(4)
 		sp, err := tx.Begin(r.Context())
 		if err != nil {
-			s.log.Error("room create savepoint failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-				"The room could not be created. Try again.")
+			httpx.Fail(w, s.log, "room create savepoint failed", err, "The room could not be created. Try again.")
 			return
 		}
 		created, err := s.store.Queries.WithTx(sp).CreateRoom(r.Context(), db.CreateRoomParams{
@@ -98,9 +93,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		})
 		if err == nil {
 			if err := sp.Commit(r.Context()); err != nil {
-				s.log.Error("room create savepoint commit failed", "err", err)
-				httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-					"The room could not be created. Try again.")
+				httpx.Fail(w, s.log, "room create savepoint commit failed", err, "The room could not be created. Try again.")
 				return
 			}
 			room = created
@@ -110,9 +103,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		if isUniqueViolation(err) && attempt < 3 {
 			continue
 		}
-		s.log.Error("room create failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The room could not be created. Try again.")
+		httpx.Fail(w, s.log, "room create failed", err, "The room could not be created. Try again.")
 		return
 	}
 
@@ -120,9 +111,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: user.ID, Role: "owner",
 	})
 	if err != nil {
-		s.log.Error("owner membership failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The room could not be created. Try again.")
+		httpx.Fail(w, s.log, "owner membership failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
 	}
 	// New rooms are created inside a crew and are open to it (ADR-0038).
@@ -133,15 +122,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		ID: room.ID, CrewID: crew.ID, CrewVisible: true,
 	})
 	if err != nil {
-		s.log.Error("room crew placement failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The room could not be created. Try again.")
+		httpx.Fail(w, s.log, "room crew placement failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		s.log.Error("room create commit failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The room could not be created. Try again.")
+		httpx.Fail(w, s.log, "room create commit failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, roomJSON{
@@ -161,9 +146,7 @@ func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.U
 	if crewID == "" {
 		crew, err := s.crewFor(r.Context(), user)
 		if err != nil {
-			s.log.Error("own crew lookup failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-				"The room could not be created. Try again.")
+			httpx.Fail(w, s.log, "own crew lookup failed", err, "The room could not be created. Try again.")
 			return db.GetCrewRow{}, "", false
 		}
 		return asRow(crew), "owner", true
@@ -180,9 +163,7 @@ func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.U
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 	if err != nil {
-		s.log.Error("crew role lookup failed", "err", err, "crew", crewID)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The room could not be created. Try again.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The room could not be created. Try again.", "crew", crewID)
 		return db.GetCrewRow{}, "", false
 	}
 	if !administers(role) {
@@ -282,8 +263,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		Icon: icon, Cheers: cheers, BoardEnabled: boardEnabled, CrewVisible: crewVisible,
 	})
 	if err != nil {
-		s.log.Error("room update failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be saved.")
+		httpx.Fail(w, s.log, "room update failed", err, "The room could not be saved.", "room", room.Slug)
 		return
 	}
 	s.changed()
@@ -305,8 +285,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.DeleteRoom(r.Context(), room.ID); err != nil {
-		s.log.Error("room delete failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be deleted. Try again.")
+		httpx.Fail(w, s.log, "room delete failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
 		return
 	}
 	// Durable row gone; the hub still holds everything live about it (#618).

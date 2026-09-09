@@ -52,9 +52,7 @@ func (s *Service) handleUpdateTimezone(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.Queries.UpdateUserTimezone(r.Context(), db.UpdateUserTimezoneParams{
 		ID: user.ID, Timezone: &req.Timezone,
 	}); err != nil {
-		s.log.Error("timezone update failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your timezone could not be saved. Try again.")
+		httpx.Fail(w, s.log, "timezone update failed", err, "Your timezone could not be saved. Try again.")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

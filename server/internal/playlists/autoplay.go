@@ -60,14 +60,12 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.store.Queries.UpdateAutoplay(r.Context(), db.UpdateAutoplayParams{
 		ID: sc.room.ID, AutoplayEnabled: req.Enabled, AutoplayOrder: req.Order,
 	}); err != nil {
-		s.log.Error("update autoplay failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Autoplay could not be saved. Try again.")
+		httpx.Fail(w, s.log, "update autoplay failed", err, "Autoplay could not be saved. Try again.")
 		return
 	}
 	if activeID := strings.TrimSpace(req.ActivePlaylistID); activeID == "" {
 		if err := s.store.Queries.ClearActivePlaylist(r.Context(), sc.room.ID); err != nil {
-			s.log.Error("clear active playlist failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Autoplay could not be saved. Try again.")
+			httpx.Fail(w, s.log, "clear active playlist failed", err, "Autoplay could not be saved. Try again.")
 			return
 		}
 	} else {
@@ -78,8 +76,7 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 		}
 		rows, err := s.store.Queries.SetActivePlaylist(r.Context(), db.SetActivePlaylistParams{ID: sc.room.ID, AutoplayPlaylistID: id})
 		if err != nil {
-			s.log.Error("set active playlist failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Autoplay could not be saved. Try again.")
+			httpx.Fail(w, s.log, "set active playlist failed", err, "Autoplay could not be saved. Try again.")
 			return
 		}
 		if rows == 0 {
@@ -89,8 +86,7 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), sc.room.Slug)
 	if err != nil {
-		s.log.Error("room reload failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Autoplay was saved but could not be reloaded.")
+		httpx.Fail(w, s.log, "room reload failed", err, "Autoplay was saved but could not be reloaded.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, autoplayJSONFrom(room))

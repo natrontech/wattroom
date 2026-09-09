@@ -48,9 +48,7 @@ func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListRoomCalendar(r.Context(), room.ID)
 	if err != nil {
-		s.log.Error("calendar feed failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The calendar could not be loaded. Try again.")
+		httpx.Fail(w, s.log, "calendar feed failed", err, "The calendar could not be loaded. Try again.", "room", room.Slug)
 		return
 	}
 	events := make([]icsEvent, 0, len(rows))
@@ -77,9 +75,7 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 		UserID: user.ID, StartsAt: pgTime(time.Now().AddDate(0, 0, -30)),
 	})
 	if err != nil {
-		s.log.Error("rider calendar feed failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The calendar could not be loaded. Try again.")
+		httpx.Fail(w, s.log, "rider calendar feed failed", err, "The calendar could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	events := make([]icsEvent, 0, len(rows))
@@ -102,9 +98,7 @@ func (s *Service) handleRotateIcs(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := s.store.Queries.RotateRoomIcsToken(r.Context(), room.ID)
 	if err != nil {
-		s.log.Error("ics rotate failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The calendar link could not be reset. Try again.")
+		httpx.Fail(w, s.log, "ics rotate failed", err, "The calendar link could not be reset. Try again.", "room", room.Slug)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"icsToken": token})
@@ -118,9 +112,7 @@ func (s *Service) handleRotateUserIcs(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := s.store.Queries.RotateUserIcsToken(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("rider ics rotate failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The calendar link could not be reset. Try again.")
+		httpx.Fail(w, s.log, "rider ics rotate failed", err, "The calendar link could not be reset. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"icsToken": token})

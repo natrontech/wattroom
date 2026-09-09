@@ -60,15 +60,13 @@ func (s *Service) handlePad(w http.ResponseWriter, r *http.Request) {
 		slot := int16(*body.Pad)
 		pad = &slot
 		if err := s.store.Queries.ClearBoardPad(r.Context(), db.ClearBoardPadParams{UserID: me.ID, Pad: &slot}); err != nil {
-			s.log.Error("clear board pad", "err", err, "user", store.UUIDString(me.ID))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The pad could not be set.")
+			httpx.Fail(w, s.log, "clear board pad", err, "The pad could not be set.", "user", store.UUIDString(me.ID))
 			return
 		}
 	}
 	n, err := s.store.Queries.SetBoardClipPad(r.Context(), db.SetBoardClipPadParams{ID: id, UserID: me.ID, Pad: pad})
 	if err != nil {
-		s.log.Error("set board pad", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The pad could not be set.")
+		httpx.Fail(w, s.log, "set board pad", err, "The pad could not be set.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {
@@ -113,8 +111,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		FadeOutMs: int32(body.FadeOutMs), //nolint:gosec // bounded by checkEdit
 	})
 	if err != nil {
-		s.log.Error("set board clip edit", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The edit could not be saved.")
+		httpx.Fail(w, s.log, "set board clip edit", err, "The edit could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {
@@ -189,8 +186,7 @@ func (s *Service) handleName(w http.ResponseWriter, r *http.Request) {
 	}
 	n, err := s.store.Queries.SetBoardClipName(r.Context(), db.SetBoardClipNameParams{ID: id, UserID: me.ID, Name: name})
 	if err != nil {
-		s.log.Error("set board name", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The name could not be changed.")
+		httpx.Fail(w, s.log, "set board name", err, "The name could not be changed.", "user", store.UUIDString(me.ID))
 		return
 	}
 	// Somebody else's clip is not found rather than forbidden: the id of a
@@ -226,15 +222,13 @@ func (s *Service) handleKey(w http.ResponseWriter, r *http.Request) {
 		}
 		body.Key = &normalised
 		if err := s.store.Queries.ClearBoardKey(r.Context(), db.ClearBoardKeyParams{UserID: me.ID, Key: &normalised}); err != nil {
-			s.log.Error("clear board key", "err", err, "user", store.UUIDString(me.ID))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The key could not be set.")
+			httpx.Fail(w, s.log, "clear board key", err, "The key could not be set.", "user", store.UUIDString(me.ID))
 			return
 		}
 	}
 	n, err := s.store.Queries.SetBoardClipKey(r.Context(), db.SetBoardClipKeyParams{ID: id, UserID: me.ID, Key: body.Key})
 	if err != nil {
-		s.log.Error("set board key", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The key could not be set.")
+		httpx.Fail(w, s.log, "set board key", err, "The key could not be set.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if n == 0 {

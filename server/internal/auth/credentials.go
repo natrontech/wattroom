@@ -41,9 +41,7 @@ const lastCredentialMessage = "This is the only way into your account. Add a pas
 func (s *Service) refuseIfLastCredential(w http.ResponseWriter, r *http.Request, user db.User) bool {
 	total, err := s.store.Queries.CountUserCredentials(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("credential count failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That could not be removed. Try again.")
+		httpx.Fail(w, s.log, "credential count failed", err, "That could not be removed. Try again.")
 		return true
 	}
 	if total <= 1 {

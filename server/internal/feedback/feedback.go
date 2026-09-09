@@ -176,9 +176,7 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	// Disk first — the invariant.
 	if err := s.append(stored); err != nil {
-		s.log.Error("feedback disk write failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The report could not be saved. Try once more.")
+		httpx.Fail(w, s.log, "feedback disk write failed", err, "The report could not be saved. Try once more.")
 		return
 	}
 

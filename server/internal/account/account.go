@@ -110,8 +110,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	rides, err := s.store.Queries.ListUserRidesFull(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("export query failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The export could not be built. Try again.")
+		httpx.Fail(w, s.log, "export query failed", err, "The export could not be built. Try again.")
 		return
 	}
 
@@ -340,8 +339,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.purge(r.Context(), user.ID); err != nil {
-		s.log.Error("account delete failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The deletion did not complete. Nothing was removed — try again.")
+		httpx.Fail(w, s.log, "account delete failed", err, "The deletion did not complete. Nothing was removed — try again.")
 		return
 	}
 	// Log the fact, never the identity details: the account is gone.

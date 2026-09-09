@@ -45,8 +45,7 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: me.ID, Mime: mime, Bytes: data,
 	})
 	if err != nil {
-		s.log.Error("save chat image", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The image could not be saved.")
+		httpx.Fail(w, s.log, "save chat image", err, "The image could not be saved.", "room", room.Slug)
 		return
 	}
 	// Uploads sweep too: a member who uploads but never sends would otherwise
@@ -92,16 +91,14 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, Limit: int32(limit), //nolint:gosec // bounded 1–500 above
 	})
 	if err != nil {
-		s.log.Error("list chat", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The chat could not be loaded.")
+		httpx.Fail(w, s.log, "list chat", err, "The chat could not be loaded.", "room", room.Slug)
 		return
 	}
 	reactions, err := s.store.Queries.ListChatReactions(r.Context(), db.ListChatReactionsParams{
 		RoomID: room.ID, UserID: me.ID,
 	})
 	if err != nil {
-		s.log.Error("list reactions", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The chat could not be loaded.")
+		httpx.Fail(w, s.log, "list reactions", err, "The chat could not be loaded.", "room", room.Slug)
 		return
 	}
 	counts := map[string]map[string]int{}
@@ -247,8 +244,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	msg, err := s.store.Queries.GetChatMessage(r.Context(), db.GetChatMessageParams{ID: id, RoomID: room.ID})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			s.log.Error("get chat message", "err", err, "room", room.Slug)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be edited. Try again.")
+			httpx.Fail(w, s.log, "get chat message", err, "The message could not be edited. Try again.", "room", room.Slug)
 			return
 		}
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
@@ -275,8 +271,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
 			return
 		}
-		s.log.Error("edit chat message", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be edited. Try again.")
+		httpx.Fail(w, s.log, "edit chat message", err, "The message could not be edited. Try again.", "room", room.Slug)
 		return
 	}
 	change := protocol.ChatEdit{

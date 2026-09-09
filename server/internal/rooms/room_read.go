@@ -25,8 +25,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	}
 	roomsList, err := s.store.Queries.ListUserRooms(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list rooms failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rooms could not be loaded.")
+		httpx.Fail(w, s.log, "list rooms failed", err, "Your rooms could not be loaded.")
 		return
 	}
 	out := make([]roomJSON, 0, len(roomsList))
@@ -80,8 +79,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	// every live signal is members-only and these are rooms you never joined.
 	others, err := s.store.Queries.ListCrewRoomsFor(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list crew rooms failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rooms could not be loaded.")
+		httpx.Fail(w, s.log, "list crew rooms failed", err, "Your rooms could not be loaded.")
 		return
 	}
 	for _, room := range others {
@@ -99,8 +97,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 	// crew, and a client that only knew crews through rooms lost it.
 	crewRows, err := s.store.Queries.ListCrewsFor(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list crews failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rooms could not be loaded.")
+		httpx.Fail(w, s.log, "list crews failed", err, "Your rooms could not be loaded.")
 		return
 	}
 	crews := make([]roomCrewJSON, 0, len(crewRows))
@@ -214,8 +211,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				// Loudly, like the members below: an empty list here drew "plan
 				// the first session" over a room that had five (audit 2026-09-09).
-				s.log.Error("list upcoming failed", "err", err, "room", room.Slug)
-				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
+				httpx.Fail(w, s.log, "list upcoming failed", err, "The room could not be loaded.", "room", room.Slug)
 				return
 			}
 			// Who is in, for every plan at once (#450) — one query, not
@@ -242,8 +238,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			}
 			members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
 			if err != nil {
-				s.log.Error("list members failed", "err", err, "room", room.Slug)
-				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
+				httpx.Fail(w, s.log, "list members failed", err, "The room could not be loaded.", "room", room.Slug)
 				return
 			}
 			// Which banned rows are also crew-banned (#1150), owner-only like

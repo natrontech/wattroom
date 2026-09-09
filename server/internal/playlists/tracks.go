@@ -162,8 +162,7 @@ func (s *Service) getPlaylistDetail(w http.ResponseWriter, r *http.Request, sc s
 	}
 	rows, err := s.store.Queries.ListPlaylistTracks(r.Context(), p.ID)
 	if err != nil {
-		s.log.Error("list playlist tracks failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be loaded.")
+		httpx.Fail(w, s.log, "list playlist tracks failed", err, "The playlist could not be loaded.")
 		return
 	}
 	tracks := make([]trackJSON, 0, len(rows))
@@ -199,8 +198,7 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	next, err := s.store.Queries.NextTrackPosition(r.Context(), p.ID)
 	if err != nil {
-		s.log.Error("next track position failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be added. Try again.")
+		httpx.Fail(w, s.log, "next track position failed", err, "That track could not be added. Try again.")
 		return
 	}
 	if int(next) >= maxSavedTracks {
@@ -231,8 +229,7 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	row, err := s.store.Queries.InsertPlaylistTrack(r.Context(), params)
 	if err != nil {
-		s.log.Error("insert playlist track failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be added. Try again.")
+		httpx.Fail(w, s.log, "insert playlist track failed", err, "That track could not be added. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, trackJSONFrom(row, library.Title, library.Artist))
@@ -250,8 +247,7 @@ func (s *Service) deleteTrack(w http.ResponseWriter, r *http.Request, sc scope) 
 	}
 	rows, err := s.store.Queries.DeletePlaylistTrack(r.Context(), db.DeletePlaylistTrackParams{ID: trackID, PlaylistID: p.ID})
 	if err != nil {
-		s.log.Error("delete playlist track failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be removed. Try again.")
+		httpx.Fail(w, s.log, "delete playlist track failed", err, "That track could not be removed. Try again.")
 		return
 	}
 	if rows == 0 {
@@ -299,8 +295,7 @@ func (s *Service) queueScope(w http.ResponseWriter, r *http.Request) (db.Room, d
 		return db.Room{}, db.User{}, false
 	}
 	if err != nil {
-		s.log.Error("room lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
+		httpx.Fail(w, s.log, "room lookup failed", err, "The room could not be loaded.")
 		return db.Room{}, db.User{}, false
 	}
 	// Both ban levels (ADR-0038): a crew ban reaches this door too, and asking
@@ -338,14 +333,12 @@ func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("playlist lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be loaded.")
+		httpx.Fail(w, s.log, "playlist lookup failed", err, "The playlist could not be loaded.")
 		return
 	}
 	rows, err := s.store.Queries.ListPlaylistTracks(r.Context(), p.ID)
 	if err != nil {
-		s.log.Error("list playlist tracks failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That playlist could not be queued. Try again.")
+		httpx.Fail(w, s.log, "list playlist tracks failed", err, "That playlist could not be queued. Try again.")
 		return
 	}
 	if s.live == nil {

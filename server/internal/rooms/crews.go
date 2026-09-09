@@ -144,14 +144,12 @@ func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.GetCrewRo
 		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	if err != nil {
-		s.log.Error("crew lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "crew lookup failed", err, "The crew could not be loaded.")
 		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 	if err != nil {
-		s.log.Error("crew role lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The crew could not be loaded.")
 		return db.GetCrewRow{}, db.User{}, "", false
 	}
 	if role == "" || role == "banned" {
@@ -199,8 +197,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	// the sidebar draws, from the same two queries.
 	mine, err := s.store.Queries.ListUserRooms(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list rooms failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "list rooms failed", err, "The crew could not be loaded.")
 		return
 	}
 	for _, room := range mine {
@@ -213,8 +210,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	others, err := s.store.Queries.ListCrewRoomsFor(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("list crew rooms failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "list crew rooms failed", err, "The crew could not be loaded.")
 		return
 	}
 	for _, room := range others {
@@ -227,8 +223,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	roles, err := s.store.Queries.ListCrewRoles(r.Context(), crew.ID)
 	if err != nil {
-		s.log.Error("list crew roles failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "list crew roles failed", err, "The crew could not be loaded.")
 		return
 	}
 	admin := map[string]bool{}
@@ -241,8 +236,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		CrewID: crew.ID, Everyone: administers(role), Viewer: user.ID,
 	})
 	if err != nil {
-		s.log.Error("list crew people failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+		httpx.Fail(w, s.log, "list crew people failed", err, "The crew could not be loaded.")
 		return
 	}
 	out.Members = int64(len(people))
@@ -269,8 +263,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	if administers(role) {
 		banned, err := s.store.Queries.ListCrewBanned(r.Context(), crew.ID)
 		if err != nil {
-			s.log.Error("list crew bans failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be loaded.")
+			httpx.Fail(w, s.log, "list crew bans failed", err, "The crew could not be loaded.")
 			return
 		}
 		for _, p := range banned {
