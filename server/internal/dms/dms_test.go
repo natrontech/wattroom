@@ -135,7 +135,8 @@ func TestDmsAreFriendsOnly(t *testing.T) {
 			t.Fatalf("%s's list after the unfriend: %d %v", who, code, body)
 		}
 	}
-	if code, body := call(t, mux, "bob", http.MethodGet, "/api/dms/"+alice, ""); code != http.StatusOK || len(body["messages"].([]any)) != 2 {
+	code, body = call(t, mux, "bob", http.MethodGet, "/api/dms/"+alice, "")
+	if kept, _ := body["messages"].([]any); code != http.StatusOK || len(kept) != 2 {
 		t.Fatalf("the thread after the unfriend: %d %v", code, body)
 	}
 }

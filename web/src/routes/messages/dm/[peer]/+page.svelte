@@ -40,8 +40,12 @@
 	const listed = $derived(
 		friends.list?.find((f) => f.id === peerId)?.status ?? null,
 	);
+	// The list's word, else the page's; null while neither has answered, so
+	// the box opens once and never flickers shut — a list that has not seen
+	// a friendship made a minute ago is not a reason to disable the input
+	// under the focus the composer just took.
 	const friendship = $derived<Rider['friend'] | 'stranger' | null>(
-		listed ?? (friends.list === null ? fetched : (fetched ?? 'none')),
+		listed ?? fetched,
 	);
 	// The reason the box is shut, in the words of where the ask stands: a
 	// request already sent is not "add them", it is "wait for them".
