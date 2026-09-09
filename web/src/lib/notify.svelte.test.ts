@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// An error toast plays the fault cue, and the cues are an AudioContext this
+// environment does not have.
+vi.mock('$lib/sound/cues', () => ({
+	play: () => {},
+	playCountdownTick: () => {},
+}));
+
 // This environment has no localStorage of its own; the stub is what the
 // module's stored choice lands in.
 const storage = new Map<string, string>();
@@ -84,6 +91,40 @@ describe('in the desktop shell', () => {
 		expect(went).toEqual([]);
 		deliver({ tag: 'dm-mara', href: '/messages/dm/mara' });
 		expect(went).toEqual(['/messages/dm/mara']);
+	});
+
+	// A refused reply is said (#1815): it used to vanish with nothing shown.
+	it('says when a reply from the field was refused, and keeps the words', async () => {
+		let deliver: (p: {
+			tag: string;
+			href?: string;
+			reply?: string;
+		}) => void = () => {};
+		(globalThis as W).wattroom = {
+			notify: () => {},
+			onNotification: (cb: typeof deliver) => (deliver = cb),
+		};
+		const { notify } = await fresh();
+		const { toasts } = await import('$lib/toast.svelte');
+		notify.listen(() => {});
+		notify.push('Mara', 'hi', 'dm-mara', {
+			href: '/messages/dm/mara',
+			reply: {
+				placeholder: 'Reply to Mara',
+				send: async () => 'You can only message accepted friends.',
+			},
+		});
+		deliver({
+			tag: 'dm-mara',
+			href: '/messages/dm/mara',
+			reply: 'see you at 7',
+		});
+		await vi.waitFor(() => expect(toasts.items.length).toBeGreaterThan(0));
+		const toast = toasts.items.at(-1)!;
+		expect(toast.tone).toBe('error');
+		expect(toast.text).toContain('You can only message accepted friends.');
+		expect(toast.text).toContain('see you at 7');
+		expect(toast.href).toBe('/messages/dm/mara');
 	});
 
 	it('stays quiet while the window is the front one', async () => {
