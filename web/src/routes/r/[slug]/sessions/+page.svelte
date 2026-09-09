@@ -12,7 +12,6 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
-	import { roomConnection } from '$lib/room/connection.svelte';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -26,11 +25,7 @@
 	// What already happened here (ADR-0034 amended, #1331): the recaps the
 	// backlog seeds and the tick adds, newest first — the same cards the chat
 	// shows in its scrollback, on the place that plans the next one.
-	const past = $derived(
-		[...(roomConnection.current?.live.recaps ?? [])].sort(
-			(a, b) => b.endedAt - a.endedAt,
-		),
-	);
+	const past = $derived([...room.recaps].sort((a, b) => b.endedAt - a.endedAt));
 
 	let movingId = $state<string | null>(null);
 	let moveAt = $state('');
@@ -71,10 +66,18 @@
 	}
 </script>
 
+{#snippet plan()}
+	<button onclick={() => room.openPicker('plan')} class="btn btn-primary btn-xs"
+		>Plan the first session</button
+	>
+{/snippet}
+
 <div class="page">
 	<div class="mb-5 flex items-center gap-3">
 		<h2 class="font-display text-xl font-bold">What's planned here</h2>
-		{#if manages}
+		<!-- One button to plan with: the empty state's while the list is
+		     empty, this one once it is not. -->
+		{#if manages && room.upcoming.length > 0}
 			<button
 				onclick={() => room.openPicker('plan')}
 				class="btn btn-primary btn-xs ml-auto"
@@ -84,19 +87,18 @@
 	</div>
 
 	{#if room.upcoming.length === 0}
-		<!-- ux.md: empty states teach, never apologise. -->
+		<!-- ux.md: empty states teach, never apologise — and never tell a
+		     member to do the coach's job. -->
 		<div class="panel px-4 py-8">
-			<EmptyState>
-				Sessions are how a room agrees on a time. Plan one and it shows up here,
-				on everyone's Home, and in their calendar.
-				{#snippet cta()}
-					{#if manages}
-						<button
-							onclick={() => room.openPicker('plan')}
-							class="btn btn-primary btn-xs">Plan the first session</button
-						>
-					{/if}
-				{/snippet}
+			<EmptyState cta={manages ? plan : undefined}>
+				{#if manages}
+					Sessions are how a room agrees on a time. Plan one and it shows up
+					here, on everyone's Home, and in their calendar.
+				{:else}
+					Sessions are how a room agrees on a time. Your coach plans them here;
+					you say whether you're in, and each lands on your Home and in your
+					calendar.
+				{/if}
 			</EmptyState>
 		</div>
 	{:else}
@@ -166,8 +168,11 @@
 						<span class="text-muted text-xs">
 							{#if going(entry).length}
 								{going(entry)
+									.slice(0, 4)
 									.map((who) => who.displayName)
-									.join(', ')} · {going(entry).length} in
+									.join(', ')}{going(entry).length > 4
+									? ` +${going(entry).length - 4} more`
+									: ''}
 							{:else}
 								nobody has said yes yet
 							{/if}

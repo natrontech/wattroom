@@ -2,6 +2,7 @@
 	// The crew's rooms (#1149, #1201, #1226): each row's access state, the
 	// permission menu for the crew's owner and admins, and the door to open one
 	// more. Split from the page (#1234); the page reloads on `onchange`.
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
@@ -65,43 +66,65 @@
 	</Modal>
 {/if}
 
+{#snippet openOne()}
+	<button onclick={() => (opening = true)} class="btn btn-primary btn-xs"
+		><Plus size={13} /> Open a room here</button
+	>
+{/snippet}
+
 <div class="mt-8 flex items-end justify-between gap-3">
 	<h2 class="eyebrow">rooms</h2>
-	{#if administers}
+	{#if administers && crew.rooms.length > 0}
 		<button onclick={() => (opening = true)} class="btn btn-secondary btn-xs"
 			><Plus size={13} /> Open a room here</button
 		>
 	{/if}
 </div>
-<ul class="divide-ink/5 panel mt-2 divide-y">
-	{#each crew.rooms as room (room.id)}
-		{@const mark = accessMark(room.access)}
-		{@const open = reachable(room.access) && !!room.slug}
-		<li
-			title={administers ? MENU_HINT : undefined}
-			{@attach contextMenu(() => roomEntries(room))}
-		>
-			<svelte:element
-				this={open ? 'a' : 'div'}
-				href={open ? `/r/${room.slug}` : undefined}
-				title={open ? undefined : mark?.label}
-				class="flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm {open
-					? 'hover:bg-ink/5 text-ink'
-					: 'text-muted/60'}"
+{#if crew.rooms.length === 0}
+	<!-- A crew with no rooms is still a crew (#1236); an empty bordered box
+	     under "rooms" taught nothing (ux.md). -->
+	<div class="mt-2">
+		<EmptyState cta={administers ? openOne : undefined}>
+			{#if administers}
+				A room is a channel of the crew — open one and everyone here can walk
+				in.
+			{:else}
+				No rooms yet. A room is a channel of the crew; its owner or an admin
+				opens the first one.
+			{/if}
+		</EmptyState>
+	</div>
+{:else}
+	<ul class="divide-ink/5 panel mt-2 divide-y">
+		{#each crew.rooms as room (room.id)}
+			{@const mark = accessMark(room.access)}
+			{@const open = reachable(room.access) && !!room.slug}
+			<li
+				title={administers ? MENU_HINT : undefined}
+				{@attach contextMenu(() => roomEntries(room))}
 			>
-				<RoomIcon icon={room.icon} size={15} />
-				<span class="min-w-0 flex-1 truncate">{room.name}</span>
-				{#if mark}
-					<mark.icon
-						size={13}
-						class="text-muted/60 shrink-0"
-						aria-label={mark.label}
-					/>
-					<span class="text-muted/70 hidden text-[11px] sm:inline"
-						>{mark.label}</span
-					>
-				{/if}
-			</svelte:element>
-		</li>
-	{/each}
-</ul>
+				<svelte:element
+					this={open ? 'a' : 'div'}
+					href={open ? `/r/${room.slug}` : undefined}
+					title={open ? undefined : mark?.label}
+					class="flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm {open
+						? 'hover:bg-ink/5 text-ink'
+						: 'text-muted/60'}"
+				>
+					<RoomIcon icon={room.icon} size={15} />
+					<span class="min-w-0 flex-1 truncate">{room.name}</span>
+					{#if mark}
+						<mark.icon
+							size={13}
+							class="text-muted/60 shrink-0"
+							aria-label={mark.label}
+						/>
+						<span class="text-muted/70 hidden text-[11px] sm:inline"
+							>{mark.label}</span
+						>
+					{/if}
+				</svelte:element>
+			</li>
+		{/each}
+	</ul>
+{/if}

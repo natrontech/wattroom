@@ -21,9 +21,7 @@
 	const bars = $derived(recapBars(recap));
 </script>
 
-<details
-	class="border-neon/25 bg-surface-raised/40 group ml-9 rounded-lg border"
->
+<details class="border-neon/25 bg-surface-raised/40 group rounded-lg border">
 	<summary
 		class="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs"
 	>

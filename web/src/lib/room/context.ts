@@ -95,6 +95,8 @@ export interface RoomContext {
 		/** Who said they are in (#450), first to say so first. */
 		going?: { id: string; displayName: string }[];
 	}[];
+	/** What already happened here (ADR-0034): the recaps, oldest first. */
+	readonly recaps: import('$lib/protocol').SessionRecap[];
 	readonly icsToken: string;
 	readonly streakWeeks: number;
 	readonly monthKj: number;

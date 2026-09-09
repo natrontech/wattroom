@@ -1,4 +1,5 @@
-import { fetchCrew, type Crew } from '$lib/crew';
+import { fetchCrew } from '$lib/crew';
+import type { CrewPageData } from '../+page';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {
@@ -7,5 +8,5 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		id: params.id,
 		crew: res.ok ? res.data : null,
 		error: res.ok ? null : res.error.message,
-	} satisfies { id: string; crew: Crew | null; error: string | null };
+	} satisfies CrewPageData;
 };

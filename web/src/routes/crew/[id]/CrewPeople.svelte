@@ -48,6 +48,14 @@
 		onchange();
 	}
 
+	// One label and one call per role change, for the row and its menu alike.
+	const roleLabel = (person: CrewPerson) =>
+		person.role === 'admin' ? 'Make member' : 'Make admin';
+	const toggleRole = (person: CrewPerson) =>
+		person.role === 'admin'
+			? act(person, 'member', `${person.displayName} is a member now.`)
+			: act(person, 'admin', `${person.displayName} is a crew admin now.`);
+
 	// Banning at the crew is reversible here (the unban below sets it right
 	// back), so an undo toast rather than a confirm — the same shape the
 	// room's Members place uses (#666, errors.md).
@@ -97,26 +105,11 @@
 			you: person.id === account.me?.id,
 		});
 		if (!canAct(person)) return entries;
-		entries.push(
-			'separator',
-			person.role === 'admin'
-				? {
-						label: 'Make member',
-						icon: ShieldOff,
-						onSelect: () =>
-							act(person, 'member', `${person.displayName} is a member now.`),
-					}
-				: {
-						label: 'Make crew admin',
-						icon: Shield,
-						onSelect: () =>
-							act(
-								person,
-								'admin',
-								`${person.displayName} is a crew admin now.`,
-							),
-					},
-		);
+		entries.push('separator', {
+			label: roleLabel(person),
+			icon: person.role === 'admin' ? ShieldOff : Shield,
+			onSelect: () => toggleRole(person),
+		});
 		if (owner)
 			entries.push({
 				label: `Hand the crew to ${person.displayName}`,
@@ -200,17 +193,9 @@
 			</span>
 			{#if canAct(person)}
 				<button
-					onclick={() =>
-						person.role === 'admin'
-							? act(person, 'member', `${person.displayName} is a member now.`)
-							: act(
-									person,
-									'admin',
-									`${person.displayName} is a crew admin now.`,
-								)}
+					onclick={() => toggleRole(person)}
 					disabled={busy}
-					class="btn btn-ghost btn-xs shrink-0"
-					>{person.role === 'admin' ? 'Make member' : 'Make admin'}</button
+					class="btn btn-ghost btn-xs shrink-0">{roleLabel(person)}</button
 				>
 			{/if}
 		</li>
