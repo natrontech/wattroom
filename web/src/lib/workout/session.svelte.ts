@@ -1,12 +1,11 @@
 import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
-import type { SprintState } from '$lib/protocol';
-import { serverNow } from '$lib/room/server-clock';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
 import { createPersonalGuards, DEFAULTS } from './guards';
+import { createSprintWindow } from './sprint-window.svelte';
 import { createTicker, type Ticker } from './ticker';
 import { acquireWakeLock, type WakeLock } from './wakelock';
 import type { Segment, Workout } from './types';
@@ -28,8 +27,6 @@ export type RideState = 'idle' | 'running' | 'autopaused' | 'resuming' | 'done';
 
 /** Past this without a sample the dashboard, and the HUD, say so (#37). */
 export const SIGNAL_LOST_MS = 3000;
-/** How far ahead a sprint block is counted in on screen: docs/SPEC.md's klaxon lead. */
-export const SPRINT_LEAD_SECONDS = 3;
 
 /**
  * The frame caves while a solo session is live (ADR-0020: the ride is the
@@ -205,46 +202,16 @@ export function createRideSession({
 	/** True while the trainer is in slope for a sprint, so the flip happens once. */
 	let sprintMode = false;
 
-	/**
-	 * The sprint window as the room's SprintMoment reads it (#1793): the
-	 * sprint block under way, or the one starting within SPRINT_LEAD_SECONDS
-	 * so the screen counts it in, in the server clock's ms the moment reads.
-	 * Computed once per block rather than every tick, so "left" runs down
-	 * smoothly instead of being re-anchored on every second. #1529 flipped the
-	 * trainer to slope for a solo sprint and left the screen reading "no
-	 * target — spin easy" for the whole window.
-	 */
-	let sprintWindow = $state<SprintState | null>(null);
-	let sprintKey: number | null = null;
-	function syncSprint() {
-		let key: number | null = null;
-		let startsIn = 0;
-		let seconds = 0;
-		const seg = info.segment;
-		const next = segments[info.segmentIndex + 1];
-		if (state === 'done') {
-			key = null;
-		} else if (seg?.kind === 'sprint' && !info.done) {
-			key = info.segmentIndex;
-			startsIn = seg.startSeconds - clockSeconds;
-			seconds = seg.seconds;
-		} else if (
-			next?.kind === 'sprint' &&
-			next.startSeconds - clockSeconds <= SPRINT_LEAD_SECONDS
-		) {
-			key = info.segmentIndex + 1;
-			startsIn = next.startSeconds - clockSeconds;
-			seconds = next.seconds;
-		}
-		if (key === sprintKey) return;
-		sprintKey = key;
-		if (key === null) {
-			sprintWindow = null;
-			return;
-		}
-		const startsAtMs = serverNow() + startsIn * 1000;
-		sprintWindow = { startsAtMs, endsAtMs: startsAtMs + seconds * 1000 };
-	}
+	// The sprint window the screen draws (#1793), its own module: the
+	// block under way or the one about to start, anchored once per block.
+	const sprintWindow = createSprintWindow(() => ({
+		segments,
+		segment: info.segment,
+		index: info.segmentIndex,
+		clock: clockSeconds,
+		done: info.done,
+		over: state === 'done',
+	}));
 
 	function applyTarget() {
 		if (sprinting) {
@@ -401,7 +368,7 @@ export function createRideSession({
 			return;
 		}
 		applyTarget();
-		syncSprint();
+		sprintWindow.sync();
 	}
 
 	/**
@@ -426,7 +393,7 @@ export function createRideSession({
 		// does the same.
 		void trainer.disconnect();
 		state = 'done';
-		syncSprint();
+		sprintWindow.sync();
 	}
 
 	return {
@@ -478,7 +445,7 @@ export function createRideSession({
 		},
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get sprint() {
-			return sprintWindow;
+			return sprintWindow.current;
 		},
 
 		async start() {
@@ -491,7 +458,7 @@ export function createRideSession({
 				},
 			};
 			applyTarget();
-			syncSprint();
+			sprintWindow.sync();
 			ticker = createTicker(tick, { now });
 			// The screen staying on is part of "a ride is running" — owned here so
 			// /ride and /ramp cannot each forget it separately (#58).
@@ -513,7 +480,7 @@ export function createRideSession({
 			if (!next) return;
 			shift += next.startSeconds - clockSeconds;
 			applyTarget();
-			syncSprint();
+			sprintWindow.sync();
 		},
 		/**
 		 * Hold the current block longer by rewinding the workout clock, which pushes
@@ -526,7 +493,7 @@ export function createRideSession({
 		extend(seconds: number) {
 			shift -= seconds;
 			applyTarget();
-			syncSprint();
+			sprintWindow.sync();
 		},
 		/** Exposed for the ride screen's clock display and tests. */
 		tick,
