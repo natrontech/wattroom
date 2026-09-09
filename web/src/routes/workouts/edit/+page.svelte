@@ -136,6 +136,21 @@
 
 	// Riders think in minutes (#126): "8:30" or a bare "10" (minutes) — raw
 	// seconds were a dev unit that leaked into the UI.
+	// Watts and % FTP are one field with two units (#1712): the engine reads
+	// watts when set, so switching clears the other, and the number carries
+	// over at the rider's current FTP.
+	function useWatts(step: SteadyStep) {
+		step.watts = Math.max(1, Math.round((step.target ?? 0) * FTP));
+		delete step.target;
+	}
+	function useFraction(step: SteadyStep) {
+		step.target = Math.max(
+			0.2,
+			Math.round(((step.watts ?? 0) / FTP) * 100) / 100,
+		);
+		delete step.watts;
+	}
+
 	function parseDuration(raw: string): number | null {
 		const text = raw.trim();
 		const clock = /^(\d+):([0-5]\d)$/.exec(text);
@@ -375,7 +390,35 @@
 				</label>
 			{/if}
 
-			{#if current.type === 'steady'}
+			{#if current.type === 'steady' && current.watts !== undefined}
+				<!-- A step written in watts (#1712): the inspector used to show it as
+				     0 % and write a target the engine ignores, while the graph drew
+				     the true height. -->
+				<label class="block">
+					<span class="eyebrow">target (watts)</span>
+					<input
+						type="number"
+						min="1"
+						max={LIMITS.maxWatts}
+						value={current.watts}
+						oninput={(event) =>
+							((current as SteadyStep).watts = Number(
+								event.currentTarget.value,
+							))}
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[11px]">
+						{Math.round(((current.watts ?? 0) / FTP) * 100)}% of {FTP} FTP ·
+						{ZONE_NAMES[zoneOfStep(current, FTP)]} ·
+						<button
+							type="button"
+							class="btn-link"
+							onclick={() => useFraction(current as SteadyStep)}
+							>use % FTP</button
+						>
+					</span>
+				</label>
+			{:else if current.type === 'steady'}
 				<label class="block">
 					<span class="eyebrow">target (% FTP)</span>
 					<input
@@ -390,7 +433,12 @@
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
-						{ZONE_NAMES[zoneOfStep(current, FTP)]}
+						{ZONE_NAMES[zoneOfStep(current, FTP)]} ·
+						<button
+							type="button"
+							class="btn-link"
+							onclick={() => useWatts(current as SteadyStep)}>use watts</button
+						>
 					</span>
 				</label>
 				<!-- Cadence and HR bands (#66, #67): display-only, optional,
