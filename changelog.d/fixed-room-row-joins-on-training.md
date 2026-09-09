@@ -1,0 +1,1 @@
+- A room row in the sidebar that says "12 min in" now lands on Training, where the ride is, instead of the Lounge — unless you are already standing in that room.
