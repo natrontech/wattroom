@@ -105,7 +105,7 @@ func (q *Queries) ListRoomsInCommon(ctx context.Context, arg ListRoomsInCommonPa
 }
 
 const listSharedRides = `-- name: ListSharedRides :many
-select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution,
+select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
        (r.room_id is not null)::boolean as in_room,
        coalesce(case when v.user_id is not null then rm.name end, '')::text as room_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
@@ -124,15 +124,16 @@ type ListSharedRidesParams struct {
 }
 
 type ListSharedRidesRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	Kj          int32
-	Execution   float32
-	InRoom      bool
-	RoomName    string
-	MedalKinds  string
+	ID              pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	InRoom          bool
+	RoomName        string
+	MedalKinds      string
 }
 
 // The rides the rider marked shared, newest first — friends only. The room
@@ -154,6 +155,7 @@ func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams
 			&i.Seconds,
 			&i.Kj,
 			&i.Execution,
+			&i.ExecutionScored,
 			&i.InRoom,
 			&i.RoomName,
 			&i.MedalKinds,

@@ -18,6 +18,8 @@ export interface SharedRide {
 	seconds: number;
 	kj: number;
 	execution: number;
+	/** False when the workout prescribed nothing — a sprint session, a freeride. */
+	executionScored?: boolean;
 	/** docs/SPEC.md medal kinds won on this ride. */
 	medals?: string[];
 	inRoom: boolean;
@@ -56,9 +58,12 @@ export function fetchRider(id: string, fetcher?: typeof fetch) {
 
 /** "48 min · 612 kJ · 96% on target" — one line per shared ride. */
 export function rideLine(
-	ride: Pick<SharedRide, 'seconds' | 'kj' | 'execution'>,
+	ride: Pick<SharedRide, 'seconds' | 'kj' | 'execution' | 'executionScored'>,
 ): string {
-	return `${formatDuration(ride.seconds)} · ${ride.kj.toLocaleString()} kJ · ${Math.round(ride.execution * 100)}% on target`;
+	const head = `${formatDuration(ride.seconds)} · ${ride.kj.toLocaleString()} kJ`;
+	// A workout with nothing to score is not "0 % on target" (#1143).
+	if (ride.executionScored === false) return head;
+	return `${head} · ${Math.round(ride.execution * 100)}% on target`;
 }
 
 /** "9 h 40 · 6,810 kJ" — the month tile's hint. */

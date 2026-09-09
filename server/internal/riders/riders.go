@@ -106,6 +106,9 @@ type sharedRideJSON struct {
 	Seconds     int     `json:"seconds"`
 	Kj          int     `json:"kj"`
 	Execution   float64 `json:"execution"`
+	// False when the workout prescribed nothing (#1143) — "0 % on target"
+	// on a friend's page was a sprint session (audit 2026-09-09).
+	ExecutionScored bool `json:"executionScored"`
 	// docs/SPEC.md medal kinds won on this ride, if any.
 	Medals []string `json:"medals,omitempty"`
 	// Ridden in a room; named only when the viewer is a member of it.
@@ -225,8 +228,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 				StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 				Seconds:   int(row.Seconds), Kj: int(row.Kj), Execution: float64(row.Execution),
-				Medals: strings.Fields(row.MedalKinds),
-				InRoom: row.InRoom, RoomName: row.RoomName,
+				ExecutionScored: row.ExecutionScored,
+				Medals:          strings.Fields(row.MedalKinds),
+				InRoom:          row.InRoom, RoomName: row.RoomName,
 			})
 		}
 	}

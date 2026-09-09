@@ -52,7 +52,7 @@ order by m.kind;
 -- The rides the rider marked shared, newest first — friends only. The room
 -- is named only when the viewer is a member of it (ADR-0012: friendship
 -- never pierces the room boundary); otherwise the ride just "was in a room".
-select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution,
+select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
        (r.room_id is not null)::boolean as in_room,
        coalesce(case when v.user_id is not null then rm.name end, '')::text as room_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds

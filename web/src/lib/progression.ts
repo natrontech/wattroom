@@ -19,6 +19,8 @@ export interface TrendRide {
 	seconds: number;
 	kj: number;
 	execution: number;
+	/** False for a ride whose workout prescribed nothing: not a trend point. */
+	executionScored?: boolean;
 	ftp: number;
 	best20m: number;
 }

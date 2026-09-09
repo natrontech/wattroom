@@ -47,8 +47,11 @@ type rideTrendJSON struct {
 	Seconds   int     `json:"seconds"`
 	Kj        int     `json:"kj"`
 	Execution float64 `json:"execution"`
-	Ftp       int     `json:"ftp"`
-	Best20m   int     `json:"best20m,omitempty"`
+	// False for a ride whose workout prescribed nothing (#1143): its 0 is
+	// "not scored", not a point on the trend (audit 2026-09-09).
+	ExecutionScored bool `json:"executionScored"`
+	Ftp             int  `json:"ftp"`
+	Best20m         int  `json:"best20m,omitempty"`
 }
 
 type loadJSON struct {
@@ -183,13 +186,14 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 	}
 	for _, row := range rows {
 		out.Rides = append(out.Rides, rideTrendJSON{
-			ID:        store.UUIDString(row.ID),
-			Date:      row.StartedAt.Time.Format(time.RFC3339),
-			Seconds:   int(row.Seconds),
-			Kj:        int(row.Kj),
-			Execution: float64(row.Execution),
-			Ftp:       int(row.FtpWatts),
-			Best20m:   int(row.Best20m),
+			ID:              store.UUIDString(row.ID),
+			Date:            row.StartedAt.Time.Format(time.RFC3339),
+			Seconds:         int(row.Seconds),
+			Kj:              int(row.Kj),
+			Execution:       float64(row.Execution),
+			ExecutionScored: row.ExecutionScored,
+			Ftp:             int(row.FtpWatts),
+			Best20m:         int(row.Best20m),
 		})
 	}
 	return out, nil
