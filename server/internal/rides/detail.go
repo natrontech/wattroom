@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/tokens"
 )
 
 // One past ride, opened (#503). The list is summaries; this is the single
@@ -81,6 +82,14 @@ func (s *Service) handleRetryExport(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
+		return
+	}
+	// A personal token reads summaries (ADR-0017); the per-second record,
+	// heart rate included, and the Strava delivery record stay on the
+	// account (#1757, ADR-0008, RESEARCH §13.5).
+	if tokens.Bearer(r) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden",
+			"A personal token reads ride summaries only — the second-by-second record stays on your account.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
@@ -182,6 +191,14 @@ type exportJSON struct {
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
+		return
+	}
+	// A personal token reads summaries (ADR-0017); the per-second record,
+	// heart rate included, and the Strava delivery record stay on the
+	// account (#1757, ADR-0008, RESEARCH §13.5).
+	if tokens.Bearer(r) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden",
+			"A personal token reads ride summaries only — the second-by-second record stays on your account.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))

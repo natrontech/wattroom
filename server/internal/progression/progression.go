@@ -168,15 +168,15 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 		return Response{}, fmt.Errorf("progression: curve bests: %w", err)
 	}
 	rows, err := q.ListUserProgression(ctx, user.ID)
+	if err != nil {
+		return Response{}, fmt.Errorf("progression: rides: %w", err)
+	}
 	// The query keeps the newest rides under its bound; the load model reads
 	// oldest first (#1689).
 	slices.Reverse(rows)
-	first, ferr := q.FirstRideAt(ctx, user.ID)
-	if ferr != nil {
-		err = ferr
-	}
+	first, err := q.FirstRideAt(ctx, user.ID)
 	if err != nil {
-		return Response{}, fmt.Errorf("progression: rides: %w", err)
+		return Response{}, fmt.Errorf("progression: first ride: %w", err)
 	}
 
 	out := Response{

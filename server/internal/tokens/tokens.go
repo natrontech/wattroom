@@ -201,3 +201,10 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// Bearer says whether the request carries a personal token, whatever else it
+// carries (#1757): the routes that hand out the per-second record — heart
+// rate included (ADR-0008) — and the Strava delivery record refuse it.
+func Bearer(r *http.Request) bool {
+	return strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ")
+}
