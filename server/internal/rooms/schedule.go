@@ -163,7 +163,11 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	// The editor's bounds too (audit 2026-09-09); the message names the step.
 	if err := workout.Validate(req.WorkoutJSON); err != nil {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", err.Error(), "workoutJson")
+		message, ok := workout.RefusalMessage(err)
+		if !ok {
+			message = "That is not a workout the engine can ride."
+		}
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
 		return
 	}
 	if !plannableAt(req.StartsAt) {

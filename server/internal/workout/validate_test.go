@@ -1,6 +1,7 @@
 package workout
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -47,5 +48,15 @@ func TestValidateMirrorsTheEditor(t *testing.T) {
 				t.Fatalf("got %v, want a refusal mentioning %q", err, c.want)
 			}
 		})
+	}
+}
+
+// The rider reads the validator's sentence and nothing else's (#1643).
+func TestRefusalMessage(t *testing.T) {
+	if msg, ok := RefusalMessage(Validate("not json")); !ok || msg == "" {
+		t.Fatalf("a refusal has a message: %q %v", msg, ok)
+	}
+	if _, ok := RefusalMessage(errors.New("pgx: connection reset")); ok {
+		t.Fatal("any other error is not a message")
 	}
 }

@@ -2,12 +2,25 @@ package workout
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
 // refusal is a rider-facing sentence, which is why it may end in a full stop
 // where a Go error would not: it is the message the API sends back verbatim.
 type refusal string
+
+// RefusalMessage is the rider-facing sentence behind a Validate error, and
+// false for any other error (#1643): errors.md forbids err.Error() as an API
+// message without exception, and this is the one error whose text was
+// written for the rider.
+func RefusalMessage(err error) (string, bool) {
+	var r refusal
+	if errors.As(err, &r) {
+		return string(r), true
+	}
+	return "", false
+}
 
 func (r refusal) Error() string { return string(r) }
 
