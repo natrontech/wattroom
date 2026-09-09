@@ -14,7 +14,7 @@
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
-	import Music from '@lucide/svelte/icons/music';
+	import TrackWave from '$lib/room/TrackWave.svelte';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
@@ -226,15 +226,16 @@
 		     beside a truncated title and four identical grey buttons did not. -->
 		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
 			{#if current.trackId}
-				<!-- A pool track has no player to seat (#267): RMF's tile rules
-				     bind only while a YouTube entry plays, so this one is heard
-				     and not seen. The mark stands in for the art, at the same
-				     height, so the column does not jump between sources. -->
+				<!-- A library track has no player to seat (#267): RMF's tile
+				     rules bind only while a YouTube entry plays, so this one is
+				     heard and not seen. Its waveform takes the seat instead
+				     (#1425), at the same height, so the column does not jump
+				     between sources. -->
 				<div
-					class="bg-surface text-muted grid w-full place-items-center rounded-lg"
+					class="bg-surface w-full overflow-hidden rounded-lg px-2 py-6"
 					style="height: clamp(200px, 24vh, 240px)"
 				>
-					<Music size={28} />
+					<TrackWave trackId={current.trackId} progress={progress / 100} />
 				</div>
 			{:else}
 				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so

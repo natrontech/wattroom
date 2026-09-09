@@ -9,6 +9,7 @@
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { page } from '$app/state';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
+	import TrackWave from '$lib/room/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -33,6 +34,19 @@
 	const jukebox = $derived(conn?.live.tick?.jukebox);
 	const current = $derived(jukebox?.current);
 	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
+	// Dead-reckoned between ticks like the column's own readout, only for the
+	// waveform's playhead (#1425): the rail draws no scrub bar.
+	let nowMs = $state(serverNow());
+	$effect(() => {
+		if (!current?.trackId) return;
+		const timer = setInterval(() => (nowMs = serverNow()), 250);
+		return () => clearInterval(timer);
+	});
+	const progress = $derived(
+		jukebox?.current?.trackId && playerInfo.duration > 0
+			? playheadAt(jukebox, nowMs, playerInfo.duration) / playerInfo.duration
+			: 0,
+	);
 	// The room's own pages carry the people column at xl, and that column
 	// outranks this seat — so the rail steps aside there rather than holding a
 	// second 200 px hole the player will never fly into.
@@ -94,13 +108,21 @@
 			style="height: 200px"
 			{@attach (node) => offerSeat(node, RAIL_SEAT)}
 		>
-			<img
-				src={thumbnailFor(current.videoId)}
-				alt=""
-				loading="lazy"
-				referrerpolicy="no-referrer"
-				class="h-full w-full object-cover opacity-60"
-			/>
+			{#if current.trackId}
+				<!-- A library track: no player will fly in, so the seat is its
+				     waveform (#1425), the played part lit. -->
+				<div class="h-full w-full px-2 py-6">
+					<TrackWave trackId={current.trackId} {progress} />
+				</div>
+			{:else}
+				<img
+					src={thumbnailFor(current.videoId)}
+					alt=""
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					class="h-full w-full object-cover opacity-60"
+				/>
+			{/if}
 		</div>
 
 		<div class="text-muted flex items-center gap-0.5 pt-1">
