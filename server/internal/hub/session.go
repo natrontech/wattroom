@@ -33,11 +33,19 @@ func newSession() *session {
 }
 
 // pick loads a workout while idle or done; picking replaces, never mid-session.
+// The workout's own length is the session's (#1708): the coach's socket used
+// to send totalSeconds and the server believed it — too large and the
+// timeline never closed, too small and every rider's ride was cut. The
+// client's number stands only for a workout with no blocks (the tests' "{}").
 func (s *session) pick(name, workoutJSON string, totalSeconds int) bool {
 	if s.phase != "idle" && s.phase != "done" {
 		return false
 	}
 	s.workoutName, s.workoutJSON, s.totalSeconds = name, workoutJSON, totalSeconds
+	if segments, err := workout.Parse(workoutJSON); err == nil && len(segments) > 0 {
+		last := segments[len(segments)-1]
+		s.totalSeconds = last.Start + last.Seconds
+	}
 	s.phase = "idle"
 	return true
 }

@@ -1,7 +1,7 @@
 import { api } from '$lib/api';
 import { toasts } from '$lib/toast.svelte';
 import { buildShelf } from '$lib/workout/shelf';
-import { createCustomStore } from '$lib/workout/custom.svelte';
+import { customWorkouts } from '$lib/workout/custom.svelte';
 import { parseSharedSegments } from '$lib/room/workout';
 
 /**
@@ -30,7 +30,7 @@ export interface SessionSetupDeps {
 export function createSessionSetup(deps: SessionSetupDeps) {
 	let open = $state(false);
 	let intent = $state<'start' | 'plan'>('start');
-	const custom = createCustomStore();
+	const custom = customWorkouts();
 	// Recently ridden first: the rider's history ranks the shelf.
 	let recency = $state<Map<string, number>>(new Map());
 

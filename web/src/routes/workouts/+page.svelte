@@ -14,7 +14,7 @@
 	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import {
-		createCustomStore,
+		customWorkouts,
 		type CustomWorkout,
 	} from '$lib/workout/custom.svelte';
 	import type { Workout } from '$lib/workout/types';
@@ -29,7 +29,7 @@
 	// different pictures; 265 only covers the flicker before `me` lands.
 	const previewFtp = $derived(account.me?.ftpWatts || 265);
 
-	const custom = createCustomStore();
+	const custom = customWorkouts();
 	let active = $state<Focus | 'All'>('All');
 
 	// SPEC's "suggested for today" (#222): a badge with its one-clause why —

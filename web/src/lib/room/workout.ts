@@ -15,17 +15,24 @@ export function parseSharedSegments(
 }
 
 /** Workout and segments together — the block strip needs step types for labels. */
-export function parseSharedWorkout(workoutJson: string | undefined): {
-	workout: Workout | null;
-	segments: Segment[];
-} {
-	if (!workoutJson) return { workout: null, segments: [] };
+type Parsed = { workout: Workout | null; segments: Segment[] };
+const EMPTY: Parsed = { workout: null, segments: [] };
+// The definition rides every tick (#1710) and the room's $derived re-ran
+// this — JSON.parse, validate, flatten over up to 200 segments — once a
+// second on every rider's machine. One definition, one parse.
+let last: { json: string; parsed: Parsed } | null = null;
+
+export function parseSharedWorkout(workoutJson: string | undefined): Parsed {
+	if (!workoutJson) return EMPTY;
+	if (last?.json === workoutJson) return last.parsed;
+	let parsed: Parsed = EMPTY;
 	try {
 		const checked = validateWorkout(JSON.parse(workoutJson));
-		return checked.ok
-			? { workout: checked.workout, segments: flatten(checked.workout) }
-			: { workout: null, segments: [] };
+		if (checked.ok)
+			parsed = { workout: checked.workout, segments: flatten(checked.workout) };
 	} catch {
-		return { workout: null, segments: [] };
+		parsed = EMPTY;
 	}
+	last = { json: workoutJson, parsed };
+	return parsed;
 }

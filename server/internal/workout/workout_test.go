@@ -42,3 +42,19 @@ func TestParseRefusesWhatWouldNotFitOnTheVM(t *testing.T) {
 		})
 	}
 }
+
+// The editor's ramp is a ramp to the server too (#1709): at its midpoint the
+// target is the midpoint of from and to, unscored like warmup and cooldown.
+func TestARampStepHasATarget(t *testing.T) {
+	segments, err := Parse(`{"steps":[{"type":"ramp","seconds":300,"from":0.5,"to":0.8}]}`)
+	if err != nil || len(segments) != 1 {
+		t.Fatalf("parse: %v %d", err, len(segments))
+	}
+	watts, scored := TargetAt(segments, 200, 150)
+	if watts < 129 || watts > 131 || scored {
+		t.Fatalf("midpoint: %v W scored=%v, want ~130 W unscored", watts, scored)
+	}
+	if _, pct, ok := SegmentAt(segments, 150); !ok || pct < 0.64 || pct > 0.66 {
+		t.Fatalf("SegmentAt midpoint pct = %v, want ~0.65", pct)
+	}
+}

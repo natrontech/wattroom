@@ -64,7 +64,10 @@ func checkDefinition(name string, raw json.RawMessage) (code, message, field str
 	// Then the editor's own bounds, so the API cannot store what the shelf
 	// will refuse to read. Validate's error is written for the rider.
 	if err := workout.Validate(string(raw)); err != nil {
-		return "validation_error", err.Error(), "workout"
+		if msg, ok := workout.RefusalMessage(err); ok {
+			return "validation_error", msg, "workout"
+		}
+		return "validation_error", "That is not a workout the engine can ride.", "workout"
 	}
 	total := 0
 	for _, segment := range segments {

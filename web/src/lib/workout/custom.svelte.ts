@@ -142,3 +142,11 @@ export function createCustomStore() {
 		},
 	};
 }
+
+// One shelf per app, not per surface (#1711): four surfaces each built their
+// own store, each re-running the legacy migration — two alive at once
+// uploaded the same workouts twice — and each fetching the shelf again.
+let shared: ReturnType<typeof createCustomStore> | null = null;
+export function customWorkouts(): ReturnType<typeof createCustomStore> {
+	return (shared ??= createCustomStore());
+}

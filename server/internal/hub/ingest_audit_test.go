@@ -113,6 +113,8 @@ func TestCheckPickRefusesWhatTheAPIWould(t *testing.T) {
 		{"too much JSON", protocol.Control{WorkoutName: "x", WorkoutJSON: strings.Repeat(" ", 65<<10) + ok, TotalSeconds: 600}, "too large"},
 		{"a two-day session", protocol.Control{WorkoutName: "x", WorkoutJSON: ok, TotalSeconds: 48 * 3600}, "between a second and a day"},
 		{"a workout the editor refuses", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":25}]}`, TotalSeconds: 600}, "300% ceiling"},
+		// Within every per-step bound and past the expansion budget (#1708).
+		{"a pick that expands past the budget", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"repeat","times":50,"steps":[{"type":"repeat","times":50,"steps":[{"type":"steady","seconds":60,"target":0.8}]}]}]}`, TotalSeconds: 600}, "expands past"},
 	}
 	for _, c := range cases {
 		got := checkPick(c.c)
@@ -130,5 +132,30 @@ func TestClipKeepsRunesWhole(t *testing.T) {
 	}
 	if got := truncate("音楽室の机", 4); !utf8.ValidString(got) || got != "音楽室の" {
 		t.Fatalf("truncate = %q", got)
+	}
+}
+
+// The session runs for the workout's length, whatever the socket said (#1708).
+func TestThePickTakesTheWorkoutsOwnLength(t *testing.T) {
+	s := newSession()
+	if !s.pick("W", `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, 5) {
+		t.Fatal("pick refused")
+	}
+	if s.totalSeconds != 600 {
+		t.Fatalf("totalSeconds = %d, want the workout's 600", s.totalSeconds)
+	}
+	t0 := time.Unix(1_000, 0)
+	s.start(t0)
+	if st := s.state(t0.Add((countdownSeconds + 300) * time.Second)); st.Phase != "running" {
+		t.Fatalf("five minutes in: %q, want running", st.Phase)
+	}
+	if st := s.state(t0.Add((countdownSeconds + 601) * time.Second)); st.Phase != "done" {
+		t.Fatalf("past the workout: %q, want done", st.Phase)
+	}
+	// A workout with no blocks (the tests' "{}") keeps the number it was given.
+	empty := newSession()
+	empty.pick("W", "{}", 60)
+	if empty.totalSeconds != 60 {
+		t.Fatalf("an empty pick: %d, want 60", empty.totalSeconds)
 	}
 }

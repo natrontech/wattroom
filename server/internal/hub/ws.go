@@ -366,7 +366,17 @@ func checkPick(c protocol.Control) string {
 		return "A session runs between a second and a day."
 	}
 	if err := workout.Validate(c.WorkoutJSON); err != nil {
-		return err.Error()
+		if msg, ok := workout.RefusalMessage(err); ok {
+			return msg
+		}
+		return "That is not a workout the engine can ride."
+	}
+	// Validate bounds the steps; the expansion budget lives in Parse, and the
+	// API and the scheduler both ask it first (#1708). A pick that expands
+	// past it used to start a session with no blocks: the meter scored
+	// nothing and no client would draw it.
+	if segments, err := workout.Parse(c.WorkoutJSON); err != nil || len(segments) == 0 {
+		return "That workout expands past what a room can ride — fewer repeats, or fewer steps inside them."
 	}
 	return ""
 }
