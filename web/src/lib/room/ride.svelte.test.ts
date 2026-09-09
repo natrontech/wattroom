@@ -261,6 +261,24 @@ describe('the personal guards in a group ride (#788)', () => {
 		return { live, socket, deps };
 	}
 
+	it('knows its own reading, for the equipment screen (#1799)', async () => {
+		const { deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.reading).toBeUndefined();
+		trainer.pedal(210, 88);
+		await settle();
+		expect(ride.reading).toBe('210 W · 88 rpm');
+		ride.unpair();
+		expect(ride.reading).toBeUndefined();
+		dispose();
+	});
+
 	it('releases the target when the rider stops, leaving the room clock alone', async () => {
 		vi.useFakeTimers();
 		const { live, deps } = inASession();

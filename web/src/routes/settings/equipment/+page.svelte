@@ -78,7 +78,7 @@
 				device: roomHolds ? ride?.trainer?.name : solo.trainer?.name,
 				// Live-ness is the honest confirmation: paired but silent is not
 				// working (#520), and this is the screen a rider checks it on.
-				reading: roomHolds ? undefined : solo.reading,
+				reading: roomHolds ? ride?.reading : solo.reading,
 				hint:
 					(roomHolds ? ride?.fault : solo.fault) === 'silent'
 						? 'no watts yet — turn the cranks'

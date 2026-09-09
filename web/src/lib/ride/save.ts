@@ -20,9 +20,10 @@ export interface RideUpload {
  * ways in: the ride that just ended, and the retry of one that did not make it
  * the first time (#794).
  *
- * ponytail: no automatic retry behind this. The POST has no client ride key,
- * so a retry the rider did not ask for could duplicate a ride — make the
- * endpoint idempotent first, then a background retry is safe to add.
+ * ponytail: no automatic retry behind this yet. The endpoint IS idempotent —
+ * the server keys a ride on (rider, startedAt) under a row lock and hands the
+ * existing id back — so a background retry for the "kept on this device" case
+ * is safe to add when a rider asks for one.
  */
 export interface SaveFailure {
 	/** The server's own sentence (errors.md). */

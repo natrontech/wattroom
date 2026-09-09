@@ -1,0 +1,1 @@
+- When the trainer goes quiet mid-ride, the riding screen now offers the pairing card under the warning instead of a warning alone, and a trainer that never reports a watt counts as lost from the start. The ramp test shows the same pause, count-in and spiral-guard status a workout ride does, and Settings › Equipment shows your live watts even while a room holds the trainer.
