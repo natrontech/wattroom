@@ -13,7 +13,7 @@ import { withYouTubeApi, type YTPlayer } from '$lib/room/youtube-api';
  */
 
 /** The player loads at most this many of a playlist's videos. */
-export const PLAYLIST_LIMIT = 50;
+const PLAYLIST_LIMIT = 50;
 
 /** Titles cost a request each, so nothing is ever asked for twice. */
 const titles = new Map<string, string>();

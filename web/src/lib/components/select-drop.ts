@@ -6,7 +6,7 @@
  */
 
 /** A full list: the 16rem option area plus the filter row above it. */
-export const PANEL = 288;
+const PANEL = 288;
 
 /** True when the list should open above the trigger instead of below it. */
 export function dropsUp(

@@ -27,7 +27,7 @@ export function gifUrl(text: string): string | null {
 }
 
 /** The server's upload cap — checked client-side first for a good error. */
-export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 const MAX_DIMENSION = 1600;
 

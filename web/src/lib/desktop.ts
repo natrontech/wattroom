@@ -30,7 +30,7 @@ export interface DesktopRelease {
 	page: string;
 }
 
-export const RELEASES_REPO = 'natrontech/wattroom-releases';
+const RELEASES_REPO = 'natrontech/wattroom-releases';
 const FEED = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 const TAG_PREFIX = 'desktop-v';
 

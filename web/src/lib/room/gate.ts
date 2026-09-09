@@ -11,7 +11,7 @@
  */
 
 /** How far under the open threshold the level must fall to start the hang. */
-export const GATE_CLOSE_DB = 6;
+const GATE_CLOSE_DB = 6;
 /** Below the close mark this long, and only then, the gate shuts (SPEC). */
 export const GATE_HOLD_MS = 1200;
 /** Gain ramps (SPEC): fast up so no syllable is clipped, slow down so a

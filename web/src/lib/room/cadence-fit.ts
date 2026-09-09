@@ -5,7 +5,7 @@
  * instead of two. Untagged tracks and an idle deck never fit, and never
  * fail: there is nothing to say.
  */
-export const CADENCE_TOLERANCE = 0.05;
+const CADENCE_TOLERANCE = 0.05;
 
 export function fitsCadence(
 	bpm: number | undefined,

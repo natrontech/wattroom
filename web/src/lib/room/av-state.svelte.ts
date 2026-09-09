@@ -89,7 +89,7 @@ const SHARE_SOUND_KEY = 'wattroom.share-sound.v1';
  * one that never asks is macOS's system picker, which is where the report
  * came from, and there this is the only place the question can be put.
  */
-export function shareSoundWanted(): boolean {
+function shareSoundWanted(): boolean {
 	try {
 		return localStorage.getItem(SHARE_SOUND_KEY) !== 'off';
 	} catch {

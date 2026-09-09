@@ -21,13 +21,10 @@ export const VIEW = { width: 1000, height: 120, base: 112 } as const;
 export const SCALE = (VIEW.base - 8) / CEILING;
 
 /** How close to an edge counts as grabbing it, in viewBox units. */
-export const EDGE = 8;
+const EDGE = 8;
 
 export const SNAP_SECONDS = 5;
 export const SNAP_FRACTION = 0.01;
-
-export const xOf = (seconds: number, total: number): number =>
-	total > 0 ? (seconds / total) * VIEW.width : 0;
 
 export const yOf = (fraction: number): number =>
 	VIEW.base - Math.min(fraction, CEILING) * SCALE;

@@ -27,7 +27,7 @@ const KNOWN: Record<string, string> = {
 };
 
 /** Everything worth asking for. Anything omitted here cannot be seen at all. */
-export const PROBE_SERVICES: BluetoothServiceUUID[] = [
+const PROBE_SERVICES: BluetoothServiceUUID[] = [
 	0x1800,
 	0x1801,
 	0x180a,

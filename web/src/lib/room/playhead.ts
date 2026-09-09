@@ -17,11 +17,11 @@
 export type Chase = { do: 'seek'; to: number } | { do: 'rate'; rate: number };
 
 /** docs/SPEC.md — a seek costs a stutter, so only a real gap earns one. */
-export const HARD_SEEK_SEC = 1.5;
+const HARD_SEEK_SEC = 1.5;
 /** Below this, the drift is not worth touching; above it, the rate closes it. */
-export const NUDGE_SEC = 0.25;
+const NUDGE_SEC = 0.25;
 /** The finest step this embed honours — 0.02 rounds away to 1. */
-export const NUDGE_RATE = 0.05;
+const NUDGE_RATE = 0.05;
 
 export function chase(targetSec: number, atSec: number, live: boolean): Chase {
 	if (live) return { do: 'rate', rate: 1 };
@@ -45,7 +45,7 @@ export function pausedChase(targetSec: number, atSec: number): Chase | null {
 }
 
 /** Mirrors the server's clamp — a track longer than six hours is not a party track. */
-export const MAX_SEEK_SEC = 6 * 3600;
+const MAX_SEEK_SEC = 6 * 3600;
 
 /**
  * Where the deck is at `nowMs`: an anchor plus elapsed time, never a counter.
