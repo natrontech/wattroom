@@ -204,7 +204,7 @@ func (s *Service) finishLink(w http.ResponseWriter, r *http.Request, p provider,
 		s.log.Error("link failed", "provider", p.id, "err", err)
 		outcome = "failed"
 	}
-	http.Redirect(w, r, "/profile?link="+outcome+"&provider="+url.QueryEscape(p.id), http.StatusFound)
+	http.Redirect(w, r, "/settings/profile?link="+outcome+"&provider="+url.QueryEscape(p.id), http.StatusFound)
 }
 
 // tokenParams shapes a provider's tokens for storage. The refresh token is
