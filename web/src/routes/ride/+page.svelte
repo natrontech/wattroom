@@ -8,7 +8,7 @@
 		createRideSession,
 		SIGNAL_LOST_MS,
 	} from '$lib/workout/session.svelte';
-	import { play } from '$lib/sound/cues';
+	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
@@ -183,15 +183,19 @@
 		}
 	}
 
-	// Sound announces block changes because the rider is not watching the screen.
-	// Plain let, not $state: an effect that reads and writes its own state invalidates
-	// itself. Nothing renders this, so it does not need to be reactive.
-	let heardBlock: number | null = null;
-	$effect(() => {
-		const index = session?.info.segmentIndex;
-		if (index === undefined) return;
-		if (heardBlock !== null && index !== heardBlock) play('block');
-		heardBlock = index;
+	// What the ride says out loud (#1792): the cues the room plays for its
+	// riders — block, auto-pause, the resume count, the spiral release, a
+	// trainer fault, a sprint, the end — from the session's own state.
+	createRideSounds({
+		fault: () => (signalLost ? 'trainer' : null),
+		sprint: () => session?.sprint ?? null,
+		guard: () => guardOfRide(session?.state),
+		spiral: () => session?.spiralActive,
+		block: () =>
+			session && session.state !== 'idle' && session.state !== 'done'
+				? session.info.segmentIndex
+				: undefined,
+		ended: () => session?.state === 'done',
 	});
 
 	// Guard telemetry for #46: the hardware session has to produce evidence, not

@@ -1,9 +1,12 @@
-import type { GameState, SprintState } from '$lib/protocol';
+import type { GameState } from '$lib/protocol';
 import { gameCues, golfMoment } from '$lib/room/game-cues';
 import { serverNow } from '$lib/room/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
-import type { GuardPhase } from '$lib/workout/guards';
+import {
+	createRideSounds,
+	type RideSoundDeps,
+} from '$lib/ride/ride-sounds.svelte';
 
 /**
  * What the room says out loud (#834, #686). Riders are on a bike three metres
@@ -18,24 +21,10 @@ import type { GuardPhase } from '$lib/workout/guards';
  * room connection (#216), because they have to work on every page rather than
  * only the one holding this component.
  */
-export interface SoundDeps {
+export interface SoundDeps extends RideSoundDeps {
 	/** The shared timeline's phase, and how much countdown is left. */
 	phase: () => string | undefined;
 	countdownRemaining: () => number | undefined;
-	/**
-	 * The fault worth hearing, already ranked by the caller in the order the
-	 * banner ranks them — so a trainer drop under a voice drop is heard once,
-	 * as the thing that actually matters. Null when nothing is wrong.
-	 */
-	fault: () => string | null;
-	/** The armed sprint, from the tick — null or undefined when none. */
-	sprint: () => SprintState | null | undefined;
-	/** Your own ride guard: auto-pause and the resume countdown. */
-	guard: () => GuardPhase | undefined;
-	/** The spiral release: your targets off for a few seconds, on purpose. */
-	spiral: () => boolean | undefined;
-	/** The block you are in while the session runs; undefined otherwise. */
-	block: () => number | undefined;
 	/** The running game, from the tick — null or undefined when none. */
 	game: () => GameState | null | undefined;
 	/** Your own rider id, for the cues a game addresses to you. */
@@ -79,78 +68,9 @@ export function createRoomSounds(deps: SoundDeps) {
 	});
 	$effect(() => heardEnd(deps.phase() ?? 'idle'));
 
-	// A block change is the most frequent "your legs do something different"
-	// in a group session, and it was silent in a room while solo had the
-	// cue all along (audit 2026-09-09). Only while the session runs: the
-	// index going to undefined at the end is the end, not a block.
-	const heardBlock = changes<number | null>((index, previous) => {
-		if (index !== null && previous !== null) play('block');
-	});
-	$effect(() => heardBlock(deps.block() ?? null));
-
-	// The spiral release (docs/SPEC.md): the target drops on purpose, and
-	// comes back — said the way auto-pause is, since it feels the same.
-	const heardSpiral = changes<boolean>((on) =>
-		play(on ? 'block' : 'go', on ? -5 : 0),
-	);
-	$effect(() => heardSpiral(deps.spiral() ?? false));
-
-	// A fault, and its recovery, announce themselves too. The banner is the
-	// whole story only for someone reading the screen — which is nobody on a
-	// bike.
-	const heardFault = changes<string | null>((now) =>
-		play(now ? 'fault' : 'recover'),
-	);
-	$effect(() => heardFault(deps.fault()));
-
-	// The sprint announces itself from here (#1412): the klaxon, the gun and
-	// the fanfare lived in the overlay only the Training place draws, so a
-	// rider on Chat or Members when the coach armed one heard nothing for all
-	// fifteen seconds — the one moment WATTROOM.md lets the app go loud.
-	// Timed on the server's clock, like the overlay and the ERG flip.
-	let sprintNow = $state(serverNow());
-	$effect(() => {
-		if (!deps.sprint()) return;
-		const id = setInterval(() => (sprintNow = serverNow()), 100);
-		return () => clearInterval(id);
-	});
-	let heardSprint: {
-		startsAtMs: number;
-		stage: string;
-		second: number;
-	} | null = null;
-	$effect(() => {
-		const sprint = deps.sprint();
-		if (!sprint) {
-			heardSprint = null;
-			return;
-		}
-		const now = sprintNow;
-		if (!heardSprint || heardSprint.startsAtMs !== sprint.startsAtMs) {
-			heardSprint = {
-				startsAtMs: sprint.startsAtMs,
-				stage: 'klaxon',
-				second: -1,
-			};
-			play('klaxon');
-		}
-		const heard = heardSprint;
-		if (now < sprint.startsAtMs) {
-			const left = Math.ceil((sprint.startsAtMs - now) / 1000);
-			if (left > 0 && left <= 2 && left !== heard.second) {
-				heard.second = left;
-				playCountdownTick(left);
-			}
-		} else if (now < sprint.endsAtMs) {
-			if (heard.stage === 'klaxon') {
-				heard.stage = 'live';
-				play('go');
-			}
-		} else if (heard.stage === 'live') {
-			heard.stage = 'podium';
-			play('fanfare');
-		}
-	});
+	// The rider's own cues — block, guard, spiral, fault, the sprint — are
+	// the ride's, not the room's (#1792): a rider alone hears them too.
+	createRideSounds(deps);
 
 	// A game's cues from here, like the sprint's (#1412 for sprints, audit
 	// 2026-09-09 for games): they lived in GamePanel, which only the Training
@@ -189,14 +109,4 @@ export function createRoomSounds(deps: SoundDeps) {
 		if ('go' in moment) play('go');
 		else playCountdownTick(moment.tick);
 	});
-
-	// Your own guard (#1412): auto-pause is the state change the rider cannot
-	// see coming — it fires when they have stopped looking — and the resume
-	// countdown exists so picking up is not a jump-scare (docs/SPEC.md).
-	const heardGuard = changes<GuardPhase | undefined>((next, previous) => {
-		if (next === 'autopaused') play('block', -5);
-		else if (next === 'resuming') playCountdownTick(3);
-		else if (next === 'running' && previous === 'resuming') play('go');
-	});
-	$effect(() => heardGuard(deps.guard()));
 }
