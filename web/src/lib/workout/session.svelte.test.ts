@@ -243,6 +243,24 @@ describe('createRideSession', () => {
 		expect(session.execution).toBe(1);
 		pedal(session, 0, 0, 10); // stopped: must not count as missed seconds
 		expect(session.execution).toBe(1);
+		// And the record says which seconds the guard took (#1796), so the
+		// saved ride leaves them out the way this meter did.
+		// pedal() restarts its clock, so of the ten stopped samples only the
+		// last five are new seconds; the pause engages on the third of them
+		// and that second is already the guard's.
+		const released = session.recording.map((sample) => sample.released);
+		expect(released).toEqual([
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			true,
+			true,
+			true,
+		]);
 		session.stop();
 	});
 

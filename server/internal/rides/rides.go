@@ -90,6 +90,8 @@ type sampleJSON struct {
 	// it, so a pause mid-block no longer shifts every later second onto the
 	// wrong block. Absent (0 throughout) scores by index, as before.
 	Clock int `json:"clock,omitempty"`
+	// The rider's guard had the trainer off the target (#1796); not scored.
+	Released bool `json:"released,omitempty"`
 }
 
 type createRequest struct {
@@ -308,7 +310,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		samples[i] = protocol.RiderMetrics{
-			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Seq: i,
+			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Released: sample.Released, Seq: i,
 		}
 	}
 

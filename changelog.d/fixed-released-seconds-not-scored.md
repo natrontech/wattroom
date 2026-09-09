@@ -1,0 +1,1 @@
+- The seconds your own guard takes — auto-pause, the count back in, the spiral release — no longer count against your execution score on the saved ride or on a room's live meter, only ever on the meter you watched; a spiral trip used to show as ten missed seconds on the ride page.

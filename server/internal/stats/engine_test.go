@@ -219,6 +219,21 @@ func TestExecutionScoresByTheWorkoutClock(t *testing.T) {
 	}
 }
 
+// A second the rider's own guard released — auto-pause, the resume count,
+// the spiral — is not a miss (#1796): the live meter never scored it, and
+// the saved ride used to, against the full target. Here the second hard
+// block is ridden released at 40 W, which by index scoring is thirty misses.
+func TestExecutionSkipsReleasedSeconds(t *testing.T) {
+	released := biased(40, 30, 0)
+	for i := range released {
+		released[i].Released = true
+	}
+	got, _, err := Execution(workoutJSON, 200, ride(flat(1, 60), flat(200, 30), flat(100, 30), released, flat(100, 30)))
+	if err != nil || got != 1 {
+		t.Fatalf("a released block counted against the rider: %v (%v)", got, err)
+	}
+}
+
 func TestExecutionWeightsByThePrescribedIntensity(t *testing.T) {
 	// The weight is the intensity the WORKOUT asked for, not the biased one:
 	// dialling down must not also quietly reduce how much a hard block counts

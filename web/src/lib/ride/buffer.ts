@@ -20,6 +20,8 @@ export interface BufferedSample {
 	bias?: number;
 	/** The workout second it was ridden at (#1733) — absent on a ride buffered before it. */
 	clock?: number;
+	/** The guard had the trainer off the target this second (#1796). */
+	released?: boolean;
 	/** ms epoch */
 	at: number;
 }

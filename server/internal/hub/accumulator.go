@@ -114,7 +114,8 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 		return
 	}
 
-	if segments == nil || ftp <= 0 || !m.Pedalling() {
+	// A released second (#1796) is the rider's guard at work, not a miss.
+	if segments == nil || ftp <= 0 || !m.Pedalling() || m.Released {
 		return
 	}
 	target, scored := workout.TargetAt(segments, ftp, second)

@@ -258,6 +258,8 @@
 				// The workout second it was ridden at (#1733): the server scores
 				// by it, so a pause mid-block no longer shifts the rest.
 				clock: sample.clock,
+				// The guard's own seconds (#1796): never a miss.
+				released: sample.released,
 			})),
 		}).then((outcome) => {
 			saving = false;

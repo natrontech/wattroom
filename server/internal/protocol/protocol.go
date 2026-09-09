@@ -27,6 +27,13 @@ type RiderMetrics struct {
 	// that sends none: a room ride, where the hub's clock IS the workout
 	// clock, or one recorded before this existed; those score by index.
 	Clock int `json:"clock,omitempty"`
+	// The rider's own guard had the trainer off the target this second
+	// (#1796): auto-pause, the resume countdown, the spiral release. The
+	// live meter on the client never scores such a second; the saved ride
+	// and the room's live score used to, against the full target — a spiral
+	// trip was ten pedalling seconds against no resistance, out of band by
+	// construction. Absent means scored.
+	Released bool `json:"released,omitempty"`
 }
 
 // BiasOr is the trim to score one sample against — 1.0 for a sample that

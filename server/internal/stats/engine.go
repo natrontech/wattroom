@@ -48,7 +48,7 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 		// SPEC's stopped predicate, the same one the live meter asks (#795):
 		// excluding only 0 W here scored a soft-pedalled second as a miss
 		// that the meter had dropped (audit 2026-09-09).
-		if !scored || target <= 0 || !sample.Pedalling() {
+		if !scored || target <= 0 || !sample.Pedalling() || sample.Released {
 			continue
 		}
 		// The same rule the live score uses (hub/accumulator): the band is

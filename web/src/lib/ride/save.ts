@@ -12,6 +12,7 @@ export interface RideUpload {
 		hr: number;
 		bias?: number;
 		clock?: number;
+		released?: boolean;
 	}[];
 }
 

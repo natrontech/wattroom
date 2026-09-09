@@ -224,7 +224,12 @@ export function createRide(deps: RideDeps) {
 							? metrics.from.heartRate
 							: null;
 					deps.live.sendMetrics(
-						wireMetrics(metrics, deps.profile.current.shareHr, bias),
+						wireMetrics(
+							metrics,
+							deps.profile.current.shareHr,
+							bias,
+							!guards.scoring,
+						),
 					);
 					const shared = deps.shared();
 					if (shared?.phase === 'running')

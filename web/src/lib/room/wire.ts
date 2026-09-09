@@ -15,6 +15,7 @@ export function wireMetrics(
 	metrics: Metrics,
 	shareHr: boolean,
 	bias = 1,
+	released = false,
 ): Omit<RiderMetrics, 'seq'> {
 	return {
 		watts: Math.max(0, Math.round(metrics.watts)),
@@ -24,5 +25,8 @@ export function wireMetrics(
 		// against the plan they were actually on (#795). It rides every
 		// sample because bias moves mid-ride.
 		bias,
+		// The rider's own guard had the trainer off the target (#1796): the
+		// hub leaves the second out of the score, as the client's meter does.
+		released,
 	};
 }
