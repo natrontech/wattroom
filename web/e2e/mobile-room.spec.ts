@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test } from './room';
 import { signInAs } from './signin';
 
@@ -107,4 +108,89 @@ test('no place in a room scrolls sideways on a phone', async ({
 		if (excess > 0) wide.push(`${place || '/'} overflows by ${excess}px`);
 	}
 	expect(wide, 'room places wider than a 375px phone').toEqual([]);
+});
+
+/**
+ * The rows the sweep above calls widest never rendered in it (#1766): a phone
+ * is a spectator, so the coach's Move and Cancel never drew, and a room of
+ * one has no member row but the owner's. So: a guest, the cockpit (`?full=1`
+ * spends the spectator gate, #412), and the three overlays nothing at 375
+ * measured — the confirm, a context menu and the session picker.
+ */
+test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
+	page,
+	riders,
+	rooms,
+}) => {
+	await signInAs(page, 'Phone Rows', '/rooms');
+	const room = await rooms.open(page, `Phone Rows ${Date.now() % 100000}`);
+	const guest = await riders('Phone Guest');
+	await rooms.enter(guest, room);
+	const planned = await page.evaluate(async (slug) => {
+		const res = await fetch(`/api/rooms/${slug}/schedule`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Phone Rows Session',
+				workoutJson: JSON.stringify({
+					name: 'Phone Rows Session',
+					steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+				}),
+				startsAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+			}),
+		});
+		return res.ok;
+	}, room.slug);
+	expect(planned, 'could not plan a session for the coach row').toBe(true);
+
+	// An overlay is fixed, so the place column cannot absorb it: measure the
+	// box itself against the viewport.
+	const fits = async (what: string, overlay: Locator) => {
+		await expect(overlay, what).toBeVisible();
+		const box = await overlay.boundingBox();
+		expect(box, `${what} has no box`).not.toBeNull();
+		expect(box!.x, `${what} starts left of the screen`).toBeGreaterThanOrEqual(
+			0,
+		);
+		expect(box!.x + box!.width, `${what} runs past 375px`).toBeLessThanOrEqual(
+			375,
+		);
+	};
+	const noOverflow = async (what: string) => {
+		const body = page.getByTestId('place-body');
+		await expect(body).toBeVisible();
+		const excessOf = () =>
+			body.evaluate((el) => el.scrollWidth - el.clientWidth);
+		await expect
+			.poll(excessOf, { timeout: 3_000 })
+			.toBe(0)
+			.catch(() => {});
+		expect(await excessOf(), `${what} overflows`).toBe(0);
+	};
+
+	// The coach's row: Move and Cancel beside "I'm in".
+	await page.goto(`/r/${room.slug}/sessions?full=1`);
+	await expect(page.getByRole('button', { name: 'Move' })).toBeVisible();
+	await noOverflow('the Sessions place with the coach row');
+	// The confirm behind Cancel.
+	await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+	await fits('the cancel confirm', page.getByRole('dialog'));
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	// The picker.
+	await page.getByRole('button', { name: 'Plan a session' }).click();
+	await fits('the session picker', page.getByRole('dialog'));
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	// The guest's row, and the menu behind it.
+	await page.goto(`/r/${room.slug}/members?full=1`);
+	const row = page
+		.getByRole('listitem')
+		.filter({ hasText: 'Phone Guest' })
+		.first();
+	await expect(row).toBeVisible();
+	await noOverflow('the Members place with a guest row');
+	await row.click({ button: 'right' });
+	await fits('the member menu', page.getByRole('menu'));
 });
