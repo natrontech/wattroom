@@ -82,15 +82,21 @@
 				onSelect: () => void copyInviteLink(code),
 			});
 		}
-		if (c.role !== 'owner')
-			entries.push('separator', {
-				label: 'Leave the crew',
-				icon: LogOut,
-				danger: true,
-				disabled: owned.length > 0,
-				hint: owned.length ? 'you own a room here' : undefined,
-				onSelect: () => void leaveCrewFlow(c),
-			});
+		// Disabled with the reason rather than withheld (ux.md): the owner's
+		// route out is handing the crew on, and the menu says so.
+		entries.push('separator', {
+			label: 'Leave the crew',
+			icon: LogOut,
+			danger: true,
+			disabled: c.role === 'owner' || owned.length > 0,
+			hint:
+				c.role === 'owner'
+					? 'hand the crew on first'
+					: owned.length
+						? 'you own a room here'
+						: undefined,
+			onSelect: () => void leaveCrewFlow(c),
+		});
 		return entries;
 	}
 	// The dropdown under the header: the sidebar's full width, like Discord's

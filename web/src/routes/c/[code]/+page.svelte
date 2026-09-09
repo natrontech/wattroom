@@ -32,7 +32,7 @@
 <svelte:head>
 	<title
 		>{data.crew
-			? data.crew.inCrew
+			? data.crew.inCrew || data.crew.banned
 				? data.crew.name
 				: `Join ${data.crew.name}`
 			: 'Join a crew'} · WattRoom</title
@@ -63,6 +63,15 @@
 				</p>
 				<a href="/crew/{data.crew.id}" class="btn btn-primary btn-lg mt-6"
 					>Open {data.crew.name}</a
+				>
+			{:else if data.crew.banned}
+				<!-- Said at the door, not on the click (audit 2026-09-09): the
+				     Join this used to offer was refused every time. -->
+				<p class="text-muted mt-2 text-sm">
+					This crew removed you. Its code will not let you back in.
+				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your crews</a
 				>
 			{:else}
 				<p class="text-muted mt-2 text-sm">

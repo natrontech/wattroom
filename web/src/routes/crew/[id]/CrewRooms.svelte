@@ -69,7 +69,10 @@
 
 {#if opening}
 	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
-		<OpenOrJoin compact crewId={crew.id} />
+		<OpenOrJoin
+			compact
+			crew={{ id: crew.id, name: crew.name, icon: crew.icon, role: crew.role }}
+		/>
 	</Modal>
 {/if}
 

@@ -221,8 +221,7 @@
 								? '1 rider'
 								: `${invite.members} riders`}</span
 						>
-						<span class="text-muted block text-xs">Sign in and you are in.</span
-						>
+						<span class="text-muted block text-xs">Sign in to join.</span>
 					</p>
 				</div>
 			{/if}

@@ -198,7 +198,13 @@ export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
 export function creationCrew(
 	openable: readonly RoomCrew[],
 	preferred: string | undefined,
+	explicit?: RoomCrew,
 ): RoomCrew | null {
+	// A crew's own page asking for a room "here" is not a hint (audit
+	// 2026-09-09): with no rooms yet the crew is in no list, and the
+	// fallback opened the room in another crew — for good, a room never
+	// moves. The server still refuses a crew you may not open rooms in.
+	if (explicit) return openable.find((c) => c.id === explicit.id) ?? explicit;
 	return (
 		openable.find((c) => c.id === preferred) ??
 		openable.find((c) => c.role === 'owner') ??

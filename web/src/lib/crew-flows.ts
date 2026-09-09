@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
-import { inviteLink, joinCrew, leaveCrew } from '$lib/crew';
+import { confirm } from '$lib/confirm.svelte';
+import { inviteLink, leaveCrew } from '$lib/crew';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import type { RoomCrew } from '$lib/room/room-data';
@@ -7,17 +8,32 @@ import { toasts } from '$lib/toast.svelte';
 
 /**
  * Leaving a crew, from wherever it is offered — the crew page (#1228) and the
- * crew row's menu (#1257) — so the two cannot drift: one call takes the
- * membership and every room of the crew you were in, the live connection is
- * dropped if it was to one of those rooms, the undo rejoins by the code the
- * client still holds, and you land on Home. Resolves to whether it happened.
+ * crew row's menu (#1257) — so the two cannot drift: one confirm naming what
+ * goes, then one call takes the membership and every room of the crew you
+ * were in, the live connection is dropped if it was to one of those rooms,
+ * and you land on Home. Resolves to whether it happened.
+ *
+ * A confirm, not an undo (errors.md): the undo rejoined the crew by its code
+ * and nothing else — every room membership, a coach role, a private room's
+ * grant stayed gone, so the toast promised a restore it could not perform
+ * (audit 2026-09-09).
  */
 export async function leaveCrewFlow(
-	crew: Pick<RoomCrew, 'id' | 'name' | 'code'>,
+	crew: Pick<RoomCrew, 'id' | 'name'>,
 ): Promise<boolean> {
-	const standing = presence.rooms.some(
-		(r) => r.crew?.id === crew.id && r.slug === roomConnection.current?.slug,
-	);
+	const mine = presence.rooms.filter((r) => r.crew?.id === crew.id && !!r.role);
+	const standing = mine.some((r) => r.slug === roomConnection.current?.slug);
+	const sure = await confirm({
+		title: `Leave ${crew.name}?`,
+		body: leaveBody(
+			crew.name,
+			mine.length,
+			mine.filter((r) => r.access === 'private').length,
+		),
+		action: 'Leave the crew',
+		cancel: 'Stay',
+	});
+	if (!sure) return false;
 	const res = await leaveCrew(crew.id);
 	if (!res.ok) {
 		toasts.push(res.error.message, { tone: 'error' });
@@ -25,14 +41,24 @@ export async function leaveCrewFlow(
 	}
 	if (standing) roomConnection.leave();
 	presence.reload();
-	const code = crew.code;
-	toasts.push(`You left ${crew.name}.`, {
-		undo: code
-			? () => void joinCrew(code).then(() => presence.reload())
-			: undefined,
-	});
+	toasts.push(`You left ${crew.name}.`);
 	await goto('/home');
 	return true;
+}
+
+/** What leaving takes, said before the button. */
+export function leaveBody(
+	name: string,
+	rooms: number,
+	privateRooms: number,
+): string {
+	if (rooms === 0) return `You leave ${name}. Its code gets you back in.`;
+	const which = rooms === 1 ? 'the room' : `the ${rooms} rooms`;
+	const back =
+		privateRooms > 0
+			? 'Its code gets you back into the crew; a private room needs a fresh invitation from its owner.'
+			: 'Its code gets you back into the crew, and its open rooms are yours to walk into again.';
+	return `You leave ${name} and ${which} of it you are in. ${back}`;
 }
 
 /**

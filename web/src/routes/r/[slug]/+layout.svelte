@@ -131,7 +131,21 @@
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
 			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
-			{#if room.canEnter}
+			{#if room.banned}
+				<!-- Removed, at either level (audit 2026-09-09): said plainly and
+				     with no button. A ban survives the code (docs/SPEC.md), and
+				     the invite this door used to point at would only be refused. -->
+				<p class="text-muted mt-2 text-sm">
+					{#if room.inCrew}
+						The owner removed you from this room.
+					{:else}
+						This crew removed you. Its code will not let you back in.
+					{/if}
+				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your rooms</a
+				>
+			{:else if room.canEnter}
 				<p class="text-muted mt-2 text-sm">
 					{#if crewName}
 						Open to everyone in {crewName} — that includes you.
@@ -179,7 +193,7 @@
 				>
 			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
-			{#if room.canEnter || room.listed}
+			{#if !room.banned && (room.canEnter || room.listed)}
 				<!-- Privacy is architecture (WATTROOM.md): say what the room sees
 				     before the button, not in a policy page after it. -->
 				<p class="text-muted/70 mt-4 text-[11px]">

@@ -43,6 +43,11 @@ export interface Crew {
 	role: CrewRole;
 	ownerId: string;
 	rooms: CrewRoom[];
+	/**
+	 * How many are in the crew — the door's number. `people` is the part of
+	 * them you may see (#1135), shorter for a plain member.
+	 */
+	members?: number;
 	people: CrewPerson[];
 	/** Owner and admins only — a ban list is a moderation surface. */
 	banned?: CrewPerson[];
@@ -121,6 +126,8 @@ export interface CrewDoor {
 	/** Set only for someone already in the crew: the way in is the page. */
 	inCrew?: boolean;
 	id?: string;
+	/** The crew removed you: no Join, the code will not get you back. */
+	banned?: boolean;
 }
 
 export function crewDoor(

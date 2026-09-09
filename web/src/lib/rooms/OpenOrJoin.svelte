@@ -9,10 +9,12 @@
 	import { joinCrew } from '$lib/crew';
 	import { creationCrew, crewsOf, openableCrews } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
+	import type { RoomCrew } from '$lib/room/room-data';
 
 	let {
 		compact = false,
 		crewId,
+		crew,
 	}: {
 		/**
 		 * The sheet the sidebar's + opens (#1199): stacked, no section
@@ -24,13 +26,20 @@
 		 * when you own or administer it, else the room lands in your own.
 		 */
 		crewId?: string;
+		/**
+		 * The crew whose own page asked for a room here — authoritative, not
+		 * a hint: it need not have any rooms yet (audit 2026-09-09).
+		 */
+		crew?: RoomCrew;
 	} = $props();
 
 	// Where the room lands, and the picker that appears only when there is a
 	// choice to make — most riders administer one crew (ux.md, the 95% rule).
 	const openable = $derived(openableCrews(crewsOf(presence.rooms)));
 	let picked = $state<string | undefined>(undefined);
-	const target = $derived(creationCrew(openable, picked ?? crewId));
+	const target = $derived(
+		creationCrew(openable, picked ?? crewId, picked ? undefined : crew),
+	);
 
 	let newRoomName = $state('');
 	let joinCode = $state('');
