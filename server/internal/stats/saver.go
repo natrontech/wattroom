@@ -14,6 +14,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/retry"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -298,30 +299,13 @@ func (s *Saver) SaveSession(
 	}
 }
 
-// retrySave runs save with a per-attempt timeout and doubling backoff until
-// it succeeds, attempts run out, or ctx is cancelled — returning the last
-// attempt's error.
+// retrySave is retry.Do with the saver's own policy (#235), kept as a name
+// so the tests and the call site read as they always did.
 func retrySave(
 	ctx context.Context,
 	log *slog.Logger,
 	room string,
 	save func(context.Context) error,
 ) error {
-	wait := retryBase
-	for attempt := 1; ; attempt++ {
-		attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
-		err := save(attemptCtx)
-		cancel()
-		if err == nil || attempt == saveAttempts {
-			return err
-		}
-		log.Warn("session save failed, retrying",
-			"err", err, "room", room, "attempt", attempt, "wait", wait)
-		select {
-		case <-time.After(wait):
-		case <-ctx.Done():
-			return err
-		}
-		wait *= 2
-	}
+	return retry.Do(ctx, log, "session save "+room, saveAttempts, retryBase, attemptTimeout, save)
 }

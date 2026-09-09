@@ -128,7 +128,7 @@ func TestReminderMailsEveryOptedInMember(t *testing.T) {
 	// The planner opted in too, so a reminder reaches them where a "planned"
 	// mail would have skipped them.
 	if _, err := h.store.Pool.Exec(t.Context(),
-		"update users set email = $2, notify_planned = true where id = $1",
+		"update users set email = $2, email_verified_at = now(), notify_planned = true where id = $1",
 		h.planner.ID, "planner@example.test"); err != nil {
 		t.Fatalf("opt the planner in: %v", err)
 	}

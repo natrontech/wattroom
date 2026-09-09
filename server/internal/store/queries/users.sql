@@ -36,7 +36,10 @@ select u.id, u.email, u.unsub_token, u.timezone
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1 and m.role != 'banned' and m.notify and u.notify_planned
-  and u.email is not null and u.id <> $2;
+  -- ADR-0030: nothing but its own confirmation reaches an unverified address.
+  -- Every current writer of email verifies first; the predicate makes the
+  -- rule structural rather than an accident of write order (audit 2026-09-09).
+  and u.email is not null and u.email_verified_at is not null and u.id <> $2;
 
 -- name: UpdateUserTimezone :exec
 -- Reported by the browser, never typed. Its own statement rather than a field

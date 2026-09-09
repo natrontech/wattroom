@@ -42,7 +42,9 @@ func sweeps() []sweep {
 		// of when a rider signed in, and nothing promised to keep those.
 		name: "expired sessions",
 		run: func(ctx context.Context, st *store.Store) error {
-			return st.Queries.DeleteExpiredSessions(ctx)
+			return batched(ctx, func(ctx context.Context) (int64, error) {
+				return st.Queries.DeleteExpiredSessions(ctx)
+			})
 		},
 	}, {
 		// #1153: ADR-0034 keeps a recap 90 days so the table stops answering
@@ -50,9 +52,35 @@ func sweeps() []sweep {
 		// ended, which is the one thing a quiet room does not do.
 		name: "session recaps",
 		run: func(ctx context.Context, st *store.Store) error {
-			return st.Queries.PruneSessionRecaps(ctx, recap.RetentionDays)
+			return batched(ctx, func(ctx context.Context) (int64, error) {
+				return st.Queries.PruneSessionRecaps(ctx, recap.RetentionDays)
+			})
+		},
+	}, {
+		// A chat image's 15-minute grace is a bound measured in time, and it
+		// was swept only on a write (audit 2026-09-09): an upload abandoned
+		// in a room that then went quiet was never swept.
+		name: "orphan chat images",
+		run: func(ctx context.Context, st *store.Store) error {
+			return batched(ctx, st.Queries.PruneOrphanChatImages)
 		},
 	}}
+}
+
+// batch is what one delete statement takes at most; the queries carry the
+// same number in their LIMIT.
+const batch = 10000
+
+// batched runs a bounded delete until a batch comes back short, so the first
+// sweep after a long gap is many small transactions rather than one that
+// holds the table (audit 2026-09-09).
+func batched(ctx context.Context, del func(context.Context) (int64, error)) error {
+	for {
+		n, err := del(ctx)
+		if err != nil || n < batch {
+			return err
+		}
+	}
 }
 
 // Run sweeps at boot and then every Every, until ctx is done.
@@ -80,8 +108,15 @@ func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
 // not stop the others: they share a schedule and nothing else.
 func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 	for _, s := range sweeps() {
-		if err := s.run(ctx, st); err != nil {
+		// A budget per sweep (audit 2026-09-09): a sweep that hangs on an
+		// undeadlined context took its ticker with it, silently.
+		sweepCtx, cancel := context.WithTimeout(ctx, sweepBudget)
+		err := s.run(sweepCtx, st)
+		cancel()
+		if err != nil {
 			log.Warn("housekeeping sweep failed", "sweep", s.name, "err", err)
 		}
 	}
 }
+
+const sweepBudget = 5 * time.Minute

@@ -29,6 +29,16 @@ where i.room_id = $1
       select 1 from chat_messages m where m.image_id = i.id
   );
 
+-- name: PruneOrphanChatImages :execrows
+-- The same grace as above, on the clock rather than on a write (audit
+-- 2026-09-09; the #1153 rule): an upload abandoned in a room that then went
+-- quiet was never swept, and its blob sat in Postgres for good.
+delete from chat_images i
+ where i.ctid in (select ctid from chat_images x
+                   where x.created_at < now() - interval '15 minutes'
+                     and not exists (select 1 from chat_messages m where m.image_id = x.id)
+                   limit 10000);
+
 -- name: PruneChat :exec
 -- The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
 delete from chat_messages cm

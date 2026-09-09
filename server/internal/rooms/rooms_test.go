@@ -1192,7 +1192,7 @@ func TestRiderPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
 	// pass against a filter that does nothing.
 	for _, who := range []string{"bob", "carol"} {
 		if _, err := h.store.Pool.Exec(t.Context(),
-			"update users set email = $2, notify_planned = true where id = $1",
+			"update users set email = $2, email_verified_at = now(), notify_planned = true where id = $1",
 			h.users.byToken[who].ID, who+"@example.test"); err != nil {
 			t.Fatalf("give %s an address: %v", who, err)
 		}

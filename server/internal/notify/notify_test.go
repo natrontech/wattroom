@@ -49,7 +49,7 @@ func setup(t *testing.T) *harness {
 		notify bool
 	}{{h.optIn, true}, {h.optOut, false}} {
 		if _, err := st.Pool.Exec(t.Context(),
-			"update users set email = $2, notify_planned = $3 where id = $1",
+			"update users set email = $2, email_verified_at = now(), notify_planned = $3 where id = $1",
 			set.u.ID, set.u.DisplayName+"@example.test", set.notify); err != nil {
 			t.Fatalf("set email: %v", err)
 		}

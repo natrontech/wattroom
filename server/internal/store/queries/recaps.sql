@@ -4,8 +4,12 @@
 -- at all while WATTROOM.md's metrics rules stay untouched.
 
 -- name: SaveSessionRecap :one
+-- Idempotent on (room, started_at): the keeper retries (audit 2026-09-09),
+-- and the second write of the same session updates rather than duplicates.
 insert into session_recaps (room_id, workout, started_at, ended_at, riders)
 values ($1, $2, $3, $4, $5)
+on conflict (room_id, started_at) do update
+    set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
 returning id, created_at;
 
 -- name: ListRoomRecaps :many
@@ -21,7 +25,6 @@ from (
 ) r
 order by r.ended_at;
 
--- name: PruneSessionRecaps :exec
 -- The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
 -- register: this is what stops the table answering "where was this person in
 -- March".
@@ -32,7 +35,15 @@ order by r.ended_at;
 -- count, so pruning on write is exactly sufficient there. This bound is time,
 -- which expires a row with no write involved, so a room that stopped holding
 -- sessions kept its recaps forever — the one case the bound exists for.
-delete from session_recaps where ended_at < now() - make_interval(days => $1::int);
+--
+-- Bounded (audit 2026-09-09): one unbounded delete in one transaction on the
+-- first sweep after a long gap is the shape every other durable path avoids;
+-- the caller loops while a batch comes back full.
+-- name: PruneSessionRecaps :execrows
+delete from session_recaps
+ where ctid in (select ctid from session_recaps
+                 where ended_at < now() - make_interval(days => $1::int)
+                 limit 10000);
 
 -- name: ExportUserRecaps :many
 -- Export-all (#696, GDPR Art. 15 / revFADP Art. 25): the sessions this rider

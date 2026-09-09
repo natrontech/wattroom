@@ -104,7 +104,13 @@ func main() {
 	var st *store.Store
 	if dsn := os.Getenv("WATTROOM_DB"); dsn != "" {
 		var err error
-		st, err = store.Open(context.Background(), dsn)
+		// A deadline on the boot (audit 2026-09-09): a store that hangs —
+		// behind another migrator's lock, or a slow first read — answered
+		// neither /api/healthz nor /api/version, which is the failure the
+		// deploy's rollback handles worst. Loud beats silent.
+		openCtx, cancelOpen := context.WithTimeout(ctx, bootBudget)
+		st, err = store.Open(openCtx, dsn)
+		cancelOpen()
 		if err != nil {
 			log.Error("store open", "err", err)
 			os.Exit(1)
@@ -141,8 +147,15 @@ func main() {
 			log.Error("token key", "err", err)
 			os.Exit(1)
 		}
-		// One pass, at boot, over the rows written before the key existed.
-		secrets.Backfill(context.Background(), st, keys, log)
+		// One pass over the rows written before the key existed — off the
+		// boot path, with a budget: sealing is not a precondition for
+		// serving, and it used to block the listener for as long as the read
+		// took (audit 2026-09-09).
+		safego.Go(log, "token backfill", func() {
+			backfillCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+			defer cancel()
+			secrets.Backfill(backfillCtx, st, keys, log)
+		})
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"), keys)
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
@@ -328,3 +341,7 @@ func main() {
 // a second) fits inside it. deploy/'s stop_grace_period has to exceed it, or
 // the kill lands first.
 const drainGrace = 150 * time.Second
+
+// bootBudget is how long connecting and migrating may take before the boot
+// gives up and lets the deploy roll back.
+const bootBudget = 60 * time.Second

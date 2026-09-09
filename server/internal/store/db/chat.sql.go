@@ -336,6 +336,25 @@ func (q *Queries) PruneChatImages(ctx context.Context, roomID pgtype.UUID) error
 	return err
 }
 
+const pruneOrphanChatImages = `-- name: PruneOrphanChatImages :execrows
+delete from chat_images i
+ where i.ctid in (select ctid from chat_images x
+                   where x.created_at < now() - interval '15 minutes'
+                     and not exists (select 1 from chat_messages m where m.image_id = x.id)
+                   limit 10000)
+`
+
+// The same grace as above, on the clock rather than on a write (audit
+// 2026-09-09; the #1153 rule): an upload abandoned in a room that then went
+// quiet was never swept, and its blob sat in Postgres for good.
+func (q *Queries) PruneOrphanChatImages(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneOrphanChatImages)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeChatReaction = `-- name: RemoveChatReaction :execrows
 delete from chat_reactions r
 using chat_messages m

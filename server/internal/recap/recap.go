@@ -11,8 +11,11 @@ package recap
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/retry"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -52,30 +55,42 @@ func (s *Service) SetLive(l Live) { s.live = l }
 // room with the id the store gave it. Called on its own goroutine from the
 // tick, so this owns its budget and never blocks a room.
 func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
-	if err != nil {
-		s.log.Warn("recap room lookup", "err", err, "room", slug)
-		return
-	}
 	riders, err := json.Marshal(rec.Riders)
 	if err != nil {
 		s.log.Error("recap riders encode", "err", err, "room", slug)
 		return
 	}
-	row, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
-		RoomID:    room.ID,
-		Workout:   rec.Workout,
-		StartedAt: stamp(rec.StartedAt),
-		EndedAt:   stamp(rec.EndedAt),
-		Riders:    riders,
+	// Retried like the ride save (#235): a database blip at session close
+	// used to lose the card for good — the room was already marked saved,
+	// and ADR-0034 promises one recap per session (audit 2026-09-09). The
+	// write is an upsert on (room, started_at), so a retry after a lost
+	// answer lands on the row it already made.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	var id pgtype.UUID
+	err = retry.Do(ctx, s.log, "session recap "+slug, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
+		room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+		if err != nil {
+			return fmt.Errorf("room lookup: %w", err)
+		}
+		row, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
+			RoomID:    room.ID,
+			Workout:   rec.Workout,
+			StartedAt: stamp(rec.StartedAt),
+			EndedAt:   stamp(rec.EndedAt),
+			Riders:    riders,
+		})
+		if err != nil {
+			return err
+		}
+		id = row.ID
+		return nil
 	})
 	if err != nil {
-		s.log.Warn("save recap", "err", err, "room", slug)
+		s.log.Error("save recap failed, recap lost", "err", err, "room", slug)
 		return
 	}
-	rec.ID = store.UUIDString(row.ID)
+	rec.ID = store.UUIDString(id)
 	if s.live != nil {
 		s.live.PostRecap(slug, rec)
 	}
