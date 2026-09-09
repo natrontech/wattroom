@@ -15,8 +15,8 @@ import {
 	soloRide,
 	toleranceBand,
 	SIGNAL_LOST_MS,
-	SPRINT_LEAD_SECONDS,
 } from './session.svelte';
+import { SPRINT_LEAD_SECONDS } from './sprint-window.svelte';
 import type { Workout } from './types';
 
 const workout: Workout = {
