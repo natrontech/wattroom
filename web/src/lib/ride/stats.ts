@@ -74,3 +74,35 @@ export function normalizedPower(samples: RideSample[]): number {
 export function rideXp(kj: number, execution: number): number {
 	return kj + Math.round(execution * 50);
 }
+
+/**
+ * The ride as one SVG path against the FTP line (#1559): peak watts per
+ * bucket, one point per bucket so a two-hour ride is under 300 nodes, the
+ * top of the box the higher of 1.2 × FTP and the ride's own peak. Null when
+ * there is nothing to draw.
+ */
+export function powerTrace(
+	samples: RideSample[],
+	ftp: number,
+	width: number,
+	height: number,
+): { path: string; ftpY: number; top: number } | null {
+	if (samples.length < 2) return null;
+	const bucket = Math.max(1, Math.ceil(samples.length / 300));
+	const points: number[] = [];
+	for (let i = 0; i < samples.length; i += bucket) {
+		let peak = 0;
+		for (let j = i; j < Math.min(i + bucket, samples.length); j++)
+			peak = Math.max(peak, samples[j].watts);
+		points.push(peak);
+	}
+	const top = Math.max(ftp * 1.2, ...points);
+	const x = (i: number) => (i / (points.length - 1)) * width;
+	const y = (w: number) => height - (w / top) * height;
+	const path = points
+		.map(
+			(w, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(w).toFixed(1)}`,
+		)
+		.join(' ');
+	return { path, ftpY: y(ftp), top };
+}
