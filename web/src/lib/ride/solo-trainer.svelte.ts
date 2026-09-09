@@ -1,4 +1,5 @@
 import { roomConnection } from '$lib/room/connection.svelte';
+import { pairError } from '$lib/ble/pair-error';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { type PairState, trainerState } from '$lib/room/sensor-status';
 
@@ -69,7 +70,7 @@ export function createSoloTrainer() {
 			);
 			trainer = next;
 		} catch (cause) {
-			error = cause instanceof Error ? cause.message : String(cause);
+			error = pairError(cause);
 			release();
 			status = 'disconnected';
 		} finally {

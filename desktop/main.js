@@ -46,6 +46,49 @@ const TITLE_BAR_PX = 32;
 // launch is the cost of not having one. ponytail: persist when riders complain.
 let lastBluetoothDeviceId = null;
 
+// How long a scan may find nothing before the rider gets an answer. A trainer
+// woken by the cranks is advertising within a couple of seconds; past this it
+// is asleep, and saying so beats a button that never comes back.
+const PAIRING_TIMEOUT_MS = 20_000;
+
+// True only for the launch warm-up (warmBluetooth), so its chooser is answered
+// rather than shown.
+let warmingBluetooth = false;
+
+/**
+ * Spend the first Bluetooth failure at launch, where nobody is waiting (#1545).
+ *
+ * Chromium creates the CoreBluetooth manager on the FIRST requestDevice and
+ * reports the adapter powered-off until it answers, ~300 ms later. Chrome's own
+ * chooser draws "turn Bluetooth on" and recovers when it does; Electron turns
+ * the same signal into a cancelled chooser, and `select-bluetooth-device` never
+ * fires — so nothing in this file can see that request, let alone retry it. The
+ * rider's first pairing attempt of every launch failed with "User cancelled",
+ * having asked them nothing.
+ *
+ * `true` is the user-gesture argument: requestDevice needs transient activation.
+ *
+ * Packaged builds only. TCC does not accept the prebuilt Electron's Info.plist,
+ * so an unpackaged shell is SIGABRTed the moment anything touches CoreBluetooth
+ * — a dev shell cannot pair a trainer on macOS at all, and warming one at
+ * launch would kill `pnpm start` on the spot.
+ */
+function warmBluetooth(win) {
+	if (!app.isPackaged) return;
+	warmingBluetooth = true;
+	win.webContents
+		.executeJavaScript(
+			`navigator.bluetooth?.requestDevice({ filters: [{ services: ['fitness_machine'] }] }).catch(() => {})`,
+			true,
+		)
+		.catch(() => {
+			/* no Web Bluetooth (the offline screen is a file:// page) */
+		})
+		.finally(() => {
+			warmingBluetooth = false;
+		});
+}
+
 /** The only origin allowed to navigate, open windows, or hold a permission. */
 function isOurs(url) {
 	try {
@@ -104,6 +147,8 @@ function createWindow() {
 	win.on('closed', () => setHud(false));
 	installHandlers(win);
 	load(win);
+	// Once: the adapter stays up for the life of the process.
+	win.webContents.once('did-finish-load', () => warmBluetooth(win));
 	return win;
 }
 
@@ -122,22 +167,63 @@ function installHandlers(win) {
 	//    that forgets preventDefault the FIRST device is selected silently —
 	//    which in a room of advertising sensors is someone else's trainer.
 	//    RESEARCH.md §15.1.
+	//
+	//    Electron emits this the moment the scan starts — ~130 ms in, before
+	//    anything can have advertised — and again for every device it hears.
+	//    Answering that first empty list is a cancel, which is how the shell
+	//    shipped unable to pair anything at all (#1545): hold the callback and
+	//    let the scan run.
+	let scan = null;
+
+	/** Answer the chooser once, whichever emit's callback is current. */
+	function settle(deviceId) {
+		if (!scan) return;
+		clearTimeout(scan.timer);
+		const answer = scan.answer;
+		scan = null;
+		answer(deviceId);
+	}
+
 	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
 		event.preventDefault();
 
-		if (devices.length === 0) {
-			callback(''); // rejects in the renderer; media-error.ts has copy for it
+		// The launch warm-up below is a request nobody asked for: never put a
+		// picker in front of a rider for it.
+		if (warmingBluetooth) {
+			callback('');
 			return;
 		}
+
+		// Chromium runs one chooser at a time and cancels the old one when a
+		// new request starts, so a single slot is the whole state machine. Every
+		// emit brings a fresh callback into the same chooser; the newest is the
+		// one to answer with. A request that supersedes another inherits its
+		// countdown, which is only ever short — and the picker is modal, so the
+		// rider cannot start a second search while one is open.
+		if (!scan) {
+			scan = {
+				// Nothing found in this long means the sensor is asleep, not that
+				// the rider is still deciding. Cancelling gives the renderer a
+				// rejection it has copy for; silence would hang the pair button.
+				timer: setTimeout(() => settle(''), PAIRING_TIMEOUT_MS),
+			};
+		}
+		scan.answer = callback;
+
 		const remembered = devices.find(
 			(d) => d.deviceId === lastBluetoothDeviceId,
 		);
 		if (remembered) {
-			callback(remembered.deviceId);
+			settle(remembered.deviceId);
 			return;
 		}
+		if (devices.length === 0 || scan.asked) return;
+
 		// The renderer's requestDevice filters already narrowed this list to
-		// FTMS/HR/CSC, so everything offered here is pairable.
+		// FTMS/HR/CSC, so everything offered here is pairable — and in practice
+		// it is the one trainer. ponytail: the message box is a snapshot, so a
+		// sensor heard after it opens is not in it; pair again to see it.
+		scan.asked = true;
 		chooseFrom(
 			win,
 			'Pair a sensor',
@@ -147,7 +233,7 @@ function installHandlers(win) {
 			})),
 		).then((deviceId) => {
 			if (deviceId) lastBluetoothDeviceId = deviceId;
-			callback(deviceId || '');
+			settle(deviceId || '');
 		});
 	});
 
