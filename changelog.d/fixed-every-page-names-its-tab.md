@@ -1,1 +1,0 @@
-- Every page names its browser tab now — "Home · WattRoom", the room's name for any of its places, the workout or ride you are looking at, the friend you are messaging — instead of the bare address on most of them.

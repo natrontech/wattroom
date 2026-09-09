@@ -1,1 +1,0 @@
-- The message box of a conversation that is not open yet says where things stand — you asked and they have not answered, they asked and it is your move, or you are not friends yet — instead of "add them" in every case.
