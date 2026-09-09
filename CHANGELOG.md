@@ -17,6 +17,25 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.63] - 2026-09-09
+
+### Added
+
+- Every end links forward: a finished ride's summary offers "See your ride" — the ride's own page — as soon as it is saved, in a room and solo; the room's summary shows after any session, not only long ones; the ramp result points at the workouts and plans its new FTP rescaled; Home's recent rides open the ride itself; the room's Sessions place lists past sessions; and a room's door you cannot open has a way back.
+- Home shows one notice at a time — your new account, the desktop app, then what's new — and dismissing one reveals the next, instead of stacking up to four above your numbers. A rider who owns a crew gets a short getting-set-up card (pair your trainer, name your crew, invite someone) that crosses each step off as it is done and leaves when the last one is. "Open a room" opens the form instead of scrolling to it, and the empty Friends heading is gone.
+
+### Changed
+
+- The crew is now the first row of the sidebar, drawn as the header it is,
+  and the WattRoom logo left the column: the tab and the title bar carry it,
+  and your avatar already shows when you ride. Room names are set in the same
+  type as the rest of the navigation, with the room you are in a step bolder,
+  and "direct messages" shows that it goes somewhere. (#1327)
+- The Lounge holds the room's action: a coach starts the session there with the same controls Training has, a rider joins a running one from there, and "Join the ride" from Home or a rider's page lands on Training, where the numbers are. Planning a session has one home, Sessions; the Lounge links there.
+- Settings have an address: /settings, with a section per page — Profile, Equipment (your sensors and the ramp test), Voice & audio, Appearance, Notifications, Your data — so every part can be linked to, and the sidebar's gear says Settings and lights while you are in any of them. The trophy case moved onto your own rider page, /u/me. /profile, /pair and /trophies forward there for one release.
+- A room's unread count is now the way to read its chat without walking in;
+  the right-click entry that used to be the only door is gone. (#1328)
+
 ## [2026.09.62] - 2026-09-09
 
 ### Changed
@@ -1318,7 +1337,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.62...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.63...HEAD
+[2026.09.63]: https://github.com/natrontech/wattroom/compare/2026.09.62...2026.09.63
 [2026.09.62]: https://github.com/natrontech/wattroom/compare/2026.09.61...2026.09.62
 [2026.09.61]: https://github.com/natrontech/wattroom/compare/2026.09.60...2026.09.61
 [2026.09.60]: https://github.com/natrontech/wattroom/compare/2026.09.59...2026.09.60
