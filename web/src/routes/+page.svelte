@@ -77,8 +77,14 @@
 </script>
 
 {#if !account.loaded}
-	<!-- Hold: a signed-in rider must never flash the marketing page. -->
-	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
+	<!-- Hold: a signed-in rider must never flash the marketing page — and a
+	     void reads as broken, so the mark holds the screen (errors.md). -->
+	<div class="grid min-h-dvh place-items-center" aria-busy="true">
+		<div class="text-center">
+			<Logo size={40} />
+			<p class="text-muted mt-4 text-sm">Opening WattRoom…</p>
+		</div>
+	</div>
 {:else if !account.me}
 	<!-- The public face of wattroom.ch (#111): one screen tells the story. -->
 	<main

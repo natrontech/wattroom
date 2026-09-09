@@ -29,6 +29,8 @@ export interface RailRoomList {
 	crews: RoomCrew[];
 	/** docs/SPEC.md's owned-room cap, as the server enforces it; 0 = unknown. */
 	maxOwned: number;
+	/** The server's message when the read failed — never an empty list in disguise. */
+	error?: string;
 }
 
 /**
@@ -41,7 +43,8 @@ export async function fetchRailRooms(): Promise<RailRoomList> {
 		crews?: RoomCrew[];
 		maxOwned?: number;
 	}>('/api/rooms');
-	if (!res.ok) return { rooms: [], crews: [], maxOwned: 0 };
+	if (!res.ok)
+		return { rooms: [], crews: [], maxOwned: 0, error: res.error.message };
 	const rooms = res.data.rooms.map((room) => ({
 		name: room.name,
 		icon: room.icon,

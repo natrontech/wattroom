@@ -8,6 +8,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { keyFor } from '$lib/icons';
 	import RoomMyPrefs from './RoomMyPrefs.svelte';
@@ -215,7 +216,15 @@
 			>
 		</div>
 	</main>
-{:else if room && room.role !== 'owner'}
+{:else if !room}
+	<!-- The first round trip: never a blank column (errors.md) — the page
+	     matched no branch at all while the read was in flight (audit
+	     2026-09-09). -->
+	<main class="page">
+		<Skeleton class="h-8 w-48" />
+		<Skeleton class="mt-6 h-40" />
+	</main>
+{:else if room.role !== 'owner'}
 	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click.
 	     But the gating was the whole page (#1099): a member arrived asking what
 	     this room is and how to get somebody else into it, and was told what
@@ -298,7 +307,7 @@
 			>
 		</section>
 	</main>
-{:else if room}
+{:else}
 	<main class="page">
 		<h2 class="font-display text-xl font-bold">Room settings</h2>
 		<p class="text-muted mt-1 text-xs">

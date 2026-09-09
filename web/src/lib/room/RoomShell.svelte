@@ -115,9 +115,14 @@
 		const previousRole =
 			(props.members ?? []).find((member) => member.id === userId)?.role ??
 			'member';
-		props.onRole(userId, 'banned');
-		toasts.push(`Banned ${name}.`, {
-			undo: () => props.onRole(userId, previousRole),
+		// Said once the server took it: a refused ban used to toast "Banned"
+		// beside the refusal, with an Undo that fired a second refused call
+		// (audit 2026-09-09).
+		void Promise.resolve(props.onRole(userId, 'banned')).then((ok) => {
+			if (ok === false) return;
+			toasts.push(`Banned ${name}.`, {
+				undo: () => void props.onRole(userId, previousRole),
+			});
 		});
 	}
 

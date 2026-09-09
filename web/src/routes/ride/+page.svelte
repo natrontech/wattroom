@@ -21,6 +21,8 @@
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { page } from '$app/state';
+	import Banner from '$lib/components/Banner.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
@@ -47,6 +49,13 @@
 				: byId('sweet-spot-2x20')!),
 	);
 	const workout = $derived(selected.workout);
+	// A requested workout that is not built in waits for the shelf, and a
+	// shelf that failed or does not hold it is said — the fallback used to
+	// ride Sweet Spot 2×20 under a different name with no word (audit
+	// 2026-09-09).
+	const wanted = $derived(!!requested && !byId(requested));
+	const shelfPending = $derived(wanted && !custom.loaded);
+	const shelfMissing = $derived(wanted && custom.loaded && !saved);
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
 	const profile = createProfileStore();
@@ -387,22 +396,40 @@
      desk surfaces, the effort itself gets the dark. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
 	{#if !session}
-		<PreRide
-			{workout}
-			summary={selected.summary}
-			{ftp}
-			{solo}
-			{replayName}
-			{error}
-			onStart={(trainer) => void begin(trainer)}
-			onReplay={beginReplay}
-			onFtp={async (next) => {
-				error =
-					profile.update({ ftp: next }) ??
-					(await pushProfile({ ftpWatts: next }));
-			}}
-			onError={(message) => (error = message)}
-		/>
+		{#if shelfPending}
+			<Skeleton class="h-8 w-56" />
+			<Skeleton class="mt-6 h-48" />
+		{:else if shelfMissing}
+			<Banner tone="error">
+				{custom.error ?? 'That workout is not on your shelf any more.'}
+				{#snippet action()}
+					{#if custom.error}
+						<button onclick={() => custom.retry()} class="btn-link text-xs"
+							>Retry</button
+						>
+					{:else}
+						<a href="/workouts" class="btn-link text-xs">Open Workouts</a>
+					{/if}
+				{/snippet}
+			</Banner>
+		{:else}
+			<PreRide
+				{workout}
+				summary={selected.summary}
+				{ftp}
+				{solo}
+				{replayName}
+				{error}
+				onStart={(trainer) => void begin(trainer)}
+				onReplay={beginReplay}
+				onFtp={async (next) => {
+					error =
+						profile.update({ ftp: next }) ??
+						(await pushProfile({ ftpWatts: next }));
+				}}
+				onError={(message) => (error = message)}
+			/>
+		{/if}
 	{:else if session.state !== 'done'}
 		<RidingScreen
 			{session}

@@ -14,6 +14,10 @@ import type { RoomCrew } from '$lib/room/room-data';
 let rooms = $state<RailRoom[]>([]);
 let crews = $state<RoomCrew[]>([]);
 let maxOwned = $state(0);
+// The last read's failure. A failed read used to become an empty list, and
+// Home told a rider with ten rooms to open their first (audit 2026-09-09);
+// now the list you had stays and the page can say what happened.
+let error = $state<string | null>(null);
 let version = $state(0);
 let socket: WebSocket | null = null;
 let fallback: ReturnType<typeof setInterval> | null = null;
@@ -33,9 +37,12 @@ let pingedDuringWindow = false;
 
 async function refresh() {
 	const list = await fetchRailRooms();
-	rooms = list.rooms;
-	crews = list.crews;
-	maxOwned = list.maxOwned;
+	error = list.error ?? null;
+	if (!list.error) {
+		rooms = list.rooms;
+		crews = list.crews;
+		maxOwned = list.maxOwned;
+	}
 	version += 1;
 	if (!announced) {
 		announced = true;
@@ -118,6 +125,10 @@ export const presence = {
 	get loaded() {
 		return version > 0;
 	},
+	/** The server's message when the last read failed; null when it answered. */
+	get error() {
+		return error;
+	},
 	/** Bumps on every change ping — pages re-fetch what they show off this. */
 	get version() {
 		return version;
@@ -151,5 +162,6 @@ export const presence = {
 		rooms = [];
 		crews = [];
 		maxOwned = 0;
+		error = null;
 	},
 };

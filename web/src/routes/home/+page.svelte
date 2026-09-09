@@ -47,13 +47,22 @@
 	void changelog.load();
 
 	let rides = $state<Ride[] | null>(null);
-	let error = $state<string | null>(null);
+	let ridesError = $state<string | null>(null);
+	// Either read failing is said here with a Retry (errors.md): the rides
+	// read used to fail silently into "0 rides this week", and a failed
+	// rooms read into "open your first room" (audit 2026-09-09).
+	const error = $derived(ridesError ?? presence.error);
 	let form = $state<LoadSummary | null>(null);
 
 	// The shell's presence store is this list, re-fetched on every lobby ping
 	// (#251). Home used to fetch it again, so each ping cost two identical
-	// requests; the rail feed carries everything this page reads.
-	const rooms = $derived(presence.loaded ? presence.rooms : null);
+	// requests; the rail feed carries everything this page reads. A first
+	// read that failed is not an empty list: the page waits with the banner.
+	const rooms = $derived(
+		presence.loaded && !(presence.error && presence.rooms.length === 0)
+			? presence.rooms
+			: null,
+	);
 	$effect(() => {
 		if (!account.loaded || !account.me) return;
 		void fetchProgression().then((res) => {
@@ -63,10 +72,19 @@
 			if (res.ok && res.data?.load && !res.data.load.building)
 				form = res.data.load;
 		});
-		void api<{ rides: Ride[] }>('/api/rides').then((res) => {
-			if (res.ok) rides = res.data.rides;
-		});
+		void loadRides();
 	});
+	async function loadRides() {
+		const res = await api<{ rides: Ride[] }>('/api/rides');
+		if (res.ok) {
+			rides = res.data.rides;
+			ridesError = null;
+		} else ridesError = res.error.message;
+	}
+	function retry() {
+		if (presence.error) presence.reload();
+		if (ridesError) void loadRides();
+	}
 
 	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
 
@@ -267,9 +285,7 @@
 			<Banner tone="error">
 				{error}
 				{#snippet action()}
-					<button onclick={() => location.reload()} class="btn-link text-xs"
-						>Retry</button
-					>
+					<button onclick={retry} class="btn-link text-xs">Retry</button>
 				{/snippet}
 			</Banner>
 		</div>

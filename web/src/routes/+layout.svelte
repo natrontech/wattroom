@@ -262,8 +262,15 @@
 {/if}
 
 {#if !account.loaded && !publicPath}
-	<!-- Hold the frame while /api/me answers — no gated flash, no login flash. -->
-	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
+	<!-- Hold the frame while /api/me answers — no gated flash, no login flash.
+	     Held with the mark, not a void (errors.md): a cold server takes
+	     seconds and an empty viewport read as broken (audit 2026-09-09). -->
+	<div class="grid min-h-dvh place-items-center" aria-busy="true">
+		<div class="text-center">
+			<Logo size={40} />
+			<p class="text-muted mt-4 text-sm">Opening WattRoom…</p>
+		</div>
+	</div>
 {:else if gated}
 	<!-- redirecting -->
 {:else if framed}

@@ -24,14 +24,19 @@
 	// for the next one: rooms past the 50th were unreachable (audit 2026-09-09).
 	const PAGE = 50;
 	let more = $state(false);
+	// A failed page read is said beside the button, not over the fifty rooms
+	// already on screen (audit 2026-09-09).
+	let moreError = $state<string | null>(null);
 
 	async function load(offset = 0) {
-		error = null;
+		if (offset) moreError = null;
+		else error = null;
 		const res = await api<{ rooms: Entry[] }>(
 			`/api/rooms/directory${offset ? `?offset=${offset}` : ''}`,
 		);
 		if (!res.ok) {
-			error = res.error.message;
+			if (offset) moreError = res.error.message;
+			else error = res.error.message;
 			return;
 		}
 		rooms = offset ? [...(rooms ?? []), ...res.data.rooms] : res.data.rooms;
@@ -104,6 +109,19 @@
 				</li>
 			{/each}
 		</ul>
+		{#if moreError}
+			<div class="mt-3">
+				<Banner tone="error">
+					{moreError}
+					{#snippet action()}
+						<button
+							onclick={() => void load(rooms?.length ?? 0)}
+							class="btn-link text-xs">Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
+		{/if}
 		{#if more}
 			<button
 				onclick={() => void load(rooms?.length ?? 0)}
