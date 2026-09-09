@@ -101,10 +101,15 @@ export function createRide(deps: RideDeps) {
 	let guardsReleased = $state(false);
 	let guardPhase = $state<GuardPhase>('running');
 	let guardResumeIn = $state(0);
+	// The spiral release (docs/SPEC.md) fires in a room exactly as it does
+	// solo; solo had a banner and a cue for it and the room had nothing —
+	// the resistance vanished for ten seconds unexplained (audit 2026-09-09).
+	let spiralActive = $state(false);
 	function syncGuards() {
 		guardsReleased = guards.released;
 		guardPhase = guards.phase;
 		guardResumeIn = guards.resumeIn;
+		spiralActive = guards.spiralActive;
 	}
 
 	const target = $derived(guardsReleased ? 0 : prescribed);
@@ -261,6 +266,10 @@ export function createRide(deps: RideDeps) {
 		},
 		get guardResumeIn() {
 			return guardResumeIn;
+		},
+		/** The spiral-of-death release: targets off for a few seconds, on purpose. */
+		get spiralActive() {
+			return spiralActive;
 		},
 		nudgeBias,
 		ride,

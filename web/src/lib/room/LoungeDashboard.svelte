@@ -12,7 +12,6 @@
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Link from '@lucide/svelte/icons/link';
-	import Radio from '@lucide/svelte/icons/radio';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 
 	const room = useRoom();
@@ -136,13 +135,6 @@
 		     drawn once; a rider joins one that is running — on Training,
 		     where the numbers are. -->
 		<SessionControls />
-		{#if room.shared?.phase === 'running' || room.shared?.phase === 'paused' || room.shared?.phase === 'countdown'}
-			{#if !room.canControl}
-				<a href="/r/{room.slug}/training" class="btn btn-accent btn-lg"
-					><Radio size={15} /> Join the ride</a
-				>
-			{/if}
-		{/if}
 		{#if room.upcoming[0]}
 			{@const next = room.upcoming[0]}
 			<a

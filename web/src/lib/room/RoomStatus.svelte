@@ -78,6 +78,25 @@
 				{/if}
 			</div>
 		</div>
+	{:else if rideCtl.spiralActive}
+		<!-- The spiral-of-death release (docs/SPEC.md), which solo explained
+		     and the room did not (audit 2026-09-09): the trainer just let go
+		     mid-block, and without this line that is a dropout. -->
+		<div class="shrink-0 px-5 pt-4">
+			<div
+				class="border-neon/40 bg-surface-raised flex items-center gap-4 rounded-lg border px-5 py-3"
+			>
+				<p class="text-sm">
+					<span class="font-medium"
+						>Cadence collapsed — targets are off for a moment.</span
+					>
+					<span class="text-muted"
+						>Spin back up; the resistance returns by itself. This is deliberate,
+						not a dropout.</span
+					>
+				</p>
+			</div>
+		</div>
 	{:else if rideCtl.fault}
 		<!-- The trainer's own state, which the room never showed (#520): the
 		     mock has simulated this banner since #39 and the product could
@@ -103,6 +122,17 @@
 				onRecover={() => void av.join()}
 			/>
 		</div>
+	{:else if av.status === 'failed'}
+		<!-- LiveKit did not connect (audit 2026-09-09): one of the named
+		     ride-critical errors, and it was a 10 px word in the sidebar.
+		     The one big button is the way back. -->
+		<div class="shrink-0 px-5 pt-4">
+			<FaultBanner
+				fault={{ kind: 'voice', state: 'lost' }}
+				bufferedSeconds={0}
+				onRecover={() => void av.join()}
+			/>
+		</div>
 	{:else if av.status === 'live' && av.micFault}
 		<!-- The capture died under an open mic (#640): we publish our own
 		     WebAudio track, so LiveKit never notices and the room hears
@@ -113,6 +143,16 @@
 				bufferedSeconds={0}
 				onRecover={() => void av.reconnectMic()}
 			/>
+		</div>
+	{/if}
+
+	{#if live.refusal}
+		<!-- A refused command — a sprint armed at the wrong moment, a control
+		     from a stale role — is status on every place, not a line under
+		     the chat composer (audit 2026-09-09). It clears itself after a
+		     few seconds (live.svelte.ts). -->
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="warn">{live.refusal}</Banner>
 		</div>
 	{/if}
 
