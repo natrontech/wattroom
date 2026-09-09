@@ -29,7 +29,10 @@ export default defineConfig({
 	// browsers in contention with the Go server on a 4-core runner.
 	workers: process.env.CI ? 2 : undefined,
 	forbidOnly: !!process.env.CI,
-	retries: 0,
+	// Two retries on CI, none locally: a genuine break still fails three
+	// times, while a startup wobble (the simulated trainer's first reading
+	// took the whole five minutes twice on main) no longer blocks a release.
+	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? 'github' : 'list',
 	use: {
 		baseURL: external || 'http://localhost:4173',

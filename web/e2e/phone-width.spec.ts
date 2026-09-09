@@ -201,10 +201,16 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 		await page.goto(route);
 		const body = page.getByTestId('page-body');
 		await expect(body).toBeVisible();
-		// The charts size themselves from their measured container, so read
-		// after layout has settled rather than on the first frame.
-		await page.waitForTimeout(300);
-		const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
+		// The charts size themselves from their measured container, so wait
+		// for the excess to settle at zero rather than a fixed 300 ms; a page
+		// that never settles is recorded with whatever it settled on.
+		const excessOf = () =>
+			body.evaluate((el) => el.scrollWidth - el.clientWidth);
+		await expect
+			.poll(excessOf, { timeout: 3_000 })
+			.toBe(0)
+			.catch(() => {});
+		const excess = await excessOf();
 		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
 	}
 
@@ -221,12 +227,17 @@ test('the landing and the gate fit a phone', async ({ page }) => {
 	const wide: string[] = [];
 	for (const route of ['/', '/login']) {
 		await page.goto(route);
-		await page.waitForTimeout(300);
-		const excess = await page.evaluate(
-			() =>
-				document.documentElement.scrollWidth -
-				document.documentElement.clientWidth,
-		);
+		const excessOf = () =>
+			page.evaluate(
+				() =>
+					document.documentElement.scrollWidth -
+					document.documentElement.clientWidth,
+			);
+		await expect
+			.poll(excessOf, { timeout: 3_000 })
+			.toBe(0)
+			.catch(() => {});
+		const excess = await excessOf();
 		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
 	}
 	expect(wide, 'pages wider than a 375px phone').toEqual([]);

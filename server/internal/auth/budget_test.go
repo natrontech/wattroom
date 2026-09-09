@@ -28,11 +28,11 @@ func TestMailBudget(t *testing.T) {
 		t.Fatal("another account has its own window")
 	}
 
-	short := budget.New[string](1, 30*time.Millisecond)
+	short := budget.New[string](1, 200*time.Millisecond)
 	if !short.Spend("k") || short.Spend("k") {
 		t.Fatal("one spend per window")
 	}
-	time.Sleep(40 * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
 	if !short.Spend("k") {
 		t.Fatal("the window did not turn")
 	}

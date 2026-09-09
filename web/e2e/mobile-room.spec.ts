@@ -96,8 +96,14 @@ test('no place in a room scrolls sideways on a phone', async ({
 		await page.goto(`/r/${slug}${place}`);
 		const body = page.getByTestId('place-body');
 		await expect(body).toBeVisible();
-		await page.waitForTimeout(300);
-		const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
+		// Wait for the excess to settle at zero rather than a fixed 300 ms.
+		const excessOf = () =>
+			body.evaluate((el) => el.scrollWidth - el.clientWidth);
+		await expect
+			.poll(excessOf, { timeout: 3_000 })
+			.toBe(0)
+			.catch(() => {});
+		const excess = await excessOf();
 		if (excess > 0) wide.push(`${place || '/'} overflows by ${excess}px`);
 	}
 	expect(wide, 'room places wider than a 375px phone').toEqual([]);

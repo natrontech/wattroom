@@ -69,6 +69,9 @@ func setup(t *testing.T) *harness {
 func (h *harness) save(t *testing.T, user string, seconds, watts int) string {
 	t.Helper()
 	status, body := call(t, h.mux, user, http.MethodPost, "/api/rides", rideBody(seconds, watts))
+	if status == http.StatusOK {
+		t.Fatalf("create: 200 — the dedupe fired, two fixture starts collided: %v", body)
+	}
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, body)
 	}
@@ -125,14 +128,21 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 // ride now (FindRideAt), and two rides a test means two start times.
 var rideBodies atomic.Int64
 
+// rideBase is read from the clock ONCE, truncated to the second the wire
+// format carries. Two calls at T and T+δ used to produce floor(T)-N and
+// floor(T+δ)-N-1, which are equal exactly when δ crosses a second boundary —
+// a chance of δ itself per pair of saves, ~10 % under -race on a shared
+// database — and the server then deduped the second ride as a retry of the
+// first (200, not 201). Three tests flaked on it in one night (#1598, then
+// TestExportEmptyAndCorruptSamples and TestBestRideOfWorkout). With one base,
+// the counter alone decides the start.
+var rideBase = time.Now().Truncate(time.Second).Add(-time.Hour)
+
 func rideBody(seconds, watts int) string {
-	return rideBodyAt(seconds, watts, time.Now().Add(-time.Hour-time.Duration(rideBodies.Add(1))*time.Second))
+	return rideBodyAt(seconds, watts, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second))
 }
 
-// rideBodyAt is rideBody with the start chosen by the test. The counter above
-// keeps starts apart by one second per call, which a slow race-detector run
-// can undo by crossing a second boundary between two calls — and the server
-// then dedupes the second ride as a retry of the first (200, not 201).
+// rideBodyAt is rideBody with the start chosen by the test.
 func rideBodyAt(seconds, watts int, start time.Time) string {
 	samples := make([]string, seconds)
 	for i := range samples {
