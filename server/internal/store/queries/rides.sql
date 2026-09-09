@@ -10,9 +10,12 @@ returning id;
 -- name: ListUserRides :many
 -- Summary only: the blob stays on disk unless a single ride is opened.
 -- Paged by start (#1549): `before` is the oldest row the caller has, or
--- null for the first page.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+-- null for the first page. The delivery state rides along (#1553): a failed
+-- Strava upload used to be visible only by opening every ride.
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+       e.state as export_state
 from rides
+left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
 where user_id = $1
   and (sqlc.narg('before')::timestamptz is null or started_at < sqlc.narg('before')::timestamptz)
 order by started_at desc
@@ -22,9 +25,11 @@ limit $2;
 -- The ride page's "against your best" (#1687): the hardest ride of the same
 -- workout across the whole history, not the first page of the list. Same
 -- columns as ListUserRides so one JSON mapping serves both.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+       e.state as export_state
 from rides
-where user_id = $1 and workout_name = $2 and id <> $3
+left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
+where user_id = $1 and workout_name = $2 and rides.id <> $3
 order by avg_watts desc, started_at desc
 limit 1;
 
