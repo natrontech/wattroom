@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.86] - 2026-09-09
+
+### Fixed
+
+- The people column marks whoever is firing a soundboard clip, the same drum the rider tiles already showed — so an airhorn has a face on it even when the tiles are behind the stage.
+- A ramp block built in the editor now gets a real target on the server too, so the room's live execution meter follows it instead of showing nothing; a session runs for exactly the picked workout's length rather than a number the coach's browser sent; a workout too nested for the room to ride is refused when picked instead of starting an empty session; the workout editor asks before you leave unsaved changes, its inputs and the graph agree on the same limits, and your custom-workout shelf loads once per app instead of once per page.
+
 ## [2026.09.85] - 2026-09-09
 
 ### Added
@@ -1680,7 +1687,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.85...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.86...HEAD
+[2026.09.86]: https://github.com/natrontech/wattroom/compare/2026.09.85...2026.09.86
 [2026.09.85]: https://github.com/natrontech/wattroom/compare/2026.09.84...2026.09.85
 [2026.09.84]: https://github.com/natrontech/wattroom/compare/2026.09.83...2026.09.84
 [2026.09.83]: https://github.com/natrontech/wattroom/compare/2026.09.82...2026.09.83
