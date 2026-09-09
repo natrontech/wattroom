@@ -2,6 +2,7 @@
 	// A rider's page (ADR-0024): what rooms already see — level, energy,
 	// medals from rooms you share, where they are — plus, for friends, the
 	// rides they chose to share. Built from the /dev/profile mock (#457).
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -57,6 +58,18 @@
 	let loadedId = $state<string | null>(untrack(() => data.id));
 
 	async function load(who: string) {
+		if (!who) {
+			// /u/me that never resolved (#1330): ask the loader again rather
+			// than fetch an empty id, which the SPA answers with index.html
+			// and left the page on its skeleton for good (audit 2026-09-09).
+			error = null;
+			await invalidateAll();
+			rider = data.rider;
+			error = data.riderError;
+			trophies = data.trophies;
+			trophiesError = data.trophiesError;
+			return;
+		}
 		const res = await fetchRider(who);
 		if (!res.ok) {
 			error = res.error.message;

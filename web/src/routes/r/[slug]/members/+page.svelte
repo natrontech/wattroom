@@ -84,9 +84,13 @@
 	// settings/+page.svelte's ban list already uses (#666).
 	function ban(member: Member) {
 		const { id, displayName, role: previousRole } = member;
-		room.setRole(id, 'banned');
-		toasts.push(`Banned ${displayName}.`, {
-			undo: () => room.setRole(id, previousRole),
+		// Said once the server took it (audit 2026-09-09), never beside its
+		// own refusal.
+		void Promise.resolve(room.setRole(id, 'banned')).then((ok) => {
+			if (ok === false) return;
+			toasts.push(`Banned ${displayName}.`, {
+				undo: () => void room.setRole(id, previousRole),
+			});
 		});
 	}
 	const unban = (member: Member) => room.setRole(member.id, 'member');

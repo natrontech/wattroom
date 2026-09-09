@@ -137,8 +137,9 @@ export interface RoomContext {
 	unschedule(id: string): void;
 	/** Say you are in for a planned session, or take it back (#450). */
 	rsvp(id: string, going: boolean): void;
-	rotateIcs(): void;
-	setRole(userId: string, role: string): void;
+	/** Resolves to whether the server took it; a caller that toasts waits. */
+	rotateIcs(): void | Promise<boolean>;
+	setRole(userId: string, role: string): void | Promise<boolean>;
 	/**
 	 * Ban with an undo toast, so a griefer is met wherever they appear — the
 	 * tile, the roster row — rather than only where someone once wrote the

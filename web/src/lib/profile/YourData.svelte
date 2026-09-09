@@ -6,7 +6,8 @@
 	// that nothing else on the profile page reads, and because the destructive
 	// half wants to be read on its own (#126, #686).
 	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
+	import { api, apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 
 	// The page keeps its own status line; a failed purge belongs there with
 	// everything else the rider might have just tried.
@@ -15,6 +16,20 @@
 	let confirming = $state(false);
 	let typed = $state('');
 	let deleting = $state(false);
+	let exporting = $state(false);
+
+	// Fetched and saved from the app: a plain link replaced the whole SPA
+	// with a JSON error body when the export failed (audit 2026-09-09).
+	async function exportAll() {
+		exporting = true;
+		const res = await apiBlob('/api/me/export');
+		exporting = false;
+		if (!res.ok) {
+			onError(res.error.message);
+			return;
+		}
+		downloadBlob(res.data.blob, res.data.filename ?? 'wattroom-export.json');
+	}
 
 	async function remove() {
 		deleting = true;
@@ -42,7 +57,9 @@
 		<li>Heart rate is health data and is treated as such.</li>
 	</ul>
 	<div class="mt-5 flex flex-wrap gap-2">
-		<a href="/api/me/export" class="btn btn-secondary">Export everything</a>
+		<button onclick={exportAll} disabled={exporting} class="btn btn-secondary"
+			>{exporting ? 'Exporting…' : 'Export everything'}</button
+		>
 		<button
 			onclick={() => account.signOut()}
 			class="btn-link self-center text-xs">Sign out</button

@@ -85,10 +85,11 @@
 			// refused action is a toast (errors.md) — it used to vanish, and
 			// with it the reason a hand-over or a plan did nothing.
 			toasts.push(res.error.message, { tone: 'error' });
-			return;
+			return false;
 		}
 		if (slug) void load(slug);
 		if (toast) toasts.push(toast.message, { undo: toast.undo });
+		return true;
 	}
 
 	const isMember = $derived(!!room?.role);

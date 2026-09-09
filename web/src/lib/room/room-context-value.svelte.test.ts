@@ -113,12 +113,16 @@ describe('roomContextValue (#686)', () => {
 		const ctx = roomContextValue(deps(props));
 		const calls: string[] = [];
 
-		props.onRole = (userId, role) => calls.push(`first:${userId}:${role}`);
+		props.onRole = (userId, role) => {
+			calls.push(`first:${userId}:${role}`);
+		};
 		ctx.setRole('u1', 'coach');
 
 		// The page can hand down a new handler; the context must not be holding
 		// the one it was built with.
-		props.onRole = (userId, role) => calls.push(`second:${userId}:${role}`);
+		props.onRole = (userId, role) => {
+			calls.push(`second:${userId}:${role}`);
+		};
 		ctx.setRole('u2', 'member');
 
 		expect(calls).toEqual(['first:u1:coach', 'second:u2:member']);

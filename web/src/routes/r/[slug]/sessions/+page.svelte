@@ -315,10 +315,11 @@
 					until it subscribes again.
 				</p>
 				<button
-					onclick={() => {
-						room.rotateIcs();
-						toasts.push('Calendar link reset — shared links stop working.');
-					}}
+					onclick={() =>
+						void Promise.resolve(room.rotateIcs()).then((ok) => {
+							if (ok !== false)
+								toasts.push('Calendar link reset — shared links stop working.');
+						})}
 					class="btn btn-secondary btn-xs mt-2">Reset calendar link</button
 				>
 			</details>

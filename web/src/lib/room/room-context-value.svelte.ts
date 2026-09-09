@@ -64,7 +64,7 @@ export interface RoomShellProps {
 	board?: BoardRow[];
 	monthKj?: number;
 	adminBusy?: boolean;
-	onRole: (userId: string, role: string) => void;
+	onRole: (userId: string, role: string) => void | Promise<boolean>;
 	onRemove: (userId: string) => void;
 	upcoming?: RoomContext['upcoming'];
 	onSchedule: (name: string, json: string, startsAt: string) => void;
@@ -73,7 +73,7 @@ export interface RoomShellProps {
 	onRsvp: (id: string, going: boolean) => void;
 	/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
 	icsToken?: string;
-	onRotateIcs: () => void;
+	onRotateIcs: () => void | Promise<boolean>;
 }
 
 type Connection = ReturnType<typeof roomConnection.join>;
