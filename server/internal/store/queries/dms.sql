@@ -155,7 +155,12 @@ where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
 select count(*) from dm_reactions where message_id = $1 and emoji = $2;
 
 -- name: ListDmHeads :many
--- The conversation list: my peers with their latest line, newest first.
+-- The conversation list: my FRIENDS with their latest line, one row per
+-- peer (ordered by peer id — distinct on wants its key first; the client
+-- sorts newest-first). The friendship is the channel (ADR-0012): remove the
+-- friend and the row leaves both lists, and the peer's current name, face
+-- and level stop reaching someone the rider removed (#1814). The messages
+-- themselves stay until pruned, so a re-friend finds them.
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
@@ -163,6 +168,10 @@ select distinct on (peer.id)
 from dm_messages m
 join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
+join friendships f
+  on f.status = 'accepted'
+ and ((f.requester_id = $1 and f.addressee_id = peer.id)
+   or (f.requester_id = peer.id and f.addressee_id = $1))
 where m.sender_id = $1 or m.recipient_id = $1
 order by peer.id, m.created_at desc
 limit 1000; -- an engineering bound (#1416): peers are friends, and friends are few

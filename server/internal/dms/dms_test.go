@@ -126,6 +126,18 @@ func TestDmsAreFriendsOnly(t *testing.T) {
 	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"still there?"}`); code != http.StatusForbidden {
 		t.Fatalf("post-unfriend dm: %d", code)
 	}
+	// And the conversation leaves both lists with it (#1814): the row used
+	// to stay forever, carrying the peer's current name, face and level to
+	// someone the rider removed. The thread itself still reads.
+	for _, who := range []string{"alice", "bob"} {
+		code, body := call(t, mux, who, http.MethodGet, "/api/dms", "")
+		if heads, _ := body["conversations"].([]any); code != http.StatusOK || len(heads) != 0 {
+			t.Fatalf("%s's list after the unfriend: %d %v", who, code, body)
+		}
+	}
+	if code, body := call(t, mux, "bob", http.MethodGet, "/api/dms/"+alice, ""); code != http.StatusOK || len(body["messages"].([]any)) != 2 {
+		t.Fatalf("the thread after the unfriend: %d %v", code, body)
+	}
 }
 
 // tinyPNG is just the signature — enough for http.DetectContentType.
