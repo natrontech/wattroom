@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { confirm } from '$lib/confirm.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
@@ -90,6 +91,22 @@
 	async function save(nextFtp = ftp) {
 		ftp = nextFtp;
 		if (account.me) {
+			// An emptied field is not a tidy-up (#1828): it removes the only
+			// way back in and every account alarm, with no undo. The confirm
+			// delete-room and delete-account get, in the same words.
+			const had = account.me.emailPending ?? account.me.email ?? '';
+			if (account.me.mailAvailable && had && email.trim() === '') {
+				const ok = await confirm({
+					title: 'Remove your recovery address?',
+					body: 'Without it there is no way back into this account if every passkey and sign-in provider is lost, and no more account alarms. Adding one again means confirming a new link.',
+					action: 'Remove the address',
+					cancel: 'Keep it',
+				});
+				if (!ok) {
+					email = had;
+					return;
+				}
+			}
 			const err = await account.save({
 				displayName: name || account.me.displayName,
 				ftpWatts: nextFtp,
