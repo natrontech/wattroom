@@ -388,7 +388,10 @@ type Rider struct {
 }
 
 // SessionState is the shared timeline, server-owned. Late joiners need no
-// catch-up protocol: every tick carries the whole truth.
+// catch-up protocol: every tick carries the whole truth — except the workout
+// definition, which is named by hash on every tick and sent in full only to
+// a socket that has not seen that hash (its first tick, the tick after a
+// pick), so a 64 KiB definition does not ride every second at 1–4 Hz (#1710).
 type SessionState struct {
 	Phase string `json:"phase"` // "idle" | "countdown" | "running" | "paused" | "done"
 	// Seconds into the workout timeline. Advances only while running.
@@ -397,7 +400,10 @@ type SessionState struct {
 	CountdownRemaining int    `json:"countdownRemaining,omitempty"`
 	WorkoutName        string `json:"workoutName,omitempty"`
 	WorkoutJSON        string `json:"workoutJson,omitempty"`
-	TotalSeconds       int    `json:"totalSeconds,omitempty"`
+	// Names WorkoutJSON on the wire (#1710). A client keeps the last
+	// definition it heard and fills it back in while the hash matches.
+	WorkoutHash  string `json:"workoutHash,omitempty"`
+	TotalSeconds int    `json:"totalSeconds,omitempty"`
 	// The rpm the current block asks the room to turn (#1431): the block's
 	// cadence band, else docs/SPEC.md's effort tiers. 0 while nothing runs
 	// or the block expresses no preference. What smart autoplay weighs

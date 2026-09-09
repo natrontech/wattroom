@@ -73,6 +73,36 @@ function running(socket: FakeSocket, elapsed = 5, workoutName = 'Openers') {
 	});
 }
 
+describe('room live workout definition', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+	});
+
+	// #1710: the server sends the JSON on the tick that changes it and names
+	// it by hash on every other; the store fills it back in from the last one
+	// heard, so the room's parsed workout never blinks.
+	it('fills the workout back in from the last tick that carried it', () => {
+		const live = createRoomLive('lean');
+		const socket = FakeSocket.last!;
+		socket.open();
+		const say = (state: Record<string, unknown>) =>
+			socket.onmessage?.({
+				data: JSON.stringify({ tick: { at: Date.now(), state } }),
+			});
+		say({ phase: 'idle', workoutHash: 'h1', workoutJson: '{"steps":[]}' });
+		expect(live.tick?.state.workoutJson).toBe('{"steps":[]}');
+		say({ phase: 'idle', workoutHash: 'h1' });
+		expect(live.tick?.state.workoutJson).toBe('{"steps":[]}');
+		// A new pick arrives in full, and is what later ticks fill in.
+		say({ phase: 'idle', workoutHash: 'h2', workoutJson: '{"steps":[1]}' });
+		say({ phase: 'countdown', workoutHash: 'h2' });
+		expect(live.tick?.state.workoutJson).toBe('{"steps":[1]}');
+		// No workout, no definition.
+		say({ phase: 'idle' });
+		expect(live.tick?.state.workoutJson).toBeUndefined();
+	});
+});
+
 describe('room live send while reconnecting', () => {
 	beforeEach(() => {
 		FakeSocket.last = null;

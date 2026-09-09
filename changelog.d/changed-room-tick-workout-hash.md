@@ -1,0 +1,1 @@
+- A room sends the workout definition to each rider once, when they arrive or the coach picks, instead of every second: less data on the wire and less work on every phone in the room during a ride.
