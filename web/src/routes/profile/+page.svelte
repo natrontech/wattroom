@@ -1,20 +1,14 @@
 <script lang="ts">
-	import Monitor from '@lucide/svelte/icons/monitor';
-	import Moon from '@lucide/svelte/icons/moon';
-	import Sun from '@lucide/svelte/icons/sun';
-	import Gauge from '@lucide/svelte/icons/gauge';
-	import Zap from '@lucide/svelte/icons/zap';
+	import Appearance from '$lib/profile/Appearance.svelte';
 	import CoachAccess from '$lib/profile/CoachAccess.svelte';
+	import Equipment from '$lib/profile/Equipment.svelte';
+	import Notifications from '$lib/profile/Notifications.svelte';
 	import VoiceAudio from '$lib/profile/VoiceAudio.svelte';
 	import YourData from '$lib/profile/YourData.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
-	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
 	import PasskeyList from '$lib/components/PasskeyList.svelte';
-	import { theme, type ThemeChoice } from '$lib/theme.svelte';
-	import { notify } from '$lib/notify.svelte';
-	import { shellVersion } from '$lib/desktop';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
@@ -28,12 +22,6 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const SCHEMES: { value: ThemeChoice; label: string; icon: typeof Monitor }[] =
-		[
-			{ value: 'auto', label: 'Auto', icon: Monitor },
-			{ value: 'dark', label: 'Dark', icon: Moon },
-			{ value: 'light', label: 'Light', icon: Sun },
-		];
 	const profile = createProfileStore();
 
 	// The FTP number's story (#222) — decorative context under the field, so
@@ -406,64 +394,8 @@
 			</div>
 		{/if}
 
-		<!-- Full theme (#331, ADR-0005 amended): every colour moves together. -->
-		<section class="border-muted/15 mt-3 rounded-lg border p-6">
-			<h2 class="font-display font-bold">Appearance</h2>
-			<div class="mt-4">
-				<PalettePicker />
-			</div>
-			<!-- The scheme toggle lived on the room rail until ADR-0020 retired it
-			     (#326): auto follows the OS, the ride is always dark. -->
-			<div class="mt-5 flex flex-wrap items-center gap-2">
-				<span class="eyebrow mr-1">scheme</span>
-				{#each SCHEMES as option (option.value)}
-					<button
-						onclick={() => theme.set(option.value)}
-						aria-pressed={theme.current === option.value}
-						class="btn btn-xs {theme.current === option.value
-							? 'btn-primary'
-							: 'btn-secondary'}"
-					>
-						<option.icon size={12} />
-						{option.label}
-					</button>
-				{/each}
-				<span class="text-muted text-[11px]">
-					auto follows your OS — the ride is always dark
-				</span>
-			</div>
-		</section>
-
-		<!-- Notifications (#202, ADR-0042): chat, arrivals, a session starting —
-		     when this window is hidden or behind another app. A browser needs
-		     the gesture for the permission, so this is the switch; the desktop
-		     app is on unless switched off here. -->
-		{#if notify.supported}
-			<section class="border-muted/15 mt-3 rounded-lg border p-6">
-				<h2 class="font-display font-bold">Notifications</h2>
-				<div class="mt-3 flex flex-wrap items-center gap-3">
-					<p class="text-muted min-w-56 flex-1 text-sm leading-relaxed">
-						{#if notify.enabled}
-							On. A message, someone arriving, a session starting or a poke
-							reaches you while this window is hidden or behind another app.
-						{:else if shellVersion()}
-							Off. Nothing reaches you while the app is behind another window.
-						{:else}
-							Off. Turn it on and this browser asks once for permission.
-						{/if}
-					</p>
-					{#if notify.enabled}
-						<button class="btn btn-secondary" onclick={() => notify.disable()}
-							>Turn off</button
-						>
-					{:else}
-						<button class="btn btn-primary" onclick={() => void notify.enable()}
-							>Turn on notifications</button
-						>
-					{/if}
-				</div>
-			</section>
-		{/if}
+		<Appearance />
+		<Notifications />
 
 		<!-- Coach access (ADR-0017): read-only tokens for your own AI/tools. -->
 		<CoachAccess initial={data.tokens} />
@@ -476,41 +408,7 @@
 		     stays the whole thing: the panel is the shortcut, not the home. -->
 		<VoiceAudio />
 
-		<!-- The rest of what the cog carries (ADR-0020): occasional things that
-		     were destinations of their own before the sidebar shrank to three. -->
-		<section class="panel mt-8 p-6">
-			<h2 class="font-display font-bold">Equipment &amp; measurement</h2>
-			<ul class="mt-4 grid gap-2 sm:grid-cols-2">
-				<li>
-					<a
-						href="/pair"
-						class="border-muted/15 hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
-					>
-						<Zap size={16} class="text-muted shrink-0" />
-						<span class="min-w-0">
-							<span class="block text-sm font-medium">Sensors</span>
-							<span class="text-muted block text-xs"
-								>Pair a trainer, heart rate strap or cadence sensor</span
-							>
-						</span>
-					</a>
-				</li>
-				<li>
-					<a
-						href="/ramp"
-						class="border-muted/15 hover:border-muted/40 flex items-center gap-3 rounded-lg border px-4 py-3"
-					>
-						<Gauge size={16} class="text-muted shrink-0" />
-						<span class="min-w-0">
-							<span class="block text-sm font-medium">Ramp test</span>
-							<span class="text-muted block text-xs"
-								>Measure your FTP — about 20 minutes</span
-							>
-						</span>
-					</a>
-				</li>
-			</ul>
-		</section>
+		<Equipment />
 
 		<YourData onError={(m) => (status = m)} />
 	{/if}
