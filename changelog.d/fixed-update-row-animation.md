@@ -1,1 +1,0 @@
-- The desktop app's sidebar update row no longer stutters: its sweep is driven by a transform rather than a repainted gradient, and the arrow's hop is timed to it instead of drifting against it.
