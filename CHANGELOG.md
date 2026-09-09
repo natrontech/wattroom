@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.73] - 2026-09-09
+
+### Fixed
+
+- Home's *Around right now* no longer lists you as someone to join — a room where you stand alone reads as quiet, and the headline stops inviting you to join yourself.
+- A Strava upload that timed out no longer retries every five minutes forever with nothing shown on the ride: each attempt is counted and its reason kept. A deploy that lands the moment a session ends now waits for the room's rides to save instead of losing them. Session reminders are sent with a budget per session, so one slow mail provider cannot leave the rest of a busy hour unreminded, and a stuck XP or voice-clock write can no longer stop XP for good.
+- A finished session's recap card is retried like the ride save instead of being lost on a database blip, and a session leaves exactly one. Ride mail only ever goes to a confirmed address. Abandoned chat images are swept on the clock, the daily sweeps run in bounded batches with a budget each, and a server that cannot reach its database at boot fails within a minute instead of hanging silently — while the token backfill no longer holds up the listener.
+
 ## [2026.09.72] - 2026-09-09
 
 ### Fixed
@@ -1526,7 +1534,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.72...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.73...HEAD
+[2026.09.73]: https://github.com/natrontech/wattroom/compare/2026.09.72...2026.09.73
 [2026.09.72]: https://github.com/natrontech/wattroom/compare/2026.09.71...2026.09.72
 [2026.09.71]: https://github.com/natrontech/wattroom/compare/2026.09.70...2026.09.71
 [2026.09.70]: https://github.com/natrontech/wattroom/compare/2026.09.69...2026.09.70
