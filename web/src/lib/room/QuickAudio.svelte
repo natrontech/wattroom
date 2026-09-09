@@ -103,7 +103,10 @@
 		<div class="border-ink/5 mt-4 border-t pt-4">
 			<span class="eyebrow">mixer</span>
 			<div class="mt-2">
-				<MixFaders onRiderGain={(id, gain) => voice.setRiderGain(id, gain)} />
+				<MixFaders
+					onRiderGain={(id, gain) => voice.setRiderGain(id, gain)}
+					onShareGain={(gain) => voice.setShareGain(gain)}
+				/>
 			</div>
 		</div>
 

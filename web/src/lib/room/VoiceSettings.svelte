@@ -21,6 +21,7 @@
 		micTesting = false,
 		onMicTest,
 		onRiderGain,
+		onShareGain,
 		devices = { mics: [], cams: [], outs: [] },
 		micId = '',
 		camId = '',
@@ -40,6 +41,7 @@
 		onMicTest?: () => void;
 		/** Resets go through av, so a rider still in voice hears the change. */
 		onRiderGain?: (id: string, gain: number) => void;
+		onShareGain?: (gain: number) => void;
 		devices?: {
 			mics: { deviceId: string; label: string }[];
 			cams: { deviceId: string; label: string }[];
@@ -149,6 +151,6 @@
 	<span class="eyebrow">mixer</span>
 	<div class="mt-2">
 		<span id="mixer"></span>
-		<MixFaders {onRiderGain} />
+		<MixFaders {onRiderGain} {onShareGain} />
 	</div>
 </div>

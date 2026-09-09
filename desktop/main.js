@@ -287,8 +287,9 @@ function installHandlers(win) {
 						// tap is the whole machine, so a rider who picked one
 						// window would otherwise also send their notifications,
 						// their calls and the room's own voices back into it.
+						if (!picked) return callback({});
 						callback(
-							picked ? (sound ? { video: picked, audio: 'loopback' } : { video: picked }) : {},
+							sound ? { video: picked, audio: 'loopback' } : { video: picked },
 						);
 					});
 				})
