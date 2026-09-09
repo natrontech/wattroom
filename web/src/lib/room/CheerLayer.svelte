@@ -51,6 +51,11 @@
 	.cheer {
 		animation: rise 2.4s ease-out forwards;
 	}
+	@media (prefers-reduced-motion: reduce) {
+		.cheer {
+			animation: none;
+		}
+	}
 	@keyframes rise {
 		from {
 			transform: translateY(0);

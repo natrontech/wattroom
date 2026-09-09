@@ -62,6 +62,7 @@
 		     thing that just happened. -->
 		<div class="shrink-0 px-5 pt-4">
 			<div
+				role="status"
 				class="border-neon/40 bg-surface-raised flex items-center gap-4 rounded-lg border px-5 py-3"
 			>
 				{#if rideCtl.guard === 'resuming'}
@@ -87,6 +88,7 @@
 		     mid-block, and without this line that is a dropout. -->
 		<div class="shrink-0 px-5 pt-4">
 			<div
+				role="status"
 				class="border-neon/40 bg-surface-raised flex items-center gap-4 rounded-lg border px-5 py-3"
 			>
 				<p class="text-sm">
@@ -163,7 +165,8 @@
 		<div class="shrink-0 px-5 pt-4">
 			<Banner tone="warn">
 				<p class="flex items-center gap-3 text-xs">
-					<span class="bg-z5 h-2 w-2 shrink-0 animate-pulse rounded-full"
+					<span
+						class="bg-z5 h-2 w-2 shrink-0 rounded-full motion-safe:animate-pulse"
 					></span>
 					<span>
 						<span class="font-medium">The session is paused.</span>

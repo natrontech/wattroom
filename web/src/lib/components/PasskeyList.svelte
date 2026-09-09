@@ -96,6 +96,7 @@
 				bind:value={name}
 				maxlength="40"
 				placeholder="Phone, YubiKey…"
+				aria-label="name for the passkey"
 				class="input w-40"
 			/>
 			<button onclick={add} disabled={busy} class="btn btn-secondary btn-xs">

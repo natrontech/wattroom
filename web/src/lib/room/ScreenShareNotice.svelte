@@ -54,7 +54,8 @@
 		role="status"
 		aria-live="polite"
 	>
-		<span class="bg-danger h-2.5 w-2.5 shrink-0 animate-pulse rounded-full"
+		<span
+			class="bg-danger h-2.5 w-2.5 shrink-0 rounded-full motion-safe:animate-pulse"
 		></span>
 		<MonitorUp size={16} class="text-danger shrink-0" />
 		<p class="min-w-0 flex-1 truncate text-sm">

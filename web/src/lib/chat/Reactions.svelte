@@ -37,7 +37,7 @@
 				onclick={() => onReact(cheer)}
 				aria-label={cheer}
 				title={cheer}
-				class="px-0.5 py-0.5 hover:scale-125"
+				class="icon-btn h-6 w-6 hover:scale-125"
 				><CheerIcon {cheer} size={16} /></button
 			>
 		{/each}

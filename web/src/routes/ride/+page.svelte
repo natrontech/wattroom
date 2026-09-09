@@ -516,6 +516,7 @@
 										<input
 											bind:value={flag.note}
 											placeholder="what went wrong? (optional)"
+											aria-label="what went wrong"
 											class="input input-xs min-w-0 flex-1"
 										/>
 									</div>

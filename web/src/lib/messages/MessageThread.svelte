@@ -193,6 +193,8 @@
 <div
 	{@attach stickToBottom}
 	data-testid="thread-log"
+	role="log"
+	aria-label="messages"
 	class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-5 py-4"
 >
 	<div class="flex h-full flex-col">
@@ -379,14 +381,14 @@
 								{#if canEdit(message) && editingId !== message.id}
 									<button
 										onclick={() => startEdit(message)}
-										class="text-muted/60 hover:text-ink p-1"
+										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
 										aria-label="edit message"><Pencil size={13} /></button
 									>
 								{/if}
 								{#if message.text}
 									<button
 										onclick={() => copy(message.text)}
-										class="text-muted/60 hover:text-ink p-1"
+										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
 										aria-label="copy message"><Copy size={13} /></button
 									>
 								{/if}
@@ -394,7 +396,7 @@
 									{@const id = message.id}
 									<button
 										onclick={() => (reactingTo = reactingTo === id ? null : id)}
-										class="text-muted/60 hover:text-ink p-1"
+										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
 										aria-label="react"><SmilePlus size={14} /></button
 									>
 								{/if}

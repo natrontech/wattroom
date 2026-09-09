@@ -21,7 +21,7 @@
 		/>
 		<button
 			onclick={onClear}
-			class="bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-1.5 -right-1.5 rounded-full p-0.5 ring-1"
+			class="icon-btn bg-surface-raised ring-ink/10 text-muted hover:text-ink absolute -top-2 -right-2 h-6 w-6 ring-1"
 			aria-label="Remove image"><X size={12} /></button
 		>
 	</div>

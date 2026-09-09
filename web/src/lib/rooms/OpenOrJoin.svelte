@@ -157,6 +157,7 @@
 					maxlength="60"
 					class="input mt-3 w-full"
 					placeholder="Room name"
+					aria-label="room name"
 					autofocus={compact}
 				/>
 				<button
@@ -196,6 +197,7 @@
 						? 'border-danger/60'
 						: 'border-muted/25 focus:border-muted/60'}"
 					placeholder="Crew code"
+					aria-label="crew code"
 				/>
 				{#if invalidCode}
 					<!-- Field-level validation lands under the field (errors.md). -->

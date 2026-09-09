@@ -21,7 +21,11 @@
 	};
 </script>
 
+<!-- A banner appears in answer to something (a failed save, a paused
+     session): a screen reader hears it arrive. Errors interrupt, the rest
+     waits its turn (audit 2026-09-09). -->
 <div
+	role={tone === 'error' ? 'alert' : 'status'}
 	class="{tones[
 		tone
 	]} flex items-center gap-3 rounded-lg border px-4 py-3 text-sm"

@@ -188,6 +188,7 @@
 					: `/r/${room.slug}`
 				: undefined}
 			title={open_ ? undefined : mark?.label}
+			aria-current={here ? 'true' : browsing ? 'page' : undefined}
 			class="block rounded px-2 pt-1.5 {subline === 'people'
 				? 'pb-0'
 				: 'pb-1.5'} {here
