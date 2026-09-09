@@ -551,7 +551,7 @@ rather than redrawing it. Nothing in the column changes shape.
 
 ```
 ┌───────────────────────────────┐
-│ [W] Wadlichlepfer ⌄       ▮▮▮ │ → /crew/[id]: people · rooms · invite · settings
+│ [W] Wadlichlepfer ⌄           │ → /crew/[id]: people · rooms · invite · settings
 │ Home                          │
 │ Workouts                      │ → /workouts/edit · /ride · /ramp  (Workouts stays lit)
 │ Rides                         │ → /history/[id]  (the URL follows the label with #1330)
@@ -577,15 +577,22 @@ Retired once their parents exist: /profile, /pair, /trophies, and the five stubs
 and read as two items of one list; the crew row sat closer to the logo than to
 the nav it governs. The first row of the column is now the crew: a 24 px mark,
 the name at 15 px / 700, the shield when it is yours, a chevron only when there
-is a second crew to switch to, 12 px to Home below. The wordmark leaves the
-column — the tab, the desktop title bar and the sign-in page carry it, and the
-narrow-window top bar keeps it because the drawer is shut there. The
-equalizer mark stays, 16 px at the row's right end, because
-[0005](0005-synthwave-visual-identity.md) gave it a job (it breathes while a
-session runs); it is not a link, since Home is the row below and a second
-target for one destination was the second finding of the audit. A rider
-without a crew yet keeps the old logo row. The connected room's name comes
-down from 16 px to 14 px so the header is the largest text in the column
+is a second crew to switch to, 12 px to Home below. The brand leaves the
+column, wordmark and mark both. The tab, the desktop title bar and the sign-in
+page carry the wordmark, and the narrow-window top bar keeps it because the
+drawer is shut there. The mark was first kept at the row's end for
+[0005](0005-synthwave-visual-identity.md)'s job — it breathes while a session
+runs — and came out the same day on the operator's review: since #1016 your
+avatar and the Training row already show riding, so in the column the mark
+was a second indicator, and a coloured thing beside the crew's name with no
+room to breathe. A rider without a crew yet keeps the old logo row, the
+day-zero state. Room rows are set in the navigation's own type — Barlow at
+14 px, the room you stand in a step bolder — rather than in the display face,
+which now belongs to the crew header alone, so a room reads as one more
+navigation point and not as a heading of its own; and the rooms eyebrow says
+"rooms", since the header above it already names the crew. The connected
+room's name thereby comes down from 16 px to 14 px so the header is the
+largest text in the column
 ([#1327](https://github.com/natrontech/wattroom/issues/1327); the three
 directions drawn and the one chosen are on the sidebar canvas linked from the
 issue).
