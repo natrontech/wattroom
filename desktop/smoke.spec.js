@@ -152,49 +152,51 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 	const app = await launch(DEAD_URL);
 	await app.firstWindow();
 
-	const seen = await app.evaluate(async ({ BrowserWindow, dialog, ipcMain }) => {
-		// If the handshake below ever stops working this takes the native
-		// fallback, and an un-stubbed message box would hang the run for a
-		// minute instead of failing.
-		dialog.showMessageBox = async () => ({ response: 1 });
+	const seen = await app.evaluate(
+		async ({ BrowserWindow, dialog, ipcMain }) => {
+			// If the handshake below ever stops working this takes the native
+			// fallback, and an un-stubbed message box would hang the run for a
+			// minute instead of failing.
+			dialog.showMessageBox = async () => ({ response: 1 });
 
-		const win = BrowserWindow.getAllWindows()[0];
-		// What the preload does on load: registering onBleScan is the app
-		// saying it can draw the picker itself.
-		ipcMain.emit('wattroom:ble-picker-ready');
+			const win = BrowserWindow.getAllWindows()[0];
+			// What the preload does on load: registering onBleScan is the app
+			// saying it can draw the picker itself.
+			ipcMain.emit('wattroom:ble-picker-ready');
 
-		const sent = [];
-		const pass = win.webContents.send.bind(win.webContents);
-		win.webContents.send = (channel, payload) => {
-			if (channel === 'wattroom:ble-scan') sent.push(payload);
-			else pass(channel, payload);
-		};
+			const sent = [];
+			const pass = win.webContents.send.bind(win.webContents);
+			win.webContents.send = (channel, payload) => {
+				if (channel === 'wattroom:ble-scan') sent.push(payload);
+				else pass(channel, payload);
+			};
 
-		const answers = [];
-		const scan = (devices) =>
-			win.webContents.emit(
-				'select-bluetooth-device',
-				{ preventDefault() {} },
-				devices,
-				(deviceId) => answers.push(deviceId),
-			);
+			const answers = [];
+			const scan = (devices) =>
+				win.webContents.emit(
+					'select-bluetooth-device',
+					{ preventDefault() {} },
+					devices,
+					(deviceId) => answers.push(deviceId),
+				);
 
-		// Electron emits the moment the scan starts — ~130 ms in, before
-		// anything can have advertised — then again per device heard.
-		scan([]);
-		scan([{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' }]);
-		scan([
-			{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' },
-			{ deviceId: 'b', deviceName: '' },
-		]);
-		const answeredWhileScanning = answers.length;
+			// Electron emits the moment the scan starts — ~130 ms in, before
+			// anything can have advertised — then again per device heard.
+			scan([]);
+			scan([{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' }]);
+			scan([
+				{ deviceId: 'a', deviceName: 'KICKR CORE 8F2A' },
+				{ deviceId: 'b', deviceName: '' },
+			]);
+			const answeredWhileScanning = answers.length;
 
-		ipcMain.emit('wattroom:ble-pick', {}, 'a');
-		// A late answer from a picker whose request is over must not settle
-		// the next one.
-		ipcMain.emit('wattroom:ble-pick', {}, 'b');
-		return { sent, answeredWhileScanning, answers };
-	});
+			ipcMain.emit('wattroom:ble-pick', {}, 'a');
+			// A late answer from a picker whose request is over must not settle
+			// the next one.
+			ipcMain.emit('wattroom:ble-pick', {}, 'b');
+			return { sent, answeredWhileScanning, answers };
+		},
+	);
 
 	// Answering that first empty list is a cancel: the shell shipped unable
 	// to pair anything at all that way (#1545).
@@ -341,28 +343,25 @@ test('the native fallback still pairs a web app too old to draw the picker', asy
 	await expect(win.locator('#retry')).toBeVisible();
 
 	const emit = (devices) =>
-		app.evaluate(
-			async ({ BrowserWindow, dialog }, list) => {
-				dialog.showMessageBox = async (_win, options) => {
-					globalThis.__buttons = options.buttons;
-					return { response: 0 };
-				};
-				const { webContents } = BrowserWindow.getAllWindows()[0];
-				return await new Promise((resolve) => {
-					const held = setTimeout(() => resolve('held'), 1500);
-					webContents.emit(
-						'select-bluetooth-device',
-						{ preventDefault() {} },
-						list,
-						(deviceId) => {
-							clearTimeout(held);
-							resolve(`answered:${deviceId}`);
-						},
-					);
-				});
-			},
-			devices,
-		);
+		app.evaluate(async ({ BrowserWindow, dialog }, list) => {
+			dialog.showMessageBox = async (_win, options) => {
+				globalThis.__buttons = options.buttons;
+				return { response: 0 };
+			};
+			const { webContents } = BrowserWindow.getAllWindows()[0];
+			return await new Promise((resolve) => {
+				const held = setTimeout(() => resolve('held'), 1500);
+				webContents.emit(
+					'select-bluetooth-device',
+					{ preventDefault() {} },
+					list,
+					(deviceId) => {
+						clearTimeout(held);
+						resolve(`answered:${deviceId}`);
+					},
+				);
+			});
+		}, devices);
 
 	// The launch warm-up (warmBluetooth) is a Bluetooth request of our own, and
 	// the handler answers it rather than showing a picker. Wait it out first, or
@@ -374,9 +373,10 @@ test('the native fallback still pairs a web app too old to draw the picker', asy
 	expect(
 		await emit([{ deviceId: 'kickr-1', deviceName: 'KICKR CORE 1234' }]),
 	).toBe('answered:kickr-1');
-	expect(
-		await app.evaluate(() => globalThis.__buttons),
-	).toEqual(['KICKR CORE 1234', 'Cancel']);
+	expect(await app.evaluate(() => globalThis.__buttons)).toEqual([
+		'KICKR CORE 1234',
+		'Cancel',
+	]);
 
 	await app.close();
 });

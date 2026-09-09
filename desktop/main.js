@@ -53,6 +53,36 @@ const PAIRING_TIMEOUT_MS = 20_000;
 // ordinary state — registering the listener is the handshake, and without it
 // the native message box below is still the answer.
 let pickerReady = false;
+// Registering the listener is the app saying it can draw the picker.
+ipcMain.on('wattroom:ble-picker-ready', () => {
+	pickerReady = true;
+});
+
+/**
+ * The Bluetooth request currently open, if any.
+ *
+ * Chromium runs one chooser at a time and cancels the old one when a new
+ * request starts, so a single slot is the whole state machine. Module scope
+ * rather than per-window, like every other ipcMain handler here: the rider's
+ * answer arrives on a channel, not through a window.
+ */
+let scan = null;
+
+/** Answer the chooser once, whichever emit's callback is current. */
+function settleScan(deviceId) {
+	if (!scan) return;
+	clearTimeout(scan.timer);
+	const { answer, contents } = scan;
+	scan = null;
+	if (!contents.isDestroyed()) contents.send('wattroom:ble-scan', null);
+	answer(deviceId);
+}
+
+// The rider picked, or closed the picker. Ignored when no request is open:
+// a stale answer must never settle the NEXT one.
+ipcMain.on('wattroom:ble-pick', (_event, deviceId) =>
+	settleScan(deviceId || ''),
+);
 
 // True only for the launch warm-up (warmBluetooth), so its chooser is answered
 // rather than shown.
@@ -191,26 +221,9 @@ function installHandlers(win) {
 	//    pairing a DIFFERENT trainer impossible for the rest of the launch.
 	//    §15.1 lists remembering as an upside of owning the chooser; it is
 	//    one only if the rider can still get past it.
-	let scan = null;
-
-	/** Answer the chooser once, whichever emit's callback is current. */
-	function settle(deviceId) {
-		if (!scan) return;
-		clearTimeout(scan.timer);
-		const answer = scan.answer;
-		scan = null;
-		if (!win.isDestroyed()) win.webContents.send('wattroom:ble-scan', null);
-		answer(deviceId);
-	}
-
-	// The rider picked, or closed the picker. Ignored when no scan is open:
-	// a stale answer must never settle the NEXT request.
-	ipcMain.on('wattroom:ble-pick', (_event, deviceId) => settle(deviceId || ''));
-	// Registering the listener is the app saying it can draw the picker.
-	ipcMain.on('wattroom:ble-picker-ready', () => {
-		pickerReady = true;
-	});
-
+	//
+	//    The slot and its answer channel are at module scope above; only the
+	//    event itself belongs to this window.
 	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
 		event.preventDefault();
 
@@ -221,21 +234,20 @@ function installHandlers(win) {
 			return;
 		}
 
-		// Chromium runs one chooser at a time and cancels the old one when a
-		// new request starts, so a single slot is the whole state machine. Every
-		// emit brings a fresh callback into the same chooser; the newest is the
-		// one to answer with. A request that supersedes another inherits its
-		// countdown, which is only ever short — and the picker is modal, so the
-		// rider cannot start a second search while one is open.
+		// Every emit brings a fresh callback into the same chooser; the newest
+		// is the one to answer with. A request that supersedes another
+		// inherits its countdown, which is only ever short — and the picker is
+		// modal, so the rider cannot start a second search while one is open.
 		if (!scan) {
 			scan = {
 				// Nothing found in this long means the sensor is asleep, not that
 				// the rider is still deciding. Cancelling gives the renderer a
 				// rejection it has copy for; silence would hang the pair button.
-				timer: setTimeout(() => settle(''), PAIRING_TIMEOUT_MS),
+				timer: setTimeout(() => settleScan(''), PAIRING_TIMEOUT_MS),
 			};
 		}
 		scan.answer = callback;
+		scan.contents = win.webContents;
 
 		// The renderer's requestDevice filters already narrowed this list to
 		// FTMS/HR/CSC, so everything offered here is pairable.
@@ -260,7 +272,7 @@ function installHandlers(win) {
 			win,
 			'Pair a sensor',
 			offer.map((d) => ({ label: d.name, value: d.id })),
-		).then(({ value: deviceId }) => settle(deviceId || ''));
+		).then(({ value: deviceId }) => settleScan(deviceId || ''));
 	});
 
 	// 2. Permissions. Electron's default is to ALLOW — with remote content that
