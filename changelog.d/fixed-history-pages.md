@@ -1,0 +1,1 @@
+- Rides beyond the first hundred are reachable again: the Rides page loads older rides on request instead of stopping quietly at two hundred, an exported .fit is named by its day and workout instead of an id, and the Strava sign-in failure now points at Settings › Profile, where the Strava connection actually lives.

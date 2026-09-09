@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 
@@ -122,7 +124,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.ant.fit")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"wattroom-%s.fit\"", store.UUIDString(row.ID)))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", exportFilename(row.StartedAt.Time, row.WorkoutName)))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)
@@ -286,4 +288,28 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	s.log.Info("ride deleted", "ride", store.UUIDString(id))
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// exportFilename names the download by the day and the workout (#1549): five
+// files named by uuid were five files a rider could not tell apart.
+func exportFilename(startedAt time.Time, workout string) string {
+	var slug []rune
+	dash := true
+	for _, r := range strings.ToLower(workout) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			slug = append(slug, r)
+			dash = false
+		} else if !dash {
+			slug = append(slug, '-')
+			dash = true
+		}
+		if len(slug) >= 40 {
+			break
+		}
+	}
+	name := strings.Trim(string(slug), "-")
+	if name == "" {
+		name = "ride"
+	}
+	return fmt.Sprintf("wattroom-%s-%s.fit", startedAt.UTC().Format("2006-01-02"), name)
 }

@@ -16,8 +16,10 @@ func TestExportFailureNeverServesTheProvider(t *testing.T) {
 		err  error
 		want string
 	}{
-		{"an expired sign-in", fmt.Errorf("%w: %w", errToken, errors.New("stored refresh token cannot be read — is WATTROOM_SECRET_KEY the key")), "reconnect Strava"},
-		{"a 401 from the provider", &uploadRefused{status: 401, snippet: `{"message":"Authorization Error"}`}, "reconnect Strava"},
+		// The door it names is where ProviderConnections lives (#1548):
+		// Settings › Profile, not Your data.
+		{"an expired sign-in", fmt.Errorf("%w: %w", errToken, errors.New("stored refresh token cannot be read — is WATTROOM_SECRET_KEY the key")), "reconnect Strava in Settings › Profile"},
+		{"a 401 from the provider", &uploadRefused{status: 401, snippet: `{"message":"Authorization Error"}`}, "reconnect Strava in Settings › Profile"},
 		{"a rejected file", &uploadRefused{status: 400, snippet: "<html>malformed</html>"}, "did not accept the file"},
 		{"an outage", &uploadRefused{status: 502, snippet: "<html>bad gateway</html>"}, "could not be reached"},
 		{"a database failure", fmt.Errorf("persist refreshed token: %w", errors.New("ERROR: relation identities")), "could not be reached"},

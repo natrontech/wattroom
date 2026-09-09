@@ -103,14 +103,25 @@ type rideJSON struct {
 	SharedWithFriends bool `json:"sharedWithFriends"`
 }
 
+// listPage is one page of the rides list (#1549): the list used to be one
+// read capped at 200, and a rider's older rides fell off the end of the app.
+const listPage = 100
+
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
-	rows, err := s.store.Queries.ListUserRides(r.Context(), db.ListUserRidesParams{
-		UserID: user.ID, Limit: 200,
-	})
+	params := db.ListUserRidesParams{UserID: user.ID, Limit: listPage}
+	if before := r.URL.Query().Get("before"); before != "" {
+		at, err := time.Parse(time.RFC3339, before)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "before must be an RFC 3339 time.")
+			return
+		}
+		params.Before = pgtype.Timestamptz{Time: at, Valid: true}
+	}
+	rows, err := s.store.Queries.ListUserRides(r.Context(), params)
 	if err != nil {
 		s.log.Error("list rides failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rides could not be loaded.")
@@ -126,7 +137,9 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rides": out})
+	// A full page means there may be more: the client asks again with the
+	// last row's start as `before`.
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rides": out, "more": len(rows) == listPage})
 }
 
 // handleShare flips one ride's friends-visibility (ADR-0024). Owner-only:

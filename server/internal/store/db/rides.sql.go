@@ -751,6 +751,7 @@ const listUserRides = `-- name: ListUserRides :many
 select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
+  and ($3::timestamptz is null or started_at < $3::timestamptz)
 order by started_at desc
 limit $2
 `
@@ -758,6 +759,7 @@ limit $2
 type ListUserRidesParams struct {
 	UserID pgtype.UUID
 	Limit  int32
+	Before pgtype.Timestamptz
 }
 
 type ListUserRidesRow struct {
@@ -776,8 +778,10 @@ type ListUserRidesRow struct {
 }
 
 // Summary only: the blob stays on disk unless a single ride is opened.
+// Paged by start (#1549): `before` is the oldest row the caller has, or
+// null for the first page.
 func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([]ListUserRidesRow, error) {
-	rows, err := q.db.Query(ctx, listUserRides, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, listUserRides, arg.UserID, arg.Limit, arg.Before)
 	if err != nil {
 		return nil, err
 	}

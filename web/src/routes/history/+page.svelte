@@ -51,6 +51,28 @@
 
 	let rides = $state<ServerRide[] | null>(untrack(() => data.rides));
 	let error = $state<string | null>(untrack(() => data.ridesError));
+	// The list is paged (#1549): the server says whether older rides exist,
+	// and the next page begins before the oldest one here. Its failure is
+	// its own inline line — the page banner is for the page.
+	let more = $state(untrack(() => data.more));
+	let loadingMore = $state(false);
+	let moreError = $state<string | null>(null);
+	async function loadMore() {
+		const oldest = rides?.at(-1);
+		if (!oldest || loadingMore) return;
+		loadingMore = true;
+		moreError = null;
+		const res = await api<{ rides: ServerRide[]; more?: boolean }>(
+			`/api/rides?before=${encodeURIComponent(oldest.startedAt)}`,
+		);
+		loadingMore = false;
+		if (!res.ok) {
+			moreError = res.error.message;
+			return;
+		}
+		rides = [...(rides ?? []), ...res.data.rides];
+		more = !!res.data.more;
+	}
 
 	// Undo over confirm (errors.md): the flip lands at once, the toast takes
 	// it back. A refused flip reverts the row and says why.
@@ -100,9 +122,12 @@
 	let highlightId = $state<string | null>(null);
 
 	async function load() {
-		const res = await api<{ rides: ServerRide[] }>('/api/rides');
+		const res = await api<{ rides: ServerRide[]; more?: boolean }>(
+			'/api/rides',
+		);
 		if (res.ok) {
 			rides = res.data.rides;
+			more = !!res.data.more;
 			error = null;
 			await ring(rides);
 		} else {
@@ -390,6 +415,28 @@
 				{@render rideRow(ride, ride.room ? 'room' : undefined, ride)}
 			{/each}
 		</ul>
+		{#if more}
+			<div class="mt-3">
+				{#if moreError}
+					<div class="mb-2">
+						<Banner tone="error">
+							{moreError}
+							{#snippet action()}
+								<button onclick={loadMore} class="btn-link text-xs"
+									>Retry</button
+								>
+							{/snippet}
+						</Banner>
+					</div>
+				{/if}
+				<button
+					onclick={loadMore}
+					disabled={loadingMore}
+					class="btn btn-secondary"
+					>{loadingMore ? 'Loading…' : 'Load older rides'}</button
+				>
+			</div>
+		{/if}
 	{/if}
 
 	{#if device.all.length > 0}
