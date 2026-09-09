@@ -2,6 +2,7 @@ package hub
 
 import (
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -53,25 +54,46 @@ func (g *graceTracker) inGrace(riderID string, now time.Time) bool {
 	return now.Sub(seen) <= disconnectGrace
 }
 
+// rankIDs orders riders by `better`, with rider id breaking ties (#1574):
+// the sprint podium learned this in #824, and four modes were still ranking
+// equal riders by map order — a winner chosen by Go's map seed. Earlier
+// joiner (docs/SPEC.md) is the upgrade once the modes know the join order.
+func rankIDs(ids []string, better func(a, b string) bool) {
+	sort.Strings(ids)
+	sort.SliceStable(ids, func(i, j int) bool { return better(ids[i], ids[j]) })
+}
+
+// The refusals startGame can answer with — two different things a coach
+// can do about them (#1582).
+const (
+	refuseNoSuchMode  = "That game mode does not exist."
+	refuseGameRunning = "A game is already running — end it first."
+)
+
 // newGameMode is the registry (#31/#32). Unknown mode: nil, refused upstream.
+// Every mode is sampled at one second (#1580): a coach can arm a sprint
+// mid-game, and the 4 Hz burst used to advance the unwrapped modes four
+// times a second — Team Relay's front-seconds × watts quadrupled.
 func newGameMode(mode string, now time.Time) gameMode {
 	rng := rand.New(rand.NewSource(now.UnixNano())) //nolint:gosec // game variety, not security
+	var inner gameMode
 	switch mode {
 	case "backyard-ramp":
-		return newSampledGame(newBackyard(now, false), now)
+		inner = newBackyard(now, false)
 	case "collective-ramp":
-		return newSampledGame(newBackyard(now, true), now)
+		inner = newBackyard(now, true)
 	case "floor-is-lava":
-		return newSampledGame(newLava(now, rng), now)
+		inner = newLava(now, rng)
 	case "watt-golf":
-		return newGolf(now, rng)
+		inner = newGolf(now, rng)
 	case "sprint-roulette":
-		return newRoulette(now, rng)
+		inner = newRoulette(now, rng)
 	case "points-race":
-		return newPointsRace(now, rng)
+		inner = newPointsRace(now, rng)
 	case "team-relay":
-		return newRelay(now, rng)
+		inner = newRelay(now, rng)
 	default:
 		return nil
 	}
+	return newSampledGame(inner, now)
 }

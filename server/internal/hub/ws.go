@@ -257,13 +257,15 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if msg.Control.Action == "game" {
-				if !rm.startGame(msg.Control.GameMode, h.now()) {
-					h.writeError(c, "invalid_request", "That game mode does not exist, or one is already running.")
+				if refusal := rm.startGame(msg.Control.GameMode, h.now()); refusal != "" {
+					h.writeError(c, "invalid_request", refusal)
 				}
 				continue
 			}
 			if msg.Control.Action == "game-end" {
-				rm.endGame()
+				if !rm.endGame() {
+					h.writeError(c, "invalid_request", "No game is running.")
+				}
 				continue
 			}
 			if msg.Control.Action == "sprint" {

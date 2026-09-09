@@ -86,7 +86,13 @@ func (r *roulette) buildPodium() {
 	for _, score := range r.best {
 		r.podium = append(r.podium, score)
 	}
-	sort.Slice(r.podium, func(i, j int) bool { return r.podium[i].Wkg > r.podium[j].Wkg })
+	sort.Slice(r.podium, func(i, j int) bool {
+		a, b := r.podium[i], r.podium[j]
+		if a.Wkg != b.Wkg {
+			return a.Wkg > b.Wkg
+		}
+		return a.RiderID < b.RiderID // ties by id, never by map order (#1574)
+	})
 }
 
 func (r *roulette) state(now time.Time) protocol.GameState {

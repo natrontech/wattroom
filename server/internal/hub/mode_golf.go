@@ -3,7 +3,6 @@ package hub
 import (
 	"math"
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -106,7 +105,7 @@ func (g *golf) buildPodium(roster map[string]protocol.Rider) {
 	for id := range g.joined {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return g.strokes[ids[i]] < g.strokes[ids[j]] })
+	rankIDs(ids, func(a, b string) bool { return g.strokes[a] < g.strokes[b] })
 	for _, id := range ids {
 		g.podium = append(g.podium, protocol.SprintScore{
 			RiderID: id, Name: roster[id].Name, Wkg: math.Round(g.strokes[id]),
