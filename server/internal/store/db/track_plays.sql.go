@@ -50,7 +50,7 @@ recent as (
     join tracks t on t.id = p.track_id
     where p.room_id = $1 and not p.skipped
     order by p.at desc
-    limit $8
+    limit $9
 ),
 liked as (
     select
@@ -99,8 +99,10 @@ cross join lateral (
         else 1.0
       end)::float8 as weight
 ) w
+where coalesce(cardinality($7::uuid[]), 0) = 0
+   or t.id = any($7::uuid[])
 order by random() ^ (1.0 / w.weight) desc
-limit $7
+limit $8
 `
 
 type SmartShuffleTracksParams struct {
@@ -110,6 +112,7 @@ type SmartShuffleTracksParams struct {
 	BpmBoost       float64
 	ArtistBoost    float64
 	TagBoost       float64
+	Within         []pgtype.UUID
 	Lim            int32
 	AffinityWindow int32
 }
@@ -173,6 +176,11 @@ type SmartShuffleTracksRow struct {
 // would put a shelf into the rotation of rooms its owner never entered.
 // Members who may still enter, through visible_rooms — a crew-banned member
 // keeps their row but not their say in what the room plays (ADR-0038).
+// Smart is an ORDER, not a source (#1429): with an active playlist that holds
+// library tracks, the draw is over those and nothing else; `within` is empty
+// when no list is active or the list holds no library track, and the draw
+// is then the members' whole libraries as before. coalesce, because a nil
+// slice arrives as NULL and NULL = 0 is not true.
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
 	rows, err := q.db.Query(ctx, smartShuffleTracks,
 		arg.RoomID,
@@ -181,6 +189,7 @@ func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracks
 		arg.BpmBoost,
 		arg.ArtistBoost,
 		arg.TagBoost,
+		arg.Within,
 		arg.Lim,
 		arg.AffinityWindow,
 	)

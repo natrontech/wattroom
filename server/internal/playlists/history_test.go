@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math"
+	"net/http"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/hub"
@@ -51,7 +52,7 @@ func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
 		// wattroom_test is shared: ask for more than the pool can plausibly
 		// hold, so a neighbouring suite's tracks cannot push ours out of range.
-		RoomID: room.ID, Lim: 1000,
+		RoomID: room.ID, Lim: 1000, Within: nil,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
@@ -179,5 +180,51 @@ func TestAutoplayOrderRejectsAnythingElse(t *testing.T) {
 	if code, _ := h.call(t, "alice", "PATCH", "/api/rooms/"+slug+"/autoplay",
 		`{"enabled":true,"order":"clever"}`); code != 400 {
 		t.Errorf("junk order accepted: %d", code)
+	}
+}
+
+// Smart is an order over the active playlist, not a second source (#1429):
+// with a list that holds library tracks, the draw is those and nothing else;
+// with no list, it is the members' whole libraries.
+func TestSmartAutoplayFollowsTheActivePlaylist(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	listed := h.track(t, "alice", "On the list")
+	loose := h.track(t, "alice", "Not on the list")
+
+	_, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Smart list"}`)
+	playlistID, _ := body["id"].(string)
+	if code, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+playlistID+"/tracks",
+		`{"action":"add","trackId":"`+listed+`"}`); code != http.StatusCreated {
+		t.Fatalf("add library track: %d %v", code, body)
+	}
+	// A video in the same list is Ordered's and Shuffled's business, never
+	// Smart's — it has no history to weigh.
+	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+playlistID+"/tracks", videoTrack); code != http.StatusCreated {
+		t.Fatalf("add video: %d", code)
+	}
+	if code, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
+		`{"enabled":true,"order":"smart","activePlaylistId":"`+playlistID+`"}`); code != 200 {
+		t.Fatalf("set smart with a list: %d %v", code, body)
+	}
+
+	for range 5 {
+		tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+		if !ok || len(tracks) != 1 || tracks[0].TrackID != listed || tracks[0].VideoID != "" {
+			t.Fatalf("smart over a list drew %+v, want only the list's library track", tracks)
+		}
+	}
+
+	// No active list: the whole library is back, the loose track with it.
+	if code, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"smart"}`); code != 200 {
+		t.Fatalf("clear the list: %d", code)
+	}
+	tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+	seen := map[string]bool{}
+	for _, cmd := range tracks {
+		seen[cmd.TrackID] = true
+	}
+	if !ok || !seen[loose] || !seen[listed] {
+		t.Fatalf("smart with no list drew %+v, want the whole library", tracks)
 	}
 }

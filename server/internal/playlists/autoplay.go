@@ -2,6 +2,8 @@ package playlists
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 	"math/rand/v2"
 	"net/http"
 	"strings"
@@ -94,38 +96,50 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, autoplayJSONFrom(room))
 }
 
-// validAutoplayOrder: the three things autoplay can mean. "ordered" and
-// "shuffled" walk the room's ACTIVE PLAYLIST; "smart" (#269) ignores it and
-// draws from the music pool instead, weighted by this room's play/skip
-// history. One setting rather than two, because a room picks a source and an
-// order together and never wanted the four-way grid (ux.md's 95% rule).
+// validAutoplayOrder: the three orders autoplay walks the active playlist in
+// (#1429). "ordered" and "shuffled" take every entry; "smart" (#269) takes
+// the list's library tracks weighted by this room's play/skip history, and
+// the members' whole libraries when the list holds none. One setting: a
+// room picks an order, and the source is always its playlist.
 func validAutoplayOrder(order string) bool {
 	return order == "ordered" || order == "shuffled" || order == "smart"
 }
 
 // Autoplay implements hub.AutoplaySource (#627): read once per join-onto-an-
-// idle-deck, entirely outside any room lock. tracks is the active playlist in
-// list order, or freshly shuffled when that's the room's current setting —
-// "shuffled" means shuffled once per trigger, not a history-weighted order.
-// "smart" (#269) is the history-weighted one, and it draws from the library
-// rather than from any playlist — weighted, since #270, toward the cadence
-// `mood` says the room is turning right now.
+// idle-deck, entirely outside any room lock. One source, three orders
+// (#1429): the active playlist, walked in list order, freshly shuffled once
+// per trigger, or — "smart" (#269) — its library tracks drawn by this
+// room's history, weighted since #270 toward the cadence `mood` says the
+// room is turning right now. Smart with no active playlist, or one holding
+// no library track, draws from the members' whole libraries instead.
 func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMood) (tracks []protocol.JukeboxCommand, ok bool) {
 	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
 	if err != nil || !room.AutoplayEnabled {
 		return nil, false
 	}
-	if room.AutoplayOrder == "smart" {
-		tracks = s.smartShuffle(ctx, room.ID, slug, mood)
-	} else if room.AutoplayPlaylistID.Valid {
-		if rows, err := s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err == nil {
-			tracks = commandsFromTracks(rows)
-			if room.AutoplayOrder == "shuffled" {
-				// A party-playlist shuffle, not a security control — crypto/rand
-				// would cost a syscall per swap for no one keeping score.
-				rand.Shuffle(len(tracks), func(i, j int) { tracks[i], tracks[j] = tracks[j], tracks[i] }) //nolint:gosec
+	var rows []db.ListPlaylistTracksRow
+	if room.AutoplayPlaylistID.Valid {
+		if rows, err = s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err != nil {
+			s.log.Error("autoplay: list playlist tracks failed", "room", slug, "err", err)
+			return nil, false
+		}
+	}
+	switch room.AutoplayOrder {
+	case "smart":
+		var only []pgtype.UUID
+		for _, row := range rows {
+			if row.TrackID.Valid {
+				only = append(only, row.TrackID)
 			}
 		}
+		tracks = s.smartShuffle(ctx, room.ID, slug, mood, only)
+	case "shuffled":
+		tracks = commandsFromTracks(rows)
+		// A party-playlist shuffle, not a security control — crypto/rand
+		// would cost a syscall per swap for no one keeping score.
+		rand.Shuffle(len(tracks), func(i, j int) { tracks[i], tracks[j] = tracks[j], tracks[i] }) //nolint:gosec
+	default:
+		tracks = commandsFromTracks(rows)
 	}
 	if len(tracks) == 0 {
 		return nil, false

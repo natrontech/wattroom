@@ -45,6 +45,15 @@ returning *;
 -- name: DeletePlaylistTrack :execrows
 delete from playlist_tracks where id = $1 and playlist_id = $2;
 
+-- Reorder (#1428) renumbers every row of one playlist inside a transaction:
+-- positions are unique per playlist, so they are first moved out of the way
+-- and then written back in the new order.
+-- name: ShiftPlaylistPositions :exec
+update playlist_tracks set position = position + 1000000 where playlist_id = $1;
+
+-- name: SetPlaylistTrackPosition :exec
+update playlist_tracks set position = $3 where id = $1 and playlist_id = $2;
+
 -- name: SetActivePlaylist :execrows
 -- The exists() check enforces "active must be one of this room's own
 -- playlists" in one round trip rather than a second SELECT the caller could

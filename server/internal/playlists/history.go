@@ -52,12 +52,14 @@ func (s *Service) TrackEnded(ctx context.Context, slug, trackID, queuedBy string
 // for (#270), and toward what it has lately been finishing (#271). Empty (and silent) when the pool is empty — a room set to
 // smart with nothing uploaded simply has nothing to play, the same answer an
 // empty active playlist already gives.
-func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug string, mood hub.SessionMood) []protocol.JukeboxCommand {
+// only, when non-empty, is the active playlist's library tracks (#1429): Smart
+// is then an order over the list rather than a second source.
+func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug string, mood hub.SessionMood, only []pgtype.UUID) []protocol.JukeboxCommand {
 	// 0 rpm is "no session, or a block that asks for nothing in particular",
 	// and the query reads it as "no BPM preference" (#270).
 	rpm, _ := targetCadence(mood)
 	rows, err := s.store.Queries.SmartShuffleTracks(ctx, db.SmartShuffleTracksParams{
-		RoomID: roomID, Lim: smartShuffleBatch,
+		RoomID: roomID, Lim: smartShuffleBatch, Within: only,
 		TargetRpm: rpm, BpmTolerance: bpmTolerance, BpmBoost: bpmBoost,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})

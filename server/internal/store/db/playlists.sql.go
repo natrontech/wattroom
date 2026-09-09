@@ -343,6 +343,33 @@ func (q *Queries) SetActivePlaylist(ctx context.Context, arg SetActivePlaylistPa
 	return result.RowsAffected(), nil
 }
 
+const setPlaylistTrackPosition = `-- name: SetPlaylistTrackPosition :exec
+update playlist_tracks set position = $3 where id = $1 and playlist_id = $2
+`
+
+type SetPlaylistTrackPositionParams struct {
+	ID         pgtype.UUID
+	PlaylistID pgtype.UUID
+	Position   int32
+}
+
+func (q *Queries) SetPlaylistTrackPosition(ctx context.Context, arg SetPlaylistTrackPositionParams) error {
+	_, err := q.db.Exec(ctx, setPlaylistTrackPosition, arg.ID, arg.PlaylistID, arg.Position)
+	return err
+}
+
+const shiftPlaylistPositions = `-- name: ShiftPlaylistPositions :exec
+update playlist_tracks set position = position + 1000000 where playlist_id = $1
+`
+
+// Reorder (#1428) renumbers every row of one playlist inside a transaction:
+// positions are unique per playlist, so they are first moved out of the way
+// and then written back in the new order.
+func (q *Queries) ShiftPlaylistPositions(ctx context.Context, playlistID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, shiftPlaylistPositions, playlistID)
+	return err
+}
+
 const updateAutoplay = `-- name: UpdateAutoplay :one
 update rooms set autoplay_enabled = $2, autoplay_order = $3
 where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible

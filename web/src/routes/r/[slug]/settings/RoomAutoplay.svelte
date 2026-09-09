@@ -71,7 +71,7 @@
 			key: 'smart',
 			label: 'Smart',
 			icon: Sparkles,
-			hint: "From the members' libraries: quietest on what this room just played or keeps skipping, and matched to the cadence a running session asks for.",
+			hint: "The active playlist's library tracks, drawn by this room's taste: quietest on what it just played or keeps skipping, matched to the cadence a running session asks for. With no playlist, the members' whole libraries.",
 		},
 	] as const;
 </script>
@@ -134,37 +134,34 @@
 			{/each}
 		</div>
 
-		<!-- Smart draws from the library, so an active playlist is not what it
-		     is missing — offering one would send a rider to set a list this
-		     order then ignores. -->
-		{#if autoplay.order !== 'smart'}
-			<div class="mt-3">
-				<span class="eyebrow">active playlist</span>
-				<div class="mt-1">
-					<Select
-						label="active playlist"
-						value={autoplay.activePlaylistId ?? ''}
-						options={[
-							{ value: '', label: 'None yet' },
-							...playlists.all.map((playlist) => ({
-								value: playlist.id,
-								label: `${playlist.name} · ${playlist.trackCount} ${playlist.trackCount === 1 ? 'track' : 'tracks'}`,
-							})),
-						]}
-						onchange={(activePlaylistId) => save({ activePlaylistId })}
-					/>
-				</div>
-				<span class="text-muted mt-1.5 block text-xs">
-					{#if playlists.loaded && playlists.all.length === 0}
-						No room playlists yet — the jukebox saves them, under playlists.
-					{:else if !autoplay.activePlaylistId}
-						Ordered and Shuffled need one. Pick it here, or from a playlist's
-						menu in the jukebox.
-					{:else}
-						Room playlists are saved in the jukebox, under playlists.
-					{/if}
-				</span>
+		<div class="mt-3">
+			<span class="eyebrow">active playlist</span>
+			<div class="mt-1">
+				<Select
+					label="active playlist"
+					value={autoplay.activePlaylistId ?? ''}
+					options={[
+						{ value: '', label: 'None yet' },
+						...playlists.all.map((playlist) => ({
+							value: playlist.id,
+							label: `${playlist.name} · ${playlist.trackCount} ${playlist.trackCount === 1 ? 'track' : 'tracks'}`,
+						})),
+					]}
+					onchange={(activePlaylistId) => save({ activePlaylistId })}
+				/>
 			</div>
-		{/if}
+			<span class="text-muted mt-1.5 block text-xs">
+				{#if playlists.loaded && playlists.all.length === 0}
+					No room playlists yet — the jukebox saves them, under playlists.
+				{:else if !autoplay.activePlaylistId}
+					{autoplay.order === 'smart'
+						? "Without one, Smart draws from the members' whole libraries."
+						: 'Ordered and Shuffled need one.'} Pick it here, or from a playlist's
+					menu in the jukebox.
+				{:else}
+					Room playlists are saved in the jukebox, under playlists.
+				{/if}
+			</span>
+		</div>
 	{/if}
 </section>
