@@ -9,8 +9,6 @@ import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
  * sensors, and used to compute "idle vs connecting vs connected vs failed"
  * twice from the same underlying stores (code-quality.md).
  */
-export type Pairing = SensorKind | 'trainer' | null;
-
 /**
  * The machine itself is untouched (#1000) — this is still the same four
  * states, said in the same order, and every helper below still returns
@@ -22,20 +20,32 @@ export type Pairing = SensorKind | 'trainer' | null;
  */
 export type PairState = 'idle' | 'connecting' | 'connected' | 'failed';
 
-/** #520's fault states, said as the same four-state machine every slot uses. */
+/**
+ * #520's fault states, said as the same four-state machine every slot uses.
+ *
+ * "The chooser is open" comes off the store that owns the trainer rather than
+ * from the caller (#1716): it used to be a component's own `$state`, so two
+ * overviews on screen disagreed about which card was connecting and
+ * navigating mid-pair lost the spinner.
+ */
 export function trainerState(
-	ride: Pick<ReturnType<typeof createRide>, 'trainer' | 'fault' | 'error'>,
-	pairing: Pairing,
+	ride: Pick<
+		ReturnType<typeof createRide>,
+		'trainer' | 'fault' | 'error' | 'pairing'
+	>,
 ): PairState {
-	if (pairing === 'trainer') return 'connecting';
+	if (ride.pairing) return 'connecting';
 	if (!ride.trainer) return ride.error ? 'failed' : 'idle';
 	return ride.fault === 'reconnecting' ? 'connecting' : 'connected';
 }
 
-export function sensorState(kind: SensorKind, pairing: Pairing): PairState {
-	if (pairing === kind) return 'connecting';
+export function sensorState(kind: SensorKind): PairState {
+	if (sensors.pairing === kind) return 'connecting';
 	const slot = sensors.slot(kind);
 	if (slot.status === 'connected') return 'connected';
+	// Reattaching after a dropout (#1716). Without this a strap that slipped
+	// read as never paired — a ride-critical error drawn as nothing.
+	if (slot.status === 'connecting') return 'connecting';
 	if (slot.error) return 'failed';
 	return 'idle';
 }

@@ -11,7 +11,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore } from '$lib/profile.svelte';
-	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/room/sensor-claim';
@@ -24,7 +24,7 @@
 	// trainer is the one to show. With no room, the page pairs its own, the
 	// way /ride does: `solo.pair` takes the hardware back from a room first,
 	// so the two owners can never both hold it.
-	const solo = createSoloTrainer();
+	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(roomConnection.current?.ride);
 	const roomHolds = $derived(!!ride?.trainer);
@@ -35,14 +35,12 @@
 	);
 
 	const roomTrainerState = $derived(
-		trainerState(
-			{
-				trainer: ride?.trainer ?? null,
-				fault: ride?.fault ?? null,
-				error: ride?.error ?? null,
-			},
-			null,
-		),
+		trainerState({
+			trainer: ride?.trainer ?? null,
+			fault: ride?.fault ?? null,
+			error: ride?.error ?? null,
+			pairing: ride?.pairing ?? false,
+		}),
 	);
 
 	async function pairTrainer() {

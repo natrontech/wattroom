@@ -17,11 +17,7 @@
 	import { useRoom } from '$lib/room/context';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/room/sensor-claim';
-	import {
-		type Pairing,
-		pairedElsewhereAll,
-		trainerState,
-	} from '$lib/room/sensor-status';
+	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
 
 	// The trainer alone as one row, for a running session's header (#1000) —
 	// what `TrainerButton` used to draw with its own vocabulary.
@@ -34,22 +30,12 @@
 	// the grid the solo pre-ride screens share.
 	const elsewhere = $derived(pairedElsewhereAll(room.pairing, deviceWord()));
 
-	let pairing = $state<Pairing>(null);
-
-	async function pairTrainer() {
-		if (!ride) return;
-		pairing = 'trainer';
-		await ride.ride(new FtmsTrainer());
-		pairing = null;
-	}
-
-	async function pairSimulatedTrainer() {
-		if (!ride) return;
-		pairing = 'trainer';
+	// "Connecting…" is the ride store's answer, not this component's (#1716):
+	// the room's shell can unmount while the chooser is open.
+	function pairSimulatedTrainer() {
 		const baseWatts =
 			(roomConnection.current?.profile.current.ftp ?? 200) * 0.75;
-		await ride.ride(new SimulatedTrainer({ baseWatts }));
-		pairing = null;
+		return ride?.ride(new SimulatedTrainer({ baseWatts }));
 	}
 </script>
 
@@ -57,20 +43,18 @@
 	{compact}
 	{elsewhere}
 	trainer={{
-		state: trainerState(
-			{
-				trainer: ride?.trainer ?? null,
-				fault: ride?.fault ?? null,
-				error: ride?.error ?? null,
-			},
-			pairing,
-		),
+		state: trainerState({
+			trainer: ride?.trainer ?? null,
+			fault: ride?.fault ?? null,
+			error: ride?.error ?? null,
+			pairing: ride?.pairing ?? false,
+		}),
 		device: ride?.trainer?.name,
 		reading: `${room.you.watts} W · ${room.you.cadence} rpm`,
 		hint:
 			ride?.fault === 'silent' ? 'no watts yet — turn the cranks' : undefined,
 		error: ride?.error,
-		onPair: () => void pairTrainer(),
+		onPair: () => void ride?.ride(new FtmsTrainer()),
 		onForget: () => ride?.unpair(),
 		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
 	}}

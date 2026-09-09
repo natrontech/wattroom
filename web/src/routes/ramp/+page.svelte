@@ -11,7 +11,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
@@ -49,7 +49,7 @@
 
 	// Paired before the test, not by starting it (#611): the paired-devices
 	// grid owns the trainer until Start hands it to the session.
-	const solo = createSoloTrainer();
+	const solo = soloTrainer();
 
 	// FTP is irrelevant to the test itself — the steps are absolute watts — but the
 	// session needs one, so it gets the current profile value.

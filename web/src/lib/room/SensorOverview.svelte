@@ -41,11 +41,7 @@
 	import { device } from '$lib/device.svelte';
 	import type { SensorKind } from '$lib/ble/sensor';
 	import { cardView } from '$lib/room/sensor-card';
-	import {
-		type Pairing,
-		sensorReading,
-		sensorState,
-	} from '$lib/room/sensor-status';
+	import { sensorReading, sensorState } from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Bike from '@lucide/svelte/icons/bike';
 	import HeartPulse from '@lucide/svelte/icons/heart-pulse';
@@ -71,14 +67,6 @@
 	} = $props();
 
 	const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-
-	let pairing = $state<Pairing>(null);
-
-	async function pairSensor(kind: SensorKind) {
-		pairing = kind;
-		await sensors.pair(kind);
-		pairing = null;
-	}
 
 	const SENSORS: { kind: SensorKind; label: string; icon: typeof Zap }[] = [
 		{ kind: 'heart-rate', label: 'Heart rate', icon: HeartPulse },
@@ -234,11 +222,11 @@
 					label: sensor.label,
 					icon: sensor.icon,
 					required: false,
-					state: sensorState(sensor.kind, pairing),
+					state: sensorState(sensor.kind),
 					device: slot.name,
 					reading: sensorReading(sensor.kind),
 					elsewhere: elsewhere[sensor.kind],
-					onPair: () => void pairSensor(sensor.kind),
+					onPair: () => void sensors.pair(sensor.kind),
 					onForget: () => void sensors.forget(sensor.kind),
 				})}
 			{/each}

@@ -70,12 +70,78 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 	let device: BluetoothDevice | undefined;
 	let status: SensorStatus = 'disconnected';
 	let name = spec.defaultName;
+	/** Set on rider-initiated disconnect, so the retry loop stands down. */
+	let closed = false;
+	let retryDelayMs = 1000;
+	/** Scopes one attach's listener, so a reattach does not stack a second. */
+	let attachment: AbortController | undefined;
 	const readingCbs = new Set<(r: SensorReading) => void>();
 	const statusCbs = new Set<(s: SensorStatus) => void>();
 
 	function setStatus(next: SensorStatus) {
 		status = next;
 		for (const cb of statusCbs) cb(next);
+	}
+
+	/**
+	 * Resolve the characteristic and subscribe. Split out of `connect` so a
+	 * dropout can run it again without a second `requestDevice` — the grant
+	 * persists in-page, and re-opening the browser's chooser to recover from a
+	 * strap slipping would be a prompt the rider cannot answer from a bike.
+	 */
+	async function attach(): Promise<void> {
+		attachment?.abort();
+		const { signal } = (attachment = new AbortController());
+
+		const server = await device!.gatt!.connect();
+		const service = await server.getPrimaryService(spec.service);
+		const characteristic = await service.getCharacteristic(spec.characteristic);
+
+		const parse = spec.createParser();
+		await characteristic.startNotifications();
+		characteristic.addEventListener(
+			'characteristicvaluechanged',
+			(event) => {
+				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
+				if (!view) return;
+				// A malformed packet from one strap must not take the ride down.
+				let fields: ReadingFields | null;
+				try {
+					fields = parse(view);
+				} catch (cause) {
+					hwlog('error', {
+						text: `sensor parse failed: ${String(cause)}`,
+						sensor: spec.kind,
+					});
+					return;
+				}
+				if (!fields) return;
+				const reading = { ...fields, at: Date.now() };
+				// Raw bytes alongside the parse, so a hardware session can prove the
+				// parser rather than just showing a plausible number (dev only).
+				hwlog('sensor-packet', {
+					sensor: spec.kind,
+					hex: [...new Uint8Array(view.buffer)]
+						.map((b) => b.toString(16).padStart(2, '0'))
+						.join(' '),
+					parsed: fields,
+				});
+				for (const cb of readingCbs) cb(reading);
+			},
+			{ signal },
+		);
+
+		retryDelayMs = 1000;
+		setStatus('connected');
+	}
+
+	function scheduleReattach(): void {
+		const delay = retryDelayMs;
+		retryDelayMs = Math.min(delay * 2, 30_000);
+		setTimeout(() => {
+			if (closed || status === 'connected') return;
+			void attach().catch(scheduleReattach);
+		}, delay);
 	}
 
 	return {
@@ -91,6 +157,7 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 			if (!navigator.bluetooth)
 				throw new Error('This browser has no Web Bluetooth');
 			setStatus('connecting');
+			closed = false;
 
 			try {
 				// Web Bluetooth only exposes services declared up front.
@@ -99,51 +166,21 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 					optionalServices: [spec.service],
 				});
 				name = device.name ?? spec.defaultName;
-				device.addEventListener('gattserverdisconnected', () =>
-					setStatus('disconnected'),
-				);
+				// Recovery is automatic (#37, #1716): the trainer has reattached
+				// with backoff since the beginning and a strap never did, so a
+				// chest strap losing contact for a second dropped off the
+				// dashboard for good and read as "Not connected" — no fault, no
+				// way back but the browser's chooser.
+				device.addEventListener('gattserverdisconnected', () => {
+					if (closed) {
+						setStatus('disconnected');
+						return;
+					}
+					setStatus('connecting');
+					scheduleReattach();
+				});
 
-				const server = await device.gatt!.connect();
-				const service = await server.getPrimaryService(spec.service);
-				const characteristic = await service.getCharacteristic(
-					spec.characteristic,
-				);
-
-				const parse = spec.createParser();
-				await characteristic.startNotifications();
-				characteristic.addEventListener(
-					'characteristicvaluechanged',
-					(event) => {
-						const view = (event.target as BluetoothRemoteGATTCharacteristic)
-							.value;
-						if (!view) return;
-						// A malformed packet from one strap must not take the ride down.
-						let fields: ReadingFields | null;
-						try {
-							fields = parse(view);
-						} catch (cause) {
-							hwlog('error', {
-								text: `sensor parse failed: ${String(cause)}`,
-								sensor: spec.kind,
-							});
-							return;
-						}
-						if (!fields) return;
-						const reading = { ...fields, at: Date.now() };
-						// Raw bytes alongside the parse, so a hardware session can prove the
-						// parser rather than just showing a plausible number (dev only).
-						hwlog('sensor-packet', {
-							sensor: spec.kind,
-							hex: [...new Uint8Array(view.buffer)]
-								.map((b) => b.toString(16).padStart(2, '0'))
-								.join(' '),
-							parsed: fields,
-						});
-						for (const cb of readingCbs) cb(reading);
-					},
-				);
-
-				setStatus('connected');
+				await attach();
 			} catch (cause) {
 				setStatus('disconnected');
 				throw cause;
@@ -151,7 +188,9 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 		},
 
 		async disconnect() {
+			closed = true;
 			device?.gatt?.disconnect();
+			attachment?.abort();
 			setStatus('disconnected');
 		},
 

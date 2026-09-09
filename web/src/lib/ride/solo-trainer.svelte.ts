@@ -49,6 +49,11 @@ export function createSoloTrainer() {
 	/** Pair and hold. The rider starts the ride themselves, once. */
 	async function pair(next: Trainer): Promise<void> {
 		if (pairing) return;
+		// Release before attach (#1716). A second pair over a live one used to
+		// leave the first connected — and an FtmsTrainer nobody holds keeps
+		// its #37 reattach loop, so the hardware ended up with two GATT
+		// clients both asking for control.
+		if (trainer) forget();
 		error = null;
 		sample = null;
 		pairing = true;
@@ -115,12 +120,13 @@ export function createSoloTrainer() {
 		get fault() {
 			return fault;
 		},
+		/** The chooser is open — the room's trainer answers this too (#1716). */
+		get pairing() {
+			return pairing;
+		},
 		/** The four-state machine every sensor card speaks (sensor-status.ts). */
 		get state(): PairState {
-			return trainerState(
-				{ trainer, fault, error },
-				pairing ? 'trainer' : null,
-			);
+			return trainerState({ trainer, fault, error, pairing });
 		},
 		/**
 		 * Live-ness is the honest confirmation, same as a sensor's: a name alone
@@ -134,4 +140,29 @@ export function createSoloTrainer() {
 		forget,
 		handOff,
 	};
+}
+
+let held: ReturnType<typeof createSoloTrainer> | null = null;
+
+/**
+ * The one solo trainer, held above the router (#1716).
+ *
+ * Same reason `sensors` is a module singleton and the room's trainer belongs
+ * to the connection (#521): a Web Bluetooth grant is expensive and belongs to
+ * the session, not to a screen. /settings/equipment, /ride and /ramp each
+ * built their own slot, so pairing on one and walking to another showed "Not
+ * connected" over hardware that was still connected — the abandoned
+ * `FtmsTrainer` keeping its reattach loop alive because nothing ever told it
+ * to close.
+ *
+ * Its effects outlive every page, which is the point, so the root is never
+ * disposed. Lazy so that importing this on the server builds nothing.
+ */
+export function soloTrainer(): ReturnType<typeof createSoloTrainer> {
+	if (!held) {
+		$effect.root(() => {
+			held = createSoloTrainer();
+		});
+	}
+	return held!;
 }
