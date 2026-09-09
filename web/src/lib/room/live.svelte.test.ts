@@ -4,18 +4,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const buffered = vi.hoisted(() => ({
 	rows: [] as { watts: number }[],
 	since: [] as number[],
+	opened: [] as { workoutName: string; startedAt: number }[],
+	ended: 0,
 }));
 vi.mock('$lib/ride/buffer', () => ({
-	openRideBuffer: async () => ({
-		append(row: { watts: number }) {
-			buffered.rows.push(row);
-		},
-		end() {},
-		since: async (seq: number) => {
-			buffered.since.push(seq);
-			return [];
-		},
-	}),
+	openRideBuffer: async (meta: { workoutName: string; startedAt: number }) => {
+		buffered.opened.push(meta);
+		return {
+			append(row: { watts: number }) {
+				buffered.rows.push(row);
+			},
+			end() {
+				buffered.ended++;
+			},
+			since: async (seq: number) => {
+				buffered.since.push(seq);
+				return [];
+			},
+		};
+	},
 }));
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'u1' } } }));
 
@@ -50,6 +57,18 @@ globalThis.WebSocket = FakeSocket as unknown as typeof WebSocket;
 const { createRoomLive, SETTLED_ATTEMPTS } = await import('./live.svelte');
 
 const QUEUE = 16;
+
+/** A tick that says the timeline is running — what opens the ride buffer. */
+function running(socket: FakeSocket, elapsed = 5, workoutName = 'Openers') {
+	socket.onmessage?.({
+		data: JSON.stringify({
+			tick: {
+				at: Date.now(),
+				state: { phase: 'running', elapsed, workoutName },
+			},
+		}),
+	});
+}
 
 describe('room live send while reconnecting', () => {
 	beforeEach(() => {
@@ -119,6 +138,8 @@ describe('room live ride buffer', () => {
 		vi.setSystemTime(1_000_000);
 		buffered.rows.length = 0;
 		const live = createRoomLive('buffer');
+		FakeSocket.last!.open();
+		running(FakeSocket.last!);
 		await vi.advanceTimersByTimeAsync(0);
 		live.sendMetrics({ watts: 200 });
 		live.sendMetrics({ watts: 210 });
@@ -134,14 +155,19 @@ describe('room live ride buffer', () => {
 		vi.useFakeTimers();
 		buffered.since.length = 0;
 		const live = createRoomLive('floor');
-		await vi.advanceTimersByTimeAsync(0);
 		const socket = FakeSocket.last!;
 		socket.open();
+		running(socket);
+		await vi.advanceTimersByTimeAsync(0);
 		for (let i = 0; i < 5; i++) live.sendMetrics({ watts: 200 });
 		// The hub's last word before the drop: it has seq 3.
 		socket.onmessage?.({
 			data: JSON.stringify({
-				tick: { at: Date.now(), riders: { u1: { watts: 200, seq: 3 } } },
+				tick: {
+					at: Date.now(),
+					state: { phase: 'running', elapsed: 6 },
+					riders: { u1: { watts: 200, seq: 3 } },
+				},
 			}),
 		});
 		// Stamped and "sent" into a pipe that never drained.
@@ -152,6 +178,66 @@ describe('room live ride buffer', () => {
 		FakeSocket.last!.open();
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.since).toEqual([3]);
+		vi.useRealTimers();
+	});
+});
+
+describe('room live ride buffer follows the session (#1541)', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+		buffered.opened.length = 0;
+		buffered.rows.length = 0;
+		buffered.ended = 0;
+		vi.useFakeTimers();
+		vi.setSystemTime(2_000_000);
+	});
+
+	const phase = (socket: FakeSocket, phase: string) =>
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: { at: Date.now(), state: { phase, elapsed: 0 } },
+			}),
+		});
+
+	it('opens no buffer in the lounge, one per session, ended when it closes', async () => {
+		const live = createRoomLive('follow');
+		const socket = FakeSocket.last!;
+		socket.open();
+		phase(socket, 'idle');
+		await vi.advanceTimersByTimeAsync(0);
+		live.sendMetrics({ watts: 150 });
+		expect(buffered.opened).toEqual([]);
+		expect(buffered.rows).toEqual([]);
+
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.opened).toEqual([
+			// Named and dated by the tick, not the join: the recovered .fit
+			// is what these become.
+			expect.objectContaining({
+				workoutName: 'Openers',
+				startedAt: 2_000_000 - 5_000,
+			}),
+		]);
+		live.sendMetrics({ watts: 200 });
+		expect(buffered.rows).toHaveLength(1);
+
+		phase(socket, 'done');
+		expect(buffered.ended).toBe(1);
+		// The next session gets its own.
+		running(socket, 0, 'Main set');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.opened).toHaveLength(2);
+		vi.useRealTimers();
+	});
+
+	it('opens one on a reload mid-session too', async () => {
+		createRoomLive('reload');
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 600, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.opened[0]?.startedAt).toBe(2_000_000 - 600_000);
 		vi.useRealTimers();
 	});
 });

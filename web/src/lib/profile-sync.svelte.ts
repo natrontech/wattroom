@@ -29,7 +29,10 @@ export async function pushProfile(next: {
 	weightKg?: number;
 }): Promise<string | null> {
 	const me = account.me;
-	if (!me) return null;
+	// Not a silent null (#1543): the caller reports the push, and a number
+	// that never left this browser is overwritten from the server on the
+	// next boot.
+	if (!me) return 'Not signed in — the number was not saved to your account.';
 	const err = await account.save({
 		displayName: me.displayName,
 		ftpWatts: next.ftpWatts ?? me.ftpWatts,
