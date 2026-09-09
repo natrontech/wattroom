@@ -71,10 +71,12 @@ export const library: LibraryWorkout[] = [
 			name: 'Openers',
 			author: 'wattroom',
 			// The raises are sprints on purpose: openers are "wind it up", not a
-			// prescribed ERG number — slope mode, the watts are yours.
+			// prescribed ERG number — slope mode, the watts are yours. Fifteen
+			// seconds each, SPEC's sprint moment: a minute all-out three times
+			// was the opposite of "without spending anything" (#1395).
 			steps: [
 				warm(600, 0.4, 0.65),
-				repeat(3, [sprint(60), hold(180, 0.55)]),
+				repeat(3, [sprint(15), hold(225, 0.55)]),
 				repeat(2, [sprint(15), hold(165, 0.5)]),
 				cool(420, 0.55, 0.35),
 			],
@@ -276,6 +278,8 @@ export const library: LibraryWorkout[] = [
 		},
 	},
 	{
+		// Historic id (#1395): it is 95 minutes, not 60, but the id is the URL
+		// riders have shared (/ride?w=sweet-spot-60) and a rename breaks it.
 		id: 'sweet-spot-60',
 		focus: 'Sweet spot',
 		summary: 'A big sweet-spot day. Three long blocks; pace the first one.',

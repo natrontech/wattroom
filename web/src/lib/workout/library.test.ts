@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Workout } from './types';
 import { durationSeconds, flatten, targetAt } from './engine';
 import { byFocus, byId, focuses, library } from './library';
 
@@ -71,6 +72,25 @@ describe('library', () => {
 			// Sprint-first workouts would legitimately have none; none of ours start that way.
 			expect(targetWatts, entry.id).not.toBeNull();
 			expect(targetWatts!, entry.id).toBeGreaterThan(0);
+		}
+	});
+
+	it('arms no sprint longer than the 15 s sprint moment docs/SPEC.md defines', () => {
+		const sprints = (steps: Workout['steps']): number[] =>
+			steps.flatMap((step) =>
+				step.type === 'sprint'
+					? [step.seconds]
+					: step.type === 'repeat'
+						? sprints(step.steps)
+						: [],
+			);
+		for (const entry of library) {
+			for (const seconds of sprints(entry.workout.steps)) {
+				expect(
+					seconds,
+					`${entry.id} arms a ${seconds} s sprint`,
+				).toBeLessThanOrEqual(15);
+			}
 		}
 	});
 
