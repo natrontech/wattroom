@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 let now = 0;
 const started: { start: number; kept: number }[] = [];
+let stopped = 0;
 let ended: (() => void) | undefined;
 
 function fakeParam() {
@@ -33,6 +34,7 @@ function fakeSource() {
 			ended = () => node.onended?.();
 		},
 		stop: () => {
+			stopped++;
 			node.onended?.();
 		},
 	};
@@ -61,8 +63,16 @@ vi.mock('$lib/sound/mixer.svelte', () => ({
 	mixer: { muted: false, board: 1, riderGain: () => 1 },
 }));
 
-const { fire, forget, preview, previewAt, previewing, stopPreview } =
-	await import('$lib/sound/board.svelte');
+const {
+	fire,
+	forget,
+	preview,
+	previewAt,
+	previewing,
+	stop,
+	stopAll,
+	stopPreview,
+} = await import('$lib/sound/board.svelte');
 
 const ME = 'rider-me';
 
@@ -84,6 +94,8 @@ beforeEach(() => {
 		arrayBuffer: async () => new ArrayBuffer(8),
 	}));
 	forget();
+	// After forget: stopping the previous test's leftovers is not this test's.
+	stopped = 0;
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -146,5 +158,44 @@ describe('audition', () => {
 	it('has no playhead when nothing is being auditioned', async () => {
 		await fire('clip-a', ME);
 		expect(previewAt()).toBeNull();
+	});
+});
+
+describe('stop', () => {
+	it('ends what the rider has sounding, and nothing else', async () => {
+		await fire('clip-a', ME);
+		await fire('clip-b', 'rider-other');
+		stop(ME);
+		expect(stopped).toBe(1);
+		// Nothing left of theirs: a second stop has nothing to stop.
+		stop(ME);
+		expect(stopped).toBe(1);
+	});
+
+	// A stop that landed while the clip was still being fetched found nothing
+	// to stop, and the play then started anyway once the audio decoded — the
+	// sound outlived the stop that was meant for it (#1321).
+	it('outranks a play that is still loading', async () => {
+		const pending = fire('clip-a', ME);
+		stop(ME);
+		await pending;
+		expect(started).toHaveLength(0);
+	});
+
+	it('leaving the room ends a play that is still loading too', async () => {
+		const pending = fire('clip-a', ME);
+		stopAll();
+		await pending;
+		expect(started).toHaveLength(0);
+	});
+
+	it("does not restart this rider's loop when another rider's clip ends", async () => {
+		await preview('clip-a', ME, undefined, true);
+		await fire('clip-b', 'rider-other');
+		const passes = started.length;
+		// The other rider's clip ends; the loop is not its to restart.
+		ended?.();
+		await new Promise((r) => setTimeout(r, 5));
+		expect(started).toHaveLength(passes);
 	});
 });

@@ -377,6 +377,7 @@
 		<Soundboard
 			fires={live.tick?.board}
 			onFire={(clipId) => live.fireClip(clipId)}
+			onStop={() => live.stopClip()}
 		/>
 
 		<RoomStatus />

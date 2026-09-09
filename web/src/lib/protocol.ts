@@ -306,6 +306,9 @@ export interface Cheer {
  * sender. Fetching is what authorizes (board.canHear), so a forged id costs a
  * 404 on every machine and nothing else — and the check it would take is a
  * database round trip on the room's tick path.
+ * An empty ClipID is the rider stopping their own voice (#1321). Every
+ * listener already keys what is sounding by rider — SPEC's retrigger rule —
+ * so a stop is a fire with nothing to start.
  */
 export interface Board {
   clipId: string;

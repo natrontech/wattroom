@@ -185,10 +185,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Board != nil {
-			// One fire a second per rider (docs/SPEC.md), the same ceiling a
-			// cheer takes — and on the server, because a client asking nicely
-			// is not a limit.
-			if protocol.IsClipID(msg.Board.ClipID) && rm.allow("board", rider.ID, h.now(), time.Second) {
+			switch {
+			case msg.Board.ClipID == "":
+				// A stop (#1321) takes no cooldown: it only ever makes the room
+				// quieter, and the fire it takes back is half a second old.
+				// fire() is what bounds a rider's stops.
+				rm.fire(protocol.Board{FromID: rider.ID, From: rider.Name})
+			case protocol.IsClipID(msg.Board.ClipID) && rm.allow("board", rider.ID, h.now(), time.Second):
+				// One fire a second per rider (docs/SPEC.md), the same ceiling a
+				// cheer takes — and on the server, because a client asking nicely
+				// is not a limit.
 				rm.fire(protocol.Board{ClipID: msg.Board.ClipID, FromID: rider.ID, From: rider.Name})
 			}
 		}

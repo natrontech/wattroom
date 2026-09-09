@@ -266,6 +266,11 @@ export function createRoomLive(slug: string) {
 		fireClip(clipId: string) {
 			send({ board: { clipId } });
 		},
+		/** Stop your own clip (#1321): a fire with no clip, so every listener
+		 * ends your voice. */
+		stopClip() {
+			send({ board: { clipId: '' } });
+		},
 		cheer(emoji: string) {
 			send({ cheer: { emoji } });
 		},

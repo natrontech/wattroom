@@ -1,0 +1,1 @@
+- A clip fired from the soundboard can be stopped: press the glowing pad, or its key, again and everyone in the room hears it end. Before, the only way out of a wrong pad was to wait it out.

@@ -86,6 +86,20 @@ func (rm *room) cheer(c protocol.Cheer) {
 func (rm *room) fire(b protocol.Board) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// A stop after a stop, with nothing of the rider's fired in between, says
+	// nothing new. Dropping it is what lets a stop skip the cooldown without
+	// letting one rider fill the tick with them.
+	if b.ClipID == "" {
+		for i := len(rm.board) - 1; i >= 0; i-- {
+			if rm.board[i].FromID != b.FromID {
+				continue
+			}
+			if rm.board[i].ClipID == "" {
+				return
+			}
+			break
+		}
+	}
 	if len(rm.board) < 32 {
 		rm.board = append(rm.board, b)
 	}
