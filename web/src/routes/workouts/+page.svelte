@@ -177,6 +177,14 @@
 				{/each}
 			</ul>
 		{/if}
+		{#if custom.dropped > 0}
+			<p class="text-muted mt-2 text-xs">
+				{custom.dropped === 1
+					? 'One saved workout'
+					: `${custom.dropped} saved workouts`} could not be read by this version
+				and {custom.dropped === 1 ? 'is' : 'are'} not shown.
+			</p>
+		{/if}
 	</section>
 
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
