@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.94] - 2026-09-10
+
+### Added
+
+- The ramp test gets the ⚑ and the TV view a workout ride has: flag a problem mid-test and send it with a note afterwards, and put the test on the big screen with one tap.
+
 ## [2026.09.93] - 2026-09-10
 
 ### Changed
@@ -1787,7 +1793,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.93...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.94...HEAD
+[2026.09.94]: https://github.com/natrontech/wattroom/compare/2026.09.93...2026.09.94
 [2026.09.93]: https://github.com/natrontech/wattroom/compare/2026.09.92...2026.09.93
 [2026.09.92]: https://github.com/natrontech/wattroom/compare/2026.09.91...2026.09.92
 [2026.09.91]: https://github.com/natrontech/wattroom/compare/2026.09.90...2026.09.91
