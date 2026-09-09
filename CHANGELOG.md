@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.92] - 2026-09-10
+
+### Changed
+
+- Section labels and page titles are set in one consistent size and spacing across the app — a handful of pages had drifted to their own slightly different lettering.
+- The app's first load is lighter on every page outside a room: the voice, camera and jukebox code now arrives when you walk into a room instead of with the sign-in page, the ride log or a phone spectator's first screen.
+- A room sends the workout definition to each rider once, when they arrive or the coach picks, instead of every second: less data on the wire and less work on every phone in the room during a ride.
+
+### Fixed
+
+- Planning a session in a room: when the server refuses the time, the picker now stays open with your workout and time still chosen, instead of closing and making you start over.
+- The ramp test no longer ends itself — and offers you an FTP — when the trainer signal drops or the spiral guard releases the step; it says "signal lost" instead and keeps going once samples return. "Test again" actually starts a fresh test, and every page now gives the same length for it.
+- A solo ride that runs to its end now lets go of the trainer, the screen lock and the recorder the way End ride does, so a .fit exported from the summary is exactly the ride that was saved. Auto-pause and the spiral guard now count seconds rather than trainer readings, so a trainer that reports twice a second gets the same three and five seconds as every other.
+
 ## [2026.09.91] - 2026-09-09
 
 ### Added
@@ -1761,7 +1775,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.91...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.92...HEAD
+[2026.09.92]: https://github.com/natrontech/wattroom/compare/2026.09.91...2026.09.92
 [2026.09.91]: https://github.com/natrontech/wattroom/compare/2026.09.90...2026.09.91
 [2026.09.90]: https://github.com/natrontech/wattroom/compare/2026.09.89...2026.09.90
 [2026.09.89]: https://github.com/natrontech/wattroom/compare/2026.09.88...2026.09.89
