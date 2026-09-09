@@ -18,7 +18,22 @@ export interface RideUpload {
  * so a retry the rider did not ask for could duplicate a ride — make the
  * endpoint idempotent first, then a background retry is safe to add.
  */
-export async function uploadRide(ride: RideUpload): Promise<string | null> {
+export interface SaveFailure {
+	/** The server's own sentence (errors.md). */
+	message: string;
+	/**
+	 * The server looked at the ride and said no — under a minute, malformed —
+	 * so a retry can only be refused again. An outage or a 5xx is not final.
+	 */
+	final: boolean;
+}
+
+const FINAL = new Set(['validation_error', 'invalid_request']);
+
+export async function uploadRide(
+	ride: RideUpload,
+): Promise<SaveFailure | null> {
 	const res = await api('/api/rides', { method: 'POST', json: ride });
-	return res.ok ? null : res.error.message;
+	if (res.ok) return null;
+	return { message: res.error.message, final: FINAL.has(res.error.error) };
 }

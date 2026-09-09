@@ -31,9 +31,10 @@
 	import type { ServerRide } from './+page';
 
 	let { data }: { data: PageData } = $props();
-	// Device-only leftovers: summaries saved while the server was unreachable
-	// (or from before #110). They have no samples, so they cannot become
-	// account rides — they stay listed here until cleared.
+	// Device-only leftovers: summaries the server did not take — refused for
+	// being under a minute, saved while it was unreachable, or from before
+	// #110. They have no samples, so they cannot become account rides — they
+	// stay listed here until cleared.
 	const device = createHistoryStore();
 
 	let rides = $state<ServerRide[] | null>(untrack(() => data.rides));
@@ -380,8 +381,8 @@
 	{#if device.all.length > 0}
 		<h2 class="eyebrow mt-10">on this device only</h2>
 		<p class="text-muted mt-1 text-xs">
-			Saved while the server was unreachable — summaries only, so they can't
-			move to your account.
+			Summaries the server did not take — a ride under a minute, or one finished
+			while it was unreachable. They can't move to your account.
 		</p>
 		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}

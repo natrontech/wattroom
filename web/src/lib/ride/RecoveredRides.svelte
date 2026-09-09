@@ -56,7 +56,10 @@
 		const failure = await uploadRide(payload);
 		busy = false;
 		if (failure) {
-			onError(failure);
+			onError(failure.message);
+			// A refusal the server will repeat is not worth a second card:
+			// the samples go, the sentence stays.
+			if (failure.final) await forget(ride.rideId);
 			return;
 		}
 		await forget(ride.rideId);
