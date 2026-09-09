@@ -48,6 +48,18 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if existing, err := s.store.Queries.TrackBySha(r.Context(), db.TrackByShaParams{
 		UploadedBy: me.ID, Sha256: sha,
 	}); err == nil {
+		// The row can outlive its bytes: the audio directory is a volume the
+		// deployment has to persist, and a deploy that does not lands every
+		// rider here with a shelf full of tracks that 404 on play (#1715).
+		// Re-uploading the file is exactly the repair, so write it — `put`
+		// stats first and skips when the content really is there, which is
+		// the ordinary case. Without this the duplicate check hands back the
+		// broken row and the only way out is delete-then-upload.
+		if _, err := s.put(sha, data); err != nil {
+			s.log.Error("track rewrite", "err", err, "sha", sha)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+			return
+		}
 		httpx.WriteJSON(w, http.StatusOK, toJSON(existing, ""))
 		return
 	} else if !errors.Is(err, pgx.ErrNoRows) {
