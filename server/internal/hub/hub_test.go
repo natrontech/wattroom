@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // sock is one of a rider's screens. Metrics arrive from a socket rather than
@@ -490,5 +491,34 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 	})
 	if got := rm.record.count("jan"); got != 8 {
 		t.Errorf("a reconnect's replay recorded %d samples in total, want 8", got)
+	}
+}
+
+// No score until something scored (#1454): before the first scorable second
+// the tick used to carry 1 — a perfect meter over a session that then saved
+// as 0 %. The record answers "scored" only once a target was ridden against.
+func TestExecutionIsUnscoredUntilATargetWasRidden(t *testing.T) {
+	segments, err := workout.Parse(`{"name":"t","steps":[{"type":"steady","seconds":60,"target":1.0}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := newAccumulator()
+	if _, scored := record.execution("jan"); scored {
+		t.Fatal("a rider with no record reads as scored")
+	}
+	// Coasting through the block: recorded, but nothing to score against.
+	record.add("jan", protocol.RiderMetrics{Watts: 0, Seq: 1}, segments, 200, 0)
+	if _, scored := record.execution("jan"); scored {
+		t.Fatal("a sample with no power scored")
+	}
+	// No workout picked: recorded, never scored.
+	record.add("kim", protocol.RiderMetrics{Watts: 200, Seq: 1}, nil, 200, 0)
+	if _, scored := record.execution("kim"); scored {
+		t.Fatal("a sample against no workout scored")
+	}
+	// A real second against a real target: scored, and on target.
+	record.add("jan", protocol.RiderMetrics{Watts: 200, Seq: 2}, segments, 200, 1)
+	if score, scored := record.execution("jan"); !scored || score != 1 {
+		t.Fatalf("a second on target reads %v scored=%v, want 1 scored", score, scored)
 	}
 }

@@ -142,14 +142,18 @@ func (a *accumulator) replay(riderID string, m protocol.RiderMetrics) {
 	a.recordFor(riderID).keep(m)
 }
 
-// execution is the live score so far; 1 until anything scored, like the SPEC
-// pipeline — a meter at 0 before the first hard block reads as failure.
-func (a *accumulator) execution(riderID string) float64 {
+// execution is the live score so far, and whether anything has scored yet.
+// Before the first scorable second there is no score: the meter used to say
+// 100 % then, and the saved ride said 0 % for the same session — a rider
+// whose trainer reported no power watched a perfect meter all session and
+// was handed nothing (audit 2026-09-09). Unscored is left out of the tick,
+// and the client draws a dash.
+func (a *accumulator) execution(riderID string) (score float64, scored bool) {
 	record, ok := a.byRider[riderID]
 	if !ok || record.weight == 0 {
-		return 1
+		return 0, false
 	}
-	return record.inBand / record.weight
+	return record.inBand / record.weight, true
 }
 
 func (a *accumulator) count(riderID string) int {

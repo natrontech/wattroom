@@ -18,7 +18,7 @@ export function createSummary(deps: {
 	phase: () => string | undefined;
 	myName: () => string | undefined;
 	myId: () => string | undefined;
-	myExecution: () => number;
+	myExecution: () => number | undefined;
 }) {
 	let dismissed = $state(false);
 	let medalBase = $state<Omit<Medal, 'xp'> | undefined>(undefined);
@@ -100,7 +100,7 @@ export function createSummary(deps: {
 					criterion: meta?.criterion ?? '',
 					rider: deps.myName() ?? 'You',
 					value: scored
-						? String(Math.round(deps.myExecution() * 100))
+						? String(Math.round((deps.myExecution() ?? 0) * 100))
 						: undefined,
 					unit: scored ? '%' : undefined,
 					kj: kjTotal,
