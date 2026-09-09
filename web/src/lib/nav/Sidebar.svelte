@@ -441,12 +441,13 @@
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
 			<!-- The heading folds the list (#1359): a chevron at the end of a
 			     section heading says fold, not go — the crew switcher above
-			     taught that. /messages itself is reached below md, where the
-			     drawer's thread list stands in for this column. -->
+			     taught that. A button resets text-transform, so the eyebrow's
+			     uppercase is said again here. /messages itself is reached below
+			     md, where the drawer's thread list stands in for this column. -->
 			<button
 				onclick={toggleDms}
 				aria-expanded={!dmsFolded}
-				class="hover:text-ink flex w-full items-center text-left"
+				class="hover:text-ink flex w-full items-center text-left uppercase"
 				title={dmsFolded
 					? 'show your conversations'
 					: 'hide your conversations'}
