@@ -52,7 +52,7 @@ func decodeError(t *testing.T, rec *httptest.ResponseRecorder) ErrorResponse {
 // (#1823). Bare JSON with no Content-Type at all still decodes.
 func TestDecodeStrictRefusesFormEncodings(t *testing.T) {
 	for _, contentType := range []string{"text/plain", "text/plain; charset=UTF-8", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"} {
-		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"a":1}=x`))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(`{"a":1}=x`))
 		req.Header.Set("Content-Type", contentType)
 		var into struct{ A int }
 		if err := DecodeStrict(req, &into); err == nil {
@@ -60,7 +60,7 @@ func TestDecodeStrictRefusesFormEncodings(t *testing.T) {
 		}
 	}
 	for _, contentType := range []string{"", "application/json", "application/json; charset=utf-8"} {
-		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"a":1}`))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(`{"a":1}`))
 		if contentType != "" {
 			req.Header.Set("Content-Type", contentType)
 		}
@@ -84,7 +84,7 @@ func TestClientIPTakesTheProxysHop(t *testing.T) {
 		{" , ", "10.0.0.7:4242", "10.0.0.7"},
 	}
 	for _, c := range cases {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 		req.RemoteAddr = c.remote
 		if c.xff != "" {
 			req.Header.Set("X-Forwarded-For", c.xff)
