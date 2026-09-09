@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.87] - 2026-09-09
+
+### Fixed
+
+- The desktop app's "Restart to update" now actually restarts: it used to close the window while the process stayed alive, which made the installer give up ("App Still Running") and leave you on the old version with nothing to show for the click. A downloaded update now announces itself as the first row of the sidebar rather than a panel on the home page, so it is in front of you wherever you are in the app, and the row says it is installing and will reopen by itself.
+- Uploading a track you already have now writes the audio back if the server has lost the file, so a track that skips instead of playing is repaired by re-uploading it — deleting it first is no longer needed.
+- The Workouts page has a search box that finds a workout by name or focus across your own shelf and the curated library; a workout that expands past the room's limit is refused in blocks, the word the riding screen uses.
+
 ## [2026.09.86] - 2026-09-09
 
 ### Fixed
@@ -1687,7 +1695,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.86...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.87...HEAD
+[2026.09.87]: https://github.com/natrontech/wattroom/compare/2026.09.86...2026.09.87
 [2026.09.86]: https://github.com/natrontech/wattroom/compare/2026.09.85...2026.09.86
 [2026.09.85]: https://github.com/natrontech/wattroom/compare/2026.09.84...2026.09.85
 [2026.09.84]: https://github.com/natrontech/wattroom/compare/2026.09.83...2026.09.84
