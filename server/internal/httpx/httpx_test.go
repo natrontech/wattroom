@@ -47,6 +47,54 @@ func decodeError(t *testing.T, rec *httptest.ResponseRecorder) ErrorResponse {
 	return e
 }
 
+// A cross-site form posts text/plain, urlencoded or multipart without a
+// preflight, and a JSON decoder reads the object at the front of such a body
+// (#1823). Bare JSON with no Content-Type at all still decodes.
+func TestDecodeStrictRefusesFormEncodings(t *testing.T) {
+	for _, contentType := range []string{"text/plain", "text/plain; charset=UTF-8", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(`{"a":1}=x`))
+		req.Header.Set("Content-Type", contentType)
+		var into struct{ A int }
+		if err := DecodeStrict(req, &into); err == nil {
+			t.Fatalf("%s decoded", contentType)
+		}
+	}
+	for _, contentType := range []string{"", "application/json", "application/json; charset=utf-8"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(`{"a":1}`))
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		var into struct{ A int }
+		if err := DecodeStrict(req, &into); err != nil || into.A != 1 {
+			t.Fatalf("%q did not decode: %v", contentType, err)
+		}
+	}
+}
+
+// The proxy appends the peer it saw, so the LAST hop is the only one the
+// caller did not write (#1824); a fresh first hop per request used to be a
+// fresh sign-in budget per request.
+func TestClientIPTakesTheProxysHop(t *testing.T) {
+	cases := []struct{ xff, remote, want string }{
+		{"", "10.0.0.7:4242", "10.0.0.7"},
+		{"203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
+		{"1.2.3.4, 203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
+		{"spoofed, more spoof, 203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
+		{"203.0.113.9, ", "10.0.0.1:1", "203.0.113.9"},
+		{" , ", "10.0.0.7:4242", "10.0.0.7"},
+	}
+	for _, c := range cases {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+		req.RemoteAddr = c.remote
+		if c.xff != "" {
+			req.Header.Set("X-Forwarded-For", c.xff)
+		}
+		if got := ClientIP(req); got != c.want {
+			t.Errorf("xff %q remote %q: got %q, want %q", c.xff, c.remote, got, c.want)
+		}
+	}
+}
+
 func TestReadImageUploadAcceptsTheFourRenderedTypes(t *testing.T) {
 	cases := []struct {
 		name  string

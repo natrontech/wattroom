@@ -26,10 +26,15 @@ import (
 //	POST /api/auth/desktop/redeem   {token, nonce}  the shell → its own session
 //
 // The token is single-use, short-lived and bound to the nonce. The nonce is
-// what stops a login-CSRF: an attacker can mint a token in their own browser,
-// but a victim's shell only redeems with the nonce it kept, and the two never
-// match. The shell gets a NEW session, not the browser's — signing out of one
-// leaves the other alone.
+// what stops a login-CSRF through the SHELL: an attacker can mint a token in
+// their own browser, but a victim's shell only redeems with the nonce it
+// kept, and the two never match. The endpoint itself is plain HTTP, and a
+// caller who holds both halves is not the shell — a cross-site form could
+// post them into a victim's browser and sign it into the attacker's account
+// (#1823) — so redeem also refuses a foreign Origin, and httpx.DecodeStrict
+// refuses the form encodings a browser sends without a preflight. The shell
+// gets a NEW session, not the browser's — signing out of one leaves the
+// other alone.
 //
 // ponytail: in-memory. The server is one process (ADR-0002) and a token lives
 // ninety seconds; a table would outlive its purpose by a release.
@@ -119,6 +124,13 @@ func (s *Service) handleDesktopHandoff(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleDesktopRedeem(w http.ResponseWriter, r *http.Request) {
+	// No session to check yet, so RequireUser's origin gate is not on this
+	// path: the shell redeems from the app's own page, and anything else
+	// holding a token and a nonce is the login-CSRF above (#1823).
+	if !s.SameOrigin(r) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Start again from the app.")
+		return
+	}
 	var req struct {
 		Token string `json:"token"`
 		Nonce string `json:"nonce"`
