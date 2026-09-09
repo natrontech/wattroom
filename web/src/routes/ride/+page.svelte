@@ -514,7 +514,7 @@
 							{/if}
 							<button
 								onclick={downloadFit}
-								disabled={downloading || session.recording.length === 0}
+								disabled={downloading || !session?.recording.length}
 								data-testid="download-fit"
 								class="btn {savedId || saving
 									? 'btn-secondary'
