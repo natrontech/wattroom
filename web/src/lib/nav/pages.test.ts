@@ -10,9 +10,9 @@ describe('activeHref', () => {
 
 	it('has no entry for a path outside the three', () => {
 		// A room lights its own entry in the rooms list, not a destination —
-		// and /profile is the cog, which is a setting rather than a place.
+		// and /settings is the cog, which is a setting rather than a place.
 		expect(activeHref('/r/velvet-hammer')).toBeUndefined();
-		expect(activeHref('/profile')).toBeUndefined();
+		expect(activeHref('/settings')).toBeUndefined();
 		expect(activeHref('/nowhere')).toBeUndefined();
 	});
 
