@@ -22,8 +22,10 @@ test('a captured trace replays through the ride', async ({ page }) => {
 	// The clock advances on the replayed data.
 	const clock = page.getByTestId('ride-clock');
 	const first = await clock.innerText();
-	await page.waitForTimeout(3000);
-	expect(await clock.innerText()).not.toBe(first);
+	// Poll until the clock moves rather than bet 3 s of wall time on it (#1718):
+	// three seconds is ~3 samples on an idle machine and possibly none on a
+	// loaded runner.
+	await expect(clock).not.toHaveText(first, { timeout: 10_000 });
 
 	expect(errors).toEqual([]);
 });

@@ -35,8 +35,10 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// which is exactly how a reactivity bug shipped once already.
 	const clock = page.getByTestId('ride-clock');
 	const firstClock = await clock.innerText();
-	await page.waitForTimeout(3000);
-	expect(await clock.innerText()).not.toBe(firstClock);
+	// Poll until the clock moves rather than bet 3 s of wall time on it (#1718):
+	// three seconds is ~3 samples on an idle machine and possibly none on a
+	// loaded runner.
+	await expect(clock).not.toHaveText(firstClock, { timeout: 10_000 });
 
 	// Ride it out. 60 s of workout plus generous slack for the browser's timer drift.
 	const download = page.getByTestId('download-fit');
