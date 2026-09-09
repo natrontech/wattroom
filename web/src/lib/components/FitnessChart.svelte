@@ -47,8 +47,10 @@
 		);
 	}
 
+	// Noon UTC, like the drilldown's openDay (#1551): UTC midnight rendered
+	// in a zone west of Greenwich named the day before.
 	const dayLabel = (d: string) =>
-		new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, {
+		new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, {
 			month: 'short',
 			day: 'numeric',
 		});

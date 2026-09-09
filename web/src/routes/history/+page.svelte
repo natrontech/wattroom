@@ -2,6 +2,15 @@
 	import FitnessChart from '$lib/components/FitnessChart.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import { account } from '$lib/account.svelte';
+	import {
+		declineFtp,
+		declinedFtp,
+		suggestionDeclined,
+	} from '$lib/ftp-decline';
+	import { pushProfile } from '$lib/profile-sync.svelte';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
 	import {
 		fetchProgression,
@@ -32,6 +41,32 @@
 	import type { ServerRide } from './+page';
 
 	let { data }: { data: PageData } = $props();
+
+	// The FTP prompt where the rider is looking at the curve (#1552):
+	// WATTROOM.md has the server prompt when the curve outgrows the setting,
+	// and a settings sub-page was the only place that did. The decline is
+	// remembered, keyed on the value.
+	const profile = createProfileStore();
+	let declined = $state(declinedFtp());
+	let applied = $state(false);
+	const suggestion = $derived(
+		account.me?.suggestedFtp &&
+			!applied &&
+			!suggestionDeclined(account.me.suggestedFtp, declined)
+			? account.me.suggestedFtp
+			: null,
+	);
+	async function applySuggestion(next: number) {
+		const message =
+			(await pushProfile({ ftpWatts: next })) ??
+			profile.update({ ftp: next, ftpMeasuredAt: Date.now() });
+		if (message) {
+			toasts.push(message, { tone: 'error' });
+			return;
+		}
+		applied = true;
+		toasts.push(`FTP set to ${next} W — every workout now scales to it.`);
+	}
 	// Device-only leftovers: summaries the server did not take — refused for
 	// being under a minute, saved while it was unreachable, or from before
 	// #110. They have no samples, so they cannot become account rides — they
@@ -306,6 +341,20 @@
 					all={progression.curve.all}
 				/>
 			</div>
+			{#if suggestion && account.me}
+				<div class="mb-3">
+					<FtpPrompt
+						current={account.me.ftpWatts}
+						suggested={suggestion}
+						best20={account.me.best20m ?? 0}
+						onApply={() => void applySuggestion(suggestion)}
+						onKeep={() => {
+							declineFtp(suggestion);
+							declined = suggestion;
+						}}
+					/>
+				</div>
+			{/if}
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">

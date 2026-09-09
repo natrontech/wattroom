@@ -19,6 +19,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 				riderError: me.ok
 					? 'Could not tell who you are — reload to try again.'
 					: me.error.message,
+				riderMissing: false,
 				trophies: null,
 				trophiesError: null,
 			};
@@ -33,6 +34,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		id,
 		rider: riderResult.ok ? riderResult.data : null,
 		riderError: riderResult.ok ? null : riderResult.error.message,
+		riderMissing: !riderResult.ok && riderResult.error.error === 'not_found',
 		trophies: trophiesResult.ok ? trophiesResult.data : null,
 		trophiesError: trophiesResult.ok ? null : trophiesResult.error.message,
 	};
@@ -42,6 +44,8 @@ export type RiderPageData = {
 	id: string;
 	rider: Rider | null;
 	riderError: string | null;
+	/** Absent or not visible to you (#1555): retrying cannot find it. */
+	riderMissing: boolean;
 	trophies: Trophies | null;
 	/** Read on your own page only: there the case is the page (#1330). */
 	trophiesError: string | null;

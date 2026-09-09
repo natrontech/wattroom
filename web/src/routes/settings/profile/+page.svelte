@@ -2,6 +2,11 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import {
+		declineFtp,
+		declinedFtp,
+		suggestionDeclined,
+	} from '$lib/ftp-decline';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
 	import PasskeyList from '$lib/components/PasskeyList.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
@@ -35,7 +40,12 @@
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
 	let saveError = $state<{ message: string; field?: string } | null>(null);
-	let suggestionDismissed = $state(false);
+	// The decline outlives the visit (#1552), keyed on the suggested value.
+	let declined = $state(declinedFtp());
+	let applied = $state(false);
+	const suggestionDismissed = $derived(
+		applied || suggestionDeclined(account.me?.suggestedFtp, declined),
+	);
 
 	// The root layout owns the server → localStorage pull; this only fills
 	// the form fields.
@@ -391,9 +401,13 @@
 					best20={account.me.best20m ?? 0}
 					onApply={() => {
 						void save(account.me?.suggestedFtp ?? ftp);
-						suggestionDismissed = true;
+						applied = true;
 					}}
-					onKeep={() => (suggestionDismissed = true)}
+					onKeep={() => {
+						const kept = account.me?.suggestedFtp ?? 0;
+						declineFtp(kept);
+						declined = kept;
+					}}
 				/>
 			</div>
 		{/if}
