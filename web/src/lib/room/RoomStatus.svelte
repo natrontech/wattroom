@@ -38,7 +38,10 @@
 	<!-- Room-level status belongs to the shell, not to a place: a dropped
 	     connection is true on every one of them, and errors.md wants it
 	     persistent rather than a toast the rider will not see. -->
-	{#if live.status !== 'live'}
+	<!-- Reconnecting, not "not yet live": the first connect used to paint
+	     "Lost the room" on every entry, which trains riders to ignore the one
+	     banner that must not be ignored (#1411). -->
+	{#if live.status === 'reconnecting'}
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'room', state: 'reconnecting' }}

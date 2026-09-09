@@ -90,10 +90,13 @@
 			</section>
 		{:else if focus === 'game' && room.game}
 			<section class="px-4">
+				<!-- The same gate SessionControls wears two blocks up (#1411): a
+				     coach on a narrow window that can reach a trainer keeps the
+				     game's controls; a spectator never had them. -->
 				<GamePanel
 					game={room.game}
 					roster={roomConnection.current?.live.tick?.roster ?? []}
-					canControl={false}
+					canControl={room.canControl && !device.spectator}
 					end={() => room.control('game-end')}
 				/>
 			</section>

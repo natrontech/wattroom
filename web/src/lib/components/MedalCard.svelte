@@ -7,7 +7,8 @@
 		value: string;
 		unit: string;
 		kj: number;
-		xp: number;
+		/** The ride's XP, once the room has saved it — absent until then (#1411). */
+		xp?: number;
 	}
 </script>
 
@@ -116,7 +117,8 @@
 			<p class="text-sm">{roomName}</p>
 			<p class="text-muted text-xs">Sweet Spot 2×20 · 25 Aug 2026</p>
 			<p class="text-muted mt-3 font-mono text-[11px] tabular-nums">
-				{medal.kj} kJ · {medal.xp} XP
+				{medal.kj} kJ{#if medal.xp !== undefined}
+					· {medal.xp} XP{/if}
 			</p>
 		</div>
 	</div>

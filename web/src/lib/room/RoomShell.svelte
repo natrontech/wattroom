@@ -140,6 +140,7 @@
 		recording,
 		phase: () => shared?.phase,
 		myName: () => account.me?.displayName,
+		myId: () => account.me?.id,
 		myExecution: () => you.execution,
 	});
 	const reminders = $derived(

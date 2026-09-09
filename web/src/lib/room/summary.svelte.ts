@@ -17,10 +17,21 @@ export function createSummary(deps: {
 	recording: ReturnType<typeof createRecording>;
 	phase: () => string | undefined;
 	myName: () => string | undefined;
+	myId: () => string | undefined;
 	myExecution: () => number;
 }) {
 	let dismissed = $state(false);
-	let medal = $state<Medal | undefined>(undefined);
+	let medalBase = $state<Omit<Medal, 'xp'> | undefined>(undefined);
+	// The pipeline's XP for the ride the room saved (#1411): the card said
+	// "0 XP" to everyone. Shown once the ride is found, never as a placeholder.
+	let rideXp = $state<number | null>(null);
+	const medal = $derived<Medal | undefined>(
+		medalBase
+			? rideXp === null
+				? medalBase
+				: { ...medalBase, xp: rideXp }
+			: undefined,
+	);
 	let fetched = false;
 	// The ride the room saved for me (#1331): the saver writes it a moment
 	// after the close and nothing on the tick names it, so it is found as the
@@ -29,15 +40,17 @@ export function createSummary(deps: {
 	let rideId = $state<string | null>(null);
 	let sessionStart = 0;
 	function findMyRide(attempt: number) {
-		void api<{ rides?: { id: string; startedAt: string; room?: boolean }[] }>(
-			'/api/rides',
-		).then((res) => {
+		void api<{
+			rides?: { id: string; startedAt: string; room?: boolean; xp?: number }[];
+		}>('/api/rides').then((res) => {
 			if (!res.ok) return;
 			const mine = (res.data.rides ?? []).find(
 				(r) => r.room && Date.parse(r.startedAt) >= sessionStart - 60_000,
 			);
-			if (mine) rideId = mine.id;
-			else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
+			if (mine) {
+				rideId = mine.id;
+				rideXp = mine.xp ?? null;
+			} else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
 		});
 	}
 
@@ -46,7 +59,8 @@ export function createSummary(deps: {
 		if (phase === 'running') {
 			dismissed = false;
 			fetched = false;
-			medal = undefined;
+			medalBase = undefined;
+			rideXp = null;
 			rideId = null;
 			sessionStart = Date.now();
 		}
@@ -61,26 +75,29 @@ export function createSummary(deps: {
 		setTimeout(() => {
 			findMyRide(0);
 			void api<{
-				medals?: { kind: string; rider: string; awardedAt: string }[];
+				medals?: { kind: string; riderId?: string; awardedAtMs?: number }[];
 			}>(`/api/rooms/${deps.slug()}`).then((res) => {
 				if (!res.ok) return;
-				const today = new Date().toISOString().slice(0, 10);
+				// Mine by id, and from this session by the server's clock — a
+				// display name is not unique and a UTC date missed anything
+				// awarded after local midnight (#1411).
 				const mine = (res.data.medals ?? []).find(
-					(entry) => entry.rider === deps.myName() && entry.awardedAt === today,
+					(entry) =>
+						entry.riderId === deps.myId() &&
+						(entry.awardedAtMs ?? 0) >= sessionStart - 60_000,
 				);
 				if (!mine) return;
 				const meta = MEDAL_META[mine.kind];
 				const kjTotal = Math.round(
 					deps.recording.samples.reduce((sum, s) => sum + s.watts, 0) / 1000,
 				);
-				medal = {
+				medalBase = {
 					name: meta?.name ?? mine.kind,
 					criterion: meta?.criterion ?? '',
 					rider: deps.myName() ?? 'You',
 					value: String(Math.round(deps.myExecution() * 100)),
 					unit: '%',
 					kj: kjTotal,
-					xp: 0,
 				};
 			});
 		}, 2500);

@@ -3,6 +3,7 @@
 	import type { SprintState } from '$lib/protocol';
 	import type { RoomRider } from '$lib/room/view';
 	import { PLACES } from '$lib/room/podium';
+	import { serverNow } from '$lib/room/server-clock';
 	import { wkg } from '$lib/format';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
@@ -30,9 +31,12 @@
 		ranked.length > 0 ? ranked[0].watts / ranked[0].kg : 0,
 	);
 
-	let now = $state(Date.now());
+	// The server's clock, like the ERG→slope flip that reads the same window
+	// (ride.svelte.ts): a laptop's wall clock is routinely seconds off, and
+	// the podium used to show while the trainer was still in slope (#1411).
+	let now = $state(serverNow());
 	$effect(() => {
-		const id = setInterval(() => (now = Date.now()), 100);
+		const id = setInterval(() => (now = serverNow()), 100);
 		return () => clearInterval(id);
 	});
 
