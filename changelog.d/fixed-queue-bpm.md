@@ -1,0 +1,1 @@
+- Tracks queued from the Music page now carry their tempo to the deck, so cadence matching sees them. Queuing the same track from a playlist always did; the multi-select did not, and its tracks arrived untagged.
