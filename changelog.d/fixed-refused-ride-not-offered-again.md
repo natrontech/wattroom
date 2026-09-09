@@ -1,1 +1,0 @@
-- A ride the server refuses for good — under a minute — no longer comes back on the recovery card after every reload, and the words stop promising a save that would be refused again; Rides' "on this device only" now says both reasons a summary can end up there.

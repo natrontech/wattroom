@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.61] - 2026-09-09
+
+### Fixed
+
+- The message box of a conversation that is not open yet says where things stand — you asked and they have not answered, they asked and it is your move, or you are not friends yet — instead of "add them" in every case.
+- Every page names its browser tab now — "Home · WattRoom", the room's name for any of its places, the workout or ride you are looking at, the friend you are messaging — instead of the bare address on most of them.
+- A ride the server refuses for good — under a minute — no longer comes back on the recovery card after every reload, and the words stop promising a save that would be refused again; Rides' "on this device only" now says both reasons a summary can end up there.
+
 ## [2026.09.60] - 2026-09-09
 
 ### Fixed
@@ -1299,7 +1307,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.60...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.61...HEAD
+[2026.09.61]: https://github.com/natrontech/wattroom/compare/2026.09.60...2026.09.61
 [2026.09.60]: https://github.com/natrontech/wattroom/compare/2026.09.59...2026.09.60
 [2026.09.59]: https://github.com/natrontech/wattroom/compare/2026.09.58...2026.09.59
 [2026.09.58]: https://github.com/natrontech/wattroom/compare/2026.09.57...2026.09.58
