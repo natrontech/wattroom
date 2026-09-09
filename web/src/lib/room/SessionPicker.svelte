@@ -56,7 +56,7 @@
 			json: string,
 			startsAtIso: string,
 			roomSlug: string,
-		) => void;
+		) => void | Promise<void>;
 		/** Absent hides the Games tab — games are a room's, not a calendar's. */
 		onStartGame?: (id: string) => void;
 		onClose: () => void;

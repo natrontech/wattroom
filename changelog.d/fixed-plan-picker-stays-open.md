@@ -1,0 +1,1 @@
+- Planning a session in a room: when the server refuses the time, the picker now stays open with your workout and time still chosen, instead of closing and making you start over.
