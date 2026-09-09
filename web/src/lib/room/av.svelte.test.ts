@@ -1039,6 +1039,13 @@ describe('a remote voice is heard once (#1339)', () => {
 			remoteVoice('jan');
 			remoteVoice('jan');
 			expect(gains.map((g) => g.disconnected)).toEqual([true, false]);
+			// A re-routed share is still a share: the drop that clears the
+			// first graph must not also clear the flag that picks its fader.
+			mixer.setShare(0.5);
+			remoteShareAudio('jan');
+			remoteShareAudio('jan');
+			expect(gains.at(-1)?.gain.value).toBe(0.5);
+			mixer.setShare(1);
 			av.leave();
 			dispose();
 		});

@@ -145,11 +145,11 @@ export function createRiderOutput(
 					bus.release.value = 0.25;
 					bus.connect(ctx.destination);
 				}
-				if (share) shares.add(identity);
 				// A key routed twice is a voice heard twice (#1339): the first
 				// graph would stay wired to the bus with nothing left holding
-				// its handle.
+				// its handle. Before the share flag goes on: the drop takes it off.
 				if (gains.has(identity)) drop(identity);
+				if (share) shares.add(identity);
 				const source = ctx.createMediaStreamSource(el.srcObject as MediaStream);
 				const gain = ctx.createGain();
 				gain.gain.value = gainFor(identity);
