@@ -9,10 +9,13 @@ import (
 
 // Limits on what one rider can make the room remember. Six hours at 1 Hz is
 // longer than any session; past it (or a hostile client), samples drop rather
-// than growing server memory unboundedly.
+// than growing server memory unboundedly. A replay carries one sample a
+// second (the client buffers no faster), so one batch holds an hour's drop —
+// at 600 a ten-minute outage was silently cut to its oldest ten minutes
+// (audit 2026-09-09).
 const (
 	maxAccumulated   = 6 * 60 * 60
-	maxBackfillBatch = 600
+	maxBackfillBatch = 60 * 60
 )
 
 // accumulator is one session's ride record per rider, in memory like all live

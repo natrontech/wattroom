@@ -66,8 +66,13 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 		timer.Reset(interval)
 		if len(rm.clients) == 0 {
+			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
+			// a session whose last rider closed the tab at minute 58 ends at
+			// 60 and saves then, dated right — not on the next visit.
+			ended := rm.closeLocked(rm.session.state(now()), now(), saver != nil)
 			locked = false
 			rm.mu.Unlock()
+			rm.handOff(log, now, saver, ended)
 			continue
 		}
 		if rm.game != nil {
@@ -153,31 +158,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
-		var closing []RiderRecord
-		var closingMeta protocol.SessionState
-		var closed *SessionClosed
-		var recap *protocol.SessionRecap
-		var recaps RecapKeeper
-		if tick.State.Phase == "done" && !rm.saved {
-			rm.saved = true
-			closingMeta = tick.State
-			if saver != nil {
-				for _, id := range rm.seenOrder {
-					if record, ok := rm.record.byRider[id]; ok {
-						closing = append(closing, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
-					}
-				}
-			}
-			if rm.xp != nil {
-				closed = rm.closedLocked(tick.State, now())
-			}
-			// A session that ran leaves a recap; one that never started
-			// leaves nothing, which is what an empty presence map means.
-			if rm.recaps != nil && len(rm.present) > 0 {
-				snapshot := rm.recapLocked(tick.State, now())
-				recap, recaps = &snapshot, rm.recaps
-			}
-		}
+		ended := rm.closeLocked(tick.State, now(), saver != nil)
 		// The stored row, on the first tick after the write came back.
 		tick.Recap = rm.recap
 		rm.recap = nil
@@ -224,30 +205,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// Stable roster order, so tiles do not shuffle every second.
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
 
-		if closing != nil {
-			// Fire and hand off: the tick loop never blocks on the database.
-			// The saver owns timeouts and retries (#235); the goroutine exits
-			// when its bounded retry policy returns — minutes at worst.
-			safego.Go(log, "session save "+rm.slug, func() {
-				saver.SaveSession(context.Background(), rm.slug,
-					closingMeta.WorkoutName, closingMeta.WorkoutJSON,
-					time.UnixMilli(now().UnixMilli()-int64(closingMeta.Elapsed)*1000), closing)
-			})
-		}
-		// The keeper returns at once (it queues its own I/O) — still outside
-		// the lock, like every other hand-off.
-		if closed != nil {
-			rm.xp.SessionClosed(*closed)
-		}
+		rm.handOff(log, now, saver, ended)
 		if sprintWinner != "" && rm.xp != nil {
 			rm.xp.SprintWon(rm.slug, sprintWinner, now())
-		}
-		// Outside the lock like every other hand-off, and on its own
-		// goroutine because this one reaches the database: the keeper writes
-		// the row and posts it back for the next tick to carry (ADR-0034).
-		if recap != nil {
-			slug := rm.slug
-			safego.Go(log, "session recap "+slug, func() { recaps.SaveRecap(slug, *recap) })
 		}
 
 		metricTicks.Inc()
@@ -275,6 +235,72 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				c.sendJSON(log, protocol.ServerMessage{Poke: &poke})
 			}
 		}
+	}
+}
+
+// sessionEnd is what one tick hands off when the session has just closed:
+// the ride record for the saver, the event for the XP keeper, the recap for
+// its keeper. Snapshotted under the lock, persisted outside it.
+type sessionEnd struct {
+	records []RiderRecord
+	meta    protocol.SessionState
+	closed  *SessionClosed
+	recap   *protocol.SessionRecap
+	recaps  RecapKeeper
+}
+
+// closeLocked snapshots the session exactly once, on the tick its phase
+// crosses to done — nil on every other tick. Caller holds rm.mu.
+func (rm *room) closeLocked(state protocol.SessionState, now time.Time, saving bool) *sessionEnd {
+	if state.Phase != "done" || rm.saved {
+		return nil
+	}
+	rm.saved = true
+	end := &sessionEnd{meta: state}
+	if saving {
+		for _, id := range rm.seenOrder {
+			if record, ok := rm.record.byRider[id]; ok {
+				end.records = append(end.records, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
+			}
+		}
+	}
+	if rm.xp != nil {
+		end.closed = rm.closedLocked(state, now)
+	}
+	// A session that ran leaves a recap; one that never started leaves
+	// nothing, which is what an empty presence map means.
+	if rm.recaps != nil && len(rm.present) > 0 {
+		snapshot := rm.recapLocked(state, now)
+		end.recap, end.recaps = &snapshot, rm.recaps
+	}
+	return end
+}
+
+// handOff persists a closed session outside the lock, like every other
+// hand-off; nil is every tick on which nothing closed.
+func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSaver, end *sessionEnd) {
+	if end == nil {
+		return
+	}
+	if end.records != nil {
+		// Fire and hand off: the tick loop never blocks on the database.
+		// The saver owns timeouts and retries (#235); the goroutine exits
+		// when its bounded retry policy returns — minutes at worst.
+		safego.Go(log, "session save "+rm.slug, func() {
+			saver.SaveSession(context.Background(), rm.slug,
+				end.meta.WorkoutName, end.meta.WorkoutJSON,
+				time.UnixMilli(now().UnixMilli()-int64(end.meta.Elapsed)*1000), end.records)
+		})
+	}
+	// The keeper returns at once (it queues its own I/O).
+	if end.closed != nil {
+		rm.xp.SessionClosed(*end.closed)
+	}
+	// On its own goroutine because this one reaches the database: the keeper
+	// writes the row and posts it back for the next tick to carry (ADR-0034).
+	if end.recap != nil {
+		slug := rm.slug
+		safego.Go(log, "session recap "+slug, func() { end.recaps.SaveRecap(slug, *end.recap) })
 	}
 }
 

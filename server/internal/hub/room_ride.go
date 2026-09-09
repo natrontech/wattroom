@@ -52,9 +52,17 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 // room comes back idle, and dropping the replay then is exactly the data loss
 // this exists to prevent. The record is bounded per rider and reset on the
 // next start, so out-of-session samples cost nothing and hurt nobody.
-func (rm *room) backfill(rider protocol.Rider, samples []protocol.RiderMetrics) {
+func (rm *room) backfill(c *client, samples []protocol.RiderMetrics) {
+	rider := c.rider
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// The claim gates the replay as it gates live metrics: a screen that
+	// lost the trainer to another of the rider's tabs and then reconnected
+	// used to land its buffer in the record beside the holder's (audit
+	// 2026-09-09) — the interleaving setMetrics exists to prevent.
+	if !rm.ownsTrainerLocked(c) {
+		return
+	}
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
