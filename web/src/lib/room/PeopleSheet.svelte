@@ -1,5 +1,7 @@
 <script lang="ts">
 	import Users from '@lucide/svelte/icons/users';
+	import X from '@lucide/svelte/icons/x';
+	import { focusTrap } from '$lib/components/focus-trap';
 	import { countModal } from '$lib/modals.svelte';
 
 	// The panel, summoned (#219, #504, #686). Below xl the room has no people
@@ -70,7 +72,21 @@
 		class="bg-paper/50 fixed inset-0 z-[60] xl:hidden"
 		onclick={(e) => e.target === e.currentTarget && (open = false)}
 	>
-		<div class="bg-surface absolute inset-y-0 right-0 shadow-2xl">
+		<!-- A dialog in fact as well as in shape (audit 2026-09-09): focus
+		     moves in, Tab stays in, Escape and the close button hand it back. -->
+		<div
+			class="bg-surface absolute inset-y-0 right-0 shadow-2xl"
+			role="dialog"
+			aria-modal="true"
+			aria-label="who is here"
+			tabindex="-1"
+			use:focusTrap
+		>
+			<button
+				onclick={() => (open = false)}
+				class="icon-btn text-muted hover:text-ink absolute top-2 left-2 z-10"
+				aria-label="close"><X size={16} /></button
+			>
 			{@render panel()}
 		</div>
 	</div>

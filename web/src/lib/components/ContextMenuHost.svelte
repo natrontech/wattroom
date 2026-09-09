@@ -60,6 +60,7 @@
 		const at = items.indexOf(document.activeElement as HTMLElement);
 		if (event.key === 'Escape') {
 			event.preventDefault();
+			event.stopPropagation();
 			closeMenu();
 		} else if (event.key === 'ArrowDown') {
 			event.preventDefault();

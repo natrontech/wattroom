@@ -13,14 +13,18 @@
 		{#if ask.body}
 			<p class="text-muted mt-2 text-sm">{ask.body}</p>
 		{/if}
-		<div class="mt-5 flex flex-wrap gap-2">
-			<button
-				onclick={() => confirmation.settle(true)}
-				class="btn btn-danger-solid btn-lg">{ask.action}</button
-			>
+		<!-- Cancel first in the DOM, so the trap's initial focus lands on the
+		     safe answer: an Enter arriving as the dialog mounts used to end the
+		     session for the room (audit 2026-09-09). Reversed visually, so the
+		     action keeps the left. -->
+		<div class="mt-5 flex flex-row-reverse flex-wrap justify-end gap-2">
 			<button
 				onclick={() => confirmation.settle(false)}
 				class="btn btn-secondary btn-lg">{ask.cancel ?? 'Cancel'}</button
+			>
+			<button
+				onclick={() => confirmation.settle(true)}
+				class="btn btn-danger-solid btn-lg">{ask.action}</button
 			>
 		</div>
 	</Modal>

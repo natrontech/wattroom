@@ -2,6 +2,7 @@
 	import RoomStatus from '$lib/room/RoomStatus.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
+	import { focusTrap } from '$lib/components/focus-trap';
 	import type { SprintState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
 	import type { Block, RoomRider } from '$lib/room/view';
@@ -51,7 +52,16 @@
 </script>
 
 <!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
-<div class="cave bg-surface fixed inset-0 z-50">
+<!-- A dialog (audit 2026-09-09): the one surface where the page behind is
+     entirely hidden, and Tab still walked it. -->
+<div
+	class="cave bg-surface fixed inset-0 z-50"
+	role="dialog"
+	aria-modal="true"
+	aria-label="TV mode"
+	tabindex="-1"
+	use:focusTrap
+>
 	{#if playing}
 		<!-- The player takes the TV's top-right corner (#460): the dock
 		     outranks this overlay and used to land wherever it was, over the

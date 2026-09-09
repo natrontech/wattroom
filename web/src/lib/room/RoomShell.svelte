@@ -308,12 +308,13 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === 'Escape') {
-			tv = false;
-			session.open = false;
-			peopleSheet = false;
-			focusId = null;
-		}
+		if (e.key !== 'Escape') return;
+		// The topmost layer only (audit 2026-09-09): one Escape used to close
+		// TV mode, the picker, the sheet and the tile focus all at once.
+		if (tv) tv = false;
+		else if (session.open) session.open = false;
+		else if (peopleSheet) peopleSheet = false;
+		else focusId = null;
 	}}
 />
 

@@ -16,7 +16,9 @@ export function focusTrap(node: HTMLElement): { destroy(): void } {
 	// dialog to <body>, and moving a subtree blurs whatever it holds — so a
 	// synchronous focus here left every dialog open with focus on <body>
 	// (#1138).
-	queueMicrotask(() => (focusables()[0] ?? node).focus());
+	queueMicrotask(() =>
+		(focusables()[0] ?? node).focus({ preventScroll: true }),
+	);
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key !== 'Tab') return;
 		const items = focusables();
@@ -35,7 +37,7 @@ export function focusTrap(node: HTMLElement): { destroy(): void } {
 	return {
 		destroy() {
 			node.removeEventListener('keydown', onKeydown);
-			prev?.focus();
+			prev?.focus({ preventScroll: true });
 		},
 	};
 }

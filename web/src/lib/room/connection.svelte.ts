@@ -4,6 +4,7 @@ import { announce } from '$lib/messages/announce';
 import { away, notify } from '$lib/notify.svelte';
 import { presence } from '$lib/presence.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
+import { spaceBelongsTo } from '$lib/room/ptt-keys';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
@@ -403,13 +404,9 @@ function connect(slug: string): Connection {
 			if (typeof window === 'undefined') return;
 			const key = (event: KeyboardEvent, held: boolean) => {
 				if (av.mode !== 'ptt' || event.code !== 'Space') return;
-				const target = event.target as HTMLElement;
-				if (
-					target instanceof HTMLInputElement ||
-					target instanceof HTMLTextAreaElement ||
-					target.isContentEditable
-				)
-					return;
+				// A text field, or a control the keyboard is on, keeps its
+				// Space (ptt-keys.ts, audit 2026-09-09).
+				if (spaceBelongsTo(event.target)) return;
 				event.preventDefault();
 				if (!held || !event.repeat) av.setPtt(held);
 			};
