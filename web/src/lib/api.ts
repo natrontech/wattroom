@@ -61,10 +61,16 @@ async function request<T>(
 		if (res.status === 204) return { ok: true, data: undefined as T };
 		if (!res.ok) return failure(res);
 		// The shell with a 200 is not data (#1604): an unmounted route used
-		// to come back as {ok, data: null} and the caller dereferenced it.
-		if ((res.headers.get('content-type') ?? '').includes('text/html'))
+		// to come back as {ok, data: null} and the caller dereferenced it. A
+		// body that parses is data whatever its header says — test fakes are
+		// not always typed — and HTML never parses.
+		const data = await res.json().catch(() => undefined);
+		if (
+			data === undefined &&
+			(res.headers.get('content-type') ?? '').includes('text/html')
+		)
 			return { ok: false, error: NOT_DATA };
-		return { ok: true, data: (await res.json().catch(() => null)) as T };
+		return { ok: true, data: (data ?? null) as T };
 	} catch {
 		return { ok: false, error: NETWORK };
 	}
