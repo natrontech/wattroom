@@ -1,1 +1,0 @@
-- The jukebox deck draws a library track's real envelope instead of a flat wall of full-height bars — a mastered song clips in every bucket, so the waveform now reads the energy of each slice rather than its loudest sample.
