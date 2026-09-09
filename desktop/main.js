@@ -356,8 +356,8 @@ function canShareSound() {
 /**
  * What the loopback tap actually takes, said plainly: it is the machine's
  * output device, not the window the rider picked — Chromium has no per-app
- * tap to offer instead. Off by default, which is what Chrome's own picker
- * does with the same capture.
+ * tap to offer instead. Off unless ticked: the rider chose a window, and the
+ * machine is more than they chose.
  */
 const SOUND_ASK =
 	"Send this machine's sound too — everything it plays, not just what you pick";

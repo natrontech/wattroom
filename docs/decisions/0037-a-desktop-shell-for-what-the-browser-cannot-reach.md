@@ -185,11 +185,13 @@ reported the result from Windows: sharing one window sent the whole machine.
 
 Loopback has no per-window tap. It is the output device: the rider's
 notifications, whatever else they have playing, and the room's own voices and
-jukebox, delayed and sent back into the room they came from. Chrome asks
-before doing that — "Also share system audio" is a checkbox, and it is off —
-and the shell was being more aggressive than the browser it wraps, on the one
-platform where the Context above says the browser was already enough. **The
-picker asks. Off by default, and worded for what the tap actually takes.**
+jukebox, delayed and sent back into the room they came from. Chrome at least
+puts that on screen as a checkbox in its own picker; an app-supplied picker
+that asks nothing is the shell being more aggressive than the browser it
+wraps, on the one platform where the Context above says the browser was
+already enough. **The picker asks. Off unless it is ticked, and worded for
+what the tap actually takes** — the rider chose a window, and the machine is
+more than they chose.
 
 It asks on Windows only, which is the honest half of the same point. This
 handler runs on macOS only below 15 — above it the system picker takes over
