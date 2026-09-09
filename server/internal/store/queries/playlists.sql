@@ -25,15 +25,21 @@ update playlists set name = $2, updated_at = now() where id = $1 returning *;
 delete from playlists where id = $1;
 
 -- name: ListPlaylistTracks :many
-select * from playlist_tracks where playlist_id = $1 order by position;
+-- A library entry reads its title and artist off the track itself (#1426):
+-- both are editable on the Music page, and a playlist should say what the
+-- library says today, not what it said when the row was saved.
+select pt.*, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist
+from playlist_tracks pt
+left join tracks t on t.id = pt.track_id
+where pt.playlist_id = $1 order by pt.position;
 
 -- name: NextTrackPosition :one
 select coalesce(max(position), -1) + 1 from playlist_tracks where playlist_id = $1;
 
 -- name: InsertPlaylistTrack :one
 insert into playlist_tracks
-    (playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks)
-values ($1, $2, $3, $4, $5, $6, $7, $8)
+    (playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks, track_id)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 returning *;
 
 -- name: DeletePlaylistTrack :execrows
