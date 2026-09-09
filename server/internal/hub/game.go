@@ -46,6 +46,34 @@ func (g *graceTracker) observe(samples map[string]int, now time.Time) {
 	}
 }
 
+// vouch is the reconnect backfill speaking for a rider (#1576): the buffer
+// holds `seconds` of pedalling up to now. True — and the rider counts as
+// seen now — when that covers the silence; a buffer shorter than the gap
+// proves nothing and changes nothing.
+func (g *graceTracker) vouch(riderID string, seconds int, now time.Time) bool {
+	if seen, ok := g.lastSeen[riderID]; ok && now.Sub(seen) > time.Duration(seconds)*time.Second {
+		return false
+	}
+	g.lastSeen[riderID] = now
+	return true
+}
+
+// pedalled is a mode the backfill can vouch to (#1576): docs/SPEC.md's "the
+// IndexedDB buffer proves continued pedalling on reconnect" had a grace
+// tracker fed from live ticks only, so a rider back at t=35 with a full
+// buffer was already five seconds into the below-band clock.
+type pedalled interface {
+	keptPedalling(riderID string, seconds int, now time.Time)
+}
+
+// withdrawing is a mode a departed rider leaves (#1577): the room's leave()
+// tells the game when the rider's last socket goes, so a paceline does not
+// hand the front to an empty seat and a podium is not topped from outside
+// the room.
+type withdrawing interface {
+	withdraw(riderID string)
+}
+
 func (g *graceTracker) inGrace(riderID string, now time.Time) bool {
 	seen, ok := g.lastSeen[riderID]
 	if !ok {

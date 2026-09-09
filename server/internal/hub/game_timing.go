@@ -19,6 +19,19 @@ func newSampledGame(mode gameMode, now time.Time) *sampledGame {
 	return &sampledGame{gameMode: mode, next: now.Add(time.Second), pending: make(map[string]int)}
 }
 
+func (g *sampledGame) keptPedalling(riderID string, seconds int, now time.Time) {
+	if p, ok := g.gameMode.(pedalled); ok {
+		p.keptPedalling(riderID, seconds, now)
+	}
+}
+
+func (g *sampledGame) withdraw(riderID string) {
+	delete(g.pending, riderID)
+	if w, ok := g.gameMode.(withdrawing); ok {
+		w.withdraw(riderID)
+	}
+}
+
 func (g *sampledGame) advance(now time.Time, samples map[string]int, roster map[string]protocol.Rider) {
 	if g.done() {
 		return

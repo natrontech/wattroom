@@ -132,6 +132,9 @@ func TestSprintWinnerNamedOnce(t *testing.T) {
 		"kim":  {ID: "kim", Name: "Kim", WeightKg: 70},
 		"lena": {ID: "lena", Name: "Lena", WeightKg: 70},
 	}
+	// Both still in the room: the podium scores the present (#1577).
+	rm.join(sock("kim"))
+	rm.join(sock("lena"))
 	base := time.Unix(1000, 0)
 	rm.armSprint(base)
 	live := base.Add(sprintKlaxon + time.Second)

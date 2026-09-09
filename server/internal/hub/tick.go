@@ -350,7 +350,18 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 // the one tick that scores it (#467). Caller holds rm.mu.
 func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
 	scoredBefore := rm.sprint != nil && rm.sprint.scored
-	state := rm.sprint.state(now, rm.seen)
+	// Scored against who is still here (#1577): leave at second six of
+	// fifteen and the podium — and its XP — used to be yours anyway.
+	roster := rm.seen
+	if rm.sprint != nil && !scoredBefore {
+		roster = make(map[string]protocol.Rider, len(rm.seen))
+		for id, rider := range rm.seen {
+			if rm.presentLocked(id) {
+				roster[id] = rider
+			}
+		}
+	}
+	state := rm.sprint.state(now, roster)
 	if scoredBefore || rm.sprint == nil || !rm.sprint.scored || len(rm.sprint.results) < minSprintField {
 		return state, ""
 	}

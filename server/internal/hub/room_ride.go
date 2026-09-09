@@ -68,6 +68,7 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics) {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
 	rm.seen[rider.ID] = rider
+	kept := 0
 	for _, m := range samples {
 		if validMetrics(m) {
 			// Backfilled samples have no known timeline second — recorded, not
@@ -75,7 +76,14 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics) {
 			// are also the one place a seq goes backwards on purpose, so they
 			// stay on the stream that sent them (#522).
 			rm.record.replay(rider.ID, m)
+			kept++
 		}
+	}
+	// One row a second: the buffer's length is the silence it covers, and
+	// an elimination mode forgives a silence the rider pedalled through
+	// (#1576, docs/SPEC.md's disconnect grace).
+	if p, ok := rm.game.(pedalled); ok && kept > 0 {
+		p.keptPedalling(rider.ID, kept, rm.now())
 	}
 }
 

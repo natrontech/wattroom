@@ -59,6 +59,14 @@ func (l *lava) callZone(now time.Time) {
 	l.outOfZone = make(map[string]int)
 }
 
+// keptPedalling: the buffer covered the silence, so the out-of-zone clock the
+// lapsed grace started is forgiven (#1576).
+func (l *lava) keptPedalling(riderID string, seconds int, now time.Time) {
+	if l.grace.vouch(riderID, seconds, now) {
+		l.outOfZone[riderID] = 0
+	}
+}
+
 func (l *lava) advance(now time.Time, samples map[string]int, roster map[string]protocol.Rider) {
 	if l.finished {
 		return
