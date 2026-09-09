@@ -7,7 +7,14 @@
 	// track that marks the tolerance band, so "left or right of the bright
 	// slot" reads before any digit does. clamp() keeps it on screen at 0 W and
 	// at a sprint without a resize observer.
-	import { CEILING, fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import {
+		CEILING,
+		fillPct,
+		ZONE_BG,
+		ZONE_NAMES,
+		ZONE_TEXT,
+		zoneOf,
+	} from '$lib/components/zones';
 	import { targetState } from '$lib/room/view';
 
 	// Primitives, not a RoomRider: the solo ride and the ramp test have watts
@@ -105,6 +112,15 @@
 					: 'text-[6.5rem]'}">{watts}</span
 			>
 			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
+			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
+			     has been tinted by it since #386 and never said which one, so the
+			     colour was a code with no key on the one screen that could give
+			     it one. Silent at 0 W — Z1 for a rider who stopped is a lie. -->
+			{#if watts > 0}
+				<span class="eyebrow block {ZONE_TEXT[zone]} {tv ? 'text-[1.6vh]' : ''}"
+					>z{zone} {ZONE_NAMES[zone]}</span
+				>
+			{/if}
 		</div>
 	</div>
 

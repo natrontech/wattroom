@@ -12,6 +12,7 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import RideHeader from '$lib/room/RideHeader.svelte';
 	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
@@ -19,11 +20,9 @@
 	import TrainingPhone from '$lib/room/TrainingPhone.svelte';
 	import { device } from '$lib/device.svelte';
 	import { pictureKey } from '$lib/room/stage';
-	import { formatClock } from '$lib/format';
 	import { publishHud } from '$lib/hud/feed';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
-	import { blockBands } from '$lib/room/view';
 	import { serverNow } from '$lib/room/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
@@ -65,7 +64,6 @@
 	const focus = $derived(
 		sprintFocus ? 'sprint' : room.game ? 'game' : share ? 'media' : 'you',
 	);
-	const bands = $derived(blockBands(room.block, room.you.cadence, room.you.hr));
 	// Only people actually turning the pedals are ranked. The server scores
 	// nothing for a rider with no samples and returns 1 for them, which is
 	// right for "before the first hard block" and absurd on a leaderboard:
@@ -165,52 +163,23 @@
 	<div
 		class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto_auto] overflow-hidden"
 	>
-		<header class="flex items-end gap-6 px-6 pt-5 pb-4">
-			<div class="min-w-0">
-				<p class="eyebrow">
-					block {room.block?.index ?? 1} of {room.block?.count ?? 1}
-				</p>
-				<h2 class="font-display truncate text-3xl leading-none font-bold">
-					{room.block?.label ?? room.shared?.workoutName ?? ''}
-				</h2>
-			</div>
-			{#if room.block}
-				<div class="shrink-0">
-					<p class="eyebrow">left in block</p>
-					<p class="font-display text-3xl leading-none font-bold tabular-nums">
-						{formatClock(room.block.secondsLeft)}
-					</p>
-				</div>
-				{#each bands as band (band.unit)}
-					<!-- The block's own band (#66, #67): the work itself on a torque
-					     or a zone block, coloured by your live value. -->
-					<div class="shrink-0">
-						<p class="eyebrow">{band.unit}</p>
-						<p
-							class="font-display text-3xl leading-none font-bold tabular-nums {band.inBand
-								? 'text-z4'
-								: 'text-muted'}"
-						>
-							{band.text}
-						</p>
-					</div>
-				{/each}
-				{#if room.block.next}
-					<p class="text-muted min-w-0 truncate text-xs">
-						next · {room.block.next.label}
-						{room.block.next.watts} W for {Math.round(
-							room.block.next.seconds / 60,
-						)} min
-					</p>
-				{/if}
-			{/if}
-			<p class="text-muted ml-auto shrink-0 text-sm tabular-nums">
-				{formatClock(elapsed)}
-				<span class="text-muted/50">/ {formatClock(total)}</span>
-			</p>
-			{#if !room.trainer}<RoomSensorOverview compact />{/if}
-			<SessionControls compact />
-		</header>
+		<div class="px-6 pt-5 pb-4">
+			<RideHeader
+				block={room.block}
+				{elapsed}
+				{total}
+				cadence={room.you.cadence}
+				hr={room.you.hr}
+				title={room.shared?.workoutName ?? ''}
+			>
+				{#snippet aside()}
+					{#if !room.trainer}<RoomSensorOverview compact />{/if}
+				{/snippet}
+				{#snippet controls()}
+					<SessionControls compact />
+				{/snippet}
+			</RideHeader>
+		</div>
 
 		{#if focus === 'sprint' && room.sprint}
 			<section class="min-h-0 px-6">

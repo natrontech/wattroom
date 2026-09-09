@@ -1,7 +1,10 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
+	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import RideHeader from '$lib/room/RideHeader.svelte';
+	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import { describeBlock } from '$lib/room/view';
 	import Banner from '$lib/components/Banner.svelte';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
@@ -123,8 +126,29 @@
 			),
 		),
 	);
-	const secondsToStep = $derived(
-		session ? session.info.secondsRemainingInSegment : 0,
+	// The same header every other ride gets (ADR-0046). The ramp counts its own
+	// steps, because the warm-up is segment one and "step 1" must not name it;
+	// everything else in the block — the next step's ABSOLUTE watts above all —
+	// falls out of the shared view model.
+	const block = $derived(
+		session && session.segments.length > 0
+			? describeBlock(
+					session.info,
+					session.segments,
+					workout,
+					profile.current.ftp,
+				)
+			: null,
+	);
+	const stepEyebrow = $derived(
+		(session?.elapsed ?? 0) < RAMP.warmupSeconds
+			? 'warm-up'
+			: `step ${stepsDone + 1} of ${RAMP.steps}`,
+	);
+	/** The test's own top, in FTP fractions — the graph's scale, as #1565 gave
+	 *  the gauge one. */
+	const rampCeiling = $derived(
+		(RAMP.startWatts + RAMP.steps * RAMP.stepWatts) / profile.current.ftp,
 	);
 
 	// LTHR suggestion (ADR-0014): a maximal ramp ends near HRmax, and the
@@ -315,10 +339,32 @@
 			</p>
 		{/if}
 	{:else if !done}
-		<div class="panel mt-8 p-8">
-			<!-- The same instrument the room and the solo ride use (ADR-0020,
-			     #386) — a ramp prescribes a step rather than a target, and that
-			     is the only difference. -->
+		<!-- One riding surface (ADR-0046): the header, the instrument, your own
+		     numbers and the horizon, in the order the room and the solo ride use
+		     them. The ramp's real differences are two words — it prescribes a
+		     STEP, and it counts steps rather than blocks. -->
+		<div class="panel mt-8 flex flex-col gap-5 p-8">
+			<RideHeader
+				{block}
+				elapsed={session.elapsed}
+				total={session.total}
+				cadence={session.sample?.cadence ?? 0}
+				hr={session.sample?.heartRate ?? 0}
+				title={workout.name}
+				unit="step"
+				eyebrow={stepEyebrow}
+			>
+				{#snippet controls()}
+					<button
+						onclick={() => {
+							session?.stop();
+							done = true;
+						}}
+						class="btn btn-secondary btn-lg shrink-0">I'm done</button
+					>
+				{/snippet}
+			</RideHeader>
+
 			<!-- Scaled to the test's own top, not the FTP it exists to correct
 			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->
 			<Instrument
@@ -329,45 +375,27 @@
 				fullScale={RAMP.startWatts + RAMP.steps * RAMP.stepWatts}
 			/>
 
-			<div class="mt-8 flex items-center justify-between text-sm">
-				<span class="text-muted">
-					{#if session.elapsed < RAMP.warmupSeconds}
-						Warm-up
-					{:else}
-						Step {stepsDone + 1}
-					{/if}
-				</span>
-				<span class="font-mono tabular-nums"
-					>{formatClock(session.elapsed)}</span
-				>
-				<span class="text-muted">
-					{#if session.elapsed < RAMP.warmupSeconds}
-						first step in {formatClock(Math.round(secondsToStep))}
-					{:else}
-						+{RAMP.stepWatts} W in {Math.round(secondsToStep)}s
-					{/if}
-				</span>
-			</div>
-			<ProgressBar
-				pct={(1 -
-					secondsToStep /
-						(session.elapsed < RAMP.warmupSeconds
-							? RAMP.warmupSeconds
-							: RAMP.stepSeconds)) *
-					100}
-				track="bg-surface"
-				fill="bg-neon transition-[width] duration-300"
-				class="mt-2"
+			<!-- The test records heart rate for its whole length and reads the
+			     peak to suggest an LTHR, and never showed the rider a bpm
+			     (#1531). -->
+			<SecondaryRow
+				cadence={session.sample?.cadence ?? 0}
+				hr={session.sample?.heartRate ?? 0}
+				watts={session.sample?.watts ?? 0}
+				kg={profile.current.kg}
+				lthr={profile.current.lthr}
 			/>
 
-			<div class="mt-6 text-center">
-				<button
-					onclick={() => {
-						session?.stop();
-						done = true;
-					}}
-					class="btn btn-secondary btn-lg">I'm done</button
-				>
+			<!-- The staircase, and how far up it you are. -->
+			<div class="h-28">
+				<IntervalGraph
+					segments={session.segments}
+					total={session.total}
+					elapsed={session.elapsed}
+					ftp={profile.current.ftp}
+					ceiling={rampCeiling}
+					trace={session.trace}
+				/>
 			</div>
 		</div>
 	{:else if !usable}
