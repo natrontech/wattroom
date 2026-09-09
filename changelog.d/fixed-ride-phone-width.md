@@ -1,1 +1,0 @@
-- On a narrow screen the riding screen's buttons now wrap instead of running off the edge — the ⚑ sat 39 px past the right of a 375 px screen and could not be tapped at all — and the workout graph clears the floating navigation button at the bottom.

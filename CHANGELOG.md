@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.81] - 2026-09-09
+
+### Fixed
+
+- On a narrow screen the riding screen's buttons now wrap instead of running off the edge — the ⚑ sat 39 px past the right of a 375 px screen and could not be tapped at all — and the workout graph clears the floating navigation button at the bottom.
+
 ## [2026.09.80] - 2026-09-09
 
 ### Added
@@ -1630,7 +1636,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.80...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.81...HEAD
+[2026.09.81]: https://github.com/natrontech/wattroom/compare/2026.09.80...2026.09.81
 [2026.09.80]: https://github.com/natrontech/wattroom/compare/2026.09.79...2026.09.80
 [2026.09.79]: https://github.com/natrontech/wattroom/compare/2026.09.78...2026.09.79
 [2026.09.78]: https://github.com/natrontech/wattroom/compare/2026.09.77...2026.09.78
