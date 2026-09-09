@@ -264,7 +264,7 @@
 			<div class="mt-6 grid grid-cols-3 gap-3">
 				{#each standing.slice(0, 3) as [id, rider], i (id)}
 					<div class="bg-surface rounded p-3">
-						<p class="text-muted text-[10px] uppercase">best {i + 1}</p>
+						<p class="eyebrow">best {i + 1}</p>
 						<p class="font-display mt-1 font-bold">{name(id)}</p>
 						<p class="font-mono text-xs tabular-nums">
 							{(rider.score ?? 0).toFixed(1)} w/kg

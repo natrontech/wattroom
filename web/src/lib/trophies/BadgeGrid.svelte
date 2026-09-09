@@ -24,9 +24,7 @@
 
 <section class="mt-8">
 	<div class="flex items-baseline gap-3">
-		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-			Achievements
-		</h2>
+		<h2 class="eyebrow">Achievements</h2>
 		{#if mine}
 			<span class="text-muted/70 text-[11px]"
 				>{earned} of {ACHIEVEMENTS.length}</span

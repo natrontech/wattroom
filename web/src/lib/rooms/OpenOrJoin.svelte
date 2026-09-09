@@ -101,9 +101,7 @@
 
 <section id={compact ? undefined : 'rooms'}>
 	{#if !compact}
-		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-			Your rooms
-		</h2>
+		<h2 class="eyebrow">Your rooms</h2>
 	{/if}
 	<div
 		class="grid gap-3 {compact

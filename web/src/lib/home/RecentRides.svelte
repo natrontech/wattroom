@@ -14,9 +14,7 @@
 {#if recent.length > 0}
 	<section>
 		<div class="flex items-baseline gap-3">
-			<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-				Recent rides
-			</h2>
+			<h2 class="eyebrow">Recent rides</h2>
 			<a href="/history" class="btn-link ml-auto text-xs">All rides →</a>
 		</div>
 		<ul class="panel divide-ink/5 mt-3 divide-y">

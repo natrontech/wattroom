@@ -129,7 +129,7 @@
 
 <main class="px-6 py-10">
 	<header class="max-w-3xl">
-		<h1 class="font-display text-3xl font-bold tracking-tight">Theme Editor</h1>
+		<h1 class="page-title">Theme Editor</h1>
 		<p class="text-muted mt-2 text-sm leading-relaxed">
 			Drag a hue to rotate everything at once, or paint over any single token
 			directly — both feed the same <code class="text-ink">deriveTheme()</code> pipeline

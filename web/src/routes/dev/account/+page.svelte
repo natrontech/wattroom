@@ -22,7 +22,7 @@
 
 <main class="mx-auto max-w-2xl px-6 py-10">
 	<div class="flex items-center justify-between gap-4">
-		<h1 class="font-display text-3xl font-bold tracking-tight">
+		<h1 class="page-title">
 			{signedIn ? 'Profile' : 'Sign in'}
 		</h1>
 		<label class="text-muted flex items-center gap-2 text-xs">
@@ -59,24 +59,18 @@
 		>
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>display name</span
-					>
+					<span class="eyebrow">display name</span>
 					<input
 						bind:value={profile.name}
 						class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
 					/>
 				</label>
 				<div>
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>signed in with</span
-					>
+					<span class="eyebrow">signed in with</span>
 					<p class="mt-2 text-sm">GitHub · jan.lauber</p>
 				</div>
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>FTP (W)</span
-					>
+					<span class="eyebrow">FTP (W)</span>
 					<input
 						type="number"
 						bind:value={profile.ftp}
@@ -87,9 +81,7 @@
 					>
 				</label>
 				<label class="block">
-					<span class="text-muted text-[10px] tracking-wider uppercase"
-						>weight (kg)</span
-					>
+					<span class="eyebrow">weight (kg)</span>
 					<input
 						type="number"
 						bind:value={profile.kg}

@@ -4,7 +4,7 @@
 </script>
 
 <main class="mx-auto max-w-4xl px-6 py-10">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Medals</h1>
+	<h1 class="page-title">Medals</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Auto-awarded per group session, minimum 3 riders. The four medals and their
 		criteria are fixed in docs/SPEC.md. Built 4:5 to survive a group chat

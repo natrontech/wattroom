@@ -21,9 +21,7 @@
 
 <section>
 	<div class="flex items-baseline gap-3">
-		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
-			Medals
-		</h2>
+		<h2 class="eyebrow">Medals</h2>
 		<span class="text-muted/70 text-[11px]">
 			{medalTotal === 0
 				? 'awarded after group sessions of three or more'

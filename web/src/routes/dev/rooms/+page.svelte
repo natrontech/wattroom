@@ -16,7 +16,7 @@
 
 <main class="mx-auto max-w-3xl px-6 py-10">
 	<div class="flex items-center justify-between gap-4">
-		<h1 class="font-display text-3xl font-bold tracking-tight">Rooms</h1>
+		<h1 class="page-title">Rooms</h1>
 		<div class="text-muted flex items-center gap-4 text-xs">
 			<label class="flex items-center gap-2">
 				<input type="checkbox" bind:checked={loading} /> loading

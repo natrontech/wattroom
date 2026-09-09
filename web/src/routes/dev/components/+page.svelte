@@ -99,7 +99,7 @@
 </script>
 
 <main class="mx-auto max-w-5xl px-6 py-12">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Components</h1>
+	<h1 class="page-title">Components</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		The real components, not redrawn copies — this page imports the same files
 		the screens do, so it can't drift from them. Tokens and the glow rules live
@@ -107,7 +107,7 @@
 		<a href="/dev/styleguide" class="underline">Styleguide</a>.
 	</p>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Buttons</h2>
+	<h2 class="eyebrow mt-12">Buttons</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		Chrome, not components: <code>btn</code> and its variants, plus
 		<code>icon-btn</code> for an icon on its own and <code>btn-link</code> for
@@ -147,7 +147,7 @@
 		<button class="btn-link text-xs">Measure it with a ramp test</button>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Crew mark</h2>
+	<h2 class="eyebrow mt-12">Crew mark</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		A crew's face everywhere it is drawn (#1237): the picture when there is one,
 		else the icon, else the initial — the switcher, the crew page and the door
@@ -177,9 +177,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Icon picker
-	</h2>
+	<h2 class="eyebrow mt-12">Icon picker</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		The curated set as a radiogroup (#447): a room's mark and a crew's come from
 		the same set through the same control (#1209). Saves on pick — no form
@@ -189,7 +187,7 @@
 		<IconPicker value={galleryIcon} onpick={(key) => (galleryIcon = key)} />
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">Avatar</h2>
+	<h2 class="eyebrow mt-12">Avatar</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		One face everywhere (#253), wearing its level ring and — where the surface
 		knows it — where the person is (#807). The badge is the avatar's, not the
@@ -209,9 +207,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Rider tile
-	</h2>
+	<h2 class="eyebrow mt-12">Rider tile</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		One object: camera, voice state and live power fused. Falls back to the
 		rider's own face when the camera is off, greys out when the trainer stops
@@ -226,9 +222,7 @@
 		{/each}
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Target — two distances
-	</h2>
+	<h2 class="eyebrow mt-12">Target — two distances</h2>
 	<div class="mt-4 grid gap-4 lg:grid-cols-2">
 		<div>
 			<TargetWidget {you} variant="notch" />
@@ -242,23 +236,17 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Palette picker
-	</h2>
+	<h2 class="eyebrow mt-12">Palette picker</h2>
 	<div class="bg-surface-raised mt-4 rounded-lg p-5">
 		<PalettePicker />
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Interval strip
-	</h2>
+	<h2 class="eyebrow mt-12">Interval strip</h2>
 	<div class="mt-4">
 		<IntervalStrip {block} bias={1.02} onBias={() => {}} />
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Sprint moment
-	</h2>
+	<h2 class="eyebrow mt-12">Sprint moment</h2>
 	<div class="mt-4 grid gap-3">
 		<!-- Live lifecycle: counts down, runs the 15 s window, lands on the
 		     podium — the real component, silenced for the gallery. -->
@@ -280,9 +268,7 @@
 		/>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Banners, empty state, progress, modal, toasts
-	</h2>
+	<h2 class="eyebrow mt-12">Banners, empty state, progress, modal, toasts</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		The behavior half of the kit. Banners for inline status (Retry goes in the
 		action slot); EmptyState teaches; ProgressBar clamps; Modal traps focus and
@@ -323,9 +309,7 @@
 			>
 		</div>
 	</div>
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Chat image & viewer
-	</h2>
+	<h2 class="eyebrow mt-12">Chat image & viewer</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		A picture in a message is capped so it cannot push the conversation off
 		screen. Clicking it opens the app's own viewer (#510) — never a browser tab,
@@ -362,9 +346,7 @@
 		</Modal>
 	{/if}
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Ride-critical faults
-	</h2>
+	<h2 class="eyebrow mt-12">Ride-critical faults</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		Persistent status, never a toast. Automatic recovery while it can; one big
 		button when it can't.
@@ -407,9 +389,7 @@
 		/>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Four page states
-	</h2>
+	<h2 class="eyebrow mt-12">Four page states</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		errors.md: every surface owes all four. A page that renders blank on failure
 		is a bug.
@@ -439,9 +419,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Form controls
-	</h2>
+	<h2 class="eyebrow mt-12">Form controls</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		Native elements styled in place, not wrapped — they keep label association,
 		keyboard behaviour and form semantics, and every call site gets them for
@@ -475,13 +453,11 @@
 			>
 		</div>
 		<label class="block">
-			<span class="text-muted text-[10px] tracking-wider uppercase">range</span>
+			<span class="eyebrow">range</span>
 			<input type="range" class="mt-1 w-full" value="70" />
 		</label>
 		<label class="block">
-			<span class="text-muted text-[10px] tracking-wider uppercase"
-				>number, spinners removed</span
-			>
+			<span class="eyebrow">number, spinners removed</span>
 			<input
 				type="number"
 				value="265"
@@ -489,18 +465,14 @@
 			/>
 		</label>
 		<label class="block sm:col-span-2">
-			<span class="text-muted text-[10px] tracking-wider uppercase"
-				>text — select it to see ::selection</span
-			>
+			<span class="eyebrow">text — select it to see ::selection</span>
 			<input
 				value="Thursday Sufferfest"
 				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
 			/>
 		</label>
 		<div class="sm:col-span-2">
-			<span class="text-muted text-[10px] tracking-wider uppercase"
-				>scrollbar</span
-			>
+			<span class="eyebrow">scrollbar</span>
 			<div
 				class="border-muted/15 mt-1 h-24 overflow-y-auto rounded border p-3 text-xs"
 			>
@@ -513,9 +485,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Keyboard focus
-	</h2>
+	<h2 class="eyebrow mt-12">Keyboard focus</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		Tab through these. The ring is white rather than an accent — it's chrome,
 		and it has to win on any surface. Applied globally, so it can't be forgotten
@@ -538,9 +508,7 @@
 		<a href="/dev/styleguide" class="text-sm underline">A link</a>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Media &amp; devices
-	</h2>
+	<h2 class="eyebrow mt-12">Media &amp; devices</h2>
 	<div class="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
 		<PlayerTile />
 		<div class="grid content-start gap-3">
@@ -566,9 +534,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Medal card
-	</h2>
+	<h2 class="eyebrow mt-12">Medal card</h2>
 	<div class="mt-4">
 		<MedalCard
 			medal={{

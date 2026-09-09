@@ -286,9 +286,7 @@
 
 <main class="mx-auto max-w-6xl px-6 py-12">
 	<p class="eyebrow">mock · #451</p>
-	<h1 class="font-display mt-2 text-3xl font-bold tracking-tight">
-		Chat as a place
-	</h1>
+	<h1 class="page-title mt-2">Chat as a place</h1>
 	<p class="text-muted mt-3 max-w-3xl text-sm">
 		Jan's report: unread in rooms you are not in should be visible, and a room's
 		chat should be readable without joining the room. Both shipped with Messages
@@ -299,9 +297,7 @@
 		one.
 	</p>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		1 · The messages place
-	</h2>
+	<h2 class="eyebrow mt-12">1 · The messages place</h2>
 	<p class="text-muted mt-2 max-w-3xl text-xs">
 		Rooms and DMs in one list, ordered by <code>orderThreads</code>: unread
 		first, then whoever spoke last, so a room is a thread like any other. The
@@ -325,9 +321,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		2 · A thread with no room connection
-	</h2>
+	<h2 class="eyebrow mt-12">2 · A thread with no room connection</h2>
 	<p class="text-muted mt-2 max-w-3xl text-xs">
 		The right-hand pane above, read closely. You are in the Sufferfest;
 		Schwitzchaste is somewhere else entirely, and you can still read it, react
@@ -359,9 +353,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		3 · The signal, seen from somewhere else
-	</h2>
+	<h2 class="eyebrow mt-12">3 · The signal, seen from somewhere else</h2>
 	<p class="text-muted mt-2 max-w-3xl text-xs">
 		Three surfaces answer “something was said in a room you are not looking at”,
 		and today they answer it differently.
@@ -481,9 +473,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		4 · The same states on a phone
-	</h2>
+	<h2 class="eyebrow mt-12">4 · The same states on a phone</h2>
 	<p class="text-muted mt-2 max-w-3xl text-xs">
 		Below <code>md</code> the list and the thread are two screens, because the
 		sidebar that normally holds the list has become a drawer. WATTROOM.md scopes
@@ -543,9 +533,7 @@
 		</div>
 	</div>
 
-	<h2 class="text-muted mt-12 text-xs tracking-[0.2em] uppercase">
-		Still open — this page decides none of these
-	</h2>
+	<h2 class="eyebrow mt-12">Still open — this page decides none of these</h2>
 	<ol class="mt-4 space-y-3">
 		{#each questions as question (question.q)}
 			<li class="border-muted/15 bg-surface rounded-lg border p-4">

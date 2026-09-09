@@ -264,7 +264,7 @@
 <svelte:head><title>Ramp test · WattRoom</title></svelte:head>
 
 <main class="page">
-	<h1 class="font-display text-3xl font-bold tracking-tight">Ramp test</h1>
+	<h1 class="page-title">Ramp test</h1>
 	<p class="text-muted mt-2 max-w-xl text-sm">
 		The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds
 		{RAMP.stepWatts} W every minute, and stops when you can't hold the step. Your

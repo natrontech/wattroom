@@ -94,10 +94,7 @@
 	class="border-muted/20 bg-surface-raised/60 w-full rounded-xl border p-2.5 backdrop-blur sm:p-3"
 >
 	<div class="mb-2 flex items-center justify-between px-1">
-		<span
-			class="text-muted font-display text-[10px] font-semibold tracking-[0.2em] uppercase"
-			>Tuesday crew · sweet spot</span
-		>
+		<span class="eyebrow font-display">Tuesday crew · sweet spot</span>
 		<span
 			class="text-watt glow-text font-display flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase"
 			><span class="live-dot h-1.5 w-1.5 rounded-full bg-current"

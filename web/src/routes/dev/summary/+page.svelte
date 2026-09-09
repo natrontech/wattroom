@@ -69,7 +69,7 @@
 				<div class="font-display text-3xl leading-none font-bold tabular-nums">
 					{stat.value}
 				</div>
-				<div class="text-muted mt-2 text-[10px] tracking-wider uppercase">
+				<div class="eyebrow mt-2">
 					{stat.label}
 				</div>
 			</div>
@@ -80,9 +80,7 @@
 		<div class="grid gap-3">
 			<!-- Time in zone -->
 			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					time in zone
-				</h2>
+				<h2 class="eyebrow">time in zone</h2>
 				<div class="mt-4 flex h-3 overflow-hidden rounded-full">
 					{#each zoneSeconds as seconds, zone (zone)}
 						{#if seconds > 0}
@@ -112,9 +110,7 @@
 
 			<!-- Power curve -->
 			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
-				<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-					power curve
-				</h2>
+				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-4 gap-3">
 					{#each curve as point (point.label)}
 						<div>
@@ -123,7 +119,7 @@
 							>
 								{point.watts}
 							</div>
-							<div class="text-muted mt-1 text-[10px] tracking-wider uppercase">
+							<div class="eyebrow mt-1">
 								{point.label}
 							</div>
 							{#if point.best}
@@ -141,9 +137,7 @@
 			<!-- XP + level + category, each traceable to a SPEC formula -->
 			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
 				<div class="flex items-baseline gap-3">
-					<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-						progress
-					</h2>
+					<h2 class="eyebrow">progress</h2>
 					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
 						>+{totalXp} XP</span
 					>
@@ -194,9 +188,7 @@
 		</div>
 
 		<div>
-			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">
-				your medal
-			</h2>
+			<h2 class="eyebrow">your medal</h2>
 			<div class="mt-3">
 				<MedalCard {medal} roomName={ROOM_NAME} />
 			</div>
