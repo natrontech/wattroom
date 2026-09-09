@@ -177,6 +177,7 @@
 				},
 			});
 			await next.start();
+			ridingSince = Date.now();
 			session = next;
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
@@ -310,11 +311,15 @@
 		const id = setInterval(() => (nowMs = Date.now()), 1000);
 		return () => clearInterval(id);
 	});
+	// From the start, not from the first sample (#1799): a trainer that
+	// streams frames without a power field never delivered one, and the ride
+	// used to run its full length with nothing on screen and "Nothing was
+	// recorded" at the end.
+	let ridingSince = 0;
 	const signalLost = $derived(
 		!!session &&
 			session.state !== 'done' &&
-			!!session.sample &&
-			nowMs - session.sample.at > SIGNAL_LOST_MS,
+			nowMs - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS,
 	);
 
 	// The block, derived once for both screens that draw it — the riding

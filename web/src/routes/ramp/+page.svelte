@@ -5,6 +5,7 @@
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import { describeBlock } from '$lib/room/view';
 	import Banner from '$lib/components/Banner.svelte';
+	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
@@ -428,12 +429,13 @@
 				{/snippet}
 			</RideHeader>
 
-			{#if signalLost}
-				<Banner tone="error"
-					>Trainer signal lost — reconnecting. Keep pedalling; the step resumes
-					the moment it is back, and the test will not end on the gap.</Banner
-				>
-			{/if}
+			<!-- The guard states and the dropout, as /ride says them (#1799):
+			     mid-ramp the resistance can vanish for ten seconds on purpose. -->
+			<RideStatus
+				{session}
+				{signalLost}
+				lost="Trainer signal lost — reconnecting. Keep pedalling; the step resumes the moment it is back, and the test will not end on the gap."
+			/>
 
 			<!-- Scaled to the test's own top, not the FTP it exists to correct
 			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->

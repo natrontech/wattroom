@@ -16,7 +16,10 @@
 	 * the screen a rider in a room gets.
 	 */
 	import Flag from '@lucide/svelte/icons/flag';
-	import Banner from '$lib/components/Banner.svelte';
+	import { FtmsTrainer } from '$lib/ble/ftms';
+	import RideStatus from '$lib/ride/RideStatus.svelte';
+	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
@@ -54,6 +57,9 @@
 		onFlag: () => void;
 		onTv: () => void;
 	} = $props();
+
+	// The trainer this ride holds, for the way back when it goes quiet.
+	const solo = soloTrainer();
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.
@@ -118,45 +124,29 @@
 		{/snippet}
 	</RideHeader>
 
-	<!-- Ride-critical states are persistent status, never toasts (.claude/rules/errors.md). -->
-	{#if session.state === 'autopaused'}
-		<div class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-5 py-3">
-			<p class="text-sm font-medium">Paused — you stopped pedalling</p>
-			<p class="text-muted text-xs">
-				Your targets are released and this time is excluded from your score.
-				Start pedalling to pick up where you left off.
-			</p>
-		</div>
-	{:else if session.state === 'resuming'}
-		<div
-			class="border-neon/40 bg-surface-raised mt-4 flex items-center gap-4 rounded-lg border px-5 py-3"
-		>
-			<span
-				class="text-watt glow-text-strong font-display text-3xl font-bold tabular-nums"
-				>{session.resumeIn}</span
-			>
-			<p class="text-sm">Picking back up — ease in.</p>
-		</div>
-	{:else if session.spiralActive}
-		<div
-			class="border-neon/40 bg-surface-raised mt-4 rounded-lg border px-5 py-3"
-		>
-			<p class="text-sm font-medium">Spiral guard</p>
-			<p class="text-muted text-xs">
-				Your cadence collapsed under the target, so it is released until you
-				spin back up. This is deliberate, not a dropout.
-			</p>
-		</div>
-	{/if}
-
-	{#if signalLost}
-		<div class="mt-4">
-			<Banner tone="error"
-				>Trainer signal lost — reconnecting. Keep pedalling; your targets resume
-				the moment it is back.</Banner
-			>
-		</div>
-	{/if}
+	<!-- Ride-critical states are persistent status, never toasts
+	     (.claude/rules/errors.md). When the trainer stays quiet the way back
+	     is a big button, not a banner to read (#1799): the same card the
+	     pre-ride grid draws, wired to the same trainer. -->
+	<RideStatus {session} {signalLost}>
+		{#snippet recover()}
+			<SensorOverview
+				compact
+				trainer={{
+					state: solo.state,
+					device: solo.trainer?.name,
+					reading: solo.reading,
+					hint:
+						solo.fault === 'silent'
+							? 'no watts yet — turn the cranks'
+							: undefined,
+					error: solo.error,
+					onPair: () => void solo.pair(new FtmsTrainer()),
+					onForget: () => solo.forget(),
+				}}
+			/>
+		{/snippet}
+	</RideStatus>
 
 	<!-- The focus slot takes the free height rather than sitting under the
 	     header with a screen of nothing below it (#1531: "two thirds empty"). -->

@@ -48,6 +48,8 @@ export function createRide(deps: RideDeps) {
 	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
 	let status = $state<TrainerStatus>('disconnected');
 	let lastSampleAt = $state(0);
+	/** The latest arbitrated reading, for the one screen that asks (#1799). */
+	let latest = $state<{ watts: number; cadence: number } | null>(null);
 	// The wall-clock second the guards last counted (#1798): they count
 	// seconds, and a trainer notifies more than once a second.
 	let guardSecond = -1;
@@ -190,6 +192,7 @@ export function createRide(deps: RideDeps) {
 		if (trainer) unpair();
 		error = null;
 		lastSampleAt = 0;
+		latest = null;
 		guardSecond = -1;
 		pairing = true;
 		unsubscribe.push(next.onStatus((s) => (status = s)));
@@ -205,6 +208,7 @@ export function createRide(deps: RideDeps) {
 						{ trainer: sample, sensors: sensors.readings },
 						sample.at,
 					);
+					latest = { watts: metrics.watts, cadence: metrics.cadence };
 					// Only while the room is actually asking something of this
 					// rider. With no target there is nothing to release, and a
 					// rider resting in a room between sessions is not "paused"
@@ -257,6 +261,7 @@ export function createRide(deps: RideDeps) {
 		error = null;
 		status = 'disconnected';
 		lastSampleAt = 0;
+		latest = null;
 	}
 	function stop() {
 		deps.live.finish();
@@ -280,6 +285,11 @@ export function createRide(deps: RideDeps) {
 		/** null while it is behaving; the room renders the rest (#520). */
 		get fault() {
 			return fault;
+		},
+		/** "210 W · 88 rpm" while the trainer reports; Settings › Equipment's proof it works. */
+		get reading(): string | undefined {
+			if (!latest || fault === 'silent') return undefined;
+			return `${Math.round(latest.watts)} W · ${Math.round(latest.cadence)} rpm`;
 		},
 		get bias() {
 			return bias;
