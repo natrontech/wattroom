@@ -88,9 +88,19 @@ export async function signIn(): Promise<{ me: Me } | { error: string }> {
 	return finish.ok ? { me: finish.data } : { error: finish.error.message };
 }
 
-export async function list(): Promise<Passkey[]> {
+/**
+ * The account's passkeys, or why they could not be read (#1827): a refused
+ * list used to come back as `[]`, and a rider with five passkeys read "add
+ * one" on a credential surface after a 500.
+ */
+export async function list(): Promise<{
+	keys: Passkey[];
+	error: string | null;
+}> {
 	const res = await api<{ passkeys?: Passkey[] }>('/api/me/passkeys');
-	return res.ok ? (res.data.passkeys ?? []) : [];
+	return res.ok
+		? { keys: res.data.passkeys ?? [], error: null }
+		: { keys: [], error: res.error.message };
 }
 
 export async function rename(id: string, name: string): Promise<string | null> {

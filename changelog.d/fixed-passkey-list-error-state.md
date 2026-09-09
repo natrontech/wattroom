@@ -1,0 +1,1 @@
+- The passkeys section in Settings now says when the list could not be loaded and offers a retry, instead of telling a rider with passkeys to "add one".
