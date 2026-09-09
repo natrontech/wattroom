@@ -1,1 +1,0 @@
-- On a phone, toasts drop from the top of the screen instead of rising over the jukebox's corner player and the floating buttons at the bottom.

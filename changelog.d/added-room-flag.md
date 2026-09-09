@@ -1,1 +1,0 @@
-- The ⚑ button now exists in a room, not only on a solo ride: one tap while you are riding sends your last two minutes of ride data and logs to the developers, so a problem that happens in a group session can finally be reported from the screen it happened on.

@@ -17,6 +17,28 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.80] - 2026-09-09
+
+### Added
+
+- The ⚑ button now exists in a room, not only on a solo ride: one tap while you are riding sends your last two minutes of ride data and logs to the developers, so a problem that happens in a group session can finally be reported from the screen it happened on.
+
+### Changed
+
+- Riding solo, riding in a room and taking a ramp test are the same screen now: all three say which block you are in and what is coming next with its target, show rpm, bpm and w/kg at a size you can read from the bike, name the power zone you are actually in, and draw the workout with your trace across it. The ramp test gains all of it — it never showed a heart rate it was recording the whole time — and its staircase now fits on the graph instead of running off the top.
+- Riding alone on the TV now shows what riding in a room shows: the block you are in and the one coming with its target, your rpm and bpm, and the zone you are riding at — the solo TV drew a watts number and a graph and nothing else. The roster column is simply absent when nobody else is riding.
+- A planned workout is drawn the same way everywhere: the room's next session and your own saved workouts now show the interval graph the curated shelf shows, with the zones it spends time in named beside it.
+
+### Fixed
+
+- A room-mate's view of your trophy case now counts only the medals you won in rooms you share with them, as the rider page already did; the lifetime tally told them you ride in rooms they cannot see. Dismissing a friend request can be undone from the toast, the friend-code door refuses after 20 asks in an hour, "this month" on a rider's page is counted in their own timezone, a friends-list entry says "online" rather than "riding" for a rider whose room you cannot see, two riders with the same display name no longer share the riding badge, and a right-click or long-press on a crew tile opens the rider's menu.
+- A sprint block in a solo workout now releases the trainer onto your sprint slope, the way an armed sprint in a room always has. It was commanding zero watts in ERG instead, so the one block that is supposed to be flat out was the one with no resistance at all.
+- On a phone, toasts drop from the top of the screen instead of rising over the jukebox's corner player and the floating buttons at the bottom.
+
+### Security
+
+- Mail: removing the email address from your account now mails that address first, the way replacing it does, so a stolen session cannot silence the alarms quietly; a room can only cause so much session mail an hour, and moving a plan to the time it already had mails nobody; a room or workout name can no longer write extra lines into a mail's subject or text; every member gets their own send budget so one slow delivery cannot starve the rest; reminders for a busy hour go out in parallel; the security alarm and the confirmation mail can ship from their own sender (`WATTROOM_ALERT_FROM`); the unsubscribe link keeps working even when the sending key is unset; a failed confirmation mail no longer counts against your hourly allowance and says so plainly; and the mail provider's replies stay out of the server log.
+
 ## [2026.09.79] - 2026-09-09
 
 ### Fixed
@@ -1608,7 +1630,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.79...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.80...HEAD
+[2026.09.80]: https://github.com/natrontech/wattroom/compare/2026.09.79...2026.09.80
 [2026.09.79]: https://github.com/natrontech/wattroom/compare/2026.09.78...2026.09.79
 [2026.09.78]: https://github.com/natrontech/wattroom/compare/2026.09.77...2026.09.78
 [2026.09.77]: https://github.com/natrontech/wattroom/compare/2026.09.76...2026.09.77
