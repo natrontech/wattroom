@@ -91,12 +91,18 @@ export function createSummary(deps: {
 				const kjTotal = Math.round(
 					deps.recording.samples.reduce((sum, s) => sum + s.watts, 0) / 1000,
 				);
+				// The big number is the medal's own metric or nothing (#1412):
+				// only Metronome is an execution score; Diesel is variability,
+				// Hammer 5 s w/kg, and neither is known here.
+				const scored = mine.kind === 'metronome';
 				medalBase = {
 					name: meta?.name ?? mine.kind,
 					criterion: meta?.criterion ?? '',
 					rider: deps.myName() ?? 'You',
-					value: String(Math.round(deps.myExecution() * 100)),
-					unit: '%',
+					value: scored
+						? String(Math.round(deps.myExecution() * 100))
+						: undefined,
+					unit: scored ? '%' : undefined,
 					kj: kjTotal,
 				};
 			});

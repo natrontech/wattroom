@@ -1,5 +1,8 @@
+import type { SprintState } from '$lib/protocol';
+import { serverNow } from '$lib/room/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
+import type { GuardPhase } from '$lib/workout/guards';
 
 /**
  * What the room says out loud (#834, #686). Riders are on a bike three metres
@@ -24,6 +27,10 @@ export interface SoundDeps {
 	 * as the thing that actually matters. Null when nothing is wrong.
 	 */
 	fault: () => string | null;
+	/** The armed sprint, from the tick — null or undefined when none. */
+	sprint: () => SprintState | null | undefined;
+	/** Your own ride guard: auto-pause and the resume countdown. */
+	guard: () => GuardPhase | undefined;
 }
 
 export function createRoomSounds(deps: SoundDeps) {
@@ -61,4 +68,63 @@ export function createRoomSounds(deps: SoundDeps) {
 		play(now ? 'fault' : 'recover'),
 	);
 	$effect(() => heardFault(deps.fault()));
+
+	// The sprint announces itself from here (#1412): the klaxon, the gun and
+	// the fanfare lived in the overlay only the Training place draws, so a
+	// rider on Chat or Members when the coach armed one heard nothing for all
+	// fifteen seconds — the one moment WATTROOM.md lets the app go loud.
+	// Timed on the server's clock, like the overlay and the ERG flip.
+	let sprintNow = $state(serverNow());
+	$effect(() => {
+		if (!deps.sprint()) return;
+		const id = setInterval(() => (sprintNow = serverNow()), 100);
+		return () => clearInterval(id);
+	});
+	let heardSprint: {
+		startsAtMs: number;
+		stage: string;
+		second: number;
+	} | null = null;
+	$effect(() => {
+		const sprint = deps.sprint();
+		if (!sprint) {
+			heardSprint = null;
+			return;
+		}
+		const now = sprintNow;
+		if (!heardSprint || heardSprint.startsAtMs !== sprint.startsAtMs) {
+			heardSprint = {
+				startsAtMs: sprint.startsAtMs,
+				stage: 'klaxon',
+				second: -1,
+			};
+			play('klaxon');
+		}
+		const heard = heardSprint;
+		if (now < sprint.startsAtMs) {
+			const left = Math.ceil((sprint.startsAtMs - now) / 1000);
+			if (left > 0 && left <= 2 && left !== heard.second) {
+				heard.second = left;
+				playCountdownTick(left);
+			}
+		} else if (now < sprint.endsAtMs) {
+			if (heard.stage === 'klaxon') {
+				heard.stage = 'live';
+				play('go');
+			}
+		} else if (heard.stage === 'live') {
+			heard.stage = 'podium';
+			play('fanfare');
+		}
+	});
+
+	// Your own guard (#1412): auto-pause is the state change the rider cannot
+	// see coming — it fires when they have stopped looking — and the resume
+	// countdown exists so picking up is not a jump-scare (docs/SPEC.md).
+	const heardGuard = changes<GuardPhase | undefined>((next, previous) => {
+		if (next === 'autopaused') play('block', -5);
+		else if (next === 'resuming') playCountdownTick(3);
+		else if (next === 'running' && previous === 'resuming') play('go');
+	});
+	$effect(() => heardGuard(deps.guard()));
 }

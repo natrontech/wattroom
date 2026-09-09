@@ -264,7 +264,6 @@
 		<!-- Live lifecycle: counts down, runs the 15 s window, lands on the
 		     podium — the real component, silenced for the gallery. -->
 		<SprintMoment
-			silent
 			myWatts={743}
 			sprint={{
 				startsAtMs: mountedAt + 5_000,
@@ -273,7 +272,6 @@
 			}}
 		/>
 		<SprintMoment
-			silent
 			myWatts={0}
 			sprint={{
 				startsAtMs: mountedAt - 20_000,
