@@ -1,9 +1,10 @@
 <script lang="ts">
 	import RoomStatus from '$lib/room/RoomStatus.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import GamePanel from '$lib/room/GamePanel.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
-	import type { SprintState } from '$lib/protocol';
+	import type { SprintState, GameState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
 	import type { Block, RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
@@ -29,6 +30,7 @@
 		workoutName = '',
 		playing = false,
 		sprint = null,
+		game = null,
 		onExit,
 	}: {
 		riders: RoomRider[];
@@ -45,6 +47,8 @@
 		playing?: boolean;
 		/** The armed sprint, drawn over the numbers — the TV had none. */
 		sprint?: SprintState | null;
+		/** The running game (#1589): a room on the TV saw the HUD through it. */
+		game?: GameState | null;
 		onExit: () => void;
 	} = $props();
 
@@ -83,6 +87,16 @@
 	{#if sprint}
 		<div class="absolute inset-x-[12vw] top-[14vh] z-10">
 			<SprintMoment {sprint} myWatts={you?.watts ?? 0} roster={riders} />
+		</div>
+	{:else if game}
+		<div class="absolute bottom-[10vh] left-[3vw] z-10 w-[42vw] min-w-[320px]">
+			<GamePanel
+				{game}
+				roster={riders}
+				canControl={false}
+				end={() => {}}
+				me={you?.id}
+			/>
 		</div>
 	{/if}
 	<button

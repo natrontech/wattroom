@@ -14,6 +14,7 @@
 	// pattern the room's other components follow.
 	import Banner from '$lib/components/Banner.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
+	import { DISCONNECT_GRACE_SECONDS, ELIMINATION_MODES } from '$lib/room/modes';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 
@@ -42,16 +43,21 @@
 	     "Lost the room" on every entry, which trains riders to ignore the one
 	     banner that must not be ignored (#1411). -->
 	{#if live.status === 'reconnecting'}
+		{@const droppedFor = droppedAt
+			? Math.round((Date.now() - droppedAt) / 1000)
+			: 0}
+		{@const game = live.tick?.game}
 		<div class="shrink-0 px-5 pt-4">
 			<!-- Past the backoff's settling point the banner turns to "lost" and
 			     grows the one big button (#1500). It dials now; it never reloads,
 			     which would drop the trainer's Bluetooth link mid-ride. -->
 			<FaultBanner
 				fault={{ kind: 'room', state: live.lost ? 'lost' : 'reconnecting' }}
-				bufferedSeconds={droppedAt
-					? Math.round((Date.now() - droppedAt) / 1000)
-					: 0}
+				bufferedSeconds={droppedFor}
 				onRecover={() => live.retry()}
+				note={game?.phase === 'running' && ELIMINATION_MODES.has(game.mode)
+					? `${Math.max(0, DISCONNECT_GRACE_SECONDS - droppedFor)} s of the game's disconnect grace left — your pedalling is buffered and counts when you're back.`
+					: undefined}
 			/>
 		</div>
 	{:else if rideCtl.guard !== 'running'}

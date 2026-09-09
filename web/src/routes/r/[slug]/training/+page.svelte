@@ -22,6 +22,7 @@
 	import { formatClock } from '$lib/format';
 	import { publishHud } from '$lib/hud/feed';
 	import { useRoom } from '$lib/room/context';
+	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/room/view';
 	import { serverNow } from '$lib/room/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -226,6 +227,7 @@
 					roster={roomConnection.current?.live.tick?.roster ?? []}
 					canControl={room.canControl}
 					end={() => room.control('game-end')}
+					me={account.me?.id}
 				/>
 			</section>
 		{:else if focus === 'media' && share}
