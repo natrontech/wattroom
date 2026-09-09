@@ -1,0 +1,1 @@
+- Home's *Around right now* no longer lists you as someone to join — a room where you stand alone reads as quiet, and the headline stops inviting you to join yourself.
