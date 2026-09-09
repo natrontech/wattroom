@@ -1,1 +1,0 @@
-- A ride's page now shows whether the ride is shared with your friends and flips it in one tap, and shows the ride's own best 5-second, 1-minute, 5-minute and 20-minute power, which was stored and exported but never displayed.
