@@ -111,6 +111,12 @@ export function placeMenu(
 
 /** Long-press on touch opens the same menu — right-click has no finger. */
 const LONG_PRESS_MS = 500;
+/**
+ * How far a pressing thumb may drift before it is a scroll, not a press
+ * (#1628): every touch moves a pixel or two over half a second, and a
+ * pointermove bound straight to cancel lost the menu to the first one.
+ */
+const LONG_PRESS_SLOP_PX = 10;
 
 /**
  * Attachment: `{@attach contextMenu(() => items)}`. The items are asked for
@@ -121,6 +127,7 @@ export function contextMenu(
 ): (node: HTMLElement) => () => void {
 	return (node) => {
 		let press: ReturnType<typeof setTimeout> | undefined;
+		let pressedAt = { x: 0, y: 0 };
 		const open = (x: number, y: number) => {
 			const list = items();
 			if (list.length === 0) return;
@@ -142,23 +149,31 @@ export function contextMenu(
 			// both timers ran and the ancestor's opened last — a long-press on the
 			// child silently gave you the parent's menu.
 			event.stopPropagation();
+			pressedAt = { x: event.clientX, y: event.clientY };
 			press = setTimeout(
 				() => open(event.clientX, event.clientY),
 				LONG_PRESS_MS,
 			);
 		};
 		const cancel = () => clearTimeout(press);
+		const onMove = (event: PointerEvent) => {
+			if (
+				Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) >
+				LONG_PRESS_SLOP_PX
+			)
+				cancel();
+		};
 		node.addEventListener('contextmenu', onContext);
 		node.addEventListener('pointerdown', onDown);
 		node.addEventListener('pointerup', cancel);
-		node.addEventListener('pointermove', cancel);
+		node.addEventListener('pointermove', onMove);
 		node.addEventListener('pointercancel', cancel);
 		return () => {
 			cancel();
 			node.removeEventListener('contextmenu', onContext);
 			node.removeEventListener('pointerdown', onDown);
 			node.removeEventListener('pointerup', cancel);
-			node.removeEventListener('pointermove', cancel);
+			node.removeEventListener('pointermove', onMove);
 			node.removeEventListener('pointercancel', cancel);
 			// Only a row that actually WENT AWAY takes its menu with it. A live
 			// row re-renders under an open menu constantly — the roster is

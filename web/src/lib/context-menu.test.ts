@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	closeMenu,
 	contextMenu,
@@ -80,6 +80,38 @@ describe('contextMenu', () => {
 		expect(event.defaultPrevented).toBe(false);
 		expect(menu.items).toHaveLength(0);
 		detach();
+	});
+});
+
+describe('long-press', () => {
+	function touch(node: HTMLElement, type: string, x: number, y: number) {
+		const event = new MouseEvent(type, {
+			bubbles: true,
+			clientX: x,
+			clientY: y,
+		});
+		Object.defineProperty(event, 'pointerType', { value: 'touch' });
+		node.dispatchEvent(event);
+	}
+
+	it('survives a thumb that drifts a few pixels, and yields to a scroll (#1628)', () => {
+		vi.useFakeTimers();
+		const node = document.createElement('div');
+		const detach = contextMenu(() => [
+			{ label: 'Message', onSelect: () => {} },
+		])(node);
+		touch(node, 'pointerdown', 30, 40);
+		touch(node, 'pointermove', 33, 42);
+		vi.advanceTimersByTime(600);
+		expect(menu.items).toHaveLength(1);
+		closeMenu();
+
+		touch(node, 'pointerdown', 30, 40);
+		touch(node, 'pointermove', 30, 70);
+		vi.advanceTimersByTime(600);
+		expect(menu.items).toHaveLength(0);
+		detach();
+		vi.useRealTimers();
 	});
 });
 
