@@ -108,7 +108,11 @@ type memberJSON struct {
 type medalJSON struct {
 	Kind      string `json:"kind"`
 	Rider     string `json:"rider"`
+	RiderID   string `json:"riderId"`
 	AwardedAt string `json:"awardedAt"`
+	// Epoch ms, so a client can ask "since this session started" without a
+	// date in anybody's zone (#1411).
+	AwardedAtMs int64 `json:"awardedAtMs"`
 }
 
 // riderPrefsJSON is what THIS rider has set for this room (#1100) — their

@@ -301,8 +301,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				for _, medal := range medals {
 					response.Medals = append(response.Medals, medalJSON{
-						Kind: medal.Kind, Rider: medal.DisplayName,
-						AwardedAt: medal.AwardedAt.Time.Format("2006-01-02"),
+						Kind: medal.Kind, Rider: medal.DisplayName, RiderID: store.UUIDString(medal.UserID),
+						AwardedAt:   medal.AwardedAt.Time.Format("2006-01-02"),
+						AwardedAtMs: medal.AwardedAt.Time.UnixMilli(),
 					})
 				}
 			}

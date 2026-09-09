@@ -520,7 +520,7 @@ func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]List
 }
 
 const listRoomMedals = `-- name: ListRoomMedals :many
-select m.kind, m.awarded_at, u.display_name
+select m.kind, m.awarded_at, m.user_id, u.display_name
 from medals m
 join users u on u.id = m.user_id
 where m.room_id = $1
@@ -536,9 +536,13 @@ type ListRoomMedalsParams struct {
 type ListRoomMedalsRow struct {
 	Kind        string
 	AwardedAt   pgtype.Timestamptz
+	UserID      pgtype.UUID
 	DisplayName string
 }
 
+// The rider's id and the moment travel with it (#1411): the client matched
+// its own medal by display name and a UTC date, which found nothing after
+// local midnight and could name the wrong rider.
 func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) ([]ListRoomMedalsRow, error) {
 	rows, err := q.db.Query(ctx, listRoomMedals, arg.RoomID, arg.Limit)
 	if err != nil {
@@ -548,7 +552,12 @@ func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) 
 	var items []ListRoomMedalsRow
 	for rows.Next() {
 		var i ListRoomMedalsRow
-		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.DisplayName); err != nil {
+		if err := rows.Scan(
+			&i.Kind,
+			&i.AwardedAt,
+			&i.UserID,
+			&i.DisplayName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
