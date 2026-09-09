@@ -13,6 +13,7 @@
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import CalendarFeed from '$lib/home/CalendarFeed.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -467,6 +468,10 @@
 							— it shows up here, and in everyone's calendar.
 						</p>
 					{/if}
+					<!-- Your own feed, under the list it mirrors (ADR-0021, #1374). -->
+					<div class="mt-3">
+						<CalendarFeed />
+					</div>
 				</section>
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
