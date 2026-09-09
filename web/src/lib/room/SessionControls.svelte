@@ -18,6 +18,7 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import Square from '@lucide/svelte/icons/square';
 	import Zap from '@lucide/svelte/icons/zap';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 
 	let { compact = false }: { compact?: boolean } = $props();
 
@@ -42,8 +43,21 @@
 <!-- A phone is a spectator, and the roles matrix gives a spectator none of
      these (docs/SPEC.md): picking a workout, starting, pausing, arming a
      sprint and ending all belong to the device the coach is riding on. Gated
-     with the pairing button, in one place each (#412). -->
+     with the pairing button, in one place each (#412). Every control here
+     is used while pedalling, so the non-compact row is 44 px too (#1592). -->
 {#if room.canControl && !device.spectator}
+	{#if room.game}
+		<!-- Ending a game must never depend on the game panel being drawn
+		     (#1586): Team Relay never ends itself, and this used to be the
+		     panel's button alone. -->
+		<button
+			onclick={() => room.control('game-end')}
+			title="End game"
+			aria-label="end the game"
+			class="btn btn-secondary {compact ? 'h-11 w-11 p-0' : 'btn-lg'}"
+			><Gamepad2 size={compact ? 18 : 15} />{#if !compact}End game{/if}</button
+		>
+	{/if}
 	{#if idle}
 		<button
 			onclick={() => room.openPicker()}
@@ -63,11 +77,11 @@
 				<button
 					onclick={() => room.control('sprint')}
 					disabled={!!room.sprint}
-					title="Sprint"
+					title={room.sprint ? 'A sprint is already running' : 'Sprint'}
 					aria-label="arm a sprint"
 					class="text-neon hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
 						? 'h-11 w-11'
-						: 'px-3 py-2'}"
+						: 'min-h-11 px-4'}"
 					><Zap size={compact ? 18 : 14} />{#if !compact}Sprint{/if}</button
 				>
 				<button
@@ -76,7 +90,7 @@
 					aria-label="pause the session"
 					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
-						: 'px-3 py-2'}"
+						: 'min-h-11 px-4'}"
 					><Pause size={compact ? 18 : 14} />{#if !compact}Pause{/if}</button
 				>
 			{:else if paused}
@@ -86,7 +100,7 @@
 					aria-label="resume the session"
 					class="hover:bg-surface-raised flex items-center justify-center gap-1.5 rounded text-sm {compact
 						? 'h-11 w-11'
-						: 'px-3 py-2'}"
+						: 'min-h-11 px-4'}"
 					><Play size={compact ? 18 : 14} />{#if !compact}Resume{/if}</button
 				>
 			{/if}

@@ -108,10 +108,20 @@ describe('gameCues', () => {
 			expect(gameCues(before, now, ME)).toEqual([]);
 		});
 
-		it('leaves Sprint Roulette alone — the klaxon owns that moment', () => {
-			const before = state({ mode: 'sprint-roulette', round: 1 });
-			const now = state({ mode: 'sprint-roulette', round: 2 });
-			expect(gameCues(before, now, ME)).toEqual([]);
+		it("sounds Sprint Roulette's klaxon when a window appears, and only then (#1587)", () => {
+			const quiet = state({ mode: 'sprint-roulette', round: 1 });
+			const armed = state({
+				mode: 'sprint-roulette',
+				round: 2,
+				roundEndsAtMs: 20_000,
+			});
+			expect(ids(gameCues(quiet, armed, ME))).toEqual(['klaxon']);
+			// The window is still up: no second klaxon on the next tick.
+			expect(gameCues(armed, armed, ME)).toEqual([]);
+			// The round number alone is not the klaxon.
+			expect(
+				gameCues(quiet, state({ mode: 'sprint-roulette', round: 2 }), ME),
+			).toEqual([]);
 		});
 	});
 

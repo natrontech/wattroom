@@ -75,7 +75,28 @@
 	const riding = $derived(room.riders.filter((r) => r.riding));
 </script>
 
-{#if room.phase === 'lounge'}
+{#if room.phase === 'lounge' && room.game}
+	<!-- A game with no workout session behind it (#1586): starting a game
+	     starts no timeline, so the phase stayed "lounge" and the panel below
+	     was unreachable — every mode was dead on screen while its cues
+	     played. A game is a session's peer (docs/SPEC.md's glossary), so it
+	     gets the place. -->
+	<div class="flex h-full min-h-0 flex-col">
+		<header class="flex flex-wrap items-center gap-3 px-6 py-3">
+			<p class="eyebrow">game</p>
+			{#if !room.trainer}<RoomSensorOverview compact />{/if}
+			<div class="ml-auto"><SessionControls compact /></div>
+		</header>
+		<section class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+			<GamePanel
+				game={room.game}
+				roster={roomConnection.current?.live.tick?.roster ?? []}
+				canControl={room.canControl && !device.spectator}
+				end={() => room.control('game-end')}
+			/>
+		</section>
+	</div>
+{:else if room.phase === 'lounge'}
 	<!-- Capability gating (ux.md): nothing to render until a session runs, so
 	     teach rather than show an empty instrument. -->
 	<div class="grid h-full place-items-center px-6">

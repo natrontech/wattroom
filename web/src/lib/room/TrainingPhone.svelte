@@ -108,9 +108,12 @@
 	<div class="min-h-0 flex-1 overflow-y-auto pb-20">
 		{#if focus === 'sprint' && room.sprint}
 			<section class="px-4">
+				<!-- Whose number this is: the followed rider's, like every other
+				     number on the phone (#1591) — a spectator's own 0 W used to
+				     glow "all out" for fifteen seconds. -->
 				<SprintMoment
 					sprint={room.sprint}
-					myWatts={room.you.watts}
+					myWatts={followed?.watts ?? room.you.watts}
 					roster={room.riders}
 				/>
 			</section>
