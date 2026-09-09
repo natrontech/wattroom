@@ -206,6 +206,38 @@ func TestAnUploaderReUploadingTheirOwnSongGetsTheSameRow(t *testing.T) {
 	}
 }
 
+// #1715: the audio directory is a volume the deployment has to persist, and
+// wattroom.ch's did not — every release left the rows behind with no bytes.
+// Re-uploading the file is the rider's repair and it did nothing: the
+// duplicate check handed back the broken row without ever writing.
+func TestReUploadingRestoresATrackWhoseFileWentMissing(t *testing.T) {
+	h := setup(t)
+	data := song(12, 383)
+	track := h.upload(t, "alice", data, "Lost.mp3")
+	id, _ := track["id"].(string)
+	sha := Address(data)
+	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove the blob: %v", err)
+	}
+
+	w := h.do(t, "alice", http.MethodPost, "/api/tracks?name=Lost.mp3", data)
+	if w.Code != http.StatusOK {
+		t.Fatalf("re-upload: %d %s", w.Code, w.Body.String())
+	}
+	if decode(t, w)["id"] != id {
+		t.Errorf("the repair made a second row")
+	}
+	// The row is only repaired if it plays again — that is the whole symptom.
+	played := h.do(t, "alice", http.MethodGet, "/api/tracks/"+id+"/audio", nil)
+	if played.Code != http.StatusOK {
+		t.Fatalf("play after re-upload = %d, want 200", played.Code)
+	}
+	if got := played.Body.Len(); got != len(data) {
+		t.Errorf("served %d bytes, uploaded %d", got, len(data))
+	}
+}
+
 func TestAudioIsSignedInOnlyAndSeekable(t *testing.T) {
 	h := setup(t)
 	data := song(3, 383)
