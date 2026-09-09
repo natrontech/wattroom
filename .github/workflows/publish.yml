@@ -46,6 +46,27 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # A named volume takes its ownership from the image path it covers, so
+      # /data/tracks and /data/feedback have to exist in the image and belong
+      # to the uid the server runs as. Without them a mounted volume is
+      # created root-owned and every write into it fails at runtime, on a
+      # container that starts and answers /api/healthz — which is why this is
+      # checked against the built image rather than reviewed in the Dockerfile
+      # (#1730: it went unnoticed in production for ten days).
+      - name: a fresh volume belongs to the app's uid
+        run: |
+          image=ghcr.io/${{ github.repository }}:${{ github.sha }}
+          docker volume create probe-volume >/dev/null
+          # Creating the container is what initialises the volume; the
+          # entrypoint never has to run, and must not — it wants a database.
+          docker run --rm --entrypoint /nonexistent -v probe-volume:/data/tracks "$image" || true
+          owner=$(docker run --rm -v probe-volume:/probe alpine stat -c '%u:%g' /probe)
+          docker volume rm probe-volume >/dev/null
+          if [ "$owner" != "65532:65532" ]; then
+            echo "a fresh volume came out owned by $owner — the server runs as 65532 and cannot write to it"
+            exit 1
+          fi
+
       # Last, so a release never names an image that failed to push. The notes
       # are the CHANGELOG section this tag was cut with (`make release` writes
       # it before tagging), so the Release and the file cannot disagree — and
