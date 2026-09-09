@@ -237,9 +237,9 @@ func exportFailure(err error) string {
 	var refused *uploadRefused
 	switch {
 	case errors.Is(err, errToken):
-		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Your data, then retry."
+		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Profile, then retry."
 	case errors.As(err, &refused) && (refused.status == http.StatusUnauthorized || refused.status == http.StatusForbidden):
-		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Your data, then retry."
+		return "Strava no longer accepts WattRoom's sign-in for you — reconnect Strava in Settings › Profile, then retry."
 	case errors.As(err, &refused) && refused.status < 500:
 		return "Strava did not accept the file — retry, or export the .fit and upload it by hand."
 	default:

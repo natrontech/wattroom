@@ -12,11 +12,12 @@ export interface ServerRide extends RideRecord {
 
 export const load: PageLoad = async ({ fetch }) => {
 	const [ridesResult, progressionResult] = await Promise.all([
-		loadApi<{ rides: ServerRide[] }>(fetch, '/api/rides'),
+		loadApi<{ rides: ServerRide[]; more?: boolean }>(fetch, '/api/rides'),
 		fetchProgression(fetch),
 	]);
 	return {
 		rides: ridesResult.ok ? ridesResult.data.rides : null,
+		more: ridesResult.ok ? !!ridesResult.data.more : false,
 		ridesError: ridesResult.ok ? null : ridesResult.error.message,
 		progression: progressionResult.ok ? progressionResult.data : null,
 		progressionError: progressionResult.ok
@@ -27,6 +28,8 @@ export const load: PageLoad = async ({ fetch }) => {
 
 export type HistoryPageData = {
 	rides: ServerRide[] | null;
+	/** The server has older rides than the page holds (#1549). */
+	more: boolean;
 	ridesError: string | null;
 	progression: Progression | null;
 	progressionError: string | null;

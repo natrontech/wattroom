@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -133,6 +134,37 @@ func rideBody(seconds, watts int) string {
 	return fmt.Sprintf(
 		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":%d,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
 		seconds, start.Format(time.RFC3339), strings.Join(samples, ","))
+}
+
+// The list is paged by start (#1549): the second page begins strictly
+// before the oldest row the client holds.
+func TestRideListPagesByStart(t *testing.T) {
+	h := setup(t)
+	for range 3 {
+		if status, _ := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200)); status != http.StatusCreated {
+			t.Fatalf("save: %d", status)
+		}
+	}
+	status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
+	rides, _ := body["rides"].([]any)
+	if status != http.StatusOK || len(rides) != 3 || body["more"] != false {
+		t.Fatalf("first page: %d %v", status, body)
+	}
+	newest, _ := rides[0].(map[string]any)
+	newestStart, _ := newest["startedAt"].(string)
+	status, body = call(t, h.mux, "alice", http.MethodGet, "/api/rides?before="+url.QueryEscape(newestStart), "")
+	older, _ := body["rides"].([]any)
+	if status != http.StatusOK || len(older) != 2 {
+		t.Fatalf("page before the newest: %d %v", status, body)
+	}
+	for _, row := range older {
+		if fields, _ := row.(map[string]any); fields["id"] == newest["id"] {
+			t.Fatalf("the newest ride came back on the page before it")
+		}
+	}
+	if status, body = call(t, h.mux, "alice", http.MethodGet, "/api/rides?before=yesterday", ""); status != http.StatusBadRequest || body["error"] != "validation_error" {
+		t.Fatalf("garbage before: %d %v", status, body)
+	}
 }
 
 func TestSoloRideSaveAndList(t *testing.T) {

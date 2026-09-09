@@ -9,9 +9,12 @@ returning id;
 
 -- name: ListUserRides :many
 -- Summary only: the blob stays on disk unless a single ride is opened.
+-- Paged by start (#1549): `before` is the oldest row the caller has, or
+-- null for the first page.
 select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
 from rides
 where user_id = $1
+  and (sqlc.narg('before')::timestamptz is null or started_at < sqlc.narg('before')::timestamptz)
 order by started_at desc
 limit $2;
 

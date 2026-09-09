@@ -42,7 +42,11 @@ func TestExportOwnerGetsValidFIT(t *testing.T) {
 	if got := w.Header().Get("Content-Type"); got != "application/vnd.ant.fit" {
 		t.Fatalf("content type = %q", got)
 	}
-	if w.Header().Get("Content-Disposition") == "" || w.Header().Get("Cache-Control") != "private, no-store" {
+	// Named by the day and the workout (#1549), never by the uuid.
+	if cd := w.Header().Get("Content-Disposition"); !strings.HasSuffix(cd, `-openers.fit"`) || !strings.Contains(cd, "wattroom-20") {
+		t.Fatalf("export filename: %q", cd)
+	}
+	if w.Header().Get("Cache-Control") != "private, no-store" {
 		t.Fatalf("download headers missing: %v", w.Header())
 	}
 	data, err := io.ReadAll(w.Body)
