@@ -67,3 +67,29 @@ export function dividerDrag(grip: HTMLElement, divider: Divider): () => void {
 export function clampSize(size: number, min: number, max: number): number {
 	return Math.round(Math.max(min, Math.min(max, size)));
 }
+
+/**
+ * A divider on a column's own edge: the grip's parent is the pane, and its
+ * CSS min/max width are the bounds. `sign` is -1 for a column right of its
+ * grip (the room's panel), 1 for one left of it (the sidebar).
+ */
+export function edgeDivider(
+	grip: HTMLElement,
+	sign: 1 | -1 = 1,
+): (() => void) | undefined {
+	const pane = grip.parentElement;
+	if (!pane) return;
+	return dividerDrag(grip, {
+		axis: 'x',
+		sign,
+		from: () => pane.offsetWidth,
+		to: (width) => {
+			const style = getComputedStyle(pane);
+			pane.style.width = `${clampSize(
+				width,
+				parseFloat(style.minWidth) || 0,
+				parseFloat(style.maxWidth) || window.innerWidth,
+			)}px`;
+		},
+	});
+}
