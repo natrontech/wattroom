@@ -40,7 +40,7 @@ export function keptMillis(clip: Clip): number {
 export const MIN_PADS = 9;
 
 /** The server's sanity bound on a pad number — not a product ceiling. */
-export const MAX_PAD = 999;
+const MAX_PAD = 999;
 
 let clips = $state<Clip[]>([]);
 let used = $state(0);

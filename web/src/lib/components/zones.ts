@@ -8,7 +8,7 @@ import type { Segment, WorkoutStep } from '$lib/workout/types';
 export const CEILING = 1.5;
 
 /** Upper bound of Z1–Z6 as FTP fractions (Z7 is open-ended). */
-export const ZONE_TOPS = [0.55, 0.75, 0.9, 1.05, 1.2, 1.5];
+const ZONE_TOPS = [0.55, 0.75, 0.9, 1.05, 1.2, 1.5];
 
 export const ZONE_NAMES = [
 	'',
