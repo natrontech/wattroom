@@ -1,1 +1,0 @@
-- A rider who stepped away now shows as away in the sidebar and the messages list too, not only on their tile in the room; link-preview cards are rendered once and served from memory, and one address can ask for at most thirty room cards a minute.

@@ -1,1 +1,0 @@
-- A ride exported to Strava now reads "On Strava as activity 20104517199." — it used to run the words together as "On Stravaas activity".
