@@ -439,6 +439,7 @@
 				send={live.jukebox}
 				refusal={live.jukeboxRefusal}
 				slug={props.slug}
+				targetRpm={live.tick?.state?.targetRpm ?? 0}
 			/>
 		{/snippet}
 	</SidePanel>

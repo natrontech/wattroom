@@ -144,6 +144,11 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		entry.Title = clip(cmd.Title, 200)
 		entry.Artist = clip(cmd.Artist, 200)
 		entry.StartSec = clampSec(cmd.PositionSec)
+		// Display only (#1431): the tracks table caps bpm at 399, and a
+		// value outside that is a client guessing, not a tag.
+		if cmd.Bpm > 0 && cmd.Bpm < 400 {
+			entry.Bpm = cmd.Bpm
+		}
 		return entry, true, ""
 	}
 

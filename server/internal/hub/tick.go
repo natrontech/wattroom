@@ -114,6 +114,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// Resolved before the drain so a transition's own line rides the tick
 		// that carries the transition, not the one after it.
 		state := rm.session.state(now())
+		// After state() has promoted a finished countdown: mood() never
+		// advances anything, and running is the only phase with a block.
+		state.TargetRpm = rm.session.mood(now()).TargetRPM()
 		rm.sayPhaseLocked(state, now())
 		// Whoever has been gone longer than the grace window (#984). The tick
 		// is the room's only clock, and the line has to be resolved before the

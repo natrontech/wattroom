@@ -12,6 +12,7 @@
 	import ListMusic from '@lucide/svelte/icons/list-music';
 	import type { JukeboxEntry } from '$lib/protocol';
 	import type { SaveTarget } from '$lib/room/playlists.svelte';
+	import { fitsCadence } from '$lib/room/cadence-fit';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 
 	// One track in the playlist (#286) — the same row for what's next and for
@@ -26,6 +27,7 @@
 		onRequeue,
 		saveTargets = [],
 		onSave,
+		targetRpm = 0,
 	}: {
 		entry: JukeboxEntry;
 		/** 1-based slot in "up next"; absent in history. */
@@ -42,7 +44,11 @@
 		 *  and the rider's own. Empty offers one disabled line saying so. */
 		saveTargets?: SaveTarget[];
 		onSave?: (target: SaveTarget) => void;
+		/** The rpm the running block asks for (#1431); 0 outside a session. */
+		targetRpm?: number;
 	} = $props();
+
+	const fits = $derived(fitsCadence(entry.bpm, targetRpm));
 
 	const votes = $derived(entry.voters?.length ?? 0);
 	const mine = $derived(!!myId && !!entry.voters?.includes(myId));
@@ -157,6 +163,13 @@
 					{entry.artist} · {entry.addedBy}
 				{:else}
 					{entry.addedBy}
+				{/if}
+				{#if entry.bpm}
+					<!-- Tempo, and whether it fits the block (#1431): the mark is
+					     live data — it follows the timeline — so it takes the
+					     watt hue, the number stays quiet. -->
+					· <span class="font-mono tabular-nums">{entry.bpm} bpm</span>
+					{#if fits}<span class="text-watt">· fits the block</span>{/if}
 				{/if}
 			</p>
 		</div>

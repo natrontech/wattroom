@@ -194,13 +194,19 @@
 		);
 	}
 
-	function queue(track: { id: string; title: string; artist?: string }) {
+	function queue(track: {
+		id: string;
+		title: string;
+		artist?: string;
+		bpm?: number;
+	}) {
 		if (!room) return;
 		room.live.jukebox({
 			action: 'add',
 			trackId: track.id,
 			title: track.title,
 			artist: track.artist,
+			bpm: track.bpm,
 		});
 		toasts.push(`Queued “${track.title}”.`);
 	}

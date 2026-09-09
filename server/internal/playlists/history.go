@@ -74,7 +74,7 @@ func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug str
 		// explained after the fact, so the weight is said here or nowhere.
 		s.log.Debug("smart shuffle picked", "room", slug, "track", id, "weight", t.Weight, "targetRpm", rpm)
 		cmds = append(cmds, protocol.JukeboxCommand{
-			Action: "add", TrackID: id, Title: t.Title, Artist: t.Artist,
+			Action: "add", TrackID: id, Title: t.Title, Artist: t.Artist, Bpm: int(t.Bpm),
 		})
 	}
 	return cmds

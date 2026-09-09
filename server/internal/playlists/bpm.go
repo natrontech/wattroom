@@ -42,37 +42,11 @@ const (
 	tagBoost = 1.5
 )
 
-// targetCadence is the rpm the room is turning during this block, and whether
-// anything is worth matching to.
-//
-// A block that names a cadence band IS the answer — that band is the work
-// (#66, "ERG holds the watts, the rpm is the workout"), so the midpoint wins
-// over any guess from effort. Only 2 of the 28 library workouts carry one,
-// which is why the effort fallback exists at all rather than the feature
-// sitting idle on 26 of them.
-//
-// The effort tiers below are the one genuinely invented thing in this file:
-// riders self-select a higher cadence as intensity rises, and these are that
-// curve at four points. They are in docs/SPEC.md, marked as defaults.
+// targetCadence is hub.SessionMood.TargetRPM as the float the query takes
+// (#1431 moved the rule into the hub, where the tick also reads it).
 func targetCadence(mood hub.SessionMood) (rpm float64, ok bool) {
-	switch {
-	case mood.CadenceLow > 0 && mood.CadenceHigh > 0:
-		return float64(mood.CadenceLow+mood.CadenceHigh) / 2, true
-	case mood.CadenceLow > 0:
-		return float64(mood.CadenceLow), true
-	case mood.CadenceHigh > 0:
-		return float64(mood.CadenceHigh), true
-	case mood.TargetPct <= 0:
-		// Nothing running, or a block with no fraction that describes the
-		// room (absolute watts, a sprint). No preference.
-		return 0, false
-	case mood.TargetPct <= 0.55:
-		return 80, true // recovery
-	case mood.TargetPct <= 0.75:
-		return 85, true // endurance and tempo
-	case mood.TargetPct <= 0.90:
-		return 90, true // sweet spot and threshold
-	default:
-		return 95, true // VO₂ and above
+	if r := mood.TargetRPM(); r > 0 {
+		return float64(r), true
 	}
+	return 0, false
 }
