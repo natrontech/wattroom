@@ -86,6 +86,8 @@ export interface Room {
 	/** The outsider's two facts (#1236): does the door open, are you in the crew. */
 	canEnter?: boolean;
 	inCrew?: boolean;
+	/** Removed, at either level (audit 2026-09-09) — the door says so. */
+	banned?: boolean;
 	members?: Member[];
 	/** Open to its crew (ADR-0038); members only, absent = shut. */
 	crewVisible?: boolean;

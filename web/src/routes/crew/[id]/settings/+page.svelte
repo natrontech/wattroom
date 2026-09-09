@@ -5,6 +5,7 @@
 	// to share, so its one home is the crew page. Every control saves on
 	// change — no form, no save button (the room settings' rule).
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
@@ -26,6 +27,7 @@
 	let error = $state<string | null>(untrack(() => data.error));
 	let busy = $state(false);
 	let name = $state(untrack(() => data.crew?.name ?? ''));
+	let nameError = $state<string | null>(null);
 	// The browser caches the picture's URL; a bump after each change makes
 	// the preview here reflect the upload without a reload.
 	let bump = $state(0);
@@ -44,9 +46,30 @@
 		presence.reload();
 	}
 
+	// The first load failed: ask again, from the id in the address — there
+	// is no crew to reload from yet (errors.md: error-with-retry).
+	async function retry() {
+		error = null;
+		const res = await fetchCrew(page.params.id ?? '');
+		if (!res.ok) {
+			error = res.error.message;
+			return;
+		}
+		crew = res.data;
+		name = res.data.name;
+	}
+
 	async function saveName() {
 		const next = name.trim();
-		if (!crew || !next || next === crew.name) return;
+		nameError = null;
+		if (!crew) return;
+		if (!next) {
+			// Said under the field, not swallowed: an emptied box used to
+			// stay empty with no word on why nothing saved (audit 2026-09-09).
+			nameError = 'A crew needs a name.';
+			return;
+		}
+		if (next === crew.name) return;
 		busy = true;
 		const res = await renameCrew(crew.id, next);
 		busy = false;
@@ -107,7 +130,14 @@
 
 <main class="page">
 	{#if error}
-		<Banner>{error}</Banner>
+		<Banner tone="error">
+			{error}
+			{#snippet action()}
+				<button onclick={() => void retry()} class="btn-link text-xs"
+					>Retry</button
+				>
+			{/snippet}
+		</Banner>
 	{:else if !crew}
 		<Skeleton class="h-8 w-48" />
 		<Skeleton class="mt-6 h-40" />
@@ -138,8 +168,12 @@
 					onchange={saveName}
 					disabled={busy}
 					maxlength="60"
+					aria-invalid={nameError ? 'true' : undefined}
 					class="input mt-1 w-full"
 				/>
+				{#if nameError}<span class="text-danger mt-1 block text-xs"
+						>{nameError}</span
+					>{/if}
 			</label>
 
 			<div class="mt-5">

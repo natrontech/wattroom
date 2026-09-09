@@ -14,6 +14,7 @@
 	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
+	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -66,10 +67,19 @@
 		if (id && loaded) void load(id);
 	});
 
+	// The sidebar is in this crew while you are on its page (ADR-0020
+	// amended, rule 1): the header names where you are, not the crew you
+	// last picked.
+	$effect(() => {
+		if (crew) chosenCrew.set(crew.id);
+	});
+
 	const administers = $derived(
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
 	const owner = $derived(crew?.role === 'owner');
+	// The crew's size, not the length of the list you may see (#1135).
+	const members = $derived(crew?.members ?? crew?.people.length ?? 0);
 
 	// Leaving the crew (#1228, #1236): one call takes the membership and every
 	// room of the crew you were in. Refused up front when you own a room here:
@@ -86,7 +96,7 @@
 			!!crew?.people.find((p) => p.id === account.me?.id)?.ownsRoom,
 	);
 	async function leaveCrew() {
-		if (!crew || ownsRoomHere) return;
+		if (!crew || owner || ownsRoomHere) return;
 		busy = true;
 		await leaveCrewFlow(crew);
 		busy = false;
@@ -125,9 +135,7 @@
 				</h1>
 				<p class="text-muted text-sm">
 					{crew.rooms.length === 1 ? '1 room' : `${crew.rooms.length} rooms`}
-					· {crew.people.length === 1
-						? '1 person'
-						: `${crew.people.length} people`}
+					· {members === 1 ? '1 person' : `${members} people`}
 					{#if owner}
 						· yours
 					{:else if crew.role === 'admin'}
@@ -185,36 +193,38 @@
 		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
 		<CrewPeople {crew} onchange={() => void load(id)} />
 
-		{#if !owner}
-			<!-- The way out (#1228): the one thing a member can do to the crew.
-			     Crew membership follows room membership, so it says exactly
-			     what it does, and the danger token sits last (ux.md). -->
-			<h2 class="eyebrow mt-8">leave</h2>
-			<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
-				<p class="text-muted min-w-0 flex-1 text-xs">
-					{#if ownsRoomHere}
-						You own {ownedHere.length === 1
-							? ownedHere[0].name
-							: ownedHere.length
-								? `${ownedHere.length} rooms`
-								: 'a room'} here, and a room never leaves its crew — hand {ownedHere.length ===
-						1
-							? 'it'
-							: 'them'} to a member first, then leave.
-					{:else if myRooms.length}
-						Leaving takes you out of {crew.name} and the {myRooms.length === 1
-							? 'room'
-							: `${myRooms.length} rooms`} of it you are in. The code gets you back.
-					{:else}
-						Leaving takes you out of {crew.name}. The code gets you back.
-					{/if}
-				</p>
-				<button
-					onclick={leaveCrew}
-					disabled={busy || ownsRoomHere}
-					class="btn btn-danger btn-xs shrink-0">Leave the crew</button
-				>
-			</div>
-		{/if}
+		<!-- The way out (#1228): the one thing a member can do to the crew. It
+		     says exactly what it does, and the danger token sits last (ux.md).
+		     The owner sees it disabled with the route out (docs/SPEC.md's
+		     matrix: hand the crew on first) rather than nothing at all. -->
+		<h2 class="eyebrow mt-8">leave</h2>
+		<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+			<p class="text-muted min-w-0 flex-1 text-xs">
+				{#if owner}
+					You own {crew.name} — hand it to someone in the people list first, then
+					leave.
+				{:else if ownsRoomHere}
+					You own {ownedHere.length === 1
+						? ownedHere[0].name
+						: ownedHere.length
+							? `${ownedHere.length} rooms`
+							: 'a room'} here, and a room never leaves its crew — hand {ownedHere.length ===
+					1
+						? 'it'
+						: 'them'} to a member first, then leave.
+				{:else if myRooms.length}
+					Leaving takes you out of {crew.name} and the {myRooms.length === 1
+						? 'room'
+						: `${myRooms.length} rooms`} of it you are in. The code gets you back.
+				{:else}
+					Leaving takes you out of {crew.name}. The code gets you back.
+				{/if}
+			</p>
+			<button
+				onclick={leaveCrew}
+				disabled={busy || owner || ownsRoomHere}
+				class="btn btn-danger btn-xs shrink-0">Leave the crew</button
+			>
+		</div>
 	{/if}
 </main>

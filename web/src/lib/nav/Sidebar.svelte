@@ -14,6 +14,7 @@
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
+	import { chosenCrew } from './chosen-crew.svelte';
 	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -32,8 +33,6 @@
 		crewsOf,
 		currentCrew,
 		reachable,
-		readChosenCrew,
-		rememberChosenCrew,
 		sidebarGroups,
 	} from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
@@ -98,13 +97,13 @@
 	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one
 	// crew's rooms at a time, chosen here and remembered, with the room you
 	// are standing in pinned above the list when it belongs to another crew.
-	let chosen = $state(readChosenCrew());
 	const crews = $derived(crewsOf(rooms));
-	const crew = $derived(currentCrew(crews, chosen, rooms, connectedSlug));
+	const crew = $derived(
+		currentCrew(crews, chosenCrew.id, rooms, connectedSlug),
+	);
 	const groups = $derived(sidebarGroups(rooms, crew, connectedSlug));
 	function pick(id: string) {
-		chosen = id;
-		rememberChosenCrew(id);
+		chosenCrew.set(id);
 	}
 	// The + beside rooms opens the open/join forms in a sheet (#1199).
 	let opening = $state(false);

@@ -123,4 +123,9 @@ describe('creationCrew', () => {
 	it('is null before the room list has landed', () => {
 		expect(creationCrew([], 'c1')).toBeNull();
 	});
+	it('lands in the crew whose page asked, before it has any rooms (audit 2026-09-09)', () => {
+		const empty = { id: 'c9', name: 'Brand new', role: 'owner' as const };
+		expect(creationCrew(openableCrews(crews), undefined, empty)?.id).toBe('c9');
+		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');
+	});
 });

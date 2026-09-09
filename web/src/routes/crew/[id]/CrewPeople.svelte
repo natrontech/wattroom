@@ -227,7 +227,10 @@
 				</span>
 				<!-- Two controls in two places, never one (#1150): this lifts
 						     the CREW ban and names what it does not reach. -->
-				<span class="flex shrink-0 flex-col items-end gap-0.5">
+				<!-- min-w-0, not shrink-0: a sixty-character crew name in the
+				     button pushed the page sideways at 375px (audit 2026-09-09);
+				     the row above already names the crew. -->
+				<span class="flex min-w-0 flex-col items-end gap-0.5 text-right">
 					<button
 						onclick={() =>
 							act(
@@ -236,7 +239,7 @@
 								`${person.displayName} is back in the crew.`,
 							)}
 						disabled={busy}
-						class="btn btn-ghost btn-xs">Unban from {crew.name}</button
+						class="btn btn-ghost btn-xs">Unban</button
 					>
 					<span class="text-muted/70 text-[11px]"
 						>restores nothing a room's owner decided</span
