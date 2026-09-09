@@ -26,6 +26,7 @@
 	const id = $derived(page.params.id ?? '');
 	let crew = $state<Crew | null>(untrack(() => data.crew));
 	let error = $state<string | null>(untrack(() => data.error));
+	let errorCode = $state<string | null>(untrack(() => data.errorCode));
 	let loadedId = $state<string | null>(untrack(() => data.id));
 	let busy = $state(false);
 
@@ -35,7 +36,10 @@
 			// Only a first load fails loudly: this also runs on every lobby
 			// ping, and one hiccup must not replace the page you are reading
 			// with a sentence (the room layout draws the same line).
-			if (!crew) error = res.error.message;
+			if (!crew) {
+				error = res.error.message;
+				errorCode = res.error.error;
+			}
 			return;
 		}
 		error = null;
@@ -48,6 +52,7 @@
 		if (data.id === which) {
 			crew = data.crew;
 			error = data.error;
+			errorCode = data.errorCode;
 			loadedId = which;
 			return;
 		}
@@ -108,7 +113,16 @@
 </svelte:head>
 
 <main class="page">
-	{#if error}
+	{#if error && errorCode === 'not_found'}
+		<!-- Permanent: not a crew of yours, or none at all. A Retry here
+		     answered the same sentence forever (#1677). -->
+		<Banner tone="error">
+			{error}
+			{#snippet action()}
+				<a href="/home" class="btn-link text-xs">Home</a>
+			{/snippet}
+		</Banner>
+	{:else if error}
 		<Banner tone="error">
 			{error}
 			{#snippet action()}

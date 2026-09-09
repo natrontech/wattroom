@@ -8,5 +8,6 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		id: params.id,
 		crew: res.ok ? res.data : null,
 		error: res.ok ? null : res.error.message,
+		errorCode: res.ok ? null : res.error.error,
 	} satisfies CrewPageData;
 };

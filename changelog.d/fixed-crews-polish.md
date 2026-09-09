@@ -1,0 +1,1 @@
+- The sidebar's rooms list says what a room is and how the first one gets opened when a crew has none yet, and a crew page you cannot see offers the way home instead of a Retry that could never succeed.
