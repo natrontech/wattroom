@@ -157,7 +157,7 @@ is refused at validation — a workout must not fight a safety feature.
 }
 ```
 
-Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. `freeride` step type for slope-mode segments comes with game modes.
+Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead of `target`. `freeride` step type for slope-mode segments comes with game modes. A `ramp` step (`from`/`to`, the editor's) is a mid-workout ramp between two fractions — the same shape as `warmup`/`cooldown`, interpolated per second and unscored like them (#1709).
 
 `repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
 

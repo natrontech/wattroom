@@ -125,7 +125,7 @@ func TargetAt(segments []Segment, ftp float64, second int) (watts float64, score
 				return seg.Watts, true
 			}
 			return seg.Target * ftp, true
-		case "warmup", "cooldown":
+		case "warmup", "cooldown", "ramp":
 			return seg.rampPct(second) * ftp, false
 		default:
 			return 0, false
@@ -134,9 +134,12 @@ func TargetAt(segments []Segment, ftp float64, second int) (watts float64, score
 	return 0, false
 }
 
-// rampPct is a warmup's or cooldown's fraction of FTP at one second — the
-// only place the ramp is interpolated, so TargetAt and SegmentAt cannot
-// drift apart on it.
+// rampPct is a warmup's, cooldown's or mid-workout ramp's fraction of FTP
+// at one second — the only place the ramp is interpolated, so TargetAt and
+// SegmentAt cannot drift apart on it. The editor's "ramp" type (#1709) used
+// to fall through to "no target": the live meter scored nothing for it and
+// the jukebox saw no cadence preference through it, while the web engine
+// ramped it. Unscored, like the two SPEC names — a ramp asks for effort.
 func (s Segment) rampPct(second int) float64 {
 	progress := float64(second-s.Start) / float64(s.Seconds)
 	return s.From + (s.To-s.From)*progress
@@ -160,7 +163,7 @@ func SegmentAt(segments []Segment, second int) (seg Segment, pct float64, ok boo
 				return s, 0, true
 			}
 			return s, s.Target, true
-		case "warmup", "cooldown":
+		case "warmup", "cooldown", "ramp":
 			return s, s.rampPct(second), true
 		default:
 			return s, 0, true

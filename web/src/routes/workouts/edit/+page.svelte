@@ -15,9 +15,11 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
-	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import { createHistory, type Snapshot } from '$lib/workout/history.svelte';
+	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
+	import { LIMITS } from '$lib/workout/validate';
 	import { isTyping } from '$lib/keys';
 	import {
 		duplicate,
@@ -34,7 +36,7 @@
 	// ride — so it scales to their own FTP; 265 only covers the flicker
 	// before `me` lands (#1003).
 	const FTP = $derived(account.me?.ftpWatts || 265);
-	const custom = createCustomStore();
+	const custom = customWorkouts();
 
 	// ?from= copies a library workout as a starting point; ?w= edits a saved
 	// one — the shelf lives on the account now, so ?w= hydrates when it lands.
@@ -57,6 +59,16 @@
 				},
 	);
 	let hydrated = $state(!requestedId);
+	// Twenty minutes of shaping used to leave without a word (#1711): Cancel
+	// is a link and the sidebar is one tap away. The guard /ride and /ramp
+	// share; a save stands it down before the navigation it triggers.
+	let saved = $state(false);
+	guardLeaving(() => history.canUndo && !saved, {
+		title: 'Leave without saving?',
+		body: 'The changes to this workout are not saved. Leave, and they are gone.',
+		action: 'Leave',
+		cancel: 'Stay',
+	});
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;
 		// A shelf that could not be read is said below with a Retry, and Save
@@ -132,7 +144,9 @@
 			: /^\d+$/.test(text)
 				? Number(text) * 60
 				: null;
-		return seconds !== null && seconds >= 5 && seconds <= 24 * 60 * 60
+		return seconds !== null &&
+			seconds >= LIMITS.minSeconds &&
+			seconds <= LIMITS.maxSeconds
 			? seconds
 			: null;
 	}
@@ -170,6 +184,7 @@
 			return;
 		}
 		saveError = null;
+		saved = true;
 		// The toast is the confirmation and the way to ride it; nothing read
 		// the ?saved= the page used to carry.
 		toasts.push(`Saved “${workout.name}” — ride it.`, {
@@ -366,7 +381,7 @@
 					<input
 						type="number"
 						min="20"
-						max="200"
+						max={LIMITS.maxFraction * 100}
 						value={Math.round((current.target ?? 0) * 100)}
 						oninput={(event) =>
 							((current as SteadyStep).target =

@@ -10,7 +10,7 @@
 	} from '$lib/workout/session.svelte';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
-	import { createCustomStore } from '$lib/workout/custom.svelte';
+	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { sensors } from '$lib/sensors.svelte';
@@ -35,7 +35,7 @@
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
-	const custom = createCustomStore();
+	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
