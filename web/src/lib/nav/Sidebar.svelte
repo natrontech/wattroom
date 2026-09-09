@@ -166,7 +166,11 @@
 	>
 		<svelte:element
 			this={open_ ? 'a' : 'div'}
-			href={open_ ? `/r/${room.slug}` : undefined}
+			href={open_
+				? room.session && !here
+					? `/r/${room.slug}/training`
+					: `/r/${room.slug}`
+				: undefined}
 			title={open_ ? undefined : mark?.label}
 			class="block rounded px-2 pt-1.5 {subline === 'people'
 				? 'pb-0'
@@ -240,7 +244,9 @@
 				{/if}
 			</span>
 			{#if subline === 'session' && room.session}
-				<!-- The late-join radar: what is on, and how far in. -->
+				<!-- The late-join radar: what is on, and how far in — and the row
+				     it sits in lands on Training while it runs (#1332), where the
+				     numbers are, unless you are already standing in the room. -->
 				<span
 					class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
 				>
