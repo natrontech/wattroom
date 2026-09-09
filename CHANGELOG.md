@@ -17,6 +17,24 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.70] - 2026-09-09
+
+### Added
+
+- A library track in the queue shows its bpm, and while a session runs the
+  tracks whose tempo fits the block's cadence — or double it — say "fits the
+  block". Smart autoplay already weighed this; now you can see it.
+
+### Fixed
+
+- A crew ban now takes the person off every room roster in the crew, as the crew rules always said, and lifting it restores crew membership alone. A crew admin can no longer add someone to the crew by user id — joining by the code is the one way in. The crew door and a room's door tell a removed rider so instead of offering a Join that fails, the crew page says how many are in the crew rather than how many you can see, and promoting someone no longer resets the day they joined or their place in the succession line.
+- Leaving a crew now asks first and names what goes — the rooms of it you are in, and that a private room needs a fresh invitation — instead of offering an undo that only rejoined the crew. A rider the crew removed is told so at the crew's door and at its rooms' doors, with no Join that would fail. The crew page shows how many are in the crew, the owner sees why Leave is disabled, "Open a room here" on a crew with no rooms yet opens it there, opening a crew's page puts the sidebar in that crew, and the crew settings page can retry a failed load and says when a name is missing.
+- A crew whose last room was deleted no longer vanishes from the sidebar: its code, its people, its settings and the way to leave it stay reachable, and its owner's next room opens in it.
+- "Just played" survives a restart. The room's last five used to live only
+  in the server's memory and vanished with every deploy; now every play —
+  YouTube videos too, not only your own tracks — is written down, and a room
+  coming back up shows what it last heard until it plays something new.
+
 ## [2026.09.69] - 2026-09-09
 
 ### Added
@@ -1490,7 +1508,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.69...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.70...HEAD
+[2026.09.70]: https://github.com/natrontech/wattroom/compare/2026.09.69...2026.09.70
 [2026.09.69]: https://github.com/natrontech/wattroom/compare/2026.09.68...2026.09.69
 [2026.09.68]: https://github.com/natrontech/wattroom/compare/2026.09.67...2026.09.68
 [2026.09.67]: https://github.com/natrontech/wattroom/compare/2026.09.66...2026.09.67
