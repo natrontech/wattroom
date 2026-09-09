@@ -14,6 +14,9 @@
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
 	import { useRoom } from '$lib/room/context';
+	import { contextMenu } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
+	import { goto } from '$app/navigation';
 	import type { RoomRider } from '$lib/room/view';
 
 	let {
@@ -82,6 +85,9 @@
 			     press on a 10 px label (ux.md). -->
 			<button
 				onclick={() => onFollow(rider.id)}
+				{@attach contextMenu(() =>
+					personMenu(rider.id, goto, { you: rider.you }),
+				)}
 				aria-pressed={followed}
 				title="follow {rider.name}"
 				class="w-44 shrink-0 text-left"
@@ -90,7 +96,13 @@
 				{@render tile(rider, followed)}
 			</button>
 		{:else}
-			<div class="w-44 shrink-0" data-testid="crew-tile">
+			<div
+				{@attach contextMenu(() =>
+					personMenu(rider.id, goto, { you: rider.you }),
+				)}
+				class="w-44 shrink-0"
+				data-testid="crew-tile"
+			>
 				{@render tile(rider, followed)}
 			</div>
 		{/if}

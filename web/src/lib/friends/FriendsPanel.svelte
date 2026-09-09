@@ -76,6 +76,15 @@
 		await friends.reload();
 	}
 
+	// A dismissal tells the other rider (ADR-0012 amendment) and sat one
+	// 28 px button from Accept with no way back (#1652): undo over confirm.
+	function dismiss(friend: Friend) {
+		void act(`/api/friends/${friend.id}`, 'DELETE', {
+			message: `Dismissed ${friend.name}'s request.`,
+			undo: () => void act(`/api/friends/${friend.id}/restore`, 'POST'),
+		});
+	}
+
 	function removeFriend(friend: Friend) {
 		void act(`/api/friends/${friend.id}`, 'DELETE', {
 			message: `Removed ${friend.name} as a friend.`,
@@ -211,7 +220,7 @@
 									class="btn btn-primary btn-xs">Accept</button
 								>
 								<button
-									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
+									onclick={() => dismiss(friend)}
 									class="btn btn-ghost btn-xs">Dismiss</button
 								>
 							</span>
@@ -234,11 +243,7 @@
 							name={friend.name}
 							avatarUrl={friend.avatarUrl}
 							xp={friend.totalXp}
-							status={friend.inRoom
-								? 'riding'
-								: friend.online
-									? 'online'
-									: 'offline'}
+							status={friend.online || friend.inRoom ? 'online' : 'offline'}
 							ring="var(--color-surface-raised)"
 							size={30}
 						/>

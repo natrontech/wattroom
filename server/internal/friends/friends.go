@@ -6,9 +6,11 @@ package friends
 
 import (
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -37,10 +39,20 @@ type Service struct {
 	users    UserSource
 	presence PresenceSource
 	log      *slog.Logger
+	// How many asks one account may make an hour (#1652): the friend-code
+	// door answered a guess with 404, 409 or a name, unmetered, and
+	// ADR-0012 rests on the code being unguessable in practice.
+	asks *budget.Budget[pgtype.UUID]
 }
 
+const (
+	asksPerWindow = 20
+	askWindow     = time.Hour
+)
+
 func New(st *store.Store, users UserSource, presence PresenceSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, presence: presence, log: log}
+	return &Service{store: st, users: users, presence: presence, log: log,
+		asks: budget.New[pgtype.UUID](asksPerWindow, askWindow)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -48,6 +60,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/friends", s.handleRequest)
 	mux.HandleFunc("POST /api/friends/{id}/accept", s.handleAccept)
 	mux.HandleFunc("DELETE /api/friends/{id}", s.handleDelete)
+	// The undo of a dismissal (#1652): their ask comes back as it was.
+	mux.HandleFunc("POST /api/friends/{id}/restore", s.handleRestore)
 }
 
 type friendJSON struct {
@@ -200,6 +214,11 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if s.asks != nil && !s.asks.Spend(me.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"That is a lot of friend requests in one hour. Wait an hour, then try again.")
+		return
+	}
 	var body struct {
 		Code string `json:"code"`
 		// A rider's page (ADR-0024) asks by id — allowed only across a
@@ -290,6 +309,26 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 	}
 	if n == 0 {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No pending request from them.")
+		return
+	}
+	s.clearDeclines(r, me.ID, target)
+	s.presence.PresenceChanged()
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleRestore undoes a dismissal (#1652): the pending ask from them is put
+// back as it was and the tombstone that told them goes. Only the addressee
+// can, which is the person who dismissed it.
+func (s *Service) handleRestore(w http.ResponseWriter, r *http.Request) {
+	me, target, ok := s.pair(w, r)
+	if !ok {
+		return
+	}
+	if err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
+		RequesterID: target, AddresseeID: me.ID,
+	}); err != nil {
+		s.log.Error("restore friend request", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be undone.")
 		return
 	}
 	s.clearDeclines(r, me.ID, target)

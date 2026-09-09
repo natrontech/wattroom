@@ -49,6 +49,12 @@ from friend_declines d
 join users u on u.id = d.addressee_id
 where d.requester_id = $1;
 
+-- name: RestoreFriendRequest :exec
+-- The undo of a dismissal (#1652): their pending ask, back as it was. A pair
+-- that is already connected again is left alone.
+insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing;
+
 -- name: ClearFriendDeclines :exec
 -- A request or an acceptance between the two of them settles the pair —
 -- either direction, so an old dismissal cannot resurface later.

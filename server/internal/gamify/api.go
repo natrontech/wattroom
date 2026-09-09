@@ -120,7 +120,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
-	s.write(w, r, user.ID, true)
+	s.write(w, r, user.ID, user.ID)
 }
 
 // handleRider shows another rider's case to the people who could already see
@@ -150,7 +150,7 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.write(w, r, rider, rider == viewer.ID)
+	s.write(w, r, rider, viewer.ID)
 }
 
 // write renders a trophy case. self says whether the viewer IS the rider:
@@ -158,14 +158,39 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 // and this endpoint used to hand "3 of 5 rides before 07:00" to any
 // room-mate. An earned badge is a fact about a rider and travels; how far
 // along they are on the rest is their current week, and does not.
-func (s *Service) write(w http.ResponseWriter, r *http.Request, userID pgtype.UUID, self bool) {
+func (s *Service) write(w http.ResponseWriter, r *http.Request, userID, viewer pgtype.UUID) {
 	out, err := s.Trophies(r.Context(), userID)
 	if err != nil {
 		s.log.Error("trophies failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
 		return
 	}
+	self := userID == viewer
 	if !self {
+		// A medal stays in the room it was won in (ADR-0024, ADR-0027): the
+		// tally used to be lifetime, across every room, which told a
+		// room-mate you ride in rooms they cannot see (#1649). The rider
+		// endpoint scopes the same medals; this is that query.
+		shared, err := s.store.Queries.CountRiderMedalsInCommon(r.Context(),
+			db.CountRiderMedalsInCommonParams{Rider: userID, Viewer: viewer})
+		if err != nil {
+			s.log.Error("scoped medal tally failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The trophy case could not be loaded.")
+			return
+		}
+		out.Medals = medalsJSON{}
+		for _, row := range shared {
+			switch row.Kind {
+			case "diesel":
+				out.Medals.Diesel = row.Count
+			case "metronome":
+				out.Medals.Metronome = row.Count
+			case "hammer":
+				out.Medals.Hammer = row.Count
+			case "lanterne_rouge":
+				out.Medals.LanterneRouge = row.Count
+			}
+		}
 		for i := range out.Achievements {
 			out.Achievements[i].Progress = nil
 		}

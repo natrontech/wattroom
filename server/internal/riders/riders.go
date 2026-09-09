@@ -209,7 +209,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	out.Presence = s.presenceOf(rider, inCommon, trusted)
 
 	if trusted {
-		month, err := s.store.Queries.RiderMonth(ctx, id)
+		month, err := s.store.Queries.RiderMonth(ctx, db.RiderMonthParams{UserID: id, Tz: monthZone(rider)})
 		if err != nil {
 			s.fail(w, "month", err, me)
 			return
@@ -273,7 +273,9 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 	if slug != "" && shared >= 0 {
 		room := inCommon[shared]
 		p.Room = &room
-		p.Riding = slices.Contains(s.presence.Presence(slug).Riding, rider.DisplayName)
+		// By id (#649): display names are not unique, and two Dans in one
+		// room both showed the bars while one sat in the lounge (#1652).
+		p.Riding = slices.Contains(s.presence.Presence(slug).RidingIDs, id)
 	}
 	if trusted {
 		p.Online = online
@@ -288,4 +290,17 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User) {
 	s.log.Error("rider page: "+what, "err", err, "user", store.UUIDString(me.ID))
 	httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That rider's page could not be loaded.")
+}
+
+// monthZone is the zone "this month" is counted in (#1653): the rider's
+// own, as the browser reported it, or UTC when it never did or reported
+// something Postgres would refuse.
+func monthZone(rider db.User) string {
+	if rider.Timezone == nil || *rider.Timezone == "" {
+		return "UTC"
+	}
+	if _, err := time.LoadLocation(*rider.Timezone); err != nil {
+		return "UTC"
+	}
+	return *rider.Timezone
 }

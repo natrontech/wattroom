@@ -2,6 +2,7 @@ package gamify
 
 import (
 	"encoding/json"
+	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -237,6 +238,49 @@ func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 	befriend(t, s, alice, bob)
 	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusOK {
 		t.Fatalf("banned but befriended: status %d, want 200", rec.Code)
+	}
+}
+
+// A room-mate's tally is medals from rooms in common, not lifetime (#1649):
+// a lifetime count told a room-mate you ride in rooms they cannot see.
+func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
+	s, _, alice, bob := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+	shared := shareRoom(t, s, alice, bob)
+	private := shareRoom(t, s, alice)
+	medalIn(t, s, shared, alice, "diesel")
+	medalIn(t, s, private, alice, "diesel")
+	medalIn(t, s, private, alice, "hammer")
+
+	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
+	if _, body := get(t, mux, aliceCase, "bob"); body.Medals.Diesel != 1 || body.Medals.Hammer != 0 {
+		t.Fatalf("room-mate sees %+v, want one diesel from the shared room", body.Medals)
+	}
+	if _, body := get(t, mux, "/api/me/trophies", "alice"); body.Medals.Diesel != 2 || body.Medals.Hammer != 1 {
+		t.Fatalf("own case %+v, want the lifetime tally", body.Medals)
+	}
+	if _, body := get(t, mux, aliceCase, "alice"); body.Medals.Diesel != 2 {
+		t.Fatalf("own case by id %+v, want the lifetime tally", body.Medals)
+	}
+}
+
+// medalIn hangs a medal of one kind on a fresh ride in a room.
+func medalIn(t *testing.T, s *Service, room pgtype.UUID, user db.User, kind string) {
+	t.Helper()
+	rideID, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, RoomID: room, WorkoutName: "medal ride",
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   3600, AvgWatts: 200, Kj: 720, Execution: 0.9, FtpWatts: user.FtpWatts,
+		Samples: []byte("x"), Curve: []byte("{}"), Xp: 0,
+	})
+	if err != nil {
+		t.Fatalf("create ride: %v", err)
+	}
+	if err := s.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{
+		RoomID: room, UserID: user.ID, RideID: rideID, Kind: kind,
+	}); err != nil {
+		t.Fatalf("create medal: %v", err)
 	}
 }
 
