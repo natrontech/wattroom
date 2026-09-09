@@ -1,1 +1,0 @@
-- A conversation opened from a notification, a pasted link or a reload no longer says "Message them…" with a "T" for a face until the first line arrives: the page looks the rider up and shows their name and picture straight away.
