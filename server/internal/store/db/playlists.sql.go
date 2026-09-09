@@ -317,27 +317,20 @@ func (q *Queries) SetActivePlaylist(ctx context.Context, arg SetActivePlaylistPa
 }
 
 const updateAutoplay = `-- name: UpdateAutoplay :one
-update rooms set autoplay_enabled = $2, autoplay_order = $3,
-    autoplay_fixed_video_id = $4, autoplay_fixed_video_title = $5
+update rooms set autoplay_enabled = $2, autoplay_order = $3
 where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type UpdateAutoplayParams struct {
-	ID                      pgtype.UUID
-	AutoplayEnabled         bool
-	AutoplayOrder           string
-	AutoplayFixedVideoID    string
-	AutoplayFixedVideoTitle string
+	ID              pgtype.UUID
+	AutoplayEnabled bool
+	AutoplayOrder   string
 }
 
+// autoplay_fixed_video_id/_title are no longer written (#1422); the columns
+// stay one release for the rollback path and #1430 drops them.
 func (q *Queries) UpdateAutoplay(ctx context.Context, arg UpdateAutoplayParams) (Room, error) {
-	row := q.db.QueryRow(ctx, updateAutoplay,
-		arg.ID,
-		arg.AutoplayEnabled,
-		arg.AutoplayOrder,
-		arg.AutoplayFixedVideoID,
-		arg.AutoplayFixedVideoTitle,
-	)
+	row := q.db.QueryRow(ctx, updateAutoplay, arg.ID, arg.AutoplayEnabled, arg.AutoplayOrder)
 	var i Room
 	err := row.Scan(
 		&i.ID,

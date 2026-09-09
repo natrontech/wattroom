@@ -84,7 +84,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
 	// a database read.
-	h.triggerAutoplay(rm, slug, false)
+	h.triggerAutoplay(rm, slug)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()

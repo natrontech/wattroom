@@ -41,12 +41,10 @@ export interface AutoplaySettings {
 	enabled: boolean;
 	/**
 	 * `ordered`/`shuffled` walk the room's active playlist; `smart` (#269)
-	 * ignores it and draws from the music pool, weighted by what this room
-	 * has been playing and skipping.
+	 * ignores it and draws from the library, weighted by what this room has
+	 * been playing and skipping. Set on the room's Settings page (#1422).
 	 */
 	order: 'ordered' | 'shuffled' | 'smart';
-	fixedVideoId?: string;
-	fixedVideoTitle?: string;
 	activePlaylistId?: string;
 }
 
@@ -194,25 +192,4 @@ export async function commandFromLink(
 		case 'error':
 			return { ok: false, message: link.message };
 	}
-}
-
-/** A single video only, for the autoplay "fixed start" field. */
-export async function singleVideoFromLink(
-	input: string,
-): Promise<
-	{ ok: true; videoId: string; title: string } | { ok: false; message: string }
-> {
-	const link = readLink(input);
-	if (link.kind === 'video' || link.kind === 'both')
-		return {
-			ok: true,
-			videoId: link.videoId,
-			title: await titleFor(link.videoId),
-		};
-	if (link.kind === 'playlist')
-		return {
-			ok: false,
-			message: 'That is a playlist link — paste a single video instead.',
-		};
-	return { ok: false, message: link.message };
 }

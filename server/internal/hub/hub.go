@@ -44,14 +44,13 @@ type ChatKeeper interface {
 // dry (#676) — and always outside the room's lock (server/AGENTS.md: DB I/O
 // never happens while holding a room mutex). Defined here, where it is
 // consumed; the playlists service implements it. Nil, or ok=false, means
-// nothing to play: autoplay stays silent. fixed, if non-nil, is queued before
-// tracks — tracks already carries whatever order (list order or shuffled) the
-// caller's autoplay setting currently means.
-// mood is what the room's timeline is asking for at the moment of the read
-// (#270); the zero value means no preference, and every source is free to
-// ignore it.
+// nothing to play: autoplay stays silent. tracks already carries whatever
+// order (list order or shuffled) the caller's autoplay setting currently
+// means. mood is what the room's timeline is asking for at the moment of the
+// read (#270); the zero value means no preference, and every source is free
+// to ignore it.
 type AutoplaySource interface {
-	Autoplay(ctx context.Context, slug string, mood SessionMood) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
+	Autoplay(ctx context.Context, slug string, mood SessionMood) (tracks []protocol.JukeboxCommand, ok bool)
 }
 
 // TrackHistory hears what a room did with a pool track (#269, ADR-0015):
@@ -151,9 +150,6 @@ type Hub struct {
 type autoplayJob struct {
 	rm   *room
 	slug string
-	// The deck ran dry rather than a rider joining (#676): the playlist
-	// loops, the fixed start does not — SPEC calls it a start.
-	loop bool
 }
 
 // chatSave is one line awaiting persistence — enough to save it and to
@@ -218,11 +214,8 @@ func (h *Hub) autoplayWorker() {
 		// Read the mood at the moment of the REFILL, not when the job was
 		// queued: the worker can lag a busy hub, and a block that has since
 		// ended is not what the room is riding.
-		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
-		if job.loop {
-			fixed = nil
-		}
-		job.rm.applyAutoplay(fixed, tracks, ok, h.now())
+		tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
+		job.rm.applyAutoplay(tracks, ok, h.now())
 	}
 }
 
@@ -243,13 +236,13 @@ func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
 
 // triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
 // read that decides what autoplay puts on it (#627). Fired by a join and by
-// the deck running dry (#676, loop=true). The check-then-enqueue happens
+// the deck running dry (#676). The check-then-enqueue happens
 // outside any I/O; the worker re-checks idle under the room's lock before
 // seeding, so two riders joining the same instant cannot double-queue the
 // room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
 // from a client each pass, and a source with nothing to play — autoplay off,
 // an empty playlist — leaves the deck idle and the queue quiet.
-func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
+func (h *Hub) triggerAutoplay(rm *room, slug string) {
 	if h.playlists == nil {
 		return
 	}
@@ -260,7 +253,7 @@ func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
 		return
 	}
 	select {
-	case h.autoplays <- autoplayJob{rm: rm, slug: slug, loop: loop}:
+	case h.autoplays <- autoplayJob{rm: rm, slug: slug}:
 	default:
 		// Full queue: the room just stays idle until the next join, which
 		// will try again — better than a joining rider's upgrade or read
@@ -405,7 +398,7 @@ func (h *Hub) room(slug string) *room {
 	if !ok {
 		rm = newRoom(slug)
 		rm.changed = h.PresenceChanged
-		rm.deckIdled = func() { h.triggerAutoplay(rm, slug, true) }
+		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
 		rm.xp = h.xp
 		rm.recaps = h.recaps
