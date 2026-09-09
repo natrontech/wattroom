@@ -73,8 +73,16 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
-		// A workout that parses to nothing has no timeline to run.
-		if (total === 0) return;
+		// A workout that parses to nothing has no timeline to run — and the
+		// coach who tapped Start is told, not left with a button that did
+		// nothing (errors.md).
+		if (total === 0) {
+			toasts.push(
+				'That planned workout can no longer be read — pick another.',
+				{ tone: 'error' },
+			);
+			return;
+		}
 		deps.reset();
 		deps.control('pick', {
 			name: entry.workoutName,
