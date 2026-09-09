@@ -137,6 +137,8 @@ func main() {
 	// The client owns the ride until there is somewhere to persist it (#15); this
 	// takes the recorded samples and hands back a file.
 	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
+	// What a link preview may say about a room: listed rooms only (#1734).
+	var roomIdentity og.LookupRoom
 	if st != nil {
 		// The key that seals stored third-party credentials (#697). Absent is
 		// allowed and warns; present-but-unusable is fatal, because an
@@ -176,6 +178,7 @@ func main() {
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
+		roomIdentity = roomsService.PublicIdentity
 		// A purge hands the rider's crews on before the row goes (ADR-0038).
 		accountService.SetCrews(roomsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
@@ -244,7 +247,10 @@ func main() {
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.
-		trophies := gamify.New(st, readAuth, log)
+		// The cookie source, not readAuth (#1736): the case's rider route is
+		// keyed on someone else's id, and ADR-0017 says a token never touches
+		// another rider.
+		trophies := gamify.New(st, authService, log)
 		trophies.Register(mux)
 		saver.SetRideKeeper(trophies)
 		ridesService.SetRideKeeper(trophies)
@@ -307,16 +313,9 @@ func main() {
 		}
 	}
 	// Link previews: crawlers don't run JS, so og meta + images come from Go (#240).
-	var lookup og.LookupRoom
-	if st != nil {
-		lookup = func(ctx context.Context, slug string) (string, string, bool) {
-			room, err := st.Queries.GetRoomBySlug(ctx, slug)
-			if err != nil {
-				return "", "", false
-			}
-			return room.Name, room.Icon, true
-		}
-	}
+	// Listed rooms only (#1734): an unlisted slug gets the site card, the
+	// way an unknown one does.
+	lookup := roomIdentity
 	social := og.New(baseURL, lookup, log)
 	social.Register(mux)
 	// Under every API route: an unknown or unmounted path answers the API's

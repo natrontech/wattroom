@@ -37,6 +37,10 @@ func writeJSONError(w http.ResponseWriter, status int, body ErrorResponse) {
 // their own three lines of encoder boilerplate.
 func WriteJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
+	// Every JSON answer is a rider's, or as good as (#1736): the calendar
+	// feed's reasoning (RFC 9111 §4.2.2, #1701) applies to /api/me and
+	// /api/rides/{id} just the same, and self-hosters put proxies in front.
+	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
 }
