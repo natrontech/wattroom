@@ -1,0 +1,1 @@
+- A sprint block in a solo workout now releases the trainer onto your sprint slope, the way an armed sprint in a room always has. It was commanding zero watts in ERG instead, so the one block that is supposed to be flat out was the one with no resistance at all.

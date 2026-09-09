@@ -157,6 +157,13 @@
 				ftp,
 				startedAt,
 				readings: () => sensors.readings,
+				// The rider's own sprint setup (#1529): a sprint block releases
+				// the trainer to this slope, the way an armed sprint does in a
+				// room. Read per sprint, so /settings lands mid-ride.
+				sprint: () => ({
+					grade: profile.current.sprintGrade,
+					singleSpeed: profile.current.singleSpeed,
+				}),
 				onRecord: (sample) => {
 					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
 					recorder.tick({
