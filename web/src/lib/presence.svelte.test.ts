@@ -1,16 +1,25 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RailRoom } from '$lib/room/mockcompat';
 
 // The endpoint behind every ping. Counting calls IS the assertion: #912 is
 // about how many of these one conversation costs.
 let fetches = 0;
+let world: { rooms: RailRoom[]; maxOwned: number } = { rooms: [], maxOwned: 0 };
 vi.mock('$lib/nav/rooms', () => ({
 	fetchRailRooms: async () => {
 		fetches += 1;
-		return { rooms: [], maxOwned: 0 };
+		return world;
 	},
 }));
-vi.mock('$lib/messages/announce', () => ({ announce: () => {} }));
+const announced: { tag: string; reading: boolean }[] = [];
+vi.mock('$lib/messages/announce', () => ({
+	announce: (a: { tag: string; reading: boolean }) => announced.push(a),
+}));
+vi.mock('$lib/notify.svelte', () => ({
+	// The real rule (ADR-0042): hidden, or not the front window.
+	away: () => document.hidden || !document.hasFocus(),
+}));
 
 // A hand-driven lobby socket, so the test can deliver pings the way the hub
 // does: contentless, and as fast as riders type.
@@ -90,5 +99,40 @@ describe('the presence feed coalesces pings', () => {
 		presence.stop();
 		vi.advanceTimersByTime(1000);
 		expect(fetches).toBe(1);
+	});
+});
+
+// A room you are not standing in reaches you the way a DM does (#568). Its
+// thread being open counts as reading it only while the window is in front
+// (ADR-0042, #1440) — behind another app it must announce like any other.
+describe('a room you are not standing in', () => {
+	afterEach(() => {
+		presence.stop();
+		world = { rooms: [], maxOwned: 0 };
+		announced.length = 0;
+		document.hasFocus = () => true;
+	});
+
+	it('announces its chat into an open thread while the window is not in front', async () => {
+		presence.start();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(0)); // the world, not an arrival
+		history.pushState({}, '', '/messages/r/velvet');
+		document.hasFocus = () => false;
+		world = {
+			rooms: [
+				{
+					slug: 'velvet',
+					name: 'Velvet Hammer',
+					live: false,
+					members: 2,
+					unread: 1,
+					lastChat: { from: 'Ruben', text: 'on my way', at: 1 },
+				},
+			],
+			maxOwned: 0,
+		};
+		ping();
+		await vi.waitFor(() => expect(announced).toHaveLength(1));
+		expect(announced[0]).toMatchObject({ tag: 'chat-velvet', reading: false });
 	});
 });

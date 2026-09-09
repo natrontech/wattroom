@@ -97,6 +97,22 @@ describe('in the desktop shell', () => {
 		notify.push('Mara', 'hi', 'dm-mara');
 		expect(sent).toEqual([]);
 	});
+
+	it('sends a test notification in front of the rider, and none once switched off (#1440)', async () => {
+		const sent: { tag: string }[] = [];
+		(globalThis as W).wattroom = {
+			notify: (n: { tag: string }) => sent.push(n),
+			onNotification: () => {},
+		};
+		document.hasFocus = () => true;
+		const { notify } = await fresh();
+		notify.push('Mara', 'hi', 'dm-mara');
+		notify.test();
+		expect(sent.map((n) => n.tag)).toEqual(['test']);
+		notify.disable();
+		notify.test();
+		expect(sent).toHaveLength(1);
+	});
 });
 
 describe('in a browser', () => {

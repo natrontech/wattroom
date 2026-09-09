@@ -8,6 +8,7 @@ import { untrack } from 'svelte';
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
 import { announce } from '$lib/messages/announce';
+import { away } from '$lib/notify.svelte';
 import { people } from '$lib/people.svelte';
 
 export interface DmHead {
@@ -69,7 +70,7 @@ async function poll() {
 				send: (text) =>
 					api(`/api/dms/${head.peerId}`, { method: 'POST', json: { text } }),
 			},
-			reading: dm.open?.id === head.peerId && !document.hidden,
+			reading: dm.open?.id === head.peerId && !away(),
 		});
 	}
 	inbound = next;

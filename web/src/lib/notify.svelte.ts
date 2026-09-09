@@ -66,6 +66,38 @@ export function away(): boolean {
 	return document.hidden || !document.hasFocus();
 }
 
+function send(
+	title: string,
+	body: string,
+	tag: string,
+	opts: { href?: string; reply?: ReplyTo },
+) {
+	if (opts.reply) replies.set(tag, opts.reply.send);
+	else replies.delete(tag);
+	const shell = bridge();
+	if (shell?.notify) {
+		shell.notify({
+			title,
+			body,
+			tag,
+			href: opts.href,
+			replyPlaceholder: opts.reply?.placeholder,
+		});
+		return;
+	}
+	try {
+		// tag dedupes a burst into one notification per stream.
+		const n = new Notification(title, { body, tag });
+		n.onclick = () => {
+			window.focus();
+			if (opts.href) navigate(opts.href);
+			n.close();
+		};
+	} catch {
+		/* a refused notification is not an error worth surfacing */
+	}
+}
+
 export const notify = {
 	get enabled() {
 		return enabled;
@@ -113,30 +145,22 @@ export const notify = {
 		opts: { href?: string; reply?: ReplyTo } = {},
 	) {
 		if (!enabled || typeof document === 'undefined' || !away()) return;
-		if (opts.reply) replies.set(tag, opts.reply.send);
-		else replies.delete(tag);
-		const shell = bridge();
-		if (shell?.notify) {
-			shell.notify({
-				title,
-				body,
-				tag,
-				href: opts.href,
-				replyPlaceholder: opts.reply?.placeholder,
-			});
-			return;
-		}
-		try {
-			// tag dedupes a burst into one notification per stream.
-			const n = new Notification(title, { body, tag });
-			n.onclick = () => {
-				window.focus();
-				if (opts.href) navigate(opts.href);
-				n.close();
-			};
-		} catch {
-			/* a refused notification is not an error worth surfacing */
-		}
+		send(title, body, tag, opts);
+	},
+	/**
+	 * One notification while the rider IS looking (#1440): the only way to
+	 * see what one looks like without asking a friend to message you — and,
+	 * in the shell, what puts the OS permission prompt in front of them now
+	 * rather than the first time a message lands while they are elsewhere.
+	 */
+	test() {
+		if (!enabled) return;
+		send(
+			'WattRoom',
+			'Notifications work. A message, an arrival, a session starting or a poke reaches you like this while the app is behind another window.',
+			'test',
+			{ href: '/settings/notifications' },
+		);
 	},
 	/**
 	 * Once, from the layout: how to navigate, and the shell's clicks and
