@@ -90,8 +90,18 @@ export function plannedZoneSeconds(segments: Segment[], ftp: number): number[] {
 	return out;
 }
 
-export function fillPct(watts: number, ftp: number): number {
-	return Math.min(100, Math.max(0, (watts / ftp / CEILING) * 100));
+/**
+ * Where a wattage sits on the instrument's track. The full scale defaults
+ * to FTP × CEILING — the room and the solo ride — and a ramp test passes
+ * its own top (#1565): scaled to a stale FTP, the one workout defined by
+ * riding far above it pinned the bar at 1.5 × FTP for its last third.
+ */
+export function fillPct(
+	watts: number,
+	ftp: number,
+	fullScale: number = ftp * CEILING,
+): number {
+	return Math.min(100, Math.max(0, (watts / fullScale) * 100));
 }
 
 /** Upper %LTHR edge of HR zones 1–4 (docs/SPEC.md, ADR-0014); Z5 is open-ended. */

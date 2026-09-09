@@ -17,6 +17,19 @@
 		height?: number;
 	} = $props();
 
+	// Not enough to draw (#1572): one day of rides gave a flat line across a
+	// collapsed axis reading "9 Sept – 9 Sept", no dots, and nothing saying
+	// why. Empty states teach (ux.md).
+	const t = (d: string) => new Date(d).getTime();
+	const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+	const sparse = $derived.by(() => {
+		if (rides.length < 2) return true;
+		const days = t(rides[rides.length - 1].date) - t(rides[0].date);
+		const ftps = new Set(rides.map((r) => r.ftp));
+		const dots = rides.some((r) => r.best20m > 0);
+		return days < WEEK_MS && ftps.size < 2 && !dots;
+	});
+
 	let width = $state(600);
 	const W = $derived(Math.max(width, 280));
 	const H = $derived(height);
@@ -24,7 +37,6 @@
 	const plotW = $derived(W - PAD.right);
 	const plotH = $derived(H - PAD.top - PAD.bottom);
 
-	const t = (d: string) => new Date(d).getTime();
 	const span = $derived.by(() => {
 		const first = t(rides[0].date);
 		const last = t(rides[rides.length - 1].date);
@@ -77,107 +89,117 @@
 		});
 </script>
 
-<div class="flex items-center gap-4 text-xs" role="list" aria-label="legend">
-	<span class="text-muted flex items-center gap-1.5" role="listitem">
-		<span class="bg-ink inline-block h-0.5 w-4"></span>
-		FTP
-	</span>
-	<span class="text-muted flex items-center gap-1.5" role="listitem">
-		<span class="bg-z2 inline-block h-2.5 w-2.5 rounded-full"></span>
-		best 20 min of a ride
-	</span>
-</div>
+{#if sparse}
+	<p class="text-muted text-sm leading-relaxed">
+		Your FTP history appears here once there is one to draw. The line follows
+		the FTP your rides were scored against, and a ride with a hard 20 minutes
+		adds a dot — so a new FTP (a ramp test sets one) shows up with the next ride
+		you do at it.
+	</p>
+{:else}
+	<div class="flex items-center gap-4 text-xs" role="list" aria-label="legend">
+		<span class="text-muted flex items-center gap-1.5" role="listitem">
+			<span class="bg-ink inline-block h-0.5 w-4"></span>
+			FTP
+		</span>
+		<span class="text-muted flex items-center gap-1.5" role="listitem">
+			<span class="bg-z2 inline-block h-2.5 w-2.5 rounded-full"></span>
+			best 20 min of a ride
+		</span>
+	</div>
 
-<div class="mt-3 w-full" bind:clientWidth={width}>
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-	<svg
-		viewBox="0 0 {W} {H}"
-		width="100%"
-		height={H}
-		class="block {onpick ? 'cursor-pointer' : ''}"
-		role="img"
-		aria-label="FTP and 20-minute bests over time"
-		onpointermove={(e) => (hovered = nearest(e))}
-		onpointerleave={() => (hovered = null)}
-		onclick={(e) => {
-			const ride = nearest(e as unknown as PointerEvent);
-			if (ride) onpick?.(ride);
-		}}
-	>
-		{#each [0.25, 0.5, 0.75, 1] as frac (frac)}
-			{@const watts = domain.lo + (domain.hi - domain.lo) * frac}
+	<div class="mt-3 w-full" bind:clientWidth={width}>
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+		<svg
+			viewBox="0 0 {W} {H}"
+			width="100%"
+			height={H}
+			class="block {onpick ? 'cursor-pointer' : ''}"
+			role="img"
+			aria-label="FTP and 20-minute bests over time"
+			onpointermove={(e) => (hovered = nearest(e))}
+			onpointerleave={() => (hovered = null)}
+			onclick={(e) => {
+				const ride = nearest(e as unknown as PointerEvent);
+				if (ride) onpick?.(ride);
+			}}
+		>
+			{#each [0.25, 0.5, 0.75, 1] as frac (frac)}
+				{@const watts = domain.lo + (domain.hi - domain.lo) * frac}
+				<line
+					x1="0"
+					x2={plotW}
+					y1={y(watts)}
+					y2={y(watts)}
+					stroke="currentColor"
+					stroke-width="1"
+					class="text-neon opacity-20"
+				/>
+				<text
+					x={plotW + 8}
+					y={y(watts) + 4}
+					class="fill-muted font-display text-[12px]"
+					>{Math.round(watts)} W</text
+				>
+			{/each}
 			<line
 				x1="0"
 				x2={plotW}
-				y1={y(watts)}
-				y2={y(watts)}
-				stroke="currentColor"
-				stroke-width="1"
-				class="text-neon opacity-20"
-			/>
-			<text
-				x={plotW + 8}
-				y={y(watts) + 4}
-				class="fill-muted font-display text-[12px]">{Math.round(watts)} W</text
-			>
-		{/each}
-		<line
-			x1="0"
-			x2={plotW}
-			y1={H - PAD.bottom}
-			y2={H - PAD.bottom}
-			stroke="currentColor"
-			stroke-width="1.5"
-			class="text-neon opacity-40"
-		/>
-		<path
-			d={ftpPath}
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2.5"
-			class="text-ink"
-		/>
-		{#each rides.filter((r) => r.best20m > 0) as ride (ride.id)}
-			<circle
-				cx={x(ride.date)}
-				cy={y(ride.best20m)}
-				r={hovered === ride ? 7 : 5.5}
-				class="fill-z2"
-			/>
-		{/each}
-		<text x="0" y={H - 8} class="fill-muted font-display text-[12px]"
-			>{monthLabel(rides[0].date)}</text
-		>
-		{#if rides.length > 1}
-			<text
-				x={plotW}
-				y={H - 8}
-				text-anchor="end"
-				class="fill-muted font-display text-[12px]"
-				>{monthLabel(rides[rides.length - 1].date)}</text
-			>
-		{/if}
-		{#if hovered}
-			<line
-				x1={x(hovered.date)}
-				x2={x(hovered.date)}
-				y1={PAD.top}
+				y1={H - PAD.bottom}
 				y2={H - PAD.bottom}
 				stroke="currentColor"
-				stroke-width="1"
-				class="text-muted opacity-60"
+				stroke-width="1.5"
+				class="text-neon opacity-40"
 			/>
-			<ChartTip
-				x={x(hovered.date)}
-				y={y(Math.max(hovered.ftp, hovered.best20m))}
-				maxX={W}
-				lines={[
-					monthLabel(hovered.date),
-					hovered.best20m > 0
-						? `best 20 min ${hovered.best20m} W · FTP ${hovered.ftp} W`
-						: `FTP ${hovered.ftp} W`,
-				]}
+			<path
+				d={ftpPath}
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				class="text-ink"
 			/>
-		{/if}
-	</svg>
-</div>
+			{#each rides.filter((r) => r.best20m > 0) as ride (ride.id)}
+				<circle
+					cx={x(ride.date)}
+					cy={y(ride.best20m)}
+					r={hovered === ride ? 7 : 5.5}
+					class="fill-z2"
+				/>
+			{/each}
+			<text x="0" y={H - 8} class="fill-muted font-display text-[12px]"
+				>{monthLabel(rides[0].date)}</text
+			>
+			{#if rides.length > 1}
+				<text
+					x={plotW}
+					y={H - 8}
+					text-anchor="end"
+					class="fill-muted font-display text-[12px]"
+					>{monthLabel(rides[rides.length - 1].date)}</text
+				>
+			{/if}
+			{#if hovered}
+				<line
+					x1={x(hovered.date)}
+					x2={x(hovered.date)}
+					y1={PAD.top}
+					y2={H - PAD.bottom}
+					stroke="currentColor"
+					stroke-width="1"
+					class="text-muted opacity-60"
+				/>
+				<ChartTip
+					x={x(hovered.date)}
+					y={y(Math.max(hovered.ftp, hovered.best20m))}
+					maxX={W}
+					lines={[
+						monthLabel(hovered.date),
+						hovered.best20m > 0
+							? `best 20 min ${hovered.best20m} W · FTP ${hovered.ftp} W`
+							: `FTP ${hovered.ftp} W`,
+					]}
+				/>
+			{/if}
+		</svg>
+	</div>
+{/if}
