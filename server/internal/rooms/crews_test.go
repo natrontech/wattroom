@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -721,5 +722,18 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	}
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err == nil {
 		t.Errorf("a crew with nobody in it survived")
+	}
+}
+
+// A friend code in the crew box (#1317's mirror): still a 404, but the words
+// send the rider to Friends, not back to whoever shared a crew's code.
+func TestJoinCrewNamesAFriendCodeForWhatItIs(t *testing.T) {
+	h := setup(t)
+	status, body := h.call(t, "carol", http.MethodPost, "/api/crews/join", `{"code":"ABCDEFGH"}`)
+	if msg, _ := body["message"].(string); status != http.StatusNotFound || !strings.Contains(msg, "friend") {
+		t.Fatalf("friend-shaped code: %d %v, want 404 naming the friend code", status, body)
+	}
+	if status, body := h.call(t, "carol", http.MethodPost, "/api/crews/join", `{"code":"ZZZZZZ"}`); status != http.StatusNotFound || strings.Contains(fmt.Sprint(body["message"]), "friend") {
+		t.Fatalf("crew-shaped miss: %d %v, want the plain 404", status, body)
 	}
 }

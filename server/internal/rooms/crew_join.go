@@ -59,6 +59,12 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	code := strings.ToUpper(strings.TrimSpace(req.Code))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
+		// A crew's code is six characters; a friend code is eight
+		// (friends.go), and the one pasted into the wrong box is a friend's.
+		if len(code) == 8 {
+			httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "That looks like a friend code — friends are added on the Friends page. A crew's code is six characters.", "code")
+			return
+		}
 		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.", "code")
 		return
 	}
