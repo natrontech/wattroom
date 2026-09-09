@@ -1,1 +1,0 @@
-- A rider whose friend request is waiting on you can now show you their trophy case, as their page already could, so "see who before you accept" is the whole rider; the note that someone dismissed your request is swept after 90 days like session recaps, and the asks of yours that were dismissed are in your data export as dismissed-requests.json.
