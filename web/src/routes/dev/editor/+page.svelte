@@ -122,7 +122,7 @@
 		<aside>
 			<h2 class="text-muted text-[10px] tracking-[0.2em] uppercase">library</h2>
 			<ul class="mt-3 space-y-1">
-				{#each library as entry (entry.name)}
+				{#each library as entry, i (i)}
 					<li>
 						<button
 							onclick={() => load(entry)}

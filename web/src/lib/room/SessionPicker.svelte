@@ -15,6 +15,7 @@
 	} from '$lib/progression';
 	import Select from '$lib/components/Select.svelte';
 	import { countModal } from '$lib/modals.svelte';
+	import { focusTrap } from '$lib/components/focus-trap';
 	import { GAME_MODES } from '$lib/room/modes';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { ShelfEntry } from '$lib/workout/shelf';
@@ -162,8 +163,15 @@
 	aria-label="Close session setup"
 	onclick={onClose}
 ></button>
+<!-- A dialog like the kit's Modal and the TV overlay (#1593): named, modal,
+     and focus stays inside until it closes. -->
 <div
 	{@attach countModal}
+	role="dialog"
+	aria-modal="true"
+	aria-label={title}
+	tabindex="-1"
+	use:focusTrap
 	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
 	style="bottom: 6dvh"
 >

@@ -67,7 +67,7 @@
 			</div>
 
 			<ul class="mt-4 space-y-1.5">
-				{#each battle as entry (entry.name)}
+				{#each battle as entry, i (i)}
 					<li class="flex items-center gap-3">
 						<span
 							class="w-16 shrink-0 truncate text-xs {entry.you

@@ -119,7 +119,7 @@
 				</div>
 			</div>
 			<ul class="mt-5 space-y-1.5">
-				{#each riders as rider (rider.name)}
+				{#each riders as rider, i (i)}
 					<li
 						class="flex items-center gap-3 text-sm {rider.out
 							? 'opacity-40'
@@ -163,7 +163,7 @@
 				></div>
 			</div>
 			<ul class="mt-5 space-y-1.5">
-				{#each riders as rider (rider.name)}
+				{#each riders as rider, i (i)}
 					<li
 						class="flex items-center gap-3 text-sm {rider.out
 							? 'opacity-40'
@@ -275,7 +275,7 @@
 				</div>
 			</div>
 			<div class="mt-5 grid grid-cols-3 gap-2">
-				{#each riders as rider (rider.name)}
+				{#each riders as rider, i (i)}
 					<div
 						class="rounded px-3 py-2 text-xs {rider.front
 							? 'bg-watt/15 text-ink'

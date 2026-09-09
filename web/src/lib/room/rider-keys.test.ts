@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -12,14 +12,21 @@ import { describe, expect, it } from 'vitest';
  */
 describe('rider each-blocks', () => {
 	it('are keyed by id, never by display name', () => {
-		const dir = join(import.meta.dirname);
+		// Every surface under src, not this directory alone (#1593): the dev
+		// mocks used to be keyed by name, and a mock is what a design gets
+		// checked against.
+		const root = join(import.meta.dirname, '..', '..');
 		const offenders: string[] = [];
-		for (const file of readdirSync(dir).filter((f) => f.endsWith('.svelte'))) {
-			const source = readFileSync(join(dir, file), 'utf8');
+		for (const file of readdirSync(root, { recursive: true })) {
+			const name = String(file);
+			if (!name.endsWith('.svelte')) continue;
+			const source = readFileSync(join(root, name), 'utf8');
 			for (const match of source.matchAll(
 				/\{#each [^}]* as (\w+) \((\w+)\.name\)\}/g,
 			)) {
-				offenders.push(`${file}: (${match[2]}.name)`);
+				offenders.push(
+					`${relative(root, join(root, name))}: (${match[2]}.name)`,
+				);
 			}
 		}
 		expect(offenders).toEqual([]);

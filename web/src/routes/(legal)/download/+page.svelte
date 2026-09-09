@@ -142,7 +142,7 @@
 		<section class="mt-8">
 			<p class="eyebrow">also for</p>
 			<ul class="mt-3 flex flex-wrap gap-3">
-				{#each others as installer (installer.name)}
+				{#each others as installer, i (i)}
 					<li>
 						<a href={installer.url} class="btn btn-secondary">
 							{NAMES[installer.os]} · {installer.name.replace(/^.*\./, '')}
