@@ -29,6 +29,8 @@ type meResponse struct {
 	TotalXp  int64 `json:"totalXp"`
 	FtpWatts int16 `json:"ftpWatts"`
 	WeightKg int16 `json:"weightKg"`
+	// The HR anchor (ADR-0014), on the account since #1571; absent until set.
+	Lthr *int16 `json:"lthr,omitempty"`
 	// The FTP auto-detect prompt (#26): filled when the 90-day curve outgrows
 	// the setting. A suggestion, never an application — FTP moves every
 	// workout's difficulty (docs/SPEC.md).
@@ -93,6 +95,10 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		StravaUpload  *bool   `json:"stravaUpload"`
 		Email         *string `json:"email"`
 		NotifyPlanned *bool   `json:"notifyPlanned"`
+		// Pointer for the same reason: absent keeps the anchor. Zero clears
+		// it — it is out of range anyway, and a JSON null cannot be told
+		// from absent here (#1571).
+		Lthr *int16 `json:"lthr"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -116,6 +122,17 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Weight has to be between 30 and 200 kg.", "weightKg")
 		return
+	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < 100 || *req.Lthr > 210):
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"LTHR has to be between 100 and 210 bpm.", "lthr")
+		return
+	}
+	lthr := user.Lthr
+	if req.Lthr != nil {
+		lthr = req.Lthr
+		if *req.Lthr == 0 {
+			lthr = nil
+		}
 	}
 
 	stravaUpload := user.StravaUpload
@@ -149,7 +166,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
-		NotifyPlanned: notify,
+		NotifyPlanned: notify, Lthr: lthr,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)
@@ -281,6 +298,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		AvatarURL:     u.AvatarUrl,
 		FtpWatts:      u.FtpWatts,
 		WeightKg:      u.WeightKg,
+		Lthr:          u.Lthr,
 		Email:         u.Email,
 		NotifyPlanned: u.NotifyPlanned,
 		MailAvailable: s.mailer != nil,

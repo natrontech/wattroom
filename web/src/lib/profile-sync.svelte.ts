@@ -17,7 +17,18 @@ export function pullProfile(profile: ProfileStore): void {
 	if (!me) return;
 	// untrack: update() spreads the profile state internally, and an effect
 	// must not subscribe to what it writes.
-	untrack(() => profile.update({ ftp: me.ftpWatts, kg: me.weightKg }));
+	untrack(() => {
+		// LTHR joined the account in #1571. A browser that set one before
+		// that, against an account that has none, is the one copy there is:
+		// push it up instead of pulling the blank down over it.
+		const local = profile.current.lthr;
+		if (me.lthr == null && local) {
+			void pushProfile({ lthr: local });
+			profile.update({ ftp: me.ftpWatts, kg: me.weightKg });
+			return;
+		}
+		profile.update({ ftp: me.ftpWatts, kg: me.weightKg, lthr: me.lthr });
+	});
 }
 
 /**
@@ -27,6 +38,8 @@ export function pullProfile(profile: ProfileStore): void {
 export async function pushProfile(next: {
 	ftpWatts?: number;
 	weightKg?: number;
+	/** 0 clears the anchor (#1571). */
+	lthr?: number;
 }): Promise<string | null> {
 	const me = account.me;
 	// Not a silent null (#1543): the caller reports the push, and a number
@@ -37,6 +50,7 @@ export async function pushProfile(next: {
 		displayName: me.displayName,
 		ftpWatts: next.ftpWatts ?? me.ftpWatts,
 		weightKg: next.weightKg ?? me.weightKg,
+		lthr: next.lthr,
 	});
 	return err ? err.message : null;
 }

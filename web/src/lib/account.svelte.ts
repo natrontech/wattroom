@@ -20,6 +20,8 @@ export interface Me {
 	totalXp?: number;
 	ftpWatts: number;
 	weightKg: number;
+	/** The HR anchor (ADR-0014), on the account since #1571. */
+	lthr?: number;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
 	suggestedFtp?: number;
 	best20m?: number;
@@ -152,6 +154,8 @@ function createAccountStore() {
 			displayName: string;
 			ftpWatts: number;
 			weightKg: number;
+			/** Absent keeps the anchor; 0 clears it (#1571). */
+			lthr?: number;
 			stravaUpload?: boolean;
 			email?: string;
 			notifyPlanned?: boolean;
