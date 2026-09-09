@@ -201,6 +201,14 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 	// execution bars and the sprint scoreboard had never been seen with.
 	// Still behind WATTROOM_DEV_LOGIN; production never opens that door.
 	if p.id == "dev" {
+		// A GET that mints a session is a login-CSRF vector: any page a
+		// developer visits could sign this browser in with an <img> (#1603).
+		// A typed URL or a link on this origin is not cross-site; an
+		// embedded fetch from elsewhere is, and the browser says so.
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden", "The dev login only answers a navigation from this origin.")
+			return
+		}
 		ident := devIdentity(r.URL.Query().Get("as"))
 		if linking {
 			s.finishLink(w, r, p, ident, &oauth2.Token{}, linkTo)
@@ -285,7 +293,8 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// The state cookie proves this callback belongs to a flow we started in
 	// this browser; without it any link could complete a login (login CSRF).
 	cookie, err := r.Cookie(stateCookie)
-	if err != nil || cookie.Value == "" || r.URL.Query().Get("state") != cookie.Value {
+	if err != nil || cookie.Value == "" ||
+		subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("state")), []byte(cookie.Value)) != 1 {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
 			"This sign-in link is stale or was not started here. Start again from the sign-in page.")
 		return

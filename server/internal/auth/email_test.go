@@ -337,3 +337,31 @@ func TestFailedSendRestoresThePreviousVerification(t *testing.T) {
 		t.Fatalf("mailer called %d times, want 3 (first, failed, retry)", mailer.calls)
 	}
 }
+
+// Asking whether an address is somebody's costs the same budget as a mail
+// (#1605): it used to be free, an existence oracle at request rate.
+func TestAddressProbesSpendTheMailBudget(t *testing.T) {
+	s := testService(t)
+	s.SetMailer(&fakeMailer{})
+	owner := testUser(t, s)
+	if _, err := s.store.Pool.Exec(t.Context(),
+		"update users set email = $2, email_verified_at = now() where id = $1", owner.ID, "owner@example.test"); err != nil {
+		t.Fatalf("verify owner: %v", err)
+	}
+	prober := testUser(t, s)
+	sawTaken, sawBudget := false, false
+	for i := 0; i < verifyMailsPerWindow+1 && !sawBudget; i++ {
+		_, err := s.startEmailVerification(t.Context(), prober, "owner@example.test")
+		switch {
+		case errors.Is(err, errEmailTaken):
+			sawTaken = true
+		case errors.Is(err, errTooManyVerifications):
+			sawBudget = true
+		default:
+			t.Fatalf("probe %d: %v", i, err)
+		}
+	}
+	if !sawTaken || !sawBudget {
+		t.Fatalf("taken=%v budget=%v: the probe must answer, then run out", sawTaken, sawBudget)
+	}
+}

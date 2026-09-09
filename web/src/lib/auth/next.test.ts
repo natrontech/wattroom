@@ -26,6 +26,8 @@ describe('login next-stash', () => {
 	it('drops open redirects and junk', () => {
 		for (const bad of [
 			'//evil.example',
+			'/\\evil.example', // the backslash form, folded to // by the parser (#1610)
+			'/\\\\evil.example',
 			'https://evil.example/x',
 			'javascript:alert(1)',
 			'',

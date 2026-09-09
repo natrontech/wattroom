@@ -157,6 +157,10 @@ func main() {
 			defer cancel()
 			secrets.Backfill(backfillCtx, st, keys, log)
 		})
+		if err := auth.DevLoginMisconfigured(baseURL); err != nil {
+			log.Error("refusing to start", "err", err)
+			os.Exit(1)
+		}
 		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"), keys)
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
@@ -311,6 +315,10 @@ func main() {
 	}
 	social := og.New(baseURL, lookup, log)
 	social.Register(mux)
+	// Under every API route: an unknown or unmounted path answers the API's
+	// own 404, never the SPA shell with a 200 the client then parses as data
+	// (#1604).
+	mux.HandleFunc("/api/", apiNotFound)
 	mux.Handle("/", spaHandler(social))
 
 	addr := ":8080"
@@ -319,7 +327,7 @@ func main() {
 	}
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: secured(mux),
 		// Header timeout only: /ws connections are long-lived, so no blanket
 		// read/write timeouts here — the hub owns per-message deadlines.
 		ReadHeaderTimeout: 10 * time.Second,

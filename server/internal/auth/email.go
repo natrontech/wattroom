@@ -63,15 +63,6 @@ var errTooManyVerifications = errors.New("verification mail budget spent")
 // token and mails the link out. The rider's current address is untouched until
 // they follow it.
 func (s *Service) startEmailVerification(ctx context.Context, user db.User, address string) (db.User, error) {
-	taken, err := s.store.Queries.EmailVerifiedElsewhere(ctx, db.EmailVerifiedElsewhereParams{
-		Email: address, UserID: user.ID,
-	})
-	if err != nil {
-		return db.User{}, err
-	}
-	if taken {
-		return db.User{}, errEmailTaken
-	}
 	// Same address, link still fresh: the rider is saving their profile, not
 	// asking again. Silent success — nothing is wrong, and a second mail is
 	// not what they meant.
@@ -84,9 +75,21 @@ func (s *Service) startEmailVerification(ctx context.Context, user db.User, addr
 	// The ceiling belongs here, past the early return above: that return is
 	// the rider saving their profile again, and spending budget on a mail
 	// nobody sends would punish them for it. Everything below this line puts
-	// a message in somebody's inbox.
+	// a message in somebody's inbox — or answers whether an address is
+	// somebody's, which is worth exactly as much to a stranger (#1605): the
+	// taken check used to sit above the budget, an existence oracle at
+	// request rate for any signed-in account.
 	if !s.verifyMail.spend(user.ID) {
 		return db.User{}, errTooManyVerifications
+	}
+	taken, err := s.store.Queries.EmailVerifiedElsewhere(ctx, db.EmailVerifiedElsewhereParams{
+		Email: address, UserID: user.ID,
+	})
+	if err != nil {
+		return db.User{}, err
+	}
+	if taken {
+		return db.User{}, errEmailTaken
 	}
 
 	token := randomToken()

@@ -18,6 +18,10 @@ import (
 // body is HTML the caller has already escaped; title is escaped here.
 func WritePage(w http.ResponseWriter, status int, title, body string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// The URL these pages are reached on carries a live single-use token
+	// (#1609): it must not ride a referrer to a linked site or sit in a cache.
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	// Placeholders rather than a format string: the CSS is full of %.
 	_, _ = w.Write([]byte(strings.NewReplacer(

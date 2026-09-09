@@ -986,6 +986,43 @@ func TestUpdateMeCarriesLthr(t *testing.T) {
 	}
 }
 
+// The dev login opens on a local origin only, and never for a cross-site
+// fetch (#1603).
+func TestDevLoginIsLocalOnly(t *testing.T) {
+	t.Setenv("WATTROOM_DEV_LOGIN", "1")
+	for base, want := range map[string]bool{
+		"http://localhost:8080":      true,
+		"http://app.localhost:5173":  true,
+		"http://127.0.0.1:8101":      true,
+		"http://192.168.1.20:8080":   true,
+		"https://wattroom.ch":        false,
+		"https://staging.example.io": false,
+	} {
+		_, open := providersFromEnv(base)["dev"]
+		if open != want {
+			t.Errorf("%s: dev provider open=%v, want %v", base, open, want)
+		}
+		if err := DevLoginMisconfigured(base); (err == nil) != want {
+			t.Errorf("%s: boot check err=%v, want refused=%v", base, err, !want)
+		}
+	}
+	t.Setenv("WATTROOM_DEV_LOGIN", "")
+	if err := DevLoginMisconfigured("https://wattroom.ch"); err != nil {
+		t.Fatalf("off is never misconfigured: %v", err)
+	}
+
+	s := testService(t)
+	s.providers["dev"] = provider{id: "dev"}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start?as=Mallory", nil)
+	req.SetPathValue("provider", "dev")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	w := httptest.NewRecorder()
+	s.handleStart(w, req)
+	if w.Code != http.StatusForbidden || len(w.Result().Cookies()) != 0 {
+		t.Fatalf("a cross-site fetch got %d with %d cookies", w.Code, len(w.Result().Cookies()))
+	}
+}
+
 // Sign out everywhere keeps the session that asked and ends the rest (#1607).
 func TestLogoutEverywhereKeepsThisSession(t *testing.T) {
 	s := testService(t)

@@ -231,3 +231,33 @@ func TestSPACompressesTextForClientsThatAskForIt(t *testing.T) {
 		t.Errorf("a 304 answered %d with encoding %q", rec.Code, rec.Header().Get("Content-Encoding"))
 	}
 }
+
+// An unknown API path is the API's 404, never the shell with a 200 (#1604);
+// and every response carries the hardening headers (#1609).
+func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
+	dist := fstest.MapFS{"index.html": {Data: []byte("<html></html>")}}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/", apiNotFound)
+	mux.Handle("/", serveSPA(dist, og.New("https://wattroom.test", nil, discardLog())))
+	handler := secured(mux)
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/api/nope", nil))
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Header().Get("Content-Type"), "json") || !strings.Contains(rec.Body.String(), `"not_found"`) {
+		t.Fatalf("/api/nope: %d %s %s", rec.Code, rec.Header().Get("Content-Type"), rec.Body.String())
+	}
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/r/velvet", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("the shell: %d", rec.Code)
+	}
+	for header, want := range map[string]string{
+		"Content-Security-Policy": "frame-ancestors 'none'",
+		"X-Content-Type-Options":  "nosniff",
+		"Referrer-Policy":         "strict-origin-when-cross-origin",
+	} {
+		if got := rec.Header().Get(header); got != want {
+			t.Errorf("%s = %q, want %q", header, got, want)
+		}
+	}
+}
