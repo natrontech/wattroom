@@ -88,12 +88,22 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	rm.session.pick("Openers", "{}", 600)
 	rm.session.start(time.Unix(0, 0))
 	rm.session.state(time.Unix(20, 0)) // roll countdown into running
+	// The room's own clock, one second per sample. On wall time the session
+	// (started at the epoch) had long run out, so one live sample landed and
+	// two were refused — and the count below came out right by the wrong
+	// route (audit 2026-09-09).
+	clock := time.Unix(20, 0)
+	rm.now = func() time.Time { return clock }
 
 	for seq := 1; seq <= 3; seq++ {
+		clock = clock.Add(time.Second)
 		rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: seq})
 	}
+	if got := rm.record.count("jan"); got != 3 {
+		t.Fatalf("expected the 3 live samples recorded before the drop, got %d", got)
+	}
 	// The socket dropped after seq 3; the client replays 2..6 from its buffer.
-	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{
 		{Watts: 200, Seq: 2}, {Watts: 201, Seq: 3}, {Watts: 202, Seq: 4},
 		{Watts: 203, Seq: 5}, {Watts: 204, Seq: 6},
 	})
@@ -102,7 +112,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 
 	// A hostile batch cannot grow memory: junk is dropped at the bound.
-	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
 	if got := rm.record.count("jan"); got != 6 {
 		t.Fatalf("out-of-bounds sample was recorded: %d", got)
 	}
@@ -116,6 +126,27 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 	if got := rm.record.count("jan"); got != 0 {
 		t.Fatalf("record survived a session restart: %d", got)
+	}
+}
+
+func TestBackfillNeedsTheTrainerClaim(t *testing.T) {
+	// The replay is gated like live metrics (audit 2026-09-09): the screen
+	// that lost the trainer to the rider's other tab must not land its
+	// buffer in the record beside the holder's.
+	rm := newRoom("test")
+	holder := screen("jan", "desk", "desktop")
+	other := screen("jan", "phone", "phone")
+	rm.join(holder)
+	rm.join(other)
+	rm.claimSensors(holder, protocol.SensorClaim{Held: []string{"trainer"}, Tab: "desk", Device: "desktop"})
+
+	rm.backfill(other, []protocol.RiderMetrics{{Watts: 200, Seq: 1}})
+	if got := rm.record.count("jan"); got != 0 {
+		t.Fatalf("a tab without the claim backfilled %d samples", got)
+	}
+	rm.backfill(holder, []protocol.RiderMetrics{{Watts: 200, Seq: 1}})
+	if got := rm.record.count("jan"); got != 1 {
+		t.Fatalf("the holder's backfill recorded %d samples, want 1", got)
 	}
 }
 
@@ -194,7 +225,7 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 				rm.setMetrics(sock("jan"), m)
 			}
 			if len(tt.replay) > 0 {
-				rm.backfill(protocol.Rider{ID: "jan"}, tt.replay)
+				rm.backfill(sock("jan"), tt.replay)
 			}
 			if got := rm.record.count("jan"); got != tt.want {
 				t.Errorf("record holds %d samples, want %d", got, tt.want)
@@ -207,7 +238,7 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 	// After a server restart the room comes back idle; the reconnect replay
 	// must still land — dropping it there is exactly the loss #19 prevents.
 	rm := newRoom("test")
-	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
 	if got := rm.record.count("jan"); got != 2 {
 		t.Fatalf("idle-room backfill dropped: %d", got)
 	}
@@ -454,7 +485,7 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 	// A backfill is not gated on the clock: a replayed sample's timeline
 	// second is unknown, it dedupes on seq, and dropping it is the data loss
 	// the buffer exists to prevent (#19).
-	rm.backfill(protocol.Rider{ID: "jan"}, []protocol.RiderMetrics{
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{
 		{Watts: 180, Seq: 900}, {Watts: 185, Seq: 901},
 	})
 	if got := rm.record.count("jan"); got != 8 {

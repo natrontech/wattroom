@@ -31,6 +31,12 @@ const clientQueue = 8
 // that socket's writer goroutine rather than on the room's tick.
 const writeTimeout = 5 * time.Second
 
+// maxFrame bounds one inbound message. coder/websocket's default is 32 KiB,
+// under which a pick carrying a workout near checkPick's own 64 KiB ceiling,
+// or a backfill past ~700 samples, did not get refused — the read failed and
+// the socket died with it, replay and all (audit 2026-09-09).
+const maxFrame = 512 << 10
+
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
@@ -78,6 +84,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	conn.SetReadLimit(maxFrame)
 	rm := h.room(slug)
 	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
@@ -230,6 +237,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// every other client input.
 			samples := msg.Backfill.Samples
 			if len(samples) > maxBackfillBatch {
+				h.log.Warn("backfill truncated", "room", slug, "rider", rider.ID, "samples", len(samples), "kept", maxBackfillBatch)
 				samples = samples[:maxBackfillBatch]
 			}
 			// One batch a second: it runs 600 validations under the room's
@@ -238,7 +246,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if !rm.allow("backfill", rider.ID, h.now(), time.Second) {
 				continue
 			}
-			rm.backfill(rider, samples)
+			rm.backfill(c, samples)
 			h.log.Debug("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
