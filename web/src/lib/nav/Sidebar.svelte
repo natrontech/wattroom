@@ -16,6 +16,8 @@
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
 	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
+	import { keepSize } from '$lib/pane';
+	import { edgeDivider } from '$lib/divider';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatWhen } from '$lib/format';
@@ -346,9 +348,22 @@
 	</li>
 {/snippet}
 
+<!-- Resizable from its right edge, the way the room's panel is from its
+     left (#427), and remembered per device (keepSize). Only on a desk: below
+     md this column is a drawer, and the width dragged on a desk is pinned
+     back to the default there — a 400 px drawer on a 375 px phone leaves no
+     backdrop to tap. -->
 <nav
-	class="bg-surface border-ink/5 flex h-full w-60 shrink-0 flex-col border-r"
+	{@attach (node) => keepSize(node, 'sidebar')}
+	class="bg-surface border-ink/5 relative flex h-full w-60 shrink-0 flex-col border-r max-md:w-60! md:max-w-[40vw] md:min-w-45"
 >
+	<div
+		{@attach edgeDivider}
+		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 right-0 z-10 hidden w-1.5 cursor-col-resize touch-none transition-colors md:block"
+		role="separator"
+		aria-orientation="vertical"
+		aria-label="resize the sidebar"
+	></div>
 	<!-- The crew is the header (ADR-0020 amended 2026-09-09, #1327): the
 	     first row of the column names the place you are in, and the brand
 	     leaves it — the tab, the title bar and the sign-in page carry that,

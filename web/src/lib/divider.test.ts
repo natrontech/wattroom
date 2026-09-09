@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { clampSize, dividerDrag } from '$lib/divider';
+import { clampSize, dividerDrag, edgeDivider } from '$lib/divider';
 
 function grip() {
 	const node = document.createElement('div');
@@ -73,5 +73,24 @@ describe('clampSize', () => {
 		expect(clampSize(420.4, 200, 800)).toBe(420);
 		expect(clampSize(10, 200, 800)).toBe(200);
 		expect(clampSize(9000, 200, 800)).toBe(800);
+	});
+});
+
+describe('edgeDivider', () => {
+	it("resizes the grip's parent within the parent's own CSS bounds", () => {
+		const pane = document.createElement('div');
+		pane.style.minWidth = '180px';
+		pane.style.maxWidth = '400px';
+		const node = grip();
+		pane.appendChild(node);
+		document.body.appendChild(pane); // computed style resolves only in the tree
+		edgeDivider(node);
+		// The sidebar: the column lies left of its grip, so pulling right
+		// widens it — and never past the ceiling the pane declares.
+		drag(node, 'pointerdown', 240, 0);
+		drag(node, 'pointermove', 900, 0);
+		expect(pane.style.width).toBe('400px');
+		drag(node, 'pointermove', 0, 0);
+		expect(pane.style.width).toBe('180px');
 	});
 });

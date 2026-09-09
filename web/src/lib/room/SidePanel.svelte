@@ -13,29 +13,8 @@
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import { keepSize } from '$lib/pane';
-	import { clampSize, dividerDrag } from '$lib/divider';
+	import { edgeDivider } from '$lib/divider';
 	import type { Missed } from '$lib/room/unread';
-
-	// The divider between the room and this column. keepSize's observer saves
-	// the width it writes, the same way it did for the native `resize` grip.
-	function edgeResize(grip: HTMLElement) {
-		const panel = grip.parentElement;
-		if (!panel) return;
-		return dividerDrag(grip, {
-			axis: 'x',
-			// The panel is right of its divider: pulling left makes it wider.
-			sign: -1,
-			from: () => panel.offsetWidth,
-			to: (width) => {
-				const style = getComputedStyle(panel);
-				panel.style.width = `${clampSize(
-					width,
-					parseFloat(style.minWidth) || 240,
-					parseFloat(style.maxWidth) || window.innerWidth,
-				)}px`;
-			},
-		});
-	}
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { rosterGroups } from '$lib/room/roster';
@@ -216,8 +195,9 @@
 	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
 	style="min-width: 240px; max-width: 40vw"
 >
+	<!-- The panel is right of its divider: pulling left makes it wider. -->
 	<div
-		{@attach edgeResize}
+		{@attach (grip) => edgeDivider(grip, -1)}
 		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none transition-colors"
 		role="separator"
 		aria-orientation="vertical"
