@@ -13,7 +13,7 @@ func TestEditChatMessage(t *testing.T) {
 	svc, mux, users, _ := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warmup at 6", "")
 	if !ok {
 		t.Fatal("save failed")
@@ -80,7 +80,7 @@ func TestEditChatMessage(t *testing.T) {
 func TestEditKeepsAnImageWhenTheWordsGo(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	svc.SetLive(&fakeLive{})
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 	img, err := svc.store.Queries.SaveChatImage(t.Context(), db.SaveChatImageParams{
 		RoomID: room.ID, UserID: alice.ID, Mime: "image/png", Bytes: []byte("\x89PNG\r\n\x1a\npretend"),
 	})

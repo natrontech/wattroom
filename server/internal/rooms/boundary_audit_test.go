@@ -45,7 +45,7 @@ func TestTheCrewSurfaceRefusesTheSignedOut(t *testing.T) {
 func TestRemovingSomeoneNotInTheRoomIsNotA204(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Remove Nobody Room")
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	if status, body := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/members/"+bob, ""); status != http.StatusNotFound {
 		t.Fatalf("removing a non-member: %d %v, want 404", status, body)
 	}

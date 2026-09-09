@@ -3,6 +3,7 @@ package friends
 import (
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,21 +16,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
-
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.User(r)
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
 
 // fakePresence stands in for the hub: userID → room slug, plus a count of
 // the lobby pings a mutation asked for (#876).
@@ -50,11 +36,11 @@ func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	return out
 }
 
-func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresence) {
+func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, *fakePresence) {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -62,7 +48,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresenc
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -74,9 +60,9 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresenc
 }
 
 // shareRoom puts the named users into one room owned by the first.
-func shareRoom(t *testing.T, st *store.Store, users *fakeUsers, slug string, names ...string) db.Room {
+func shareRoom(t *testing.T, st *store.Store, users *testx.Users, slug string, names ...string) db.Room {
 	t.Helper()
-	owner := users.byToken[names[0]]
+	owner := users.ByToken[names[0]]
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: slug, Name: slug, OwnerID: owner.ID,
 	})
@@ -92,7 +78,7 @@ func shareRoom(t *testing.T, st *store.Store, users *fakeUsers, slug string, nam
 			role = "owner"
 		}
 		err := st.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: users.byToken[name].ID, Role: role,
+			RoomID: room.ID, UserID: users.ByToken[name].ID, Role: role,
 		})
 		if err != nil {
 			t.Fatalf("membership %s: %v", name, err)
@@ -159,7 +145,7 @@ func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 func TestFriendLifecycle(t *testing.T) {
 	mux, st, users, presence := setup(t)
 	shareRoom(t, st, users, "friends-cave", "alice", "bob")
-	alice, bob := users.byToken["alice"], users.byToken["bob"]
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 
 	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
 	if code, _ := call(t, mux, "", http.MethodGet, "/api/friends"); code != http.StatusUnauthorized {
@@ -276,7 +262,7 @@ func TestFriendLifecycle(t *testing.T) {
 // three different things, and only one of them is anybody's business.
 func TestADismissalTellsTheRequester(t *testing.T) {
 	mux, _, users, _ := setup(t)
-	alice, bob := users.byToken["alice"], users.byToken["bob"]
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 	ask := func(from string, code string) {
 		t.Helper()
 		if got := request(t, mux, from, code); got != http.StatusOK {
@@ -340,21 +326,21 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	shareRoom(t, st, users, "friends-cave", "alice", "bob")
 	shareRoom(t, st, users, "friends-lair", "cara")
 
-	if code := request(t, mux, "alice", users.byToken["bob"].FriendCode); code != http.StatusOK {
+	if code := request(t, mux, "alice", users.ByToken["bob"].FriendCode); code != http.StatusOK {
 		t.Fatalf("request bob: %d", code)
 	}
-	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(users.byToken["alice"].ID)+"/accept"); code != http.StatusOK {
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+store.UUIDString(users.ByToken["alice"].ID)+"/accept"); code != http.StatusOK {
 		t.Fatalf("bob accept: %d", code)
 	}
-	if code := request(t, mux, "alice", users.byToken["cara"].FriendCode); code != http.StatusOK {
+	if code := request(t, mux, "alice", users.ByToken["cara"].FriendCode); code != http.StatusOK {
 		t.Fatalf("request cara: %d", code)
 	}
-	if code, _ := call(t, mux, "cara", http.MethodPost, "/api/friends/"+store.UUIDString(users.byToken["alice"].ID)+"/accept"); code != http.StatusOK {
+	if code, _ := call(t, mux, "cara", http.MethodPost, "/api/friends/"+store.UUIDString(users.ByToken["alice"].ID)+"/accept"); code != http.StatusOK {
 		t.Fatalf("cara accept: %d", code)
 	}
 
-	presence.where[store.UUIDString(users.byToken["bob"].ID)] = "friends-cave"  // alice is a member
-	presence.where[store.UUIDString(users.byToken["cara"].ID)] = "friends-lair" // alice is not
+	presence.where[store.UUIDString(users.ByToken["bob"].ID)] = "friends-cave"  // alice is a member
+	presence.where[store.UUIDString(users.ByToken["cara"].ID)] = "friends-lair" // alice is not
 
 	byName := map[string]map[string]any{}
 	for _, entry := range friendsOf(t, mux, "alice") {
@@ -377,7 +363,7 @@ func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 
 	// The list hands back my own code and never a user listing.
 	_, body := call(t, mux, "alice", http.MethodGet, "/api/friends")
-	if body["code"] != users.byToken["alice"].FriendCode {
+	if body["code"] != users.ByToken["alice"].FriendCode {
 		t.Fatalf("own code missing: %v", body)
 	}
 	if _, leaked := body["candidates"]; leaked {
@@ -385,7 +371,7 @@ func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 	}
 
 	// cara shares no room with alice — her code alone opens the door.
-	if code := request(t, mux, "alice", users.byToken["cara"].FriendCode); code != http.StatusOK {
+	if code := request(t, mux, "alice", users.ByToken["cara"].FriendCode); code != http.StatusOK {
 		t.Fatalf("stranger-by-code request: %d", code)
 	}
 	if got := friendsOf(t, mux, "cara")[0]["status"]; got != "pending_in" {
@@ -407,7 +393,7 @@ func requestByID(t *testing.T, mux *http.ServeMux, user, id string) int {
 func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 	mux, st, users, _ := setup(t)
 	shareRoom(t, st, users, "friends-cave", "alice", "bob")
-	id := func(name string) string { return store.UUIDString(users.byToken[name].ID) }
+	id := func(name string) string { return store.UUIDString(users.ByToken[name].ID) }
 
 	tests := []struct {
 		name string
@@ -438,7 +424,7 @@ func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 func TestFriendDoorsSignedOutAndTheCeiling(t *testing.T) {
 	mux, st, users, _ := setup(t)
 	shareRoom(t, st, users, "door-cave", "alice", "bob")
-	bob := users.byToken["bob"]
+	bob := users.ByToken["bob"]
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodPost, "/api/friends"},
 		{http.MethodPost, "/api/friends/" + store.UUIDString(bob.ID) + "/accept"},
@@ -464,7 +450,7 @@ func TestFriendDoorsSignedOutAndTheCeiling(t *testing.T) {
 func TestDismissCanBeUndone(t *testing.T) {
 	mux, st, users, _ := setup(t)
 	shareRoom(t, st, users, "undo-cave", "alice", "bob")
-	alice, bob := users.byToken["alice"], users.byToken["bob"]
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 	if code := request(t, mux, "bob", alice.FriendCode); code != http.StatusOK {
 		t.Fatalf("bob asks alice: %d", code)
 	}

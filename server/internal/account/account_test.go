@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -23,37 +24,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-// fakeUsers resolves the X-Test-User header instead of a session cookie, so
-// these tests exercise account, not auth — auth has its own suite. Same shape
-// as rooms_test.go's harness, trimmed to the Sessions interface account needs.
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
-// User is what rooms.UserSource asks for beyond Sessions — the purge hands
-// crews on through the real rooms service, so it is wired in here too.
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
 type harness struct {
 	mux   *http.ServeMux
 	store *store.Store
-	users *fakeUsers
+	users *testx.Users
 }
 
 func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "carol"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -61,7 +42,7 @@ func setup(t *testing.T) *harness {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			// Rooms and crews first: crews.owner_id is ON DELETE RESTRICT, so
 			// a user who made a room through the API owns a crew and cannot
@@ -92,7 +73,7 @@ func (h *harness) call(t *testing.T, user, method, path string) *httptest.Respon
 	return w
 }
 
-func (h *harness) id(name string) pgtype.UUID { return h.users.byToken[name].ID }
+func (h *harness) id(name string) pgtype.UUID { return h.users.ByToken[name].ID }
 
 // gzipped is a samples blob the way the rides handler stores one.
 func gzipped(t *testing.T, raw string) []byte {

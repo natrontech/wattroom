@@ -16,8 +16,8 @@ func TestTheOwnerHandsTheRoomToAMember(t *testing.T) {
 	slug, code := h.createRoom(t, "alice", "Room Handover")
 	_ = code
 	h.join(t, "bob", slug)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
-	carol := store.UUIDString(h.users.byToken["carol"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
+	carol := store.UUIDString(h.users.ByToken["carol"].ID)
 	path := "/api/rooms/" + slug + "/transfer"
 
 	if status, _ := h.call(t, "bob", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, bob)); status != http.StatusForbidden {
@@ -38,7 +38,7 @@ func TestTheOwnerHandsTheRoomToAMember(t *testing.T) {
 		t.Errorf("alice's role is %v, want coach", asAlice["role"])
 	}
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil || room.OwnerID != h.users.byToken["bob"].ID {
+	if err != nil || room.OwnerID != h.users.ByToken["bob"].ID {
 		t.Errorf("rooms.owner_id did not move with the role: %v %v", err, room.OwnerID)
 	}
 	// The old owner's paperwork is gone with the role.

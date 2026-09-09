@@ -21,7 +21,7 @@ func TestRolesMatrix(t *testing.T) {
 	slug, _ := h.createRoom(t, "alice", "Matrix")
 	h.join(t, "bob", slug)
 
-	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	bobID := store.UUIDString(h.users.ByToken["bob"].ID)
 	roleBody := fmt.Sprintf(`{"userId":%q,"role":"coach"}`, bobID)
 
 	// Member cannot edit the room or assign roles (SPEC matrix: owner-only).
@@ -45,7 +45,7 @@ func TestRolesMatrix(t *testing.T) {
 
 	// Coach still cannot do owner things.
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/role",
-		fmt.Sprintf(`{"userId":%q,"role":"coach"}`, store.UUIDString(h.users.byToken["carol"].ID))); status != http.StatusForbidden {
+		fmt.Sprintf(`{"userId":%q,"role":"coach"}`, store.UUIDString(h.users.ByToken["carol"].ID))); status != http.StatusForbidden {
 		t.Errorf("coach assigned a role: %d", status)
 	}
 }
@@ -54,8 +54,8 @@ func TestLeaveAndRemove(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Leaving")
 	h.join(t, "bob", slug)
-	bobID := store.UUIDString(h.users.byToken["bob"].ID)
-	aliceID := store.UUIDString(h.users.byToken["alice"].ID)
+	bobID := store.UUIDString(h.users.ByToken["bob"].ID)
+	aliceID := store.UUIDString(h.users.ByToken["alice"].ID)
 
 	// A member cannot remove someone else.
 	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/members/"+aliceID, ""); status != http.StatusForbidden {
@@ -77,7 +77,7 @@ func TestBanFlow(t *testing.T) {
 	for _, member := range []string{"bob", "carol"} {
 		h.join(t, member, slug)
 	}
-	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	bobID := store.UUIDString(h.users.ByToken["bob"].ID)
 	ban := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bobID)
 
 	// Only the owner bans.
@@ -117,7 +117,7 @@ func TestBanFlow(t *testing.T) {
 		t.Fatalf("room: %v", err)
 	}
 	if _, err := h.store.Queries.DeleteMembership(t.Context(), db.DeleteMembershipParams{
-		RoomID: room.ID, UserID: h.users.byToken["bob"].ID,
+		RoomID: room.ID, UserID: h.users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatalf("delete membership: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestMembersCarryEarnedBadges(t *testing.T) {
 	h.enter(t, "bob", code, slug)
 	for _, key := range []string{"lounge-lizard", "dj"} {
 		if _, err := h.store.Queries.AwardAchievement(t.Context(), db.AwardAchievementParams{
-			UserID: h.users.byToken["bob"].ID, Key: key,
+			UserID: h.users.ByToken["bob"].ID, Key: key,
 			EarnedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		}); err != nil {
 			t.Fatalf("award %s: %v", key, err)
@@ -260,22 +260,22 @@ func TestRiderPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
 	for _, who := range []string{"bob", "carol"} {
 		if _, err := h.store.Pool.Exec(t.Context(),
 			"update users set email = $2, email_verified_at = now(), notify_planned = true where id = $1",
-			h.users.byToken[who].ID, who+"@example.test"); err != nil {
+			h.users.ByToken[who].ID, who+"@example.test"); err != nil {
 			t.Fatalf("give %s an address: %v", who, err)
 		}
 	}
 	// Alice plans, so she is excluded as the planner; bob opted out; carol
 	// should be the only target left.
 	targets, err := h.store.Queries.ListRoomNotifyTargets(t.Context(), db.ListRoomNotifyTargetsParams{
-		RoomID: room.ID, ID: h.users.byToken["alice"].ID,
+		RoomID: room.ID, ID: h.users.ByToken["alice"].ID,
 	})
 	if err != nil {
 		t.Fatalf("notify targets: %v", err)
 	}
 	var mailedBob, mailedCarol bool
 	for _, target := range targets {
-		mailedBob = mailedBob || target.ID == h.users.byToken["bob"].ID
-		mailedCarol = mailedCarol || target.ID == h.users.byToken["carol"].ID
+		mailedBob = mailedBob || target.ID == h.users.ByToken["bob"].ID
+		mailedCarol = mailedCarol || target.ID == h.users.ByToken["carol"].ID
 	}
 	if mailedBob {
 		t.Error("a rider who turned this room's mail off was still a target")
@@ -295,8 +295,8 @@ func TestRiderPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
 	}
 	var sawBob, sawCarol bool
 	for _, row := range rows {
-		sawBob = sawBob || row.UserID == h.users.byToken["bob"].ID
-		sawCarol = sawCarol || row.UserID == h.users.byToken["carol"].ID
+		sawBob = sawBob || row.UserID == h.users.ByToken["bob"].ID
+		sawCarol = sawCarol || row.UserID == h.users.ByToken["carol"].ID
 	}
 	if sawBob {
 		t.Error("a rider who opted out is on the board anyway")
@@ -328,7 +328,7 @@ func TestOnlyYouSetYourOwnRoomPrefs(t *testing.T) {
 	// carries no user id at all, so a smuggled one is simply refused.
 	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
 		fmt.Sprintf(`{"notify":false,"onBoard":false,"userId":%q}`,
-			store.UUIDString(h.users.byToken["alice"].ID))); status != http.StatusBadRequest {
+			store.UUIDString(h.users.ByToken["alice"].ID))); status != http.StatusBadRequest {
 		t.Errorf("a smuggled userId was accepted: %d", status)
 	}
 	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
@@ -348,7 +348,7 @@ func TestOnlyYouSetYourOwnRoomPrefs(t *testing.T) {
 func TestLeavingARoomForgetsYourPreferences(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Forgetful")
-	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	bobID := store.UUIDString(h.users.ByToken["bob"].ID)
 	h.join(t, "bob", slug)
 	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/me",
 		`{"notify":false,"onBoard":false}`); status != http.StatusOK {

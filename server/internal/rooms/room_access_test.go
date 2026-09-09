@@ -20,7 +20,7 @@ func TestACrewAdminOpensARoomToTheCrewWithoutEnteringIt(t *testing.T) {
 	crew := h.crewOf(t, open)
 	h.join(t, "bob", open)
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["carol"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["carol"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}

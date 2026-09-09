@@ -26,7 +26,7 @@ func (h *harness) crewBan(t *testing.T, slug, user string) {
 	t.Helper()
 	crewID := h.putInCrew(t, slug, "Crew "+slug)
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crewID, UserID: h.users.byToken[user].ID, Role: "banned",
+		CrewID: crewID, UserID: h.users.ByToken[user].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("crew ban: %v", err)
 	}

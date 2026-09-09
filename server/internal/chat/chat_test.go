@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,26 +16,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.User(r)
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
-func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
+func setup(t *testing.T) (*Service, *http.ServeMux, *testx.Users, db.Room) {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -42,13 +28,13 @@ func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
 	}
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: "chat-cave", Name: "Chat Cave", OwnerID: users.byToken["alice"].ID,
+		Slug: "chat-cave", Name: "Chat Cave", OwnerID: users.ByToken["alice"].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -58,7 +44,7 @@ func setup(t *testing.T) (*Service, *http.ServeMux, *fakeUsers, db.Room) {
 	})
 	for _, name := range []string{"alice", "bob"} {
 		if err := st.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: users.byToken[name].ID, Role: "member",
+			RoomID: room.ID, UserID: users.ByToken[name].ID, Role: "member",
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +66,7 @@ func TestBannedMemberRefusedAtChat(t *testing.T) {
 		t.Fatalf("member post before ban: %d", status)
 	}
 	if _, err := svc.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
-		RoomID: room.ID, UserID: users.byToken["bob"].ID, Role: "banned",
+		RoomID: room.ID, UserID: users.ByToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -116,8 +102,8 @@ func backlog(t *testing.T, mux *http.ServeMux, user, slug string) (int, []map[st
 
 func TestChatRoundTrip(t *testing.T) {
 	svc, mux, users, _ := setup(t)
-	alice := users.byToken["alice"]
-	bob := users.byToken["bob"]
+	alice := users.ByToken["alice"]
+	bob := users.ByToken["bob"]
 
 	// Boundary: no auth 401, non-member 403, unknown room 404.
 	if code, _ := backlog(t, mux, "", "chat-cave"); code != http.StatusUnauthorized {
@@ -181,7 +167,7 @@ func TestChatRoundTrip(t *testing.T) {
 
 func TestReactionRefusedAcrossRooms(t *testing.T) {
 	svc, _, users, _ := setup(t)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 	// A second room the message does NOT live in.
 	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: "other-cave", Name: "Other", OwnerID: alice.ID,
@@ -234,7 +220,7 @@ func getImage(t *testing.T, mux *http.ServeMux, user, slug, id string) *httptest
 
 func TestChatImages(t *testing.T) {
 	svc, mux, users, _ := setup(t)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 
 	// Boundary: no auth 401, non-member 403, junk bytes 400.
 	if code, _ := postImage(t, mux, "", "chat-cave", tinyPNG); code != http.StatusUnauthorized {
@@ -301,7 +287,7 @@ func TestChatImages(t *testing.T) {
 
 func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
 	svc, mux, users, room := setup(t)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 
 	_, sent := postImage(t, mux, "alice", "chat-cave", tinyPNG)
 	_, orphan := postImage(t, mux, "alice", "chat-cave", tinyPNG)
@@ -326,7 +312,7 @@ func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
 
 func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	svc, mux, users, _ := setup(t)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 	other, err := svc.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: "far-cave", Name: "Far", OwnerID: alice.ID,
 	})

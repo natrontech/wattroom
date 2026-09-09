@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -21,32 +22,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.User(r)
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
 type harness struct {
 	mux   *http.ServeMux
 	store *store.Store
-	users *fakeUsers
+	users *testx.Users
 }
 
 func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 250, WeightKg: 70,
@@ -54,7 +40,7 @@ func setup(t *testing.T) *harness {
 		if err != nil {
 			t.Fatalf("create user: %v", err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -88,7 +74,7 @@ func (h *harness) roomRide(t *testing.T, id, medal string) pgtype.UUID {
 	if err != nil {
 		t.Fatalf("ride id: %v", err)
 	}
-	alice := h.users.byToken["alice"].ID
+	alice := h.users.ByToken["alice"].ID
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: "ride-" + id[:8], Name: "Pain Cave", OwnerID: alice,
 	})

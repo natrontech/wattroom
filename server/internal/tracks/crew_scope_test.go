@@ -22,7 +22,7 @@ import (
 func (h *harness) crewOf(t *testing.T, owner string) db.Crew {
 	t.Helper()
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: owner, OwnerID: h.users.byToken[owner].ID,
+		Name: owner, OwnerID: h.users.ByToken[owner].ID,
 	})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
@@ -42,7 +42,7 @@ func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, 
 		// A prefix nothing else in the suite uses: rooms.code is unique
 		// across the whole shared wattroom_test.
 		Slug: fmt.Sprintf("crew-scope-%d-%s", n, slug),
-		Name: "Crew Scope", OwnerID: h.users.byToken[owner].ID,
+		Name: "Crew Scope", OwnerID: h.users.ByToken[owner].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -56,7 +56,7 @@ func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, 
 		t.Fatalf("place: %v", err)
 	}
 	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: h.users.byToken[owner].ID, Role: "owner",
+		RoomID: room.ID, UserID: h.users.ByToken[owner].ID, Role: "owner",
 	}); err != nil {
 		t.Fatalf("owner membership: %v", err)
 	}
@@ -66,7 +66,7 @@ func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, 
 func (h *harness) member(t *testing.T, room db.Room, who string) {
 	t.Helper()
 	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: h.users.byToken[who].ID, Role: "member",
+		RoomID: room.ID, UserID: h.users.ByToken[who].ID, Role: "member",
 	}); err != nil {
 		t.Fatalf("membership %s: %v", who, err)
 	}
@@ -127,7 +127,7 @@ func TestACrewBannedRiderCannotPlayACrewMatesTrack(t *testing.T) {
 	}
 
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "banned",
+		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("crew ban: %v", err)
 	}
