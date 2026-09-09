@@ -225,10 +225,30 @@ func TestRideListMarksAFailedDelivery(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, got)
 	}
-	id, err := store.ParseUUID(got["id"].(string))
+	rideID, _ := got["id"].(string)
+	id, err := store.ParseUUID(rideID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The listed state of one ride, by id — "" when the ride carries none.
+	stateOf := func(want string) string {
+		t.Helper()
+		status, list := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
+		if status != http.StatusOK {
+			t.Fatalf("list: %d %v", status, list)
+		}
+		rides, _ := list["rides"].([]any)
+		for _, entry := range rides {
+			ride, _ := entry.(map[string]any)
+			if ride["id"] == want {
+				state, _ := ride["exportState"].(string)
+				return state
+			}
+		}
+		t.Fatalf("ride %s is not on the list: %v", want, list)
+		return ""
+	}
+
 	if err := h.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{RideID: id, Destination: "strava"}); err != nil {
 		t.Fatal(err)
 	}
@@ -238,16 +258,8 @@ func TestRideListMarksAFailedDelivery(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	status, list := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
-	if status != http.StatusOK {
-		t.Fatalf("list: %d %v", status, list)
-	}
-	rides := list["rides"].([]any)
-	if len(rides) != 1 {
-		t.Fatalf("rides: %v", rides)
-	}
-	if state := rides[0].(map[string]any)["exportState"]; state != "failed" {
-		t.Fatalf("a failed delivery reads %v on the list", state)
+	if state := stateOf(rideID); state != "failed" {
+		t.Fatalf("a failed delivery reads %q on the list", state)
 	}
 
 	// The same ride, with the delivery opened again, is pending — and a ride
@@ -255,16 +267,13 @@ func TestRideListMarksAFailedDelivery(t *testing.T) {
 	if _, err := h.store.Queries.RequeueRideExport(t.Context(), db.RequeueRideExportParams{RideID: id, Destination: "strava"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, list = call(t, h.mux, "alice", http.MethodGet, "/api/rides", ""); list["rides"].([]any)[0].(map[string]any)["exportState"] != "pending" {
-		t.Fatalf("a requeued delivery reads %v", list["rides"])
+	if state := stateOf(rideID); state != "pending" {
+		t.Fatalf("a requeued delivery reads %q", state)
 	}
-	call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))
-	_, list = call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
-	for _, entry := range list["rides"].([]any) {
-		ride := entry.(map[string]any)
-		if _, has := ride["exportState"]; has && ride["id"] != got["id"] {
-			t.Fatalf("a ride never sent carries a state: %v", ride)
-		}
+	_, second := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))
+	secondID, _ := second["id"].(string)
+	if state := stateOf(secondID); state != "" {
+		t.Fatalf("a ride never sent carries %q", state)
 	}
 }
 
