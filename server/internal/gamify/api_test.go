@@ -241,6 +241,26 @@ func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 	}
 }
 
+// ADR-0024: a pending ask *from* a rider opens their page, "see who before
+// you accept", and the case is part of that page (#1654). The ask *to* them
+// is not a door.
+func TestTrophyCaseOpensToAPendingAsk(t *testing.T) {
+	s, _, alice, bob := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+	if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+		RequesterID: alice.ID, AddresseeID: bob.ID,
+	}); err != nil {
+		t.Fatalf("friend request: %v", err)
+	}
+	if rec, _ := get(t, mux, "/api/riders/"+store.UUIDString(alice.ID)+"/trophies", "bob"); rec.Code != http.StatusOK {
+		t.Fatalf("the asked reading the asker: %d, want 200", rec.Code)
+	}
+	if rec, _ := get(t, mux, "/api/riders/"+store.UUIDString(bob.ID)+"/trophies", "alice"); rec.Code != http.StatusNotFound {
+		t.Fatalf("the asker reading the asked: %d, want 404", rec.Code)
+	}
+}
+
 // A room-mate's tally is medals from rooms in common, not lifetime (#1649):
 // a lifetime count told a room-mate you ride in rooms they cannot see.
 func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {

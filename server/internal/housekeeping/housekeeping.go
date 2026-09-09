@@ -59,6 +59,17 @@ func sweeps() []sweep {
 			})
 		},
 	}, {
+		// A dismissed friend request is told once (ADR-0012 amendment); the
+		// tombstone that tells a late device was re-read on every presence
+		// ping forever (#1654). It goes with the recaps: the one retention
+		// SPEC pins for a "who did what with whom" fact.
+		name: "friend declines",
+		run: func(ctx context.Context, st *store.Store) error {
+			return batched(ctx, func(ctx context.Context) (int64, error) {
+				return st.Queries.PruneFriendDeclines(ctx, recap.RetentionDays)
+			})
+		},
+	}, {
 		// A chat image's 15-minute grace is a bound measured in time, and it
 		// was swept only on a write (audit 2026-09-09): an upload abandoned
 		// in a room that then went quiet was never swept.

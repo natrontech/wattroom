@@ -70,4 +70,11 @@ select (
           and ((requester_id = @viewer and addressee_id = @rider)
             or (requester_id = @rider and addressee_id = @viewer))
     )
+    or exists (
+        -- ADR-0024: a pending request *from* them opens their page, "see who
+        -- before you accept", and the case is part of that page (#1654). A
+        -- pending ask *to* them is not a door.
+        select 1 from friendships
+        where status = 'pending' and requester_id = @rider and addressee_id = @viewer
+    )
 )::boolean;
