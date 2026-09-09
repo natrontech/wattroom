@@ -69,3 +69,16 @@ export function statusOfRider(rider: {
 	if (rider.away) return 'away';
 	return rider.riding ? 'riding' : 'online';
 }
+
+/**
+ * Who is in the room besides you. Home's "Around right now" answers who
+ * ELSE is here (#1502): the feed counts your own socket like anyone's, so a
+ * room you stood in alone read as busy, with a "Join them" pointed at you.
+ */
+export function othersIn(
+	room: Pick<RailRoom, 'riders' | 'riderIds'>,
+	meId: string,
+): string[] {
+	const ids = room.riderIds ?? [];
+	return (room.riders ?? []).filter((_, i) => ids[i] !== meId);
+}

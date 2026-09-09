@@ -10,6 +10,7 @@
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
+	import { othersIn } from '$lib/status';
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
@@ -86,7 +87,15 @@
 		if (ridesError) void loadRides();
 	}
 
-	const busy = $derived((rooms ?? []).filter((r) => (r.connected ?? 0) > 0));
+	// Rooms with somebody ELSE in them: the feed counts your own socket too,
+	// and a room you stood in alone used to read as busy, with a "Join them"
+	// pointed at you (#1502). `riders` is rewritten to the others so the card
+	// and the headline print the same list they decide by.
+	const busy = $derived(
+		(rooms ?? [])
+			.map((r) => ({ ...r, riders: othersIn(r, account.me?.id ?? '') }))
+			.filter((r) => r.riders.length > 0),
+	);
 
 	// ── You, in numbers ───────────────────────────────────────────────────────
 	// FTP and level are the two numbers riders check on the way in; the level
