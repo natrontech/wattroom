@@ -25,6 +25,7 @@
 	import { pictureKey } from '$lib/room/stage';
 	import { formatClock } from '$lib/format';
 	import { useRoom } from '$lib/room/context';
+	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/room/view';
 	import { serverNow } from '$lib/room/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -127,6 +128,7 @@
 					roster={roomConnection.current?.live.tick?.roster ?? []}
 					canControl={room.canControl && !device.spectator}
 					end={() => room.control('game-end')}
+					me={account.me?.id}
 				/>
 				{#if followed && !room.game.meterHidden}
 					<!-- The rider's own watts under the game (audit 2026-09-09):

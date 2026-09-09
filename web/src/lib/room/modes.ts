@@ -20,6 +20,15 @@ export interface GameMode {
 	icon: Icon;
 }
 
+/** docs/SPEC.md: elimination modes forgive a disconnect this long. */
+export const DISCONNECT_GRACE_SECONDS = 30;
+/** The modes that eliminate — the grace and the "you're out" state are theirs. */
+export const ELIMINATION_MODES = new Set([
+	'backyard-ramp',
+	'collective-ramp',
+	'floor-is-lava',
+]);
+
 export const GAME_MODES: GameMode[] = [
 	{
 		id: 'backyard-ramp',

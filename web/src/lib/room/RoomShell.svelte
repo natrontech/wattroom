@@ -331,6 +331,7 @@
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
 		sprint={live.tick?.sprint ?? null}
+		game={live.tick?.game ?? null}
 		onExit={() => (tv = false)}
 	/>
 {/if}

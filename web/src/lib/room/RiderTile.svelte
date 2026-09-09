@@ -158,6 +158,11 @@
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
 	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
 		<span class="text-ink truncate text-sm font-semibold">{rider.name}</span>
+		{#if rider.eliminated}
+			<!-- Knocked out of the running game (#1590): computed for every
+			     tile and drawn by none. -->
+			<span class="eyebrow text-muted shrink-0">out</span>
+		{/if}
 		{#if rider.coach}
 			<span class="{MARK_SURFACE} rounded-full px-1.5 py-0.5 text-[9px]"
 				>coach</span

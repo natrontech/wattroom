@@ -5,8 +5,14 @@
 		fault,
 		bufferedSeconds,
 		onRecover,
-	}: { fault: Fault; bufferedSeconds: number; onRecover: () => void } =
-		$props();
+		note,
+	}: {
+		fault: Fault;
+		bufferedSeconds: number;
+		onRecover: () => void;
+		/** One more line the room knows and the fault does not (#1590). */
+		note?: string;
+	} = $props();
 
 	// What went wrong, why it matters, what happens next — never "something went wrong".
 	const copy = $derived.by(() => {
@@ -83,6 +89,7 @@
 	<div class="min-w-0">
 		<p class="text-sm font-medium">{copy.title}</p>
 		<p class="text-muted text-xs">{copy.detail}</p>
+		{#if note}<p class="text-xs">{note}</p>{/if}
 	</div>
 	{#if !recovering}
 		<button onclick={onRecover} class="btn btn-primary btn-lg ml-auto shrink-0"

@@ -8,7 +8,7 @@
 	import { gameMode } from '$lib/room/modes';
 	import { PLACES } from '$lib/room/podium';
 	import Heart from '@lucide/svelte/icons/heart';
-	import type { GameState, Rider } from '$lib/protocol';
+	import type { GameState } from '$lib/protocol';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;
 	// this renders each mode's one load-bearing state. Vocabulary is SPEC's.
@@ -17,11 +17,15 @@
 		roster,
 		end,
 		canControl,
+		me,
 	}: {
 		game: GameState;
-		roster: Rider[];
+		/** Names for ids — the tick's roster, or the room's riders (#1589). */
+		roster: { id: string; name: string }[];
 		end: () => void;
 		canControl: boolean;
+		/** The viewer's rider id: their own elimination is status (#1590). */
+		me?: string;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -95,6 +99,21 @@
 			>
 		{/if}
 	</div>
+
+	{#if me && game.riders?.[me]?.eliminated && game.phase !== 'done'}
+		<!-- The moment the mode is about, addressed to the person it happened
+		     to (#1590): it was a comma in the smallest type on screen. Persistent
+		     status, never a toast (errors.md). -->
+		<p
+			role="status"
+			class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3 text-sm"
+		>
+			<span class="font-medium">You're out this game.</span>
+			<span class="text-muted"
+				>Spin easy — you're still in the room, and the panel shows how it ends.</span
+			>
+		</p>
+	{/if}
 
 	{#if game.phase === 'done' && game.podium}
 		<ol class="mt-4 grid gap-1.5">

@@ -12,6 +12,10 @@
 	import { useRoom } from '$lib/room/context';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import GamePanel from '$lib/room/GamePanel.svelte';
+	import { device } from '$lib/device.svelte';
+	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
@@ -339,6 +343,26 @@
 		</div>
 	</div>
 
+	{#if room.sprint}
+		<!-- The sprint's visual half on the Lounge (#1589): the cues reach
+		     every place from the shell, so a rider here heard a klaxon and a
+		     fanfare with nothing to look at. Compact — the Training place
+		     draws the roster. -->
+		<div class="mt-4">
+			<SprintMoment sprint={room.sprint} myWatts={room.you.watts} />
+		</div>
+	{/if}
+	{#if room.game}
+		<div class="mt-4">
+			<GamePanel
+				game={room.game}
+				roster={roomConnection.current?.live.tick?.roster ?? []}
+				canControl={room.canControl && !device.spectator}
+				end={() => room.control('game-end')}
+				me={account.me?.id}
+			/>
+		</div>
+	{/if}
 	{#if room.phase !== 'lounge'}
 		<!-- The session's controls in every phase (audit 2026-09-09): the
 		     dashboard below mounts only while nothing runs, and with it went
