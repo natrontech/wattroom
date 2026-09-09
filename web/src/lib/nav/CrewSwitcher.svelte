@@ -10,7 +10,6 @@
 	// Under it, one line per crew you are NOT looking at with something on
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
@@ -34,7 +33,6 @@
 		crews,
 		crew,
 		rooms,
-		live = false,
 		onpick,
 	}: {
 		/** Every crew the room list mentions, once each. */
@@ -42,8 +40,6 @@
 		/** The one on screen. */
 		crew: RoomCrew;
 		rooms: RailRoom[];
-		/** A session is running where you stand: the mark breathes (ADR-0005). */
-		live?: boolean;
 		/** The rider chose another crew; the sidebar remembers it. */
 		onpick: (id: string) => void;
 	} = $props();
@@ -151,44 +147,33 @@
 			<Shield size={12} class="text-muted/60 shrink-0" aria-label="yours" />
 		{/if}
 	{/snippet}
-	<div class="flex items-center">
-		{#if crews.length > 1}
-			<button
-				onclick={() => (switching = !switching)}
-				{@attach contextMenu(() => crewEntries(crew))}
-				class="hover:bg-ink/5 flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
-					? 'bg-ink/5 text-ink'
-					: 'text-ink'}"
-				title="switch crew"
-				aria-label="crew: {crew.name} — switch crew"
-				aria-expanded={switching}
-			>
-				{@render crewRow(crew)}
-				<ChevronsUpDown size={14} class="text-muted shrink-0" />
-			</button>
-		{:else}
-			<!-- One crew: nothing to switch, so the row is the crew's page
-			     (the 95% rule, ux.md) and spends no chevron on a choice that
-			     does not exist. -->
-			<a
-				href="/crew/{crew.id}"
-				{@attach contextMenu(() => crewEntries(crew))}
-				class="hover:bg-ink/5 text-ink flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded p-2 md:min-h-0"
-				title="the crew — its people and rooms"
-			>
-				{@render crewRow(crew)}
-			</a>
-		{/if}
-		<!-- The mark without the wordmark (ADR-0020 amended 2026-09-09,
-		     #1327): it keeps ADR-0005's job — it breathes while a session
-		     runs — at the end of the row that names where you are. Not a
-		     link: Home is the row below, and two targets for one destination
-		     was the audit's second finding. Its centre sits on the line the
-		     + and the leave icon use. -->
-		<span class="mr-2 grid h-6 w-6 shrink-0 place-items-center">
-			<Logo size={16} {live} />
-		</span>
-	</div>
+	{#if crews.length > 1}
+		<button
+			onclick={() => (switching = !switching)}
+			{@attach contextMenu(() => crewEntries(crew))}
+			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
+				? 'bg-ink/5 text-ink'
+				: 'text-ink'}"
+			title="switch crew"
+			aria-label="crew: {crew.name} — switch crew"
+			aria-expanded={switching}
+		>
+			{@render crewRow(crew)}
+			<ChevronsUpDown size={14} class="text-muted shrink-0" />
+		</button>
+	{:else}
+		<!-- One crew: nothing to switch, so the row is the crew's page
+		     (the 95% rule, ux.md) and spends no chevron on a choice that
+		     does not exist. -->
+		<a
+			href="/crew/{crew.id}"
+			{@attach contextMenu(() => crewEntries(crew))}
+			class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 md:min-h-0"
+			title="the crew — its people and rooms"
+		>
+			{@render crewRow(crew)}
+		</a>
+	{/if}
 	{#if switching}
 		{@const here = crew}
 		<ul class="mt-0.5 space-y-0.5" role="menu">

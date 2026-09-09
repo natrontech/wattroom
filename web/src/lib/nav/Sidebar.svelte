@@ -182,9 +182,9 @@
 				<RoomIcon icon={room.icon} size={14} />
 				<span
 					class="truncate {here
-						? 'font-display text-ink text-sm font-bold'
+						? 'text-ink text-sm font-semibold'
 						: browsing
-							? 'font-display text-ink/90 text-sm font-medium'
+							? 'text-ink/90 text-sm font-medium'
 							: room.unread
 								? 'text-ink/80 text-sm font-medium'
 								: open_
@@ -330,12 +330,13 @@
 	class="bg-surface border-ink/5 flex h-full w-60 shrink-0 flex-col border-r"
 >
 	<!-- The crew is the header (ADR-0020 amended 2026-09-09, #1327): the
-	     first row of the column names the place you are in, and the wordmark
-	     leaves it — the tab, the title bar and the sign-in page carry that.
-	     Before the first room there is no crew to name, so the mark and the
-	     wordmark keep the row. -->
+	     first row of the column names the place you are in, and the brand
+	     leaves it — the tab, the title bar and the sign-in page carry that,
+	     and riding is already on your avatar and on the Training row
+	     (#1016), so the mark had no job left here. Before the first room
+	     there is no crew to name, so the mark and the wordmark keep the row. -->
 	{#if crew}
-		<CrewSwitcher {crews} {crew} {rooms} {live} onpick={pick} />
+		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
 	{:else}
 		<a href="/home" class="flex items-center gap-2 px-4 py-4">
 			<Logo size={22} {live} />
@@ -386,7 +387,9 @@
 		{/if}
 
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			{crew && crews.length > 1 ? `rooms · ${crew.name}` : 'rooms'}
+			<!-- Just "rooms": the header above already names the crew they
+			     belong to (#1327). -->
+			rooms
 			<!-- Everything /rooms carried beyond the list: open one, or join with
 			     a code (ADR-0020). -->
 			<!-- Opens the forms right here (#1199) — Discord's "+ Create
