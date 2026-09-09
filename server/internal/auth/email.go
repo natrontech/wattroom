@@ -244,17 +244,21 @@ func (s *Service) emailUpdate(ctx context.Context, w http.ResponseWriter, user d
 	return db.User{}, false
 }
 
-// clearEmail drops the address and everything that vouched for it — after
-// telling that address (#1638): removal is the replacement alarm of
-// ADR-0030 with the confirmation step removed, and without it a stolen
-// session could mute every later alarm and destroy recovery in one call.
+// clearEmail drops the address and everything that vouched for it, then
+// tells that address (#1638): removal is the replacement alarm of ADR-0030
+// with the confirmation step removed, and without it a stolen session could
+// mute every later alarm and destroy recovery in one call. The alarm goes
+// AFTER the clear committed (#1828): the row read before it still names the
+// address, and a clear that failed used to alarm anyway — a 500, an address
+// still there, and a mail saying it was removed, on the one mail whose job
+// is to be believed.
 func (s *Service) clearEmail(ctx context.Context, w http.ResponseWriter, user db.User) (db.User, bool) {
-	s.alert(user, "The email address was removed from your account",
-		"The recovery address on your WattRoom account was removed. Without one there is no way back into the account if every passkey and sign-in provider is lost, and no more alarms like this one.")
 	updated, err := s.store.Queries.ClearUserEmail(ctx, user.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "clearing email failed", err, "Your profile could not be saved. Try again.")
 		return db.User{}, false
 	}
+	s.alert(user, "The email address was removed from your account",
+		"The recovery address on your WattRoom account was removed. Without one there is no way back into the account if every passkey and sign-in provider is lost, and no more alarms like this one.")
 	return updated, true
 }

@@ -127,11 +127,13 @@
 		Cookies
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		Two, both strictly necessary: <code class="text-ink">wattroom_session</code>
-		keeps you signed in (a server-side session we can revoke), and
-		<code class="text-ink">wattroom_oauth_state</code> protects the sign-in flow for
-		a few minutes. There are no tracking or third-party cookies — which is why there
-		is no cookie banner.
+		Three, all strictly necessary: <code class="text-ink">wattroom_session</code
+		>
+		keeps you signed in (a server-side session we can revoke),
+		<code class="text-ink">wattroom_oauth_state</code> protects the sign-in flow
+		for a few minutes, and <code class="text-ink">wattroom_passkey</code> carries
+		a passkey sign-in between its two steps for ten minutes. There are no tracking
+		or third-party cookies — which is why there is no cookie banner.
 	</p>
 </section>
 

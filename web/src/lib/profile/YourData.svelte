@@ -86,8 +86,10 @@
 			<p class="text-sm font-medium">This deletes everything, permanently.</p>
 			<p class="text-muted mt-1.5 text-xs leading-relaxed">
 				Every ride and its samples, your power curve, your XP, your medals and
-				memberships. There is no undo and no backup we can restore from — that's
-				the point of a full purge.
+				memberships — and the rooms you own are deleted for everyone in them,
+				chat and planned sessions included; a crew you own is handed to another
+				owner or closed. There is no undo and no backup we can restore from —
+				that's the point of a full purge.
 			</p>
 			<label class="mt-4 block">
 				<span class="text-muted text-[11px]">Type DELETE to confirm</span>
