@@ -5,11 +5,11 @@
 	 * The trainer card's view-model, injected by whoever owns the trainer.
 	 *
 	 * Two owners, and they are not alike (#611): a room holds its connection
-	 * for as long as you stand in it (`RoomSensorOverview`), while a solo
-	 * pre-ride screen pairs one it has not started riding yet
-	 * (`lib/ride/solo-trainer.svelte.ts`). The three read-only sensors below
-	 * the trainer are the same singleton on every screen, so they stay wired
-	 * inside this component.
+	 * for as long as you stand in it (`RoomSensorOverview`), while the solo
+	 * one holds a trainer paired but not yet ridden
+	 * (`lib/ride/solo-trainer.svelte.ts`). Both live above the router, and so
+	 * do the three read-only sensors below the trainer — those are the same
+	 * singleton on every screen, so they stay wired inside this component.
 	 */
 	export interface TrainerSlot {
 		state: PairState;

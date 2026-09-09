@@ -101,11 +101,11 @@ export const sensors = {
 	slot(kind: SensorKind): SensorSlot {
 		return slots[kind];
 	},
-	/** Latest reading per kind, in the shape `arbitrate` wants. */
 	/** The kind whose chooser is open, if any. */
 	get pairing(): SensorKind | null {
 		return pairing;
 	},
+	/** Latest reading per kind, in the shape `arbitrate` wants. */
 	get readings(): Partial<Record<SensorKind, SensorReading>> {
 		const out: Partial<Record<SensorKind, SensorReading>> = {};
 		for (const kind of SENSOR_KINDS) {

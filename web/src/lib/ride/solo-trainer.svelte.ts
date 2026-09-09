@@ -4,7 +4,9 @@ import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { type PairState, trainerState } from '$lib/room/sensor-status';
 
 /**
- * The trainer of a SOLO pre-ride screen — /ride and /ramp (#611).
+ * The trainer of the SOLO screens — /ride, /ramp and Settings › Equipment
+ * (#611). One of these exists, held by `soloTrainer()` at the foot of this
+ * file; the factory stays exported for the tests, which want a fresh one.
  *
  * A room holds its BLE connection for as long as you stand in it
  * (`room/ride.svelte.ts`, #521). The solo screens had no equivalent: one

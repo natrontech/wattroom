@@ -21,9 +21,10 @@
 
 	// A room holds its BLE connection for as long as you stand in one (#521),
 	// and this page could not see it (#565) — so when there IS a room, its
-	// trainer is the one to show. With no room, the page pairs its own, the
-	// way /ride does: `solo.pair` takes the hardware back from a room first,
-	// so the two owners can never both hold it.
+	// trainer is the one to show. With no room, it is the app's one solo
+	// trainer (#1716), the same object /ride and /ramp read: `solo.pair` takes
+	// the hardware back from a room first, so the two owners can never both
+	// hold it.
 	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(roomConnection.current?.ride);

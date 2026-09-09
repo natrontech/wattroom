@@ -7,9 +7,9 @@
 	// exactly the state a rider getting set up most needs to see.
 	//
 	// Split out of SensorOverview when the solo pre-ride screens grew the same
-	// grid (#611): the sensors are one singleton everywhere, the trainer is
-	// not — a room owns its connection for as long as you stand in it, a solo
-	// screen pairs one it has not started riding yet.
+	// grid (#611). Both trainers are held above the router now (#521, #1716),
+	// but they are still two: a room's belongs to standing in the room, the
+	// solo one to a rider who has paired and not yet started.
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
