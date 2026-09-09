@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.64] - 2026-09-09
+
+### Changed
+
+- The "direct messages" heading in the sidebar now folds the list away and
+  back, and remembers it on this device. A folded list still shows a dot when
+  someone wrote. (#1359)
+- Your own rider page says each number once: the level and its lifetime XP sit in the header, achievements sit beside your rides, and the medals list no longer repeats the shelf below it. A new account sees one empty state with the way to fill it, and a trophy case that failed to load says so with a retry. The row with your name in the sidebar opens your page and lights up while you are on it. The settings sections share one panel, and Equipment's buttons are sized for browsing, not for the bike.
+
+### Fixed
+
+- A room row in the sidebar that says "12 min in" now lands on Training, where the ride is, instead of the Lounge — unless you are already standing in that room.
+- Connecting Strava, GitHub or Google from Settings shows its outcome again — connected, already taken, already linked, or failed — which the move to /settings had silently dropped. The room's Sound panel's link to Voice & audio now closes the panel and lands on the gate. Notifications say when a browser cannot show them or has blocked them instead of a blank section or a button that does nothing; a failed load of your coach tokens says so with a retry instead of reading as "no tokens"; your own rider page no longer draws the achievements twice, and a failed look-up of who you are shows an error instead of loading forever. Emails and alerts from the server point at the new settings address.
+
 ## [2026.09.63] - 2026-09-09
 
 ### Added
@@ -1337,7 +1351,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.63...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.64...HEAD
+[2026.09.64]: https://github.com/natrontech/wattroom/compare/2026.09.63...2026.09.64
 [2026.09.63]: https://github.com/natrontech/wattroom/compare/2026.09.62...2026.09.63
 [2026.09.62]: https://github.com/natrontech/wattroom/compare/2026.09.61...2026.09.62
 [2026.09.61]: https://github.com/natrontech/wattroom/compare/2026.09.60...2026.09.61
