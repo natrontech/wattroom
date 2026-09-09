@@ -104,6 +104,8 @@ func (s *Service) handleDeletePasskey(w http.ResponseWriter, r *http.Request) {
 		// is left.
 		s.alert(user, "A passkey was removed from your account",
 			"A passkey that could sign in to your WattRoom account was removed, and no longer can.")
+		// Whoever added it may still hold a session (#1607).
+		s.endOtherSessions(r.Context(), user.ID, r)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

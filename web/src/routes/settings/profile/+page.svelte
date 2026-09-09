@@ -12,6 +12,8 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
+	import { toasts } from '$lib/toast.svelte';
+	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
@@ -40,6 +42,27 @@
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
 	let saveError = $state<{ message: string; field?: string } | null>(null);
+	let signingOut = $state(false);
+	async function signOutElsewhere() {
+		signingOut = true;
+		const res = await api<{ signedOut: number }>(
+			'/api/auth/logout-everywhere',
+			{
+				method: 'POST',
+			},
+		);
+		signingOut = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		const n = res.data.signedOut;
+		toasts.push(
+			n === 0
+				? 'No other device was signed in.'
+				: `Signed out on ${n} other ${n === 1 ? 'device' : 'devices'}.`,
+		);
+	}
 	// The decline outlives the visit (#1552), keyed on the suggested value.
 	let declined = $state(declinedFtp());
 	let applied = $state(false);
@@ -240,6 +263,19 @@
 							})
 							.then((err) => (saveError = err))}
 				/>
+				<!-- The response to "a passkey was added to your account" (ADR-0030,
+				     #1607): every other screen signed out, this one kept. -->
+				<div class="text-muted self-end pb-2 text-xs sm:col-span-2">
+					<button
+						onclick={signOutElsewhere}
+						disabled={signingOut}
+						class="btn btn-secondary btn-xs">Sign out everywhere else</button
+					>
+					<span class="ml-2"
+						>Every other browser and device signed in to this account is signed
+						out; this one stays.</span
+					>
+				</div>
 				<PasskeyList />
 				<label class="block">
 					<span class="eyebrow">FTP (W)</span>

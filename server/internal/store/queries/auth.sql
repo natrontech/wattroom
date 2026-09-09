@@ -37,6 +37,11 @@ where s.token_hash = $1 and s.expires_at > now();
 -- name: DeleteSession :exec
 delete from sessions where token_hash = $1;
 
+-- name: DeleteUserSessionsExcept :execrows
+-- Every other screen signed in to the account (#1607): the one asking keeps
+-- its session — pass a hash no session has to end them all.
+delete from sessions where user_id = $1 and token_hash <> $2;
+
 -- name: DeleteExpiredSessions :execrows
 -- Bounded (audit 2026-09-09): the caller loops while a batch comes back full.
 delete from sessions

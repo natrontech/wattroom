@@ -76,6 +76,8 @@ type Service struct {
 	stravaRevoker GrantRevoker
 	// How much confirmation mail one account may cause (#827). budget.go.
 	verifyMail *mailBudget
+	// Per-address ceilings on the unauthenticated sign-in doors (#1606).
+	loginBudget, syntheticBudget *budget[string]
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -93,6 +95,9 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 		// Always present, even where mail is not: the ceiling is cheap, and a
 		// nil one would be a panic waiting for the day a mailer appears.
 		verifyMail: newMailBudget(),
+		// The doors a stranger can knock on (#1606).
+		loginBudget:     newBudget[string](loginAttemptsPerWindow, loginWindow),
+		syntheticBudget: newBudget[string](syntheticPerWindow, loginWindow),
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
@@ -122,6 +127,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/{provider}/callback", s.handleCallback)
 	mux.HandleFunc("POST /api/auth/synthetic", s.handleSynthetic)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+	// Every other session of the account (#1607): the response to
+	// ADR-0030's "a passkey was added" alarm, and a settings button.
+	mux.HandleFunc("POST /api/auth/logout-everywhere", s.handleLogoutEverywhere)
 	// The emailed confirm link (#781): GET renders the button, POST verifies.
 	mux.HandleFunc("GET /api/auth/verify-email", s.handleVerifyEmailForm)
 	mux.HandleFunc("POST /api/auth/verify-email", s.handleVerifyEmail)
@@ -231,6 +239,9 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 // Deliberately absent from /api/auth/providers — this is not a button, and no
 // human should ever see it offered.
 func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
+	if s.throttle(w, r, s.syntheticBudget) {
+		return
+	}
 	p, ok := s.providers["synthetic"]
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",

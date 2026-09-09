@@ -62,6 +62,10 @@ type meResponse struct {
 	EmailVerified bool    `json:"emailVerified"`
 	EmailPending  *string `json:"emailPending,omitempty"`
 	EmailRequired bool    `json:"emailRequired"`
+	// When "send again" will send again (#1608): inside the resend window
+	// the server answers success and mails nothing, and the gate used to
+	// show "Sending…" and then nothing at all.
+	EmailResendAt *time.Time `json:"emailResendAt,omitempty"`
 	// Appearance follows the account (#326). Nil: no device has chosen yet;
 	// "": the default, chosen. The client tells the two apart.
 	AccentPalette *string `json:"accentPalette"`
@@ -305,6 +309,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		EmailVerified: u.EmailVerifiedAt.Valid,
 		EmailPending:  u.EmailPending,
 		EmailRequired: u.EmailRequired,
+		EmailResendAt: resendAt(u),
 		AccentPalette: u.AccentPalette,
 		ColorScheme:   u.ColorScheme,
 		Timezone:      u.Timezone,
@@ -315,4 +320,18 @@ func (s *Service) toMe(u db.User) meResponse {
 func validEmail(e string) bool {
 	a, err := mail.ParseAddress(e)
 	return err == nil && a.Address == e
+}
+
+// resendAt is when a fresh link can be asked for, or nil once it can (#1608):
+// the link was minted emailVerifyTTL before it expires, and the window holds
+// emailResendAfter past the minting.
+func resendAt(u db.User) *time.Time {
+	if u.EmailPending == nil || !u.EmailVerifyExpires.Valid {
+		return nil
+	}
+	at := u.EmailVerifyExpires.Time.Add(-(emailVerifyTTL - emailResendAfter))
+	if !at.After(time.Now()) {
+		return nil
+	}
+	return &at
 }
