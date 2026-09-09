@@ -1,0 +1,1 @@
+- When your conversations cannot be loaded, the Messages page now says so and offers a retry instead of showing you an empty list.
