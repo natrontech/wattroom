@@ -38,7 +38,14 @@
 	let roomError = $state<string | null>(null);
 
 	const invalidCode = $derived(
-		joinCode.length > 0 && !/^[A-Z0-9]{0,6}$/i.test(joinCode),
+		joinCode.length > 0 && !/^[A-Z0-9]{0,8}$/i.test(joinCode),
+	);
+	// A crew's code is six characters, a friend's eight (friends.go). The box
+	// used to cut a pasted friend code to six and send it, and the server's
+	// "no crew has that code" sent the rider back to the friend who gave them
+	// the right code for a different door.
+	const looksLikeFriendCode = $derived(
+		joinCode.length > 6 && /^[A-Z0-9]{7,8}$/i.test(joinCode),
 	);
 	// docs/SPEC.md ownership cap: at the cap the affordance disables with the
 	// reason, instead of a 409 on click (ux.md capability gating). The number
@@ -166,8 +173,9 @@
 				<input
 					id="join-code"
 					bind:value={joinCode}
-					maxlength="6"
-					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode
+					maxlength="8"
+					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
+					looksLikeFriendCode
 						? 'border-danger/60'
 						: 'border-muted/25 focus:border-muted/60'}"
 					placeholder="Crew code"
@@ -176,6 +184,13 @@
 					<!-- Field-level validation lands under the field (errors.md). -->
 					<p class="text-danger mt-1.5 text-xs">
 						Codes are letters and numbers only.
+					</p>
+				{:else if looksLikeFriendCode}
+					<p class="text-danger mt-1.5 text-xs">
+						That looks like a friend code — friends are added on <a
+							href="/friends"
+							class="underline">Friends</a
+						>. A crew's code is six characters.
 					</p>
 				{/if}
 				<button
