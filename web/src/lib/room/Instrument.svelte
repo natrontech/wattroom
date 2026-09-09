@@ -7,7 +7,7 @@
 	// track that marks the tolerance band, so "left or right of the bright
 	// slot" reads before any digit does. clamp() keeps it on screen at 0 W and
 	// at a sprint without a resize observer.
-	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import { CEILING, fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import { targetState } from '$lib/room/view';
 
 	// Primitives, not a RoomRider: the solo ride and the ramp test have watts
@@ -20,6 +20,7 @@
 		compact = false,
 		tv = false,
 		targetLabel = 'target',
+		fullScale = undefined,
 	}: {
 		watts: number;
 		target: number;
@@ -31,9 +32,11 @@
 		tv?: boolean;
 		/** The ramp test prescribes a step, not a target. */
 		targetLabel?: string;
+		/** The right-hand end of the track in watts; FTP × 1.5 unless said (#1565). */
+		fullScale?: number;
 	} = $props();
 
-	const pct = (w: number) => fillPct(w, ftp);
+	const pct = (w: number) => fillPct(w, ftp, fullScale);
 	const state = $derived(targetState({ watts, target }));
 	const zone = $derived(zoneOf(watts, ftp));
 </script>
@@ -130,6 +133,6 @@
 				{state.delta > 0 ? '+' : ''}{state.delta} W · aim for {target}
 			{/if}
 		</span>
-		<span>{Math.round(ftp * 1.5)}</span>
+		<span>{Math.round(fullScale ?? ftp * CEILING)}</span>
 	</div>
 {/if}

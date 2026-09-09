@@ -319,11 +319,14 @@
 			<!-- The same instrument the room and the solo ride use (ADR-0020,
 			     #386) — a ramp prescribes a step rather than a target, and that
 			     is the only difference. -->
+			<!-- Scaled to the test's own top, not the FTP it exists to correct
+			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->
 			<Instrument
 				watts={session.sample?.watts ?? 0}
 				target={session.target}
 				ftp={profile.current.ftp}
 				targetLabel="step"
+				fullScale={RAMP.startWatts + RAMP.steps * RAMP.stepWatts}
 			/>
 
 			<div class="mt-8 flex items-center justify-between text-sm">

@@ -329,23 +329,35 @@
 						</p>
 					</div>
 				{/if}
-				<label class="block">
-					<span class="eyebrow">sprint grade (%)</span>
-					<input
-						type="number"
-						bind:value={sprintGrade}
-						min="1"
-						max="15"
-						class="input mt-1 w-full font-mono tabular-nums"
-					/>
-					<span class="text-muted mt-1 block text-[11px]"
-						>The slope a sprint moment throws you onto.</span
-					>
+				<!-- Labelled by what it does, hinted with the hardware (#1573): "Single-speed
+				     setup (Zwift Cog)" read as "not for me" to the rider it was for. The
+				     grade does nothing while sprints stay in ERG, so it steps aside. -->
+				<label class="block sm:col-span-2">
+					<span class="flex items-center gap-2 text-sm">
+						<input type="checkbox" bind:checked={singleSpeed} />
+						Sprints stay in ERG — don't make me shift
+					</span>
+					<span class="text-muted mt-1 block text-[11px]">
+						A sprint moment holds a hard target instead of switching to slope.
+						Choose this if you ride single-speed (a Zwift Cog), or just prefer
+						not to shift indoors.
+					</span>
 				</label>
-				<label class="text-muted flex items-center gap-2 self-end pb-2 text-xs">
-					<input type="checkbox" bind:checked={singleSpeed} />
-					Single-speed setup (Zwift Cog)
-				</label>
+				{#if !singleSpeed}
+					<label class="block">
+						<span class="eyebrow">sprint grade (%)</span>
+						<input
+							type="number"
+							bind:value={sprintGrade}
+							min="1"
+							max="15"
+							class="input mt-1 w-full font-mono tabular-nums"
+						/>
+						<span class="text-muted mt-1 block text-[11px]"
+							>The slope a sprint moment throws you onto.</span
+						>
+					</label>
+				{/if}
 				{#if account.me?.mailAvailable}
 					<label class="block">
 						<span class="eyebrow">email</span>

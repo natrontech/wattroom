@@ -216,6 +216,12 @@
 						{live
 							? `holding target — ${here.length}`
 							: `in voice — ${here.length}`}
+						{#if live}
+							<!-- The bars below had only a hover title to say what they
+							     are (#1558) — the same word the summary and the ride
+							     page use, where a rider can read it. -->
+							<span class="ml-auto">execution</span>
+						{/if}
 					</div>
 					<ul class="px-1">
 						{#each here as rider (rider.id)}{@render person(rider)}{/each}

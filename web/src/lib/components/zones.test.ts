@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { hrZoneOf, hrZoneRanges, plannedZoneSeconds, zoneOf } from './zones';
+import {
+	fillPct,
+	hrZoneOf,
+	hrZoneRanges,
+	plannedZoneSeconds,
+	zoneOf,
+} from './zones';
 import type { Segment } from '$lib/workout/types';
 
 describe('zoneOf', () => {
@@ -99,5 +105,14 @@ describe('plannedZoneSeconds', () => {
 		];
 		expect(plannedZoneSeconds(workout, 150)[7]).toBe(60);
 		expect(plannedZoneSeconds(workout, 350)[2]).toBe(60);
+	});
+});
+
+describe('fillPct', () => {
+	it('scales to FTP × 1.5 by default, and to the scale it is given (#1565)', () => {
+		expect(fillPct(270, 180)).toBe(100);
+		expect(fillPct(400, 180)).toBe(100); // the room's instrument: pinned, by design
+		expect(Math.round(fillPct(400, 180, 580))).toBe(69); // the ramp's: still moving
+		expect(fillPct(580, 180, 580)).toBe(100);
 	});
 });
