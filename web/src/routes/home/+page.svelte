@@ -13,6 +13,10 @@
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import FirstRun from '$lib/home/FirstRun.svelte';
+	import RecentRides from '$lib/home/RecentRides.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import { crewsOf } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -104,6 +108,16 @@
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
+	// The rider's own crew, for the first-run card (#1333); null until the
+	// room list has landed, so the card never flashes for a rider who has
+	// no crew to set up.
+	const ownCrew = $derived(
+		rooms ? (crewsOf(rooms).find((c) => c.role === 'owner') ?? null) : null,
+	);
+	// "Open a room" opens the same sheet the sidebar's + does (#1199, #1333)
+	// — on Home's own body, because the drawer the sidebar lives in below md
+	// is translated off-screen and takes a dialog inside it along.
+	let opening = $state(false);
 	// Planning happens in a room's own Sessions place; the first room you can
 	// run one in is where the button goes. None yet: open one first.
 	const plannable = $derived.by(() => {
@@ -229,11 +243,13 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
-			<button onclick={revealRooms} class="btn btn-secondary"
+			<button onclick={() => (opening = true)} class="btn btn-secondary"
 				><Plus size={15} /> Open a room</button
 			>
 		{/if}
 	</div>
+
+	<FirstRun crew={ownCrew} ridden={xp > 0 || recent.length > 0} />
 
 	{#if error}
 		<div class="mt-6">
@@ -248,12 +264,18 @@
 		</div>
 	{/if}
 
-	<NewAccountNotice />
-
-	{#if changelog.unseen}
-		<div class="mt-6"><WhatsNewNotice /></div>
-	{/if}
-	<DesktopNotice />
+	<!-- One notice at a time (#1333): the first with something to say shows,
+	     dismissing it reveals the next. The order is the importance — your new
+	     account, the desktop app's update or offer, then what's new — and the
+	     queueing is the stylesheet's: every notice renders its own element or
+	     nothing at all, so "first child" is "first that has something to say". -->
+	<div class="notices">
+		<NewAccountNotice />
+		<DesktopNotice />
+		{#if changelog.unseen}
+			<WhatsNewNotice />
+		{/if}
+	</div>
 
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Nothing here needs a click. -->
@@ -405,39 +427,7 @@
 				</section>
 
 				<!-- The last few rides: what you did, one line each, the log a click away. -->
-				{#if recent.length > 0}
-					<section>
-						<div class="flex items-baseline gap-3">
-							<h2
-								class="text-muted text-xs font-semibold tracking-widest uppercase"
-							>
-								Recent rides
-							</h2>
-							<a href="/history" class="btn-link ml-auto text-xs">All rides →</a
-							>
-						</div>
-						<ul class="panel divide-ink/5 mt-3 divide-y">
-							{#each recent as ride (ride.id)}
-								<li>
-									<a
-										href="/history/{ride.id}"
-										class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
-									>
-										<span class="text-muted w-24 shrink-0 text-xs"
-											>{formatWhen(ride.startedAt)}</span
-										>
-										<span class="min-w-0 flex-1 truncate">
-											{Math.round(ride.seconds / 60)} min
-										</span>
-										<span class="text-muted shrink-0 text-xs tabular-nums"
-											>{Math.round(ride.kj).toLocaleString()} kJ</span
-										>
-									</a>
-								</li>
-							{/each}
-						</ul>
-					</section>
-				{/if}
+				<RecentRides rides={recent} />
 
 				<!-- What's next: every room's plan, across every room you are in
 		     (ADR-0020 — /sessions retired into this). Planning itself happens in
@@ -477,23 +467,23 @@
 					{/if}
 				</section>
 			</div>
+			<!-- Friends is its own place (ADR-0020); the heading that stayed here
+			     with nothing under it went with #1333. -->
 			<aside class="min-w-0 space-y-8">
 				<OpenOrJoin />
-
-				<!-- Friends moved to its own place (ADR-0020) — a list of people does
-		     not belong under your week's kJ. -->
-				<section>
-					<div class="flex items-baseline gap-3">
-						<h2
-							class="text-muted text-xs font-semibold tracking-widest uppercase"
-						>
-							Friends
-						</h2>
-						<a href="/friends" class="btn-link ml-auto text-xs">All friends →</a
-						>
-					</div>
-				</section>
 			</aside>
 		</div>
 	{/if}
 </main>
+
+{#if opening}
+	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
+		<OpenOrJoin compact crewId={ownCrew?.id} />
+	</Modal>
+{/if}
+
+<style>
+	.notices > :global(:not(:first-child)) {
+		display: none;
+	}
+</style>
