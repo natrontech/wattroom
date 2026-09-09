@@ -279,9 +279,24 @@
 			json: JSON.stringify(picked),
 			totalSeconds: total,
 		});
-		live.control('start');
+		// start follows the tick that shows the pick landed (#1764): sent
+		// blind, a refused pick's reason was overwritten by start's own
+		// refusal, and a refused pick after a good one started the old one.
+		startAfterPick = picked.name;
 		session.open = false;
 	}
+	let startAfterPick = $state<string | null>(null);
+	$effect(() => {
+		const state = live.tick?.state;
+		if (!startAfterPick || !state) return;
+		if (state.phase === 'idle' && state.workoutName === startAfterPick) {
+			startAfterPick = null;
+			live.control('start');
+		}
+	});
+	$effect(() => {
+		if (live.refusal) startAfterPick = null;
+	});
 
 	// ── Session setup (#115) and planned rides (#116) ─────────────────────────
 	// Composed, not owned: the shelf and its ranking, the calendar link, and

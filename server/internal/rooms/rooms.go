@@ -188,7 +188,10 @@ func (s *Service) requireRole(w http.ResponseWriter, r *http.Request, role strin
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	if err != nil || m.Role != role {
+	// A role row does not outrank a ban (#1763): the crew-ban sweep that
+	// takes the row can fail and is only logged, so ask isBanned here too,
+	// as RequireMember does.
+	if err != nil || m.Role != role || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the room's "+role+" can do that.")
 		return db.Room{}, db.User{}, false
 	}
@@ -238,7 +241,7 @@ func (s *Service) RequireModerator(w http.ResponseWriter, r *http.Request, refus
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
-	if err != nil || (m.Role != "owner" && m.Role != "coach") {
+	if err != nil || (m.Role != "owner" && m.Role != "coach") || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
 	}

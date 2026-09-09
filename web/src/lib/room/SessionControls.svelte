@@ -65,7 +65,7 @@
 			><Radio size={15} /> Start a session</button
 		>
 	{:else if phase === 'countdown'}
-		<button onclick={() => room.control('end')} class="btn btn-danger"
+		<button onclick={() => room.control('end')} class="btn btn-danger btn-lg"
 			><Square size={13} /> Cancel</button
 		>
 	{:else}
@@ -110,7 +110,7 @@
 				aria-label="end the session"
 				class="text-danger hover:bg-danger/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
 					? 'h-11 w-11'
-					: 'px-3 py-2'}"
+					: 'min-h-11 px-4'}"
 				><Square size={compact ? 16 : 13} />{#if !compact}End{/if}</button
 			>
 		</div>

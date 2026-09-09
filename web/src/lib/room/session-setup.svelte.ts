@@ -57,11 +57,18 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 	);
 
 	function copyIcsUrl() {
-		void navigator.clipboard.writeText(
-			`${location.origin}/api/rooms/${deps.slug()}/calendar/${deps.icsToken()}.ics`,
-		);
-		toasts.push(
-			'Calendar link copied — subscribe "from URL" in your calendar app.',
+		const link = `${location.origin}/api/rooms/${deps.slug()}/calendar/${deps.icsToken()}.ics`;
+		// A denied clipboard used to get the same "copied" (#1764).
+		void navigator.clipboard.writeText(link).then(
+			() =>
+				toasts.push(
+					'Calendar link copied — subscribe "from URL" in your calendar app.',
+				),
+			() =>
+				toasts.push(`Could not copy — the link is ${link}`, {
+					tone: 'error',
+					seconds: 12,
+				}),
 		);
 	}
 

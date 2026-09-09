@@ -146,6 +146,7 @@
 			<div class="mt-1">
 				<Select
 					label="active playlist"
+					disabled={saving || !canManage}
 					value={autoplay.activePlaylistId ?? ''}
 					options={[
 						{ value: '', label: 'None yet' },

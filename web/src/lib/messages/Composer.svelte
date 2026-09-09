@@ -49,16 +49,31 @@
 	const pending = createPendingImage((refusal) => (sendError = refusal));
 	let filePicker = $state<HTMLInputElement | null>(null);
 
+	// The hub takes one line a second per rider and now says so (#1762);
+	// saying it here first keeps the draft and the picture in the box
+	// instead of round-tripping a refusal for words already cleared.
+	const LINE_GAP_MS = 1000;
+	let lastSentAt = 0;
 	async function send() {
 		const text = draft.trim();
-		const image = pending.take();
+		const image = pending.current?.blob;
 		if (!text && !image) return;
+		if (Date.now() - lastSentAt < LINE_GAP_MS) {
+			sendError = 'One line a second — a moment, then send it again.';
+			return;
+		}
 		draft = '';
 		sending = true;
 		const refused = await deliver(text, image);
 		sending = false;
 		sendError = refused;
-		if (refused) draft = text; // a refused message is not a deleted one
+		// A refused message is not a deleted one — nor is its picture: the
+		// blob used to be taken and revoked before the send resolved (#1762).
+		if (refused) draft = text;
+		else {
+			lastSentAt = Date.now();
+			pending.clear();
+		}
 	}
 
 	// A picked GIF is its own message, not something typed into the draft:
