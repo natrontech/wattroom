@@ -1,0 +1,1 @@
+- Every voice in the room is heard once again. From your first click after joining, each rider's voice was also playing a second time a few milliseconds behind itself — the phaser sound, and the doubling when hopping between rooms — and the per-rider fader only caught one of the two.

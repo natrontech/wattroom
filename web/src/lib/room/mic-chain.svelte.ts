@@ -125,7 +125,10 @@ export function createMicChain(host: MicChainHost) {
 	 */
 	async function build() {
 		const raw = await capture();
-		const ctx = new AudioContext();
+		// Opus's rate, not the output device's (#1340): a context left to
+		// default follows the speakers — 44.1 kHz on plenty of Macs and DACs —
+		// and the mic is then resampled 48 → 44.1 → 48 on its way to the wire.
+		const ctx = new AudioContext({ sampleRate: 48_000 });
 		const source = ctx.createMediaStreamSource(raw);
 		const gain = ctx.createGain();
 		gain.gain.value = 0; // closed until the gate opens
