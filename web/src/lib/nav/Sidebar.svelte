@@ -36,6 +36,7 @@
 		rememberChosenCrew,
 		sidebarGroups,
 	} from './crews';
+	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -107,6 +108,17 @@
 	}
 	// The + beside rooms opens the open/join forms in a sheet (#1199).
 	let opening = $state(false);
+	// The direct-messages heading folds its list (#1359), remembered per
+	// device. Folded, the heading carries the unread dot itself: a message
+	// that arrived behind a fold is still announced (ux.md).
+	let dmsFolded = $state(readDmsFolded());
+	const dmsUnread = $derived(
+		dmHeads.heads.some((head) => dmHeads.unread(head.peerId)),
+	);
+	function toggleDms() {
+		dmsFolded = !dmsFolded;
+		rememberDmsFolded(dmsFolded);
+	}
 </script>
 
 <!-- A crew's mark: its icon, or its initial in the same box. -->
@@ -419,32 +431,38 @@
 		</ul>
 
 		<!-- Messages is a place (#468): every room's chat and every DM, one
-		     list. The heading is the way in; the threads below open straight
-		     into themselves. Rooms are already listed above, so they are not
-		     repeated here — their unread count is the way in for them.
-		     The heading names what is UNDER it rather than the place it opens
-		     (#1017): these rows are threads with people, and a rider reading
-		     "messages" over a column of faces could not tell them from the
-		     friends list or from who is in the room with them. -->
+		     list, and on a desk the sidebar IS that list (#484). Rooms are
+		     already listed above, so they are not repeated here — their
+		     unread count is the way in for them. The heading names what is
+		     UNDER it rather than a place (#1017): these rows are threads with
+		     people, and a rider reading "messages" over a column of faces
+		     could not tell them from the friends list or from who is in the
+		     room with them. -->
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			<!-- A label that goes somewhere says so (#1327): the chevron at
-			     its end is what the + is to ROOMS. -->
-			<a
-				href="/messages"
-				aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
-				class="hover:text-ink flex w-full items-center {pathname.startsWith(
-					'/messages',
-				)
-					? 'text-ink'
-					: ''}"
-				title="every room's chat and your DMs, in one place"
-				>direct messages<ChevronRight
+			<!-- The heading folds the list (#1359): a chevron at the end of a
+			     section heading says fold, not go — the crew switcher above
+			     taught that. A button resets text-transform, so the eyebrow's
+			     uppercase is said again here. /messages itself is reached below
+			     md, where the drawer's thread list stands in for this column. -->
+			<button
+				onclick={toggleDms}
+				aria-expanded={!dmsFolded}
+				class="hover:text-ink flex w-full items-center text-left uppercase"
+				title={dmsFolded
+					? 'show your conversations'
+					: 'hide your conversations'}
+				>direct messages{#if dmsFolded && dmsUnread}<span
+						class="{UNREAD_DOT} ml-2"
+						title="someone wrote"
+					></span>{/if}<ChevronRight
 					size={14}
-					class="-my-2 ml-auto shrink-0"
-				/></a
+					class="-my-2 ml-auto shrink-0 transition-transform motion-reduce:transition-none {dmsFolded
+						? ''
+						: 'rotate-90'}"
+				/></button
 			>
 		</div>
-		{#if dmHeads.heads.length > 0}
+		{#if dmHeads.heads.length > 0 && !dmsFolded}
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
 					{@const on = pathname === `/messages/dm/${head.peerId}`}
