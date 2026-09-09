@@ -67,6 +67,9 @@
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
+	// The save's outcome is persistent status (errors.md); an export or a
+	// flag failing must not overwrite it (audit 2026-09-09).
+	let saveStatus = $state<string | null>(null);
 	// The ride on the account, once it is: the summary's way forward (#1331).
 	let savedId = $state<string | null>(null);
 
@@ -254,7 +257,7 @@
 				ftp,
 				...summary,
 			});
-			error =
+			saveStatus =
 				localFailure ??
 				(failure.final
 					? `${failure.message} Its summary stays on this device.`
@@ -387,7 +390,11 @@
 	});
 </script>
 
-<svelte:head><title>{workout.name} · Ride · WattRoom</title></svelte:head>
+<svelte:head
+	><title
+		>{shelfPending || shelfMissing ? 'Ride' : workout.name} · Ride · WattRoom</title
+	></svelte:head
+>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
@@ -491,8 +498,11 @@
 								>Pick another workout</a
 							>
 						</div>
+						{#if saveStatus}
+							<div class="mt-2"><Banner tone="warn">{saveStatus}</Banner></div>
+						{/if}
 						{#if error}
-							<p class="text-danger mt-2 text-xs">{error}</p>
+							<div class="mt-2"><Banner tone="error">{error}</Banner></div>
 						{/if}
 
 						{#if recorder.flags.length > sentFlags}

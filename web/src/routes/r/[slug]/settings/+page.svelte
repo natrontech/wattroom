@@ -208,7 +208,17 @@
 {#if error && !room}
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
-			<p class="text-sm">{error}</p>
+			<div class="text-left">
+				<Banner tone="error">
+					{error}
+					{#snippet action()}
+						<button
+							onclick={() => slug && void load(slug)}
+							class="btn-link text-xs">Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
 			<a
 				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"

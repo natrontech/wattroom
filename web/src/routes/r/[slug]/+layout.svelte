@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { people } from '$lib/people.svelte';
@@ -113,7 +114,20 @@
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<Logo size={40} />
-			<p class="mt-6 text-sm">{error}</p>
+			<!-- The way back in is a Retry, not a browser reload (errors.md):
+			     a blip on the first read used to leave only the way home
+			     (audit 2026-09-09). -->
+			<div class="mt-6 text-left">
+				<Banner tone="error">
+					{error}
+					{#snippet action()}
+						<button
+							onclick={() => slug && void load(slug)}
+							class="btn-link text-xs">Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
 			<a
 				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"

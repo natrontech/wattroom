@@ -7,11 +7,14 @@
 	// half wants to be read on its own (#126, #686).
 	import { account } from '$lib/account.svelte';
 	import { api, apiBlob } from '$lib/api';
+	import Banner from '$lib/components/Banner.svelte';
 	import { downloadBlob } from '$lib/download';
 
-	// The page keeps its own status line; a failed purge belongs there with
-	// everything else the rider might have just tried.
-	let { onError }: { onError: (message: string) => void } = $props();
+	// Failures are said where the button is (errors.md): the page's own
+	// status line at the far end of the page held a fixed sentence while
+	// the server's reason was thrown away (audit 2026-09-09).
+	let exportError = $state<string | null>(null);
+	let purgeError = $state<string | null>(null);
 
 	let confirming = $state(false);
 	let typed = $state('');
@@ -25,9 +28,10 @@
 		const res = await apiBlob('/api/me/export');
 		exporting = false;
 		if (!res.ok) {
-			onError(res.error.message);
+			exportError = res.error.message;
 			return;
 		}
+		exportError = null;
 		downloadBlob(res.data.blob, res.data.filename ?? 'wattroom-export.json');
 	}
 
@@ -39,7 +43,7 @@
 			await account.signOut();
 			location.href = '/';
 		} else {
-			onError('The deletion did not complete. Nothing was removed.');
+			purgeError = `${res.error.message} Nothing was removed.`;
 		}
 	}
 </script>
@@ -65,6 +69,9 @@
 			class="btn-link self-center text-xs">Sign out</button
 		>
 	</div>
+	{#if exportError}
+		<div class="mt-3"><Banner tone="error">{exportError}</Banner></div>
+	{/if}
 
 	<!-- The destructive action lives apart from the routine ones (#126). -->
 	<div class="border-ink/5 mt-6 border-t pt-4">
@@ -86,6 +93,9 @@
 				<span class="text-muted text-[11px]">Type DELETE to confirm</span>
 				<input bind:value={typed} class="input mt-1 w-full font-mono" />
 			</label>
+			{#if purgeError}
+				<div class="mt-3"><Banner tone="error">{purgeError}</Banner></div>
+			{/if}
 			<div class="mt-3 flex gap-2">
 				<button
 					onclick={remove}

@@ -134,6 +134,6 @@
 		>
 	</form>
 	{#if error}
-		<p class="text-muted mt-2 text-xs">{error}</p>
+		<div class="mt-2"><Banner tone="error">{error}</Banner></div>
 	{/if}
 </section>
