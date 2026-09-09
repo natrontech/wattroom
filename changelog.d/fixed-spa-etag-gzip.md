@@ -1,1 +1,0 @@
-- The app loads faster on a slow link: the server compresses its own scripts, styles and pages instead of leaving that to a proxy, and the shell and the changelog are revalidated with a tag instead of re-downloaded on every visit.
