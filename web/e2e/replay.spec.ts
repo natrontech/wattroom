@@ -20,10 +20,10 @@ test('a captured trace replays through the ride', async ({ page }) => {
 	await expect(watts).not.toHaveText('0', { timeout: 20_000 });
 
 	// The clock advances on the replayed data.
-	const remaining = page.getByText('remaining').locator('..');
-	const first = await remaining.innerText();
+	const clock = page.getByTestId('ride-clock');
+	const first = await clock.innerText();
 	await page.waitForTimeout(3000);
-	expect(await remaining.innerText()).not.toBe(first);
+	expect(await clock.innerText()).not.toBe(first);
 
 	expect(errors).toEqual([]);
 });

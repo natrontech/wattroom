@@ -4,8 +4,7 @@
 	import { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import { hrZoneOf, ZONE_TEXT, zoneOf } from '$lib/components/zones';
-	import { formatClock } from '$lib/format';
+	import { zoneOf } from '$lib/components/zones';
 	import { createRideSession } from '$lib/workout/session.svelte';
 	import { play } from '$lib/sound/cues';
 	import { byId } from '$lib/workout/library';
@@ -281,69 +280,6 @@
 		});
 	}
 
-	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
-	// cell is worse than no cell: it reads as a broken strap rather than no strap.
-	const readouts = $derived([
-		{ label: 'rpm', value: String(session?.sample?.cadence ?? 0), tone: '' },
-		...(session?.sample?.heartRate !== undefined
-			? [
-					{
-						label: 'bpm',
-						value: String(session.sample.heartRate),
-						// Own bpm coloured by HR zone once an LTHR anchors them (ADR-0014).
-						tone: ZONE_TEXT[
-							hrZoneOf(session.sample.heartRate, profile.current.lthr)
-						],
-					},
-				]
-			: []),
-		{
-			label: 'block left',
-			value: formatClock(session?.info.secondsRemainingInSegment ?? 0),
-			tone: '',
-		},
-		{
-			label: 'execution',
-			value: `${Math.round((session?.execution ?? 1) * 100)}%`,
-			tone: '',
-		},
-	]);
-	// Cadence and HR bands of the current block (#66/#67) — display-only.
-	const stepBand = (
-		low: number | undefined,
-		high: number | undefined,
-		unit: string,
-		value: number,
-	) => {
-		const text =
-			low !== undefined && high !== undefined
-				? `${low}–${high} ${unit}`
-				: high !== undefined
-					? `under ${high} ${unit}`
-					: low !== undefined
-						? `over ${low} ${unit}`
-						: null;
-		if (!text) return null;
-		const inBand =
-			value > 0 &&
-			(low === undefined || value >= low) &&
-			(high === undefined || value <= high);
-		return { text, inBand };
-	};
-	const bands = $derived.by(() => {
-		const seg = session?.info.segment;
-		if (!seg) return [];
-		return [
-			stepBand(
-				seg.cadenceLow,
-				seg.cadenceHigh,
-				'rpm',
-				session?.sample?.cadence ?? 0,
-			),
-			stepBand(seg.hrLow, seg.hrHigh, 'bpm', session?.sample?.heartRate ?? 0),
-		].filter((band) => band !== null);
-	});
-
 	// A frozen number is worse than a warning: past 3 s without a sample the
 	// dashboard says so, persistently, while the driver reconnects (#37).
 	let nowMs = $state(Date.now());
@@ -462,11 +398,11 @@
 			{session}
 			{workout}
 			{ftp}
+			kg={profile.current.kg}
+			lthr={profile.current.lthr}
 			{remaining}
 			{watts}
 			{target}
-			{readouts}
-			{bands}
 			{signalLost}
 			onFlag={() => recorder.flag()}
 			onTv={() => (tv = true)}

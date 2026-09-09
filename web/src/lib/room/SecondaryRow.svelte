@@ -4,6 +4,10 @@
 	// one control a rider reaches for mid-interval (ux.md).
 	import { wkg } from '$lib/format';
 	import { hrZoneOf, ZONE_TEXT } from '$lib/components/zones';
+	import Heart from '@lucide/svelte/icons/heart';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Scale from '@lucide/svelte/icons/scale';
+	import Target from '@lucide/svelte/icons/target';
 
 	// Primitives, not a RoomRider: the solo ride and the ramp test have these
 	// numbers without a roster to belong to.
@@ -14,6 +18,7 @@
 		kg,
 		bias,
 		lthr,
+		execution,
 		small = false,
 		onBias,
 	}: {
@@ -27,10 +32,18 @@
 		/** Your LTHR, for your OWN bpm's zone colour (ADR-0014) — never
 		 *  somebody else's readout, so a follower passes none. */
 		lthr?: number;
+		/** Your live score, where nothing else ranks it (ADR-0046): solo and the
+		 *  ramp have no ExecutionMeter to put it in. 0–1. */
+		execution?: number;
 		small?: boolean;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
 		onBias?: (step: number) => void;
 	} = $props();
+
+	// bpm appears only when something is actually reporting it: a permanent
+	// "0 bpm" is worse than no cell, because it reads as a broken strap rather
+	// than as no strap. The solo ride made that call in #1057 and it survives
+	// the move onto this row (ADR-0046).
 
 	// A dead control with no reason reads as a broken feature — riders report
 	// "bias does nothing" when what is missing is the trainer it trims (#565).
@@ -38,14 +51,18 @@
 </script>
 
 <div class="flex items-center gap-6">
-	{#each [{ label: 'rpm', value: `${cadence}`, tone: '' }, { label: 'bpm', value: `${hr}`, tone: lthr && hr > 0 ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '' }, { label: 'w/kg', value: wkg(watts, kg), tone: '' }] as stat (stat.label)}
+	<!-- An icon per instrument (#1531): at three metres a glyph is found before
+	     a three-letter label is read, and the rider asked for exactly that. -->
+	{#each [{ label: 'rpm', value: `${cadence}`, tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: `${hr}`, tone: lthr ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '', icon: Heart }] : []), { label: 'w/kg', value: wkg(watts, kg), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small
 					? 'text-lg'
-					: 'text-2xl'} {stat.tone}">{stat.value}</span
+					: 'text-3xl'} {stat.tone}">{stat.value}</span
 			>
-			<span class="eyebrow">{stat.label}</span>
+			<span class="eyebrow mt-0.5 flex items-center gap-1">
+				<stat.icon size={small ? 10 : 12} aria-hidden="true" />{stat.label}
+			</span>
 		</div>
 	{/each}
 	{#if bias !== undefined}

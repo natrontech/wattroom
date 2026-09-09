@@ -25,6 +25,7 @@
 		ftp,
 		trace,
 		compact = false,
+		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
 		editable = false,
@@ -36,6 +37,14 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
+		/**
+		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
+		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
+		 * staircase the way it used to pin the gauge (#1565). Display only —
+		 * the editor's drag maths reads the module's SCALE, so `editable` and a
+		 * custom ceiling are not combined.
+		 */
+		ceiling?: number;
 		/** Editor hooks: present ⇒ blocks are clickable and select their step.
 		    A path, not an index, so a repeat's child selects itself (#1004). */
 		selectedPath?: number[] | null;
@@ -73,7 +82,8 @@
 	// release.
 	const span = $derived(drag?.span ?? total);
 	const x = (seconds: number) => (seconds / span) * W;
-	const y = (fraction: number) => BASE - Math.min(fraction, CEILING) * SCALE;
+	const scale = $derived(ceiling === CEILING ? SCALE : (BASE - 8) / ceiling);
+	const y = (fraction: number) => BASE - Math.min(fraction, ceiling) * scale;
 
 	function targetText(seg: Segment, from: number, to: number): string {
 		if (seg.watts !== undefined) return `${seg.watts} W`;
@@ -86,13 +96,13 @@
 		segments.map((seg) => {
 			const from =
 				seg.kind === 'sprint'
-					? CEILING
+					? ceiling
 					: seg.watts !== undefined
 						? seg.watts / ftp
 						: (seg.fromFraction ?? 0);
 			const to =
 				seg.kind === 'sprint'
-					? CEILING
+					? ceiling
 					: seg.watts !== undefined
 						? from
 						: (seg.toFraction ?? from);
