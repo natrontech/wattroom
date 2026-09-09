@@ -50,9 +50,16 @@
 		});
 	}
 	loadRides();
-	void fetchProgression().then((res) => {
-		if (res.ok) progression = res.data;
-	});
+	// Its failure is one line under the comparison, not vanished bests (#1555).
+	let progressionError = $state<string | null>(null);
+	function loadProgression() {
+		progressionError = null;
+		void fetchProgression().then((res) => {
+			if (res.ok) progression = res.data;
+			else progressionError = res.error.message;
+		});
+	}
+	loadProgression();
 
 	async function downloadFit() {
 		if (!ride || ride.samples.length === 0) return;
@@ -306,6 +313,12 @@
 				d30={progression?.curve.d30.best20m}
 				d90={progression?.curve.d90.best20m}
 			/>
+			{#if progressionError}
+				<p class="text-muted mt-2 text-xs">
+					Your 30- and 90-day bests could not be loaded — {progressionError}
+					<button onclick={loadProgression} class="btn-link">Retry</button>
+				</p>
+			{/if}
 		</div>
 
 		{#if zones.some((seconds) => seconds > 0)}

@@ -54,6 +54,9 @@
 	// a failed read there is a banner with a retry, not a page with a hole.
 	let trophiesError = $state<string | null>(untrack(() => data.trophiesError));
 	let error = $state<string | null>(untrack(() => data.riderError));
+	// A rider who is not there, or not visible to you, is an empty state
+	// with a way on — not an error whose Retry 404s forever (#1555).
+	let missing = $state(untrack(() => data.riderMissing));
 	let busy = $state(false);
 	let loadedId = $state<string | null>(untrack(() => data.id));
 
@@ -66,6 +69,7 @@
 			await invalidateAll();
 			rider = data.rider;
 			error = data.riderError;
+			missing = data.riderMissing;
 			trophies = data.trophies;
 			trophiesError = data.trophiesError;
 			return;
@@ -73,9 +77,11 @@
 		const res = await fetchRider(who);
 		if (!res.ok) {
 			error = res.error.message;
+			missing = res.error.error === 'not_found';
 			return;
 		}
 		error = null;
+		missing = false;
 		rider = res.data;
 		const shelf = await fetchTrophies(who);
 		trophies = shelf.ok ? shelf.data : null;
@@ -90,6 +96,7 @@
 			trophies = data.trophies;
 			trophiesError = data.trophiesError;
 			error = data.riderError;
+			missing = data.riderMissing;
 			loadedId = who;
 			return;
 		}
@@ -194,7 +201,18 @@
 {/snippet}
 
 <main class="page">
-	{#if error}
+	{#if missing}
+		<EmptyState variant="page">
+			<p class="text-ink text-sm">This rider isn't here.</p>
+			<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
+				The link is old, or it is a rider you don't share a room or a friendship
+				with yet.
+			</p>
+			{#snippet cta()}
+				<a href="/friends" class="btn btn-secondary">Open Friends</a>
+			{/snippet}
+		</EmptyState>
+	{:else if error}
 		<Banner tone="error">
 			{error}
 			{#snippet action()}
