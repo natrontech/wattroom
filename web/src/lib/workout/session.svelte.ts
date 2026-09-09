@@ -41,6 +41,13 @@ export interface RideOptions {
 	/** Injected so tests can drive the clock; defaults to wall time. */
 	now?: () => number;
 	/**
+	 * When the ride began, ms epoch — the crash-safety buffer's own stamp
+	 * (#19), so the upload and a later retry from the recovery card name the
+	 * same ride. Two stamps a few hundred ms apart used to save it twice
+	 * (audit 2026-09-09). Defaults to now.
+	 */
+	startedAt?: number;
+	/**
 	 * Latest reading from each paired sensor (#11). Read per sample rather than
 	 * subscribed to, because arbitration is a snapshot question — which source wins
 	 * *right now* — and a sensor that has gone quiet has to lose on staleness.
@@ -65,6 +72,7 @@ export function createRideSession({
 	workout,
 	ftp,
 	now = Date.now,
+	startedAt: startedAtMs,
 	readings = () => ({}),
 	onRecord,
 }: RideOptions) {
@@ -74,7 +82,7 @@ export function createRideSession({
 		0,
 	);
 
-	const startedAt = new Date(now());
+	const startedAt = new Date(startedAtMs ?? now());
 	let elapsed = $state(0);
 	let state = $state<RideState>('idle');
 	let bias = $state(1);

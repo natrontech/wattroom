@@ -4,6 +4,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import {
 	discardRide,
 	openRideBuffer,
+	stale,
 	unfinishedRides,
 	type BufferedSample,
 } from './buffer';
@@ -72,11 +73,32 @@ describe('ride buffer', () => {
 
 	it('keeps only the most recent rides', async () => {
 		for (let i = 1; i <= 7; i++) await fill(String(i), 61);
-		// Opening one more triggers the prune; the two oldest go.
+		// Opening one more triggers the prune: the five newest stay, the one
+		// just opened is a fragment at that moment and rides along, and the
+		// two oldest go.
 		await fill('8', 61);
+		const ids = (await unfinishedRides()).map((r) => r.rideId).sort();
+		expect(ids).toEqual(['3', '4', '5', '6', '7', '8']);
+	});
+
+	it('drops a fragment past the newest five, unfinished or not', () => {
+		// A spectator's room join opens a buffer nothing is ever written to.
+		const join = (id: number) => ({
+			rideId: String(id),
+			startedAt: id,
+			workoutName: 'room x',
+			samples: 0,
+		});
+		expect(stale([1, 2, 3, 4, 5, 6].map(join))).toEqual(['1']);
+	});
+
+	it('does not let room joins walk an unsaved solo ride off the end (#794)', async () => {
+		// The failed save is the oldest ride; every room joined since opened
+		// a buffer of its own and ended it cleanly.
+		await fill('1', 61, { saveable: true });
+		for (let i = 2; i <= 8; i++) await fill(String(i), 61, { end: true });
 		const rides = await unfinishedRides();
-		expect(rides.length).toBeLessThanOrEqual(5);
-		expect(rides.some((r) => r.rideId === '1')).toBe(false);
+		expect(rides.map((r) => r.rideId)).toContain('1');
 	});
 });
 

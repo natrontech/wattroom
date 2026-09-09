@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const buffered = vi.hoisted(() => ({ rows: [] as { watts: number }[] }));
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: async () => ({
-		append() {},
+		append(row: { watts: number }) {
+			buffered.rows.push(row);
+		},
 		end() {},
 		since: async () => [],
 	}),
@@ -100,6 +103,24 @@ describe('room live send while reconnecting', () => {
 		expect(live.refusal).toBeNull();
 		live.jukebox({ action: 'add', videoId: 'dQw4w9WgXcQ' });
 		expect(live.jukeboxRefusal).toBeNull();
+	});
+});
+
+describe('room live ride buffer', () => {
+	it('buffers one row a second however fast the trainer notifies (audit 2026-09-09)', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(1_000_000);
+		buffered.rows.length = 0;
+		const live = createRoomLive('buffer');
+		await vi.advanceTimersByTimeAsync(0);
+		live.sendMetrics({ watts: 200 });
+		live.sendMetrics({ watts: 210 });
+		await vi.advanceTimersByTimeAsync(500);
+		live.sendMetrics({ watts: 220 });
+		await vi.advanceTimersByTimeAsync(500);
+		live.sendMetrics({ watts: 230 });
+		expect(buffered.rows.map((r) => r.watts)).toEqual([200, 230]);
+		vi.useRealTimers();
 	});
 });
 

@@ -39,6 +39,13 @@ export interface RideMeta {
 
 const DB_NAME = 'wattroom-rides';
 const KEEP_RIDES = 5;
+/** Under a minute of samples is a misclick, not a lost ride. */
+const MIN_SAMPLES = 60;
+
+/** Every sample of one ride — the store's key is [rideId, seq]. */
+function samplesOf(rideId: string): IDBKeyRange {
+	return IDBKeyRange.bound([rideId, -Infinity], [rideId, Infinity]);
+}
 
 function open(): Promise<IDBDatabase | null> {
 	return new Promise((resolve) => {
@@ -89,7 +96,7 @@ export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
 	const db = await open();
 	if (db) {
 		await tx(db, 'readwrite', (_, rides) => rides.put(meta));
-		void prune(db);
+		await prune(db);
 	}
 	return {
 		append(sample) {
@@ -117,7 +124,7 @@ function readSamples(
 	rideId: string,
 ): Promise<BufferedSample[]> {
 	return tx(db, 'readonly', (samples) =>
-		samples.getAll(IDBKeyRange.bound([rideId, -Infinity], [rideId, Infinity])),
+		samples.getAll(samplesOf(rideId)),
 	).then((rows) => (rows ?? []) as BufferedSample[]);
 }
 
@@ -133,27 +140,52 @@ export async function unfinishedRides(): Promise<
 	for (const ride of rides) {
 		if (ride.endedAt) continue;
 		const samples = await readSamples(db, ride.rideId);
-		// Under a minute of samples is a misclick, not a lost ride.
-		if (samples.length >= 60) out.push({ ...ride, samples });
+		if (samples.length >= MIN_SAMPLES) out.push({ ...ride, samples });
 	}
 	return out;
 }
 
 export async function discardRide(rideId: string): Promise<void> {
 	const db = await open();
-	if (!db) return;
-	await tx(db, 'readwrite', (samples, rides) => {
-		samples.delete(IDBKeyRange.bound([rideId, -Infinity], [rideId, Infinity]));
+	if (db) await discard(db, rideId);
+}
+
+function discard(db: IDBDatabase, rideId: string): Promise<unknown> {
+	return tx(db, 'readwrite', (samples, rides) => {
+		samples.delete(samplesOf(rideId));
 		return rides.delete(rideId);
 	});
 }
 
-/** Oldest rides out beyond the keep-count — the cap is the quota story. */
+/**
+ * Which rides a prune discards — the cap is the quota story. The newest
+ * KEEP_RIDES stay. Past them a finished ride or a fragment goes, and a ride
+ * the server never confirmed stays until there are KEEP_RIDES of those too:
+ * every room join opens a buffer, and five of them used to walk a failed
+ * solo save off the end (#794, audit 2026-09-09).
+ */
+export function stale(rides: Array<RideMeta & { samples: number }>): string[] {
+	let unsaved = 0;
+	const out: string[] = [];
+	[...rides]
+		.sort((a, b) => b.startedAt - a.startedAt)
+		.forEach((ride, i) => {
+			const recoverable = !ride.endedAt && ride.samples >= MIN_SAMPLES;
+			if (recoverable) unsaved++;
+			if (i >= KEEP_RIDES && (!recoverable || unsaved > KEEP_RIDES))
+				out.push(ride.rideId);
+		});
+	return out;
+}
+
 async function prune(db: IDBDatabase): Promise<void> {
 	const rides = ((await tx(db, 'readonly', (_, r) => r.getAll())) ??
 		[]) as RideMeta[];
-	const stale = rides
-		.sort((a, b) => b.startedAt - a.startedAt)
-		.slice(KEEP_RIDES);
-	for (const ride of stale) await discardRide(ride.rideId);
+	const counted: Array<RideMeta & { samples: number }> = [];
+	for (const ride of rides) {
+		const samples =
+			(await tx(db, 'readonly', (s) => s.count(samplesOf(ride.rideId)))) ?? 0;
+		counted.push({ ...ride, samples });
+	}
+	for (const rideId of stale(counted)) await discard(db, rideId);
 }
