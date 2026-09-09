@@ -32,4 +32,10 @@ export interface ThreadSource {
 	 * that fails. Resolves to the refusal, or null once the line has changed.
 	 */
 	edit?: (id: string, text: string) => Promise<string | null>;
+	/**
+	 * The owner's ban, when the viewer is the owner and the thread is a
+	 * room's (#1765, #666): chat is where you meet the griefer. Absent on a
+	 * DM and for everyone else — the menu then offers no such item.
+	 */
+	ban?: (id: string, name: string) => void;
 }

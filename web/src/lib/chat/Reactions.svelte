@@ -49,7 +49,7 @@
 			<button
 				onclick={() => onReact(cheer)}
 				aria-label="{cheer} {count}"
-				class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
+				class="inline-flex min-h-6 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] tabular-nums ring-1 {myReacts[
 					`${id}:${cheer}`
 				]
 					? 'ring-neon bg-neon/15'

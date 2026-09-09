@@ -31,14 +31,37 @@ export function stickToBottom(node: HTMLElement): () => void {
 		// thread (switching DM peers empties the box).
 		if (node.scrollHeight <= node.clientHeight) pinned = true;
 		if (pinned) toBottom();
+		else {
+			missed += 1;
+			tell();
+		}
 	};
 
+	// Your own send pins and scrolls (#1765): the rule that arrivals never
+	// yank a reader is right for arrivals and wrong for what you just typed.
+	const onPin = () => {
+		pinned = true;
+		missed = 0;
+		toBottom();
+		tell();
+	};
+	// How many lines landed behind a reader who scrolled back, for the
+	// "new messages" way down.
+	let missed = 0;
+	const tell = () =>
+		node.dispatchEvent(
+			new CustomEvent('wattroom-follow', { detail: { pinned, missed } }),
+		);
 	const onScroll = () => {
+		const was = pinned;
 		pinned = atBottom(node);
+		if (pinned) missed = 0;
+		if (was !== pinned || pinned) tell();
 	};
 
 	toBottom();
 	node.addEventListener('scroll', onScroll, { passive: true });
+	node.addEventListener('wattroom-pin', onPin);
 	// Images decode after their line is in the DOM and only then take up
 	// height, so the mutation that added them has long since been handled.
 	node.addEventListener('load', follow, true);
@@ -50,6 +73,7 @@ export function stickToBottom(node: HTMLElement): () => void {
 
 	return () => {
 		node.removeEventListener('scroll', onScroll);
+		node.removeEventListener('wattroom-pin', onPin);
 		node.removeEventListener('load', follow, true);
 		lines.disconnect();
 		box.disconnect();

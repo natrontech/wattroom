@@ -32,8 +32,11 @@
 	let {
 		slug,
 		reminders = [],
+		ban,
 	}: {
 		slug: string;
+		/** The owner's ban, from the Chat place (#1765); absent from outside. */
+		ban?: (id: string, name: string) => void;
 		/**
 		 * "This starts in ten minutes" (#359) — derived by the client, because
 		 * the hub does not know the schedule. Only the room's own Chat place
@@ -124,6 +127,7 @@
 		myReacts: conn ? conn.live.myReacts : (outside?.myReacts ?? {}),
 		cheers,
 		retry: () => (conn ? conn.reloadBacklog() : outside?.retry()),
+		ban: conn ? ban : undefined,
 		// One endpoint from both sides of the room: standing inside, the
 		// socket has no edit command — the hub relays what the PATCH did, so
 		// the log this component is already showing updates itself.

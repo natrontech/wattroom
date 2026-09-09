@@ -257,7 +257,14 @@
 						{/each}
 					{:else}
 						<li class="text-muted px-3 py-4 text-xs">
-							Nothing matches — try a zone name, like "threshold".
+							{#if query.trim()}
+								Nothing matches — try a zone name, like "threshold".
+							{:else if shelf.length === 0 && !shelfError}
+								<!-- The shelf has not answered yet (#1766). -->
+								<span aria-busy="true">Loading workouts…</span>
+							{:else}
+								No workouts to pick from yet.
+							{/if}
 						</li>
 					{/each}
 				</ul>

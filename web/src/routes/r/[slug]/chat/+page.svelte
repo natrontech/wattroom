@@ -10,11 +10,16 @@
 	import { useRoom } from '$lib/room/context';
 
 	const room = useRoom();
+	const isOwner = $derived(room.myRole === 'owner');
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
 	<!-- The room's own reminders ride this thread (#359): the hub cannot
 	     send them, so the client derives them from the same upcoming list
 	     the plan card renders. -->
-	<RoomThread slug={room.slug} reminders={room.reminders} />
+	<RoomThread
+		slug={room.slug}
+		reminders={room.reminders}
+		ban={isOwner ? (id, name) => room.ban(id, name) : undefined}
+	/>
 </div>

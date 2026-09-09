@@ -30,6 +30,9 @@
 	import {} from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { account } from '$lib/account.svelte';
+	import { goto } from '$app/navigation';
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import { personMenu } from '$lib/person-menu';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -153,8 +156,41 @@
 	// Touch and long-press have no hover strip to reveal Copy and React, and a
 	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
 	// Same actions, same handlers — the hover strip stays as the shortcut.
+	// The log's own scroll state, told by stickToBottom (#1765).
+	let log = $state<HTMLElement | null>(null);
+	let pinned = $state(true);
+	let missed = $state(0);
+	$effect(() => {
+		const node = log;
+		if (!node) return;
+		const on = (event: Event) => {
+			const detail = (event as CustomEvent<{ pinned: boolean; missed: number }>)
+				.detail;
+			pinned = detail.pinned;
+			missed = detail.missed;
+		};
+		node.addEventListener('wattroom-follow', on);
+		return () => node.removeEventListener('wattroom-follow', on);
+	});
+
 	function messageMenu(message: ThreadMessage): MenuEntry[] {
 		const items: MenuEntry[] = [];
+		// The person first (#1765, #666): profile, message, friend — and the
+		// owner's ban, on the surface where you actually meet the griefer.
+		const fromId = message.fromId;
+		if (fromId) {
+			const you = fromId === account.me?.id;
+			items.push(
+				...personMenu(fromId, goto, {
+					you,
+					ban:
+						source.ban && !you
+							? () => source.ban?.(fromId, message.from)
+							: undefined,
+				}),
+				'separator',
+			);
+		}
 		if (canEdit(message))
 			items.push({
 				label: 'Edit',
@@ -191,6 +227,7 @@
 <!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare room
      goes above the oldest line, so overflow spills off the END edge. -->
 <div
+	bind:this={log}
 	{@attach stickToBottom}
 	data-testid="thread-log"
 	role="log"
@@ -270,17 +307,24 @@
 									     room's column shows, the level ring the profile
 									     shows, and where they are right now. -->
 									{@const face = people.face(message.fromId)}
-									<Avatar
-										name={face?.name ?? message.from}
-										avatarUrl={face?.avatarUrl}
-										xp={face?.totalXp}
-										status={statusOf(
-											presence.rooms,
-											message.fromId ?? '',
-											friends.list,
-										)}
-										size={28}
-									/>
+									<!-- The face is the way to the person (#1765). -->
+									<svelte:element
+										this={message.fromId ? 'a' : 'span'}
+										href={message.fromId ? `/u/${message.fromId}` : undefined}
+										class="block rounded-full"
+									>
+										<Avatar
+											name={face?.name ?? message.from}
+											avatarUrl={face?.avatarUrl}
+											xp={face?.totalXp}
+											status={statusOf(
+												presence.rooms,
+												message.fromId ?? '',
+												friends.list,
+											)}
+											size={28}
+										/>
+									</svelte:element>
 								{/if}
 							</span>
 							<span class="min-w-0 flex-1">
@@ -409,8 +453,24 @@
 	</div>
 </div>
 
+{#if !pinned && missed > 0}
+	<!-- Lines landed behind a reader who scrolled back (#1765): the way down. -->
+	<div class="px-5 pb-1">
+		<button
+			onclick={() => log?.dispatchEvent(new Event('wattroom-pin'))}
+			class="btn btn-secondary btn-xs"
+			><ArrowDown size={12} />
+			{missed} new {missed === 1 ? 'message' : 'messages'}</button
+		>
+	</div>
+{/if}
 <Composer
-	send={source.send}
+	send={async (text, image) => {
+		const refused = await source.send(text, image);
+		// Your own send pins the log (#1765): you typed it, you see it land.
+		if (!refused) log?.dispatchEvent(new Event('wattroom-pin'));
+		return refused;
+	}}
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
