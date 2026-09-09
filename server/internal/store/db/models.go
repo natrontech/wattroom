@@ -178,6 +178,7 @@ type PlaylistTrack struct {
 	YtPlaylistID    string
 	YtPlaylistTitle string
 	Tracks          []byte
+	TrackID         pgtype.UUID
 }
 
 type Ride struct {

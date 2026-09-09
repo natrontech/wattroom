@@ -2,15 +2,17 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 	import ListMusic from '@lucide/svelte/icons/list-music';
+	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Star from '@lucide/svelte/icons/star';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import type { JukeboxCommand } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
+	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import {
-		commandFromLink,
 		queueSavedPlaylist,
 		type SavedPlaylist,
 		type SavedTrack,
@@ -18,8 +20,9 @@
 	} from '$lib/room/playlists.svelte';
 
 	// One saved playlist (#627): the row folds open onto its own tracks, add
-	// and delete live here — reorder is out of scope (#627 asked only for
-	// creation, adding and deleting).
+	// and delete live here. Adding is the room's own add box (#1426) — search
+	// your library or paste a link — pointed at the playlist instead of the
+	// deck. Reorder is #1428.
 	let {
 		playlist,
 		store,
@@ -44,7 +47,6 @@
 	let tracks = $state<SavedTrack[] | null>(null);
 	let renaming = $state(false);
 	let name = $state('');
-	let url = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 
@@ -65,24 +67,13 @@
 		if (open && tracks === null) void load();
 	}
 
-	async function addTrack() {
-		const input = url.trim();
-		if (!input) return;
-		busy = true;
+	async function addTrack(command: JukeboxCommand) {
 		error = null;
-		const parsed = await commandFromLink(input);
-		if (!parsed.ok) {
-			busy = false;
-			error = parsed.message;
-			return;
-		}
-		const res = await store.addTrack(playlist.id, parsed.command);
-		busy = false;
+		const res = await store.addTrack(playlist.id, command);
 		if (!res.ok) {
 			error = res.error.message;
 			return;
 		}
-		url = '';
 		await load();
 	}
 
@@ -216,21 +207,34 @@
 				<p class="text-muted text-[11px]">Loading…</p>
 			{:else if tracks.length === 0}
 				<p class="text-muted text-[11px]">
-					No tracks yet — paste a link below.
+					No tracks yet — search your library or paste a link below.
 				</p>
 			{:else}
 				<ul class="flex flex-col gap-1">
 					{#each tracks as track (track.id)}
 						<li class="group flex min-w-0 items-center gap-1.5">
-							<img
-								src={thumbnailFor(track.videoId)}
-								alt=""
-								loading="lazy"
-								referrerpolicy="no-referrer"
-								class="bg-surface h-6 w-11 shrink-0 rounded object-cover"
-							/>
+							{#if track.trackId}
+								<!-- A library entry: the mark the queue's own rows use. -->
+								<div
+									class="bg-surface text-muted grid h-6 w-11 shrink-0 place-items-center rounded"
+								>
+									<Music size={11} />
+								</div>
+							{:else}
+								<img
+									src={thumbnailFor(track.videoId)}
+									alt=""
+									loading="lazy"
+									referrerpolicy="no-referrer"
+									class="bg-surface h-6 w-11 shrink-0 rounded object-cover"
+								/>
+							{/if}
 							<span class="min-w-0 flex-1 truncate text-[11px]"
-								>{track.playlistTitle ?? track.title}</span
+								>{track.playlistTitle ?? track.title}{#if track.artist}<span
+										class="text-muted"
+									>
+										· {track.artist}</span
+									>{/if}</span
 							>
 							{#if track.tracks?.length}
 								<span
@@ -250,27 +254,17 @@
 					{/each}
 				</ul>
 			{/if}
-			<form
-				class="mt-2 flex min-w-0 gap-1.5"
-				onsubmit={(e) => {
-					e.preventDefault();
-					void addTrack();
-				}}
-			>
-				<input
-					bind:value={url}
-					placeholder="Add a YouTube link…"
-					class="input input-xs min-w-0 flex-1"
-					aria-label="add a track to this playlist"
+			<div class="mt-2 flex min-w-0 flex-col gap-1.5">
+				<JukeboxAdd
+					send={(command) => void addTrack(command)}
+					refusal={error}
+					verb="Saved"
 				/>
-				<button
-					disabled={!url.trim() || busy}
-					class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
-					>Add</button
-				>
-			</form>
+			</div>
 		</div>
 	{/if}
 
-	{#if error}<p class="text-danger pb-1 text-[11px]">{error}</p>{/if}
+	<!-- The add box shows the refusal while the row is open; closed, it
+	     has to be said here. -->
+	{#if error && !open}<p class="text-danger pb-1 text-[11px]">{error}</p>{/if}
 </li>

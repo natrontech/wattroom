@@ -76,11 +76,12 @@ ADR; it only ever *widens* access from here, never narrows it. *Landed —
 see the 2026-09-08 amendment below.*
 
 **When a playlist can hold a pool track**, its entries inherit the scope
-above — a saved list is not a way around who may hear a shelf. Nothing does
-today: `playlist_tracks` stores `video_id`, so every saved entry is YouTube.
-[#655](https://github.com/natrontech/wattroom/issues/655) is the open ADR for
-making saved playlists multi-source, and is where that rule has to be
-written down rather than inferred from here.
+above — a saved list is not a way around who may hear a shelf. _It can, since
+[ADR-0045](0045-a-saved-playlist-is-a-saved-queue.md) (2026-09-09, #1426):
+one saved-playlist object holds videos and library tracks alike, saving
+requires the track to be the caller's own, and hearing is checked at the
+audio door per fetch. The library playlists this ADR planned as a third
+object are retired unbuilt._
 
 **Metadata.** ID3 tags parsed at upload (`dhowden/tag` — small pure-Go;
 duration comes from the uploading browser's `audio.duration`, no server-side

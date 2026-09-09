@@ -15,6 +15,11 @@
 > panel. `rooms.autoplay_fixed_video_id/_title` stay one release for the
 > rollback path (ADR-0019); #1430 drops them.
 >
+> **Superseded in part by [ADR-0045](0045-a-saved-playlist-is-a-saved-queue.md)
+> (2026-09-09, #1426):** a saved entry is a video, a pasted playlist, _or a
+> library track_ — one object, no third kind. The scope rule the note below
+> asked for is written there.
+>
 > **Note (2026-09-08):** a saved entry is a `video_id` — YouTube only — so no
 > playlist can hold a self-hosted pool track today. When
 > [#655](https://github.com/natrontech/wattroom/issues/655) makes saved

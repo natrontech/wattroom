@@ -21,6 +21,9 @@ import (
 // session's worth of music), still a cap against unbounded storage growth.
 const maxSavedTracks = 300
 
+// trackJSON is one saved entry, in the three shapes a JukeboxEntry takes
+// (ADR-0045): a video, a pasted YouTube playlist, or a library track
+// (trackId set, videoId empty, artist for the row).
 type trackJSON struct {
 	ID            string                  `json:"id"`
 	VideoID       string                  `json:"videoId"`
@@ -29,12 +32,25 @@ type trackJSON struct {
 	PlaylistID    string                  `json:"playlistId,omitempty"`
 	PlaylistTitle string                  `json:"playlistTitle,omitempty"`
 	Tracks        []protocol.JukeboxTrack `json:"tracks,omitempty"`
+	TrackID       string                  `json:"trackId,omitempty"`
+	Artist        string                  `json:"artist,omitempty"`
 }
 
-func trackJSONFrom(t db.PlaylistTrack) trackJSON {
+// trackJSONFrom reads one saved row. A library entry's title and artist come
+// from the track itself — the Music page edits them — so the caller hands in
+// what the join found (the insert path has the track row in hand instead).
+func trackJSONFrom(t db.PlaylistTrack, trackTitle, trackArtist string) trackJSON {
 	out := trackJSON{
 		ID: store.UUIDString(t.ID), VideoID: t.VideoID, Title: t.Title,
 		PositionSec: float64(t.StartSec),
+	}
+	if t.TrackID.Valid {
+		out.TrackID = store.UUIDString(t.TrackID)
+		out.Artist = trackArtist
+		if trackTitle != "" {
+			out.Title = trackTitle
+		}
+		return out
 	}
 	if t.YtPlaylistID != "" {
 		out.PlaylistID = t.YtPlaylistID
@@ -42,6 +58,17 @@ func trackJSONFrom(t db.PlaylistTrack) trackJSON {
 		_ = json.Unmarshal(t.Tracks, &out.Tracks)
 	}
 	return out
+}
+
+// rowTrack is the joined list row as the plain table row every other path
+// reads — sqlc gives the join its own struct.
+func rowTrack(r db.ListPlaylistTracksRow) db.PlaylistTrack {
+	return db.PlaylistTrack{
+		ID: r.ID, PlaylistID: r.PlaylistID, Position: r.Position,
+		VideoID: r.VideoID, Title: r.Title, StartSec: r.StartSec,
+		YtPlaylistID: r.YtPlaylistID, YtPlaylistTitle: r.YtPlaylistTitle,
+		Tracks: r.Tracks, TrackID: r.TrackID,
+	}
 }
 
 func clip(s string, n int) string {
@@ -103,10 +130,20 @@ func trackParams(playlistID pgtype.UUID, position int32, cmd protocol.JukeboxCom
 // commandsFromTracks replays a saved playlist as the "add" commands that
 // produced it — reused by "queue this playlist" and by autoplay, so both
 // paths run through jukebox.apply's normal validation and caps exactly like
-// a live paste would.
-func commandsFromTracks(tracks []db.PlaylistTrack) []protocol.JukeboxCommand {
+// a live paste would. A library entry replays as the library add the Music
+// page sends (#1080); whether a given rider may then hear it is the audio
+// door's question (ADR-0015), asked per fetch, never here.
+func commandsFromTracks(tracks []db.ListPlaylistTracksRow) []protocol.JukeboxCommand {
 	cmds := make([]protocol.JukeboxCommand, 0, len(tracks))
 	for _, t := range tracks {
+		if t.TrackID.Valid {
+			title := t.TrackTitle
+			if title == "" {
+				title = t.Title
+			}
+			cmds = append(cmds, protocol.JukeboxCommand{Action: "add", TrackID: store.UUIDString(t.TrackID), Title: title, Artist: t.TrackArtist})
+			continue
+		}
 		cmd := protocol.JukeboxCommand{Action: "add", VideoID: t.VideoID, Title: t.Title, PositionSec: float64(t.StartSec)}
 		if t.YtPlaylistID != "" {
 			var resolved []protocol.JukeboxTrack
@@ -131,7 +168,7 @@ func (s *Service) getPlaylistDetail(w http.ResponseWriter, r *http.Request, sc s
 	}
 	tracks := make([]trackJSON, 0, len(rows))
 	for _, row := range rows {
-		tracks = append(tracks, trackJSONFrom(row))
+		tracks = append(tracks, trackJSONFrom(rowTrack(row), row.TrackTitle, row.TrackArtist))
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"id": store.UUIDString(p.ID), "name": p.Name, "tracks": tracks,
@@ -170,8 +207,25 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "A playlist holds at most 300 tracks.")
 		return
 	}
-	params, ok := trackParams(p.ID, next, cmd)
-	if !ok {
+	var params db.InsertPlaylistTrackParams
+	var library db.Track
+	if cmd.TrackID != "" {
+		// A library entry (ADR-0045): the track has to be the caller's own —
+		// browsing is uploader-only (#1095), so a track they cannot see is one
+		// they cannot save. Absent rather than forbidden, like GetTrack.
+		id, err := store.ParseUUID(cmd.TrackID)
+		if err == nil {
+			library, err = s.store.Queries.GetTrack(r.Context(), db.GetTrackParams{ID: id, UploadedBy: sc.user.ID})
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That track is not in your library — pick it from the Music page and try again.")
+			return
+		}
+		params = db.InsertPlaylistTrackParams{
+			PlaylistID: p.ID, Position: next, TrackID: library.ID,
+			Title: clip(library.Title, 200), Tracks: []byte("[]"),
+		}
+	} else if params, ok = trackParams(p.ID, next, cmd); !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That is not a track this jukebox can play.")
 		return
 	}
@@ -181,7 +235,7 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be added. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, trackJSONFrom(row))
+	httpx.WriteJSON(w, http.StatusCreated, trackJSONFrom(row, library.Title, library.Artist))
 }
 
 func (s *Service) deleteTrack(w http.ResponseWriter, r *http.Request, sc scope) {

@@ -21,12 +21,16 @@
 	// top one; a pasted link queues a video or a whole playlist (#615) exactly
 	// as before. The library used to be reachable only from the Music page,
 	// a screen away from the room that wanted the song.
+	// The same field saves into a playlist (#1426): `send` is then the
+	// playlist's add, and the note says "Saved" rather than "Queued".
 	let {
 		send,
 		refusal = null,
+		verb = 'Queued',
 	}: {
 		send: (command: JukeboxCommand) => void;
 		refusal?: string | null;
+		verb?: 'Queued' | 'Saved';
 	} = $props();
 
 	let text = $state('');
@@ -76,7 +80,7 @@
 			title: track.title,
 			artist: track.artist,
 		});
-		addNote = `Queued “${track.title}”.`;
+		addNote = `${verb} “${track.title}”.`;
 	}
 
 	function reset() {
@@ -107,7 +111,7 @@
 	function queueSet(resolved: ResolvedPlaylist) {
 		queueResolvedPlaylist(resolved, send);
 		addNote = resolved.truncated
-			? `Queued the first ${resolved.tracks.length} tracks — the player reads no further into a playlist.`
+			? `${verb} the first ${resolved.tracks.length} tracks — the player reads no further into a playlist.`
 			: null;
 		reset();
 	}

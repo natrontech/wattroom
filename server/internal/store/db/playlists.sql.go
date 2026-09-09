@@ -95,9 +95,9 @@ func (q *Queries) GetPlaylist(ctx context.Context, id pgtype.UUID) (Playlist, er
 
 const insertPlaylistTrack = `-- name: InsertPlaylistTrack :one
 insert into playlist_tracks
-    (playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks)
-values ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks
+    (playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks, track_id)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+returning id, playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks, track_id
 `
 
 type InsertPlaylistTrackParams struct {
@@ -109,6 +109,7 @@ type InsertPlaylistTrackParams struct {
 	YtPlaylistID    string
 	YtPlaylistTitle string
 	Tracks          []byte
+	TrackID         pgtype.UUID
 }
 
 func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTrackParams) (PlaylistTrack, error) {
@@ -121,6 +122,7 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 		arg.YtPlaylistID,
 		arg.YtPlaylistTitle,
 		arg.Tracks,
+		arg.TrackID,
 	)
 	var i PlaylistTrack
 	err := row.Scan(
@@ -133,23 +135,45 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 		&i.YtPlaylistID,
 		&i.YtPlaylistTitle,
 		&i.Tracks,
+		&i.TrackID,
 	)
 	return i, err
 }
 
 const listPlaylistTracks = `-- name: ListPlaylistTracks :many
-select id, playlist_id, position, video_id, title, start_sec, yt_playlist_id, yt_playlist_title, tracks from playlist_tracks where playlist_id = $1 order by position
+select pt.id, pt.playlist_id, pt.position, pt.video_id, pt.title, pt.start_sec, pt.yt_playlist_id, pt.yt_playlist_title, pt.tracks, pt.track_id, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist
+from playlist_tracks pt
+left join tracks t on t.id = pt.track_id
+where pt.playlist_id = $1 order by pt.position
 `
 
-func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID) ([]PlaylistTrack, error) {
+type ListPlaylistTracksRow struct {
+	ID              pgtype.UUID
+	PlaylistID      pgtype.UUID
+	Position        int32
+	VideoID         string
+	Title           string
+	StartSec        float32
+	YtPlaylistID    string
+	YtPlaylistTitle string
+	Tracks          []byte
+	TrackID         pgtype.UUID
+	TrackTitle      string
+	TrackArtist     string
+}
+
+// A library entry reads its title and artist off the track itself (#1426):
+// both are editable on the Music page, and a playlist should say what the
+// library says today, not what it said when the row was saved.
+func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID) ([]ListPlaylistTracksRow, error) {
 	rows, err := q.db.Query(ctx, listPlaylistTracks, playlistID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PlaylistTrack
+	var items []ListPlaylistTracksRow
 	for rows.Next() {
-		var i PlaylistTrack
+		var i ListPlaylistTracksRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PlaylistID,
@@ -160,6 +184,9 @@ func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID
 			&i.YtPlaylistID,
 			&i.YtPlaylistTitle,
 			&i.Tracks,
+			&i.TrackID,
+			&i.TrackTitle,
+			&i.TrackArtist,
 		); err != nil {
 			return nil, err
 		}

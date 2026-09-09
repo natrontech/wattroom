@@ -4,12 +4,13 @@ import { readLink } from '$lib/room/jukebox-add';
 import { resolvePlaylist, titleFor } from '$lib/room/youtube-playlist';
 
 /**
- * Saved playlists (#627) — the shelf above the live queue: room playlists
- * (multiple per room, one markable active for autoplay, editable by any
- * member like every other jukebox control) and personal playlists (a
- * rider's own, usable in any room). Distinct from a queued-whole YouTube
- * playlist (`$lib/room/jukebox-add`'s `PastedLink['playlist']`) — that is
- * one live queue entry; this is a saved list of entries.
+ * Saved playlists (#627): room playlists (multiple per room, one markable
+ * active for autoplay, editable by any member like every other jukebox
+ * control) and personal playlists (a rider's own, usable in any room). A
+ * saved playlist is a saved queue (ADR-0045): its entries are what the live
+ * queue holds. Distinct from a queued-whole YouTube playlist
+ * (`$lib/room/jukebox-add`'s `PastedLink['playlist']`) — that is one live
+ * queue entry; this is a saved list of entries.
  */
 
 export interface SavedPlaylist {
@@ -21,6 +22,11 @@ export interface SavedPlaylist {
 	updatedAt: number;
 }
 
+/**
+ * One saved entry, in the three shapes a queue entry takes (ADR-0045): a
+ * video, a pasted YouTube playlist (`tracks`), or a library track
+ * (`trackId`, with the track's own title and artist).
+ */
 export interface SavedTrack {
 	id: string;
 	videoId: string;
@@ -29,6 +35,8 @@ export interface SavedTrack {
 	playlistId?: string;
 	playlistTitle?: string;
 	tracks?: JukeboxTrack[];
+	trackId?: string;
+	artist?: string;
 }
 
 export interface SavedPlaylistDetail {
