@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.77] - 2026-09-09
+
+### Fixed
+
+- The desktop app can pair a trainer again. It was cancelling every attempt
+  before the scan had heard anything — the first one because Bluetooth is still
+  waking up, all the later ones because the list starts out empty — and telling
+  you that you had cancelled it. It now waits for your trainer to answer, and
+  says to wake the sensor when nothing does.
+- In an elimination game, a rider whose connection drops and comes back with their buffered pedalling is no longer knocked out for the silence — the reconnect proves they kept riding, as the rules promised. A rider who leaves the room leaves the game too: Team Relay hands the front to someone still here, and neither a game podium nor a sprint podium is topped by someone who closed their tab.
+- A sprint and a game are visible wherever they are audible: the Lounge shows the sprint countdown and the game panel while they run, and TV mode carries the game beside its sprint layer. A rider knocked out of an elimination game is told so in their own panel, their tile says "out", and the reconnect banner counts down the game's 30-second disconnect grace so a Wi-Fi blip is not a mystery.
+- A finished game is announced on the room's timeline ("Ada won Watt Golf"), counted for its winner like a won sprint, and its podium stays up for half a minute before the room lets the game go — it used to sit on every tick until the coach pressed End. Sprint Roulette's battles now run at the sprint's fast tick, and its window's start rides the tick so the 3-2-1 can follow.
+- Game podiums are fair on a tie: two riders on the same strokes, points, w/kg or lives used to get a winner picked at random by the server; now the earlier id wins, the same rule the sprint podium already used. Every game mode advances once a second even while a sprint's fast ticks run, so Team Relay's distance no longer quadruples when the coach arms a sprint mid-game; a game keeps its riders' names and FTPs across a session start; and the coach hears which of two things went wrong when a game cannot start.
+- The session picker is a proper dialog for keyboard and screen-reader use: named, modal, and focus stays inside it until it closes.
+- Game modes work on screen again: a game started without a workout session now shows its panel on the Training place instead of "Nothing is running yet", and the coach's controls carry an End game button so a game can always be stopped. Sprint Roulette sounds its klaxon. Game clocks and Watt Golf's count-in follow the server's clock, not the laptop's. On a phone, the sprint overlay shows the rider you follow, not your own zero. The Lounge's sprint, pause and end buttons are thumb-sized, the disabled sprint button says why, and starting a game gets a full-size button.
+- Your LTHR follows your account like FTP and weight: set it after a ramp test in one browser and the desktop app and every other device show it too, with heart-rate zones coloured everywhere. An LTHR you had set before this stays and is carried up to the account on the next visit.
+
 ## [2026.09.76] - 2026-09-09
 
 ### Fixed
@@ -1569,7 +1586,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.76...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.77...HEAD
+[2026.09.77]: https://github.com/natrontech/wattroom/compare/2026.09.76...2026.09.77
 [2026.09.76]: https://github.com/natrontech/wattroom/compare/2026.09.75...2026.09.76
 [2026.09.75]: https://github.com/natrontech/wattroom/compare/2026.09.74...2026.09.75
 [2026.09.74]: https://github.com/natrontech/wattroom/compare/2026.09.73...2026.09.74

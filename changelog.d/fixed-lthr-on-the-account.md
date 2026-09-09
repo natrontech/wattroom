@@ -1,1 +1,0 @@
-- Your LTHR follows your account like FTP and weight: set it after a ramp test in one browser and the desktop app and every other device show it too, with heart-rate zones coloured everywhere. An LTHR you had set before this stays and is carried up to the account on the next visit.

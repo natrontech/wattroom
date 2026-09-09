@@ -1,1 +1,0 @@
-- A finished game is announced on the room's timeline ("Ada won Watt Golf"), counted for its winner like a won sprint, and its podium stays up for half a minute before the room lets the game go — it used to sit on every tick until the coach pressed End. Sprint Roulette's battles now run at the sprint's fast tick, and its window's start rides the tick so the 3-2-1 can follow.
