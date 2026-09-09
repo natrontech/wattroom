@@ -1,1 +1,0 @@
-- Openers' three raises are 15-second sprints, the sprint moment the app defines, instead of a minute all-out each — an opener is meant to wake the legs, not spend them.

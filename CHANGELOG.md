@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.67] - 2026-09-09
+
+### Added
+
+- Saved rides now explain how to try importing their FIT file into Garmin Connect,
+  including recorded heart rate, retry guidance and the current validation limits.
+
+### Fixed
+
+- A Strava upload that fails now tells you which of three things happened — reconnect Strava, the file was refused, or Strava could not be reached — instead of the provider's raw error text. Removing or re-roling someone who is not in the room answers "not in this room" instead of pretending it worked; a banned rider is unbanned, not removed. A database hiccup while sending a message, leaving a crew, handing a room over or letting someone in is reported as a hiccup with a retry, never as "they are banned" or "you own a room here", and it can no longer wave the three-room cap through. Your display name is counted in characters, not bytes, and trimmed, so a Cyrillic or Japanese name of normal length is accepted and a name of spaces is not. The feedback flag's cool-down follows your account rather than your display name, and what you type in a flag can no longer format itself on the public issue tracker.
+- In a room: the sprint podium is scored on the best five seconds, not the best five trainer packets, so riders on fast-notifying trainers no longer win on a shorter window; a coach's Start pressed while a session is already running no longer erases the running ride's record; the live execution meter leaves out stopped seconds the way auto-pause defines them (under 5 rpm and under 20 W), so it agrees with the saved ride; a workout picked for the room is held to the same rules as one saved in the editor, with the refusal naming the step; a track title or device label with non-Latin characters no longer ends in a broken character.
+- Openers' three raises are 15-second sprints, the sprint moment the app defines, instead of a minute all-out each — an opener is meant to wake the legs, not spend them.
+- The session summary counts a ride once per second however often the trainer reports, so the kJ on a medal card no longer doubles on a fast-notifying trainer, and the card shows the ride's real XP instead of "0 XP". Your medal is matched to you by id and to this session by the server's clock, so a session ending after midnight finds it. "Lost the room" no longer flashes on the way into a room; it appears only while reconnecting. The sprint countdown on screen runs on the server's clock, the same one the trainer's slope flip uses. A coach on a narrow window keeps the game controls beside the session's. The live leaderboard no longer drops a rider who coasts for a moment.
+
 ## [2026.09.66] - 2026-09-09
 
 ### Added
@@ -1390,7 +1404,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.66...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.67...HEAD
+[2026.09.67]: https://github.com/natrontech/wattroom/compare/2026.09.66...2026.09.67
 [2026.09.66]: https://github.com/natrontech/wattroom/compare/2026.09.65...2026.09.66
 [2026.09.65]: https://github.com/natrontech/wattroom/compare/2026.09.64...2026.09.65
 [2026.09.64]: https://github.com/natrontech/wattroom/compare/2026.09.63...2026.09.64
