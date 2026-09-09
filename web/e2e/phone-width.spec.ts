@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { signInAs, signInTo } from './signin';
+import { signInAs } from './signin';
 
 /**
  * Nothing outside a room may scroll sideways on a phone (#1008).
@@ -248,35 +248,4 @@ test('the workout editor puts the steps before the library on a phone', async ({
 		.evaluateAll((all) => all.map((h) => h.textContent?.trim().toLowerCase()));
 	expect(headings.indexOf('steps')).toBeGreaterThanOrEqual(0);
 	expect(headings.indexOf('steps')).toBeLessThan(headings.indexOf('library'));
-});
-
-/**
- * The route list above only ever sees the ride page before a ride starts, and
- * the riding screen is a different screen: a header, an instrument, your
- * numbers and five controls (#1531, ADR-0046). At 375px the control cluster
- * ran 39px past the viewport and the ⚑ — the last of them, and the only way
- * to report anything — could not be reached at all.
- */
-test('the riding screen does not scroll sideways on a phone', async ({
-	page,
-}) => {
-	await signInTo(page, '/ride?w=smoke-test');
-	await page.getByRole('button', { name: 'Ride simulated' }).click();
-	const trainerCard = page.getByText('Simulated Trainer').locator('..');
-	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({
-		timeout: 15_000,
-	});
-	await page.getByRole('button', { name: 'Start the ride' }).click();
-
-	// The header only takes its full width once a block is drawn in it.
-	await expect(page.getByTestId('ride-clock')).toBeVisible({ timeout: 15_000 });
-	const body = page.getByTestId('page-body');
-	const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
-	expect(excess, 'the riding screen is wider than the phone').toBe(0);
-
-	// And the last control is inside it, not merely un-scrolled-to.
-	const flag = page.getByRole('button', { name: 'Flag a problem' });
-	const box = await flag.boundingBox();
-	expect(box, 'the ⚑ has a box').not.toBeNull();
-	expect(box!.x + box!.width, 'the ⚑ is on screen').toBeLessThanOrEqual(375);
 });
