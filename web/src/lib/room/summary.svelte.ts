@@ -16,6 +16,12 @@ export function createSummary(deps: {
 	slug: () => string;
 	recording: ReturnType<typeof createRecording>;
 	phase: () => string | undefined;
+	/**
+	 * When the timeline started, by the server's clock (`tick.at − elapsed`)
+	 * — the same arithmetic the saver dates the ride with, so a late joiner's
+	 * ride is found too (#1537).
+	 */
+	startedAt: () => number | undefined;
 	myName: () => string | undefined;
 	myId: () => string | undefined;
 	myExecution: () => number | undefined;
@@ -54,15 +60,23 @@ export function createSummary(deps: {
 		});
 	}
 
+	// The recording belongs to ONE session (#1535): it clears on the edge
+	// into a session on every client — the coach's Start used to be the only
+	// reset, so everyone else's second summary carried the first session too.
+	let riding = false;
 	$effect(() => {
 		const phase = deps.phase();
+		const now =
+			phase === 'countdown' || phase === 'running' || phase === 'paused';
+		if (now && !riding) deps.recording.reset();
+		riding = now;
 		if (phase === 'running') {
 			dismissed = false;
 			fetched = false;
 			medalBase = undefined;
 			rideXp = null;
 			rideId = null;
-			sessionStart = Date.now();
+			sessionStart = deps.startedAt() ?? Date.now();
 		}
 		if (
 			phase !== 'done' ||
@@ -71,6 +85,10 @@ export function createSummary(deps: {
 		)
 			return;
 		fetched = true;
+		// Server truth over the local clock at the close: the saver dates the
+		// ride now − elapsed, and a rider who joined ten minutes in would
+		// otherwise look for a ride that started after their own arrival.
+		sessionStart = deps.startedAt() ?? sessionStart;
 		// The pipeline commits within a tick or two of the close.
 		setTimeout(() => {
 			findMyRide(0);

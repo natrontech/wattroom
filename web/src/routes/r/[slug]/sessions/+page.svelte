@@ -4,7 +4,9 @@
 	// the cross-room list — folded into Home (#388).
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { confirm } from '$lib/confirm.svelte';
@@ -326,13 +328,35 @@
 		{/if}
 	{/if}
 
+	<!-- All four states (errors.md, #1538): the backlog is the only source of
+	     these, and a failed fetch used to erase the room's past in silence. -->
+	<h3 class="eyebrow mt-8">past sessions</h3>
 	{#if past.length > 0}
-		<h3 class="eyebrow mt-8">past sessions</h3>
 		<ul class="mt-2 grid gap-2">
 			{#each past.slice(0, 12) as recap (recap.id)}
 				<li><SessionRecapCard {recap} /></li>
 			{/each}
 		</ul>
+	{:else if room.recapsState === 'loading'}
+		<Skeleton rows={2} class="mt-2 h-16" />
+	{:else if room.recapsState === 'failed'}
+		<div class="mt-2">
+			<Banner tone="error">
+				The room's finished sessions could not be loaded.
+				{#snippet action()}
+					<button
+						class="btn btn-secondary btn-xs"
+						onclick={() => room.retryRecaps()}>Retry</button
+					>
+				{/snippet}
+			</Banner>
+		</div>
+	{:else}
+		<div class="mt-2">
+			<EmptyState>
+				Finished sessions land here — who rode, and for how long.
+			</EmptyState>
+		</div>
 	{/if}
 
 	<h3 class="eyebrow mt-8">this room, this month</h3>

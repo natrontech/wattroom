@@ -144,6 +144,8 @@
 		slug: () => props.slug,
 		recording,
 		phase: () => shared?.phase,
+		startedAt: () =>
+			live.tick ? live.tick.at - live.tick.state.elapsed * 1000 : undefined,
 		myName: () => account.me?.displayName,
 		myId: () => account.me?.id,
 		myExecution: () => you.execution,
@@ -244,7 +246,6 @@
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	function startWorkout(picked: import('$lib/workout/types').Workout) {
-		recording.reset();
 		const flat = flatten(picked);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -265,7 +266,6 @@
 	const session = createSessionSetup({
 		slug: () => props.slug,
 		icsToken: () => props.icsToken ?? '',
-		reset: () => recording.reset(),
 		control: (action, payload) => live.control(action, payload),
 	});
 
