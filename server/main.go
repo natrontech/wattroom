@@ -275,8 +275,8 @@ func main() {
 		// wattroom.ch sets WATTROOM_GITHUB_REPO for the feedback issues
 		// already; a box without it shows no count.
 		stars := new(atomic.Int64)
-		if repo := os.Getenv("WATTROOM_GITHUB_REPO"); repo != "" {
-			stars = pollStars(ctx, log, repo)
+		if os.Getenv("WATTROOM_GITHUB_REPO") != "" {
+			stars = pollStars(ctx, log)
 		}
 		mux.HandleFunc("GET /api/live", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")

@@ -27,11 +27,11 @@ import (
 // no visitor's address needs to reach GitHub for a star count. Zero means
 // unknown (not fetched yet, or GitHub unreachable) and the page hides it.
 // ponytail: fixed 15 min refresh, no ETag — stars are not a live metric.
-func pollStars(ctx context.Context, log *slog.Logger, repo string) *atomic.Int64 {
+func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 	var stars atomic.Int64
 	safego.Supervise(log, time.Now, "github stars poll", ctx.Done(), func() {
 		for {
-			n, err := fetchStars(ctx, repo)
+			n, err := fetchStars(ctx)
 			jobmetrics.Ran("github stars poll", err)
 			if err != nil {
 				log.Warn("github stars unavailable", "err", err)
@@ -48,11 +48,11 @@ func pollStars(ctx context.Context, log *slog.Logger, repo string) *atomic.Int64
 	return &stars
 }
 
-func fetchStars(ctx context.Context, repo string) (int64, error) {
+func fetchStars(ctx context.Context) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://api.github.com/repos/"+repo, nil)
+		"https://api.github.com/repos/natrontech/wattroom", nil)
 	if err != nil {
 		return 0, err
 	}
