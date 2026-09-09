@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// An error toast plays the fault cue, and the cues are an AudioContext this
+// environment does not have.
+vi.mock('$lib/sound/cues', () => ({
+	play: () => {},
+	playCountdownTick: () => {},
+}));
+
 // This environment has no localStorage of its own; the stub is what the
 // module's stored choice lands in.
 const storage = new Map<string, string>();
