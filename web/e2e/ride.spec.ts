@@ -16,15 +16,15 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// a server that OFFERS that door is what the one gate admits — which is
 	// true of this production build and false of production.
 	await signInTo(page, '/ride?w=smoke-test');
-	await expect(
-		page.getByRole('heading', { name: 'Smoke Test' }),
-	).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Smoke Test' })).toBeVisible();
 	// Pairing and starting are two steps now (#611): the simulated trainer lands
 	// in the paired-devices grid, which has to show it reporting watts before
 	// Start is enabled at all.
 	await page.getByRole('button', { name: 'Ride simulated' }).click();
 	const trainerCard = page.getByText('Simulated Trainer').locator('..');
-	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({ timeout: 15_000 });
+	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({
+		timeout: 15_000,
+	});
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 
 	// The ride is live once power is arriving.
@@ -42,7 +42,10 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	const download = page.getByTestId('download-fit');
 	await expect(download).toBeVisible({ timeout: 120_000 });
 
-	const [file] = await Promise.all([page.waitForEvent('download'), download.click()]);
+	const [file] = await Promise.all([
+		page.waitForEvent('download'),
+		download.click(),
+	]);
 
 	expect(file.suggestedFilename()).toMatch(/^wattroom-.*\.fit$/);
 

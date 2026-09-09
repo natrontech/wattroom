@@ -94,7 +94,7 @@ test:
 	@$(DEV_ENV) ensure-test-db
 	@# WATTROOM_REQUIRE_DB turns "no database" from 17 quiet skips into one
 	@# loud failure. A bare `go test` without it still skips.
-	cd server && WATTROOM_REQUIRE_DB=1 go test -race ./...
+	cd server && WATTROOM_REQUIRE_DB=1 go test -race -shuffle=on -timeout=5m ./...
 	cd web && pnpm run test
 
 lint:

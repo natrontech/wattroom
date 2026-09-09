@@ -57,7 +57,9 @@ test('the room chat scrolls back to its oldest line', async ({
 		await draft.fill(say(i));
 		await draft.press('Enter');
 		await expect(page.getByText(say(i), { exact: true })).toBeAttached();
-		await page.waitForTimeout(RATE_LIMIT_MS);
+		// Past the window with margin: sleeping it exactly left the next send
+		// limited whenever the server's clock read landed a millisecond later.
+		await page.waitForTimeout(RATE_LIMIT_MS + 250);
 	}
 	// Every line survived the trip; a rate-limited drop would fail here and
 	// quietly weaken everything below it.

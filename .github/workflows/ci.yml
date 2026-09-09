@@ -48,7 +48,9 @@ jobs:
           working-directory: server
           version: ${{ steps.linter.outputs.version }}
       - run: go build ./...
-      - run: go test -race ./...
+      # -shuffle surfaces order dependence between tests now rather than at
+      # the next file reorder; -timeout caps a wedged package at 5 min.
+      - run: go test -race -shuffle=on -timeout=5m ./...
         env:
           WATTROOM_TEST_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
           # The service container above exists so these tests run against it.
