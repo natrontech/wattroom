@@ -8,6 +8,7 @@
 	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { device } from '$lib/device.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
 	import { noteNewAccount } from '$lib/auth/new-account';
@@ -201,6 +202,25 @@
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
 	let drawer = $state(false);
+	// Focus follows the drawer (ux.md): into its first row on open, back to
+	// the button that opened it on close, and Escape closes it.
+	let drawerBox = $state<HTMLElement | null>(null);
+	let hamburger = $state<HTMLElement | null>(null);
+	let drawerWasOpen = false;
+	$effect(() => {
+		const open = drawer;
+		if (open === drawerWasOpen) return;
+		drawerWasOpen = open;
+		if (open) {
+			queueMicrotask(() =>
+				drawerBox
+					?.querySelector<HTMLElement>('a[href], button')
+					?.focus({ preventScroll: true }),
+			);
+		} else {
+			hamburger?.focus({ preventScroll: true });
+		}
+	});
 	$effect(() => {
 		page.url.pathname;
 		drawer = false;
@@ -243,6 +263,12 @@
 		}
 	});
 </script>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && drawer) drawer = false;
+	}}
+/>
 
 <svelte:head>
 	<!-- The default every page inherits; a page names itself over it. -->
@@ -307,7 +333,14 @@
 				onclick={() => (drawer = false)}
 			></div>
 		{/if}
+		<!-- Off-screen is not gone (audit 2026-09-09): translated away, the
+		     closed drawer stayed focusable and in the accessibility tree, so
+		     Tab on a phone walked forty invisible rows before the page — and
+		     focusing one scrolled the viewport. inert takes it out of both
+		     until it is open. -->
 		<div
+			bind:this={drawerBox}
+			inert={device.narrow && !drawer}
 			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
@@ -338,9 +371,11 @@
 					class="border-ink/5 flex shrink-0 items-center gap-2 border-b px-3 py-2 md:hidden"
 				>
 					<button
+						bind:this={hamburger}
 						onclick={() => (drawer = true)}
 						class="text-muted hover:text-ink -m-1 grid h-11 w-11 place-items-center rounded"
-						aria-label="open navigation"><Menu size={20} /></button
+						aria-label="open navigation"
+						aria-expanded={drawer}><Menu size={20} /></button
 					>
 					<Logo
 						size={18}

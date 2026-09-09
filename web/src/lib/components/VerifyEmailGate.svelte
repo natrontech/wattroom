@@ -17,6 +17,7 @@
 		shouldPromptEmail,
 	} from '$lib/account/verify-prompt';
 	import Banner from './Banner.svelte';
+	import { focusTrap } from './focus-trap';
 
 	let skipped = $state(readSkipped());
 	let address = $state('');
@@ -73,8 +74,14 @@
 		aria-modal="true"
 		aria-label="Confirm your email address"
 	>
+		<!-- Focus is trapped, Escape is not (audit 2026-09-09): aria-modal
+		     with no trap let a keyboard rider Tab straight past a gate the
+		     mouse could not leave. The trap only handles Tab (focus-trap.ts),
+		     so the deliberate no-Escape above survives. -->
 		<div
 			class="border-muted/20 bg-surface-raised w-full max-w-md rounded-xl border p-7"
+			tabindex="-1"
+			use:focusTrap
 		>
 			<h2 class="font-display text-lg font-bold">Confirm an email address</h2>
 			<p class="text-muted mt-2 text-sm">

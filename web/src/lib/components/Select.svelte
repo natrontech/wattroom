@@ -83,6 +83,9 @@
 				break;
 			case 'Escape':
 				event.preventDefault();
+				// One layer: the dialog under this list must not close with it
+				// (audit 2026-09-09).
+				event.stopPropagation();
 				open = false;
 				trigger?.focus();
 				break;
