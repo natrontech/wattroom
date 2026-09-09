@@ -175,8 +175,14 @@ select count(*)::bigint as rides,
        coalesce(sum(seconds), 0)::bigint as seconds,
        coalesce(sum(kj), 0)::bigint as kj
 from rides
-where user_id = $1 and started_at >= date_trunc('month', now())
+where user_id = $1
+  and started_at >= (date_trunc('month', now() at time zone $2::text) at time zone $2::text)
 `
+
+type RiderMonthParams struct {
+	UserID pgtype.UUID
+	Tz     string
+}
 
 type RiderMonthRow struct {
 	Rides   int64
@@ -184,9 +190,10 @@ type RiderMonthRow struct {
 	Kj      int64
 }
 
-// This month's totals — friends only (ADR-0024).
-func (q *Queries) RiderMonth(ctx context.Context, userID pgtype.UUID) (RiderMonthRow, error) {
-	row := q.db.QueryRow(ctx, riderMonth, userID)
+// This month's totals — friends only (ADR-0024) — in the rider's own zone
+// (#1653): the server's month turned hours before or after theirs.
+func (q *Queries) RiderMonth(ctx context.Context, arg RiderMonthParams) (RiderMonthRow, error) {
+	row := q.db.QueryRow(ctx, riderMonth, arg.UserID, arg.Tz)
 	var i RiderMonthRow
 	err := row.Scan(&i.Rides, &i.Seconds, &i.Kj)
 	return i, err

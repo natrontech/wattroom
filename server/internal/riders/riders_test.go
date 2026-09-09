@@ -45,7 +45,8 @@ func (f *fakePresence) WhereIs(ids []string) map[string]string {
 }
 
 func (f *fakePresence) Presence(slug string) protocol.RoomPresence {
-	return protocol.RoomPresence{Riding: f.riding[slug]}
+	// Ids, not names (#1652): the rider page keys "riding" by id.
+	return protocol.RoomPresence{RidingIDs: f.riding[slug]}
 }
 
 type harness struct {
@@ -235,7 +236,7 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 
 	// Presence: in the shared room, riding → named and moving.
 	h.presence.where[h.id("bob")] = "pain-cave"
-	h.presence.riding["pain-cave"] = []string{"bob"}
+	h.presence.riding["pain-cave"] = []string{h.id("bob")}
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ := body["presence"].(map[string]any)
 	room, _ := p["room"].(map[string]any)

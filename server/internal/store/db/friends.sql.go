@@ -245,3 +245,20 @@ func (q *Queries) NoteFriendDecline(ctx context.Context, arg NoteFriendDeclinePa
 	_, err := q.db.Exec(ctx, noteFriendDecline, arg.RequesterID, arg.AddresseeID)
 	return err
 }
+
+const restoreFriendRequest = `-- name: RestoreFriendRequest :exec
+insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing
+`
+
+type RestoreFriendRequestParams struct {
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+}
+
+// The undo of a dismissal (#1652): their pending ask, back as it was. A pair
+// that is already connected again is left alone.
+func (q *Queries) RestoreFriendRequest(ctx context.Context, arg RestoreFriendRequestParams) error {
+	_, err := q.db.Exec(ctx, restoreFriendRequest, arg.RequesterID, arg.AddresseeID)
+	return err
+}

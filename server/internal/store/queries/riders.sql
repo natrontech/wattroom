@@ -30,12 +30,14 @@ select count(*)::bigint as rides,
 from rides where user_id = $1;
 
 -- name: RiderMonth :one
--- This month's totals — friends only (ADR-0024).
+-- This month's totals — friends only (ADR-0024) — in the rider's own zone
+-- (#1653): the server's month turned hours before or after theirs.
 select count(*)::bigint as rides,
        coalesce(sum(seconds), 0)::bigint as seconds,
        coalesce(sum(kj), 0)::bigint as kj
 from rides
-where user_id = $1 and started_at >= date_trunc('month', now());
+where user_id = sqlc.arg(user_id)
+  and started_at >= (date_trunc('month', now() at time zone sqlc.arg(tz)::text) at time zone sqlc.arg(tz)::text);
 
 -- name: CountRiderMedalsInCommon :many
 -- Medals the rider earned in rooms the viewer shares with them, by kind.

@@ -158,7 +158,7 @@ func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 
 func TestFriendLifecycle(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	shareRoom(t, st, users, "pain-cave", "alice", "bob")
+	shareRoom(t, st, users, "friends-cave", "alice", "bob")
 	alice, bob := users.byToken["alice"], users.byToken["bob"]
 
 	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
@@ -224,16 +224,16 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 
 	// Presence: bob is in the shared room — alice sees online AND the name.
-	presence.where[store.UUIDString(bob.ID)] = "pain-cave"
+	presence.where[store.UUIDString(bob.ID)] = "friends-cave"
 	entry := friendsOf(t, mux, "alice")[0]
-	if entry["status"] != "accepted" || entry["online"] != true || entry["room"] != "pain-cave" {
+	if entry["status"] != "accepted" || entry["online"] != true || entry["room"] != "friends-cave" {
 		t.Fatalf("presence entry: %+v", entry)
 	}
 
 	// In a room alice is NOT a member of: online yes, in a room yes, room
 	// name withheld — the boundary holds.
-	presence.where[store.UUIDString(bob.ID)] = "secret-lair"
-	shareRoom(t, st, users, "secret-lair", "bob")
+	presence.where[store.UUIDString(bob.ID)] = "friends-lair"
+	shareRoom(t, st, users, "friends-lair", "bob")
 	entry = friendsOf(t, mux, "alice")[0]
 	if entry["online"] != true || entry["inRoom"] != true || entry["room"] != nil {
 		t.Fatalf("boundary pierced: %+v", entry)
@@ -337,8 +337,8 @@ func TestADismissalTellsTheRequester(t *testing.T) {
 // output is still correct once there is more than one row to resolve.
 func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	shareRoom(t, st, users, "pain-cave", "alice", "bob")
-	shareRoom(t, st, users, "secret-lair", "cara")
+	shareRoom(t, st, users, "friends-cave", "alice", "bob")
+	shareRoom(t, st, users, "friends-lair", "cara")
 
 	if code := request(t, mux, "alice", users.byToken["bob"].FriendCode); code != http.StatusOK {
 		t.Fatalf("request bob: %d", code)
@@ -353,8 +353,8 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 		t.Fatalf("cara accept: %d", code)
 	}
 
-	presence.where[store.UUIDString(users.byToken["bob"].ID)] = "pain-cave"    // alice is a member
-	presence.where[store.UUIDString(users.byToken["cara"].ID)] = "secret-lair" // alice is not
+	presence.where[store.UUIDString(users.byToken["bob"].ID)] = "friends-cave"  // alice is a member
+	presence.where[store.UUIDString(users.byToken["cara"].ID)] = "friends-lair" // alice is not
 
 	byName := map[string]map[string]any{}
 	for _, entry := range friendsOf(t, mux, "alice") {
@@ -363,7 +363,7 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	}
 
 	bobEntry := byName["bob"]
-	if bobEntry["online"] != true || bobEntry["room"] != "pain-cave" || bobEntry["roomName"] != "pain-cave" {
+	if bobEntry["online"] != true || bobEntry["room"] != "friends-cave" || bobEntry["roomName"] != "friends-cave" {
 		t.Fatalf("bob entry (shared room): %+v", bobEntry)
 	}
 	caraEntry := byName["cara"]
@@ -406,7 +406,7 @@ func requestByID(t *testing.T, mux *http.ServeMux, user, id string) int {
 
 func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "pain-cave", "alice", "bob")
+	shareRoom(t, st, users, "friends-cave", "alice", "bob")
 	id := func(name string) string { return store.UUIDString(users.byToken[name].ID) }
 
 	tests := []struct {
@@ -430,5 +430,63 @@ func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 	}
 	if got := friendsOf(t, mux, "bob")[0]["status"]; got != "pending_in" {
 		t.Fatalf("bob sees %v", got)
+	}
+}
+
+// errors.md: every endpoint answers 401 signed out (#1653); the friend-code
+// door has a ceiling (#1652).
+func TestFriendDoorsSignedOutAndTheCeiling(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "door-cave", "alice", "bob")
+	bob := users.byToken["bob"]
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodPost, "/api/friends"},
+		{http.MethodPost, "/api/friends/" + store.UUIDString(bob.ID) + "/accept"},
+		{http.MethodDelete, "/api/friends/" + store.UUIDString(bob.ID)},
+		{http.MethodPost, "/api/friends/" + store.UUIDString(bob.ID) + "/restore"},
+	} {
+		if code, _ := call(t, mux, "", tc.method, tc.path); code != http.StatusUnauthorized {
+			t.Errorf("%s %s signed out: %d, want 401", tc.method, tc.path, code)
+		}
+	}
+	for i := 0; i < asksPerWindow; i++ {
+		if code := request(t, mux, "alice", "ZZZZZZZZ"); code != http.StatusNotFound {
+			t.Fatalf("guess %d: %d, want 404", i, code)
+		}
+	}
+	if code := request(t, mux, "alice", "ZZZZZZZZ"); code != http.StatusTooManyRequests {
+		t.Fatalf("past the ceiling: %d, want 429", code)
+	}
+}
+
+// Dismiss has an undo (#1652): their ask comes back and the tombstone that
+// told them goes.
+func TestDismissCanBeUndone(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "undo-cave", "alice", "bob")
+	alice, bob := users.byToken["alice"], users.byToken["bob"]
+	if code := request(t, mux, "bob", alice.FriendCode); code != http.StatusOK {
+		t.Fatalf("bob asks alice: %d", code)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/friends/"+store.UUIDString(bob.ID)); code != http.StatusOK {
+		t.Fatalf("dismiss: %d", code)
+	}
+	if got := declinesOf(t, mux, "bob"); len(got) != 1 {
+		t.Fatalf("bob should have been told once, got %v", got)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore"); code != http.StatusOK {
+		t.Fatalf("restore: %d", code)
+	}
+	if got := declinesOf(t, mux, "bob"); len(got) != 0 {
+		t.Fatalf("the tombstone should be gone, got %v", got)
+	}
+	pending := false
+	for _, f := range friendsOf(t, mux, "alice") {
+		if f["id"] == store.UUIDString(bob.ID) && f["status"] == "pending_in" {
+			pending = true
+		}
+	}
+	if !pending {
+		t.Fatal("bob's ask did not come back as pending")
 	}
 }
