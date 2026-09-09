@@ -4,8 +4,8 @@
 	// it, search it, drop MP3s on it, fix whatever the tags got wrong. Riders
 	// read "library" everywhere (#1420); the code keeps calling it the pool.
 	//
-	// Playlists are not here yet — #1426 makes a saved playlist hold a library
-	// track, and this page grows them after.
+	// The rider's own playlists live here too (#1460): the library's home is
+	// where a list of its tracks gets built, room or no room.
 	import { confirm } from '$lib/confirm.svelte';
 	import {
 		contextMenu,
@@ -15,6 +15,7 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import ListMusic from '@lucide/svelte/icons/list-music';
 	import { createPlaylistStore } from '$lib/room/playlists.svelte';
+	import LibraryPlaylists from './LibraryPlaylists.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -270,6 +271,8 @@
 			/>
 		</label>
 	</header>
+
+	<LibraryPlaylists store={mine} slug={room?.slug} />
 
 	<label class="relative mt-4 block">
 		<Search

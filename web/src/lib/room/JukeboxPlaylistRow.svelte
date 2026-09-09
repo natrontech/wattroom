@@ -35,8 +35,10 @@
 	}: {
 		playlist: SavedPlaylist;
 		store: ReturnType<typeof createPlaylistStore>;
-		/** The room to queue into — always the one this panel is open in. */
-		slug: string;
+		/** The room to queue into — the one the panel is open in. Absent on
+		 *  the Music page with no room open (#1460): nothing to queue into,
+		 *  so the verb is not drawn. */
+		slug?: string;
 		/** Room playlists only: offers "Set active" in the menu. */
 		roomScoped: boolean;
 		/** Rename, delete and remove-a-track: the coach's and the owner's on a
@@ -149,6 +151,7 @@
 	}
 
 	async function queue() {
+		if (!slug) return;
 		busy = true;
 		const res = await queueSavedPlaylist(slug, playlist.id);
 		busy = false;
@@ -164,13 +167,15 @@
 	}
 
 	function menu(): MenuEntry[] {
-		const entries: MenuEntry[] = [
-			{
-				label: 'Queue into this room',
-				icon: ListMusic,
-				onSelect: () => void queue(),
-			},
-		];
+		const entries: MenuEntry[] = slug
+			? [
+					{
+						label: 'Queue into this room',
+						icon: ListMusic,
+						onSelect: () => void queue(),
+					},
+				]
+			: [];
 		if (!canManage) return entries;
 		entries.push({
 			label: 'Rename',
@@ -229,12 +234,14 @@
 				{#if playlist.active}<span class="text-neon">· active</span>{/if}
 			</p>
 		</div>
-		<button
-			onclick={queue}
-			disabled={busy || !playlist.trackCount}
-			class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
-			aria-label="queue this playlist into the room">Queue</button
-		>
+		{#if slug}
+			<button
+				onclick={queue}
+				disabled={busy || !playlist.trackCount}
+				class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
+				aria-label="queue this playlist into the room">Queue</button
+			>
+		{/if}
 	</div>
 
 	{#if open}
