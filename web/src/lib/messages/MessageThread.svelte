@@ -376,7 +376,7 @@
 								{/if}
 							</span>
 							<span
-								class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+								class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
 							>
 								{#if canEdit(message) && editingId !== message.id}
 									<button
