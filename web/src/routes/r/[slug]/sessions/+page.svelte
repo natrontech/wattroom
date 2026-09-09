@@ -282,14 +282,18 @@
 	{/if}
 
 	{#if room.icsToken}
-		<!-- The calendar (ADR-0021): every session planned here lands in a
-		     rider's own calendar app once they subscribe. A row that says so,
-		     not an eleven-pixel link under the list. -->
+		<!-- The room's calendar (ADR-0021): a club schedule, shareable with
+		     people who are not in the room. Your own link — every room at
+		     once — is on Home, under What's next; this row says so rather
+		     than offering a second subscription per room (#1374). -->
 		<div class="panel mt-4 flex flex-wrap items-center gap-3 px-4 py-3">
 			<CalendarClock size={16} class="text-muted shrink-0" />
 			<p class="text-muted min-w-0 flex-1 text-xs">
-				Every session planned here lands in your calendar app — subscribe once,
-				"from URL".
+				This room's schedule as a calendar link, for people who are not in it.
+				Your own calendar — every room you are in, one link — is on <a
+					href="/home#sessions"
+					class="underline">Home</a
+				>.
 			</p>
 			<button
 				onclick={() => room.copyIcsUrl()}
