@@ -126,38 +126,6 @@ export function reachable(access: RoomAccess | undefined): boolean {
 }
 
 /**
- * The day-one card (#1151) is shown once per crew you own and does not
- * return. ponytail: dismissed per device; a server-side flag is the upgrade
- * if seeing it twice across devices ever matters.
- */
-const INTRO = 'wattroom.crew-intro.v1';
-
-function introSeen(): string[] {
-	try {
-		const raw = localStorage.getItem(INTRO);
-		const ids = raw ? (JSON.parse(raw) as unknown) : [];
-		return Array.isArray(ids) ? ids.filter((x) => typeof x === 'string') : [];
-	} catch {
-		return [];
-	}
-}
-
-export function introDismissed(crewId: string): boolean {
-	return introSeen().includes(crewId);
-}
-
-export function dismissIntro(crewId: string): void {
-	try {
-		localStorage.setItem(
-			INTRO,
-			JSON.stringify([...new Set([...introSeen(), crewId])]),
-		);
-	} catch {
-		/* fine — the card comes back next time, which is the safe direction */
-	}
-}
-
-/**
  * What a crew you are NOT looking at is doing, summed over its rooms
  * (#1148): riders with live watts, people in voice, lines unread. Only rooms
  * you are a member of carry presence, so a crew's pulse is the part of it

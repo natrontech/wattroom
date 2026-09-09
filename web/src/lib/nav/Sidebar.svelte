@@ -165,12 +165,15 @@
 				icon: place.icon,
 				onSelect: () => void goto(`/r/${room.slug}${place.path}`),
 			}));
+			// A disconnect, not a leaving: membership stays and so does the
+			// row. It wore the danger token and the word the crew's real
+			// exit uses, and a rider pressing it found the room still there
+			// (audit 2026-09-09).
 			if (here && onLeave)
 				entries.push('separator', {
-					label: 'Leave the room',
+					label: 'Disconnect',
 					icon: LogOut,
 					onSelect: onLeave,
-					danger: true,
 				});
 			return entries;
 		})}
@@ -220,8 +223,8 @@
 							onLeave();
 						}}
 						class="text-muted hover:text-ink -my-2 ml-auto grid h-11 w-11 shrink-0 place-items-center md:h-6 md:w-6"
-						title="leave the room"
-						aria-label="leave the room"><LogOut size={16} /></button
+						title="disconnect from the room"
+						aria-label="disconnect from the room"><LogOut size={16} /></button
 					>
 				{:else if room.unread}
 					<!-- The strongest reason a chat app stays open in a
@@ -353,7 +356,7 @@
 	     (#1016), so the mark had no job left here. Before the first room
 	     there is no crew to name, so the mark and the wordmark keep the row. -->
 	{#if crew}
-		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
+		<CrewSwitcher {crews} {crew} {rooms} {pathname} onpick={pick} />
 	{:else}
 		<a href="/home" class="flex items-center gap-2 px-4 py-4">
 			<Logo size={22} {live} />

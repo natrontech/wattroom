@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PROFILE_LIMITS } from '$lib/profile.svelte';
 	/**
 	 * Everything before the ride starts (#1057): what you are about to do, what
 	 * is going to measure it, and the one number the targets scale to.
@@ -152,8 +153,8 @@
 			type="number"
 			value={ftp}
 			onchange={(event) => onFtp(Number(event.currentTarget.value))}
-			min="80"
-			max="500"
+			min={PROFILE_LIMITS.minFtp}
+			max={PROFILE_LIMITS.maxFtp}
 			class="input mt-1 w-full font-mono tabular-nums"
 		/>
 	</label>

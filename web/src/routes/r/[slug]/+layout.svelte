@@ -188,9 +188,7 @@
 					This room belongs to a crew you are not in. Ask whoever rides here for
 					the crew's invite link.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6"
-					>Back to your crews</a
-				>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to Home</a>
 			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			{#if !room.banned && (room.canEnter || room.listed)}
@@ -198,7 +196,7 @@
 				     before the button, not in a policy page after it. -->
 				<p class="text-muted/70 mt-4 text-[11px]">
 					Your watts are visible to this room while you ride here, and nowhere
-					else.
+					else. Voice and camera pass through and are never recorded.
 				</p>
 			{/if}
 		</div>

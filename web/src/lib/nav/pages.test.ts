@@ -8,6 +8,11 @@ describe('activeHref', () => {
 		expect(activeHref('/history')).toBe('/history');
 	});
 
+	it('keeps Workouts lit under a ride and a ramp test (ADR-0020, rule 1)', () => {
+		expect(activeHref('/ride')).toBe('/workouts');
+		expect(activeHref('/ramp')).toBe('/workouts');
+	});
+
 	it('has no entry for a path outside the three', () => {
 		// A room lights its own entry in the rooms list, not a destination —
 		// and /settings is the cog, which is a setting rather than a place.

@@ -11,14 +11,12 @@
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { account } from '$lib/account.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import { toasts } from '$lib/toast.svelte';
 	import type { RailRoom } from '$lib/room/mockcompat';
 	import type { RoomCrew } from '$lib/room/room-data';
-	import { crewPulse, dismissIntro, introDismissed, quiet } from './crews';
+	import { crewPulse, quiet } from './crews';
 	import { goto } from '$app/navigation';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
@@ -33,6 +31,7 @@
 		crews,
 		crew,
 		rooms,
+		pathname,
 		onpick,
 	}: {
 		/** Every crew the room list mentions, once each. */
@@ -40,9 +39,16 @@
 		/** The one on screen. */
 		crew: RoomCrew;
 		rooms: RailRoom[];
+		/** Where the app is, so the row lights on the crew's own pages. */
+		pathname: string;
 		/** The rider chose another crew; the sidebar remembers it. */
 		onpick: (id: string) => void;
 	} = $props();
+
+	// The crew row is the parent of /crew/[id] and its settings (ADR-0020,
+	// rule 1): lit while you are there, the way the destination rows are —
+	// the column used to go dark on both (audit 2026-09-09).
+	const onPage = $derived(pathname.startsWith(`/crew/${crew.id}`));
 
 	// What the header says under the name: how many rooms, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
@@ -119,21 +125,6 @@
 			document.removeEventListener('keydown', key);
 		};
 	});
-	// The day the crew arrives (#1151), said once and briefly: while the crew
-	// you own still carries the placeholder name it was made with, a toast
-	// names it and points at the settings page where the name is edited
-	// (#1237). Not a card in the sidebar — that spent forty pixels on a
-	// sentence — and it makes no claim about visibility, because none changed.
-	$effect(() => {
-		const own = crew;
-		if (!own || own.role !== 'owner' || introDismissed(own.id)) return;
-		if (own.name !== account.me?.displayName) return;
-		dismissIntro(own.id);
-		toasts.push(
-			`Your crew is named “${own.name}” after you until you rename it — in its settings.`,
-			{ href: `/crew/${own.id}/settings`, seconds: 8 },
-		);
-	});
 </script>
 
 <!-- The crew is the mode the whole column is in (ADR-0020 amended,
@@ -159,7 +150,10 @@
 			{@attach contextMenu(() => crewEntries(crew))}
 			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
 				? 'bg-ink/5 text-ink'
-				: 'text-ink'}"
+				: onPage
+					? 'bg-ink/10 text-ink'
+					: 'text-ink'}"
+			aria-current={onPage ? 'page' : undefined}
 			title="switch crew"
 			aria-label="crew: {crew.name} — switch crew"
 			aria-expanded={switching}
@@ -174,7 +168,10 @@
 		<a
 			href="/crew/{crew.id}"
 			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 md:min-h-0"
+			class="flex min-h-11 w-full items-center gap-2 rounded p-2 md:min-h-0 {onPage
+				? 'bg-ink/10 text-ink'
+				: 'hover:bg-ink/5 text-ink'}"
+			aria-current={onPage ? 'page' : undefined}
 			title="the crew — its people and rooms"
 		>
 			{@render crewRow(crew)}
