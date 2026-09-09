@@ -11,6 +11,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import Copy from '@lucide/svelte/icons/copy';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	const room = useRoom();
@@ -158,9 +159,19 @@
 	{/if}
 
 	{#if room.icsToken}
-		<div class="border-ink/5 mt-4 flex flex-wrap gap-4 border-t pt-3">
-			<button onclick={() => room.copyIcsUrl()} class="btn-link text-[11px]"
-				>subscribe to this room</button
+		<!-- The calendar (ADR-0021): every session planned here lands in a
+		     rider's own calendar app once they subscribe. A row that says so,
+		     not an eleven-pixel link under the list. -->
+		<div class="panel mt-4 flex flex-wrap items-center gap-3 px-4 py-3">
+			<CalendarClock size={16} class="text-muted shrink-0" />
+			<p class="text-muted min-w-0 flex-1 text-xs">
+				Every session planned here lands in your calendar app — subscribe once,
+				"from URL".
+			</p>
+			<button
+				onclick={() => room.copyIcsUrl()}
+				class="btn btn-secondary btn-xs shrink-0"
+				><Copy size={13} /> Copy calendar link</button
 			>
 		</div>
 		{#if room.myRole === 'owner'}
