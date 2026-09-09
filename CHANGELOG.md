@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.65] - 2026-09-09
+
+### Added
+
+- A planned session has a right-click menu (long-press on touch), like a rider's tile or a track: say you're in or out, copy the link to the room's Sessions place, and — for a coach — start it now, move it or cancel it, with the greyed entries saying why ("not due yet", "a session is running"). The buttons stay where they were; the menu is the shortcut.
+
+### Changed
+
+- Your profile picture is yours to change: Settings › Profile now takes an upload (PNG, JPEG, WebP or GIF, shrunk before it leaves your browser). The row of preset icons is gone — a rider who had picked one shows their sign-in photo again, or their initial.
+- The Sessions place tells a member what sessions are and who plans them instead of asking them to plan one; there is one "Plan" button, not two; a long list of riders who are in ends in "+N more"; past sessions sit flush with the panels above them. A room's Members row removes with a proper button. A room's settings page confirms a delete through the same dialog as everything else and toasts a refused save where the control is, then re-reads the room so the form does not keep values the server declined. A crew with no rooms says what a room is and who opens one; the leave button knows you own a room here before the room list has landed; "Make admin" reads the same in the row and its menu; the settings page says what actually happens to a crew when its owner goes.
+- Session times say "Today 19:30" and "Tomorrow 19:30" the way the planner's picker does, wherever a planned session is named — the Sessions place, the Lounge card, the sidebar, the chat line and the toasts; beyond that, the weekday as before. Home's "What's next" now carries the date too, so next week's session no longer reads like tomorrow's, and its row opens the room's Sessions place.
+
+### Fixed
+
+- Demoting a crew admin to member, or lifting a crew ban, no longer drops them out of the crew: membership is kept, as the crew page and its rooms expect. Inside a room, a refused action — a hand-over over the cap, a plan the server declined, an RSVP on a session that is gone — now says why in a toast instead of doing nothing. Planning, moving and RSVPing confirm with a toast; cancelling a planned session asks first (its RSVPs go with it and the old undo quietly created a new session and mailed everyone again) and is called "cancel" everywhere. "Start now" is offered only while nothing is running, so it can no longer wipe your own recording mid-ride, and a phone never sees the planning controls. A moved session is reminded again for its new time. A failed load of the planned sessions is an error, not an empty "plan the first session". The crew page keeps what it shows if a background refresh fails and offers a retry when the first load does; picking a crew icon keeps the name you were typing.
+- The Members place counts a rider's medals for real: every medal the room ever awarded them, by rider. It used to match display names over the 24 most recent awards, so the number shrank as the room rode on and two riders with one name shared a count.
+
 ## [2026.09.64] - 2026-09-09
 
 ### Changed
@@ -1351,7 +1368,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.64...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.65...HEAD
+[2026.09.65]: https://github.com/natrontech/wattroom/compare/2026.09.64...2026.09.65
 [2026.09.64]: https://github.com/natrontech/wattroom/compare/2026.09.63...2026.09.64
 [2026.09.63]: https://github.com/natrontech/wattroom/compare/2026.09.62...2026.09.63
 [2026.09.62]: https://github.com/natrontech/wattroom/compare/2026.09.61...2026.09.62
