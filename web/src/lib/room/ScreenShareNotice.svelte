@@ -85,9 +85,11 @@
 		></span>
 		<MonitorUp size={16} class="text-danger shrink-0" />
 		<p class="min-w-0 flex-1 truncate text-sm">
+			<!-- The space belongs INSIDE the branch: Svelte trims the whitespace
+			     at a block boundary, and the notice has been reading "your
+			     screenand its sound" since #1124 put the sound in it. -->
 			<span class="font-medium"
-				>You're sharing your screen{#if sharingAudio}
-					and its sound{/if}</span
+				>You're sharing your screen{sharingAudio ? ' and its sound' : ''}</span
 			>
 			<span class="text-muted">
 				{#if notice.href}
