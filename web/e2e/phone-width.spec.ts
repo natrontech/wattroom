@@ -28,9 +28,14 @@ const ROUTES = [
 	'/messages',
 	'/sessions',
 	'/pair',
+	'/ramp',
 	'/profile',
 	'/trophies',
 	'/whats-new',
+	'/rooms/directory',
+	'/download',
+	'/legal',
+	'/privacy',
 ];
 
 test.use({ viewport: PHONE });
@@ -154,14 +159,40 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 				crewId,
 			)
 		: '';
-	const routes = crewId
-		? [
-				...ROUTES,
-				`/crew/${crewId}`,
-				`/crew/${crewId}/settings`,
-				...(crewCode ? [`/c/${crewCode}`] : []),
-			]
-		: ROUTES;
+	// The pages reached by an id rather than listed: your own rider page,
+	// the ride seeded above, and the room's thread read from outside — the
+	// three that carry the widest things a rider sees without a room.
+	const byId = await page.evaluate(async () => {
+		const me = (await (await fetch('/api/me')).json()) as { id?: string };
+		const rides = (await (await fetch('/api/rides')).json()) as {
+			rides?: { id: string }[];
+		};
+		const rooms = (await (await fetch('/api/rooms')).json()) as {
+			rooms: { slug?: string }[];
+		};
+		return {
+			me: me.id ?? '',
+			ride: rides.rides?.[0]?.id ?? '',
+			room: rooms.rooms.find((r) => r.slug)?.slug ?? '',
+		};
+	});
+	const routes = [
+		...ROUTES,
+		...(byId.me ? [`/u/${byId.me}`] : []),
+		...(byId.ride ? [`/history/${byId.ride}`] : []),
+		...(byId.room ? [`/messages/r/${byId.room}`] : []),
+		...(crewId ? [`/crew/${crewId}`, `/crew/${crewId}/settings`] : []),
+		...(crewCode ? [`/c/${crewCode}`] : []),
+	];
+	// The id-reached pages are the point of the seeding above: a run where
+	// none of them resolved would pass while asserting nothing about them.
+	expect(byId, 'the seeded ride, the room and your own page resolve').toEqual(
+		expect.objectContaining({
+			me: expect.stringMatching(/.+/),
+			ride: expect.stringMatching(/.+/),
+			room: expect.stringMatching(/.+/),
+		}),
+	);
 
 	const wide: string[] = [];
 	for (const route of routes) {
