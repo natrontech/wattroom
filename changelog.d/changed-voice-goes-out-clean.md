@@ -1,1 +1,0 @@
-- Your voice goes out clean: no noise suppression, Opus at full bandwidth, and no comfort noise between sentences. The gate still keeps the fan out of the room while you are not talking, and echo cancellation stays on for riders on speakers.

@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.62] - 2026-09-09
+
+### Changed
+
+- Your voice goes out clean: no noise suppression, Opus at full bandwidth, and no comfort noise between sentences. The gate still keeps the fan out of the room while you are not talking, and echo cancellation stays on for riders on speakers.
+
+### Fixed
+
+- A clip fired from the soundboard can be stopped: press the glowing pad, or its key, again and everyone in the room hears it end. Before, the only way out of a wrong pad was to wait it out.
+- Every voice in the room is heard once again. From your first click after joining, each rider's voice was also playing a second time a few milliseconds behind itself — the phaser sound, and the doubling when hopping between rooms — and the per-rider fader only caught one of the two.
+
 ## [2026.09.61] - 2026-09-09
 
 ### Fixed
@@ -1307,7 +1318,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.61...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.62...HEAD
+[2026.09.62]: https://github.com/natrontech/wattroom/compare/2026.09.61...2026.09.62
 [2026.09.61]: https://github.com/natrontech/wattroom/compare/2026.09.60...2026.09.61
 [2026.09.60]: https://github.com/natrontech/wattroom/compare/2026.09.59...2026.09.60
 [2026.09.59]: https://github.com/natrontech/wattroom/compare/2026.09.58...2026.09.59
