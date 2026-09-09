@@ -390,7 +390,9 @@
 					<TrophyCase {trophies} />
 				{/if}
 
-				{#if trophies}
+				{#if trophies && rider.friend !== 'self'}
+					<!-- Yours is inside the trophy case above, with its progress
+					     (ADR-0027); a second copy here drew the catalogue twice. -->
 					<BadgeGrid achievements={trophies.achievements} mine={false} />
 				{/if}
 			</div>

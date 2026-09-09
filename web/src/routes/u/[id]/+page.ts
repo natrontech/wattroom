@@ -10,7 +10,19 @@ export const load: PageLoad = async ({ fetch, params }) => {
 	let id = params.id;
 	if (id === 'me') {
 		const me = await loadApi<{ id?: string }>(fetch, '/api/me');
-		id = me.ok && me.data?.id ? me.data.id : '';
+		if (!me.ok || !me.data?.id) {
+			// Nothing to ask for: an empty id would not even reach the API
+			// (the SPA answers /api/riders/), and the page would wait forever.
+			return {
+				id: '',
+				rider: null,
+				riderError: me.ok
+					? 'Could not tell who you are — reload to try again.'
+					: me.error.message,
+				trophies: null,
+			};
+		}
+		id = me.data.id;
 	}
 	const [riderResult, trophiesResult] = await Promise.all([
 		fetchRider(id, fetch),

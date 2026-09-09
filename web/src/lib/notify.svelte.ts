@@ -73,16 +73,29 @@ export const notify = {
 	get supported() {
 		return inShell() || typeof Notification !== 'undefined';
 	},
-	/** In a browser, call from a click — the permission prompt needs the gesture. */
-	async enable() {
+	/**
+	 * In a browser, call from a click — the permission prompt needs the
+	 * gesture. Answers with the browser's verdict, so a switch can say
+	 * "blocked" instead of offering the same click again (#1330's audit).
+	 */
+	async enable(): Promise<'granted' | 'denied' | 'default' | 'shell'> {
 		if (inShell()) {
 			enabled = true;
 			store('1');
-			return;
+			return 'shell';
 		}
-		if (typeof Notification === 'undefined') return;
-		enabled = (await Notification.requestPermission()) === 'granted';
+		if (typeof Notification === 'undefined') return 'denied';
+		const verdict = await Notification.requestPermission();
+		enabled = verdict === 'granted';
 		if (enabled) store('1');
+		return verdict;
+	},
+	/** The browser's standing answer, without asking: 'denied' once blocked. */
+	get permission(): 'granted' | 'denied' | 'default' | 'unsupported' {
+		if (inShell()) return 'granted';
+		return typeof Notification === 'undefined'
+			? 'unsupported'
+			: Notification.permission;
 	},
 	disable() {
 		enabled = false;

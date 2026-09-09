@@ -55,6 +55,8 @@
 
 <div class="grid gap-4 sm:grid-cols-3">
 	<label class="block">
+		<!-- Anchors the room's Sound panel deep-links to (#1330). -->
+		<span id="devices"></span>
 		<span class="eyebrow">microphone</span>
 		<div class="mt-1">
 			<Select
@@ -129,6 +131,7 @@
 	{/if}
 
 	<div class="mt-3">
+		<span id="gate"></span>
 		<GateTune
 			{micOn}
 			{micLevel}
@@ -145,6 +148,7 @@
 <div class="border-ink/5 mt-5 border-t pt-4">
 	<span class="eyebrow">mixer</span>
 	<div class="mt-2">
+		<span id="mixer"></span>
 		<MixFaders {onRiderGain} />
 	</div>
 </div>

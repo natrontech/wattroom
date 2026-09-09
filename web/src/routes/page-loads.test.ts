@@ -69,6 +69,42 @@ describe('route page loads', () => {
 		expect(data.release).toBe('2026.09.1');
 	});
 
+	// /u/me (#1330): one read to learn who "me" is, then the two the page
+	// always did — and a failed "me" is an error the page can show, not an
+	// empty id sent to the API and a skeleton forever (the audit's finding).
+	it('resolves /u/me through /api/me before the rider reads', async () => {
+		const { fetch, calls } = fetchMap({
+			'/api/me': { id: 'rider-9' },
+			'/api/riders/rider-9': { id: 'rider-9', displayName: 'Nine' },
+			'/api/riders/rider-9/trophies': { xp: { total: 0 } },
+		});
+		const data = (await loadRider({
+			fetch,
+			params: { id: 'me' },
+		} as never)) as RiderPageData;
+		expect(calls).toEqual([
+			'/api/me',
+			'/api/riders/rider-9',
+			'/api/riders/rider-9/trophies',
+		]);
+		expect(data.id).toBe('rider-9');
+		expect(data.rider?.displayName).toBe('Nine');
+	});
+
+	it('turns a failed "me" read into an error the page shows', async () => {
+		const { fetch, calls } = fetchMap(
+			{ '/api/me': { error: 'internal_error', message: 'Not now.' } },
+			500,
+		);
+		const data = (await loadRider({
+			fetch,
+			params: { id: 'me' },
+		} as never)) as RiderPageData;
+		expect(calls).toEqual(['/api/me']);
+		expect(data.rider).toBeNull();
+		expect(data.riderError).toBe('Not now.');
+	});
+
 	it('starts the room request before the page mounts', async () => {
 		const room = { slug: 'mfw', name: 'Midnight Fast Wheels' };
 		const { fetch, calls } = fetchMap({ '/api/rooms/mfw': room });
