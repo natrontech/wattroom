@@ -292,7 +292,7 @@
 				<button
 					onclick={() => rezoom(view.zoom / 1.5)}
 					disabled={view.zoom === 1}
-					class="text-muted hover:text-ink disabled:opacity-30"
+					class="text-muted hover:text-ink grid h-11 w-11 place-items-center disabled:opacity-30"
 					aria-label="zoom out"><ZoomOut size={14} /></button
 				>
 				<span class="font-display text-muted w-9 text-center text-[10px]"
@@ -301,36 +301,37 @@
 				<button
 					onclick={() => rezoom(view.zoom * 1.5)}
 					disabled={view.zoom === MAX_ZOOM}
-					class="text-muted hover:text-ink disabled:opacity-30"
+					class="text-muted hover:text-ink grid h-11 w-11 place-items-center disabled:opacity-30"
 					aria-label="zoom in"><ZoomIn size={14} /></button
 				>
 				<button
 					onclick={() => (view = FIT)}
 					disabled={view.zoom === 1}
-					class="text-muted hover:text-ink disabled:opacity-30"
+					class="text-muted hover:text-ink grid h-11 w-11 place-items-center disabled:opacity-30"
 					aria-label="fit to frame"><RotateCcw size={13} /></button
 				>
 				<button
 					onclick={() => (popped = !popped)}
-					class="text-muted hover:text-ink"
+					class="text-muted hover:text-ink grid h-11 w-11 place-items-center"
 					aria-label={popped ? 'dock the stage' : 'pop the stage out'}
 					><PictureInPicture2 size={13} /></button
 				>
 				<button
 					onclick={() => void frame?.requestFullscreen?.()}
-					class="text-muted hover:text-ink"
+					class="text-muted hover:text-ink grid h-11 w-11 place-items-center"
 					aria-label="fullscreen"><Maximize size={13} /></button
 				>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Who is on stage, and who else could be. One tap swaps. -->
+	<!-- Who is on stage, and who else could be. One tap swaps — from a bike,
+	     so 44 px (ux.md); these were 24 (audit 2026-09-09). -->
 	<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 		{#each sources as source (source.key)}
 			<button
 				onclick={() => onPick(source.key)}
-				class="inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] {source.key ===
+				class="inline-flex min-h-11 items-center gap-1.5 rounded border px-3 text-xs {source.key ===
 				activeKey
 					? 'border-neon/60 text-ink'
 					: 'border-muted/20 text-muted hover:text-ink'}"

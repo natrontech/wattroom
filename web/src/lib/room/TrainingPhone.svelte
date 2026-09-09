@@ -176,6 +176,9 @@
 							hr={followed.hr}
 							watts={followed.watts}
 							kg={followed.kg}
+							lthr={followed.you
+								? roomConnection.current?.profile.current.lthr
+								: undefined}
 							small={focus === 'media'}
 						/>
 					</div>

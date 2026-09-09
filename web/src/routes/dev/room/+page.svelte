@@ -162,18 +162,11 @@
 						>Drop trainer</button
 					>
 					<button
-						onclick={() => room.toggleAutoPause()}
-						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
-						>Auto-pause</button
-					>
-					<button
 						onclick={() => room.triggerSpiral()}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Spiral</button
 					>
-					<button
-						onclick={() => room.lateJoin()}
-						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
+					<button class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Late join</button
 					>
 					<button

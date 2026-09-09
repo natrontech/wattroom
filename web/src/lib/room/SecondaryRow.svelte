@@ -3,6 +3,7 @@
 	// boxes. Bias keeps thumb-sized targets whatever else shrinks: it is the
 	// one control a rider reaches for mid-interval (ux.md).
 	import { wkg } from '$lib/format';
+	import { hrZoneOf, ZONE_TEXT } from '$lib/components/zones';
 
 	// Primitives, not a RoomRider: the solo ride and the ramp test have these
 	// numbers without a roster to belong to.
@@ -12,6 +13,7 @@
 		watts,
 		kg,
 		bias,
+		lthr,
 		small = false,
 		onBias,
 	}: {
@@ -22,6 +24,9 @@
 		/** The ERG trim. Absent where there is no target to trim — a phone
 		 *  spectator reads someone else's numbers and rides nothing (#412). */
 		bias?: number;
+		/** Your LTHR, for your OWN bpm's zone colour (ADR-0014) — never
+		 *  somebody else's readout, so a follower passes none. */
+		lthr?: number;
 		small?: boolean;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
 		onBias?: (step: number) => void;
@@ -33,12 +38,12 @@
 </script>
 
 <div class="flex items-center gap-6">
-	{#each [{ label: 'rpm', value: `${cadence}` }, { label: 'bpm', value: `${hr}` }, { label: 'w/kg', value: wkg(watts, kg) }] as stat (stat.label)}
+	{#each [{ label: 'rpm', value: `${cadence}`, tone: '' }, { label: 'bpm', value: `${hr}`, tone: lthr && hr > 0 ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '' }, { label: 'w/kg', value: wkg(watts, kg), tone: '' }] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small
 					? 'text-lg'
-					: 'text-2xl'}">{stat.value}</span
+					: 'text-2xl'} {stat.tone}">{stat.value}</span
 			>
 			<span class="eyebrow">{stat.label}</span>
 		</div>

@@ -32,9 +32,6 @@ export interface RoomRider {
 	hr: number;
 	/** their trainer stopped reporting — numbers are last-known, not live */
 	stale: boolean;
-	/** they stopped pedalling: their targets pause, the timeline does not wait */
-	paused: boolean;
-	lateJoined: boolean;
 	target: number;
 	/** The live score; absent until something scorable was ridden (#1454). */
 	execution?: number;
