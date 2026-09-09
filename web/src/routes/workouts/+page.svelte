@@ -167,11 +167,11 @@
 						>
 						<a
 							href="/workouts/edit?w={entry.id}"
-							class="text-muted hover:text-ink ml-auto text-xs">Edit</a
+							class="btn btn-ghost btn-xs ml-auto">Edit</a
 						>
 						<button
 							onclick={() => removeCustom(entry)}
-							class="text-muted hover:text-ink text-xs">Delete</button
+							class="btn btn-ghost btn-xs text-danger">Delete</button
 						>
 					</li>
 				{/each}
