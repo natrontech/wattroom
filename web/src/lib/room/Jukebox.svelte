@@ -21,6 +21,12 @@
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
 	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { listening } from '$lib/room/listening.svelte';
+	import {
+		commandFromEntry,
+		createPlaylistStore,
+		type SaveTarget,
+	} from '$lib/room/playlists.svelte';
+	import type { JukeboxEntry } from '$lib/protocol';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
 	import { serverNow } from '$lib/room/server-clock';
 	import { MUSIC_FADER } from '$lib/sound/fader';
@@ -188,6 +194,70 @@
 						} satisfies MenuEntry,
 					]),
 		];
+	}
+
+	// ── Saving (#1427): a saved playlist is a saved queue (ADR-0045) ─────────
+	// The stores live here, above both the rows that save into a list and
+	// the panel that shows the lists, so one fetch serves both.
+	const roomStore = $derived.by(() =>
+		createPlaylistStore(`/api/rooms/${slug}/playlists`),
+	);
+	const mineStore = createPlaylistStore('/api/playlists');
+	const saveTargets = $derived<SaveTarget[]>([
+		...roomStore.all.map((p) => ({
+			id: p.id,
+			name: p.name,
+			kind: 'room' as const,
+		})),
+		...mineStore.all.map((p) => ({
+			id: p.id,
+			name: p.name,
+			kind: 'mine' as const,
+		})),
+	]);
+
+	async function saveEntry(entry: JukeboxEntry, target: SaveTarget) {
+		const store = target.kind === 'room' ? roomStore : mineStore;
+		const res = await store.addTrack(target.id, commandFromEntry(entry));
+		toasts.push(
+			res.ok
+				? `Saved “${entry.playlistTitle ?? entry.title}” to “${target.name}”.`
+				: res.error.message,
+			res.ok ? undefined : { tone: 'error' },
+		);
+	}
+
+	// The deck and everything behind it, as a new room playlist named for
+	// today. Entries the server refuses — somebody else's library track —
+	// are counted and said, not silently dropped.
+	let savingQueue = $state(false);
+	async function saveQueue() {
+		const entries = [...(current ? [current] : []), ...queue];
+		if (!entries.length) return;
+		savingQueue = true;
+		const name = `Up next · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+		const created = await roomStore.create(name);
+		if (!created.ok) {
+			savingQueue = false;
+			toasts.push(created.error.message, { tone: 'error' });
+			return;
+		}
+		let saved = 0;
+		for (const entry of entries) {
+			const res = await roomStore.addTrack(
+				created.data!.id,
+				commandFromEntry(entry),
+			);
+			if (res.ok) saved++;
+		}
+		savingQueue = false;
+		const left = entries.length - saved;
+		toasts.push(
+			`Saved ${saved} track${saved === 1 ? '' : 's'} to “${name}”.` +
+				(left
+					? ` ${left} ${left === 1 ? 'was' : 'were'} somebody else's music and stayed out.`
+					: ''),
+		);
 	}
 
 	// ── How much of the queue is on screen ───────────────────────────────────
@@ -487,18 +557,31 @@
 							? (by) => move(entry.id, i, by)
 							: undefined}
 						onRemove={() => removeEntry(entry)}
+						{saveTargets}
+						onSave={(target) => void saveEntry(entry, target)}
 					/>
 				{/each}
 			</ul>
-			{#if queue.length > QUEUE_PEEK}
+			<div class="mt-1.5 flex items-center gap-3 text-[11px]">
+				{#if queue.length > QUEUE_PEEK}
+					<button
+						onclick={() => (showAllQueue = !showAllQueue)}
+						class="btn-link"
+						>{showAllQueue
+							? 'fewer'
+							: `+${queue.length - QUEUE_PEEK} more`}</button
+					>
+				{/if}
+				<!-- The round trip ADR-0045 makes cheap: what the room is hearing
+				     tonight, kept as a room playlist to come back to. -->
 				<button
-					onclick={() => (showAllQueue = !showAllQueue)}
-					class="btn-link mt-1.5 text-[11px]"
-					>{showAllQueue
-						? 'fewer'
-						: `+${queue.length - QUEUE_PEEK} more`}</button
+					onclick={() => void saveQueue()}
+					disabled={savingQueue}
+					class="btn-link ml-auto"
+					title="the deck and everything behind it, as a new room playlist"
+					>Save as a playlist</button
 				>
-			{/if}
+			</div>
 			<p class="text-muted/70 mt-1.5 text-[10px]">
 				Votes float a track up the queue.
 			</p>
@@ -507,7 +590,7 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     room is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {slug} />
+	<JukeboxPlaylists {slug} {roomStore} {mineStore} />
 
 	{#if history.length}
 		<details class="min-w-0">
@@ -529,6 +612,8 @@
 								artist: entry.artist,
 								title: entry.title,
 							})}
+						{saveTargets}
+						onSave={(target) => void saveEntry(entry, target)}
 					/>
 				{/each}
 			</ul>
