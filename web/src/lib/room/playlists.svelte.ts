@@ -1,5 +1,5 @@
 import { api } from '$lib/api';
-import type { JukeboxCommand, JukeboxTrack } from '$lib/protocol';
+import type { JukeboxCommand, JukeboxEntry, JukeboxTrack } from '$lib/protocol';
 import { readLink } from '$lib/room/jukebox-add';
 import { resolvePlaylist, titleFor } from '$lib/room/youtube-playlist';
 
@@ -139,6 +139,43 @@ export function createPlaylistStore(base: string) {
 			});
 			return res.ok ? null : res.error.message;
 		},
+	};
+}
+
+/** Somewhere an entry can be saved to (#1427): one of the room's playlists
+ *  or one of the rider's own. */
+export interface SaveTarget {
+	id: string;
+	name: string;
+	kind: 'room' | 'mine';
+}
+
+/**
+ * A live queue entry as the add command that produced it (ADR-0045): a
+ * saved playlist is a saved queue, so saving a row is sending its own add
+ * to the playlist instead of the deck. A pasted set saves whole, from its
+ * first track, however far the room had walked into it.
+ */
+export function commandFromEntry(entry: JukeboxEntry): JukeboxCommand {
+	if (entry.trackId)
+		return {
+			action: 'add',
+			trackId: entry.trackId,
+			title: entry.title,
+			artist: entry.artist,
+		};
+	if (entry.tracks?.length)
+		return {
+			action: 'add',
+			playlistId: entry.playlistId,
+			playlistTitle: entry.playlistTitle,
+			tracks: entry.tracks,
+		};
+	return {
+		action: 'add',
+		videoId: entry.videoId,
+		title: entry.title,
+		positionSec: entry.startSec || undefined,
 	};
 }
 

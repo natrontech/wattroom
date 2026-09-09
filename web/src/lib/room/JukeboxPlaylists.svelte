@@ -4,7 +4,7 @@
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';
 	import {
-		createPlaylistStore,
+		type createPlaylistStore,
 		getAutoplay,
 		updateAutoplay,
 		type AutoplaySettings,
@@ -15,7 +15,16 @@
 	// own, queueable into whichever room they're in). Autoplay itself is a
 	// room setting and lives on the room's Settings page (#1422); this panel
 	// says what it is set to and keeps the one-tap "Set as active" on a row.
-	let { slug }: { slug: string } = $props();
+	let {
+		slug,
+		roomStore,
+		mineStore,
+	}: {
+		slug: string;
+		/** Made by the column (#1427), which also saves rows into them. */
+		roomStore: ReturnType<typeof createPlaylistStore>;
+		mineStore: ReturnType<typeof createPlaylistStore>;
+	} = $props();
 
 	// Rename, delete, set active and remove a track are the coach's and the
 	// owner's (SPEC roles matrix, #771); a member's own personal playlists
@@ -25,10 +34,6 @@
 	const canManage = $derived(room.canControl);
 
 	let tab = $state<'room' | 'mine'>('room');
-	const roomStore = $derived.by(() =>
-		createPlaylistStore(`/api/rooms/${slug}/playlists`),
-	);
-	const mineStore = createPlaylistStore('/api/playlists');
 	const store = $derived(tab === 'room' ? roomStore : mineStore);
 
 	let newName = $state('');

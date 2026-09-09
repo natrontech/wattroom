@@ -9,7 +9,9 @@
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import X from '@lucide/svelte/icons/x';
+	import ListMusic from '@lucide/svelte/icons/list-music';
 	import type { JukeboxEntry } from '$lib/protocol';
+	import type { SaveTarget } from '$lib/room/playlists.svelte';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 
 	// One track in the playlist (#286) — the same row for what's next and for
@@ -22,6 +24,8 @@
 		onMove,
 		onRemove,
 		onRequeue,
+		saveTargets = [],
+		onSave,
 	}: {
 		entry: JukeboxEntry;
 		/** 1-based slot in "up next"; absent in history. */
@@ -34,6 +38,10 @@
 		onMove?: (by: number) => void;
 		onRemove?: () => void;
 		onRequeue?: () => void;
+		/** Where "Save to …" can put this entry (#1427): the room's playlists
+		 *  and the rider's own. Empty offers one disabled line saying so. */
+		saveTargets?: SaveTarget[];
+		onSave?: (target: SaveTarget) => void;
 	} = $props();
 
 	const votes = $derived(entry.voters?.length ?? 0);
@@ -70,6 +78,28 @@
 				icon: RotateCcw,
 				onSelect: onRequeue,
 			});
+		if (onSave) {
+			// One line per playlist rather than a submenu the kit does not
+			// have: a room keeps a handful, and a rider mid-ride reads names,
+			// not chevrons.
+			if (entries.length) entries.push('separator');
+			if (saveTargets.length)
+				for (const target of saveTargets)
+					entries.push({
+						label: `Save to “${target.name}”`,
+						icon: ListMusic,
+						hint: target.kind === 'mine' ? 'yours' : undefined,
+						onSelect: () => onSave(target),
+					});
+			else
+				entries.push({
+					label: 'Save to a playlist',
+					icon: ListMusic,
+					disabled: true,
+					hint: 'none yet',
+					onSelect: () => {},
+				});
+		}
 		if (onRemove)
 			entries.push('separator', {
 				label: 'Remove',

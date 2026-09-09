@@ -13,6 +13,8 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import Pencil from '@lucide/svelte/icons/pencil';
+	import ListMusic from '@lucide/svelte/icons/list-music';
+	import { createPlaylistStore } from '$lib/room/playlists.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -164,6 +166,30 @@
 			: '',
 	);
 
+	// Save to a playlist (#1427): the rider's own lists always, the room's
+	// when they are standing in one. One line per list in the menu.
+	const mine = createPlaylistStore('/api/playlists');
+	const roomLists = $derived(
+		room ? createPlaylistStore(`/api/rooms/${room.slug}/playlists`) : null,
+	);
+	async function saveTo(
+		track: Track,
+		store: ReturnType<typeof createPlaylistStore>,
+		id: string,
+		name: string,
+	) {
+		const res = await store.addTrack(id, {
+			action: 'add',
+			trackId: track.id,
+			title: track.title,
+			artist: track.artist,
+		});
+		toasts.push(
+			res.ok ? `Saved “${track.title}” to “${name}”.` : res.error.message,
+			res.ok ? undefined : { tone: 'error' },
+		);
+	}
+
 	function queue(track: { id: string; title: string; artist?: string }) {
 		if (!room) return;
 		room.live.jukebox({
@@ -175,7 +201,7 @@
 		toasts.push(`Queued “${track.title}”.`);
 	}
 
-	const mine = (track: Track) => track.uploadedBy === account.me?.displayName;
+	const owned = (track: Track) => track.uploadedBy === account.me?.displayName;
 
 	// Every object with more than one action gets a menu (ux.md, #465): the
 	// buttons stay, the menu is the shortcut. Queue only when there is a room
@@ -189,7 +215,25 @@
 				icon: ListPlus,
 				onSelect: () => queue(track),
 			});
-		if (mine(track))
+		const targets = [
+			...(roomLists?.all ?? []).map((p) => ({
+				store: roomLists!,
+				p,
+				hint: roomName,
+			})),
+			...mine.all.map((p) => ({ store: mine, p, hint: 'yours' })),
+		];
+		if (targets.length) {
+			if (entries.length) entries.push('separator');
+			for (const { store, p, hint } of targets)
+				entries.push({
+					label: `Save to “${p.name}”`,
+					icon: ListMusic,
+					hint,
+					onSelect: () => void saveTo(track, store, p.id, p.name),
+				});
+		}
+		if (owned(track))
 			entries.push(
 				{ label: 'Edit', icon: Pencil, onSelect: () => (editing = track.id) },
 				'separator',
@@ -481,7 +525,7 @@
 										><ListPlus size={13} /></button
 									>
 								{/if}
-								{#if mine(track)}
+								{#if owned(track)}
 									<button
 										onclick={() => (editing = track.id)}
 										class="btn btn-secondary btn-xs shrink-0">Edit</button
