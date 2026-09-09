@@ -19,7 +19,11 @@
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
 	import JukeboxTrack from '$lib/room/JukeboxTrack.svelte';
-	import { IN_SYNC_SEC, playerInfo } from '$lib/room/jukebox-player.svelte';
+	import {
+		deckDuration,
+		IN_SYNC_SEC,
+		playerInfo,
+	} from '$lib/room/jukebox-player.svelte';
 	import { listening } from '$lib/room/listening.svelte';
 	import {
 		commandFromEntry,
@@ -90,7 +94,7 @@
 		const timer = setInterval(() => (nowMs = serverNow()), 250);
 		return () => clearInterval(timer);
 	});
-	const duration = $derived(playerInfo.duration);
+	const duration = $derived(deckDuration(current));
 	/** A livestream has no timeline to scrub — the room rides the edge. */
 	const streaming = $derived(playerInfo.live);
 	const elapsed = $derived(
@@ -616,6 +620,7 @@
 								artist: entry.artist,
 								title: entry.title,
 								bpm: entry.bpm,
+								durationMs: entry.durationMs,
 							})}
 						{saveTargets}
 						onSave={(target) => void saveEntry(entry, target)}

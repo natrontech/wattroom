@@ -129,6 +129,10 @@ type JukeboxCommand struct {
 	// row by whoever adds it, shown on the queue row, and matched against
 	// the block's cadence while a session runs. 0 = untagged.
 	Bpm int `json:"bpm,omitempty"`
+	// For "add" of a library track: its length as the server measured it at
+	// upload (#1509), so the deck can draw a seek bar before — or without —
+	// any client's <audio> reporting one. 0 = unknown.
+	DurationMs int `json:"durationMs,omitempty"`
 	// For "remove" | "vote" | "move": which queue entry (#286). Video ids
 	// are not unique — the same track queued twice is two entries, and
 	// addressing by video used to hit the wrong one.
@@ -427,6 +431,11 @@ type JukeboxEntry struct {
 	Artist string `json:"artist,omitempty"`
 	// Tempo of a library entry, 0 when untagged (#1431).
 	Bpm int `json:"bpm,omitempty"`
+	// Length of a library entry in milliseconds (#1509): measured by the
+	// server at upload, so every client — muted, sitting out, still loading
+	// — draws the same seek bar. 0 for a video, whose length only a player
+	// that loaded it knows.
+	DurationMs int `json:"durationMs,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the

@@ -149,6 +149,11 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 		if cmd.Bpm > 0 && cmd.Bpm < 400 {
 			entry.Bpm = cmd.Bpm
 		}
+		// The length the server measured at upload (#1509), bounded like a
+		// seek: past six hours it is a client guessing, not a track.
+		if cmd.DurationMs > 0 && cmd.DurationMs <= maxSeekSec*1000 {
+			entry.DurationMs = cmd.DurationMs
+		}
 		return entry, true, ""
 	}
 

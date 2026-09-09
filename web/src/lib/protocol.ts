@@ -146,6 +146,12 @@ export interface JukeboxCommand {
    */
   bpm?: number /* int */;
   /**
+   * For "add" of a library track: its length as the server measured it at
+   * upload (#1509), so the deck can draw a seek bar before — or without —
+   * any client's <audio> reporting one. 0 = unknown.
+   */
+  durationMs?: number /* int */;
+  /**
    * For "remove" | "vote" | "move": which queue entry (#286). Video ids
    * are not unique — the same track queued twice is two entries, and
    * addressing by video used to hit the wrong one.
@@ -523,6 +529,13 @@ export interface JukeboxEntry {
    * Tempo of a library entry, 0 when untagged (#1431).
    */
   bpm?: number /* int */;
+  /**
+   * Length of a library entry in milliseconds (#1509): measured by the
+   * server at upload, so every client — muted, sitting out, still loading
+   * — draws the same seek bar. 0 for a video, whose length only a player
+   * that loaded it knows.
+   */
+  durationMs?: number /* int */;
 }
 /**
  * JukeboxState is the server's truth about what plays where. Clients chase the

@@ -21,7 +21,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { serverNow } from '$lib/room/server-clock';
 	import { listening } from '$lib/room/listening.svelte';
-	import { playerInfo } from '$lib/room/jukebox-player.svelte';
+	import { deckDuration, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
@@ -96,7 +96,13 @@
 		// actually hear it runs its playhead off the end forever, because
 		// `ended` fires on playback and playback never happened. Whoever
 		// notices says the track is over, exactly as the YouTube path does.
-		if (el.duration > 0 && target >= el.duration) {
+		// The element's length once it has one; the server's (#1509) until
+		// then, so a rider whose element never loaded still ends the track.
+		const length =
+			Number.isFinite(el.duration) && el.duration > 0
+				? el.duration
+				: deckDuration(now.current);
+		if (length > 0 && target >= length) {
 			reportEnded();
 			return;
 		}

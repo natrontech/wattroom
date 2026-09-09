@@ -77,6 +77,7 @@ func (s *Service) Recent(ctx context.Context, slug string, n int) []protocol.Juk
 		if r.TrackID.Valid {
 			e.TrackID = store.UUIDString(r.TrackID)
 			e.Title, e.Artist, e.Bpm = r.TrackTitle, r.TrackArtist, int(r.TrackBpm)
+			e.DurationMs = int(r.TrackDurationMs)
 		} else {
 			e.VideoID, e.Title = r.VideoID, r.Title
 		}
@@ -114,6 +115,7 @@ func (s *Service) smartShuffle(ctx context.Context, roomID pgtype.UUID, slug str
 		s.log.Debug("smart shuffle picked", "room", slug, "track", id, "weight", t.Weight, "targetRpm", rpm)
 		cmds = append(cmds, protocol.JukeboxCommand{
 			Action: "add", TrackID: id, Title: t.Title, Artist: t.Artist, Bpm: int(t.Bpm),
+			DurationMs: int(t.DurationMs),
 		})
 	}
 	return cmds

@@ -16,6 +16,7 @@ select p.track_id, p.video_id, p.title, p.skipped,
     coalesce(t.title, '')::text as track_title,
     coalesce(t.artist, '')::text as track_artist,
     coalesce(t.bpm, 0)::int as track_bpm,
+    coalesce(t.duration_ms, 0)::int as track_duration_ms,
     coalesce(u.display_name, '')::text as queued_by_name
 from track_plays p
 left join tracks t on t.id = p.track_id
@@ -31,14 +32,15 @@ type RecentRoomPlaysParams struct {
 }
 
 type RecentRoomPlaysRow struct {
-	TrackID      pgtype.UUID
-	VideoID      string
-	Title        string
-	Skipped      bool
-	TrackTitle   string
-	TrackArtist  string
-	TrackBpm     int32
-	QueuedByName string
+	TrackID         pgtype.UUID
+	VideoID         string
+	Title           string
+	Skipped         bool
+	TrackTitle      string
+	TrackArtist     string
+	TrackBpm        int32
+	TrackDurationMs int32
+	QueuedByName    string
 }
 
 // The room's "just played" as the database remembers it (#1432), newest
@@ -61,6 +63,7 @@ func (q *Queries) RecentRoomPlays(ctx context.Context, arg RecentRoomPlaysParams
 			&i.TrackTitle,
 			&i.TrackArtist,
 			&i.TrackBpm,
+			&i.TrackDurationMs,
 			&i.QueuedByName,
 		); err != nil {
 			return nil, err
@@ -126,7 +129,7 @@ liked as (
         coalesce(array_agg(distinct tag) filter (where tag is not null), '{}') as tags
     from recent left join lateral unnest(recent.tags) as tag on true
 )
-select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, w.weight
+select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, t.duration_ms, w.weight
 from tracks t
 join memberships m on m.user_id = t.uploaded_by and m.room_id = $1
 join visible_rooms v on v.room_id = m.room_id and v.user_id = m.user_id
@@ -185,11 +188,12 @@ type SmartShuffleTracksParams struct {
 }
 
 type SmartShuffleTracksRow struct {
-	ID     pgtype.UUID
-	Title  string
-	Artist string
-	Bpm    int32
-	Weight float64
+	ID         pgtype.UUID
+	Title      string
+	Artist     string
+	Bpm        int32
+	DurationMs int32
+	Weight     float64
 }
 
 // ADR-0015's smart selection, all of it, as ONE scoring pass: a weighted
@@ -273,6 +277,7 @@ func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracks
 			&i.Title,
 			&i.Artist,
 			&i.Bpm,
+			&i.DurationMs,
 			&i.Weight,
 		); err != nil {
 			return nil, err

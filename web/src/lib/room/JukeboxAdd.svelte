@@ -80,6 +80,7 @@
 			title: track.title,
 			artist: track.artist,
 			bpm: track.bpm,
+			durationMs: track.durationMs,
 		});
 		addNote = `${verb} “${track.title}”.`;
 	}

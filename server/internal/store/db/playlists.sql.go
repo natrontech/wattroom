@@ -142,7 +142,8 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 
 const listPlaylistTracks = `-- name: ListPlaylistTracks :many
 select pt.id, pt.playlist_id, pt.position, pt.video_id, pt.title, pt.start_sec, pt.yt_playlist_id, pt.yt_playlist_title, pt.tracks, pt.track_id, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist,
-    coalesce(t.bpm, 0)::int as track_bpm
+    coalesce(t.bpm, 0)::int as track_bpm,
+    coalesce(t.duration_ms, 0)::int as track_duration_ms
 from playlist_tracks pt
 left join tracks t on t.id = pt.track_id
 where pt.playlist_id = $1 order by pt.position
@@ -162,6 +163,7 @@ type ListPlaylistTracksRow struct {
 	TrackTitle      string
 	TrackArtist     string
 	TrackBpm        int32
+	TrackDurationMs int32
 }
 
 // A library entry reads its title and artist off the track itself (#1426):
@@ -190,6 +192,7 @@ func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID
 			&i.TrackTitle,
 			&i.TrackArtist,
 			&i.TrackBpm,
+			&i.TrackDurationMs,
 		); err != nil {
 			return nil, err
 		}
@@ -384,8 +387,8 @@ type UpdateAutoplayParams struct {
 	AutoplayOrder   string
 }
 
-// autoplay_fixed_video_id/_title are no longer written (#1422); the columns
-// stay one release for the rollback path and #1430 drops them.
+// autoplay_fixed_video_id/_title stopped being written in #1422 and were
+// dropped one release later (#1430, ADR-0019 expand/contract).
 func (q *Queries) UpdateAutoplay(ctx context.Context, arg UpdateAutoplayParams) (Room, error) {
 	row := q.db.QueryRow(ctx, updateAutoplay, arg.ID, arg.AutoplayEnabled, arg.AutoplayOrder)
 	var i Room
