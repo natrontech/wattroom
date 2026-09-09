@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.76] - 2026-09-09
+
+### Fixed
+
+- "Export everything" now carries your medals, every field the ride page shows (normalised power, whether execution was scored, the room, the sharing flag), and a manifest written last that lists what went in — so an archive that was cut short is recognisable as one.
+- "Keep my current FTP" is remembered: declining a suggested FTP no longer brings the card back on every visit, and the suggestion now appears on the Rides page above the FTP trend, where you are looking at the curve. The training-load chart names the right day west of Greenwich. A rider page that does not exist, or is not visible to you, says so with a way on instead of a Retry that could never work, and the ride page says when your 30- and 90-day bests could not be loaded.
+- Rides beyond the first hundred are reachable again: the Rides page loads older rides on request instead of stopping quietly at two hundred, an exported .fit is named by its day and workout instead of an id, and the Strava sign-in failure now points at Settings › Profile, where the Strava connection actually lives.
+- Room rides are dated when the session started. With riders in the room the saved ride was usually stamped at the session's end — the moment a rider's own numbers crossed the finish line, the clock the save read had gone back to zero — and the same slip hid the group-session voice XP. A session that ends with nobody in the room now leaves its "ended" line at the time it ended, not when the next person walks in.
+- A ramp test is a ride: it is buffered against a crash like any workout and saved to your history when it ends, so its fifteen hard minutes count as training load and can be opened, exported and compared. Saving a ramp's FTP now reports success only once your account has it. And a room ride you left by closing the tab no longer comes back as an "unfinished ride" to recover on the solo screen — the room's buffer opens with the session and closes with it, named after the workout.
+- In a room, the end-of-session summary is yours and this session's: riders who were not the coach used to see the warm-up's numbers folded into the main set's summary, and a rider who joined ten minutes in never got the "See your ride" link. The Sessions place now says when past sessions are still loading, could not be loaded (with Retry), or do not exist yet, instead of showing nothing. And when a session ends, the Training place says where its recap went.
+- The solo ride's finish is tidier: "Ride complete" (a session is a group ride), the summary says "Saving…" while the ride goes to your account instead of reshuffling its buttons, a ride you ended by leaving the page reports its save as a toast instead of in silence, a ride with nothing recorded says so instead of showing zeros, execution shows a dash when the workout had nothing to score, and normalised power under 20 minutes is the plain average — the same number the ride page shows. A ride saved from the recovery card no longer stays as a second copy on the device, and a finished ride lets go of the trainer so the next pairing starts clean.
+
 ## [2026.09.75] - 2026-09-09
 
 ### Added
@@ -1557,7 +1569,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.75...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.76...HEAD
+[2026.09.76]: https://github.com/natrontech/wattroom/compare/2026.09.75...2026.09.76
 [2026.09.75]: https://github.com/natrontech/wattroom/compare/2026.09.74...2026.09.75
 [2026.09.74]: https://github.com/natrontech/wattroom/compare/2026.09.73...2026.09.74
 [2026.09.73]: https://github.com/natrontech/wattroom/compare/2026.09.72...2026.09.73
