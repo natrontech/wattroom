@@ -6,6 +6,8 @@ package rides
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -62,6 +64,7 @@ func (s *Service) SetRideKeeper(k stats.RideKeeper) { s.keeper = k }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides", s.handleList)
+	mux.HandleFunc("GET /api/rides/best", s.handleBest)
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
 	mux.HandleFunc("GET /api/rides/{id}", s.handleGet)
 	mux.HandleFunc("GET /api/rides/{id}/export", s.handleExport)
@@ -129,17 +132,58 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]rideJSON, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, rideJSON{
-			ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
-			StartedAt: row.StartedAt.Time.Format(time.RFC3339),
-			Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
-			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
-		})
+		out = append(out, rideJSONOf(row))
 	}
 	// A full page means there may be more: the client asks again with the
 	// last row's start as `before`.
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rides": out, "more": len(rows) == listPage})
+}
+
+func rideJSONOf(row db.ListUserRidesRow) rideJSON {
+	return rideJSON{
+		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
+		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
+		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
+		Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
+	}
+}
+
+// handleBest answers the ride page's "against your best" (#1687): the
+// hardest ride of the same workout over the whole history. The page used
+// to scan the first page of the list and call a year-old workout a first.
+func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	workout := r.URL.Query().Get("workout")
+	if workout == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "workout names the workout to compare against.")
+		return
+	}
+	var except pgtype.UUID
+	if raw := r.URL.Query().Get("except"); raw != "" {
+		id, err := store.ParseUUID(raw)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "except must be a ride id.")
+			return
+		}
+		except = id
+	}
+	row, err := s.store.Queries.BestUserRideOfWorkout(r.Context(), db.BestUserRideOfWorkoutParams{
+		UserID: user.ID, WorkoutName: workout, ID: except,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": nil})
+		return
+	}
+	if err != nil {
+		s.log.Error("best ride failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rides could not be loaded.")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": rideJSONOf(db.ListUserRidesRow(row))})
 }
 
 // handleShare flips one ride's friends-visibility (ADR-0024). Owner-only:

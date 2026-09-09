@@ -23,6 +23,11 @@ func TestNormPower(t *testing.T) {
 		{"empty", nil, 0},
 		{"short ride falls back to average", steady(200, 600), 200},
 		{"steady hour equals average", steady(250, 3600), 250},
+		// The two numbers SPEC pins (#1692): one sample under 20 min is the
+		// plain average, and the 30 s window over a 300→100 W step lands on
+		// 252 — a 10 s or 300 s window does not.
+		{"1199 s is the average, not normalised", append(steady(300, 600), steady(100, 599)...), 200},
+		{"30 s window over a step", append(steady(300, 600), steady(100, 600)...), 252},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

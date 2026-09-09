@@ -9,19 +9,23 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
-	import { bestOfWorkout, compareRows, curveSentence } from './compare';
+	import { compareRows, curveSentence } from './compare';
 
 	let {
 		ride,
-		rides,
+		best,
+		loading = false,
 		d30,
 		d90,
 		error = null,
 		onRetry,
 	}: {
 		ride: RideRecord;
-		/** Every ride the rider has; null while it is still loading. */
-		rides: RideRecord[] | null;
+		/** The hardest ride of the same workout over the whole history, from
+		 * the server (#1687): scanning one page of the list called a year-old
+		 * workout a first. Null when there is none. */
+		best: RideRecord | null;
+		loading?: boolean;
 		/** Why they could not be loaded, when they could not (audit 2026-09-09). */
 		error?: string | null;
 		onRetry?: () => void;
@@ -29,9 +33,6 @@
 		d90?: number;
 	} = $props();
 
-	const best = $derived(
-		rides ? bestOfWorkout(rides, ride.workoutName, ride.id) : null,
-	);
 	const rows = $derived(best ? compareRows(ride, best) : []);
 	const bestWhen = $derived(
 		best
@@ -64,7 +65,7 @@
 				{/snippet}
 			</Banner>
 		</div>
-	{:else if rides === null}
+	{:else if loading}
 		<p class="text-muted mt-3 text-xs" aria-busy="true">Loading your rides…</p>
 	{:else if !best}
 		<div class="mt-3">

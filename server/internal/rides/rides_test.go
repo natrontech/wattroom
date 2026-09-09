@@ -419,3 +419,37 @@ func TestSavingTheSameRideTwiceIsOneRide(t *testing.T) {
 		t.Fatalf("rides after two saves: %d %v, want one", status, list)
 	}
 }
+
+// The ride page's "against your best" asks the server (#1687): the hardest
+// ride of the same workout over the whole history, never the ride itself.
+func TestBestRideOfWorkout(t *testing.T) {
+	h := setup(t)
+	weak := h.save(t, "alice", 600, 180)
+	strong := h.save(t, "alice", 600, 260)
+	if status, _ := call(t, h.mux, "", http.MethodGet, "/api/rides/best?workout=Openers", ""); status != http.StatusUnauthorized {
+		t.Fatalf("signed out: %d, want 401", status)
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best", ""); status != http.StatusBadRequest {
+		t.Fatalf("no workout named: %d, want 400", status)
+	}
+	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Openers&except=nope", ""); status != http.StatusBadRequest {
+		t.Fatalf("a malformed except: %d, want 400", status)
+	}
+	status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Openers&except="+weak, "")
+	best, _ := body["ride"].(map[string]any)
+	if status != http.StatusOK || best["id"] != strong {
+		t.Fatalf("best of Openers: %d %v, want the 260 W ride", status, body)
+	}
+	// Excluding the best itself hands back the other, never the same ride.
+	_, body = call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Openers&except="+strong, "")
+	if other, _ := body["ride"].(map[string]any); other["id"] != weak {
+		t.Fatalf("best except the best: %v, want the 180 W ride", body)
+	}
+	if _, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Nothing", ""); body["ride"] != nil {
+		t.Fatalf("a workout never ridden: %v, want ride null", body)
+	}
+	// Another rider's history is not this rider's best.
+	if _, body := call(t, h.mux, "bob", http.MethodGet, "/api/rides/best?workout=Openers", ""); body["ride"] != nil {
+		t.Fatalf("bob sees alice's best: %v", body)
+	}
+}

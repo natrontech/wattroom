@@ -22,28 +22,6 @@ export interface CompareRow {
 	delta: string;
 }
 
-/**
- * The hardest past ride of the same workout, by average watts — one ride, so
- * the "your best" column is a session that actually happened rather than a
- * row assembled from four different days' bests.
- *
- * Same workout means same name: it is what a rider chose, and the only handle
- * the ride record carries. A renamed copy compares as a different workout,
- * which is the honest answer — its steps may differ too.
- */
-export function bestOfWorkout(
-	rides: RideRecord[],
-	workoutName: string,
-	excludeId: string,
-): RideRecord | null {
-	let best: RideRecord | null = null;
-	for (const ride of rides) {
-		if (ride.id === excludeId || ride.workoutName !== workoutName) continue;
-		if (!best || ride.avgWatts > best.avgWatts) best = ride;
-	}
-	return best;
-}
-
 function signed(n: number, unit = ''): string {
 	if (n === 0) return '';
 	return `${n > 0 ? '+' : '−'}${Math.abs(n)}${unit}`;

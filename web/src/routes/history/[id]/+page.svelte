@@ -39,14 +39,19 @@
 	// for "your best of this workout", and the curve for the 20-minute line.
 	// Both are secondary to the ride itself, so they load beside it and their
 	// absence costs one section rather than the page.
-	let rides = $state<RideRecord[] | null>(null);
+	let best = $state<RideRecord | null>(null);
+	let bestLoaded = $state(false);
 	let ridesError = $state<string | null>(null);
 	let progression = $state<Progression | null>(null);
 	function loadRides() {
 		ridesError = null;
-		void api<{ rides: RideRecord[] }>('/api/rides').then((res) => {
-			if (res.ok) rides = res.data.rides;
-			else ridesError = res.error.message;
+		void api<{ ride: RideRecord | null }>(
+			`/api/rides/best?workout=${encodeURIComponent(ride?.workoutName ?? '')}&except=${encodeURIComponent(id)}`,
+		).then((res) => {
+			if (res.ok) {
+				best = res.data.ride;
+				bestLoaded = true;
+			} else ridesError = res.error.message;
 		});
 	}
 	loadRides();
@@ -307,7 +312,8 @@
 		<div class="mt-6">
 			<RideComparison
 				{ride}
-				{rides}
+				{best}
+				loading={!bestLoaded}
 				error={ridesError}
 				onRetry={loadRides}
 				d30={progression?.curve.d30.best20m}
@@ -375,8 +381,7 @@
 						     not a disconnection — so the copy no longer guesses at
 						     one, and the action it offers is the one that helps. -->
 						Could not be sent to Strava — it was tried several times over a couple
-						of hours.
-						{ride.export.error ?? ''} Your ride is safe here.
+						of hours. Your ride is safe here.
 						<button
 							onclick={retryExport}
 							disabled={retrying}

@@ -24,6 +24,58 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 	return column_1, err
 }
 
+const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+from rides
+where user_id = $1 and workout_name = $2 and id <> $3
+order by avg_watts desc, started_at desc
+limit 1
+`
+
+type BestUserRideOfWorkoutParams struct {
+	UserID      pgtype.UUID
+	WorkoutName string
+	ID          pgtype.UUID
+}
+
+type BestUserRideOfWorkoutRow struct {
+	ID              pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	FtpWatts        int16
+	Xp              int32
+	RoomID          pgtype.UUID
+	SharedAt        pgtype.Timestamptz
+}
+
+// The ride page's "against your best" (#1687): the hardest ride of the same
+// workout across the whole history, not the first page of the list. Same
+// columns as ListUserRides so one JSON mapping serves both.
+func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfWorkoutParams) (BestUserRideOfWorkoutRow, error) {
+	row := q.db.QueryRow(ctx, bestUserRideOfWorkout, arg.UserID, arg.WorkoutName, arg.ID)
+	var i BestUserRideOfWorkoutRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkoutName,
+		&i.StartedAt,
+		&i.Seconds,
+		&i.AvgWatts,
+		&i.Kj,
+		&i.Execution,
+		&i.ExecutionScored,
+		&i.FtpWatts,
+		&i.Xp,
+		&i.RoomID,
+		&i.SharedAt,
+	)
+	return i, err
+}
+
 const countRoomMedalsByRider = `-- name: CountRoomMedalsByRider :many
 select user_id, count(*)::int as medals
 from medals
@@ -276,6 +328,19 @@ type FinishRideExportParams struct {
 func (q *Queries) FinishRideExport(ctx context.Context, arg FinishRideExportParams) error {
 	_, err := q.db.Exec(ctx, finishRideExport, arg.RideID, arg.Destination, arg.RemoteID)
 	return err
+}
+
+const firstRideAt = `-- name: FirstRideAt :one
+select min(started_at)::timestamptz as first_ride from rides where user_id = $1
+`
+
+// The rider's first saved ride, for SPEC's 28-day cold start (#1689): the
+// oldest row inside the year window was not it after a long break.
+func (q *Queries) FirstRideAt(ctx context.Context, userID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, firstRideAt, userID)
+	var first_ride pgtype.Timestamptz
+	err := row.Scan(&first_ride)
+	return first_ride, err
 }
 
 const getRide = `-- name: GetRide :one
@@ -667,7 +732,7 @@ select id, started_at, seconds, kj, execution, execution_scored, ftp_watts,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
 where user_id = $1 and started_at >= now() - interval '365 days'
-order by started_at
+order by started_at desc
 limit 1000
 `
 
@@ -686,6 +751,8 @@ type ListUserProgressionRow struct {
 // Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
 // time, so FTP history is free; best20m feeds the Category/w-kg trend.
 // norm_watts falls back to avg_watts for rides the backfill has not reached.
+// Newest first under the bound (#1689): ascending with a limit dropped the
+// newest rides for anyone past it. The caller reverses.
 func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) ([]ListUserProgressionRow, error) {
 	rows, err := q.db.Query(ctx, listUserProgression, userID)
 	if err != nil {

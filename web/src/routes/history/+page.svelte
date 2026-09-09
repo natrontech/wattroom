@@ -177,9 +177,23 @@
 		if (seeded) void ring(seeded);
 	});
 
+	/** Pages forward until the ride is on the page, or the history runs out
+	 *  (#1687): a chart plots a year, the list holds one page, and a click
+	 *  on an older dot used to do nothing at all. */
+	async function ensureLoaded(id: string): Promise<boolean> {
+		while (!rides?.some((ride) => ride.id === id)) {
+			if (!more || moreError) return false;
+			await loadMore();
+		}
+		return true;
+	}
+
 	async function ring(list: ServerRide[]) {
 		const picked = page.url.searchParams.get('ride');
-		if (picked && list.some((ride) => ride.id === picked)) {
+		if (picked && !list.some((ride) => ride.id === picked)) {
+			await ensureLoaded(picked);
+		}
+		if (picked && rides?.some((ride) => ride.id === picked)) {
 			highlightId = picked;
 			await tick();
 			// Instant, retried: smooth scrolling gets cancelled by the route
@@ -217,13 +231,16 @@
 
 	// The drilldowns stay put now: the ride they point at is further down this
 	// same page, so they ring it instead of navigating.
-	function ringRide(id: string) {
+	async function ringRide(id: string) {
+		if (!(await ensureLoaded(id))) return;
 		highlightId = id;
+		await tick();
 		document.getElementById(`ride-${id}`)?.scrollIntoView({ block: 'center' });
 	}
+	/** How far a day's click may snap to a neighbouring ride (#1692): most
+	 *  days carry none, and ringing a ride weeks away read as wrong. */
+	const DAY_SNAP = 3;
 	function openDay(date: string) {
-		// Snap to the nearest ride — most days carry none, and a click that
-		// silently does nothing reads as broken.
 		const target = new Date(date + 'T12:00:00Z').getTime();
 		let best: string | null = null;
 		let dist = Infinity;
@@ -234,7 +251,14 @@
 				best = ride.id;
 			}
 		}
-		if (best) ringRide(best);
+		if (best && dist <= DAY_SNAP * 24 * 3600 * 1000) {
+			void ringRide(best);
+			return;
+		}
+		const [y, m, d] = date.split('-').map(Number);
+		toasts.push(
+			`No rides on ${new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}.`,
+		);
 	}
 </script>
 
@@ -353,6 +377,10 @@
 		<div class="mt-3 grid gap-3 xl:grid-cols-2">
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
+				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
+				<span class="text-muted/70 ml-2 text-[11px]"
+					>based on your WattRoom rides</span
+				>
 				<!-- Interpretation lives in the UI, not the rider's head: every
 				     panel says what its numbers mean in one line. -->
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
@@ -382,6 +410,10 @@
 			{/if}
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
+				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
+				<span class="text-muted/70 ml-2 text-[11px]"
+					>based on your WattRoom rides</span
+				>
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
 					The line is the FTP your rides were scored against; each dot is a
 					ride's best 20 minutes. Dots climbing away above the line mean your
@@ -397,6 +429,10 @@
 				<div class="panel px-6 py-5 xl:col-span-2">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 class="text-ink text-sm font-semibold">Training load</h2>
+						<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
+						<span class="text-muted/70 ml-2 text-[11px]"
+							>based on your WattRoom rides</span
+						>
 						{#if load.building}
 							<span class="text-muted text-xs italic"
 								>building history — form shows after your first month</span

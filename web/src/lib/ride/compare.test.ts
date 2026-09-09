@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RideRecord } from '$lib/history.svelte';
-import { bestOfWorkout, compareRows, curveSentence } from './compare';
+import { compareRows, curveSentence } from './compare';
 
 const ride = (over: Partial<RideRecord> & { id: string }): RideRecord => ({
 	workoutName: 'Sweet Spot 3×12',
@@ -11,37 +11,6 @@ const ride = (over: Partial<RideRecord> & { id: string }): RideRecord => ({
 	execution: 0.9,
 	ftp: 250,
 	...over,
-});
-
-describe('bestOfWorkout', () => {
-	it('picks the hardest ride of the same workout', () => {
-		const best = bestOfWorkout(
-			[
-				ride({ id: 'a', avgWatts: 209 }),
-				ride({ id: 'b', avgWatts: 195 }),
-				ride({ id: 'today', avgWatts: 214 }),
-			],
-			'Sweet Spot 3×12',
-			'today',
-		);
-		expect(best?.id).toBe('a');
-	});
-
-	it('never compares a ride to itself', () => {
-		expect(
-			bestOfWorkout([ride({ id: 'today' })], 'Sweet Spot 3×12', 'today'),
-		).toBeNull();
-	});
-
-	it('ignores other workouts, so a first ride of one has no best', () => {
-		expect(
-			bestOfWorkout(
-				[ride({ id: 'a', workoutName: 'Threshold 2×20', avgWatts: 300 })],
-				'Sweet Spot 3×12',
-				'today',
-			),
-		).toBeNull();
-	});
 });
 
 describe('compareRows', () => {

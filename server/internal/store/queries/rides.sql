@@ -18,6 +18,16 @@ where user_id = $1
 order by started_at desc
 limit $2;
 
+-- name: BestUserRideOfWorkout :one
+-- The ride page's "against your best" (#1687): the hardest ride of the same
+-- workout across the whole history, not the first page of the list. Same
+-- columns as ListUserRides so one JSON mapping serves both.
+select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+from rides
+where user_id = $1 and workout_name = $2 and id <> $3
+order by avg_watts desc, started_at desc
+limit 1;
+
 -- name: GetRide :one
 -- The one per-ride blob read ADR-0016 allows: a rider opening a single ride
 -- is exactly what the samples are kept for. Owner-scoped, so someone else's
@@ -187,8 +197,15 @@ select id, started_at, seconds, kj, execution, execution_scored, ftp_watts,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
 where user_id = $1 and started_at >= now() - interval '365 days'
-order by started_at
+-- Newest first under the bound (#1689): ascending with a limit dropped the
+-- newest rides for anyone past it. The caller reverses.
+order by started_at desc
 limit 1000;
+
+-- name: FirstRideAt :one
+-- The rider's first saved ride, for SPEC's 28-day cold start (#1689): the
+-- oldest row inside the year window was not it after a long break.
+select min(started_at)::timestamptz as first_ride from rides where user_id = $1;
 
 -- name: ListRidesMissingNorm :many
 -- The ADR-0016 backfill's read: each blob is read exactly once, then goes

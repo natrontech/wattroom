@@ -50,6 +50,9 @@ func TestCalendarFeed(t *testing.T) {
 	if ct := header.Get("Content-Type"); !strings.HasPrefix(ct, "text/calendar") {
 		t.Fatalf("content type: %q", ct)
 	}
+	if cc := header.Get("Cache-Control"); cc != "private, no-store" {
+		t.Fatalf("a bearer feed must not be cacheable (#1688): Cache-Control %q", cc)
+	}
 	for _, want := range []string{
 		"BEGIN:VCALENDAR", "BEGIN:VEVENT",
 		"SUMMARY:Openers\\, v2", // TEXT escaping
@@ -139,6 +142,9 @@ func TestRiderCalendarFeed(t *testing.T) {
 	}
 	if ct := header.Get("Content-Type"); !strings.HasPrefix(ct, "text/calendar") {
 		t.Fatalf("content type: %q", ct)
+	}
+	if cc := header.Get("Cache-Control"); cc != "private, no-store" {
+		t.Fatalf("a bearer feed must not be cacheable (#1688): Cache-Control %q", cc)
 	}
 	for _, want := range []string{
 		"X-WR-CALNAME:WattRoom sessions",
