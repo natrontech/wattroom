@@ -15,6 +15,7 @@
 		UNREAD_DOT,
 		unreadCount,
 	} from '$lib/messages/unread-marks';
+	import { friends } from '$lib/friends/friends.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -91,7 +92,7 @@
 							name={t.name}
 							avatarUrl={t.head.peerAvatarUrl}
 							xp={t.head.peerTotalXp}
-							status={statusOf(presence.rooms, t.head.peerId)}
+							status={statusOf(presence.rooms, t.head.peerId, friends.list)}
 							size={32}
 						/>
 					{/if}

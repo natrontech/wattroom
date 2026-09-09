@@ -198,7 +198,7 @@
 		chat line.
 	</p>
 	<div class="mt-4 flex flex-wrap items-end gap-6">
-		{#each [{ label: 'no status', status: undefined }, { label: 'in a room', status: 'online' as const }, { label: 'riding now', status: 'riding' as const }, { label: 'away', status: 'away' as const }, { label: 'offline', status: 'offline' as const }] as sample (sample.label)}
+		{#each [{ label: 'no status', status: undefined }, { label: 'online', status: 'online' as const }, { label: 'riding now', status: 'riding' as const }, { label: 'away', status: 'away' as const }, { label: 'offline', status: 'offline' as const }] as sample (sample.label)}
 			<div class="text-center">
 				<Avatar name="Sara Vogt" xp={3200} status={sample.status} size={40} />
 				<p class="text-muted mt-1.5 text-[11px]">{sample.label}</p>

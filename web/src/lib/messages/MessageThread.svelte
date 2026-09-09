@@ -16,6 +16,7 @@
 	import {} from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import Banner from '$lib/components/Banner.svelte';
@@ -271,7 +272,11 @@
 										name={face?.name ?? message.from}
 										avatarUrl={face?.avatarUrl}
 										xp={face?.totalXp}
-										status={statusOf(presence.rooms, message.fromId ?? '')}
+										status={statusOf(
+											presence.rooms,
+											message.fromId ?? '',
+											friends.list,
+										)}
 										size={28}
 									/>
 								{/if}
