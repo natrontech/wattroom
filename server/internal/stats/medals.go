@@ -53,13 +53,18 @@ func Medals(results []RiderResult) map[string]string {
 	// (Diesel, CoV 0) and as the slowest rider (Lanterne Rouge, 0 w/kg), and
 	// took both off riders who had actually ridden.
 	rode := filter(byJoin, func(r RiderResult) bool { return r.Best5sWkg > 0 })
+	// A podium needs a field: with one live power meter beside two dead ones
+	// the same rider was fastest AND slowest, and took Diesel, Hammer and
+	// Lanterne Rouge at once (audit 2026-09-09). Two who rode is the least
+	// that makes "best" and "last" mean anything.
 	out := map[string]string{}
-	if len(rode) > 0 {
-		out["diesel"] = bestOf(rode, func(a, b RiderResult) bool { return a.CoV < b.CoV })
-		out["hammer"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg > b.Best5sWkg })
-		// Last on the podium metric but completed — celebrated, not shamed.
-		out["lanterne_rouge"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg < b.Best5sWkg })
+	if len(rode) < 2 {
+		return out
 	}
+	out["diesel"] = bestOf(rode, func(a, b RiderResult) bool { return a.CoV < b.CoV })
+	out["hammer"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg > b.Best5sWkg })
+	// Last on the podium metric but completed — celebrated, not shamed.
+	out["lanterne_rouge"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg < b.Best5sWkg })
 	// Metronome is best EXECUTION, which asks the further question of whether
 	// the workout prescribed anything at all. On a session that scored nothing
 	// for anybody the medal is simply not awarded, rather than handed to

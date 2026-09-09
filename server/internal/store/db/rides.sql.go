@@ -241,6 +241,25 @@ func (q *Queries) FailRideExport(ctx context.Context, arg FailRideExportParams) 
 	return err
 }
 
+const findRideAt = `-- name: FindRideAt :one
+select id from rides where user_id = $1 and started_at = $2 limit 1
+`
+
+type FindRideAtParams struct {
+	UserID    pgtype.UUID
+	StartedAt pgtype.Timestamptz
+}
+
+// The ride a save would duplicate (audit 2026-09-09): a retry after a lost
+// response — the recovery card, the room saver's second attempt — finds the
+// row it already made instead of paying its XP twice.
+func (q *Queries) FindRideAt(ctx context.Context, arg FindRideAtParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, findRideAt, arg.UserID, arg.StartedAt)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const finishRideExport = `-- name: FinishRideExport :exec
 update ride_exports
 set state = 'delivered', remote_id = $3, last_error = null, updated_at = now()
@@ -569,12 +588,15 @@ func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) 
 }
 
 const listRoomRideWeeks = `-- name: ListRoomRideWeeks :many
-select distinct date_trunc('week', started_at)::date as week
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where room_id = $1
 order by week desc
 limit 60
 `
 
+// Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
+// on a timestamptz otherwise runs in the session's zone and the two disagreed
+// (audit 2026-09-09).
 func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]pgtype.Date, error) {
 	rows, err := q.db.Query(ctx, listRoomRideWeeks, roomID)
 	if err != nil {
@@ -693,13 +715,16 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 }
 
 const listUserRideWeeks = `-- name: ListUserRideWeeks :many
-select distinct date_trunc('week', started_at)::date as week
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where user_id = $1
 order by week desc
 limit 60
 `
 
 // Distinct ISO weeks with at least one ride, newest first — the streak input.
+// Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
+// on a timestamptz otherwise runs in the session's zone and the two disagreed
+// (audit 2026-09-09).
 func (q *Queries) ListUserRideWeeks(ctx context.Context, userID pgtype.UUID) ([]pgtype.Date, error) {
 	rows, err := q.db.Query(ctx, listUserRideWeeks, userID)
 	if err != nil {
@@ -916,7 +941,7 @@ from rides r
 join users u on u.id = r.user_id
 join memberships m on m.room_id = r.room_id and m.user_id = r.user_id
 where r.room_id = $1
-  and r.started_at >= date_trunc('week', now())
+  and r.started_at >= (date_trunc('week', now() at time zone 'UTC') at time zone 'UTC')
   and m.role <> 'banned'
   -- A rider's own opt-out (#1100, amending ADR-0036). The room-level switch
   -- answers "joining a room must not put you on a board"; this answers the

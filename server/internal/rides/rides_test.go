@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -129,14 +130,19 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 	return w.Code, decoded
 }
 
+// Each body starts at its own second: a save at the same start is the same
+// ride now (FindRideAt), and two rides a test means two start times.
+var rideBodies atomic.Int64
+
 func rideBody(seconds, watts int) string {
 	samples := make([]string, seconds)
 	for i := range samples {
 		samples[i] = fmt.Sprintf(`{"watts":%d,"cadence":90}`, watts)
 	}
+	start := time.Now().Add(-time.Hour - time.Duration(rideBodies.Add(1))*time.Second)
 	return fmt.Sprintf(
 		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":%d,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
-		seconds, time.Now().Add(-time.Hour).Format(time.RFC3339), strings.Join(samples, ","))
+		seconds, start.Format(time.RFC3339), strings.Join(samples, ","))
 }
 
 func TestSoloRideSaveAndList(t *testing.T) {
@@ -361,5 +367,24 @@ func TestDeleteRideTakesItsMedals(t *testing.T) {
 	}
 	if len(medals) != 0 {
 		t.Fatalf("medals outlived their ride: %v", medals)
+	}
+}
+
+// A retried save is the same ride (audit 2026-09-09): the recovery card
+// re-posts a ride whose answer was lost, and the row has no key of its own.
+func TestSavingTheSameRideTwiceIsOneRide(t *testing.T) {
+	h := setup(t)
+	body := rideBody(120, 200)
+	status, first := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("first save: %d %v", status, first)
+	}
+	status, second := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusOK || second["id"] != first["id"] {
+		t.Fatalf("second save: %d %v, want 200 with the same id %v", status, second, first["id"])
+	}
+	status, list := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
+	if rides, _ := list["rides"].([]any); status != http.StatusOK || len(rides) != 1 {
+		t.Fatalf("rides after two saves: %d %v, want one", status, list)
 	}
 }

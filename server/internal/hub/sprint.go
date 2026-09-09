@@ -94,9 +94,12 @@ func podium(samples map[string][]int, seen map[string]protocol.Rider) []protocol
 		if !ok || rider.WeightKg <= 0 || len(watts) == 0 {
 			continue
 		}
+		// Best 5 s means five seconds: a rider with fewer samples in the
+		// window is not ranked on a shorter one — stats.PowerCurve answers
+		// the same question with zero (audit 2026-09-09).
 		window := 5
 		if len(watts) < window {
-			window = len(watts)
+			continue
 		}
 		sum := 0
 		for i := 0; i < window; i++ {

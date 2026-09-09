@@ -27,6 +27,12 @@ from rides r
 left join rooms rm on rm.id = r.room_id
 where r.id = $1 and r.user_id = $2;
 
+-- name: FindRideAt :one
+-- The ride a save would duplicate (audit 2026-09-09): a retry after a lost
+-- response — the recovery card, the room saver's second attempt — finds the
+-- row it already made instead of paying its XP twice.
+select id from rides where user_id = $1 and started_at = $2 limit 1;
+
 -- name: DeleteRide :execrows
 -- Owner-only by the where clause. The medals awarded for this ride go with
 -- it through medals.ride_id's on-delete-cascade — no cleanup pass to forget.
@@ -67,13 +73,19 @@ group by user_id;
 
 -- name: ListUserRideWeeks :many
 -- Distinct ISO weeks with at least one ride, newest first — the streak input.
-select distinct date_trunc('week', started_at)::date as week
+-- Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
+-- on a timestamptz otherwise runs in the session's zone and the two disagreed
+-- (audit 2026-09-09).
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where user_id = $1
 order by week desc
 limit 60;
 
 -- name: ListRoomRideWeeks :many
-select distinct date_trunc('week', started_at)::date as week
+-- Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
+-- on a timestamptz otherwise runs in the session's zone and the two disagreed
+-- (audit 2026-09-09).
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where room_id = $1
 order by week desc
 limit 60;
@@ -129,7 +141,7 @@ from rides r
 join users u on u.id = r.user_id
 join memberships m on m.room_id = r.room_id and m.user_id = r.user_id
 where r.room_id = $1
-  and r.started_at >= date_trunc('week', now())
+  and r.started_at >= (date_trunc('week', now() at time zone 'UTC') at time zone 'UTC')
   and m.role <> 'banned'
   -- A rider's own opt-out (#1100, amending ADR-0036). The room-level switch
   -- answers "joining a room must not put you on a board"; this answers the

@@ -111,7 +111,7 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 		return
 	}
 
-	if segments == nil || ftp <= 0 || !pedalling(m) {
+	if segments == nil || ftp <= 0 || !m.Pedalling() {
 		return
 	}
 	target, scored := workout.TargetAt(segments, ftp, second)
@@ -159,13 +159,4 @@ func (a *accumulator) count(riderID string) int {
 // reset starts a fresh record — a new session is a new ride.
 func (a *accumulator) reset() {
 	a.byRider = make(map[string]*riderRecord)
-}
-
-// pedalling is docs/SPEC.md's line between riding and stopped — cadence
-// under 5 rpm AND power under 20 W is a stop — the same predicate the
-// client's auto-pause uses (web/src/lib/workout/guards.ts). The live score
-// used to exclude only 0 W, so a soft-pedalled 10 W second scored here and
-// not there (audit 2026-09-09).
-func pedalling(m protocol.RiderMetrics) bool {
-	return m.Cadence >= 5 || m.Watts >= 20
 }

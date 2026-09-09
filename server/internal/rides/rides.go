@@ -230,9 +230,35 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	row.Xp += stats.StreakXP(r.Context(), s.store.Queries, user.ID, req.StartedAt)
-	id, err := s.store.Queries.CreateRide(r.Context(), row)
+	// Under the rider's row lock, and only if it is not there yet (audit
+	// 2026-09-09): the recovery card retries a POST whose answer was lost, and
+	// the ride has no key of its own.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("solo ride save begin failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), user.ID); err != nil {
+		s.log.Error("solo ride save lock failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		return
+	}
+	if existing, err := q.FindRideAt(r.Context(), db.FindRideAtParams{UserID: user.ID, StartedAt: row.StartedAt}); err == nil {
+		// Already saved: the same answer as the first time, no second row.
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"id": store.UUIDString(existing)})
+		return
+	}
+	id, err := q.CreateRide(r.Context(), row)
 	if err != nil {
 		s.log.Error("solo ride save failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		s.log.Error("solo ride save commit failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The ride could not be saved. It stays on this device.")
 		return
 	}

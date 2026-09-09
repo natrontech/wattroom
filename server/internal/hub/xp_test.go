@@ -135,9 +135,12 @@ func TestSprintWinnerNamedOnce(t *testing.T) {
 	base := time.Unix(1000, 0)
 	rm.armSprint(base)
 	live := base.Add(sprintKlaxon + time.Second)
+	// Ten seconds of sprinting each: the window admits one sample a second
+	// and the podium needs five (audit 2026-09-09).
 	for i := 0; i < 10; i++ {
-		rm.sprint.collect("kim", 800, live)
-		rm.sprint.collect("lena", 600, live)
+		at := live.Add(time.Duration(i) * time.Second)
+		rm.sprint.collect("kim", 800, at)
+		rm.sprint.collect("lena", 600, at)
 	}
 	if _, winner := rm.scoreSprintLocked(live); winner != "" {
 		t.Fatalf("named %q mid-window", winner)

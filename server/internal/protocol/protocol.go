@@ -24,6 +24,15 @@ type RiderMetrics struct {
 // BiasOr is the trim to score one sample against — 1.0 for a sample that
 // carries none, and clamped to what the control can actually produce, so a
 // hostile client cannot score itself against a target of its own invention.
+// Pedalling is docs/SPEC.md's line between riding and stopped — cadence under
+// 5 rpm AND power under 20 W is a stop — the same predicate the client's
+// auto-pause uses (web/src/lib/workout/guards.ts). Both scoring paths ask
+// this one function, so the live meter and the saved ride exclude the same
+// seconds (#795; audit 2026-09-09).
+func (m RiderMetrics) Pedalling() bool {
+	return m.Cadence >= 5 || m.Watts >= 20
+}
+
 func (m RiderMetrics) BiasOr() float64 {
 	if m.Bias <= 0 {
 		return 1
