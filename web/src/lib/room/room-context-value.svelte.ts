@@ -166,6 +166,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 			return ride.bias;
 		},
 		nudgeBias: ride.nudgeBias,
+		get trainerName() {
+			return ride.trainer?.name ?? '';
+		},
 		get trainer() {
 			return ride.trainer;
 		},

@@ -13,6 +13,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
+	import RoomFlag from '$lib/room/RoomFlag.svelte';
 	import RoomSensorOverview from '$lib/room/RoomSensorOverview.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
@@ -177,6 +178,7 @@
 				{/snippet}
 				{#snippet controls()}
 					<SessionControls compact />
+					<RoomFlag />
 				{/snippet}
 			</RideHeader>
 		</div>
