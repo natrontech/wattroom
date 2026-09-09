@@ -7,7 +7,6 @@ import { presence } from '$lib/presence.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/room/ptt-keys';
 import { pullProfile } from '$lib/profile-sync.svelte';
-import { createRoomAv } from '$lib/room/av.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
 import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
@@ -41,7 +40,7 @@ import type { Segment, Workout } from '$lib/workout/types';
 type Connection = {
 	slug: string;
 	live: ReturnType<typeof createRoomLive>;
-	av: ReturnType<typeof createRoomAv>;
+	av: RoomAv;
 	/**
 	 * You stepped out, or came back (#706). One home for the pair the state
 	 * needs (#807): the local AV and the hub message.
@@ -109,7 +108,25 @@ function createBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
 	};
 }
 
+// The AV half loads with the room, not with the shell (#1514): av.svelte.ts
+// and what it pulls — device choices, the mic chain, the stage — were the
+// biggest thing the root layout's closure carried for routes that never join
+// a room. The room layout's load awaits prepareRoomAv() before the shell
+// mounts, so join() stays synchronous for everything that reads the
+// connection the moment it exists.
+type RoomAv = ReturnType<typeof import('$lib/room/av.svelte').createRoomAv>;
+let createRoomAv: ((slug: string) => RoomAv) | null = null;
+export async function prepareRoomAv(): Promise<void> {
+	if (createRoomAv) return;
+	({ createRoomAv } = await import('$lib/room/av.svelte'));
+}
+
 function connect(slug: string): Connection {
+	if (!createRoomAv) {
+		throw new Error(
+			'the room AV is not loaded — the room layout prepares it before the shell joins',
+		);
+	}
 	const live = createRoomLive(slug);
 	const av = createRoomAv(slug);
 	// The chat backlog (#201): loaded once per join — the log follows the

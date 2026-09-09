@@ -68,8 +68,11 @@ vi.mock('livekit-client', () => ({
 	Track: { Source: new Proxy({}, { get: (_, key) => key }) },
 }));
 
-import { roomConnection } from '$lib/room/connection.svelte';
+import { prepareRoomAv, roomConnection } from '$lib/room/connection.svelte';
 import { toasts } from '$lib/toast.svelte';
+
+// The room layout's load does this before the shell joins (#1514).
+await prepareRoomAv();
 
 class FakeTrainer implements Trainer {
 	name = 'Fake';
