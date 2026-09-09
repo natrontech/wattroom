@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { curvePoints, normalizedPower, rideXp, zoneSeconds } from './stats';
+import {
+	curvePoints,
+	normalizedPower,
+	powerTrace,
+	rideXp,
+	zoneSeconds,
+} from './stats';
 
 const flat = (watts: number, seconds: number) =>
 	Array.from({ length: seconds }, () => ({ watts }));
@@ -45,5 +51,23 @@ describe('normalizedPower', () => {
 describe('rideXp', () => {
 	it('is the SPEC formula', () => {
 		expect(rideXp(400, 0.9)).toBe(445);
+	});
+});
+
+describe('powerTrace (#1559)', () => {
+	it('draws nothing for one sample and a bounded path for a long ride', () => {
+		expect(powerTrace(flat(200, 1), 250, 600, 120)).toBeNull();
+		const long = powerTrace(flat(200, 7200), 250, 600, 120)!;
+		expect(long.path.split(' L ').length).toBeLessThanOrEqual(300);
+		expect(long.path.startsWith('M 0.0 ')).toBe(true);
+	});
+
+	it('keeps the FTP line inside the box and the peak at the top', () => {
+		const spiky = [...flat(100, 60), ...flat(400, 60)];
+		const t = powerTrace(spiky, 250, 600, 120)!;
+		expect(t.top).toBe(400);
+		expect(t.ftpY).toBeCloseTo(120 - (250 / 400) * 120, 5);
+		// A ride that never reaches FTP still leaves 20 % headroom above it.
+		expect(powerTrace(flat(100, 120), 250, 600, 120)!.top).toBe(300);
 	});
 });

@@ -374,6 +374,7 @@
 			execution={you.execution}
 			medal={summary.medal}
 			roomName={props.roomName}
+			{riders}
 		>
 			{#snippet actions()}
 				<div class="flex flex-wrap gap-2">
