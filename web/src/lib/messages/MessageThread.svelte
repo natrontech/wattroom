@@ -47,6 +47,7 @@
 		onQueue,
 		composerPlaceholder,
 		composerHint,
+		composerLock = null,
 		extraSendError = null,
 		emptyState,
 	}: {
@@ -57,6 +58,8 @@
 		onQueue?: (url: string) => void;
 		composerPlaceholder: string;
 		composerHint?: string;
+		/** Why nothing can be sent here, when nothing can — the box says so. */
+		composerLock?: string | null;
 		/** A persistent banner unrelated to the last send attempt, e.g. a
 		 *  room reconnecting with its queue full. */
 		extraSendError?: string | null;
@@ -402,5 +405,6 @@
 	send={source.send}
 	placeholder={composerPlaceholder}
 	hint={composerHint}
+	lock={composerLock}
 	error={extraSendError ?? (timeline.length > 0 ? source.error : null)}
 />

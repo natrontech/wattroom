@@ -1,0 +1,1 @@
+- A conversation with someone who is not your friend yet says so under the message box, with the box disabled, instead of refusing the line after you typed it.

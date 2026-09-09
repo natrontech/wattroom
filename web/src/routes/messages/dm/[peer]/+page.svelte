@@ -29,6 +29,11 @@
 	// reload — has no head yet and nobody told dm.show the name, so the page
 	// read "them" until the first line. Their page knows who they are.
 	let fetchedName = $state<string | null>(null);
+	// Messages are for accepted friends (dms.go). A conversation that exists
+	// was one; reached cold, the rider's page says whether this one is, and
+	// a page that will not open (nothing shared) means no. Null while unknown
+	// — the box stays open rather than flickering shut.
+	let friends = $state<boolean | null>(null);
 	// dm.show below is called with whatever this page knows, which on a cold
 	// load is "them" — so that placeholder is never a known name.
 	const knownName = $derived(
@@ -39,9 +44,15 @@
 	$effect(() => {
 		const id = peerId;
 		fetchedName = null;
+		friends = null;
 		if (!id || knownName) return;
 		void fetchRider(id).then((res) => {
-			if (!res.ok || res.data.id !== id) return;
+			if (!res.ok) {
+				if (res.error.error === 'not_found') friends = false;
+				return;
+			}
+			if (res.data.id !== id) return;
+			friends = res.data.friend === 'accepted' || res.data.friend === 'self';
 			fetchedName = res.data.displayName;
 			people.learn([
 				{
@@ -143,6 +154,9 @@
 	{source}
 	imageSrc={(imageId) => `/api/dms/images/${imageId}`}
 	composerPlaceholder="Message {peerName}…"
+	composerLock={friends === false
+		? `Messages are between friends. Add ${peerName} from their page first.`
+		: null}
 >
 	{#snippet emptyState()}
 		<div class="mb-4 text-center">
