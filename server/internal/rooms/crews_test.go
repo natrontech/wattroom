@@ -430,6 +430,23 @@ func TestTheCrewDoorKnowsWhoIsAlreadyIn(t *testing.T) {
 	if owner["inCrew"] != true || owner["id"] != store.UUIDString(crew.ID) {
 		t.Errorf("the owner at their own door is not told they are in: %v", owner)
 	}
+	// Signed out (#1677): the name, the icon, the count and the image — and
+	// nothing that is only a member's to know.
+	status, anon := h.call(t, "", http.MethodGet, "/api/crew-doors/"+code, "")
+	if status != http.StatusOK {
+		t.Fatalf("the door signed out: %d", status)
+	}
+	for _, key := range []string{"id", "inCrew", "banned", "code", "rooms", "people"} {
+		if _, has := anon[key]; has {
+			t.Errorf("the door hands a signed-out caller %q: %v", key, anon)
+		}
+	}
+	if anon["name"] == nil || anon["members"] == nil {
+		t.Errorf("the door withholds the name or the count signed out: %v", anon)
+	}
+	if status, _ := h.call(t, "", http.MethodGet, "/api/crew-doors/ZZZZZZ", ""); status != http.StatusNotFound {
+		t.Errorf("an unknown code: %d, want 404", status)
+	}
 }
 
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
@@ -1005,6 +1022,9 @@ func TestShuttingARoomToTheCrewUnlistsIt(t *testing.T) {
 	}
 	crew := h.crewOf(t, slug)
 	access := "/api/crews/" + store.UUIDString(crew.ID) + "/rooms/" + store.UUIDString(roomID(t, h, slug)) + "/access"
+	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":"no"}`); status != http.StatusBadRequest {
+		t.Errorf("a malformed access body: %d, want 400", status)
+	}
 	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":false}`); status != http.StatusNoContent {
 		t.Fatalf("shut from the crew page: %d", status)
 	}

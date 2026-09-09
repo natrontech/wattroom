@@ -25,6 +25,7 @@
 	let { data }: { data: PageData } = $props();
 	let crew = $state<Crew | null>(untrack(() => data.crew));
 	let error = $state<string | null>(untrack(() => data.error));
+	let errorCode = $state<string | null>(untrack(() => data.errorCode));
 	let busy = $state(false);
 	let name = $state(untrack(() => data.crew?.name ?? ''));
 	let nameError = $state<string | null>(null);
@@ -53,6 +54,7 @@
 		const res = await fetchCrew(page.params.id ?? '');
 		if (!res.ok) {
 			error = res.error.message;
+			errorCode = res.error.error;
 			return;
 		}
 		crew = res.data;
@@ -129,7 +131,14 @@
 </svelte:head>
 
 <main class="page">
-	{#if error}
+	{#if error && errorCode === 'not_found'}
+		<Banner tone="error">
+			{error}
+			{#snippet action()}
+				<a href="/home" class="btn-link text-xs">Home</a>
+			{/snippet}
+		</Banner>
+	{:else if error}
 		<Banner tone="error">
 			{error}
 			{#snippet action()}

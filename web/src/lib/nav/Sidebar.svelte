@@ -445,6 +445,24 @@
 		<ul class="space-y-0.5">
 			{#each groups.rooms as room (room.slug)}
 				{@render roomRow(room)}
+			{:else}
+				<!-- A crew with no rooms is a crew (#1476): a heading over nothing
+				     taught nothing (ux.md, #1677). The + above is the way in. -->
+				<li class="text-muted px-2 py-1 text-xs">
+					{#if crew?.role === 'owner' || crew?.role === 'admin'}
+						No rooms yet. A room is a channel of the crew —
+						<button
+							onclick={() => {
+								opening = true;
+								onSheet?.();
+							}}
+							class="btn-link">open one</button
+						>.
+					{:else}
+						No rooms yet. A room is a channel of the crew; its owner or an admin
+						opens the first one.
+					{/if}
+				</li>
 			{/each}
 		</ul>
 
