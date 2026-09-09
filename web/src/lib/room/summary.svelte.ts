@@ -22,6 +22,24 @@ export function createSummary(deps: {
 	let dismissed = $state(false);
 	let medal = $state<Medal | undefined>(undefined);
 	let fetched = false;
+	// The ride the room saved for me (#1331): the saver writes it a moment
+	// after the close and nothing on the tick names it, so it is found as the
+	// newest room ride on the account — asked once the pipeline has had its
+	// tick or two, and once more if it has not landed yet.
+	let rideId = $state<string | null>(null);
+	let sessionStart = 0;
+	function findMyRide(attempt: number) {
+		void api<{ rides?: { id: string; startedAt: string; room?: boolean }[] }>(
+			'/api/rides',
+		).then((res) => {
+			if (!res.ok) return;
+			const mine = (res.data.rides ?? []).find(
+				(r) => r.room && Date.parse(r.startedAt) >= sessionStart - 60_000,
+			);
+			if (mine) rideId = mine.id;
+			else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
+		});
+	}
 
 	$effect(() => {
 		const phase = deps.phase();
@@ -29,6 +47,8 @@ export function createSummary(deps: {
 			dismissed = false;
 			fetched = false;
 			medal = undefined;
+			rideId = null;
+			sessionStart = Date.now();
 		}
 		if (
 			phase !== 'done' ||
@@ -39,6 +59,7 @@ export function createSummary(deps: {
 		fetched = true;
 		// The pipeline commits within a tick or two of the close.
 		setTimeout(() => {
+			findMyRide(0);
 			void api<{
 				medals?: { kind: string; rider: string; awardedAt: string }[];
 			}>(`/api/rooms/${deps.slug()}`).then((res) => {
@@ -71,6 +92,10 @@ export function createSummary(deps: {
 		},
 		get dismissed() {
 			return dismissed;
+		},
+		/** The ride's own page, once the room has saved it. */
+		get rideId() {
+			return rideId;
 		},
 		dismiss() {
 			dismissed = true;

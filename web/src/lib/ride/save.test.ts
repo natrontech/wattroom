@@ -13,9 +13,9 @@ const ride = {
 };
 
 describe('uploadRide', () => {
-	it('reports nothing to say when the ride is on the account', async () => {
-		api.mockResolvedValueOnce({ ok: true, data: {} });
-		expect(await uploadRide(ride)).toBe(null);
+	it('hands back the saved ride when it is on the account', async () => {
+		api.mockResolvedValueOnce({ ok: true, data: { id: 'r-1' } });
+		expect(await uploadRide(ride)).toEqual({ saved: { id: 'r-1' } });
 		expect(api).toHaveBeenCalledWith('/api/rides', {
 			method: 'POST',
 			json: ride,
@@ -33,8 +33,7 @@ describe('uploadRide', () => {
 			},
 		});
 		expect(await uploadRide(ride)).toEqual({
-			message: 'That ride could not be saved.',
-			final: false,
+			failure: { message: 'That ride could not be saved.', final: false },
 		});
 	});
 
@@ -50,8 +49,7 @@ describe('uploadRide', () => {
 			},
 		});
 		expect(await uploadRide(ride)).toEqual({
-			message: 'A ride under a minute is not saved.',
-			final: true,
+			failure: { message: 'A ride under a minute is not saved.', final: true },
 		});
 	});
 });

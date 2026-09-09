@@ -341,7 +341,7 @@
 	/>
 {/if}
 
-{#if shared?.phase === 'done' && recording.samples.length >= 60 && !summary.dismissed}
+{#if shared?.phase === 'done' && recording.samples.length > 0 && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
 	     and nothing said so — a modal is the room telling you it is over. -->
@@ -359,9 +359,18 @@
 			roomName={props.roomName}
 		>
 			{#snippet actions()}
-				<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-					>Back to the lounge</button
-				>
+				<div class="flex flex-wrap gap-2">
+					<!-- The end links forward (#1331): the ride the room saved for
+					     you, found by the session it belongs to once the save lands. -->
+					{#if summary.rideId}
+						<a href="/history/{summary.rideId}" class="btn btn-primary"
+							>See your ride</a
+						>
+					{/if}
+					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
+						>Back to the lounge</button
+					>
+				</div>
 			{/snippet}
 		</SessionSummary>
 	</Modal>

@@ -53,13 +53,13 @@
 		if (!payload) return;
 		busy = true;
 		onError(null);
-		const failure = await uploadRide(payload);
+		const outcome = await uploadRide(payload);
 		busy = false;
-		if (failure) {
-			onError(failure.message);
+		if ('failure' in outcome) {
+			onError(outcome.failure.message);
 			// A refusal the server will repeat is not worth a second card:
 			// the samples go, the sentence stays.
-			if (failure.final) await forget(ride.rideId);
+			if (outcome.failure.final) await forget(ride.rideId);
 			return;
 		}
 		await forget(ride.rideId);

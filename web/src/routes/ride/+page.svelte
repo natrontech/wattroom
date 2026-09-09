@@ -58,6 +58,8 @@
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
+	// The ride on the account, once it is: the summary's way forward (#1331).
+	let savedId = $state<string | null>(null);
 
 	// ?replay=<fixture> rides a committed capture instead of the generator
 	// (#54): deterministic reproduction, the agent's screenshot instead of the
@@ -211,14 +213,16 @@
 				cadence: sample.cadence,
 				hr: sample.heartRate,
 			})),
-		}).then((failure) => {
-			if (!failure) {
+		}).then((outcome) => {
+			if ('saved' in outcome) {
 				// The ride is on the account: NOW it stops being a ride to
 				// recover. Ending the buffer before the server answered is
 				// what used to make a failed save vanish (#794).
 				ended?.end();
+				savedId = outcome.saved.id || null;
 				return;
 			}
+			const { failure } = outcome;
 			// A refusal the server will repeat — under a minute — is not a
 			// ride to recover either: offering it back would refuse it again
 			// on every reload. Its summary still lands on the device below.
@@ -453,11 +457,18 @@
 				{#snippet actions()}
 					<div class="panel px-5 py-4">
 						<div class="flex flex-wrap items-center gap-2">
+							<!-- The end links forward (#1331): the ride's own page first,
+							     the export and the next workout after it. -->
+							{#if savedId}
+								<a href="/history/{savedId}" class="btn btn-primary"
+									>See your ride</a
+								>
+							{/if}
 							<button
 								onclick={downloadFit}
 								disabled={downloading}
 								data-testid="download-fit"
-								class="btn btn-primary"
+								class="btn {savedId ? 'btn-secondary' : 'btn-primary'}"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
 							<a href="/workouts" class="btn btn-secondary"

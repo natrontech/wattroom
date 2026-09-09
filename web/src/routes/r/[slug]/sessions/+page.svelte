@@ -10,11 +10,21 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { roomConnection } from '$lib/room/connection.svelte';
+	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	const room = useRoom();
+	// What already happened here (ADR-0034 amended, #1331): the recaps the
+	// backlog seeds and the tick adds, newest first — the same cards the chat
+	// shows in its scrollback, on the place that plans the next one.
+	const past = $derived(
+		[...(roomConnection.current?.live.recaps ?? [])].sort(
+			(a, b) => b.endedAt - a.endedAt,
+		),
+	);
 
 	let movingId = $state<string | null>(null);
 	let moveAt = $state('');
@@ -196,6 +206,15 @@
 				>
 			</details>
 		{/if}
+	{/if}
+
+	{#if past.length > 0}
+		<h3 class="eyebrow mt-8">past sessions</h3>
+		<ul class="mt-2 grid gap-2">
+			{#each past.slice(0, 12) as recap (recap.id)}
+				<li><SessionRecapCard {recap} /></li>
+			{/each}
+		</ul>
 	{/if}
 
 	<h3 class="eyebrow mt-8">this room, this month</h3>
