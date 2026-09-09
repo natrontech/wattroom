@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dragPane, keepSize } from '$lib/pane';
 
@@ -124,6 +126,28 @@ describe('keepSize (#280)', () => {
 		).toBe('');
 	});
 
+	it('takes back the height when the pane it published goes away (#1702)', () => {
+		// The jukebox dock hides mid-track — a pool track has no picture
+		// (ADR-0015), a muted mix unloads the player — and the gutter reserved
+		// for it has to go with it. Published once and never withdrawn, the
+		// room keeps a band of nothing at the bottom of every place.
+		let tall = true;
+		const node = document.createElement('div');
+		Object.defineProperty(node, 'offsetWidth', { get: () => (tall ? 360 : 0) });
+		Object.defineProperty(node, 'offsetHeight', {
+			get: () => (tall ? 240 : 0),
+		});
+		keepSize(node, 'test');
+		expect(
+			document.documentElement.style.getPropertyValue('--pane-test-h'),
+		).toBe('240px');
+		tall = false;
+		fire();
+		expect(
+			document.documentElement.style.getPropertyValue('--pane-test-h'),
+		).toBe('');
+	});
+
 	it('opens at the default size when storage is junk', () => {
 		localStorage.setItem(KEY, '{not json');
 		const node = pane(976, 420);
@@ -180,5 +204,31 @@ describe('a borrowed pane (#316)', () => {
 		node.style.height = '506px';
 		fire();
 		expect(localStorage.getItem(KEY)).toBe(null);
+	});
+});
+
+/**
+ * The other half of that withdrawal (#1702). `keepSize` removing the variable
+ * only clears a gutter if the gutter has no height of its own to fall back on
+ * — `var(--pane-jukebox-dock-h, 308px)` reserved 332px on every place for a
+ * dock that was hidden, and the Chat place's `h-full` column paid it out of
+ * its own height: the composer sat a third of the way up the pane.
+ *
+ * Read from the source because there is no way to render RoomShell's padding
+ * without a room, a connection and a track. The regression is a default
+ * creeping back into the `var()`, and that is visible right here.
+ */
+describe('the jukebox gutter (#1702)', () => {
+	it('has no dock height to fall back on', () => {
+		const shell = readFileSync(
+			join(import.meta.dirname, 'room', 'RoomShell.svelte'),
+			'utf8',
+		);
+		const gutters = [...shell.matchAll(/var\(--pane-jukebox-dock-h([^)]*)\)/g)];
+		expect(gutters, 'the gutter moved out of RoomShell').toHaveLength(1);
+		expect(
+			gutters[0][1],
+			'no dock, no gutter — the variable is the signal',
+		).toBe('');
 	});
 });
