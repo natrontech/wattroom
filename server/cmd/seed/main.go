@@ -76,27 +76,8 @@ func run(ctx context.Context, dsn string) error {
 		}
 	}
 
-	for name, def := range libraryWorkouts {
-		_, err := st.Queries.CreateWorkout(ctx, db.CreateWorkoutParams{
-			Name: name, Author: "wattroom", Definition: []byte(def),
-		})
-		if err != nil {
-			return fmt.Errorf("workout %q: %w", name, err)
-		}
-	}
+	// No library rows: the curated library ships in the web bundle
+	// (web/src/lib/workout/library.ts) and every workouts query filters on an
+	// owner, so an owner-less row was unreachable (#1713).
 	return nil
-}
-
-// Two representative docs/SPEC.md workout definitions.
-var libraryWorkouts = map[string]string{
-	"Openers": `{"name":"Openers","author":"wattroom","steps":[
-		{"type":"warmup","seconds":30,"from":0.4,"to":0.6},
-		{"type":"steady","seconds":60,"target":0.9},
-		{"type":"cooldown","seconds":30,"from":0.6,"to":0.4}]}`,
-	"Sweet Spot 3x12": `{"name":"Sweet Spot 3x12","author":"wattroom","steps":[
-		{"type":"warmup","seconds":600,"from":0.4,"to":0.7},
-		{"type":"repeat","times":3,"steps":[
-			{"type":"steady","seconds":720,"target":0.9},
-			{"type":"steady","seconds":300,"target":0.5}]},
-		{"type":"cooldown","seconds":600,"from":0.6,"to":0.4}]}`,
 }

@@ -74,9 +74,16 @@ const valid = `{"workout":{"name":"My 2x8","steps":[{"type":"steady","seconds":4
 func TestWorkoutCRUD(t *testing.T) {
 	mux, _ := setup(t)
 
-	// Unauthenticated → 401 on every verb.
-	if status, _ := call(t, mux, "", http.MethodGet, "/api/workouts", ""); status != http.StatusUnauthorized {
-		t.Fatalf("anon list: %d", status)
+	// Unauthenticated → 401 on every verb (#1713).
+	for _, anon := range []struct{ method, path string }{
+		{http.MethodGet, "/api/workouts"},
+		{http.MethodPost, "/api/workouts"},
+		{http.MethodPut, "/api/workouts/00000000-0000-0000-0000-000000000000"},
+		{http.MethodDelete, "/api/workouts/00000000-0000-0000-0000-000000000000"},
+	} {
+		if status, _ := call(t, mux, "", anon.method, anon.path, valid); status != http.StatusUnauthorized {
+			t.Fatalf("anon %s %s: %d, want 401", anon.method, anon.path, status)
+		}
 	}
 
 	// Create, list, update, delete — the whole shelf lifecycle.
