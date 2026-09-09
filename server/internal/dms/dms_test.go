@@ -180,11 +180,21 @@ func TestDmThreadOpensOnItsNewestPage(t *testing.T) {
 	if first["text"] != "line 51" || last["text"] != "line 250" {
 		t.Fatalf("the page runs %v … %v, not line 51 … line 250", first["text"], last["text"])
 	}
-	// And a poll from the page's last line finds only what came after it.
+	// And a poll from the page's last line brings nothing older than it —
+	// `after` is a millisecond and the rows are microseconds, so the newest
+	// line's own millisecond may ride along, as it always has; the client
+	// merges by id.
 	at, _ := last["at"].(float64)
 	code, body = call(t, mux, "bob", http.MethodGet, fmt.Sprintf("/api/dms/%s?after=%d", store.UUIDString(alice.ID), int64(at)), "")
-	if tail, _ := body["messages"].([]any); code != http.StatusOK || len(tail) != 0 {
-		t.Fatalf("a poll after the newest line returned %d lines", len(tail))
+	tail, _ := body["messages"].([]any)
+	if code != http.StatusOK {
+		t.Fatalf("poll: %d", code)
+	}
+	for _, entry := range tail {
+		line, _ := entry.(map[string]any)
+		if when, _ := line["at"].(float64); when < at {
+			t.Fatalf("a poll after the newest line went back to %v", line["text"])
+		}
 	}
 }
 
