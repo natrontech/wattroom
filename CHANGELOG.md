@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.88] - 2026-09-09
+
+### Fixed
+
+- A rider who stepped away now shows as away in the sidebar and the messages list too, not only on their tile in the room; link-preview cards are rendered once and served from memory, and one address can ask for at most thirty room cards a minute.
+- The home page's "around right now" row shows your friends who are online, which it never did before; a rider whose connection silently died no longer stays shown as online to their friends; coming back from a dropped connection while stepped away no longer switches your camera and microphone back on; the messages list no longer offers rooms you cannot enter; a reconnect no longer announces everyone who arrived while you were away as if they had just walked in; notifications name the room rather than its web address and fire once across your open tabs; the friends panel shows the same online, in-a-room or riding mark as the sidebar; and the sidebar catches up the moment a sleeping laptop wakes.
+- Tracks queued from the Music page now carry their tempo to the deck, so cadence matching sees them. Queuing the same track from a playlist always did; the multi-select did not, and its tracks arrived untagged.
+- A ride exported to Strava now reads "On Strava as activity 20104517199." — it used to run the words together as "On Stravaas activity".
+
 ## [2026.09.87] - 2026-09-09
 
 ### Fixed
@@ -1695,7 +1704,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.87...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.88...HEAD
+[2026.09.88]: https://github.com/natrontech/wattroom/compare/2026.09.87...2026.09.88
 [2026.09.87]: https://github.com/natrontech/wattroom/compare/2026.09.86...2026.09.87
 [2026.09.86]: https://github.com/natrontech/wattroom/compare/2026.09.85...2026.09.86
 [2026.09.85]: https://github.com/natrontech/wattroom/compare/2026.09.84...2026.09.85
