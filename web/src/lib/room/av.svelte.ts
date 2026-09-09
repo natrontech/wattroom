@@ -9,7 +9,11 @@ import { createDeviceChoices } from '$lib/room/av-devices.svelte';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
-import { createAvConn, createAvState } from '$lib/room/av-state.svelte';
+import {
+	createAvConn,
+	createAvState,
+	rememberShareSound,
+} from '$lib/room/av-state.svelte';
 import type { LiveKitClient, Owned } from '$lib/room/av-types';
 
 export type { AvError, AvStatus } from '$lib/room/av-types';
@@ -579,6 +583,89 @@ export function createRoomAv(slug: string) {
 	}
 
 	/**
+	 * Put a screen on the stage, with the machine's sound if the rider wants
+	 * it (#1751). Asking for no audio at all rather than publishing it muted:
+	 * the loopback tap is the whole machine — their notifications, their calls
+	 * — and a tap that is open but silent is still a tap.
+	 */
+	async function startShare() {
+		if (!conn.room) return;
+		av.sharing = true;
+		try {
+			// The browser's picker can be cancelled — trust the publication,
+			// not our intent.
+			// The machine's audio rides along with the picture (#1124). Its
+			// profile is ADR-0011's "music", not "voice": processing off,
+			// because noise suppression and AGC are tuned for a person
+			// talking and wreck anything else. LiveKit publishes it as its
+			// own ScreenShareAudio track; nothing here has to.
+			await conn.room.localParticipant.setScreenShareEnabled(true, {
+				audio: av.shareSound && {
+					autoGainControl: false,
+					echoCancellation: false,
+					noiseSuppression: false,
+				},
+			});
+			const track = conn.room.localParticipant.getTrackPublication(
+				conn.liveKit!.Track.Source.ScreenShare,
+			)?.videoTrack;
+			if (!track) {
+				av.sharing = false;
+				av.sharingAudio = false;
+				if (dropOwned(screenTracks, conn.me, conn.myIdentity))
+					stage.dropScreen(conn.me);
+				return;
+			}
+			screenTracks.set(conn.me, { owner: conn.myIdentity, track });
+			stage.addScreen(conn.me);
+			// Whether the machine's sound went with the picture. Read
+			// from the publication rather than assumed from asking:
+			// loopback is refused, missing or dead on plenty of
+			// platforms, and telling a rider the room can hear them
+			// when it cannot is the worse half of getting this wrong.
+			av.sharingAudio = !!conn.room.localParticipant.getTrackPublication(
+				conn.liveKit!.Track.Source.ScreenShareAudio,
+			);
+		} catch (cause) {
+			av.sharing = false;
+			av.sharingAudio = false;
+			failedMedia(cause, 'screen');
+		}
+	}
+
+	/**
+	 * Whether the room hears this machine as well as seeing it (#1751), and
+	 * the answer is remembered — the report was that every share started loud.
+	 *
+	 * Off is instant and closes the tap: a rider who meant "not this" does not
+	 * wait on a picker to say it. On has to re-run the share, picker and all,
+	 * because `getDisplayMedia` has no audio-only form — the sound cannot be
+	 * added to a capture that did not take it.
+	 */
+	async function setShareSound(on: boolean) {
+		if (on === av.shareSound) return;
+		av.shareSound = on;
+		rememberShareSound(on);
+		if (!av.sharing || !conn.room || !conn.liveKit) return;
+		if (on) {
+			await stopShare();
+			await startShare();
+			return;
+		}
+		const track = conn.room.localParticipant.getTrackPublication(
+			conn.liveKit.Track.Source.ScreenShareAudio,
+		)?.audioTrack;
+		// `true` stops the underlying MediaStreamTrack: unpublishing alone
+		// leaves the machine tapped, which is the same shape of bug the camera
+		// had in closeCam below.
+		if (track)
+			await conn.room.localParticipant
+				.unpublishTrack(track, true)
+				.catch(() => {});
+		av.sharingAudio = false;
+	}
+
+	/**
 	 * Stop sharing, whoever asked — the button, or stepping away (#1128).
 	 * One place, so the two cannot drift apart on what stopping means.
 	 */
@@ -855,6 +942,10 @@ export function createRoomAv(slug: string) {
 		get sharingAudio() {
 			return av.sharingAudio;
 		},
+		/** Whether the rider wants it to, share after share (#1751). */
+		get shareSound() {
+			return av.shareSound;
+		},
 		get error() {
 			return av.error;
 		},
@@ -1052,50 +1143,10 @@ export function createRoomAv(slug: string) {
 			}
 			await openCam();
 		},
-		async toggleShare() {
-			if (!conn.room) return;
-			av.sharing = !av.sharing;
-			try {
-				// The browser's picker can be cancelled — trust the publication,
-				// not our intent.
-				// The machine's audio rides along with the picture (#1124). Its
-				// profile is ADR-0011's "music", not "voice": processing off,
-				// because noise suppression and AGC are tuned for a person
-				// talking and wreck anything else. LiveKit publishes it as its
-				// own ScreenShareAudio track; nothing here has to.
-				await conn.room.localParticipant.setScreenShareEnabled(av.sharing, {
-					audio: {
-						autoGainControl: false,
-						echoCancellation: false,
-						noiseSuppression: false,
-					},
-				});
-				const track = conn.room.localParticipant.getTrackPublication(
-					conn.liveKit!.Track.Source.ScreenShare,
-				)?.videoTrack;
-				if (av.sharing && track) {
-					screenTracks.set(conn.me, { owner: conn.myIdentity, track });
-					stage.addScreen(conn.me);
-					// Whether the machine's sound went with the picture. Read
-					// from the publication rather than assumed from asking:
-					// loopback is refused, missing or dead on plenty of
-					// platforms, and telling a rider the room can hear them
-					// when it cannot is the worse half of getting this wrong.
-					av.sharingAudio = !!conn.room.localParticipant.getTrackPublication(
-						conn.liveKit!.Track.Source.ScreenShareAudio,
-					);
-				} else {
-					av.sharing = false;
-					av.sharingAudio = false;
-					if (dropOwned(screenTracks, conn.me, conn.myIdentity))
-						stage.dropScreen(conn.me);
-				}
-			} catch (cause) {
-				av.sharing = false;
-				av.sharingAudio = false;
-				failedMedia(cause, 'screen');
-			}
+		toggleShare() {
+			return av.sharing ? stopShare() : startShare();
 		},
+		setShareSound,
 		/** Everything the stage can show, screens first (#280). */
 		get stageSources() {
 			return stage.sources;

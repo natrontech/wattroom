@@ -420,6 +420,7 @@
 					sharing={av.sharing}
 					sharingAudio={av.sharingAudio}
 					onStop={() => void av.toggleShare()}
+					onSound={(on) => void av.setShareSound(on)}
 				/>
 			{/if}
 			<!-- The page body. It scrolls down, never sideways: wide content
