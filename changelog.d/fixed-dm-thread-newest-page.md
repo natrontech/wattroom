@@ -1,1 +1,0 @@
-- A direct-message thread with more than 200 lines now opens at its newest messages, and the line you just sent appears at once — it used to open weeks back and your reply could take a while to show.

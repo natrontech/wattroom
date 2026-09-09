@@ -1,1 +1,0 @@
-- Security: a sign-in link meant for the desktop app can no longer be redeemed by a form on another website, and the per-address sign-in limits can no longer be sidestepped by writing your own forwarded address. Both were found by an audit; neither is known to have been used.

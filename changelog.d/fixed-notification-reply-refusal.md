@@ -1,1 +1,0 @@
-- Replying to a message from the notification itself: if the reply cannot be sent — you are no longer friends, it was too long, you were offline — the app now says so and shows your words, instead of dropping the reply without a trace.

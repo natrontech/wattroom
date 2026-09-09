@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.95] - 2026-09-10
+
+### Fixed
+
+- Deleting your account now also removes WattRoom from your Strava's authorized apps, the way disconnecting Strava already did — a full purge no longer leaves the app listed there.
+- A direct-message thread with more than 200 lines now opens at its newest messages, and the line you just sent appears at once — it used to open weeks back and your reply could take a while to show.
+- When your conversations cannot be loaded, the Messages page now says so and offers a retry instead of showing you an empty list.
+- Replying to a message from the notification itself: if the reply cannot be sent — you are no longer friends, it was too long, you were offline — the app now says so and shows your words, instead of dropping the reply without a trace.
+- The passkeys section in Settings now says when the list could not be loaded and offers a retry, instead of telling a rider with passkeys to "add one".
+- A picture or GIF in a chat or a direct message now has the same right-click and long-press menu as any other line: react, copy, the sender's page. On a phone it was the one message you could do nothing with.
+- Removing a friend now closes the conversation the way it was meant to: it leaves both riders' message lists, they stop receiving each other's current name, picture and level, and the thread's history stays readable with the box shut and a line saying why — instead of an open box whose Send was refused.
+
+### Security
+
+- Security: direct messages now have a ceiling per account — sixty lines, edits or reactions a minute and sixty pictures an hour — so one account cannot flood a friend's thread or fill the server with images. Past it, the app asks you to wait a moment.
+- Security: a sign-in link meant for the desktop app can no longer be redeemed by a form on another website, and the per-address sign-in limits can no longer be sidestepped by writing your own forwarded address. Both were found by an audit; neither is known to have been used.
+
 ## [2026.09.94] - 2026-09-10
 
 ### Added
@@ -1793,7 +1810,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.94...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.95...HEAD
+[2026.09.95]: https://github.com/natrontech/wattroom/compare/2026.09.94...2026.09.95
 [2026.09.94]: https://github.com/natrontech/wattroom/compare/2026.09.93...2026.09.94
 [2026.09.93]: https://github.com/natrontech/wattroom/compare/2026.09.92...2026.09.93
 [2026.09.92]: https://github.com/natrontech/wattroom/compare/2026.09.91...2026.09.92
