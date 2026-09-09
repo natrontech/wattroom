@@ -174,6 +174,8 @@
 	});
 </script>
 
+<svelte:head><title>Home · WattRoom</title></svelte:head>
+
 <main class="page">
 	<!-- The mock's header (ADR-0020): a greeting, one sentence on what is
 	     happening, and the one thing to do about it. Home is the between-

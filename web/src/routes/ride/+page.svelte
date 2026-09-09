@@ -379,6 +379,8 @@
 	onDestroy(() => session?.stop());
 </script>
 
+<svelte:head><title>{workout.name} · Ride · WattRoom</title></svelte:head>
+
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
 <!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,

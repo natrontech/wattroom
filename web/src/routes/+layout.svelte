@@ -245,6 +245,8 @@
 </script>
 
 <svelte:head>
+	<!-- The default every page inherits; a page names itself over it. -->
+	<title>WattRoom</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 

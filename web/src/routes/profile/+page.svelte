@@ -124,6 +124,8 @@
 	}
 </script>
 
+<svelte:head><title>Profile · WattRoom</title></svelte:head>
+
 <main class="page">
 	<div class="flex items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold tracking-tight">Profile</h1>

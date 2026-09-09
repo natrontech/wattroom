@@ -93,6 +93,8 @@
 	);
 </script>
 
+<svelte:head><title>Workouts · WattRoom</title></svelte:head>
+
 <main class="page">
 	<div class="flex items-center gap-3">
 		<div>

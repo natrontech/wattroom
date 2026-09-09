@@ -60,6 +60,8 @@
 	}
 </script>
 
+<svelte:head><title>Sensors · WattRoom</title></svelte:head>
+
 <main class="page">
 	<div class="flex items-center gap-3">
 		<div>
