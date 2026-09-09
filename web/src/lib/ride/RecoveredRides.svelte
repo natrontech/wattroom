@@ -14,8 +14,16 @@
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
 	import { uploadRide } from '$lib/ride/save';
+	import { toasts } from '$lib/toast.svelte';
 
-	let { onError }: { onError: (message: string | null) => void } = $props();
+	let {
+		onError,
+		onSaved,
+	}: {
+		onError: (message: string | null) => void;
+		/** The ride is on the account now — the page drops its device copy. */
+		onSaved?: (ride: RecoveredRide) => void;
+	} = $props();
 
 	let rides = $state<RecoveredRide[]>([]);
 	let busy = $state(false);
@@ -59,6 +67,10 @@
 			return;
 		}
 		await forget(ride.rideId);
+		onSaved?.(ride);
+		toasts.push('Ride saved to your history.', {
+			href: `/history/${outcome.saved.id}`,
+		});
 	}
 </script>
 

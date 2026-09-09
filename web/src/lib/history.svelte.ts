@@ -59,7 +59,9 @@ export function summarise(samples: { watts: number }[]): {
 	const total = samples.reduce((sum, s) => sum + s.watts, 0);
 	return {
 		seconds: samples.length,
-		kj: Math.round(total / 1000),
+		// Floored, as the server stores it (integer division) — XP derives
+		// from it on both sides, so the two must agree (#1544).
+		kj: Math.floor(total / 1000),
 		avgWatts: Math.round(total / samples.length),
 	};
 }
@@ -92,6 +94,17 @@ export function createHistoryStore() {
 			}
 			rides = next;
 			return null;
+		},
+		/** The ride reached the account after all (#1544): one copy, there. */
+		remove(id: string): void {
+			const next = rides.filter((r) => r.id !== id);
+			if (next.length === rides.length) return;
+			try {
+				localStorage.setItem(KEY, JSON.stringify(next));
+			} catch {
+				/* the account copy exists either way */
+			}
+			rides = next;
 		},
 		clear(): void {
 			try {

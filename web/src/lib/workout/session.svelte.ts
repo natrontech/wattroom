@@ -291,6 +291,10 @@ export function createRideSession({
 		get execution() {
 			return execution;
 		},
+		/** False when the workout prescribed nothing to score (#1454, #1544). */
+		get scored() {
+			return scoredWeight > 0;
+		},
 		get inBand() {
 			return inBand;
 		},
@@ -321,6 +325,11 @@ export function createRideSession({
 			ticker?.stop();
 			unsubscribe?.();
 			void trainer.setTargetPower(0);
+			// Let go of the hardware (#1546): after the summary nothing owns
+			// this link, and the next pairing screen showed an unpaired grid
+			// over a connection that was still open — the room's unpair()
+			// does the same.
+			void trainer.disconnect();
 			state = 'done';
 		},
 		nudgeBias(step: number) {

@@ -17,6 +17,7 @@
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
 	import { uploadRide } from '$lib/ride/save';
+	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
@@ -64,6 +65,10 @@
 	// rider who corrects the number here does not find the old one on /settings/profile.
 	const ftp = $derived(profile.current.ftp);
 	let recorded = false;
+	// Set once the page is gone: a save that answers after that has no
+	// summary to land on, so its outcome becomes a toast (#1544).
+	let gone = false;
+	let saving = $state(false);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
 	let error = $state<string | null>(null);
@@ -143,7 +148,6 @@
 				// Carried so a ride whose save failed can be saved from the
 				// recovery card rather than only exported (#794).
 				workoutJson: JSON.stringify(workout),
-				ftp,
 			});
 			trainerName = trainer.name;
 			recorder.event('ride', `starting ${workout.name}`);
@@ -220,9 +224,12 @@
 		const summary = summarise(current.recording);
 		if (summary.seconds === 0) {
 			buffer?.end();
+			// Not a summary of zeros with an export that 400s (#1544).
+			saveStatus = 'Nothing was recorded — no watts reached the app.';
 			return;
 		}
 		const ended = buffer;
+		saving = true;
 		void uploadRide({
 			workoutName: workout.name,
 			workoutJson: JSON.stringify(workout),
@@ -233,12 +240,17 @@
 				hr: sample.heartRate,
 			})),
 		}).then((outcome) => {
+			saving = false;
 			if ('saved' in outcome) {
 				// The ride is on the account: NOW it stops being a ride to
 				// recover. Ending the buffer before the server answered is
 				// what used to make a failed save vanish (#794).
 				ended?.end();
 				savedId = outcome.saved.id || null;
+				if (gone)
+					toasts.push('Ride saved to your history.', {
+						href: savedId ? `/history/${savedId}` : undefined,
+					});
 				return;
 			}
 			const { failure } = outcome;
@@ -254,6 +266,7 @@
 				workoutName: workout.name,
 				startedAt: current.startedAt.toISOString(),
 				execution: current.execution,
+				executionScored: current.scored,
 				ftp,
 				...summary,
 			});
@@ -262,6 +275,9 @@
 				(failure.final
 					? `${failure.message} Its summary stays on this device.`
 					: `${failure.message} This ride is kept on this device — reload to save it from the recovery card.`);
+			// The page that would have shown this is gone (a ride ended by
+			// leaving): the one surface left is a toast (errors.md).
+			if (gone) toasts.push(saveStatus, { tone: 'error' });
 		});
 	}
 
@@ -384,6 +400,7 @@
 	// confirm above promises — or the trainer holds a target with nobody
 	// watching and the frame stays caved.
 	onDestroy(() => {
+		gone = true;
 		if (!session) return;
 		session.stop();
 		save(session);
@@ -429,10 +446,13 @@
 				{error}
 				onStart={(trainer) => void begin(trainer)}
 				onReplay={beginReplay}
+				onSaved={(ride) => history.remove(String(ride.startedAt))}
 				onFtp={async (next) => {
+					// The account first (#1543): the other order reported a
+					// number the next boot pulled back over.
 					error =
-						profile.update({ ftp: next }) ??
-						(await pushProfile({ ftpWatts: next }));
+						(await pushProfile({ ftpWatts: next })) ??
+						profile.update({ ftp: next });
 				}}
 				onError={(message) => (error = message)}
 			/>
@@ -472,10 +492,11 @@
 		     zeros behind it (#126). -->
 		<div class="mx-auto mt-4 w-full max-w-3xl">
 			<SessionSummary
+				title="Ride complete"
 				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}
-				execution={session.execution}
+				execution={session.scored ? session.execution : undefined}
 			>
 				{#snippet actions()}
 					<div class="panel px-5 py-4">
@@ -486,12 +507,18 @@
 								<a href="/history/{savedId}" class="btn btn-primary"
 									>See your ride</a
 								>
+							{:else if saving}
+								<!-- The row keeps its shape while the save is in flight:
+								     the button under the thumb never changes role (#1544). -->
+								<button disabled class="btn btn-primary">Saving…</button>
 							{/if}
 							<button
 								onclick={downloadFit}
-								disabled={downloading}
+								disabled={downloading || session.recording.length === 0}
 								data-testid="download-fit"
-								class="btn {savedId ? 'btn-secondary' : 'btn-primary'}"
+								class="btn {savedId || saving
+									? 'btn-secondary'
+									: 'btn-primary'}"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
 							<a href="/workouts" class="btn btn-secondary"

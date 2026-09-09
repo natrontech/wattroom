@@ -28,11 +28,11 @@ export interface RideMeta {
 	 * Enough to save the ride to the account later (#794). A ride whose upload
 	 * failed stays here unfinished and is offered back, and an offer you
 	 * cannot act on is not an offer — so the buffer carries what the POST
-	 * needs, not just what a .fit needs. Absent on rides buffered before this
-	 * existed; the retry hides itself for those.
+	 * needs, not just what a .fit needs (the server scores against the
+	 * account's FTP, so no FTP rides along). Absent on rides buffered before
+	 * this existed; the retry hides itself for those.
 	 */
 	workoutJson?: string;
-	ftp?: number;
 	/** Set when the ride is SAVED, not when the recording stops (#794). */
 	endedAt?: number;
 }

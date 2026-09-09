@@ -30,9 +30,15 @@ describe('normalizedPower', () => {
 	});
 
 	it('sits above average on a spiky ride — the point of NP', () => {
-		const spiky = [...flat(100, 300), ...flat(400, 300)];
+		const spiky = [...flat(100, 900), ...flat(400, 900)];
 		const avg = 250;
 		expect(normalizedPower(spiky)).toBeGreaterThan(avg);
+	});
+
+	it('is the plain average under 20 minutes, as the server stores it (#1542)', () => {
+		const spiky = [...flat(100, 300), ...flat(400, 300)];
+		expect(normalizedPower(spiky)).toBe(250);
+		expect(normalizedPower(flat(200, 20 * 60 - 1))).toBe(200);
 	});
 });
 

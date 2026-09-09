@@ -26,9 +26,7 @@ async function fill(
 		rideId,
 		startedAt: Number(rideId) || 1,
 		workoutName: 'Openers',
-		...(opts.saveable
-			? { workoutJson: '{"name":"Openers","steps":[]}', ftp: 240 }
-			: {}),
+		...(opts.saveable ? { workoutJson: '{"name":"Openers","steps":[]}' } : {}),
 	});
 	for (let seq = 1; seq <= count; seq++) buffer.append(sample(seq));
 	if (opts.end) buffer.end();
@@ -112,7 +110,6 @@ describe('a solo save that failed (#794)', () => {
 		const [ride] = await unfinishedRides();
 		expect(ride.samples).toHaveLength(90);
 		expect(ride.workoutJson).toBe('{"name":"Openers","steps":[]}');
-		expect(ride.ftp).toBe(240);
 	});
 
 	it('stops being offered back once the save goes through', async () => {
