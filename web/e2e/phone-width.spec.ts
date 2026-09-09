@@ -239,6 +239,9 @@ test('the workout editor puts the steps before the library on a phone', async ({
 	page,
 }) => {
 	await signInAs(page, 'Phone Width', '/workouts/edit');
+	// evaluateAll has no auto-waiting: read the order only once the editor
+	// has drawn its columns, or CI reads an empty list (-1 < -1 is false).
+	await expect(page.locator('h2', { hasText: /^library$/ })).toBeVisible();
 	const headings = await page
 		.locator('h2')
 		.evaluateAll((all) => all.map((h) => h.textContent?.trim().toLowerCase()));
