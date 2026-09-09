@@ -464,13 +464,12 @@
 		>
 	</div>
 {/if}
+<!-- Your own send does NOT pin the log: #291's rule (a reader scrolled back
+     is never yanked, e2e/chat.spec.ts asserts it on the sender's own line)
+     stands until the own-send case is decided (#1767). The "new messages"
+     button above is the way down. -->
 <Composer
-	send={async (text, image) => {
-		const refused = await source.send(text, image);
-		// Your own send pins the log (#1765): you typed it, you see it land.
-		if (!refused) log?.dispatchEvent(new Event('wattroom-pin'));
-		return refused;
-	}}
+	send={source.send}
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
