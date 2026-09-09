@@ -1,1 +1,0 @@
-- A picture or GIF in a chat or a direct message now has the same right-click and long-press menu as any other line: react, copy, the sender's page. On a phone it was the one message you could do nothing with.
