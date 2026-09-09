@@ -10,6 +10,12 @@
 	async function turnOn() {
 		blocked = (await notify.enable()) === 'denied';
 	}
+	// One you can see (#1440): the switch only promises; this shows.
+	let tested = $state(false);
+	function sendTest() {
+		notify.test();
+		tested = true;
+	}
 </script>
 
 <section class="panel mt-8 p-6">
@@ -32,6 +38,9 @@
 			{/if}
 		</p>
 		{#if notify.supported && notify.enabled}
+			<button class="btn btn-primary" onclick={sendTest}
+				>Send a test notification</button
+			>
 			<button class="btn btn-secondary" onclick={() => notify.disable()}
 				>Turn off</button
 			>
@@ -41,4 +50,16 @@
 			>
 		{/if}
 	</div>
+	{#if tested && notify.enabled}
+		<p class="text-muted mt-3 text-sm leading-relaxed">
+			{#if shellVersion()}
+				Sent. If nothing appeared, your system is asking whether to allow
+				WattRoom's notifications, or has them switched off in its notification
+				settings.
+			{:else}
+				Sent. If nothing appeared, this browser or your system is blocking
+				notifications for this site.
+			{/if}
+		</p>
+	{/if}
 </section>

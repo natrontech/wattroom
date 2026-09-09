@@ -1,0 +1,63 @@
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const announced: { tag: string; reading: boolean }[] = [];
+vi.mock('$lib/messages/announce', () => ({
+	announce: (a: { tag: string; reading: boolean }) => announced.push(a),
+}));
+vi.mock('$lib/notify.svelte', () => ({
+	// The real rule (ADR-0042): hidden, or not the front window.
+	away: () => document.hidden || !document.hasFocus(),
+}));
+let open: { id: string; name: string } | null = null;
+vi.mock('$lib/dm/dm.svelte', () => ({
+	dm: {
+		get open() {
+			return open;
+		},
+		seenAt: () => 0,
+	},
+}));
+vi.mock('$lib/people.svelte', () => ({ people: { learn: () => {} } }));
+let conversations: unknown[] = [];
+vi.mock('$lib/api', () => ({
+	api: async () => ({ ok: true, data: { conversations } }),
+}));
+
+const { dmHeads } = await import('./heads.svelte');
+
+const line = (at: number) => ({
+	peerId: 'mara',
+	peerName: 'Mara',
+	text: 'hi',
+	mine: false,
+	at,
+});
+
+describe('dm heads', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => {
+		vi.useRealTimers();
+		document.hasFocus = () => true;
+	});
+
+	// The open thread counts as reading only while the window is in front
+	// (ADR-0042, #1440): behind another app a DM must announce like any other.
+	it('treats an open thread as read only while the window is in front', async () => {
+		conversations = [line(1)];
+		dmHeads.start(); // the first answer is the state of the world, not an arrival
+		await vi.advanceTimersByTimeAsync(0);
+		expect(announced).toEqual([]);
+
+		open = { id: 'mara', name: 'Mara' };
+		document.hasFocus = () => false;
+		conversations = [line(2)];
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(announced.map((a) => a.reading)).toEqual([false]);
+
+		document.hasFocus = () => true;
+		conversations = [line(3)];
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(announced.map((a) => a.reading)).toEqual([false, true]);
+	});
+});

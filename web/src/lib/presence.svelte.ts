@@ -1,5 +1,6 @@
 import { announce } from '$lib/messages/announce';
 import { fetchRailRooms } from '$lib/nav/rooms';
+import { away } from '$lib/notify.svelte';
 import type { RailRoom } from '$lib/room/mockcompat';
 
 /**
@@ -52,7 +53,7 @@ async function refresh() {
 			title: `${last.from} · ${room.name}`,
 			body: last.text || (last.hasImage ? 'sent an image' : ''),
 			href: `/messages/r/${room.slug}`,
-			reading: !document.hidden && here === `/messages/r/${room.slug}`,
+			reading: !away() && here === `/messages/r/${room.slug}`,
 		});
 	}
 }

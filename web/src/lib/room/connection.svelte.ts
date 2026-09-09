@@ -1,7 +1,7 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import { announce } from '$lib/messages/announce';
-import { notify } from '$lib/notify.svelte';
+import { away, notify } from '$lib/notify.svelte';
 import { presence } from '$lib/presence.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { pullProfile } from '$lib/profile-sync.svelte';
@@ -346,7 +346,7 @@ function connect(slug: string): Connection {
 					title: `${line.from} · ${where}`,
 					body: line.text || (line.imageId ? 'sent an image' : ''),
 					href: `/r/${slug}/chat`,
-					reading: chatOpen && !document.hidden,
+					reading: chatOpen && !away(),
 					reply: {
 						placeholder: `Reply in ${where}`,
 						send: (text) => live.chat(text),
