@@ -52,9 +52,10 @@
 	// nothing for a rider with no samples and returns 1 for them, which is
 	// right for "before the first hard block" and absurd on a leaderboard:
 	// a spectator sitting in the room reads 100% and beats everyone riding.
-	// `watts > 0` is the same predicate SidePanel already uses to split
-	// "here" from "not pedalling", so the two agree about who is riding.
-	const riding = $derived(room.riders.filter((r) => r.watts > 0));
+	// `riding` is the server's word (#1016) — a coast holds it — so a rider
+	// who freewheels for one sample no longer drops off the list and the
+	// ranking stops re-sorting under their eyes (#1411).
+	const riding = $derived(room.riders.filter((r) => r.riding));
 </script>
 
 {#if room.phase === 'lounge'}

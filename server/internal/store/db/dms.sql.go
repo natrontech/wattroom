@@ -204,6 +204,7 @@ join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
 where m.sender_id = $1 or m.recipient_id = $1
 order by peer.id, m.created_at desc
+limit 1000
 `
 
 type ListDmHeadsRow struct {

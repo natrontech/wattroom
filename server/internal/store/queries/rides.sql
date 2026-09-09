@@ -46,7 +46,10 @@ insert into medals (room_id, user_id, ride_id, kind)
 values ($1, $2, $3, $4);
 
 -- name: ListRoomMedals :many
-select m.kind, m.awarded_at, u.display_name
+-- The rider's id and the moment travel with it (#1411): the client matched
+-- its own medal by display name and a UTC date, which found nothing after
+-- local midnight and could name the wrong rider.
+select m.kind, m.awarded_at, m.user_id, u.display_name
 from medals m
 join users u on u.id = m.user_id
 where m.room_id = $1

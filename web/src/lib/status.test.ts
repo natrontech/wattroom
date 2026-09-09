@@ -37,6 +37,33 @@ describe('statusOf', () => {
 		expect(roomOf(rooms, 'u-nobody')).toBe(undefined);
 	});
 
+	it('falls back to the friends list when the feed cannot see them', () => {
+		// #1434: a friend with the app open but not in a room you can see read
+		// as nothing in the DM list, while the friends panel said online.
+		const friends = [
+			{
+				id: 'u-anna',
+				name: 'Anna',
+				status: 'accepted' as const,
+				at: 0,
+				online: true,
+			},
+			{ id: 'u-ben', name: 'Ben', status: 'accepted' as const, at: 0 },
+			{ id: 'u-cid', name: 'Cid', status: 'pending_in' as const, at: 0 },
+		];
+		expect(statusOf(rooms, 'u-anna', friends)).toBe('online');
+		expect(statusOf(rooms, 'u-ben', friends)).toBe('offline');
+		// A pending request carries no presence (ADR-0012) — say nothing.
+		expect(statusOf(rooms, 'u-cid', friends)).toBe(null);
+		expect(statusOf(rooms, 'u-david', friends)).toBe(null);
+		// The feed wins where it has something: riding beats the list's online.
+		expect(
+			statusOf(rooms, 'u-mike', [
+				{ id: 'u-mike', name: 'Mike', status: 'accepted', at: 0, online: true },
+			]),
+		).toBe('riding');
+	});
+
 	it('does not answer for a namesake', () => {
 		// #649: two riders called Dave. The one standing in the room used to
 		// answer for the one who is not in it — an "online in MFW 5" badge and

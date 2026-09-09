@@ -1,3 +1,4 @@
+import type { Friend } from '$lib/friends/friends.svelte';
 import type { RailRoom } from '$lib/room/mockcompat';
 
 /**
@@ -30,17 +31,25 @@ export function roomOf(
 }
 
 /**
- * What the feed knows about them. `null` means it has nothing to say — no
- * badge at all, rather than a confident "offline" about someone who is simply
- * not in a room you can see.
+ * What the feed knows about them, then what the friends list knows (#1434):
+ * a friend with the app open is online (ADR-0012 amendment) whether or not
+ * they stand in a room you can see, and a friend without it is offline — the
+ * same two states the friends panel shows. `null` means neither has anything
+ * to say — no badge at all, rather than a confident "offline" about a
+ * stranger who is simply not in a room you can see.
  */
 export function statusOf(
 	rooms: readonly RailRoom[],
 	riderId: string,
+	friends: readonly Friend[] | null = null,
 ): PresenceStatus | null {
 	const room = roomOf(rooms, riderId);
-	if (!room) return null;
-	return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
+	if (room) return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
+	const friend = friends?.find(
+		(f) => f.id === riderId && f.status === 'accepted',
+	);
+	if (!friend) return null;
+	return friend.online ? 'online' : 'offline';
 }
 
 /**

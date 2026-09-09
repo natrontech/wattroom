@@ -238,7 +238,8 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 	got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	// Constant time: a timing oracle on a long-lived credential is worth closing.
 	if len(got) == 0 || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
-		s.log.Warn("synthetic sign-in rejected", "remote", r.RemoteAddr)
+		// No address: server/AGENTS.md logs nothing about a caller beyond ids.
+		s.log.Warn("synthetic sign-in rejected")
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized",
 			"That token is not valid for synthetic sign-in.")
 		return

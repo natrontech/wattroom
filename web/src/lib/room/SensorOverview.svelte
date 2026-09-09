@@ -190,7 +190,10 @@
 			{:else if trainerView.button}
 				<!-- "Pair trainer", not "Pair": the strip has no card around it to
 				     say what is being paired. -->
-				<button onclick={trainer.onPair} class="btn btn-secondary btn-xs"
+				<!-- Riding size (ux.md): this is the strip a rider sees mid-session,
+				     and re-pairing a dropped trainer is the one big button
+				     errors.md asks for (#1412). -->
+				<button onclick={trainer.onPair} class="btn btn-secondary btn-lg"
 					>{trainerView.button.variant === 'primary'
 						? 'Pair trainer'
 						: trainerView.button.label}</button

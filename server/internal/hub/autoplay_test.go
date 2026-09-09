@@ -16,17 +16,16 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// fakeAutoplaySource stands in for the playlists package (#627): a fixed
-// canned answer, so these tests exercise the hub's trigger/idle-recheck
-// wiring, not a database.
+// fakeAutoplaySource stands in for the playlists package (#627): one canned
+// answer, so these tests exercise the hub's trigger/idle-recheck wiring, not
+// a database.
 type fakeAutoplaySource struct {
-	fixed  *protocol.JukeboxCommand
 	tracks []protocol.JukeboxCommand
 	ok     bool
 }
 
-func (f fakeAutoplaySource) Autoplay(context.Context, string, SessionMood) (*protocol.JukeboxCommand, []protocol.JukeboxCommand, bool) {
-	return f.fixed, f.tracks, f.ok
+func (f fakeAutoplaySource) Autoplay(context.Context, string, SessionMood) ([]protocol.JukeboxCommand, bool) {
+	return f.tracks, f.ok
 }
 
 // moodSpy records what the hub told the source about the timeline (#270);
@@ -35,20 +34,19 @@ type moodSpy struct {
 	seen chan SessionMood
 }
 
-func (m *moodSpy) Autoplay(_ context.Context, _ string, mood SessionMood) (*protocol.JukeboxCommand, []protocol.JukeboxCommand, bool) {
+func (m *moodSpy) Autoplay(_ context.Context, _ string, mood SessionMood) ([]protocol.JukeboxCommand, bool) {
 	select {
 	case m.seen <- mood:
 	default:
 	}
-	return nil, []protocol.JukeboxCommand{{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "x"}}, true
+	return []protocol.JukeboxCommand{{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "x"}}, true
 }
 
 func TestAutoplaySeedsAnIdleDeckOnJoin(t *testing.T) {
-	fixed := protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "Warmup"}
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{
-		fixed: &fixed,
 		tracks: []protocol.JukeboxCommand{
+			{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "Warmup"},
 			{Action: "add", VideoID: "9bZkp7q19f0", Title: "Track 2"},
 		},
 		ok: true,
@@ -69,10 +67,10 @@ func TestAutoplaySeedsAnIdleDeckOnJoin(t *testing.T) {
 		}
 	}
 	if tick.Jukebox.Current == nil || tick.Jukebox.Current.VideoID != "dQw4w9WgXcQ" {
-		t.Fatalf("fixed starter did not reach the deck: %+v", tick.Jukebox)
+		t.Fatalf("the playlist's first track did not reach the deck: %+v", tick.Jukebox)
 	}
 	if len(tick.Jukebox.Queue) != 1 || tick.Jukebox.Queue[0].VideoID != "9bZkp7q19f0" {
-		t.Fatalf("the playlist behind it did not queue: %+v", tick.Jukebox.Queue)
+		t.Fatalf("the rest of the playlist did not queue: %+v", tick.Jukebox.Queue)
 	}
 
 	// A second rider joining a deck that is now playing must not re-trigger
@@ -170,10 +168,8 @@ func tickUntil(t *testing.T, conn *websocket.Conn, what string, want func(protoc
 }
 
 func TestAutoplayLoopsThePlaylistWhenTheDeckRunsDry(t *testing.T) {
-	fixed := protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "Warmup"}
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{
-		fixed:  &fixed,
 		tracks: []protocol.JukeboxCommand{{Action: "add", VideoID: "9bZkp7q19f0", Title: "Track"}},
 		ok:     true,
 	})
@@ -188,9 +184,7 @@ func TestAutoplayLoopsThePlaylistWhenTheDeckRunsDry(t *testing.T) {
 			return deck.Current != nil && deck.Current.VideoID == videoID
 		}
 	}
-	deck := tickUntil(t, conn, "fixed starter on the deck", playing("dQw4w9WgXcQ"))
-	endTrack(t, conn, deck)
-	deck = tickUntil(t, conn, "playlist track after the starter", playing("9bZkp7q19f0"))
+	deck := tickUntil(t, conn, "the playlist's track on the deck", playing("9bZkp7q19f0"))
 	firstPass := deck.Current.ID
 
 	// The last track ends with nobody joining: the playlist comes back on
@@ -199,7 +193,6 @@ func TestAutoplayLoopsThePlaylistWhenTheDeckRunsDry(t *testing.T) {
 	deck = tickUntil(t, conn, "the playlist looping", func(d protocol.JukeboxState) bool {
 		return playing("9bZkp7q19f0")(d) && d.Current.ID != firstPass
 	})
-	// The fixed start is a start: it does not come round again.
 	if len(deck.Queue) != 0 {
 		t.Fatalf("a loop should queue only the playlist, got %+v", deck.Queue)
 	}
@@ -231,24 +224,5 @@ func TestAutoplayOffLeavesADryDeckIdle(t *testing.T) {
 	readTick(t, conn)
 	if deck = readTick(t, conn).Jukebox; deck.Current != nil || len(deck.Queue) != 0 {
 		t.Fatalf("autoplay off must leave a dry deck idle: %+v", deck)
-	}
-}
-
-func TestAutoplayFixedStartAloneDoesNotLoop(t *testing.T) {
-	fixed := protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "Anthem"}
-	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	h.SetPlaylistSource(fakeAutoplaySource{fixed: &fixed, ok: true})
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/anthem-room", "jan:owner")
-
-	deck := tickUntil(t, conn, "fixed starter on the deck", func(d protocol.JukeboxState) bool { return d.Current != nil })
-	endTrack(t, conn, deck)
-
-	readTick(t, conn)
-	if deck = readTick(t, conn).Jukebox; deck.Current != nil {
-		t.Fatalf("a fixed start with no playlist must not replay itself: %+v", deck)
 	}
 }

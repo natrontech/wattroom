@@ -21,6 +21,10 @@ const maxTokensPerUser = 10 // plenty for one rider's agents; caps abuse
 
 type UserSource interface {
 	User(r *http.Request) (db.User, bool)
+	// The one boundary every mutating handler resolves auth through
+	// (auth.go): the Origin check on writes, and a 500 — not a 401 — when
+	// the session lookup itself failed (audit 2026-09-09).
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 type Service struct {
@@ -62,7 +66,6 @@ func (s *Service) FromRequest(r *http.Request) (db.User, bool) {
 // mandatory auth (RequireUser) so it can stand in for the cookie service.
 type ReadUserSource interface {
 	UserSource
-	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
 // ReadSource wraps a cookie source so bearer tokens also authenticate — GET
@@ -103,9 +106,8 @@ type tokenJSON struct {
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to manage your tokens.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	var req struct {
@@ -128,7 +130,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(existing) >= maxTokensPerUser {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
+		// A per-account ceiling is a 429 (errors.md), like the mail budget.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"Ten tokens is the cap — revoke one you no longer use first.")
 		return
 	}
@@ -157,9 +160,8 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to manage your tokens.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rows, err := s.store.Queries.ListUserTokens(r.Context(), user.ID)
@@ -183,9 +185,8 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	user, ok := s.users.RequireUser(w, r, "Sign in to manage your tokens.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))

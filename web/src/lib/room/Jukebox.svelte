@@ -14,7 +14,7 @@
 	import { formatClockLong } from '$lib/format';
 	import type { JukeboxCommand, JukeboxState } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
-	import Music from '@lucide/svelte/icons/music';
+	import TrackWave from '$lib/room/TrackWave.svelte';
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import JukeboxPlaylists from '$lib/room/JukeboxPlaylists.svelte';
@@ -226,15 +226,16 @@
 		     beside a truncated title and four identical grey buttons did not. -->
 		<div class="flex min-w-0 flex-col gap-2.5" {@attach contextMenu(deckMenu)}>
 			{#if current.trackId}
-				<!-- A pool track has no player to seat (#267): RMF's tile rules
-				     bind only while a YouTube entry plays, so this one is heard
-				     and not seen. The mark stands in for the art, at the same
-				     height, so the column does not jump between sources. -->
+				<!-- A library track has no player to seat (#267): RMF's tile
+				     rules bind only while a YouTube entry plays, so this one is
+				     heard and not seen. Its waveform takes the seat instead
+				     (#1425), at the same height, so the column does not jump
+				     between sources. -->
 				<div
-					class="bg-surface text-muted grid w-full place-items-center rounded-lg"
+					class="bg-surface w-full overflow-hidden rounded-lg px-2 py-6"
 					style="height: clamp(200px, 24vh, 240px)"
 				>
-					<Music size={28} />
+					<TrackWave trackId={current.trackId} progress={progress / 100} />
 				</div>
 			{:else}
 				<!-- The seat: the dock flies onto this hole (#445). ≥200 px tall so
@@ -422,46 +423,52 @@
 
 			<!-- Still your ears, one line down: sitting out is a local decision
 			     about a local player (#989, ADR-0018), so it belongs under the
-			     fader and nowhere near the transport above it. -->
-			<div class="flex min-w-0 items-center gap-1.5 text-[11px]">
+			     fader and nowhere near the transport above it. Icons at the
+			     transport's own size (#1423): two lines of text were the
+			     smallest targets in the column, on the one row that is only
+			     ever pressed mid-ride. Both verbs stay visible — the menu is
+			     never the only way (ux.md). -->
+			<div class="flex min-w-0 items-center justify-end gap-1 text-[11px]">
 				{#if listening.out}
-					<button
-						onclick={() => listening.rejoin()}
-						class="btn btn-secondary btn-xs"
-						title="back in with the room, from wherever it has got to"
-						><Headphones size={12} /> Rejoin</button
-					>
-					<span class="text-muted min-w-0 truncate"
+					<span class="text-muted min-w-0 flex-1 truncate"
 						>{listening.mode === 'skip'
 							? 'back on the next track'
 							: 'the room is listening'}</span
 					>
+					<button
+						onclick={() => listening.rejoin()}
+						class="text-ink icon-btn"
+						aria-label="rejoin the music"
+						title="Rejoin — back in with the room, from wherever it has got to"
+						><Headphones size={17} /></button
+					>
 				{:else}
+					<span class="text-muted/70 min-w-0 flex-1 truncate">yours only</span>
 					<button
 						onclick={() => stepOut('skip')}
-						class="btn btn-ghost btn-xs text-muted"
-						title="sit this one out — back automatically on the next track"
-						><Hourglass size={12} /> Skip for me</button
+						class="text-muted hover:text-ink icon-btn"
+						aria-label="skip this one for me"
+						title="Skip for me — back automatically on the next track"
+						><Hourglass size={17} /></button
 					>
 					<button
 						onclick={() => stepOut('stop')}
-						class="btn btn-ghost btn-xs text-muted"
-						title="stop the music for you — the room keeps playing"
-						><HeadphoneOff size={12} /> Stop for me</button
+						class="text-muted hover:text-ink icon-btn"
+						aria-label="stop the music for me"
+						title="Stop for me — the room keeps playing"
+						><HeadphoneOff size={17} /></button
 					>
 				{/if}
 			</div>
 		</div>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
-			Nothing is playing. Paste a YouTube link — or drop one in the chat and
-			queue it from there — and everyone hears it on the same second.
+			Nothing is playing. Search your library or paste a YouTube link, and
+			everyone hears it on the same second.
 		</p>
 	{/if}
 
 	<JukeboxAdd {send} {refusal} />
-
-	<JukeboxPlaylists {slug} />
 
 	{#if queue.length}
 		<div class="min-w-0">
@@ -497,6 +504,10 @@
 			</p>
 		</div>
 	{/if}
+
+	<!-- What is saved comes after what is live (#1423): the queue is what the
+	     room is about to hear; the playlists are where it can reach next. -->
+	<JukeboxPlaylists {slug} />
 
 	{#if history.length}
 		<details class="min-w-0">

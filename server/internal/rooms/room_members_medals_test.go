@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/natrontech/wattroom/server/internal/store"
 )
 
 // The roster's medal count is every medal the room awarded that rider, by id
@@ -37,6 +39,14 @@ func TestTheRosterCountsEveryMedalARiderWonHere(t *testing.T) {
 	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
 	if status != http.StatusOK {
 		t.Fatalf("room: %d", status)
+	}
+	// The recent list names the rider by id and the moment in ms (#1411).
+	medalRows, _ := body["medals"].([]any)
+	if len(medalRows) == 0 {
+		t.Fatal("no recent medals in the room payload")
+	}
+	if first, _ := medalRows[0].(map[string]any); first["riderId"] != store.UUIDString(bob) || first["awardedAtMs"] == nil {
+		t.Errorf("recent medal names %v at %v, want bob's id and a moment", first["riderId"], first["awardedAtMs"])
 	}
 	members, _ := body["members"].([]any)
 	counts := map[string]any{}

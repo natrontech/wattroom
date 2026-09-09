@@ -421,6 +421,7 @@ func (q *Queries) LeaveCrewRooms(ctx context.Context, arg LeaveCrewRoomsParams) 
 }
 
 const listCrewBanned = `-- name: ListCrewBanned :many
+
 select u.id, u.display_name, u.avatar_url, cr.set_at
 from crew_roles cr
 join users u on u.id = cr.user_id
@@ -435,6 +436,7 @@ type ListCrewBannedRow struct {
 	SetAt       pgtype.Timestamptz
 }
 
+// an engineering bound (#1416): a crew is a training circle, not a forum
 func (q *Queries) ListCrewBanned(ctx context.Context, crewID pgtype.UUID) ([]ListCrewBannedRow, error) {
 	rows, err := q.db.Query(ctx, listCrewBanned, crewID)
 	if err != nil {
@@ -506,6 +508,7 @@ where $2::boolean
               join visible_rooms v on v.room_id = r.id and v.user_id = $3
               where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')
 order by p.since
+limit 1000
 `
 
 type ListCrewPeopleParams struct {
@@ -631,6 +634,7 @@ where r.crew_id in (select crew_id from mine)
   and not exists (select 1 from crew_roles cr
                   where cr.crew_id = r.crew_id and cr.user_id = $1 and cr.role = 'banned')
 order by r.created_at
+limit 1000
 `
 
 type ListCrewRoomsForRow struct {
@@ -767,6 +771,7 @@ func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]L
 }
 
 const pickCrewSuccessor = `-- name: PickCrewSuccessor :one
+
 select cr.user_id
 from crew_roles cr
 where cr.crew_id = $1 and cr.user_id <> $2 and cr.role in ('admin', 'member')
@@ -779,6 +784,7 @@ type PickCrewSuccessorParams struct {
 	Departing pgtype.UUID
 }
 
+// an engineering bound (#1416): three rooms per owner, crew-sized crews
 // docs/SPEC.md's succession rule: the longest-standing admin, else the
 // longest-standing member (#1236: the rows, not the rooms); never the
 // departing owner, never anyone the crew banned. No row means nobody is left

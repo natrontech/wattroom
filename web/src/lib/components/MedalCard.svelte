@@ -4,10 +4,12 @@
 		name: string;
 		criterion: string;
 		rider: string;
-		value: string;
-		unit: string;
+		/** The medal's own metric, when the client knows it (#1412). */
+		value?: string;
+		unit?: string;
 		kj: number;
-		xp: number;
+		/** The ride's XP, once the room has saved it — absent until then (#1411). */
+		xp?: number;
 	}
 </script>
 
@@ -102,13 +104,15 @@
 			</h2>
 		</div>
 
-		<div class="mt-8 flex items-baseline gap-2">
-			<span
-				class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
-				>{medal.value}</span
-			>
-			<span class="text-muted text-lg">{medal.unit}</span>
-		</div>
+		{#if medal.value}
+			<div class="mt-8 flex items-baseline gap-2">
+				<span
+					class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"
+					>{medal.value}</span
+				>
+				<span class="text-muted text-lg">{medal.unit}</span>
+			</div>
+		{/if}
 
 		<p class="font-display mt-6 text-2xl font-bold">{medal.rider}</p>
 
@@ -116,7 +120,8 @@
 			<p class="text-sm">{roomName}</p>
 			<p class="text-muted text-xs">Sweet Spot 2×20 · 25 Aug 2026</p>
 			<p class="text-muted mt-3 font-mono text-[11px] tabular-nums">
-				{medal.kj} kJ · {medal.xp} XP
+				{medal.kj} kJ{#if medal.xp !== undefined}
+					· {medal.xp} XP{/if}
 			</p>
 		</div>
 	</div>

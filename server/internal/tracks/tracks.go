@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -85,7 +84,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) me(w http.ResponseWriter, r *http.Request) (db.User, bool) {
-	return s.auth.RequireUser(w, r, "Sign in to use the music pool.")
+	return s.auth.RequireUser(w, r, "Sign in to use your library.")
 }
 
 type trackJSON struct {
@@ -152,7 +151,9 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		limit = min(n, maxLimit)
 	}
 	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
-		offset = n
+		// Clamped inside int32 (audit 2026-09-09): the narrowing below wrapped
+		// negative past 2^31 and Postgres refused the read.
+		offset = min(n, 1_000_000)
 	}
 	// One tag, not a set: narrowing by two at once is a query nobody has asked
 	// for, and the facet row is one click deep.
@@ -164,13 +165,13 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListTracks(r.Context(), db.ListTracksParams{
 		UploadedBy: me.ID,
-		Search:     strings.TrimSpace(r.URL.Query().Get("q")),
+		Search:     searchQuery(r.URL.Query().Get("q")),
 		Tag:        tag,
-		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // bounded above
+		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // limit and offset both clamped above
 	})
 	if err != nil {
 		s.log.Error("track list", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
 		return
 	}
 	// The shelf labels, over the whole pool rather than this page: a rider
@@ -178,7 +179,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	facets, err := s.store.Queries.TrackTagCounts(r.Context(), me.ID)
 	if err != nil {
 		s.log.Error("track tag counts", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The music pool could not be read.")
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
 		return
 	}
 	out := make([]trackJSON, 0, len(rows))

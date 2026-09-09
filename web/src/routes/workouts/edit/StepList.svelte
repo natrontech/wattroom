@@ -17,7 +17,7 @@
 		append,
 		duplicate,
 		move,
-		remove,
+		removeAndSelect,
 		reorder,
 		sameParent,
 		STEP_TYPES,
@@ -110,8 +110,7 @@
 				icon: Trash2,
 				danger: true,
 				onSelect: () => {
-					remove(workout, path);
-					selected = null;
+					selected = removeAndSelect(workout, path);
 				},
 			},
 		];

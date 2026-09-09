@@ -9,6 +9,7 @@
  * together rather than clipping.
  */
 import { bus } from '$lib/sound/cues';
+import { peaksOf } from '$lib/sound/peaks';
 import { mixer } from '$lib/sound/mixer.svelte';
 import type { Edit } from '$lib/board/clips.svelte';
 
@@ -284,21 +285,5 @@ export async function peaks(
 ): Promise<number[] | null> {
 	const buffer = await load(clipId);
 	if (!buffer) return null;
-	const samples = buffer.getChannelData(0);
-	const per = Math.max(1, Math.floor(samples.length / buckets));
-	const out: number[] = [];
-	let loudest = 0;
-	for (let b = 0; b < buckets; b++) {
-		let peak = 0;
-		const from = b * per;
-		for (let i = from; i < Math.min(from + per, samples.length); i++) {
-			const level = Math.abs(samples[i]);
-			if (level > peak) peak = level;
-		}
-		loudest = Math.max(loudest, peak);
-		out.push(peak);
-	}
-	// Normalised for drawing only — the audio is untouched. A quiet clip whose
-	// shape was three pixels tall told the rider nothing.
-	return loudest > 0 ? out.map((p) => p / loudest) : out;
+	return peaksOf(buffer.getChannelData(0), buckets);
 }

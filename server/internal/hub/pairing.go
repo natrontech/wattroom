@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -110,10 +111,11 @@ func (rm *room) claimSensors(c *client, claim protocol.SensorClaim) bool {
 }
 
 func truncate(s string, max int) string {
-	if len(s) <= max {
+	// Runes, not bytes: four CJK characters is the whole device label.
+	if utf8.RuneCountInString(s) <= max {
 		return s
 	}
-	return s[:max]
+	return string([]rune(s)[:max])
 }
 
 // releaseSensors drops everything a leaving socket held, so the rider's other

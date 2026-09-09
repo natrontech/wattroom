@@ -3,9 +3,12 @@
 package dms
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -27,9 +30,14 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 	id, err := s.store.Queries.SaveDmImage(r.Context(), db.SaveDmImageParams{
 		SenderID: me.ID, RecipientID: peer, Mime: mime, Bytes: data,
 	})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		// Zero rows = the friendship gate refused, same as SendDm.
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only message accepted friends.")
+		return
+	}
+	if err != nil {
+		s.log.Error("dm image save failed", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be sent. Try again.")
 		return
 	}
 	s.pruneImages(r, me.ID, peer)
@@ -56,12 +64,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
 		return
 	}
-	w.Header().Set("Content-Type", img.Mime)
-	// Friend-supplied bytes from our own origin: a polyglot that passed the
-	// upload sniff must never be re-interpreted as HTML.
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
-	_, _ = w.Write(img.Bytes)
+	httpx.ServeImmutableImage(w, img.Mime, img.Bytes)
 }
 
 // pruneImages sweeps a pair's orphaned blobs. Called from both writes that can

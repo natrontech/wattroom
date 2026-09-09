@@ -5,6 +5,7 @@ import {
 	duplicate,
 	move,
 	remove,
+	removeAndSelect,
 	reorder,
 	sameParent,
 	stepAt,
@@ -153,5 +154,38 @@ describe('the path a segment carries', () => {
 			[1, 0],
 			[1, 1],
 		]);
+	});
+});
+
+// Deleting keeps the rider on a step (ux.md: preserve focus; #1392).
+describe('removeAndSelect', () => {
+	const sheet = (): Workout => ({
+		name: 'x',
+		author: 'x',
+		steps: [
+			{ type: 'steady', seconds: 60, target: 0.6 },
+			{
+				type: 'repeat',
+				times: 2,
+				steps: [
+					{ type: 'sprint', seconds: 15 },
+					{ type: 'steady', seconds: 60, target: 0.5 },
+				],
+			},
+			{ type: 'steady', seconds: 60, target: 0.7 },
+		],
+	});
+	it("selects the step that took the deleted one's place", () => {
+		const w = sheet();
+		expect(removeAndSelect(w, [0])).toEqual([0]);
+		expect(w.steps.length).toBe(2);
+	});
+	it('falls back to the last sibling, then the parent, then nothing', () => {
+		const w = sheet();
+		expect(removeAndSelect(w, [2])).toEqual([1]);
+		expect(removeAndSelect(w, [1, 1])).toEqual([1, 0]);
+		expect(removeAndSelect(w, [1, 0])).toEqual([1]);
+		expect(removeAndSelect(w, [1])).toEqual([0]);
+		expect(removeAndSelect(w, [0])).toBeNull();
 	});
 });

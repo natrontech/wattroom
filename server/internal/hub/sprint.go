@@ -29,6 +29,10 @@ type sprint struct {
 	samples  map[string][]int
 	results  []protocol.SprintScore
 	scored   bool
+	// The last wall-clock second each rider landed a sample in: the podium
+	// is best 5 s w/kg (docs/SPEC.md), and five *packets* from a trainer
+	// notifying at 4 Hz were 1.25 s (audit 2026-09-09).
+	seconds map[string]int64
 }
 
 // armSprint replaces any previous sprint — re-arming is the coach's restart.
@@ -45,8 +49,15 @@ func (sp *sprint) collect(riderID string, watts int, now time.Time) {
 	if sp == nil || now.Before(sp.startsAt) || now.After(sp.endsAt) {
 		return
 	}
-	// The window is 15 s at ~1 Hz per rider; a hostile client is already
-	// rate-shaped by the read loop, but cap anyway.
+	if sp.seconds == nil {
+		sp.seconds = make(map[string]int64)
+	}
+	second := now.Unix()
+	if last, ok := sp.seconds[riderID]; ok && second <= last {
+		return
+	}
+	sp.seconds[riderID] = second
+	// The window is 15 s at one sample a second per rider; cap anyway.
 	if len(sp.samples[riderID]) < 64 {
 		sp.samples[riderID] = append(sp.samples[riderID], watts)
 	}

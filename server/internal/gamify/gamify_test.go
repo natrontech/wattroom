@@ -135,7 +135,7 @@ func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
 
 func ban(t *testing.T, s *Service, room pgtype.UUID, user db.User) {
 	t.Helper()
-	if err := s.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := s.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room, UserID: user.ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)

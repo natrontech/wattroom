@@ -158,7 +158,7 @@ func TestWebSocketRoom(t *testing.T) {
 
 	// The coach picks and starts; the tick's shared state moves to countdown.
 	for _, control := range []protocol.Control{
-		{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 120},
+		{Action: "pick", WorkoutName: "Openers", WorkoutJSON: wsWorkout, TotalSeconds: 120},
 		{Action: "start"},
 	} {
 		if err := wsjson.Write(t.Context(), coach, protocol.ClientMessage{Control: &control}); err != nil {
@@ -461,7 +461,7 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 
 	// And the control check honours it on the socket that is already open.
 	if err := wsjson.Write(t.Context(), member, protocol.ClientMessage{
-		Control: &protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 120},
+		Control: &protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: wsWorkout, TotalSeconds: 120},
 	}); err != nil {
 		t.Fatalf("send control: %v", err)
 	}
@@ -579,3 +579,7 @@ func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
 		t.Errorf("the two riders saw different rosters: %d vs %d", len(janTick.Roster), len(svenTick.Roster))
 	}
 }
+
+// A workout the WS pick check accepts (audit 2026-09-09): "{}" used to pass
+// because the hub never looked.
+const wsWorkout = `{"steps":[{"type":"steady","seconds":120,"target":0.8}]}`

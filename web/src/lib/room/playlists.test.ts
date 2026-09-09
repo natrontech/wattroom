@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { commandFromLink, singleVideoFromLink } from './playlists.svelte';
+import { commandFromLink } from './playlists.svelte';
 
 // readLink's own branching is jukebox-add.test.ts's job (#615) — these cover
-// only what commandFromLink/singleVideoFromLink add on top of it: turning a
-// parsed link into a save-able command, or the "paste a single video
-// instead" refusal a playlist link earns from the fixed-start field.
+// only what commandFromLink adds on top of it: turning a parsed link into a
+// save-able command.
 
 describe('commandFromLink (#627)', () => {
 	it("passes an unparseable link's message straight through", async () => {
@@ -31,22 +30,5 @@ describe('commandFromLink (#627)', () => {
 		} finally {
 			vi.unstubAllGlobals();
 		}
-	});
-});
-
-describe('singleVideoFromLink (#627)', () => {
-	it('refuses a playlist link — the fixed-start field takes one video', async () => {
-		const result = await singleVideoFromLink(
-			'https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI',
-		);
-		expect(result).toEqual({
-			ok: false,
-			message: 'That is a playlist link — paste a single video instead.',
-		});
-	});
-
-	it("passes an unparseable link's message straight through", async () => {
-		const result = await singleVideoFromLink('not a link');
-		expect(result.ok).toBe(false);
 	});
 });

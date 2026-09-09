@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -132,16 +133,24 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// One report per rider per 10 s: a stuck retry loop must not flood.
+	// Keyed on the id (audit 2026-09-09): a display name is the rider's to
+	// change, which reset their own bucket, and the map is swept so it does
+	// not remember every rider ever seen.
+	key := store.UUIDString(user.ID)
 	s.mu.Lock()
-	last := s.lastSeen[user.DisplayName]
 	now := time.Now()
-	if now.Sub(last) < 10*time.Second {
+	for k, at := range s.lastSeen {
+		if now.Sub(at) >= floodWindow {
+			delete(s.lastSeen, k)
+		}
+	}
+	if now.Sub(s.lastSeen[key]) < floodWindow {
 		s.mu.Unlock()
-		httpx.WriteError(w, http.StatusTooManyRequests, "invalid_request",
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"That flag just went through — give it a few seconds.")
 		return
 	}
-	s.lastSeen[user.DisplayName] = now
+	s.lastSeen[key] = now
 	s.mu.Unlock()
 
 	r.Body = http.MaxBytesReader(w, r.Body, 512<<10)
@@ -152,7 +161,8 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That report could not be read.")
 		return
 	}
-	if len(report.Route) > 200 || len(report.Note) > 2000 || len(report.FirstError) > 2000 {
+	if len(report.Route) > 200 || len(report.Note) > 2000 || len(report.FirstError) > 2000 ||
+		len(report.ClientBuild) > 200 || len(report.UserAgent) > 500 || len(report.Trainer) > 200 {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
 		return
 	}
@@ -237,11 +247,22 @@ func firstLine(candidates ...string) string {
 // was in is the same disclosure in two halves.
 func issueBody(sha string, report Report) string {
 	buffer, _ := json.Marshal(report.Buffer)
+	// Every rider-supplied field is fenced (audit 2026-09-09): this lands in
+	// a public issue, and prose there is Markdown — a note could carry an
+	// image or a link. Backticks inside a value would end the fence early.
 	return fmt.Sprintf(
-		"Route: `%s`\nServer: `%s` · Client: `%s`\nUA: %s\nTrainer: %s\n\n%s\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
-		publicRoute(report.Route), sha, report.ClientBuild, report.UserAgent,
-		report.Trainer, report.Note, string(buffer),
+		"Route: %s\nServer: `%s` · Client: %s\nUA: %s\nTrainer: %s\n\n```text\n%s\n```\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
+		fenced(publicRoute(report.Route)), sha, fenced(report.ClientBuild), fenced(report.UserAgent),
+		fenced(report.Trainer), strings.ReplaceAll(report.Note, "```", "'''"), string(buffer),
 	)
+}
+
+// floodWindow is the one-report-per-rider spacing the limiter keeps.
+const floodWindow = 10 * time.Second
+
+// fenced puts a rider's string in inline code with nothing that could close it.
+func fenced(s string) string {
+	return "`" + strings.NewReplacer("`", "'", "\n", " ", "\r", " ").Replace(s) + "`"
 }
 
 // publicRoute drops the one segment of a route that names somebody: a room

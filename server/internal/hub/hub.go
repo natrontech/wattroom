@@ -44,14 +44,13 @@ type ChatKeeper interface {
 // dry (#676) — and always outside the room's lock (server/AGENTS.md: DB I/O
 // never happens while holding a room mutex). Defined here, where it is
 // consumed; the playlists service implements it. Nil, or ok=false, means
-// nothing to play: autoplay stays silent. fixed, if non-nil, is queued before
-// tracks — tracks already carries whatever order (list order or shuffled) the
-// caller's autoplay setting currently means.
-// mood is what the room's timeline is asking for at the moment of the read
-// (#270); the zero value means no preference, and every source is free to
-// ignore it.
+// nothing to play: autoplay stays silent. tracks already carries whatever
+// order (list order or shuffled) the caller's autoplay setting currently
+// means. mood is what the room's timeline is asking for at the moment of the
+// read (#270); the zero value means no preference, and every source is free
+// to ignore it.
 type AutoplaySource interface {
-	Autoplay(ctx context.Context, slug string, mood SessionMood) (fixed *protocol.JukeboxCommand, tracks []protocol.JukeboxCommand, ok bool)
+	Autoplay(ctx context.Context, slug string, mood SessionMood) (tracks []protocol.JukeboxCommand, ok bool)
 }
 
 // TrackHistory hears what a room did with a pool track (#269, ADR-0015):
@@ -136,6 +135,10 @@ type Hub struct {
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
 	lobbyAuth func(*http.Request) (userID string, ok bool)
+	// Open sockets per rider, room and lobby together (#1415): each costs a
+	// goroutine pair and a walk of the lobby under h.mu on join and leave,
+	// and one account could open any number.
+	sockets map[string]int
 	// Chat persistence queue (#219): read loops enqueue, one worker saves.
 	saves chan chatSave
 	// Autoplay source and its trigger queue (#627): a join or a deck running
@@ -151,9 +154,6 @@ type Hub struct {
 type autoplayJob struct {
 	rm   *room
 	slug string
-	// The deck ran dry rather than a rider joining (#676): the playlist
-	// loops, the fixed start does not — SPEC calls it a start.
-	loop bool
 }
 
 // chatSave is one line awaiting persistence — enough to save it and to
@@ -186,7 +186,7 @@ func (h *Hub) SetTrackHistory(k TrackHistory) { h.history = k }
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
 		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
-		lobby: make(map[*lobbyClient]string),
+		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's chat history or autoplay.
@@ -218,11 +218,8 @@ func (h *Hub) autoplayWorker() {
 		// Read the mood at the moment of the REFILL, not when the job was
 		// queued: the worker can lag a busy hub, and a block that has since
 		// ended is not what the room is riding.
-		fixed, tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
-		if job.loop {
-			fixed = nil
-		}
-		job.rm.applyAutoplay(fixed, tracks, ok, h.now())
+		tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
+		job.rm.applyAutoplay(tracks, ok, h.now())
 	}
 }
 
@@ -243,13 +240,13 @@ func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
 
 // triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
 // read that decides what autoplay puts on it (#627). Fired by a join and by
-// the deck running dry (#676, loop=true). The check-then-enqueue happens
+// the deck running dry (#676). The check-then-enqueue happens
 // outside any I/O; the worker re-checks idle under the room's lock before
 // seeding, so two riders joining the same instant cannot double-queue the
 // room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
 // from a client each pass, and a source with nothing to play — autoplay off,
 // an empty playlist — leaves the deck idle and the queue quiet.
-func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
+func (h *Hub) triggerAutoplay(rm *room, slug string) {
 	if h.playlists == nil {
 		return
 	}
@@ -260,7 +257,7 @@ func (h *Hub) triggerAutoplay(rm *room, slug string, loop bool) {
 		return
 	}
 	select {
-	case h.autoplays <- autoplayJob{rm: rm, slug: slug, loop: loop}:
+	case h.autoplays <- autoplayJob{rm: rm, slug: slug}:
 	default:
 		// Full queue: the room just stays idle until the next join, which
 		// will try again — better than a joining rider's upgrade or read
@@ -405,7 +402,7 @@ func (h *Hub) room(slug string) *room {
 	if !ok {
 		rm = newRoom(slug)
 		rm.changed = h.PresenceChanged
-		rm.deckIdled = func() { h.triggerAutoplay(rm, slug, true) }
+		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
 		rm.xp = h.xp
 		rm.recaps = h.recaps
@@ -431,4 +428,29 @@ func (h *Hub) launchRoom(rm *room) {
 	safego.SuperviseThen(h.log, h.now, "room "+rm.slug, rm.stop,
 		func() { rm.run(h.log, h.now, h.saver) },
 		func() { h.CloseRoom(rm.slug) })
+}
+
+// maxSocketsPerRider is generous — a phone, a laptop, a TV and a few tabs —
+// and far under what makes join and leave O(lobby) for one account (#1415).
+const maxSocketsPerRider = 16
+
+// admitSocket counts one more open socket for the rider, refusing past the cap.
+func (h *Hub) admitSocket(riderID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.sockets[riderID] >= maxSocketsPerRider {
+		return false
+	}
+	h.sockets[riderID]++
+	return true
+}
+
+func (h *Hub) releaseSocket(riderID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.sockets[riderID] <= 1 {
+		delete(h.sockets, riderID)
+		return
+	}
+	h.sockets[riderID]--
 }

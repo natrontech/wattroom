@@ -22,7 +22,7 @@
 	import {
 		duplicate,
 		move,
-		remove,
+		removeAndSelect,
 		stepAt,
 		wrapInRepeat,
 	} from '$lib/workout/tree';
@@ -144,9 +144,12 @@
 	// confirm (errors.md): the click runs, the toast is the way back.
 	function load(next: Workout, asCopy: boolean) {
 		workout = structuredClone($state.snapshot(next) as Workout);
-		if (asCopy) workout.name = `${next.name} (copy)`;
-		// A copy is a new workout: it saves beside the one you opened, never over it.
-		editingId = null;
+		if (asCopy) {
+			workout.name = `${next.name} (copy)`;
+			// A copy is a new workout: it saves beside the one you opened, never
+			// over it. Reloading the one you opened keeps editing it.
+			editingId = null;
+		}
 		selected = null;
 		// The toast keeps its place — a load's effect is off-screen, in the
 		// library column — but it undoes through the same stack ⌘Z does, so the
@@ -156,17 +159,29 @@
 		});
 	}
 
+	// A refused save is its own slot with its own tone: it shared `status`
+	// with two unrelated notices and read as a warning (#1392).
+	let saveError = $state<string | null>(null);
 	async function save() {
 		const result = await custom.save(
 			$state.snapshot(workout) as Workout,
 			editingId ?? undefined,
 		);
 		if (result.error) {
-			status = result.error;
+			saveError = result.error;
 			return;
 		}
-		void goto(`/workouts?saved=${result.id}`);
+		saveError = null;
+		// The toast is the confirmation and the way to ride it; nothing read
+		// the ?saved= the page used to carry.
+		toasts.push(`Saved “${workout.name}” — ride it.`, {
+			href: `/ride?w=${result.id}`,
+		});
+		void goto('/workouts');
 	}
+
+	const samePath = (a: number[] | null, b: number[] | undefined) =>
+		!!a && !!b && a.length === b.length && a.every((n, i) => n === b[i]);
 </script>
 
 <svelte:head
@@ -188,6 +203,19 @@
 			{formatClock(total)} · {segments.length} blocks
 		</span>
 		<div class="ml-auto flex items-center gap-3">
+			<!-- ⌘Z has a face (#1392): the two verbs the whole sheet answers to. -->
+			<button
+				onclick={() => apply(history.undo())}
+				disabled={!history.canUndo}
+				class="btn btn-secondary btn-xs"
+				title="Undo (⌘Z)">Undo</button
+			>
+			<button
+				onclick={() => apply(history.redo())}
+				disabled={!history.canRedo}
+				class="btn btn-secondary btn-xs"
+				title="Redo (⇧⌘Z)">Redo</button
+			>
 			<a href="/workouts" class="text-muted hover:text-ink text-sm">Cancel</a>
 			<button
 				onclick={save}
@@ -198,9 +226,31 @@
 	</header>
 
 	<!-- Validation is inline and constant: a rider should never press Save to find out. -->
-	{#if !check.ok}
+	{#if saveError}
 		<div class="mt-3">
-			<Banner tone="error">{check.error}</Banner>
+			<Banner tone="error">
+				{saveError}
+				{#snippet action()}
+					<button onclick={save} class="btn-link text-xs">Try again</button>
+				{/snippet}
+			</Banner>
+		</div>
+	{:else if !check.ok}
+		<div class="mt-3">
+			<Banner tone="error">
+				{check.error}
+				{#snippet action()}
+					{#if check.path && !samePath(selected, check.path)}
+						<!-- The field can be three blocks below on a phone: one tap
+						     selects the step, and the inspector says it again there. -->
+						<button
+							onclick={() =>
+								(selected = check.ok ? null : (check.path ?? null))}
+							class="btn-link text-xs">Show the step</button
+						>
+					{/if}
+				{/snippet}
+			</Banner>
 		</div>
 	{:else if status}
 		<div class="mt-3">
@@ -225,8 +275,20 @@
 		</div>
 	</div>
 
+	<!-- Source order is the phone's order (ux.md): the steps, then the step,
+	     then the library — a rider used to scroll past thirty rows to reach
+	     their own steps. On a desk the columns take their places by hand. -->
 	<div class="mt-4 grid gap-4 lg:grid-cols-[200px_1fr_280px]">
-		<aside>
+		<section class="lg:col-start-2 lg:row-start-1">
+			<StepList {workout} bind:selected ftp={FTP} />
+		</section>
+
+		<aside class="lg:col-start-3 lg:row-start-1">
+			<h2 class="eyebrow">step</h2>
+			{@render inspector()}
+		</aside>
+
+		<aside class="lg:col-start-1 lg:row-start-1">
 			<h2 class="eyebrow">library</h2>
 			<ul class="mt-3 space-y-1">
 				{#each custom.all as entry (entry.id)}
@@ -265,207 +327,215 @@
 				{/each}
 			</ul>
 		</aside>
+	</div>
+</main>
 
-		<section>
-			<StepList {workout} bind:selected ftp={FTP} />
-		</section>
+{#snippet inspector()}
+	{#if current}
+		<div class="panel mt-3 space-y-4 p-4">
+			{#if current.type !== 'repeat'}
+				<label class="block">
+					<span class="eyebrow">duration</span>
+					<input
+						value={formatClock(current.seconds)}
+						onchange={(event) => {
+							const parsed = parseDuration(event.currentTarget.value);
+							if (parsed !== null) current.seconds = parsed;
+							event.currentTarget.value = formatClock(current.seconds);
+						}}
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[10px]"
+						>m:ss — a bare number is minutes</span
+					>
+				</label>
+			{/if}
 
-		<aside>
-			<h2 class="eyebrow">step</h2>
-			{#if current}
-				<div class="panel mt-3 space-y-4 p-4">
-					{#if current.type !== 'repeat'}
+			{#if current.type === 'steady'}
+				<label class="block">
+					<span class="eyebrow">target (% FTP)</span>
+					<input
+						type="number"
+						min="20"
+						max="200"
+						value={Math.round((current.target ?? 0) * 100)}
+						oninput={(event) =>
+							((current as SteadyStep).target =
+								Number(event.currentTarget.value) / 100)}
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[11px]">
+						{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
+						{ZONE_NAMES[zoneOfStep(current, FTP)]}
+					</span>
+				</label>
+				<!-- Cadence and HR bands (#66, #67): display-only, optional,
+						     and filled on three of the library's 27 workouts — folded
+						     unless the step carries one (ux.md's 95 % rule; #1392).
+						     Empty input = no bound on that side. -->
+				<details
+					open={current.cadenceLow !== undefined ||
+						current.cadenceHigh !== undefined ||
+						current.hrLow !== undefined ||
+						current.hrHigh !== undefined}
+				>
+					<summary class="eyebrow cursor-pointer"
+						>cadence and heart-rate bands</summary
+					>
+					<p class="text-muted mt-1 mb-2 text-[11px]">
+						Shown on the dashboard, never scored. The rpm floor stays above 50:
+						that is where the spiral guard trips.
+					</p>
+					<div class="grid grid-cols-2 gap-3">
 						<label class="block">
-							<span class="eyebrow">duration</span>
+							<span class="eyebrow">rpm from</span>
 							<input
-								value={formatClock(current.seconds)}
-								onchange={(event) => {
-									const parsed = parseDuration(event.currentTarget.value);
-									if (parsed !== null) current.seconds = parsed;
-									event.currentTarget.value = formatClock(current.seconds);
-								}}
+								type="number"
+								min="51"
+								max="150"
+								placeholder="–"
+								value={current.cadenceLow ?? ''}
+								oninput={(event) =>
+									((current as SteadyStep).cadenceLow =
+										event.currentTarget.value === ''
+											? undefined
+											: Number(event.currentTarget.value))}
 								class="input mt-1 w-full font-mono tabular-nums"
 							/>
-							<span class="text-muted mt-1 block text-[10px]"
-								>m:ss — a bare number is minutes</span
-							>
 						</label>
-					{/if}
-
-					{#if current.type === 'steady'}
 						<label class="block">
-							<span class="eyebrow">target (% FTP)</span>
+							<span class="eyebrow">rpm to</span>
+							<input
+								type="number"
+								min="30"
+								max="150"
+								placeholder="–"
+								value={current.cadenceHigh ?? ''}
+								oninput={(event) =>
+									((current as SteadyStep).cadenceHigh =
+										event.currentTarget.value === ''
+											? undefined
+											: Number(event.currentTarget.value))}
+								class="input mt-1 w-full font-mono tabular-nums"
+							/>
+						</label>
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<label class="block">
+							<span class="eyebrow">bpm from</span>
+							<input
+								type="number"
+								min="60"
+								max="220"
+								placeholder="–"
+								value={current.hrLow ?? ''}
+								oninput={(event) =>
+									((current as SteadyStep).hrLow =
+										event.currentTarget.value === ''
+											? undefined
+											: Number(event.currentTarget.value))}
+								class="input mt-1 w-full font-mono tabular-nums"
+							/>
+						</label>
+						<label class="block">
+							<span class="eyebrow">bpm to</span>
+							<input
+								type="number"
+								min="60"
+								max="220"
+								placeholder="–"
+								value={current.hrHigh ?? ''}
+								oninput={(event) =>
+									((current as SteadyStep).hrHigh =
+										event.currentTarget.value === ''
+											? undefined
+											: Number(event.currentTarget.value))}
+								class="input mt-1 w-full font-mono tabular-nums"
+							/>
+						</label>
+					</div>
+				</details>
+			{:else if current.type === 'repeat'}
+				<label class="block">
+					<span class="eyebrow">repeats</span>
+					<input
+						type="number"
+						min="1"
+						max="50"
+						bind:value={current.times}
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+				</label>
+				<p class="text-muted text-[11px]">
+					Its steps sit indented under it in the list — click one to edit it.
+				</p>
+			{:else if current.type !== 'sprint'}
+				<div class="grid grid-cols-2 gap-3">
+					{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}
+						<label class="block">
+							<span class="eyebrow">{field.label} (%)</span>
 							<input
 								type="number"
 								min="20"
 								max="200"
-								value={Math.round((current.target ?? 0) * 100)}
+								value={Math.round(
+									(current as RampStep)[field.key as 'from' | 'to'] * 100,
+								)}
 								oninput={(event) =>
-									((current as SteadyStep).target =
+									((current as RampStep)[field.key as 'from' | 'to'] =
 										Number(event.currentTarget.value) / 100)}
 								class="input mt-1 w-full font-mono tabular-nums"
 							/>
-							<span class="text-muted mt-1 block text-[11px]">
-								{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
-								{ZONE_NAMES[zoneOfStep(current, FTP)]}
-							</span>
 						</label>
-						<!-- Cadence band (#66): display-only, and optional — most steps
-						     leave it blank. Empty input = no bound on that side. -->
-						<div class="grid grid-cols-2 gap-3">
-							<label class="block">
-								<span class="eyebrow">rpm from</span>
-								<input
-									type="number"
-									min="51"
-									max="150"
-									placeholder="–"
-									value={current.cadenceLow ?? ''}
-									oninput={(event) =>
-										((current as SteadyStep).cadenceLow =
-											event.currentTarget.value === ''
-												? undefined
-												: Number(event.currentTarget.value))}
-									class="input mt-1 w-full font-mono tabular-nums"
-								/>
-							</label>
-							<label class="block">
-								<span class="eyebrow">rpm to</span>
-								<input
-									type="number"
-									min="30"
-									max="150"
-									placeholder="–"
-									value={current.cadenceHigh ?? ''}
-									oninput={(event) =>
-										((current as SteadyStep).cadenceHigh =
-											event.currentTarget.value === ''
-												? undefined
-												: Number(event.currentTarget.value))}
-									class="input mt-1 w-full font-mono tabular-nums"
-								/>
-							</label>
-						</div>
-						<div class="grid grid-cols-2 gap-3">
-							<label class="block">
-								<span class="eyebrow">bpm from</span>
-								<input
-									type="number"
-									min="60"
-									max="220"
-									placeholder="–"
-									value={current.hrLow ?? ''}
-									oninput={(event) =>
-										((current as SteadyStep).hrLow =
-											event.currentTarget.value === ''
-												? undefined
-												: Number(event.currentTarget.value))}
-									class="input mt-1 w-full font-mono tabular-nums"
-								/>
-							</label>
-							<label class="block">
-								<span class="eyebrow">bpm to</span>
-								<input
-									type="number"
-									min="60"
-									max="220"
-									placeholder="–"
-									value={current.hrHigh ?? ''}
-									oninput={(event) =>
-										((current as SteadyStep).hrHigh =
-											event.currentTarget.value === ''
-												? undefined
-												: Number(event.currentTarget.value))}
-									class="input mt-1 w-full font-mono tabular-nums"
-								/>
-							</label>
-						</div>
-					{:else if current.type === 'repeat'}
-						<label class="block">
-							<span class="eyebrow">repeats</span>
-							<input
-								type="number"
-								min="1"
-								max="50"
-								bind:value={current.times}
-								class="input mt-1 w-full font-mono tabular-nums"
-							/>
-						</label>
-						<p class="text-muted text-[11px]">
-							Its steps sit indented under it in the list — click one to edit
-							it.
-						</p>
-					{:else if current.type !== 'sprint'}
-						<div class="grid grid-cols-2 gap-3">
-							{#each [{ key: 'from', label: 'from' }, { key: 'to', label: 'to' }] as field (field.key)}
-								<label class="block">
-									<span class="eyebrow">{field.label} (%)</span>
-									<input
-										type="number"
-										min="20"
-										max="200"
-										value={Math.round(
-											(current as RampStep)[field.key as 'from' | 'to'] * 100,
-										)}
-										oninput={(event) =>
-											((current as RampStep)[field.key as 'from' | 'to'] =
-												Number(event.currentTarget.value) / 100)}
-										class="input mt-1 w-full font-mono tabular-nums"
-									/>
-								</label>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-muted text-xs">
-							A sprint has no ERG target — the trainer switches to slope mode
-							for the window and the watts are yours.
-						</p>
-					{/if}
-
-					<!-- Every verb the step's right-click menu holds, visible: a menu
-					     is a shortcut, never the only way (ux.md). -->
-					<div class="border-ink/5 flex flex-wrap gap-2 border-t pt-3">
-						<button
-							onclick={() =>
-								(selected = move(workout, selected!, -1) ?? selected)}
-							class="btn btn-secondary btn-xs"
-							aria-label="Move step up">↑</button
-						>
-						<button
-							onclick={() =>
-								(selected = move(workout, selected!, 1) ?? selected)}
-							class="btn btn-secondary btn-xs"
-							aria-label="Move step down">↓</button
-						>
-						<button
-							onclick={() =>
-								(selected = duplicate(workout, selected!) ?? selected)}
-							class="btn btn-secondary btn-xs">Duplicate</button
-						>
-						{#if current.type !== 'repeat'}
-							<button
-								onclick={() =>
-									(selected = wrapInRepeat(workout, selected!) ?? selected)}
-								class="btn btn-secondary btn-xs">Wrap in a repeat</button
-							>
-						{/if}
-						<button
-							onclick={() => {
-								remove(workout, selected!);
-								selected = null;
-							}}
-							class="btn btn-danger btn-xs ml-auto">Delete</button
-						>
-					</div>
+					{/each}
 				</div>
 			{:else}
-				<p
-					class="text-muted border-muted/10 mt-3 rounded-lg border border-dashed p-4 text-xs"
-				>
-					Pick a step to edit it. The graph above redraws as you type — it runs
-					the same engine the ride does.
+				<p class="text-muted text-xs">
+					A sprint has no ERG target — the trainer switches to slope mode for
+					the window and the watts are yours.
 				</p>
 			{/if}
-		</aside>
-	</div>
-</main>
+
+			{#if !check.ok && samePath(selected, check.path)}
+				<p class="text-danger text-[11px]">{check.error}</p>
+			{/if}
+
+			<!-- Every verb the step's right-click menu holds, visible: a menu
+					     is a shortcut, never the only way (ux.md). -->
+			<div class="border-ink/5 flex flex-wrap gap-2 border-t pt-3">
+				<button
+					onclick={() => (selected = move(workout, selected!, -1) ?? selected)}
+					class="btn btn-secondary btn-xs"
+					aria-label="Move step up">↑</button
+				>
+				<button
+					onclick={() => (selected = move(workout, selected!, 1) ?? selected)}
+					class="btn btn-secondary btn-xs"
+					aria-label="Move step down">↓</button
+				>
+				<button
+					onclick={() => (selected = duplicate(workout, selected!) ?? selected)}
+					class="btn btn-secondary btn-xs">Duplicate</button
+				>
+				{#if current.type !== 'repeat'}
+					<button
+						onclick={() =>
+							(selected = wrapInRepeat(workout, selected!) ?? selected)}
+						class="btn btn-secondary btn-xs">Wrap in a repeat</button
+					>
+				{/if}
+				<button
+					onclick={() => (selected = removeAndSelect(workout, selected!))}
+					class="btn btn-danger btn-xs ml-auto">Delete</button
+				>
+			</div>
+		</div>
+	{:else}
+		<p
+			class="text-muted border-muted/10 mt-3 rounded-lg border border-dashed p-4 text-xs"
+		>
+			Pick a step to edit it. The graph above redraws as you type — it runs the
+			same engine the ride does.
+		</p>
+	{/if}
+{/snippet}

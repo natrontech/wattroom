@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -98,8 +99,12 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Same bounds as the schema CHECKs and the web store — one source, docs/SPEC.md.
+	// Trimmed and counted in runes (audit 2026-09-09): a byte count refused
+	// a 21-character Cyrillic name, and " " was a valid one.
+	req.DisplayName = strings.TrimSpace(req.DisplayName)
+
 	switch {
-	case len(req.DisplayName) == 0 || len(req.DisplayName) > 60:
+	case utf8.RuneCountInString(req.DisplayName) == 0 || utf8.RuneCountInString(req.DisplayName) > 60:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Display name has to be 1-60 characters.", "displayName")
 		return

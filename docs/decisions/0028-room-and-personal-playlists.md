@@ -9,6 +9,12 @@
   rider-owned is the rule; 0015 said otherwise for a month and misled a
   reader into nearly filing a scope bug against working code (#1097)
 
+> **Amended 2026-09-09 (#1422):** the optional _fixed start_ is dropped
+> (the 95 % rule — the active playlist's first entry is the start), and
+> autoplay is set on the room's Settings page rather than in the jukebox
+> panel. `rooms.autoplay_fixed_video_id/_title` stay one release for the
+> rollback path (ADR-0019); #1430 drops them.
+>
 > **Note (2026-09-08):** a saved entry is a `video_id` — YouTube only — so no
 > playlist can hold a self-hosted pool track today. When
 > [#655](https://github.com/natrontech/wattroom/issues/655) makes saved

@@ -57,14 +57,15 @@
 	{:else}
 		<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 			{#if running}
-				<!-- The sprint is the only control that carries the live hue: it
-				     creates live data (ADR-0005's one chrome exception). -->
+				<!-- Chrome, so the structural accent (ADR-0005: only live data
+				     wears --color-watt; there is no chrome exception). The watts
+				     the sprint produces are what glows. -->
 				<button
 					onclick={() => room.control('sprint')}
 					disabled={!!room.sprint}
 					title="Sprint"
 					aria-label="arm a sprint"
-					class="text-watt hover:bg-watt/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
+					class="text-neon hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
 						? 'h-11 w-11'
 						: 'px-3 py-2'}"
 					><Zap size={compact ? 18 : 14} />{#if !compact}Sprint{/if}</button

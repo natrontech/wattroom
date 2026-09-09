@@ -16,6 +16,10 @@ import (
 // the route cannot become a way to enumerate the instance in one request.
 const directoryPageSize = 50
 
+// maxDirectoryOffset keeps ?offset= inside int32 (audit 2026-09-09): past
+// it, the narrowing wrapped negative and Postgres refused the read.
+const maxDirectoryOffset = 1_000_000
+
 // directoryEntryJSON is one room in the public directory (#1118, ADR-0039):
 // what it is called, what it looks like, and where its door is. The absence
 // of a member count and of any activity signal is the decision, not an
@@ -43,10 +47,10 @@ func (s *Service) handleDirectory(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := directoryPageSize, 0
 	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
-		offset = n
+		offset = min(n, maxDirectoryOffset)
 	}
 	rows, err := s.store.Queries.ListListedRooms(r.Context(), db.ListListedRoomsParams{
-		Lim: int32(limit), Off: int32(offset), //nolint:gosec // both bounded here
+		Lim: int32(limit), Off: int32(offset), //nolint:gosec // limit is the page size, offset clamped above
 	})
 	if err != nil {
 		s.log.Error("room directory failed", "err", err)

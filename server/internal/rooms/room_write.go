@@ -38,17 +38,40 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A room name has to be 1-60 characters.", "name")
 		return
 	}
-	// docs/SPEC.md ownership cap: 3 owned rooms; membership is uncapped and
-	// deleting a room frees the slot. 409 — the state, not the request, refuses.
-	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), user.ID); err == nil && owned >= maxOwnedRooms {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
-			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
-		return
-	}
-
 	// Resolved before the room row exists, so a refusal leaves nothing behind.
 	crew, crewRole, ok := s.creationCrew(w, r, user, req.CrewID)
 	if !ok {
+		return
+	}
+	// docs/SPEC.md ownership cap: 3 owned rooms; membership is uncapped and
+	// deleting a room frees the slot. Counted with the rider's row locked, in
+	// the transaction that inserts (#1413): a burst of parallel creates each
+	// counted two and each inserted — the check was a read followed by an
+	// unsynchronised write. 409 — the state, not the request, refuses.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("room create begin failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), user.ID); err != nil {
+		s.log.Error("room create lock failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		return
+	}
+	owned, err := q.CountOwnedRooms(r.Context(), user.ID)
+	if err != nil {
+		// Closed, not open (audit 2026-09-09): a failed count used to wave
+		// the cap through.
+		s.log.Error("owned rooms count failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be opened. Try again.")
+		return
+	}
+	if owned >= maxOwnedRooms {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
 		return
 	}
 	// Slug and code both need uniqueness; retry on collision rather than
@@ -57,17 +80,32 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// guess a room's URL, since a successful join grants membership. Existing
 	// rooms keep their bare-name slugs — link stability matters more than
 	// retrofitting them, and rename (handleUpdate) never touches Slug, so the
-	// suffix stays fixed for the room's lifetime.
+	// suffix stays fixed for the room's lifetime. Each attempt runs in a
+	// savepoint: a failed insert would otherwise abort the whole transaction.
 	var room db.Room
 	for attempt := 0; ; attempt++ {
 		slug := slugify(req.Name) + "-" + randomCode(4)
-		created, err := s.store.Queries.CreateRoom(r.Context(), db.CreateRoomParams{
+		sp, err := tx.Begin(r.Context())
+		if err != nil {
+			s.log.Error("room create savepoint failed", "err", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+				"The room could not be created. Try again.")
+			return
+		}
+		created, err := s.store.Queries.WithTx(sp).CreateRoom(r.Context(), db.CreateRoomParams{
 			Slug: strings.ToLower(slug), Name: req.Name, OwnerID: user.ID,
 		})
 		if err == nil {
+			if err := sp.Commit(r.Context()); err != nil {
+				s.log.Error("room create savepoint commit failed", "err", err)
+				httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+					"The room could not be created. Try again.")
+				return
+			}
 			room = created
 			break
 		}
+		_ = sp.Rollback(r.Context())
 		if isUniqueViolation(err) && attempt < 3 {
 			continue
 		}
@@ -77,7 +115,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.store.Queries.CreateMembership(r.Context(), db.CreateMembershipParams{
+	err = q.CreateMembership(r.Context(), db.CreateMembershipParams{
 		RoomID: room.ID, UserID: user.ID, Role: "owner",
 	})
 	if err != nil {
@@ -90,11 +128,17 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Crew-visible is set here and not by the column's default, which is
 	// false so that a rolled-back image and a forgotten INSERT both fail
 	// towards private.
-	err = s.store.Queries.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
+	err = q.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
 		ID: room.ID, CrewID: crew.ID, CrewVisible: true,
 	})
 	if err != nil {
 		s.log.Error("room crew placement failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
+			"The room could not be created. Try again.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		s.log.Error("room create commit failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"The room could not be created. Try again.")
 		return

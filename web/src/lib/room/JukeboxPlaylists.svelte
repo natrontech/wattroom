@@ -1,30 +1,26 @@
 <script lang="ts">
 	import Plus from '@lucide/svelte/icons/plus';
-	import Shuffle from '@lucide/svelte/icons/shuffle';
-	import ListOrdered from '@lucide/svelte/icons/list-ordered';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';
 	import {
 		createPlaylistStore,
 		getAutoplay,
-		singleVideoFromLink,
 		updateAutoplay,
 		type AutoplaySettings,
 	} from '$lib/room/playlists.svelte';
 
-	// The saved shelf above the live queue (#627): room playlists (any member
-	// edits, one markable active) and personal playlists (a rider's own,
-	// queueable into whichever room they're in), plus the room's autoplay
-	// setting — a jukebox control like every other, so it lives here rather
-	// than the owner-only room settings page.
+	// The saved playlists above the live queue (#627): room playlists (any
+	// member edits, one markable active) and personal playlists (a rider's
+	// own, queueable into whichever room they're in). Autoplay itself is a
+	// room setting and lives on the room's Settings page (#1422); this panel
+	// says what it is set to and keeps the one-tap "Set as active" on a row.
 	let { slug }: { slug: string } = $props();
 
-	// Rename, delete, set active, remove a track and autoplay are the coach's
-	// and the owner's (SPEC roles matrix, #771); a member's own personal
-	// playlists stay theirs. Gated here so nothing renders that the server
-	// would refuse on click (#824).
+	// Rename, delete, set active and remove a track are the coach's and the
+	// owner's (SPEC roles matrix, #771); a member's own personal playlists
+	// stay theirs. Gated here so nothing renders that the server would refuse
+	// on click (#824).
 	const room = useRoom();
 	const canManage = $derived(room.canControl);
 
@@ -53,60 +49,35 @@
 		newName = '';
 	}
 
-	// ── Autoplay (#627): a room-level setting, but a jukebox control — every
-	// member reads it; the coach and the owner change it (#771). ──
+	// Read for the status line and for "Set as active", which PATCHes the
+	// whole setting the way the Settings page does.
 	let autoplay = $state<AutoplaySettings | null>(null);
-	let autoplayError = $state<string | null>(null);
-	let fixedUrl = $state('');
-	let savingAutoplay = $state(false);
-
 	$effect(() => {
 		if (slug) void loadAutoplay();
 	});
-
 	async function loadAutoplay() {
 		const res = await getAutoplay(slug);
-		if (res.ok) {
-			autoplay = res.data ?? null;
-			autoplayError = null;
-		} else {
-			autoplay = null;
-			autoplayError = res.error.message;
-		}
+		autoplay = res.ok ? (res.data ?? null) : null;
 	}
-
-	async function saveAutoplay(next: Partial<AutoplaySettings>) {
+	async function setActive(id: string) {
 		if (!autoplay) return;
-		const merged = { ...autoplay, ...next };
-		savingAutoplay = true;
-		autoplayError = null;
-		const res = await updateAutoplay(slug, merged);
-		savingAutoplay = false;
+		const next = { ...autoplay, activePlaylistId: id };
+		const res = await updateAutoplay(slug, next);
 		if (!res.ok) {
-			autoplayError = res.error.message;
+			createError = res.error.message;
 			return;
 		}
-		autoplay = res.data ?? merged;
+		autoplay = res.data ?? next;
+		await roomStore.refresh();
 	}
 
-	async function setFixed() {
-		const input = fixedUrl.trim();
-		if (!input) return saveAutoplay({ fixedVideoId: '', fixedVideoTitle: '' });
-		const parsed = await singleVideoFromLink(input);
-		if (!parsed.ok) {
-			autoplayError = parsed.message;
-			return;
-		}
-		fixedUrl = '';
-		await saveAutoplay({
-			fixedVideoId: parsed.videoId,
-			fixedVideoTitle: parsed.title,
-		});
-	}
-
-	function setActive(id: string) {
-		void saveAutoplay({ activePlaylistId: id });
-	}
+	const activeName = $derived(roomStore.all.find((p) => p.active)?.name);
+	const status = $derived.by(() => {
+		if (!autoplay) return null;
+		if (!autoplay.enabled) return 'Autoplay off';
+		if (autoplay.order === 'smart') return 'Autoplay · smart, from the library';
+		return `Autoplay · ${activeName ?? 'no active playlist'} · ${autoplay.order}`;
+	});
 </script>
 
 <details class="min-w-0">
@@ -129,105 +100,13 @@
 		>
 	</div>
 
-	{#if tab === 'room' && !autoplay && autoplayError}
-		<p class="text-danger mt-2 text-[11px] leading-relaxed">
-			{autoplayError}
-			<button onclick={() => void loadAutoplay()} class="ml-1 underline"
-				>Retry</button
-			>
+	{#if tab === 'room' && status}
+		<!-- One line, not the controls: autoplay is set on the Settings page
+		     (#1422). The link is only drawn for who may follow it to a form. -->
+		<p class="text-muted mt-2 text-[10px]">
+			{status}{#if canManage}
+				· <a href="/r/{slug}/settings" class="underline">settings</a>{/if}
 		</p>
-	{:else if tab === 'room' && autoplay}
-		<div class="border-muted/15 mt-2 min-w-0 rounded-lg border p-2.5">
-			<div class="flex items-center justify-between gap-2">
-				<span class="text-xs font-medium">Autoplay</span>
-				<button
-					role="switch"
-					aria-checked={autoplay.enabled}
-					onclick={() => saveAutoplay({ enabled: !autoplay?.enabled })}
-					disabled={savingAutoplay || !canManage}
-					class="btn btn-xs {autoplay.enabled ? 'btn-secondary' : 'text-muted'}"
-					>{autoplay.enabled ? 'On' : 'Off'}</button
-				>
-			</div>
-			<p class="text-muted mt-1 text-[10px] leading-relaxed">
-				Plays something whenever the deck is idle: when someone joins, and again
-				each time it runs out.
-				{#if !canManage}Only the room's coach or owner can change it.{/if}
-			</p>
-			<div
-				class="mt-2 flex gap-1.5"
-				role="radiogroup"
-				aria-label="autoplay order"
-			>
-				<button
-					role="radio"
-					aria-checked={autoplay.order === 'ordered'}
-					onclick={() => saveAutoplay({ order: 'ordered' })}
-					disabled={savingAutoplay || !canManage}
-					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'ordered'
-						? 'ring-neon bg-neon/15 ring-1'
-						: 'text-muted'}"><ListOrdered size={12} /> Ordered</button
-				>
-				<button
-					role="radio"
-					aria-checked={autoplay.order === 'shuffled'}
-					onclick={() => saveAutoplay({ order: 'shuffled' })}
-					disabled={savingAutoplay || !canManage}
-					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'shuffled'
-						? 'ring-neon bg-neon/15 ring-1'
-						: 'text-muted'}"><Shuffle size={12} /> Shuffled</button
-				>
-				<button
-					role="radio"
-					aria-checked={autoplay.order === 'smart'}
-					onclick={() => saveAutoplay({ order: 'smart' })}
-					disabled={savingAutoplay || !canManage}
-					class="btn btn-xs flex-1 gap-1 {autoplay.order === 'smart'
-						? 'ring-neon bg-neon/15 ring-1'
-						: 'text-muted'}"><Sparkles size={12} /> Smart</button
-				>
-			</div>
-			<!-- Smart draws from the music pool, so an active playlist is not
-			     what it is missing — saying so would send a rider to set one
-			     that this mode then ignores. -->
-			{#if autoplay.order === 'smart'}
-				<p class="text-muted mt-1.5 text-[10px]">
-					Picks from the music library, quietest on what this room just played
-					or keeps skipping.
-				</p>
-			{:else if !autoplay.activePlaylistId}
-				<p class="text-muted mt-1.5 text-[10px]">
-					No active playlist yet — set one from a room playlist's menu.
-				</p>
-			{/if}
-			<label class="mt-2 block">
-				<span class="text-muted text-[10px]">Fixed start (optional)</span>
-				<div class="mt-1 flex min-w-0 gap-1.5">
-					<input
-						bind:value={fixedUrl}
-						disabled={!canManage}
-						placeholder={autoplay.fixedVideoTitle || 'Always play this first…'}
-						class="input input-xs min-w-0 flex-1"
-					/>
-					<button
-						onclick={setFixed}
-						disabled={savingAutoplay || !canManage}
-						class="btn btn-secondary btn-xs shrink-0">Set</button
-					>
-					{#if autoplay.fixedVideoId}
-						<button
-							onclick={() =>
-								saveAutoplay({ fixedVideoId: '', fixedVideoTitle: '' })}
-							disabled={savingAutoplay || !canManage}
-							class="btn btn-xs text-muted shrink-0">Clear</button
-						>
-					{/if}
-				</div>
-			</label>
-			{#if autoplayError}<p class="text-danger mt-1.5 text-[11px]">
-					{autoplayError}
-				</p>{/if}
-		</div>
 	{/if}
 
 	<div class="mt-2 min-w-0">
@@ -247,7 +126,7 @@
 					: "No personal playlists yet — yours to build, queueable in any room you're in."}
 			</p>
 		{:else}
-			<ul class="flex flex-col gap-1.5">
+			<ul class="flex flex-col gap-0.5">
 				{#each store.all as playlist (playlist.id)}
 					<JukeboxPlaylistRow
 						{playlist}
@@ -256,7 +135,7 @@
 						roomScoped={tab === 'room'}
 						canManage={tab !== 'room' || canManage}
 						onSetActive={tab === 'room'
-							? () => setActive(playlist.id)
+							? () => void setActive(playlist.id)
 							: undefined}
 					/>
 				{/each}

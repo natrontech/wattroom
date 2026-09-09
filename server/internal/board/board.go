@@ -178,7 +178,22 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if millis > MaxClipMillis {
 		defaultEnd = MaxClipMillis
 	}
-	used, err := s.store.Queries.BoardClipBytes(r.Context(), me.ID)
+	// Asked with the rider's row locked, in the transaction that inserts
+	// (#1413): parallel uploads each read the same "used" and each landed.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("board begin", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), me.ID); err != nil {
+		s.log.Error("board lock", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		return
+	}
+	used, err := q.BoardClipBytes(r.Context(), me.ID)
 	if err != nil {
 		s.log.Error("board quota", "err", err, "user", store.UUIDString(me.ID))
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
@@ -191,7 +206,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 			"Your clips already fill 100 MB. Delete one to make room for this.")
 		return
 	}
-	row, err := s.store.Queries.SaveBoardClip(r.Context(), db.SaveBoardClipParams{
+	row, err := q.SaveBoardClip(r.Context(), db.SaveBoardClipParams{
 		// Bounded by MaxClipMillis two checks above, so the narrowing is safe.
 		UserID: me.ID, Name: name,
 		DurationMs: int32(millis), //nolint:gosec // bounded by maxUploadBytes above
@@ -202,6 +217,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.log.Error("save board clip", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		s.log.Error("board commit", "err", err, "user", store.UUIDString(me.ID))
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The clip could not be saved.")
 		return
 	}

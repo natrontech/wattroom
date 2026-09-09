@@ -230,3 +230,21 @@ test('the landing and the gate fit a phone', async ({ page }) => {
 	}
 	expect(wide, 'pages wider than a 375px phone').toEqual([]);
 });
+
+/**
+ * The editor must not stack library-first on a phone (ux.md): the rider's
+ * steps come before thirty library rows. Source order is what stacks.
+ */
+test('the workout editor puts the steps before the library on a phone', async ({
+	page,
+}) => {
+	await signInAs(page, 'Phone Width', '/workouts/edit');
+	// evaluateAll has no auto-waiting: read the order only once the editor
+	// has drawn its columns, or CI reads an empty list (-1 < -1 is false).
+	await expect(page.locator('h2', { hasText: /^library$/ })).toBeVisible();
+	const headings = await page
+		.locator('h2')
+		.evaluateAll((all) => all.map((h) => h.textContent?.trim().toLowerCase()));
+	expect(headings.indexOf('steps')).toBeGreaterThanOrEqual(0);
+	expect(headings.indexOf('steps')).toBeLessThan(headings.indexOf('library'));
+});

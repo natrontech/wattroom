@@ -31,7 +31,10 @@ select u.*, m.role, m.joined_at,
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
-order by m.joined_at;
+order by m.joined_at
+-- An engineering bound, not a product number (#1416): membership is uncapped
+-- by SPEC and a crew is nowhere near this; a list must still end somewhere.
+limit 1000;
 
 -- name: ListUserRooms :many
 -- Banned members keep their row (the ban IS the row) but the room vanishes
@@ -136,11 +139,12 @@ where id = $1 returning *;
 -- Memberships and medals cascade; rides keep their history (room_id set null).
 delete from rooms where id = $1;
 
--- name: UpdateMembershipRole :exec
+-- name: UpdateMembershipRole :execrows
 update memberships set role = $3 where room_id = $1 and user_id = $2;
 
--- name: DeleteMembership :exec
+-- name: DeleteMembership :execrows
 -- A banned row is the ban (#637): leaving must never delete it, whoever asks.
+-- Rows, so a caller can tell a delete that declined from one that landed.
 delete from memberships where room_id = $1 and user_id = $2 and role != 'banned';
 
 -- name: CreateScheduledSession :one

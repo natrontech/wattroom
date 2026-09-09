@@ -185,7 +185,7 @@
 				>
 			</div>
 		{/if}
-		<button onclick={onClose} class="text-muted hover:text-ink ml-auto text-sm"
+		<button onclick={onClose} class="btn btn-secondary btn-xs ml-auto"
 			>Close</button
 		>
 	</header>

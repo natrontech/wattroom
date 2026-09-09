@@ -42,6 +42,11 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not signed in", http.StatusUnauthorized)
 		return
 	}
+	if !h.admitSocket(userID) {
+		http.Error(w, "too many open connections for this rider", http.StatusServiceUnavailable)
+		return
+	}
+	defer h.releaseSocket(userID)
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return

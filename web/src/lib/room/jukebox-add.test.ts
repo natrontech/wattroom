@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readLink } from './jukebox-add';
+import { addIntent, readLink } from './jukebox-add';
 
 const VIDEO = 'dQw4w9WgXcQ';
 const LIST = 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI';
@@ -65,5 +65,16 @@ describe('readLink (#615)', () => {
 	it('says so when the text is not a YouTube link at all', () => {
 		expect(readLink('hello').kind).toBe('error');
 		expect(readLink('https://example.com/song').kind).toBe('error');
+	});
+});
+
+describe('addIntent (#1421)', () => {
+	it('searches the library for words, and takes anything readLink accepts as a link', () => {
+		expect(addIntent('')).toBe('idle');
+		expect(addIntent(' s ')).toBe('idle');
+		expect(addIntent('sunrise')).toBe('search');
+		expect(addIntent('nocturne club')).toBe('search');
+		expect(addIntent('https://youtu.be/dQw4w9WgXcQ')).toBe('link');
+		expect(addIntent('dQw4w9WgXcQ')).toBe('link');
 	});
 });

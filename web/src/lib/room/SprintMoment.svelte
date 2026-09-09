@@ -1,25 +1,23 @@
 <script lang="ts">
-	import { play, playCountdownTick } from '$lib/sound/cues';
 	import type { SprintState } from '$lib/protocol';
 	import type { RoomRider } from '$lib/room/view';
 	import { PLACES } from '$lib/room/podium';
+	import { serverNow } from '$lib/room/server-clock';
 	import { wkg } from '$lib/format';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
-	// mini-podium. Times come as server-clock anchors; local now is close
-	// enough for display (the scoring happens server-side).
+	// mini-podium. Visual only since #1412 — the klaxon, the gun and the
+	// fanfare are the shell's (room-sounds), so they reach a rider on any
+	// place, not only the one that draws this.
 	let {
 		sprint,
 		myWatts,
 		roster = [],
-		silent = false,
 	}: {
 		sprint: SprintState;
 		myWatts: number;
 		/** The room, for the live standings — absent outside a room. */
 		roster?: RoomRider[];
-		/** The /dev gallery mounts this without a ride — no klaxon there. */
-		silent?: boolean;
 	} = $props();
 
 	// Ranked on w/kg, the fair ordering for mixed groups (docs/SPEC.md).
@@ -30,9 +28,12 @@
 		ranked.length > 0 ? ranked[0].watts / ranked[0].kg : 0,
 	);
 
-	let now = $state(Date.now());
+	// The server's clock, like the ERG→slope flip that reads the same window
+	// (ride.svelte.ts): a laptop's wall clock is routinely seconds off, and
+	// the podium used to show while the trainer was still in slope (#1411).
+	let now = $state(serverNow());
 	$effect(() => {
-		const id = setInterval(() => (now = Date.now()), 100);
+		const id = setInterval(() => (now = serverNow()), 100);
 		return () => clearInterval(id);
 	});
 
@@ -45,31 +46,6 @@
 	);
 	const countdown = $derived(Math.ceil((sprint.startsAtMs - now) / 1000));
 	const remaining = $derived(Math.max(0, (sprint.endsAtMs - now) / 1000));
-
-	// The klaxon grabs attention once when the sprint arms; the last two
-	// seconds reuse the rising countdown ticks, then the gun.
-	let heard = $state<string | null>(null);
-	let heardSecond = -1;
-	$effect(() => {
-		if (silent) return;
-		if (phase === 'klaxon' && countdown !== heardSecond) {
-			heardSecond = countdown;
-			if (heard === null) {
-				heard = 'klaxon';
-				play('klaxon');
-			} else if (countdown > 0 && countdown <= 2) {
-				playCountdownTick(countdown);
-			}
-		}
-		if (phase === 'live' && heard === 'klaxon') {
-			heard = 'go';
-			play('go');
-		}
-		if (phase === 'podium' && heard === 'go') {
-			heard = 'podium';
-			play('fanfare');
-		}
-	});
 </script>
 
 <!-- ADR-0020: the sprint takes the focus and gives it back. This was a card

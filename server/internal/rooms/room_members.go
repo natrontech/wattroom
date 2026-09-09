@@ -1,9 +1,12 @@
 package rooms
 
 import (
+	"errors"
 	"net/http"
 
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -118,12 +121,18 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 			"You are the owner — that role does not change here.")
 		return
 	}
-	err = s.store.Queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
+	changed, err := s.store.Queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room.ID, UserID: target, Role: req.Role,
 	})
 	if err != nil {
 		s.log.Error("role update failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+		return
+	}
+	if changed == 0 {
+		// The row count is the answer (audit 2026-09-09): 204 for a row that
+		// was never there sent an eviction ping for nothing.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "They are not in this room.")
 		return
 	}
 	if req.Role == "banned" {
@@ -171,12 +180,19 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 			"The owner cannot leave their own room.")
 		return
 	}
-	err = s.store.Queries.DeleteMembership(r.Context(), db.DeleteMembershipParams{
+	removed, err := s.store.Queries.DeleteMembership(r.Context(), db.DeleteMembershipParams{
 		RoomID: room.ID, UserID: target,
 	})
 	if err != nil {
 		s.log.Error("remove member failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That did not work. Try again.")
+		return
+	}
+	if removed == 0 {
+		// The query keeps a banned row on purpose (#637); the owner clicking
+		// Remove on one used to get a 204 for a delete that did nothing.
+		httpx.WriteError(w, http.StatusNotFound, "not_found",
+			"They are not in this room — a banned rider is unbanned, not removed.")
 		return
 	}
 	// Leaving or being removed ends the live connection too — a socket whose
@@ -214,19 +230,27 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{RoomID: room.ID, UserID: target})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Error("transfer membership check failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		return
+	}
 	if err != nil || m.Role == "banned" {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
 			"A room passes to one of its members — they have to be in here, and not banned.")
 		return
 	}
-	if banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target}); err != nil || banned {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"They are banned from the crew this room is in. Lift that first if you mean it.")
+	// Each check answers for itself (audit 2026-09-09): a database failure
+	// is a 500 and a log line, never "they are banned" or a cap waved through.
+	banned, err := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{RoomID: room.ID, UserID: target})
+	if err != nil {
+		s.log.Error("transfer ban check failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
 		return
 	}
-	if owned, err := s.store.Queries.CountOwnedRooms(r.Context(), target); err == nil && owned >= maxOwnedRooms {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
-			fmt.Sprintf("They already own %d rooms — the cap. They would have to delete one first.", maxOwnedRooms))
+	if banned {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"They are banned from the crew this room is in. Lift that first if you mean it.")
 		return
 	}
 	tx, err := s.store.Pool.Begin(r.Context())
@@ -237,12 +261,30 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
+	// The cap, counted with the new owner's row locked (#1413): a hand-over
+	// racing their own create used to count past it.
+	if err := q.LockUser(r.Context(), target); err != nil {
+		s.log.Error("transfer lock failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		return
+	}
+	owned, err := q.CountOwnedRooms(r.Context(), target)
+	if err != nil {
+		s.log.Error("transfer cap check failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		return
+	}
+	if owned >= maxOwnedRooms {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			fmt.Sprintf("They already own %d rooms — the cap. They would have to delete one first.", maxOwnedRooms))
+		return
+	}
 	err = q.TransferRoom(r.Context(), db.TransferRoomParams{ID: room.ID, OwnerID: target})
 	if err == nil {
-		err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: target, Role: "owner"})
+		_, err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: target, Role: "owner"})
 	}
 	if err == nil {
-		err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: owner.ID, Role: "coach"})
+		_, err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: owner.ID, Role: "coach"})
 	}
 	if err == nil {
 		err = tx.Commit(r.Context())

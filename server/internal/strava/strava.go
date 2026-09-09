@@ -226,7 +226,7 @@ func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
 			"for", limit.after, "ride", store.UUIDString(rideID))
 	case err != nil:
 		s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
-		message := err.Error()
+		message := exportFailure(err)
 		if failErr := s.store.Queries.FailRideExport(ctx, db.FailRideExportParams{
 			RideID: rideID, Destination: Destination,
 			LastError: &message, MaxAttempts: maxAttempts,

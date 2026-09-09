@@ -3,6 +3,7 @@ package hub
 import (
 	"regexp"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -84,7 +85,7 @@ func (r jukeboxRefusal) message() string {
 	case refusalInvalidTrack:
 		return "That playlist contains a video this jukebox cannot play — choose another playlist or video."
 	case refusalInvalidTrackID:
-		return "That track is not one from the music pool — pick it from the library and try again."
+		return "That track is not in your library — pick it from the Music page and try again."
 	default:
 		return "That track could not be added — check the link and try again."
 	}
@@ -157,11 +158,13 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 	return entry, true, ""
 }
 
+// clip keeps runes whole: a byte cut mid-rune is invalid UTF-8 that
+// json.Marshal rewrites to U+FFFD on every tick (audit 2026-09-09).
 func clip(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
+	if utf8.RuneCountInString(s) <= n {
+		return s
 	}
-	return s
+	return string([]rune(s)[:n])
 }
 
 // queuedTracks counts what the queue actually holds — a playlist by its

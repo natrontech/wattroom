@@ -136,12 +136,12 @@ from tracks t
 join users u on u.id = t.uploaded_by
 where t.uploaded_by = $1
   and ($2::text = ''
-       or t.search @@ websearch_to_tsquery('simple', $2::text))
+       or t.search @@ to_tsquery('simple', $2::text))
   and ($3::text = '' or $3::text = any(t.tags))
 order by
     -- Ranked when there is a query, newest when there is not.
     case when $2::text = '' then 0
-         else ts_rank(t.search, websearch_to_tsquery('simple', $2::text))
+         else ts_rank(t.search, to_tsquery('simple', $2::text))
     end desc,
     t.created_at desc
 limit $5 offset $4

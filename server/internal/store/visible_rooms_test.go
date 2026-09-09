@@ -101,7 +101,7 @@ func (f *crewFixture) join(t *testing.T, room, user pgtype.UUID, role string) {
 
 func (f *crewFixture) setRole(t *testing.T, room, user pgtype.UUID, role string) {
 	t.Helper()
-	if err := f.st.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
+	if _, err := f.st.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
 		RoomID: room, UserID: user, Role: role,
 	}); err != nil {
 		t.Fatalf("set role: %v", err)

@@ -140,6 +140,7 @@
 		recording,
 		phase: () => shared?.phase,
 		myName: () => account.me?.displayName,
+		myId: () => account.me?.id,
 		myExecution: () => you.execution,
 	});
 	const reminders = $derived(
@@ -228,6 +229,8 @@
 		phase: () => shared?.phase,
 		countdownRemaining: () => shared?.countdownRemaining,
 		fault: () => faultKind,
+		sprint: () => live.tick?.sprint ?? null,
+		guard: () => rideCtl.guard,
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
