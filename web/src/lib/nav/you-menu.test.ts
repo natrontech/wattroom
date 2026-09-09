@@ -31,7 +31,7 @@ describe('youMenu (#898)', () => {
 		]);
 		page.onSelect();
 		settings.onSelect();
-		expect(go.mock.calls).toEqual([['/u/u1'], ['/profile']]);
+		expect(go.mock.calls).toEqual([['/u/u1'], ['/settings']]);
 		expect(youMenu(undefined, go).filter(isItem)[0].disabled).toBe(true);
 	});
 
