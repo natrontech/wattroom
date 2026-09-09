@@ -420,7 +420,7 @@
 							{#each recent as ride (ride.id)}
 								<li>
 									<a
-										href="/history?ride={ride.id}"
+										href="/history/{ride.id}"
 										class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
 									>
 										<span class="text-muted w-24 shrink-0 text-xs"

@@ -30,10 +30,16 @@ export interface SaveFailure {
 
 const FINAL = new Set(['validation_error', 'invalid_request']);
 
+/** Null on success — or the saved ride, so the summary can link to it (#1331). */
 export async function uploadRide(
 	ride: RideUpload,
-): Promise<SaveFailure | null> {
-	const res = await api('/api/rides', { method: 'POST', json: ride });
-	if (res.ok) return null;
-	return { message: res.error.message, final: FINAL.has(res.error.error) };
+): Promise<{ saved: { id: string } } | { failure: SaveFailure }> {
+	const res = await api<{ id?: string }>('/api/rides', {
+		method: 'POST',
+		json: ride,
+	});
+	if (res.ok) return { saved: { id: String(res.data?.id ?? '') } };
+	return {
+		failure: { message: res.error.message, final: FINAL.has(res.error.error) },
+	};
 }

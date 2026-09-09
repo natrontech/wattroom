@@ -147,6 +147,9 @@
 					This room is private. Its owner can let you in, or open it to the
 					crew.
 				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your rooms</a
+				>
 			{:else if room.listed}
 				<!-- A listed room is a public door into its crew (ADR-0039,
 				     ADR-0038 amended): joining it joins the crew. -->
@@ -167,6 +170,9 @@
 					This room belongs to a crew you are not in. Ask whoever rides here for
 					the crew's invite link.
 				</p>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your crews</a
+				>
 			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			{#if room.canEnter || room.listed}
