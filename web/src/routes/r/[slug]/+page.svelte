@@ -12,6 +12,8 @@
 	import Stage from '$lib/room/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
+	import SessionControls from '$lib/room/SessionControls.svelte';
+	import Radio from '@lucide/svelte/icons/radio';
 	import { formatWhen } from '$lib/format';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
@@ -464,6 +466,18 @@
 			{/if}
 
 			<div class="mt-4 flex flex-wrap items-center gap-2">
+				<!-- The room's home holds its action (#1332, ADR-0020 amended): a
+				     coach starts the session here, with the controls Training has,
+				     drawn once; a rider joins one that is running — on Training,
+				     where the numbers are. -->
+				<SessionControls />
+				{#if room.shared?.phase === 'running' || room.shared?.phase === 'paused' || room.shared?.phase === 'countdown'}
+					{#if !room.canControl}
+						<a href="/r/{room.slug}/training" class="btn btn-accent btn-lg"
+							><Radio size={15} /> Join the ride</a
+						>
+					{/if}
+				{/if}
 				{#if room.upcoming[0]}
 					{@const next = room.upcoming[0]}
 					<a
@@ -482,10 +496,10 @@
 						</span>
 					</a>
 				{:else if room.canControl}
-					<button
-						onclick={() => room.openPicker('plan')}
-						class="btn btn-secondary"
-						><CalendarClock size={14} /> Plan a session</button
+					<!-- Planning has one home, Sessions (#1332): this points there
+					     instead of opening the picker a second time. -->
+					<a href="/r/{room.slug}/sessions" class="btn btn-secondary"
+						><CalendarClock size={14} /> Plan a session</a
 					>
 				{/if}
 				<!-- The invite is the crew's (#1236): one click copies its link.

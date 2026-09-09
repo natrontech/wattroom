@@ -129,7 +129,8 @@
 		if (live && live.session) {
 			const min = Math.round(live.session.elapsedSec / 60);
 			return {
-				slug: live.slug,
+				// A ride is joined on Training, where the numbers are (#1332).
+				slug: `${live.slug}/training`,
 				text: `${live.name} is riding right now — ${min < 1 ? 'just starting' : `${min} minute${min === 1 ? '' : 's'} in`}.`,
 				cta: 'Join the ride',
 			};
