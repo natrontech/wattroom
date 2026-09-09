@@ -3,9 +3,12 @@
 	import X from '@lucide/svelte/icons/x';
 </script>
 
-<!-- Above MobileNav's bar on phones, bottom-center on desks. -->
+<!-- Bottom-centre on a desk. On a phone the bottom is spoken for — the
+     drawer and people buttons in the corners, and the jukebox's corner
+     player from 80 px up, which nothing may cover (WATTROOM.md's player
+     rule, #1626) — so the stack drops from the top instead. -->
 <div
-	class="pointer-events-none fixed bottom-16 left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 md:bottom-6"
+	class="pointer-events-none fixed left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-4 md:bottom-6"
 >
 	{#each toasts.items as toast (toast.id)}
 		<div
