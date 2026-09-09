@@ -35,8 +35,13 @@ const line = (at: number) => ({
 });
 
 describe('dm heads', () => {
-	beforeEach(() => vi.useFakeTimers());
+	beforeEach(() => {
+		vi.useFakeTimers();
+		announced.length = 0;
+	});
 	afterEach(() => {
+		// The poller is module state: one test's interval used to outlive it.
+		dmHeads.stop();
 		vi.useRealTimers();
 		document.hasFocus = () => true;
 	});
@@ -59,5 +64,27 @@ describe('dm heads', () => {
 		conversations = [line(3)];
 		await vi.advanceTimersByTimeAsync(10_000);
 		expect(announced.map((a) => a.reading)).toEqual([false, true]);
+	});
+
+	// Sign-out stops the poll (#1515): it used to run for the life of the tab
+	// with a stale session, and a badge from the last account stayed lit.
+	it('stops polling and forgets the heads on stop', async () => {
+		conversations = [line(1)];
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.heads).toHaveLength(1);
+
+		dmHeads.stop();
+		expect(dmHeads.heads).toEqual([]);
+		conversations = [line(2)];
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(dmHeads.heads).toEqual([]);
+		expect(announced).toEqual([]);
+
+		// And starts again for the next rider, first answer silent as ever.
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.heads).toHaveLength(1);
+		expect(announced).toEqual([]);
 	});
 });

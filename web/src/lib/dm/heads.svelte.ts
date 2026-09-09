@@ -36,6 +36,7 @@ let inbound = $state<Record<string, number>>({});
 let seenBump = $state(0);
 let started = false;
 let first = true;
+let timer: ReturnType<typeof setInterval> | undefined;
 
 async function poll() {
 	const res = await api<{ conversations: DmHead[] }>('/api/dms');
@@ -81,12 +82,24 @@ export const dmHeads = {
 	get heads() {
 		return heads;
 	},
-	/** Idempotent; the layout calls it once per app load. */
+	/** Idempotent; the layout calls it while a rider is signed in. */
 	start() {
 		if (started || typeof window === 'undefined') return;
 		started = true;
 		void poll();
-		setInterval(() => void poll(), 10_000);
+		timer = setInterval(() => void poll(), 10_000);
+	},
+	/**
+	 * On sign-out (#1515): the poll used to outlive the session — six 401s a
+	 * minute for the life of the tab — and its badges outlived the rider.
+	 */
+	stop() {
+		clearInterval(timer);
+		timer = undefined;
+		started = false;
+		first = true;
+		heads = [];
+		inbound = {};
 	},
 	unread(peerId: string): boolean {
 		void seenBump; // re-check after a thread open stamps it seen
