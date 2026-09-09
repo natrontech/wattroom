@@ -1,1 +1,0 @@
-- Direct messages in the sidebar, the thread list and the DM header now show whether a friend is online, offline, in a room or riding — the same badge the friends panel shows. A friend with the app open used to show no badge at all unless they stood in a room you could see.
