@@ -26,7 +26,6 @@ const ROUTES = [
 	'/rooms',
 	'/friends',
 	'/messages',
-	'/sessions',
 	'/ramp',
 	'/settings/profile',
 	'/settings/equipment',

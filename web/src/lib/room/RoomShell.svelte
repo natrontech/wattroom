@@ -395,7 +395,11 @@
 		     says nothing may cover the player — so the content reserves the
 		     dock's footprint rather than the player sitting on live data.
 		     Seated on the lounge's stage it is content, and needs no gutter. -->
+		<!-- The place's body: scrolls down, never sideways, and named so the
+		     phone-width walk of the places can measure it (#1376). Not
+		     page-body — the root layout's wraps this whole shell. -->
 		<div
+			data-testid="place-body"
 			class="min-h-0 flex-1 overflow-y-auto"
 			style={live.tick?.jukebox?.current && !stageSlot.seated
 				? 'padding-bottom: calc(var(--pane-jukebox-dock-h, 308px) + 1.5rem)'
