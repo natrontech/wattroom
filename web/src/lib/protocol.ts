@@ -81,6 +81,11 @@ export interface GameState {
   linePct?: number /* float64 */;
   calledZone?: number /* int */;
   roundEndsAtMs?: number /* int64 */;
+  /**
+   * Sprint Roulette's window opens here (#1578): the length is random, so
+   * the client cannot derive the 3-2-1 from the end alone.
+   */
+  roundStartsAtMs?: number /* int64 */;
   meterHidden?: boolean;
   roomDistance?: number /* float64 */;
   riders: { [key: string]: GameRider};

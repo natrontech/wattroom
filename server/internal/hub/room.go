@@ -44,6 +44,10 @@ type room struct {
 	lastGame *protocol.GameState
 	// The running game's roster, merged from seen on every tick (#1581).
 	gameRoster map[string]protocol.Rider
+	// The mode's id, for the ledger; and the tick that first saw it done,
+	// zero while it runs (#1575, #1579).
+	gameMode   string
+	gameDoneAt time.Time
 	seen       map[string]protocol.Rider
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string

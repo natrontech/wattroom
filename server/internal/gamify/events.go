@@ -32,6 +32,14 @@ func (s *Service) SprintWon(slug, riderID string, at time.Time) {
 	})
 }
 
+// GameWon implements hub.XpKeeper (#1575): counted like a sprint win, paid
+// nothing until docs/SPEC.md names a number; ref keys one game.
+func (s *Service) GameWon(slug, riderID, mode string, at time.Time) {
+	s.enqueue("game", func(ctx context.Context) {
+		s.record(ctx, riderID, sourceGameWin, 0, slug+"@"+mode+"@"+millis(at), at)
+	})
+}
+
 // TrackPlayed implements hub.XpKeeper: a track the room let play to the end
 // counts toward DJ for whoever queued it.
 func (s *Service) TrackPlayed(slug, riderID, ref string, at time.Time) {

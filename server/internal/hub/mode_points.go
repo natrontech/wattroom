@@ -131,6 +131,9 @@ func (p *pointsRace) buildPodium(roster map[string]protocol.Rider) {
 }
 
 func (p *pointsRace) withdraw(riderID string) { p.roulette.withdraw(riderID) }
+func (p *pointsRace) sprintWindow() (start, end time.Time, ok bool) {
+	return p.roulette.sprintWindow()
+}
 
 func (p *pointsRace) state(now time.Time) protocol.GameState {
 	phase := "running"

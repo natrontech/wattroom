@@ -239,3 +239,16 @@ func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 		t.Fatalf("banned but befriended: status %d, want 200", rec.Code)
 	}
 }
+
+// game_win is a ledger source the check constraint has to accept (#1575):
+// the migration widened it, and this is what proves the widening ran.
+func TestGameWinLandsInTheLedger(t *testing.T) {
+	s, _, alice, _ := setup(t)
+	at := time.Date(2026, 3, 4, 18, 0, 0, 0, time.UTC)
+	s.record(t.Context(), store.UUIDString(alice.ID), sourceGameWin, 0, "crew@watt-golf@1", at)
+	var n int
+	if err := s.store.Pool.QueryRow(t.Context(),
+		"select count(*) from xp_events where user_id = $1 and source = 'game_win'", alice.ID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("game_win rows: %d (%v)", n, err)
+	}
+}
