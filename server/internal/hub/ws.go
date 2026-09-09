@@ -18,6 +18,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // How many frames a socket may fall behind before it starts missing them.
@@ -136,7 +137,10 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			rm.setAway(rider.ID, msg.Away.Away)
 		}
 		if msg.Metrics != nil {
-			if m := *msg.Metrics; validMetrics(m) {
+			// Rate-shaped like every other channel (audit 2026-09-09): a trainer
+			// notifies at 4 Hz at most, so 10/s is headroom, and the record
+			// admits one sample per second anyway.
+			if m := *msg.Metrics; validMetrics(m) && rm.allow("metrics", rider.ID, h.now(), metricsMinGap) {
 				rm.setMetrics(c, m)
 			}
 		}
@@ -222,8 +226,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if len(samples) > maxBackfillBatch {
 				samples = samples[:maxBackfillBatch]
 			}
+			// One batch a second: it runs 600 validations under the room's
+			// lock, and it was the one channel a member could loop unlimited
+			// (audit 2026-09-09).
+			if !rm.allow("backfill", rider.ID, h.now(), time.Second) {
+				continue
+			}
 			rm.backfill(rider, samples)
-			h.log.Info("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
+			h.log.Debug("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
 			// The role on THIS socket, not the copy captured when it opened:
@@ -249,6 +259,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				h.writeError(c, "invalid_request", "Sprints arm during a running session.")
 				continue
+			}
+			if msg.Control.Action == "pick" {
+				if refusal := checkPick(*msg.Control); refusal != "" {
+					h.writeError(c, "validation_error", refusal)
+					continue
+				}
 			}
 			if !rm.control(*msg.Control, rider.ID, h.now()) {
 				h.writeError(c, "invalid_request", "That does not work right now — the session is in another phase.")
@@ -308,4 +324,33 @@ func (h *Hub) writeError(c *client, code, message string) {
 	c.sendJSON(h.log, protocol.ServerMessage{
 		Error: &protocol.Error{Code: code, Message: message},
 	})
+}
+
+// The pick's bounds (audit 2026-09-09): the name and the JSON ride on every
+// tick to every socket, and the workout has to be one the editor and the API
+// would accept — the WS path was the one that never asked. The numbers are
+// the API's (customworkouts.checkDefinition).
+const (
+	maxWorkoutNameRunes = 80
+	maxWorkoutJSONBytes = 64 << 10
+	maxSessionSeconds   = 24 * 60 * 60
+	metricsMinGap       = 100 * time.Millisecond
+)
+
+// checkPick returns the refusal a coach's pick earns, or "" when it may run.
+func checkPick(c protocol.Control) string {
+	name := strings.TrimSpace(c.WorkoutName)
+	if name == "" || utf8.RuneCountInString(name) > maxWorkoutNameRunes {
+		return "A workout name has to be 1-80 characters."
+	}
+	if len(c.WorkoutJSON) > maxWorkoutJSONBytes {
+		return "That workout is too large to share with the room."
+	}
+	if c.TotalSeconds <= 0 || c.TotalSeconds > maxSessionSeconds {
+		return "A session runs between a second and a day."
+	}
+	if err := workout.Validate(c.WorkoutJSON); err != nil {
+		return err.Error()
+	}
+	return ""
 }
