@@ -48,7 +48,13 @@ type handoffs struct {
 	byTok map[string]handoff
 }
 
-func (h *handoffs) put(tok string, v handoff) {
+// handoffMax bounds the map the way challengeMax bounds the ceremonies
+// (#827, #1415): a signed-in loop could otherwise grow it, and the sweep
+// below with it, for the TTL's length. Far above anything real.
+const handoffMax = 4096
+
+// put stores a handoff; false means the map is full and the caller refuses.
+func (h *handoffs) put(tok string, v handoff) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.byTok == nil {
@@ -62,7 +68,11 @@ func (h *handoffs) put(tok string, v handoff) {
 			delete(h.byTok, k)
 		}
 	}
+	if len(h.byTok) >= handoffMax {
+		return false
+	}
 	h.byTok[tok] = v
+	return true
 }
 
 // take removes the token whether or not it is good: a wrong nonce burns it.
@@ -100,7 +110,13 @@ func (s *Service) handleDesktopHandoff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tok := base64.RawURLEncoding.EncodeToString(raw)
-	s.handoffs.put(tok, handoff{userID: user.ID, nonce: req.Nonce, expires: time.Now().Add(handoffTTL)})
+	if !s.handoffs.put(tok, handoff{userID: user.ID, nonce: req.Nonce, expires: time.Now().Add(handoffTTL)}) {
+		// A shared resource is full: 503 with rate_limited (errors.md), the
+		// shape the passkey ceremonies use.
+		httpx.WriteError(w, http.StatusServiceUnavailable, "rate_limited",
+			"Too many sign-ins are waiting to be picked up — try again in a minute.")
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"token": tok, "ttl": int(handoffTTL.Seconds())})
 }
 

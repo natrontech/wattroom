@@ -1,0 +1,1 @@
+- An account holds at most ten passkeys, like ten tokens; the desktop sign-in hand-off refuses when its queue is full instead of growing without bound; and one account can keep at most sixteen live connections to the server open at once, which is plenty for every device and tab and stops a single account from loading the room service.
