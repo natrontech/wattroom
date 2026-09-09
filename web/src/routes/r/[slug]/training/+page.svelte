@@ -22,6 +22,8 @@
 	import { formatClock } from '$lib/format';
 	import { publishHud } from '$lib/hud/feed';
 	import { useRoom } from '$lib/room/context';
+	import { blockBands } from '$lib/room/view';
+	import { serverNow } from '$lib/room/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	const room = useRoom();
@@ -45,9 +47,24 @@
 	const share = $derived(
 		room.onStage && room.onStage.key !== 'jukebox' ? room.onStage : null,
 	);
-	const focus = $derived(
-		room.sprint ? 'sprint' : room.game ? 'game' : share ? 'media' : 'you',
+	// The podium keeps the focus for a few seconds after the window — the
+	// server holds the sprint on the board for 30 s, and the screen used to
+	// hold the podium that long too: half a minute back in a block with no
+	// watts, no target and no clock (audit 2026-09-09).
+	const PODIUM_MS = 8_000;
+	let now = $state(serverNow());
+	$effect(() => {
+		if (!room.sprint) return;
+		const id = setInterval(() => (now = serverNow()), 250);
+		return () => clearInterval(id);
+	});
+	const sprintFocus = $derived(
+		!!room.sprint && now < room.sprint.endsAtMs + PODIUM_MS,
 	);
+	const focus = $derived(
+		sprintFocus ? 'sprint' : room.game ? 'game' : share ? 'media' : 'you',
+	);
+	const bands = $derived(blockBands(room.block, room.you.cadence, room.you.hr));
 	// Only people actually turning the pedals are ranked. The server scores
 	// nothing for a rider with no samples and returns 1 for them, which is
 	// right for "before the first hard block" and absurd on a leaderboard:
@@ -136,6 +153,20 @@
 						{formatClock(room.block.secondsLeft)}
 					</p>
 				</div>
+				{#each bands as band (band.unit)}
+					<!-- The block's own band (#66, #67): the work itself on a torque
+					     or a zone block, coloured by your live value. -->
+					<div class="shrink-0">
+						<p class="eyebrow">{band.unit}</p>
+						<p
+							class="font-display text-3xl leading-none font-bold tabular-nums {band.inBand
+								? 'text-z4'
+								: 'text-muted'}"
+						>
+							{band.text}
+						</p>
+					</div>
+				{/each}
 				{#if room.block.next}
 					<p class="text-muted min-w-0 truncate text-xs">
 						next · {room.block.next.label}
@@ -190,14 +221,15 @@
 			</section>
 		{/if}
 
-		{#if focus === 'sprint' || focus === 'game'}
-			<!-- Both carry their own standings; the crew strip below would be a
-			     third list of the same people. -->
+		{#if focus === 'sprint' || (focus === 'game' && room.game?.meterHidden)}
+			<!-- The sprint carries its own numbers, and Watt Golf hides the
+			     meter on purpose; every other game showed the line and who was
+			     left and never the rider's own watts (audit 2026-09-09). -->
 			<div></div>
 			<div></div>
 		{:else}
 			<div class="mt-4 flex items-center gap-6 px-6">
-				{#if focus === 'media'}
+				{#if focus === 'media' || focus === 'game'}
 					<!-- Under the player, never over it (RMF). -->
 					<div class="min-w-0 flex-1">
 						<Instrument
@@ -226,7 +258,7 @@
 				     second full-width list of the same people is what the sprint
 				     and game branches below already refuse to draw.
 				     Alone it is not a leaderboard, so solo rides do not show it. -->
-				{#if riding.length > 1 && focus !== 'media'}
+				{#if riding.length > 1 && focus !== 'media' && focus !== 'game'}
 					<!-- Not while a screen has the focus: this row already picks up
 					     the compact instrument there, and the player's own floor
 					     (RMF) is what the width is for. -->
@@ -239,7 +271,11 @@
 			<!-- The crew. A group-training surface that shows only your own
 			     numbers is a solo app with a chat window attached. -->
 			<div class="mt-4">
-				<CrewStrip riders={room.riders.filter((r) => !r.you)} />
+				{#if focus !== 'game'}
+					<!-- A game's panel already lists everyone; a second list of the
+					     same people is what the sprint branch refuses too. -->
+					<CrewStrip riders={room.riders.filter((r) => !r.you)} />
+				{/if}
 
 				{#if focus !== 'media'}
 					<!-- The horizon: the session is the ground the numbers stand on,

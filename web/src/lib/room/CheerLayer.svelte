@@ -34,7 +34,10 @@
 	});
 </script>
 
-<div class="pointer-events-none fixed inset-x-0 bottom-16 z-40">
+<!-- Under the floating player (z-30): a cheer is our chrome, and RMF forbids
+     our chrome over the player — on a phone the dock sits in the corner
+     and cheers used to rise straight across it (audit 2026-09-09). -->
+<div class="pointer-events-none fixed inset-x-0 bottom-16 z-20">
 	{#each floating as item (item.key)}
 		<div class="cheer absolute bottom-0 text-center" style="left: {item.left}%">
 			<!-- Ink, not the live hue: a cheer is a person, not a number (ADR-0005). -->
