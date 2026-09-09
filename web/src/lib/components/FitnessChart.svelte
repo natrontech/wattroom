@@ -47,13 +47,21 @@
 		);
 	}
 
-	// Noon UTC, like the drilldown's openDay (#1551): UTC midnight rendered
-	// in a zone west of Greenwich named the day before.
-	const dayLabel = (d: string) =>
-		new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, {
+	// From the date's parts, not an instant (#1690): noon UTC covered ±11 h
+	// and still named the next day at UTC+13. A local date is zone-free.
+	const dayLabel = (d: string) => {
+		const [y, m, day] = d.split('-').map(Number);
+		return new Date(y, m - 1, day).toLocaleDateString(undefined, {
 			month: 'short',
 			day: 'numeric',
 		});
+	};
+	// One definition of form (#1690, ADR-0016): the header says a percentage
+	// of fitness, and the absolute figure here read as a second number.
+	const formPct = (p: { form: number; fitness: number }) =>
+		p.fitness > 0
+			? `${p.form > 0 ? '+' : ''}${Math.round((p.form / p.fitness) * 100)}%`
+			: '–';
 </script>
 
 <div class="flex items-center gap-4 text-xs" role="list" aria-label="legend">
@@ -163,7 +171,7 @@
 				lines={[
 					dayLabel(p.date),
 					`fitness ${Math.round(p.fitness)} · fatigue ${Math.round(p.fatigue)}`,
-					`form ${p.form > 0 ? '+' : ''}${Math.round(p.form)}`,
+					`form ${formPct(p)}`,
 				]}
 			/>
 		{/if}

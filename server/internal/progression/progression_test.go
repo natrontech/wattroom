@@ -169,3 +169,18 @@ func TestEmptyHistoryHasNoLoad(t *testing.T) {
 		t.Fatalf("no rides must mean no load block, got %+v", body.Load)
 	}
 }
+
+// SPEC: form shows 28 days after the rider's FIRST saved ride — not the
+// oldest inside the year window, which after a long break was last week's.
+func TestColdStartCountsFromTheFirstRide(t *testing.T) {
+	mux, st, u := setup(t)
+	addRide(t, st, u, 400, 240)
+	addRide(t, st, u, 5, 230)
+	status, body := get(t, mux, "alice")
+	if status != http.StatusOK || body.Load == nil {
+		t.Fatalf("progression: %d %+v", status, body.Load)
+	}
+	if body.Load.Building {
+		t.Fatal("a rider with a ride 400 days ago is still 'building'")
+	}
+}

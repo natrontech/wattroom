@@ -39,7 +39,12 @@
 			else error = res.error.message;
 			return;
 		}
-		rooms = offset ? [...(rooms ?? []), ...res.data.rooms] : res.data.rooms;
+		// A room listed between two pages shifts the offset (#1690): the keyed
+		// list threw on the row that came back twice.
+		const seen = new Set((offset ? (rooms ?? []) : []).map((r) => r.slug));
+		rooms = offset
+			? [...(rooms ?? []), ...res.data.rooms.filter((r) => !seen.has(r.slug))]
+			: res.data.rooms;
 		more = res.data.rooms.length === PAGE;
 	}
 

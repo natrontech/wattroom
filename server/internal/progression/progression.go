@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -87,7 +88,7 @@ const (
 	seriesDays    = 120
 )
 
-func buildLoad(rows []db.ListUserProgressionRow, now time.Time) *loadJSON {
+func buildLoad(rows []db.ListUserProgressionRow, first, now time.Time) *loadJSON {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -109,7 +110,8 @@ func buildLoad(rows []db.ListUserProgressionRow, now time.Time) *loadJSON {
 		formPct = last.Form / last.Fitness * 100
 	}
 	out := &loadJSON{
-		Building: now.Sub(rows[0].StartedAt.Time) < coldStartDays*24*time.Hour,
+		// From the first ride ever, not the oldest in the window (#1689).
+		Building: now.Sub(first) < coldStartDays*24*time.Hour,
 		Fitness:  last.Fitness,
 		Fatigue:  last.Fatigue,
 		FormPct:  formPct,
@@ -167,6 +169,13 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 		return Response{}, fmt.Errorf("progression: curve bests: %w", err)
 	}
 	rows, err := q.ListUserProgression(ctx, user.ID)
+	// The query keeps the newest rides under its bound; the load model reads
+	// oldest first (#1689).
+	slices.Reverse(rows)
+	first, ferr := q.FirstRideAt(ctx, user.ID)
+	if ferr != nil {
+		err = ferr
+	}
 	if err != nil {
 		return Response{}, fmt.Errorf("progression: rides: %w", err)
 	}
@@ -179,7 +188,7 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 		},
 		Rides:    make([]rideTrendJSON, 0, len(rows)),
 		Category: stats.Category(int(bests.D90Best20m), float64(user.WeightKg)),
-		Load:     buildLoad(rows, time.Now()),
+		Load:     buildLoad(rows, first.Time, time.Now()),
 	}
 	if user.WeightKg > 0 {
 		out.WKg = float64(bests.D90Best20m) / float64(user.WeightKg)

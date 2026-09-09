@@ -134,6 +134,11 @@ func icsPathToken(r *http.Request) string {
 
 func writeICS(w http.ResponseWriter, calName, host string, events []icsEvent) {
 	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	// A bearer URL's body is not for any shared cache (#1688, ADR-0021): a
+	// 200 with no Cache-Control is heuristically cacheable (RFC 9111 §4.2.2),
+	// and what the rider plans to ride, and with whom, is the sensitive part.
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = io.WriteString(w, buildICS(calName, host, events))
 }
 
