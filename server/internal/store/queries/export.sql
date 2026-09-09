@@ -16,7 +16,7 @@ order by c.created_at;
 -- Whole threads, both sides: a DM is as much about the requester as about the
 -- peer, and they can already read every line of it in the app. The peer is
 -- named the way the app names them and by nothing else.
-select m.text, m.created_at, m.sender_id = $1 as sent_by_me,
+select m.text, m.created_at, m.edited_at, m.image_id, m.sender_id = $1 as sent_by_me,
        (case when m.sender_id = $1 then r.display_name else s.display_name end)::text as peer_name
 from dm_messages m
 join users s on s.id = m.sender_id

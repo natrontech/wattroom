@@ -67,5 +67,11 @@
 		return rest.length ? [...own, 'separator', ...rest] : own;
 	})}
 >
-	<img {src} {alt} class="ring-ink/10 mt-1 max-h-40 rounded ring-1" />
+	<!-- max-w-full (#1819): the thread hides horizontal overflow, so a wide
+	     screenshot was silently cut off on a phone. -->
+	<img
+		{src}
+		{alt}
+		class="ring-ink/10 mt-1 max-h-40 max-w-full rounded ring-1"
+	/>
 </button>

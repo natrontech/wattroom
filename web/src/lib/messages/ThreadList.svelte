@@ -78,7 +78,8 @@
 				Every room's chat and every note between friends lands here — and a
 				room's chat reads and writes without joining it.
 				{#snippet cta()}
-					<a href="/home#rooms" class="btn btn-primary btn-xs">Open a room</a>
+					<a href="/friends" class="btn btn-primary btn-xs">Message a friend</a>
+					<a href="/home#rooms" class="btn btn-secondary btn-xs">Open a room</a>
 				{/snippet}
 			</EmptyState>
 		</li>

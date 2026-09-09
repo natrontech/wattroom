@@ -88,7 +88,7 @@ func (q *Queries) ExportUserChat(ctx context.Context, userID pgtype.UUID) ([]Exp
 }
 
 const exportUserDms = `-- name: ExportUserDms :many
-select m.text, m.created_at, m.sender_id = $1 as sent_by_me,
+select m.text, m.created_at, m.edited_at, m.image_id, m.sender_id = $1 as sent_by_me,
        (case when m.sender_id = $1 then r.display_name else s.display_name end)::text as peer_name
 from dm_messages m
 join users s on s.id = m.sender_id
@@ -100,6 +100,8 @@ order by m.created_at
 type ExportUserDmsRow struct {
 	Text      string
 	CreatedAt pgtype.Timestamptz
+	EditedAt  pgtype.Timestamptz
+	ImageID   pgtype.UUID
 	SentByMe  bool
 	PeerName  string
 }
@@ -119,6 +121,8 @@ func (q *Queries) ExportUserDms(ctx context.Context, senderID pgtype.UUID) ([]Ex
 		if err := rows.Scan(
 			&i.Text,
 			&i.CreatedAt,
+			&i.EditedAt,
+			&i.ImageID,
 			&i.SentByMe,
 			&i.PeerName,
 		); err != nil {

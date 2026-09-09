@@ -16,6 +16,7 @@
 
 	let {
 		send: deliver,
+		lineGapMs = 1000,
 		placeholder,
 		hint,
 		error = null,
@@ -23,6 +24,8 @@
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
 		send: (text: string, image?: Blob) => Promise<string | null>;
+		/** The smallest gap between two lines this surface accepts; 0 for none. */
+		lineGapMs?: number;
 		placeholder: string;
 		hint?: string;
 		/** A banner unrelated to the last send attempt — the thread's own error. */
@@ -49,19 +52,22 @@
 	const pending = createPendingImage((refusal) => (sendError = refusal));
 	let filePicker = $state<HTMLInputElement | null>(null);
 
-	// The hub takes one line a second per rider and now says so (#1762);
+	// The room's hub takes one line a second per rider and says so (#1762);
 	// saying it here first keeps the draft and the picture in the box
-	// instead of round-tripping a refusal for words already cleared.
-	const LINE_GAP_MS = 1000;
+	// instead of round-tripping a refusal for words already cleared. The
+	// gap is the caller's (#1819): a DM has no such rule, and a GIF is a
+	// line like any other.
 	let lastSentAt = 0;
+	function tooSoon(): boolean {
+		if (Date.now() - lastSentAt >= lineGapMs) return false;
+		sendError = 'One line a second — a moment, then send it again.';
+		return true;
+	}
 	async function send() {
 		const text = draft.trim();
 		const image = pending.current?.blob;
 		if (!text && !image) return;
-		if (Date.now() - lastSentAt < LINE_GAP_MS) {
-			sendError = 'One line a second — a moment, then send it again.';
-			return;
-		}
+		if (tooSoon()) return;
 		draft = '';
 		sending = true;
 		const refused = await deliver(text, image);
@@ -81,9 +87,11 @@
 	let gifOpen = $state(false);
 	async function sendGif(gif: Gif) {
 		gifOpen = false;
+		if (tooSoon()) return;
 		sending = true;
 		sendError = await deliver(gif.url);
 		sending = false;
+		if (!sendError) lastSentAt = Date.now();
 	}
 </script>
 

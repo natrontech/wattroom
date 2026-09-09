@@ -119,7 +119,11 @@ async function seedATaggedTrack(page: Page): Promise<void> {
 	if (ok !== true) throw new Error(`could not seed a tagged track: ${ok}`);
 }
 
-test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
+test('no page outside a room scrolls sideways on a phone', async ({
+	page,
+	browser,
+	baseURL,
+}) => {
 	await signInAs(page, 'Phone Width', '/home');
 	await seedARide(page);
 	await seedATaggedTrack(page);
@@ -164,6 +168,57 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 	// The pages reached by an id rather than listed: your own rider page,
 	// the ride seeded above, and the room's thread read from outside — the
 	// three that carry the widest things a rider sees without a room.
+	// A friend and one line between you (#1819): the DM thread is the message
+	// surface a rider most opens on a sofa, and nothing measured it. A second
+	// rider in their own context accepts, so the thread is a real one.
+	const peerContext = await browser.newContext({ baseURL });
+	const peerPage = await peerContext.newPage();
+	await signInAs(peerPage, 'Phone Width Peer', '/home');
+	const peerId = await peerPage.evaluate(async () =>
+		String(
+			((await (await fetch('/api/me')).json()) as { id?: string }).id ?? '',
+		),
+	);
+	const myId = await page.evaluate(async () =>
+		String(
+			((await (await fetch('/api/me')).json()) as { id?: string }).id ?? '',
+		),
+	);
+	// By the peer's friend code: a request by id needs a shared room, and
+	// these two have none — the code is how strangers become friends.
+	const peerCode = await peerPage.evaluate(async () =>
+		String(
+			((await (await fetch('/api/friends')).json()) as { code?: string })
+				.code ?? '',
+		),
+	);
+	const asked = await page.evaluate(async (code) => {
+		const res = await fetch('/api/friends', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ code }),
+		});
+		return `${res.status} ${await res.text()}`;
+	}, peerCode);
+	expect(asked, 'the friend request').toMatch(/^2\d\d/);
+	const accepted = await peerPage.evaluate(async (id) => {
+		const res = await fetch(`/api/friends/${id}/accept`, { method: 'POST' });
+		return `${res.status} ${await res.text()}`;
+	}, myId);
+	expect(accepted, 'the peer accepting').toMatch(/^2\d\d/);
+	const sent = await page.evaluate(async (id) => {
+		const res = await fetch(`/api/dms/${id}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				text: 'a line wide enough to wrap on a phone, which it must',
+			}),
+		});
+		return `${res.status} ${await res.text()}`;
+	}, peerId);
+	expect(sent, 'the first line').toMatch(/^2\d\d/);
+	await peerContext.close();
+
 	const byId = await page.evaluate(async () => {
 		const me = (await (await fetch('/api/me')).json()) as { id?: string };
 		const rides = (await (await fetch('/api/rides')).json()) as {
@@ -176,6 +231,12 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 			me: me.id ?? '',
 			ride: rides.rides?.[0]?.id ?? '',
 			room: rooms.rooms.find((r) => r.slug)?.slug ?? '',
+			peer:
+				(
+					(await (await fetch('/api/dms')).json()) as {
+						conversations?: { peerId: string }[];
+					}
+				).conversations?.[0]?.peerId ?? '',
 		};
 	});
 	const routes = [
@@ -183,6 +244,7 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 		...(byId.me ? [`/u/${byId.me}`] : []),
 		...(byId.ride ? [`/history/${byId.ride}`] : []),
 		...(byId.room ? [`/messages/r/${byId.room}`] : []),
+		...(byId.peer ? [`/messages/dm/${byId.peer}`] : []),
 		...(crewId ? [`/crew/${crewId}`, `/crew/${crewId}/settings`] : []),
 		...(crewCode ? [`/c/${crewCode}`] : []),
 	];
@@ -193,6 +255,7 @@ test('no page outside a room scrolls sideways on a phone', async ({ page }) => {
 			me: expect.stringMatching(/.+/),
 			ride: expect.stringMatching(/.+/),
 			room: expect.stringMatching(/.+/),
+			peer: expect.stringMatching(/.+/),
 		}),
 	);
 

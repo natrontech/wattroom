@@ -12,12 +12,13 @@ export const dm = {
 	get open() {
 		return open;
 	},
+	// Neither stamps "seen" (#1819): opening a thread is not reading it. The
+	// thread store stamps when lines actually arrived in a visible tab, which
+	// is the one condition under which the rider could have seen them.
 	show(id: string, name: string) {
 		open = { id, name };
-		this.stampSeen(id);
 	},
 	close() {
-		if (open) this.stampSeen(open.id);
 		open = null;
 	},
 	stampSeen(peerId: string) {

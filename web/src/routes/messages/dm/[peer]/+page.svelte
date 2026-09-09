@@ -172,6 +172,8 @@
 	imageSrc={(imageId) => `/api/dms/images/${imageId}`}
 	composerPlaceholder="Message {peerName}…"
 	composerLock={lock}
+	editHint="Escape cancels · they see the change"
+	lineGapMs={0}
 >
 	{#snippet emptyState()}
 		<div class="mb-4 text-center">
