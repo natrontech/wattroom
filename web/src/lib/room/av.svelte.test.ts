@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
@@ -30,6 +30,9 @@ vi.mock('livekit-client', () => {
 	const attached: HTMLAudioElement[] = [];
 	// A handshake that never answers (#1203).
 	let hang = false;
+	// The machine's sound, which a share takes only if it asked for it (#1751).
+	let shareAudio: { stopped: boolean } | null = null;
+	let lastShareOptions: Record<string, unknown> | undefined;
 	class Room {
 		constructor(options: Record<string, unknown> = {}) {
 			roomOptions = options;
@@ -45,12 +48,29 @@ vi.mock('livekit-client', () => {
 		remoteParticipants = new Map();
 		localParticipant = {
 			identity: 'me',
-			async setScreenShareEnabled(on: boolean) {
+			async setScreenShareEnabled(
+				on: boolean,
+				options?: Record<string, unknown>,
+			) {
 				shared = on;
+				lastShareOptions = options;
+				// Exactly what getDisplayMedia does with the constraint: no
+				// audio asked for, no audio track to publish.
+				shareAudio = on && options?.audio ? { stopped: false } : null;
 			},
-			getTrackPublication: () => (shared ? { videoTrack: {} } : undefined),
+			getTrackPublication: (source: string) =>
+				source === 'screen_share_audio'
+					? shareAudio
+						? { audioTrack: shareAudio }
+						: undefined
+					: shared
+						? { videoTrack: {} }
+						: undefined,
 			async publishTrack() {},
-			unpublishTrack() {},
+			async unpublishTrack(track: { stopped: boolean }, stop?: boolean) {
+				if (stop) track.stopped = true;
+				if (track === shareAudio) shareAudio = null;
+			},
 			async publishData(payload: Uint8Array) {
 				published.push(payload);
 			},
@@ -88,10 +108,19 @@ vi.mock('livekit-client', () => {
 
 	return {
 		Room,
+		/** What the last share asked getDisplayMedia for (#1751). */
+		shareOptions: () => lastShareOptions,
+		/**
+		 * The tap on the machine's output: null once nothing holds it, and
+		 * `stopped` only if it was ended rather than merely unpublished — an
+		 * unpublished-but-live track leaves the machine tapped.
+		 */
+		shareAudioTap: () => shareAudio,
 		// The rider hitting Chrome's own "Stop sharing" bar: LiveKit ends the
 		// track, unpublishes it itself, and the event is the only word we get.
 		stopSharingNatively() {
 			shared = false;
+			shareAudio = null;
 			joined?.handlers.get('LocalTrackUnpublished')?.({
 				source: 'screen_share',
 			});
@@ -213,8 +242,12 @@ const {
 	hangConnect,
 	startAudioAsks,
 	playbackChanged,
+	shareOptions,
+	shareAudioTap,
 } = (await import('livekit-client')) as unknown as {
 	hangConnect: (on: boolean) => void;
+	shareOptions: () => { audio?: unknown } | undefined;
+	shareAudioTap: () => { stopped: boolean } | null;
 	stopSharingNatively: () => void;
 	dropNatively: () => void;
 	blockAudio: (starts?: boolean) => void;
@@ -1099,6 +1132,93 @@ describe('a rider who shares their computer as well as their voice', () => {
 
 			dispose();
 		});
+	});
+});
+
+// #1751, a rider report from the desktop app: the machine's sound went with
+// every share and there was no way to say no. The shell cannot fix it where
+// it happens — above macOS 15 the system picker takes the request, and takes
+// system audio without offering a checkbox — so the room is where the rider
+// is asked.
+describe("the machine's sound, which the sharer decides on", () => {
+	// happy-dom hands vitest no localStorage global (the stub ftp-decline
+	// uses), and it has to be re-made per test: withOutputGraph above unstubs
+	// every global when it finishes.
+	const stored = new Map<string, string>();
+	beforeEach(() => {
+		stored.clear();
+		vi.stubGlobal('localStorage', {
+			getItem: (key: string) => stored.get(key) ?? null,
+			setItem: (key: string, value: string) => void stored.set(key, value),
+		});
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('takes the sound out of the room and remembers, without ending the share', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.toggleShare();
+		expect(av.sharingAudio).toBe(true);
+		const tap = shareAudioTap();
+
+		await av.setShareSound(false);
+
+		// The picture stays up — this is the sound's own control, not a
+		// smaller way to stop sharing.
+		expect(av.sharing).toBe(true);
+		expect(av.sharingAudio).toBe(false);
+		// And the tap is CLOSED, not just unpublished: a live track nobody
+		// subscribes to still holds the machine's output open.
+		expect(tap?.stopped).toBe(true);
+
+		// The next share never asks for it — the complaint was that every
+		// share started loud, not that one did.
+		await av.toggleShare();
+		await av.toggleShare();
+		expect(shareOptions()?.audio).toBe(false);
+		expect(av.sharingAudio).toBe(false);
+		dispose();
+	});
+
+	it('answers again on the next room, from what the rider said on this one', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.setShareSound(false);
+		dispose();
+
+		let next!: ReturnType<typeof createRoomAv>;
+		const disposeNext = $effect.root(() => {
+			next = createRoomAv('other');
+		});
+		await next.join();
+		await next.toggleShare();
+		expect(shareOptions()?.audio).toBe(false);
+		expect(next.sharingAudio).toBe(false);
+		disposeNext();
+	});
+
+	it('re-runs the share to put the sound back, because a capture cannot grow one', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.setShareSound(false);
+		await av.toggleShare();
+		expect(av.sharingAudio).toBe(false);
+
+		await av.setShareSound(true);
+
+		expect(av.sharing).toBe(true);
+		expect(av.sharingAudio).toBe(true);
+		expect(av.stageSources.map((source) => source.key)).toEqual(['screen:me']);
+		dispose();
 	});
 });
 

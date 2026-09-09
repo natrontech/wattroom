@@ -200,3 +200,30 @@ track with no data in it ([electron#52738](https://github.com/electron/electron/
 so the room was being told it could hear a machine it could not. Linux
 Chromium has no loopback at all. macOS system audio, the capability that
 justified this ADR, is unaffected: it arrives through the system picker.
+
+## Amendment, 2026-09-09 (#1751): the room asks where the shell cannot
+
+The amendment above ends by saying macOS system audio "arrives through the
+system picker". It does — unasked. `SCContentSharingPicker` has no audio
+checkbox to offer, and with `useSystemPicker` the shell's own handler is never
+called, so #1699's question is one macOS riders were never put. The report
+came back the way it was always going to: the machine's sound went with every
+share, and there was nothing anywhere to turn it off.
+
+The shell cannot fix this where it happens. **The app can, because the app is
+what publishes the audio**: a share's sound is a LiveKit track like any other,
+and whether the room gets one is the renderer's decision, not the picker's.
+So the question moves to the one surface that exists on every platform — the
+share notice (#563), which is already persistent, already on every page, and
+already the thing that says what the room can see.
+
+- **Off is instant, and it closes the tap.** The track is unpublished *and*
+  stopped, so the machine stops being tapped rather than being tapped quietly.
+  A rider pressing it means "not this", and must not wait on a picker.
+- **On re-runs the share, picker and all.** `getDisplayMedia` has no
+  audio-only form; a capture that did not take the sound cannot grow one.
+- **The answer is remembered per device, and it defaults to on.** Every picker
+  that *does* ask — Chrome's "share tab audio", the shell's Windows checkbox —
+  has the rider's answer already, and defaulting to off would silently
+  overrule the box they ticked. What was wrong was never that the sound went;
+  it was that it went every time with no way to say no.

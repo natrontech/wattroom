@@ -40,6 +40,15 @@ export interface AvState {
 	 * unaware when it can.
 	 */
 	sharingAudio: boolean;
+	/**
+	 * Whether the rider WANTS the room to hear their machine (#1751), as
+	 * opposed to `sharingAudio`, which is whether it does. Two facts, because
+	 * a platform can refuse: Linux Chromium has no loopback at all.
+	 *
+	 * Remembered per device. The report was that every share started loud, and
+	 * a rider who says no is saying it about sharing, not about this share.
+	 */
+	shareSound: boolean;
 	error: AvError | null;
 	/** Who is talking, measured rather than remembered (#987). */
 	speaking: Record<string, boolean>;
@@ -69,6 +78,33 @@ export interface AvState {
 	playbackBlocked: boolean;
 }
 
+const SHARE_SOUND_KEY = 'wattroom.share-sound.v1';
+
+/**
+ * The rider's standing answer on the machine's sound (#1751).
+ *
+ * On unless they said otherwise: every picker that ASKS — Chrome's "share tab
+ * audio", the shell's own checkbox on Windows (#1699) — already has their
+ * answer, and defaulting to off would mute the rider who ticked the box. The
+ * one that never asks is macOS's system picker, which is where the report
+ * came from, and there this is the only place the question can be put.
+ */
+export function shareSoundWanted(): boolean {
+	try {
+		return localStorage.getItem(SHARE_SOUND_KEY) !== 'off';
+	} catch {
+		return true;
+	}
+}
+
+export function rememberShareSound(on: boolean): void {
+	try {
+		localStorage.setItem(SHARE_SOUND_KEY, on ? 'on' : 'off');
+	} catch {
+		// per-device preference; losing it costs one press
+	}
+}
+
 /** What the UI watches. */
 export function createAvState(): AvState {
 	// `$state` has to initialise a declaration, so it cannot be returned inline.
@@ -79,6 +115,7 @@ export function createAvState(): AvState {
 		away: false,
 		sharing: false,
 		sharingAudio: false,
+		shareSound: shareSoundWanted(),
 		error: null,
 		speaking: {},
 		dropped: 0,

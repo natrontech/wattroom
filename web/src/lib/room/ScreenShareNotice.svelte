@@ -10,6 +10,8 @@
 	import { shareNotice } from '$lib/room/share-notice';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
+	import VolumeOff from '@lucide/svelte/icons/volume-off';
 	import { goto } from '$app/navigation';
 
 	let {
@@ -18,6 +20,7 @@
 		room,
 		pathname,
 		onStop,
+		onSound,
 	}: {
 		sharing: boolean;
 		/** Whether the room can HEAR the machine too (#1124). */
@@ -25,7 +28,21 @@
 		room: { slug: string; name?: string } | null;
 		pathname: string;
 		onStop: () => void;
+		/**
+		 * Turn the machine's sound off, or back on (#1751). Here rather than
+		 * only in the picker because the one picker that never asks is macOS's
+		 * own, and the shell does not get to answer for it.
+		 */
+		onSound?: (on: boolean) => void;
 	} = $props();
+
+	// Off is instant; on re-runs the share, so it says so (…) rather than
+	// looking like a mute button that opens a picker.
+	const soundLabel = $derived(
+		sharingAudio
+			? "Stop sending this machine's sound"
+			: "Send this machine's sound too…",
+	);
 
 	const notice = $derived(shareNotice(sharing, room, pathname));
 </script>
@@ -34,6 +51,15 @@
 	<div
 		title={MENU_HINT}
 		{@attach contextMenu(() => [
+			...(onSound
+				? [
+						{
+							label: soundLabel,
+							icon: sharingAudio ? VolumeOff : Volume2,
+							onSelect: () => onSound(!sharingAudio),
+						},
+					]
+				: []),
 			{
 				label: 'Stop sharing your screen',
 				icon: ScreenShareOff,
@@ -71,6 +97,26 @@
 				{/if}
 			</span>
 		</p>
+		{#if onSound}
+			<!-- The sound is its own control, not a footnote on the picture: the
+			     rider who reported this could see what they were sharing and had
+			     no way to say the room should not HEAR it (#1751). Icon-only and
+			     44 px, because the row also carries the room's name at 375 px
+			     (ux.md). -->
+			<button
+				onclick={() => onSound(!sharingAudio)}
+				aria-pressed={sharingAudio}
+				class="grid h-11 w-11 shrink-0 place-items-center rounded {sharingAudio
+					? 'text-danger'
+					: 'text-muted hover:text-ink'}"
+				title={soundLabel}
+				aria-label={soundLabel}
+			>
+				{#if sharingAudio}<Volume2 size={16} />{:else}<VolumeOff
+						size={16}
+					/>{/if}
+			</button>
+		{/if}
 		<button onclick={onStop} class="btn btn-danger-solid btn-lg shrink-0">
 			<ScreenShareOff size={16} />
 			Stop sharing
