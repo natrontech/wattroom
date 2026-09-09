@@ -54,10 +54,16 @@ export function flatten(workout: Workout): Segment[] {
 	return segments;
 }
 
+/** End of the last segment — the timeline a preview is drawn against. */
+export function segmentsDuration(segments: Segment[]): number {
+	return segments.reduce(
+		(end, seg) => Math.max(end, seg.startSeconds + seg.seconds),
+		0,
+	);
+}
+
 export function durationSeconds(workout: Workout): number {
-	const segs = flatten(workout);
-	const last = segs.at(-1);
-	return last ? last.startSeconds + last.seconds : 0;
+	return segmentsDuration(flatten(workout));
 }
 
 export interface TargetOptions {

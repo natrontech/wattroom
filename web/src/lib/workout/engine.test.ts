@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { durationSeconds, flatten, targetAt } from './engine';
-import type { Workout } from './types';
+import { durationSeconds, flatten, segmentsDuration, targetAt } from './engine';
+import type { Segment, Workout } from './types';
 
 const FTP = 250;
 
@@ -21,6 +21,23 @@ const workout: Workout = {
 		{ type: 'cooldown', seconds: 120, from: 0.6, to: 0.35 },
 	],
 };
+
+describe('segmentsDuration', () => {
+	// The previews draw against this, so a wrong answer squeezes or overflows
+	// the graph rather than erroring. Not `last.startSeconds + last.seconds`:
+	// only ordered timelines make those the same number.
+	it('is the end of the segment that finishes last', () => {
+		const seg = (startSeconds: number, seconds: number): Segment => ({
+			kind: 'steady',
+			startSeconds,
+			seconds,
+			stepPath: [0],
+		});
+		expect(segmentsDuration([])).toBe(0);
+		expect(segmentsDuration([seg(0, 300), seg(300, 60)])).toBe(360);
+		expect(segmentsDuration([seg(300, 600), seg(0, 300)])).toBe(900);
+	});
+});
 
 describe('flatten', () => {
 	it('expands repeats into absolutely-positioned segments', () => {

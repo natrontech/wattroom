@@ -9,14 +9,9 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { formatClock } from '$lib/format';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
+	import { type MenuEntry } from '$lib/context-menu.svelte';
+	import WorkoutCard from './WorkoutCard.svelte';
+	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
 	import {
 		createCustomStore,
@@ -135,7 +130,7 @@
 			</div>
 		{:else if !custom.loaded}
 			<div class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
-				<Skeleton class="h-24" rows={2} />
+				<Skeleton class="h-40" rows={2} />
 			</div>
 		{:else if custom.all.length === 0}
 			<div class="mt-2">
@@ -150,30 +145,28 @@
 				</EmptyState>
 			</div>
 		{:else}
-			<ul class="mt-2 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+			<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 				{#each custom.all as entry (entry.id)}
-					<li
-						class="panel flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3"
-						title={MENU_HINT}
-						{@attach contextMenu(() => customMenu(entry))}
+					<WorkoutCard
+						workout={entry.workout}
+						href="/ride?w={entry.id}"
+						ftp={previewFtp}
+						menu={() => customMenu(entry)}
 					>
-						<a
-							href="/ride?w={entry.id}"
-							class="font-display font-bold hover:underline"
-							>{entry.workout.name}</a
-						>
-						<span class="text-muted font-mono text-xs tabular-nums"
-							>{formatClock(durationSeconds(entry.workout))}</span
-						>
-						<a
-							href="/workouts/edit?w={entry.id}"
-							class="btn btn-ghost btn-xs ml-auto">Edit</a
-						>
-						<button
-							onclick={() => removeCustom(entry)}
-							class="btn btn-ghost btn-xs text-danger">Delete</button
-						>
-					</li>
+						{#snippet actions()}
+							<a href="/workouts/edit?w={entry.id}" class="btn btn-ghost btn-xs"
+								>Edit</a
+							>
+							<button
+								onclick={() => removeCustom(entry)}
+								class="btn btn-ghost btn-xs text-danger">Delete</button
+							>
+							<a
+								href="/ride?w={entry.id}"
+								class="btn btn-primary btn-xs ml-auto">Ride</a
+							>
+						{/snippet}
+					</WorkoutCard>
 				{/each}
 			</ul>
 		{/if}
@@ -226,50 +219,33 @@
 
 	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 		{#each shown as entry (entry.id)}
-			<li
-				class="panel hover:border-muted/40 overflow-hidden transition-colors"
-				title={MENU_HINT}
-				{@attach contextMenu(() => libraryMenu(entry.id))}
+			<WorkoutCard
+				workout={entry.workout}
+				href="/ride?w={entry.id}"
+				ftp={previewFtp}
+				focus={entry.focus}
+				summary={entry.summary}
+				menu={() => libraryMenu(entry.id)}
 			>
-				<!-- Not one big anchor: the card carries two actions, and nesting them
-				     inside a link is invalid and unreachable by keyboard. -->
-				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pt-4">
-					<a
-						href="/ride?w={entry.id}"
-						class="font-display font-bold hover:underline"
-						>{entry.workout.name}</a
-					>
-					<span class="eyebrow">{entry.focus}</span>
+				{#snippet badge()}
 					{#if suggestion && suggested.includes(entry.focus)}
 						<span class="eyebrow text-z4" title={suggestion.why}
 							>suggested today</span
 						>
 					{/if}
-					<span class="text-muted ml-auto font-mono text-xs tabular-nums"
-						>{formatClock(durationSeconds(entry.workout))}</span
-					>
+				{/snippet}
+				{#snippet actions()}
 					<a
 						href="/workouts/edit?from={entry.id}"
 						class="text-muted hover:text-ink text-xs">Save a copy</a
 					>
 					<!-- The primary action, visible (#126): the title-only link read
 					     as a label, and the rest of the card was dead surface. -->
-					<a
-						href="/ride?w={entry.id}"
-						class="bg-ink text-paper hover:bg-ink/90 rounded px-3 py-1 text-xs font-semibold"
+					<a href="/ride?w={entry.id}" class="btn btn-primary btn-xs ml-auto"
 						>Ride</a
 					>
-				</div>
-				<p class="text-muted px-5 pt-1 pb-3 text-xs">{entry.summary}</p>
-				<IntervalGraph
-					segments={flatten(entry.workout)}
-					total={durationSeconds(entry.workout)}
-					elapsed={0}
-					ftp={previewFtp}
-					trace={[]}
-					compact
-				/>
-			</li>
+				{/snippet}
+			</WorkoutCard>
 		{/each}
 	</ul>
 </main>
