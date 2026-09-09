@@ -34,9 +34,6 @@
 	import { activePlace } from '$lib/nav/pages';
 	import { openMember } from '$lib/nav/open-member';
 	import Menu from '@lucide/svelte/icons/menu';
-	import AudioDeck from '$lib/room/AudioDeck.svelte';
-	import JukeboxDock from '$lib/room/JukeboxDock.svelte';
-	import ScreenShareNotice from '$lib/room/ScreenShareNotice.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
@@ -420,14 +417,19 @@
 			     one AV state that can leak a private tab (#563, errors.md). -->
 			{#if roomConnection.current}
 				{@const av = roomConnection.current.av}
-				<ScreenShareNotice
-					room={sharingRoom}
-					pathname={page.url.pathname}
-					sharing={av.sharing}
-					sharingAudio={av.sharingAudio}
-					onStop={() => void av.toggleShare()}
-					onSound={(on) => void av.setShareSound(on)}
-				/>
+				<!-- Loaded once a room is joined (#1514), like the two docks
+				     below: it draws nothing before one, and its chunk has no
+				     business in the closure every route pays for. -->
+				{#await import('$lib/room/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
+					<ScreenShareNotice
+						room={sharingRoom}
+						pathname={page.url.pathname}
+						sharing={av.sharing}
+						sharingAudio={av.sharingAudio}
+						onStop={() => void av.toggleShare()}
+						onSound={(on) => void av.setShareSound(on)}
+					/>
+				{/await}
 			{/if}
 			<!-- The page body. It scrolls down, never sideways: wide content
 			     wraps itself in its own overflow-x container (.claude/rules/ux.md).
@@ -462,11 +464,22 @@
 		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
 		     auto-advance while the player is offscreen, so it cannot be a place.
 		     Threads became places instead (ADR-0020) — /messages (#468). -->
-		<JukeboxDock />
-		<!-- The other half of one queue (#267): a pool track is heard here,
-		     beside the dock rather than inside it, because it needs none of
-		     the iframe's geometry. -->
-		<AudioDeck />
+		{#if roomConnection.current}
+			<!-- Both derive everything from the connection and draw nothing
+			     without one, so they load with the room (#1514): the jukebox
+			     player, the YouTube API glue and the pool deck used to ride
+			     every route's eager closure — the signed-out landing page,
+			     /history, a phone spectator. -->
+			{#await import('$lib/room/JukeboxDock.svelte') then { default: JukeboxDock }}
+				<JukeboxDock />
+			{/await}
+			<!-- The other half of one queue (#267): a pool track is heard here,
+			     beside the dock rather than inside it, because it needs none of
+			     the iframe's geometry. -->
+			{#await import('$lib/room/AudioDeck.svelte') then { default: AudioDeck }}
+				<AudioDeck />
+			{/await}
+		{/if}
 	</div>
 {:else}
 	{@render children()}
