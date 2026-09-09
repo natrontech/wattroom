@@ -197,7 +197,9 @@ function installHandlers(win) {
 		// Chromium runs one chooser at a time and cancels the old one when a
 		// new request starts, so a single slot is the whole state machine. Every
 		// emit brings a fresh callback into the same chooser; the newest is the
-		// one to answer with.
+		// one to answer with. A request that supersedes another inherits its
+		// countdown, which is only ever short — and the picker is modal, so the
+		// rider cannot start a second search while one is open.
 		if (!scan) {
 			scan = {
 				// Nothing found in this long means the sensor is asleep, not that
