@@ -53,7 +53,16 @@ func setup(t *testing.T) (*http.ServeMux, *Service) {
 	t.Cleanup(func() {
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 	})
-	users := &fakeUsers{byToken: map[string]db.User{"alice": u}}
+	bob, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
+		DisplayName: "bob", FtpWatts: 220, WeightKg: 80,
+	})
+	if err != nil {
+		t.Fatalf("create bob: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", bob.ID)
+	})
+	users := &fakeUsers{byToken: map[string]db.User{"alice": u, "bob": bob}}
 	svc := New(st, users, slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)

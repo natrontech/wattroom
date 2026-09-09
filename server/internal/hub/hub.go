@@ -135,6 +135,10 @@ type Hub struct {
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
 	lobbyAuth func(*http.Request) (userID string, ok bool)
+	// Open sockets per rider, room and lobby together (#1415): each costs a
+	// goroutine pair and a walk of the lobby under h.mu on join and leave,
+	// and one account could open any number.
+	sockets map[string]int
 	// Chat persistence queue (#219): read loops enqueue, one worker saves.
 	saves chan chatSave
 	// Autoplay source and its trigger queue (#627): a join or a deck running
@@ -182,7 +186,7 @@ func (h *Hub) SetTrackHistory(k TrackHistory) { h.history = k }
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
 		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
-		lobby: make(map[*lobbyClient]string),
+		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's chat history or autoplay.
@@ -424,4 +428,29 @@ func (h *Hub) launchRoom(rm *room) {
 	safego.SuperviseThen(h.log, h.now, "room "+rm.slug, rm.stop,
 		func() { rm.run(h.log, h.now, h.saver) },
 		func() { h.CloseRoom(rm.slug) })
+}
+
+// maxSocketsPerRider is generous — a phone, a laptop, a TV and a few tabs —
+// and far under what makes join and leave O(lobby) for one account (#1415).
+const maxSocketsPerRider = 16
+
+// admitSocket counts one more open socket for the rider, refusing past the cap.
+func (h *Hub) admitSocket(riderID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.sockets[riderID] >= maxSocketsPerRider {
+		return false
+	}
+	h.sockets[riderID]++
+	return true
+}
+
+func (h *Hub) releaseSocket(riderID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.sockets[riderID] <= 1 {
+		delete(h.sockets, riderID)
+		return
+	}
+	h.sockets[riderID]--
 }

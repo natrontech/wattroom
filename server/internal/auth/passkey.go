@@ -76,6 +76,10 @@ type challengeEntry struct {
 // simultaneous ceremonies, and the alpha does not have four thousand riders.
 const challengeMax = 4096
 
+// maxPasskeys per account (#1415), the tokens' number: every ceremony
+// unmarshals every credential the account holds, and nothing bounded the rows.
+const maxPasskeys = 10
+
 func newChallengeStore() *challengeStore {
 	return &challengeStore{m: map[string]challengeEntry{}}
 }
@@ -179,6 +183,12 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 		s.log.Error("passkey user load failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
 			"Adding a passkey could not start. Try again.")
+		return
+	}
+	if len(pu.creds) >= maxPasskeys {
+		// A per-account ceiling: 429, like the tokens (errors.md).
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Ten passkeys is the cap — remove one you no longer use first.")
 		return
 	}
 

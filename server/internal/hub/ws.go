@@ -68,6 +68,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.admitSocket(rider.ID) {
+		// Before the upgrade, like the 403: a shared resource is full.
+		http.Error(w, "too many open connections for this rider", http.StatusServiceUnavailable)
+		return
+	}
+	defer h.releaseSocket(rider.ID)
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
