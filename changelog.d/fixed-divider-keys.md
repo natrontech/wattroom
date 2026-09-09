@@ -1,0 +1,1 @@
+- The two resizable seams — the room's panel and the navigation sidebar — can be moved from the keyboard: Tab to the divider, then the arrow keys move it a step at a time.

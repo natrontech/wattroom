@@ -93,4 +93,35 @@ describe('edgeDivider', () => {
 		drag(node, 'pointermove', 0, 0);
 		expect(pane.style.width).toBe('180px');
 	});
+
+	it('moves the seam a step per arrow press, and says where it stands (#1523)', () => {
+		const pane = document.createElement('div');
+		pane.style.minWidth = '180px';
+		pane.style.maxWidth = '400px';
+		pane.style.width = '300px';
+		// happy-dom lays nothing out: the pane is as wide as its style says.
+		Object.defineProperty(pane, 'offsetWidth', {
+			get: () => parseFloat(pane.style.width),
+		});
+		const node = grip();
+		pane.appendChild(node);
+		document.body.appendChild(pane);
+		const off = edgeDivider(node, -1)!;
+		expect(node.tabIndex).toBe(0);
+		expect(node.getAttribute('aria-valuenow')).toBe('300');
+		expect(node.getAttribute('aria-valuemax')).toBe('400');
+		const press = (key: string) =>
+			node.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+		// The room's panel lies right of its grip: left grows it.
+		press('ArrowLeft');
+		expect(pane.style.width).toBe('316px');
+		expect(node.getAttribute('aria-valuenow')).toBe('316');
+		press('ArrowRight');
+		expect(pane.style.width).toBe('300px');
+		press('ArrowUp');
+		expect(pane.style.width).toBe('300px');
+		off();
+		press('ArrowLeft');
+		expect(pane.style.width).toBe('300px');
+	});
 });
