@@ -1,1 +1,0 @@
-- A sprint block in a solo workout now takes the screen the way it does in a room: a count-in, the window with your watts and the seconds left, instead of "no target — spin easy" for the fifteen seconds you were meant to go all out. The mid-ride buttons use the standard riding size, and Skip block is greyed out on the last block.

@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.93] - 2026-09-10
+
+### Changed
+
+- When the trainer goes quiet mid-ride, the riding screen now offers the pairing card under the warning instead of a warning alone, and a trainer that never reports a watt counts as lost from the start. The ramp test shows the same pause, count-in and spiral-guard status a workout ride does, and Settings › Equipment shows your live watts even while a room holds the trainer.
+
+### Fixed
+
+- The seconds your own guard takes — auto-pause, the count back in, the spiral release — no longer count against your execution score on the saved ride or on a room's live meter, only ever on the meter you watched; a spiral trip used to show as ten missed seconds on the ride page.
+- Riding alone now sounds like riding in a room: auto-pause, the resume countdown, the spiral guard letting go and coming back, a trainer dropping out and recovering, a sprint's klaxon and gun, and the end of the ride all announce themselves — on the ramp test too. Before, a solo ride only beeped on a block change.
+- A sprint block in a solo workout now takes the screen the way it does in a room: a count-in, the window with your watts and the seconds left, instead of "no target — spin easy" for the fifteen seconds you were meant to go all out. The mid-ride buttons use the standard riding size, and Skip block is greyed out on the last block.
+
 ## [2026.09.92] - 2026-09-10
 
 ### Changed
@@ -1775,7 +1787,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.92...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.93...HEAD
+[2026.09.93]: https://github.com/natrontech/wattroom/compare/2026.09.92...2026.09.93
 [2026.09.92]: https://github.com/natrontech/wattroom/compare/2026.09.91...2026.09.92
 [2026.09.91]: https://github.com/natrontech/wattroom/compare/2026.09.90...2026.09.91
 [2026.09.90]: https://github.com/natrontech/wattroom/compare/2026.09.89...2026.09.90

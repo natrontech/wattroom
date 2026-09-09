@@ -1,1 +1,0 @@
-- Riding alone now sounds like riding in a room: auto-pause, the resume countdown, the spiral guard letting go and coming back, a trainer dropping out and recovering, a sprint's klaxon and gun, and the end of the ride all announce themselves — on the ramp test too. Before, a solo ride only beeped on a block change.
