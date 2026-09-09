@@ -1,0 +1,1 @@
+- The ramp modes' podium now says how many rounds each rider survived and Floor is Lava's how many lives they had left, instead of names alone; the sprint klaxon and podium announce themselves to screen readers.

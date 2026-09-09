@@ -54,7 +54,10 @@
      place the UI is allowed to go loud. `roster` absent keeps the old compact
      rendering for /dev/modes, which mounts it without a room. -->
 {#if phase === 'klaxon'}
-	<div class="grid h-full place-items-center">
+	<!-- role=status (#1593): the klaxon and the podium are state changes a
+	     rider does not watch for; a screen reader hears them the way
+	     RoomStatus is heard. -->
+	<div class="grid h-full place-items-center" role="status">
 		<div class="text-center">
 			<p class="eyebrow">get ready</p>
 			<p
@@ -137,7 +140,7 @@
 		{/if}
 	</div>
 {:else if sprint.results}
-	<div class="grid h-full place-items-center">
+	<div class="grid h-full place-items-center" role="status">
 		<div class="w-full max-w-lg text-center">
 			<p class="eyebrow">sprint podium</p>
 			<ol class="mt-4 space-y-2">

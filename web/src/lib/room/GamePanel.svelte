@@ -144,6 +144,19 @@
 						<span class="font-display ml-auto font-bold tabular-nums"
 							>{Math.round(score.wkg)} pts</span
 						>
+					{:else if game.mode === 'backyard-ramp' || game.mode === 'collective-ramp'}
+						<!-- The ramp's score is rounds survived (SPEC); the placing
+						     score in wkg said nothing a rider could read (#1593). -->
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{score.rounds ?? 0} round{(score.rounds ?? 0) === 1
+								? ''
+								: 's'}</span
+						>
+					{:else if game.mode === 'floor-is-lava'}
+						{@const lives = game.riders?.[score.riderId]?.lives ?? 0}
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{lives} {lives === 1 ? 'life' : 'lives'}</span
+						>
 					{/if}
 				</li>
 			{/each}

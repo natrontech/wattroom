@@ -8,7 +8,7 @@
 	import PlayerTile from '$lib/room/PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import SprintMoment from './SprintMoment.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
@@ -399,11 +399,31 @@
 
 				{#if room.sprint !== 'idle'}
 					<div class="mt-2">
+						<!-- The real component over the mock's clock (#1593): the
+						     second design that stood here drifted from it. -->
 						<SprintMoment
-							state={room.sprint}
-							secondsLeft={room.sprintLeft}
-							riders={room.riders}
-							podium={room.podium}
+							myWatts={room.riders.find((r) => r.you)?.watts ?? 0}
+							sprint={{
+								startsAtMs:
+									room.sprint === 'armed'
+										? Date.now() + room.sprintLeft * 1000
+										: Date.now() - 1_000,
+								endsAtMs:
+									room.sprint === 'active'
+										? Date.now() + room.sprintLeft * 1000
+										: room.sprint === 'podium'
+											? Date.now() - 1_000
+											: Date.now() + 15_000 + room.sprintLeft * 1000,
+								results:
+									room.sprint === 'podium'
+										? room.podium.map((p) => ({
+												riderId: p.name,
+												name: p.name,
+												wkg: p.wkg,
+												watts: p.watts,
+											}))
+										: undefined,
+							}}
 						/>
 					</div>
 				{:else}

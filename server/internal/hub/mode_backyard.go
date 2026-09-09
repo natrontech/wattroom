@@ -29,10 +29,13 @@ type backyard struct {
 	roundEnds  time.Time
 	below      map[string]int // consecutive seconds under the band
 	out        map[string]bool
-	joined     map[string]bool
-	grace      *graceTracker
-	finished   bool
-	podium     []protocol.SprintScore
+	// The round each rider went out in (#1593): the podium's number is
+	// rounds survived, and the placing score alone could not say it.
+	outRound map[string]int
+	joined   map[string]bool
+	grace    *graceTracker
+	finished bool
+	podium   []protocol.SprintScore
 	// eliminationOrder, last first, feeds the podium.
 	order []string
 }
@@ -44,6 +47,7 @@ func newBackyard(now time.Time, collective bool) *backyard {
 		roundEnds:  now.Add(backyardRound),
 		below:      make(map[string]int),
 		out:        make(map[string]bool),
+		outRound:   make(map[string]int),
 		joined:     make(map[string]bool),
 		grace:      newGraceTracker(),
 	}
@@ -149,6 +153,7 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 		}
 		if b.below[id] >= backyardBelowSecs {
 			b.out[id] = true
+			b.outRound[id] = b.round
 			b.order = append(b.order, id)
 		}
 	}
@@ -179,9 +184,16 @@ func (b *backyard) buildPodium(roster map[string]protocol.Rider) []protocol.Spri
 	standing := append(survivors, reverse(b.order)...)
 	for place, id := range standing {
 		rider := roster[id]
+		// Rounds survived: a survivor stood through every round so far; a
+		// rider who went out in round n finished n-1 of them.
+		rounds := b.round
+		if r, gone := b.outRound[id]; gone {
+			rounds = max(0, r-1)
+		}
 		out = append(out, protocol.SprintScore{
 			RiderID: id, Name: rider.Name, Watts: 0,
-			Wkg: float64(len(standing) - place), // rounds-style placing score
+			Wkg:    float64(len(standing) - place), // placing score
+			Rounds: rounds,
 		})
 	}
 	return out
