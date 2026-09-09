@@ -271,6 +271,14 @@
 		{#if badge}
 			<span class="eyebrow">{badge}</span>
 		{/if}
+		{#if server?.exportState === 'failed'}
+			<!-- The one delivery state worth a mark on the row (#1553): the ride
+			     page says why and has the retry. Pending and delivered are the
+			     normal course and stay quiet here. -->
+			<span class="eyebrow text-danger" title="Open the ride to try again"
+				>not on Strava</span
+			>
+		{/if}
 		<span class="text-muted text-xs"
 			>{new Date(ride.startedAt).toLocaleDateString()}</span
 		>
@@ -477,6 +485,17 @@
 			</EmptyState>
 		</div>
 	{:else}
+		{@const failed = rides.filter(
+			(ride) => ride.exportState === 'failed',
+		).length}
+		{#if failed > 0}
+			<div class="mt-8">
+				<Banner tone="warn">
+					{failed === 1 ? 'One ride' : `${failed} rides`} could not be sent to Strava.
+					Open a marked ride to try again.
+				</Banner>
+			</div>
+		{/if}
 		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
 				{@render rideRow(ride, ride.room ? 'room' : undefined, ride)}

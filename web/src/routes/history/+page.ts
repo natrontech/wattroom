@@ -8,6 +8,8 @@ export interface ServerRide extends RideRecord {
 	room?: boolean;
 	/** The per-ride opt-in (ADR-0024): friends see it on your page. */
 	sharedWithFriends: boolean;
+	/** The Strava delivery, when the ride had one (#1553). */
+	exportState?: 'pending' | 'delivered' | 'failed';
 }
 
 export const load: PageLoad = async ({ fetch }) => {

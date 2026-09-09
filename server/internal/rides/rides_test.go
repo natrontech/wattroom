@@ -216,6 +216,67 @@ func TestSoloRideScoresByTheWorkoutClock(t *testing.T) {
 	}
 }
 
+// The list says which rides never reached Strava (#1553): a failed delivery
+// used to show only on the ride's own page, so finding three meant opening
+// every row. A ride with no delivery record carries no state at all.
+func TestRideListMarksAFailedDelivery(t *testing.T) {
+	h := setup(t)
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, got)
+	}
+	rideID, _ := got["id"].(string)
+	id, err := store.ParseUUID(rideID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The listed state of one ride, by id — "" when the ride carries none.
+	stateOf := func(want string) string {
+		t.Helper()
+		status, list := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
+		if status != http.StatusOK {
+			t.Fatalf("list: %d %v", status, list)
+		}
+		rides, _ := list["rides"].([]any)
+		for _, entry := range rides {
+			ride, _ := entry.(map[string]any)
+			if ride["id"] == want {
+				state, _ := ride["exportState"].(string)
+				return state
+			}
+		}
+		t.Fatalf("ride %s is not on the list: %v", want, list)
+		return ""
+	}
+
+	if err := h.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{RideID: id, Destination: "strava"}); err != nil {
+		t.Fatal(err)
+	}
+	reason := "strava: 503"
+	if err := h.store.Queries.FailRideExport(t.Context(), db.FailRideExportParams{
+		RideID: id, Destination: "strava", LastError: &reason, MaxAttempts: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if state := stateOf(rideID); state != "failed" {
+		t.Fatalf("a failed delivery reads %q on the list", state)
+	}
+
+	// The same ride, with the delivery opened again, is pending — and a ride
+	// that never had one says nothing.
+	if _, err := h.store.Queries.RequeueRideExport(t.Context(), db.RequeueRideExportParams{RideID: id, Destination: "strava"}); err != nil {
+		t.Fatal(err)
+	}
+	if state := stateOf(rideID); state != "pending" {
+		t.Fatalf("a requeued delivery reads %q", state)
+	}
+	_, second := call(t, h.mux, "alice", http.MethodPost, "/api/rides", rideBody(120, 200))
+	secondID, _ := second["id"].(string)
+	if state := stateOf(secondID); state != "" {
+		t.Fatalf("a ride never sent carries %q", state)
+	}
+}
+
 // The list is paged by start (#1549): the second page begins strictly
 // before the oldest row the client holds.
 func TestRideListPagesByStart(t *testing.T) {

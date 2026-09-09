@@ -25,9 +25,11 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 }
 
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+       e.state as export_state
 from rides
-where user_id = $1 and workout_name = $2 and id <> $3
+left join ride_exports e on e.ride_id = rides.id and e.destination = $4::text
+where user_id = $1 and workout_name = $2 and rides.id <> $3
 order by avg_watts desc, started_at desc
 limit 1
 `
@@ -36,6 +38,7 @@ type BestUserRideOfWorkoutParams struct {
 	UserID      pgtype.UUID
 	WorkoutName string
 	ID          pgtype.UUID
+	Destination string
 }
 
 type BestUserRideOfWorkoutRow struct {
@@ -51,13 +54,19 @@ type BestUserRideOfWorkoutRow struct {
 	Xp              int32
 	RoomID          pgtype.UUID
 	SharedAt        pgtype.Timestamptz
+	ExportState     *string
 }
 
 // The ride page's "against your best" (#1687): the hardest ride of the same
 // workout across the whole history, not the first page of the list. Same
 // columns as ListUserRides so one JSON mapping serves both.
 func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfWorkoutParams) (BestUserRideOfWorkoutRow, error) {
-	row := q.db.QueryRow(ctx, bestUserRideOfWorkout, arg.UserID, arg.WorkoutName, arg.ID)
+	row := q.db.QueryRow(ctx, bestUserRideOfWorkout,
+		arg.UserID,
+		arg.WorkoutName,
+		arg.ID,
+		arg.Destination,
+	)
 	var i BestUserRideOfWorkoutRow
 	err := row.Scan(
 		&i.ID,
@@ -72,6 +81,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.Xp,
 		&i.RoomID,
 		&i.SharedAt,
+		&i.ExportState,
 	)
 	return i, err
 }
@@ -815,18 +825,21 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, userID pgtype.UUID) ([]
 }
 
 const listUserRides = `-- name: ListUserRides :many
-select id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+       e.state as export_state
 from rides
+left join ride_exports e on e.ride_id = rides.id and e.destination = $3::text
 where user_id = $1
-  and ($3::timestamptz is null or started_at < $3::timestamptz)
+  and ($4::timestamptz is null or started_at < $4::timestamptz)
 order by started_at desc
 limit $2
 `
 
 type ListUserRidesParams struct {
-	UserID pgtype.UUID
-	Limit  int32
-	Before pgtype.Timestamptz
+	UserID      pgtype.UUID
+	Limit       int32
+	Destination string
+	Before      pgtype.Timestamptz
 }
 
 type ListUserRidesRow struct {
@@ -842,13 +855,20 @@ type ListUserRidesRow struct {
 	Xp              int32
 	RoomID          pgtype.UUID
 	SharedAt        pgtype.Timestamptz
+	ExportState     *string
 }
 
 // Summary only: the blob stays on disk unless a single ride is opened.
 // Paged by start (#1549): `before` is the oldest row the caller has, or
-// null for the first page.
+// null for the first page. The delivery state rides along (#1553): a failed
+// Strava upload used to be visible only by opening every ride.
 func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([]ListUserRidesRow, error) {
-	rows, err := q.db.Query(ctx, listUserRides, arg.UserID, arg.Limit, arg.Before)
+	rows, err := q.db.Query(ctx, listUserRides,
+		arg.UserID,
+		arg.Limit,
+		arg.Destination,
+		arg.Before,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -869,6 +889,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.Xp,
 			&i.RoomID,
 			&i.SharedAt,
+			&i.ExportState,
 		); err != nil {
 			return nil, err
 		}

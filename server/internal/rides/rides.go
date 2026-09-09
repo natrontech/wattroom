@@ -117,6 +117,10 @@ type rideJSON struct {
 	// The per-ride opt-in (WATTROOM.md privacy, ADR-0024): friends see this
 	// ride on the rider's page. Off by default, flipped by PATCH.
 	SharedWithFriends bool `json:"sharedWithFriends"`
+	// The Strava delivery's state — pending | delivered | failed — when the
+	// ride has one (#1553), so the list can mark a failed upload; empty for a
+	// ride that was never sent. The detail carries the whole record.
+	ExportState string `json:"exportState,omitempty"`
 }
 
 // listPage is one page of the rides list (#1549): the list used to be one
@@ -128,7 +132,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	params := db.ListUserRidesParams{UserID: user.ID, Limit: listPage}
+	params := db.ListUserRidesParams{UserID: user.ID, Limit: listPage, Destination: exportDestination}
 	if before := r.URL.Query().Get("before"); before != "" {
 		at, err := time.Parse(time.RFC3339, before)
 		if err != nil {
@@ -152,13 +156,17 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func rideJSONOf(row db.ListUserRidesRow) rideJSON {
-	return rideJSON{
+	out := rideJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 	}
+	if row.ExportState != nil {
+		out.ExportState = *row.ExportState
+	}
+	return out
 }
 
 // handleBest answers the ride page's "against your best" (#1687): the
@@ -184,7 +192,7 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		except = id
 	}
 	row, err := s.store.Queries.BestUserRideOfWorkout(r.Context(), db.BestUserRideOfWorkoutParams{
-		UserID: user.ID, WorkoutName: workout, ID: except,
+		UserID: user.ID, WorkoutName: workout, ID: except, Destination: exportDestination,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": nil})
