@@ -1,0 +1,1 @@
+- The room no longer leaves a band of empty space at the bottom of every place while a pool track is playing or the mix is muted — the gutter was reserved for a video player that is not on screen. In the Chat place it pushed the message box a third of the way up the pane.
