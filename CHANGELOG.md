@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.59] - 2026-09-09
+
+### Added
+
+- The desktop app updates itself: the next release downloads in the background and installs when you restart, with a _Restart to update_ note on home once it is ready. Never during a ride. The 2026.09.4 build is the last one you install by hand.
+
 ## [2026.09.58] - 2026-09-09
 
 ### Added
@@ -1280,7 +1286,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.58...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.59...HEAD
+[2026.09.59]: https://github.com/natrontech/wattroom/compare/2026.09.58...2026.09.59
 [2026.09.58]: https://github.com/natrontech/wattroom/compare/2026.09.57...2026.09.58
 [2026.09.57]: https://github.com/natrontech/wattroom/compare/2026.09.56...2026.09.57
 [2026.09.56]: https://github.com/natrontech/wattroom/compare/2026.09.55...2026.09.56
