@@ -20,13 +20,17 @@
 	import { formatClock } from '$lib/format';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
-	import { createRideSession } from '$lib/workout/session.svelte';
+	import {
+		createRideSession,
+		SIGNAL_LOST_MS,
+	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { uploadRide } from '$lib/ride/save';
 	import {
 		buildRampTest,
 		ftpFromRamp,
 		RAMP,
+		RAMP_TAKES,
 		rampBlown,
 		rampUsable,
 	} from '$lib/workout/ramp';
@@ -105,11 +109,54 @@
 			watts: s.watts,
 			target: current.info.targetWatts ?? 0,
 		}));
-		if (rampBlown(current.elapsed, trailing)) {
+		// The rows above are stamped with the target NOW: while no sample lands
+		// they are a frozen record under a climbing target, which read as a
+		// failure and ended a test on a Bluetooth glitch (#1794). The tick still
+		// re-runs this every second, so the moment samples return it looks again.
+		const last = current.sample;
+		const stale = !last || Date.now() - last.at > SIGNAL_LOST_MS;
+		if (
+			rampBlown(current.elapsed, trailing, {
+				stale,
+				released: current.spiralActive,
+			})
+		) {
 			current.stop();
 			done = true;
 		}
 	});
+
+	// The same persistent status /ride shows (#37, errors.md): past 3 s without
+	// a sample the test says so rather than freezing a number the rider is
+	// about to trust for a month.
+	let nowMs = $state(Date.now());
+	$effect(() => {
+		const id = setInterval(() => (nowMs = Date.now()), 1000);
+		return () => clearInterval(id);
+	});
+	const signalLost = $derived(
+		!!session &&
+			session.state !== 'done' &&
+			!!session.sample &&
+			nowMs - session.sample.at > SIGNAL_LOST_MS,
+	);
+
+	// "Test again" used to be a link to this page, which a same-route
+	// navigation leaves exactly as it was (#1797): the page kept its finished
+	// session and the button did nothing. This is the fresh page begin() starts
+	// from, with the trainer back in the grid.
+	function restart() {
+		if (session && session.state !== 'done') session.stop();
+		session = null;
+		buffer = null;
+		savedId = null;
+		rideStatus = null;
+		recorded = false;
+		done = false;
+		saved = false;
+		lthrSaved = false;
+		error = null;
+	}
 
 	const result = $derived(
 		session
@@ -274,7 +321,7 @@
 	{#if !session}
 		<div class="panel mt-8 max-w-2xl p-8 text-center">
 			<p class="text-sm">
-				About 12–18 minutes, and the last two are unpleasant.
+				Takes {RAMP_TAKES}, and the last two are unpleasant.
 			</p>
 			<p class="text-muted mx-auto mt-2 max-w-md text-xs leading-relaxed">
 				Ride each minute at the number shown. When you can't hold it any more,
@@ -365,6 +412,13 @@
 				{/snippet}
 			</RideHeader>
 
+			{#if signalLost}
+				<Banner tone="error"
+					>Trainer signal lost — reconnecting. Keep pedalling; the step resumes
+					the moment it is back, and the test will not end on the gap.</Banner
+				>
+			{/if}
+
 			<!-- Scaled to the test's own top, not the FTP it exists to correct
 			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->
 			<Instrument
@@ -408,7 +462,7 @@
 			</p>
 			{@render rideLine()}
 			<div class="mt-6 flex gap-2">
-				<a href="/ramp" class="btn btn-primary">Test again</a>
+				<button onclick={restart} class="btn btn-primary">Test again</button>
 				<a href="/workouts" class="btn btn-secondary">Ride something else</a>
 			</div>
 		</div>
@@ -457,7 +511,8 @@
 						disabled={result.ftp === 0}
 						class="btn btn-primary">Save {result.ftp} W</button
 					>
-					<a href="/ramp" class="btn btn-secondary">Test again</a>
+					<button onclick={restart} class="btn btn-secondary">Test again</button
+					>
 					<!-- Never silently change FTP: it moves every workout's difficulty. -->
 					<a
 						href="/settings/profile"

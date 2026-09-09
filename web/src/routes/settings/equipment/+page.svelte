@@ -18,6 +18,7 @@
 	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
+	import { RAMP_TAKES } from '$lib/workout/ramp';
 
 	// A room holds its BLE connection for as long as you stand in one (#521),
 	// and this page could not see it (#565) — so when there IS a room, its
@@ -142,7 +143,7 @@
 			<span class="min-w-0">
 				<span class="block text-sm font-medium">Ramp test</span>
 				<span class="text-muted block text-xs"
-					>Measure your FTP — about 20 minutes</span
+					>Measure your FTP — {RAMP_TAKES}</span
 				>
 			</span>
 		</a>

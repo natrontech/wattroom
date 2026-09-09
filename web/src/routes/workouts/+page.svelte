@@ -19,6 +19,7 @@
 	} from '$lib/workout/custom.svelte';
 	import type { Workout } from '$lib/workout/types';
 	import { toasts } from '$lib/toast.svelte';
+	import { RAMP_TAKES } from '$lib/workout/ramp';
 	import {
 		fetchProgression,
 		suggestedFocuses,
@@ -211,7 +212,7 @@
 			<div class="min-w-0 flex-1">
 				<p class="font-display truncate text-base font-bold">Ramp test</p>
 				<p class="text-muted mt-0.5 text-xs">
-					About 20 minutes. Sets your FTP, and suggests an LTHR from how it
+					Takes {RAMP_TAKES}. Sets your FTP, and suggests an LTHR from how it
 					ended.
 				</p>
 			</div>
