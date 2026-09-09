@@ -1,1 +1,0 @@
-- The three-room cap, the 2 GB track quota and the 100 MB clip quota now hold even when requests arrive at once: each is counted with your account locked, in the same transaction that writes, so a burst of parallel creates or uploads can no longer slip past it.

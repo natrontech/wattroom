@@ -17,6 +17,67 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.68] - 2026-09-09
+
+### Added
+
+- Right-click (or long-press) a track in your library for its menu: queue it
+  in the room you are in, edit it, or delete it. The buttons are still there;
+  the menu is the shortcut, like everywhere else in the app.
+- A saved playlist can be reordered: right-click (or long-press) a track in
+  it for Move up and Move down, the way the queue's rows already have them.
+- A saved playlist can hold your own music now, beside YouTube links. The add
+  field on a room or personal playlist is the same one the jukebox has —
+  search your library or paste a link — and a library track in a playlist
+  shows its title and artist as the Music page has them. Queue the playlist
+  and its tracks play in the order you saved them; delete a track from your
+  library and it leaves every playlist it was in.
+- The jukebox's add box searches your library. Type a title or an artist and
+  the matches appear under the field, each with a queue button; Enter queues
+  the top one. A pasted YouTube link works exactly as before. Until now your
+  own music could only be queued from the Music page, a screen away from the
+  room that wanted the song.
+- Settings › Notifications has a "Send a test notification" button, so you can
+  see what one looks like — and let macOS ask its permission while you are
+  watching — instead of waiting for a friend to message you.
+
+### Changed
+
+- Autoplay is set up on the room's Settings page now — on or off, ordered,
+  shuffled or smart, and which playlist it walks — instead of inside the
+  jukebox column. The jukebox still says what autoplay is set to, and a room
+  playlist's menu still makes it the active one. The "fixed start" option,
+  one pinned video played before the playlist, is gone: the first track of
+  the active playlist is the start.
+- Autoplay's Smart order follows the room's active playlist: it draws from
+  that playlist's library tracks, weighted by what the room plays and skips,
+  instead of ignoring the playlist and picking from every library in the
+  room. With no active playlist it draws from the whole library as before.
+  Ordered and Shuffled already play a playlist's library tracks alongside
+  its videos.
+- A track from your library on the deck shows its waveform in the jukebox
+  and on the rail, the part already played lit, instead of a music icon in a
+  box built for a video.
+- The jukebox column is tidier: what is up next sits right under the add box,
+  the saved playlists come after it, playlist rows are rows rather than boxes,
+  and "Skip for me" and "Stop for me" are bike-sized buttons instead of two
+  lines of small text.
+- Your uploaded music is called your **library** everywhere now. The Music
+  page and the jukebox used to call the same thing the pool, the shelf and the
+  record shelf, and the glossary had no word for it at all.
+- The sprint's klaxon, gun and fanfare now sound wherever you are in the room, not only on Training; auto-pause and the resume countdown say so out loud, the way a shared pause does. Re-pairing a dropped trainer from the mid-session strip is a full-size button. A medal card shows its big number only when it is the medal's own metric (Metronome's execution score), and the sprint button wears the structural accent, keeping the live hue for live watts.
+- The workout editor is easier on a phone and at the desk: your steps come first, then the step you are editing, then the library; cadence and heart-rate bands fold away unless a step carries one; a problem with a step is said under that step (with "Show the step" from the banner when it is elsewhere); Undo and Redo have buttons; deleting a step keeps you on its neighbour; a refused save says so with a way to try again; saving confirms with a toast that rides the workout. Edit and Delete on your workouts, and the session picker's Close, are proper buttons.
+
+### Fixed
+
+- An account holds at most ten passkeys, like ten tokens; the desktop sign-in hand-off refuses when its queue is full instead of growing without bound; and one account can keep at most sixteen live connections to the server open at once, which is plenty for every device and tab and stops a single account from loading the room service.
+- The three-room cap, the 2 GB track quota and the 100 MB clip quota now hold even when requests arrive at once: each is counted with your account locked, in the same transaction that writes, so a burst of parallel creates or uploads can no longer slip past it.
+- Direct messages in the sidebar, the thread list and the DM header now show whether a friend is online, offline, in a room or riding — the same badge the friends panel shows. A friend with the app open used to show no badge at all unless they stood in a room you could see.
+- A conversation left open behind another window no longer swallows its
+  messages. A room chat or DM thread that is open while WattRoom sits behind
+  another app now blips and notifies like any other, instead of being treated
+  as read in front of you.
+
 ## [2026.09.67] - 2026-09-09
 
 ### Added
@@ -1404,7 +1465,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.67...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.68...HEAD
+[2026.09.68]: https://github.com/natrontech/wattroom/compare/2026.09.67...2026.09.68
 [2026.09.67]: https://github.com/natrontech/wattroom/compare/2026.09.66...2026.09.67
 [2026.09.66]: https://github.com/natrontech/wattroom/compare/2026.09.65...2026.09.66
 [2026.09.65]: https://github.com/natrontech/wattroom/compare/2026.09.64...2026.09.65
