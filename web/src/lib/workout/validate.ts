@@ -30,7 +30,11 @@ export const LIMITS = {
 } as const;
 
 export type Validation =
-	{ ok: true; workout: Workout } | { ok: false; error: string };
+	| { ok: true; workout: Workout }
+	/** `path` is the failing step, when one step is to blame (#1392). */
+	| { ok: false; error: string; path?: number[] };
+
+type StepError = { message: string; path: number[] };
 
 function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -111,63 +115,75 @@ function checkStep(
 	value: unknown,
 	where: string,
 	depth: number,
-): string | null {
-	if (!isObject(value)) return `${where}: not a step`;
+	path: number[],
+): StepError | null {
+	const fail = (message: string | null): StepError | null =>
+		message ? { message, path } : null;
+	if (!isObject(value)) return fail(`${where}: not a step`);
 
 	switch (value.type) {
 		case 'warmup':
 		case 'cooldown':
 		case 'ramp':
-			return (
+			return fail(
 				checkSeconds(value.seconds, where) ??
-				checkFraction(value.from, where, 'from') ??
-				checkFraction(value.to, where, 'to')
+					checkFraction(value.from, where, 'from') ??
+					checkFraction(value.to, where, 'to'),
 			);
 
 		case 'steady': {
 			const seconds = checkSeconds(value.seconds, where);
-			if (seconds) return seconds;
+			if (seconds) return fail(seconds);
 			const cadence = checkCadenceBand(value, where);
-			if (cadence) return cadence;
+			if (cadence) return fail(cadence);
 			const hr = checkHrBand(value, where);
-			if (hr) return hr;
+			if (hr) return fail(hr);
 			if (value.watts !== undefined) {
 				if (typeof value.watts !== 'number' || !Number.isFinite(value.watts)) {
-					return `${where}: watts must be a number`;
+					return fail(`${where}: watts must be a number`);
 				}
 				if (value.watts <= 0 || value.watts > LIMITS.maxWatts) {
-					return `${where}: ${value.watts} W is outside 1–${LIMITS.maxWatts}`;
+					return fail(
+						`${where}: ${value.watts} W is outside 1–${LIMITS.maxWatts}`,
+					);
 				}
 				return null;
 			}
-			return checkFraction(value.target, where, 'target');
+			return fail(checkFraction(value.target, where, 'target'));
 		}
 
 		case 'sprint':
-			return checkSeconds(value.seconds, where);
+			return fail(checkSeconds(value.seconds, where));
 
 		case 'repeat': {
 			if (depth >= LIMITS.maxDepth) {
-				return `${where}: repeats are nested more than ${LIMITS.maxDepth} deep`;
+				return fail(
+					`${where}: repeats are nested more than ${LIMITS.maxDepth} deep`,
+				);
 			}
 			if (typeof value.times !== 'number' || !Number.isInteger(value.times)) {
-				return `${where}: times must be a whole number`;
+				return fail(`${where}: times must be a whole number`);
 			}
 			if (value.times < 1 || value.times > LIMITS.maxRepeats) {
-				return `${where}: ${value.times} repeats is outside 1–${LIMITS.maxRepeats}`;
+				return fail(
+					`${where}: ${value.times} repeats is outside 1–${LIMITS.maxRepeats}`,
+				);
 			}
 			if (!Array.isArray(value.steps) || value.steps.length === 0) {
-				return `${where}: a repeat needs at least one step`;
+				return fail(`${where}: a repeat needs at least one step`);
 			}
 			for (const [i, inner] of value.steps.entries()) {
-				const error = checkStep(inner, `${where} → step ${i + 1}`, depth + 1);
+				const error = checkStep(inner, `${where} → step ${i + 1}`, depth + 1, [
+					...path,
+					i,
+				]);
 				if (error) return error;
 			}
 			return null;
 		}
 
 		default:
-			return `${where}: unknown step type ${JSON.stringify(value.type)}`;
+			return fail(`${where}: unknown step type ${JSON.stringify(value.type)}`);
 	}
 }
 
@@ -209,8 +225,8 @@ export function validateWorkout(value: unknown): Validation {
 	}
 
 	for (const [i, step] of value.steps.entries()) {
-		const error = checkStep(step, `Step ${i + 1}`, 0);
-		if (error) return { ok: false, error };
+		const error = checkStep(step, `Step ${i + 1}`, 0, [i]);
+		if (error) return { ok: false, error: error.message, path: error.path };
 	}
 
 	const expanded = countExpanded(value.steps as WorkoutStep[]);

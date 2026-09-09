@@ -112,6 +112,24 @@ export function remove(workout: Workout, path: number[]): void {
 }
 
 /**
+ * Removes the step and says what to select next: the neighbour that took its
+ * place, else the last sibling, else the parent, else nothing. Deleting used
+ * to drop the selection to null and the focus to <body> (ux.md; #1392).
+ */
+export function removeAndSelect(
+	workout: Workout,
+	path: number[],
+): number[] | null {
+	remove(workout, path);
+	const siblings = siblingsOf(workout, path);
+	const index = path[path.length - 1];
+	if (siblings.length > 0) {
+		return [...path.slice(0, -1), Math.min(index, siblings.length - 1)];
+	}
+	return path.length > 1 ? path.slice(0, -1) : null;
+}
+
+/**
  * Moves the step at `from` to sit before sibling index `to` (the drop line sits
  * between rows, so `to` may be one past the end).
  *
