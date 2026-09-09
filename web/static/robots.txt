@@ -1,3 +1,22 @@
-# allow crawling everything by default
+# The marketing surface is the landing and the legal pages. Everything else
+# is a rider's — a room, a ride, a crew's invite, a rider page — and answers
+# a crawler with a login shell under a personal URL (#1734).
 User-agent: *
-Disallow:
+Disallow: /u/
+Disallow: /history/
+Disallow: /c/
+Disallow: /r/
+Disallow: /dm/
+Disallow: /messages/
+Disallow: /crew/
+Disallow: /settings
+Disallow: /hud
+Disallow: /home
+Disallow: /rooms/
+Disallow: /friends
+Disallow: /workouts
+Disallow: /music
+Disallow: /ride
+Disallow: /ramp
+Disallow: /progression
+Disallow: /whats-new

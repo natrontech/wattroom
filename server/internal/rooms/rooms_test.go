@@ -171,3 +171,22 @@ func (h *harness) directory(t *testing.T, who string) []string {
 	}
 	return names
 }
+
+// The share card names a room only when its owner listed it (#1734,
+// ADR-0039): "public" means every signed-in rider, not the web.
+func TestTheShareCardNamesListedRoomsOnly(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Card Room")
+	if _, _, ok := h.svc.PublicIdentity(t.Context(), slug); ok {
+		t.Fatal("an unlisted room has a public identity")
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug, `{"name":"Crew Card Room","listed":true,"crewVisible":true}`); status != http.StatusOK {
+		t.Fatalf("list: %d", status)
+	}
+	if name, _, ok := h.svc.PublicIdentity(t.Context(), slug); !ok || name != "Crew Card Room" {
+		t.Fatalf("a listed room's identity: %q %v", name, ok)
+	}
+	if _, _, ok := h.svc.PublicIdentity(t.Context(), "no-such-room"); ok {
+		t.Fatal("an unknown slug has a public identity")
+	}
+}

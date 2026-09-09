@@ -328,3 +328,15 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
+
+// PublicIdentity is what a link preview may say about a room (#1734): its
+// name and icon when the owner listed it, nothing otherwise. ADR-0039:
+// "public" means every signed-in rider, not the web — and the share card
+// answers crawlers and strangers with no session at all.
+func (s *Service) PublicIdentity(ctx context.Context, slug string) (name, icon string, ok bool) {
+	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+	if err != nil || !room.Listed {
+		return "", "", false
+	}
+	return room.Name, room.Icon, true
+}

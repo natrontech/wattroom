@@ -1160,6 +1160,10 @@ func TestTheCrewDoorHasACeiling(t *testing.T) {
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join", `{"code":"ZZZZZZ"}`); status != http.StatusTooManyRequests {
 		t.Fatalf("the join after the ceiling: %d, want 429", status)
 	}
+	// The door's image spends the same window (#1736).
+	if status, _ := h.call(t, "", http.MethodGet, "/api/crew-doors/ZZZZZZ/image", ""); status != http.StatusTooManyRequests {
+		t.Fatalf("the image after the ceiling: %d, want 429", status)
+	}
 }
 
 // SPEC's succession rule: never anyone the crew banned (#1675) — the last

@@ -75,9 +75,9 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 			return
 		}
 
-		ride, err := toRide(req)
-		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+		ride, refusal := toRide(req)
+		if refusal != "" {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", refusal)
 			return
 		}
 
@@ -100,34 +100,35 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 	}
 }
 
-// toRide validates untrusted input into a Ride. Every bound is checked here so
-// Encode can assume its input is sane.
-func toRide(req exportRequest) (Ride, error) {
+// toRide validates untrusted input into a Ride, answering the refusal in
+// the rider's words — a string, never an error, so err.Error() cannot reach
+// the wire from the one route a stranger can post to (#1736, errors.md).
+func toRide(req exportRequest) (Ride, string) {
 	switch {
 	case req.StartedAt.IsZero():
-		return Ride{}, fmt.Errorf("ride is missing a start time")
+		return Ride{}, fmt.Sprintf("ride is missing a start time")
 	case len(req.Samples) == 0:
-		return Ride{}, fmt.Errorf("ride has no samples")
+		return Ride{}, fmt.Sprintf("ride has no samples")
 	case len(req.Samples) > maxSamples:
-		return Ride{}, fmt.Errorf("ride has %d samples, more than the %d supported", len(req.Samples), maxSamples)
+		return Ride{}, fmt.Sprintf("ride has %d samples, more than the %d supported", len(req.Samples), maxSamples)
 	}
 
 	samples := make([]Sample, 0, len(req.Samples))
 	for i, s := range req.Samples {
 		switch {
 		case s.Second < 0:
-			return Ride{}, fmt.Errorf("sample %d has a negative time offset", i)
+			return Ride{}, fmt.Sprintf("sample %d has a negative time offset", i)
 		case s.Watts < 0 || s.Watts > maxWatts:
-			return Ride{}, fmt.Errorf("sample %d has %d watts, outside 0–%d", i, s.Watts, maxWatts)
+			return Ride{}, fmt.Sprintf("sample %d has %d watts, outside 0–%d", i, s.Watts, maxWatts)
 		case s.Cadence < 0 || s.Cadence > maxCadence:
-			return Ride{}, fmt.Errorf("sample %d has %d rpm, outside 0–%d", i, s.Cadence, maxCadence)
+			return Ride{}, fmt.Sprintf("sample %d has %d rpm, outside 0–%d", i, s.Cadence, maxCadence)
 		case s.HeartRate < 0 || s.HeartRate > maxHeartRate:
-			return Ride{}, fmt.Errorf("sample %d has %d bpm, outside 0–%d", i, s.HeartRate, maxHeartRate)
+			return Ride{}, fmt.Sprintf("sample %d has %d bpm, outside 0–%d", i, s.HeartRate, maxHeartRate)
 		// Encode enforces this too, but reaching it there yields a 500 — an
 		// unordered ride is the caller's mistake, so it is caught at the boundary
 		// and reported as one.
 		case i > 0 && s.Second <= req.Samples[i-1].Second:
-			return Ride{}, fmt.Errorf(
+			return Ride{}, fmt.Sprintf(
 				"samples must be in time order: sample %d is at %ds, after %ds",
 				i, s.Second, req.Samples[i-1].Second,
 			)
@@ -139,5 +140,5 @@ func toRide(req exportRequest) (Ride, error) {
 			HeartRate: clampU8(s.HeartRate),
 		})
 	}
-	return Ride{StartedAt: req.StartedAt, Samples: samples}, nil
+	return Ride{StartedAt: req.StartedAt, Samples: samples}, ""
 }

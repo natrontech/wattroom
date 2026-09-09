@@ -86,6 +86,11 @@ func (s *Service) handleCrewImage(w http.ResponseWriter, r *http.Request) {
 // handleCrewDoorImage serves it to whoever holds the code — the door shows
 // the crew's face before the join, and the code is the secret that gates it.
 func (s *Service) handleCrewDoorImage(w http.ResponseWriter, r *http.Request) {
+	// The same budget the door spends (#1736): a wrong code answered 404 and
+	// a right one 200 here, unmetered, beside a metered door.
+	if s.throttleDoor(w, r) {
+		return
+	}
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {

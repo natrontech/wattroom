@@ -278,6 +278,10 @@
 />
 
 <svelte:head>
+	{#if !publicPath}
+		<!-- Crawlers that run JS: a rider's URL is not a page to index (#1734). -->
+		<meta name="robots" content="noindex" />
+	{/if}
 	<!-- The default every page inherits; a page names itself over it. -->
 	<title>WattRoom</title>
 	<link rel="icon" href={favicon} />
