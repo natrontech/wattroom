@@ -130,7 +130,10 @@ if grep -qF "## [$version]" CHANGELOG.md; then
 	exit 1
 fi
 
-prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+# Server tags only: the desktop shell's desktop-v* tags live in the same repo
+# (ADR-0037), and an unfiltered describe took one as the previous release —
+# 2026.09.47's compare link ran from desktop-v2026.09.2.
+prev=$(git describe --tags --abbrev=0 --match '2[0-9][0-9][0-9].*' 2>/dev/null || true)
 today=$(date +%F)
 
 if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then

@@ -44,10 +44,11 @@
 #    APPLE_API_ISSUER      the issuer UUID from App Store Connect.
 #    APPLE_TEAM_ID         the 10-character team id.
 #
-# 3. `make desktop-release`. Versions are CalVer like the server's (ADR-0019,
-#    `YYYY.0M.MICRO`), computed from the existing `desktop-v*` tags — in this
-#    namespace, so a server release never drags the shell along (ADR-0037,
-#    amended). The script writes the number into `desktop/package.json`
+# 3. `make desktop-release`. Versions are CalVer like the server's (ADR-0019),
+#    computed from the existing `desktop-v*` tags — in this namespace, so a
+#    server release never drags the shell along (ADR-0037, amended) — and
+#    with the month unpadded (`2026.9.5`): everything that reads the shell's
+#    version parses semver, which forbids the zero. The script writes the number into `desktop/package.json`
 #    through a pull request, merges it, then tags `desktop-v<version>`. The
 #    guard below refuses a tag that disagrees with the file, because the
 #    shell reports that file's version as `window.wattroom.version` and the
@@ -61,15 +62,22 @@
 # No spaces, because electron-builder's default Windows name has one, and a
 # download URL with a space in it is one more thing to get wrong.
 #
-# The `9`, not `09`: electron-builder parses the version as semver, which
-# forbids a leading zero, and writes the normalised form into the file names
-# and the bundle's CFBundleShortVersionString. The tag, package.json and the
-# update notice all carry `2026.09.1`; it is the same number, and the /download
-# page finds each installer by extension, so the names can change but the
-# extensions cannot.
+# The /download page finds each installer by extension, so the names can
+# change but the extensions cannot.
 #
 # The icon is `desktop/build/icon.png`, rendered from `icon.svg` beside it —
 # electron-builder generates the .icns and .ico from the 1024px PNG.
+#
+# ── Self-update ───────────────────────────────────────────────────────────────
+#
+# The shell updates itself (#1303, ADR-0037 amended): electron-updater reads
+# `latest-mac.yml` / `latest.yml` / `latest-linux.yml` from GitHub's
+# `releases/latest/download` alias and downloads the matching installer —
+# the .zip on macOS, the .exe on Windows, the .AppImage on Linux — with the
+# .blockmap making it differential. All of those are uploaded above, so a
+# release with an installer but no manifest is not a thing this workflow can
+# produce. The first build carrying the updater cannot itself be reached by
+# it: the previous one has no updater.
 #
 # ── Why macOS refuses to build unsigned ───────────────────────────────────────
 #
@@ -110,6 +118,15 @@ jobs:
             exit 1
           fi
           echo "version $pkg matches the tag"
+      - name: the version is semver, or the packaged app crashes at launch
+        run: |
+          pkg=$(node -p "require('./desktop/package.json').version")
+          if ! echo "$pkg" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::desktop/package.json version $pkg is not semver" >&2
+            echo "electron-updater parses it at launch and throws on a leading zero" >&2
+            echo "(2026.09.4 did, #1303). CalVer here is unpadded: 2026.9.4." >&2
+            exit 1
+          fi
 
   build:
     needs: guard
@@ -228,13 +245,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.artifact }}
-          # The installers only. electron-builder also leaves unpacked app
-          # directories here, which are hundreds of megabytes and not shippable.
+          # The installers, and what the shell's self-update reads (#1303):
+          # the latest*.yml manifests, the .blockmap files that make an update
+          # differential, and on macOS the .zip that Squirrel.Mac installs
+          # from. electron-builder also leaves unpacked app directories here,
+          # hundreds of megabytes and not shippable.
           path: |
             desktop/dist/*.dmg
+            desktop/dist/*.zip
             desktop/dist/*.exe
             desktop/dist/*.AppImage
             desktop/dist/*.deb
+            desktop/dist/*.blockmap
+            desktop/dist/latest*.yml
           if-no-files-found: error
           retention-days: 7
 

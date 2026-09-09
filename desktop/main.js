@@ -270,6 +270,48 @@ async function chooseFrom(win, title, options) {
 	return shown[response]?.value ?? null;
 }
 
+// Self-update (#1303, ADR-0037 amended). Four shell releases in a day made
+// the nudge the wrong answer: the shell now asks the releases repo on launch
+// and every few hours, downloads the next release in the background, and
+// installs it when the rider restarts — or quietly on quit. The feed is
+// GitHub's `releases/latest/download` alias (package.json → publish), which
+// is what lets the tags stay desktop-v<CalVer> instead of v<semver>. The web
+// app is told when a download is ready and offers "Restart to update" on
+// home, which a ride never shows — so never mid-ride, by construction.
+let updateReady = null;
+let autoUpdater = null;
+
+function watchForUpdates(win) {
+	// Required here, not at the top: merely touching electron-updater's
+	// autoUpdater constructs it, and it parses the app's version as semver —
+	// a dev run reports Electron's own version, a packaged app reports
+	// package.json's, and a malformed one crashes at launch with a dialog.
+	if (!app.isPackaged) return;
+	({ autoUpdater } = require('electron-updater'));
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.logger = null;
+	autoUpdater.on('update-downloaded', (info) => {
+		updateReady = { version: info.version };
+		if (!win.isDestroyed())
+			win.webContents.send('wattroom:update', updateReady);
+	});
+	autoUpdater.on('error', (err) => {
+		// Offline, or the feed is missing: not worth a dialog. The next check
+		// is a few hours away and the nudge on home still shows the download.
+		console.warn('update check failed:', err?.message ?? err);
+	});
+	const check = () => void autoUpdater.checkForUpdates().catch(() => {});
+	setTimeout(check, 15_000);
+	setInterval(check, 6 * 60 * 60 * 1000);
+}
+
+// The renderer asks on mount, in case the download finished before it did.
+ipcMain.handle('wattroom:update-ready', () => updateReady);
+ipcMain.on('wattroom:install-update', () => {
+	if (autoUpdater && updateReady) autoUpdater.quitAndInstall();
+});
+
 // The HUD (#296, ADR-0041): the rider's own numbers in a small frameless
 // window that floats over everything else — for the rider who alt-tabbed to
 // a film mid-interval. The web app opens it when a ride starts and closes it
@@ -454,6 +496,7 @@ if (!app.requestSingleInstanceLock()) {
 
 	app.whenReady().then(() => {
 		const win = createWindow();
+		watchForUpdates(win);
 		// A cold start from a link, on Windows and Linux.
 		const link = deepLinkIn(process.argv);
 		if (link) pendingDeepLink = deepLinkTarget(link);
