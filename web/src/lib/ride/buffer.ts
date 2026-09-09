@@ -18,6 +18,8 @@ export interface BufferedSample {
 	heartRate: number;
 	/** The trim this second was ridden at (#1530) — 1 for a ride with no trim. */
 	bias?: number;
+	/** The workout second it was ridden at (#1733) — absent on a ride buffered before it. */
+	clock?: number;
 	/** ms epoch */
 	at: number;
 }

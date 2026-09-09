@@ -41,6 +41,7 @@ export function uploadPayload(ride: RecoveredRide) {
 			cadence: sample.cadence,
 			hr: sample.heartRate,
 			bias: sample.bias,
+			clock: sample.clock,
 		})),
 	};
 }

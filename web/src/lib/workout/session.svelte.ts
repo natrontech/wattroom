@@ -68,9 +68,11 @@ export interface RideOptions {
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
 	onRecord?: (sample: {
 		second: number;
+		clock: number;
 		watts: number;
 		cadence: number;
 		heartRate: number;
+		bias: number;
 	}) => void;
 }
 
@@ -123,6 +125,14 @@ export function createRideSession({
 	 */
 	const recording: {
 		second: number;
+		/**
+		 * The workout second this sample was ridden at (#1733). `second` is
+		 * the wall clock; this one stops while auto-paused and jumps on skip
+		 * and extend, and it is the coordinate the score is keyed on — the
+		 * server used to score the saved ride by array index, so a 30 s stop
+		 * mid-block read every later second against the wrong block.
+		 */
+		clock: number;
 		watts: number;
 		cadence: number;
 		heartRate: number;
@@ -242,6 +252,7 @@ export function createRideSession({
 			lastRecordedSecond = second;
 			const recorded = {
 				second: recordedSeconds++,
+				clock: clockSeconds,
 				watts: Math.max(0, Math.round(next.watts)),
 				cadence: Math.max(0, Math.round(next.cadence)),
 				// Reaches the .fit export now that a strap can be paired (#11, #44).

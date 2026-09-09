@@ -32,6 +32,26 @@ func biased(watts, seconds int, bias float64) []protocol.RiderMetrics {
 	return out
 }
 
+// clocked is `seconds` samples at `watts`, each stamped with the workout
+// second it was ridden at from `start` up — what a solo ride sends (#1733).
+func clocked(watts, seconds, start int) []protocol.RiderMetrics {
+	out := make([]protocol.RiderMetrics, seconds)
+	for i := range out {
+		out[i] = protocol.RiderMetrics{Watts: watts, Clock: start + i}
+	}
+	return out
+}
+
+// stopped is `seconds` samples of a rider who has stopped: the workout clock
+// holds at `at` while the wall clock — the array — keeps counting.
+func stopped(seconds, at int) []protocol.RiderMetrics {
+	out := make([]protocol.RiderMetrics, seconds)
+	for i := range out {
+		out[i] = protocol.RiderMetrics{Clock: at}
+	}
+	return out
+}
+
 func ride(blocks ...[]protocol.RiderMetrics) []protocol.RiderMetrics {
 	var out []protocol.RiderMetrics
 	for _, b := range blocks {
@@ -175,6 +195,27 @@ func TestExecutionScoresAgainstTheRidersOwnTarget(t *testing.T) {
 		biased(200, 30, 0.8), biased(100, 30, 0.8))
 	if got, _, err := Execution(workoutJSON, 200, over); err != nil || got != 0 {
 		t.Fatalf("riding 25%% over their own target scored %v (%v)", got, err)
+	}
+}
+
+// A ride that stamps its samples with the workout second is scored by it
+// (#1733). The record counts wall seconds and the workout clock stops while
+// auto-paused, so by index a 30 s stop mid-block shifted every later second
+// onto the wrong block — here the second half of the first hard block onto
+// the easy one — and the saved score disagreed with the one the rider
+// watched all session.
+func TestExecutionScoresByTheWorkoutClock(t *testing.T) {
+	paused := ride(clocked(1, 60, 0),
+		clocked(200, 15, 60), stopped(30, 74), clocked(200, 15, 75),
+		clocked(100, 30, 90), clocked(200, 30, 120), clocked(100, 30, 150))
+	got, _, err := Execution(workoutJSON, 200, paused)
+	if err != nil || got != 1 {
+		t.Fatalf("a rider who paused mid-block and then hit every target scored %v (%v)", got, err)
+	}
+	// And a ride that sends no stamp — a room ride, or an old record — still
+	// scores by index, so nothing already saved reads differently.
+	if got, _, err := Execution(workoutJSON, 200, ride(flat(1, 60), flat(200, 30), flat(100, 30), flat(200, 30), flat(100, 30))); err != nil || got != 1 {
+		t.Fatalf("an unstamped ride scored %v (%v)", got, err)
 	}
 }
 

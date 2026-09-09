@@ -29,6 +29,16 @@ export interface RiderMetrics {
    * any client that does not send it, scores at 1.0.
    */
   bias?: number /* float64 */;
+  /**
+   * The WORKOUT second this sample was ridden at (#1733). A solo ride's
+   * record counts wall seconds — the ride clock stops while auto-paused,
+   * and skip and extend make it jump — so the array index stops being the
+   * workout second at the first pause, and every sample after it would be
+   * scored against the wrong block. Absent (0 on every sample) is a ride
+   * that sends none: a room ride, where the hub's clock IS the workout
+   * clock, or one recorded before this existed; those score by index.
+   */
+  clock?: number /* int */;
 }
 /**
  * SprintScore is one rider's place on the mini-podium.

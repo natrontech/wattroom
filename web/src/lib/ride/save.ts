@@ -6,7 +6,13 @@ export interface RideUpload {
 	workoutJson: string;
 	/** ISO 8601. */
 	startedAt: string;
-	samples: { watts: number; cadence: number; hr: number; bias?: number }[];
+	samples: {
+		watts: number;
+		cadence: number;
+		hr: number;
+		bias?: number;
+		clock?: number;
+	}[];
 }
 
 /**

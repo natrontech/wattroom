@@ -174,6 +174,48 @@ func TestSoloRideScoresTheRidersOwnTrim(t *testing.T) {
 	}
 }
 
+// A solo ride that paused mid-block scores by the workout second each sample
+// carries, not by its place in the array (#1733): 30 s stopped at second 30
+// used to shift the rest of the ride half a block over.
+func TestSoloRideScoresByTheWorkoutClock(t *testing.T) {
+	h := setup(t)
+
+	var samples []string
+	stamp := func(watts, clock int) {
+		samples = append(samples, fmt.Sprintf(`{"watts":%d,"cadence":90,"clock":%d}`, watts, clock))
+	}
+	for i := 0; i < 30; i++ {
+		stamp(200, i)
+	}
+	for i := 0; i < 30; i++ {
+		samples = append(samples, `{"watts":0,"cadence":0,"clock":29}`)
+	}
+	for i := 30; i < 60; i++ {
+		stamp(200, i)
+	}
+	for i := 60; i < 120; i++ {
+		stamp(100, i)
+	}
+	body := fmt.Sprintf(
+		`{"workoutName":"Two blocks","workoutJson":"{\"name\":\"Two blocks\",\"steps\":[{\"type\":\"steady\",\"seconds\":60,\"target\":0.8},{\"type\":\"steady\",\"seconds\":60,\"target\":0.4}]}","startedAt":%q,"samples":[%s]}`,
+		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		strings.Join(samples, ","))
+
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, got)
+	}
+	if execution, _ := got["execution"].(float64); execution < 0.99 {
+		t.Fatalf("a ride that paused mid-block and hit every target scored %v, not 100 %%: %v", got["execution"], got)
+	}
+
+	// A workout second outside any workout is refused at the boundary.
+	out := strings.ReplaceAll(body, `"clock":29`, `"clock":-1`)
+	if status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", out); status != http.StatusBadRequest {
+		t.Fatalf("clock out of range: %d %v", status, got)
+	}
+}
+
 // The list is paged by start (#1549): the second page begins strictly
 // before the oldest row the client holds.
 func TestRideListPagesByStart(t *testing.T) {
