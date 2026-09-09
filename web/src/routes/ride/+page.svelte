@@ -390,7 +390,11 @@
 	});
 </script>
 
-<svelte:head><title>{workout.name} · Ride · WattRoom</title></svelte:head>
+<svelte:head
+	><title
+		>{shelfPending || shelfMissing ? 'Ride' : workout.name} · Ride · WattRoom</title
+	></svelte:head
+>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
