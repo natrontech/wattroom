@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -166,7 +165,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListTracks(r.Context(), db.ListTracksParams{
 		UploadedBy: me.ID,
-		Search:     strings.TrimSpace(r.URL.Query().Get("q")),
+		Search:     searchQuery(r.URL.Query().Get("q")),
 		Tag:        tag,
 		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // limit and offset both clamped above
 	})
