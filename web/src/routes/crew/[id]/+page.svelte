@@ -79,8 +79,14 @@
 		presence.rooms.filter((r) => r.crew?.id === crew?.id && !!r.role),
 	);
 	const ownedHere = $derived(myRooms.filter((r) => r.role === 'owner'));
+	// The crew's own roster already says whether you own a room here, so the
+	// button is right before presence lands rather than a 409 on click.
+	const ownsRoomHere = $derived(
+		ownedHere.length > 0 ||
+			!!crew?.people.find((p) => p.id === account.me?.id)?.ownsRoom,
+	);
 	async function leaveCrew() {
-		if (!crew || ownedHere.length) return;
+		if (!crew || ownsRoomHere) return;
 		busy = true;
 		await leaveCrewFlow(crew);
 		busy = false;
@@ -186,12 +192,15 @@
 			<h2 class="eyebrow mt-8">leave</h2>
 			<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
 				<p class="text-muted min-w-0 flex-1 text-xs">
-					{#if ownedHere.length}
+					{#if ownsRoomHere}
 						You own {ownedHere.length === 1
 							? ownedHere[0].name
-							: `${ownedHere.length} rooms`} here, and a room never leaves its crew
-						— hand {ownedHere.length === 1 ? 'it' : 'them'} to a member first, then
-						leave.
+							: ownedHere.length
+								? `${ownedHere.length} rooms`
+								: 'a room'} here, and a room never leaves its crew — hand {ownedHere.length ===
+						1
+							? 'it'
+							: 'them'} to a member first, then leave.
 					{:else if myRooms.length}
 						Leaving takes you out of {crew.name} and the {myRooms.length === 1
 							? 'room'
@@ -202,7 +211,7 @@
 				</p>
 				<button
 					onclick={leaveCrew}
-					disabled={busy || !!ownedHere.length}
+					disabled={busy || ownsRoomHere}
 					class="btn btn-danger btn-xs shrink-0">Leave the crew</button
 				>
 			</div>

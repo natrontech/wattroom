@@ -204,8 +204,8 @@
 		</p>
 		{#if crew.role === 'owner'}
 			<p class="text-muted mt-1 text-xs">
-				A crew is never deleted by hand: one with nobody left in it goes on its
-				own.
+				A crew is never deleted by hand: it goes with your account, once no room
+				is left to own.
 			</p>
 		{/if}
 		<button

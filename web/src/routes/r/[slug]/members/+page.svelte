@@ -286,8 +286,7 @@
 					<button
 						onclick={() => confirmRemove(member)}
 						disabled={room.adminBusy}
-						class="text-muted hover:text-danger shrink-0 text-[11px]"
-						>remove</button
+						class="btn btn-ghost btn-xs text-danger shrink-0">Remove</button
 					>
 				{/if}
 			</li>

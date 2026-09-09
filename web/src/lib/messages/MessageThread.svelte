@@ -216,7 +216,9 @@
 					{#if entry.kind === 'recap'}
 						<!-- The one entry that survives a reload (ADR-0034), and so
 						     the only one with a border. -->
-						<SessionRecapCard recap={entry.recap} />
+						<!-- The avatar gutter is the timeline's, so the card can
+						     stand on the Sessions place without it. -->
+						<div class="ml-9"><SessionRecapCard recap={entry.recap} /></div>
 					{:else if entry.kind === 'event'}
 						<!-- An event, not a message: no avatar, no reactions, nothing to
 						     copy. The room talking about itself stays quieter than the

@@ -36,14 +36,6 @@ export interface AdminMedal {
 	awardedAt: string;
 }
 
-export interface PlannedSession {
-	id: string;
-	workoutName: string;
-	workoutJson: string;
-	startsAt: string;
-	createdBy: string;
-}
-
 /** RoomShell's props. Named here because the context is built from them. */
 export interface RoomShellProps {
 	/** The place standing in the content column. */
@@ -74,7 +66,7 @@ export interface RoomShellProps {
 	adminBusy?: boolean;
 	onRole: (userId: string, role: string) => void;
 	onRemove: (userId: string) => void;
-	upcoming?: PlannedSession[];
+	upcoming?: RoomContext['upcoming'];
 	onSchedule: (name: string, json: string, startsAt: string) => void;
 	onReschedule: (id: string, startsAt: string) => void;
 	onUnschedule: (id: string) => void;
@@ -201,6 +193,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		poke: (id) => live.poke(id),
 		get upcoming() {
 			return props.upcoming ?? [];
+		},
+		get recaps() {
+			return live.recaps;
 		},
 		get icsToken() {
 			return props.icsToken ?? '';

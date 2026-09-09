@@ -15,6 +15,7 @@
 	import RoomReactions from './RoomReactions.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
 	import { play } from '$lib/sound/cues';
+	import { confirm } from '$lib/confirm.svelte';
 	import { device } from '$lib/device.svelte';
 	import {
 		joinedOn,
@@ -54,7 +55,6 @@
 	let room = $state<Room | null>(null);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
-	let confirmDelete = $state(false);
 
 	// Editable copies — PATCHed on change, never on keystroke.
 	let name = $state('');
@@ -137,10 +137,13 @@
 		});
 		busy = false;
 		if (!res.ok) {
-			error = res.error.message;
+			// A toast, where the control that failed is (errors.md) — the
+			// banner sat a screen above the reach ladder — and a re-read, so
+			// the form does not keep showing the values the server refused.
+			toasts.push(res.error.message, { tone: 'error' });
+			if (slug) void load(slug);
 			return;
 		}
-		error = null;
 		if (slug) void load(slug);
 	}
 
@@ -149,13 +152,26 @@
 		void save();
 	}
 
+	// The one dialog every destructive action asks through ($lib/confirm);
+	// this page hand-rolled its own beside it.
+	async function confirmDelete() {
+		if (!room) return;
+		const n = room.members?.length ?? 0;
+		const ok = await confirm({
+			title: `Delete “${room.name}” for all ${n} member${n === 1 ? '' : 's'}?`,
+			body: "Removes the room, its medal history and its streak for everyone in it. Rides already ridden stay in each rider's own history. This can't be undone.",
+			action: 'Delete room',
+			cancel: 'Keep the room',
+		});
+		if (ok) await remove();
+	}
+
 	async function remove() {
 		busy = true;
 		const res = await api(`/api/rooms/${slug}`, { method: 'DELETE' });
 		busy = false;
 		if (!res.ok) {
-			error = res.error.message;
-			confirmDelete = false;
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
 		// Home's open-a-room form, directly: /rooms has been a redirect to
@@ -430,30 +446,11 @@
 				Removes the room, its medal history and its streak for everyone in it.
 				Rides already ridden stay in each rider's own history.
 			</p>
-			{#if confirmDelete}
-				<div class="border-danger/50 bg-danger/10 mt-4 rounded-lg border p-4">
-					<p class="text-xs">
-						Delete “{room.name}” for all {room.members?.length ?? 0} members? This
-						can't be undone.
-					</p>
-					<div class="mt-3 flex gap-2">
-						<button
-							onclick={remove}
-							disabled={busy}
-							class="btn btn-danger-solid">Delete room</button
-						>
-						<button
-							onclick={() => (confirmDelete = false)}
-							class="btn btn-secondary">Cancel</button
-						>
-					</div>
-				</div>
-			{:else}
-				<button
-					onclick={() => (confirmDelete = true)}
-					class="btn btn-danger mt-4">Delete room</button
-				>
-			{/if}
+			<button
+				onclick={() => void confirmDelete()}
+				disabled={busy}
+				class="btn btn-danger mt-4">Delete room</button
+			>
 		</section>
 	</main>
 {/if}
