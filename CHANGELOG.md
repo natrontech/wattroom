@@ -17,6 +17,39 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.89] - 2026-09-09
+
+### Added
+
+- The workout editor can now add warm-up and cool-down ramps, and a steady block can be written in watts instead of a percentage of FTP — one link switches the unit and carries the number over, and a block already written in watts is shown as such instead of as 0 %.
+
+### Changed
+
+- The desktop app asks which trainer or sensor to pair in its own window instead of a system alert, and keeps listening while you read the list — a strap that wakes up a second late now appears instead of being missed. It also stops silently reusing the last device you picked, so pairing a different trainer works again.
+
+### Fixed
+
+- Your trainer stays paired when you walk around the app. Pairing on Settings › Equipment and then opening Ride showed "Not connected" over a trainer that was still connected, and pairing again put two connections on one machine.
+- A heart-rate strap or power meter that drops now reconnects itself, the way the trainer always has, instead of quietly reverting to "Not connected".
+- Right-clicking or long-pressing a chat line now leads with the person: their profile, a message, a friend request and, for the room's owner, a ban; the face beside a line opens their page. A line you send scrolls into view even if you had scrolled back, and a "new messages" button appears when lines arrive behind you. Reaction counts are easier to tap, the session picker says when your shelf is still loading rather than "nothing matches", and deleting a room says it takes the chat, the planned sessions and the recaps too.
+- Revoking a coach-access token now asks first and names the token, since it cannot be undone; the once-shown token and the Claude Code command each get a Copy button, and a refused clipboard says so instead of pretending.
+- The execution score on a saved ride now matches the one you watched while riding it. Trimming the intensity used to leave the two disagreeing — the ride screen banded your trimmed target, and the ride's own page re-scored the workout as written, so a rider who eased off 5 % finished at 100 % and found 93 % a click later, with the XP to match.
+- Sending two chat lines within a second now says so and keeps your words and picture in the box instead of dropping the second line silently, and a picture that failed to upload stays attached for another try; a room-banned coach can no longer plan or move sessions through a stale role; a session starts only once the room has taken the picked workout, so a refused pick shows its reason; a member no longer sees an active-playlist picker that would fail; End and the countdown's Cancel are full-size; copying the calendar link says when the clipboard refused; and the room's chat shows a loading state and a Retry instead of "Nothing said here yet" while its history loads.
+- A trainer or sensor that is reconnecting says so on its card, in the fault colour, with a button to give up on it — instead of an endless "Connecting…" with nothing to press.
+- Sharing a screen from the desktop app no longer sends your machine's sound
+  whether you wanted it or not. While a screen is live, the share notice
+  carries a sound button beside "Stop sharing": one press takes the sound out
+  of the room and closes the tap, and the answer is remembered, so a rider who
+  says no once is not asked again every share. macOS is where this bit — its
+  own picker takes system audio without offering a checkbox, and the shell
+  never gets to ask.
+- The desktop app's sidebar update row no longer stutters: its sweep is driven by a transform rather than a repainted gradient, and the arrow's hop is timed to it instead of drifting against it.
+
+### Security
+
+- A personal read token now reads ride summaries only: the second-by-second record with heart rate, the .fit export and the Strava delivery record stay on your account and cannot be handed to an AI client. The MCP server refuses an out-of-range limit instead of quietly answering thirty rides, can page through your rides and names each one, and answers a runaway client with a limit instead of running unbounded.
+- A link preview now names a room only when its owner listed it in the directory; unlisted rooms show the site card, as unknown links always did. Crawlers are told to stay out of personal pages, a personal read token can no longer open another rider's trophy case, guessing crew codes against the crew's picture is limited like guessing at the door, and personal data answered as JSON is marked not for any shared cache.
+
 ## [2026.09.88] - 2026-09-09
 
 ### Fixed
@@ -1704,7 +1737,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.88...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.89...HEAD
+[2026.09.89]: https://github.com/natrontech/wattroom/compare/2026.09.88...2026.09.89
 [2026.09.88]: https://github.com/natrontech/wattroom/compare/2026.09.87...2026.09.88
 [2026.09.87]: https://github.com/natrontech/wattroom/compare/2026.09.86...2026.09.87
 [2026.09.86]: https://github.com/natrontech/wattroom/compare/2026.09.85...2026.09.86

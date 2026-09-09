@@ -1,1 +1,0 @@
-- Revoking a coach-access token now asks first and names the token, since it cannot be undone; the once-shown token and the Claude Code command each get a Copy button, and a refused clipboard says so instead of pretending.
