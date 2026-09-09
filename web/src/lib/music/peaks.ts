@@ -25,7 +25,7 @@ export function trackPeaks(
 			// touching the mixer's own context.
 			const ctx = new OfflineAudioContext(1, 1, 44100);
 			const buffer = await ctx.decodeAudioData(await res.arrayBuffer());
-			return peaksOf(buffer.getChannelData(0), buckets);
+			return peaksOf(buffer.getChannelData(0), buckets, 'rms');
 		} catch {
 			return null;
 		}
