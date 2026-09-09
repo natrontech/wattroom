@@ -454,8 +454,8 @@
 		</div>
 	{:else}
 		<p class="text-muted text-xs leading-relaxed">
-			Nothing is playing. Paste a YouTube link — or drop one in the chat and
-			queue it from there — and everyone hears it on the same second.
+			Nothing is playing. Search your library or paste a YouTube link, and
+			everyone hears it on the same second.
 		</p>
 	{/if}
 

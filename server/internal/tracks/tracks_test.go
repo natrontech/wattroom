@@ -421,13 +421,20 @@ func TestSearchIsTolerantOfWhatRidersType(t *testing.T) {
 	if n := found("m83"); n != 1 {
 		t.Errorf("the artist found %d, want 1", n)
 	}
-	// websearch_to_tsquery, so a rider typing punctuation gets an answer
-	// rather than a 500 from a malformed tsquery.
+	// searchQuery keeps letters and digits only, so a rider typing
+	// punctuation gets an answer rather than a 500 from a malformed tsquery
+	// — and punctuation alone reads as nothing typed: the library, not a
+	// "nothing matches" for three exclamation marks (#1421).
 	if n := found(`"midnight city"`); n != 1 {
 		t.Errorf("a quoted phrase found %d, want 1", n)
 	}
-	if n := found("!!! &|"); n != 0 {
-		t.Errorf("junk found %d, want 0 and no error", n)
+	if n := found("!!! &|"); n < 1 {
+		t.Errorf("junk found %d, want the library back and no error", n)
+	}
+	// Prefixes match as the rider types (#1421): the add box searches on
+	// every keystroke, and "mid" has to find Midnight City.
+	if n := found("mid ci"); n != 1 {
+		t.Errorf("a prefix of each word found %d, want 1", n)
 	}
 	// An empty box is the whole library, not an empty page.
 	if n := found(""); n < 1 {

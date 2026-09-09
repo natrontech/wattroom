@@ -78,6 +78,19 @@ export function readLink(input: string): PastedLink {
 	};
 }
 
+/**
+ * What the add box should do with what was typed (#1421): nothing under two
+ * characters, the link path for anything readLink accepts, the library
+ * search for the rest. readLink's call comes first on purpose — a bare
+ * eleven-character id is the golden path, and a title that happens to be
+ * one gets the id treatment rather than a second guess.
+ */
+export function addIntent(text: string): 'idle' | 'link' | 'search' {
+	const q = text.trim();
+	if (q.length < 2) return 'idle';
+	return readLink(q).kind === 'error' ? 'search' : 'link';
+}
+
 /** The still-frame YouTube serves from its cookieless CDN — the queue's art. */
 export function thumbnailFor(videoId: string): string {
 	return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;

@@ -64,12 +64,12 @@ from tracks t
 join users u on u.id = t.uploaded_by
 where t.uploaded_by = sqlc.arg(uploaded_by)
   and (sqlc.arg(search)::text = ''
-       or t.search @@ websearch_to_tsquery('simple', sqlc.arg(search)::text))
+       or t.search @@ to_tsquery('simple', sqlc.arg(search)::text))
   and (sqlc.arg(tag)::text = '' or sqlc.arg(tag)::text = any(t.tags))
 order by
     -- Ranked when there is a query, newest when there is not.
     case when sqlc.arg(search)::text = '' then 0
-         else ts_rank(t.search, websearch_to_tsquery('simple', sqlc.arg(search)::text))
+         else ts_rank(t.search, to_tsquery('simple', sqlc.arg(search)::text))
     end desc,
     t.created_at desc
 limit sqlc.arg(lim) offset sqlc.arg(off);
