@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.71] - 2026-09-09
+
+### Fixed
+
+- The live execution meter shows a dash until something scorable has been ridden, instead of a 100 % the saved ride then contradicts; Lanterne Rouge's "but completed the session" now means the ride reached the workout's final segment.
+- The "name your crew" set-up step now retires when the crew is actually renamed, not when its owner changes their own display name, and a crew deliberately named after its owner stops nagging. The sign-in page says up front that a new account confirms an email address, and the address gate tells an invited rider their crew door is waiting right behind it.
+- A failed load no longer pretends: Home says when your rooms or rides could not be read instead of showing "open your first room" to a rider with ten rooms, a room's settings show a loading state instead of nothing, the app opens on its mark instead of a blank screen, a workout of yours that fails to load is said rather than swapped for Sweet Spot 2×20, your own page's Retry works again, "Banned" and "Calendar link reset" wait for the server's answer, the data export fails inside the app instead of replacing it with an error page, and a failed "Show more" in the directory keeps the rooms already listed.
+- Failures are said where you are looking: a refused profile save is a red banner naming the field instead of a grey line that reads like "Saved.", a failed account purge or export says the server's reason beside its button, a room, its settings, its autoplay panel, the workout editor and What's new offer Retry instead of a sentence about reloading, the ride summary keeps "your ride is only on this device" even if an export fails, and a refused crew code sits above the code field rather than the room form.
+
 ## [2026.09.70] - 2026-09-09
 
 ### Added
@@ -1509,7 +1518,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.70...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.71...HEAD
+[2026.09.71]: https://github.com/natrontech/wattroom/compare/2026.09.70...2026.09.71
 [2026.09.70]: https://github.com/natrontech/wattroom/compare/2026.09.69...2026.09.70
 [2026.09.69]: https://github.com/natrontech/wattroom/compare/2026.09.68...2026.09.69
 [2026.09.68]: https://github.com/natrontech/wattroom/compare/2026.09.67...2026.09.68
