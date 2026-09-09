@@ -158,7 +158,9 @@
 			confirmDelete = false;
 			return;
 		}
-		void goto('/rooms');
+		// Home's open-a-room form, directly: /rooms has been a redirect to
+		// exactly this since ADR-0020, and the hop through it was a flash (#1329).
+		void goto('/home#rooms');
 	}
 
 	// Packs are parameter sets, not downloads — custom ones are a fast-follow (WATTROOM.md).
