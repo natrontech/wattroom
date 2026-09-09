@@ -8,6 +8,7 @@ package store
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,16 +26,24 @@ type Store struct {
 	Queries *db.Queries
 }
 
+// ErrUnreachable wraps the errors that mean "no database", as opposed to a
+// database that answered and then refused — a migration it will not take,
+// say. Tests skip on the first and must fail on the second: for most of a
+// day the rooms suite passed green by skipping every test, because the
+// shared database had taken a neighbour's newer migration first and goose
+// refused the older one as missing (2026-09-09, #928's cousin).
+var ErrUnreachable = errors.New("database unreachable")
+
 // Open connects, migrates, and returns the ready store. dsn comes from
 // WATTROOM_DB; callers treat an empty dsn as "run without a database".
 func Open(ctx context.Context, dsn string) (*Store, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("store: connect: %w", err)
+		return nil, fmt.Errorf("store: connect: %w (%w)", err, ErrUnreachable)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("store: ping: %w", err)
+		return nil, fmt.Errorf("store: ping: %w (%w)", err, ErrUnreachable)
 	}
 
 	// goose speaks database/sql; stdlib borrows from the same pgx pool config.

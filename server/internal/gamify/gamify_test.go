@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
 type fakeUsers struct{ byToken map[string]db.User }
@@ -28,17 +27,7 @@ func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
 // service over it plus two riders, alice and bob, deleted on cleanup.
 func setup(t *testing.T) (*Service, *fakeUsers, db.User, db.User) {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
+	st := storetest.Open(t)
 
 	users := &fakeUsers{byToken: map[string]db.User{}}
 	newUser := func(name string) db.User {

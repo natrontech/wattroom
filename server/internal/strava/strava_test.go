@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
 // The fake Strava: token refresh, upload accept, then one "processing" poll
@@ -81,17 +81,7 @@ func fakeStrava(t *testing.T) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 // seedRide gives a test a rider with Strava connected and one saved ride.
 func seedRide(t *testing.T, name string) (*store.Store, pgtype.UUID, pgtype.UUID) {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
+	st := storetest.Open(t)
 
 	user, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 		DisplayName: name, FtpWatts: 250, WeightKg: 70,

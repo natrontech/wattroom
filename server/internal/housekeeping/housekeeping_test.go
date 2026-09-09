@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
 // Both sweeps fail SILENTLY: nothing errors, rows simply stay. So each test
@@ -23,17 +23,7 @@ import (
 
 func open(t *testing.T) *store.Store {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
+	st := storetest.Open(t)
 	return st
 }
 

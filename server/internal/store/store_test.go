@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -124,4 +125,15 @@ func TestDatabaseReachableWhenRequired(t *testing.T) {
 		t.Fatalf("no test database, so every DB-backed package would skip and the suite would still say ok — run `make infra` here, or set WATTROOM_TEST_DB: %v", err)
 	}
 	st.Close()
+}
+
+// A database that is not there is a different answer from one that answered
+// and refused, and the test helpers skip on the first only (storetest.Open).
+func TestOpenSaysWhenTheDatabaseIsUnreachable(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, err := store.Open(ctx, "postgres://wattroom:wattroom@127.0.0.1:1/nowhere?connect_timeout=1")
+	if !errors.Is(err, store.ErrUnreachable) {
+		t.Fatalf("an unreachable database did not say so: %v", err)
+	}
 }
