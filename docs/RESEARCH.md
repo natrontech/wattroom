@@ -577,6 +577,29 @@ Not answered by this pass, and left to #1023 rather than guessed: what the priva
 
 ---
 
+## 17. The ramp test's 75 % and the LTHR estimate (research for #1566; run of 2026-09-09)
+
+Both numbers were asserted in docs/SPEC.md and taken as locked by the code without a citation. A rider asked, after a real ramp test, whether either is defensible. Short answer: the 75 % has a basis and a known error band; the LTHR estimate is a rough midpoint that a field test replaces.
+
+### 17.1 FTP = 75 % of the ramp's best minute
+
+The ramp reaches **maximal aerobic power** (MAP) in its last sustained minute. The link from MAP to FTP was quantified by coach and sports scientist Ric Stern in the late 1990s: in the riders he tested, best ~1-hour power fell in **72–77 % of MAP** for over 97 % of them, and 75 % is the midpoint every platform since has used ([CycleCoach on the MAP ramp test](https://www.cyclecoach.com/ramp-test); [the same source on its validity as an FTP estimator](https://www.cyclecoach.com/blog/2020/2/2/is-the-map-ramp-test-a-valid-estimator-of-ftp)). Trained endurance athletes span a wider **72–82 %** ([Roadman's protocol comparison](https://roadmancycling.com/blog/ftp-test-protocols-compared-cycling)).
+
+What the band means for a rider: a fixed 75 % is a generalisation. A deeply aerobic rider with a modest one-minute peak reads **low**; a punchy rider with a big top end reads **high** ([Cycling Weekly's coach's guide](https://www.cyclingweekly.com/fitness/which-ftp-test-is-best-on-zwift-and-a-cycling-coachs-guide-on-how-to-get-the-best-results)). The 20-minute test (0.95 × best 20 min) and the 8-minute test (0.90 × best 8 min) carry their own fixed factors with the same shape of error ([Carmichael on the three tests](https://trainright.com/ftp-tests-how-to-perform-20-minute-8-minute-and-ramp-tests/)).
+
+**Verdict.** Keep 75 % as the default and say on the result panel that it is an estimate of ±5 %; the rider who cares can confirm with a 20-minute test, and the FTP-suggestion path (0.95 × best 20 min) already does that arithmetic from a hard ride. The rolling-60-second choice (SPEC) stays: it is what makes "best minute" mean the last full minute the rider held rather than a step boundary.
+
+### 17.2 LTHR ≈ 90 % of the ramp's peak heart rate
+
+The literature places the second lactate threshold's heart rate at **85–92 % of maximum heart rate** for most endurance athletes ([RunnersConnect](https://runnersconnect.net/how-to-calculate-your-lactate-threshold/); [PeakVO2](https://peakvo2trainer.com/blog/lactate-threshold/)), so 90 % sits inside the band. Two caveats make it a rougher number than the FTP factor:
+
+- **The ramp's peak is not necessarily HRmax.** Heart rate lags power; a rider who blows on step 9 has not reached the heart rate they would on step 12. 90 % of a submaximal peak underestimates LTHR, and the error grows the earlier the test ends.
+- **The band is wide.** ±3–4 % of HRmax is 6–8 bpm at 180 — a full zone boundary in the Coggan 5-zone table.
+
+The measurement the field uses instead is Joe Friel's **30-minute time trial**: ride 30 minutes alone as hard as sustainable, press lap at 10 minutes, and the **average heart rate of the last 20 minutes** is LTHR ([Friel: determining your LTHR](https://joefrieltraining.com/determining-your-lthr/); [Friel's zone guide on TrainingPeaks](https://www.trainingpeaks.com/learn/articles/joe-friel-s-quick-guide-to-setting-zones/)). It correlates well with lab-measured LTHR and has two decades of use; some coaches shave 3–5 % off for the 30-minute version against a 60-minute effort ([Steel City Endurance's protocol](https://steelcityendurance.com/testing/lactate-threshold-field-test-30-min/)).
+
+**Verdict.** Keep the ramp's 0.90 × peak as what it already is in SPEC — a suggestion, one tap, never auto-applied — but label it a rough estimate, and offer the 30-minute field test as the way to a real number: the app records HR on every ride, so "average HR of the last 20 minutes of a 30-minute all-out ride" is one derived number away from a proper LTHR suggestion, the same shape as the FTP suggestion. That is a feature, not a docs change, and it is the honest upgrade path.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

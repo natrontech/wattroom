@@ -191,7 +191,9 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 | Z5   | VO₂ max         | > 105 %  |
 
 - **LTHR suggestion**: a scoreable ramp test with HR recorded suggests
-  `0.90 × max test HR` **(default — tune in alpha)** — one tap to apply, never
+  `0.90 × max test HR` **(default — tune in alpha)** — a rough estimate: LT2 sits at 85–92 % of
+  HRmax and a ramp's peak need not be HRmax (RESEARCH §17.2; Friel's 30-min field test is the
+  real measurement) — one tap to apply, never
   auto-applied (same posture as FTP suggestions).
 
 ## Stats formulas (defaults — tune in alpha)
@@ -202,7 +204,7 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 - **Category** from best 20-min w/kg over rolling 90 days: **D < 2.5, C 2.5–3.2, B 3.2–4.0, A ≥ 4.0**. Recompute on ride completion; category changes announce in the room (up: fanfare; down: silently).
 - **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve.
 - **FTP suggestions**: when 90-day `0.95 × best-20-min` exceeds set FTP by >2 %, prompt (never auto-apply).
-- **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary).
+- **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary). The 75 % is Ric Stern's MAP→FTP midpoint of a 72–77 % band, ±5 % for most riders and worse at the extremes (RESEARCH §17.1).
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
 
