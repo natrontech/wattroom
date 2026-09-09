@@ -9,7 +9,7 @@ import type {
 	ServerTick,
 } from '$lib/protocol';
 import { account } from '$lib/account.svelte';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createChatLog, type BacklogMessage } from '$lib/room/chat-log.svelte';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 
@@ -110,7 +110,7 @@ export function createRoomLive(slug: string) {
 		if (now === riding) return;
 		riding = now;
 		if (!now) {
-			buffer?.end();
+			settle(buffer);
 			buffer = null;
 			return;
 		}
@@ -123,6 +123,20 @@ export function createRoomLive(slug: string) {
 			workoutName: t.state.workoutName || 'Room ride',
 		}).then((opened) => {
 			if (riding && openedFor === startedAt) buffer = opened;
+		});
+	}
+
+	// The close is the hub saying it saved what it heard — not that it heard
+	// everything (#1536). A socket down when the timeline ran out replays its
+	// tail into a room that has already saved, and nothing reads it again.
+	// So a tail the hub never acknowledged, a minute or more of it, keeps the
+	// buffer unfinished: /ride offers the .fit back. Export only — a room
+	// buffer carries no workoutJson, so the card shows no Save that would
+	// mint a second ride beside the hub's.
+	function settle(opened: RideBuffer | null) {
+		if (!opened) return;
+		void opened.since(acked).then((tail) => {
+			if (tail.length < MIN_SAMPLES) opened.end();
 		});
 	}
 
@@ -183,10 +197,12 @@ export function createRoomLive(slug: string) {
 				// keeps the jukebox playhead on server time (#286).
 				observeServerTime(msg.tick.at);
 				tick = msg.tick;
-				followSession(msg.tick);
+				// The ack before the session follows it: the closing tick's
+				// own seq is what says whether the tail was heard (#1536).
 				const me = account.me?.id;
 				const mine = me ? msg.tick.riders?.[me] : undefined;
 				if (mine) acked = mine.seq;
+				followSession(msg.tick);
 				if (msg.tick.recap) {
 					// The session that just ended left a card (ADR-0034), on
 					// the tick after its row landed. Riders who were not here
@@ -319,9 +335,11 @@ export function createRoomLive(slug: string) {
 			}
 			send({ metrics });
 		},
-		/** The room ride ended cleanly; its buffer is not a crash to recover. */
+		/** The room ride ended on this screen: the buffer is not a crash to
+		 * recover, unless the hub never heard its tail (#1536). */
 		finish() {
-			buffer?.end();
+			settle(buffer);
+			buffer = null;
 		},
 		/** Fire a soundboard pad (#877): only the clip id crosses the wire —
 		 * the hub fills in who fired it, and every listener fetches the audio. */

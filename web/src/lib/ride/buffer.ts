@@ -40,7 +40,7 @@ export interface RideMeta {
 const DB_NAME = 'wattroom-rides';
 const KEEP_RIDES = 5;
 /** Under a minute of samples is a misclick, not a lost ride. */
-const MIN_SAMPLES = 60;
+export const MIN_SAMPLES = 60;
 
 /** Every sample of one ride — the store's key is [rideId, seq]. */
 function samplesOf(rideId: string): IDBKeyRange {
