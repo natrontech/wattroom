@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { MenuEntry } from '$lib/context-menu.svelte';
 	import { parseInline } from './inline';
 	import { gifUrl } from './media';
 	import ChatImage from './ChatImage.svelte';
@@ -8,10 +9,13 @@
 		text,
 		preview = true,
 		onQueue,
+		menu,
 	}: {
 		text: string;
 		preview?: boolean;
 		onQueue?: (url: string) => void;
+		/** The message's menu, handed to a GIF the way ChatImage wants it (#1817). */
+		menu?: () => MenuEntry[];
 	} = $props();
 
 	// A message that is nothing but an allowlisted GIF link becomes the GIF
@@ -39,6 +43,7 @@
 {#if gif}<ChatImage
 		src={gif}
 		alt="GIF"
+		{menu}
 	/>{:else}{#each parts as part, i (i)}{#if part.href}<a
 				href={part.href}
 				target={part.external ? '_blank' : null}

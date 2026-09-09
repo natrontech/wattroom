@@ -387,7 +387,11 @@
 											: ''}"
 									>
 										{#if message.text}
-											<MessageText text={message.text} {onQueue} />
+											<MessageText
+												text={message.text}
+												{onQueue}
+												menu={() => messageMenu(message)}
+											/>
 										{/if}
 										{#if message.editedAt}
 											<!-- Nobody is rewritten quietly (#865). Not a
@@ -400,9 +404,14 @@
 											>
 										{/if}
 										{#if message.imageId}
+											<!-- The picture's own menu swallows the row's right-click
+											     (#1817): hand the message's down, or a photo has no react,
+											     no copy and — on a phone, where the hover strip is hidden —
+											     no way in at all. -->
 											<ChatImage
 												src={imageSrc(message.imageId)}
 												alt="Sent by {message.from}"
+												menu={() => messageMenu(message)}
 											/>
 										{/if}
 									</span>
