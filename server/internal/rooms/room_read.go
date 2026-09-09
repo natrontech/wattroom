@@ -226,6 +226,16 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			}
 			// Which banned rows are also crew-banned (#1150), owner-only like
 			// the ban list itself. One query, not one per row.
+			// Every medal this room awarded, per rider (#1371): the roster's
+			// count. A failure here is a row with no count, not a failed page.
+			medalCount := map[pgtype.UUID]int32{}
+			if rows, err := s.store.Queries.CountRoomMedalsByRider(r.Context(), room.ID); err == nil {
+				for _, row := range rows {
+					medalCount[row.UserID] = row.Medals
+				}
+			} else {
+				s.log.Warn("count medals failed", "err", err, "room", room.Slug)
+			}
 			crewBanned := map[pgtype.UUID]bool{}
 			if m.Role == "owner" && room.CrewID.Valid {
 				if ids, err := s.store.Queries.ListCrewBans(r.Context(), room.CrewID); err == nil {
@@ -246,6 +256,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					Role:      member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt:   member.JoinedAt.Time.Format("2006-01-02"),
+					Medals:     int(medalCount[member.ID]),
 					Badges:     member.Badges,
 					CrewBanned: member.Role == "banned" && crewBanned[member.ID],
 				})

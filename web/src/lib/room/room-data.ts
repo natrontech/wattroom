@@ -7,6 +7,8 @@ export interface Member {
 	ftpWatts?: number;
 	weightKg?: number;
 	joinedAt?: string;
+	/** Medals this room awarded them, lifetime — counted by id (#1371). */
+	medals?: number;
 }
 
 export interface Medal {

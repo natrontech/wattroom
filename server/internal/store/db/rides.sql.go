@@ -24,6 +24,41 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 	return column_1, err
 }
 
+const countRoomMedalsByRider = `-- name: CountRoomMedalsByRider :many
+select user_id, count(*)::int as medals
+from medals
+where room_id = $1
+group by user_id
+`
+
+type CountRoomMedalsByRiderRow struct {
+	UserID pgtype.UUID
+	Medals int32
+}
+
+// Every medal this room ever awarded, per rider — the roster's count. The
+// recent list above is capped and carries names; a count matched on those
+// decayed as the room rode and merged two riders with one name (#1371).
+func (q *Queries) CountRoomMedalsByRider(ctx context.Context, roomID pgtype.UUID) ([]CountRoomMedalsByRiderRow, error) {
+	rows, err := q.db.Query(ctx, countRoomMedalsByRider, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRoomMedalsByRiderRow
+	for rows.Next() {
+		var i CountRoomMedalsByRiderRow
+		if err := rows.Scan(&i.UserID, &i.Medals); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMedal = `-- name: CreateMedal :exec
 insert into medals (room_id, user_id, ride_id, kind)
 values ($1, $2, $3, $4)

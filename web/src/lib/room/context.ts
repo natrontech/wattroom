@@ -114,6 +114,8 @@ export interface RoomContext {
 		joinedAt?: string;
 		/** Earned achievement keys (#703). Never progress — ADR-0027. */
 		badges?: string[];
+		/** Medals this room awarded them, lifetime (#1371). */
+		medals?: number;
 		/** A banned row the crew also bans (#1150). */
 		crewBanned?: boolean;
 	}[];
