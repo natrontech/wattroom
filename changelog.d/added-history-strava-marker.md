@@ -1,1 +1,0 @@
-- The Rides page marks a ride that could not be sent to Strava and says how many there are, so a failed upload no longer hides until you open that ride.

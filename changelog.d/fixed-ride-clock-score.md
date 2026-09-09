@@ -1,1 +1,0 @@
-- A solo ride that paused mid-block is now scored against the blocks you actually rode: the saved execution score agreed with the live one only on a ride that never stopped, because the server counted seconds by their place in the record rather than by the workout clock.
