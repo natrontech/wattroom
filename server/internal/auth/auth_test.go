@@ -983,6 +983,9 @@ func TestUpdateMeCarriesLthr(t *testing.T) {
 	}
 	if got := patch(`{"displayName":"x","ftpWatts":255,"weightKg":80,"lthr":0}`); got.Lthr != nil {
 		t.Fatalf("zero should clear: %d", *got.Lthr)
+	}
+}
+
 // The dev login opens on a local origin only, and never for a cross-site
 // fetch (#1603).
 func TestDevLoginIsLocalOnly(t *testing.T) {
