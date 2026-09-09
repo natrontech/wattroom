@@ -1,0 +1,1 @@
+- The ramp test gets the ⚑ and the TV view a workout ride has: flag a problem mid-test and send it with a note afterwards, and put the test on the big screen with one tap.
