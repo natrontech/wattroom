@@ -74,7 +74,9 @@
 	});
 </script>
 
-<div class="flex min-h-0 flex-1 flex-col">
+<!-- The bottom padding is the floating navigation button's (ux.md: the last
+     item clears the chrome); on a desk there is no such button. -->
+<div class="flex min-h-0 flex-1 flex-col pb-16 sm:pb-0">
 	<RideHeader
 		{block}
 		elapsed={session.elapsed}
@@ -87,7 +89,10 @@
 			<!-- Rider controls: big targets, no precision needed (ux.md). The
 			     room's coach controls sit in this same slot; the bias trim is not
 			     here, because it belongs with the numbers it trims. -->
-			<div class="flex shrink-0 items-center gap-2">
+			<!-- Wraps rather than shrinking (#1634): at 375 px the cluster ran 39
+			     px past the viewport and the ⚑ — the last button — could not be
+			     reached at all. -->
+			<div class="flex flex-wrap items-center justify-end gap-2">
 				<button
 					onclick={() => session.extend(60)}
 					class="border-muted/25 hover:border-muted/60 h-11 rounded border px-4 text-sm"
