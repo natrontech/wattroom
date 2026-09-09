@@ -32,6 +32,26 @@ describe('uploadRide', () => {
 				message: 'That ride could not be saved.',
 			},
 		});
-		expect(await uploadRide(ride)).toBe('That ride could not be saved.');
+		expect(await uploadRide(ride)).toEqual({
+			message: 'That ride could not be saved.',
+			final: false,
+		});
+	});
+
+	it('marks a refusal the server will repeat as final', async () => {
+		// A ride under a minute (rides.go) is refused every time it is sent:
+		// the buffer must not offer it back, and the words must not promise a
+		// retry (#794's recovery card).
+		api.mockResolvedValueOnce({
+			ok: false,
+			error: {
+				error: 'validation_error',
+				message: 'A ride under a minute is not saved.',
+			},
+		});
+		expect(await uploadRide(ride)).toEqual({
+			message: 'A ride under a minute is not saved.',
+			final: true,
+		});
 	});
 });

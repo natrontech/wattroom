@@ -219,9 +219,13 @@
 				ended?.end();
 				return;
 			}
-			// The buffer keeps every sample and stays unfinished, so the ride
-			// is offered back below with a Save that retries this POST. The
-			// local summary is the second copy, not the only one.
+			// A refusal the server will repeat — under a minute — is not a
+			// ride to recover either: offering it back would refuse it again
+			// on every reload. Its summary still lands on the device below.
+			if (failure.final) ended?.end();
+			// Otherwise the buffer keeps every sample and stays unfinished, so
+			// the ride is offered back below with a Save that retries this
+			// POST. The local summary is the second copy, not the only one.
 			const localFailure = history.add({
 				id: `${current.startedAt.getTime()}`,
 				workoutName: workout.name,
@@ -232,7 +236,9 @@
 			});
 			error =
 				localFailure ??
-				`${failure} This ride is kept on this device — reload to save it from the recovery card.`;
+				(failure.final
+					? `${failure.message} Its summary stays on this device.`
+					: `${failure.message} This ride is kept on this device — reload to save it from the recovery card.`);
 		});
 	});
 
