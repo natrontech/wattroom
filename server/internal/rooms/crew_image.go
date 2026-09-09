@@ -2,7 +2,6 @@ package rooms
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -98,9 +97,6 @@ func (s *Service) handleCrewDoorImage(w http.ResponseWriter, r *http.Request) {
 	s.serveCrewImage(w, r, crew.ID)
 }
 
-// serveCrewImage: the URL is stable and the bytes may change, so the ETag is
-// the set time and the browser revalidates — a 304 costs one round trip, and
-// a re-upload shows at once everywhere.
 func (s *Service) serveCrewImage(w http.ResponseWriter, r *http.Request, id pgtype.UUID) {
 	img, err := s.store.Queries.GetCrewImage(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && img.ImageMime == nil) {
@@ -112,16 +108,5 @@ func (s *Service) serveCrewImage(w http.ResponseWriter, r *http.Request, id pgty
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be loaded.")
 		return
 	}
-	etag := fmt.Sprintf(`"%d"`, img.ImageSetAt.Time.UnixMilli())
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	w.Header().Set("Content-Type", *img.ImageMime)
-	// Member-supplied bytes from the app's own origin: never re-interpreted
-	// as HTML, whatever passed the sniff.
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("ETag", etag)
-	w.Header().Set("Cache-Control", "private, no-cache")
-	_, _ = w.Write(img.Image)
+	httpx.ServeImage(w, r, *img.ImageMime, img.Image, img.ImageSetAt.Time)
 }

@@ -15,7 +15,7 @@ select * from users where id = $1;
 -- email_verified_at still set (#824).
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    notify_planned = $6, avatar_preset = $7
+    notify_planned = $6
 where id = $1
 returning *;
 
@@ -96,3 +96,19 @@ select exists (
       and email_verified_at is not null
       and id <> @user_id
 );
+
+-- name: SetUserAvatar :one
+-- The picture and the address that reaches it, in one statement (#1353): the
+-- bytes land in user_avatars and avatar_url is repointed at them, versioned by
+-- set_at so a replaced picture has a new address everywhere at once.
+with saved as (
+    insert into user_avatars (user_id, mime, image, set_at)
+    values ($1, $2, $3, $4)
+    on conflict (user_id) do update
+        set mime = excluded.mime, image = excluded.image, set_at = excluded.set_at
+)
+update users set avatar_url = $5 where id = $1
+returning *;
+
+-- name: GetUserAvatar :one
+select mime, image, set_at from user_avatars where user_id = $1;

@@ -196,7 +196,7 @@ func (q *Queries) ListDmEdits(ctx context.Context, arg ListDmEditsParams) ([]Lis
 
 const listDmHeads = `-- name: ListDmHeads :many
 select distinct on (peer.id)
-    peer.id as peer_id, peer.display_name, peer.avatar_url, peer.avatar_preset,
+    peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
     m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m
@@ -207,15 +207,14 @@ order by peer.id, m.created_at desc
 `
 
 type ListDmHeadsRow struct {
-	PeerID       pgtype.UUID
-	DisplayName  string
-	AvatarUrl    *string
-	AvatarPreset *string
-	TotalXp      int64
-	Text         string
-	ImageID      pgtype.UUID
-	SenderID     pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
+	PeerID      pgtype.UUID
+	DisplayName string
+	AvatarUrl   *string
+	TotalXp     int64
+	Text        string
+	ImageID     pgtype.UUID
+	SenderID    pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
 }
 
 // The conversation list: my peers with their latest line, newest first.
@@ -232,7 +231,6 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.PeerID,
 			&i.DisplayName,
 			&i.AvatarUrl,
-			&i.AvatarPreset,
 			&i.TotalXp,
 			&i.Text,
 			&i.ImageID,

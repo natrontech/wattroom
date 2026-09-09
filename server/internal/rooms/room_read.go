@@ -236,8 +236,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				}
 				response.Members = append(response.Members, memberJSON{
 					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
-					AvatarURL: member.AvatarUrl, AvatarPreset: member.AvatarPreset,
-					Role: member.Role, TotalXp: member.TotalXp,
+					AvatarURL: member.AvatarUrl,
+					Role:      member.Role, TotalXp: member.TotalXp,
 					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
 					JoinedAt:   member.JoinedAt.Time.Format("2006-01-02"),
 					Badges:     member.Badges,

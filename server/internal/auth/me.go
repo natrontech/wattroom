@@ -5,8 +5,11 @@ import (
 	"context"
 	"net/http"
 	"net/mail"
-	"regexp"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -15,12 +18,12 @@ import (
 )
 
 type meResponse struct {
-	ID          string  `json:"id"`
-	DisplayName string  `json:"displayName"`
-	AvatarURL   *string `json:"avatarUrl,omitempty"`
-	// Rider-picked preset id (#253) — an opaque slug the client's catalog
-	// resolves; absent falls back to the OAuth photo, then an initial.
-	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	// The sign-in provider's photo until the rider uploads one (#1353); then
+	// /api/riders/{id}/avatar?v=<set time>, so a replaced picture is a new
+	// address everywhere.
+	AvatarURL *string `json:"avatarUrl,omitempty"`
 	// Lifetime XP — the level and its ring derive from this (docs/SPEC.md).
 	TotalXp  int64 `json:"totalXp"`
 	FtpWatts int16 `json:"ftpWatts"`
@@ -89,8 +92,6 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		StravaUpload  *bool   `json:"stravaUpload"`
 		Email         *string `json:"email"`
 		NotifyPlanned *bool   `json:"notifyPlanned"`
-		// "" clears the pick (back to the OAuth photo); absent keeps it.
-		AvatarPreset *string `json:"avatarPreset"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -140,23 +141,10 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if !hasEmail && current.EmailPending == nil {
 		notify = false
 	}
-	preset := user.AvatarPreset
-	if req.AvatarPreset != nil {
-		switch p := *req.AvatarPreset; {
-		case p == "":
-			preset = nil
-		case !validPreset(p):
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"That avatar is not one of the presets.", "avatarPreset")
-			return
-		default:
-			preset = &p
-		}
-	}
 	updated, err := s.store.Queries.UpdateUserProfile(r.Context(), db.UpdateUserProfileParams{
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
-		NotifyPlanned: notify, AvatarPreset: preset,
+		NotifyPlanned: notify,
 	})
 	if err != nil {
 		s.log.Error("profile update failed", "err", err)
@@ -171,6 +159,35 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 	// The client replaces its whole `me` with this response — it has to be as
 	// complete as GET /api/me, or providers/AV/FTP-suggestion/XP vanish on save.
+	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+}
+
+// handleSetAvatar takes the rider's own picture (#1353): the same trust
+// boundary as a pasted chat image and a crew's picture — bounded read, type
+// sniffed from the bytes. The response is the full `me`, like every other
+// write to the record, so the client swaps its copy and every surface draws
+// the new address.
+func (s *Service) handleSetAvatar(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	data, mime, ok := httpx.ReadImageUpload(w, r)
+	if !ok {
+		return
+	}
+	setAt := time.Now()
+	url := "/api/riders/" + store.UUIDString(user.ID) + "/avatar?v=" + strconv.FormatInt(setAt.UnixMilli(), 10)
+	updated, err := s.store.Queries.SetUserAvatar(r.Context(), db.SetUserAvatarParams{
+		ID: user.ID, Mime: mime, Image: data,
+		SetAt:     pgtype.Timestamptz{Time: setAt, Valid: true},
+		AvatarUrl: &url,
+	})
+	if err != nil {
+		s.log.Error("avatar save failed", "err", err, "user", store.UUIDString(user.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be saved.")
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
 }
 
@@ -257,7 +274,6 @@ func (s *Service) toMe(u db.User) meResponse {
 		ID:            store.UUIDString(u.ID),
 		DisplayName:   u.DisplayName,
 		AvatarURL:     u.AvatarUrl,
-		AvatarPreset:  u.AvatarPreset,
 		FtpWatts:      u.FtpWatts,
 		WeightKg:      u.WeightKg,
 		Email:         u.Email,
@@ -277,7 +293,3 @@ func validEmail(e string) bool {
 	a, err := mail.ParseAddress(e)
 	return err == nil && a.Address == e
 }
-
-// validPreset bounds the avatar preset id: a short kebab slug. The catalog
-// itself lives client-side (#253); the server only refuses junk.
-var validPreset = regexp.MustCompile(`^[a-z0-9-]{1,32}$`).MatchString

@@ -28,10 +28,9 @@ const (
 )
 
 type crewPersonJSON struct {
-	ID           string  `json:"id"`
-	DisplayName  string  `json:"displayName"`
-	AvatarURL    *string `json:"avatarUrl,omitempty"`
-	AvatarPreset *string `json:"avatarPreset,omitempty"`
+	ID          string  `json:"id"`
+	DisplayName string  `json:"displayName"`
+	AvatarURL   *string `json:"avatarUrl,omitempty"`
 	// owner | admin | member — banned people are on their own list.
 	Role string `json:"role"`
 	// First joined any of the crew's rooms; the crew's own "since".
@@ -248,7 +247,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 			personRole = "admin"
 		}
 		out.People = append(out.People, crewPersonJSON{
-			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl, AvatarPreset: p.AvatarPreset,
+			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl,
 			Role: personRole, Since: p.Since.Time.Format("2006-01-02"), Rooms: p.RoomCount,
 			OwnsRoom: p.OwnsRoom,
 		})
@@ -263,8 +262,8 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		for _, p := range banned {
 			out.Banned = append(out.Banned, crewPersonJSON{
 				ID: store.UUIDString(p.ID), DisplayName: p.DisplayName,
-				AvatarURL: p.AvatarUrl, AvatarPreset: p.AvatarPreset,
-				Role: "banned", Since: p.SetAt.Time.Format("2006-01-02"),
+				AvatarURL: p.AvatarUrl,
+				Role:      "banned", Since: p.SetAt.Time.Format("2006-01-02"),
 			})
 		}
 	}

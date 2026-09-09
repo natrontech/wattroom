@@ -114,10 +114,9 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		PeerID   string `json:"peerId"`
 		PeerName string `json:"peerName"`
 		// Peer avatar + lifetime XP (#253) for the thread rows.
-		PeerAvatarURL    *string `json:"peerAvatarUrl,omitempty"`
-		PeerAvatarPreset *string `json:"peerAvatarPreset,omitempty"`
-		PeerTotalXp      int64   `json:"peerTotalXp"`
-		Text             string  `json:"text"`
+		PeerAvatarURL *string `json:"peerAvatarUrl,omitempty"`
+		PeerTotalXp   int64   `json:"peerTotalXp"`
+		Text          string  `json:"text"`
 		// Whether the latest line was an image, so the list can preview it as
 		// something rather than as a blank (#285).
 		HasImage bool  `json:"hasImage,omitempty"`
@@ -128,9 +127,9 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		out = append(out, headJSON{
 			PeerID: store.UUIDString(row.PeerID), PeerName: row.DisplayName,
-			PeerAvatarURL: row.AvatarUrl, PeerAvatarPreset: row.AvatarPreset,
-			PeerTotalXp: row.TotalXp,
-			Text:        row.Text, HasImage: row.ImageID.Valid,
+			PeerAvatarURL: row.AvatarUrl,
+			PeerTotalXp:   row.TotalXp,
+			Text:          row.Text, HasImage: row.ImageID.Valid,
 			Mine: row.SenderID == me.ID,
 			At:   row.CreatedAt.Time.UnixMilli(),
 		})
