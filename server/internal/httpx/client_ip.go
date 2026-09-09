@@ -15,12 +15,12 @@ import (
 // request (#1824). Only the deploy's own proxy can write the last one.
 func ClientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.LastIndex(xff, ","); i >= 0 {
-			if last := strings.TrimSpace(xff[i+1:]); last != "" {
-				return last
+		hops := strings.Split(xff, ",")
+		for i := len(hops) - 1; i >= 0; i-- {
+			if hop := strings.TrimSpace(hops[i]); hop != "" {
+				return hop
 			}
 		}
-		return strings.TrimSpace(xff)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
