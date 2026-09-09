@@ -9,6 +9,7 @@
 	import RoomShell from '$lib/room/RoomShell.svelte';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
+	import { formatWhen } from '$lib/format';
 
 	let { children } = $props();
 
@@ -80,7 +81,10 @@
 		const res = await api(path, { method: 'POST', ...init });
 		busy = false;
 		if (!res.ok) {
-			error = res.error.message;
+			// Inside the room the shell is up and `error` has no surface, so a
+			// refused action is a toast (errors.md) — it used to vanish, and
+			// with it the reason a hand-over or a plan did nothing.
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
 		if (slug) void load(slug);
@@ -255,42 +259,38 @@
 				workoutJson: string,
 				startsAt: string,
 			) =>
-				act(`/api/rooms/${room?.slug}/schedule`, {
-					json: { workoutName, workoutJson, startsAt },
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule`,
+					{ json: { workoutName, workoutJson, startsAt } },
+					{ message: `Planned for ${formatWhen(startsAt, true)}.` },
+				)}
 			onReschedule={(id: string, startsAt: string) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}`, {
-					method: 'PATCH',
-					json: { startsAt },
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule/${id}`,
+					{ method: 'PATCH', json: { startsAt } },
+					{ message: `Moved to ${formatWhen(startsAt, true)}.` },
+				)}
 			onUnschedule={(id: string) => {
-				// Captured before the DELETE so undo can re-POST the same plan —
-				// the server has no "restore" for a row it just dropped.
+				// No undo: the DELETE takes every RSVP with it and a re-POST
+				// would be a new session with a new mail, which is what the
+				// old undo did. The place confirms before calling (errors.md).
 				const entry = room?.upcoming?.find((u) => u.id === id);
 				act(
 					`/api/rooms/${room?.slug}/schedule/${id}`,
 					{ method: 'DELETE' },
 					{
 						message: entry
-							? `Removed “${entry.workoutName}” from the plan.`
-							: 'Session removed.',
-						undo: entry
-							? () =>
-									void act(`/api/rooms/${room?.slug}/schedule`, {
-										json: {
-											workoutName: entry.workoutName,
-											workoutJson: entry.workoutJson,
-											startsAt: entry.startsAt,
-										},
-									})
-							: undefined,
+							? `Cancelled “${entry.workoutName}”.`
+							: 'Session cancelled.',
 					},
 				);
 			}}
 			onRsvp={(id: string, going: boolean) =>
-				act(`/api/rooms/${room?.slug}/schedule/${id}/rsvp`, {
-					method: going ? 'PUT' : 'DELETE',
-				})}
+				act(
+					`/api/rooms/${room?.slug}/schedule/${id}/rsvp`,
+					{ method: going ? 'PUT' : 'DELETE' },
+					{ message: going ? "You're in." : "You're out." },
+				)}
 			icsToken={room.icsToken ?? ''}
 			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
 			adminBusy={busy}

@@ -322,11 +322,6 @@
 					>Next to the name everywhere.</span
 				>
 			</div>
-
-			<!-- The public-directory listing toggle returns with the directory
-			     itself — a checkbox for a shelf that doesn't exist yet teaches a
-			     promise the app can't keep (#126). The flag still round-trips in
-			     save() so nothing stored is lost. -->
 		</section>
 
 		<section class="panel mt-3 p-6">

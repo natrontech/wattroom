@@ -7,6 +7,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { parseSharedSegments } from '$lib/room/workout';
+	import { confirm } from '$lib/confirm.svelte';
+	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
@@ -17,6 +19,10 @@
 	import Plus from '@lucide/svelte/icons/plus';
 
 	const room = useRoom();
+	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
+	// same gate SessionControls wears, or a phone plans and starts sessions
+	// it cannot ride.
+	const manages = $derived(room.canControl && !device.spectator);
 	// What already happened here (ADR-0034 amended, #1331): the recaps the
 	// backlog seeds and the tick adds, newest first — the same cards the chat
 	// shows in its scrollback, on the place that plans the next one.
@@ -45,12 +51,30 @@
 		entry.going ?? [];
 	const youAreIn = (entry: { going?: { id: string; displayName: string }[] }) =>
 		going(entry).some((who) => who.id === room.you.id);
+
+	/** No inverse exists — the RSVPs go with it — so it asks first (errors.md). */
+	async function cancelPlan(entry: {
+		id: string;
+		workoutName: string;
+		going?: { id: string; displayName: string }[];
+	}) {
+		const n = going(entry).length;
+		const ok = await confirm({
+			title: `Cancel “${entry.workoutName}”?`,
+			body: n
+				? `${n} rider${n === 1 ? ' has' : 's have'} said they're in — they get an email. It cannot be put back.`
+				: 'The room gets an email. It cannot be put back.',
+			action: 'Cancel the session',
+			cancel: 'Keep it',
+		});
+		if (ok) room.unschedule(entry.id);
+	}
 </script>
 
 <div class="page">
 	<div class="mb-5 flex items-center gap-3">
 		<h2 class="font-display text-xl font-bold">What's planned here</h2>
-		{#if room.canControl}
+		{#if manages}
 			<button
 				onclick={() => room.openPicker('plan')}
 				class="btn btn-primary btn-xs ml-auto"
@@ -66,7 +90,7 @@
 				Sessions are how a room agrees on a time. Plan one and it shows up here,
 				on everyone's Home, and in their calendar.
 				{#snippet cta()}
-					{#if room.canControl}
+					{#if manages}
 						<button
 							onclick={() => room.openPicker('plan')}
 							class="btn btn-primary btn-xs">Plan the first session</button
@@ -95,27 +119,35 @@
 							</p>
 						</div>
 						<span class="flex shrink-0 items-center gap-3">
-							{#if due(entry.startsAt)}
-								{#if room.canControl}
+							<!-- Only while nothing runs: the hub refuses a pick outside
+							     idle, and the tap used to wipe the rider's own recording
+							     before it was refused. A running ride is joined from the
+							     Lounge or Training. -->
+							{#if due(entry.startsAt) && room.phase === 'lounge'}
+								{#if manages}
 									<button
 										onclick={() => room.startScheduled(entry)}
+										disabled={room.adminBusy}
 										class="btn btn-primary">Start now</button
 									>
 								{:else}
 									<span class="text-watt glow-text text-xs">starting soon</span>
 								{/if}
 							{/if}
-							{#if room.canControl}
+							{#if manages}
 								<button
 									onclick={() => {
 										movingId = movingId === entry.id ? null : entry.id;
 										moveAt = '';
 									}}
-									class="btn-link text-[11px]">move</button
+									disabled={room.adminBusy}
+									class="btn btn-secondary btn-xs">Move</button
 								>
+								<!-- "Cancel", as the chat line, the mail and SPEC say. -->
 								<button
-									onclick={() => room.unschedule(entry.id)}
-									class="btn-link text-[11px]">remove</button
+									onclick={() => void cancelPlan(entry)}
+									disabled={room.adminBusy}
+									class="btn btn-danger btn-xs">Cancel</button
 								>
 							{/if}
 						</span>
@@ -141,7 +173,7 @@
 							{/if}
 						</span>
 					</div>
-					{#if room.canControl && movingId === entry.id}
+					{#if manages && movingId === entry.id}
 						<div class="mt-2 flex flex-wrap items-center gap-2">
 							<WhenPicker bind:value={moveAt} />
 							<button

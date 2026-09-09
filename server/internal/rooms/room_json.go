@@ -124,9 +124,8 @@ type roomJSON struct {
 	// Absent on a list row the caller may not enter — the slug is the door.
 	Slug string `json:"slug,omitempty"`
 	Name string `json:"name"`
-	// Reserved for the opt-in public room directory (WATTROOM.md fast-follow,
-	// #698): stored and round-tripped, but nothing reads it yet — no rider-facing
-	// surface offers the toggle until the directory exists.
+	// Listed in the public directory (ADR-0039): RoomReach's "Everyone on
+	// WattRoom" step sets it, and /rooms/directory reads it.
 	Listed bool `json:"listed"`
 	// Open to its crew (ADR-0038): crew-mates see it in their sidebar and
 	// walk in without a code. The owner's to set (#1204); members only,

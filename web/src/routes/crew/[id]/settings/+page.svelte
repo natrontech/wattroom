@@ -61,7 +61,8 @@
 	async function pickIcon(key: string) {
 		if (!crew) return;
 		busy = true;
-		const res = await renameCrew(crew.id, crew.name, key);
+		// The name as typed, or an icon click would save the old one over it.
+		const res = await renameCrew(crew.id, name.trim() || crew.name, key);
 		busy = false;
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });

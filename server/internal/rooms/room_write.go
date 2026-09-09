@@ -157,7 +157,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	_ = user
 	var req struct {
 		Name      string    `json:"name"`
-		Listed    bool      `json:"listed"`
+		Listed    *bool     `json:"listed"` // nil keeps: an omitted key must not un-list the room
 		SoundPack string    `json:"soundPack"`
 		Icon      *string   `json:"icon"`   // nil keeps, "" clears
 		Cheers    *[]string `json:"cheers"` // nil keeps, [] resets to base
@@ -220,6 +220,10 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		cheers = strings.Join(deduped, " ") // "" = back to the base set
 	}
+	listed := room.Listed
+	if req.Listed != nil {
+		listed = *req.Listed
+	}
 	boardEnabled := room.BoardEnabled
 	if req.BoardEnabled != nil {
 		boardEnabled = *req.BoardEnabled
@@ -229,7 +233,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		crewVisible = *req.CrewVisible
 	}
 	updated, err := s.store.Queries.UpdateRoom(r.Context(), db.UpdateRoomParams{
-		ID: room.ID, Name: req.Name, Listed: req.Listed, SoundPack: req.SoundPack,
+		ID: room.ID, Name: req.Name, Listed: listed, SoundPack: req.SoundPack,
 		Icon: icon, Cheers: cheers, BoardEnabled: boardEnabled, CrewVisible: crewVisible,
 	})
 	if err != nil {

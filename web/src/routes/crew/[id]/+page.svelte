@@ -31,7 +31,10 @@
 	async function load(which: string) {
 		const res = await fetchCrew(which);
 		if (!res.ok) {
-			error = res.error.message;
+			// Only a first load fails loudly: this also runs on every lobby
+			// ping, and one hiccup must not replace the page you are reading
+			// with a sentence (the room layout draws the same line).
+			if (!crew) error = res.error.message;
 			return;
 		}
 		error = null;
@@ -52,9 +55,13 @@
 		error = null;
 		void load(which);
 	});
+	// A role change or a rename pings the lobby (#570); re-read on it — on
+	// the ping, not on mount, where the loader's read is seconds old.
+	let seenVersion = untrack(() => presence.version);
 	$effect(() => {
-		// A role change or a rename pings the lobby (#570); re-read on it.
-		presence.version;
+		const version = presence.version;
+		if (version === seenVersion) return;
+		seenVersion = version;
 		const loaded = untrack(() => crew);
 		if (id && loaded) void load(id);
 	});
@@ -86,7 +93,14 @@
 
 <main class="page">
 	{#if error}
-		<Banner>{error}</Banner>
+		<Banner tone="error">
+			{error}
+			{#snippet action()}
+				<button onclick={() => void load(id)} class="btn-link text-xs"
+					>Retry</button
+				>
+			{/snippet}
+		</Banner>
 	{:else if !crew}
 		<Skeleton class="h-8 w-48" />
 		<Skeleton class="mt-6 h-40" />
