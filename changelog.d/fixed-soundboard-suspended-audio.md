@@ -1,1 +1,0 @@
-- Firing a soundboard pad now makes a noise even if you have not clicked anything on the page yet: the browser's suspended audio context is resumed on a keystroke as well as a click, so the board no longer stays silent until you happen to open its panel.

@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.84] - 2026-09-09
+
+### Fixed
+
+- The ramp modes' podium now says how many rounds each rider survived and Floor is Lava's how many lives they had left, instead of names alone; the sprint klaxon and podium announce themselves to screen readers.
+- The room now hears a soundboard clip the way its owner cut it — the trim, gain and fades travel with the audio, so everyone else stopped getting the whole uploaded minute at raw level. A rider firing a clip wears a mark on their tile, the strip names the clip whoever owns it, and a rider who joins mid-clip picks it up part-way through instead of arriving into silence.
+- Firing a soundboard pad now makes a noise even if you have not clicked anything on the page yet: the browser's suspended audio context is resumed on a keystroke as well as a click, so the board no longer stays silent until you happen to open its panel.
+- "Against your best" on a ride's page now compares against every ride you have ever done of that workout, not just the newest hundred, and clicking an older ride in the FTP chart scrolls to it after loading it. The training-load tooltip says form the way the header does (a percentage of fitness), day labels are right in every timezone, the training-load, power-curve and FTP panels say they are based on your WattRoom rides, a click on a rest day says so instead of jumping weeks away, and a returning rider is no longer told their history is still building. Calendar feeds are marked not for caching, and the room directory no longer breaks when a room is listed while you page through it.
+
 ## [2026.09.83] - 2026-09-09
 
 ### Fixed
@@ -1655,7 +1664,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.83...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.84...HEAD
+[2026.09.84]: https://github.com/natrontech/wattroom/compare/2026.09.83...2026.09.84
 [2026.09.83]: https://github.com/natrontech/wattroom/compare/2026.09.82...2026.09.83
 [2026.09.82]: https://github.com/natrontech/wattroom/compare/2026.09.81...2026.09.82
 [2026.09.81]: https://github.com/natrontech/wattroom/compare/2026.09.80...2026.09.81
