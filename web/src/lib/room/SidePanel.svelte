@@ -301,7 +301,7 @@
 						onclick={() => onCheer?.(cheer)}
 						aria-label={cheer}
 						title={cheer}
-						class="border-muted/20 hover:border-muted/50 flex flex-1 items-center justify-center rounded border py-2"
+						class="border-muted/20 hover:border-muted/50 flex min-h-11 flex-1 items-center justify-center rounded border"
 						><CheerIcon {cheer} size={18} /></button
 					>
 				{/each}

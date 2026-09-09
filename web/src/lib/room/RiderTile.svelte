@@ -219,29 +219,6 @@
 		{/if}
 	</div>
 
-	{#if rider.paused}
-		<div class="bg-surface/70 absolute inset-0 grid place-items-center">
-			<div class="text-center">
-				<span class="text-ink text-[11px] font-medium tracking-wider uppercase"
-					>paused</span
-				>
-				<span class="text-muted mt-0.5 block text-[10px]"
-					>stopped pedalling</span
-				>
-			</div>
-		</div>
-	{/if}
-
-	{#if rider.lateJoined}
-		<div class="absolute inset-x-0 bottom-1.5 flex justify-center">
-			<!-- The chip surface, not a neon fill: ink on 80 % neon is white on
-			     violet in the cave and near-black on violet on paper (#505). -->
-			<span class="{MARK_SURFACE} rounded-full px-2 py-0.5 text-[10px]"
-				>joined · synced to 24:07</span
-			>
-		</div>
-	{/if}
-
 	{#if rider.stale}
 		<!-- A badge, not a curtain: a quiet trainer says nothing about their
 		     camera, and the dimmed watts above already read "last known". -->

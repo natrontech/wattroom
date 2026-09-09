@@ -246,6 +246,7 @@
 					watts={room.you.watts}
 					kg={room.you.kg}
 					bias={room.bias}
+					lthr={roomConnection.current?.profile.current.lthr}
 					small={focus === 'media'}
 					onBias={room.trainer ? (step) => room.nudgeBias(step) : undefined}
 				/>

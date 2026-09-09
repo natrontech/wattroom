@@ -81,7 +81,7 @@
 			>
 		{/if}
 		{#if canControl}
-			<button onclick={end} class="btn btn-secondary btn-xs ml-auto"
+			<button onclick={end} class="btn btn-secondary ml-auto min-h-11"
 				>End game</button
 			>
 		{/if}
@@ -125,7 +125,7 @@
 		<div class="mt-4 flex flex-wrap items-baseline gap-6">
 			<div>
 				<div
-					class="font-display text-watt glow-text text-4xl leading-none font-bold tabular-nums"
+					class="font-display text-ink text-4xl leading-none font-bold tabular-nums"
 				>
 					{Math.round((game.linePct ?? 0) * 100)}%
 				</div>
@@ -210,9 +210,7 @@
 					? 'sprint!'
 					: 'next sprint'}
 			</p>
-			<div
-				class="font-display text-watt glow-text-strong mt-2 text-6xl leading-none font-bold"
-			>
+			<div class="font-display text-ink mt-2 text-6xl leading-none font-bold">
 				{#if game.roundEndsAtMs && game.roundEndsAtMs > now}
 					{Math.ceil((game.roundEndsAtMs - now) / 1000)}
 				{:else}
@@ -265,7 +263,7 @@
 		<div class="mt-4 flex flex-wrap items-baseline gap-6">
 			<div>
 				<p class="eyebrow">on the front</p>
-				<p class="font-display text-watt glow-text mt-1 text-2xl font-bold">
+				<p class="font-display text-ink mt-1 text-2xl font-bold">
 					{front ? name(front[0]) : '—'}
 				</p>
 				<p class="text-muted mt-1 text-xs">

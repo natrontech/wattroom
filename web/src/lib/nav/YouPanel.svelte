@@ -165,7 +165,7 @@
 				{:else}
 					<button
 						onclick={() => onJoin?.()}
-						class="btn btn-primary btn-xs flex-1"
+						class="btn btn-primary min-h-11 flex-1"
 						><Headphones size={13} />
 						{voiceStatus === 'failed'
 							? 'Try voice again'
@@ -187,12 +187,15 @@
 				     nowhere else. The people column and the lounge header each
 				     drew their own copy of a row the rider already has pinned
 				     in front of them. -->
+				<!-- 44 px tall (ux.md's riding floor): muting is the most-pressed
+				     mid-ride control in the product, and it was a 28 px strip
+				     while the Settings cog two rows up was 44 (audit 2026-09-09). -->
 				<!-- How you transmit belongs to the mic, not to a panel (#914).
 				     The threshold does not follow it here: that slider IS the
 				     meter, so the menu offers the way to it instead. -->
 				<button
 					onclick={() => onMic?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {micOn
+					class="flex h-11 flex-1 items-center justify-center rounded {micOn
 						? 'text-z4'
 						: 'text-danger'}"
 					title="{micOn ? 'mute' : 'unmute'} · {MENU_HINT}"
@@ -206,7 +209,7 @@
 				</button>
 				<button
 					onclick={() => onCam?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {camOn
+					class="flex h-11 flex-1 items-center justify-center rounded {camOn
 						? 'text-z4'
 						: 'text-muted/50 hover:text-muted'}"
 					title={camOn ? 'turn camera off' : 'turn camera on'}
@@ -220,7 +223,7 @@
 			     and not a glow — ADR-0005 keeps those for live data. -->
 				<button
 					onclick={() => onShare?.()}
-					class="flex flex-1 justify-center rounded py-1.5 {sharing
+					class="flex h-11 flex-1 items-center justify-center rounded {sharing
 						? 'bg-danger/15 text-danger'
 						: 'text-muted/50 hover:text-muted'}"
 					title={sharing ? 'stop sharing your screen' : 'share your screen'}
@@ -235,7 +238,7 @@
 				<QuickAudio compact />
 				<button
 					onclick={() => onLeaveVoice?.()}
-					class="text-muted/50 hover:text-danger flex flex-1 justify-center rounded py-1.5"
+					class="text-muted/50 hover:text-danger flex h-11 flex-1 items-center justify-center rounded"
 					title="leave voice"
 					aria-label="leave voice"><LogOut size={16} /></button
 				>
@@ -253,7 +256,7 @@
 		<button
 			onclick={() => onAway?.(!away)}
 			aria-pressed={away}
-			class="btn btn-xs mt-2 w-full {away ? 'btn-primary' : 'btn-secondary'}"
+			class="btn mt-2 min-h-11 w-full {away ? 'btn-primary' : 'btn-secondary'}"
 			><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
 		>
 	{/if}

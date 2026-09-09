@@ -386,8 +386,6 @@ export function createRoom() {
 			cadence: 0,
 			hr: 0,
 			stale: false,
-			paused: false,
-			lateJoined: false,
 			target: 0,
 			execution: 1,
 			trace: [],
@@ -467,7 +465,7 @@ export function createRoom() {
 				const info = targetAt(segments, seed.ftp, elapsed, {
 					bias: seed.you ? bias : 1,
 				});
-				riders[i].target = riders[i].paused ? 0 : (info.targetWatts ?? 0);
+				riders[i].target = info.targetWatts ?? 0;
 				void trainers[i].setTargetPower(
 					Math.round((info.targetWatts ?? 0) * seed.discipline),
 				);
@@ -515,25 +513,12 @@ export function createRoom() {
 			setPhase('lounge');
 		},
 		/** They stopped pedalling. Their targets pause; everyone else's timeline carries on. */
-		toggleAutoPause() {
-			const you = SEEDS.findIndex((seed) => seed.you);
-			riders[you].paused = !riders[you].paused;
-		},
 		triggerSpiral() {
 			spiralGuard = true;
 			setTimeout(() => (spiralGuard = false), 8000);
 		},
 		get spiralGuard() {
 			return spiralGuard;
-		},
-		lateJoin() {
-			const arriving = riders.find(
-				(rider) => rider.lateJoined === false && !rider.you,
-			);
-			if (arriving) {
-				arriving.lateJoined = true;
-				setTimeout(() => (arriving.lateJoined = false), 6000);
-			}
 		},
 		nudgeHeadphones() {
 			headphoneNudge = true;
