@@ -283,7 +283,7 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 }
 
 const getRoomInCrew = `-- name: GetRoomInCrew :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1 and crew_id = $2
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1 and crew_id = $2
 `
 
 type GetRoomInCrewParams struct {
@@ -299,7 +299,6 @@ func (q *Queries) GetRoomInCrew(ctx context.Context, arg GetRoomInCrewParams) (R
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,

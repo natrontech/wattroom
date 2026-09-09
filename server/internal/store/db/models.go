@@ -213,7 +213,6 @@ type RideExport struct {
 
 type Room struct {
 	ID                      pgtype.UUID
-	Code                    *string
 	Slug                    string
 	Name                    string
 	OwnerID                 pgtype.UUID

@@ -153,15 +153,10 @@ func TestTheCutoverKeepsWhatWasAlreadyThere(t *testing.T) {
 		}
 	})
 
-	t.Run("the 6-char code still joins the room it joined", func(t *testing.T) {
-		var got string
-		if err := pool.QueryRow(ctx, `select id from rooms where code = 'ABC123'`).Scan(&got); err != nil {
-			t.Fatalf("code lookup: %v", err)
-		}
-		if got != roomID {
-			t.Fatalf("code resolves to %s, want %s", got, roomID)
-		}
-	})
+	// The 6-char room code used to be asserted here too. It stopped being a
+	// door in 2026.09.51 (ADR-0038 amended, #1236) and the column went two
+	// releases later (#1282); the slug and the ICS token are what emails and
+	// calendars still hold.
 
 	t.Run("the ICS token minted before still authorises", func(t *testing.T) {
 		// A calendar app cannot sign in and cannot be asked to re-subscribe,
