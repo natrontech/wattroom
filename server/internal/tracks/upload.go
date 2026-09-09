@@ -56,7 +56,23 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	used, err := s.store.Queries.TrackQuotaUsed(r.Context(), me.ID)
+	// The quota is asked with the rider's row locked, in the transaction that
+	// inserts (#1413): parallel uploads each read the same "used" and each
+	// landed, bypassing it by about the quota.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("track begin", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), me.ID); err != nil {
+		s.log.Error("track lock", "err", err, "user", store.UUIDString(me.ID))
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		return
+	}
+	used, err := q.TrackQuotaUsed(r.Context(), me.ID)
 	if err != nil {
 		s.log.Error("track quota", "err", err, "user", store.UUIDString(me.ID))
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
@@ -76,7 +92,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
 		return
 	}
-	row, err := s.store.Queries.CreateTrack(r.Context(), db.CreateTrackParams{
+	row, err := q.CreateTrack(r.Context(), db.CreateTrackParams{
 		Sha256: sha, UploadedBy: me.ID,
 		Title: title, Artist: artist, Album: album,
 		DurationMs: int32(millis),    //nolint:gosec // bounded by maxUploadBytes above
@@ -88,6 +104,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		// The file stays: another upload of the same content will find it and
 		// skip the write, and an orphan costs disk rather than correctness.
 		s.log.Error("track insert", "err", err, "sha", sha)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		s.log.Error("track commit", "err", err, "sha", sha)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
 		return
 	}
