@@ -94,6 +94,14 @@ func (f *fakeResend) handler() http.HandlerFunc {
 	}
 }
 
+// sent is how many mails the fake has taken, read under the lock: a test
+// that polls for the first one races the handler otherwise (CI on #1645).
+func (f *fakeResend) sent() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.payloads)
+}
+
 // subjectsTo is every subject the fake was asked to send to one address.
 // remindDue works across rooms, so a test of it cannot assume it is the only
 // thing writing to the shared test database.
@@ -524,7 +532,7 @@ func TestAlarmsShipFromTheirOwnSender(t *testing.T) {
 	}
 	s.AccountAlert(rider, "A passkey was added", "one line")
 	deadline := time.Now().Add(3 * time.Second)
-	for len(fake.payloads) == 0 && time.Now().Before(deadline) {
+	for fake.sent() == 0 && time.Now().Before(deadline) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	fake.mu.Lock()
