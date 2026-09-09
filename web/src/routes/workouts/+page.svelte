@@ -87,12 +87,25 @@
 			danger: true,
 		},
 	];
+	// Find it by name or by what it trains — the picker had this and the
+	// page did not (#1713): your own shelf is the one list with no ceiling.
+	let query = $state('');
+	const matches = (name: string, ...more: (string | undefined)[]) => {
+		const q = query.trim().toLowerCase();
+		return (
+			!q || [name, ...more].some((s) => (s ?? '').toLowerCase().includes(q))
+		);
+	};
 	const shown = $derived(
-		active === 'All'
+		(active === 'All'
 			? [...library].sort(
 					(a, b) => durationSeconds(a.workout) - durationSeconds(b.workout),
 				)
-			: byFocus(active),
+			: byFocus(active)
+		).filter((e) => matches(e.workout.name, e.focus, e.summary)),
+	);
+	const shownCustom = $derived(
+		custom.all.filter((e) => matches(e.workout.name)),
 	);
 </script>
 
@@ -111,6 +124,14 @@
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-6">
 		<div class="flex items-baseline gap-3">
+			<input
+				bind:value={query}
+				type="search"
+				placeholder="Find a workout — by name or focus"
+				aria-label="Find a workout"
+				class="input mt-6 w-full max-w-sm"
+			/>
+
 			<h2 class="eyebrow">your workouts</h2>
 			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
 				>New workout</a
@@ -146,7 +167,7 @@
 			</div>
 		{:else}
 			<ul class="mt-2 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-				{#each custom.all as entry (entry.id)}
+				{#each shownCustom as entry (entry.id)}
 					<WorkoutCard
 						workout={entry.workout}
 						href="/ride?w={entry.id}"
@@ -217,6 +238,9 @@
 		{/each}
 	</div>
 
+	{#if query.trim() && shown.length === 0 && shownCustom.length === 0}
+		<p class="text-muted mt-4 text-sm">No workout matches “{query.trim()}”.</p>
+	{/if}
 	<ul class="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 		{#each shown as entry (entry.id)}
 			<WorkoutCard

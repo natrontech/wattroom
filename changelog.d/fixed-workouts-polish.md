@@ -1,0 +1,1 @@
+- The Workouts page has a search box that finds a workout by name or focus across your own shelf and the curated library; a workout that expands past the room's limit is refused in blocks, the word the riding screen uses.

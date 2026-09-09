@@ -233,7 +233,7 @@ export function validateWorkout(value: unknown): Validation {
 	if (expanded > LIMITS.maxSteps) {
 		return {
 			ok: false,
-			error: `That expands to ${expanded} intervals, above the ${LIMITS.maxSteps} limit.`,
+			error: `That expands to ${expanded} blocks, above the ${LIMITS.maxSteps} limit.`,
 		};
 	}
 	// The server's whole-workout cap, said here rather than as a refused Save
