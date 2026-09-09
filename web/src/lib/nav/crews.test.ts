@@ -31,6 +31,14 @@ describe('crewsOf', () => {
 			'Sunday Long',
 		]);
 	});
+	it('keeps a crew with no rooms, from the list the server sends (#1476)', () => {
+		const empty = { id: 'c7', name: 'Roomless', role: 'member' as const };
+		expect(crewsOf(rooms, [natron, empty]).map((c) => c.id)).toEqual([
+			'c1',
+			'c7',
+			'c2',
+		]);
+	});
 });
 
 describe('currentCrew', () => {

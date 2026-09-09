@@ -35,7 +35,9 @@
 
 	// Where the room lands, and the picker that appears only when there is a
 	// choice to make — most riders administer one crew (ux.md, the 95% rule).
-	const openable = $derived(openableCrews(crewsOf(presence.rooms)));
+	const openable = $derived(
+		openableCrews(crewsOf(presence.rooms, presence.crews)),
+	);
 	let picked = $state<string | undefined>(undefined);
 	const target = $derived(
 		creationCrew(openable, picked ?? crewId, picked ? undefined : crew),

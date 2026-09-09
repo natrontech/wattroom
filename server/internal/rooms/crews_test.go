@@ -727,6 +727,25 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.byToken["bob"].ID}); role != "member" {
 		t.Errorf("bob's standing went with the room: %q, want member", role)
 	}
+	// And the client still hears of it (#1476): the room list carries the
+	// crews in their own right, so a crew with no rooms keeps its sidebar
+	// row, its code, its people and its Leave.
+	for _, who := range []string{"alice", "bob"} {
+		_, body := h.call(t, who, http.MethodGet, "/api/rooms", "")
+		crews, _ := body["crews"].([]any)
+		found := false
+		for _, c := range crews {
+			if row, ok := c.(map[string]any); ok && row["id"] == store.UUIDString(crew.ID) {
+				found = true
+				if want := map[string]string{"alice": "owner", "bob": "member"}[who]; row["role"] != want {
+					t.Errorf("%s's role in the roomless crew reads %v, want %s", who, row["role"], want)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("%s's room list lost the crew with its last room: %v", who, body["crews"])
+		}
+	}
 
 	// The owner leaving for good — the purge path — hands it to the
 	// longest-standing member (docs/SPEC.md), never leaving it ownerless.

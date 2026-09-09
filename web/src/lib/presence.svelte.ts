@@ -2,6 +2,7 @@ import { announce } from '$lib/messages/announce';
 import { fetchRailRooms } from '$lib/nav/rooms';
 import { away } from '$lib/notify.svelte';
 import type { RailRoom } from '$lib/room/mockcompat';
+import type { RoomCrew } from '$lib/room/room-data';
 
 /**
  * The one shared presence feed (#251), replacing three 10 s pollers: a lobby
@@ -11,6 +12,7 @@ import type { RailRoom } from '$lib/room/mockcompat';
  * makes YOU read as online to your friends.
  */
 let rooms = $state<RailRoom[]>([]);
+let crews = $state<RoomCrew[]>([]);
 let maxOwned = $state(0);
 let version = $state(0);
 let socket: WebSocket | null = null;
@@ -32,6 +34,7 @@ let pingedDuringWindow = false;
 async function refresh() {
 	const list = await fetchRailRooms();
 	rooms = list.rooms;
+	crews = list.crews;
 	maxOwned = list.maxOwned;
 	version += 1;
 	if (!announced) {
@@ -103,6 +106,10 @@ export const presence = {
 	get rooms() {
 		return rooms;
 	},
+	/** Every crew you are in, rooms or none (#1476). */
+	get crews() {
+		return crews;
+	},
 	/** docs/SPEC.md's owned-room cap, as the server enforces it; 0 until known. */
 	get maxOwned() {
 		return maxOwned;
@@ -142,6 +149,7 @@ export const presence = {
 		socket?.close();
 		socket = null;
 		rooms = [];
+		crews = [];
 		maxOwned = 0;
 	},
 };

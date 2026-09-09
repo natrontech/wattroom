@@ -112,7 +112,9 @@
 	// room list has landed, so the card never flashes for a rider who has
 	// no crew to set up.
 	const ownCrew = $derived(
-		rooms ? (crewsOf(rooms).find((c) => c.role === 'owner') ?? null) : null,
+		rooms
+			? (crewsOf(rooms, presence.crews).find((c) => c.role === 'owner') ?? null)
+			: null,
 	);
 	// "Open a room" opens the same sheet the sidebar's + does (#1199, #1333)
 	// — on Home's own body, because the drawer the sidebar lives in below md

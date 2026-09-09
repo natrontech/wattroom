@@ -202,6 +202,24 @@ order by cr.set_at;
 -- name: ListCrewBans :many
 select user_id from crew_roles where crew_id = $1 and role = 'banned';
 
+-- name: ListCrewsFor :many
+-- Every crew you are in, rooms or none (#1476). The client used to derive
+-- its crews from the room list, and a crew whose last room was deleted
+-- vanished from the sidebar — its code, its people and its Leave with it,
+-- while the server still held everyone's standing in it.
+select c.id, c.name, c.icon,
+       (c.image_set_at is not null)::boolean as has_image,
+       coalesce(c.code, '')::text as code,
+       (c.owner_id = sqlc.arg(user_id))::boolean as owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin
+from crews c
+where c.owner_id = sqlc.arg(user_id)
+   or exists (select 1 from crew_roles cr
+              where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin'))
+order by c.created_at
+limit 100; -- an engineering bound (#1416): a rider is in a handful of crews
+
 -- name: ListCrewRoomsFor :many
 -- The crew's rooms you hold NO membership in, for the sidebar (#1149): a
 -- crew's list carries rooms you cannot enter and rooms you administer
