@@ -159,6 +159,8 @@ export interface RailRoom {
 	riding?: string[];
 	/** The same riders by account id. */
 	ridingIds?: string[];
+	/** Who said away (#1742), by account id. */
+	awayIds?: string[];
 	/** The running session — the late-join radar line (#251). */
 	session?: { workoutName: string; elapsedSec: number };
 	/** The next planned session, when one exists. */

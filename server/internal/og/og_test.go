@@ -3,6 +3,7 @@ package og
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image/png"
 	"log/slog"
 	"net/http"
@@ -164,5 +165,35 @@ func TestHandlers(t *testing.T) {
 				t.Fatalf("got content-type %q", ct)
 			}
 		})
+	}
+}
+
+// A card is rendered once per title and sub, and an address gets the
+// sign-in ceiling of room cards a minute (#1739).
+func TestRoomCardsAreCachedAndBudgeted(t *testing.T) {
+	svc := testService()
+	mux := http.NewServeMux()
+	svc.Register(mux)
+	for range 2 {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/r/tuesday-crew.png", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("known slug: %d", rec.Code)
+		}
+	}
+	if n := svc.renders.Load(); n != 1 {
+		t.Fatalf("the same card was rendered %d times, want 1", n)
+	}
+	for i := 2; i < cardsPerWindow; i++ {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", fmt.Sprintf("/og/r/slug-%d.png", i), nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("card %d: %d", i, rec.Code)
+		}
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/r/one-more.png", nil))
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("past the ceiling: %d, want 429", rec.Code)
 	}
 }

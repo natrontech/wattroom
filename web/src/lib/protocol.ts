@@ -724,6 +724,11 @@ export interface RoomPresence {
    */
   ridingIds?: string[];
   /**
+   * Who said away (#1742), by account id: the sidebar's dot and the room's
+   * tile used to disagree — away on the tile, online two panels over.
+   */
+  awayIds?: string[];
+  /**
    * The late-join radar: what is on and how far in, while a session runs.
    */
   workoutName?: string;

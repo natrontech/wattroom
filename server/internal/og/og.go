@@ -9,6 +9,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"html"
 	"image"
 	"image/color"
@@ -18,6 +20,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"golang.org/x/image/draw"
@@ -55,9 +60,24 @@ var (
 // an unauthenticated GET /api/rooms/{slug} returns. Nil when the DB is absent.
 type LookupRoom func(ctx context.Context, slug string) (name, icon string, ok bool)
 
+// cardsPerWindow is the sign-in ceiling, per address (#1739): every distinct
+// slug was a fresh 1200×630 rasterisation with no session and no ration.
+const (
+	cardsPerWindow = 30
+	cardWindow     = time.Minute
+	// maxCards bounds the render cache; past it the whole map is dropped —
+	// a card is cheap to make once, and this is a preview, not a store.
+	maxCards = 256
+)
+
 type Service struct {
 	baseURL string
 	lookup  LookupRoom
+	doors   *budget.Budget[string]
+	mu      sync.Mutex
+	cards   map[string][]byte
+	// renders counts misses — what the cache test reads.
+	renders atomic.Int32
 	fnt     *sfnt.Font
 	log     *slog.Logger
 }
@@ -67,7 +87,8 @@ func New(baseURL string, lookup LookupRoom, log *slog.Logger) *Service {
 	if err != nil {
 		panic("og: embedded font: " + err.Error()) // build-time asset, not user input
 	}
-	return &Service{baseURL: strings.TrimSuffix(baseURL, "/"), lookup: lookup, fnt: fnt, log: log}
+	return &Service{baseURL: strings.TrimSuffix(baseURL, "/"), lookup: lookup, fnt: fnt, log: log,
+		doors: budget.New[string](cardsPerWindow, cardWindow), cards: map[string][]byte{}}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -78,6 +99,11 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func (s *Service) handleRoom(w http.ResponseWriter, r *http.Request) {
+	if s.doors != nil && !s.doors.Spend(httpx.ClientIP(r)) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Too many previews from this address — give it a minute.")
+		return
+	}
 	title, sub := defaultTitle, siteDesc
 	slug := strings.ToLower(strings.TrimSuffix(r.PathValue("slug"), ".png"))
 	if s.lookup != nil {
@@ -91,17 +117,37 @@ func (s *Service) handleRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) serve(w http.ResponseWriter, title, sub string) {
-	buf, err := s.Render(title, sub)
+	buf, err := s.card(title, sub)
 	if err != nil {
 		s.log.Error("og render", "err", err)
 		http.Error(w, "render failed", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
-	// ponytail: rendered per request (~ms); add an in-process cache if crawler
-	// traffic ever shows up in /metrics.
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	_, _ = w.Write(buf)
+}
+
+// card is the rendered PNG for one title and sub, rendered once (#1739): the
+// same card used to be rasterised per request, and every distinct slug was
+// a distinct URL, so the HTTP cache bought nothing against a loop.
+func (s *Service) card(title, sub string) ([]byte, error) {
+	key := title + "\x00" + sub
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if buf, hit := s.cards[key]; hit {
+		return buf, nil
+	}
+	buf, err := s.Render(title, sub)
+	if err != nil {
+		return nil, err
+	}
+	s.renders.Add(1)
+	if len(s.cards) >= maxCards {
+		s.cards = map[string][]byte{}
+	}
+	s.cards[key] = buf
+	return buf, nil
 }
 
 // Meta builds the <title> + social meta block for a SPA route. Room paths get

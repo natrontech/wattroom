@@ -568,6 +568,9 @@ type RoomPresence struct {
 	Riding []string `json:"riding,omitempty"`
 	// The same riders by account id, in the same order as Riding.
 	RidingIDs []string `json:"ridingIds,omitempty"`
+	// Who said away (#1742), by account id: the sidebar's dot and the room's
+	// tile used to disagree — away on the tile, online two panels over.
+	AwayIDs []string `json:"awayIds,omitempty"`
 	// The late-join radar: what is on and how far in, while a session runs.
 	WorkoutName string `json:"workoutName,omitempty"`
 	ElapsedSec  int    `json:"elapsedSec,omitempty"`

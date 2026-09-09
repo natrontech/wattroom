@@ -44,7 +44,12 @@ export function statusOf(
 	friends: readonly Friend[] | null = null,
 ): PresenceStatus | null {
 	const room = roomOf(rooms, riderId);
-	if (room) return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
+	if (room) {
+		// Away is what the rider said (#706); the rail feed carries it since
+		// #1742, so this agrees with the room's own tile.
+		if (room.awayIds?.includes(riderId)) return 'away';
+		return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
+	}
 	const friend = friends?.find(
 		(f) => f.id === riderId && f.status === 'accepted',
 	);
