@@ -4,7 +4,7 @@
 
 <h1 class="font-display mt-10 text-2xl font-bold">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
-	Datenschutzerklärung · last updated 31 August 2026
+	Datenschutzerklärung · last updated 9 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
@@ -42,13 +42,18 @@
 	<ul class="text-muted mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed">
 		<li>
 			<strong class="text-ink font-medium">Account.</strong> You sign in with Google,
-			GitHub or Strava. We receive and keep your provider user ID, display name and
-			avatar. WattRoom has no passwords, ever — we never see or store one.
+			GitHub or Strava, or with a passkey. From a provider we receive and keep your
+			provider user ID, display name and avatar; a passkey leaves us only its public
+			half. WattRoom has no passwords, ever — we never see or store one.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Email (optional).</strong> Only if you
-			type an address into your profile, and only to send you reminders for planned
-			sessions. Remove it any time and the reminders stop.
+			type an address into your profile. It is used for three things: to confirm the
+			address itself, for reminders about planned sessions (off unless you switch
+			them on), and for account alerts — a passkey or sign-in provider added or removed,
+			the address replaced — which cannot be switched off, because the person who
+			should hear that a way into your account changed is you. Remove the address
+			and all of it stops.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Rides.</strong> Power, cadence, speed and
@@ -91,6 +96,34 @@
 	<h2
 		class="font-display text-ink mt-8 text-sm font-semibold tracking-wide uppercase"
 	>
+		What other people see
+	</h2>
+	<ul class="text-muted mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed">
+		<li>
+			<strong class="text-ink font-medium">Friends</strong> — people whose request
+			you accepted — see on their home page whether you are online, whether you are
+			riding, and which room you are in, before they join anything. Unfriend them
+			and that stops.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">People in your room</strong> see your display
+			name, avatar and level, your live power and cadence while you ride, and heart
+			rate if you paired a monitor — all of it only inside the room and only while
+			you are in it.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">Your rider page</strong> is visible to
+			friends and to people who share a room with you: level, energy ridden, badges
+			earned in rooms you share, and where you are right now. Rides appear there only
+			if you shared them, one by one, and only to friends.
+		</li>
+	</ul>
+</section>
+
+<section>
+	<h2
+		class="font-display text-ink mt-8 text-sm font-semibold tracking-wide uppercase"
+	>
 		Cookies
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
@@ -127,8 +160,9 @@
 			under its own privacy policy.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">Resend, Inc. (USA).</strong> Delivers the
-			session-reminder emails, so they see your address — but only if you saved one.
+			<strong class="text-ink font-medium">Resend, Inc. (USA).</strong> Delivers every
+			email above — the confirmation, reminders, account alerts — so they see your
+			address, but only if you saved one.
 		</li>
 		<li>
 			<!-- The provider and jurisdiction are the operator's to name (#1297); until

@@ -1,0 +1,1 @@
+- The privacy page now names every email WattRoom sends — the address confirmation, opt-in session reminders and the account alerts you cannot switch off — and has a "What other people see" section: what friends, room-mates and visitors to your rider page can see of you.
