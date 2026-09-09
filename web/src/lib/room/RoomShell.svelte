@@ -229,6 +229,8 @@
 		phase: () => shared?.phase,
 		countdownRemaining: () => shared?.countdownRemaining,
 		fault: () => faultKind,
+		sprint: () => live.tick?.sprint ?? null,
+		guard: () => rideCtl.guard,
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
