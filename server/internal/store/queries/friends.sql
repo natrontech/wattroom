@@ -27,7 +27,8 @@ select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_ur
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1
-order by u.display_name;
+order by u.display_name
+limit 1000; -- an engineering bound (#1416), far past any friend list
 
 -- name: GetUserByFriendCode :one
 -- The formation gate (ADR-0012 amendment): knowing the code IS the permission

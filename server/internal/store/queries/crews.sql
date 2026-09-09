@@ -189,7 +189,8 @@ where sqlc.arg(everyone)::boolean
               join rooms r on r.id = m.room_id
               join visible_rooms v on v.room_id = r.id and v.user_id = sqlc.arg(viewer)
               where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')
-order by p.since;
+order by p.since
+limit 1000; -- an engineering bound (#1416): a crew is a training circle, not a forum
 
 -- name: ListCrewBanned :many
 select u.id, u.display_name, u.avatar_url, cr.set_at
@@ -227,7 +228,8 @@ where r.crew_id in (select crew_id from mine)
   and not exists (select 1 from memberships m where m.room_id = r.id and m.user_id = sqlc.arg(user_id))
   and not exists (select 1 from crew_roles cr
                   where cr.crew_id = r.crew_id and cr.user_id = sqlc.arg(user_id) and cr.role = 'banned')
-order by r.created_at;
+order by r.created_at
+limit 1000; -- an engineering bound (#1416): three rooms per owner, crew-sized crews
 
 -- name: PickCrewSuccessor :one
 -- docs/SPEC.md's succession rule: the longest-standing admin, else the

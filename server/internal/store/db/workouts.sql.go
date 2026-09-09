@@ -61,9 +61,10 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) (i
 }
 
 const listUserWorkouts = `-- name: ListUserWorkouts :many
-select id, owner_id, name, author, definition, created_at from workouts where owner_id = $1 order by created_at desc
+select id, owner_id, name, author, definition, created_at from workouts where owner_id = $1 order by created_at desc limit 1000
 `
 
+// Bounded read (#1416); the per-account ceiling itself is #1414's decision.
 func (q *Queries) ListUserWorkouts(ctx context.Context, ownerID pgtype.UUID) ([]Workout, error) {
 	rows, err := q.db.Query(ctx, listUserWorkouts, ownerID)
 	if err != nil {

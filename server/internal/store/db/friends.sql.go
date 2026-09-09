@@ -107,9 +107,11 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 }
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
+
 select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone from users where friend_code = $1
 `
 
+// an engineering bound (#1416), far past any friend list
 // The formation gate (ADR-0012 amendment): knowing the code IS the permission
 // to ask.
 func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (User, error) {
@@ -181,6 +183,7 @@ from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1
 order by u.display_name
+limit 1000
 `
 
 type ListFriendshipsRow struct {

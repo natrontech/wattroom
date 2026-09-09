@@ -4,7 +4,8 @@ values ($1, $2, $3, $4)
 returning *;
 
 -- name: ListUserWorkouts :many
-select * from workouts where owner_id = $1 order by created_at desc;
+-- Bounded read (#1416); the per-account ceiling itself is #1414's decision.
+select * from workouts where owner_id = $1 order by created_at desc limit 1000;
 
 -- name: UpdateWorkout :one
 update workouts set name = $3, author = $4, definition = $5

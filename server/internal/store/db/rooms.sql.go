@@ -507,6 +507,7 @@ from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
 order by m.joined_at
+limit 1000
 `
 
 type ListRoomMembersRow struct {
@@ -540,6 +541,8 @@ type ListRoomMembersRow struct {
 // itself, which is the only comparison WATTROOM.md allows. Earned keys
 // only — the achievements table holds nothing else, so there is no
 // progress here to leak (ADR-0027).
+// An engineering bound, not a product number (#1416): membership is uncapped
+// by SPEC and a crew is nowhere near this; a list must still end somewhere.
 func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]ListRoomMembersRow, error) {
 	rows, err := q.db.Query(ctx, listRoomMembers, roomID)
 	if err != nil {
