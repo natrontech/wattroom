@@ -66,9 +66,9 @@ Everyone in the room watched the roster the entire time. The card writes down
 what all of them already saw, about a room they were all standing in. It tells
 no rider anything they did not have.
 
-Numbers are a different question, and WATTROOM.md locks it: *live metrics
-visible only inside the room, only while riding*, and *rides private by
-default, shared per-ride opt-in*. A watts column in a durable artifact would be
+Numbers are a different question, and WATTROOM.md locks it: _live metrics
+visible only inside the room, only while riding_, and _rides private by
+default, shared per-ride opt-in_. A watts column in a durable artifact would be
 one rider's ride handed to everyone else, permanently, with no per-ride opt-in
 anywhere near it. That is the rule this decision is careful not to touch — so
 "never stored" is a list rather than a sentence: watts, kJ, execution, heart
@@ -115,3 +115,15 @@ leave to disk so a rare event is survivable — is precisely the firehose
   written at the same seam, carrying what the room already saw.
 - If metrics in the card are ever wanted, this ADR is not the argument for
   them. It is the argument for why they need their own.
+
+## Amendment — the Sessions place lists the past (2026-09-09, #1335)
+
+The card in the chat stays what it is. The same row also feeds a **past**
+section on the room's Sessions place, so "who rode with us last month" is
+answered where sessions are planned rather than by scrolling the
+conversation. Same row, same ninety days, same members-only rule: nothing new
+is stored and nothing in the four settled points above moves. The Sessions
+place is the room's calendar in both directions, which is what a calendar is.
+Recorded with the navigation map in
+[0020](0020-the-app-takes-discords-shape.md)'s 2026-09-09 amendment; built in
+[#1331](https://github.com/natrontech/wattroom/issues/1331).
