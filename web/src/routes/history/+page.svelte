@@ -26,6 +26,7 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { setRideShared } from '$lib/ride/share';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -109,27 +110,8 @@
 		more = !!res.data.more;
 	}
 
-	// Undo over confirm (errors.md): the flip lands at once, the toast takes
-	// it back. A refused flip reverts the row and says why.
-	async function setShared(ride: ServerRide, shared: boolean, undoable = true) {
-		const before = ride.sharedWithFriends;
-		ride.sharedWithFriends = shared;
-		const res = await api(`/api/rides/${ride.id}`, {
-			method: 'PATCH',
-			json: { sharedWithFriends: shared },
-		});
-		if (!res.ok) {
-			ride.sharedWithFriends = before;
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		toasts.push(
-			shared ? 'Shared with your friends.' : 'Private again.',
-			undoable
-				? { undo: () => void setShared(ride, !shared, false) }
-				: undefined,
-		);
-	}
+	// One helper for the row, its menu and the ride page (#1691).
+	const setShared = setRideShared;
 
 	// The ride the confirm is asking about; null while nothing is being deleted.
 	let deleting = $state<ServerRide | null>(null);
