@@ -174,6 +174,49 @@ func (q *Queries) ExportUserFriends(ctx context.Context, requesterID pgtype.UUID
 	return items, nil
 }
 
+const exportUserMedals = `-- name: ExportUserMedals :many
+select m.kind, m.awarded_at, rm.name as room_name, r.started_at as ride_started_at
+from medals m
+join rooms rm on rm.id = m.room_id
+join rides r on r.id = m.ride_id
+where m.user_id = $1
+order by m.awarded_at
+`
+
+type ExportUserMedalsRow struct {
+	Kind          string
+	AwardedAt     pgtype.Timestamptz
+	RoomName      string
+	RideStartedAt pgtype.Timestamptz
+}
+
+// The rider's own medals (#1550): the room that awarded them, and the ride
+// named by its start so a row lines up with rides.json.
+func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]ExportUserMedalsRow, error) {
+	rows, err := q.db.Query(ctx, exportUserMedals, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserMedalsRow
+	for rows.Next() {
+		var i ExportUserMedalsRow
+		if err := rows.Scan(
+			&i.Kind,
+			&i.AwardedAt,
+			&i.RoomName,
+			&i.RideStartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserPlaylists = `-- name: ExportUserPlaylists :many
 select p.name, p.created_at, coalesce(
     (select json_agg(json_build_object('title', t.title, 'videoId', t.video_id) order by t.position)

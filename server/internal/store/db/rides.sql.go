@@ -811,21 +811,25 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 
 const listUserRidesFull = `-- name: ListUserRidesFull :many
 select id, workout_name, started_at, seconds, avg_watts, kj, execution,
-       ftp_watts, xp, curve
+       execution_scored, norm_watts, ftp_watts, xp, curve, room_id, shared_at
 from rides where user_id = $1 order by started_at
 `
 
 type ListUserRidesFullRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	StartedAt   pgtype.Timestamptz
-	Seconds     int32
-	AvgWatts    int16
-	Kj          int32
-	Execution   float32
-	FtpWatts    int16
-	Xp          int32
-	Curve       []byte
+	ID              pgtype.UUID
+	WorkoutName     string
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	NormWatts       *int16
+	FtpWatts        int16
+	Xp              int32
+	Curve           []byte
+	RoomID          pgtype.UUID
+	SharedAt        pgtype.Timestamptz
 }
 
 // Export-all (#35): every ride the rider has, summary columns only. The
@@ -849,9 +853,13 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.AvgWatts,
 			&i.Kj,
 			&i.Execution,
+			&i.ExecutionScored,
+			&i.NormWatts,
 			&i.FtpWatts,
 			&i.Xp,
 			&i.Curve,
+			&i.RoomID,
+			&i.SharedAt,
 		); err != nil {
 			return nil, err
 		}

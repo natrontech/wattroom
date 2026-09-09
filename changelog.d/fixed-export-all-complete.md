@@ -1,0 +1,1 @@
+- "Export everything" now carries your medals, every field the ride page shows (normalised power, whether execution was scored, the room, the sharing flag), and a manifest written last that lists what went in — so an archive that was cut short is recognisable as one.
