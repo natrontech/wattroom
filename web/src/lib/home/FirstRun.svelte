@@ -5,7 +5,6 @@
 	// when the last one does. Only the owner of a crew sees it — the crew
 	// steps are theirs, and a rider who joined someone else's crew has
 	// nothing to name or fill.
-	import { account } from '$lib/account.svelte';
 	import { fetchCrew } from '$lib/crew';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import Check from '@lucide/svelte/icons/check';
@@ -33,7 +32,9 @@
 		});
 	});
 
-	const named = $derived(!!crew && crew.name !== account.me?.displayName);
+	// The server's word (#1151): comparing the name to the owner's display
+	// name retired the step when the OWNER renamed themselves (audit 2026-09-09).
+	const named = $derived(!!crew?.named);
 	const invited = $derived(people !== null && people > 1);
 	const steps = $derived(
 		crew && people !== null

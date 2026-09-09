@@ -361,6 +361,15 @@
 				</div>
 				<p class="text-muted mt-6 text-[11px]">
 					No passwords — use an account you already have.
+					{#if account.mailAvailable}
+						<!-- The gate (ADR-0029) is the first screen after sign-in for a
+						     new account; say so here rather than let it be a surprise
+						     (audit 2026-09-09). -->
+						<span class="block">
+							New accounts confirm an email address — it is only used to get you
+							back in.
+						</span>
+					{/if}
 				</p>
 			{:else if account.loaded && account.unreachable}
 				<!-- Not "unconfigured": the question never reached the server. -->

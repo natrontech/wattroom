@@ -1,0 +1,1 @@
+- The "name your crew" set-up step now retires when the crew is actually renamed, not when its owner changes their own display name, and a crew deliberately named after its owner stops nagging. The sign-in page says up front that a new account confirms an email address, and the address gate tells an invited rider their crew door is waiting right behind it.

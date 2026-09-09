@@ -41,6 +41,8 @@ export interface Crew {
 	code?: string;
 	/** What YOU are to it. */
 	role: CrewRole;
+	/** A person has named it (#1151); false while it carries the owner's name. */
+	named?: boolean;
 	ownerId: string;
 	rooms: CrewRoom[];
 	/**

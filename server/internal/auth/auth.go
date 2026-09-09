@@ -146,7 +146,10 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 			ids = append(ids, id)
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": ids})
+	// Whether a new account will meet the address gate (ADR-0029): said on
+	// the sign-in page, before the gate is the first screen after it
+	// (audit 2026-09-09).
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": ids, "mailAvailable": s.mailer != nil})
 }
 
 // devNames is what ?as= accepts: a display name, letters and spaces, short.

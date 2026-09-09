@@ -8,6 +8,7 @@
 	// backdrop click, and this one does not close for accounts that must
 	// confirm. Signing out is the only way past it, which is the honest escape
 	// for an address that will not arrive.
+	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import {
 		canSkipEmailPrompt,
@@ -80,6 +81,14 @@
 				It is how you get back into this account if you ever lose the way you
 				sign in. Nothing else uses it, and it is never shown to anyone.
 			</p>
+			{#if page.url.pathname.startsWith('/c/')}
+				<!-- The invited rider (ADR-0038): the door they were sent to is
+				     right behind this, and the gate must not read as a detour
+				     away from it (audit 2026-09-09). -->
+				<p class="text-muted mt-2 text-sm">
+					Your crew invite is waiting right behind this.
+				</p>
+			{/if}
 
 			{#if pending}
 				<div class="mt-4">

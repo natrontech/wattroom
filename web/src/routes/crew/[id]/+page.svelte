@@ -154,7 +154,7 @@
 			{/if}
 		</header>
 
-		{#if owner && crew.name === account.me?.displayName}
+		{#if owner && !crew.named}
 			<!-- The migration's placeholder (#1151): said here, where the name
 			     is one click away, until the owner replaces it. -->
 			<p class="text-muted mt-2 text-xs">

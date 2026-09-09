@@ -108,7 +108,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		crews = append(crews, roomCrewJSON{
 			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
 			ImageURL: crewImageURL(c.ID, c.HasImage), Code: c.Code,
-			Role: crewRoleWord(c.Owned, c.Admin),
+			Role: crewRoleWord(c.Owned, c.Admin), Named: c.Named,
 		})
 	}
 	// maxOwned rides the list so the frontend gates on the server's number

@@ -53,6 +53,9 @@ export interface Me {
 function createAccountStore() {
 	let me = $state<Me | null>(null);
 	let providers = $state<string[]>([]);
+	// Whether a new account meets the address gate (ADR-0029) — said on the
+	// sign-in page, before the gate is the first screen after it.
+	let mailAvailable = $state(false);
 	let loaded = $state(false);
 	// The last providers read failed to reach the server at all — a first
 	// load on a restarting server used to read as "no providers configured"
@@ -72,7 +75,9 @@ function createAccountStore() {
 		try {
 			const [meRes, provRes] = await Promise.all([
 				api<Me>('/api/me'),
-				api<{ providers?: string[] }>('/api/auth/providers'),
+				api<{ providers?: string[]; mailAvailable?: boolean }>(
+					'/api/auth/providers',
+				),
 			]);
 			if (mine !== asked) return;
 			if (meRes.ok) {
@@ -91,6 +96,7 @@ function createAccountStore() {
 			// an unreachable server keeps whatever we were last told.
 			if (provRes.ok) {
 				providers = provRes.data.providers ?? [];
+				mailAvailable = provRes.data.mailAvailable ?? false;
 				unreachable = false;
 			} else if (provRes.error.error === 'network') {
 				unreachable = true;
@@ -127,6 +133,9 @@ function createAccountStore() {
 	return {
 		get me() {
 			return me;
+		},
+		get mailAvailable() {
+			return mailAvailable;
 		},
 		get providers() {
 			return providers;

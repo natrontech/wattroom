@@ -54,6 +54,12 @@ export interface RoomCrew {
 	 * second amendment); it earns a small mark, not a louder row.
 	 */
 	role?: 'owner' | 'admin' | 'member';
+	/**
+	 * A person has named it (#1151). Until then it carries the owner's name
+	 * and the set-up step stays open — decided by the server, not by
+	 * comparing the name to the owner's display name (audit 2026-09-09).
+	 */
+	named?: boolean;
 }
 
 /**
