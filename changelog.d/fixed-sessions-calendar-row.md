@@ -1,0 +1,1 @@
+- The room's calendar link on the Sessions place is a proper row now — one line saying every planned session lands in your calendar app, and a "Copy calendar link" button — instead of an eleven-pixel link floating under the list.
