@@ -19,6 +19,7 @@
 		placeholder,
 		hint,
 		error = null,
+		lock = null,
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
 		send: (text: string, image?: Blob) => Promise<string | null>;
@@ -26,6 +27,11 @@
 		hint?: string;
 		/** A banner unrelated to the last send attempt — the thread's own error. */
 		error?: string | null;
+		/**
+		 * Why nothing can be sent here, when nothing can (ux.md: a box that
+		 * would refuse the line is disabled and says so, never a 403 on Send).
+		 */
+		lock?: string | null;
 	} = $props();
 
 	let draft = $state('');
@@ -99,7 +105,8 @@
 		<button
 			type="button"
 			onclick={() => filePicker?.click()}
-			class="text-muted hover:text-ink rounded p-1"
+			disabled={!!lock}
+			class="text-muted hover:text-ink rounded p-1 disabled:opacity-40"
 			aria-label="attach an image"
 			title="attach an image (or paste one)"><ImageIcon size={16} /></button
 		>
@@ -109,6 +116,7 @@
 			<button
 				type="button"
 				onclick={() => (gifOpen = !gifOpen)}
+				disabled={!!lock}
 				data-gif-toggle
 				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
 				aria-label="send a GIF"
@@ -122,14 +130,17 @@
 			onpaste={pending.paste}
 			maxlength="500"
 			{placeholder}
+			disabled={!!lock}
 			class="input min-w-0 flex-1"
 		/>
 		<button
-			disabled={sending || (!draft.trim() && !pending.current)}
+			disabled={!!lock || sending || (!draft.trim() && !pending.current)}
 			class="btn btn-primary">Send</button
 		>
 	</form>
-	{#if hint}
+	{#if lock}
+		<p class="text-muted mt-1.5 text-xs">{lock}</p>
+	{:else if hint}
 		<p class="text-muted/70 mt-1.5 text-[10px]">{hint}</p>
 	{/if}
 </div>
