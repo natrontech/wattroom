@@ -52,11 +52,14 @@
 		send,
 		slug,
 		refusal = null,
+		targetRpm = 0,
 	}: {
 		jukebox: JukeboxState | undefined;
 		send: (command: JukeboxCommand) => void;
 		slug: string;
 		refusal?: string | null;
+		/** The running block's cadence, from the tick (#1431). */
+		targetRpm?: number;
 	} = $props();
 
 	// A stable attachment: a fresh arrow every render would tear the offer
@@ -559,6 +562,7 @@
 						onRemove={() => removeEntry(entry)}
 						{saveTargets}
 						onSave={(target) => void saveEntry(entry, target)}
+						{targetRpm}
 					/>
 				{/each}
 			</ul>
@@ -611,6 +615,7 @@
 								trackId: entry.trackId,
 								artist: entry.artist,
 								title: entry.title,
+								bpm: entry.bpm,
 							})}
 						{saveTargets}
 						onSave={(target) => void saveEntry(entry, target)}

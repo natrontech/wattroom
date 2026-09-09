@@ -79,6 +79,7 @@
 			trackId: track.id,
 			title: track.title,
 			artist: track.artist,
+			bpm: track.bpm,
 		});
 		addNote = `${verb} “${track.title}”.`;
 	}

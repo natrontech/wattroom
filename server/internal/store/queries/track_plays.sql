@@ -74,7 +74,7 @@ liked as (
         coalesce(array_agg(distinct tag) filter (where tag is not null), '{}') as tags
     from recent left join lateral unnest(recent.tags) as tag on true
 )
-select t.id, t.title, t.artist, w.weight
+select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, w.weight
 from tracks t
 -- The shelves of the room's own MEMBERS, confirmed on purpose in #1103 over
 -- the crew: crew membership follows room membership, so a crew-wide draw

@@ -125,6 +125,10 @@ type JukeboxCommand struct {
 	// display, because the deck carries no metadata of its own.
 	TrackID string `json:"trackId,omitempty"`
 	Artist  string `json:"artist,omitempty"`
+	// The track's tempo, when its tags say (#1431): read off the library
+	// row by whoever adds it, shown on the queue row, and matched against
+	// the block's cadence while a session runs. 0 = untagged.
+	Bpm int `json:"bpm,omitempty"`
 	// For "remove" | "vote" | "move": which queue entry (#286). Video ids
 	// are not unique — the same track queued twice is two entries, and
 	// addressing by video used to hit the wrong one.
@@ -367,6 +371,11 @@ type SessionState struct {
 	WorkoutName        string `json:"workoutName,omitempty"`
 	WorkoutJSON        string `json:"workoutJson,omitempty"`
 	TotalSeconds       int    `json:"totalSeconds,omitempty"`
+	// The rpm the current block asks the room to turn (#1431): the block's
+	// cadence band, else docs/SPEC.md's effort tiers. 0 while nothing runs
+	// or the block expresses no preference. What smart autoplay weighs
+	// against, said on the wire so a queue row can show which tracks fit.
+	TargetRpm int `json:"targetRpm,omitempty"`
 }
 
 // JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
@@ -416,6 +425,8 @@ type JukeboxEntry struct {
 	// Display only, resolved by whoever queued it: the server holds no
 	// track metadata on the deck, the same way it holds no YouTube titles.
 	Artist string `json:"artist,omitempty"`
+	// Tempo of a library entry, 0 when untagged (#1431).
+	Bpm int `json:"bpm,omitempty"`
 }
 
 // JukeboxState is the server's truth about what plays where. Clients chase the

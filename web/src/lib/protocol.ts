@@ -140,6 +140,12 @@ export interface JukeboxCommand {
   trackId?: string;
   artist?: string;
   /**
+   * The track's tempo, when its tags say (#1431): read off the library
+   * row by whoever adds it, shown on the queue row, and matched against
+   * the block's cadence while a session runs. 0 = untagged.
+   */
+  bpm?: number /* int */;
+  /**
    * For "remove" | "vote" | "move": which queue entry (#286). Video ids
    * are not unique — the same track queued twice is two entries, and
    * addressing by video used to hit the wrong one.
@@ -440,6 +446,13 @@ export interface SessionState {
   workoutName?: string;
   workoutJson?: string;
   totalSeconds?: number /* int */;
+  /**
+   * The rpm the current block asks the room to turn (#1431): the block's
+   * cadence band, else docs/SPEC.md's effort tiers. 0 while nothing runs
+   * or the block expresses no preference. What smart autoplay weighs
+   * against, said on the wire so a queue row can show which tracks fit.
+   */
+  targetRpm?: number /* int */;
 }
 /**
  * JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
@@ -506,6 +519,10 @@ export interface JukeboxEntry {
    * track metadata on the deck, the same way it holds no YouTube titles.
    */
   artist?: string;
+  /**
+   * Tempo of a library entry, 0 when untagged (#1431).
+   */
+  bpm?: number /* int */;
 }
 /**
  * JukeboxState is the server's truth about what plays where. Clients chase the

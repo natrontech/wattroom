@@ -163,6 +163,7 @@ export function commandFromEntry(entry: JukeboxEntry): JukeboxCommand {
 			trackId: entry.trackId,
 			title: entry.title,
 			artist: entry.artist,
+			bpm: entry.bpm,
 		};
 	if (entry.tracks?.length)
 		return {

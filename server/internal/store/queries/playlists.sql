@@ -28,7 +28,8 @@ delete from playlists where id = $1;
 -- A library entry reads its title and artist off the track itself (#1426):
 -- both are editable on the Music page, and a playlist should say what the
 -- library says today, not what it said when the row was saved.
-select pt.*, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist
+select pt.*, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist,
+    coalesce(t.bpm, 0)::int as track_bpm
 from playlist_tracks pt
 left join tracks t on t.id = pt.track_id
 where pt.playlist_id = $1 order by pt.position;

@@ -141,7 +141,7 @@ func commandsFromTracks(tracks []db.ListPlaylistTracksRow) []protocol.JukeboxCom
 			if title == "" {
 				title = t.Title
 			}
-			cmds = append(cmds, protocol.JukeboxCommand{Action: "add", TrackID: store.UUIDString(t.TrackID), Title: title, Artist: t.TrackArtist})
+			cmds = append(cmds, protocol.JukeboxCommand{Action: "add", TrackID: store.UUIDString(t.TrackID), Title: title, Artist: t.TrackArtist, Bpm: int(t.TrackBpm)})
 			continue
 		}
 		cmd := protocol.JukeboxCommand{Action: "add", VideoID: t.VideoID, Title: t.Title, PositionSec: float64(t.StartSec)}

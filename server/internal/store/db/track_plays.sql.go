@@ -59,7 +59,7 @@ liked as (
         coalesce(array_agg(distinct tag) filter (where tag is not null), '{}') as tags
     from recent left join lateral unnest(recent.tags) as tag on true
 )
-select t.id, t.title, t.artist, w.weight
+select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, w.weight
 from tracks t
 join memberships m on m.user_id = t.uploaded_by and m.room_id = $1
 join visible_rooms v on v.room_id = m.room_id and v.user_id = m.user_id
@@ -121,6 +121,7 @@ type SmartShuffleTracksRow struct {
 	ID     pgtype.UUID
 	Title  string
 	Artist string
+	Bpm    int32
 	Weight float64
 }
 
@@ -204,6 +205,7 @@ func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracks
 			&i.ID,
 			&i.Title,
 			&i.Artist,
+			&i.Bpm,
 			&i.Weight,
 		); err != nil {
 			return nil, err

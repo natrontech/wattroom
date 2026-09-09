@@ -150,6 +150,37 @@ type SessionMood struct {
 	CadenceLow, CadenceHigh int
 }
 
+// TargetRPM is the rpm the room is turning during this block, or 0 when
+// nothing is worth matching to (docs/SPEC.md "BPM matching", #270, #1431).
+//
+// A block that names a cadence band IS the answer — that band is the work
+// (#66, "ERG holds the watts, the rpm is the workout"), so the midpoint wins
+// over any guess from effort. Only 2 of the 28 library workouts carry one,
+// which is why the effort fallback exists at all rather than the feature
+// sitting idle on 26 of them. The effort tiers are the one invented thing
+// here: riders self-select a higher cadence as intensity rises, and these
+// are that curve at four points — SPEC numbers, marked as defaults.
+func (m SessionMood) TargetRPM() int {
+	switch {
+	case m.CadenceLow > 0 && m.CadenceHigh > 0:
+		return (m.CadenceLow + m.CadenceHigh) / 2
+	case m.CadenceLow > 0:
+		return m.CadenceLow
+	case m.CadenceHigh > 0:
+		return m.CadenceHigh
+	case m.TargetPct <= 0:
+		return 0 // nothing running, or absolute watts / a sprint: no preference
+	case m.TargetPct <= 0.55:
+		return 80 // recovery
+	case m.TargetPct <= 0.75:
+		return 85 // endurance and tempo
+	case m.TargetPct <= 0.90:
+		return 90 // sweet spot and threshold
+	default:
+		return 95 // VO₂ and above
+	}
+}
+
 // mood reads the timeline WITHOUT advancing it. state() promotes a finished
 // countdown to "running" as a side effect of being called, and a jukebox
 // refill must never be the thing that starts a session.

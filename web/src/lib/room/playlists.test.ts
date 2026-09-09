@@ -43,12 +43,14 @@ describe('commandFromEntry (#1427)', () => {
 				trackId: 't1',
 				title: 'Sandstorm',
 				artist: 'Darude',
+				bpm: 128,
 			}),
 		).toEqual({
 			action: 'add',
 			trackId: 't1',
 			title: 'Sandstorm',
 			artist: 'Darude',
+			bpm: 128,
 		});
 	});
 

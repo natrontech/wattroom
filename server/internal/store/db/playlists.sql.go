@@ -141,7 +141,8 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 }
 
 const listPlaylistTracks = `-- name: ListPlaylistTracks :many
-select pt.id, pt.playlist_id, pt.position, pt.video_id, pt.title, pt.start_sec, pt.yt_playlist_id, pt.yt_playlist_title, pt.tracks, pt.track_id, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist
+select pt.id, pt.playlist_id, pt.position, pt.video_id, pt.title, pt.start_sec, pt.yt_playlist_id, pt.yt_playlist_title, pt.tracks, pt.track_id, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist,
+    coalesce(t.bpm, 0)::int as track_bpm
 from playlist_tracks pt
 left join tracks t on t.id = pt.track_id
 where pt.playlist_id = $1 order by pt.position
@@ -160,6 +161,7 @@ type ListPlaylistTracksRow struct {
 	TrackID         pgtype.UUID
 	TrackTitle      string
 	TrackArtist     string
+	TrackBpm        int32
 }
 
 // A library entry reads its title and artist off the track itself (#1426):
@@ -187,6 +189,7 @@ func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID
 			&i.TrackID,
 			&i.TrackTitle,
 			&i.TrackArtist,
+			&i.TrackBpm,
 		); err != nil {
 			return nil, err
 		}
