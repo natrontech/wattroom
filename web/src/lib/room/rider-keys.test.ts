@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -12,14 +12,24 @@ import { describe, expect, it } from 'vitest';
  */
 describe('rider each-blocks', () => {
 	it('are keyed by id, never by display name', () => {
-		const dir = join(import.meta.dirname);
+		// Every production surface under src, not this directory alone
+		// (#1593): the download page keyed a list by name too.
+		const root = join(import.meta.dirname, '..', '..');
 		const offenders: string[] = [];
-		for (const file of readdirSync(dir).filter((f) => f.endsWith('.svelte'))) {
-			const source = readFileSync(join(dir, file), 'utf8');
+		for (const file of readdirSync(root, { recursive: true })) {
+			const name = String(file);
+			if (!name.endsWith('.svelte')) continue;
+			// The dev galleries key static mocks by name — medals, rooms, glow
+			// samples — and two of them never share one; the rule is about
+			// riders in a real room.
+			if (name.startsWith('routes/dev/')) continue;
+			const source = readFileSync(join(root, name), 'utf8');
 			for (const match of source.matchAll(
 				/\{#each [^}]* as (\w+) \((\w+)\.name\)\}/g,
 			)) {
-				offenders.push(`${file}: (${match[2]}.name)`);
+				offenders.push(
+					`${relative(root, join(root, name))}: (${match[2]}.name)`,
+				);
 			}
 		}
 		expect(offenders).toEqual([]);

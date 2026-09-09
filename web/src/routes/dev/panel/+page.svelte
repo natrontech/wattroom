@@ -197,11 +197,11 @@
 					</div>
 					{@render voiceBar()}
 					<ul class="px-1">
-						{#each inVoice as r (r.name)}{@render person(r)}{/each}
+						{#each inVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
 					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 					<ul class="px-1 pb-2">
-						{#each inRoom as r (r.name)}{@render person(r)}{/each}
+						{#each inRoom as r, i (i)}{@render person(r)}{/each}
 					</ul>
 				</div>
 				<div class="border-ink/5 shrink-0 border-b">
@@ -239,11 +239,11 @@
 					</div>
 					{@render voiceBar()}
 					<ul class="px-1">
-						{#each inVoice as r (r.name)}{@render person(r)}{/each}
+						{#each inVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
 					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 					<ul class="px-1 pb-2">
-						{#each inRoom as r (r.name)}{@render person(r)}{/each}
+						{#each inRoom as r, i (i)}{@render person(r)}{/each}
 					</ul>
 				</div>
 				<div class="shrink-0">
@@ -284,7 +284,7 @@
 				<!-- The rail is the answer to what tabbing costs: the roster is never
 				     fully gone, it is just small. -->
 				<div class="border-ink/5 flex shrink-0 items-center gap-1 border-b p-2">
-					{#each riders as r (r.name)}
+					{#each riders as r, i (i)}
 						<span
 							class="relative {r.speaking ? 'ring-z4 rounded-full ring-2' : ''}"
 						>
@@ -320,11 +320,11 @@
 						</div>
 						{@render voiceBar()}
 						<ul class="px-1">
-							{#each inVoice as r (r.name)}{@render person(r)}{/each}
+							{#each inVoice as r, i (i)}{@render person(r)}{/each}
 						</ul>
 						<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 						<ul class="px-1 pb-2">
-							{#each inRoom as r (r.name)}{@render person(r)}{/each}
+							{#each inRoom as r, i (i)}{@render person(r)}{/each}
 						</ul>
 					{:else if tab === 'music'}
 						{@render nowPlaying()}
@@ -358,7 +358,7 @@
 					class="border-ink/5 flex w-full shrink-0 items-center gap-2 border-b px-3 py-2 text-left"
 				>
 					<span class="flex flex-1 flex-wrap items-center gap-1">
-						{#each riders as r (r.name)}
+						{#each riders as r, i (i)}
 							<span class={r.speaking ? 'ring-z4 rounded-full ring-2' : ''}>
 								<Avatar name={r.name} size={22} />
 							</span>
@@ -374,7 +374,7 @@
 					<div class="border-ink/5 shrink-0 border-b">
 						{@render voiceBar()}
 						<ul class="px-1 pb-2">
-							{#each riders as r (r.name)}{@render person(r, true)}{/each}
+							{#each riders as r, i (i)}{@render person(r, true)}{/each}
 						</ul>
 					</div>
 				{/if}

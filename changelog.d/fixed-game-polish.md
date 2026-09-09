@@ -1,0 +1,1 @@
+- The session picker is a proper dialog for keyboard and screen-reader use: named, modal, and focus stays inside it until it closes.
