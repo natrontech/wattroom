@@ -95,7 +95,7 @@
 
 	async function withPasskey() {
 		// The same deep link the provider buttons keep (#824): a rider bounced
-		// off /r/tuesday lands back in the room, not on /rooms.
+		// off /r/tuesday lands back in the room, not on /home.
 		rememberNext(nextAfterSignIn());
 		passkeyBusy = true;
 		passkeyError = '';

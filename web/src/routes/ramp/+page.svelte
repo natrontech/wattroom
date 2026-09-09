@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
@@ -201,7 +202,7 @@
 		</div>
 
 		{#if error}
-			<p class="text-danger mt-4 text-sm">{error}</p>
+			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 		{/if}
 
 		<div class="mt-6 flex gap-2">
@@ -278,8 +279,7 @@
 						session?.stop();
 						done = true;
 					}}
-					class="border-muted/30 hover:border-muted/60 rounded border px-5 py-2.5 text-sm"
-					>I'm done</button
+					class="btn btn-secondary btn-lg">I'm done</button
 				>
 			</div>
 		</div>
@@ -323,7 +323,7 @@
 			</p>
 
 			{#if error}
-				<p class="text-danger mt-4 text-sm">{error}</p>
+				<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 			{/if}
 
 			{#if saved}

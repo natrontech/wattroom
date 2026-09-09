@@ -15,6 +15,7 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
+	import { downloadBlob } from '$lib/download';
 	import { uploadRide } from '$lib/ride/save';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -341,12 +342,7 @@
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);
-			const url = URL.createObjectURL(res.data.blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = res.data.filename ?? 'ride.fit';
-			link.click();
-			URL.revokeObjectURL(url);
+			downloadBlob(res.data.blob, res.data.filename ?? 'ride.fit');
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		} finally {

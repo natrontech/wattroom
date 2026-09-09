@@ -212,7 +212,7 @@
 								>
 								<button
 									onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-									class="text-muted hover:text-ink text-xs">dismiss</button
+									class="btn btn-ghost btn-xs">Dismiss</button
 								>
 							</span>
 						</div>
@@ -285,7 +285,7 @@
 							{/if}
 							<button
 								onclick={() => removeFriend(friend)}
-								class="text-muted hover:text-danger text-xs">remove</button
+								class="btn btn-ghost btn-xs text-danger">Remove</button
 							>
 						</span>
 					</div>
@@ -298,7 +298,7 @@
 						<span class="text-xs">asked — waiting on them</span>
 						<button
 							onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-							class="hover:text-ink ml-auto text-xs">cancel</button
+							class="btn btn-ghost btn-xs ml-auto">Cancel</button
 						>
 					</div>
 				{/each}

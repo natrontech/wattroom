@@ -96,7 +96,7 @@
 		} satisfies MenuItem,
 	];
 
-	// /progression's chart drilldown lands here with ?ride=<id> — ring it.
+	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
 
 	async function load() {
