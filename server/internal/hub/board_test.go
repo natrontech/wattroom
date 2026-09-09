@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -51,5 +52,23 @@ func TestFireShapeCheckIsConsulted(t *testing.T) {
 		if protocol.IsClipID(bad) {
 			t.Errorf("shape check let %q through", bad)
 		}
+	}
+}
+
+// A stop (#1321) is a fire with no clip, and it skips the cooldown — the fire
+// it takes back is half a second old. This is what bounds it instead: a
+// second stop with nothing of the rider's fired in between says nothing and
+// is dropped, while a stop after a fresh fire, or from another rider, stands.
+func TestStopIsQueuedOncePerFire(t *testing.T) {
+	rm := newRoom("velvet")
+	shot := protocol.Board{ClipID: "3f2504e0-4f89-11d3-9a0c-0305e82c3301", FromID: "jan", From: "Jan"}
+	stop := protocol.Board{FromID: "jan", From: "Jan"}
+	svensStop := protocol.Board{FromID: "sven", From: "Sven"}
+	for _, b := range []protocol.Board{stop, stop, shot, stop, stop, svensStop, stop, shot, stop} {
+		rm.fire(b)
+	}
+	want := []protocol.Board{stop, shot, stop, svensStop, shot, stop}
+	if !reflect.DeepEqual(rm.board, want) {
+		t.Fatalf("queued %+v\nwant   %+v", rm.board, want)
 	}
 }
