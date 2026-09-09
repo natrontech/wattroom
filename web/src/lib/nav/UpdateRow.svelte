@@ -54,6 +54,7 @@
 	/* One row, the width of the column, the geometry of the rows below it —
 	   a card here gets ignored the way Discord's banners do. */
 	.update-row {
+		--sweep: 3.6s;
 		position: relative;
 		margin-bottom: 0.5rem;
 		display: flex;
@@ -79,48 +80,72 @@
 		cursor: default;
 	}
 
-	/* The sweep: a band of light crossing the row every four seconds, and
-	   every second once the install is running — the only thing that can
-	   report progress from a process that is about to die. */
+	/* The sweep: one band of light crossing the row, then a rest. Both
+	   animations move a transform and nothing else — the first version
+	   animated background-position, which re-rasterises the gradient on the
+	   main thread every frame and stutters against anything else the sidebar
+	   is doing. They share one period so the arrow hops as the band reaches
+	   it, rather than the two drifting in and out of phase. */
 	.update-row::after {
 		content: '';
 		position: absolute;
-		inset: 0;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 40%;
 		background: linear-gradient(
-			100deg,
-			transparent 35%,
-			color-mix(in oklab, var(--color-neon) 55%, transparent) 50%,
-			transparent 65%
+			90deg,
+			transparent,
+			color-mix(in oklab, var(--color-neon) 60%, transparent),
+			transparent
 		);
-		background-size: 250% 100%;
-		animation: sweep 4s ease-in-out infinite;
+		/* Starts and ends off both edges, so the loop has no visible seam and
+		   needs no easing to hide one. */
+		animation: sweep var(--sweep) linear infinite;
+		will-change: transform;
 		pointer-events: none;
 	}
-	.update-row.installing::after {
-		animation-duration: 1s;
-		animation-timing-function: linear;
-	}
 	@keyframes sweep {
+		0% {
+			transform: translateX(-100%);
+		}
+		30% {
+			transform: translateX(250%);
+		}
+		100% {
+			transform: translateX(250%);
+		}
+	}
+
+	/* Installing: no rest. The band runs the whole period, because it is the
+	   last thing the rider sees before the window goes. */
+	.update-row.installing {
+		--sweep: 1.1s;
+	}
+	.update-row.installing::after {
+		animation-name: sweep-run;
+	}
+	@keyframes sweep-run {
 		from {
-			background-position: 200% 0;
+			transform: translateX(-100%);
 		}
 		to {
-			background-position: -100% 0;
+			transform: translateX(250%);
 		}
 	}
 
 	/* The arrow steps up and lands, which is the whole gesture of the thing. */
 	.lift {
 		display: flex;
-		animation: lift 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+		animation: lift var(--sweep) ease-out infinite;
 	}
 	@keyframes lift {
 		0%,
-		55%,
+		14%,
 		100% {
 			transform: translateY(0);
 		}
-		30% {
+		7% {
 			transform: translateY(-3px);
 		}
 	}
