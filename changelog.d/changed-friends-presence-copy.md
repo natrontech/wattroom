@@ -1,1 +1,0 @@
-- The Friends page says what a friend actually sees: that you are online, in a room, or riding — never what you are pushing.
