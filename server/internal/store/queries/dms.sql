@@ -68,14 +68,20 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 );
 
 -- name: ListDms :many
--- One pair's thread, oldest-first; `after` narrows a poll to the new tail.
+-- One pair's thread: the NEWEST 200 after `after`, oldest-first for
+-- rendering, the shape ListRoomChat has (#1813). It used to take the oldest
+-- 200 of a pair's 500, so a long thread opened weeks back and a rider's own
+-- send fell past the page. The id breaks a same-millisecond tie.
 select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at
-from dm_messages m
-where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
-  and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
-  and m.created_at > $3
-order by m.created_at
-limit 200;
+from (
+    select * from dm_messages
+    where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+      and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+      and created_at > $3
+    order by created_at desc, id desc
+    limit 200
+) m
+order by m.created_at, m.id;
 
 -- name: GetDmMessage :one
 -- Pair-scoped, like every other read here: a message id from someone else's

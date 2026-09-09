@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
@@ -154,6 +155,37 @@ func getImage(t *testing.T, mux *http.ServeMux, user, id string) *httptest.Respo
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 	return w
+}
+
+// A long thread opens on its newest page (#1813): the query took the OLDEST
+// 200 of a pair's 500, so a rider saw a conversation from weeks ago and their
+// own send, fetched after the page's last line, fell into the gap.
+func TestDmThreadOpensOnItsNewestPage(t *testing.T) {
+	mux, st, users := setup(t)
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
+	for i := 1; i <= 250; i++ {
+		if _, err := st.Queries.SendDm(t.Context(), db.SendDmParams{
+			SenderID: alice.ID, RecipientID: bob.ID, Text: fmt.Sprintf("line %d", i),
+		}); err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+	}
+	code, body := call(t, mux, "bob", http.MethodGet, "/api/dms/"+store.UUIDString(alice.ID), "")
+	msgs, _ := body["messages"].([]any)
+	if code != http.StatusOK || len(msgs) != 200 {
+		t.Fatalf("thread: %d, %d lines", code, len(msgs))
+	}
+	first, _ := msgs[0].(map[string]any)
+	last, _ := msgs[199].(map[string]any)
+	if first["text"] != "line 51" || last["text"] != "line 250" {
+		t.Fatalf("the page runs %v … %v, not line 51 … line 250", first["text"], last["text"])
+	}
+	// And a poll from the page's last line finds only what came after it.
+	at, _ := last["at"].(float64)
+	code, body = call(t, mux, "bob", http.MethodGet, fmt.Sprintf("/api/dms/%s?after=%d", store.UUIDString(alice.ID), int64(at)), "")
+	if tail, _ := body["messages"].([]any); code != http.StatusOK || len(tail) != 0 {
+		t.Fatalf("a poll after the newest line returned %d lines", len(tail))
+	}
 }
 
 func TestDmImages(t *testing.T) {
