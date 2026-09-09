@@ -17,6 +17,7 @@
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
 	import { roomOf, statusOf } from '$lib/status';
@@ -81,7 +82,7 @@
 	});
 	// Where they are, if anywhere — the one thing the old drawer could never say.
 	const inRoom = $derived(roomOf(presence.rooms, peerId));
-	const status = $derived(statusOf(presence.rooms, peerId));
+	const status = $derived(statusOf(presence.rooms, peerId, friends.list));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	$effect(() => {

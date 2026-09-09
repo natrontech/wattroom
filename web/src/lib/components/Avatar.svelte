@@ -44,7 +44,7 @@
 	const dot = $derived(Math.max(7, Math.round(size * 0.26)));
 	const STATUS_WORD: Record<PresenceStatus, string> = {
 		riding: 'riding now',
-		online: 'in a room',
+		online: 'online',
 		away: 'away',
 		offline: 'offline',
 	};
