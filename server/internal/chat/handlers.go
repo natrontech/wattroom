@@ -72,13 +72,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
 		return
 	}
-	w.Header().Set("Content-Type", img.Mime)
-	// These are member-supplied bytes served from the app's own origin: a
-	// polyglot that passes the upload sniff as an image must never be
-	// re-interpreted as HTML by the browser.
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
-	_, _ = w.Write(img.Bytes)
+	httpx.ServeImmutableImage(w, img.Mime, img.Bytes)
 }
 
 // handleBacklog is the join-time load: the newest lines, oldest first,

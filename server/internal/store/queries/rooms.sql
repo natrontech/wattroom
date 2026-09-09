@@ -31,7 +31,10 @@ select u.*, m.role, m.joined_at,
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1
-order by m.joined_at;
+order by m.joined_at
+-- An engineering bound, not a product number (#1416): membership is uncapped
+-- by SPEC and a crew is nowhere near this; a list must still end somewhere.
+limit 1000;
 
 -- name: ListUserRooms :many
 -- Banned members keep their row (the ban IS the row) but the room vanishes

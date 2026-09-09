@@ -76,6 +76,17 @@ func ReadImageUpload(w http.ResponseWriter, r *http.Request) (data []byte, mime 
 // costs one round trip, and a re-upload shows at once everywhere. Rider-
 // supplied bytes from the app's own origin are never re-interpreted as HTML,
 // whatever passed the sniff.
+// ServeImmutableImage serves rider-supplied bytes that never change under
+// their id — a chat or DM picture — so the browser may keep them forever.
+// One trust boundary for all three image routes (#1416): nosniff, because a
+// polyglot that passed the upload sniff must never be re-read as HTML.
+func ServeImmutableImage(w http.ResponseWriter, mime string, data []byte) {
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	_, _ = w.Write(data)
+}
+
 func ServeImage(w http.ResponseWriter, r *http.Request, mime string, data []byte, setAt time.Time) {
 	etag := fmt.Sprintf(`"%d"`, setAt.UnixMilli())
 	if r.Header.Get("If-None-Match") == etag {

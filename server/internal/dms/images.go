@@ -64,12 +64,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
 		return
 	}
-	w.Header().Set("Content-Type", img.Mime)
-	// Friend-supplied bytes from our own origin: a polyglot that passed the
-	// upload sniff must never be re-interpreted as HTML.
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
-	_, _ = w.Write(img.Bytes)
+	httpx.ServeImmutableImage(w, img.Mime, img.Bytes)
 }
 
 // pruneImages sweeps a pair's orphaned blobs. Called from both writes that can
