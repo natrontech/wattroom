@@ -231,7 +231,7 @@ function installHandlers(win) {
 				label: d.deviceName || d.deviceId,
 				value: d.deviceId,
 			})),
-		).then((deviceId) => {
+		).then(({ value: deviceId }) => {
 			if (deviceId) lastBluetoothDeviceId = deviceId;
 			settle(deviceId || '');
 		});
@@ -275,17 +275,21 @@ function installHandlers(win) {
 						win,
 						'Share a screen',
 						sources.map((s) => ({ label: s.name, value: s.id })),
-					).then((id) => {
+						canShareSound() && request.audioRequested ? SOUND_ASK : null,
+					).then(({ value: id, checked: sound }) => {
 						const picked = sources.find((s) => s.id === id);
 						// callback({}) is the deny path; a cancelled picker is a
 						// refusal, not an error to surface.
 						//
 						// 'loopback' is the system-audio half of ADR-0037 (#1124):
-						// what the machine is playing, captured through CoreAudio's
-						// tap on macOS 14.2+ and WASAPI on Windows. Asked for
-						// alongside the video rather than instead of it — the room
-						// hears the machine that is showing it something.
-						callback(picked ? { video: picked, audio: 'loopback' } : {});
+						// what the machine is playing, captured through WASAPI.
+						// Offered with the picture and never assumed (#1699): the
+						// tap is the whole machine, so a rider who picked one
+						// window would otherwise also send their notifications,
+						// their calls and the room's own voices back into it.
+						callback(
+							picked ? (sound ? { video: picked, audio: 'loopback' } : { video: picked }) : {},
+						);
 					});
 				})
 				.catch(() => callback({}));
@@ -343,17 +347,44 @@ function guardNavigation(win) {
  * wrong control, and the answer is the renderer-side picker RESEARCH.md §15.1
  * describes, not a longer list of buttons.
  */
-async function chooseFrom(win, title, options) {
+/**
+ * Whether the machine's sound can ride along with the picture (#1124, #1699).
+ *
+ * Windows only, and not a preference: this handler runs on macOS only below
+ * 15, where an app-supplied picker gets a loopback track with no data in it
+ * (electron#52738) — asking there would promise a sound that never arrives
+ * and leave the share notice claiming one. Above 15 the system picker asks
+ * for audio itself, and Linux Chromium has no loopback at all.
+ */
+function canShareSound() {
+	return process.platform === 'win32';
+}
+
+/**
+ * What the loopback tap actually takes, said plainly: it is the machine's
+ * output device, not the window the rider picked — Chromium has no per-app
+ * tap to offer instead. Off by default, which is what Chrome's own picker
+ * does with the same capture.
+ */
+const SOUND_ASK =
+	"Send this machine's sound too — everything it plays, not just what you pick";
+
+/** @returns the chosen value (null if cancelled) and the checkbox, if asked. */
+async function chooseFrom(win, title, options, checkboxLabel = null) {
 	const shown = options.slice(0, 8);
-	const { response } = await dialog.showMessageBox(win, {
+	const { response, checkboxChecked } = await dialog.showMessageBox(win, {
 		type: 'question',
 		title,
 		message: title,
 		buttons: [...shown.map((o) => o.label), 'Cancel'],
 		cancelId: shown.length,
 		defaultId: 0,
+		...(checkboxLabel ? { checkboxLabel, checkboxChecked: false } : {}),
 	});
-	return shown[response]?.value ?? null;
+	return {
+		value: shown[response]?.value ?? null,
+		checked: checkboxChecked === true,
+	};
 }
 
 // Self-update (#1303, ADR-0037 amended). Four shell releases in a day made
