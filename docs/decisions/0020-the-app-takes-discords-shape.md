@@ -12,8 +12,8 @@ converging on that one issue at a time (#170 recomposition, #323 rail cleanup,
 
 Two things block making it deliberate.
 
-**The locked line.** WATTROOM.md §"Room UX" specifies *user-switchable layouts —
-metrics-first, video-first, media-focus, plus TV mode*. That is a different
+**The locked line.** WATTROOM.md §"Room UX" specifies _user-switchable layouts —
+metrics-first, video-first, media-focus, plus TV mode_. That is a different
 answer to the same question a persistent structure answers: three shapes the
 rider picks between, versus one shape that always holds. Both cannot be true.
 
@@ -87,23 +87,24 @@ What the merge does **not** give up — these were the whole point:
    gate are ridden with, not set up once — see the
    [2026-09-02 amendment](#amendment--the-mix-and-the-gate-come-back-into-the-room-2026-09-02),
    which supersedes this point's original reading and gives them a home in the
-   room's own people column. A control you only need *before* you ride belongs
-   behind the cog; a control you discover is wrong *while* riding gets a
+   room's own people column. A control you only need _before_ you ride belongs
+   behind the cog; a control you discover is wrong _while_ riding gets a
    shortcut where you are standing.
+
 3. **Every room still carries its signal** (#181 gap 4) — live dot, unread
    count, mention badge, "Sweet Spot 2×20, 12 min in", who is in voice. That is
    ADR-0010's crew radar, and it is why rooms keep **names** rather than
    becoming Discord's 48 px icons.
 4. **The top section is three entries, not nine** — and the missing six are
-   *retired*, not relocated. A sidebar that lists everything lists nothing.
+   _retired_, not relocated. A sidebar that lists everything lists nothing.
 
-   | Was | Now | Why |
-   | --- | --- | --- |
-   | `/rooms` | the sidebar, plus a `+` | The sidebar already is the room list. All the page carried beyond it was "open a room" and "join with a code" — two actions, not a destination. Invites and medal history belong to the room's own Members place. |
-   | `/sessions` | Home | A cross-room list of what is coming is the second half of "what is happening", which is what Home is for. Per-room planning stays in the room's Sessions place. |
-   | `/progression` | Rides | One subject split down the middle: the charts on one page, the rides they are drawn from on another, and every drilldown a navigation between them. |
-   | `/ramp` | Workouts | A ramp test is a workout you start, not a page you visit. It keeps its own screen because it writes your FTP; it is reached from the shelf. |
-   | `/pair`, `/whats-new` | the cog | Set up once, read once. |
+   | Was                   | Now                     | Why                                                                                                                                                                                                               |
+   | --------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `/rooms`              | the sidebar, plus a `+` | The sidebar already is the room list. All the page carried beyond it was "open a room" and "join with a code" — two actions, not a destination. Invites and medal history belong to the room's own Members place. |
+   | `/sessions`           | Home                    | A cross-room list of what is coming is the second half of "what is happening", which is what Home is for. Per-room planning stays in the room's Sessions place.                                                   |
+   | `/progression`        | Rides                   | One subject split down the middle: the charts on one page, the rides they are drawn from on another, and every drilldown a navigation between them.                                                               |
+   | `/ramp`               | Workouts                | A ramp test is a workout you start, not a page you visit. It keeps its own screen because it writes your FTP; it is reached from the shelf.                                                                       |
+   | `/pair`, `/whats-new` | the cog                 | Set up once, read once.                                                                                                                                                                                           |
 
    What is left is Home, Workouts, Rides — plus your rooms, your messages, and
    the cog.
@@ -134,12 +135,12 @@ your own numbers is a solo app with a chat window attached.
 The focus slot pays for itself four times, and this is what makes it a shape
 rather than a special case for video. It holds, in priority order:
 
-| Focus | When |
-| --- | --- |
-| **Sprint moment** | a 15 s all-out window is armed — WATTROOM.md's "one place the UI is allowed to go loud", so it takes the screen and gives it back |
-| **Game** | the session is a game mode rather than a workout (`GamePanel`) |
-| **Shared screen** | someone is sharing (LiveKit) |
-| **Your instrument** | the default, and what returns when the others end |
+| Focus               | When                                                                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Sprint moment**   | a 15 s all-out window is armed — WATTROOM.md's "one place the UI is allowed to go loud", so it takes the screen and gives it back |
+| **Game**            | the session is a game mode rather than a workout (`GamePanel`)                                                                    |
+| **Shared screen**   | someone is sharing (LiveKit)                                                                                                      |
+| **Your instrument** | the default, and what returns when the others end                                                                                 |
 
 Cheers (`CheerLayer`) stay an overlay across all four — they are the room
 reacting, not a thing to look at.
@@ -189,11 +190,11 @@ The budget: 1280 − 240 − 272 = **768 px of content**, against 624 px for the
 two-column version. The ladder is by media query, never a setting (`ux.md`,
 the 95 % rule):
 
-| Viewport | Shape |
-| --- | --- |
-| ≥ 1280 | sidebar + content + people (240 / fluid / 272) |
-| < 1280 | people becomes the summonable sheet it already is below `xl` |
-| < 768 | the sidebar becomes a drawer; content is the screen |
+| Viewport | Shape                                                        |
+| -------- | ------------------------------------------------------------ |
+| ≥ 1280   | sidebar + content + people (240 / fluid / 272)               |
+| < 1280   | people becomes the summonable sheet it already is below `xl` |
+| < 768    | the sidebar becomes a drawer; content is the screen          |
 
 **Switchable layouts retire.** WATTROOM.md's "metrics-first / video-first /
 media-focus" is superseded. Metrics-first is the Training place, video-first is
@@ -240,7 +241,7 @@ Two rules that were not in the mock and only showed up in the real thing:
   multi-column at `xl` instead — Home's right rail, the workout cards, the
   ride charts. A new route does not choose a width, and never centres.
 - **The jukebox dock and a modal keep out of each other's way.** RMF wants
-  the player visible while media plays and nothing of *ours* drawn over it —
+  the player visible while media plays and nothing of _ours_ drawn over it —
   not the player over a dialog the rider opened. So the floating dock sits
   below dialogs, drawers and toasts, and outranks only the stage while seated
   in it (#395). A modal counts itself open (`modals.svelte`); while one is,
@@ -260,8 +261,8 @@ chat during a ride at all.
 ## Amendment — the mix and the gate come back into the room (2026-09-02)
 
 Decision point 2 originally sent "the per-rider mixer, the gate slider and the
-theme cycle" behind the cog together, on the grounds that all three are *desk
-settings* — set once, not reached for mid-interval. Ridden, half of that is
+theme cycle" behind the cog together, on the grounds that all three are _desk
+settings_ — set once, not reached for mid-interval. Ridden, half of that is
 wrong (#477). This amendment is the authority for the mixer and the gate; the
 point above now carries the rule it was missing, which is this one:
 
@@ -302,7 +303,7 @@ What does not change:
 
 ## Amendment — a phone reaches the room directly (2026-09-05, #412)
 
-The Decision above answered the *phone* question by scoping it out: a phone
+The Decision above answered the _phone_ question by scoping it out: a phone
 is read-only, and gets a separate spectator page rather than this shell. #412
 shipped a different answer, and this amendment records it rather than leaving
 the Decision's text as the thing riders are told.
@@ -312,7 +313,7 @@ the same sidebar-drawer, crew strip, places and Chat this ADR describes for a
 narrow window — and `$lib/device.svelte`'s capability detection gates the
 affordances that need something a phone does not have, rather than routing
 the phone away from the shell entirely. There is no separate read-only
-dashboard: `/r/[slug]/watch` is now a redirect *into* `/r/[slug]` (it kept its
+dashboard: `/r/[slug]/watch` is now a redirect _into_ `/r/[slug]` (it kept its
 URL because it had been linked from the old view's footer and bookmarked
 since #124), not the destination a phone lands on.
 
@@ -331,7 +332,7 @@ keep in sync, and #383/#412 already show what happens when it does not
 riding surface — this ADR's shell is still designed for a desk, and a phone
 never gets the sidebar's own places re-laid-out for a thumb. `ux.md`'s huge
 targets and no-precision-gesture rules still apply below `md` regardless of
-device. What changes is the *mechanism*: capability gating on one shell,
+device. What changes is the _mechanism_: capability gating on one shell,
 not a redirect to a second one.
 
 This amendment does not touch WATTROOM.md's phone/iOS wording — that is a
@@ -370,17 +371,17 @@ What does not change:
 - **The Sound panel stays**, and stays the second way in (`ux.md`: never only
   in a menu). Its rider list stops being a row of Reset buttons and becomes the
   faders themselves — the riders you have moved, adjustable there.
-- **The gate threshold stays in it, with its meter.** *(Everything else in
+- **The gate threshold stays in it, with its meter.** _(Everything else in
   this list has since left: the cues and the duck depth in #898 and #904, the
   gate's MODE and then both device pickers to the mic and to you, #914 and
-  #920 — see below.)*
+  #920 — see below.)_
 - **The sidebar rail keeps its music fader.** It is the control that follows
   the music out of the room, which is the rail's whole job.
 
 **The cues followed, one issue later (#898).** They were left in the panel here
 on the grounds that no object owns them — they fire from the room, from chat,
 from a poke, from a toast. That was the wrong half of the question. Nothing
-*plays* them from one place, but they belong to one thing all the same: they
+_plays_ them from one place, but they belong to one thing all the same: they
 are yours, per device, wherever in the app you are. The object that is you and
 is pinned to every screen is the you-panel at the foot of the sidebar, so the
 cue level is an entry in its menu (`you-menu.ts`), beside your rider page and
@@ -411,9 +412,9 @@ now (`mic-menu.ts`) — mute, voice activation, push-to-talk with the current
 one marked, and "Tune your gate…", which opens the Sound panel where the meter
 is. `QuickAudio`'s open flag lifted into `sound-panel.svelte.ts` so a second
 door could exist; one `QuickAudio` is mounted at a time, so there is still one
-modal. The general rule, then: *put the control on its object — unless the
+modal. The general rule, then: _put the control on its object — unless the
 control needs a picture only one surface can draw, in which case put the way
-to that surface on the object.*
+to that surface on the object._
 
 **The device pickers followed the mode (#920)**, being the same kind of thing:
 which microphone you speak through is a choice belonging to the mic, and which
@@ -460,7 +461,7 @@ connected to out of the navigation the moment you looked at another crew, and
 fold Training two clicks away mid-session.
 
 That is the report in #416 arriving again by a new route, and it is this
-document's own first promise — *places are permanent and beside the content* —
+document's own first promise — _places are permanent and beside the content_ —
 failing. It was found by clicking the mock rather than by reading the design,
 which is the argument for having drawn it at all. Any implementation of this
 amendment carries the pin, and a test that fails without it.
@@ -471,7 +472,7 @@ amendment carries the pin, and a test that fails without it.
 what is live, who is in voice, what is planned. A mode shows one crew, so by
 construction it hides the rest, and a radar that hides three quarters of its
 sky is not one. The switcher therefore carries a summary of what the crews you
-are *not* looking at are doing. This is the cost the chosen shape pays, and it
+are _not_ looking at are doing. This is the cost the chosen shape pays, and it
 is part of the shape rather than a later enhancement.
 
 ### What was rejected
@@ -485,22 +486,141 @@ is part of the shape rather than a later enhancement.
   column spells out, and the eye still has to work out which strip a click
   belongs to.
 
-**Naming is not settled by this amendment.** #1023 asked for the word *crew*
-itself to be argued — the request was *"also regarding namings etc."* — and
+**Naming is not settled by this amendment.** #1023 asked for the word _crew_
+itself to be argued — the request was _"also regarding namings etc."_ — and
 that argument did not happen. It matters more than it sounds: ADR-0038 records
 that the word is already in use meaning the opposite thing (`docs/SPEC.md`'s
-*"a room is a crew, not an attendance register"*, and the shipped `crew-chief`
+_"a room is a crew, not an attendance register"_, and the shipped `crew-chief`
 medal slug, which is a data migration rather than a string change). This
 amendment settles the **shape** and takes no position on what the switch calls
 the thing it switches between. The cheapest moment to change the name is before
 a sidebar header ships with it in.
 
 **The evidence was not unanimous, and pretending otherwise would age badly.**
-Collapsed, the indent option is the *most* compact of the three and still
+Collapsed, the indent option is the _most_ compact of the three and still
 answers "where is everyone" through a per-crew pulse — a genuinely good state,
 and the strongest thing found for a shape that was not chosen. It lost on its
 default rather than on its best case: a rider who never collapses anything is
 the one the 240 px column has to work for.
+
+## Amendment — the map: one tree, a parent for every page, one home per object (2026-09-09, #1335)
+
+Eight days after this ADR the frame it decided still holds and the map under
+it does not exist. A whole-app pass on 2026-09-09 (every route, the shell,
+eleven flows traced with click counts, assessed against navigation research
+and the rider reports since the shape shipped) measured the gap: the sidebar
+draws five destinations, the crew, its rooms opened into places, and your
+messages; the routes form a second tree of 25 pages, **ten of which have no
+row above them**, one reachable on a desk only by right-click
+(`/messages/r/[slug]`), and five retired stubs of which two still receive live
+navigation (`/rooms`, from the sign-in fallback and from deleting a room).
+Three names disagree with their address (Rides is `/history`, the gear says
+"settings" over a page titled "Profile", "Sensors" is `/pair`). And 148 of the
+682 commits since 2026-08-30 touched the shell, Home or the navigation, with
+this ADR amended five times in as many days: the structure was being decided
+by accretion, one rider report at a time — which is exactly what this ADR's
+Context diagnosed on 2026-09-01.
+
+This amendment writes the map down, so the next rider report is placed on it
+rather than redrawing it. Nothing in the column changes shape.
+
+### Five rules
+
+1. **One tree.** The sidebar draws every branch. A page that is not in the
+   column has a parent row in it, and that row is lit while you are there.
+   A page with no parent is a bug, not a page.
+2. **Places and settings.** Destinations live in the column. What you set
+   once lives at `/settings`, in sections that are routes (profile, equipment,
+   voice, appearance, notifications, data), behind the cog, which says
+   _Settings_. Who you are lives at `/u/me` and takes the trophy case with it.
+   `/profile`, `/pair` and `/trophies` redirect for one release and go
+   ([#1330](https://github.com/natrontech/wattroom/issues/1330)).
+3. **The room's home holds its action.** Start (coach) or Join (rider) on the
+   Lounge while the room idles; while a session runs, every join affordance
+   lands on Training, as the notification already does. Plan has one home,
+   Sessions ([#1332](https://github.com/natrontech/wattroom/issues/1332)).
+4. **One home per object.** The room's chat, the crew's invite, playlists,
+   trainer pairing, TV mode: one address each; every other surface links there
+   and none draws a second copy.
+5. **Ends link forward.** A session's summary is the ride's page. A ramp
+   result offers what its number rescaled. The Sessions place lists the past
+   ([0034](0034-a-session-leaves-one-recap.md), amended today). Home's recent
+   rides open the ride ([#1331](https://github.com/natrontech/wattroom/issues/1331)).
+
+### The tree
+
+```
+┌───────────────────────────────┐
+│ [W] Wadlichlepfer ⌄       ▮▮▮ │ → /crew/[id]: people · rooms · invite · settings
+│ Home                          │
+│ Workouts                      │ → /workouts/edit · /ride · /ramp  (Workouts stays lit)
+│ Rides                         │ → /history/[id]  (the URL follows the label with #1330)
+│ Music                         │ + your playlists, on the shelf, not the deck
+│ Friends                       │
+│ ROOMS                       + │ → open a room · join with a code · find a room
+│  ● MFW 5                  3 ● │ → the unread count opens /messages/r/[slug]
+│     Lounge · Chat · Training  │
+│     Sessions · Members ·      │   Sessions → planned + past
+│     Settings                  │
+│ DIRECT MESSAGES             › │ → /messages/dm/[peer]
+│ [with you in MFW 5]           │   only while connected and off the Lounge
+│ you · ⚙                       │ → /u/me · /settings/{profile,equipment,voice,…}
+└───────────────────────────────┘
+Outside the tree on purpose: /c/[code] (it arrives from outside) and /hud (the shell's window).
+Retired once their parents exist: /profile, /pair, /trophies, and the five stubs.
+```
+
+### Three decisions taken with the map
+
+**The crew is the header.** The logo row and the crew row shared anatomy, type
+(Chakra Petch 700 at 14 px, both) and the 16 px left edge, six pixels apart,
+and read as two items of one list; the crew row sat closer to the logo than to
+the nav it governs. The first row of the column is now the crew: a 24 px mark,
+the name at 15 px / 700, the shield when it is yours, a chevron only when there
+is a second crew to switch to, 12 px to Home below. The wordmark leaves the
+column — the tab, the desktop title bar and the sign-in page carry it, and the
+narrow-window top bar keeps it because the drawer is shut there. The
+equalizer mark stays, 16 px at the row's right end, because
+[0005](0005-synthwave-visual-identity.md) gave it a job (it breathes while a
+session runs); it is not a link, since Home is the row below and a second
+target for one destination was the second finding of the audit. A rider
+without a crew yet keeps the old logo row. The connected room's name comes
+down from 16 px to 14 px so the header is the largest text in the column
+([#1327](https://github.com/natrontech/wattroom/issues/1327); the three
+directions drawn and the one chosen are on the sidebar canvas linked from the
+issue).
+
+**Reading a room's chat without entering it keeps its page, and gets a door.**
+`/messages/r/[slug]` stays. The unread count on a room row becomes the way in,
+and the right-click entry _Read the chat_ retires — with nothing unread, the
+way to a room's chat is walking in. This is `ux.md`'s rule read the other
+way round: a menu is a shortcut, never the sole way, so a page whose only door
+was a menu entry was the violation, not the entry's removal
+([#1328](https://github.com/natrontech/wattroom/issues/1328)).
+
+**Rules 2, 3 and 5 are decided here and built in their own issues.** They
+rename URLs and move controls, and each is one PR that a rider will notice;
+the amendment records the direction so the PRs do not re-argue it.
+
+### What does not change
+
+The column count and its arithmetic. The six places. Names instead of an icon
+rail. The crew as a mode with the standing room pinned (the 2026-09-08
+amendment). Right-click menus on every object. Voice on a tap. The phone
+getting this shell with gated affordances.
+
+### What this amendment does not decide
+
+Where the jukebox seats itself (column, dock or stage — a rider never chooses,
+`stage-slot` does; #504 asked for that decision and got a resizable column),
+and whether the crew carries a chat ([0038](0038-the-crew-is-the-layer-above-rooms.md)
+says it does; nothing builds one —
+[#1334](https://github.com/natrontech/wattroom/issues/1334)). Both are
+`needs-human-input`.
+
+**Revisit trigger:** a rider report that asks for a page the tree has no
+parent for means the tree is wrong, not the report. Amend the tree here
+first; then build.
 
 ## Consequences
 
@@ -515,7 +635,7 @@ the one the 240 px column has to work for.
   home the shape did not otherwise provide. Nine destinations become three.
 - **The status vocabulary gets smaller, not larger.** Green means present,
   moving bars mean riding, and the `z6` end of the ramp is left alone — so when
-  something *is* broken, it is the only red on screen.
+  something _is_ broken, it is the only red on screen.
 - **`RoomLive.svelte` splits by construction.** Its header, tab strip, stage,
   grid and training dashboard become the shell plus one component per place.
   The 1171-line file is not refactored on purpose; it stops having a reason to
@@ -532,8 +652,8 @@ the one the 240 px column has to work for.
   ride-critical faults; the mock carries them, so the implementation has
   something to copy rather than something to remember.
 - **A narrow window and a phone are different questions.** Below `md` the
-  sidebar becomes a drawer, which is what Discord does — that is the *window*
-  answer. The *phone* answer is not this shell at all — see the
+  sidebar becomes a drawer, which is what Discord does — that is the _window_
+  answer. The _phone_ answer is not this shell at all — see the
   [2026-09-05 amendment](#amendment--a-phone-reaches-the-room-directly-2026-09-05),
   which supersedes this bullet's original reading (a redirect to a separate
   spectator page). Do not let the drawer imply the phone gets the desk shell
