@@ -4,10 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const buffered = vi.hoisted(() => ({
 	rows: [] as { watts: number }[],
 	since: [] as number[],
+	/** What since() hands back: the rows the hub never acknowledged. */
+	tail: [] as { watts: number }[],
 	opened: [] as { workoutName: string; startedAt: number }[],
 	ended: 0,
 }));
 vi.mock('$lib/ride/buffer', () => ({
+	MIN_SAMPLES: 60,
 	openRideBuffer: async (meta: { workoutName: string; startedAt: number }) => {
 		buffered.opened.push(meta);
 		return {
@@ -19,7 +22,7 @@ vi.mock('$lib/ride/buffer', () => ({
 			},
 			since: async (seq: number) => {
 				buffered.since.push(seq);
-				return [];
+				return buffered.tail;
 			},
 		};
 	},
@@ -187,15 +190,20 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		FakeSocket.last = null;
 		buffered.opened.length = 0;
 		buffered.rows.length = 0;
+		buffered.tail.length = 0;
 		buffered.ended = 0;
 		vi.useFakeTimers();
 		vi.setSystemTime(2_000_000);
 	});
 
-	const phase = (socket: FakeSocket, phase: string) =>
+	const phase = (socket: FakeSocket, phase: string, seq?: number) =>
 		socket.onmessage?.({
 			data: JSON.stringify({
-				tick: { at: Date.now(), state: { phase, elapsed: 0 } },
+				tick: {
+					at: Date.now(),
+					state: { phase, elapsed: 0 },
+					riders: seq === undefined ? undefined : { u1: { seq } },
+				},
 			}),
 		});
 
@@ -223,11 +231,39 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		expect(buffered.rows).toHaveLength(1);
 
 		phase(socket, 'done');
+		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.ended).toBe(1);
 		// The next session gets its own.
 		running(socket, 0, 'Main set');
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.opened).toHaveLength(2);
+		vi.useRealTimers();
+	});
+
+	it('keeps the buffer unfinished when the hub never heard a minute of it (#1536)', async () => {
+		const live = createRoomLive('tail');
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		for (let i = 0; i < 70; i++) live.sendMetrics({ watts: 200 });
+		// The hub acknowledged nothing past the tenth sample; the rest is the
+		// tail a dropped socket replayed into a room that had already saved.
+		buffered.tail = Array.from({ length: 60 }, () => ({ watts: 200 }));
+		phase(socket, 'done', 10);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.since).toContain(10);
+		expect(buffered.ended).toBe(0);
+
+		// Under a minute unheard is the last second of a clean close, not a
+		// lost ride: the buffer ends as before.
+		buffered.tail = [{ watts: 200 }];
+		running(socket, 0, 'Main set');
+		await vi.advanceTimersByTimeAsync(0);
+		live.sendMetrics({ watts: 210 });
+		phase(socket, 'done', 70);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.ended).toBe(1);
 		vi.useRealTimers();
 	});
 
