@@ -15,7 +15,6 @@
 	 * comes from the components the room draws, because a rider alone deserves
 	 * the screen a rider in a room gets.
 	 */
-	import { publishHud } from '$lib/hud/feed';
 	import Flag from '@lucide/svelte/icons/flag';
 	import Banner from '$lib/components/Banner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -33,7 +32,6 @@
 		ftp,
 		kg,
 		lthr,
-		remaining,
 		watts,
 		target,
 		signalLost,
@@ -49,8 +47,6 @@
 		kg: number;
 		/** Yours, for your own bpm's zone colour (ADR-0014). */
 		lthr?: number;
-		/** Seconds left in the whole session — the HUD's number, not the header's. */
-		remaining: number;
 		watts: number;
 		target: number;
 		signalLost: boolean;
@@ -69,9 +65,6 @@
 
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
 	// second window to mirror — the shell's overlay, or another tab.
-	$effect(() => {
-		publishHud({ watts, target, remaining, label: workout.name });
-	});
 </script>
 
 <!-- The bottom padding is the floating navigation button's (ux.md: the last

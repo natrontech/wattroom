@@ -343,18 +343,27 @@
 		</a>
 		<div class="panel px-4 py-3">
 			<p class="eyebrow">this week</p>
-			<p class="font-display text-2xl font-bold tabular-nums">
-				{week.count}<span class="text-muted ml-1 text-sm"
-					>ride{week.count === 1 ? '' : 's'}</span
-				>
-			</p>
-			<p class="text-muted text-[11px] tabular-nums">
-				{week.minutes} min · {week.kj.toLocaleString()} kJ
-			</p>
+			{#if rides === null}
+				<!-- Not "0 rides" while the list is in flight (#1666). -->
+				<Skeleton class="mt-1 h-7 w-20" />
+				<Skeleton class="mt-1 h-3 w-24" />
+			{:else}
+				<p class="font-display text-2xl font-bold tabular-nums">
+					{week.count}<span class="text-muted ml-1 text-sm"
+						>ride{week.count === 1 ? '' : 's'}</span
+					>
+				</p>
+				<p class="text-muted text-[11px] tabular-nums">
+					{week.minutes} min · {week.kj.toLocaleString()} kJ
+				</p>
+			{/if}
 		</div>
 		<div class="panel px-4 py-3">
 			<p class="eyebrow">form</p>
-			{#if form}
+			{#if rides === null}
+				<Skeleton class="mt-1 h-7 w-16" />
+				<Skeleton class="mt-1 h-3 w-24" />
+			{:else if form}
 				<p class="font-display text-2xl font-bold tabular-nums">
 					{form.formPct > 0 ? '+' : ''}{Math.round(form.formPct)}%
 				</p>
