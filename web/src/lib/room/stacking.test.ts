@@ -55,6 +55,16 @@ describe('room stacking (#483)', () => {
 		expect(chatSheet).toBeGreaterThan(seatedPlayer);
 	});
 
+	it('keeps our own chrome under the floating player (RMF)', () => {
+		// A cheer rising across the cornered player is our chrome over it —
+		// the one thing the rule forbids (audit 2026-09-09).
+		const cheers = layer(
+			'lib/room/CheerLayer.svelte',
+			/fixed inset-x-0 bottom-16 z-(\d+)/,
+		);
+		expect(cheers).toBeLessThan(floatingPlayer);
+	});
+
 	it('keeps the floating player under every overlay', () => {
 		// Cornered, it is chrome like any other and yields to dialogs.
 		expect(floatingPlayer).toBeLessThan(tvMode);

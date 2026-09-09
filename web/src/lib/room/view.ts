@@ -89,6 +89,43 @@ export interface Block {
 	next: { label: string; watts: number; seconds: number } | null;
 }
 
+/**
+ * A block's cadence or HR band as a rider reads it, coloured by their own live
+ * value (#66, #67 — display-only, never scored). Shared by the TV strip and
+ * the Training header: the header never drew the band at all, so a torque
+ * block read as "Sweet spot · 240 W" on the surface the rider pedals in
+ * front of (audit 2026-09-09).
+ */
+export function bandText(
+	low: number | undefined,
+	high: number | undefined,
+	unit: string,
+	value: number,
+): { text: string; unit: string; inBand: boolean } | null {
+	const text =
+		low !== undefined && high !== undefined
+			? `${low}–${high} ${unit}`
+			: high !== undefined
+				? `under ${high} ${unit}`
+				: low !== undefined
+					? `over ${low} ${unit}`
+					: null;
+	if (!text) return null;
+	const inBand =
+		value > 0 &&
+		(low === undefined || value >= low) &&
+		(high === undefined || value <= high);
+	return { text, unit, inBand };
+}
+
+export function blockBands(block: Block | null, cadence: number, hr: number) {
+	if (!block) return [];
+	return [
+		bandText(block.cadenceLow, block.cadenceHigh, 'rpm', cadence),
+		bandText(block.hrLow, block.hrHigh, 'bpm', hr),
+	].filter((b) => b !== null);
+}
+
 /** What a rider reads mid-interval: what this block is, how long is left, what's next. */
 export function describeBlock(
 	info: TargetInfo,

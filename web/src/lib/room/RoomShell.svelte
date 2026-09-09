@@ -329,6 +329,7 @@
 		live={phase === 'live'}
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
+		sprint={live.tick?.sprint ?? null}
 		onExit={() => (tv = false)}
 	/>
 {/if}
@@ -355,7 +356,7 @@
 	/>
 {/if}
 
-{#if shared?.phase === 'done' && recording.samples.length > 0 && !summary.dismissed}
+{#if shared?.phase === 'done' && summary.ready && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
 	     and nothing said so — a modal is the room telling you it is over. -->

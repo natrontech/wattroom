@@ -1,5 +1,8 @@
 <script lang="ts">
+	import RoomStatus from '$lib/room/RoomStatus.svelte';
+	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
+	import type { SprintState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
 	import type { Block, RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
@@ -24,6 +27,7 @@
 		live = false,
 		workoutName = '',
 		playing = false,
+		sprint = null,
 		onExit,
 	}: {
 		riders: RoomRider[];
@@ -38,8 +42,12 @@
 		workoutName?: string;
 		/** Something is on the deck, so the dock needs somewhere to land. */
 		playing?: boolean;
+		/** The armed sprint, drawn over the numbers — the TV had none. */
+		sprint?: SprintState | null;
 		onExit: () => void;
 	} = $props();
+
+	const you = $derived(riders.find((r) => r.you));
 </script>
 
 <!-- TV mode is the cave whatever the theme says — it exists for the ride. -->
@@ -54,6 +62,18 @@
 			style="min-height: 200px"
 			{@attach (node) => offerSeat(node, TV_SEAT)}
 		></div>
+	{/if}
+	<!-- Ride-critical status on the TV too (audit 2026-09-09): the overlay
+	     used to paint over a trainer drop, a reconnect and the rider's own
+	     auto-pause while the instrument kept looking confident. Clear of
+	     the player's seat in the top-right. -->
+	<div class="absolute top-[2vh] right-[30vw] left-[3vw] z-10">
+		<RoomStatus />
+	</div>
+	{#if sprint}
+		<div class="absolute inset-x-[12vw] top-[14vh] z-10">
+			<SprintMoment {sprint} myWatts={you?.watts ?? 0} roster={riders} />
+		</div>
 	{/if}
 	<button
 		onclick={onExit}

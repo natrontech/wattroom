@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatClock, type Block } from '$lib/room/mockcompat';
+	import { blockBands } from '$lib/room/view';
 
 	let {
 		block,
@@ -20,35 +21,7 @@
 		hr?: number;
 	} = $props();
 
-	const band = (
-		low: number | undefined,
-		high: number | undefined,
-		unit: string,
-		value: number,
-	) => {
-		const text =
-			low !== undefined && high !== undefined
-				? `${low}–${high} ${unit}`
-				: high !== undefined
-					? `under ${high} ${unit}`
-					: low !== undefined
-						? `over ${low} ${unit}`
-						: null;
-		if (!text) return null;
-		const inBand =
-			value > 0 &&
-			(low === undefined || value >= low) &&
-			(high === undefined || value <= high);
-		return { text, inBand };
-	};
-	const bands = $derived(
-		block
-			? [
-					band(block.cadenceLow, block.cadenceHigh, 'rpm', cadence),
-					band(block.hrLow, block.hrHigh, 'bpm', hr),
-				].filter((b) => b !== null)
-			: [],
-	);
+	const bands = $derived(blockBands(block, cadence, hr));
 </script>
 
 <!--

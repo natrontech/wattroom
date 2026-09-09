@@ -25,6 +25,8 @@
 	import { pictureKey } from '$lib/room/stage';
 	import { formatClock } from '$lib/format';
 	import { useRoom } from '$lib/room/context';
+	import { blockBands } from '$lib/room/view';
+	import { serverNow } from '$lib/room/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	const room = useRoom();
@@ -33,10 +35,25 @@
 	const share = $derived(
 		room.onStage && room.onStage.key !== 'jukebox' ? room.onStage : null,
 	);
+	// The podium yields the instrument a few seconds after the window, as
+	// the desktop Training place does (audit 2026-09-09).
+	const PODIUM_MS = 8_000;
+	let now = $state(serverNow());
+	$effect(() => {
+		if (!room.sprint) return;
+		const id = setInterval(() => (now = serverNow()), 250);
+		return () => clearInterval(id);
+	});
+	const sprintFocus = $derived(
+		!!room.sprint && now < room.sprint.endsAtMs + PODIUM_MS,
+	);
 	const focus = $derived(
-		room.sprint ? 'sprint' : room.game ? 'game' : share ? 'media' : 'rider',
+		sprintFocus ? 'sprint' : room.game ? 'game' : share ? 'media' : 'rider',
 	);
 	const followed = $derived(followedRider(room.riders, room.focusId));
+	const bands = $derived(
+		blockBands(room.block, followed?.cadence ?? 0, followed?.hr ?? 0),
+	);
 	// Everyone but whoever the instrument is already about — and not yourself
 	// while you are not pedalling: a spectator's own 0 W tile is the one thing
 	// on this screen nobody came to look at.
@@ -62,6 +79,15 @@
 					<span class="text-muted text-xs font-normal">left in block</span>
 				</p>
 			{/if}
+			{#each bands as band (band.unit)}
+				<p
+					class="font-display text-lg leading-none font-bold tabular-nums {band.inBand
+						? 'text-z4'
+						: 'text-muted'}"
+				>
+					{band.text}
+				</p>
+			{/each}
 			<p class="text-muted ml-auto text-sm tabular-nums">
 				{formatClock(elapsed)}<span class="text-muted/50"
 					>/{formatClock(total)}</span
@@ -99,6 +125,19 @@
 					canControl={room.canControl && !device.spectator}
 					end={() => room.control('game-end')}
 				/>
+				{#if followed && !room.game.meterHidden}
+					<!-- The rider's own watts under the game (audit 2026-09-09):
+					     the panel says the line and who is left, never what you
+					     are producing. Watt Golf hides it on purpose. -->
+					<div class="mt-3">
+						<Instrument
+							watts={followed.watts}
+							target={followed.target}
+							ftp={followed.ftp}
+							compact
+						/>
+					</div>
+				{/if}
 			</section>
 		{:else}
 			{#if focus === 'media' && share}
