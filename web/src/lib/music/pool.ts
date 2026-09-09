@@ -78,6 +78,18 @@ export function saveTrack(
 	return api<Track>(`/api/tracks/${id}`, { method: 'PATCH', json: fields });
 }
 
+/**
+ * Several of your tracks onto a room's live queue in one request (#1433).
+ * One call through the playlist bridge, not one socket command per track:
+ * the hub throttles a rider's commands and would drop most of a burst.
+ */
+export function queueTracks(slug: string, trackIds: string[]) {
+	return api<{ queued: number; skipped: number }>(`/api/rooms/${slug}/queue`, {
+		method: 'POST',
+		json: { trackIds },
+	});
+}
+
 export function deleteTrack(id: string) {
 	return api<null>(`/api/tracks/${id}`, { method: 'DELETE' });
 }

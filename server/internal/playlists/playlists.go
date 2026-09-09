@@ -71,6 +71,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/playlists/{id}/tracks/{trackID}", s.handleDeleteRoomTrack)
 	mux.HandleFunc("PUT /api/rooms/{slug}/playlists/{id}/tracks/{trackID}/position", s.handleMoveRoomTrack)
 	mux.HandleFunc("POST /api/rooms/{slug}/playlists/{id}/queue", s.handleQueuePlaylist)
+	mux.HandleFunc("POST /api/rooms/{slug}/queue", s.handleQueueTracks)
 	mux.HandleFunc("GET /api/rooms/{slug}/autoplay", s.handleGetAutoplay)
 	mux.HandleFunc("PATCH /api/rooms/{slug}/autoplay", s.handleUpdateAutoplay)
 

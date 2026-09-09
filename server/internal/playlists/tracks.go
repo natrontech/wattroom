@@ -285,23 +285,23 @@ func (s *Service) handleDeletePersonalTrack(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// handleQueuePlaylist appends a playlist's tracks onto the room's live queue
-// (#627) — the playlist may be this room's own, or the caller's personal
-// shelf; either is fine, unlike edit/delete which stay scope-exclusive.
-func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
+// queueScope is who may push onto a room's live queue over HTTP: a signed-in
+// member of the room named by {slug} who is banned at neither level. Shared
+// by "queue this playlist" and "queue these tracks" (#1433).
+func (s *Service) queueScope(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		return
+		return db.Room{}, db.User{}, false
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(r.PathValue("slug")))
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No room lives at this link.")
-		return
+		return db.Room{}, db.User{}, false
 	}
 	if err != nil {
 		s.log.Error("room lookup failed", "err", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
-		return
+		return db.Room{}, db.User{}, false
 	}
 	// Both ban levels (ADR-0038): a crew ban reaches this door too, and asking
 	// it here rather than trusting the membership row is what stopped the
@@ -313,6 +313,17 @@ func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: user.ID,
 	}); err != nil || m.Role == "banned" || banErr != nil || banned {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to use its jukebox.")
+		return db.Room{}, db.User{}, false
+	}
+	return room, user, true
+}
+
+// handleQueuePlaylist appends a playlist's tracks onto the room's live queue
+// (#627) — the playlist may be this room's own, or the caller's personal
+// shelf; either is fine, unlike edit/delete which stay scope-exclusive.
+func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
+	room, user, ok := s.queueScope(w, r)
+	if !ok {
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
