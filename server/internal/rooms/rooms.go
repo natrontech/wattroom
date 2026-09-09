@@ -6,6 +6,7 @@ package rooms
 import (
 	"crypto/rand"
 	"errors"
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -74,6 +75,26 @@ type Service struct {
 	presence Presence
 	notifier Notifier
 	voice    VoiceEjector
+	// Guesses at a crew code per address (#1673): the door and the join were
+	// unmetered over a 31^6 space, and every hit is a real crew join. The
+	// sign-in ceiling, because the door is a sign-in-shaped surface.
+	doors *budget.Budget[string]
+}
+
+const (
+	doorGuessesPerWindow = 30
+	doorWindow           = time.Minute
+)
+
+// throttleDoor answers 429 and reports true when this address has spent its
+// window of guesses. A nil budget (a bare test service) never throttles.
+func (s *Service) throttleDoor(w http.ResponseWriter, r *http.Request) bool {
+	if s.doors == nil || s.doors.Spend(httpx.ClientIP(r)) {
+		return false
+	}
+	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+		"Too many crew codes tried from this address — wait a minute and try again.")
+	return true
 }
 
 // SetPresence wires the hub in after construction (the hub needs this service
@@ -110,7 +131,8 @@ func (s *Service) changed() {
 func (s *Service) SetNotifier(n Notifier) { s.notifier = n }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+	return &Service{store: st, users: users, log: log,
+		doors: budget.New[string](doorGuessesPerWindow, doorWindow)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -232,7 +254,15 @@ func randomCode(length int) string {
 	if _, err := rand.Read(b); err != nil {
 		panic(err) // crypto/rand failing means the platform is broken
 	}
+	// Rejection sampling (#1673): 256 mod 31 is 8, so a plain modulo drew
+	// the first eight letters 9/256 of the time and the rest 8/256.
+	const unbiased = 256 - 256%len(alphabet)
 	for i := range b {
+		for int(b[i]) >= unbiased {
+			if _, err := rand.Read(b[i : i+1]); err != nil {
+				panic(err)
+			}
+		}
 		b[i] = alphabet[int(b[i])%len(alphabet)]
 	}
 	return string(b)

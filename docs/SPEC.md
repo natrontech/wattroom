@@ -74,7 +74,7 @@ running it — ADR-0038 asks for two caps and this is the pair.
 | See the crew's ban list                                                         | ✓                                                     | ✓                  | –           |
 | Open a room in the crew (#1201)                                                 | ✓                                                     | ✓                  | –           |
 | Invite to the crew — share its code or link (#1236)                             | ✓                                                     | ✓                  | ✓           |
-| Leave the crew (#1228) — the owner hands it on first                            | –                                                     | ✓                  | ✓           |
+| Leave the crew (#1228) — the owner hands it on first; a room owner hands the room to one of its members or deletes it first (#1675) | –                                                     | ✓                  | ✓           |
 | See the crew's rooms listed, with their access state (#1149)                    | ✓                                                     | ✓                  | ✓           |
 | Open a room to the crew or shut it, without entering it (#1226)                 | ✓                                                     | ✓                  | –           |
 | Enter a room open to the crew                                                   | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |

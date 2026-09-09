@@ -20,6 +20,9 @@ import (
 // not its rooms, not its people. A code is a secret, so an unknown one and a
 // malformed one read the same.
 func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
+	if s.throttleDoor(w, r) {
+		return
+	}
 	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
@@ -73,6 +76,9 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	if s.throttleDoor(w, r) {
 		return
 	}
 	code := strings.ToUpper(strings.TrimSpace(req.Code))
@@ -142,6 +148,11 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
 	err = s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	if err == nil {
+		// The confirm promised it: "a private room needs a fresh invitation
+		// from its owner" — the grant used to outlive the membership (#1672).
+		err = s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
+	}
 	if err == nil {
 		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}

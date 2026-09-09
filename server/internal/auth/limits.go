@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/budget"
@@ -21,26 +19,10 @@ const (
 	syntheticPerWindow     = 10
 )
 
-// ipOf is the caller's address: the first hop of X-Forwarded-For behind the
-// reverse proxy the deploy runs (deploy/Caddyfile), else the socket's peer.
-func ipOf(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if first, _, ok := strings.Cut(xff, ","); ok {
-			return strings.TrimSpace(first)
-		}
-		return strings.TrimSpace(xff)
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
 // throttle answers 429 and reports true when this address has spent its
 // window on `b`. A nil budget (a bare test service) never throttles.
 func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget.Budget[string]) bool {
-	if b == nil || b.Spend(ipOf(r)) {
+	if b == nil || b.Spend(httpx.ClientIP(r)) {
 		return false
 	}
 	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",

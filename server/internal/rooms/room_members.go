@@ -40,15 +40,28 @@ func (s *Service) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !can {
-		if !room.Listed || !room.CrewID.Valid {
+		// A listing is a door only onto a room open to its crew (#1671): the
+		// columns were independent, and a room shut on the crew page stayed
+		// enterable from the directory.
+		if !room.Listed || !room.CrewVisible || !room.CrewID.Valid {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden",
 				"This room is in a crew you are not in. Ask for the crew's invite link.")
 			return
 		}
-		if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: room.CrewID, UserID: user.ID}); err != nil {
-			s.log.Error("crew join via listed room failed", "err", err, "room", room.Slug)
+		role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID})
+		if err != nil {
+			s.log.Error("crew role lookup failed", "err", err, "room", room.Slug)
 			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
 			return
+		}
+		// The crew's owner holds no role row by design; writing one listed
+		// them twice and crashed the crew page's keyed list (#1671).
+		if role == "" {
+			if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: room.CrewID, UserID: user.ID}); err != nil {
+				s.log.Error("crew join via listed room failed", "err", err, "room", room.Slug)
+				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+				return
+			}
 		}
 	}
 	// Idempotent by design (ON CONFLICT DO NOTHING): joining twice is a no-op,
@@ -194,6 +207,11 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
 			"They are not in this room — a banned rider is unbanned, not removed.")
 		return
+	}
+	// The grant that let them into a private room goes with the membership
+	// (#1672): left behind, it was a door back in the moment they tried.
+	if err := s.store.Queries.RevokeRoomAccess(r.Context(), db.RevokeRoomAccessParams{RoomID: room.ID, UserID: target}); err != nil {
+		s.log.Error("revoke on remove failed", "err", err, "room", room.Slug)
 	}
 	// Leaving or being removed ends the live connection too — a socket whose
 	// membership is gone must not keep streaming until it happens to close.

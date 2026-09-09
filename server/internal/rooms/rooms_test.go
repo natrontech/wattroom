@@ -1408,3 +1408,31 @@ func (h *harness) directory(t *testing.T, who string) []string {
 	}
 	return names
 }
+
+// Someone removed since they said yes is not coming (#1675): a crew ban
+// takes the room memberships and used to leave the name on the card.
+func TestARemovedMemberIsNotComing(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Event Room Removal")
+	h.enter(t, "bob", code, slug)
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+		fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`,
+			workout, time.Now().Add(2*time.Hour).UTC().Format(time.RFC3339)))
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	planID, _ := body["id"].(string)
+	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/schedule/"+planID+"/rsvp", ""); status != http.StatusNoContent {
+		t.Fatalf("rsvp: %d", status)
+	}
+	if going := h.going(t, slug); len(going) != 1 {
+		t.Fatalf("going after rsvp: %v — test proves nothing", going)
+	}
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/members/"+h.userID(t, "bob"), ""); status != http.StatusNoContent {
+		t.Fatalf("remove: %d", status)
+	}
+	if going := h.going(t, slug); len(going) != 0 {
+		t.Errorf("a removed member is still coming: %v", going)
+	}
+}

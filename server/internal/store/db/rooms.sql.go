@@ -612,6 +612,7 @@ select r.session_id, r.user_id, u.display_name
 from session_rsvps r
 join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id
+join memberships m on m.room_id = s.room_id and m.user_id = r.user_id and m.role <> 'banned'
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
 order by r.created_at
 `
@@ -624,6 +625,8 @@ type ListRoomRsvpsRow struct {
 
 // Who is in, for everything ListRoomUpcoming returns. Ordered by when they
 // said yes, so the first names in the line are the ones who committed first.
+// Someone removed or banned since they said yes is not coming (#1675): the
+// row stays, the line does not name them.
 func (q *Queries) ListRoomRsvps(ctx context.Context, roomID pgtype.UUID) ([]ListRoomRsvpsRow, error) {
 	rows, err := q.db.Query(ctx, listRoomRsvps, roomID)
 	if err != nil {
@@ -1074,7 +1077,7 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 }
 
 const updateRoom = `-- name: UpdateRoom :one
-update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
+update rooms set name = $2, listed = ($3 and $8), sound_pack = $4, icon = $5, cheers = $6,
                  board_enabled = $7, crew_visible = $8
 where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
 `
@@ -1090,6 +1093,8 @@ type UpdateRoomParams struct {
 	CrewVisible  bool
 }
 
+// listed implies crew_visible (#1671): the directory is a door onto the crew,
+// and a room shut to the crew is not a public one.
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
 	row := q.db.QueryRow(ctx, updateRoom,
 		arg.ID,
