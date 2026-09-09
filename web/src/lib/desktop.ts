@@ -41,14 +41,28 @@ export function shellVersion(): string | null {
 }
 
 /**
- * Whether the shell fetches its own updates (#1303): a shell from
- * desktop-v2026.9.5 on exposes installUpdate; an older one still needs the
- * download link.
+ * The shell's self-update bridge (#1303), or null in a browser and in a
+ * shell older than desktop-v2026.9.5 — which still needs the download link.
+ *
+ * `onUpdate` fires with the release the shell has already downloaded — now
+ * if one is waiting, and later as they land.
  */
+export interface ShellUpdate {
+	onUpdate: (cb: (u: { version: string }) => void) => void;
+	installUpdate: () => void;
+}
+
+export function shellUpdate(): ShellUpdate | null {
+	const shell = (globalThis as { wattroom?: Partial<ShellUpdate> }).wattroom;
+	return typeof shell?.onUpdate === 'function' &&
+		typeof shell.installUpdate === 'function'
+		? (shell as ShellUpdate)
+		: null;
+}
+
+/** Whether that bridge is there, for a page that only needs the answer. */
 export function shellSelfUpdates(): boolean {
-	const shell = (globalThis as { wattroom?: { installUpdate?: unknown } })
-		.wattroom;
-	return typeof shell?.installUpdate === 'function';
+	return shellUpdate() !== null;
 }
 
 /**

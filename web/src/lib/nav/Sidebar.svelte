@@ -57,6 +57,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
+	import UpdateRow from './UpdateRow.svelte';
 	import { shellVersion } from '$lib/desktop';
 
 	let {
@@ -380,6 +381,11 @@
 		</a>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
+		<!-- Above Home, because a downloaded update is the one thing here that
+		     expires: it is what the app will be running next time either way,
+		     and the only choice is whether the rider picks the moment. Nothing
+		     renders unless one is waiting. -->
+		<UpdateRow />
 		<ul class="space-y-0.5">
 			{#each pages as entry (entry.href)}
 				{@const on = destination === entry.href}

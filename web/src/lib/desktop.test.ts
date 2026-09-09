@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	browserSignInUrl,
 	desktopNonce,
@@ -7,6 +7,7 @@ import {
 	installerOS,
 	isNewer,
 	parseRelease,
+	shellUpdate,
 } from './desktop';
 
 // The shape GitHub's releases/latest returns for what desktop-release.yml
@@ -165,5 +166,37 @@ describe('the browser sign-in handoff', () => {
 		expect(browserSignInUrl('https://wattroom.ch', 'n'.repeat(20))).toBe(
 			`https://wattroom.ch/login?desktop=${'n'.repeat(20)}`,
 		);
+	});
+});
+
+describe('shellUpdate', () => {
+	afterEach(() => {
+		delete (globalThis as { wattroom?: unknown }).wattroom;
+	});
+
+	it('is null in a browser, and in a shell missing either half', () => {
+		expect(shellUpdate()).toBeNull();
+		// desktop-v2026.9.4 and older: a bridge, but no updater behind it.
+		(globalThis as { wattroom?: unknown }).wattroom = { version: '2026.9.4' };
+		expect(shellUpdate()).toBeNull();
+		// Half a bridge is not one: a row that announces an update it cannot
+		// install is worse than no row.
+		(globalThis as { wattroom?: unknown }).wattroom = { onUpdate: vi.fn() };
+		expect(shellUpdate()).toBeNull();
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			installUpdate: vi.fn(),
+		};
+		expect(shellUpdate()).toBeNull();
+	});
+
+	it('is the bridge when the shell carries both halves of it', () => {
+		// A renamed key here degrades to "no update row, ever" with nothing
+		// logged anywhere, which is the failure this test exists for.
+		const bridge = { onUpdate: vi.fn(), installUpdate: vi.fn() };
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			version: '2026.9.8',
+			...bridge,
+		};
+		expect(shellUpdate()?.installUpdate).toBe(bridge.installUpdate);
 	});
 });
