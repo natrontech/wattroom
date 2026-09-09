@@ -76,6 +76,10 @@ export function createRoomLive(slug: string) {
 	let seq = 0;
 	let lastSeq = 0;
 	let gapSeq: number | null = null;
+	// One row a second (#791, audit 2026-09-09): the buffer is what a replay
+	// sends and what a recovered .fit reads as one row per second, and a
+	// trainer notifying at 2 Hz used to double both.
+	let bufferedSecond = -1;
 	void openRideBuffer({
 		rideId: `room-${slug}-${Date.now()}`,
 		startedAt: Date.now(),
@@ -248,13 +252,18 @@ export function createRoomLive(slug: string) {
 		sendMetrics(sample: Omit<RiderMetrics, 'seq'>) {
 			const metrics: RiderMetrics = { ...sample, seq: ++seq };
 			lastSeq = metrics.seq;
-			buffer?.append({
-				seq: metrics.seq,
-				watts: metrics.watts,
-				cadence: metrics.cadence ?? 0,
-				heartRate: metrics.hr ?? 0,
-				at: Date.now(),
-			});
+			const at = Date.now();
+			const second = Math.floor(at / 1000);
+			if (second > bufferedSecond) {
+				bufferedSecond = second;
+				buffer?.append({
+					seq: metrics.seq,
+					watts: metrics.watts,
+					cadence: metrics.cadence ?? 0,
+					heartRate: metrics.hr ?? 0,
+					at,
+				});
+			}
 			send({ metrics });
 		},
 		/** The room ride ended cleanly; its buffer is not a crash to recover. */

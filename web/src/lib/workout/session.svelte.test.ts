@@ -35,6 +35,19 @@ function pedal(
 	}
 }
 
+describe('createRideSession startedAt', () => {
+	it('takes the stamp the buffer was opened with, so a retry finds the same ride', () => {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({
+			trainer,
+			workout,
+			ftp: 200,
+			startedAt: 5_000,
+		});
+		expect(session.startedAt.getTime()).toBe(5_000);
+	});
+});
+
 describe('toleranceBand', () => {
 	it('is ±5 % of target with a ±10 W floor', () => {
 		expect(toleranceBand(300)).toBe(15);

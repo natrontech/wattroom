@@ -139,6 +139,7 @@
 				trainer,
 				workout,
 				ftp,
+				startedAt,
 				readings: () => sensors.readings,
 				onRecord: (sample) => {
 					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
@@ -195,8 +196,14 @@
 	// on the account (#110, one history feeding streaks and XP), with the
 	// device store as the fallback when the server is unreachable.
 	$effect(() => {
-		const current = session;
-		if (!current || current.state !== 'done' || recorded) return;
+		if (session?.state === 'done') save(session);
+	});
+	// Called from the effect above and from onDestroy: the effect dies with
+	// the component, and a ride ended by leaving the page used to reach the
+	// account only if the rider later noticed the recovery card (audit
+	// 2026-09-09).
+	function save(current: ReturnType<typeof createRideSession>) {
+		if (recorded) return;
 		recorded = true;
 		const summary = summarise(current.recording);
 		if (summary.seconds === 0) {
@@ -244,7 +251,7 @@
 					? `${failure.message} Its summary stays on this device.`
 					: `${failure.message} This ride is kept on this device — reload to save it from the recovery card.`);
 		});
-	});
+	}
 
 	// bpm appears only when something is actually reporting it. A permanent "-- bpm"
 	// cell is worse than no cell: it reads as a broken strap rather than no strap.
@@ -356,7 +363,7 @@
 		() => !!session && session.state !== 'done' && session.state !== 'idle',
 		{
 			title: 'End the ride and leave?',
-			body: 'The summary and the .fit file are lost.',
+			body: 'The ride so far is saved to your account.',
 			action: 'End the ride',
 			cancel: 'Keep riding',
 		},
@@ -364,7 +371,11 @@
 	// This page is the session's only owner: leaving it ends the ride, as the
 	// confirm above promises — or the trainer holds a target with nobody
 	// watching and the frame stays caved.
-	onDestroy(() => session?.stop());
+	onDestroy(() => {
+		if (!session) return;
+		session.stop();
+		save(session);
+	});
 </script>
 
 <svelte:head><title>{workout.name} · Ride · WattRoom</title></svelte:head>
