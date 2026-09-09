@@ -31,8 +31,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: pgtype.Timestamptz{Time: after, Valid: true},
 	})
 	if err != nil {
-		s.log.Error("list dms", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		httpx.Fail(w, s.log, "list dms", err, "Messages could not be loaded.")
 		return
 	}
 	// The full pair's reactions, independent of `after`: a reaction on a
@@ -44,8 +43,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		Column1: me.ID, Column2: peer, UserID: me.ID,
 	})
 	if err != nil {
-		s.log.Error("list dm reactions", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		httpx.Fail(w, s.log, "list dm reactions", err, "Messages could not be loaded.")
 		return
 	}
 	counts := map[string]map[string]int{}
@@ -85,8 +83,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		Column1: me.ID, Column2: peer,
 	})
 	if err != nil {
-		s.log.Error("list dm edits", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		httpx.Fail(w, s.log, "list dm edits", err, "Messages could not be loaded.")
 		return
 	}
 	edits := make(map[string]protocol.ChatEdit, len(editRows))
@@ -106,8 +103,7 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListDmHeads(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("list dm heads", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Messages could not be loaded.")
+		httpx.Fail(w, s.log, "list dm heads", err, "Messages could not be loaded.")
 		return
 	}
 	type headJSON struct {

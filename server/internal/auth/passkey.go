@@ -180,9 +180,7 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 	}
 	pu, err := s.passkeyUserFor(r, user)
 	if err != nil {
-		s.log.Error("passkey user load failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Adding a passkey could not start. Try again.")
+		httpx.Fail(w, s.log, "passkey user load failed", err, "Adding a passkey could not start. Try again.")
 		return
 	}
 	if len(pu.creds) >= maxPasskeys {
@@ -199,9 +197,7 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 		webauthn.WithExclusions(webauthn.Credentials(pu.WebAuthnCredentials()).CredentialDescriptors()),
 	)
 	if err != nil {
-		s.log.Error("passkey registration start failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Adding a passkey could not start. Try again.")
+		httpx.Fail(w, s.log, "passkey registration start failed", err, "Adding a passkey could not start. Try again.")
 		return
 	}
 	if !s.beginCeremony(w, *session) {
@@ -221,9 +217,7 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 	}
 	pu, err := s.passkeyUserFor(r, user)
 	if err != nil {
-		s.log.Error("passkey user load failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be saved. Try again.")
+		httpx.Fail(w, s.log, "passkey user load failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
 
@@ -238,9 +232,7 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 	}
 	encoded, err := json.Marshal(credential)
 	if err != nil {
-		s.log.Error("passkey encode failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be saved. Try again.")
+		httpx.Fail(w, s.log, "passkey encode failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
 	row, err := s.store.Queries.CreatePasskey(r.Context(), db.CreatePasskeyParams{
@@ -248,9 +240,7 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 		Name: passkeyName(r.URL.Query().Get("name")),
 	})
 	if err != nil {
-		s.log.Error("passkey save failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey could not be saved. Try again.")
+		httpx.Fail(w, s.log, "passkey save failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
 	s.alert(user, "A passkey was added to your account",
@@ -264,9 +254,7 @@ func (s *Service) handlePasskeyLoginStart(w http.ResponseWriter, r *http.Request
 	}
 	assertion, session, err := s.wa.BeginDiscoverableLogin()
 	if err != nil {
-		s.log.Error("passkey login start failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Signing in with a passkey could not start. Try again.")
+		httpx.Fail(w, s.log, "passkey login start failed", err, "Signing in with a passkey could not start. Try again.")
 		return
 	}
 	if !s.beginCeremony(w, *session) {
@@ -324,9 +312,7 @@ func (s *Service) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := s.startSession(w, r, pu.user.ID); err != nil {
-		s.log.Error("session create failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"That passkey worked, but the session could not be saved. Try again.")
+		httpx.Fail(w, s.log, "session create failed", err, "That passkey worked, but the session could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), pu.user))

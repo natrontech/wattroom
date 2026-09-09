@@ -33,8 +33,7 @@ func (s *Service) moveTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	rows, err := s.store.Queries.ListPlaylistTracks(r.Context(), p.ID)
 	if err != nil {
-		s.log.Error("list playlist tracks failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be loaded.")
+		httpx.Fail(w, s.log, "list playlist tracks failed", err, "The playlist could not be loaded.")
 		return
 	}
 	from := -1
@@ -56,29 +55,25 @@ func (s *Service) moveTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("reorder: begin failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be reordered. Try again.")
+		httpx.Fail(w, s.log, "reorder: begin failed", err, "The playlist could not be reordered. Try again.")
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
 	if err := q.ShiftPlaylistPositions(r.Context(), p.ID); err != nil {
-		s.log.Error("reorder: shift failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be reordered. Try again.")
+		httpx.Fail(w, s.log, "reorder: shift failed", err, "The playlist could not be reordered. Try again.")
 		return
 	}
 	for i, row := range rows {
 		if err := q.SetPlaylistTrackPosition(r.Context(), db.SetPlaylistTrackPositionParams{
 			ID: row.ID, PlaylistID: p.ID, Position: int32(i), //nolint:gosec // bounded by maxSavedTracks
 		}); err != nil {
-			s.log.Error("reorder: set position failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be reordered. Try again.")
+			httpx.Fail(w, s.log, "reorder: set position failed", err, "The playlist could not be reordered. Try again.")
 			return
 		}
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		s.log.Error("reorder: commit failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be reordered. Try again.")
+		httpx.Fail(w, s.log, "reorder: commit failed", err, "The playlist could not be reordered. Try again.")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

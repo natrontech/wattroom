@@ -125,8 +125,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, err := s.store.Queries.ListUserTokens(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("token list failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Tokens could not be loaded.")
+		httpx.Fail(w, s.log, "token list failed", err, "Tokens could not be loaded.")
 		return
 	}
 	if len(existing) >= maxTokensPerUser {
@@ -138,8 +137,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	secret := make([]byte, 32)
 	if _, err := rand.Read(secret); err != nil {
-		s.log.Error("token entropy failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The token could not be created.")
+		httpx.Fail(w, s.log, "token entropy failed", err, "The token could not be created.")
 		return
 	}
 	raw := "wrt_" + hex.EncodeToString(secret)
@@ -148,8 +146,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		UserID: user.ID, Name: req.Name, TokenHash: hash[:],
 	})
 	if err != nil {
-		s.log.Error("token create failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The token could not be created.")
+		httpx.Fail(w, s.log, "token create failed", err, "The token could not be created.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, tokenJSON{
@@ -166,8 +163,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListUserTokens(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("token list failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Tokens could not be loaded.")
+		httpx.Fail(w, s.log, "token list failed", err, "Tokens could not be loaded.")
 		return
 	}
 	out := make([]tokenJSON, 0, len(rows))
@@ -196,8 +192,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	n, err := s.store.Queries.DeleteToken(r.Context(), db.DeleteTokenParams{ID: id, UserID: user.ID})
 	if err != nil {
-		s.log.Error("token delete failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The token could not be revoked.")
+		httpx.Fail(w, s.log, "token delete failed", err, "The token could not be revoked.")
 		return
 	}
 	if n == 0 {

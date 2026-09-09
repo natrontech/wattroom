@@ -36,8 +36,7 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("dm image save failed", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be sent. Try again.")
+		httpx.Fail(w, s.log, "dm image save failed", err, "The picture could not be sent. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
 	s.pruneImages(r, me.ID, peer)

@@ -50,8 +50,7 @@ func (s *Service) handleSetCrewImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.SetCrewImage(r.Context(), db.SetCrewImageParams{ID: crew.ID, ImageMime: &mime, Image: data}); err != nil {
-		s.log.Error("crew image save failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be saved.")
+		httpx.Fail(w, s.log, "crew image save failed", err, "The picture could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	s.changed()
@@ -68,8 +67,7 @@ func (s *Service) handleClearCrewImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.ClearCrewImage(r.Context(), crew.ID); err != nil {
-		s.log.Error("crew image clear failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be removed.")
+		httpx.Fail(w, s.log, "crew image clear failed", err, "The picture could not be removed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	s.changed()
@@ -92,8 +90,7 @@ func (s *Service) handleCrewDoorImage(w http.ResponseWriter, r *http.Request) {
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			s.log.Error("crew door image lookup failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The image could not be loaded.")
+			httpx.Fail(w, s.log, "crew door image lookup failed", err, "The image could not be loaded.")
 			return
 		}
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
@@ -109,8 +106,7 @@ func (s *Service) serveCrewImage(w http.ResponseWriter, r *http.Request, id pgty
 		return
 	}
 	if err != nil {
-		s.log.Error("crew image read failed", "err", err, "crew", store.UUIDString(id))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be loaded.")
+		httpx.Fail(w, s.log, "crew image read failed", err, "The picture could not be loaded.", "crew", store.UUIDString(id))
 		return
 	}
 	httpx.ServeImage(w, r, *img.ImageMime, img.Image, img.ImageSetAt.Time)

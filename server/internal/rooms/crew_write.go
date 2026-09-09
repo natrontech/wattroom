@@ -50,8 +50,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := s.store.Queries.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: req.Name, Icon: icon})
 	if err != nil {
-		s.log.Error("crew update failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The crew could not be saved.")
+		httpx.Fail(w, s.log, "crew update failed", err, "The crew could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	s.changed()
@@ -108,8 +107,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 	}
 	standing, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: target})
 	if err != nil {
-		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The role could not be changed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	// Joining is the one way in (ADR-0038 amended): a role is for someone
@@ -127,8 +125,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		// leave a banned person for the successor of last resort to pick.
 		owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: target})
 		if err != nil {
-			s.log.Error("crew ban owner check failed", "err", err, "crew", store.UUIDString(crew.ID))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+			httpx.Fail(w, s.log, "crew ban owner check failed", err, "The role could not be changed.", "crew", store.UUIDString(crew.ID))
 			return
 		}
 		if owned > 0 {
@@ -142,8 +139,7 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 	// unbanned rider with no membership to come back to (audit 2026-09-09).
 	err = s.store.Queries.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: target, Role: req.Role})
 	if err != nil {
-		s.log.Error("crew role update failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")
+		httpx.Fail(w, s.log, "crew role update failed", err, "The role could not be changed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	if req.Role == "banned" {

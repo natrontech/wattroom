@@ -99,8 +99,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		// Not "not friends": the database did not answer (audit 2026-09-09).
-		s.log.Error("dm send failed", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be sent. Try again.")
+		httpx.Fail(w, s.log, "dm send failed", err, "The message could not be sent. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if err := s.store.Queries.PruneDms(r.Context(), db.PruneDmsParams{
@@ -226,8 +225,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		MessageID: mid, Emoji: req.Emoji,
 	})
 	if err != nil {
-		s.log.Error("count dm reaction", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+		httpx.Fail(w, s.log, "count dm reaction", err, "The reaction could not be saved.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatReactionCount{

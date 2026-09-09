@@ -80,9 +80,7 @@ func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMess
 	case errors.Is(err, errNoSession):
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", signInMessage)
 	default:
-		s.log.Error("session lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Could not check your session — try again in a moment.")
+		httpx.Fail(w, s.log, "session lookup failed", err, "Could not check your session — try again in a moment.")
 	}
 	return db.User{}, false
 }

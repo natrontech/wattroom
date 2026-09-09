@@ -53,8 +53,7 @@ func (s *Service) handleDirectory(w http.ResponseWriter, r *http.Request) {
 		Lim: int32(limit), Off: int32(offset), //nolint:gosec // limit is the page size, offset clamped above
 	})
 	if err != nil {
-		s.log.Error("room directory failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The directory could not be loaded.")
+		httpx.Fail(w, s.log, "room directory failed", err, "The directory could not be loaded.")
 		return
 	}
 	out := make([]directoryEntryJSON, 0, len(rows))
@@ -92,8 +91,7 @@ func (s *Service) handleSetMyPrefs(w http.ResponseWriter, r *http.Request) {
 		RoomID: room.ID, UserID: user.ID, Notify: req.Notify, OnBoard: req.OnBoard,
 	})
 	if err != nil {
-		s.log.Error("set rider prefs failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		httpx.Fail(w, s.log, "set rider prefs failed", err, "That could not be saved. Try again.", "room", room.Slug)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, riderPrefsJSON{Notify: prefs.Notify, OnBoard: prefs.OnBoard})

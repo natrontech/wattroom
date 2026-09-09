@@ -70,8 +70,7 @@ func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("avatar read failed", "err", err, "rider", r.PathValue("id"))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be loaded.")
+		httpx.Fail(w, s.log, "avatar read failed", err, "The picture could not be loaded.", "rider", r.PathValue("id"))
 		return
 	}
 	httpx.ServeImage(w, r, img.Mime, img.Image, img.SetAt.Time)
@@ -288,8 +287,7 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 }
 
 func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User) {
-	s.log.Error("rider page: "+what, "err", err, "user", store.UUIDString(me.ID))
-	httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That rider's page could not be loaded.")
+	httpx.Fail(w, s.log, "rider page: "+what, err, "That rider's page could not be loaded.", "user", store.UUIDString(me.ID))
 }
 
 // monthZone is the zone "this month" is counted in (#1653): the rider's

@@ -159,8 +159,7 @@ func (s *Service) ownedPlaylist(w http.ResponseWriter, r *http.Request, sc scope
 		return db.Playlist{}, false
 	}
 	if err != nil {
-		s.log.Error("playlist lookup failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be loaded.")
+		httpx.Fail(w, s.log, "playlist lookup failed", err, "The playlist could not be loaded.")
 		return db.Playlist{}, false
 	}
 	return p, true
@@ -181,8 +180,7 @@ func (s *Service) handleListRoomPlaylists(w http.ResponseWriter, r *http.Request
 	}
 	rows, err := s.store.Queries.ListRoomPlaylists(r.Context(), sc.room.ID)
 	if err != nil {
-		s.log.Error("list room playlists failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlists could not be loaded.")
+		httpx.Fail(w, s.log, "list room playlists failed", err, "The playlists could not be loaded.")
 		return
 	}
 	out := make([]playlistJSON, 0, len(rows))
@@ -203,8 +201,7 @@ func (s *Service) handleListPersonalPlaylists(w http.ResponseWriter, r *http.Req
 	}
 	rows, err := s.store.Queries.ListUserPlaylists(r.Context(), sc.user.ID)
 	if err != nil {
-		s.log.Error("list personal playlists failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your playlists could not be loaded.")
+		httpx.Fail(w, s.log, "list personal playlists failed", err, "Your playlists could not be loaded.")
 		return
 	}
 	out := make([]playlistJSON, 0, len(rows))
@@ -243,8 +240,7 @@ func (s *Service) createPlaylist(w http.ResponseWriter, r *http.Request, sc scop
 	}
 	p, err := s.store.Queries.CreatePlaylist(r.Context(), sc.ownerParams(name))
 	if err != nil {
-		s.log.Error("create playlist failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be saved. Try again.")
+		httpx.Fail(w, s.log, "create playlist failed", err, "The playlist could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, playlistJSON{
@@ -281,8 +277,7 @@ func (s *Service) renamePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 	}
 	updated, err := s.store.Queries.RenamePlaylist(r.Context(), db.RenamePlaylistParams{ID: p.ID, Name: name})
 	if err != nil {
-		s.log.Error("rename playlist failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be renamed. Try again.")
+		httpx.Fail(w, s.log, "rename playlist failed", err, "The playlist could not be renamed. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, playlistJSON{
@@ -308,8 +303,7 @@ func (s *Service) deletePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 		return
 	}
 	if _, err := s.store.Queries.DeletePlaylist(r.Context(), p.ID); err != nil {
-		s.log.Error("delete playlist failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The playlist could not be deleted. Try again.")
+		httpx.Fail(w, s.log, "delete playlist failed", err, "The playlist could not be deleted. Try again.")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

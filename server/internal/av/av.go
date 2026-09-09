@@ -98,9 +98,7 @@ func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := s.mint(slug, rider)
 	if err != nil {
-		s.log.Error("av token mint failed", "err", err, "room", slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"The call could not be set up. Try again.")
+		httpx.Fail(w, s.log, "av token mint failed", err, "The call could not be set up. Try again.", "room", slug)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{

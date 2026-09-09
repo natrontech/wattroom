@@ -173,9 +173,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		NotifyPlanned: notify, Lthr: lthr,
 	})
 	if err != nil {
-		s.log.Error("profile update failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your profile could not be saved. Try again.")
+		httpx.Fail(w, s.log, "profile update failed", err, "Your profile could not be saved. Try again.")
 		return
 	}
 	if clearing {
@@ -210,8 +208,7 @@ func (s *Service) handleSetAvatar(w http.ResponseWriter, r *http.Request) {
 		AvatarUrl: &url,
 	})
 	if err != nil {
-		s.log.Error("avatar save failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The picture could not be saved.")
+		httpx.Fail(w, s.log, "avatar save failed", err, "The picture could not be saved.", "user", store.UUIDString(user.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
@@ -265,9 +262,7 @@ func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request)
 		ID: user.ID, AccentPalette: palette, ColorScheme: scheme,
 	})
 	if err != nil {
-		s.log.Error("appearance update failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your appearance could not be saved. Try again.")
+		httpx.Fail(w, s.log, "appearance update failed", err, "Your appearance could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))

@@ -220,8 +220,7 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			err = s.startSession(w, r, user.ID)
 		}
 		if err != nil {
-			s.log.Error("dev login failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Dev login failed. Check the server log.")
+			httpx.Fail(w, s.log, "dev login failed", err, "Dev login failed. Check the server log.")
 			return
 		}
 		http.Redirect(w, r, afterSignIn(p.id, created), http.StatusFound)
@@ -275,9 +274,7 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 		err = s.startSession(w, r, user.ID)
 	}
 	if err != nil {
-		s.log.Error("synthetic sign-in failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Synthetic sign-in failed. Check the server log.")
+		httpx.Fail(w, s.log, "synthetic sign-in failed", err, "Synthetic sign-in failed. Check the server log.")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -339,9 +336,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.startSession(w, r, user.ID); err != nil {
-		s.log.Error("session create failed", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Signed in, but the session could not be saved. Try again.")
+		httpx.Fail(w, s.log, "session create failed", err, "Signed in, but the session could not be saved. Try again.")
 		return
 	}
 	http.Redirect(w, r, afterSignIn(p.id, created), http.StatusFound)

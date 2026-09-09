@@ -56,9 +56,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 		UserID: user.ID, StartsAt: pgTime(time.Now().Add(-30 * time.Minute)),
 	})
 	if err != nil {
-		s.log.Error("schedule list failed", "err", err, "user", store.UUIDString(user.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error",
-			"Your planned sessions could not be loaded. Try again.")
+		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
 	sessions := make([]plannedJSON, 0, len(rows))
@@ -97,8 +95,7 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
 	} else if err != nil {
-		s.log.Error("rsvp lookup failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		httpx.Fail(w, s.log, "rsvp lookup failed", err, "That could not be saved. Try again.", "room", room.Slug)
 		return
 	}
 	if r.Method == http.MethodDelete {
@@ -107,8 +104,7 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 		err = s.store.Queries.SetRsvp(r.Context(), db.SetRsvpParams{SessionID: id, UserID: user.ID})
 	}
 	if err != nil {
-		s.log.Error("rsvp failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That could not be saved. Try again.")
+		httpx.Fail(w, s.log, "rsvp failed", err, "That could not be saved. Try again.", "room", room.Slug)
 		return
 	}
 	// ponytail: no live push — the room reloads after its own action, and
@@ -180,8 +176,7 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID,
 	})
 	if err != nil {
-		s.log.Error("schedule failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The session could not be planned. Try again.")
+		httpx.Fail(w, s.log, "schedule failed", err, "The session could not be planned. Try again.", "room", room.Slug)
 		return
 	}
 	if s.notifier != nil {
@@ -230,8 +225,7 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 		ID: id, RoomID: room.ID,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		s.log.Error("reschedule lookup failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be moved. Try again.")
+		httpx.Fail(w, s.log, "reschedule lookup failed", err, "The plan could not be moved. Try again.", "room", room.Slug)
 		return
 	}
 	row, err := s.store.Queries.RescheduleSession(r.Context(), db.RescheduleSessionParams{
@@ -242,8 +236,7 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("reschedule failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be moved. Try again.")
+		httpx.Fail(w, s.log, "reschedule failed", err, "The plan could not be moved. Try again.", "room", room.Slug)
 		return
 	}
 	if !before.Time.Equal(req.StartsAt) {
@@ -273,8 +266,7 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("unschedule failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The plan could not be removed. Try again.")
+		httpx.Fail(w, s.log, "unschedule failed", err, "The plan could not be removed. Try again.", "room", room.Slug)
 		return
 	}
 	// A session that has already been and gone is not news, and telling

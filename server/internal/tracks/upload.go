@@ -56,15 +56,13 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		// the ordinary case. Without this the duplicate check hands back the
 		// broken row and the only way out is delete-then-upload.
 		if _, err := s.put(sha, data); err != nil {
-			s.log.Error("track rewrite", "err", err, "sha", sha)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+			httpx.Fail(w, s.log, "track rewrite", err, "The track could not be saved.", "sha", sha)
 			return
 		}
 		httpx.WriteJSON(w, http.StatusOK, toJSON(existing, ""))
 		return
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		s.log.Error("track lookup", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track lookup", err, "The track could not be saved.")
 		return
 	}
 
@@ -73,21 +71,18 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// landed, bypassing it by about the quota.
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
-		s.log.Error("track begin", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track begin", err, "The track could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
 	if err := q.LockUser(r.Context(), me.ID); err != nil {
-		s.log.Error("track lock", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track lock", err, "The track could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	used, err := q.TrackQuotaUsed(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("track quota", "err", err, "user", store.UUIDString(me.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track quota", err, "The track could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	// Not 429: the rider's move is to delete something, not to wait — so this
@@ -100,8 +95,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	title, artist, album, bpm, tags := metadata(data, r.URL.Query().Get("name"))
 	if _, err := s.put(sha, data); err != nil {
-		s.log.Error("track write", "err", err, "sha", sha)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track write", err, "The track could not be saved.", "sha", sha)
 		return
 	}
 	row, err := q.CreateTrack(r.Context(), db.CreateTrackParams{
@@ -115,13 +109,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// The file stays: another upload of the same content will find it and
 		// skip the write, and an orphan costs disk rather than correctness.
-		s.log.Error("track insert", "err", err, "sha", sha)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track insert", err, "The track could not be saved.", "sha", sha)
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
-		s.log.Error("track commit", "err", err, "sha", sha)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track commit", err, "The track could not be saved.", "sha", sha)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, toJSON(row, me.DisplayName))

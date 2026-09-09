@@ -170,16 +170,14 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		Lim:        int32(limit), Off: int32(offset), //nolint:gosec // limit and offset both clamped above
 	})
 	if err != nil {
-		s.log.Error("track list", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
+		httpx.Fail(w, s.log, "track list", err, "Your library could not be read.")
 		return
 	}
 	// The shelf labels, over the whole pool rather than this page: a rider
 	// filtering to one tag still needs the others to get back out.
 	facets, err := s.store.Queries.TrackTagCounts(r.Context(), me.ID)
 	if err != nil {
-		s.log.Error("track tag counts", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your library could not be read.")
+		httpx.Fail(w, s.log, "track tag counts", err, "Your library could not be read.")
 		return
 	}
 	out := make([]trackJSON, 0, len(rows))
@@ -215,8 +213,7 @@ func (s *Service) handleAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	f, info, err := s.open(row.Sha256)
 	if err != nil {
-		s.log.Error("track open", "err", err, "sha", row.Sha256)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be played.")
+		httpx.Fail(w, s.log, "track open", err, "That track could not be played.", "sha", row.Sha256)
 		return
 	}
 	defer func() { _ = f.Close() }()
@@ -274,8 +271,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("track update", "err", err, "track", store.UUIDString(row.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be saved.")
+		httpx.Fail(w, s.log, "track update", err, "The track could not be saved.", "track", store.UUIDString(row.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, toJSON(updated, me.DisplayName))
@@ -299,8 +295,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("track delete", "err", err, "track", store.UUIDString(row.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The track could not be deleted.")
+		httpx.Fail(w, s.log, "track delete", err, "The track could not be deleted.", "track", store.UUIDString(row.ID))
 		return
 	}
 	// One blob per sha however many shelves hold it (#1095), so the file goes
@@ -332,8 +327,7 @@ func (s *Service) playable(w http.ResponseWriter, r *http.Request, me db.User) (
 		return db.Track{}, false
 	}
 	if err != nil {
-		s.log.Error("track playable", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be read.")
+		httpx.Fail(w, s.log, "track playable", err, "That track could not be read.")
 		return db.Track{}, false
 	}
 	return row, true
@@ -355,8 +349,7 @@ func (s *Service) track(w http.ResponseWriter, r *http.Request, me db.User) (db.
 		return db.Track{}, false
 	}
 	if err != nil {
-		s.log.Error("track get", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "That track could not be read.")
+		httpx.Fail(w, s.log, "track get", err, "That track could not be read.")
 		return db.Track{}, false
 	}
 	return row, true

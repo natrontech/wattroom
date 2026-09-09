@@ -69,8 +69,7 @@ func (s *Service) handleSetRoomAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.log.Error("room lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be changed.")
+		httpx.Fail(w, s.log, "room lookup failed", err, "The room could not be changed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	if !administers(role) && room.OwnerID != user.ID {
@@ -86,8 +85,7 @@ func (s *Service) handleSetRoomAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Queries.SetRoomCrewVisible(r.Context(), db.SetRoomCrewVisibleParams{ID: room.ID, CrewVisible: req.CrewVisible}); err != nil {
-		s.log.Error("room access update failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be changed.")
+		httpx.Fail(w, s.log, "room access update failed", err, "The room could not be changed.", "room", room.Slug)
 		return
 	}
 	s.log.Info("room access set", "room", room.Slug, "crewVisible", req.CrewVisible, "by", store.UUIDString(user.ID))

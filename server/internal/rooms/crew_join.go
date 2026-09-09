@@ -30,8 +30,7 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		// answers: the second used to read as the first, which hid the
 		// client's own retry (audit 2026-09-09).
 		if !errors.Is(err, pgx.ErrNoRows) {
-			s.log.Error("crew door lookup failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The door could not be opened. Try again.")
+			httpx.Fail(w, s.log, "crew door lookup failed", err, "The door could not be opened. Try again.")
 			return
 		}
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
@@ -85,8 +84,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			s.log.Error("crew code lookup failed", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			httpx.Fail(w, s.log, "crew code lookup failed", err, "Joining did not work. Try again.")
 			return
 		}
 		// A crew's code is six characters; a friend code is eight
@@ -100,8 +98,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 	if err != nil {
-		s.log.Error("crew role lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "Joining did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	if role == "banned" {
@@ -110,8 +107,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	if role == "" {
 		if err := s.store.Queries.JoinCrew(r.Context(), db.JoinCrewParams{CrewID: crew.ID, UserID: user.ID}); err != nil {
-			s.log.Error("crew join failed", "err", err, "crew", store.UUIDString(crew.ID))
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Joining did not work. Try again.")
+			httpx.Fail(w, s.log, "crew join failed", err, "Joining did not work. Try again.", "crew", store.UUIDString(crew.ID))
 			return
 		}
 		s.log.Info("crew joined", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
@@ -138,8 +134,7 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
 	if err != nil {
 		// Fail closed, and say so — not "you own a room" (audit 2026-09-09).
-		s.log.Error("crew leave owner check failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Leaving did not go through. Try again.")
+		httpx.Fail(w, s.log, "crew leave owner check failed", err, "Leaving did not go through. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	if owned > 0 {
@@ -157,8 +152,7 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err != nil {
-		s.log.Error("crew leave failed", "err", err, "crew", store.UUIDString(crew.ID))
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Leaving did not work. Try again.")
+		httpx.Fail(w, s.log, "crew leave failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	for _, slug := range slugs {
