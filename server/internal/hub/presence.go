@@ -4,6 +4,7 @@
 package hub
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -69,6 +70,10 @@ func (h *Hub) Presence(slug string) protocol.RoomPresence {
 	}
 	p.Connected = len(seen)
 	p.Riding, p.RidingIDs = rm.ridingLocked(now)
+	for id := range rm.away {
+		p.AwayIDs = append(p.AwayIDs, id)
+	}
+	slices.Sort(p.AwayIDs)
 	state := rm.session.state(now)
 	p.Phase = state.Phase
 	if state.Phase == "countdown" || state.Phase == "running" || state.Phase == "paused" {

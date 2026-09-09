@@ -32,6 +32,18 @@ describe('statusOf', () => {
 		expect(statusOf(rooms, 'u-mike')).toBe('riding');
 	});
 
+	it('is away when the rider said so, whatever the watts (#1742)', () => {
+		const rooms = [
+			room({
+				slug: 'cave',
+				riderIds: ['u-mike'],
+				ridingIds: ['u-mike'],
+				awayIds: ['u-mike'],
+			}),
+		];
+		expect(statusOf(rooms, 'u-mike')).toBe('away');
+	});
+
 	it('names the room they are in', () => {
 		expect(roomOf(rooms, 'u-sven')?.slug).toBe('a');
 		expect(roomOf(rooms, 'u-nobody')).toBe(undefined);
