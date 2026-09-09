@@ -38,6 +38,10 @@ type Step struct {
 	// what music can be matched to. Absent is 0, meaning "nobody said".
 	CadenceLow  int `json:"cadenceLow,omitempty"`
 	CadenceHigh int `json:"cadenceHigh,omitempty"`
+	// The HR band (#67): display-only and never scored (ADR-0008); read here
+	// only so Validate can bound it the way the editor does.
+	HrLow  int `json:"hrLow,omitempty"`
+	HrHigh int `json:"hrHigh,omitempty"`
 }
 
 type definition struct {

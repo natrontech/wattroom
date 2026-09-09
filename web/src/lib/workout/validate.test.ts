@@ -165,3 +165,22 @@ describe('validateWorkout', () => {
 		expect(validateWorkout(ok([step({ hrLow: 'easy' })])).ok).toBe(false);
 	});
 });
+
+// The server caps a whole workout at a day (#1393); the editor used to let
+// 200 four-hour steps through every check and hand the rider a refused Save.
+describe('validateWorkout total', () => {
+	it('refuses a workout longer than a day', () => {
+		const steps = Array.from({ length: 7 }, () => ({
+			type: 'steady',
+			seconds: 4 * 60 * 60,
+			target: 0.6,
+		}));
+		const result = validateWorkout({ name: 'Forever', author: 'x', steps });
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.error).toMatch(/a day at most/);
+		expect(
+			validateWorkout({ name: 'A day', author: 'x', steps: steps.slice(0, 6) })
+				.ok,
+		).toBe(true);
+	});
+});

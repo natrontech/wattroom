@@ -13,6 +13,8 @@ export const LIMITS = {
 	maxSteps: 200,
 	minSeconds: 5,
 	maxSeconds: 4 * 60 * 60,
+	/** The server's cap on a whole workout (customworkouts.go): a day. */
+	maxTotalSeconds: 24 * 60 * 60,
 	/** 300 % FTP — beyond any sustainable prescription, and past the graph ceiling. */
 	maxFraction: 3,
 	maxWatts: 3000,
@@ -169,6 +171,16 @@ function checkStep(
 	}
 }
 
+/** Seconds after expanding repeats — the server refuses more than a day. */
+function totalSeconds(steps: WorkoutStep[]): number {
+	return steps.reduce((total, step) => {
+		if (step.type === 'repeat') {
+			return total + step.times * totalSeconds((step as RepeatStep).steps);
+		}
+		return total + step.seconds;
+	}, 0);
+}
+
 /** Total steps after expanding repeats, so a small file cannot expand into a huge one. */
 function countExpanded(steps: WorkoutStep[]): number {
 	return steps.reduce((total, step) => {
@@ -206,6 +218,15 @@ export function validateWorkout(value: unknown): Validation {
 		return {
 			ok: false,
 			error: `That expands to ${expanded} intervals, above the ${LIMITS.maxSteps} limit.`,
+		};
+	}
+	// The server's whole-workout cap, said here rather than as a refused Save
+	// (audit 2026-09-09): 200 four-hour steps passed every check above.
+	const total = totalSeconds(value.steps as WorkoutStep[]);
+	if (total > LIMITS.maxTotalSeconds) {
+		return {
+			ok: false,
+			error: `That runs ${Math.round(total / 3600)} hours; a workout is a day at most.`,
 		};
 	}
 
