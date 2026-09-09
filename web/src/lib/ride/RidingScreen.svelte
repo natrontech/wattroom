@@ -22,12 +22,13 @@
 	import Instrument from '$lib/room/Instrument.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
-	import { describeBlock } from '$lib/room/view';
+	import type { Block } from '$lib/room/view';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
 
 	let {
 		session,
+		block,
 		workout,
 		ftp,
 		kg,
@@ -40,6 +41,8 @@
 		onTv,
 	}: {
 		session: ReturnType<typeof createRideSession>;
+		/** Where you are in the work, from the page — the TV draws the same one. */
+		block: Block | null;
 		workout: Workout;
 		ftp: number;
 		/** For w/kg — the stat every rider in a room carries and this one did not. */
@@ -54,16 +57,6 @@
 		onFlag: () => void;
 		onTv: () => void;
 	} = $props();
-
-	// The same view model the hub builds for a room (ADR-0046). It was always
-	// derivable here — nothing but the call was missing, which is why this
-	// screen said "steady" where the room said "block 3 of 12 · Threshold …
-	// next · Endurance 135 W for 1 min".
-	const block = $derived(
-		session.segments.length > 0
-			? describeBlock(session.info, session.segments, workout, ftp)
-			: null,
-	);
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.

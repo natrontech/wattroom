@@ -336,7 +336,11 @@
 		sprint={live.tick?.sprint ?? null}
 		game={live.tick?.game ?? null}
 		onExit={() => (tv = false)}
-	/>
+	>
+		{#snippet status()}
+			<RoomStatus />
+		{/snippet}
+	</TvOverlay>
 {/if}
 
 {#if session.open}

@@ -107,34 +107,45 @@
 						>{you.cadence}
 						<span class="text-muted text-[1.6vh]">rpm</span></span
 					>
-					<span class="text-ink"
-						>{you.hr} <span class="text-muted text-[1.6vh]">bpm</span></span
-					>
-					<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span>
+					<!-- Only with something reporting it: a permanent "0 bpm" at three
+					     metres reads as a broken strap (#1531). -->
+					{#if you.hr > 0}
+						<span class="text-ink"
+							>{you.hr} <span class="text-muted text-[1.6vh]">bpm</span></span
+						>
+					{/if}
+					{#if you.watts > 0}
+						<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span
+						>
+					{/if}
 				</div>
 			</section>
 
-			<!-- The room, one row per rider. No faces: at 3 m you read names and numbers. -->
-			<section class="flex w-[34vw] flex-col justify-center gap-[1.6vh]">
-				{#each others as rider (rider.id)}
-					{@const riderZone = zoneOf(rider.watts, rider.ftp)}
-					<div class="flex items-center gap-[1.2vw]">
-						<span class="w-[7vw] truncate text-[2.6vh]">{rider.name}</span>
-						<ProgressBar
-							pct={fillPct(rider.watts, rider.ftp)}
-							h="h-[1.6vh]"
-							fill="{ZONE_BG[
-								riderZone
-							]} transition-[width] duration-500 ease-out"
-							class="flex-1"
-						/>
-						<span
-							class="font-display w-[6vw] text-right text-[3.2vh] font-bold tabular-nums"
-							>{rider.watts}</span
-						>
-					</div>
-				{/each}
-			</section>
+			<!-- The room, one row per rider. No faces: at 3 m you read names and
+			     numbers. Absent riding alone (#1632): the same TV serves a solo
+			     ride, and an empty third of the screen is not a roster. -->
+			{#if others.length > 0}
+				<section class="flex w-[34vw] flex-col justify-center gap-[1.6vh]">
+					{#each others as rider (rider.id)}
+						{@const riderZone = zoneOf(rider.watts, rider.ftp)}
+						<div class="flex items-center gap-[1.2vw]">
+							<span class="w-[7vw] truncate text-[2.6vh]">{rider.name}</span>
+							<ProgressBar
+								pct={fillPct(rider.watts, rider.ftp)}
+								h="h-[1.6vh]"
+								fill="{ZONE_BG[
+									riderZone
+								]} transition-[width] duration-500 ease-out"
+								class="flex-1"
+							/>
+							<span
+								class="font-display w-[6vw] text-right text-[3.2vh] font-bold tabular-nums"
+								>{rider.watts}</span
+							>
+						</div>
+					{/each}
+				</section>
+			{/if}
 		</div>
 
 		<div class="flex items-end gap-[2vw]">

@@ -1,0 +1,1 @@
+- Riding alone on the TV now shows what riding in a room shows: the block you are in and the one coming with its target, your rpm and bpm, and the zone you are riding at — the solo TV drew a watts number and a graph and nothing else. The roster column is simply absent when nobody else is riding.
