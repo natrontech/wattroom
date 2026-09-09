@@ -23,7 +23,9 @@ jobs:
         env:
           POSTGRES_USER: wattroom
           POSTGRES_PASSWORD: wattroom
-          POSTGRES_DB: wattroom
+          # wattroom_test, the name storetest defaults to (#1718): one name for
+          # the destructive suite everywhere, never the dev database's.
+          POSTGRES_DB: wattroom_test
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U wattroom"
@@ -52,7 +54,7 @@ jobs:
       # the next file reorder; -timeout caps a wedged package at 5 min.
       - run: go test -race -shuffle=on -timeout=5m ./...
         env:
-          WATTROOM_TEST_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
+          WATTROOM_TEST_DB: postgres://wattroom:wattroom@localhost:5432/wattroom_test
           # The service container above exists so these tests run against it.
           # Without this, an unreachable database is 17 skips and a green job
           # rather than a failure (#814).

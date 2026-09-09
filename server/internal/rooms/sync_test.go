@@ -3,6 +3,7 @@ package rooms
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,7 +12,10 @@ import (
 
 // countingPresence is the hub seen from rooms: how often the lobby was told
 // to re-fetch (#570), and which rooms it was told to forget (#618).
+// countingPresence locks its writers (#1718): sequential today, one `go`
+// statement away from an intermittent -race failure otherwise.
 type countingPresence struct {
+	mu     sync.Mutex
 	pings  int
 	closed []string
 }
@@ -20,8 +24,16 @@ func (p *countingPresence) Presence(string) protocol.RoomPresence               
 func (p *countingPresence) Kick(string, string)                                       {}
 func (p *countingPresence) SetRole(string, string, string)                            {}
 func (p *countingPresence) SessionAnnounce(string, string, string, string, time.Time) {}
-func (p *countingPresence) PresenceChanged()                                          { p.pings++ }
-func (p *countingPresence) CloseRoom(slug string)                                     { p.closed = append(p.closed, slug) }
+func (p *countingPresence) PresenceChanged() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pings++
+}
+func (p *countingPresence) CloseRoom(slug string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.closed = append(p.closed, slug)
+}
 
 // A room changes for everyone in it, not just for whoever changed it: every
 // durable mutation has to ping the lobby, or the other clients keep showing

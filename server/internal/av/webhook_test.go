@@ -9,11 +9,16 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 )
 
+// fakeSink locks its writers (#1718): the tests read it between sequential
+// requests, but a handler that ever fans out would race an unlocked append —
+// the shape #1645's fakeResend failed on under -race.
 type fakeSink struct {
+	mu           sync.Mutex
 	joined, left map[string][]string
 	cameras      map[string][]string
 	closed       []string
@@ -22,20 +27,32 @@ type fakeSink struct {
 }
 
 func (f *fakeSink) VoiceJoined(slug, identity, name string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.joined[slug] = append(f.joined[slug], identity+"/"+name)
 }
 func (f *fakeSink) VoiceLeft(slug, identity string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.left[slug] = append(f.left[slug], identity)
 }
 func (f *fakeSink) VoiceCamera(slug, identity, _ string, on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.cameras == nil {
 		f.cameras = map[string][]string{}
 	}
 	f.cameras[slug] = append(f.cameras[slug], identity+"/"+map[bool]string{true: "on", false: "off"}[on])
 }
-func (f *fakeSink) VoiceRoomClosed(slug string) { f.closed = append(f.closed, slug) }
-func (f *fakeSink) VoiceRooms() []string        { return f.rooms }
+func (f *fakeSink) VoiceRoomClosed(slug string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.closed = append(f.closed, slug)
+}
+func (f *fakeSink) VoiceRooms() []string { return f.rooms }
 func (f *fakeSink) VoiceSync(slug string, present map[string]string, _ time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.synced == nil {
 		f.synced = map[string]map[string]string{}
 	}
