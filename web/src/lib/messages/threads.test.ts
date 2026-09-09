@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatThreadWhen, orderThreads, roomThread } from './threads';
 import type { DmHead } from '$lib/dm/heads.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 
 const room = (over: Partial<RailRoom>): RailRoom => ({
 	name: 'Room',

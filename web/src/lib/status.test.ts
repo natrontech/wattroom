@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import { othersIn, roomOf, statusOf, statusOfRider } from './status';
 
 const room = (over: Partial<RailRoom> = {}): RailRoom => ({

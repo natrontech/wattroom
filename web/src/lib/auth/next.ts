@@ -12,9 +12,7 @@ const KEY = 'wattroom.login.next';
  * Parsing it the way the browser will is the only check that agrees with
  * the browser.
  */
-export function sameOriginPath(
-	path: string | null | undefined,
-): path is string {
+function sameOriginPath(path: string | null | undefined): path is string {
 	if (!path || !path.startsWith('/')) return false;
 	// The tests run under node, where there is no location; any origin
 	// serves, since the check is "did the parser keep it on that origin".

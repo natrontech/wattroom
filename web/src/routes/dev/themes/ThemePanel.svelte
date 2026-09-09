@@ -19,9 +19,9 @@
 	import { tokenDeclarations, type Theme } from '$lib/palette';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
-	import type { MockRider } from '$lib/room/mockcompat';
+	import type { RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
-	import type { RailRoom } from '$lib/room/mockcompat';
+	import type { RailRoom } from '$lib/room/room-data';
 	import { rampReadings, readings, ZONES, type Surface } from './gallery';
 
 	let {
@@ -38,7 +38,7 @@
 		theme: Theme;
 		surface: Surface;
 		/** Live from the one shared mock room — every panel shows the same ride. */
-		riders: MockRider[];
+		riders: RoomRider[];
 		segments: Segment[];
 		total: number;
 		elapsed: number;

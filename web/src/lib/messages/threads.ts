@@ -1,6 +1,6 @@
 import type { DmHead } from '$lib/dm/heads.svelte';
 import { headPreview } from '$lib/dm/heads.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 
 /**
  * The messages list (#468): every room's chat and every DM, one list, one
@@ -51,7 +51,7 @@ export function roomThread(room: RailRoom): Thread {
 	};
 }
 
-export function dmThread(head: DmHead, unread: boolean): Thread {
+function dmThread(head: DmHead, unread: boolean): Thread {
 	return {
 		kind: 'dm',
 		key: `dm:${head.peerId}`,

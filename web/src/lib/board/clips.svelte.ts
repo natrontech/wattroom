@@ -148,7 +148,7 @@ export async function upload(file: File): Promise<Refusal | undefined> {
 }
 
 /** The lowest digit nothing is bound to, or undefined once all ten are taken. */
-export function firstFreeDigit(): string | undefined {
+function firstFreeDigit(): string | undefined {
 	for (const digit of '123456789') {
 		if (!board.onKey(digit)) return digit;
 	}
@@ -156,7 +156,7 @@ export function firstFreeDigit(): string | undefined {
 }
 
 /** The lowest pad with nothing on it, or undefined when the board is full. */
-export function firstFreePad(): number | undefined {
+function firstFreePad(): number | undefined {
 	for (let pad = 1; pad <= MAX_PAD; pad++) {
 		if (!board.onPad(pad)) return pad;
 	}

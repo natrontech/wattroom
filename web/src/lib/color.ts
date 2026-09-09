@@ -147,7 +147,7 @@ export function fitContrast(
 }
 
 /** The most chroma this lightness and hue can hold inside sRGB. */
-export function maxChroma(colour: Oklch): number {
+function maxChroma(colour: Oklch): number {
 	let c = colour.c;
 	while (c > 0 && !inGamut({ ...colour, c })) c -= 0.002;
 	return Math.max(0, c);

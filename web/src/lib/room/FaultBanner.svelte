@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { formatClock, type Fault } from '$lib/room/mockcompat';
+	import { formatClock } from '$lib/format';
+	import type { Fault } from '$lib/room/room-data';
 
 	let {
 		fault,

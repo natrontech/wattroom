@@ -100,7 +100,3 @@ export const ACHIEVEMENTS: AchievementMeta[] = [
 		xp: 250,
 	},
 ];
-
-export const ACHIEVEMENT_BY_KEY: ReadonlyMap<string, AchievementMeta> = new Map(
-	ACHIEVEMENTS.map((a) => [a.key, a]),
-);

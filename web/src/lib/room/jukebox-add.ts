@@ -133,7 +133,7 @@ export function queueResolvedPlaylist(
  * fail (a private list, a blocked iframe API), so the caller gets the reason
  * rather than a paste that quietly did nothing.
  */
-export async function queuePlaylist(
+async function queuePlaylist(
 	playlistId: string,
 	send: (command: JukeboxCommand) => void,
 ): Promise<

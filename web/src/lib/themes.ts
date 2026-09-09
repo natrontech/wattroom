@@ -15,7 +15,7 @@ import {
 } from './palette';
 
 export const DEFAULT_DARK_ID = 'outrun';
-export const DEFAULT_WHITE_ID = 'outrun-day';
+const DEFAULT_WHITE_ID = 'outrun-day';
 export const DEFAULT_IDENTITY = 'outrun';
 
 const SPECS: ThemeSpec[] = [

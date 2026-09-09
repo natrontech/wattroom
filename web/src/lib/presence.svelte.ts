@@ -1,7 +1,7 @@
 import { announce } from '$lib/messages/announce';
 import { fetchRailRooms } from '$lib/nav/rooms';
 import { away } from '$lib/notify.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import type { RoomCrew } from '$lib/room/room-data';
 
 /**

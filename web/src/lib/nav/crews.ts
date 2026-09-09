@@ -2,7 +2,7 @@ import Eye from '@lucide/svelte/icons/eye';
 import Lock from '@lucide/svelte/icons/lock';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import type { Icon } from '$lib/icons';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 /**

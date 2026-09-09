@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { formatClock, type Block } from '$lib/room/mockcompat';
+	import { formatClock } from '$lib/format';
+	import type { Block } from '$lib/room/view';
 	import { blockBands } from '$lib/room/view';
 
 	let {

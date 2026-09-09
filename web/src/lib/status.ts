@@ -1,5 +1,5 @@
 import type { Friend } from '$lib/friends/friends.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 
 /**
  * Where a person is, in one word (#807). Four surfaces had each invented

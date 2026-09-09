@@ -20,15 +20,9 @@
 		tileFrame,
 		VOICE_DOT,
 	} from '$lib/room/presence-marks';
-	import {
-		fillPct,
-		type TileMetric,
-		ZONE_BG,
-		type MockRider,
-		type Phase,
-		zoneOf,
-	} from '$lib/room/mockcompat';
-	import type { RoomMember } from '$lib/room/view';
+	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import type { Phase } from '$lib/room/room-data';
+	import type { RoomMember, RoomRider, TileMetric } from '$lib/room/view';
 
 	let {
 		rider,
@@ -42,7 +36,7 @@
 		menu,
 		face,
 	}: {
-		rider: MockRider;
+		rider: RoomRider;
 		phase: Phase;
 		stretch?: boolean;
 		/** Rider-chosen extras; watts is never optional. */
