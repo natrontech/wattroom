@@ -1,0 +1,1 @@
+- The workout editor can now add warm-up and cool-down ramps, and a steady block can be written in watts instead of a percentage of FTP — one link switches the unit and carries the number over, and a block already written in watts is shown as such instead of as 0 %.

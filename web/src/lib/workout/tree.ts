@@ -8,9 +8,19 @@
  */
 import type { Workout, WorkoutStep } from './types';
 
-export type StepType = 'steady' | 'ramp' | 'sprint' | 'repeat';
+export type StepType =
+	'steady' | 'warmup' | 'ramp' | 'cooldown' | 'sprint' | 'repeat';
 
-export const STEP_TYPES: StepType[] = ['steady', 'ramp', 'repeat', 'sprint'];
+// Warmup and cooldown are SPEC's own ramps and WATTROOM.md's M1 promised
+// them in the editor (#1712); their defaults are SPEC's example workout.
+export const STEP_TYPES: StepType[] = [
+	'steady',
+	'warmup',
+	'ramp',
+	'cooldown',
+	'repeat',
+	'sprint',
+];
 
 // ponytail: JSON round-trip to clone a step — workout JSON is numbers and
 // strings by definition (docs/SPEC.md), and unlike structuredClone it does not
@@ -23,6 +33,10 @@ function newStep(type: StepType): WorkoutStep {
 	switch (type) {
 		case 'ramp':
 			return { type: 'ramp', seconds: 300, from: 0.5, to: 0.8 };
+		case 'warmup':
+			return { type: 'warmup', seconds: 600, from: 0.4, to: 0.7 };
+		case 'cooldown':
+			return { type: 'cooldown', seconds: 300, from: 0.6, to: 0.35 };
 		case 'sprint':
 			return { type: 'sprint', seconds: 15 };
 		case 'repeat':
