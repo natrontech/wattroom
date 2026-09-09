@@ -18,6 +18,8 @@
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { createRideSession } from '$lib/workout/session.svelte';
+	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+	import { uploadRide } from '$lib/ride/save';
 	import {
 		buildRampTest,
 		ftpFromRamp,
@@ -34,6 +36,13 @@
 	let error = $state<string | null>(null);
 	let saved = $state(false);
 	let lthrSaved = $state(false);
+	// The test is a ride (#1540): buffered like one and saved like one, so
+	// fifteen maximal minutes reach the history, count as load, and survive
+	// a crash at minute fourteen.
+	let buffer: RideBuffer | null = null;
+	let savedId = $state<string | null>(null);
+	let rideStatus = $state<string | null>(null);
+	let recorded = false;
 
 	// Paired before the test, not by starting it (#611): the paired-devices
 	// grid owns the trainer until Start hands it to the session.
@@ -54,11 +63,25 @@
 		roomConnection.current?.ride.unpair();
 		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
+			const startedAt = Date.now();
+			recorded = false;
+			savedId = null;
+			rideStatus = null;
+			buffer = await openRideBuffer({
+				rideId: String(startedAt),
+				startedAt,
+				workoutName: workout.name,
+				workoutJson: JSON.stringify(workout),
+			});
 			const next = createRideSession({
 				trainer,
 				workout,
 				ftp: profile.current.ftp,
+				startedAt,
 				readings: () => sensors.readings,
+				onRecord: (sample) => {
+					buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
+				},
 			});
 			await next.start();
 			session = next;
@@ -126,12 +149,52 @@
 		else lthrSaved = true;
 	}
 
+	// The account first, this browser second (#1543): the other order
+	// reported "Saved" on a push that never landed, and the next boot pulled
+	// the old number back over the new one.
 	async function saveFtp() {
 		const message =
-			profile.update({ ftp: result.ftp, ftpMeasuredAt: Date.now() }) ??
-			(await pushProfile({ ftpWatts: result.ftp }));
+			(await pushProfile({ ftpWatts: result.ftp })) ??
+			profile.update({ ftp: result.ftp, ftpMeasuredAt: Date.now() });
 		if (message) error = message;
 		else saved = true;
+	}
+
+	// The ride half of the test, once — from the effect below and from
+	// onDestroy, the same two doors /ride has.
+	$effect(() => {
+		if (session?.state === 'done') saveRide(session);
+	});
+	function saveRide(current: ReturnType<typeof createRideSession>) {
+		if (recorded) return;
+		recorded = true;
+		if (current.recording.length === 0) {
+			buffer?.end();
+			return;
+		}
+		const ended = buffer;
+		void uploadRide({
+			workoutName: workout.name,
+			workoutJson: JSON.stringify(workout),
+			startedAt: current.startedAt.toISOString(),
+			samples: current.recording.map((sample) => ({
+				watts: sample.watts,
+				cadence: sample.cadence,
+				hr: sample.heartRate,
+			})),
+		}).then((outcome) => {
+			if ('saved' in outcome) {
+				ended?.end();
+				savedId = outcome.saved.id || null;
+				return;
+			}
+			// Under a minute is refused for good; anything else stays in the
+			// buffer and is offered back on /ride with a Save (#794).
+			if (outcome.failure.final) ended?.end();
+			rideStatus = outcome.failure.final
+				? outcome.failure.message
+				: `${outcome.failure.message} The riding is kept on this device — /ride offers it back with a Save.`;
+		});
 	}
 	// One mis-tap on the rail at minute 14 must not lose the number: the same
 	// confirm /ride has, only while the test is alive.
@@ -143,15 +206,32 @@
 			session.state !== 'idle',
 		{
 			title: 'Stop the ramp test and leave?',
-			body: 'The test cannot be resumed — its number is lost.',
+			body: 'The test cannot be resumed — its number is lost. The riding so far is saved to your history.',
 			action: 'Stop the test',
 			cancel: 'Keep going',
 		},
 	);
 	// This page is the session's only owner: leaving mid-test ends it, or the
 	// trainer holds a step with nobody watching and the frame stays caved.
-	onDestroy(() => session?.stop());
+	onDestroy(() => {
+		if (!session) return;
+		session.stop();
+		saveRide(session);
+	});
 </script>
+
+{#snippet rideLine()}
+	{#if savedId}
+		<p class="text-muted mt-3 text-xs">
+			The riding is on your history too — <a
+				href="/history/{savedId}"
+				class="underline">see the ride</a
+			>.
+		</p>
+	{:else if rideStatus}
+		<div class="mt-3"><Banner tone="warn">{rideStatus}</Banner></div>
+	{/if}
+{/snippet}
 
 <svelte:head><title>Ramp test · WattRoom</title></svelte:head>
 
@@ -291,6 +371,7 @@
 				{formatClock(RAMP.warmupSeconds)} warm-up plus at least {RAMP.minSteps}
 				steps before the number means anything.
 			</p>
+			{@render rideLine()}
 			<div class="mt-6 flex gap-2">
 				<a href="/ramp" class="btn btn-primary">Test again</a>
 				<a href="/workouts" class="btn btn-secondary">Ride something else</a>
@@ -321,6 +402,7 @@
 				>
 				at {profile.current.kg} kg.
 			</p>
+			{@render rideLine()}
 
 			{#if error}
 				<div class="mt-4"><Banner tone="error">{error}</Banner></div>

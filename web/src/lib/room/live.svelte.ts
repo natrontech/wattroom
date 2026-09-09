@@ -96,11 +96,35 @@ export function createRoomLive(slug: string) {
 	// sends and what a recovered .fit reads as one row per second, and a
 	// trainer notifying at 2 Hz used to double both.
 	let bufferedSecond = -1;
-	void openRideBuffer({
-		rideId: `room-${slug}-${Date.now()}`,
-		startedAt: Date.now(),
-		workoutName: `room ${slug}`,
-	}).then((opened) => (buffer = opened));
+	// One buffer per SESSION, not per join (#1541): opened when the timeline
+	// starts and ended when it closes, so the tab closed after a ride the
+	// hub saved does not come back as "an unfinished ride" on /ride. Stamped
+	// with server truth — the workout's name and the start the tick implies
+	// — because that is what a recovered .fit is named and dated by.
+	let riding = false;
+	let openedFor = 0;
+	function followSession(t: ServerTick) {
+		const phase = t.state?.phase;
+		const now =
+			phase === 'countdown' || phase === 'running' || phase === 'paused';
+		if (now === riding) return;
+		riding = now;
+		if (!now) {
+			buffer?.end();
+			buffer = null;
+			return;
+		}
+		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
+		openedFor = startedAt;
+		bufferedSecond = -1;
+		void openRideBuffer({
+			rideId: `room-${slug}-${startedAt}`,
+			startedAt,
+			workoutName: t.state.workoutName || 'Room ride',
+		}).then((opened) => {
+			if (riding && openedFor === startedAt) buffer = opened;
+		});
+	}
 
 	function connect() {
 		// Never dial while a socket is already in flight or open — an extra dial
@@ -159,6 +183,7 @@ export function createRoomLive(slug: string) {
 				// keeps the jukebox playhead on server time (#286).
 				observeServerTime(msg.tick.at);
 				tick = msg.tick;
+				followSession(msg.tick);
 				const me = account.me?.id;
 				const mine = me ? msg.tick.riders?.[me] : undefined;
 				if (mine) acked = mine.seq;
