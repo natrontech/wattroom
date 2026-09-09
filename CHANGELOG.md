@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.60] - 2026-09-09
+
+### Fixed
+
+- Pasting a friend's eight-character code into "Join a crew with a code" now says it looks like a friend code and that friends are added on the Friends page, instead of "no crew has that code".
+- A conversation with someone who is not your friend yet says so under the message box, with the box disabled, instead of refusing the line after you typed it.
+- A conversation opened from a notification, a pasted link or a reload no longer says "Message them…" with a "T" for a face until the first line arrives: the page looks the rider up and shows their name and picture straight away.
+- The download page, opened from a desktop app that updates itself, no longer reads as if you had to download the newer build by hand: it says the app is fetching it and that the restart is on Home.
+- Pasting a crew's six-character invite code into the friend-code box now says it looks like a crew's code and that a crew is joined from Home, instead of "no rider has that code — double-check it with them".
+- Home's "Join a crew with a code" no longer trims a pasted friend code to six characters and sends it: it says the eight characters look like a friend code and points at Friends.
+- The Lounge's "Invite" button copies the crew's invite link in one click instead of sending you to the Members place to find it there.
+- The room's calendar link on the Sessions place is a proper row now — one line saying every planned session lands in your calendar app, and a "Copy calendar link" button — instead of an eleven-pixel link floating under the list.
+
 ## [2026.09.59] - 2026-09-09
 
 ### Added
@@ -1286,7 +1299,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.59...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.60...HEAD
+[2026.09.60]: https://github.com/natrontech/wattroom/compare/2026.09.59...2026.09.60
 [2026.09.59]: https://github.com/natrontech/wattroom/compare/2026.09.58...2026.09.59
 [2026.09.58]: https://github.com/natrontech/wattroom/compare/2026.09.57...2026.09.58
 [2026.09.57]: https://github.com/natrontech/wattroom/compare/2026.09.56...2026.09.57

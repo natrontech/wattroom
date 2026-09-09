@@ -1,1 +1,0 @@
-- Pasting a crew's six-character invite code into the friend-code box now says it looks like a crew's code and that a crew is joined from Home, instead of "no rider has that code — double-check it with them".

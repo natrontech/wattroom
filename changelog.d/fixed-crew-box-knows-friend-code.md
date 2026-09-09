@@ -1,1 +1,0 @@
-- Pasting a friend's eight-character code into "Join a crew with a code" now says it looks like a friend code and that friends are added on the Friends page, instead of "no crew has that code".

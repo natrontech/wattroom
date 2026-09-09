@@ -1,1 +1,0 @@
-- Home's "Join a crew with a code" no longer trims a pasted friend code to six characters and sends it: it says the eight characters look like a friend code and points at Friends.
