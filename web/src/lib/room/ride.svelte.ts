@@ -48,6 +48,9 @@ export function createRide(deps: RideDeps) {
 	let hrSource = $state<'heart-rate' | 'trainer' | null>(null);
 	let status = $state<TrainerStatus>('disconnected');
 	let lastSampleAt = $state(0);
+	// The wall-clock second the guards last counted (#1798): they count
+	// seconds, and a trainer notifies more than once a second.
+	let guardSecond = -1;
 	let pairing = $state(false);
 	let unsubscribe: (() => void)[] = [];
 
@@ -187,6 +190,7 @@ export function createRide(deps: RideDeps) {
 		if (trainer) unpair();
 		error = null;
 		lastSampleAt = 0;
+		guardSecond = -1;
 		pairing = true;
 		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
@@ -207,7 +211,11 @@ export function createRide(deps: RideDeps) {
 					// — they are just in a room. Against the PRESCRIBED target,
 					// too: the one the trainer holds is zero exactly when a
 					// guard is already up.
-					if (prescribed > 0) guards.sample(metrics, prescribed);
+					const second = Math.floor(sample.at / 1000);
+					const counted = second > guardSecond;
+					if (counted) guardSecond = second;
+					if (prescribed > 0)
+						guards.sample(metrics, prescribed, counted ? 1 : 0);
 					else guards.reset();
 					syncGuards();
 					hrSource =

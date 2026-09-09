@@ -275,6 +275,38 @@ describe('a throttled tick', () => {
 		session.stop();
 	});
 
+	// #1795: the natural end used to set `done` and nothing else — the GATT
+	// link, the wake lock and the recorder all outlived the ride under the
+	// summary, and an Export pressed later was longer than the saved ride.
+	it('lets go of the trainer and the recorder when the clock runs out', async () => {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await session.start();
+		expect(trainer.status).toBe('connected');
+		pedal(session, 200, 90, 120);
+		expect(session.state).toBe('done');
+		expect(trainer.status).toBe('disconnected');
+		const recorded = session.recording.length;
+		session.onSample({ watts: 200, cadence: 90, at: 500_000 });
+		expect(session.recording.length).toBe(recorded);
+	});
+
+	// #1798, at the session: two notifications a second reach auto-pause
+	// after SPEC's seconds, not half of them.
+	it('auto-pauses after SPEC seconds on a trainer notifying twice a second', async () => {
+		const session = ride();
+		await session.start();
+		for (let s = 0; s < DEFAULTS.pauseAfterSeconds; s++) {
+			session.onSample({ watts: 0, cadence: 0, at: s * 1000 });
+			if (s < DEFAULTS.pauseAfterSeconds - 1)
+				expect(session.state).toBe('running');
+			session.onSample({ watts: 0, cadence: 0, at: s * 1000 + 500 });
+			session.tick();
+		}
+		expect(session.state).toBe('autopaused');
+		session.stop();
+	});
+
 	it('finishes a workout that ended inside the gap', async () => {
 		const session = ride();
 		await session.start();

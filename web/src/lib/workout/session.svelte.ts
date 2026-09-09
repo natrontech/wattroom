@@ -235,6 +235,10 @@ export function createRideSession({
 		// outranks both (RESEARCH.md §11). Resolved here so the whole ride — targets,
 		// auto-pause, execution, the .fit — reads one agreed set of numbers.
 		const metrics = arbitrate({ trainer: raw, sensors: readings() }, raw.at);
+		// After the end nothing is recorded (#1795): the trainer is let go,
+		// but a sample already in flight — or a test's — must not stretch the
+		// export past the ride the account was handed.
+		if (state === 'done') return;
 		const next: TrainerSample = {
 			watts: metrics.watts,
 			cadence: metrics.cadence,
@@ -268,8 +272,10 @@ export function createRideSession({
 		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
 		// the trainer holds is zero exactly when a guard is already up.
 		const pedalling = guards.pedalling(next);
-		if (state !== 'idle' && state !== 'done') {
-			const actuate = guards.sample(next, info.targetWatts ?? 0);
+		if (state !== 'idle') {
+			// The same per-second gate the record uses (#1798): the guards count
+			// seconds, and a trainer notifies more than once a second.
+			const actuate = guards.sample(next, info.targetWatts ?? 0, admit ? 1 : 0);
 			syncGuards();
 			if (actuate) applyTarget();
 		}
@@ -335,11 +341,34 @@ export function createRideSession({
 
 		elapsed += seconds;
 		if (clockSeconds >= total) {
-			state = 'done';
-			void trainer.setTargetPower(0);
+			finish();
 			return;
 		}
 		applyTarget();
+	}
+
+	/**
+	 * The end of the ride, whichever door it came through: the clock running
+	 * out or the rider's End button. It used to live in stop() alone (#1795),
+	 * so the happy path — riding a workout to its end — left the GATT link
+	 * open, the screen awake and the recorder running under the summary, and
+	 * an Export pressed five minutes later was five minutes too long.
+	 */
+	function finish() {
+		if (state === 'done') return;
+		wakeLock?.release();
+		wakeLock = undefined;
+		ticker?.stop();
+		ticker = undefined;
+		unsubscribe?.();
+		unsubscribe = undefined;
+		void trainer.setTargetPower(0);
+		// Let go of the hardware (#1546): after the summary nothing owns
+		// this link, and the next pairing screen showed an unpaired grid
+		// over a connection that was still open — the room's unpair()
+		// does the same.
+		void trainer.disconnect();
+		state = 'done';
 	}
 
 	return {
@@ -406,16 +435,7 @@ export function createRideSession({
 			wakeLock = acquireWakeLock();
 		},
 		stop() {
-			wakeLock?.release();
-			ticker?.stop();
-			unsubscribe?.();
-			void trainer.setTargetPower(0);
-			// Let go of the hardware (#1546): after the summary nothing owns
-			// this link, and the next pairing screen showed an unpaired grid
-			// over a connection that was still open — the room's unpair()
-			// does the same.
-			void trainer.disconnect();
-			state = 'done';
+			finish();
 		},
 		nudgeBias(step: number) {
 			bias = Math.min(

@@ -82,13 +82,21 @@ export function createPersonalGuards() {
 		 * One sample against the target the rider was PRESCRIBED — not the one
 		 * the trainer currently holds, which is zero exactly when a guard is up.
 		 * Returns whether the trainer has to be told something new.
+		 *
+		 * `seconds` is how much of the clock this sample stands for — 1 for the
+		 * first sample of a wall-clock second, 0 for the rest (#1798). The
+		 * counters are named in seconds because docs/SPEC.md names the
+		 * thresholds in seconds; a trainer notifying at 2 Hz used to reach
+		 * auto-pause in 1.5 s and the spiral release in 2.5 s. Transitions
+		 * still fire on every sample: a stop is noticed by the sample that
+		 * stopped, and a resume by the first one turning again.
 		 */
-		sample(sample: GuardSample, target: number): boolean {
+		sample(sample: GuardSample, target: number, seconds = 1): boolean {
 			let actuate = false;
 			// Auto-pause: their targets stop, the clock does not rewind.
 			if (!this.pedalling(sample)) {
 				if (phase === 'running') {
-					idleSeconds += 1;
+					idleSeconds += seconds;
 					if (idleSeconds >= DEFAULTS.pauseAfterSeconds) {
 						phase = 'autopaused';
 						actuate = true;
@@ -109,7 +117,7 @@ export function createPersonalGuards() {
 					sample.cadence > 0
 						? sample.cadence < DEFAULTS.spiralCadence
 						: sample.watts < target * DEFAULTS.spiralPowerFraction;
-				lowCadenceSeconds = collapsing ? lowCadenceSeconds + 1 : 0;
+				lowCadenceSeconds = collapsing ? lowCadenceSeconds + seconds : 0;
 				if (lowCadenceSeconds >= DEFAULTS.spiralAfterSeconds) {
 					spiralSeconds = DEFAULTS.spiralReleaseSeconds;
 					lowCadenceSeconds = 0;

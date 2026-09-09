@@ -64,9 +64,15 @@ class FakeTrainer implements Trainer {
 	onStatus() {
 		return () => {};
 	}
-	/** One ~1 Hz reading, as the BLE layer would deliver it. */
+	/**
+	 * One ~1 Hz reading, as the BLE layer would deliver it — a second apart,
+	 * under fake timers too: the guards count seconds (#1798), and three
+	 * readings stamped with one frozen Date.now() are one second, not three.
+	 */
+	#at = 0;
 	pedal(watts: number, cadence = 90) {
-		this.listener?.({ watts, cadence, at: Date.now() });
+		this.#at = Math.max(this.#at + 1000, Date.now());
+		this.listener?.({ watts, cadence, at: this.#at });
 	}
 }
 
