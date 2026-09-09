@@ -490,7 +490,7 @@ const listCrewPeople = `-- name: ListCrewPeople :many
 with people as (
     select c.owner_id as user_id, c.created_at as since from crews c where c.id = $1
     union all
-    select cr.user_id, cr.set_at from crew_roles cr
+    select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
     where cr.crew_id = $1 and cr.role in ('member', 'admin')
 )
 select u.id, u.display_name, u.avatar_url,
@@ -561,7 +561,7 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 }
 
 const listCrewRoles = `-- name: ListCrewRoles :many
-select crew_id, user_id, role, set_at from crew_roles where crew_id = $1
+select crew_id, user_id, role, set_at, joined_at from crew_roles where crew_id = $1
 `
 
 func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]CrewRole, error) {
@@ -578,6 +578,7 @@ func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]Crew
 			&i.UserID,
 			&i.Role,
 			&i.SetAt,
+			&i.JoinedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -775,7 +776,7 @@ const pickCrewSuccessor = `-- name: PickCrewSuccessor :one
 select cr.user_id
 from crew_roles cr
 where cr.crew_id = $1 and cr.user_id <> $2 and cr.role in ('admin', 'member')
-order by (cr.role = 'admin') desc, cr.set_at
+order by (cr.role = 'admin') desc, coalesce(cr.joined_at, cr.set_at)
 limit 1
 `
 

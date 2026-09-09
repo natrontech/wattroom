@@ -187,7 +187,10 @@ type roomJSON struct {
 	// "private, ask to be let in" for a crew-mate and "a crew you are not in"
 	// for everyone else, and offers a button only when it would work.
 	CanEnter bool `json:"canEnter,omitempty"`
-	InCrew   bool `json:"inCrew,omitempty"`
+	// Removed, at either level (audit 2026-09-09): the door says so instead
+	// of pointing at an invite that would be refused.
+	Banned bool `json:"banned,omitempty"`
+	InCrew bool `json:"inCrew,omitempty"`
 	// Whether this room has turned its ordered board on (ADR-0036). Off is the
 	// default and stays the default: being in a room must not put a rider on a
 	// board. Members only, like the setting it mirrors.

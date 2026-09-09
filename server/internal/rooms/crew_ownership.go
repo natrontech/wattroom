@@ -115,7 +115,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	case targetRole == "":
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"A crew passes to someone already in it — they have to be in one of its rooms.")
+			"A crew passes to someone already in it — they have to join by its code first.")
 		return
 	}
 	tx, err := s.store.Pool.Begin(r.Context())

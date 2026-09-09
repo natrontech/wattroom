@@ -57,7 +57,7 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 	switch role {
 	case "":
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"Letting in is for crew-mates — they have to be in one of the crew's rooms first. Share the code instead.")
+			"Letting in is for crew-mates — they have to be in the crew first. Share its code instead.")
 		return
 	case "banned":
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error",

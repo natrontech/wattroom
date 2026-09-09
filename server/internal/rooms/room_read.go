@@ -164,9 +164,15 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if user, signedIn := s.users.User(r); signedIn {
 		// The outsider's two facts (#1236): whether the door opens for them,
 		// and whether they are at least in the room's crew.
+		banned := s.isBanned(r, room, user)
 		if can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID}); err == nil {
-			response.CanEnter = can && !s.isBanned(r, room, user)
+			response.CanEnter = can && !banned
 		}
+		// The third fact (audit 2026-09-09): a removed rider's door used to
+		// send them for an invite link that would be refused, or offer a
+		// Join that always failed. A ban survives the code (docs/SPEC.md),
+		// so saying so gives nothing away.
+		response.Banned = banned
 		if room.CrewID.Valid {
 			if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID}); err == nil {
 				response.InCrew = role != "" && role != "banned"

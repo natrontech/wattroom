@@ -77,10 +77,11 @@ type Crew struct {
 }
 
 type CrewRole struct {
-	CrewID pgtype.UUID
-	UserID pgtype.UUID
-	Role   string
-	SetAt  pgtype.Timestamptz
+	CrewID   pgtype.UUID
+	UserID   pgtype.UUID
+	Role     string
+	SetAt    pgtype.Timestamptz
+	JoinedAt pgtype.Timestamptz
 }
 
 type DmImage struct {

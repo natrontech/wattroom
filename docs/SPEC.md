@@ -93,8 +93,8 @@ running it — ADR-0038 asks for two caps and this is the pair.
   private with their members as the named exceptions. The owner moves a room
   either way in its settings, under _who can find this room_ (#1204) — the
   same ladder that lists it publicly, one step further.
-- **Succession**: when the owner deletes their account, or no longer stands in
-  any of the crew's rooms, the crew passes to its longest-standing admin, else
+- **Succession**: when the owner deletes their account, the crew passes to its
+  longest-standing admin (by the day they joined, not their last role change), else
   its longest-standing member, else the owner of any room left in it. With no
   room left to own, the crew is deleted. Never the departing owner, never
   anyone the crew banned, never ownerless.
