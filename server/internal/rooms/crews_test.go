@@ -1,12 +1,15 @@
 package rooms
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -984,5 +987,184 @@ func TestARoomOwnerCannotLeaveTheCrew(t *testing.T) {
 	h.join(t, "bob", mine)
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/leave", ""); status != http.StatusConflict {
 		t.Errorf("a room owner left the crew: %d", status)
+	}
+}
+
+// A room shut to its crew leaves the directory with it (#1671): listed and
+// crew_visible were independent columns, and the join admitted a stranger
+// through the listing after the crew page had made the room private.
+func TestShuttingARoomToTheCrewUnlistsIt(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Shut Listed")
+	path := "/api/rooms/" + slug
+	if status, body := h.call(t, "alice", http.MethodPatch, path, `{"name":"Crew Shut Listed","listed":true,"crewVisible":true}`); status != http.StatusOK || body["listed"] != true {
+		t.Fatalf("list: %d %v", status, body)
+	}
+	if !inDirectory(t, h, slug) {
+		t.Fatal("a listed room is not in the directory — test proves nothing")
+	}
+	crew := h.crewOf(t, slug)
+	access := "/api/crews/" + store.UUIDString(crew.ID) + "/rooms/" + store.UUIDString(roomID(t, h, slug)) + "/access"
+	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":false}`); status != http.StatusNoContent {
+		t.Fatalf("shut from the crew page: %d", status)
+	}
+	if _, body := h.call(t, "alice", http.MethodGet, path, ""); body["listed"] != false {
+		t.Errorf("shut, still listed: %v", body["listed"])
+	}
+	if inDirectory(t, h, slug) {
+		t.Error("a private room is still in the directory")
+	}
+	if status, _ := h.call(t, "carol", http.MethodPost, path+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("a stranger joined a private room: %d, want 403", status)
+	}
+	// The room's own settings cannot list a private room either.
+	if status, body := h.call(t, "alice", http.MethodPatch, path, `{"name":"Crew Shut Listed","listed":true,"crewVisible":false}`); status != http.StatusOK || body["listed"] != false {
+		t.Errorf("listed while shut: %d %v", status, body)
+	}
+}
+
+// inDirectory says whether the public directory carries the room.
+func inDirectory(t *testing.T, h *harness, slug string) bool {
+	t.Helper()
+	status, body := h.call(t, "carol", http.MethodGet, "/api/rooms/directory", "")
+	if status != http.StatusOK {
+		t.Fatalf("directory: %d", status)
+	}
+	for _, v := range body {
+		rows, _ := v.([]any)
+		for _, row := range rows {
+			if m, _ := row.(map[string]any); m["slug"] == slug {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// The owner holds no role row; a stray one (a listed-room join wrote it,
+// #1671) does not list them twice — the page keys its list by id.
+func TestAStrayOwnerRowDoesNotListTheOwnerTwice(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Owner Once")
+	crew := h.crewOf(t, slug)
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member') on conflict do nothing",
+		crew.ID, h.users.byToken["alice"].ID); err != nil {
+		t.Fatalf("stray row: %v", err)
+	}
+	_, body := h.call(t, "alice", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	people, _ := body["people"].([]any)
+	n := 0
+	for _, p := range people {
+		if m, _ := p.(map[string]any); m["id"] == h.userID(t, "alice") {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("the owner appears %d times in the people list, want 1: %v", n, people)
+	}
+}
+
+// The confirm promised it (#1672): leaving the crew, or being banned from it,
+// takes the grant into a private room too, and the code does not hand it back.
+func TestLeavingOrBeingBannedDropsAPrivateRoomGrant(t *testing.T) {
+	h := setup(t)
+	open, code := h.createRoom(t, "alice", "Crew Grant Leave Open")
+	private, _ := h.createRoom(t, "alice", "Crew Grant Leave Private")
+	h.makePrivate(t, private)
+	h.join(t, "bob", open)
+	bob := h.userID(t, "bob")
+	crew := store.UUIDString(h.crewOf(t, open).ID)
+	grant := func() {
+		t.Helper()
+		if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+private+"/grants", fmt.Sprintf(`{"userId":%q}`, bob)); status != http.StatusNoContent {
+			t.Fatalf("grant: %d", status)
+		}
+	}
+	grant()
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+crew+"/leave", ""); status != http.StatusNoContent && status != http.StatusOK {
+		t.Fatalf("leave: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("rejoin: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+private+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("the grant outlived leaving the crew: join %d, want 403", status)
+	}
+
+	grant()
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+crew+"/role", fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob)); status != http.StatusNoContent && status != http.StatusOK {
+		t.Fatalf("ban: %d", status)
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+crew+"/role", fmt.Sprintf(`{"userId":%q,"role":"member"}`, bob)); status != http.StatusNoContent && status != http.StatusOK {
+		t.Fatalf("unban: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+private+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("the grant outlived a crew ban: join %d, want 403", status)
+	}
+}
+
+// Removal revokes the grant that let them in (#1672): the membership went,
+// the door back stayed.
+func TestRemovingAMemberRevokesTheirGrant(t *testing.T) {
+	h := setup(t)
+	open, _ := h.createRoom(t, "alice", "Crew Grant Remove Open")
+	private, _ := h.createRoom(t, "alice", "Crew Grant Remove Private")
+	h.makePrivate(t, private)
+	h.join(t, "bob", open)
+	bob := h.userID(t, "bob")
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+private+"/grants", fmt.Sprintf(`{"userId":%q}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("grant: %d", status)
+	}
+	h.join(t, "bob", private)
+	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+private+"/members/"+bob, ""); status != http.StatusNoContent {
+		t.Fatalf("remove: %d", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+private+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("removed, and back in through the old grant: join %d, want 403", status)
+	}
+}
+
+// The door has a ceiling (#1673): the sign-in one, per address, and the join
+// spends the same window.
+func TestTheCrewDoorHasACeiling(t *testing.T) {
+	h := setup(t)
+	for i := 0; i < doorGuessesPerWindow; i++ {
+		if status, _ := h.call(t, "", http.MethodGet, "/api/crew-doors/ZZZZZZ", ""); status != http.StatusNotFound {
+			t.Fatalf("guess %d: %d, want 404", i, status)
+		}
+	}
+	if status, _ := h.call(t, "", http.MethodGet, "/api/crew-doors/ZZZZZZ", ""); status != http.StatusTooManyRequests {
+		t.Fatalf("past the ceiling: %d, want 429", status)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join", `{"code":"ZZZZZZ"}`); status != http.StatusTooManyRequests {
+		t.Fatalf("the join after the ceiling: %d, want 429", status)
+	}
+}
+
+// SPEC's succession rule: never anyone the crew banned (#1675) — the last
+// resort used to skip only the departing owner.
+func TestTheSuccessorOfLastResortIsNeverBanned(t *testing.T) {
+	h := setup(t)
+	seed, _ := h.createRoom(t, "alice", "Crew Succession Seed")
+	crew := h.crewOf(t, seed)
+	h.join(t, "bob", seed)
+	bobID := h.users.byToken["bob"].ID
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: bobID, Role: "admin"}); err != nil {
+		t.Fatalf("admin: %v", err)
+	}
+	status, created := h.call(t, "bob", http.MethodPost, "/api/rooms", fmt.Sprintf(`{"name":"Crew Succession Room","crewId":%q}`, store.UUIDString(crew.ID)))
+	if status != http.StatusCreated {
+		t.Fatalf("bob's room: %d %v", status, created)
+	}
+	slug, _ := created["slug"].(string)
+	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", slug) })
+	// A ban row on a room owner, as databases from before the #1212 guard hold.
+	if _, err := h.store.Pool.Exec(t.Context(), "update crew_roles set role = 'banned' where crew_id = $1 and user_id = $2", crew.ID, bobID); err != nil {
+		t.Fatalf("ban row: %v", err)
+	}
+	_, err := h.store.Queries.FirstRoomOwnerInCrew(t.Context(), db.FirstRoomOwnerInCrewParams{CrewID: crew.ID, OwnerID: h.users.byToken["alice"].ID})
+	if !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("the last resort named a banned rider: %v", err)
 	}
 }

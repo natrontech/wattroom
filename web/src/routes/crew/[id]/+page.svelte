@@ -211,7 +211,10 @@
 							: 'a room'} here, and a room never leaves its crew — hand {ownedHere.length ===
 					1
 						? 'it'
-						: 'them'} to a member first, then leave.
+						: 'them'} to someone in {ownedHere.length === 1
+						? 'the room'
+						: 'them'}, or delete {ownedHere.length === 1 ? 'it' : 'them'} in the room's
+					settings, then leave.
 				{:else if myRooms.length}
 					Leaving takes you out of {crew.name} and the {myRooms.length === 1
 						? 'room'

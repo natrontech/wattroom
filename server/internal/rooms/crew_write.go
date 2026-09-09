@@ -155,6 +155,9 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		if err := s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: target}); err != nil {
 			s.log.Error("crew ban room sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
+		if err := s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: target}); err != nil {
+			s.log.Error("crew ban grant sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
+		}
 		slugs, err := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
 		if err != nil {
 			s.log.Error("crew rooms lookup failed", "err", err, "crew", store.UUIDString(crew.ID))

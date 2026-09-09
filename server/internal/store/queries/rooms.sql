@@ -131,7 +131,9 @@ select * from memberships where room_id = $1 and user_id = $2;
 select * from memberships where user_id = sqlc.arg(user_id) and room_id = any(sqlc.arg(room_ids)::uuid[]);
 
 -- name: UpdateRoom :one
-update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
+-- listed implies crew_visible (#1671): the directory is a door onto the crew,
+-- and a room shut to the crew is not a public one.
+update rooms set name = $2, listed = ($3 and $8), sound_pack = $4, icon = $5, cheers = $6,
                  board_enabled = $7, crew_visible = $8
 where id = $1 returning *;
 
@@ -267,6 +269,9 @@ select r.session_id, r.user_id, u.display_name
 from session_rsvps r
 join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id
+-- Someone removed or banned since they said yes is not coming (#1675): the
+-- row stays, the line does not name them.
+join memberships m on m.room_id = s.room_id and m.user_id = r.user_id and m.role <> 'banned'
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
 order by r.created_at;
 

@@ -163,7 +163,13 @@ func (q *Queries) DeleteRoomsOwnedBy(ctx context.Context, ownerID pgtype.UUID) e
 }
 
 const firstRoomOwnerInCrew = `-- name: FirstRoomOwnerInCrew :one
-select owner_id from rooms where crew_id = $1 and owner_id <> $2 order by created_at limit 1
+select rooms.owner_id from rooms
+where rooms.crew_id = $1 and rooms.owner_id <> $2
+  -- SPEC: never anyone the crew banned (#1675). Rows like that predate the
+  -- #1212 guard; makeOwner would have cleared the ban on the way in.
+  and not exists (select 1 from crew_roles cr
+                   where cr.crew_id = rooms.crew_id and cr.user_id = rooms.owner_id and cr.role = 'banned')
+order by created_at limit 1
 `
 
 type FirstRoomOwnerInCrewParams struct {
@@ -393,6 +399,23 @@ func (q *Queries) JoinCrew(ctx context.Context, arg JoinCrewParams) error {
 	return err
 }
 
+const leaveCrewGrants = `-- name: LeaveCrewGrants :exec
+delete from room_grants g using rooms r
+where r.id = g.room_id and r.crew_id = $1 and g.user_id = $2
+`
+
+type LeaveCrewGrantsParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// ...and every named exception into the crew's private rooms (#1672): a
+// grant is a door into a room of the crew, not a key that outlives it.
+func (q *Queries) LeaveCrewGrants(ctx context.Context, arg LeaveCrewGrantsParams) error {
+	_, err := q.db.Exec(ctx, leaveCrewGrants, arg.CrewID, arg.UserID)
+	return err
+}
+
 const leaveCrewRole = `-- name: LeaveCrewRole :exec
 delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned'
 `
@@ -496,6 +519,9 @@ with people as (
     union all
     select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
     where cr.crew_id = $1 and cr.role in ('member', 'admin')
+      -- A stray member row for the owner (a listed-room join wrote one, #1671)
+      -- must not list them twice: the page keys its list by id.
+      and cr.user_id <> (select owner_id from crews where id = $1)
 )
 select u.id, u.display_name, u.avatar_url,
        p.since::timestamptz as since,
@@ -930,7 +956,7 @@ func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error 
 }
 
 const setRoomCrewVisible = `-- name: SetRoomCrewVisible :exec
-update rooms set crew_visible = $2 where id = $1
+update rooms set crew_visible = $2, listed = (listed and $2) where id = $1
 `
 
 type SetRoomCrewVisibleParams struct {
@@ -940,6 +966,9 @@ type SetRoomCrewVisibleParams struct {
 
 // The one permission a crew admin holds over a room they never joined
 // (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
+// A room shut to its crew leaves the directory with it (#1671): listed and
+// crew_visible were independent columns, and the join admitted a stranger
+// through the listing after the crew page had made the room private.
 func (q *Queries) SetRoomCrewVisible(ctx context.Context, arg SetRoomCrewVisibleParams) error {
 	_, err := q.db.Exec(ctx, setRoomCrewVisible, arg.ID, arg.CrewVisible)
 	return err

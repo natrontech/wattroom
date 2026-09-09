@@ -25,6 +25,12 @@ delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned';
 delete from memberships m using rooms r
 where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
 
+-- name: LeaveCrewGrants :exec
+-- ...and every named exception into the crew's private rooms (#1672): a
+-- grant is a door into a room of the crew, not a key that outlives it.
+delete from room_grants g using rooms r
+where r.id = g.room_id and r.crew_id = $1 and g.user_id = $2;
+
 -- name: CountCrewMembers :one
 select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin');
 
@@ -178,6 +184,9 @@ with people as (
     union all
     select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
     where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
+      -- A stray member row for the owner (a listed-room join wrote one, #1671)
+      -- must not list them twice: the page keys its list by id.
+      and cr.user_id <> (select owner_id from crews where id = sqlc.arg(crew_id))
 )
 select u.id, u.display_name, u.avatar_url,
        p.since::timestamptz as since,
@@ -269,7 +278,13 @@ limit 1;
 -- The successor of last resort: PickCrewSuccessor can come back empty while
 -- rooms remain (their owners crew-banned, say), and the rule must always name
 -- somebody while there is a room to own. A room always has an owner.
-select owner_id from rooms where crew_id = $1 and owner_id <> $2 order by created_at limit 1;
+select rooms.owner_id from rooms
+where rooms.crew_id = $1 and rooms.owner_id <> $2
+  -- SPEC: never anyone the crew banned (#1675). Rows like that predate the
+  -- #1212 guard; makeOwner would have cleared the ban on the way in.
+  and not exists (select 1 from crew_roles cr
+                   where cr.crew_id = rooms.crew_id and cr.user_id = rooms.owner_id and cr.role = 'banned')
+order by created_at limit 1;
 
 -- name: GetRoomInCrew :one
 -- A room addressed by id inside its crew (#1226): the crew page holds no slug
@@ -280,4 +295,7 @@ select * from rooms where id = $1 and crew_id = $2;
 -- name: SetRoomCrewVisible :exec
 -- The one permission a crew admin holds over a room they never joined
 -- (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
-update rooms set crew_visible = $2 where id = $1;
+-- A room shut to its crew leaves the directory with it (#1671): listed and
+-- crew_visible were independent columns, and the join admitted a stranger
+-- through the listing after the crew page had made the room private.
+update rooms set crew_visible = $2, listed = (listed and $2) where id = $1;

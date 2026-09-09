@@ -6,6 +6,7 @@
 	// `onchange`.
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
@@ -56,22 +57,29 @@
 			? act(person, 'member', `${person.displayName} is a member now.`)
 			: act(person, 'admin', `${person.displayName} is a crew admin now.`);
 
-	// Banning at the crew is reversible here (the unban below sets it right
-	// back), so an undo toast rather than a confirm — the same shape the
-	// room's Members place uses (#666, errors.md).
-	function ban(person: CrewPerson) {
-		const previous = person.role === 'admin' ? 'admin' : 'member';
-		const crewId = crew.id;
-		void setCrewRole(crewId, person.id, 'banned').then((res) => {
-			if (!res.ok) {
-				toasts.push(res.error.message, { tone: 'error' });
-				return;
-			}
-			toasts.push(`Banned ${person.displayName} from the crew.`, {
-				undo: () => void setCrewRole(crewId, person.id, previous),
-			});
-			onchange();
+	// A crew ban takes every room membership in the crew with it (ADR-0038),
+	// and the undo toast that stood here put back the role and none of the
+	// rooms (#1674): a confirm that says what goes, the shape leaving has.
+	async function ban(person: CrewPerson) {
+		const rooms = person.rooms ?? 0;
+		const which = rooms === 1 ? 'the room' : `the ${rooms} rooms`;
+		const sure = await confirm({
+			title: `Ban ${person.displayName} from the crew?`,
+			body:
+				rooms > 0
+					? `They leave ${which} of the crew they are in, and any coach role there. Lifting the ban later lets them back into the crew, not into the rooms.`
+					: `They cannot come back through the crew's code until you lift the ban.`,
+			action: 'Ban',
+			cancel: 'Keep',
 		});
+		if (!sure) return;
+		const res = await setCrewRole(crew.id, person.id, 'banned');
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push(`Banned ${person.displayName} from the crew.`);
+		onchange();
 	}
 
 	const canAct = (person: CrewPerson) =>
