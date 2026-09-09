@@ -88,3 +88,45 @@ func TestNoMidSessionHijack(t *testing.T) {
 		t.Fatalf("not done after end: %+v", got)
 	}
 }
+
+// The close is read more than once (audit 2026-09-09): a rider's metrics or
+// a presence poll can be the state() call that crosses the timeline's end,
+// and the tick that saves the ride reads the answer AFTER it. Elapsed used
+// to be right on the crossing call only — every later read said 0, and the
+// saver dated the ride "now minus nothing": at its end.
+func TestElapsedSurvivesTheClose(t *testing.T) {
+	t.Run("the timeline running out", func(t *testing.T) {
+		s := newSession()
+		pick(s)
+		s.apply(protocol.Control{Action: "start"}, at(0))
+		if got := s.state(at(10 + 120)); got.Phase != "done" || got.Elapsed != 120 {
+			t.Fatalf("crossing call: %+v", got)
+		}
+		if got := s.state(at(10 + 121)); got.Phase != "done" || got.Elapsed != 120 {
+			t.Fatalf("the read after the crossing: %+v", got)
+		}
+	})
+	t.Run("the coach ending it early", func(t *testing.T) {
+		s := newSession()
+		pick(s)
+		s.apply(protocol.Control{Action: "start"}, at(0))
+		s.state(at(10))
+		if !s.apply(protocol.Control{Action: "end"}, at(40)) {
+			t.Fatalf("end refused")
+		}
+		if got := s.state(at(41)); got.Phase != "done" || got.Elapsed != 30 {
+			t.Fatalf("ended at 30 s in: %+v", got)
+		}
+	})
+	t.Run("ended while paused", func(t *testing.T) {
+		s := newSession()
+		pick(s)
+		s.apply(protocol.Control{Action: "start"}, at(0))
+		s.state(at(10))
+		s.apply(protocol.Control{Action: "pause"}, at(40))
+		s.apply(protocol.Control{Action: "end"}, at(100))
+		if got := s.state(at(101)); got.Elapsed != 30 {
+			t.Fatalf("a pause is not riding: %+v", got)
+		}
+	})
+}

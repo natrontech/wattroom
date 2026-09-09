@@ -81,5 +81,67 @@ func TestEmptyRoomStillClosesAndSavesTheSession(t *testing.T) {
 		default:
 			t.Fatal("the session ended with nobody in the room and was never saved")
 		}
+		// And the timeline's "ended" line is stamped when it ended, waiting
+		// for the next visitor — not stamped the moment they walk in.
+		rm.mu.Lock()
+		defer rm.mu.Unlock()
+		var ended *protocol.RoomEvent
+		for i := range rm.events.pending {
+			if rm.events.pending[i].Verb == "ended" {
+				ended = &rm.events.pending[i]
+			}
+		}
+		if ended == nil {
+			t.Fatal("no ended line for the next visitor")
+		}
+		if off := time.UnixMilli(ended.At).Sub(running.Add(60 * time.Second)).Abs(); off > 2*time.Second {
+			t.Fatalf("ended line stamped %s off the close", off)
+		}
+	})
+}
+
+// A rider's metrics message is a state() call too, and with someone in the
+// room it is usually the one that crosses the timeline's end; the tick that
+// saves the ride reads the answer after it (audit 2026-09-09). The ride used
+// to be dated "now minus nothing": at its end.
+func TestRideIsDatedAtItsStartWhenARiderCrossesTheEnd(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		rm := newRoom("crossing")
+		rm.now = time.Now
+		saved := make(chan []RiderRecord, 1)
+		var savedAt time.Time
+		saver := saverFunc(func(startedAt time.Time, riders []RiderRecord) {
+			savedAt = startedAt
+			saved <- riders
+		})
+		go rm.run(slog.New(slog.DiscardHandler), time.Now, saver)
+		// Off the tick grid: started 300 ms after the loop's first tick, the
+		// timeline runs out between two ticks, and the rider's metrics at
+		// that moment are the call that crosses it.
+		time.Sleep(300 * time.Millisecond)
+		rm.mu.Lock()
+		rm.session.pick("Openers", "{}", 60)
+		rm.session.start(time.Now())
+		rm.mu.Unlock()
+		running := time.Now().Add(countdownSeconds * time.Second)
+
+		time.Sleep(countdownSeconds*time.Second + time.Second)
+		c := sock("jan")
+		rm.join(c)
+		for seq := 1; seq <= 70; seq++ {
+			rm.setMetrics(c, protocol.RiderMetrics{Watts: 200, Seq: seq})
+			time.Sleep(time.Second)
+		}
+		synctest.Wait()
+		close(rm.stop)
+
+		select {
+		case <-saved:
+			if off := savedAt.Sub(running).Abs(); off > 2*time.Second {
+				t.Fatalf("ride dated %s off its start", off)
+			}
+		default:
+			t.Fatal("the session ran out with a rider present and was never saved")
+		}
 	})
 }

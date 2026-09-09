@@ -69,7 +69,12 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
 			// a session whose last rider closed the tab at minute 58 ends at
 			// 60 and saves then, dated right — not on the next visit.
-			ended := rm.closeLocked(rm.session.state(now()), now(), saver != nil)
+			state := rm.session.state(now())
+			// Said now, at the moment it happened: skipping the line here
+			// left phaseSaid at "running", and the next visitor watched the
+			// session "end" live, hours late (audit 2026-09-09).
+			rm.sayPhaseLocked(state, now())
+			ended := rm.closeLocked(state, now(), saver != nil)
 			locked = false
 			rm.mu.Unlock()
 			rm.handOff(log, now, saver, ended)
