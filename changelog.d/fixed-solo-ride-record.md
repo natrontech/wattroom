@@ -1,0 +1,1 @@
+- A solo ride records one sample per second however often the trainer reports, so its duration, kJ, power curve and XP no longer scale with the trainer's notification rate. A friend's shared ride and the rides trend say "not scored" instead of "0 % on target" for a session whose workout prescribed nothing.

@@ -662,7 +662,7 @@ func (q *Queries) ListRoomSessionDays(ctx context.Context, arg ListRoomSessionDa
 }
 
 const listUserProgression = `-- name: ListUserProgression :many
-select id, started_at, seconds, kj, execution, ftp_watts,
+select id, started_at, seconds, kj, execution, execution_scored, ftp_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
@@ -672,14 +672,15 @@ limit 1000
 `
 
 type ListUserProgressionRow struct {
-	ID        pgtype.UUID
-	StartedAt pgtype.Timestamptz
-	Seconds   int32
-	Kj        int32
-	Execution float32
-	FtpWatts  int16
-	Best20m   int32
-	NormWatts int32
+	ID              pgtype.UUID
+	StartedAt       pgtype.Timestamptz
+	Seconds         int32
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	FtpWatts        int16
+	Best20m         int32
+	NormWatts       int32
 }
 
 // Per-ride trend rows, oldest first (#222): ftp_watts was captured at ride
@@ -700,6 +701,7 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 			&i.Seconds,
 			&i.Kj,
 			&i.Execution,
+			&i.ExecutionScored,
 			&i.FtpWatts,
 			&i.Best20m,
 			&i.NormWatts,

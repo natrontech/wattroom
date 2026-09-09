@@ -325,3 +325,20 @@ describe('the execution score (#795)', () => {
 		expect(await ride(scored(prescribed, 0.8))).toBeCloseTo(0, 5);
 	});
 });
+
+// A trainer notifying four times inside one second is one second of riding
+// (audit 2026-09-09): the record is read as one entry per second by the
+// summary, the .fit and the server's XP.
+describe('the ride record', () => {
+	it('admits one sample per ride second however often the trainer notifies', async () => {
+		const session = ride();
+		await session.start();
+		for (let i = 0; i < 4; i++)
+			session.onSample({ watts: 200, cadence: 90, at: i * 250 });
+		expect(session.recording.length).toBe(1);
+		session.tick();
+		session.onSample({ watts: 210, cadence: 90, at: 1000 });
+		expect(session.recording.length).toBe(2);
+		session.stop();
+	});
+});

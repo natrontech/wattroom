@@ -104,6 +104,14 @@ export function createRideSession({
 		heartRate: number;
 	}[] = [];
 	let recordedSeconds = 0;
+	// The wall-clock second the record last admitted a sample for: a trainer
+	// notifies more than once a second and everything downstream — kJ,
+	// duration, the power curve, the XP the server pays — reads this record
+	// as one entry per second. Wall clock, not the ride clock: the ride clock
+	// stops while auto-paused and the record must keep counting (the ramp's
+	// blown-detector reads it). The room's recorder and the hub's admit the
+	// same way (#1411, #791); this was the third recorder (audit 2026-09-09).
+	let lastRecordedSecond = -1;
 
 	// SPEC's execution score, accumulated as the ride happens: seconds inside
 	// the band over seconds ridden, each weighed by the step's prescribed
@@ -160,17 +168,25 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
-		const recorded = {
-			second: recordedSeconds++,
-			watts: Math.max(0, Math.round(next.watts)),
-			cadence: Math.max(0, Math.round(next.cadence)),
-			// Reaches the .fit export now that a strap can be paired (#11, #44).
-			heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
-		};
-		recording.push(recorded);
-		onRecord?.(recorded);
-		trace.push({ t: clockSeconds, w: next.watts });
-		if (trace.length > 900) trace.shift();
+		// The record and the score admit one sample per ride second; the
+		// guards below look at every one — a stop is noticed by the sample
+		// that stopped, not by the second's first.
+		const second = Math.floor(raw.at / 1000);
+		const admit = second > lastRecordedSecond;
+		if (admit) {
+			lastRecordedSecond = second;
+			const recorded = {
+				second: recordedSeconds++,
+				watts: Math.max(0, Math.round(next.watts)),
+				cadence: Math.max(0, Math.round(next.cadence)),
+				// Reaches the .fit export now that a strap can be paired (#11, #44).
+				heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
+			};
+			recording.push(recorded);
+			onRecord?.(recorded);
+			trace.push({ t: clockSeconds, w: next.watts });
+			if (trace.length > 900) trace.shift();
+		}
 
 		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
 		// the trainer holds is zero exactly when a guard is already up.
@@ -187,6 +203,7 @@ export function createRideSession({
 		// cooldown, which SPEC excludes as well: the server has always agreed
 		// (workout.TargetAt reports those seconds unscored) and this side had not.
 		if (
+			admit &&
 			state === 'running' &&
 			target > 0 &&
 			pedalling &&

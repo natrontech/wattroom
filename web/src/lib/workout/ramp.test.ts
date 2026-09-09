@@ -151,8 +151,14 @@ describe('a ramp the rider stops in', () => {
 			session.tick();
 		}
 		// Then the rider stops: long enough to auto-pause AND to fail.
+		// One sample per wall-clock second, as a trainer sends them: the record
+		// admits a second once (#1456), so the stop has to keep the clock going.
 		for (let i = 0; i < DEFAULTS.pauseAfterSeconds + RAMP.failSeconds; i++) {
-			session.onSample({ watts: 0, cadence: 0, at: 0 });
+			session.onSample({
+				watts: 0,
+				cadence: 0,
+				at: (RAMP.warmupSeconds + 30 + i) * 1000,
+			});
 			session.tick();
 		}
 		return session;
