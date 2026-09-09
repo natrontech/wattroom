@@ -55,8 +55,8 @@
 					detail: `Reconnecting. ${formatClock(bufferedSeconds)} of riding is buffered on this device and will be sent when you're back.`,
 				}
 			: {
-					title: "Couldn't rejoin the room",
-					detail: `Your ride is safe — ${formatClock(bufferedSeconds)} is stored locally and uploads on reconnect. Voice and the shared timeline are offline.`,
+					title: "Still can't reach the room",
+					detail: `Retrying every 10 seconds — or reconnect now if your network just came back. Your ride is safe: ${formatClock(bufferedSeconds)} is stored locally and uploads on reconnect. Voice and the shared timeline are offline.`,
 				};
 	});
 

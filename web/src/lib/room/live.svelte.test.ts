@@ -47,7 +47,7 @@ class FakeSocket {
 }
 globalThis.WebSocket = FakeSocket as unknown as typeof WebSocket;
 
-const { createRoomLive } = await import('./live.svelte');
+const { createRoomLive, SETTLED_ATTEMPTS } = await import('./live.svelte');
 
 const QUEUE = 16;
 
@@ -152,6 +152,77 @@ describe('room live ride buffer', () => {
 		FakeSocket.last!.open();
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.since).toEqual([3]);
+		vi.useRealTimers();
+	});
+});
+
+describe('room live lost (#1500)', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+		vi.useFakeTimers();
+	});
+
+	/** One failed reconnect: the dialled socket closes without opening. */
+	async function drop() {
+		const socket = FakeSocket.last!;
+		socket.close();
+		socket.onclose?.();
+		await vi.advanceTimersByTimeAsync(10_000);
+	}
+
+	it('turns to lost once the backoff has settled, and only then', async () => {
+		const live = createRoomLive('lost');
+		await vi.advanceTimersByTimeAsync(0);
+		FakeSocket.last!.open();
+		expect(live.lost).toBe(false);
+		for (let i = 1; i < SETTLED_ATTEMPTS; i++) {
+			await drop();
+			expect(live.status).toBe('reconnecting');
+			expect(live.lost).toBe(false);
+		}
+		await drop();
+		expect(live.lost).toBe(true);
+		// Back: the reading clears with the status, and the count starts over.
+		FakeSocket.last!.open();
+		expect(live.lost).toBe(false);
+		expect(live.status).toBe('live');
+		vi.useRealTimers();
+	});
+
+	it('spends 1, 2, 4, 8 s before settling at 10 s, as the spec says', async () => {
+		createRoomLive('backoff');
+		await vi.advanceTimersByTimeAsync(0);
+		FakeSocket.last!.open();
+		const dials: number[] = [];
+		for (const wait of [1_000, 2_000, 4_000, 8_000, 10_000]) {
+			const socket = FakeSocket.last!;
+			socket.close();
+			socket.onclose?.();
+			await vi.advanceTimersByTimeAsync(wait - 1);
+			expect(FakeSocket.last).toBe(socket);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(FakeSocket.last).not.toBe(socket);
+			dials.push(wait);
+		}
+		expect(dials).toHaveLength(5);
+		vi.useRealTimers();
+	});
+
+	it('retry() dials now instead of waiting out the backoff', async () => {
+		const live = createRoomLive('retry');
+		await vi.advanceTimersByTimeAsync(0);
+		FakeSocket.last!.open();
+		for (let i = 0; i < SETTLED_ATTEMPTS; i++) await drop();
+		const waiting = FakeSocket.last!;
+		waiting.close();
+		waiting.onclose?.();
+		// The backoff is at its 10 s ceiling; the button does not wait for it.
+		live.retry();
+		expect(FakeSocket.last).not.toBe(waiting);
+		// And the timer it cancelled dials nothing on top of the new socket.
+		const dialled = FakeSocket.last;
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(FakeSocket.last).toBe(dialled);
 		vi.useRealTimers();
 	});
 });

@@ -43,12 +43,15 @@
 	     banner that must not be ignored (#1411). -->
 	{#if live.status === 'reconnecting'}
 		<div class="shrink-0 px-5 pt-4">
+			<!-- Past the backoff's settling point the banner turns to "lost" and
+			     grows the one big button (#1500). It dials now; it never reloads,
+			     which would drop the trainer's Bluetooth link mid-ride. -->
 			<FaultBanner
-				fault={{ kind: 'room', state: 'reconnecting' }}
+				fault={{ kind: 'room', state: live.lost ? 'lost' : 'reconnecting' }}
 				bufferedSeconds={droppedAt
 					? Math.round((Date.now() - droppedAt) / 1000)
 					: 0}
-				onRecover={() => location.reload()}
+				onRecover={() => live.retry()}
 			/>
 		</div>
 	{:else if rideCtl.guard !== 'running'}

@@ -20,6 +20,15 @@ import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
  */
 export type LiveStatus = 'connecting' | 'live' | 'reconnecting';
 
+/**
+ * Reconnects failed before the banner turns from "reconnecting" to "lost".
+ * The backoff spends 1+2+4+8 s before it settles at its 10 s ceiling, the
+ * same 15 s the roster waits before announcing the rider gone (docs/SPEC.md):
+ * past it the room has said goodbye, and the rider gets the one big button
+ * (#1500) while the automatic retry keeps running underneath.
+ */
+export const SETTLED_ATTEMPTS = 5;
+
 export function createRoomLive(slug: string) {
 	let status = $state<LiveStatus>('connecting');
 	// The room's chat — the log, its ids, its edits, its reactions — is a
@@ -62,7 +71,7 @@ export function createRoomLive(slug: string) {
 	let claim: SensorClaim | null = null;
 	let socket: WebSocket | null = null;
 	let closed = false;
-	let attempts = 0;
+	let attempts = $state(0);
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Crash safety (#19): metrics buffer locally as well as streaming. When the
@@ -189,11 +198,11 @@ export function createRoomLive(slug: string) {
 			// Ride-critical errors are persistent status, never toasts
 			// (.claude/rules/errors.md) — and recovery is automatic.
 			status = 'reconnecting';
-			attempts += 1;
 			reconnectTimer = setTimeout(
 				connect,
 				Math.min(1000 * 2 ** attempts, 10_000),
 			);
+			attempts += 1;
 		};
 	}
 	connect();
@@ -226,6 +235,16 @@ export function createRoomLive(slug: string) {
 	return {
 		get status() {
 			return status;
+		},
+		/** Reconnecting past the backoff's settling point: time for the button. */
+		get lost() {
+			return status === 'reconnecting' && attempts >= SETTLED_ATTEMPTS;
+		},
+		/** The one big button: dial now instead of waiting out the backoff. */
+		retry() {
+			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+			reconnectTimer = null;
+			connect();
 		},
 		get tick() {
 			return tick;
