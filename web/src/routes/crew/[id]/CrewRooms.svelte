@@ -32,29 +32,36 @@
 	// or shut it — "crew admins manage room permissions" (ADR-0038), and the
 	// one thing the `admin` access state is for. The primary click stays the
 	// door; this holds the permission.
-	function roomEntries(room: Crew['rooms'][number]): MenuEntry[] {
-		if (!administers) return [];
+	// One toggle for the row's button and its menu entry (#1372): the
+	// admin-state row is the one an admin came here to act on, and it used
+	// to look disabled with its only action three fingers away in a menu.
+	const accessLabel = (room: Crew['rooms'][number]) =>
+		room.access === 'open' ? 'Make private' : 'Open to the crew';
+	function toggleAccess(room: Crew['rooms'][number]) {
 		const crewId = crew.id;
 		const open = room.access === 'open';
+		void setRoomAccess(crewId, room.id, !open).then((res) => {
+			if (!res.ok) {
+				toasts.push(res.error.message, { tone: 'error' });
+				return;
+			}
+			toasts.push(
+				open
+					? `${room.name} is private now — its members, and whoever you let in.`
+					: `${room.name} is open to the crew.`,
+				{ undo: () => void setRoomAccess(crewId, room.id, open) },
+			);
+			presence.reload();
+			onchange();
+		});
+	}
+	function roomEntries(room: Crew['rooms'][number]): MenuEntry[] {
+		if (!administers) return [];
 		return [
 			{
-				label: open ? 'Make private' : 'Open to the crew',
-				icon: open ? Eye : DoorOpen,
-				onSelect: () =>
-					void setRoomAccess(crewId, room.id, !open).then((res) => {
-						if (!res.ok) {
-							toasts.push(res.error.message, { tone: 'error' });
-							return;
-						}
-						toasts.push(
-							open
-								? `${room.name} is private now — its members, and whoever you let in.`
-								: `${room.name} is open to the crew.`,
-							{ undo: () => void setRoomAccess(crewId, room.id, open) },
-						);
-						presence.reload();
-						onchange();
-					}),
+				label: accessLabel(room),
+				icon: room.access === 'open' ? Eye : DoorOpen,
+				onSelect: () => toggleAccess(room),
 			},
 		];
 	}
@@ -101,13 +108,14 @@
 			{@const open = reachable(room.access) && !!room.slug}
 			<li
 				title={administers ? MENU_HINT : undefined}
+				class="flex items-center gap-2 {administers ? 'pr-3' : ''}"
 				{@attach contextMenu(() => roomEntries(room))}
 			>
 				<svelte:element
 					this={open ? 'a' : 'div'}
 					href={open ? `/r/${room.slug}` : undefined}
 					title={open ? undefined : mark?.label}
-					class="flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm {open
+					class="flex min-h-11 min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-sm {open
 						? 'hover:bg-ink/5 text-ink'
 						: 'text-muted/60'}"
 				>
@@ -124,6 +132,12 @@
 						>
 					{/if}
 				</svelte:element>
+				{#if administers}
+					<button
+						onclick={() => toggleAccess(room)}
+						class="btn btn-ghost btn-xs shrink-0">{accessLabel(room)}</button
+					>
+				{/if}
 			</li>
 		{/each}
 	</ul>

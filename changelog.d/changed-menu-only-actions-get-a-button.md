@@ -1,0 +1,1 @@
+- Handing a room over and banning someone from it no longer hide behind a right-click: an owner's Members row has a ⋯ button that opens the same menu. On the crew's page, every room row shows its owner and admins an "Open to the crew" / "Make private" button — the row an admin came to act on used to look disabled with its only action in the menu.

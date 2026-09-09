@@ -12,14 +12,16 @@
 	import { statusOfRider } from '$lib/status';
 	import { wkg, formatMonth } from '$lib/format';
 	import {
-		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
+		contextMenu,
+		openMenu,
 	} from '$lib/context-menu.svelte';
 	import { copyInviteLink } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
 	import Award from '@lucide/svelte/icons/award';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Link from '@lucide/svelte/icons/link';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
@@ -287,6 +289,25 @@
 						onclick={() => confirmRemove(member)}
 						disabled={room.adminBusy}
 						class="btn btn-ghost btn-xs text-danger shrink-0">Remove</button
+					>
+					<!-- The rest of the owner's paperwork — hand over, ban — has a
+					     visible way in: nothing lives only in a menu (ux.md, #1372).
+					     The same menu the right-click opens, so the two cannot
+					     disagree. -->
+					<button
+						onclick={(e) => {
+							const at = e.currentTarget.getBoundingClientRect();
+							openMenu(
+								memberMenu(member),
+								at.left,
+								at.bottom + 4,
+								e.currentTarget,
+							);
+						}}
+						disabled={room.adminBusy}
+						class="btn btn-ghost btn-xs shrink-0"
+						aria-label="more actions for {member.displayName}"
+						title="hand the room over · ban"><Ellipsis size={14} /></button
 					>
 				{/if}
 			</li>
