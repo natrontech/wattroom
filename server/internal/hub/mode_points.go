@@ -2,7 +2,6 @@ package hub
 
 import (
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -118,7 +117,7 @@ func (p *pointsRace) buildPodium(roster map[string]protocol.Rider) {
 	for id := range p.joined {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return p.points[ids[i]] > p.points[ids[j]] })
+	rankIDs(ids, func(a, b string) bool { return p.points[a] > p.points[b] })
 	for _, id := range ids {
 		p.podium = append(p.podium, protocol.SprintScore{
 			RiderID: id, Name: roster[id].Name, Wkg: p.points[id],

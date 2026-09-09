@@ -85,7 +85,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			for id, m := range rm.metrics {
 				samples[id] = m.Watts
 			}
-			rm.game.advance(now(), samples, rm.seen)
+			rm.game.advance(now(), samples, rm.gameRosterLocked())
 			gs := rm.game.state(now())
 			rm.lastGame = &gs
 		} else {

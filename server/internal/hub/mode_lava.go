@@ -2,7 +2,6 @@ package hub
 
 import (
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -138,7 +137,7 @@ func (l *lava) buildPodium(roster map[string]protocol.Rider) []protocol.SprintSc
 		}
 	}
 	// Survivors ranked by remaining lives, then the eliminated in reverse.
-	sort.Slice(survivors, func(i, j int) bool { return l.lives[survivors[i]] > l.lives[survivors[j]] })
+	rankIDs(survivors, func(a, b string) bool { return l.lives[a] > l.lives[b] })
 	standing := append(survivors, reverse(l.order)...)
 	out := make([]protocol.SprintScore, 0, len(standing))
 	for place, id := range standing {

@@ -4,6 +4,7 @@
 package hub
 
 import (
+	"maps"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -122,25 +123,45 @@ func (rm *room) mood(now time.Time) SessionMood {
 	return rm.session.mood(now)
 }
 
-// startGame begins a mode; refused while another runs (end it first).
-func (rm *room) startGame(mode string, now time.Time) bool {
+// startGame begins a mode. The refusal names the reason (#1582): a game
+// already running and a mode that does not exist ask different things of
+// the coach. Empty means started.
+func (rm *room) startGame(mode string, now time.Time) string {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game != nil && !rm.game.done() {
-		return false
+		return refuseGameRunning
 	}
 	next := newGameMode(mode, now)
 	if next == nil {
-		return false
+		return refuseNoSuchMode
 	}
 	rm.game = next
-	return true
+	// The game's own roster (#1581): the tick merges rm.seen into it, so a
+	// session start — which resets rm.seen for the new ride — does not blank
+	// the names and FTPs the running game scores against.
+	rm.gameRoster = make(map[string]protocol.Rider)
+	return ""
 }
 
-func (rm *room) endGame() {
+// endGame stops the running mode; false when nothing was running (#1582).
+func (rm *room) endGame() bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	running := rm.game != nil
 	rm.game = nil
+	return running
+}
+
+// gameRosterLocked is the roster the game scores against: everyone the room
+// has seen this session, remembered across a session start (#1581). Caller
+// holds rm.mu.
+func (rm *room) gameRosterLocked() map[string]protocol.Rider {
+	if rm.gameRoster == nil {
+		rm.gameRoster = make(map[string]protocol.Rider)
+	}
+	maps.Copy(rm.gameRoster, rm.seen)
+	return rm.gameRoster
 }
 
 func (rm *room) armIfRunning(now time.Time) bool {

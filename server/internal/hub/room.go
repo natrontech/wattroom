@@ -42,7 +42,9 @@ type room struct {
 	sprint   *sprint
 	game     gameMode
 	lastGame *protocol.GameState
-	seen     map[string]protocol.Rider
+	// The running game's roster, merged from seen on every tick (#1581).
+	gameRoster map[string]protocol.Rider
+	seen       map[string]protocol.Rider
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
