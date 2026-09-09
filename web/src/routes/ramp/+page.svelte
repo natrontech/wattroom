@@ -7,6 +7,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
+	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -140,6 +141,21 @@
 			!!session.sample &&
 			nowMs - session.sample.at > SIGNAL_LOST_MS,
 	);
+
+	// The ramp speaks like every ride (#1792): each step is a block cue, the
+	// guards and a dropout say so, and the end is heard — the number a rider
+	// keeps for a month should not arrive in silence.
+	createRideSounds({
+		fault: () => (signalLost ? 'trainer' : null),
+		sprint: () => null,
+		guard: () => guardOfRide(session?.state),
+		spiral: () => session?.spiralActive,
+		block: () =>
+			session && session.state !== 'idle' && session.state !== 'done'
+				? session.info.segmentIndex
+				: undefined,
+		ended: () => session?.state === 'done',
+	});
 
 	// "Test again" used to be a link to this page, which a same-route
 	// navigation leaves exactly as it was (#1797): the page kept its finished
