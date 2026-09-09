@@ -1,13 +1,16 @@
 <script lang="ts">
-	// The crew header and its switcher (ADR-0020 amended, #1147; #1238): the
-	// crew is the mode the sidebar is in, so its row sits at the top like
-	// Discord's server header — drawn as one more nav row, not a boxed card:
-	// the same 16 px left edge, the same icon slot and label as Home below
-	// it. Opening it expands the crews in place, plain rows at the same
-	// indentation; nothing floats, nothing is rounded, nothing is inset.
+	// The crew header and its switcher (ADR-0020 amended, #1147; #1238;
+	// #1327): the crew is the mode the sidebar is in, so its row is the
+	// column's first — the header, the way Discord's server name is — drawn
+	// as one more nav row, not a boxed card: the same 16 px left edge, the
+	// same icon slot and label as Home below it, one step larger because it
+	// holds everything under it. Opening it expands the crews in place, plain
+	// rows at the same indentation; nothing floats, nothing is rounded,
+	// nothing is inset.
 	// Under it, one line per crew you are NOT looking at with something on
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
 	import CrewMark from '$lib/components/CrewMark.svelte';
+	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
@@ -31,6 +34,7 @@
 		crews,
 		crew,
 		rooms,
+		live = false,
 		onpick,
 	}: {
 		/** Every crew the room list mentions, once each. */
@@ -38,6 +42,8 @@
 		/** The one on screen. */
 		crew: RoomCrew;
 		rooms: RailRoom[];
+		/** A session is running where you stand: the mark breathes (ADR-0005). */
+		live?: boolean;
 		/** The rider chose another crew; the sidebar remembers it. */
 		onpick: (id: string) => void;
 	} = $props();
@@ -134,43 +140,55 @@
      edge, the same icon slot and label as Home below it. Opening it
      expands the crews in place, plain rows at the same indentation;
      nothing floats, nothing is rounded, nothing is inset. -->
-<div class="px-2" bind:this={header}>
+<div class="px-2 pt-2" bind:this={header}>
 	{#snippet crewRow(c: RoomCrew)}
-		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={20} />
-		<span class="font-display min-w-0 flex-1 truncate text-sm font-bold"
+		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={24} />
+		<span
+			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
 			>{c.name}</span
 		>
 		{#if c.role === 'owner'}
 			<Shield size={12} class="text-muted/60 shrink-0" aria-label="yours" />
 		{/if}
 	{/snippet}
-	{#if crews.length > 1}
-		<button
-			onclick={() => (switching = !switching)}
-			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left md:min-h-0 {switching
-				? 'bg-ink/5 text-ink'
-				: 'text-ink'}"
-			title="switch crew"
-			aria-label="crew: {crew.name} — switch crew"
-			aria-expanded={switching}
-		>
-			{@render crewRow(crew)}
-			<ChevronsUpDown size={14} class="text-muted shrink-0" />
-		</button>
-	{:else}
-		<!-- One crew: nothing to switch, so the row is the crew's page
-		     (the 95% rule, ux.md) and spends no chevron on a choice that
-		     does not exist. -->
-		<a
-			href="/crew/{crew.id}"
-			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 md:min-h-0"
-			title="the crew — its people and rooms"
-		>
-			{@render crewRow(crew)}
-		</a>
-	{/if}
+	<div class="flex items-center">
+		{#if crews.length > 1}
+			<button
+				onclick={() => (switching = !switching)}
+				{@attach contextMenu(() => crewEntries(crew))}
+				class="hover:bg-ink/5 flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
+					? 'bg-ink/5 text-ink'
+					: 'text-ink'}"
+				title="switch crew"
+				aria-label="crew: {crew.name} — switch crew"
+				aria-expanded={switching}
+			>
+				{@render crewRow(crew)}
+				<ChevronsUpDown size={14} class="text-muted shrink-0" />
+			</button>
+		{:else}
+			<!-- One crew: nothing to switch, so the row is the crew's page
+			     (the 95% rule, ux.md) and spends no chevron on a choice that
+			     does not exist. -->
+			<a
+				href="/crew/{crew.id}"
+				{@attach contextMenu(() => crewEntries(crew))}
+				class="hover:bg-ink/5 text-ink flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded p-2 md:min-h-0"
+				title="the crew — its people and rooms"
+			>
+				{@render crewRow(crew)}
+			</a>
+		{/if}
+		<!-- The mark without the wordmark (ADR-0020 amended 2026-09-09,
+		     #1327): it keeps ADR-0005's job — it breathes while a session
+		     runs — at the end of the row that names where you are. Not a
+		     link: Home is the row below, and two targets for one destination
+		     was the audit's second finding. Its centre sits on the line the
+		     + and the leave icon use. -->
+		<span class="mr-2 grid h-6 w-6 shrink-0 place-items-center">
+			<Logo size={16} {live} />
+		</span>
+	</div>
 	{#if switching}
 		{@const here = crew}
 		<ul class="mt-0.5 space-y-0.5" role="menu">

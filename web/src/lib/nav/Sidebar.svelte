@@ -48,7 +48,7 @@
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/mockcompat';
-	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -154,14 +154,6 @@
 				icon: place.icon,
 				onSelect: () => void goto(`/r/${room.slug}${place.path}`),
 			}));
-			// The way in without going in (#484): the list lives here now,
-			// so the way to a room's chat from outside lives here too.
-			entries.push('separator', {
-				label: 'Read the chat',
-				icon: MessageSquare,
-				hint: room.unread ? `${room.unread} new` : undefined,
-				onSelect: () => void goto(`/messages/r/${room.slug}`),
-			});
 			if (here && onLeave)
 				entries.push('separator', {
 					label: 'Leave the room',
@@ -190,9 +182,9 @@
 				<RoomIcon icon={room.icon} size={14} />
 				<span
 					class="truncate {here
-						? 'font-display text-ink text-base font-semibold'
+						? 'font-display text-ink text-sm font-bold'
 						: browsing
-							? 'font-display text-ink/90 text-[15px] font-medium'
+							? 'font-display text-ink/90 text-sm font-medium'
 							: room.unread
 								? 'text-ink/80 text-sm font-medium'
 								: open_
@@ -218,11 +210,21 @@
 					>
 				{:else if room.unread}
 					<!-- The strongest reason a chat app stays open in a
-						     background window. -->
-					<span
-						class="{UNREAD_COUNT} ml-auto"
-						title="{room.unread} new since you were last here"
-						>{unreadCount(room.unread)}</span
+					     background window — and the door to reading it without
+					     walking in (#1328, #484): the count opens the room's chat
+					     from outside, the way the icon above leaves the room, and
+					     stops the row's own click. Nothing unread, no door: then
+					     the way to a room's chat is walking in. -->
+					<button
+						onclick={(e) => {
+							e.preventDefault();
+							void goto(`/messages/r/${room.slug}`);
+						}}
+						class="-my-2 ml-auto grid h-11 min-w-11 shrink-0 place-items-center md:h-6 md:min-w-6"
+						title="{room.unread} new · read without walking in"
+						aria-label="{room.unread} new — read the chat without walking in"
+						><span class={UNREAD_COUNT}>{unreadCount(room.unread)}</span
+						></button
 					>
 				{:else if (room.connected ?? 0) > 0}
 					<span class="ml-auto flex shrink-0 items-center gap-1">
@@ -327,13 +329,18 @@
 <nav
 	class="bg-surface border-ink/5 flex h-full w-60 shrink-0 flex-col border-r"
 >
-	<a href="/home" class="flex items-center gap-2 px-4 py-4">
-		<Logo size={22} {live} />
-		<span class="font-display text-sm font-bold">WattRoom</span>
-	</a>
-
+	<!-- The crew is the header (ADR-0020 amended 2026-09-09, #1327): the
+	     first row of the column names the place you are in, and the wordmark
+	     leaves it — the tab, the title bar and the sign-in page carry that.
+	     Before the first room there is no crew to name, so the mark and the
+	     wordmark keep the row. -->
 	{#if crew}
-		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
+		<CrewSwitcher {crews} {crew} {rooms} {live} onpick={pick} />
+	{:else}
+		<a href="/home" class="flex items-center gap-2 px-4 py-4">
+			<Logo size={22} {live} />
+			<span class="font-display text-sm font-bold">WattRoom</span>
+		</a>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
 		<ul class="space-y-0.5">
@@ -411,13 +418,21 @@
 		     "messages" over a column of faces could not tell them from the
 		     friends list or from who is in the room with them. -->
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+			<!-- A label that goes somewhere says so (#1327): the chevron at
+			     its end is what the + is to ROOMS. -->
 			<a
 				href="/messages"
 				aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
-				class="hover:text-ink {pathname.startsWith('/messages')
+				class="hover:text-ink flex w-full items-center {pathname.startsWith(
+					'/messages',
+				)
 					? 'text-ink'
 					: ''}"
-				title="every room's chat and your DMs, in one place">direct messages</a
+				title="every room's chat and your DMs, in one place"
+				>direct messages<ChevronRight
+					size={14}
+					class="-my-2 ml-auto shrink-0"
+				/></a
 			>
 		</div>
 		{#if dmHeads.heads.length > 0}
