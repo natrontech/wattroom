@@ -67,7 +67,12 @@ export interface RoomShellProps {
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
 	onRemove: (userId: string) => void;
 	upcoming?: RoomContext['upcoming'];
-	onSchedule: (name: string, json: string, startsAt: string) => void;
+	/** Resolves false when the server refused — the picker stays open (#1766). */
+	onSchedule: (
+		name: string,
+		json: string,
+		startsAt: string,
+	) => Promise<boolean> | boolean | void;
 	onReschedule: (id: string, startsAt: string) => void;
 	onUnschedule: (id: string) => void;
 	onRsvp: (id: string, going: boolean) => void;

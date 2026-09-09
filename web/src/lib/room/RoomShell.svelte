@@ -390,9 +390,12 @@
 		busy={props.adminBusy}
 		gameRunning={!!live.tick?.game}
 		onStart={(workout) => startWorkout(workout)}
-		onPlan={(name, json, at) => {
-			props.onSchedule(name, json, at);
-			session.open = false;
+		onPlan={async (name, json, at) => {
+			// Closed only once the server took it (#1766): a refused time used
+			// to leave a toast and a closed picker — workout, room and time all
+			// to choose again. The refusal is the toast the room already shows.
+			if ((await props.onSchedule(name, json, at)) !== false)
+				session.open = false;
 		}}
 		onStartGame={(id) => {
 			live.control('game', undefined, id);
