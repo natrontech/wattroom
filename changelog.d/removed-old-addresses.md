@@ -1,0 +1,1 @@
+- The old addresses `/profile`, `/pair` and `/trophies` are gone: they have redirected to `/settings/profile`, `/settings/equipment` and `/u/me` since 2026.09.63, every link the app and its emails send has pointed at the new ones since 2026.09.64, and a bookmark from before that now lands on "no such page" rather than a silent hop.
