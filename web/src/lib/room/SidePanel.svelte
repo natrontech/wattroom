@@ -198,7 +198,7 @@
 	<!-- The panel is right of its divider: pulling left makes it wider. -->
 	<div
 		{@attach (grip) => edgeDivider(grip, -1)}
-		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize touch-none transition-colors"
+		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-col-resize touch-none transition-colors xl:block"
 		role="separator"
 		aria-orientation="vertical"
 		aria-label="resize the panel"

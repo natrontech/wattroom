@@ -13,6 +13,7 @@
 	// rendered inside the shell, which has already joined, and this is the
 	// pattern the room's other components follow.
 	import Banner from '$lib/components/Banner.svelte';
+	import { device } from '$lib/device.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import { DISCONNECT_GRACE_SECONDS, ELIMINATION_MODES } from '$lib/room/modes';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -182,6 +183,29 @@
 					</span>
 				</p>
 			</Banner>
+		</div>
+	{/if}
+
+	{#if device.narrow && av.playbackBlocked}
+		<!-- On a phone the sidebar is a closed drawer, and these two lived
+		     nowhere else (#1622): the browser waiting for a tap before it
+		     plays, and a refused microphone — the commonest phone failures,
+		     two taps deep behind the hamburger. -->
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="warn">
+				You cannot hear the room — the browser is waiting for a tap.
+				{#snippet action()}
+					<button
+						onclick={() => void av.startPlayback()}
+						class="btn btn-primary btn-lg">Let me hear</button
+					>
+				{/snippet}
+			</Banner>
+		</div>
+	{/if}
+	{#if device.narrow && av.error}
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="error">{av.error.message}</Banner>
 		</div>
 	{/if}
 {/if}

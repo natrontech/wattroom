@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { untrack } from 'svelte';
 	import '../app.css';
 	import '@fontsource/barlow/400.css';
@@ -202,6 +203,10 @@
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
 	let drawer = $state(false);
+	// Mirrored for the room's shell (#1625): one Escape, one layer.
+	$effect(() => {
+		navDrawer.open = drawer;
+	});
 	// Focus follows the drawer (ux.md): into its first row on open, back to
 	// the button that opened it on close, and Escape closes it.
 	let drawerBox = $state<HTMLElement | null>(null);

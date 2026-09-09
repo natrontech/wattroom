@@ -56,6 +56,7 @@ function watchMedia(query: string): () => boolean {
 	return () => matches;
 }
 
+const COCKPIT_KEY = 'wattroom.cockpit';
 const narrow = watchMedia(`(max-width: ${PHONE_MAX_PX}px)`);
 const coarse = watchMedia('(pointer: coarse)');
 
@@ -71,7 +72,22 @@ export const device = {
 		return typeof navigator !== 'undefined' && !!navigator.bluetooth;
 	},
 	get cockpit() {
-		return typeof window !== 'undefined' && page.url.searchParams.has('full');
+		if (typeof window === 'undefined') return false;
+		// Latched for the tab (#1625): the place links carry no query, so
+		// the cockpit used to last exactly one tap.
+		if (page.url.searchParams.has('full')) {
+			try {
+				sessionStorage.setItem(COCKPIT_KEY, '1');
+			} catch {
+				/* the query still answers for this page */
+			}
+			return true;
+		}
+		try {
+			return sessionStorage.getItem(COCKPIT_KEY) === '1';
+		} catch {
+			return false;
+		}
 	},
 	/** No pairing, no ERG, no session control — the phone's answer. */
 	get spectator() {

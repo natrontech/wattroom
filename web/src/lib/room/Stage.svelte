@@ -247,7 +247,7 @@
 			: height
 				? 'mx-auto'
 				: 'w-full max-w-full'}"
-		style="aspect-ratio: {ratio}; min-width: 320px; min-height: 200px;
+		style="aspect-ratio: {ratio}; min-width: min(320px, 100%); min-height: 200px;
 			{popped || !height
 			? 'max-height: 70vh'
 			: // The WIDTH carries the dragged height, so the aspect ratio

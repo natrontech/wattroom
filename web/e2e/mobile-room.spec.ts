@@ -1,6 +1,20 @@
 import { expect, test } from './room';
 import { signInAs } from './signin';
 
+// The standard, not the project's Pixel 5 (#1624): 393 px hid a Lounge that
+// scrolled sideways at 375. And a spectator — the phone project ships a
+// Web Bluetooth API, which is the one thing a real phone lacks, so nothing
+// here ever exercised #412's capability gate.
+test.use({ viewport: { width: 375, height: 812 } });
+test.beforeEach(async ({ page }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(Navigator.prototype, 'bluetooth', {
+			get: () => undefined,
+			configurable: true,
+		});
+	});
+});
+
 /**
  * A phone runs the room shell, not the retired spectator redirect (#412).
  * Keep one small-viewport walk here: the desktop suite cannot notice a drawer
@@ -16,6 +30,14 @@ test('a phone opens a room lounge and reaches its chat place', async ({
 
 	await expect(page).toHaveURL(new RegExp(`/r/${slug}$`));
 	await expect(page.getByRole('heading', { name })).toBeVisible();
+	// A spectator, even as the room's owner: nothing that needs a trainer
+	// or starts a session is offered (#412, #1624).
+	await expect(
+		page.getByRole('button', { name: /start a session/i }),
+	).toHaveCount(0);
+	await expect(page.getByRole('link', { name: /join the ride/i })).toHaveCount(
+		0,
+	);
 
 	await page.getByRole('button', { name: 'open navigation' }).click();
 	const chat = page.locator(`a[href="/r/${slug}/chat"]`).first();

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { navDrawer } from '$lib/nav/drawer.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
@@ -310,7 +311,9 @@
 	onkeydown={(e) => {
 		if (e.key !== 'Escape') return;
 		// The topmost layer only (audit 2026-09-09): one Escape used to close
-		// TV mode, the picker, the sheet and the tile focus all at once.
+		// TV mode, the picker, the sheet and the tile focus all at once — and
+		// the layout's drawer on top of them (#1625).
+		if (navDrawer.open) return;
 		if (tv) tv = false;
 		else if (session.open) session.open = false;
 		else if (peopleSheet) peopleSheet = false;
