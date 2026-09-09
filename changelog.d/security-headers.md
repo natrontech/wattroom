@@ -1,1 +1,0 @@
-- The server now tells browsers to stay on HTTPS once they have seen it there, forbids any base-URL or plugin injection outright, and reports (without yet enforcing) a full content-security policy so any violation shows in the browser console before it can ever block a ride.
