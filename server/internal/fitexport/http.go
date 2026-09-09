@@ -106,9 +106,9 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 func toRide(req exportRequest) (Ride, string) {
 	switch {
 	case req.StartedAt.IsZero():
-		return Ride{}, fmt.Sprintf("ride is missing a start time")
+		return Ride{}, "ride is missing a start time"
 	case len(req.Samples) == 0:
-		return Ride{}, fmt.Sprintf("ride has no samples")
+		return Ride{}, "ride has no samples"
 	case len(req.Samples) > maxSamples:
 		return Ride{}, fmt.Sprintf("ride has %d samples, more than the %d supported", len(req.Samples), maxSamples)
 	}
