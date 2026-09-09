@@ -7,6 +7,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
 	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
@@ -56,8 +57,21 @@
 	</label>
 </div>
 <ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-	{#if !presence.loaded}
+	{#if !presence.loaded || !dmHeads.loaded}
 		<li class="space-y-1 px-2"><Skeleton rows={4} class="h-12" /></li>
+	{:else if dmHeads.error}
+		<!-- The fourth state (errors.md, #1816): a refused poll used to read as
+		     "no conversations". -->
+		<li class="px-1 pt-2">
+			<Banner tone="error">
+				{dmHeads.error}
+				{#snippet action()}
+					<button onclick={() => dmHeads.retry()} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
+			</Banner>
+		</li>
 	{:else if threads.length === 0}
 		<li class="px-1 pt-2">
 			<EmptyState>

@@ -34,13 +34,22 @@ let heads = $state<DmHead[]>([]);
 // must not clear the badge for an unread line beneath it.
 let inbound = $state<Record<string, number>>({});
 let seenBump = $state(0);
+// The list's own two states (#1816): a refused poll used to be dropped on
+// the floor, and /messages rendered "no conversations" over a 500.
+let loaded = $state(false);
+let error = $state<string | null>(null);
 let started = false;
 let first = true;
 let timer: ReturnType<typeof setInterval> | undefined;
 
 async function poll() {
 	const res = await api<{ conversations: DmHead[] }>('/api/dms');
-	if (!res.ok) return;
+	loaded = true;
+	if (!res.ok) {
+		error = res.error.message;
+		return;
+	}
+	error = null;
 	heads = [...res.data.conversations].sort((a, b) => b.at - a.at);
 	// The faces a chat line cannot carry (#807) — learned from the poll that
 	// already fetched them, never a fetch of their own.
@@ -82,6 +91,18 @@ export const dmHeads = {
 	get heads() {
 		return heads;
 	},
+	/** The first answer arrived, refused or not — the skeleton's cue. */
+	get loaded() {
+		return loaded;
+	},
+	/** Why the list is not to be trusted right now; null while it is. */
+	get error() {
+		return error;
+	},
+	/** The retry button's whole job. */
+	retry() {
+		void poll();
+	},
 	/** Idempotent; the layout calls it while a rider is signed in. */
 	start() {
 		if (started || typeof window === 'undefined') return;
@@ -98,6 +119,8 @@ export const dmHeads = {
 		timer = undefined;
 		started = false;
 		first = true;
+		loaded = false;
+		error = null;
 		heads = [];
 		inbound = {};
 	},

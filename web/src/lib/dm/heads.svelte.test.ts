@@ -20,8 +20,18 @@ vi.mock('$lib/dm/dm.svelte', () => ({
 }));
 vi.mock('$lib/people.svelte', () => ({ people: { learn: () => {} } }));
 let conversations: unknown[] = [];
+const outage = vi.hoisted(() => ({ on: false }));
 vi.mock('$lib/api', () => ({
-	api: async () => ({ ok: true, data: { conversations } }),
+	api: async () =>
+		outage.on
+			? {
+					ok: false,
+					error: {
+						error: 'internal_error',
+						message: 'Messages could not be loaded.',
+					},
+				}
+			: { ok: true, data: { conversations } },
 }));
 
 const { dmHeads } = await import('./heads.svelte');
@@ -64,6 +74,23 @@ describe('dm heads', () => {
 		conversations = [line(3)];
 		await vi.advanceTimersByTimeAsync(10_000);
 		expect(announced.map((a) => a.reading)).toEqual([false, true]);
+	});
+
+	// A refused poll is a state the list can show (#1816), not a silent
+	// "no conversations"; the retry is a poll.
+	it('says when the poll was refused, and clears it on the next good answer', async () => {
+		outage.on = true;
+		conversations = [line(1)];
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.loaded).toBe(true);
+		expect(dmHeads.error).toBe('Messages could not be loaded.');
+		expect(dmHeads.heads).toEqual([]);
+		outage.on = false;
+		dmHeads.retry();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.error).toBeNull();
+		expect(dmHeads.heads).toHaveLength(1);
 	});
 
 	// Sign-out stops the poll (#1515): it used to run for the life of the tab
