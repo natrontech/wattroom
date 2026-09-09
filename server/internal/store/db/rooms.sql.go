@@ -107,7 +107,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 const createRoom = `-- name: CreateRoom :one
 insert into rooms (slug, name, owner_id)
 values ($1, $2, $3)
-returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
+returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type CreateRoomParams struct {
@@ -121,7 +121,6 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -252,7 +251,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (M
 }
 
 const getRoomByID = `-- name: GetRoomByID :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where id = $1
 `
 
 func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error) {
@@ -260,7 +259,6 @@ func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error)
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -283,7 +281,7 @@ func (q *Queries) GetRoomByID(ctx context.Context, id pgtype.UUID) (Room, error)
 }
 
 const getRoomBySlug = `-- name: GetRoomBySlug :one
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = $1
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = $1
 `
 
 func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) {
@@ -291,7 +289,6 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,
@@ -314,7 +311,7 @@ func (q *Queries) GetRoomBySlug(ctx context.Context, slug string) (Room, error) 
 }
 
 const getRoomsBySlugs = `-- name: GetRoomsBySlugs :many
-select id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = any($1::text[])
+select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible from rooms where slug = any($1::text[])
 `
 
 // Batched sibling of GetRoomBySlug (#687): the friends panel resolves every
@@ -330,7 +327,6 @@ func (q *Queries) GetRoomsBySlugs(ctx context.Context, slugs []string) ([]Room, 
 		var i Room
 		if err := rows.Scan(
 			&i.ID,
-			&i.Code,
 			&i.Slug,
 			&i.Name,
 			&i.OwnerID,
@@ -733,7 +729,7 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.code, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, r.board_enabled, r.crew_id, r.crew_visible, m.role,
+select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.autoplay_fixed_video_id, r.autoplay_fixed_video_title, r.board_enabled, r.crew_id, r.crew_visible, m.role,
        (select count(*) from memberships mm
          where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
        (select count(*)
@@ -811,7 +807,6 @@ order by m.joined_at desc
 
 type ListUserRoomsRow struct {
 	ID                      pgtype.UUID
-	Code                    *string
 	Slug                    string
 	Name                    string
 	OwnerID                 pgtype.UUID
@@ -867,7 +862,6 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 		var i ListUserRoomsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Code,
 			&i.Slug,
 			&i.Name,
 			&i.OwnerID,
@@ -1051,7 +1045,7 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 const updateRoom = `-- name: UpdateRoom :one
 update rooms set name = $2, listed = $3, sound_pack = $4, icon = $5, cheers = $6,
                  board_enabled = $7, crew_visible = $8
-where id = $1 returning id, code, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
+where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, autoplay_fixed_video_id, autoplay_fixed_video_title, board_enabled, crew_id, crew_visible
 `
 
 type UpdateRoomParams struct {
@@ -1079,7 +1073,6 @@ func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, e
 	var i Room
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
 		&i.Slug,
 		&i.Name,
 		&i.OwnerID,

@@ -500,7 +500,9 @@ This amendment moves the door where the shape says it goes.
   page's code and link, the Members place's invite box, and Home's "Join with a
   code" (which becomes the crew's). The `rooms.code` column stays one release
   ([ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)); joining by a
-  room code is refused with the reason, not silently redirected.
+  room code is refused with the reason, not silently redirected. _Done in two
+  halves: 2026.09.57 stopped minting and sending codes and made the column
+  nullable (#1281); the release after dropped it (#1282)._
 - **A listed room ([ADR-0039](0039-the-public-room-directory.md)) is a public
   door into its crew.** Joining it joins the crew, then the room. ADR-0039's
   reading stands — the directory shows a door and no window — and what the door
