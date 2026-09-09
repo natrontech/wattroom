@@ -71,9 +71,16 @@ func (s *session) resume(now time.Time) bool {
 	return true
 }
 
-func (s *session) end() bool {
+// end closes the session where the clock stands. The time is BANKED, not
+// implied: state() reads a done session's elapsed from banked alone, and a
+// close that left it at zero dated every rider's ride at the session's end
+// (audit 2026-09-09).
+func (s *session) end(now time.Time) bool {
 	if s.phase == "idle" || s.phase == "done" {
 		return false
+	}
+	if s.phase == "running" {
+		s.banked += now.Sub(s.startedAt)
 	}
 	s.phase = "done"
 	return true
@@ -103,8 +110,12 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		if s.totalSeconds > 0 && elapsed >= s.totalSeconds {
 			// The timeline ran out: the session closes itself (SPEC lifecycle) —
 			// the coach ending it early is the exception, not the mechanism.
+			// Banked as well as returned: this is not the only caller — a
+			// rider's metrics or a presence poll can be the call that crosses,
+			// and the tick that saves the ride reads the answer after it.
 			s.phase = "done"
 			elapsed = s.totalSeconds
+			s.banked = time.Duration(s.totalSeconds) * time.Second
 		}
 	}
 	if s.phase == "done" && s.totalSeconds > 0 && elapsed > s.totalSeconds {
@@ -129,7 +140,7 @@ func (s *session) apply(c protocol.Control, now time.Time) bool {
 	case "resume":
 		return s.resume(now)
 	case "end":
-		return s.end()
+		return s.end(now)
 	default:
 		return false
 	}
