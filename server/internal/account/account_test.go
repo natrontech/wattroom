@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
 // fakeUsers resolves the X-Test-User header instead of a session cookie, so
@@ -51,17 +51,7 @@ type harness struct {
 
 func setup(t *testing.T) *harness {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
+	st := storetest.Open(t)
 
 	users := &fakeUsers{byToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "carol"} {

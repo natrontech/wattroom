@@ -6,15 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
 type fakeUsers struct{ byToken map[string]db.User }
@@ -53,17 +52,7 @@ func (f *fakePresence) WhereIs(ids []string) map[string]string {
 
 func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers, *fakePresence) {
 	t.Helper()
-	dsn := os.Getenv("WATTROOM_TEST_DB")
-	if dsn == "" {
-		dsn = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
+	st := storetest.Open(t)
 
 	users := &fakeUsers{byToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara"} {
