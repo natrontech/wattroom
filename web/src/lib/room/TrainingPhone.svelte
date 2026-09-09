@@ -58,10 +58,11 @@
 	// Everyone but whoever the instrument is already about — and not yourself
 	// while you are not pedalling: a spectator's own 0 W tile is the one thing
 	// on this screen nobody came to look at.
+	// The followed rider stays in the strip, pressed (#1627): excluded, the
+	// toggle-off tap had nothing to land on and a phone could never stop
+	// following.
 	const crew = $derived(
-		room.riders.filter(
-			(rider) => rider.id !== followed?.id && !(rider.you && rider.watts === 0),
-		),
+		room.riders.filter((rider) => !(rider.you && rider.watts === 0)),
 	);
 </script>
 
@@ -107,6 +108,12 @@
 	<!-- The drawer button and the people button both float in the bottom
 	     corners, so the column ends above them rather than under them. -->
 	<div class="min-h-0 flex-1 overflow-y-auto pb-20">
+		{#if followed && !followed.you && (focus === 'sprint' || focus === 'game')}
+			<!-- Whose number the biggest number is (#1627): the eyebrow lived in
+			     the rider branch alone, and a sprint glowed someone else's watts
+			     unnamed. -->
+			<p class="eyebrow px-4 pb-2">watching {followed.name}</p>
+		{/if}
 		{#if focus === 'sprint' && room.sprint}
 			<section class="px-4">
 				<!-- Whose number this is: the followed rider's, like every other

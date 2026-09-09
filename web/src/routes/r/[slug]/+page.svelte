@@ -220,7 +220,11 @@
 	/>
 {/snippet}
 
-<div class="flex h-full flex-col px-8 py-6">
+<!-- `page`, like every other place (#1623): px-8 left 311 px for a stage
+     floored at 320, and the room's default place scrolled sideways on a
+     phone the moment anything was on stage. The bottom clears the drawer
+     and people buttons floating in the corners (#1627). -->
+<div class="page flex h-full flex-col pb-20 xl:pb-8">
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
@@ -370,7 +374,9 @@
 		     into the ride for a member arriving mid-session. -->
 		<div class="mt-4 flex flex-wrap items-center gap-2">
 			<SessionControls />
-			{#if !room.canControl}
+			{#if !room.canControl && !device.spectator}
+				<!-- Not to a phone (#1627): it cannot ride, and Training would
+				     answer "bring a laptop". -->
 				<a href="/r/{room.slug}/training" class="btn btn-accent btn-lg"
 					><Radio size={15} /> Join the ride</a
 				>

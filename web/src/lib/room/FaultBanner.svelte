@@ -75,7 +75,7 @@
 	is one big button, because the rider is sweating three metres away.
 -->
 <div
-	class="flex items-center gap-4 rounded-lg border px-5 py-3 {recovering
+	class="flex flex-wrap items-center gap-4 rounded-lg border px-5 py-3 {recovering
 		? 'border-z5/40 bg-z5/10'
 		: 'border-danger/50 bg-danger/10'}"
 	role="status"
@@ -92,7 +92,11 @@
 		{#if note}<p class="text-xs">{note}</p>{/if}
 	</div>
 	{#if !recovering}
-		<button onclick={onRecover} class="btn btn-primary btn-lg ml-auto shrink-0"
+		<!-- Its own row at phone width (#1628): beside 200 characters of
+		     copy it left the words 140 px. -->
+		<button
+			onclick={onRecover}
+			class="btn btn-primary btn-lg ml-auto shrink-0 max-sm:ml-0 max-sm:w-full"
 			>Reconnect</button
 		>
 	{/if}
