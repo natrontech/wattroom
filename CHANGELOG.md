@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.91] - 2026-09-09
+
+### Added
+
+- The Rides page marks a ride that could not be sent to Strava and says how many there are, so a failed upload no longer hides until you open that ride.
+
+### Changed
+
+- The privacy page now names every email WattRoom sends — the address confirmation, opt-in session reminders and the account alerts you cannot switch off — and has a "What other people see" section: what friends, room-mates and visitors to your rider page can see of you.
+
+### Fixed
+
+- A solo ride that paused mid-block is now scored against the blocks you actually rode: the saved execution score agreed with the live one only on a ride that never stopped, because the server counted seconds by their place in the record rather than by the workout clock.
+
 ## [2026.09.90] - 2026-09-09
 
 ### Fixed
@@ -1747,7 +1761,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.90...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.91...HEAD
+[2026.09.91]: https://github.com/natrontech/wattroom/compare/2026.09.90...2026.09.91
 [2026.09.90]: https://github.com/natrontech/wattroom/compare/2026.09.89...2026.09.90
 [2026.09.89]: https://github.com/natrontech/wattroom/compare/2026.09.88...2026.09.89
 [2026.09.88]: https://github.com/natrontech/wattroom/compare/2026.09.87...2026.09.88
