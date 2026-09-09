@@ -540,6 +540,21 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		t.Fatalf("medal: %v", err)
 	}
 
+	// The credential set (#1826): a provider identity and a passkey, both
+	// alice's; bob's identity must not appear.
+	for _, name := range []string{"alice", "bob"} {
+		if err := h.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
+			Provider: "github", ProviderUserID: "acct-export-" + name, UserID: h.id(name),
+		}); err != nil {
+			t.Fatalf("identity %s: %v", name, err)
+		}
+	}
+	if _, err := h.store.Queries.CreatePasskey(t.Context(), db.CreatePasskeyParams{
+		CredentialID: []byte("cred-alice"), UserID: h.id("alice"), Credential: []byte(`{}`), Name: "YubiKey on the desk",
+	}); err != nil {
+		t.Fatalf("passkey: %v", err)
+	}
+
 	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
@@ -577,6 +592,9 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		"xp.json":                 "bucket-1",
 		"trophies.json":           "first-ride",
 		"medals.json":             "diesel",
+		"identities.json":         "acct-export-alice",
+		"passkeys.json":           "YubiKey on the desk",
+		"profile.json":            "\"lthr\"",
 		// Every field the ride page shows (#1550).
 		"rides.json": "\"sharedWithFriends\"",
 		// Written last, naming every category: its presence is what says
@@ -595,6 +613,12 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 
 	// The line: someone else's room-chat line is their personal data, not the
 	// requester's, and it is not in here.
+	if strings.Contains(files["identities.json"], "acct-export-bob") {
+		t.Errorf("the export carries another rider's identity:\n%s", files["identities.json"])
+	}
+	if !strings.Contains(files["profile.json"], "\"stravaUpload\"") {
+		t.Errorf("profile.json does not carry the Strava switch:\n%s", files["profile.json"])
+	}
 	if strings.Contains(files["chat.json"], "bobs own line") {
 		t.Errorf("the export carries another rider's chat line:\n%s", files["chat.json"])
 	}
