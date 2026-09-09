@@ -68,10 +68,17 @@ export function clampSize(size: number, min: number, max: number): number {
 	return Math.round(Math.max(min, Math.min(max, size)));
 }
 
+/** Pixels per arrow press on a focused divider. */
+const KEY_STEP = 16;
+
 /**
  * A divider on a column's own edge: the grip's parent is the pane, and its
  * CSS min/max width are the bounds. `sign` is -1 for a column right of its
  * grip (the room's panel), 1 for one left of it (the sidebar).
+ *
+ * The drag has a keyboard twin (WCAG 2.2 SC 2.5.7, #1523): the grip takes
+ * focus, the arrows move the seam the way the pointer would, a step per
+ * press, and aria-valuenow says where it stands.
  */
 export function edgeDivider(
 	grip: HTMLElement,
@@ -79,17 +86,47 @@ export function edgeDivider(
 ): (() => void) | undefined {
 	const pane = grip.parentElement;
 	if (!pane) return;
-	return dividerDrag(grip, {
+	const bounds = () => {
+		const style = getComputedStyle(pane);
+		return {
+			min: parseFloat(style.minWidth) || 0,
+			max: parseFloat(style.maxWidth) || window.innerWidth,
+		};
+	};
+	const tell = (width: number, { min, max }: { min: number; max: number }) => {
+		grip.setAttribute('aria-valuenow', String(Math.round(width)));
+		grip.setAttribute('aria-valuemin', String(Math.round(min)));
+		grip.setAttribute('aria-valuemax', String(Math.round(max)));
+	};
+	const to = (width: number) => {
+		const b = bounds();
+		const next = clampSize(width, b.min, b.max);
+		pane.style.width = `${next}px`;
+		tell(next, b);
+	};
+	const keys = (event: KeyboardEvent) => {
+		const dir =
+			event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+		if (!dir) return;
+		event.preventDefault();
+		to(pane.offsetWidth + sign * dir * KEY_STEP);
+	};
+	// Stamped on arrival, not once: the bounds are viewport-relative (40vw)
+	// and the tab that reaches the grip may not be the size it was mounted at.
+	const arrive = () => tell(pane.offsetWidth, bounds());
+	grip.tabIndex = 0;
+	arrive();
+	grip.addEventListener('focus', arrive);
+	grip.addEventListener('keydown', keys);
+	const drag = dividerDrag(grip, {
 		axis: 'x',
 		sign,
 		from: () => pane.offsetWidth,
-		to: (width) => {
-			const style = getComputedStyle(pane);
-			pane.style.width = `${clampSize(
-				width,
-				parseFloat(style.minWidth) || 0,
-				parseFloat(style.maxWidth) || window.innerWidth,
-			)}px`;
-		},
+		to,
 	});
+	return () => {
+		drag();
+		grip.removeEventListener('focus', arrive);
+		grip.removeEventListener('keydown', keys);
+	};
 }
