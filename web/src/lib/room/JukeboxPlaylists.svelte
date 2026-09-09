@@ -75,8 +75,11 @@
 	const status = $derived.by(() => {
 		if (!autoplay) return null;
 		if (!autoplay.enabled) return 'Autoplay off';
-		if (autoplay.order === 'smart') return 'Autoplay · smart, from the library';
-		return `Autoplay · ${activeName ?? 'no active playlist'} · ${autoplay.order}`;
+		if (!activeName)
+			return autoplay.order === 'smart'
+				? 'Autoplay · smart, from the library'
+				: 'Autoplay · no active playlist';
+		return `Autoplay · ${activeName} · ${autoplay.order}`;
 	});
 </script>
 

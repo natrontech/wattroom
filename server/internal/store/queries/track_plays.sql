@@ -119,5 +119,12 @@ cross join lateral (
         else 1.0
       end)::float8 as weight
 ) w
+-- Smart is an ORDER, not a source (#1429): with an active playlist that holds
+-- library tracks, the draw is over those and nothing else; `within` is empty
+-- when no list is active or the list holds no library track, and the draw
+-- is then the members' whole libraries as before. coalesce, because a nil
+-- slice arrives as NULL and NULL = 0 is not true.
+where coalesce(cardinality(sqlc.arg(within)::uuid[]), 0) = 0
+   or t.id = any(sqlc.arg(within)::uuid[])
 order by random() ^ (1.0 / w.weight) desc
 limit sqlc.arg(lim);
