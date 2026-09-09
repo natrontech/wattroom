@@ -290,6 +290,11 @@ func (rm *room) leave(c *client) {
 		// Not announced yet: the tick says so once the grace window is out.
 		rm.departed[c.rider.ID] = rm.now()
 		rm.departedNames[c.rider.ID] = c.rider.Name
+		// Out of the game too (#1577): a paceline must not hand the front
+		// to a closed tab, and a podium is not topped from outside the room.
+		if w, ok := rm.game.(withdrawing); ok {
+			w.withdraw(c.rider.ID)
+		}
 	}
 	metricRiders.Dec()
 }

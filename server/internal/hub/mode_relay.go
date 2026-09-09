@@ -38,6 +38,30 @@ func relayTurn(rng *rand.Rand) time.Duration {
 	return time.Duration(60+rng.Intn(31)) * time.Second
 }
 
+// withdraw takes a departed rider out of the paceline (#1577): the front
+// used to rotate onto a closed tab and the room's one number stopped for a
+// whole turn.
+func (r *relay) withdraw(riderID string) {
+	at := -1
+	for i, id := range r.order {
+		if id == riderID {
+			at = i
+			break
+		}
+	}
+	if at < 0 {
+		return
+	}
+	r.order = append(r.order[:at], r.order[at+1:]...)
+	delete(r.joined, riderID)
+	if at < r.front {
+		r.front--
+	}
+	if r.front >= len(r.order) {
+		r.front = 0
+	}
+}
+
 func (r *relay) advance(now time.Time, samples map[string]int, roster map[string]protocol.Rider) {
 	if r.finished {
 		return

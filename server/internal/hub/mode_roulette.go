@@ -20,8 +20,18 @@ type roulette struct {
 	nextAt   time.Time
 	best     map[string]protocol.SprintScore
 	joined   map[string]bool
+	// Riders who left the room (#1577): their scores stand, but the podium
+	// ranks everyone still here above them.
+	left     map[string]bool
 	finished bool
 	podium   []protocol.SprintScore
+}
+
+func (r *roulette) withdraw(riderID string) {
+	if r.left == nil {
+		r.left = make(map[string]bool)
+	}
+	r.left[riderID] = true
 }
 
 func newRoulette(now time.Time, rng *rand.Rand) *roulette {
@@ -88,6 +98,9 @@ func (r *roulette) buildPodium() {
 	}
 	sort.Slice(r.podium, func(i, j int) bool {
 		a, b := r.podium[i], r.podium[j]
+		if r.left[a.RiderID] != r.left[b.RiderID] {
+			return !r.left[a.RiderID] // still here ranks above gone (#1577)
+		}
 		if a.Wkg != b.Wkg {
 			return a.Wkg > b.Wkg
 		}

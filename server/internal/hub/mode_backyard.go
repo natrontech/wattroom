@@ -61,6 +61,14 @@ func (b *backyard) linePct() float64 {
 	return math.Round(pct*100) / 100
 }
 
+// keptPedalling: the buffer covered the silence, so the below-band clock the
+// lapsed grace started is forgiven (#1576).
+func (b *backyard) keptPedalling(riderID string, seconds int, now time.Time) {
+	if b.grace.vouch(riderID, seconds, now) {
+		b.below[riderID] = 0
+	}
+}
+
 func (b *backyard) advance(now time.Time, samples map[string]int, roster map[string]protocol.Rider) {
 	if b.finished {
 		return

@@ -117,13 +117,20 @@ func (p *pointsRace) buildPodium(roster map[string]protocol.Rider) {
 	for id := range p.joined {
 		ids = append(ids, id)
 	}
-	rankIDs(ids, func(a, b string) bool { return p.points[a] > p.points[b] })
+	rankIDs(ids, func(a, b string) bool {
+		if p.roulette.left[a] != p.roulette.left[b] {
+			return !p.roulette.left[a] // still here ranks above gone (#1577)
+		}
+		return p.points[a] > p.points[b]
+	})
 	for _, id := range ids {
 		p.podium = append(p.podium, protocol.SprintScore{
 			RiderID: id, Name: roster[id].Name, Wkg: p.points[id],
 		})
 	}
 }
+
+func (p *pointsRace) withdraw(riderID string) { p.roulette.withdraw(riderID) }
 
 func (p *pointsRace) state(now time.Time) protocol.GameState {
 	phase := "running"
