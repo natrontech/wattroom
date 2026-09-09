@@ -1,1 +1,0 @@
-- The app's first load is lighter on every page outside a room: the voice, camera and jukebox code now arrives when you walk into a room instead of with the sign-in page, the ride log or a phone spectator's first screen.

@@ -1,1 +1,0 @@
-- The ramp test no longer ends itself — and offers you an FTP — when the trainer signal drops or the spiral guard releases the step; it says "signal lost" instead and keeps going once samples return. "Test again" actually starts a fresh test, and every page now gives the same length for it.

@@ -1,1 +1,0 @@
-- Section labels and page titles are set in one consistent size and spacing across the app — a handful of pages had drifted to their own slightly different lettering.

@@ -1,1 +1,0 @@
-- A solo ride that runs to its end now lets go of the trainer, the screen lock and the recorder the way End ride does, so a .fit exported from the summary is exactly the ride that was saved. Auto-pause and the spiral guard now count seconds rather than trainer readings, so a trainer that reports twice a second gets the same three and five seconds as every other.
