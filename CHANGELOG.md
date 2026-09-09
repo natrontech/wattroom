@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.72] - 2026-09-09
+
+### Fixed
+
+- Controls you reach from the bike are 44 px tall now: mute, camera, share and leave voice, Join voice and Away in the sidebar, the room's cheer buttons, a game's End game, and the stage's source picker and zoom cluster. Your own heart rate wears its zone colour in a room as it does solo, a game's line and the front rider's name no longer glow like live data, and two rider-tile states that could never appear — including a hard-coded "synced to 24:07" chip — are gone.
+- In a room, the session's controls and the way into a running ride are on the Lounge in every phase, not only before it starts. Every place now hears a block change, the spiral release, a game's cues (your turn on front, a life burning, the podium) and the session ending; the spiral release, a refused command and a voice connection that failed are persistent status on screen with the one button back, and the Training place says the session has ended instead of asking you to pair a trainer.
+- Mid-ride on the Training place: a game shows your own watts beside its panel (Watt Golf still hides them on purpose), a block's cadence or heart-rate band shows in the header coloured by your live value, the sprint podium hands the instrument back eight seconds after the window instead of thirty, TV mode carries the room's status banners and the sprint over its numbers, cheers no longer drift across the video player, and the session summary waits for a minute of riding before it opens.
+
 ## [2026.09.71] - 2026-09-09
 
 ### Fixed
@@ -1518,7 +1526,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.71...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.72...HEAD
+[2026.09.72]: https://github.com/natrontech/wattroom/compare/2026.09.71...2026.09.72
 [2026.09.71]: https://github.com/natrontech/wattroom/compare/2026.09.70...2026.09.71
 [2026.09.70]: https://github.com/natrontech/wattroom/compare/2026.09.69...2026.09.70
 [2026.09.69]: https://github.com/natrontech/wattroom/compare/2026.09.68...2026.09.69
