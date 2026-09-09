@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.79] - 2026-09-09
+
+### Fixed
+
+- The room on a phone: when the browser is waiting for a tap before it plays the room's audio, or has refused the microphone, the fix is now on the page itself instead of behind the hamburger; the Lounge no longer scrolls sideways when something is on stage and its last row clears the floating buttons; a spectator is no longer offered "Join the ride"; the rider you follow is named during a sprint or a game and can be un-followed by tapping their tile again; a `?full=1` cockpit now survives moving between places; Escape closes the drawer without also dropping the rider you follow; and the reconnect banner's button gets its own row at phone width.
+- On a phone, a long-press opens the menu even when your thumb drifts a few pixels, and the hover-only edit/copy/react buttons on messages no longer sit invisible but tappable on touch — the long-press menu is the touch path.
+
 ## [2026.09.78] - 2026-09-09
 
 ### Changed
@@ -1601,7 +1608,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.78...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.79...HEAD
+[2026.09.79]: https://github.com/natrontech/wattroom/compare/2026.09.78...2026.09.79
 [2026.09.78]: https://github.com/natrontech/wattroom/compare/2026.09.77...2026.09.78
 [2026.09.77]: https://github.com/natrontech/wattroom/compare/2026.09.76...2026.09.77
 [2026.09.76]: https://github.com/natrontech/wattroom/compare/2026.09.75...2026.09.76

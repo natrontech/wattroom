@@ -1,1 +1,0 @@
-- On a phone, a long-press opens the menu even when your thumb drifts a few pixels, and the hover-only edit/copy/react buttons on messages no longer sit invisible but tappable on touch — the long-press menu is the touch path.
