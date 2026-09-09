@@ -138,6 +138,28 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 			`${B} never finished joining voice with an open mic`,
 		).toBeVisible({ timeout: 20_000 });
 
+		// B's voice reaches A's screen as an <audio> element the SDK attaches
+		// once A's subscription lands — seconds after B's own join resolves
+		// on a slow runner (#1463). The gesture below unmutes only what is
+		// attached at that moment, and the listener is spent on it (`once`),
+		// so the element has to exist first or the assertion after it can
+		// never hold: CI read `muted: true, volume: 0` and waited in vain.
+		await expect
+			.poll(
+				() =>
+					a.evaluate(
+						() =>
+							[...document.querySelectorAll('audio')].filter(
+								(el) => el.srcObject instanceof MediaStream,
+							).length,
+					),
+				{
+					message: `${B}'s voice never reached ${A}'s screen as an attached element`,
+					timeout: 20_000,
+				},
+			)
+			.toBe(1);
+
 		// A fresh navigation does not carry the "user activation" a prior
 		// click left on the page it replaced, so remote playback can start
 		// blocked (#645): av.svelte.ts's onFirstGesture listens for exactly
