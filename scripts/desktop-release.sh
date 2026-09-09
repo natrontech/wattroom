@@ -2,10 +2,13 @@
 # Cut a desktop release: bump desktop/package.json, tag, push. Run it as
 # `make desktop-release` (ADR-0037, amended 2026-09-08).
 #
-# Versions are CalVer like the server's (ADR-0019) — YYYY.0M.MICRO, computed
-# from the tags that already exist — in their own namespace: the tag is
-# desktop-v2026.09.1, and desktop-release.yml builds, signs and publishes it to
-# natrontech/wattroom-releases. The two trains stay uncoupled on purpose: the
+# Versions are CalVer like the server's (ADR-0019), computed from the tags
+# that already exist, in their own namespace — with one difference: the month
+# is NOT zero-padded. desktop-v2026.9.5, not 2026.09.5. Everything that reads
+# the shell's version parses it as semver — electron-builder, electron-updater,
+# Squirrel — and semver forbids a leading zero; 2026.09.4 crashed the packaged
+# app at launch (#1303). The first four releases carried the padded form, so
+# this month's count reads both spellings. The two trains stay uncoupled on purpose: the
 # shell loads the deployed web app, so the interface ships with every server
 # release and a desktop release only happens when desktop/ changes.
 #
@@ -32,8 +35,9 @@ if [ -n "$(git status --porcelain desktop/package.json)" ]; then
 fi
 
 # This month's desktop tags decide the next number.
-month=$(date +%Y.%m)
-last=$(git tag --list "desktop-v$month.*" | sed 's/^desktop-v//' | awk -F. '{print $3}' | sort -n | tail -1)
+month=$(date +%Y.%-m)
+padded=$(date +%Y.%m)
+last=$(git tag --list "desktop-v$month.*" "desktop-v$padded.*" | sed 's/^desktop-v//' | awk -F. '{print $3}' | sort -n | tail -1)
 version="$month.$((${last:-0} + 1))"
 tag="desktop-v$version"
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then

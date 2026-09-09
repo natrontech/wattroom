@@ -62,9 +62,11 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	expect(bridge.present).toBe(true);
 	expect(bridge.keys).toEqual([
 		'hud',
+		'installUpdate',
 		'keepAwake',
 		'notify',
 		'onNotification',
+		'onUpdate',
 		'platform',
 		'retry',
 		'titleBar',

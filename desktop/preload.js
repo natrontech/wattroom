@@ -35,6 +35,16 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// Notifications with a way back (ADR-0042): the shell shows them, and a
 	// click or a typed reply arrives through onNotification.
 	notify: (n) => ipcRenderer.send('wattroom:notify', n),
+	// Self-update (#1303): `cb` hears a downloaded release — now, if one is
+	// already waiting, and later as they land — and installUpdate restarts
+	// into it.
+	onUpdate: (cb) => {
+		ipcRenderer.on('wattroom:update', (_event, update) => cb(update));
+		void ipcRenderer
+			.invoke('wattroom:update-ready')
+			.then((update) => update && cb(update));
+	},
+	installUpdate: () => ipcRenderer.send('wattroom:install-update'),
 	onNotification: (cb) =>
 		ipcRenderer.on('wattroom:notification', (_event, payload) => cb(payload)),
 });

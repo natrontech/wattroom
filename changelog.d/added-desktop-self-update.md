@@ -1,0 +1,1 @@
+- The desktop app updates itself: the next release downloads in the background and installs when you restart, with a _Restart to update_ note on home once it is ready. Never during a ride. The 2026.09.4 build is the last one you install by hand.
