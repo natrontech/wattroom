@@ -188,29 +188,35 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			response.SoundPack = room.SoundPack
 			response.Cheers = cheerSet(room.Cheers)
 			response.IcsToken = room.IcsToken
-			if rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID); err == nil {
-				// Who is in, for every plan at once (#450) — one query, not
-				// one per session.
-				going := map[string][]goingJSON{}
-				if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
-					for _, row := range yes {
-						id := store.UUIDString(row.SessionID)
-						going[id] = append(going[id], goingJSON{
-							ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
-						})
-					}
-				} else {
-					s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
-				}
-				for _, row := range rows {
-					id := store.UUIDString(row.ID)
-					response.Upcoming = append(response.Upcoming, scheduledJSON{
-						ID: id, WorkoutName: row.WorkoutName,
-						WorkoutJSON: string(row.WorkoutJson),
-						StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
-						Going: going[id],
+			rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID)
+			if err != nil {
+				// Loudly, like the members below: an empty list here drew "plan
+				// the first session" over a room that had five (audit 2026-09-09).
+				s.log.Error("list upcoming failed", "err", err, "room", room.Slug)
+				httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be loaded.")
+				return
+			}
+			// Who is in, for every plan at once (#450) — one query, not
+			// one per session.
+			going := map[string][]goingJSON{}
+			if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
+				for _, row := range yes {
+					id := store.UUIDString(row.SessionID)
+					going[id] = append(going[id], goingJSON{
+						ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
 					})
 				}
+			} else {
+				s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
+			}
+			for _, row := range rows {
+				id := store.UUIDString(row.ID)
+				response.Upcoming = append(response.Upcoming, scheduledJSON{
+					ID: id, WorkoutName: row.WorkoutName,
+					WorkoutJSON: string(row.WorkoutJson),
+					StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+					Going: going[id],
+				})
 			}
 			members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
 			if err != nil {

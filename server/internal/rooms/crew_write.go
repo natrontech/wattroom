@@ -122,11 +122,10 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if req.Role == "member" {
-		err = s.store.Queries.ClearCrewRole(r.Context(), db.ClearCrewRoleParams{CrewID: crew.ID, UserID: target})
-	} else {
-		err = s.store.Queries.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: target, Role: req.Role})
-	}
+	// Membership is a row since #1236, so "member" is written, never cleared:
+	// deleting the row demoted an admin clean out of the crew and left an
+	// unbanned rider with no membership to come back to (audit 2026-09-09).
+	err = s.store.Queries.SetCrewRole(r.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: target, Role: req.Role})
 	if err != nil {
 		s.log.Error("crew role update failed", "err", err, "crew", store.UUIDString(crew.ID))
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The role could not be changed.")

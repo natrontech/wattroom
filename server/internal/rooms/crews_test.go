@@ -600,6 +600,11 @@ func TestLiftingOneBanLeavesTheOtherStanding(t *testing.T) {
 		fmt.Sprintf(`{"userId":%q,"role":"member"}`, bob)); status != http.StatusNoContent {
 		t.Fatalf("crew unban: %d", status)
 	}
+	// Lifting the ban restores membership (ADR-0038): bob is back on the
+	// crew's page, not merely allowed to knock on its rooms.
+	if status, body := h.call(t, "bob", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), ""); status != http.StatusOK || body["role"] != "member" {
+		t.Errorf("after the crew unban bob is not a member of the crew: %d %v", status, body["role"])
+	}
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+second+"/join", ""); status != http.StatusNoContent {
 		t.Errorf("lifting the crew ban did not readmit bob to a room with no ban of its own: %d", status)
 	}
@@ -618,6 +623,25 @@ func TestLiftingOneBanLeavesTheOtherStanding(t *testing.T) {
 	}
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+first+"/join", ""); status != http.StatusForbidden {
 		t.Errorf("lifting the room ban readmitted a crew-banned rider: %d", status)
+	}
+}
+
+func TestDemotingAnAdminLeavesThemAMember(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Demote Room")
+	crew := h.crewOf(t, slug)
+	h.join(t, "bob", slug)
+	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	crewPath := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
+	for _, role := range []string{"admin", "member"} {
+		if status, _ := h.call(t, "alice", http.MethodPost, crewPath, fmt.Sprintf(`{"userId":%q,"role":%q}`, bob, role)); status != http.StatusNoContent {
+			t.Fatalf("set %s: %d", role, status)
+		}
+		// Membership is a row (#1236): "member" is written, not cleared, or
+		// the demotion ejects them from the crew.
+		if status, body := h.call(t, "bob", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), ""); status != http.StatusOK || body["role"] != role {
+			t.Errorf("made %s, bob sees the crew as %d %v", role, status, body["role"])
+		}
 	}
 }
 

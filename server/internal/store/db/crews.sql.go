@@ -47,6 +47,8 @@ type ClearCrewRoleParams struct {
 	UserID pgtype.UUID
 }
 
+// The new owner's row goes (crews.owner_id is their role now); nothing else
+// clears a row — a member's row IS their membership (#1236).
 func (q *Queries) ClearCrewRole(ctx context.Context, arg ClearCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, clearCrewRole, arg.CrewID, arg.UserID)
 	return err
@@ -846,7 +848,7 @@ type SetCrewRoleParams struct {
 	Role   string
 }
 
-// Admin or banned. The owner is crews.owner_id and cannot be expressed here,
+// Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
 // which is what makes them un-removable (ADR-0038, second amendment).
 func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, setCrewRole, arg.CrewID, arg.UserID, arg.Role)

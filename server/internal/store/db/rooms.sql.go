@@ -906,7 +906,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 }
 
 const rescheduleSession = `-- name: RescheduleSession :one
-update scheduled_sessions set starts_at = $3
+update scheduled_sessions set starts_at = $3, reminded_at = null
 where id = $1 and room_id = $2 returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
 `
 
@@ -916,6 +916,9 @@ type RescheduleSessionParams struct {
 	StartsAt pgtype.Timestamptz
 }
 
+// A moved session is reminded again for its new time: the claim above is
+// keyed on reminded_at, and a move past an already-sent reminder used to
+// leave the real start with no mail at all.
 func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, rescheduleSession, arg.ID, arg.RoomID, arg.StartsAt)
 	var i ScheduledSession

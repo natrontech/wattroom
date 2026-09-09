@@ -6,6 +6,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // plan writes a session straight into the table: the API refuses the past and
@@ -51,6 +55,37 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	s.remindDue(t.Context())
 	if again := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(again) != 1 {
 		t.Fatalf("a second pass sent %d more reminders: %v", len(again)-1, again)
+	}
+}
+
+// A session moved past the reminder it already got is reminded again for its
+// new time: the claim is keyed on reminded_at, and the move clears it. It used
+// not to — riders got "Moved:" and then silence.
+func TestAMovedSessionIsRemindedAgain(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+
+	plan(t, h, "Movers", 30*time.Minute)
+	s.remindDue(t.Context())
+
+	var id pgtype.UUID
+	if err := h.store.Pool.QueryRow(t.Context(),
+		`select id from scheduled_sessions where room_id = $1 and workout_name = 'Movers'`, h.room.ID).Scan(&id); err != nil {
+		t.Fatalf("find the session: %v", err)
+	}
+	if _, err := h.store.Queries.RescheduleSession(t.Context(), db.RescheduleSessionParams{
+		ID: id, RoomID: h.room.ID,
+		StartsAt: pgtype.Timestamptz{Time: time.Now().Add(50 * time.Minute), Valid: true},
+	}); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	s.remindDue(t.Context())
+
+	if mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(mine) != 2 {
+		t.Fatalf("a moved session was reminded %d times, want one per start: %v", len(mine), mine)
 	}
 }
 

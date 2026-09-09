@@ -33,12 +33,14 @@ select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'a
 select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image from crews where id = $1;
 
 -- name: SetCrewRole :exec
--- Admin or banned. The owner is crews.owner_id and cannot be expressed here,
+-- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
 -- which is what makes them un-removable (ADR-0038, second amendment).
 insert into crew_roles (crew_id, user_id, role) values ($1, $2, $3)
 on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now();
 
 -- name: ClearCrewRole :exec
+-- The new owner's row goes (crews.owner_id is their role now); nothing else
+-- clears a row — a member's row IS their membership (#1236).
 delete from crew_roles where crew_id = $1 and user_id = $2;
 
 -- name: TransferCrew :exec
