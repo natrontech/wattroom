@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -18,16 +19,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
 // fakeRooms stands in for the hub: who is in which room this instant.
 type fakeRooms struct{ at map[string]string }
 
@@ -41,11 +32,11 @@ func (f *fakeRooms) WhereIs(ids []string) map[string]string {
 	return out
 }
 
-func setup(t *testing.T) (*http.ServeMux, *fakeUsers, *fakeRooms) {
+func setup(t *testing.T) (*http.ServeMux, *testx.Users, *fakeRooms) {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -53,7 +44,7 @@ func setup(t *testing.T) (*http.ServeMux, *fakeUsers, *fakeRooms) {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -207,9 +198,9 @@ func TestDelete(t *testing.T) {
 func TestAudioIsGatedOnSharingARoom(t *testing.T) {
 	mux, users, rooms := setup(t)
 	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	if rec := do(t, mux, "alice", "GET", "/api/board/clips/"+clip.ID+"/audio", nil); rec.Code != http.StatusOK {
 		t.Fatalf("owner = %d; want 200", rec.Code)
@@ -247,9 +238,9 @@ func TestAudioIsGatedOnSharingARoom(t *testing.T) {
 func TestMetaIsGatedLikeTheAudioAndCarriesTheEdit(t *testing.T) {
 	mux, users, rooms := setup(t)
 	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	edit := []byte(`{"startMs":500,"endMs":3000,"gainDb":2.5,"fadeInMs":50,"fadeOutMs":300}`)
 	if rec := do(t, mux, "alice", "PUT", "/api/board/clips/"+clip.ID+"/edit", edit); rec.Code != http.StatusNoContent {

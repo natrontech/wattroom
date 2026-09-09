@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,26 +16,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.User(r)
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
-func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers) {
+func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -42,19 +28,19 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *fakeUsers) {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
 	}
 	// alice ↔ bob are accepted friends; cara is nobody's.
 	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
-		RequesterID: users.byToken["alice"].ID, AddresseeID: users.byToken["bob"].ID,
+		RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{
-		RequesterID: users.byToken["alice"].ID, AddresseeID: users.byToken["bob"].ID,
+		RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -84,9 +70,9 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 
 func TestDmsAreFriendsOnly(t *testing.T) {
 	mux, st, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	// Boundary: no auth, self, junk id, oversize text.
 	if code, _ := call(t, mux, "", http.MethodGet, "/api/dms", ""); code != http.StatusUnauthorized {
@@ -132,7 +118,7 @@ func TestDmsAreFriendsOnly(t *testing.T) {
 
 	// Unfriending closes the channel — the gate is the row (ADR-0012).
 	if _, err := st.Queries.DeleteFriendship(t.Context(), db.DeleteFriendshipParams{
-		RequesterID: users.byToken["alice"].ID, AddresseeID: users.byToken["bob"].ID,
+		RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -172,9 +158,9 @@ func getImage(t *testing.T, mux *http.ServeMux, user, id string) *httptest.Respo
 
 func TestDmImages(t *testing.T) {
 	mux, _, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	// The friendship gate applies to bytes exactly as it does to words.
 	if code, _ := postImage(t, mux, "", bob, tinyPNG); code != http.StatusUnauthorized {
@@ -239,17 +225,17 @@ func TestDmImages(t *testing.T) {
 
 func TestDmImageFromAnotherPairIsRefused(t *testing.T) {
 	mux, st, users := setup(t)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	// bob ↔ cara become friends too, and bob sends cara a picture.
 	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
-		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{
-		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -268,8 +254,8 @@ func TestDmImageFromAnotherPairIsRefused(t *testing.T) {
 
 func TestDmReactions(t *testing.T) {
 	mux, _, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
 
 	// No auth.
 	if code, _ := call(t, mux, "", http.MethodPost, "/api/dms/"+bob+"/reactions",
@@ -328,8 +314,8 @@ func TestDmReactions(t *testing.T) {
 
 func TestDmReactionRefusedAcrossPairs(t *testing.T) {
 	mux, st, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
 
 	_, sent := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"ride at 7?"}`)
 	id, _ := sent["id"].(string)
@@ -347,12 +333,12 @@ func TestDmReactionRefusedAcrossPairs(t *testing.T) {
 	// bob ↔ cara become friends and talk; cara must not react to alice and
 	// bob's message by addressing it through her own thread with bob.
 	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
-		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{
-		RequesterID: users.byToken["bob"].ID, AddresseeID: users.byToken["cara"].ID,
+		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -18,8 +18,8 @@ func TestTheOwnerLetsACrewMateIntoAPrivateRoom(t *testing.T) {
 	private, _ := h.createRoom(t, "alice", "Crew Grant Private")
 	h.makePrivate(t, private)
 	h.join(t, "bob", open)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
-	carol := store.UUIDString(h.users.byToken["carol"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
+	carol := store.UUIDString(h.users.ByToken["carol"].ID)
 	path := "/api/rooms/" + private + "/grants"
 
 	if got := h.accessIn(t, "bob", private); got != "locked" {

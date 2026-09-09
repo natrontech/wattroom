@@ -2,6 +2,7 @@ package unfurl
 
 import (
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,22 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
-
-// fakeUsers is the sign-in gate: the X-Test-User header is the session.
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, msg string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", msg)
-		return db.User{}, false
-	}
-	return u, true
-}
 
 // origin is an upstream site under the test's control, reached through a
 // transport that skips the dialer — the guard has its own tests, and these
@@ -41,7 +29,7 @@ func setup(t *testing.T, handler http.HandlerFunc) (*Service, *http.ServeMux, *h
 	if err != nil {
 		t.Fatal(err)
 	}
-	users := &fakeUsers{byToken: map[string]db.User{"kim": {ID: id, DisplayName: "kim"}}}
+	users := &testx.Users{ByToken: map[string]db.User{"kim": {ID: id, DisplayName: "kim"}}}
 	svc := New(users, slog.New(slog.DiscardHandler))
 	svc.client = upstream.Client() // the guard has its own tests; this is the handler's
 	svc.client.Timeout = fetchTimeout
@@ -212,11 +200,11 @@ func TestOneRidersRationIsNotAnothersLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	users, ok := svc.users.(*fakeUsers)
+	users, ok := svc.users.(*testx.Users)
 	if !ok {
 		t.Fatal("setup handed back a service with somebody else's user source")
 	}
-	users.byToken["ada"] = db.User{ID: other, DisplayName: "ada"}
+	users.ByToken["ada"] = db.User{ID: other, DisplayName: "ada"}
 	svc.burst, svc.refill = 1, 0
 
 	if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+"/a")).Code; code != http.StatusOK {
@@ -323,7 +311,7 @@ func TestTheRealClientWillNotFetchFromLoopback(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc := New(&fakeUsers{byToken: map[string]db.User{}}, slog.New(slog.DiscardHandler))
+	svc := New(&testx.Users{ByToken: map[string]db.User{}}, slog.New(slog.DiscardHandler))
 	if _, ok := svc.fetch(t.Context(), upstream.URL+"/page"); ok {
 		t.Fatal("the guarded client fetched a page from 127.0.0.1")
 	}

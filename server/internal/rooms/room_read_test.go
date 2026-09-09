@@ -25,7 +25,7 @@ func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Ring Room")
 	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
-		UserID: h.users.byToken["alice"].ID,
+		UserID: h.users.ByToken["alice"].ID,
 		Source: "lounge",
 		Amount: 240,
 		Ref:    "roster-test",
@@ -77,7 +77,7 @@ func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
 		t.Fatalf("room by slug: %v", err)
 	}
 	if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
-		RoomID: room.ID, UserID: h.users.byToken["bob"].ID, Text: "anyone riding tonight?",
+		RoomID: room.ID, UserID: h.users.ByToken["bob"].ID, Text: "anyone riding tonight?",
 	}); err != nil {
 		t.Fatalf("save chat: %v", err)
 	}
@@ -99,12 +99,12 @@ func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
 	}
 
 	// A namesake in the room, and alice herself nowhere near it.
-	namesake := store.UUIDString(h.users.byToken["bob"].ID)
+	namesake := store.UUIDString(h.users.ByToken["bob"].ID)
 	if n := unreadFor(t, protocol.RoomPresence{Riders: []string{"alice"}, RiderIDs: []string{namesake}}); n != 1 {
 		t.Errorf("a namesake silenced the badge: unread = %v, want 1", n)
 	}
 	// Alice herself, standing in it: the badge is hers to lose.
-	alice := store.UUIDString(h.users.byToken["alice"].ID)
+	alice := store.UUIDString(h.users.ByToken["alice"].ID)
 	if n := unreadFor(t, protocol.RoomPresence{Riders: []string{"alice"}, RiderIDs: []string{alice}}); n != 0 {
 		t.Errorf("alice is standing in the room: unread = %v, want 0", n)
 	}
@@ -406,7 +406,7 @@ func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
 	}
 
 	// And a banned rider is not a member, however they got here.
-	bobID := store.UUIDString(h.users.byToken["bob"].ID)
+	bobID := store.UUIDString(h.users.ByToken["bob"].ID)
 	ban := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bobID)
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", ban); status != http.StatusNoContent {
 		t.Fatalf("ban: %d", status)

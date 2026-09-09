@@ -3,6 +3,7 @@ package riders
 import (
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -16,16 +17,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
-
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
 
 // fakePresence stands in for the hub: userID → room slug, plus who is riding
 // where, by display name — the hub's own vocabulary.
@@ -52,7 +43,7 @@ func (f *fakePresence) Presence(slug string) protocol.RoomPresence {
 type harness struct {
 	mux      *http.ServeMux
 	store    *store.Store
-	users    *fakeUsers
+	users    *testx.Users
 	presence *fakePresence
 }
 
@@ -60,7 +51,7 @@ func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "cara", "dan"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -68,7 +59,7 @@ func setup(t *testing.T) *harness {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -79,13 +70,13 @@ func setup(t *testing.T) *harness {
 	return &harness{mux: mux, store: st, users: users, presence: presence}
 }
 
-func (h *harness) id(name string) string { return store.UUIDString(h.users.byToken[name].ID) }
+func (h *harness) id(name string) string { return store.UUIDString(h.users.ByToken[name].ID) }
 
 // room puts the named users into one room owned by the first.
 func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: slug, OwnerID: h.users.byToken[names[0]].ID,
+		Slug: slug, Name: slug, OwnerID: h.users.ByToken[names[0]].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -99,7 +90,7 @@ func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 			role = "owner"
 		}
 		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: h.users.byToken[name].ID, Role: role,
+			RoomID: room.ID, UserID: h.users.ByToken[name].ID, Role: role,
 		}); err != nil {
 			t.Fatalf("membership %s: %v", name, err)
 		}
@@ -111,7 +102,7 @@ func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 func (h *harness) ride(t *testing.T, name string, room pgtype.UUID, kj int32, shared bool) pgtype.UUID {
 	t.Helper()
 	id, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: h.users.byToken[name].ID, RoomID: room, WorkoutName: "Openers",
+		UserID: h.users.ByToken[name].ID, RoomID: room, WorkoutName: "Openers",
 		StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		Seconds:   1800, AvgWatts: 200, Kj: kj, Execution: 0.9, FtpWatts: 200,
 		Samples: []byte("bytes"), Xp: kj,
@@ -121,7 +112,7 @@ func (h *harness) ride(t *testing.T, name string, room pgtype.UUID, kj int32, sh
 	}
 	if shared {
 		if _, err := h.store.Queries.SetRideShared(t.Context(), db.SetRideSharedParams{
-			Shared: true, ID: id, UserID: h.users.byToken[name].ID,
+			Shared: true, ID: id, UserID: h.users.ByToken[name].ID,
 		}); err != nil {
 			t.Fatalf("share ride: %v", err)
 		}
@@ -131,7 +122,7 @@ func (h *harness) ride(t *testing.T, name string, room pgtype.UUID, kj int32, sh
 
 func (h *harness) befriend(t *testing.T, a, b string) {
 	t.Helper()
-	ua, ub := h.users.byToken[a].ID, h.users.byToken[b].ID
+	ua, ub := h.users.ByToken[a].ID, h.users.ByToken[b].ID
 	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: ua, AddresseeID: ub}); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -159,7 +150,7 @@ func TestRiderPageGate(t *testing.T) {
 	h.befriend(t, "alice", "dan")
 	// dan asked cara; nothing came of it yet.
 	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
-		RequesterID: h.users.byToken["dan"].ID, AddresseeID: h.users.byToken["cara"].ID,
+		RequesterID: h.users.ByToken["dan"].ID, AddresseeID: h.users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -202,7 +193,7 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 	h := setup(t)
 	cave := h.room(t, "pain-cave", "alice", "bob")
 	lair := h.room(t, "secret-lair", "bob", "cara")
-	bob := h.users.byToken["bob"].ID
+	bob := h.users.ByToken["bob"].ID
 	// Two rides, one medal in each room; only the shared room's medal counts.
 	inCave := h.ride(t, "bob", cave.ID, 500, true)
 	inLair := h.ride(t, "bob", lair.ID, 300, false)
@@ -317,7 +308,7 @@ func TestProfileXpCountsTheLedgerNotJustRides(t *testing.T) {
 	room := h.room(t, "ledger", "alice", "bob")
 	h.ride(t, "bob", room.ID, 400, false)
 	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
-		UserID: h.users.byToken["bob"].ID,
+		UserID: h.users.ByToken["bob"].ID,
 		Source: "lounge",
 		Amount: 180,
 		Ref:    "test-bucket",

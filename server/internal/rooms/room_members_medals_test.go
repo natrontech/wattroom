@@ -15,7 +15,7 @@ func TestTheRosterCountsEveryMedalARiderWonHere(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Medal Count Room")
 	h.join(t, "bob", slug)
-	bob := h.users.byToken["bob"].ID
+	bob := h.users.ByToken["bob"].ID
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
 	if err != nil {
 		t.Fatalf("room: %v", err)
@@ -54,11 +54,11 @@ func TestTheRosterCountsEveryMedalARiderWonHere(t *testing.T) {
 		row, _ := m.(map[string]any)
 		counts[fmt.Sprint(row["displayName"])] = row["medals"]
 	}
-	bobName := h.users.byToken["bob"].DisplayName
+	bobName := h.users.ByToken["bob"].DisplayName
 	if counts[bobName] != float64(2) {
 		t.Errorf("bob's medals = %v, want 2 (roster %v)", counts[bobName], counts)
 	}
-	aliceName := h.users.byToken["alice"].DisplayName
+	aliceName := h.users.ByToken["alice"].DisplayName
 	if counts[aliceName] != float64(0) {
 		t.Errorf("alice's medals = %v, want 0", counts[aliceName])
 	}

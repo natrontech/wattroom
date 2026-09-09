@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,23 +18,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
-
-// fakeUsers resolves the X-Test-User header instead of a session cookie —
-// same shape every other package's suite uses.
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.User(r)
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
 
 // fakeLive captures what would have reached a room's live queue, so the
 // queue endpoint is testable without a real hub.
@@ -68,13 +52,13 @@ func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob", "carol"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: name, FtpWatts: 200, WeightKg: 75})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -86,7 +70,7 @@ func setup(t *testing.T) *harness {
 	svc.SetLive(live)
 	mux := http.NewServeMux()
 	svc.Register(mux)
-	return &harness{mux: mux, store: st, svc: svc, live: live, users: users.byToken}
+	return &harness{mux: mux, store: st, svc: svc, live: live, users: users.ByToken}
 }
 
 func (h *harness) call(t *testing.T, user, method, path, body string) (int, map[string]any) {

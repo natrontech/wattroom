@@ -2,6 +2,7 @@ package gifs
 
 import (
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,18 +16,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
-
-// fakeUsers resolves the X-Test-User header instead of a session cookie —
-// same shape every other package's suite uses.
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
 
 func rider(t *testing.T, id string) db.User {
 	t.Helper()
@@ -62,7 +51,7 @@ func newStub(t *testing.T, body string) *giphyStub {
 func newService(t *testing.T, upstream string) (*Service, *http.ServeMux) {
 	t.Helper()
 	svc := &Service{
-		users: &fakeUsers{byToken: map[string]db.User{
+		users: &testx.Users{ByToken: map[string]db.User{
 			"rider": rider(t, "11111111-1111-1111-1111-111111111111"),
 			"other": rider(t, "22222222-2222-2222-2222-222222222222"),
 		}},
@@ -363,7 +352,7 @@ func TestRefusalCostsNothing(t *testing.T) {
 
 func TestNewWithoutKeyIsNil(t *testing.T) {
 	t.Setenv("WATTROOM_GIPHY_KEY", "")
-	if svc := New(&fakeUsers{}, slog.New(slog.DiscardHandler)); svc != nil {
+	if svc := New(&testx.Users{}, slog.New(slog.DiscardHandler)); svc != nil {
 		t.Fatal("a keyless server should leave the route unmounted")
 	}
 }

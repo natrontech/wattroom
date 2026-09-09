@@ -19,7 +19,7 @@ func TestAvatarServes(t *testing.T) {
 	setAt := time.Now().Truncate(time.Millisecond)
 	url := "/api/riders/" + h.id("alice") + "/avatar"
 	if _, err := h.store.Queries.SetUserAvatar(t.Context(), db.SetUserAvatarParams{
-		ID: h.users.byToken["alice"].ID, Mime: "image/png", Image: png,
+		ID: h.users.ByToken["alice"].ID, Mime: "image/png", Image: png,
 		SetAt: pgtype.Timestamptz{Time: setAt, Valid: true}, AvatarUrl: &url,
 	}); err != nil {
 		t.Fatal(err)

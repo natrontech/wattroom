@@ -109,7 +109,7 @@ func TestANewRoomIsMadeInsideItsOwnersCrewAndOpenToIt(t *testing.T) {
 	if a.ID != b.ID {
 		t.Errorf("an owner's rooms landed in two crews — the rule is one crew per owner")
 	}
-	if a.OwnerID != h.users.byToken["alice"].ID {
+	if a.OwnerID != h.users.ByToken["alice"].ID {
 		t.Errorf("the crew is not owned by the rider who made the room")
 	}
 	if a.Name != "alice" {
@@ -162,7 +162,7 @@ func TestTheRoomListSaysWhatYouMayDoInEachRoom(t *testing.T) {
 
 	// A named exception turns locked into private-and-you-are-in-it.
 	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{
-		RoomID: roomID(t, h, private), UserID: h.users.byToken["bob"].ID,
+		RoomID: roomID(t, h, private), UserID: h.users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatalf("grant: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestTheRoomListSaysWhatYouMayDoInEachRoom(t *testing.T) {
 	// A crew admin who never joined anything: listed, administrable, not
 	// enterable — and the owner's own row would look the same (ADR-0038).
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["carol"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["carol"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestTheRoomListSaysWhatYouMayDoInEachRoom(t *testing.T) {
 	}
 
 	// A room ban keeps the room off the list entirely, whatever else is true.
-	body := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, store.UUIDString(h.users.byToken["bob"].ID))
+	body := fmt.Sprintf(`{"userId":%q,"role":"banned"}`, store.UUIDString(h.users.ByToken["bob"].ID))
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+open+"/role", body); status != http.StatusNoContent {
 		t.Fatalf("ban: %d", status)
 	}
@@ -293,10 +293,10 @@ func TestTheOwnerHandsTheCrewOn(t *testing.T) {
 	crew := h.crewOf(t, slug)
 	h.join(t, "bob", slug)
 	path := "/api/crews/" + store.UUIDString(crew.ID) + "/transfer"
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
-	carol := store.UUIDString(h.users.byToken["carol"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
+	carol := store.UUIDString(h.users.ByToken["carol"].ID)
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
@@ -312,15 +312,15 @@ func TestTheOwnerHandsTheCrewOn(t *testing.T) {
 		t.Fatalf("hand-over: %d %v", status, body)
 	}
 	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
-	if err != nil || after.OwnerID != h.users.byToken["bob"].ID {
+	if err != nil || after.OwnerID != h.users.ByToken["bob"].ID {
 		t.Fatalf("bob does not own the crew: %v %v", err, after)
 	}
 	roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID)
 	for _, row := range roles {
-		if row.UserID == h.users.byToken["bob"].ID {
+		if row.UserID == h.users.ByToken["bob"].ID {
 			t.Errorf("the new owner still holds a %s row", row.Role)
 		}
-		if row.UserID == h.users.byToken["alice"].ID && row.Role != "admin" {
+		if row.UserID == h.users.ByToken["alice"].ID && row.Role != "admin" {
 			t.Errorf("the old owner is %s, want admin", row.Role)
 		}
 	}
@@ -344,7 +344,7 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("place: %v", err)
 	}
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
 		fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob))
 	if status != http.StatusConflict {
@@ -361,11 +361,11 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 	// Succession clears the successor's row too: bob, an admin, inherits
 	// when alice leaves for good (the purge path), and inherits clean.
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["alice"].ID); err != nil {
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID); len(roles) != 0 {
@@ -391,7 +391,7 @@ func TestAnAdminOpensARoomInSomeoneElsesCrew(t *testing.T) {
 		t.Errorf("a garbage crew id: %d, want 400", status)
 	}
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
@@ -500,7 +500,7 @@ func TestTheCrewPageShowsItsPeopleAndItsBansToAdminsOnly(t *testing.T) {
 	h.join(t, "carol", slug)
 	path := "/api/crews/" + store.UUIDString(crew.ID)
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["carol"].ID, Role: "banned",
+		CrewID: crew.ID, UserID: h.users.ByToken["carol"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}
@@ -550,7 +550,7 @@ func TestTheCrewPageShowsAMemberOnlyThePeopleTheyCouldAlreadySee(t *testing.T) {
 	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(h.crewOf(t, open).Code))); status != http.StatusOK {
 		t.Fatalf("carol could not join the crew: %d", status)
 	}
-	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{RoomID: roomID(t, h, private), UserID: h.users.byToken["carol"].ID}); err != nil {
+	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{RoomID: roomID(t, h, private), UserID: h.users.ByToken["carol"].ID}); err != nil {
 		t.Fatalf("grant: %v", err)
 	}
 	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+private+"/join", ""); status != http.StatusNoContent {
@@ -589,7 +589,7 @@ func TestLiftingOneBanLeavesTheOtherStanding(t *testing.T) {
 	crew := h.crewOf(t, first)
 	h.join(t, "bob", first)
 	h.join(t, "bob", second)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	crewPath := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
 
 	// Room ban in the first room, then a crew ban over both.
@@ -651,7 +651,7 @@ func TestDemotingAnAdminLeavesThemAMember(t *testing.T) {
 	slug, _ := h.createRoom(t, "alice", "Demote Room")
 	crew := h.crewOf(t, slug)
 	h.join(t, "bob", slug)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	crewPath := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
 	for _, role := range []string{"admin", "member"} {
 		if status, _ := h.call(t, "alice", http.MethodPost, crewPath, fmt.Sprintf(`{"userId":%q,"role":%q}`, bob, role)); status != http.StatusNoContent {
@@ -671,11 +671,11 @@ func TestTheCrewOwnerIsNeverATarget(t *testing.T) {
 	crew := h.crewOf(t, slug)
 	h.join(t, "bob", slug)
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.byToken["bob"].ID, Role: "admin",
+		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "admin",
 	}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
-	alice := store.UUIDString(h.users.byToken["alice"].ID)
+	alice := store.UUIDString(h.users.ByToken["alice"].ID)
 	path := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
 	for _, role := range []string{"banned", "member", "admin"} {
 		status, _ := h.call(t, "bob", http.MethodPost, path, fmt.Sprintf(`{"userId":%q,"role":%q}`, alice, role))
@@ -685,7 +685,7 @@ func TestTheCrewOwnerIsNeverATarget(t *testing.T) {
 	}
 	// And a plain member acts on nobody.
 	h.join(t, "carol", slug)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	if status, _ := h.call(t, "carol", http.MethodPost, path, fmt.Sprintf(`{"userId":%q,"role":"banned"}`, bob)); status != http.StatusForbidden {
 		t.Errorf("a member banned an admin: %d", status)
 	}
@@ -699,7 +699,7 @@ func TestABannedRowSaysWhetherTheCrewBannedThemToo(t *testing.T) {
 	slug, _ := h.createRoom(t, "alice", "Crew Banned Row Room")
 	crew := h.crewOf(t, slug)
 	h.join(t, "bob", slug)
-	bob := h.users.byToken["bob"].ID
+	bob := h.users.ByToken["bob"].ID
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role",
 		fmt.Sprintf(`{"userId":%q,"role":"banned"}`, store.UUIDString(bob))); status != http.StatusNoContent {
 		t.Fatalf("room ban: %d", status)
@@ -744,7 +744,7 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err != nil {
 		t.Fatalf("a crew with no rooms left was deleted: %v", err)
 	}
-	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.byToken["bob"].ID}); role != "member" {
+	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID}); role != "member" {
 		t.Errorf("bob's standing went with the room: %q, want member", role)
 	}
 	// And the client still hears of it (#1476): the room list carries the
@@ -769,18 +769,18 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 
 	// The owner leaving for good — the purge path — hands it to the
 	// longest-standing member (docs/SPEC.md), never leaving it ownerless.
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["alice"].ID); err != nil {
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
 	if err != nil {
 		t.Fatalf("the crew was deleted while bob still stood in it: %v", err)
 	}
-	if after.OwnerID != h.users.byToken["bob"].ID {
+	if after.OwnerID != h.users.ByToken["bob"].ID {
 		t.Errorf("the crew passed to %s, want bob", store.UUIDString(after.OwnerID))
 	}
 	// And with nobody left to own it, it goes.
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.byToken["bob"].ID); err != nil {
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["bob"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err == nil {
@@ -823,7 +823,7 @@ func TestACrewRoleIsForSomeoneAlreadyIn(t *testing.T) {
 	slug, code := h.createRoom(t, "alice", "Crew Role Stranger")
 	crew := h.crewOf(t, slug)
 	crewID := store.UUIDString(crew.ID)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	for _, role := range []string{"member", "admin"} {
 		status, body := h.call(t, "alice", http.MethodPost, "/api/crews/"+crewID+"/role", fmt.Sprintf(`{"userId":%q,"role":%q}`, bob, role))
 		if status != http.StatusBadRequest || body["field"] != "userId" {
@@ -854,7 +854,7 @@ func TestACrewBanTakesTheRoomMembershipsWithIt(t *testing.T) {
 	slug, _ := h.createRoom(t, "alice", "Crew Ban Roster")
 	crew := h.crewOf(t, slug)
 	h.join(t, "bob", slug)
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	crewPath := "/api/crews/" + store.UUIDString(crew.ID) + "/role"
 	if !h.onRoster(t, slug, bob) {
 		t.Fatal("bob never made the roster")
@@ -933,7 +933,7 @@ func TestARoleChangeKeepsTheJoinDate(t *testing.T) {
 	crew := h.crewOf(t, slug)
 	crewID := store.UUIDString(crew.ID)
 	h.join(t, "bob", slug)
-	bobID := h.users.byToken["bob"].ID
+	bobID := h.users.ByToken["bob"].ID
 	if _, err := h.store.Pool.Exec(t.Context(),
 		"update crew_roles set joined_at = '2026-01-15', set_at = '2026-01-15' where crew_id = $1 and user_id = $2", crew.ID, bobID); err != nil {
 		t.Fatalf("backdate: %v", err)
@@ -979,7 +979,7 @@ func TestLeavingTheCrew(t *testing.T) {
 	if !slices.Equal(kicks.kicked, want) {
 		t.Errorf("leaving severed %v, want %v", kicks.kicked, want)
 	}
-	bob := store.UUIDString(h.users.byToken["bob"].ID)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
 	for _, slug := range []string{first, second} {
 		if h.onRoster(t, slug, bob) {
 			t.Errorf("bob is still on %s's roster", slug)
@@ -1069,7 +1069,7 @@ func TestAStrayOwnerRowDoesNotListTheOwnerTwice(t *testing.T) {
 	crew := h.crewOf(t, slug)
 	if _, err := h.store.Pool.Exec(t.Context(),
 		"insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member') on conflict do nothing",
-		crew.ID, h.users.byToken["alice"].ID); err != nil {
+		crew.ID, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("stray row: %v", err)
 	}
 	_, body := h.call(t, "alice", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
@@ -1173,7 +1173,7 @@ func TestTheSuccessorOfLastResortIsNeverBanned(t *testing.T) {
 	seed, _ := h.createRoom(t, "alice", "Crew Succession Seed")
 	crew := h.crewOf(t, seed)
 	h.join(t, "bob", seed)
-	bobID := h.users.byToken["bob"].ID
+	bobID := h.users.ByToken["bob"].ID
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: bobID, Role: "admin"}); err != nil {
 		t.Fatalf("admin: %v", err)
 	}
@@ -1187,7 +1187,7 @@ func TestTheSuccessorOfLastResortIsNeverBanned(t *testing.T) {
 	if _, err := h.store.Pool.Exec(t.Context(), "update crew_roles set role = 'banned' where crew_id = $1 and user_id = $2", crew.ID, bobID); err != nil {
 		t.Fatalf("ban row: %v", err)
 	}
-	_, err := h.store.Queries.FirstRoomOwnerInCrew(t.Context(), db.FirstRoomOwnerInCrewParams{CrewID: crew.ID, OwnerID: h.users.byToken["alice"].ID})
+	_, err := h.store.Queries.FirstRoomOwnerInCrew(t.Context(), db.FirstRoomOwnerInCrewParams{CrewID: crew.ID, OwnerID: h.users.ByToken["alice"].ID})
 	if !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("the last resort named a banned rider: %v", err)
 	}

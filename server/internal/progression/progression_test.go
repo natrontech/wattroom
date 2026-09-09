@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,13 +16,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
-
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
 
 func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
 	t.Helper()
@@ -36,7 +30,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
 	t.Cleanup(func() {
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 	})
-	users := &fakeUsers{byToken: map[string]db.User{"alice": u}}
+	users := &testx.Users{ByToken: map[string]db.User{"alice": u}}
 	mux := http.NewServeMux()
 	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
 	return mux, st, u

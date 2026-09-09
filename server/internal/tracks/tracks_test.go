@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -23,19 +24,9 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	if !ok {
-		http.Error(w, `{"error":"unauthorized","message":"`+signInMessage+`"}`, http.StatusUnauthorized)
-	}
-	return u, ok
-}
-
 type harness struct {
 	mux   *http.ServeMux
-	users *fakeUsers
+	users *testx.Users
 	store *store.Store
 	dir   string
 }
@@ -44,7 +35,7 @@ func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	for _, name := range []string{"alice", "bob"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 200, WeightKg: 75,
@@ -52,7 +43,7 @@ func setup(t *testing.T) *harness {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -181,7 +172,7 @@ func TestTwoRidersHoldingOneSongShareTheFileNotTheRow(t *testing.T) {
 
 	// And bob IS charged now — a shelf costs what it holds. This is the
 	// change ADR-0015's "charges nobody" comment no longer describes.
-	used, err := h.store.Queries.TrackQuotaUsed(t.Context(), h.users.byToken["bob"].ID)
+	used, err := h.store.Queries.TrackQuotaUsed(t.Context(), h.users.ByToken["bob"].ID)
 	if err != nil {
 		t.Fatalf("quota: %v", err)
 	}
@@ -732,7 +723,7 @@ func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: "shared-" + strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")),
-		Name: "Shared", OwnerID: h.users.byToken[a].ID,
+		Name: "Shared", OwnerID: h.users.ByToken[a].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -742,7 +733,7 @@ func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
 	})
 	for _, who := range []string{a, b} {
 		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: h.users.byToken[who].ID, Role: "member",
+			RoomID: room.ID, UserID: h.users.ByToken[who].ID, Role: "member",
 		}); err != nil {
 			t.Fatalf("membership %s: %v", who, err)
 		}
@@ -765,7 +756,7 @@ func TestABannedRiderCannotPlayTheRoomsTracks(t *testing.T) {
 	}
 
 	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
-		RoomID: room.ID, UserID: h.users.byToken["bob"].ID, Role: "banned",
+		RoomID: room.ID, UserID: h.users.ByToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}

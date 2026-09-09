@@ -86,7 +86,7 @@ func TestPostChatFromOutside(t *testing.T) {
 	svc, mux, users, _ := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
-	alice := users.byToken["alice"]
+	alice := users.ByToken["alice"]
 
 	// Boundary: no auth 401, non-member 403, unknown room 404 — and the
 	// socket path's validation, as 400s with a field.
@@ -146,7 +146,7 @@ func TestReactFromOutside(t *testing.T) {
 	svc, mux, users, _ := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
-	bob := users.byToken["bob"]
+	bob := users.ByToken["bob"]
 	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(bob.ID), "in", "")
 	if !ok {
 		t.Fatal("save failed")
@@ -191,8 +191,8 @@ func TestReactFromOutside(t *testing.T) {
 
 func TestMarkReadFromOutside(t *testing.T) {
 	svc, mux, users, room := setup(t)
-	alice := users.byToken["alice"]
-	bob := users.byToken["bob"]
+	alice := users.ByToken["alice"]
+	bob := users.ByToken["bob"]
 	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warm-up at 7?", ""); !ok {
 		t.Fatal("save failed")
 	}

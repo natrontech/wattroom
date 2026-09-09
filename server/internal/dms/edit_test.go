@@ -25,9 +25,9 @@ func sendDm(t *testing.T, mux *http.ServeMux, from, to, text string) string {
 
 func TestEditDmMessage(t *testing.T) {
 	mux, _, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
-	cara := store.UUIDString(users.byToken["cara"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	cara := store.UUIDString(users.ByToken["cara"].ID)
 	id := sendDm(t, mux, "alice", bob, "ride at 6?")
 
 	cases := []struct {
@@ -84,8 +84,8 @@ func TestEditDmMessage(t *testing.T) {
 // reader already has. This is the regression the incremental fetch invites.
 func TestEditReachesAPeerPollingForNewerMessages(t *testing.T) {
 	mux, _, users := setup(t)
-	alice := store.UUIDString(users.byToken["alice"].ID)
-	bob := store.UUIDString(users.byToken["bob"].ID)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
 	id := sendDm(t, mux, "alice", bob, "ride at 6?")
 
 	code, body := call(t, mux, "bob", http.MethodGet, "/api/dms/"+alice, "")

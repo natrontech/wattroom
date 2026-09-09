@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
-	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,20 +16,13 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-type fakeUsers struct{ byToken map[string]db.User }
-
-func (f *fakeUsers) User(r *http.Request) (db.User, bool) {
-	u, ok := f.byToken[r.Header.Get("X-Test-User")]
-	return u, ok
-}
-
 // setup opens the test database (skipping without one) and returns a
 // service over it plus two riders, alice and bob, deleted on cleanup.
-func setup(t *testing.T) (*Service, *fakeUsers, db.User, db.User) {
+func setup(t *testing.T) (*Service, *testx.Users, db.User, db.User) {
 	t.Helper()
 	st := storetest.Open(t)
 
-	users := &fakeUsers{byToken: map[string]db.User{}}
+	users := &testx.Users{ByToken: map[string]db.User{}}
 	newUser := func(name string) db.User {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{
 			DisplayName: name, FtpWatts: 250, WeightKg: 70,
@@ -40,7 +33,7 @@ func setup(t *testing.T) (*Service, *fakeUsers, db.User, db.User) {
 		t.Cleanup(func() {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
-		users.byToken[name] = u
+		users.ByToken[name] = u
 		return u
 	}
 	alice, bob := newUser("alice"), newUser("bob")
