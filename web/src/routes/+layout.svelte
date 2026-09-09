@@ -68,7 +68,9 @@
 	// DM arrivals blip and badge on every page, not just where the friends
 	// panel mounts (audit #219).
 	$effect(() => {
-		if (account.me) dmHeads.start();
+		if (!account.me) return;
+		dmHeads.start();
+		return () => dmHeads.stop();
 	});
 
 	// Friend events arrive the same way (#876): someone asking, someone
