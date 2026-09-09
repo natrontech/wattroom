@@ -31,8 +31,12 @@ func (h *Hub) SetLobbyAuth(auth func(*http.Request) (userID string, ok bool)) {
 }
 
 // lobbyKeepalive is how often a quiet lobby socket is pinged; a peer that
-// does not answer within the write timeout is gone.
-const lobbyKeepalive = 30 * time.Second
+// does not answer within lobbyPingTimeout is gone. Variables, not constants,
+// so the half-open test can run in milliseconds rather than half a minute.
+var (
+	lobbyKeepalive   = 30 * time.Second
+	lobbyPingTimeout = 5 * time.Second
+)
 
 // HandleLobbyWS holds one client's lobby socket open until it drops.
 func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +88,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 			case <-done:
 				return
 			case <-keepalive.C:
-				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(r.Context(), lobbyPingTimeout)
 				err := conn.Ping(ctx)
 				cancel()
 				if err != nil {
