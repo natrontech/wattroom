@@ -15,6 +15,7 @@ import {
 	soloRide,
 	toleranceBand,
 	SIGNAL_LOST_MS,
+	SPRINT_LEAD_SECONDS,
 } from './session.svelte';
 import type { Workout } from './types';
 
@@ -66,6 +67,50 @@ const sprintWorkout: Workout = {
 		{ type: 'steady', seconds: 60, target: 0.6 },
 	],
 };
+
+describe('the sprint window (#1793)', () => {
+	it('is on from the first tick of a sprint block and gone after it', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: sprintWorkout,
+			ftp: 200,
+		});
+		await session.start();
+		const window = session.sprint;
+		expect(window).not.toBeNull();
+		expect(window!.endsAtMs - window!.startsAtMs).toBe(15_000);
+		// The same object all window long: "left" runs down on one anchor.
+		session.tick(5);
+		expect(session.sprint).toBe(window);
+		pedal(session, 300, 100, 11);
+		expect(session.sprint).toBeNull();
+		session.stop();
+	});
+
+	it('counts the next sprint in before it starts', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'steady then sprint',
+				steps: [
+					{ type: 'steady', seconds: 60, target: 0.6 },
+					{ type: 'sprint', seconds: 15 },
+				],
+			},
+			ftp: 200,
+		});
+		await session.start();
+		expect(session.sprint).toBeNull();
+		session.tick(60 - SPRINT_LEAD_SECONDS - 1);
+		expect(session.sprint).toBeNull();
+		session.tick();
+		const window = session.sprint;
+		expect(window).not.toBeNull();
+		expect(window!.startsAtMs).toBeGreaterThan(Date.now() + 1_000);
+		session.stop();
+		expect(session.sprint).toBeNull();
+	});
+});
 
 describe('a sprint block', () => {
 	function sprintRide(singleSpeed = false) {
