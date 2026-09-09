@@ -1,1 +1,0 @@
-- A room ride whose connection dropped near the end and came back after the timeline had closed used to lose the minutes the room never heard: the recording on this device now stays offered on the Ride page as a .fit whenever the room did not acknowledge a minute or more of it, instead of being marked finished on the room's word.

@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.82] - 2026-09-09
+
+### Fixed
+
+- A rider whose friend request is waiting on you can now show you their trophy case, as their page already could, so "see who before you accept" is the whole rider; the note that someone dismissed your request is swept after 90 days like session recaps, and the asks of yours that were dismissed are in your data export as dismissed-requests.json.
+- A room ride whose connection dropped near the end and came back after the timeline had closed used to lose the minutes the room never heard: the recording on this device now stays offered on the Ride page as a .fit whenever the room did not acknowledge a minute or more of it, instead of being marked finished on the room's word.
+
 ## [2026.09.81] - 2026-09-09
 
 ### Fixed
@@ -1636,7 +1643,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.81...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.82...HEAD
+[2026.09.82]: https://github.com/natrontech/wattroom/compare/2026.09.81...2026.09.82
 [2026.09.81]: https://github.com/natrontech/wattroom/compare/2026.09.80...2026.09.81
 [2026.09.80]: https://github.com/natrontech/wattroom/compare/2026.09.79...2026.09.80
 [2026.09.79]: https://github.com/natrontech/wattroom/compare/2026.09.78...2026.09.79
