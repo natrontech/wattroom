@@ -50,7 +50,6 @@ export interface RoomMember {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	totalXp?: number;
 }
 

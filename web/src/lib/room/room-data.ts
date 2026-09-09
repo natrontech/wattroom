@@ -2,7 +2,6 @@ export interface Member {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;
-	avatarPreset?: string;
 	role: string;
 	totalXp?: number;
 	ftpWatts?: number;

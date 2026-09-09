@@ -75,7 +75,6 @@
 					id,
 					name: res.data.displayName,
 					avatarUrl: res.data.avatarUrl,
-					avatarPreset: res.data.avatarPreset,
 				},
 			]);
 		});
@@ -145,7 +144,6 @@
 	<Avatar
 		name={peerName}
 		avatarUrl={head?.peerAvatarUrl}
-		preset={head?.peerAvatarPreset}
 		xp={head?.peerTotalXp}
 		{status}
 		size={28}
@@ -179,7 +177,6 @@
 			<Avatar
 				name={peerName}
 				avatarUrl={head?.peerAvatarUrl}
-				preset={head?.peerAvatarPreset}
 				xp={head?.peerTotalXp}
 				size={48}
 			/>

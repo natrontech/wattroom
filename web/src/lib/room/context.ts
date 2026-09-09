@@ -106,7 +106,6 @@ export interface RoomContext {
 		displayName: string;
 		role: string;
 		avatarUrl?: string;
-		avatarPreset?: string;
 		totalXp?: number;
 		ftpWatts?: number;
 		weightKg?: number;

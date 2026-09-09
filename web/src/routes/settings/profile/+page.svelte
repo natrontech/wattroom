@@ -6,7 +6,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
-	import { AVATAR_PRESETS } from '$lib/avatars';
+	import { compressImage } from '$lib/chat/media';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
@@ -99,16 +99,22 @@
 	const xp = $derived(account.me?.totalXp ?? 0);
 	const level = $derived(levelFromXp(xp));
 
-	// Picking is reversible with one more click — save immediately, no confirm.
-	async function pickAvatar(presetId: string) {
-		if (!account.me) return;
-		const err = await account.save({
-			displayName: name || account.me.displayName,
-			ftpWatts: ftp,
-			weightKg: kg,
-			avatarPreset: presetId,
-		});
-		if (err) status = err.message;
+	// The rider's own picture (#1353). Shrunk here first: a phone photo is
+	// several MB and the server caps an upload at 2; an avatar never draws
+	// above 76px, so 512 on the long edge is plenty.
+	let uploading = $state(false);
+	async function pickPicture(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		uploading = true;
+		const image = await compressImage(file, 512);
+		const err = image
+			? await account.setAvatar(image)
+			: { message: 'That file could not be read as a picture.' };
+		uploading = false;
+		status = err ? err.message : 'Picture saved.';
 	}
 </script>
 
@@ -130,7 +136,6 @@
 					<Avatar
 						name={account.me.displayName}
 						avatarUrl={account.me.avatarUrl}
-						preset={account.me.avatarPreset}
 						{xp}
 						size={76}
 					/>
@@ -155,38 +160,26 @@
 					</div>
 				</div>
 				<div class="border-ink/5 mt-5 border-t pt-4">
-					<span class="eyebrow">avatar</span>
-					<div class="mt-2.5 flex flex-wrap items-center gap-2">
-						<button
-							onclick={() => void pickAvatar('')}
-							class="rounded-full border-2 p-0.5 transition-colors {!account.me
-								.avatarPreset
-								? 'border-neon'
-								: 'hover:border-muted/40 border-transparent'}"
-							title={account.me.avatarUrl
-								? 'your sign-in photo'
-								: 'your initial'}
-							aria-label="use your default avatar"
-						>
-							<Avatar
-								name={account.me.displayName}
-								avatarUrl={account.me.avatarUrl}
-								size={32}
+					<span class="eyebrow" id="picture-label">picture</span>
+					<div class="mt-2.5 flex flex-wrap items-center gap-3">
+						<label class="btn btn-secondary btn-xs cursor-pointer">
+							{uploading
+								? 'Uploading…'
+								: account.me.avatarUrl
+									? 'Replace picture'
+									: 'Upload a picture'}
+							<input
+								type="file"
+								accept="image/png,image/jpeg,image/gif,image/webp"
+								onchange={pickPicture}
+								disabled={uploading}
+								class="sr-only"
+								aria-labelledby="picture-label"
 							/>
-						</button>
-						{#each AVATAR_PRESETS as preset (preset.id)}
-							<button
-								onclick={() => void pickAvatar(preset.id)}
-								class="rounded-full border-2 p-0.5 transition-colors {account.me
-									.avatarPreset === preset.id
-									? 'border-neon'
-									: 'hover:border-muted/40 border-transparent'}"
-								title={preset.id}
-								aria-label="pick the {preset.id} avatar"
-							>
-								<Avatar name={preset.id} preset={preset.id} size={32} />
-							</button>
-						{/each}
+						</label>
+						<span class="text-muted text-[11px]"
+							>PNG, JPEG, WebP or GIF. Shown wherever you are.</span
+						>
 					</div>
 				</div>
 			</section>

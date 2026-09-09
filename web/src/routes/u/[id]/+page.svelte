@@ -207,7 +207,6 @@
 			<Avatar
 				name={rider.displayName}
 				avatarUrl={rider.avatarUrl}
-				preset={rider.avatarPreset}
 				xp={rider.totalXp}
 				size={72}
 			/>

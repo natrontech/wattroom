@@ -197,7 +197,6 @@
 					<Avatar
 						name={member.displayName}
 						avatarUrl={member.avatarUrl}
-						preset={member.avatarPreset}
 						xp={member.totalXp}
 						status={here ? statusOfRider(here) : 'offline'}
 						ring="var(--color-surface-raised)"
@@ -312,7 +311,6 @@
 					<Avatar
 						name={person.displayName}
 						avatarUrl={person.avatarUrl}
-						preset={person.avatarPreset}
 						ring="var(--color-surface-raised)"
 						size={28}
 					/>
@@ -333,7 +331,6 @@
 					<Avatar
 						name={person.displayName}
 						avatarUrl={person.avatarUrl}
-						preset={person.avatarPreset}
 						ring="var(--color-surface-raised)"
 						size={28}
 					/>
