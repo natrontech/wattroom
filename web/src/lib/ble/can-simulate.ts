@@ -7,7 +7,7 @@ import { account } from '$lib/account.svelte';
  * One rule, because simulated watts reach medals, XP and streaks — a fairness
  * rule with four implementations was one rule and three bugs (#1000). It used
  * to be `dev` on /ramp, `dev || ?sim=1` on /ride (a URL any rider could type),
- * `dev || the dev door` in the room, and nothing at all on /pair.
+ * `dev || the dev door` in the room, and nothing at all on /settings/equipment.
  *
  * The room's rule wins because it is the strict one and it survives a
  * production BUILD, where `dev` is false: a server that offers the dev

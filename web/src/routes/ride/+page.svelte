@@ -52,7 +52,7 @@
 	const profile = createProfileStore();
 	const history = createHistoryStore();
 	// The profile is FTP's only home — the field below writes through to it, so a
-	// rider who corrects the number here does not find the old one on /profile.
+	// rider who corrects the number here does not find the old one on /settings/profile.
 	const ftp = $derived(profile.current.ftp);
 	let recorded = false;
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);

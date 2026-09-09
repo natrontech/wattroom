@@ -24,13 +24,8 @@
 	} from '$lib/rider';
 	import { toasts } from '$lib/toast.svelte';
 	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
-	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
 	import TrophyCase from '$lib/trophies/TrophyCase.svelte';
-	import {
-		fetchTrophies,
-		XP_SOURCES,
-		type Trophies,
-	} from '$lib/trophies/trophies';
+	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
 	import Award from '@lucide/svelte/icons/award';
 	import Check from '@lucide/svelte/icons/check';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -54,6 +49,9 @@
 	// page — the endpoint's own gate is SharesRoomOrFriends — so a failure
 	// here is a rider with nothing to show, never a reason to fail the page.
 	let trophies = $state<Trophies | null>(untrack(() => data.trophies));
+	// Except on your own page, where the case IS the page below the header:
+	// a failed read there is a banner with a retry, not a page with a hole.
+	let trophiesError = $state<string | null>(untrack(() => data.trophiesError));
 	let error = $state<string | null>(untrack(() => data.riderError));
 	let busy = $state(false);
 	let loadedId = $state<string | null>(untrack(() => data.id));
@@ -68,6 +66,7 @@
 		rider = res.data;
 		const shelf = await fetchTrophies(who);
 		trophies = shelf.ok ? shelf.data : null;
+		trophiesError = shelf.ok ? null : shelf.error.message;
 	}
 
 	$effect(() => {
@@ -76,6 +75,7 @@
 		if (data.id === who) {
 			rider = data.rider;
 			trophies = data.trophies;
+			trophiesError = data.trophiesError;
 			error = data.riderError;
 			loadedId = who;
 			return;
@@ -83,6 +83,7 @@
 		loadedId = who;
 		rider = null;
 		trophies = null;
+		trophiesError = null;
 		error = null;
 		void load(who);
 	});
@@ -136,15 +137,28 @@
 				unit: 'kJ',
 				hint: 'generated, all rides',
 			},
-			{
+		];
+		// Medals "in rooms you share" is a sentence about someone else; yours
+		// are the shelf below, by name, and the fourth tile is the badges.
+		if (rider.friend === 'self') {
+			if (trophies) {
+				out.push({
+					label: 'achievements',
+					value: String(trophies.achievements.filter((a) => a.earnedAt).length),
+					unit: `of ${trophies.achievements.length}`,
+					hint: `${trophies.xp.achievements.toLocaleString()} XP from them`,
+				});
+			}
+		} else {
+			out.push({
 				label: 'medals',
 				value: String(medalTotal(rider.medals)),
 				hint:
 					rider.roomsInCommon.length > 0
 						? 'in rooms you share'
 						: 'in rooms you share — none yet',
-			},
-		];
+			});
+		}
 		if (rider.month) {
 			out.splice(1, 0, {
 				label: 'this month',
@@ -157,7 +171,9 @@
 </script>
 
 <svelte:head
-	><title>{rider ? rider.displayName : 'Rider'} · WattRoom</title></svelte:head
+	><title
+		>{rider ? (rider.friend === 'self' ? 'You' : rider.displayName) : 'Rider'} · WattRoom</title
+	></svelte:head
 >
 
 {#snippet openRides()}
@@ -220,27 +236,10 @@
 						<ProgressBar pct={levelProgress(rider.totalXp) * 100} />
 					</div>
 					<span class="text-muted text-[11px] tabular-nums"
-						>{toNext.toLocaleString()} XP to {level + 1}</span
+						>{toNext.toLocaleString()} XP to {level + 1} · {rider.totalXp.toLocaleString()}
+						lifetime</span
 					>
 				</div>
-				<!-- Where the level came from (#993). "Level 18" says nothing about
-				     whether it was earned on the bike or in the lounge, and both are
-				     worth saying — but lounge XP is a floor on the hours behind
-				     Lounge Lizard, so like the counts it is yours alone (#1025). -->
-				{#if trophies && trophies.xp.total > 0 && rider.friend === 'self'}
-					<p class="text-muted mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
-						{#each XP_SOURCES as row (row.key)}
-							{#if trophies.xp[row.key] > 0}
-								<span class="tabular-nums"
-									>{row.short}
-									<span class="text-ink font-semibold"
-										>{trophies.xp[row.key].toLocaleString()}</span
-									></span
-								>
-							{/if}
-						{/each}
-					</p>
-				{/if}
 			</div>
 			<div class="flex shrink-0 flex-col gap-2">
 				{#if rider.friend === 'self'}
@@ -371,23 +370,26 @@
 					</section>
 				{/if}
 
-				<!-- The receipts behind the level (#701): what this rider has
-				     actually done, which "level 4" on its own never says. Earned
-				     badges only, no progress and no completion score — ADR-0027,
-				     and the same on your own page, which is how a room-mate sees
-				     it (ADR-0024's honest preview). Your progress bars live on
-				     /trophies. -->
-				<!-- Your own page only. For the four social badges these counts
-				     ARE the progress ADR-0027 keeps private — the same integers —
-				     so the server sends zeroes for anyone else's case and this
-				     does not render there either (#1025). -->
-				{#if trophies && rider.friend === 'self'}
-					<RiderCounts
-						counts={trophies.counts}
-						achievements={trophies.achievements}
-					/>
-					<!-- The trophy case lives here now (#1330): identity, not settings. -->
-					<TrophyCase {trophies} />
+				<!-- The receipts behind the level (#701), on your own page only
+				     (#1330): the counts, the shelf and where the XP came from. For
+				     the four social badges the counts ARE the progress ADR-0027
+				     keeps private — the same integers — so the server sends zeroes
+				     for anyone else's case and none of this renders there (#1025).
+				     Where the level came from (#993) is the case's table; the
+				     header no longer repeats it. -->
+				{#if rider.friend === 'self'}
+					{#if trophies}
+						<TrophyCase {trophies} />
+					{:else if trophiesError}
+						<Banner tone="error">
+							{trophiesError}
+							{#snippet action()}
+								<button onclick={() => void load(id)} class="btn-link text-xs"
+									>Retry</button
+								>
+							{/snippet}
+						</Banner>
+					{/if}
 				{/if}
 
 				{#if trophies && rider.friend !== 'self'}
@@ -398,7 +400,9 @@
 			</div>
 
 			<aside class="min-w-0 space-y-8">
-				{#if medalKinds.length > 0}
+				<!-- Theirs from the rooms you share (ADR-0024); yours are on the
+				     shelf, by name, so the same list twice is one too many. -->
+				{#if medalKinds.length > 0 && rider.friend !== 'self'}
 					<section>
 						<h2
 							class="text-muted text-xs font-semibold tracking-widest uppercase"

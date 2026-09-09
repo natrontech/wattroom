@@ -16,7 +16,7 @@ import Users from '@lucide/svelte/icons/users';
  * Four, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
  * second half of "what is happening" (Home), `/progression` the chart half of
  * a ride log split down the middle, `/ramp` a workout you start rather than a
- * page you visit, and `/pair` is set up once. A sidebar that lists everything
+ * page you visit, and `/settings/equipment` is set up once. A sidebar that lists everything
  * lists nothing.
  *
  * Friends earns a row because ADR-0020 made it a place and nothing drew it as

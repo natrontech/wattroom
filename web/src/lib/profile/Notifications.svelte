@@ -12,7 +12,7 @@
 	}
 </script>
 
-<section class="border-muted/15 mt-3 rounded-lg border p-6">
+<section class="panel mt-8 p-6">
 	<h2 class="font-display font-bold">Notifications</h2>
 	<div class="mt-3 flex flex-wrap items-center gap-3">
 		<p class="text-muted min-w-56 flex-1 text-sm leading-relaxed">

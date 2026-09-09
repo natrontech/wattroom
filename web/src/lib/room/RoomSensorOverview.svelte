@@ -2,7 +2,7 @@
 	// The room's trainer, said in the shape every paired-devices card speaks.
 	//
 	// Reads the room's connection directly rather than through RoomContext
-	// (like /pair does, #565): the context's `trainer` is typed `unknown` and
+	// (like /settings/equipment does, #565): the context's `trainer` is typed `unknown` and
 	// carries none of #520's fault detail ("paired but silent"), which is
 	// exactly the state a rider getting set up most needs to see.
 	//

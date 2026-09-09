@@ -6,7 +6,7 @@ export interface Device {
 
 /**
  * One list of device options (#477): both the room's Sound panel and
- * /profile's Voice & audio page render them, and a second copy is how the
+ * /settings/voice render them, and a second copy is how the
  * two drift on what an unnamed device is called.
  *
  * The empty value is "System default" — the browser's own choice, which is
