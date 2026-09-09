@@ -57,7 +57,6 @@
 			} else ridesError = res.error.message;
 		});
 	}
-	loadRides();
 	// Its failure is one line under the comparison, not vanished bests (#1555).
 	let progressionError = $state<string | null>(null);
 	function loadProgression() {
@@ -104,6 +103,9 @@
 			ride = res.data;
 			error = null;
 			missing = false;
+			// The best of this workout needs the workout's name (#1687): asked
+			// before the ride had loaded, the server refused an empty one.
+			loadRides();
 			return;
 		}
 		missing = res.error.error === 'not_found';
@@ -116,6 +118,8 @@
 		error = null;
 		missing = false;
 		exportError = null;
+		best = null;
+		bestLoaded = false;
 		if (which) void load(which);
 	});
 
