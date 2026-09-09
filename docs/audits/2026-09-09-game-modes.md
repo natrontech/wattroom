@@ -17,16 +17,16 @@
 | S2 | A game ended in silence — no timeline line, no XP | not-built, high | #1575 → **#1595** (`game_win` ledger source, expand-only migration) |
 | S5 | Sprint Roulette neither burst the tick nor published a start anchor | drift | #1578 → **#1595** |
 | S6 | A game outlived its session and never stopped being "done" | bug | #1579 → **#1595** (a finished game lingers 30 s then goes; a running one is not cut off by a session close — see the issue) |
-| S1 | The reconnect backfill never reaches the elimination grace — the buffer proves nothing | bug, high | #1576 (open) |
-| S4 | A rider who leaves keeps playing and can win from outside the room | bug | #1577 (open) |
+| S1 | The reconnect backfill never reaches the elimination grace — the buffer proves nothing | bug, high | #1576 → **#1597** |
+| S4 | A rider who leaves keeps playing and can win from outside the room | bug | #1577 → **#1597** |
 | S10 | Watt Golf is 9 holes on the wire and hides the meter for the whole game | decision | noted on #1498 |
 | W1 | A started game never rendered — the Training place showed "Nothing is running yet"; End game was unreachable | bug, high | #1586 → **#1594** |
 | W2 | Sprint Roulette's klaxon never sounded | bug, high | #1587 → **#1594** |
 | W3 | The game panel and Watt Golf's count-in ran on the rider's wall clock | bug, high | #1588 → **#1594** |
 | W6 | The phone's sprint overlay glowed a spectator's own 0 W | bug | #1591 → **#1594** |
 | W8 | Mid-ride controls were 36 px on the Lounge; the disabled sprint had no reason; Start game was `btn-xs` | bug | #1592 → **#1594** |
-| W4 | A sprint is audible on every place but visible on one; no game layer on the TV | bug | #1589 (open) |
-| W5 | The eliminated rider is not told, nor the reconnecting one about the grace | not-built | #1590 (open) |
+| W4 | A sprint is audible on every place but visible on one; no game layer on the TV | bug | #1589 → **#1599** |
+| W5 | The eliminated rider is not told, nor the reconnecting one about the grace | not-built | #1590 → **#1599** |
 | W7, W9–W13 | Announcements (done for the panel in #1594), the picker's dialog role, the drifted `/dev/modes` mock, the rider-keys scan, the ramp podiums' missing score, the hardcoded hole count | polish | #1593 (open) |
 
 ## Checked and found sound
