@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Banner from '$lib/components/Banner.svelte';
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -85,10 +86,16 @@
 	</p>
 
 	{#if error && !autoplay}
-		<p class="text-danger mt-3 text-xs">
-			{error}
-			<button onclick={() => void load()} class="ml-1 underline">Retry</button>
-		</p>
+		<div class="mt-3">
+			<Banner tone="error">
+				{error}
+				{#snippet action()}
+					<button onclick={() => void load()} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
+			</Banner>
+		</div>
 	{:else if autoplay}
 		<label
 			class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {autoplay.enabled

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Banner from '$lib/components/Banner.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
@@ -33,6 +34,7 @@
 	let sprintGrade = $state(profile.current.sprintGrade);
 	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
+	let saveError = $state<{ message: string; field?: string } | null>(null);
 	let suggestionDismissed = $state(false);
 
 	// The root layout owns the server → localStorage pull; this only fills
@@ -72,8 +74,12 @@
 						}
 					: {}),
 			});
+			// A refusal is not a status line (errors.md): it used to read
+			// exactly like "Saved." in the same muted grey, and the field it
+			// named was thrown away (audit 2026-09-09).
+			saveError = err;
 			status = err
-				? err.message
+				? null
 				: (profile.update({
 						ftp: nextFtp,
 						kg,
@@ -185,20 +191,39 @@
 			</section>
 		{/if}
 
+		{#if saveError}
+			<div class="mt-3">
+				<Banner tone="error">{saveError.message}</Banner>
+			</div>
+		{/if}
 		<section class="panel mt-3 p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
 					<span class="eyebrow">display name</span>
-					<input bind:value={name} maxlength="60" class="input mt-1 w-full" />
+					<input
+						bind:value={name}
+						maxlength="60"
+						aria-invalid={saveError?.field === 'displayName'
+							? 'true'
+							: undefined}
+						class="input mt-1 w-full"
+					/>
+					{#if saveError?.field === 'displayName'}
+						<span class="text-danger mt-1 block text-xs"
+							>{saveError.message}</span
+						>
+					{/if}
 				</label>
 				<ProviderConnections
 					onUploadToggle={(on) =>
-						void account.save({
-							displayName: name || (account.me?.displayName ?? ''),
-							ftpWatts: ftp,
-							weightKg: kg,
-							stravaUpload: on,
-						})}
+						void account
+							.save({
+								displayName: name || (account.me?.displayName ?? ''),
+								ftpWatts: ftp,
+								weightKg: kg,
+								stravaUpload: on,
+							})
+							.then((err) => (saveError = err))}
 				/>
 				<PasskeyList />
 				<label class="block">

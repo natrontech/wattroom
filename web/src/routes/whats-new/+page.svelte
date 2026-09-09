@@ -30,7 +30,12 @@
 		<div class="mt-8">
 			<Banner tone="warn">
 				The changelog could not be loaded. It ships with the app, so this
-				usually means the page is stale — reload and try again.
+				usually means the page is stale.
+				{#snippet action()}
+					<button onclick={() => void changelog.load()} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
 			</Banner>
 		</div>
 	{:else if changelog.releases === null}

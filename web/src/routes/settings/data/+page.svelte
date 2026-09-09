@@ -7,11 +7,7 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	let status = $state<string | null>(null);
 </script>
 
 <CoachAccess initial={data.tokens} initialError={data.tokensError} />
-<YourData onError={(m) => (status = m)} />
-{#if status}
-	<p class="text-danger mt-3 text-xs">{status}</p>
-{/if}
+<YourData />

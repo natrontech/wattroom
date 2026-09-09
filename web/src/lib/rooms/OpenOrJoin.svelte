@@ -46,7 +46,10 @@
 	let newRoomName = $state('');
 	let joinCode = $state('');
 	let roomBusy = $state(false);
-	let roomError = $state<string | null>(null);
+	// One slot per form (errors.md): a refused code used to sit above the
+	// Open-a-room card, a card away from the field it was about.
+	let createError = $state<string | null>(null);
+	let joinError = $state<string | null>(null);
 
 	const invalidCode = $derived(
 		joinCode.length > 0 && !/^[A-Z0-9]{0,8}$/i.test(joinCode),
@@ -80,7 +83,7 @@
 		});
 		roomBusy = false;
 		if (res.ok) void goto(`/r/${res.data.slug}`);
-		else roomError = res.error.message;
+		else createError = res.error.message;
 	}
 
 	// The code is the crew's (ADR-0038 amended, #1236): joining lands on the
@@ -92,7 +95,7 @@
 		if (res.ok) {
 			presence.reload();
 			void goto(`/crew/${res.data.id}`);
-		} else roomError = res.error.message;
+		} else joinError = res.error.message;
 	}
 </script>
 
@@ -101,9 +104,6 @@
 		<h2 class="text-muted text-xs font-semibold tracking-widest uppercase">
 			Your rooms
 		</h2>
-	{/if}
-	{#if roomError}
-		<div class="mt-3"><Banner tone="error">{roomError}</Banner></div>
 	{/if}
 	<div
 		class="grid gap-3 {compact
@@ -141,6 +141,9 @@
 					/>
 				</div>
 			{/if}
+			{#if createError}
+				<div class="mt-3"><Banner tone="error">{createError}</Banner></div>
+			{/if}
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
@@ -175,6 +178,9 @@
 			<p class="text-muted mt-1 text-xs">
 				Six characters, from whoever invited you to their crew.
 			</p>
+			{#if joinError}
+				<div class="mt-3"><Banner tone="error">{joinError}</Banner></div>
+			{/if}
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();

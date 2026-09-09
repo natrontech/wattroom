@@ -59,12 +59,10 @@
 	let hydrated = $state(!requestedId);
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;
-		if (custom.error) {
-			// Not hydrated, and Save stays off: a sheet the shelf could not
-			// read must not be saved over it.
-			status = `${custom.error} Saving waits until it loads.`;
-			return;
-		}
+		// A shelf that could not be read is said below with a Retry, and Save
+		// stays off: a sheet the shelf could not read must not be saved over
+		// it. Not folded into `status`, which had no Retry (audit 2026-09-09).
+		if (custom.error) return;
 		const saved = editingId ? custom.byId(editingId)?.workout : undefined;
 		if (saved) {
 			workout = $state.snapshot(saved) as Workout;
@@ -249,6 +247,17 @@
 							class="btn-link text-xs">Show the step</button
 						>
 					{/if}
+				{/snippet}
+			</Banner>
+		</div>
+	{:else if !hydrated && custom.error}
+		<div class="mt-3">
+			<Banner tone="error">
+				{custom.error} Saving waits until it loads.
+				{#snippet action()}
+					<button onclick={() => custom.retry()} class="btn-link text-xs"
+						>Retry</button
+					>
 				{/snippet}
 			</Banner>
 		</div>

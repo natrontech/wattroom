@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { PROFILE_LIMITS } from '$lib/profile.svelte';
+	import Banner from '$lib/components/Banner.svelte';
 	/**
 	 * Everything before the ride starts (#1057): what you are about to do, what
 	 * is going to measure it, and the one number the targets scale to.
@@ -108,7 +109,7 @@
 	</div>
 
 	{#if error}
-		<p class="text-danger mt-4 text-sm">{error}</p>
+		<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 	{/if}
 
 	<div class="mt-6 grid gap-2">
