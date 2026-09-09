@@ -100,7 +100,10 @@
 			</p>
 		{/if}
 	{/if}
-	<p class="text-muted ml-auto shrink-0 text-sm tabular-nums">
+	<p
+		data-testid="ride-clock"
+		class="text-muted ml-auto shrink-0 text-sm tabular-nums"
+	>
 		{formatClock(elapsed)}
 		<span class="text-muted/50">/ {formatClock(total)}</span>
 	</p>

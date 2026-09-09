@@ -33,9 +33,10 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 
 	// The clock has to actually advance — a frozen session still renders numbers,
 	// which is exactly how a reactivity bug shipped once already.
-	const firstRemaining = await page.getByText('remaining').locator('..').innerText();
+	const clock = page.getByTestId('ride-clock');
+	const firstClock = await clock.innerText();
 	await page.waitForTimeout(3000);
-	expect(await page.getByText('remaining').locator('..').innerText()).not.toBe(firstRemaining);
+	expect(await clock.innerText()).not.toBe(firstClock);
 
 	// Ride it out. 60 s of workout plus generous slack for the browser's timer drift.
 	const download = page.getByTestId('download-fit');
