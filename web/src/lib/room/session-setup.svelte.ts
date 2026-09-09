@@ -20,7 +20,6 @@ export interface SessionSetupDeps {
 	/** The room's calendar token, for the subscribe URL. */
 	icsToken: () => string;
 	/** Cleared before a planned ride starts: a new session is a new record. */
-	reset: () => void;
 	/** The room's control channel — `pick` then `start`. */
 	control: (
 		action: 'pick' | 'start',
@@ -83,7 +82,6 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 			);
 			return;
 		}
-		deps.reset();
 		deps.control('pick', {
 			name: entry.workoutName,
 			json: entry.workoutJson,

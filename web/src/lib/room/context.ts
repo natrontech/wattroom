@@ -97,6 +97,9 @@ export interface RoomContext {
 	}[];
 	/** What already happened here (ADR-0034): the recaps, oldest first. */
 	readonly recaps: import('$lib/protocol').SessionRecap[];
+	/** Whether the recaps have arrived (#1538) — errors.md's four states. */
+	readonly recapsState: 'loading' | 'ready' | 'failed';
+	retryRecaps(): void;
 	readonly icsToken: string;
 	readonly streakWeeks: number;
 	readonly monthKj: number;

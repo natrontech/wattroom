@@ -60,6 +60,9 @@ type Connection = {
 	missed: () => Missed | null;
 	/** The room's shell reports the Chat place; the router lives above this. */
 	readingChat: (open: boolean) => void;
+	/** The backlog's state (#1538): the finished sessions come from it. */
+	backlog: () => BacklogState;
+	reloadBacklog: () => void;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -69,18 +72,40 @@ type Connection = {
 
 let current = $state<Connection | null>(null);
 
-/** The chat backlog (#201) — a nicety; live chat still works without it. */
-function loadBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
-	void api<{
-		messages?: Parameters<typeof live.seedChat>[0];
-		recaps?: Parameters<typeof live.seedRecaps>[0];
-	}>(`/api/rooms/${slug}/chat`).then((res) => {
-		if (!res.ok) return;
-		if (res.data?.messages) live.seedChat(res.data.messages);
-		// The room's finished sessions ride the same response (ADR-0034):
-		// one question, one round trip, one membership gate.
-		if (res.data?.recaps) live.seedRecaps(res.data.recaps);
-	});
+export type BacklogState = 'loading' | 'ready' | 'failed';
+
+/**
+ * The chat backlog (#201). Live chat works without it, but since ADR-0034
+ * (#1331) it is also the only source of the room's finished sessions, so
+ * its state is a fact the Sessions place shows rather than a silent gap
+ * (#1538).
+ */
+function createBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
+	let state = $state<BacklogState>('loading');
+	function load() {
+		state = 'loading';
+		void api<{
+			messages?: Parameters<typeof live.seedChat>[0];
+			recaps?: Parameters<typeof live.seedRecaps>[0];
+		}>(`/api/rooms/${slug}/chat`).then((res) => {
+			if (!res.ok) {
+				state = 'failed';
+				return;
+			}
+			if (res.data?.messages) live.seedChat(res.data.messages);
+			// The room's finished sessions ride the same response (ADR-0034):
+			// one question, one round trip, one membership gate.
+			if (res.data?.recaps) live.seedRecaps(res.data.recaps);
+			state = 'ready';
+		});
+	}
+	load();
+	return {
+		get state() {
+			return state;
+		},
+		reload: load,
+	};
 }
 
 function connect(slug: string): Connection {
@@ -88,7 +113,7 @@ function connect(slug: string): Connection {
 	const av = createRoomAv(slug);
 	// The chat backlog (#201): loaded once per join — the log follows the
 	// connection, not the page, like everything else here.
-	loadBacklog(slug, live);
+	const backlog = createBacklog(slug, live);
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
@@ -394,7 +419,7 @@ function connect(slug: string): Connection {
 			if (status === 'reconnecting') wasReconnecting = true;
 			else if (status === 'live' && wasReconnecting) {
 				wasReconnecting = false;
-				loadBacklog(slug, live);
+				backlog.reload();
 			}
 		});
 
@@ -485,6 +510,8 @@ function connect(slug: string): Connection {
 		ride,
 		missed: missedOf,
 		readingChat,
+		backlog: () => backlog.state,
+		reloadBacklog: () => backlog.reload(),
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,

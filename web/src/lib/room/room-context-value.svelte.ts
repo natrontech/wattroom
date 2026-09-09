@@ -197,6 +197,10 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get recaps() {
 			return live.recaps;
 		},
+		get recapsState() {
+			return connection.backlog();
+		},
+		retryRecaps: () => connection.reloadBacklog(),
 		get icsToken() {
 			return props.icsToken ?? '';
 		},
