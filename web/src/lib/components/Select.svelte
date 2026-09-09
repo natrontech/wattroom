@@ -11,12 +11,15 @@
 		value = $bindable(),
 		label,
 		onchange,
+		disabled = false,
 	}: {
 		options: { value: string; label: string }[];
 		value?: string;
 		/** Accessible name for the trigger. */
 		label: string;
 		onchange?: (value: string) => void;
+		/** A picker the rider may not use is shown, not offered (ux.md). */
+		disabled?: boolean;
 	} = $props();
 
 	let open = $state(false);
@@ -131,8 +134,9 @@
 		aria-label="{label}: {selected?.label ?? ''}"
 		aria-activedescendant={open ? optionId(active) : undefined}
 		{onkeydown}
+		{disabled}
 		onclick={() => (open ? (open = false) : openList())}
-		class="flex min-h-11 w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm {open
+		class="flex min-h-11 w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm disabled:opacity-50 {open
 			? 'border-neon/50'
 			: 'border-muted/25 hover:border-muted/60'}"
 	>

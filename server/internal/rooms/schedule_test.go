@@ -180,3 +180,28 @@ func TestARemovedMemberIsNotComing(t *testing.T) {
 		t.Errorf("a removed member is still coming: %v", going)
 	}
 }
+
+// A crew ban whose room sweep did not run still shuts the coach's door
+// (#1763): the role row is not the last word, isBanned is.
+func TestACrewBannedCoachCannotPlan(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Crew Banned Coach")
+	h.enter(t, "bob", code, slug)
+	if _, err := h.store.Pool.Exec(t.Context(), "update memberships set role = 'coach' where room_id = $1 and user_id = $2",
+		roomID(t, h, slug), h.users.byToken["bob"].ID); err != nil {
+		t.Fatalf("coach: %v", err)
+	}
+	body := `{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}","startsAt":"` + time.Now().Add(2*time.Hour).UTC().Format(time.RFC3339) + `"}`
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/schedule", body); status != http.StatusCreated {
+		t.Fatalf("a coach plans: %d", status)
+	}
+	// The ban row alone, with the membership left as the sweep would have
+	// left it had the statement failed.
+	crew := h.crewOf(t, slug)
+	if _, err := h.store.Pool.Exec(t.Context(), "insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'banned') on conflict (crew_id, user_id) do update set role = 'banned'", crew.ID, h.users.byToken["bob"].ID); err != nil {
+		t.Fatalf("ban row: %v", err)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/schedule", body); status != http.StatusForbidden {
+		t.Fatalf("a crew-banned coach plans: %d, want 403", status)
+	}
+}

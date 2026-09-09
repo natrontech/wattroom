@@ -43,11 +43,5 @@ export function createPendingImage(onRefused: (message: string) => void) {
 			void hold(file);
 		},
 		clear,
-		/** Hand the blob to the send and forget it. */
-		take(): Blob | undefined {
-			const blob = current?.blob;
-			clear();
-			return blob;
-		},
 	};
 }

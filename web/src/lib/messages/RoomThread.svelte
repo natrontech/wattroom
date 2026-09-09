@@ -103,17 +103,27 @@
 			: undefined,
 	);
 
+	// Inside the room the backlog has a state too (#1764): a room with 500
+	// lines used to show "Nothing said here yet" for the whole round trip,
+	// and a failed backlog left that up with no Retry.
+	const backlog = $derived(conn ? conn.backlog() : null);
 	const source: ThreadSource = $derived({
 		timeline,
-		loading: !conn && (outside?.loading ?? true),
+		loading: conn
+			? backlog === 'loading' && timeline.length === 0
+			: (outside?.loading ?? true),
 		// The "N new" line only makes sense read from outside — standing in
 		// the room is reading it, and the sidebar already counts it that way.
-		error: conn ? null : (outside?.error ?? null),
+		error: conn
+			? backlog === 'failed'
+				? "The room's chat could not be loaded."
+				: null
+			: (outside?.error ?? null),
 		readAt: conn ? null : (outside?.readAt ?? null),
 		reactions: conn ? conn.live.chatReactions : (outside?.reactions ?? {}),
 		myReacts: conn ? conn.live.myReacts : (outside?.myReacts ?? {}),
 		cheers,
-		retry: () => outside?.retry(),
+		retry: () => (conn ? conn.reloadBacklog() : outside?.retry()),
 		// One endpoint from both sides of the room: standing inside, the
 		// socket has no edit command — the hub relays what the PATCH did, so
 		// the log this component is already showing updates itself.

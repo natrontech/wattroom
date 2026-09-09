@@ -189,6 +189,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				rm.chatLine(line)
+			} else if text != "" || imageID != "" {
+				// Every other throttled channel answers; this one dropped the
+				// line in silence and the composer had already cleared it
+				// (#1762). Two fast lines on a phone keyboard is the normal case.
+				h.writeError(c, "rate_limited", "One line a second — say that again in a moment.")
 			}
 		}
 		if msg.ChatReact != nil && h.chat != nil {
