@@ -63,7 +63,13 @@
 	     teach rather than show an empty instrument. -->
 	<div class="grid h-full place-items-center px-6">
 		<div class="w-full max-w-2xl text-center">
-			<p class="text-muted text-sm">
+			{#if room.shared?.phase === 'done'}
+				<!-- The coach ended it, or the timeline ran out (audit
+				     2026-09-09): without this line the instrument vanishing
+				     into a pairing prompt read as a crash. -->
+				<p class="font-display text-lg font-bold">The session has ended.</p>
+			{/if}
+			<p class="text-muted mt-2 text-sm">
 				{#if device.spectator}
 					<!-- A phone has no trainer to pair and no session to start, so
 					     the empty state teaches what it IS for rather than listing

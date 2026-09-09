@@ -1,7 +1,5 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { gameCues, golfMoment } from '$lib/room/game-cues';
-	import { play, playCountdownTick } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
@@ -62,33 +60,10 @@
 		game.mode === 'backyard-ramp' || game.mode === 'collective-ramp',
 	);
 
-	// Every cue this mode owes the rider (#845). The decisions are in
-	// game-cues.ts — pure, so the seven of them are tested without a browser
-	// — and the panel keeps only the previous state to compare against.
-	let seen: GameState | null = null;
-	$effect(() => {
-		const before = seen;
-		seen = game;
-		for (const cue of gameCues(before, game, account.me?.id))
-			play(cue.id, cue.shift);
-	});
-
-	// Watt Golf's run-in is a clock, not a state change. The decision is in
-	// golfMoment; all the panel keeps is which second it last spoke, so a
-	// re-render inside the same second stays quiet.
-	let heardSecond = -1;
-	$effect(() => {
-		const moment = golfMoment(game, now);
-		if (!moment) {
-			heardSecond = -1;
-			return;
-		}
-		const second = 'go' in moment ? 0 : moment.tick;
-		if (second === heardSecond) return;
-		heardSecond = second;
-		if ('go' in moment) play('go');
-		else playCountdownTick(moment.tick);
-	});
+	// Visual only (audit 2026-09-09): the cues a mode owes the rider come
+	// from the shell's room-sounds, which every place hears — this panel is
+	// drawn on the Training place alone, and a rider on the Lounge heard
+	// nothing when Team Relay handed them the front.
 </script>
 
 <div class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5">

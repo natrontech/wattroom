@@ -1,4 +1,5 @@
-import type { SprintState } from '$lib/protocol';
+import type { GameState, SprintState } from '$lib/protocol';
+import { gameCues, golfMoment } from '$lib/room/game-cues';
 import { serverNow } from '$lib/room/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
@@ -31,6 +32,14 @@ export interface SoundDeps {
 	sprint: () => SprintState | null | undefined;
 	/** Your own ride guard: auto-pause and the resume countdown. */
 	guard: () => GuardPhase | undefined;
+	/** The spiral release: your targets off for a few seconds, on purpose. */
+	spiral: () => boolean | undefined;
+	/** The block you are in while the session runs; undefined otherwise. */
+	block: () => number | undefined;
+	/** The running game, from the tick — null or undefined when none. */
+	game: () => GameState | null | undefined;
+	/** Your own rider id, for the cues a game addresses to you. */
+	me: () => string | undefined;
 }
 
 export function createRoomSounds(deps: SoundDeps) {
@@ -60,6 +69,31 @@ export function createRoomSounds(deps: SoundDeps) {
 		play('block', paused ? -5 : 0),
 	);
 	$effect(() => heardPause(deps.phase() === 'paused'));
+
+	// The session ending is the phase change nobody announced (audit
+	// 2026-09-09): the instrument vanishes, and a rider mid-interval read
+	// that as a crash rather than the coach stopping it.
+	const heardEnd = changes<string>((phase, previous) => {
+		if (phase === 'done' && (previous === 'running' || previous === 'paused'))
+			play('fanfare');
+	});
+	$effect(() => heardEnd(deps.phase() ?? 'idle'));
+
+	// A block change is the most frequent "your legs do something different"
+	// in a group session, and it was silent in a room while solo had the
+	// cue all along (audit 2026-09-09). Only while the session runs: the
+	// index going to undefined at the end is the end, not a block.
+	const heardBlock = changes<number | null>((index, previous) => {
+		if (index !== null && previous !== null) play('block');
+	});
+	$effect(() => heardBlock(deps.block() ?? null));
+
+	// The spiral release (docs/SPEC.md): the target drops on purpose, and
+	// comes back — said the way auto-pause is, since it feels the same.
+	const heardSpiral = changes<boolean>((on) =>
+		play(on ? 'block' : 'go', on ? -5 : 0),
+	);
+	$effect(() => heardSpiral(deps.spiral() ?? false));
 
 	// A fault, and its recovery, announce themselves too. The banner is the
 	// whole story only for someone reading the screen — which is nobody on a
@@ -116,6 +150,42 @@ export function createRoomSounds(deps: SoundDeps) {
 			heard.stage = 'podium';
 			play('fanfare');
 		}
+	});
+
+	// A game's cues from here, like the sprint's (#1412 for sprints, audit
+	// 2026-09-09 for games): they lived in GamePanel, which only the Training
+	// place draws, so Team Relay handing you the front, your last life
+	// burning or Watt Golf's hole opening was silent on the Lounge.
+	let seenGame: GameState | null = null;
+	$effect(() => {
+		const game = deps.game() ?? null;
+		const before = seenGame;
+		seenGame = game;
+		if (!game) return;
+		for (const cue of gameCues(before, game, deps.me()))
+			play(cue.id, cue.shift);
+	});
+	// Watt Golf's run-in is a clock, not a state change: which second was
+	// last spoken is all that is kept, so a re-render stays quiet.
+	let gameNow = $state(Date.now());
+	$effect(() => {
+		if (!deps.game()) return;
+		const id = setInterval(() => (gameNow = Date.now()), 500);
+		return () => clearInterval(id);
+	});
+	let heardGolfSecond = -1;
+	$effect(() => {
+		const game = deps.game();
+		const moment = game ? golfMoment(game, gameNow) : null;
+		if (!moment) {
+			heardGolfSecond = -1;
+			return;
+		}
+		const second = 'go' in moment ? 0 : moment.tick;
+		if (second === heardGolfSecond) return;
+		heardGolfSecond = second;
+		if ('go' in moment) play('go');
+		else playCountdownTick(moment.tick);
 	});
 
 	// Your own guard (#1412): auto-pause is the state change the rider cannot

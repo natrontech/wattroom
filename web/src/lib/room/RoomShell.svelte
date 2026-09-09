@@ -224,7 +224,7 @@
 			? 'room'
 			: rideCtl.fault
 				? 'trainer'
-				: av.status === 'reconnecting'
+				: av.status === 'reconnecting' || av.status === 'failed'
 					? 'voice'
 					: av.status === 'live' && av.micFault
 						? 'mic'
@@ -236,6 +236,10 @@
 		fault: () => faultKind,
 		sprint: () => live.tick?.sprint ?? null,
 		guard: () => rideCtl.guard,
+		spiral: () => rideCtl.spiralActive,
+		block: () => (running ? roster.block?.index : undefined),
+		game: () => live.tick?.game ?? null,
+		me: () => account.me?.id,
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────

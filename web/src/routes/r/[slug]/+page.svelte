@@ -11,6 +11,8 @@
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
+	import SessionControls from '$lib/room/SessionControls.svelte';
+	import Radio from '@lucide/svelte/icons/radio';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -337,6 +339,20 @@
 		</div>
 	</div>
 
+	{#if room.phase !== 'lounge'}
+		<!-- The session's controls in every phase (audit 2026-09-09): the
+		     dashboard below mounts only while nothing runs, and with it went
+		     Pause and End for a coach standing here mid-ride — and the way
+		     into the ride for a member arriving mid-session. -->
+		<div class="mt-4 flex flex-wrap items-center gap-2">
+			<SessionControls />
+			{#if !room.canControl}
+				<a href="/r/{room.slug}/training" class="btn btn-accent btn-lg"
+					><Radio size={15} /> Join the ride</a
+				>
+			{/if}
+		</div>
+	{/if}
 	{#if room.phase === 'lounge'}
 		<!-- The room's dashboard, when nothing is running: what this room is
 		     adding up to and the three things you do to it. It lives on the
