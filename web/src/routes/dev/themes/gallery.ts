@@ -24,7 +24,7 @@ import { THEMES } from '$lib/themes';
  */
 export type Surface = 'cave' | 'desk';
 
-export const SURFACE_OF: Record<ThemeFamily, Surface> = {
+const SURFACE_OF: Record<ThemeFamily, Surface> = {
 	dark: 'cave',
 	white: 'desk',
 };

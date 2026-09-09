@@ -1,6 +1,6 @@
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import type { Medal } from '$lib/components/MedalCard.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 // Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
@@ -38,7 +38,8 @@ const SPEED = 8;
 const COUNTDOWN = 10;
 
 /** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
-export type Phase = 'lounge' | 'countdown' | 'live';
+export type { Phase } from '$lib/room/room-data';
+import type { Phase } from '$lib/room/room-data';
 
 /**
  * A 15 s all-out window (WATTROOM.md). The trainer leaves ERG for slope mode, the
@@ -58,23 +59,20 @@ export interface SprintResult {
  * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
  * status, never a toast — the rider is on a bike three metres from the screen.
  */
-export type { Fault } from '$lib/room/mockcompat';
-import type { Fault } from '$lib/room/mockcompat';
+export type { Fault } from '$lib/room/room-data';
+import type { Fault } from '$lib/room/room-data';
 
 export const ROOM_NAME = 'Thursday Sufferfest';
 
-/** Optional per-tile metrics. Zwift shows everyone's HR; whether you want it is taste. */
-export type TileMetric = 'hr' | 'cadence' | 'wkg';
-export const TILE_METRICS: { id: TileMetric; label: string }[] = [
-	{ id: 'hr', label: 'HR' },
-	{ id: 'cadence', label: 'Cadence' },
-	{ id: 'wkg', label: 'w/kg' },
-];
-
-/** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
-function bandWatts(target: number): number {
-	return Math.max(target * 0.05, 10);
-}
+// The real module's shapes, not a second copy of them (consolidation sweep
+// 2026-09-09): the gallery half-mocked what it also half-imported.
+export {
+	bandWatts,
+	TILE_METRICS,
+	type Block,
+	type TileMetric,
+} from '$lib/room/view';
+import { bandWatts, type Block } from '$lib/room/view';
 
 /** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
 
@@ -281,16 +279,6 @@ export const queue = [
 	{ title: 'Carpenter Brut — Turbo Killer', length: '4:41', by: 'You' },
 	{ title: 'Perturbator — Sentient', length: '5:29', by: 'Sara' },
 ];
-
-export interface Block {
-	/** 1-based position in the flattened timeline, for "block 3 of 6" */
-	index: number;
-	count: number;
-	label: string;
-	watts: number;
-	secondsLeft: number;
-	next: { label: string; watts: number; seconds: number } | null;
-}
 
 /** What a rider reads mid-interval: what this block is, how long is left, what's next. */
 function describeBlock(

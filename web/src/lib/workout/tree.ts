@@ -19,7 +19,7 @@ const clone = (step: WorkoutStep): WorkoutStep =>
 	JSON.parse(JSON.stringify(step)) as WorkoutStep;
 
 /** A fresh step of each type, with the defaults the editor offers. */
-export function newStep(type: StepType): WorkoutStep {
+function newStep(type: StepType): WorkoutStep {
 	switch (type) {
 		case 'ramp':
 			return { type: 'ramp', seconds: 300, from: 0.5, to: 0.8 };
@@ -52,7 +52,7 @@ export function stepAt(
 }
 
 /** The array a path's last index points into: the top level, or a repeat's children. */
-export function siblingsOf(workout: Workout, path: number[]): WorkoutStep[] {
+function siblingsOf(workout: Workout, path: number[]): WorkoutStep[] {
 	if (path.length <= 1) return workout.steps;
 	const parent = stepAt(workout, path.slice(0, -1));
 	return parent?.type === 'repeat' ? parent.steps : [];

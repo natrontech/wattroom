@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { type MockRider, targetState } from '$lib/room/mockcompat';
+	import { type RoomRider, targetState } from '$lib/room/view';
 
-	let { riders }: { riders: MockRider[] } = $props();
+	let { riders }: { riders: RoomRider[] } = $props();
 
 	/**
 	 * WATTROOM.md: the execution meter is the live version of the ride's score — the

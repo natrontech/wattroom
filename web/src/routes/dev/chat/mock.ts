@@ -11,7 +11,7 @@
  */
 import type { ChatLine } from '$lib/protocol';
 import type { DmHead } from '$lib/dm/heads.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import type { Thread } from '$lib/messages/threads';
 
 /** Fixed clock: a gallery must not read differently depending on when you open it. */

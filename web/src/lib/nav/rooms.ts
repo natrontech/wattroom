@@ -1,6 +1,6 @@
 import { api } from '$lib/api';
 import type { RoomPresence } from '$lib/protocol';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 interface RoomEntry extends RoomPresence {

@@ -3,18 +3,14 @@
 </script>
 
 <script lang="ts">
-	import {
-		CEILING,
-		fillPct,
-		targetState,
-		type MockRider,
-	} from '$lib/room/mockcompat';
+	import { CEILING, fillPct } from '$lib/components/zones';
+	import { targetState, type RoomRider } from '$lib/room/view';
 
 	let {
 		you,
 		variant,
 		compact = false,
-	}: { you: MockRider; variant: TargetVariant; compact?: boolean } = $props();
+	}: { you: RoomRider; variant: TargetVariant; compact?: boolean } = $props();
 
 	const state = $derived(targetState(you));
 	const pct = (watts: number) => fillPct(watts, you.ftp);

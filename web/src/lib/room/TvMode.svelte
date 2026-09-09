@@ -3,14 +3,9 @@
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import {
-		ZONE_BG,
-		ZONE_TEXT,
-		type MockRider,
-		fillPct,
-		formatClock,
-		zoneOf,
-	} from '$lib/room/mockcompat';
+	import { ZONE_BG, ZONE_TEXT, fillPct, zoneOf } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
+	import type { RoomRider } from '$lib/room/view';
 
 	let {
 		riders,
@@ -23,7 +18,7 @@
 		live = true,
 		code = '',
 	}: {
-		riders: MockRider[];
+		riders: RoomRider[];
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;

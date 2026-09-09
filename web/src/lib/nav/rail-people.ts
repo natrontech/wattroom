@@ -14,7 +14,7 @@
 import User from '@lucide/svelte/icons/user';
 import Users from '@lucide/svelte/icons/users';
 import type { MenuEntry } from '$lib/context-menu.svelte';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 
 /** Names the line prints before it starts counting instead. */
 export const RAIL_NAMES = 3;

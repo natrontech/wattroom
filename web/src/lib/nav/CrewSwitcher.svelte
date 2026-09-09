@@ -14,7 +14,7 @@
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RailRoom } from '$lib/room/mockcompat';
+	import type { RailRoom } from '$lib/room/room-data';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import { crewPulse, quiet } from './crews';
 	import { goto } from '$app/navigation';

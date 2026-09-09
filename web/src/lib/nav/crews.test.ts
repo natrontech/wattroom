@@ -8,7 +8,7 @@ import {
 	quiet,
 	sidebarGroups,
 } from './crews';
-import type { RailRoom } from '$lib/room/mockcompat';
+import type { RailRoom } from '$lib/room/room-data';
 
 const natron = { id: 'c1', name: 'Natron', role: 'owner' as const };
 const sunday = { id: 'c2', name: 'Sunday Long', role: 'member' as const };

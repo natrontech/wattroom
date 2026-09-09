@@ -49,7 +49,7 @@
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
-	import type { RailRoom } from '$lib/room/mockcompat';
+	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
