@@ -16,14 +16,43 @@
 	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
+	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
+	import { fetchRider } from '$lib/rider';
 	import { roomOf, statusOf } from '$lib/status';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
-	const peerName = $derived(head?.peerName ?? dm.open?.name ?? 'them');
+	// A conversation reached by its link — a notification, a pasted URL, a
+	// reload — has no head yet and nobody told dm.show the name, so the page
+	// read "them" until the first line. Their page knows who they are.
+	let fetchedName = $state<string | null>(null);
+	// dm.show below is called with whatever this page knows, which on a cold
+	// load is "them" — so that placeholder is never a known name.
+	const knownName = $derived(
+		head?.peerName ??
+			(dm.open?.name && dm.open.name !== 'them' ? dm.open.name : undefined),
+	);
+	const peerName = $derived(knownName ?? fetchedName ?? 'them');
+	$effect(() => {
+		const id = peerId;
+		fetchedName = null;
+		if (!id || knownName) return;
+		void fetchRider(id).then((res) => {
+			if (!res.ok || res.data.id !== id) return;
+			fetchedName = res.data.displayName;
+			people.learn([
+				{
+					id,
+					name: res.data.displayName,
+					avatarUrl: res.data.avatarUrl,
+					avatarPreset: res.data.avatarPreset,
+				},
+			]);
+		});
+	});
 	// Where they are, if anywhere — the one thing the old drawer could never say.
 	const inRoom = $derived(roomOf(presence.rooms, peerId));
 	const status = $derived(statusOf(presence.rooms, peerId));
