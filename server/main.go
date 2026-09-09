@@ -1,6 +1,10 @@
 package main
 
 import (
+	"errors"
+	"os/signal"
+	"syscall"
+
 	// The zone database, embedded rather than the host's (#858): session mail
 	// formats times in each rider's zone, and a distroless image is not where
 	// that should depend on what the base layer happens to ship.
@@ -85,6 +89,15 @@ func main() {
 	log := slog.New(logRing)
 	slog.SetDefault(log)
 
+	// The process's own context (audit 2026-09-09): every long-lived job
+	// runs under it, SIGTERM cancels it, and the server then drains the
+	// hub's hand-offs before exiting — the deploy replaces the container
+	// the moment the riding gauge drops, which is the moment a session's
+	// save starts retrying, and an untracked save died with the process.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	var hubForDrain *hub.Hub
+
 	// The database is optional: unset WATTROOM_DB runs the server as before —
 	// solo rides, .fit export, dev — and every DB-backed route stays unmounted,
 	// so nothing dark-fails later. Set, it connects and migrates before listening.
@@ -141,7 +154,7 @@ func main() {
 			authService.SetStravaRevoker(uploader)
 			// A delivery abandoned by a restart or an outage is retried from
 			// its durable record rather than lost with the goroutine (#799).
-			uploader.Sweep(context.Background())
+			uploader.Sweep(ctx)
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
@@ -158,8 +171,8 @@ func main() {
 			accountService.SetAlerter(notifier)
 			// Nothing else wakes up to send the hour-before reminder: the
 			// other session mails ride the handler that caused them (#841).
-			safego.Supervise(log, time.Now, "session reminders", nil,
-				func() { notifier.RemindLoop(context.Background()) })
+			safego.Supervise(log, time.Now, "session reminders", ctx.Done(),
+				func() { notifier.RemindLoop(ctx) })
 		}
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
@@ -170,11 +183,7 @@ func main() {
 		mcp.New(st, tokenService, log).Register(mux)
 		progression.New(st, readAuth, log).Register(mux)
 		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
-		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(context.Background(), st, log) })
-		// Sessions are written on every sign-in and never deleted; sweep the
-		// ones GetSessionUser already treats as expired so the table doesn't
-		// grow forever (#673).
-		safego.Supervise(log, time.Now, "expired session sweep", nil, func() { sweepExpiredSessions(context.Background(), st, log) })
+		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(ctx, st, log) })
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
@@ -187,6 +196,7 @@ func main() {
 			saver.SetUploader(uploader)
 		}
 		h := hub.New(log, roomsService, saver)
+		hubForDrain = h
 		roomsService.SetPresence(h)
 		chatService := chat.New(st, roomsService, log)
 		chatService.Register(mux)
@@ -196,7 +206,7 @@ func main() {
 		chatService.SetLive(h)
 		// The deletions no write can trigger (#1153, #1163). Sessions and
 		// recaps are both bounded by TIME, which nothing but a clock enforces.
-		housekeeping.Run(context.Background(), st, log)
+		housekeeping.Run(ctx, st, log)
 		// What a finished session leaves behind (ADR-0034). The hub writes
 		// through it when a session ends; the backlog reads it back, so the
 		// card survives the reload every other timeline entry does not.
@@ -217,7 +227,7 @@ func main() {
 		saver.SetRideKeeper(trophies)
 		ridesService.SetRideKeeper(trophies)
 		h.SetXpKeeper(trophies)
-		trophies.AccrueVoice(context.Background(), h)
+		trophies.AccrueVoice(ctx, h)
 		friends.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
@@ -245,7 +255,7 @@ func main() {
 		// The landing page's live numbers, public because the page is: riders
 		// online right now and the repo's stars. Counts only — no identities,
 		// nothing room-scoped.
-		stars := pollStars(context.Background(), log)
+		stars := pollStars(ctx, log)
 		mux.HandleFunc("GET /api/live", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(struct {
@@ -261,7 +271,7 @@ func main() {
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)
 			// Webhooks alone leak ghosts when LiveKit hard-crashes (#234).
-			avService.StartReconciler(context.Background())
+			avService.StartReconciler(ctx)
 			// Bans and removals eject from voice too, not just the metrics WS.
 			roomsService.SetVoiceEjector(avService)
 		}
@@ -292,9 +302,29 @@ func main() {
 		// read/write timeouts here — the hub owns per-message deadlines.
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	go func() {
+		<-ctx.Done()
+		log.Info("shutting down", "grace", drainGrace)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), drainGrace)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
 	log.Info("wattroom-server listening", "addr", addr)
-	if err := srv.ListenAndServe(); err != nil {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
 	}
+	if hubForDrain != nil {
+		if hubForDrain.Drain(drainGrace) {
+			log.Info("shutdown complete")
+		} else {
+			log.Error("shutdown gave up waiting on session saves", "grace", drainGrace)
+		}
+	}
 }
+
+// drainGrace is how long a shutdown waits for the hub's hand-offs: the ride
+// saver's whole retry policy (stats.retrySave: eight attempts, doubling from
+// a second) fits inside it. deploy/'s stop_grace_period has to exceed it, or
+// the kill lands first.
+const drainGrace = 150 * time.Second

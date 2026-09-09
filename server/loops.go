@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/safego"
-	"github.com/natrontech/wattroom/server/internal/store"
 )
 
 // pollStars keeps the repo's star count fresh in the background so the landing
@@ -45,25 +44,6 @@ func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 		}
 	})
 	return &stars
-}
-
-// sweepExpiredSessions deletes rows already invisible to GetSessionUser
-// (expires_at <= now()) once at startup and then once a day, so the
-// sessions table stops growing monotonically with every sign-in (#673).
-// ponytail: process-lifetime goroutine — the server has no shutdown context.
-func sweepExpiredSessions(ctx context.Context, st *store.Store, log *slog.Logger) {
-	ticker := time.NewTicker(24 * time.Hour)
-	defer ticker.Stop()
-	for {
-		if err := st.Queries.DeleteExpiredSessions(ctx); err != nil {
-			log.Warn("expired session sweep failed", "err", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
 }
 
 func fetchStars(ctx context.Context) (int64, error) {

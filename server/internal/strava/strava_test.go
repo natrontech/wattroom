@@ -240,6 +240,43 @@ func TestDeliveryOutlivesTheGoroutineThatStartedIt(t *testing.T) {
 	}
 }
 
+// A delivery that dies on its own deadline still spends an attempt (audit
+// 2026-09-09): recorded on the expired context, the failure was never
+// written, and the row stayed pending with no error and no attempt count —
+// swept and re-uploaded every five minutes forever.
+func TestADeliveryThatDiesOnItsDeadlineSpendsAnAttempt(t *testing.T) {
+	st, _, rideID := seedRide(t, "strava-deadline")
+	srv, _, _ := fakeStrava(t)
+	inner := srv.Config.Handler
+	// A Strava that never answers: the attempt's own deadline is what ends
+	// it, with the delivery record already open. Released by hand rather
+	// than on the request's context — an unread multipart body keeps the
+	// server from noticing the client hung up, and the fake would outlive
+	// the test's Close.
+	release := make(chan struct{})
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v3/uploads" {
+			<-release
+			return
+		}
+		inner.ServeHTTP(w, r)
+	})
+	svc := newService(st, srv)
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+	svc.deliver(ctx, rideID)
+	close(release)
+	row, err := st.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: rideID, Destination: Destination,
+	})
+	if err != nil {
+		t.Fatalf("no delivery record: %v", err)
+	}
+	if row.Attempts != 1 || row.LastError == nil {
+		t.Fatalf("a delivery that died on its deadline left %+v, want one attempt and an error", row)
+	}
+}
+
 func TestDeliveryStopsAfterItsAttempts(t *testing.T) {
 	// Retried at forever is worse than told: past the ceiling the row goes to
 	// failed, stops being swept, and the ride page says so.

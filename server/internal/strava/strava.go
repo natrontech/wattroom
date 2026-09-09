@@ -78,6 +78,10 @@ const (
 	// The ceiling on one delivery's wait, so a widening backoff stays a
 	// backoff rather than becoming a retirement.
 	retryCap = 2 * time.Hour
+	// How long recording an attempt's outcome may take, on its own clock:
+	// the attempt's budget is exactly what has run out when the outcome is
+	// "still processing at deadline".
+	recordBudget = 5 * time.Second
 	// How long every delivery waits when Strava says slow down, absent a
 	// usable Retry-After. Their limits are quarter-hourly, so anything
 	// shorter is asking again inside the same window.
@@ -215,6 +219,14 @@ func (s *Service) held() bool {
 // deliver runs one attempt and records what happened to it.
 func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
 	activityID, err := s.upload(ctx, rideID)
+	// The record outlives the attempt (audit 2026-09-09): a delivery that
+	// died on its own deadline wrote its failure on the same expired
+	// context, so nothing was recorded — no attempt spent, no error for the
+	// ride page — and the sweep retried it every five minutes for good. The
+	// same on success a moment before the deadline: the activity existed and
+	// the row said pending, so the ride was uploaded again.
+	record, cancelRecord := context.WithTimeout(context.WithoutCancel(ctx), recordBudget)
+	defer cancelRecord()
 	var limit *rateLimited
 	switch {
 	case errors.As(err, &limit):
@@ -227,14 +239,14 @@ func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
 	case err != nil:
 		s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
 		message := exportFailure(err)
-		if failErr := s.store.Queries.FailRideExport(ctx, db.FailRideExportParams{
+		if failErr := s.store.Queries.FailRideExport(record, db.FailRideExportParams{
 			RideID: rideID, Destination: Destination,
 			LastError: &message, MaxAttempts: maxAttempts,
 		}); failErr != nil {
 			s.log.Warn("strava delivery record not updated", "err", failErr)
 		}
 	case activityID != nil:
-		if doneErr := s.store.Queries.FinishRideExport(ctx, db.FinishRideExportParams{
+		if doneErr := s.store.Queries.FinishRideExport(record, db.FinishRideExportParams{
 			RideID: rideID, Destination: Destination, RemoteID: activityID,
 		}); doneErr != nil {
 			s.log.Warn("strava delivery record not updated", "err", doneErr)

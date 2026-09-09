@@ -56,9 +56,18 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 // ponytail: one worker; every job is a handful of single-row statements.
 func (s *Service) work() {
 	for job := range s.jobs {
-		job(context.Background())
+		// A deadline per job (audit 2026-09-09): one hung statement on an
+		// undeadlined context wedged the only worker for good, the queue
+		// filled, and every XP event after it was dropped with a warning
+		// nobody alerts on.
+		ctx, cancel := context.WithTimeout(context.Background(), jobBudget)
+		job(ctx)
+		cancel()
 	}
 }
+
+// jobBudget bounds one queued job: a handful of single-row statements.
+const jobBudget = 5 * time.Second
 
 // enqueue never blocks the caller: a full queue drops the event and says so.
 // XP lost to a backlog is a shrug; a stalled tick is not.

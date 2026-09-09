@@ -19,7 +19,11 @@ type room struct {
 	// Closed when the room is deleted (#618) — the tick goroutine is the
 	// only reader, and it returns rather than ticking for a room nobody
 	// can reach any more.
-	stop    chan struct{}
+	stop chan struct{}
+	// The hub's count of hand-offs in flight — the ride saver mid-retry, the
+	// recap keeper — so a shutdown waits for them (audit 2026-09-09). Nil in
+	// a room built without a hub (tests); nothing then waits.
+	pending *sync.WaitGroup
 	mu      sync.Mutex
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick

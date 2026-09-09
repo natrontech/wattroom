@@ -290,8 +290,9 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 	if end.records != nil {
 		// Fire and hand off: the tick loop never blocks on the database.
 		// The saver owns timeouts and retries (#235); the goroutine exits
-		// when its bounded retry policy returns — minutes at worst.
-		safego.Go(log, "session save "+rm.slug, func() {
+		// when its bounded retry policy returns — minutes at worst — and
+		// the hub counts it so a shutdown waits for it.
+		rm.detach(log, "session save "+rm.slug, func() {
 			saver.SaveSession(context.Background(), rm.slug,
 				end.meta.WorkoutName, end.meta.WorkoutJSON,
 				time.UnixMilli(now().UnixMilli()-int64(end.meta.Elapsed)*1000), end.records)
@@ -305,8 +306,22 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 	// writes the row and posts it back for the next tick to carry (ADR-0034).
 	if end.recap != nil {
 		slug := rm.slug
-		safego.Go(log, "session recap "+slug, func() { end.recaps.SaveRecap(slug, *end.recap) })
+		rm.detach(log, "session recap "+slug, func() { end.recaps.SaveRecap(slug, *end.recap) })
 	}
+}
+
+// detach runs fn on its own goroutine like safego.Go, counted on the hub's
+// hand-offs while it runs so Drain can wait for it.
+func (rm *room) detach(log *slog.Logger, where string, fn func()) {
+	if rm.pending == nil {
+		safego.Go(log, where, fn)
+		return
+	}
+	rm.pending.Add(1)
+	safego.Go(log, where, func() {
+		defer rm.pending.Done()
+		fn()
+	})
 }
 
 // sayPhaseLocked puts a line on the timeline when the session crosses into a
