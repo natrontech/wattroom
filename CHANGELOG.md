@@ -17,6 +17,28 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.66] - 2026-09-09
+
+### Added
+
+- Your own calendar link is on Home, under What's next: one subscription that carries every session planned in every room you are in, and follows you when you join or leave a room. It was built as the calendar the app offers first and then never offered — the Sessions place only had the room's link, so a rider in four rooms subscribed four times. The room's link stays for what it is, a club schedule to hand to people outside the room, and says so.
+
+### Changed
+
+- The Friends page says what a friend actually sees: that you are online, in a room, or riding — never what you are pushing.
+- Handing a room over and banning someone from it no longer hide behind a right-click: an owner's Members row has a ⋯ button that opens the same menu. On the crew's page, every room row shows its owner and admins an "Open to the crew" / "Make private" button — the row an admin came to act on used to look disabled with its only action in the menu.
+- Small things on the pages outside a room: the Friends page's dismiss, cancel and remove are proper buttons, the ramp test's "I'm done" is sized for a hand on the bars, and its errors read like everywhere else's.
+
+### Removed
+
+- The old addresses `/profile`, `/pair` and `/trophies` are gone: they have redirected to `/settings/profile`, `/settings/equipment` and `/u/me` since 2026.09.63, every link the app and its emails send has pointed at the new ones since 2026.09.64, and a bookmark from before that now lands on "no such page" rather than a silent hop.
+
+### Fixed
+
+- The ramp test no longer ends itself during the warm-up: five seconds of spinning up, or soft-pedalling under the warm-up's target, used to count as blowing up and land on "you stopped after 0:05". Leaving a running ramp test asks first, the way leaving a ride does. The Friends page, the ride comparison, the sign-in gate and a crew's invite link all say when something could not be loaded and offer a retry, instead of "loading…" forever, "could not be loaded" while still loading, "no sign-in providers are configured" for a server that could not be reached, or a dead invite for a network blip. Clearing the rides kept only on this device asks first. The public rooms directory shows more than its first fifty rooms.
+- A workout saved through the API is held to the same rules as one built in the editor — step lengths, targets, watts, cadence and heart-rate bands, repeat counts — so nothing can be stored that your shelf then refuses to show; the refusal names the step. The editor, in turn, now says when a workout would run longer than a day (the server's limit) instead of letting Save be refused. If older saved workouts cannot be read by this version, the Workouts page says how many rather than hiding them.
+- Workouts: the server now refuses a workout that would expand past the engine's limits (more than 50 repeats, nested deeper than four, more than 200 blocks) instead of trying to build it — the editor already enforced those numbers, the API did not. Your shelf says when it could not be loaded, with a retry, on the Workouts page and in a room's session picker, instead of claiming you have no workouts. Opening a saved workout that could not be found no longer lets Save overwrite it with a blank sheet, and loading a library copy saves beside the workout you opened, never over it. Undoing a delete says so if it fails; starting a planned session whose workout can no longer be read says so instead of doing nothing; a database hiccup while saving is a "try again", not "that workout does not exist".
+
 ## [2026.09.65] - 2026-09-09
 
 ### Added
@@ -1368,7 +1390,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.65...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.66...HEAD
+[2026.09.66]: https://github.com/natrontech/wattroom/compare/2026.09.65...2026.09.66
 [2026.09.65]: https://github.com/natrontech/wattroom/compare/2026.09.64...2026.09.65
 [2026.09.64]: https://github.com/natrontech/wattroom/compare/2026.09.63...2026.09.64
 [2026.09.63]: https://github.com/natrontech/wattroom/compare/2026.09.62...2026.09.63
