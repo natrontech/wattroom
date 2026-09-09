@@ -5,6 +5,7 @@
 		formatBytes,
 		isNewer,
 		latestRelease,
+		shellSelfUpdates,
 		shellVersion,
 		type DesktopRelease,
 		type Installer,
@@ -12,9 +13,11 @@
 
 	// The desktop app, on home (#296, #1235). Two riders, one panel:
 	//
-	// - inside the shell: the update nudge — a newer build is out, here is the
-	//   download. The shell polls nothing; this asks once per page load, and a
-	//   version waved away stays away.
+	// - inside a shell too old to update itself: the nudge — a newer build is
+	//   out, here is the download. The shell polls nothing; this asks once per
+	//   page load, and a version waved away stays away. A shell that DOES
+	//   update itself is served by the sidebar's UpdateRow instead: home is a
+	//   page a rider in a room never opens, and the restart sat there unseen.
 	// - in a browser on a Mac, Windows or Linux machine: the offer — what the
 	//   app buys, the installer for THIS machine, one Not-now that is
 	//   remembered for good. A phone gets nothing: the app is for a desk.
@@ -27,20 +30,6 @@
 
 	const running = shellVersion();
 	const os = detectOS(navigator.userAgent);
-	// A shell that updates itself (#1303) says when a download is ready;
-	// then the panel offers the restart, and the feed's version is not the
-	// rider's problem any more.
-	const shell = (
-		globalThis as {
-			wattroom?: {
-				onUpdate?: (cb: (u: { version: string }) => void) => void;
-				installUpdate?: () => void;
-			};
-		}
-	).wattroom;
-	let ready = $state<string | null>(null);
-	let later = $state(false);
-	if (running) shell?.onUpdate?.((u) => (ready = u.version));
 	const desk = os === 'mac' || os === 'windows' || os === 'linux';
 
 	let latest = $state<DesktopRelease | null>(null);
@@ -57,7 +46,7 @@
 	// fetches the release itself and this panel waits for "ready" instead.
 	const update = $derived(
 		running &&
-			!shell?.installUpdate &&
+			!shellSelfUpdates() &&
 			latest &&
 			isNewer(latest.version, running) &&
 			skipped !== latest.version
@@ -96,22 +85,7 @@
 	}
 </script>
 
-{#if ready && !later}
-	<section class="panel mt-6 flex flex-wrap items-center gap-3 px-5 py-4">
-		<div class="min-w-48 flex-1">
-			<p class="eyebrow">desktop app</p>
-			<p class="mt-1 text-sm">
-				WattRoom {ready} is downloaded — it installs when you restart.
-			</p>
-		</div>
-		<button class="btn btn-primary" onclick={() => shell?.installUpdate?.()}
-			>Restart to update</button
-		>
-		<button class="btn-link text-xs" onclick={() => (later = true)}
-			>Later</button
-		>
-	</section>
-{:else if update}
+{#if update}
 	<section class="panel mt-6 flex flex-wrap items-center gap-3 px-5 py-4">
 		<div class="min-w-48 flex-1">
 			<p class="eyebrow">desktop app</p>

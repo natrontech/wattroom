@@ -441,9 +441,46 @@ function watchForUpdates(win) {
 
 // The renderer asks on mount, in case the download finished before it did.
 ipcMain.handle('wattroom:update-ready', () => updateReady);
-ipcMain.on('wattroom:install-update', () => {
-	if (autoUpdater && updateReady) autoUpdater.quitAndInstall();
-});
+ipcMain.on('wattroom:install-update', () => installUpdate());
+
+// Restarting into the update, and why "Restart" used to just close the app.
+// quitAndInstall() hands Squirrel's ShipIt a job that waits for EVERY
+// instance of the bundle to go away before it touches /Applications, and it
+// waits in silence: one log here sat twenty-six minutes between "install
+// request" and "Beginning installation", then gave up with
+//
+//     Aborting update attempt because there are 1 running instances
+//     Installation cancelled: … "App Still Running Error"
+//
+// The window had closed the moment the rider pressed the button, so what
+// they saw was the app dying and never coming back — no install, no
+// relaunch, no message. Electron's own quit is what ShipIt is waiting for
+// and it is not guaranteed to arrive: on macOS a window can close without
+// the process following it. So we do not leave the termination to chance.
+// Replacing the bundle then takes ShipIt the better part of half a minute,
+// and nothing can narrate that from here: a notification shown on the way out
+// is withdrawn with the process (checked against the signed build — it never
+// reaches Notification Center). So the sidebar's "Installing… reopens by
+// itself" is the last thing the rider gets, and this is the beat that lets
+// them read it.
+const INSTALL_QUIT_MS = 900;
+// Long enough for Squirrel to have handed ShipIt the job (the logs show it
+// registering within a second), short enough that the rider is still watching.
+const INSTALL_FORCE_EXIT_MS = 5000;
+let installing = false;
+
+function installUpdate() {
+	if (!autoUpdater || !updateReady || installing) return;
+	installing = true;
+	setTimeout(() => {
+		autoUpdater.quitAndInstall();
+		app.quit();
+		// If either of those took, this timer died with the process. Reaching
+		// it means the quit was refused — and a refused quit IS the abort, so
+		// exit() rather than sit here being the thing ShipIt waits for.
+		setTimeout(() => app.exit(0), INSTALL_FORCE_EXIT_MS);
+	}, INSTALL_QUIT_MS);
+}
 
 // The HUD (#296, ADR-0041): the rider's own numbers in a small frameless
 // window that floats over everything else — for the rider who alt-tabbed to

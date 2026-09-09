@@ -17,6 +17,7 @@
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
@@ -388,6 +389,21 @@
 			fault={{ kind: 'mic', state: 'lost' }}
 			bufferedSeconds={0}
 			onRecover={() => {}}
+		/>
+	</div>
+
+	<h2 class="font-display mt-12 text-lg font-bold">The sidebar's update row</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		Only inside the desktop shell, and only while a release is downloaded and
+		waiting. Chrome, so it takes --color-neon and never glows — the sweep and
+		the arrow are what make it read as waiting (ADR-0005).
+	</p>
+	<div class="bg-surface border-ink/5 mt-4 w-60 rounded-lg border p-2">
+		<UpdateRow
+			bridge={{
+				onUpdate: (cb) => cb({ version: '2026.9.9' }),
+				installUpdate: () => {},
+			}}
 		/>
 	</div>
 
