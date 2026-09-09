@@ -253,7 +253,22 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 			"They are banned from the crew this room is in. Lift that first if you mean it.")
 		return
 	}
-	owned, err := s.store.Queries.CountOwnedRooms(r.Context(), target)
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		s.log.Error("room transfer begin failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	// The cap, counted with the new owner's row locked (#1413): a hand-over
+	// racing their own create used to count past it.
+	if err := q.LockUser(r.Context(), target); err != nil {
+		s.log.Error("transfer lock failed", "err", err, "room", room.Slug)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
+		return
+	}
+	owned, err := q.CountOwnedRooms(r.Context(), target)
 	if err != nil {
 		s.log.Error("transfer cap check failed", "err", err, "room", room.Slug)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The hand-over did not go through. Try again.")
@@ -264,14 +279,6 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("They already own %d rooms — the cap. They would have to delete one first.", maxOwnedRooms))
 		return
 	}
-	tx, err := s.store.Pool.Begin(r.Context())
-	if err != nil {
-		s.log.Error("room transfer begin failed", "err", err, "room", room.Slug)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The room could not be handed on.")
-		return
-	}
-	defer func() { _ = tx.Rollback(r.Context()) }()
-	q := s.store.Queries.WithTx(tx)
 	err = q.TransferRoom(r.Context(), db.TransferRoomParams{ID: room.ID, OwnerID: target})
 	if err == nil {
 		_, err = q.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{RoomID: room.ID, UserID: target, Role: "owner"})
