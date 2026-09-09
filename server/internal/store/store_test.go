@@ -3,9 +3,13 @@ package store_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -135,5 +139,49 @@ func TestOpenSaysWhenTheDatabaseIsUnreachable(t *testing.T) {
 	_, err := store.Open(ctx, "postgres://wattroom:wattroom@127.0.0.1:1/nowhere?connect_timeout=1")
 	if !errors.Is(err, store.ErrUnreachable) {
 		t.Fatalf("an unreachable database did not say so: %v", err)
+	}
+}
+
+// Concurrent opens of one FRESH database must all succeed: `go test ./...`
+// opens the shared test database from every package at once, and goose
+// racing itself failed with "relation already exists" on one CI run in
+// three (2026-09-09). The database is created here, so the migrations
+// genuinely run for the first time under the race.
+func TestConcurrentOpensMigrateOnce(t *testing.T) {
+	base := os.Getenv("WATTROOM_TEST_DB")
+	if base == "" {
+		base = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials
+	}
+	admin, err := pgx.Connect(t.Context(), strings.TrimRight(base[:strings.LastIndex(base, "/")], "/")+"/postgres")
+	if err != nil {
+		t.Skipf("no database available: %v", err)
+	}
+	t.Cleanup(func() { _ = admin.Close(context.Background()) })
+	name := fmt.Sprintf("wattroom_test_race_%d", time.Now().UnixNano()%1_000_000)
+	if _, err := admin.Exec(t.Context(), "create database "+name); err != nil {
+		t.Fatalf("create database: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.Background(), "drop database if exists "+name+" with (force)")
+	})
+	dsn := base[:strings.LastIndex(base, "/")] + "/" + name
+
+	const openers = 8
+	errs := make(chan error, openers)
+	for range openers {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			st, err := store.Open(ctx, dsn)
+			if err == nil {
+				st.Close()
+			}
+			errs <- err
+		}()
+	}
+	for range openers {
+		if err := <-errs; err != nil {
+			t.Errorf("a concurrent open failed: %v", err)
+		}
 	}
 }

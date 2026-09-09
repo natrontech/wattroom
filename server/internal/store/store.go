@@ -46,24 +46,56 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 		return nil, fmt.Errorf("store: ping: %w (%w)", err, ErrUnreachable)
 	}
 
+	// One migrator at a time (2026-09-09): `go test ./...` opens the shared
+	// test database from every package at once, and goose racing itself
+	// there failed with "relation already exists" — which the harness used
+	// to swallow as a skip and now fails, honestly, on one run in three.
+	// Two server replicas booting together would race the same way. A
+	// session-level advisory lock held on its own connection serialises
+	// them; whoever comes second finds nothing left to apply.
+	lock, err := pool.Acquire(ctx)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("store: migrate lock conn: %w", err)
+	}
+	if _, err := lock.Exec(ctx, "select pg_advisory_lock($1)", migrateLockKey); err != nil {
+		lock.Release()
+		pool.Close()
+		return nil, fmt.Errorf("store: migrate lock: %w", err)
+	}
+	err = migrate(ctx, pool)
+	if _, unlockErr := lock.Exec(ctx, "select pg_advisory_unlock($1)", migrateLockKey); unlockErr != nil && err == nil {
+		err = fmt.Errorf("store: migrate unlock: %w", unlockErr)
+	}
+	lock.Release()
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+
+	return &Store{Pool: pool, Queries: db.New(pool)}, nil
+}
+
+// migrateLockKey is the advisory-lock key migration runs under: arbitrary,
+// and the same for every process that opens this database.
+const migrateLockKey = 7702_2026_0909
+
+// migrate applies every pending migration; the caller holds the lock.
+func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	// goose speaks database/sql; stdlib borrows from the same pgx pool config.
 	goose.SetBaseFS(migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("store: goose dialect: %w", err)
+		return fmt.Errorf("store: goose dialect: %w", err)
 	}
 	sqldb := stdlib.OpenDBFromPool(pool)
 	if err := goose.UpContext(ctx, sqldb, "migrations"); err != nil {
 		_ = sqldb.Close()
-		pool.Close()
-		return nil, fmt.Errorf("store: migrate: %w", err)
+		return fmt.Errorf("store: migrate: %w", err)
 	}
 	if err := sqldb.Close(); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("store: release migration conn: %w", err)
+		return fmt.Errorf("store: release migration conn: %w", err)
 	}
-
-	return &Store{Pool: pool, Queries: db.New(pool)}, nil
+	return nil
 }
 
 func (s *Store) Close() {
