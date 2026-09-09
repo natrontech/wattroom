@@ -30,9 +30,6 @@
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
 
-	const medalsOf = (name: string) =>
-		room.medals.filter((m) => m.rider === name).length;
-
 	// A room's own crew comparing itself is the ONE ladder WATTROOM.md
 	// allows — "your crew's ladder, not the internet's" — and ADR-0027
 	// keeps it here: no ordering by badges on Home, the friends list, or
@@ -184,7 +181,7 @@
 
 	<ul class="divide-ink/5 panel divide-y">
 		{#each ordered as member (member.id)}
-			{@const medals = medalsOf(member.displayName)}
+			{@const medals = member.medals ?? 0}
 			{@const badges = badgesOf(member)}
 			{@const here = room.riders.find((r) => r.id === member.id)}
 			<li

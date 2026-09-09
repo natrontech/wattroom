@@ -53,6 +53,15 @@ where m.room_id = $1
 order by m.awarded_at desc
 limit $2;
 
+-- name: CountRoomMedalsByRider :many
+-- Every medal this room ever awarded, per rider — the roster's count. The
+-- recent list above is capped and carries names; a count matched on those
+-- decayed as the room rode and merged two riders with one name (#1371).
+select user_id, count(*)::int as medals
+from medals
+where room_id = $1
+group by user_id;
+
 -- name: ListUserRideWeeks :many
 -- Distinct ISO weeks with at least one ride, newest first — the streak input.
 select distinct date_trunc('week', started_at)::date as week

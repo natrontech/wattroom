@@ -1,0 +1,1 @@
+- The Members place counts a rider's medals for real: every medal the room ever awarded them, by rider. It used to match display names over the 24 most recent awards, so the number shrank as the room rode on and two riders with one name shared a count.

@@ -92,6 +92,9 @@ type memberJSON struct {
 	FtpWatts int16  `json:"ftpWatts"`
 	WeightKg int16  `json:"weightKg"`
 	JoinedAt string `json:"joinedAt"`
+	// Medals this room awarded them, lifetime (#1371) — counted by id on the
+	// server, never by matching a display name over the recent list.
+	Medals int `json:"medals"`
 	// The badges this rider has earned (#703, ADR-0027) — the keys only, so
 	// the room's page can show the crew what each other have done. Earned is
 	// all there is: progress never leaves its owner.
