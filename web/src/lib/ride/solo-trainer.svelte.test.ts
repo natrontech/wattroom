@@ -13,9 +13,8 @@ vi.mock('$lib/room/connection.svelte', () => ({
 	},
 }));
 
-const { createSoloTrainer, soloTrainer } = await import(
-	'./solo-trainer.svelte',
-);
+const { createSoloTrainer, soloTrainer } =
+	await import('./solo-trainer.svelte');
 
 class FakeTrainer implements Trainer {
 	status: TrainerStatus = 'disconnected';

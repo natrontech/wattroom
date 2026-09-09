@@ -45,6 +45,17 @@ contextBridge.exposeInMainWorld('wattroom', {
 			.then((update) => update && cb(update));
 	},
 	installUpdate: () => ipcRenderer.send('wattroom:install-update'),
+	// The device picker (#1716). Electron ships no Bluetooth chooser, so the
+	// app draws it: `cb` hears the scan's devices as it finds them, then null
+	// when the request is over. Registering is also the handshake that tells
+	// the shell an app new enough to draw one is loaded — without it the shell
+	// falls back to a native message box.
+	onBleScan: (cb) => {
+		ipcRenderer.on('wattroom:ble-scan', (_event, devices) => cb(devices));
+		ipcRenderer.send('wattroom:ble-picker-ready');
+	},
+	/** The rider's answer; null cancels the request. */
+	pickDevice: (deviceId) => ipcRenderer.send('wattroom:ble-pick', deviceId),
 	onNotification: (cb) =>
 		ipcRenderer.on('wattroom:notification', (_event, payload) => cb(payload)),
 });

@@ -41,15 +41,18 @@ const SHELL_VERSION = require('./package.json').version;
 // overlay controls are placed to sit inside it.
 const TITLE_BAR_PX = 32;
 
-// The last trainer a rider chose, so the chooser can skip itself next time.
-// In memory only: a file would be state to migrate, and re-picking once per
-// launch is the cost of not having one. ponytail: persist when riders complain.
-let lastBluetoothDeviceId = null;
-
-// How long a scan may find nothing before the rider gets an answer. A trainer
+// How long a scan may find NOTHING before the rider gets an answer. A trainer
 // woken by the cranks is advertising within a couple of seconds; past this it
-// is asleep, and saying so beats a button that never comes back.
+// is asleep, and saying so beats a button that never comes back. It stops
+// counting the moment the first device is heard: from there the picker is on
+// screen and the decision is the rider's, not a deadline's.
 const PAIRING_TIMEOUT_MS = 20_000;
+
+// Whether the loaded web app draws the device picker (#1716). The shell and
+// the app release on separate trains, so a shell newer than wattroom.ch is an
+// ordinary state — registering the listener is the handshake, and without it
+// the native message box below is still the answer.
+let pickerReady = false;
 
 // True only for the launch warm-up (warmBluetooth), so its chooser is answered
 // rather than shown.
@@ -173,6 +176,21 @@ function installHandlers(win) {
 	//    Answering that first empty list is a cancel, which is how the shell
 	//    shipped unable to pair anything at all (#1545): hold the callback and
 	//    let the scan run.
+	//
+	//    What the rider sees is the app's own modal, fed the list as the scan
+	//    grows it (#1716). It used to be `dialog.showMessageBox` with one
+	//    button per device — an OS alert in the middle of a synthwave app, and
+	//    a SNAPSHOT: it opened on the first device heard, so a second sensor
+	//    advertising a moment later was invisible until you cancelled and
+	//    started again. RESEARCH.md §15.1 named the renderer-side picker as
+	//    the upside of owning this event; this is it.
+	//
+	//    Nothing is remembered between scans any more. The shell used to skip
+	//    the picker entirely for the last device it had seen — process-wide,
+	//    across every sensor kind — which saved a tap once and then made
+	//    pairing a DIFFERENT trainer impossible for the rest of the launch.
+	//    §15.1 lists remembering as an upside of owning the chooser; it is
+	//    one only if the rider can still get past it.
 	let scan = null;
 
 	/** Answer the chooser once, whichever emit's callback is current. */
@@ -181,8 +199,17 @@ function installHandlers(win) {
 		clearTimeout(scan.timer);
 		const answer = scan.answer;
 		scan = null;
+		if (!win.isDestroyed()) win.webContents.send('wattroom:ble-scan', null);
 		answer(deviceId);
 	}
+
+	// The rider picked, or closed the picker. Ignored when no scan is open:
+	// a stale answer must never settle the NEXT request.
+	ipcMain.on('wattroom:ble-pick', (_event, deviceId) => settle(deviceId || ''));
+	// Registering the listener is the app saying it can draw the picker.
+	ipcMain.on('wattroom:ble-picker-ready', () => {
+		pickerReady = true;
+	});
 
 	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
 		event.preventDefault();
@@ -210,31 +237,30 @@ function installHandlers(win) {
 		}
 		scan.answer = callback;
 
-		const remembered = devices.find(
-			(d) => d.deviceId === lastBluetoothDeviceId,
-		);
-		if (remembered) {
-			settle(remembered.deviceId);
+		// The renderer's requestDevice filters already narrowed this list to
+		// FTMS/HR/CSC, so everything offered here is pairable.
+		const offer = devices.map((d) => ({
+			id: d.deviceId,
+			name: d.deviceName || d.deviceId,
+		}));
+
+		if (pickerReady) {
+			// Something is advertising, so the deadline is over — the rider is
+			// now reading a list, and a countdown would close it under them.
+			if (offer.length > 0) clearTimeout(scan.timer);
+			win.webContents.send('wattroom:ble-scan', offer);
 			return;
 		}
-		if (devices.length === 0 || scan.asked) return;
 
-		// The renderer's requestDevice filters already narrowed this list to
-		// FTMS/HR/CSC, so everything offered here is pairable — and in practice
-		// it is the one trainer. ponytail: the message box is a snapshot, so a
-		// sensor heard after it opens is not in it; pair again to see it.
+		// A web app too old to draw the picker (see pickerReady). The message
+		// box is a snapshot: a sensor heard after it opens is not in it.
+		if (offer.length === 0 || scan.asked) return;
 		scan.asked = true;
 		chooseFrom(
 			win,
 			'Pair a sensor',
-			devices.map((d) => ({
-				label: d.deviceName || d.deviceId,
-				value: d.deviceId,
-			})),
-		).then(({ value: deviceId }) => {
-			if (deviceId) lastBluetoothDeviceId = deviceId;
-			settle(deviceId || '');
-		});
+			offer.map((d) => ({ label: d.name, value: d.id })),
+		).then(({ value: deviceId }) => settle(deviceId || ''));
 	});
 
 	// 2. Permissions. Electron's default is to ALLOW — with remote content that
@@ -367,8 +393,9 @@ const SOUND_ASK =
  * renderer, and cannot drift from the app's theme because it has none.
  *
  * ponytail: caps at eight entries plus Cancel — past that a message box is the
- * wrong control, and the answer is the renderer-side picker RESEARCH.md §15.1
- * describes, not a longer list of buttons.
+ * wrong control. The Bluetooth chooser outgrew it and now draws in the app
+ * (#1716); the screen picker still fits, and its checkbox has no counterpart
+ * in a renderer-side one.
  *
  * @returns the chosen value (null if cancelled), and the checkbox if asked.
  */

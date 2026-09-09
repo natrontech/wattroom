@@ -42,6 +42,8 @@
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
+	import DevicePicker from '$lib/ble/DevicePicker.svelte';
+	import { devicePicker } from '$lib/ble/device-picker.svelte';
 	import { shellTitleBar } from '$lib/desktop';
 	import { notify } from '$lib/notify.svelte';
 
@@ -53,6 +55,11 @@
 	// Notifications answer back (ADR-0042): a click lands in the
 	// conversation, a reply from the shell's own notification is sent.
 	notify.listen((href) => void goto(href));
+	// The Bluetooth chooser Electron does not ship (#1716). Subscribed from
+	// the shell rather than from the pairing screens: a scan opened on /ride
+	// has to keep drawing if the rider walks somewhere else mid-search. A
+	// no-op in a browser, where Chrome draws its own.
+	devicePicker.start();
 
 	void account.load();
 	// Before the routing effect below replaces the URL and takes ?new= with it.
@@ -466,3 +473,7 @@
 <ImageViewer />
 <ContextMenuHost />
 <ConfirmHost />
+<DevicePicker
+	devices={devicePicker.devices}
+	onpick={(id) => devicePicker.pick(id)}
+/>

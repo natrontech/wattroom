@@ -1,0 +1,1 @@
+- The desktop app asks which trainer or sensor to pair in its own window instead of a system alert, and keeps listening while you read the list — a strap that wakes up a second late now appears instead of being missed. It also stops silently reusing the last device you picked, so pairing a different trainer works again.
