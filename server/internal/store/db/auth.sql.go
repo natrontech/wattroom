@@ -95,6 +95,25 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	return err
 }
 
+const deleteUserSessionsExcept = `-- name: DeleteUserSessionsExcept :execrows
+delete from sessions where user_id = $1 and token_hash <> $2
+`
+
+type DeleteUserSessionsExceptParams struct {
+	UserID    pgtype.UUID
+	TokenHash []byte
+}
+
+// Every other screen signed in to the account (#1607): the one asking keeps
+// its session — pass a hash no session has to end them all.
+func (q *Queries) DeleteUserSessionsExcept(ctx context.Context, arg DeleteUserSessionsExceptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUserSessionsExcept, arg.UserID, arg.TokenHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getIdentity = `-- name: GetIdentity :one
 select provider, provider_user_id, user_id, access_token, refresh_token, token_expires_at, created_at, refresh_token_enc from identities where provider = $1 and provider_user_id = $2
 `

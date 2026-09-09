@@ -32,21 +32,34 @@ const (
 // the end of one window and again at the start of the next gets twice the
 // ceiling across that boundary. Twenty mails an hour is still not a cannon,
 // and a sliding window costs a timestamp slice per account to fix it.
-type mailBudget struct {
-	mu sync.Mutex
-	m  map[pgtype.UUID]budgetWindow
+type budget[K comparable] struct {
+	mu     sync.Mutex
+	m      map[K]budgetWindow
+	per    int
+	window time.Duration
 }
+
+// mailBudget is the account-keyed one the verification mail spends.
+type mailBudget = budget[pgtype.UUID]
 
 type budgetWindow struct {
 	count int
 	until time.Time
 }
 
-func newMailBudget() *mailBudget { return &mailBudget{m: map[pgtype.UUID]budgetWindow{}} }
+func newMailBudget() *mailBudget {
+	return newBudget[pgtype.UUID](verifyMailsPerWindow, verifyMailWindow)
+}
 
-// spend reports whether this account may cause one more mail right now, and
-// counts it when it may.
-func (b *mailBudget) spend(user pgtype.UUID) bool {
+// newBudget is a fixed window of `per` spends per key (#1606): the mail
+// ceiling per account, and the sign-in ceilings per address.
+func newBudget[K comparable](per int, window time.Duration) *budget[K] {
+	return &budget[K]{m: map[K]budgetWindow{}, per: per, window: window}
+}
+
+// spend reports whether this key may spend once more right now, and counts
+// it when it may.
+func (b *budget[K]) spend(key K) bool {
 	now := time.Now()
 
 	b.mu.Lock()
@@ -59,14 +72,14 @@ func (b *mailBudget) spend(user pgtype.UUID) bool {
 		}
 	}
 
-	w, ok := b.m[user]
+	w, ok := b.m[key]
 	if !ok {
-		w = budgetWindow{until: now.Add(verifyMailWindow)}
+		w = budgetWindow{until: now.Add(b.window)}
 	}
-	if w.count >= verifyMailsPerWindow {
+	if w.count >= b.per {
 		return false
 	}
 	w.count++
-	b.m[user] = w
+	b.m[key] = w
 	return true
 }

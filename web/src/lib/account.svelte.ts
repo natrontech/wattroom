@@ -22,6 +22,8 @@ export interface Me {
 	weightKg: number;
 	/** The HR anchor (ADR-0014), on the account since #1571. */
 	lthr?: number;
+	/** When "send again" sends again — ISO 8601, absent once it can (#1608). */
+	emailResendAt?: string;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
 	suggestedFtp?: number;
 	best20m?: number;

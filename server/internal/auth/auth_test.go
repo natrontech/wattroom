@@ -985,3 +985,86 @@ func TestUpdateMeCarriesLthr(t *testing.T) {
 		t.Fatalf("zero should clear: %d", *got.Lthr)
 	}
 }
+
+// Sign out everywhere keeps the session that asked and ends the rest (#1607).
+func TestLogoutEverywhereKeepsThisSession(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	cookies := make([]*http.Cookie, 2)
+	for i := range cookies {
+		rec := httptest.NewRecorder()
+		if err := s.startSession(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), user.ID); err != nil {
+			t.Fatalf("start session %d: %v", i, err)
+		}
+		cookies[i] = rec.Result().Cookies()[0]
+	}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/logout-everywhere", nil)
+	req.AddCookie(cookies[0])
+	w := httptest.NewRecorder()
+	s.handleLogoutEverywhere(w, req)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"signedOut":1`) {
+		t.Fatalf("logout everywhere: %d %s", w.Code, w.Body.String())
+	}
+	for i, want := range []bool{true, false} {
+		probe := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
+		probe.AddCookie(cookies[i])
+		_, err := s.lookup(probe)
+		if (err == nil) != want {
+			t.Fatalf("session %d alive=%v, want %v", i, err == nil, want)
+		}
+	}
+}
+
+// The passkey sign-in doors are budgeted per address (#1606): past the
+// window one address gets 429s while another still gets in.
+func TestPasskeyLoginIsThrottledPerAddress(t *testing.T) {
+	s := testService(t)
+	if s.wa == nil {
+		t.Skip("no relying party on this base URL")
+	}
+	start := func(ip string) int {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
+		req.RemoteAddr = ip + ":4242"
+		w := httptest.NewRecorder()
+		s.handlePasskeyLoginStart(w, req)
+		return w.Code
+	}
+	for i := 0; i < loginAttemptsPerWindow; i++ {
+		if code := start("203.0.113.9"); code != http.StatusOK {
+			t.Fatalf("attempt %d from the first address: %d", i, code)
+		}
+	}
+	if code := start("203.0.113.9"); code != http.StatusTooManyRequests {
+		t.Fatalf("past the window: %d, want 429", code)
+	}
+	if code := start("203.0.113.10"); code != http.StatusOK {
+		t.Fatalf("another address: %d", code)
+	}
+	// Behind the proxy, the first hop of X-Forwarded-For is the address.
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
+	req.RemoteAddr = "10.0.0.1:1"
+	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
+	w := httptest.NewRecorder()
+	s.handlePasskeyLoginStart(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("the forwarded address is not the peer: %d", w.Code)
+	}
+}
+
+// The resend window is on the wire (#1608).
+func TestMeSaysWhenToAskAgain(t *testing.T) {
+	pending := "rider@example.test"
+	fresh := db.User{EmailPending: &pending, EmailVerifyExpires: pgtype.Timestamptz{Time: time.Now().Add(emailVerifyTTL), Valid: true}}
+	at := resendAt(fresh)
+	if at == nil || time.Until(*at) > emailResendAfter || time.Until(*at) < emailResendAfter-time.Minute {
+		t.Fatalf("fresh link: resend at %v", at)
+	}
+	old := fresh
+	old.EmailVerifyExpires.Time = time.Now().Add(emailVerifyTTL - emailResendAfter - time.Second)
+	if resendAt(old) != nil {
+		t.Fatal("past the window there is nothing to wait for")
+	}
+	if resendAt(db.User{}) != nil {
+		t.Fatal("no pending address, no window")
+	}
+}

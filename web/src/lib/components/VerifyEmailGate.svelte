@@ -29,6 +29,22 @@
 	const pending = $derived(me?.emailPending ?? '');
 	const skippable = $derived(canSkipEmailPrompt(me));
 
+	// Inside the resend window the server answers success and mails nothing
+	// (#1608): the button counts the window down instead of pretending.
+	const resendAt = $derived(
+		me?.emailResendAt ? Date.parse(me.emailResendAt) : 0,
+	);
+	let now = $state(Date.now());
+	$effect(() => {
+		if (!open || resendAt <= now) return;
+		const id = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(id);
+	});
+	const waitLeft = $derived(Math.max(0, Math.ceil((resendAt - now) / 1000)));
+	const waitText = $derived(
+		`${Math.floor(waitLeft / 60)}:${String(waitLeft % 60).padStart(2, '0')}`,
+	);
+
 	// Fill the field once, from whatever the account already knows. Guarded so
 	// a later `me` refresh cannot overwrite what the rider is typing.
 	$effect(() => {
@@ -125,10 +141,21 @@
 			<div class="mt-5 flex flex-wrap items-center gap-3">
 				<button
 					onclick={send}
-					disabled={sending || !address.trim()}
+					disabled={sending ||
+						!address.trim() ||
+						(waitLeft > 0 &&
+							address.trim().toLowerCase() === pending.toLowerCase())}
 					class="btn btn-primary"
 				>
-					{sending ? 'Sending…' : pending ? 'Send again' : 'Send the link'}
+					{sending
+						? 'Sending…'
+						: pending &&
+							  waitLeft > 0 &&
+							  address.trim().toLowerCase() === pending.toLowerCase()
+							? `Send again in ${waitText}`
+							: pending
+								? 'Send again'
+								: 'Send the link'}
 				</button>
 				{#if skippable}
 					<button

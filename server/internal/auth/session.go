@@ -3,6 +3,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -84,6 +85,45 @@ func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMess
 			"Could not check your session — try again in a moment.")
 	}
 	return db.User{}, false
+}
+
+// currentSessionHash is the hash of the session this request rides on, or
+// nil when it carries none.
+func currentSessionHash(r *http.Request) []byte {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil || cookie.Value == "" {
+		return nil
+	}
+	return hash(cookie.Value)
+}
+
+// endOtherSessions signs the account out everywhere but on this request's
+// own session (#1607): the answer to ADR-0030's alarm, and what a credential
+// removal does on its own — whoever added the passkey being removed may be
+// holding a session too. Returns how many it ended.
+func (s *Service) endOtherSessions(ctx context.Context, userID pgtype.UUID, r *http.Request) int64 {
+	keep := currentSessionHash(r)
+	if keep == nil {
+		keep = []byte{}
+	}
+	n, err := s.store.Queries.DeleteUserSessionsExcept(ctx, db.DeleteUserSessionsExceptParams{
+		UserID: userID, TokenHash: keep,
+	})
+	if err != nil {
+		s.log.Error("ending other sessions failed", "err", err)
+	}
+	return n
+}
+
+// handleLogoutEverywhere is the settings button (#1607): this screen stays
+// signed in, every other one is not.
+func (s *Service) handleLogoutEverywhere(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.RequireUser(w, r, "Sign in first.")
+	if !ok {
+		return
+	}
+	n := s.endOtherSessions(r.Context(), user.ID, r)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"signedOut": n})
 }
 
 func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request) {

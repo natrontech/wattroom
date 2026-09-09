@@ -259,6 +259,9 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 }
 
 func (s *Service) handlePasskeyLoginStart(w http.ResponseWriter, r *http.Request) {
+	if s.throttle(w, r, s.loginBudget) {
+		return
+	}
 	assertion, session, err := s.wa.BeginDiscoverableLogin()
 	if err != nil {
 		s.log.Error("passkey login start failed", "err", err)
@@ -273,6 +276,9 @@ func (s *Service) handlePasskeyLoginStart(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Service) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.Request) {
+	if s.throttle(w, r, s.loginBudget) {
+		return
+	}
 	session, ok := s.takeChallenge(w, r)
 	if !ok {
 		return
