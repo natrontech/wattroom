@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Crown from '@lucide/svelte/icons/crown';
+	import Drum from '@lucide/svelte/icons/drum';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Mic from '@lucide/svelte/icons/mic';
 	import MicOff from '@lucide/svelte/icons/mic-off';
@@ -17,6 +18,7 @@
 	import type { Missed } from '$lib/room/unread';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { BOARD_MARK } from '$lib/room/presence-marks';
 	import { rosterGroups } from '$lib/room/roster';
 	import { statusOfRider } from '$lib/status';
 	import type { RoomMember, RoomRider } from '$lib/room/view';
@@ -125,6 +127,16 @@
 						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
 					{:else if rider.muted}
 						<MicOff size={11} class="text-muted/50 shrink-0" />
+					{/if}
+					{#if rider.sounding}
+						<!-- The tile's own drum (#1681): the roster is the other place
+						     a rider is drawn, so an airhorn has a face here too. -->
+						<Drum
+							size={11}
+							class={BOARD_MARK}
+							aria-label="playing a sound"
+							title="playing a sound"
+						/>
 					{/if}
 					{#if live && rider.watts > 0 && rider.execution !== undefined}
 						<span class="text-muted shrink-0 text-[10px] tabular-nums"

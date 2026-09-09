@@ -1,0 +1,1 @@
+- The people column marks whoever is firing a soundboard clip, the same drum the rider tiles already showed — so an airhorn has a face on it even when the tiles are behind the stage.
