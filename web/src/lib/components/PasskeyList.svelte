@@ -7,18 +7,24 @@
 	// menu: this is a settings surface, not something reached mid-ride, and
 	// .claude/rules/ux.md asks that nothing live only in a menu.
 	import Banner from './Banner.svelte';
+	import Skeleton from './Skeleton.svelte';
 	import * as passkeys from '$lib/passkeys';
 
 	const canPasskey = passkeys.supported();
 
 	let keys = $state<passkeys.Passkey[]>([]);
 	let loaded = $state(false);
+	// Why the list could not be read — the fourth state (errors.md, #1827),
+	// distinct from `error`, which is a ceremony's own refusal.
+	let loadError = $state<string | null>(null);
 	let name = $state('');
 	let busy = $state(false);
 	let error = $state('');
 
 	async function refresh() {
-		keys = await passkeys.list();
+		const res = await passkeys.list();
+		keys = res.keys;
+		loadError = res.error;
 		loaded = true;
 	}
 	if (canPasskey) void refresh();
@@ -63,7 +69,20 @@
 			<div class="mt-2"><Banner>{error}</Banner></div>
 		{/if}
 
-		{#if loaded && keys.length === 0}
+		{#if !loaded}
+			<div class="mt-2"><Skeleton rows={2} class="h-5" /></div>
+		{:else if loadError}
+			<div class="mt-2">
+				<Banner tone="error">
+					{loadError}
+					{#snippet action()}
+						<button onclick={() => void refresh()} class="btn-link text-xs"
+							>Retry</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
+		{:else if keys.length === 0}
 			<p class="text-muted mt-2 text-sm">
 				Add one and you can sign in with your phone, your password manager or a
 				security key — no provider, nothing to type.
