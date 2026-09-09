@@ -46,6 +46,9 @@ type SprintScore struct {
 	Name    string  `json:"name"`
 	Wkg     float64 `json:"wkg"`
 	Watts   int     `json:"watts"`
+	// Ramp modes (#1593): the rounds the rider survived — the number the
+	// podium shows, where Wkg is only a placing score.
+	Rounds int `json:"rounds,omitempty"`
 }
 
 // SprintState rides the tick while a sprint moment is armed, live, or just

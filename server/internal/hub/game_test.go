@@ -38,6 +38,10 @@ func TestBackyardEliminatesAfterTenSecondsBelow(t *testing.T) {
 	if st.Phase != "done" || st.Podium[0].Name != "A" {
 		t.Fatalf("podium: %+v", st.Podium)
 	}
+	// Rounds survived (#1593): A stood through round 1; B went out in it.
+	if st.Podium[0].Rounds != 1 || st.Podium[1].Rounds != 0 {
+		t.Fatalf("rounds survived: %+v", st.Podium)
+	}
 	// Eliminated rider's target drops to the recovery ERG.
 	if st.Riders["b"].TargetPct != eliminatedPct || !st.Riders["b"].Eliminated {
 		t.Fatalf("eliminated rider state: %+v", st.Riders["b"])
