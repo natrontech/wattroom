@@ -1077,14 +1077,23 @@ func TestPasskeyLoginIsThrottledPerAddress(t *testing.T) {
 	if code := start("203.0.113.10"); code != http.StatusOK {
 		t.Fatalf("another address: %d", code)
 	}
-	// Behind the proxy, the first hop of X-Forwarded-For is the address.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
-	req.RemoteAddr = "10.0.0.1:1"
-	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
-	w := httptest.NewRecorder()
-	s.handlePasskeyLoginStart(w, req)
-	if w.Code != http.StatusTooManyRequests {
-		t.Fatalf("the forwarded address is not the peer: %d", w.Code)
+	// Behind the proxy, the LAST hop of X-Forwarded-For is the address — the
+	// one the proxy appended. The first hop is whatever the caller wrote,
+	// and reading it handed a fresh budget to anyone who wrote a fresh one
+	// per request (#1824).
+	forwarded := func(xff string) int {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
+		req.RemoteAddr = "10.0.0.1:1"
+		req.Header.Set("X-Forwarded-For", xff)
+		w := httptest.NewRecorder()
+		s.handlePasskeyLoginStart(w, req)
+		return w.Code
+	}
+	if code := forwarded("198.51.100.1, 203.0.113.9"); code != http.StatusTooManyRequests {
+		t.Fatalf("the proxy's hop is not the peer: %d", code)
+	}
+	if code := forwarded("203.0.113.9, 198.51.100.77"); code != http.StatusOK {
+		t.Fatalf("a caller-written first hop reached the throttled bucket: %d", code)
 	}
 }
 

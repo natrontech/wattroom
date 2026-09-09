@@ -4,10 +4,12 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -46,12 +48,32 @@ func WriteJSON(w http.ResponseWriter, status int, body any) {
 }
 
 // DecodeStrict reads a JSON body the way every handler should: bounded,
-// unknown fields refused.
+// unknown fields refused, and never a form. A cross-site <form> can post
+// text/plain, urlencoded or multipart without a preflight, and a JSON
+// decoder reads the object at the front of such a body and ignores the tail
+// — which was a login-CSRF on the one handler that decodes a body without a
+// session to check (#1823). Refusing those three encodings kills the class
+// for every caller; a body with no Content-Type at all still decodes, so
+// nothing that sends bare JSON changes.
 func DecodeStrict(r *http.Request, into any) error {
+	if formEncoded(r.Header.Get("Content-Type")) {
+		return errors.New("httpx: a form encoding where JSON was expected")
+	}
 	r.Body = http.MaxBytesReader(nil, r.Body, 64<<10)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	return dec.Decode(into)
+}
+
+// formEncoded says whether a Content-Type is one a browser form can send
+// cross-site without a preflight (the CORS-simple set).
+func formEncoded(contentType string) bool {
+	mediaType, _, _ := strings.Cut(strings.ToLower(contentType), ";")
+	switch strings.TrimSpace(mediaType) {
+	case "text/plain", "application/x-www-form-urlencoded", "multipart/form-data":
+		return true
+	}
+	return false
 }
 
 // MaxImageBytes caps one pasted image (#279, #285). The client compresses to

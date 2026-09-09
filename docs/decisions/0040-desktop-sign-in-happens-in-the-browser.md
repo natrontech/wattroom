@@ -62,3 +62,17 @@ it lives.
   is told so and pointed at the download page; the link does nothing there.
 - Revisit when Electron 45 is stable: Touch ID and platform passkeys inside
   the shell would make this the fallback rather than the only door.
+
+## Amendment — the nonce proves the shell, not the request (2026-09-10, #1823)
+
+"The nonce is the security of it" was true of the *shell* and not of the
+endpoint. `POST /api/auth/desktop/redeem` is plain HTTP with no session to
+check, and a caller who holds both the token and the nonce is not necessarily
+the shell: an attacker who minted the pair in their own browser could put them
+in a `text/plain` form on their own page, and a victim's browser would post
+them without a preflight and be signed into the attacker's account. Two
+things close that, and both are now the rule: `httpx.DecodeStrict` refuses the
+three form encodings a browser sends without a preflight, for every handler,
+and redeem refuses a foreign `Origin` the way every mutating route behind a
+session already does. The nonce still does what it did — a victim's shell
+never redeems a token it did not ask for.

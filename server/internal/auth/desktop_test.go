@@ -127,3 +127,48 @@ func TestDesktopHandoffValidation(t *testing.T) {
 		}
 	}
 }
+
+// A valid token and nonce posted from another site — a <form> on an
+// attacker's page — must not sign the victim's browser into the attacker's
+// account (#1823): the nonce proves the SHELL, and a form is not the shell.
+func TestDesktopRedeemRefusesACrossSiteForm(t *testing.T) {
+	s := testService(t)
+	browser := signedInCookie(t, s)
+	rec := postJSON(t, s, "/api/auth/desktop/handoff", `{"nonce":"`+testNonce+`"}`, browser)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("handoff: %d %s", rec.Code, rec.Body.String())
+	}
+	var minted struct{ Token string }
+	if err := json.Unmarshal(rec.Body.Bytes(), &minted); err != nil || minted.Token == "" {
+		t.Fatalf("no token: %v %s", err, rec.Body.String())
+	}
+	body := `{"token":"` + minted.Token + `","nonce":"` + testNonce + `"}`
+	mux := http.NewServeMux()
+	s.registerDesktopRoutes(mux)
+	post := func(contentType, origin string) int {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/desktop/redeem", strings.NewReader(body+"=x"))
+		req.Header.Set("Content-Type", contentType)
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		return w.Code
+	}
+	// The form's own encoding, from the attacker's origin.
+	if code := post("text/plain", "https://evil.example"); code != http.StatusForbidden {
+		t.Fatalf("a cross-site text/plain form redeemed: %d", code)
+	}
+	// The same body claiming to be JSON, still from elsewhere.
+	if code := post("application/json", "https://evil.example"); code != http.StatusForbidden {
+		t.Fatalf("a cross-site JSON post redeemed: %d", code)
+	}
+	// And a form encoding from our own origin is still not a JSON body.
+	if code := post("application/x-www-form-urlencoded", ""); code != http.StatusBadRequest {
+		t.Fatalf("a form-encoded body decoded: %d", code)
+	}
+	// The token survived all three: the real shell can still redeem it.
+	if rec := postJSON(t, s, "/api/auth/desktop/redeem", body, nil); rec.Code != http.StatusOK {
+		t.Fatalf("the shell's own redeem after the refusals: %d %s", rec.Code, rec.Body.String())
+	}
+}
