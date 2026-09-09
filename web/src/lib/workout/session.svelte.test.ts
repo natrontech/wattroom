@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import {
 	createRideSession,
@@ -45,6 +45,55 @@ describe('createRideSession startedAt', () => {
 			startedAt: 5_000,
 		});
 		expect(session.startedAt.getTime()).toBe(5_000);
+	});
+});
+
+/** A sprint first, so the window is live the moment the ride starts. */
+const sprintWorkout: Workout = {
+	name: 'sprint then steady',
+	steps: [
+		{ type: 'sprint', seconds: 15 },
+		{ type: 'steady', seconds: 60, target: 0.6 },
+	],
+};
+
+describe('a sprint block', () => {
+	function sprintRide(singleSpeed = false) {
+		const trainer = new SimulatedTrainer();
+		const slope = vi.spyOn(trainer, 'setSimulation');
+		const erg = vi.spyOn(trainer, 'setTargetPower');
+		const session = createRideSession({
+			trainer,
+			workout: sprintWorkout,
+			ftp: 200,
+			sprint: () => ({ grade: 6, singleSpeed }),
+		});
+		return { session, slope, erg };
+	}
+
+	it('releases the trainer to slope instead of commanding ERG 0 W (#1529)', async () => {
+		const { session, slope, erg } = sprintRide();
+		await session.start();
+		pedal(session, 700, 110, 3);
+		expect(slope).toHaveBeenCalledWith(0);
+		// The bug: `info.targetWatts ?? 0` made a sprint indistinguishable from
+		// a guard's zero, and zero in ERG is a freewheel.
+		expect(erg).not.toHaveBeenCalledWith(0);
+	});
+
+	it('holds ftp × 2 on a single-speed setup, where slope has no range', async () => {
+		const { session, slope, erg } = sprintRide(true);
+		await session.start();
+		pedal(session, 700, 110, 3);
+		expect(erg).toHaveBeenCalledWith(400);
+		expect(slope).not.toHaveBeenCalled();
+	});
+
+	it('goes back to the workout target when the window closes', async () => {
+		const { session, erg } = sprintRide();
+		await session.start();
+		pedal(session, 700, 110, 20);
+		expect(erg).toHaveBeenCalledWith(120);
 	});
 });
 

@@ -1,4 +1,5 @@
 import { arbitrate } from '$lib/ble/arbitrate';
+import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
@@ -53,6 +54,13 @@ export interface RideOptions {
 	 * *right now* — and a sensor that has gone quiet has to lose on staleness.
 	 */
 	readings?: () => Partial<Record<SensorKind, SensorReading>>;
+	/**
+	 * The rider's sprint setup (#30/#41), read per sprint so a change on
+	 * /settings lands mid-ride. A `sprint` step carries no ERG target by
+	 * design — the trainer is released to slope for the window — and this path
+	 * used to collapse that into ERG 0 W, which is a freewheel (#1529).
+	 */
+	sprint?: () => { grade: number; singleSpeed: boolean };
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
 	onRecord?: (sample: {
 		second: number;
@@ -74,6 +82,10 @@ export function createRideSession({
 	now = Date.now,
 	startedAt: startedAtMs,
 	readings = () => ({}),
+	sprint = () => ({
+		grade: DEFAULT_PROFILE.sprintGrade,
+		singleSpeed: DEFAULT_PROFILE.singleSpeed,
+	}),
 	onRecord,
 }: RideOptions) {
 	const segments: Segment[] = flatten(workout);
@@ -150,7 +162,39 @@ export function createRideSession({
 			Math.abs(sample.watts - target) <= toleranceBand(target),
 	);
 
+	/**
+	 * No ERG target because this is a sprint — not because a guard is up. The
+	 * `?? 0` below folded both into zero, and zero in ERG is a freewheel: the
+	 * rider pedalled against nothing for the whole window (#1529).
+	 */
+	const sprinting = $derived(!info.done && info.segment?.kind === 'sprint');
+
+	/** True while the trainer is in slope for a sprint, so the flip happens once. */
+	let sprintMode = false;
+
 	function applyTarget() {
+		if (sprinting) {
+			// A sprint outranks the guards, for the reason the room gives
+			// (room/ride.svelte.ts): auto-pause is an INFERENCE that the rider
+			// left, a sprint is an announced effort they are about to answer.
+			if (sprintMode) return;
+			sprintMode = true;
+			const setup = sprint();
+			if (setup.singleSpeed) {
+				// Slope has no usable range on a single-speed setup (Zwift Cog),
+				// so the sprint runs as a target nobody holds instead (#30/#41).
+				void trainer.setTargetPower(ftp * 2);
+				return;
+			}
+			// Flat first, then the hill: the same two-step the room uses to get
+			// an FTMS trainer out of ERG before the grade lands.
+			void trainer.setSimulation(0);
+			setTimeout(() => {
+				if (sprintMode) void trainer.setSimulation(setup.grade);
+			}, 500);
+			return;
+		}
+		sprintMode = false;
 		void trainer.setTargetPower(target);
 	}
 
