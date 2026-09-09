@@ -1,1 +1,0 @@
-- A chat line you send while reading older messages no longer scrolls the log away from where you were; the "new messages" button remains the way back down.

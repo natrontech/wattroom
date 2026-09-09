@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.90] - 2026-09-09
+
+### Fixed
+
+- A chat line you send while reading older messages no longer scrolls the log away from where you were; the "new messages" button remains the way back down.
+
+### Security
+
+- The server now tells browsers to stay on HTTPS once they have seen it there, forbids any base-URL or plugin injection outright, and reports (without yet enforcing) a full content-security policy so any violation shows in the browser console before it can ever block a ride.
+
 ## [2026.09.89] - 2026-09-09
 
 ### Added
@@ -1737,7 +1747,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.89...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.90...HEAD
+[2026.09.90]: https://github.com/natrontech/wattroom/compare/2026.09.89...2026.09.90
 [2026.09.89]: https://github.com/natrontech/wattroom/compare/2026.09.88...2026.09.89
 [2026.09.88]: https://github.com/natrontech/wattroom/compare/2026.09.87...2026.09.88
 [2026.09.87]: https://github.com/natrontech/wattroom/compare/2026.09.86...2026.09.87
