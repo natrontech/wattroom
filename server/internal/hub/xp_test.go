@@ -15,12 +15,19 @@ type fakeXp struct {
 	sprints []string
 	tracks  []string
 	closed  []SessionClosed
+	games   []string
 }
 
 func (f *fakeXp) SprintWon(_, riderID string, _ time.Time) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sprints = append(f.sprints, riderID)
+}
+
+func (f *fakeXp) GameWon(_, riderID, mode string, _ time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.games = append(f.games, riderID+":"+mode)
 }
 
 func (f *fakeXp) TrackPlayed(_, riderID, ref string, _ time.Time) {

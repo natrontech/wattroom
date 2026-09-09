@@ -22,6 +22,7 @@ const (
 	sourceSession     = "session"
 	sourceAchievement = "achievement"
 	sourceSprintWin   = "sprint_win"
+	sourceGameWin     = "game_win"
 	sourceDjTrack     = "dj_track"
 	sourceCoached     = "coached"
 )

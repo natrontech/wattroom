@@ -57,14 +57,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// sprint's 4 Hz burst must not quadruple.
 		dt := now().Sub(lastTick)
 		lastTick = now()
-		interval := tickInterval
-		if sp := rm.sprint; sp != nil {
-			t := now()
-			if t.After(sp.startsAt.Add(-time.Second)) && t.Before(sp.endsAt.Add(time.Second)) {
-				interval = burstTick
-			}
-		}
-		timer.Reset(interval)
+		timer.Reset(rm.tickIntervalLocked(now()))
 		if len(rm.clients) == 0 {
 			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
 			// a session whose last rider closed the tab at minute 58 ends at
@@ -80,17 +73,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			rm.handOff(log, now, saver, ended)
 			continue
 		}
-		if rm.game != nil {
-			samples := make(map[string]int, len(rm.metrics))
-			for id, m := range rm.metrics {
-				samples[id] = m.Watts
-			}
-			rm.game.advance(now(), samples, rm.gameRosterLocked())
-			gs := rm.game.state(now())
-			rm.lastGame = &gs
-		} else {
-			rm.lastGame = nil
-		}
+		gameWinner := rm.advanceGameLocked(now())
 		// Drain a bounded slice per tick and CARRY the overflow — a burst
 		// above the per-tick cap used to vanish silently (#219).
 		chatNow := rm.chat
@@ -218,6 +201,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		rm.handOff(log, now, saver, ended)
 		if sprintWinner != "" && rm.xp != nil {
 			rm.xp.SprintWon(rm.slug, sprintWinner, now())
+		}
+		if gameWinner != "" && rm.xp != nil {
+			rm.xp.GameWon(rm.slug, gameWinner, rm.gameMode, now())
 		}
 
 		metricTicks.Inc()
@@ -391,4 +377,59 @@ func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *Sessio
 		ev.Riders = append(ev.Riders, SessionRider{ID: id, VoiceSeconds: int(rm.voiceMs[id] / 1000)})
 	}
 	return ev
+}
+
+// gameLinger keeps a finished game's podium on the tick as long as the
+// sprint keeps its own (#1579); then the room lets the game go, instead of
+// stapling "done" to every tick until a coach pressed end.
+const gameLinger = sprintLinger
+
+// tickIntervalLocked is the room's clock: 4 Hz through a sprint window —
+// the room's own, or a game's (#1578) — and 1 Hz otherwise. Caller holds rm.mu.
+func (rm *room) tickIntervalLocked(now time.Time) time.Duration {
+	inside := func(start, end time.Time) bool {
+		return now.After(start.Add(-time.Second)) && now.Before(end.Add(time.Second))
+	}
+	if sp := rm.sprint; sp != nil && inside(sp.startsAt, sp.endsAt) {
+		return burstTick
+	}
+	if w, ok := rm.game.(windowed); ok {
+		if start, end, live := w.sprintWindow(); live && inside(start, end) {
+			return burstTick
+		}
+	}
+	return tickInterval
+}
+
+// advanceGameLocked runs the game's tick and owns its ending (#1575, #1579):
+// the first tick that sees it done puts the winner on the timeline once and
+// names them for the XP ledger; gameLinger later the game is let go. Caller
+// holds rm.mu; the returned winner is handed to the keeper after the unlock.
+func (rm *room) advanceGameLocked(now time.Time) (winner string) {
+	if rm.game == nil {
+		rm.lastGame = nil
+		return ""
+	}
+	samples := make(map[string]int, len(rm.metrics))
+	for id, m := range rm.metrics {
+		samples[id] = m.Watts
+	}
+	rm.game.advance(now, samples, rm.gameRosterLocked())
+	gs := rm.game.state(now)
+	rm.lastGame = &gs
+	if !rm.game.done() {
+		return ""
+	}
+	if rm.gameDoneAt.IsZero() {
+		rm.gameDoneAt = now
+		if len(gs.Podium) > 0 {
+			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
+			winner = gs.Podium[0].RiderID
+		}
+		return winner
+	}
+	if now.Sub(rm.gameDoneAt) > gameLinger {
+		rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
+	}
+	return ""
 }

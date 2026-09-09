@@ -77,13 +77,16 @@ type GameState struct {
 	Round int    `json:"round,omitempty"`
 	// The shared line as a fraction of FTP (ramp modes), the called zone
 	// (lava), or the hole target pct (golf) — mode-dependent, one at a time.
-	LinePct       float64              `json:"linePct,omitempty"`
-	CalledZone    int                  `json:"calledZone,omitempty"`
-	RoundEndsAtMs int64                `json:"roundEndsAtMs,omitempty"`
-	MeterHidden   bool                 `json:"meterHidden,omitempty"`
-	RoomDistance  float64              `json:"roomDistance,omitempty"`
-	Riders        map[string]GameRider `json:"riders"`
-	Podium        []SprintScore        `json:"podium,omitempty"`
+	LinePct       float64 `json:"linePct,omitempty"`
+	CalledZone    int     `json:"calledZone,omitempty"`
+	RoundEndsAtMs int64   `json:"roundEndsAtMs,omitempty"`
+	// Sprint Roulette's window opens here (#1578): the length is random, so
+	// the client cannot derive the 3-2-1 from the end alone.
+	RoundStartsAtMs int64                `json:"roundStartsAtMs,omitempty"`
+	MeterHidden     bool                 `json:"meterHidden,omitempty"`
+	RoomDistance    float64              `json:"roomDistance,omitempty"`
+	Riders          map[string]GameRider `json:"riders"`
+	Podium          []SprintScore        `json:"podium,omitempty"`
 }
 
 // Control is a coach/owner command over the shared session (SPEC roles matrix:

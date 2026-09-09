@@ -32,6 +32,19 @@ func (g *sampledGame) withdraw(riderID string) {
 	}
 }
 
+// windowed is a mode with a sprint window of its own (#1578); the tick
+// bursts for it the way it does for the room's sprint.
+type windowed interface {
+	sprintWindow() (start, end time.Time, ok bool)
+}
+
+func (g *sampledGame) sprintWindow() (start, end time.Time, ok bool) {
+	if w, has := g.gameMode.(windowed); has {
+		return w.sprintWindow()
+	}
+	return time.Time{}, time.Time{}, false
+}
+
 func (g *sampledGame) advance(now time.Time, samples map[string]int, roster map[string]protocol.Rider) {
 	if g.done() {
 		return

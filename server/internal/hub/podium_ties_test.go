@@ -118,3 +118,79 @@ func TestStartGameNamesItsRefusal(t *testing.T) {
 		t.Fatal("end with no game said one ran")
 	}
 }
+
+// The tick bursts for a game's window as it does for the room's sprint (#1578).
+func TestTickBurstsForARouletteWindow(t *testing.T) {
+	rm := newRoom("burst")
+	if got := rm.tickIntervalLocked(gat(0)); got != tickInterval {
+		t.Fatalf("idle room ticks every %s", got)
+	}
+	if refusal := rm.startGame("sprint-roulette", gat(0)); refusal != "" {
+		t.Fatal(refusal)
+	}
+	// Past the first gap (20–60 s): the next advance arms a window.
+	rm.game.advance(gat(61), map[string]int{"a": 200}, backyardRoster())
+	w, isWindowed := rm.game.(windowed)
+	if !isWindowed {
+		t.Fatal("the sampled roulette does not expose its window")
+	}
+	start, end, ok := w.sprintWindow()
+	if !ok || !start.Equal(gat(61).Add(sprintKlaxon)) || !end.After(start) {
+		t.Fatalf("window: %v %v %v", start, end, ok)
+	}
+	if got := rm.game.state(gat(61)).RoundStartsAtMs; got != start.UnixMilli() {
+		t.Fatalf("the start did not ride the tick: %d", got)
+	}
+	if got := rm.tickIntervalLocked(start.Add(time.Second)); got != burstTick {
+		t.Fatalf("inside the window: %s", got)
+	}
+	if got := rm.tickIntervalLocked(end.Add(5 * time.Second)); got != tickInterval {
+		t.Fatalf("after the window: %s", got)
+	}
+}
+
+// A finished game is announced once, pays once, and is let go after the
+// linger — it used to staple "done" to every tick until the coach pressed
+// end (#1575, #1579).
+func TestFinishedGameIsAnnouncedOnceAndLetGo(t *testing.T) {
+	rm := newRoom("finish")
+	if refusal := rm.startGame("watt-golf", gat(0)); refusal != "" {
+		t.Fatal(refusal)
+	}
+	sampled, _ := rm.game.(*sampledGame)
+	g, _ := sampled.gameMode.(*golf)
+	if g == nil {
+		t.Fatal("not a sampled golf")
+	}
+	roster := backyardRoster()
+	rm.mu.Lock()
+	rm.seen = roster
+	rm.mu.Unlock()
+	g.joined = map[string]bool{"a": true, "b": true}
+	g.strokes = map[string]float64{"a": 3, "b": 9}
+	g.finished = true
+	g.buildPodium(roster)
+
+	rm.mu.Lock()
+	first := rm.advanceGameLocked(gat(1))
+	second := rm.advanceGameLocked(gat(2))
+	var won int
+	for _, ev := range rm.events.pending {
+		if ev.Verb == "won" {
+			won++
+			if ev.Actor != roster["a"].Name || ev.Subject != "watt-golf" {
+				t.Fatalf("won line: %+v", ev)
+			}
+		}
+	}
+	stillThere := rm.game != nil
+	rm.advanceGameLocked(gat(2 + int(gameLinger/time.Second) + 1))
+	gone := rm.game == nil && rm.lastGame == nil
+	rm.mu.Unlock()
+	if first != "a" || second != "" || won != 1 {
+		t.Fatalf("winner %q then %q, %d won lines", first, second, won)
+	}
+	if !stillThere || !gone {
+		t.Fatalf("linger: still there %v, gone after %v", stillThere, gone)
+	}
+}

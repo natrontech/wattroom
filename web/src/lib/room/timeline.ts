@@ -1,3 +1,4 @@
+import { gameMode } from '$lib/room/modes';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent, SessionRecap } from '$lib/protocol';
 
@@ -98,6 +99,9 @@ export function eventText(event: RoomEvent): string {
 			return `${subject} is starting`;
 		case 'ended':
 			return `${subject} ended`;
+		// A game's end (#1575): the subject is the mode's id, labelled here.
+		case 'won':
+			return `${event.actor} won ${gameMode(event.subject ?? '')?.label ?? subject}`;
 		// 'due' is the one line no server sends: the hub does not know the
 		// schedule, so each client derives the reminder from the same upcoming
 		// list the lounge card renders.

@@ -95,6 +95,8 @@ const MinRideSamples = 60
 type XpKeeper interface {
 	// The podium's first place, once per scored sprint moment.
 	SprintWon(slug, riderID string, at time.Time)
+	// The podium's first place, once per finished game (#1575).
+	GameWon(slug, riderID, mode string, at time.Time)
 	// A queued track reached its natural end; ref is unique to that play.
 	TrackPlayed(slug, riderID, ref string, at time.Time)
 	SessionClosed(ev SessionClosed)

@@ -240,4 +240,18 @@ describe('every verb the server sends renders', () => {
 		// The quiet degrade is the point — only unknown verbs may use it.
 		expect(eventText(event({ verb: 'teleported' }))).toBe('');
 	});
+
+	it("names who won which game, with the mode's label (#1575)", () => {
+		expect(
+			eventText({
+				id: 'g1',
+				kind: 'session',
+				verb: 'won',
+				actor: 'Ada',
+				subject: 'watt-golf',
+				count: 1,
+				at: 0,
+			} as never),
+		).toBe('Ada won Watt Golf');
+	});
 });

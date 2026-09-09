@@ -145,6 +145,8 @@ func (rm *room) startGame(mode string, now time.Time) string {
 		return refuseNoSuchMode
 	}
 	rm.game = next
+	rm.gameMode = mode
+	rm.gameDoneAt = time.Time{}
 	// The game's own roster (#1581): the tick merges rm.seen into it, so a
 	// session start — which resets rm.seen for the new ride — does not blank
 	// the names and FTPs the running game scores against.
@@ -157,7 +159,7 @@ func (rm *room) endGame() bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	running := rm.game != nil
-	rm.game = nil
+	rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
 	return running
 }
 

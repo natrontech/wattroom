@@ -124,9 +124,19 @@ func (r *roulette) state(now time.Time) protocol.GameState {
 	// The klaxon and window ride the existing sprint anchors on the tick via
 	// RoundEndsAtMs; the surprise is the point, so nextAt is never exposed.
 	if r.window != nil {
+		out.RoundStartsAtMs = r.window.startsAt.UnixMilli()
 		out.RoundEndsAtMs = r.window.endsAt.UnixMilli()
 	}
 	return out
+}
+
+// sprintWindow is the live window, for the tick's burst (#1578): the room's
+// own sprint runs at 4 Hz and this mode's battles ran at 1 Hz.
+func (r *roulette) sprintWindow() (start, end time.Time, ok bool) {
+	if r.window == nil {
+		return time.Time{}, time.Time{}, false
+	}
+	return r.window.startsAt, r.window.endsAt, true
 }
 
 func (r *roulette) done() bool { return r.finished }
