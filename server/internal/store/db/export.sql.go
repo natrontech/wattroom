@@ -174,6 +174,41 @@ func (q *Queries) ExportUserFriends(ctx context.Context, requesterID pgtype.UUID
 	return items, nil
 }
 
+const exportUserIdentities = `-- name: ExportUserIdentities :many
+select provider, provider_user_id, created_at
+from identities
+where user_id = $1
+order by created_at
+`
+
+type ExportUserIdentitiesRow struct {
+	Provider       string
+	ProviderUserID string
+	CreatedAt      pgtype.Timestamptz
+}
+
+// The credential set's provider half (#1826): which provider, the id it knows
+// the rider by, and when it was connected — never a token, sealed or not.
+func (q *Queries) ExportUserIdentities(ctx context.Context, userID pgtype.UUID) ([]ExportUserIdentitiesRow, error) {
+	rows, err := q.db.Query(ctx, exportUserIdentities, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserIdentitiesRow
+	for rows.Next() {
+		var i ExportUserIdentitiesRow
+		if err := rows.Scan(&i.Provider, &i.ProviderUserID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserMedals = `-- name: ExportUserMedals :many
 select m.kind, m.awarded_at, rm.name as room_name, r.started_at as ride_started_at
 from medals m
@@ -207,6 +242,41 @@ func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]E
 			&i.RoomName,
 			&i.RideStartedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportUserPasskeys = `-- name: ExportUserPasskeys :many
+select name, created_at, last_used_at
+from passkeys
+where user_id = $1
+order by created_at
+`
+
+type ExportUserPasskeysRow struct {
+	Name       string
+	CreatedAt  pgtype.Timestamptz
+	LastUsedAt pgtype.Timestamptz
+}
+
+// The passkeys' public metadata (#1826): the rider's name for each, when it
+// was added and last used — never the credential record itself.
+func (q *Queries) ExportUserPasskeys(ctx context.Context, userID pgtype.UUID) ([]ExportUserPasskeysRow, error) {
+	rows, err := q.db.Query(ctx, exportUserPasskeys, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserPasskeysRow
+	for rows.Next() {
+		var i ExportUserPasskeysRow
+		if err := rows.Scan(&i.Name, &i.CreatedAt, &i.LastUsedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
