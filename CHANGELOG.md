@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.96] - 2026-09-10
+
+### Changed
+
+- Removing your recovery email now asks first, in the same words the account-delete does, since it also removes the only way back in and every account alarm; the delete-account warning now says the rooms you own go with you for everyone in them; the privacy page lists the third strictly-necessary cookie a passkey sign-in sets; and the "address removed" alarm is only sent once the removal actually happened.
+
 ## [2026.09.95] - 2026-09-10
 
 ### Fixed
@@ -1810,7 +1816,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.95...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.96...HEAD
+[2026.09.96]: https://github.com/natrontech/wattroom/compare/2026.09.95...2026.09.96
 [2026.09.95]: https://github.com/natrontech/wattroom/compare/2026.09.94...2026.09.95
 [2026.09.94]: https://github.com/natrontech/wattroom/compare/2026.09.93...2026.09.94
 [2026.09.93]: https://github.com/natrontech/wattroom/compare/2026.09.92...2026.09.93
