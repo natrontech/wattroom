@@ -53,21 +53,34 @@ func (s *Service) RemindLoop(ctx context.Context) {
 // marked, and the alternative — leaving it unclaimed until a send succeeds —
 // is how one unreachable mail provider turns into a room full of duplicates.
 func (s *Service) remindDue(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	due, err := s.store.Queries.ClaimSessionsToRemind(ctx)
+	claimCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	due, err := s.store.Queries.ClaimSessionsToRemind(claimCtx)
+	cancel()
 	if err != nil {
 		s.log.Error("claiming sessions to remind failed", "err", err)
 		return
 	}
 	for _, session := range due {
-		room, err := s.store.Queries.GetRoomByID(ctx, session.RoomID)
+		// A budget per session, not one minute shared across the batch
+		// (audit 2026-09-09): a popular slot on a slow mail provider ran the
+		// shared budget out partway down the list, and every session after
+		// it was claimed and never mailed.
+		one, cancel := context.WithTimeout(ctx, reminderBudget)
+		room, err := s.store.Queries.GetRoomByID(one, session.RoomID)
 		if err != nil {
 			s.log.Error("reminder room lookup failed", "err", err, "session", session.ID)
+			cancel()
 			continue
 		}
 		s.log.Info("session reminder", "room", room.Slug, "workout", session.WorkoutName)
-		s.sessionMail(ctx, room, session.WorkoutName, session.StartsAt.Time, noActor, sessionReminder)
+		s.sessionMail(one, room, session.WorkoutName, session.StartsAt.Time, noActor, sessionReminder)
+		cancel()
+	}
+	if len(due) > 0 {
+		s.log.Info("session reminders claimed", "sessions", len(due))
 	}
 }
+
+// reminderBudget bounds one session's reminder mail — every target, at the
+// mailer's own per-request timeout.
+const reminderBudget = 2 * time.Minute

@@ -140,6 +140,10 @@ type Hub struct {
 	now    func() time.Time
 	mu     sync.Mutex
 	rooms  map[string]*room
+	// Session saves and recaps in flight: fire-and-forget from the tick, but
+	// not from the process — Drain waits on them before the server exits
+	// (audit 2026-09-09).
+	handoffs sync.WaitGroup
 	// slug → identity → who; fed by LiveKit webhooks (#149) and reconciled
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
@@ -435,6 +439,7 @@ func (h *Hub) room(slug string) *room {
 	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = newRoom(slug)
+		rm.pending = &h.handoffs
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
@@ -456,6 +461,25 @@ func (h *Hub) room(slug string) *room {
 		}
 	}
 	return rm
+}
+
+// Drain waits up to timeout for every session save and recap the ticks have
+// handed off, and reports whether they all finished. The deploy replaces the
+// container the moment the riding gauge drops — which is the moment a
+// session ends and its save starts retrying — so the process has to wait for
+// its own hand-offs or the whole room's rides go with it (audit 2026-09-09).
+func (h *Hub) Drain(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		h.handoffs.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // launchRoom starts the room's tick loop under supervision (#651): a panic

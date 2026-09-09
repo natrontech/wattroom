@@ -16,6 +16,26 @@ func (f saverFunc) SaveSession(_ context.Context, _, _, _ string, startedAt time
 	f(startedAt, riders)
 }
 
+// A shutdown waits for the saver (audit 2026-09-09): the deploy replaces the
+// container the moment the riding gauge drops, which is exactly when a
+// session's save starts retrying, and an untracked goroutine died with it.
+func TestDrainWaitsForTheSessionSave(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	rm := h.room("drain")
+	release := make(chan struct{})
+	saver := saverFunc(func(time.Time, []RiderRecord) { <-release })
+	rm.handOff(slog.New(slog.DiscardHandler), time.Now, saver, &sessionEnd{
+		records: []RiderRecord{{Rider: protocol.Rider{ID: "jan"}}},
+	})
+	if h.Drain(50 * time.Millisecond) {
+		t.Fatal("Drain returned while the save was still running")
+	}
+	close(release)
+	if !h.Drain(time.Second) {
+		t.Fatal("Drain did not return once the save finished")
+	}
+}
+
 // An empty room still keeps time (audit 2026-09-09). The last rider closing
 // the tab at minute 58 of 60 used to park the session: the tick skipped
 // everything below its roster check, the phase never crossed to done, and

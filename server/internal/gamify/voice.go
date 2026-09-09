@@ -76,7 +76,12 @@ func runVoiceClock(ctx context.Context, voice VoiceSource, ledger loungeLedger, 
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			clock.tick(ctx, voice.VoiceRiderIDs(), now())
+			// Bounded by the poll it runs on: a hung ledger write used to
+			// stall the clock itself, so nobody's five minutes completed
+			// again (audit 2026-09-09).
+			tickCtx, cancel := context.WithTimeout(ctx, voicePoll)
+			clock.tick(tickCtx, voice.VoiceRiderIDs(), now())
+			cancel()
 		}
 	}
 }

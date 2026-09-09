@@ -35,8 +35,9 @@ type sweep struct {
 
 func sweeps() []sweep {
 	return []sweep{{
-		// #1163: the query and its index both existed; only the caller was
-		// missing, so expired sessions accumulated forever. They authenticate
+		// Moved here from a sweep of its own in main (#736 added the caller,
+		// #1163 gathered the daily sweeps; the two ran side by side until
+		// audit 2026-09-09). They authenticate
 		// nothing — GetSessionUser filters on expiry — but a row is a record
 		// of when a rider signed in, and nothing promised to keep those.
 		name: "expired sessions",

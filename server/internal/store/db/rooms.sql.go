@@ -14,9 +14,14 @@ import (
 const claimSessionsToRemind = `-- name: ClaimSessionsToRemind :many
 update scheduled_sessions
 set reminded_at = now()
-where reminded_at is null
-  and starts_at > now()
-  and starts_at <= now() + interval '1 hour'
+where id in (
+    select id from scheduled_sessions
+    where reminded_at is null
+      and starts_at > now()
+      and starts_at <= now() + interval '1 hour'
+    order by starts_at
+    limit 100
+)
 returning id, room_id, workout_name, starts_at
 `
 
@@ -37,6 +42,10 @@ type ClaimSessionsToRemindRow struct {
 // the window and is simply never reminded. That is deliberate: a burst of
 // "starts in an hour" for sessions that began three hours ago is worse than
 // silence.
+//
+// Bounded (audit 2026-09-09): the claim is final, so a batch the minute's
+// budget cannot mail is lost, not late. A hundred a tick against an hour's
+// window leaves fifty-nine more ticks for the rest.
 func (q *Queries) ClaimSessionsToRemind(ctx context.Context) ([]ClaimSessionsToRemindRow, error) {
 	rows, err := q.db.Query(ctx, claimSessionsToRemind)
 	if err != nil {

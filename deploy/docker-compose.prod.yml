@@ -3,6 +3,9 @@
 services:
   wattroom:
     image: ghcr.io/natrontech/wattroom:${WATTROOM_TAG:?set WATTROOM_TAG in .env — the release this VM is pinned to}
+    # Above the server's drainGrace (main.go): a stop waits for the ride
+    # saver's whole retry policy before the kill lands (audit 2026-09-09).
+    stop_grace_period: 180s
     restart: unless-stopped
     env_file: .env
     environment:
