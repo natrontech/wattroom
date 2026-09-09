@@ -70,6 +70,12 @@
 					     controls that are correctly absent (ux.md). -->
 					Nothing is running yet. This is where the room's numbers appear the moment
 					someone starts the session — follow any rider from the crew strip.
+				{:else if !room.canControl}
+					<!-- A member cannot start anything (docs/SPEC.md roles), and
+					     SessionControls renders nothing for them — so the sentence
+					     must not name a button that is not there (audit 2026-09-09). -->
+					Nothing is running yet. This is where the room's numbers appear the moment
+					the coach starts the session — pair your trainer below so you're ready.
 				{:else}
 					Nothing is running yet. Get your equipment paired below, then start
 					when you're ready.

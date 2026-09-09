@@ -8,6 +8,7 @@ import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessagesSquare from '@lucide/svelte/icons/messages-square';
 import Settings from '@lucide/svelte/icons/settings';
 import Users from '@lucide/svelte/icons/users';
+import type { Icon } from '$lib/icons';
 
 /**
  * The app's destinations, and the places inside a room. Both live in the one
@@ -32,9 +33,22 @@ import Users from '@lucide/svelte/icons/users';
  * not reachable when you want it. It is not the "second half" of any page
  * here, which is what the retirements above all had in common.
  */
-export const pages = [
+export const pages: {
+	href: string;
+	label: string;
+	icon: Icon;
+	/** Pages this row is the parent of (ADR-0020, rule 1): lit while you are there. */
+	covers?: string[];
+}[] = [
 	{ href: '/home', label: 'Home', icon: House },
-	{ href: '/workouts', label: 'Workouts', icon: ChartColumn },
+	{
+		href: '/workouts',
+		label: 'Workouts',
+		icon: ChartColumn,
+		// A ride and a ramp test are started from Workouts, so Workouts stays
+		// lit under them — the column used to go dark (audit 2026-09-09).
+		covers: ['/ride', '/ramp'],
+	},
 	{ href: '/history', label: 'Rides', icon: History },
 	{ href: '/music', label: 'Music', icon: Music },
 	{ href: '/friends', label: 'Friends', icon: Users },
@@ -88,7 +102,11 @@ export function placesFor(narrow: boolean) {
 
 /** Which destination a path lights up. */
 export function activeHref(pathname: string): string | undefined {
-	return pages.find((p) => pathname.startsWith(p.href))?.href;
+	return pages.find(
+		(p) =>
+			pathname.startsWith(p.href) ||
+			p.covers?.some((c) => pathname.startsWith(c)),
+	)?.href;
 }
 
 /**

@@ -212,7 +212,13 @@
 				><Radio size={15} /> {headline.cta}</a
 			>
 		{/if}
-		<a href="/workouts" class="btn btn-secondary {headline ? '' : 'btn-lg'}"
+		<!-- Before the first room, the room is the big button (ADR-0010,
+		     ux.md's empty-state rule): the landing page promised one, and the
+		     largest button here used to send them to a workout list instead
+		     (audit 2026-09-09). -->
+		<a
+			href="/workouts"
+			class="btn btn-secondary {headline || !rooms?.length ? '' : 'btn-lg'}"
 			><ChartColumn size={15} /> Ride solo</a
 		>
 		{#if plannable.length > 1}
@@ -246,7 +252,9 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
-			<button onclick={() => (opening = true)} class="btn btn-secondary"
+			<button
+				onclick={() => (opening = true)}
+				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
 				><Plus size={15} /> Open a room</button
 			>
 		{/if}
@@ -390,8 +398,17 @@
 					{:else}
 						<p class="text-muted mt-3 text-sm">
 							{#if rooms.length}
-								Nobody's around right now. Your rooms are quiet — the first
-								rider to walk in shows up here.
+								Nobody's around right now. The rooms you can walk into are quiet
+								— the first rider to walk in shows up here.
+							{:else if ownCrew}
+								Nobody's around yet — your crew has no rooms; open one and it
+								gets a place to appear.
+							{:else if presence.crews.length}
+								<!-- Invited into a crew with no rooms yet: opening one would
+								     make a crew of their own, not a room in this one
+								     (audit 2026-09-09). -->
+								Nobody's around yet — the crew has no rooms; its owner or an admin
+								opens the first one, and it shows up here.
 							{:else}
 								Nobody's around yet — open your first room and your crew gets a
 								place to appear.
@@ -470,10 +487,14 @@
 							— it shows up here, and in everyone's calendar.
 						</p>
 					{/if}
-					<!-- Your own feed, under the list it mirrors (ADR-0021, #1374). -->
-					<div class="mt-3">
-						<CalendarFeed />
-					</div>
+					<!-- Your own feed, under the list it mirrors (ADR-0021, #1374) —
+					     once there is a room to plan in; a subscription to nothing,
+					     with its key warning, is noise on the screen meant to teach. -->
+					{#if rooms.length}
+						<div class="mt-3">
+							<CalendarFeed />
+						</div>
+					{/if}
 				</section>
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here

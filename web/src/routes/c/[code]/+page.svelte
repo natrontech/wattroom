@@ -70,9 +70,7 @@
 				<p class="text-muted mt-2 text-sm">
 					This crew removed you. Its code will not let you back in.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6"
-					>Back to your crews</a
-				>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to Home</a>
 			{:else}
 				<p class="text-muted mt-2 text-sm">
 					You have been invited to ride with this crew{data.crew.members > 1
@@ -109,7 +107,7 @@
 			<a
 				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to your crews</a
+				>Back to Home</a
 			>
 		{/if}
 	</div>

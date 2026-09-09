@@ -149,7 +149,7 @@
 		>
 	</div>
 	{#if showAv}
-		<div class="mt-2 flex items-center gap-1">
+		<div class="mt-2 flex flex-wrap items-center gap-1">
 			{#if !inVoice}
 				<!-- The way in is a labelled button, not two greyed icons that
 				     only LOOK like a mic and a camera: a control that does
@@ -173,6 +173,15 @@
 					>
 				{/if}
 				<QuickAudio compact />
+				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting'}
+					<!-- The promise at the moment of the decision: AV is transit-only
+					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said
+					     on the marketing page and in settings, never here — where a
+					     rider first opens a microphone into a room (audit 2026-09-09). -->
+					<p class="text-muted/70 basis-full px-1 text-[10px]">
+						Never recorded. Your mic opens when you speak.
+					</p>
+				{/if}
 			{:else}
 				<!-- Voice, camera, screen, sound and the way out — here and
 				     nowhere else. The people column and the lounge header each
