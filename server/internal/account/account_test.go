@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 type harness struct {
 	mux   *http.ServeMux
 	store *store.Store
+	svc   *Service
 	users *testx.Users
 }
 
@@ -57,7 +59,7 @@ func setup(t *testing.T) *harness {
 	svc := New(st, users, slog.New(slog.DiscardHandler))
 	svc.SetCrews(rooms.New(st, users, slog.New(slog.DiscardHandler)))
 	svc.Register(mux)
-	return &harness{mux: mux, store: st, users: users}
+	return &harness{mux: mux, store: st, svc: svc, users: users}
 }
 
 // call runs one request as a user ("" = signed out) and returns the recorder,
@@ -322,10 +324,29 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	h.sendDm(t, "alice", "bob", "see you at 7")
 	h.sendDm(t, "bob", "alice", "bring legs")
 	h.sendDm(t, "bob", "carol", "unrelated")
+	// Alice's Strava grant is handed back with the purge (#1825). Only hers:
+	// the row counts below keep bob at one identity, and a purge that revoked
+	// anyone else's would show up in the fake as a foreign row.
+	if err := h.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
+		Provider: "strava", ProviderUserID: "strava-alice", UserID: h.id("alice"),
+	}); err != nil {
+		t.Fatalf("strava identity: %v", err)
+	}
+	revoker := &fakeRevoker{}
+	h.svc.SetStravaRevoker(revoker)
 
 	rec := h.call(t, "alice", http.MethodDelete, "/api/me")
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("delete: %d %s", rec.Code, rec.Body.String())
+	}
+
+	// The grant went back — alice's alone — after the commit, detached.
+	deadline := time.Now().Add(2 * time.Second)
+	for len(revoker.all()) == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := revoker.all(); len(got) != 1 || got[0].ProviderUserID != "strava-alice" {
+		t.Errorf("revoked grants after alice's purge: %+v", got)
 	}
 
 	// Alice is gone from every table — including the pair rows she shared with bob.
@@ -607,4 +628,23 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	if strings.Contains(files["friends.json"], store.UUIDString(h.id("bob"))) {
 		t.Errorf("the export carries another rider's account id:\n%s", files["friends.json"])
 	}
+}
+
+// fakeRevoker records what a purge handed back to Strava.
+type fakeRevoker struct {
+	mu      sync.Mutex
+	revoked []db.Identity
+}
+
+func (f *fakeRevoker) RevokeGrant(_ context.Context, ident db.Identity) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.revoked = append(f.revoked, ident)
+	return nil
+}
+
+func (f *fakeRevoker) all() []db.Identity {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]db.Identity(nil), f.revoked...)
 }

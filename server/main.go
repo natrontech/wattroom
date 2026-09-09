@@ -170,8 +170,10 @@ func main() {
 		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
 		uploader := strava.New(st, log, keys)
 		if uploader != nil {
-			// Disconnecting Strava hands the grant back, not just our row (#783).
+			// Disconnecting Strava hands the grant back, not just our row (#783);
+			// so does deleting the account (#1825).
 			authService.SetStravaRevoker(uploader)
+			accountService.SetStravaRevoker(uploader)
 			// A delivery abandoned by a restart or an outage is retried from
 			// its durable record rather than lost with the goroutine (#799).
 			uploader.Sweep(ctx)

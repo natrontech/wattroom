@@ -1,0 +1,1 @@
+- Deleting your account now also removes WattRoom from your Strava's authorized apps, the way disconnecting Strava already did — a full purge no longer leaves the app listed there.

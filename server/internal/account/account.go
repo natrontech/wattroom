@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -46,13 +47,25 @@ type CrewReleaser interface {
 	ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) error
 }
 
+// GrantRevoker hands a third-party grant back — the seam auth uses for a
+// disconnect (server/internal/strava). A purge that dropped our row while
+// Strava still listed the app told the rider something untrue (#1825).
+type GrantRevoker interface {
+	RevokeGrant(ctx context.Context, ident db.Identity) error
+}
+
 type Service struct {
 	store    *store.Store
 	sessions Sessions
 	log      *slog.Logger
 	alerter  Alerter
 	crews    CrewReleaser
+	revoker  GrantRevoker
 }
+
+// SetStravaRevoker wires the uploader in after construction, like SetCrews.
+// Absent, a delete still purges the row.
+func (s *Service) SetStravaRevoker(r GrantRevoker) { s.revoker = r }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
 	return &Service{store: st, sessions: sessions, log: log}
@@ -338,12 +351,30 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Read before the purge: after it the row is gone and there is nothing
+	// left to hand back. The privacy page promises a full purge, and WattRoom
+	// listed on the rider's Strava for ever was not one (#1825).
+	strava, err := s.store.Queries.GetUserIdentity(r.Context(), db.GetUserIdentityParams{UserID: user.ID, Provider: "strava"})
+	hasStrava := err == nil
 	if err := s.purge(r.Context(), user.ID); err != nil {
 		httpx.Fail(w, s.log, "account delete failed", err, "The deletion did not complete. Nothing was removed — try again.")
 		return
 	}
 	// Log the fact, never the identity details: the account is gone.
 	s.log.Info("account deleted", "user", store.UUIDString(user.ID))
+	// The grant goes back after the commit, detached and best-effort, the
+	// disconnect's own posture: Strava being down must not fail a deletion
+	// that already happened, and a failure is a warning, never a rider.
+	if hasStrava && s.revoker != nil {
+		revoker, ident := s.revoker, strava
+		safego.Go(s.log, "strava revoke after delete", func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := revoker.RevokeGrant(ctx, ident); err != nil {
+				s.log.Warn("strava grant not revoked upstream after delete", "err", err)
+			}
+		})
+	}
 	// The receipt goes to the address on the row read before the purge — after
 	// it there is no row, and the mail would have no recipient. Fire-and-forget
 	// inside notify, so a mail provider cannot fail a deletion that already
