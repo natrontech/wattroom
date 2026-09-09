@@ -95,10 +95,26 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 	}
+	// The crews in their own right (#1476): a crew with no rooms is still a
+	// crew, and a client that only knew crews through rooms lost it.
+	crewRows, err := s.store.Queries.ListCrewsFor(r.Context(), user.ID)
+	if err != nil {
+		s.log.Error("list crews failed", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "Your rooms could not be loaded.")
+		return
+	}
+	crews := make([]roomCrewJSON, 0, len(crewRows))
+	for _, c := range crewRows {
+		crews = append(crews, roomCrewJSON{
+			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
+			ImageURL: crewImageURL(c.ID, c.HasImage), Code: c.Code,
+			Role: crewRoleWord(c.Owned, c.Admin),
+		})
+	}
 	// maxOwned rides the list so the frontend gates on the server's number
 	// instead of its own copy (#603) — a hint that disagrees with what the
 	// POST will do is worse than no hint.
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out, "maxOwned": maxOwnedRooms})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rooms": out, "crews": crews, "maxOwned": maxOwnedRooms})
 }
 
 // handleGet renders differently by membership: members get everything (the

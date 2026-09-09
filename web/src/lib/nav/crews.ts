@@ -15,9 +15,18 @@ import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
 
 const CHOSEN = 'wattroom.crew.v1';
 
-/** The crews the room list mentions, once each, in the order they appear. */
-export function crewsOf(rooms: readonly RailRoom[]): RoomCrew[] {
+/**
+ * Every crew you are in, once each: the ones the server lists in their own
+ * right first (#1476 — a crew with no rooms is still a crew, and deriving
+ * crews from rooms made it vanish with its last room), then any a room
+ * mentions that the list somehow does not.
+ */
+export function crewsOf(
+	rooms: readonly RailRoom[],
+	known: readonly RoomCrew[] = [],
+): RoomCrew[] {
 	const seen = new Map<string, RoomCrew>();
+	for (const crew of known) if (!seen.has(crew.id)) seen.set(crew.id, crew);
 	for (const room of rooms) {
 		if (room.crew && !seen.has(room.crew.id)) seen.set(room.crew.id, room.crew);
 	}

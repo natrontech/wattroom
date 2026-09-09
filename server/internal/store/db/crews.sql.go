@@ -615,6 +615,7 @@ func (q *Queries) ListCrewRoomSlugs(ctx context.Context, crewID pgtype.UUID) ([]
 }
 
 const listCrewRoomsFor = `-- name: ListCrewRoomsFor :many
+
 with mine as (
     select cr.crew_id from crew_roles cr where cr.user_id = $1 and cr.role in ('member', 'admin')
     union
@@ -654,6 +655,7 @@ type ListCrewRoomsForRow struct {
 	Administers  bool
 }
 
+// an engineering bound (#1416): a rider is in a handful of crews
 // The crew's rooms you hold NO membership in, for the sidebar (#1149): a
 // crew's list carries rooms you cannot enter and rooms you administer
 // without reading, and a row has to say which without being opened.
@@ -683,6 +685,63 @@ func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]L
 			&i.CrewCode,
 			&i.Enterable,
 			&i.Administers,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewsFor = `-- name: ListCrewsFor :many
+select c.id, c.name, c.icon,
+       (c.image_set_at is not null)::boolean as has_image,
+       coalesce(c.code, '')::text as code,
+       (c.owner_id = $1)::boolean as owned,
+       exists (select 1 from crew_roles cr
+               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
+from crews c
+where c.owner_id = $1
+   or exists (select 1 from crew_roles cr
+              where cr.crew_id = c.id and cr.user_id = $1 and cr.role in ('member', 'admin'))
+order by c.created_at
+limit 100
+`
+
+type ListCrewsForRow struct {
+	ID       pgtype.UUID
+	Name     string
+	Icon     string
+	HasImage bool
+	Code     string
+	Owned    bool
+	Admin    bool
+}
+
+// Every crew you are in, rooms or none (#1476). The client used to derive
+// its crews from the room list, and a crew whose last room was deleted
+// vanished from the sidebar — its code, its people and its Leave with it,
+// while the server still held everyone's standing in it.
+func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListCrewsForRow, error) {
+	rows, err := q.db.Query(ctx, listCrewsFor, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewsForRow
+	for rows.Next() {
+		var i ListCrewsForRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Icon,
+			&i.HasImage,
+			&i.Code,
+			&i.Owned,
+			&i.Admin,
 		); err != nil {
 			return nil, err
 		}

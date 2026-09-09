@@ -1,0 +1,1 @@
+- A crew whose last room was deleted no longer vanishes from the sidebar: its code, its people, its settings and the way to leave it stay reachable, and its owner's next room opens in it.

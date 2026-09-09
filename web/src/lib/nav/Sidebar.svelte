@@ -97,7 +97,7 @@
 	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one
 	// crew's rooms at a time, chosen here and remembered, with the room you
 	// are standing in pinned above the list when it belongs to another crew.
-	const crews = $derived(crewsOf(rooms));
+	const crews = $derived(crewsOf(rooms, presence.crews));
 	const crew = $derived(
 		currentCrew(crews, chosenCrew.id, rooms, connectedSlug),
 	);
