@@ -16,6 +16,8 @@ export interface BufferedSample {
 	watts: number;
 	cadence: number;
 	heartRate: number;
+	/** The trim this second was ridden at (#1530) — 1 for a ride with no trim. */
+	bias?: number;
 	/** ms epoch */
 	at: number;
 }

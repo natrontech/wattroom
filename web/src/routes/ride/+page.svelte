@@ -247,6 +247,10 @@
 				watts: sample.watts,
 				cadence: sample.cadence,
 				hr: sample.heartRate,
+				// The trim this second was ridden at (#1530): without it the
+				// server re-scores the ride against the workout as written and
+				// hands back an execution the rider never saw.
+				bias: sample.bias,
 			})),
 		}).then((outcome) => {
 			saving = false;

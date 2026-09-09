@@ -126,6 +126,14 @@ export function createRideSession({
 		watts: number;
 		cadence: number;
 		heartRate: number;
+		/**
+		 * The trim this second was ridden at (#1530). The live score bands the
+		 * BIASED target; the server re-scores the saved ride and bands whatever
+		 * bias each sample carries — so a ride that never sends one is scored
+		 * against the workout as written, and a rider who trims to 95 % reads
+		 * 100 % on the summary and 93 % on the ride's own page.
+		 */
+		bias: number;
 	}[] = [];
 	let recordedSeconds = 0;
 	// The wall-clock second the record last admitted a sample for: a trainer
@@ -238,6 +246,7 @@ export function createRideSession({
 				cadence: Math.max(0, Math.round(next.cadence)),
 				// Reaches the .fit export now that a strap can be paired (#11, #44).
 				heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
+				bias,
 			};
 			recording.push(recorded);
 			onRecord?.(recorded);

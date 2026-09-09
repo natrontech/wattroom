@@ -153,6 +153,41 @@ func rideBodyAt(seconds, watts int, start time.Time) string {
 		seconds, start.Format(time.RFC3339), strings.Join(samples, ","))
 }
 
+// A ride trimmed to 90 % scores against the target the rider was actually
+// given (#1530). The live meter bands the biased target, so a rider holding
+// 180 W on a 200 W block trimmed to 90 % reads 100 % all session; this side
+// re-scored the workout as written and handed back 0 %, which is the number
+// the ride's own page showed.
+func TestSoloRideScoresTheRidersOwnTrim(t *testing.T) {
+	h := setup(t)
+
+	samples := make([]string, 120)
+	for i := range samples {
+		// 0.9 × (0.8 × 250 W) = 180 W: dead on the trimmed target, and well
+		// outside the ±10 W band around the untrimmed 200 W.
+		samples[i] = `{"watts":180,"cadence":90,"bias":0.9}`
+	}
+	body := fmt.Sprintf(
+		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":120,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
+		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		strings.Join(samples, ","))
+
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("create: %d %v", status, got)
+	}
+	if execution, _ := got["execution"].(float64); execution < 0.99 {
+		t.Fatalf("a ride held on its own trimmed target scored %v, not 100 %%: %v", got["execution"], got)
+	}
+
+	// And a trim outside what the rider could have set is refused at the
+	// boundary rather than clamped silently (errors.md).
+	out := strings.ReplaceAll(body, `"bias":0.9`, `"bias":2.5`)
+	if status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", out); status != http.StatusBadRequest {
+		t.Fatalf("bias out of range: %d %v", status, got)
+	}
+}
+
 // The list is paged by start (#1549): the second page begins strictly
 // before the oldest row the client holds.
 func TestRideListPagesByStart(t *testing.T) {
