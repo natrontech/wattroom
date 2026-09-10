@@ -27,6 +27,7 @@
 	import { boardPanel } from '$lib/board/panel.svelte';
 	import { learn, shapeOf } from '$lib/board/shapes.svelte';
 	import { previewing } from '$lib/sound/board.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 
 	let {
 		mine,
@@ -50,8 +51,19 @@
 	/** Which pad is being dragged, and which one it is hovering. */
 	let dragged = $state<number | null>(null);
 	let over = $state<number | null>(null);
-	/** The clip a confirm is standing over — a delete is not undoable. */
-	let deleting = $state<Clip | null>(null);
+	// A confirm, not the undo toast errors.md prefers: the audio goes with
+	// the row and the browser never kept the file, so there is nothing to
+	// put back (see `remove` in clips.svelte). The app's own dialog (#1963):
+	// the bespoke block took no focus and answered no Escape.
+	async function confirmDelete(clip: Clip) {
+		const ok = await confirm({
+			title: `Delete ${clip.name}?`,
+			body: 'The audio goes with it — this cannot be undone.',
+			action: 'Delete',
+			cancel: 'Keep it',
+		});
+		if (ok) void remove(clip.id);
+	}
 
 	const pads = $derived(
 		Array.from({ length: board.padCount }, (_, i) => ({
@@ -118,7 +130,7 @@
 			{
 				label: 'Delete clip',
 				danger: true,
-				onSelect: () => (deleting = clip),
+				onSelect: () => void confirmDelete(clip),
 			},
 		];
 	}
@@ -155,134 +167,108 @@
 				drop(slot);
 			}}
 		>
-			<button
-				draggable={clip ? true : undefined}
-				ondragstart={() => (dragged = slot)}
-				ondragend={() => {
-					dragged = null;
-					over = null;
-				}}
-				onclick={(e) => onPress(slot, e.altKey)}
-				title={!clip
-					? `Pad ${slot} is empty — add a clip`
-					: playing
-						? `stop ${clip.name} — everyone hears it end`
-						: `${clip.name}${clip.key ? ` — key ${clip.key.toUpperCase()}` : ''} · alt-click to hear it yourself · ${MENU_HINT}`}
-				class="relative flex h-23 w-full flex-col gap-1 overflow-hidden rounded border p-2 text-left {target
-					? 'border-neon border-dashed'
-					: clip
-						? playing
-							? 'border-watt/50 bg-watt/8'
-							: 'border-muted/20 bg-surface-raised hover:border-muted/40'
-						: 'border-muted/20 border-dashed'} {dragged === slot ||
-				(cooling && clip && !playing)
-					? 'opacity-40'
-					: ''}"
-				aria-disabled={cooling && !!clip && !playing ? true : undefined}
-				{@attach clip ? contextMenu(() => padMenu(slot, clip)) : () => {}}
-			>
-				{#if clip}
-					<span class="flex items-start">
-						<span class="flex-1"></span>
-						<!-- Only a pad a key actually fires wears one. A badge on
+			{#if clip && renaming === clip.id}
+				<!-- The field in place of the button, never inside it (#1963): a
+				     text input nested in a button is invalid and unreachable. -->
+				<div
+					class="border-neon/50 bg-surface-raised relative flex h-23 w-full flex-col justify-end gap-1 rounded border p-2"
+				>
+					<!-- svelte-ignore a11y_autofocus -->
+					<input
+						bind:value={draft}
+						autofocus
+						onkeydown={(e) => {
+							if (e.key === 'Enter') void commitRename(clip);
+							if (e.key === 'Escape') renaming = null;
+						}}
+						onblur={() => void commitRename(clip)}
+						aria-label="rename {clip.name}"
+						class="input input-xs w-full text-[11px]"
+					/>
+				</div>
+			{:else}
+				<button
+					draggable={clip ? true : undefined}
+					ondragstart={() => (dragged = slot)}
+					ondragend={() => {
+						dragged = null;
+						over = null;
+					}}
+					onclick={(e) => onPress(slot, e.altKey)}
+					title={!clip
+						? `Pad ${slot} is empty — add a clip`
+						: playing
+							? `stop ${clip.name} — everyone hears it end`
+							: `${clip.name}${clip.key ? ` — key ${clip.key.toUpperCase()}` : ''} · alt-click to hear it yourself · ${MENU_HINT}`}
+					class="relative flex h-23 w-full flex-col gap-1 overflow-hidden rounded border p-2 text-left {target
+						? 'border-neon border-dashed'
+						: clip
+							? playing
+								? 'border-watt/50 bg-watt/8'
+								: 'border-muted/20 bg-surface-raised hover:border-muted/40'
+							: 'border-muted/20 border-dashed'} {dragged === slot ||
+					(cooling && clip && !playing)
+						? 'opacity-40'
+						: ''}"
+					aria-disabled={cooling && !!clip && !playing ? true : undefined}
+					{@attach clip ? contextMenu(() => padMenu(slot, clip)) : () => {}}
+				>
+					{#if clip}
+						<span class="flex items-start">
+							<span class="flex-1"></span>
+							<!-- Only a pad a key actually fires wears one. A badge on
 						     pad 10 would draw a shortcut that does nothing, and a
 						     control that does something else than it draws is not
 						     a control (ux.md). -->
-						{#if clip.key}
-							<span
-								class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
-									? 'border-watt/40 text-watt'
-									: 'border-muted/25 text-muted'} uppercase">{clip.key}</span
+							{#if clip.key}
+								<span
+									class="font-display rounded-[3px] border px-1.5 py-0.5 text-[10px] leading-none {playing
+										? 'border-watt/40 text-watt'
+										: 'border-muted/25 text-muted'} uppercase">{clip.key}</span
+								>
+							{/if}
+						</span>
+						<span class="flex flex-1 items-center">
+							<svg
+								viewBox="0 0 104 34"
+								width="100%"
+								height="34"
+								preserveAspectRatio="none"
+								aria-hidden="true"
 							>
-						{/if}
-					</span>
-					<span class="flex flex-1 items-center">
-						<svg
-							viewBox="0 0 104 34"
-							width="100%"
-							height="34"
-							preserveAspectRatio="none"
-							aria-hidden="true"
-						>
-							<g class={playing ? 'text-watt glow-stroke' : 'text-neon/55'}>
-								{#each bars(clip) as bar, i (i)}
-									<rect
-										x={bar.x}
-										y={bar.y}
-										width="3"
-										height={bar.h}
-										rx="1.5"
-										fill="currentColor"
-									/>
-								{/each}
-							</g>
-						</svg>
-					</span>
-					{#if renaming === clip.id}
-						<!-- svelte-ignore a11y_autofocus -->
-						<input
-							bind:value={draft}
-							autofocus
-							onclick={(e) => e.stopPropagation()}
-							onkeydown={(e) => {
-								e.stopPropagation();
-								if (e.key === 'Enter') void commitRename(clip);
-								if (e.key === 'Escape') renaming = null;
-							}}
-							onblur={() => void commitRename(clip)}
-							aria-label="rename {clip.name}"
-							class="input input-xs w-full text-[11px]"
-						/>
-					{:else}
+								<g class={playing ? 'text-watt glow-stroke' : 'text-neon/55'}>
+									{#each bars(clip) as bar, i (i)}
+										<rect
+											x={bar.x}
+											y={bar.y}
+											width="3"
+											height={bar.h}
+											rx="1.5"
+											fill="currentColor"
+										/>
+									{/each}
+								</g>
+							</svg>
+						</span>
 						<span
 							class="truncate text-[11px] leading-tight {playing
 								? 'font-medium'
 								: 'text-ink/85'}">{clip.name}</span
 						>
+					{:else}
+						<span
+							class="text-muted/55 absolute inset-0 flex flex-col items-center justify-center gap-1"
+						>
+							<Plus size={16} />
+							<span class="text-[10px]">empty</span>
+						</span>
 					{/if}
-				{:else}
-					<span
-						class="text-muted/55 absolute inset-0 flex flex-col items-center justify-center gap-1"
-					>
-						<Plus size={16} />
-						<span class="text-[10px]">empty</span>
-					</span>
-				{/if}
-			</button>
+				</button>
+			{/if}
 		</div>
 	{/each}
 </div>
 
 {#if refusal}
 	<p class="text-danger px-1.5 pt-1.5 text-[11px]">{refusal}</p>
-{/if}
-
-{#if deleting}
-	<!-- A confirm, not the undo toast errors.md prefers: the audio goes with
-	     the row and the browser never kept the file, so there is nothing to
-	     put back (see `remove` in clips.svelte). -->
-	<div
-		class="border-danger/40 mt-1.5 rounded border px-2 py-2 text-[11px]"
-		role="alertdialog"
-		aria-label="delete {deleting.name}"
-	>
-		<p>
-			Delete <span class="font-display">{deleting.name}</span>? The audio goes
-			with it — this cannot be undone.
-		</p>
-		<div class="mt-1.5 flex items-center gap-2">
-			<span class="flex-1"></span>
-			<button onclick={() => (deleting = null)} class="btn btn-ghost btn-xs"
-				>Keep it</button
-			>
-			<button
-				onclick={() => {
-					const gone = deleting;
-					deleting = null;
-					if (gone) void remove(gone.id);
-				}}
-				class="btn btn-danger btn-xs">Delete</button
-			>
-		</div>
-	</div>
 {/if}
