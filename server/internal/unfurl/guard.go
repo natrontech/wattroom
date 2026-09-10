@@ -55,8 +55,11 @@ const (
 	// renders without a picture.
 	maxImageBytes = 2 << 20
 	// Sent instead of Go's default so an operator reading their logs knows
-	// who called and why. No WattRoom credential ever rides along.
-	userAgent = "WattRoomBot/1.0 (+https://wattroom.ch; link preview)"
+	// who called and where to ask about it. No WattRoom credential ever rides
+	// along. It says the bot rather than the errand because both errands go
+	// out through the same client now — a link preview and a rider's sign-in
+	// picture (server/internal/avatars).
+	userAgent = "WattRoomBot/1.0 (+https://wattroom.ch)"
 )
 
 var (
