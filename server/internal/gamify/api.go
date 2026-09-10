@@ -115,9 +115,10 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 }
 
 func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	// RequireUser (#1983): User() treats a database failure as signed-out,
+	// and "unauthorized" is the one code the app never retries.
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	s.write(w, r, user.ID, user.ID)
@@ -127,9 +128,8 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 // them ride: room-mates and friends. Anyone else gets a 404, not a 403 — the
 // id itself is not for confirming.
 func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
-	viewer, ok := s.users.User(r)
+	viewer, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	rider, err := store.ParseUUID(r.PathValue("id"))

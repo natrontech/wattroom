@@ -274,13 +274,6 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		// taxonomy ADR-0015 says not to build.
 		Tags: normalizeTags(req.Tags),
 	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		// The row exists — s.track found it — so the only way to miss here is
-		// that it belongs to somebody else.
-		httpx.WriteError(w, http.StatusForbidden, "forbidden",
-			"Only whoever uploaded a track can edit it.")
-		return
-	}
 	if err != nil {
 		httpx.Fail(w, s.log, "track update", err, "The track could not be saved.", "track", store.UUIDString(row.ID))
 		return
@@ -300,11 +293,6 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	gone, err := s.store.Queries.DeleteTrack(r.Context(), db.DeleteTrackParams{
 		ID: row.ID, UploadedBy: me.ID,
 	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden",
-			"Only whoever uploaded a track can delete it.")
-		return
-	}
 	if err != nil {
 		httpx.Fail(w, s.log, "track delete", err, "The track could not be deleted.", "track", store.UUIDString(row.ID))
 		return

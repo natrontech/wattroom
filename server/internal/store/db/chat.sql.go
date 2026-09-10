@@ -40,6 +40,25 @@ func (q *Queries) AddChatReaction(ctx context.Context, arg AddChatReactionParams
 	return result.RowsAffected(), nil
 }
 
+const chatImageInRoom = `-- name: ChatImageInRoom :one
+select exists(select 1 from chat_images where id = $1 and room_id = $2)::boolean
+`
+
+type ChatImageInRoomParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+// The picture a line points at must be this room's (#1987): the insert
+// refuses a foreign id the same way it refuses a fault, so the handler asks
+// first and answers a 400 the client can act on.
+func (q *Queries) ChatImageInRoom(ctx context.Context, arg ChatImageInRoomParams) (bool, error) {
+	row := q.db.QueryRow(ctx, chatImageInRoom, arg.ID, arg.RoomID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countChatReaction = `-- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2
 `

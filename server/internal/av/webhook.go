@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"io"
 	"net/http"
 	"strings"
@@ -58,17 +59,20 @@ type webhookEvent struct {
 func (s *Service) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "The webhook body could not be read.")
 		return
 	}
 	if !s.verifyWebhook(r.Header.Get("Authorization"), body) {
-		s.log.Warn("livekit webhook rejected", "remote", r.RemoteAddr)
-		w.WriteHeader(http.StatusUnauthorized)
+		// The event alone is the signal (#1989): the caller's address is the
+		// one piece of PII the log ring carried, and a rider's feedback
+		// report staples the ring to a GitHub issue.
+		s.log.Warn("livekit webhook rejected")
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "The webhook signature did not verify.")
 		return
 	}
 	var event webhookEvent
 	if err := json.Unmarshal(body, &event); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "The webhook body could not be read.")
 		return
 	}
 	if s.voice != nil {

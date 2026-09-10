@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -67,7 +68,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 {
+	if req.Name == "" || utf8.RuneCountInString(req.Name) > 60 {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A crew name has to be 1-60 characters.", "name")
 		return
@@ -203,9 +204,9 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			s.log.Error("crew rooms lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
 		for _, slug := range slugs {
-			s.evict(slug, req.UserID)
+			s.evict(slug, store.UUIDString(target))
 		}
-		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", req.UserID, "rooms", len(slugs))
+		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(target), "rooms", len(slugs))
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)

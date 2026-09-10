@@ -336,4 +336,10 @@ func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "look", theirs); ok {
 		t.Fatal("cross-room image reference accepted")
 	}
+	// Over HTTP the refusal is the rider's to act on (#1987): a 400 naming
+	// the field, not a 500 with a retry that could never work.
+	code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat", `{"text":"look","imageId":"`+theirs+`"}`)
+	if code != http.StatusBadRequest || body["field"] != "imageId" {
+		t.Fatalf("foreign image over http: %d %v", code, body)
+	}
 }

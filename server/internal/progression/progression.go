@@ -20,6 +20,7 @@ import (
 
 type UserSource interface {
 	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, refusal string) (db.User, bool)
 }
 
 type Service struct {
@@ -147,9 +148,10 @@ func medianRideLoad(rows []db.ListUserProgressionRow) float64 {
 }
 
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.User(r)
+	// RequireUser (#1983): User() treats a database failure as signed-out,
+	// and "unauthorized" is the one code the app never retries.
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Not signed in.")
 		return
 	}
 	out, err := Summary(r.Context(), s.store.Queries, user)

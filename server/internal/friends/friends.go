@@ -6,6 +6,7 @@ package friends
 
 import (
 	"errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
@@ -239,7 +240,11 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		// The room is the formation gate here (ADR-0012's original rule): no
 		// room in common, no request — and no confirmation that the id exists.
 		shared, err := s.store.Queries.ListRoomsInCommon(r.Context(), db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
-		if err != nil || len(shared) == 0 {
+		if err != nil {
+			httpx.Fail(w, s.log, "rooms in common lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
+			return
+		}
+		if len(shared) == 0 {
 			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider there that you share a room with — ask them for their code instead.")
 			return
 		}
@@ -253,6 +258,10 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user, err := s.store.Queries.GetUserByFriendCode(r.Context(), code)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			httpx.Fail(w, s.log, "friend code lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
+			return
+		}
 		if err != nil {
 			// Friend codes are eight characters; a crew's invite code is six
 			// (rooms/crews.go). The one people paste into the wrong box is

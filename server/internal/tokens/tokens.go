@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -118,7 +119,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 {
+	if req.Name == "" || utf8.RuneCountInString(req.Name) > 60 {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A token name has to be 1-60 characters.", "name")
 		return

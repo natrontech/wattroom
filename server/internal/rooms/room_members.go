@@ -143,11 +143,14 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "They are not in this room.")
 		return
 	}
+	// The parsed id, canonical (#1981): the hub compares strings, and a
+	// well-formed upper-case or braced id passed ParseUUID, wrote the row,
+	// and then never closed the socket.
 	if req.Role == "banned" {
-		s.evict(room.Slug, req.UserID)
-		s.log.Info("member banned", "room", room.Slug, "rider", req.UserID)
+		s.evict(room.Slug, store.UUIDString(target))
+		s.log.Info("member banned", "room", room.Slug, "rider", store.UUIDString(target))
 	} else if s.presence != nil {
-		s.presence.SetRole(room.Slug, req.UserID, req.Role)
+		s.presence.SetRole(room.Slug, store.UUIDString(target), req.Role)
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
@@ -301,7 +304,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.presence != nil {
-		s.presence.SetRole(room.Slug, req.UserID, "owner")
+		s.presence.SetRole(room.Slug, store.UUIDString(target), "owner")
 		s.presence.SetRole(room.Slug, store.UUIDString(owner.ID), "coach")
 	}
 	s.log.Info("room handed on", "room", room.Slug, "from", store.UUIDString(owner.ID), "to", req.UserID)

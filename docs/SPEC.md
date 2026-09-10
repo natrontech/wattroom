@@ -60,6 +60,8 @@
 | Cheers                                                                                | ✓     | ✓     | ✓                           | ✓                 |
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
+
+Names, counted in characters (not bytes, #1986): a room or crew name is 1–60, a workout name (planned, ridden or saved) 1–80, a token name 1–60, a chat or direct message 1–500, a display name 1–60.
 Membership is uncapped; deleting a room frees a slot. A rider owns **one
 crew**, made with their first room. Rooms-per-crew is not capped separately
 (#1201): every room counts against its own owner's 3, and only the crew's

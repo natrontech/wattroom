@@ -189,11 +189,27 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Say something first.", "text")
 		return
 	}
+	if req.ImageID != "" {
+		// Asked first (#1987): SaveChat refuses a foreign image the way it
+		// refuses a fault, and a stale id read as "something broke on our
+		// side" with a retry that could never work.
+		img, err := store.ParseUUID(req.ImageID)
+		if err != nil {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That picture is not in this room — attach it again.", "imageId")
+			return
+		}
+		ours, err := s.store.Queries.ChatImageInRoom(r.Context(), db.ChatImageInRoomParams{ID: img, RoomID: room.ID})
+		if err != nil {
+			httpx.Fail(w, s.log, "chat image lookup", err, "The message could not be sent. Try again.", "room", room.Slug)
+			return
+		}
+		if !ours {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That picture is not in this room — attach it again.", "imageId")
+			return
+		}
+	}
 	id, saved := s.SaveChat(r.Context(), room.Slug, store.UUIDString(me.ID), text, req.ImageID)
 	if !saved {
-		// SaveChat refuses an image from another room the same way it
-		// refuses a database fault; the only one of those a valid request
-		// can cause is the image.
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be sent. Try again.")
 		return
 	}

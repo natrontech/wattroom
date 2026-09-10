@@ -29,6 +29,7 @@ const (
 
 type UserSource interface {
 	User(r *http.Request) (db.User, bool)
+	RequireUser(w http.ResponseWriter, r *http.Request, refusal string) (db.User, bool)
 }
 
 type Service struct {
