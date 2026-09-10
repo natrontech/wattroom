@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/keyset"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -140,25 +141,11 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// The cursor is the previous page's last row, handed back verbatim: a
 	// time and the ride id that breaks its tie. Both or neither — half a
 	// cursor would page from a time with no tie-break, which is #2064.
-	before, beforeID := r.URL.Query().Get("before"), r.URL.Query().Get("beforeId")
-	if (before == "") != (beforeID == "") {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"before and beforeId are one cursor — send the pair this list gave you, or neither.")
+	cursor, ok := keyset.FromQuery(w, r, "ride")
+	if !ok {
 		return
 	}
-	if before != "" {
-		at, err := time.Parse(time.RFC3339, before)
-		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "before must be an RFC 3339 time.")
-			return
-		}
-		id, err := store.ParseUUID(beforeID)
-		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "beforeId must be a ride id.")
-			return
-		}
-		params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
-	}
+	cursor.Apply(&params.Before, &params.BeforeID)
 	rows, err := s.store.Queries.ListUserRides(r.Context(), params)
 	if err != nil {
 		httpx.Fail(w, s.log, "list rides failed", err, "Your rides could not be loaded.")
@@ -173,13 +160,11 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// server rather than from the rider's own `startedAt`: that field is
 	// RFC 3339 to the second where started_at is microseconds, and a cursor
 	// rounded down by a fraction of a second stepped over every ride inside
-	// it (#2064) — including ones this page had not handed over.
+	// it (#2064) — including ones this page had not handed over. keyset.Next
+	// is what keeps the precision.
 	if len(rows) == listPage {
 		last := rows[len(rows)-1]
-		// UTC, so the cursor never carries a "+" that a caller has to
-		// remember to percent-encode before handing it back.
-		body["nextBefore"] = last.StartedAt.Time.UTC().Format(time.RFC3339Nano)
-		body["nextBeforeId"] = store.UUIDString(last.ID)
+		keyset.Next(body, last.StartedAt, last.ID)
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
 }

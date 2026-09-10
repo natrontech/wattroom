@@ -11,13 +11,12 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/keyset"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -116,25 +115,11 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// time (`before`, the rides list's name for it) and the id that breaks
 	// its tie. Both or neither — half a cursor would page from a time with no
 	// tie-break and step over the rows sharing it.
-	before, beforeID := r.URL.Query().Get("before"), r.URL.Query().Get("beforeId")
-	if (before == "") != (beforeID == "") {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"before and beforeId are one cursor — send the pair this list gave you, or neither.")
+	cursor, ok := keyset.FromQuery(w, r, "workout")
+	if !ok {
 		return
 	}
-	if before != "" {
-		at, err := time.Parse(time.RFC3339, before)
-		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "before must be an RFC 3339 time.")
-			return
-		}
-		id, err := store.ParseUUID(beforeID)
-		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "beforeId must be a workout id.")
-			return
-		}
-		params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
-	}
+	cursor.Apply(&params.Before, &params.BeforeID)
 	rows, err := s.store.Queries.ListUserWorkouts(r.Context(), params)
 	if err != nil {
 		httpx.Fail(w, s.log, "list workouts failed", err, "Your workouts could not be loaded.")
@@ -156,13 +141,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// milliseconds where created_at is microseconds, and a cursor rounded down
 	// by a fraction of a millisecond steps over every row inside it. Silent
 	// skipping is the bug being fixed here, not one to reintroduce at the page
-	// boundary.
+	// boundary — keyset.Next is what keeps the precision.
 	if len(rows) == listPage {
 		last := rows[len(rows)-1]
-		// UTC, so the cursor never carries a "+" that a caller has to
-		// remember to percent-encode before handing it back.
-		body["nextBefore"] = last.CreatedAt.Time.UTC().Format(time.RFC3339Nano)
-		body["nextBeforeId"] = store.UUIDString(last.ID)
+		keyset.Next(body, last.CreatedAt, last.ID)
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
 }
