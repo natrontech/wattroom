@@ -22,10 +22,10 @@
 	const hasValue = $derived(value !== '' && value in ROOM_ICONS);
 	/** Arrow keys walk the radios; Home and End jump; the walked-to one is picked. */
 	function walk(event: KeyboardEvent) {
+		const group = event.currentTarget as HTMLElement | null;
+		if (!group) return;
 		const radios = [
-			...event.currentTarget.querySelectorAll<HTMLButtonElement>(
-				'[role=radio]',
-			),
+			...group.querySelectorAll<HTMLButtonElement>('[role=radio]'),
 		];
 		const at = radios.indexOf(document.activeElement as HTMLButtonElement);
 		if (at < 0) return;
