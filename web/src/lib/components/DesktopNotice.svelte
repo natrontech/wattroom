@@ -104,10 +104,14 @@
 				<p class="font-display mt-1 text-base font-bold">
 					WattRoom on your desk
 				</p>
+				<!-- What a tab cannot do (ADR-0037), and the machine's sound only
+				     where Chromium has a loopback — macOS 15+ and Windows. -->
 				<p class="text-muted mt-1 text-sm leading-relaxed">
-					The same rooms in a window of their own: your machine stays awake
-					through an interval, the room can hear your computer's audio, and it
-					opens straight to your crew.
+					The same rooms in a window of their own: a heads-up display over
+					whatever else is open, notifications that reach you behind another
+					window{installer.os === 'linux'
+						? ''
+						: ", and the room can hear your computer's own sound"}.
 				</p>
 			</div>
 			<div class="flex flex-col items-start gap-2">

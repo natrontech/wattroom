@@ -260,6 +260,10 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
+	// Taken while it is the only window: getAllWindows() has no order.
+	const mainId = await app.evaluate(
+		({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].id,
+	);
 
 	await app.evaluate(({ app }) => {
 		globalThis.__hudNav = [];
@@ -282,6 +286,18 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 	// Idempotent: a second open does not stack windows.
 	await win.evaluate(() => window.wattroom.hud(true));
 	await new Promise((r) => setTimeout(r, 300));
+	expect(
+		await app.evaluate(
+			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+		),
+	).toBe(2);
+	// The HUD's own renderer runs the app's layout, which reports no ride
+	// there (#1938): a hud(false) from THAT window must not close it.
+	await app.evaluate(async ({ BrowserWindow }, first) => {
+		const hud = BrowserWindow.getAllWindows().find((w) => w.id !== first);
+		await hud.webContents.executeJavaScript('window.wattroom.hud(false)');
+	}, mainId);
+	await new Promise((r) => setTimeout(r, 500));
 	expect(
 		await app.evaluate(
 			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,

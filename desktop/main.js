@@ -288,15 +288,18 @@ function installHandlers(win) {
 		'fullscreen',
 		'notifications',
 	]);
-	ses.setPermissionRequestHandler((contents, permission, callback) => {
-		callback(isOurs(contents.getURL()) && ALLOWED.has(permission));
+	// Decided on the FRAME that asks (#1939), not the top page: the embedded
+	// player is a third-party frame under our page, and the top URL let it
+	// inherit the mic, notifications and fullscreen.
+	ses.setPermissionRequestHandler((contents, permission, callback, details) => {
+		const from = details?.requestingUrl ?? contents.getURL();
+		callback(isOurs(from) && ALLOWED.has(permission));
 	});
 	// The check half: most web APIs check first and only request if denied, so
 	// a handler on one and not the other is a gate with a hole in it.
 	ses.setPermissionCheckHandler(
-		(contents, permission, origin) =>
-			(origin === APP_ORIGIN || isOurs(contents?.getURL() ?? '')) &&
-			ALLOWED.has(permission),
+		(_contents, permission, origin) =>
+			origin === APP_ORIGIN && ALLOWED.has(permission),
 	);
 
 	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
@@ -434,12 +437,13 @@ async function chooseFrom(win, title, options, checkboxLabel = null) {
 // installs it when the rider restarts — or quietly on quit. The feed is
 // GitHub's `releases/latest/download` alias (package.json → publish), which
 // is what lets the tags stay desktop-v<CalVer> instead of v<semver>. The web
-// app is told when a download is ready and offers "Restart to update" on
-// home, which a ride never shows — so never mid-ride, by construction.
+// app is told when a download is ready and offers "Restart to update" at the
+// top of the sidebar, which a ride never shows — so never mid-ride, by
+// construction.
 let updateReady = null;
 let autoUpdater = null;
 
-function watchForUpdates(win) {
+function watchForUpdates() {
 	// Required here, not at the top: merely touching electron-updater's
 	// autoUpdater constructs it, and it parses the app's version as semver —
 	// a dev run reports Electron's own version, a packaged app reports
@@ -453,8 +457,10 @@ function watchForUpdates(win) {
 	autoUpdater.logger = console;
 	autoUpdater.on('update-downloaded', (info) => {
 		updateReady = { version: info.version };
-		if (!win.isDestroyed())
-			win.webContents.send('wattroom:update', updateReady);
+		// Every window, not the one at launch (#1947): on macOS a window
+		// closed and reopened from the Dock is a new one.
+		for (const w of BrowserWindow.getAllWindows())
+			if (!w.isDestroyed()) w.webContents.send('wattroom:update', updateReady);
 	});
 	autoUpdater.on('error', (err) => {
 		// Offline, or the feed is missing: not worth a dialog. The next check
@@ -475,7 +481,7 @@ function watchForUpdates(win) {
 	setTimeout(() => check(true), 15_000);
 	setInterval(() => check(true), 6 * 60 * 60 * 1000);
 	app.on('activate', () => check());
-	win.on('focus', () => check());
+	app.on('browser-window-focus', () => check());
 }
 
 // The renderer asks on mount, in case the download finished before it did.
@@ -582,7 +588,17 @@ function setHud(on) {
 	});
 }
 
-ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
+ipcMain.on('wattroom:hud', (event, on) => {
+	// The HUD's own renderer runs the app's layout and used to answer its
+	// opening with hud(false) (#1938); only the main window drives the HUD.
+	if (
+		hudWindow &&
+		!hudWindow.isDestroyed() &&
+		event.sender === hudWindow.webContents
+	)
+		return;
+	setHud(Boolean(on));
+});
 
 // Notifications (ADR-0042). The web app's lib/notify decides WHETHER to
 // notify — enabled, nobody looking — and sends the words here, because the
@@ -591,8 +607,10 @@ ipcMain.on('wattroom:hud', (_event, on) => setHud(Boolean(on)));
 // belongs to. Everything is clipped and the href must be a path on our
 // origin: remote content chooses the words, never where the app goes.
 const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+// A path on our origin: one slash, and not a second slash OR a backslash
+// behind it — the URL parser reads `/\evil` as `//evil` (#1946).
 const ownPath = (v) =>
-	typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') ? v : '';
+	typeof v === 'string' && v.startsWith('/') && !/^\/[\/\\]/.test(v) ? v : '';
 
 ipcMain.on('wattroom:notify', (event, n) => {
 	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
@@ -620,9 +638,11 @@ ipcMain.on('wattroom:notify', (event, n) => {
 		if (!event.sender.isDestroyed())
 			event.sender.send('wattroom:notification', {
 				...payload,
-				// The server's own ceiling for a line (dms.go: 500 runes), so a
-				// long reply is refused by the field, not silently by the send.
-				reply: clip(reply, 500),
+				// Not cut at the server's 500 (#1945): the field has no limit, and a
+				// 600-character reply arrived as 500 with nothing said. Sent whole
+				// (bounded far above, against a runaway paste), the server's own
+				// refusal reaches the rider through the renderer's toast (#1834).
+				reply: clip(reply, 4000),
 			});
 	});
 	note.show();
@@ -681,7 +701,9 @@ const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
 // this every new Notification() from the renderer is dropped on the floor.
 if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
 
-app.setAsDefaultProtocolClient('wattroom');
+// Packaged only (#1944): unpackaged this registered the raw Electron binary
+// and took the link away from the installed app.
+if (app.isPackaged) app.setAsDefaultProtocolClient('wattroom');
 app.on('open-url', (event, link) => {
 	event.preventDefault();
 	openDeepLink(link);
@@ -707,7 +729,7 @@ if (!app.requestSingleInstanceLock()) {
 
 	app.whenReady().then(() => {
 		const win = createWindow();
-		watchForUpdates(win);
+		watchForUpdates();
 		// A cold start from a link, on Windows and Linux.
 		const link = deepLinkIn(process.argv);
 		if (link) pendingDeepLink = deepLinkTarget(link);
@@ -750,7 +772,19 @@ ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
 app.on('browser-window-created', (_e, win) => {
-	win.webContents.on('render-process-gone', () => keepAwake(false));
+	win.webContents.on('render-process-gone', (_event, details) => {
+		keepAwake(false);
+		// A crash left the white rectangle errors.md forbids (#1942): the
+		// offline screen has the retry, so it gets the crash too.
+		if (details?.reason === 'clean-exit' || win.isDestroyed()) return;
+		console.warn('renderer gone:', details?.reason);
+		void win.webContents.loadFile(path.join(__dirname, 'offline.html'), {
+			query: {
+				url: APP_URL,
+				reason: `the app stopped (${details?.reason ?? 'crash'})`,
+			},
+		});
+	});
 	win.on('closed', () => keepAwake(false));
 });
 app.on('will-quit', () => keepAwake(false));
