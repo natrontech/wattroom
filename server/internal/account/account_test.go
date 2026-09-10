@@ -140,11 +140,19 @@ func (h *harness) createSession(t *testing.T, user string) {
 // the hub writes it (ADR-0034): presence and time, nothing else.
 func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) {
 	t.Helper()
+	// Recent, deliberately. A fixture dated outside recap.RetentionDays is
+	// prey: internal/housekeeping's sweep is unscoped — as production needs it
+	// to be — and `go test ./...` runs that package against this same database
+	// at the same time, so a 2023 timestamp had the sweep delete this row
+	// mid-assertion (#2080). The date carries no meaning here; this test is
+	// about a purge, not about ageing out.
+	startedAt := time.Now().Add(-2 * time.Hour)
+	endedAt := startedAt.Add(time.Hour)
 	entries := make([]map[string]any, 0, len(riders))
 	for i, name := range riders {
 		entries = append(entries, map[string]any{
 			"id": store.UUIDString(h.id(name)), "rider": name,
-			"from": 1_700_000_000_000 + int64(i)*60_000, "to": 1_700_003_600_000,
+			"from": startedAt.UnixMilli() + int64(i)*60_000, "to": endedAt.UnixMilli(),
 			"rode": true,
 		})
 	}
@@ -152,8 +160,8 @@ func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) 
 	if err != nil {
 		t.Fatalf("recap riders: %v", err)
 	}
-	started := pgtype.Timestamptz{Time: time.UnixMilli(1_700_000_000_000), Valid: true}
-	ended := pgtype.Timestamptz{Time: time.UnixMilli(1_700_003_600_000), Valid: true}
+	started := pgtype.Timestamptz{Time: startedAt, Valid: true}
+	ended := pgtype.Timestamptz{Time: endedAt, Valid: true}
 	if _, err := h.store.Queries.SaveSessionRecap(t.Context(), db.SaveSessionRecapParams{
 		RoomID: room, Workout: "Openers", StartedAt: started, EndedAt: ended, Riders: blob,
 	}); err != nil {

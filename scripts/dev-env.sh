@@ -31,8 +31,8 @@ set -eu
 
 # Ports live above everything the repo already pins: :8080 and :8082 (server and
 # the verify config), :5174 (Vite), :7880/:7881 (LiveKit), :4173/:8081 (the e2e
-# harness) — all four of which are now the main tree's own values, below — and
-# clear of :5432 (Postgres). The Vite range used to start at 5300, which put
+# harness) — every one of those now the main working tree's own value, below —
+# and clear of :5432 (Postgres). The Vite range used to start at 5300, which put
 # 5432 inside it: the worktree hashing there had Vite quietly rebind to 5433
 # while `make dev-env` kept advertising the database's port (#712).
 # One offset drives every port, so a worktree's Vite, dev server, verify server

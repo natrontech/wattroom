@@ -29,6 +29,15 @@ type harness struct {
 	optOut  db.User // email set, notify_planned off
 }
 
+// email is the address the harness verifies for a rider: derived from their
+// id, so it is unique to this run. Deriving it from the display name — three
+// fixed strings — meant `users_email_verified` refused the second run against
+// the same test database, and refused two checkouts testing at the same
+// moment outright (#2083).
+func (h *harness) email(u db.User) string {
+	return store.UUIDString(u.ID) + "@example.test"
+}
+
 func setup(t *testing.T) *harness {
 	t.Helper()
 	st := storetest.Open(t)
@@ -52,13 +61,19 @@ func setup(t *testing.T) *harness {
 	}{{h.optIn, true}, {h.optOut, false}} {
 		if _, err := st.Pool.Exec(t.Context(),
 			"update users set email = $2, email_verified_at = now(), notify_planned = $3 where id = $1",
-			set.u.ID, set.u.DisplayName+"@example.test", set.notify); err != nil {
+			set.u.ID, h.email(set.u), set.notify); err != nil {
 			t.Fatalf("set email: %v", err)
 		}
 	}
 
+	// Unique per run for the same reason as the address: `rooms.slug` is
+	// globally unique and the test database outlives the run (#2083). Every
+	// assertion below reads the slug back off the room rather than repeating
+	// it.
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: "notify-test", Name: "Velvet Hammer", OwnerID: h.planner.ID,
+		Slug:    fmt.Sprintf("notify-test-%d", time.Now().UnixNano()),
+		Name:    "Velvet Hammer",
+		OwnerID: h.planner.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -140,7 +155,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	}
 	p := fake.payloads[0]
 	to := fmt.Sprint(p["to"])
-	if !strings.Contains(to, h.optIn.DisplayName+"@example.test") {
+	if !strings.Contains(to, h.email(h.optIn)) {
 		t.Fatalf("mailed %s, want the opted-in member", to)
 	}
 	subject := fmt.Sprint(p["subject"])
@@ -148,7 +163,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 		t.Fatalf("subject %q misses room or workout", subject)
 	}
 	text := fmt.Sprint(p["text"])
-	if !strings.Contains(text, "https://wattroom.example/r/notify-test") {
+	if !strings.Contains(text, "https://wattroom.example/r/"+h.room.Slug) {
 		t.Fatalf("body misses the room link: %q", text)
 	}
 	if !strings.Contains(text, "/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)) {
@@ -159,7 +174,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	// link on its button and the workout as the line that glows.
 	html := fmt.Sprint(p["html"])
 	for _, want := range []string{
-		"https://wattroom.example/r/notify-test",
+		"https://wattroom.example/r/" + h.room.Slug,
 		"Sweet Spot 2×20",
 		"#ff3d8b",
 		"/api/notify/unsubscribe?u=" + store.UUIDString(h.optIn.ID),
@@ -211,7 +226,11 @@ func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
 
-	code := "CRWBAN"
+	// Unique per run, like the address and the slug: `crews_code` is a unique
+	// index over the whole database (#2083). Derived from the planner's id
+	// rather than from a clock, so two runs starting in the same instant still
+	// differ.
+	code := "CB" + strings.ToUpper(store.UUIDString(h.planner.ID)[:6])
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
 		Name: "Crew", OwnerID: h.planner.ID, Code: &code,
 	})
@@ -336,7 +355,7 @@ func TestSessionMailUsesEachRidersZone(t *testing.T) {
 		user db.User
 		hour string
 	}{{h.optIn, "19:00"}, {h.optOut, "13:00"}} {
-		got := fake.subjectsTo(want.user.DisplayName + "@example.test")
+		got := fake.subjectsTo(h.email(want.user))
 		if len(got) != 1 {
 			t.Fatalf("%s got %d mails, want 1", want.user.DisplayName, len(got))
 		}
