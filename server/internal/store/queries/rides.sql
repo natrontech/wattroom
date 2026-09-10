@@ -63,7 +63,9 @@ select id from rides where user_id = $1 and started_at = $2 limit 1;
 -- where docs/SPEC.md says it stays. `ref` is the ride's id, so the ledger's
 -- unique (user, source, ref) makes a replay impossible to double-count; no
 -- `on conflict do nothing` here on purpose, because swallowing a collision
--- would report the delete as a 404 it did not get.
+-- would report the delete as a 404 it did not get. `at` defaults to now(),
+-- the moment of the delete — carrying the ride's own `started_at` over would
+-- put "when this rider rode" back into a row the rider asked to be rid of.
 with gone as (
     delete from rides where rides.id = $1 and rides.user_id = $2
     returning rides.id as ride_id, rides.user_id as rider, rides.xp as xp

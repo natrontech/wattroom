@@ -27,7 +27,9 @@ const (
 	sourceCoached     = "coached"
 	// The XP of a ride the rider threw away, put back (#1452, ADR-0047):
 	// deleting the record is privacy, not un-riding, and the level only goes
-	// up. Written by DeleteRide's own statement, never by this package.
+	// up. Written by DeleteRide's own statement, never by this package, and
+	// never a measure `have()` judges a badge from — deleting a ride is not
+	// work, and the catalogue counts work.
 	sourceRideDeleted = "ride_deleted"
 )
 

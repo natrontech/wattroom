@@ -315,7 +315,9 @@ type DeleteRideParams struct {
 // where docs/SPEC.md says it stays. `ref` is the ride's id, so the ledger's
 // unique (user, source, ref) makes a replay impossible to double-count; no
 // `on conflict do nothing` here on purpose, because swallowing a collision
-// would report the delete as a 404 it did not get.
+// would report the delete as a 404 it did not get. `at` defaults to now(),
+// the moment of the delete — carrying the ride's own `started_at` over would
+// put "when this rider rode" back into a row the rider asked to be rid of.
 func (q *Queries) DeleteRide(ctx context.Context, arg DeleteRideParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteRide, arg.ID, arg.UserID)
 	if err != nil {
