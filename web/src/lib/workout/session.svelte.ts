@@ -234,13 +234,22 @@ export function createRideSession({
 			// Flat first, then the hill: the same two-step the room uses to get
 			// an FTMS trainer out of ERG before the grade lands.
 			void trainer.setSimulation(0);
-			setTimeout(() => {
+			sprintStep = setTimeout(() => {
+				sprintStep = undefined;
 				if (sprintMode) void trainer.setSimulation(setup.grade);
 			}, 500);
 			return;
 		}
-		sprintMode = false;
+		leaveSprint();
 		void trainer.setTargetPower(target);
+	}
+	// The hill is a second write 500 ms after the flat; a ride ending inside
+	// that gap wrote the grade after the release (#1852).
+	let sprintStep: ReturnType<typeof setTimeout> | undefined;
+	function leaveSprint() {
+		clearTimeout(sprintStep);
+		sprintStep = undefined;
+		sprintMode = false;
 	}
 
 	/**
@@ -392,6 +401,7 @@ export function createRideSession({
 		unsubscribe = undefined;
 		unsubscribeStatus?.();
 		unsubscribeStatus = undefined;
+		leaveSprint();
 		void trainer.setTargetPower(0);
 		// Let go of the hardware (#1546): after the summary nothing owns
 		// this link, and the next pairing screen showed an unpaired grid

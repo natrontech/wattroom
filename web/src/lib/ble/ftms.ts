@@ -243,6 +243,10 @@ export class FtmsTrainer implements Trainer {
 		const { signal } = (this.#attachment = new AbortController());
 
 		const server = await this.#device!.gatt!.connect();
+		// Forget while the link was opening (#1852): the GATT connect resolves
+		// after disconnect() ran, and announcing it would leave a link open
+		// that nothing owns. Checked here and again before the announcement.
+		if (this.#abandoned(signal)) return;
 		const service = await server.getPrimaryService(FTMS_SERVICE);
 
 		const bikeData = await service.getCharacteristic(INDOOR_BIKE_DATA);
@@ -331,8 +335,16 @@ export class FtmsTrainer implements Trainer {
 
 		// One grant covers every procedure until disconnect.
 		await this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
+		if (this.#abandoned(signal)) return;
 		this.#retryDelayMs = 1000;
 		this.#setStatus('connected');
+	}
+
+	/** A Forget landed while this attach was in flight: drop the link it opened. */
+	#abandoned(signal: AbortSignal): boolean {
+		if (!this.#closed && !signal.aborted) return false;
+		this.#device?.gatt?.disconnect();
+		return true;
 	}
 
 	async disconnect(): Promise<void> {

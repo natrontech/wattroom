@@ -166,6 +166,23 @@ describe('a sprint block', () => {
 		expect(slope).not.toHaveBeenCalled();
 	});
 
+	it('ending inside the flat-then-hill gap never writes the hill', async () => {
+		// #1852: the grade is a second write 500 ms after the flat; a ride
+		// that ends in between used to put the hill on a released trainer.
+		vi.useFakeTimers();
+		try {
+			const { session, slope } = sprintRide();
+			await session.start();
+			pedal(session, 700, 110, 3);
+			expect(slope).toHaveBeenCalledWith(0);
+			session.stop();
+			await vi.advanceTimersByTimeAsync(600);
+			expect(slope).not.toHaveBeenCalledWith(6);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('goes back to the workout target when the window closes', async () => {
 		const { session, erg } = sprintRide();
 		await session.start();
