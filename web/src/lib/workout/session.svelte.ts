@@ -312,8 +312,10 @@ export function createRideSession({
 			};
 			recording.push(recorded);
 			onRecord?.(recorded);
+			// Uncapped, for the reason room/recording.svelte.ts gives: the graph
+			// is keyed on the workout clock, so dropping the oldest entries
+			// erased the start of the line rather than scrolling it (#2017).
 			trace.push({ t: clockSeconds, w: next.watts });
-			if (trace.length > 900) trace.shift();
 		}
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
