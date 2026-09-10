@@ -122,7 +122,7 @@
 			copied = family;
 			setTimeout(() => (copied = null), 1500);
 		} catch {
-			toasts.push('Copy needs clipboard permission', { tone: 'error' });
+			toasts.push('Copy needs clipboard permission.', { tone: 'error' });
 		}
 	}
 </script>

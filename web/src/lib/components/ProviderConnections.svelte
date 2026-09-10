@@ -50,6 +50,7 @@
 			body:
 				id === 'strava' ? 'Ride upload to Strava stops with it.' : undefined,
 			action: `Disconnect ${name}`,
+			cancel: 'Keep it',
 		});
 		if (!ok) return;
 

@@ -87,6 +87,16 @@
 		});
 	}
 
+	// Withdrawing your own ask was the one friendship action that happened in
+	// silence with no way back (#2008). The undo is the removal's: a request
+	// can only be sent again, never un-withdrawn.
+	function withdraw(friend: Friend) {
+		void act(`/api/friends/${friend.id}`, 'DELETE', {
+			message: `Withdrew your request to ${friend.name}.`,
+			undo: () => void undoRemove(friend.id, friend.name),
+		});
+	}
+
 	function removeFriend(friend: Friend) {
 		void act(`/api/friends/${friend.id}`, 'DELETE', {
 			message: `Removed ${friend.name} as a friend.`,
@@ -304,8 +314,8 @@
 						<span class="text-sm">{friend.name}</span>
 						<span class="text-xs">asked — waiting on them</span>
 						<button
-							onclick={() => act(`/api/friends/${friend.id}`, 'DELETE')}
-							class="btn btn-ghost btn-xs ml-auto">Cancel</button
+							onclick={() => withdraw(friend)}
+							class="btn btn-ghost btn-xs ml-auto">Withdraw</button
 						>
 					</div>
 				{/each}

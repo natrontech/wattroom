@@ -51,9 +51,8 @@
 	{#if nothingYet}
 		<div class="mt-3">
 			<EmptyState>
-				Nothing counted yet. Time in a lounge, sessions you ride with other
-				people, sprints you win and tracks the room plays to the end all land
-				here.
+				Time in a lounge, sessions you ride with other people, sprints you win
+				and tracks the room plays to the end all land here.
 			</EmptyState>
 		</div>
 	{:else}

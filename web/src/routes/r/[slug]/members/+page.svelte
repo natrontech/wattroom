@@ -75,6 +75,7 @@
 			title: `Remove ${member.displayName} from ${room.roomName}?`,
 			body: 'They stay in the crew and can walk back in if the room is open to it.',
 			action: 'Remove',
+			cancel: 'Keep it',
 		});
 		if (ok) room.removeMember(member.id);
 	}
@@ -102,6 +103,7 @@
 			title: `Hand ${room.roomName} to ${member.displayName}?`,
 			body: 'They become its owner and you stay on as a coach. You cannot take this back; only they can hand it back to you.',
 			action: 'Hand it over',
+			cancel: 'Keep it',
 		});
 		if (ok) room.transfer(member.id);
 	}
@@ -165,7 +167,7 @@
 
 <div class="page">
 	<h2 class="font-display mb-1 text-xl font-bold">
-		Who rides here — {room.members.length}
+		Members — {room.members.length}
 	</h2>
 	<p class="text-muted mb-3 text-xs">
 		The people column is the live read; this is the paperwork.

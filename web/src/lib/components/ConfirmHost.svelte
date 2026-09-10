@@ -20,7 +20,7 @@
 		<div class="mt-5 flex flex-row-reverse flex-wrap justify-end gap-2">
 			<button
 				onclick={() => confirmation.settle(false)}
-				class="btn btn-secondary btn-lg">{ask.cancel ?? 'Cancel'}</button
+				class="btn btn-secondary btn-lg">{ask.cancel}</button
 			>
 			<button
 				onclick={() => confirmation.settle(true)}

@@ -166,9 +166,9 @@
 	async function copy(text: string) {
 		try {
 			await navigator.clipboard.writeText(text);
-			toasts.push('Message copied');
+			toasts.push('Message copied.');
 		} catch {
-			toasts.push('Copy needs clipboard permission', { tone: 'error' });
+			toasts.push('Copy needs clipboard permission.', { tone: 'error' });
 		}
 	}
 

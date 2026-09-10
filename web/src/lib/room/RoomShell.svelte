@@ -439,7 +439,7 @@
 						>
 					{/if}
 					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-						>Back to the lounge</button
+						>Back to the Lounge</button
 					>
 				</div>
 			{/snippet}

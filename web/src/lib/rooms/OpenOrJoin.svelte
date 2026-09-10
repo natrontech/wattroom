@@ -160,7 +160,7 @@
 				/>
 				<button
 					disabled={roomBusy || !newRoomName.trim() || ownedOut}
-					class="btn btn-primary mt-3 w-full">Open room</button
+					class="btn btn-primary mt-3 w-full">Open a room</button
 				>
 				{#if ownedOut}
 					<p class="text-muted mt-2 text-xs">
@@ -219,9 +219,8 @@
 			     place of its own — nav/pages.ts retires anything that is the
 			     second half of a page here, and this is exactly that. -->
 			<p class="text-muted mt-3 text-xs">
-				No code? <a href="/rooms/directory" class="underline"
-					>Browse the rooms crews have listed</a
-				> — joining one joins its crew.
+				No code? <a href="/rooms/directory" class="underline">Find a room</a> — it
+				lists the rooms crews chose to be found, and joining one joins its crew.
 			</p>
 		</div>
 	</div>

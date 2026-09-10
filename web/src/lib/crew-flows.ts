@@ -31,7 +31,7 @@ export async function leaveCrewFlow(
 			mine.filter((r) => r.access === 'private').length,
 		),
 		action: 'Leave the crew',
-		cancel: 'Stay',
+		cancel: 'Keep it',
 	});
 	if (!sure) return false;
 	const res = await leaveCrew(crew.id);

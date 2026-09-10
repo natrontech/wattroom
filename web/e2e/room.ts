@@ -27,7 +27,7 @@ export interface RoomOwner {
  * Deleting the room in a `finally` only covers a failure inside the block. An
  * assertion that fails before it — or a timeout, or a crashed browser — leaks
  * the room, and three leaked rooms hit docs/SPEC.md's three-room ownership cap
- * and disable "Open room" for every later run (#594). Fixture teardown runs
+ * and disable "Open a room" for every later run (#594). Fixture teardown runs
  * whatever the test did, so the room goes back either way.
  *
  * `rooms` takes `riders` as a dependency purely for ordering: Playwright tears
@@ -95,7 +95,7 @@ export const test = base.extend<{
 				await plus.click();
 				const sheet = page.getByRole('dialog', { name: 'Open a room' });
 				await sheet.locator('#open-room-name-sheet').fill(name);
-				await sheet.getByRole('button', { name: 'Open room' }).click();
+				await sheet.getByRole('button', { name: 'Open a room' }).click();
 				await expect(
 					page.getByRole('heading', { name }),
 					`opening "${name}" never landed in the room — the owner is probably at the three-room cap (#594)`,

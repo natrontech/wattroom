@@ -154,8 +154,8 @@
 {/snippet}
 
 <div class="page">
-	<div class="mb-5 flex items-center gap-3">
-		<h2 class="font-display text-xl font-bold">What's planned here</h2>
+	<div class="mb-1 flex items-center gap-3">
+		<h2 class="font-display text-xl font-bold">Sessions</h2>
 		<!-- One button to plan with: the empty state's while the list is
 		     empty, this one once it is not. -->
 		{#if manages && room.upcoming.length > 0}
@@ -166,6 +166,7 @@
 			>
 		{/if}
 	</div>
+	<p class="text-muted mb-5 text-xs">What's planned here.</p>
 
 	{#if room.upcoming.length === 0}
 		<!-- ux.md: empty states teach, never apologise — and never tell a
@@ -231,11 +232,13 @@
 									disabled={room.adminBusy}
 									class="btn btn-secondary btn-xs">Move</button
 								>
-								<!-- "Cancel", as the chat line, the mail and SPEC say. -->
+								<!-- "Cancel", as the chat line, the mail and SPEC say — with
+								     its object, because a bare "Cancel" is the button that
+								     backs out of a form everywhere else. -->
 								<button
 									onclick={() => void cancelPlan(entry)}
 									disabled={room.adminBusy}
-									class="btn btn-danger btn-xs">Cancel</button
+									class="btn btn-danger btn-xs">Cancel session</button
 								>
 							{/if}
 						</span>
@@ -334,7 +337,9 @@
 					onclick={() =>
 						void Promise.resolve(room.rotateIcs()).then((ok) => {
 							if (ok !== false)
-								toasts.push('Calendar link reset — shared links stop working.');
+								toasts.push(
+									'Calendar link reset — calendars on the old link stop updating.',
+								);
 						})}
 					class="btn btn-secondary btn-xs mt-2">Reset calendar link</button
 				>

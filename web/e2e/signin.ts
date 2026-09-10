@@ -35,7 +35,7 @@ export async function signInTo(page: Page, path: string): Promise<void> {
  * docs/SPEC.md caps a rider at three owned rooms, and the cap counts per
  * owner. Playwright runs the specs in parallel, so four specs opening a room
  * as the one dev rider is four rooms against a cap of three: whichever loses
- * the race sees "Open room" disabled and reads as the button doing nothing
+ * the race sees "Open a room" disabled and reads as the button doing nothing
  * (#594). Giving each spec its own owner removes the contention instead of
  * serialising the suite, which would cost more than the specs are worth.
  *

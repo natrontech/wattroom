@@ -80,7 +80,7 @@
 			title: `Clear ${n} device ride${n === 1 ? '' : 's'}?`,
 			body: 'These summaries exist only on this device — nothing can bring them back.',
 			action: 'Clear them',
-			cancel: 'Keep them',
+			cancel: 'Keep it',
 		});
 		if (ok) device.clear();
 	}
@@ -487,7 +487,7 @@
 					export any ride as a .fit for Strava or your head unit.
 				</p>
 				{#snippet cta()}
-					<a href="/workouts" class="btn btn-primary">Pick a workout</a>
+					<a href="/workouts" class="btn btn-primary">Ride solo</a>
 				{/snippet}
 			</EmptyState>
 		</div>

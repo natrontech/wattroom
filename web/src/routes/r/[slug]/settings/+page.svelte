@@ -163,7 +163,7 @@
 			title: `Delete “${room.name}” for all ${n} member${n === 1 ? '' : 's'}?`,
 			body: "Removes the room for everyone in it — its chat, its planned sessions and their RSVPs, its session recaps, its medal history and its streak. Rides already ridden stay in each rider's own history. This can't be undone.",
 			action: 'Delete room',
-			cancel: 'Keep the room',
+			cancel: 'Keep it',
 		});
 		if (ok) await remove();
 	}

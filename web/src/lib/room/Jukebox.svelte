@@ -122,14 +122,14 @@
 		playlistTitle?: string;
 	}) {
 		send({ action: 'remove', entryId: entry.id });
-		toasts.push(`Removed "${entry.playlistTitle ?? entry.title}".`, {
+		toasts.push(`Removed “${entry.playlistTitle ?? entry.title}”.`, {
 			undo: () => send({ action: 'restore' }),
 		});
 	}
 	function skipPlaylist() {
 		const title = current?.playlistTitle;
 		send({ action: 'skipPlaylist' });
-		toasts.push(`Skipped the rest of "${title}".`, {
+		toasts.push(`Skipped the rest of “${title}”.`, {
 			undo: () => send({ action: 'restore' }),
 		});
 	}
