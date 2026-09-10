@@ -232,6 +232,37 @@ describe('FtmsTrainer control-point queue', () => {
 		return { trainer, device, control: device.control };
 	}
 
+	// The release before the link drops (#1848): the caller's 0 W was queued
+	// for a later microtask while gatt.disconnect() ran at once, so the last
+	// thing a Kickr heard was the block's target, and it kept it.
+	it('writes 0 W and waits for its indication before dropping the link', async () => {
+		const { trainer, device, control } = await paired();
+		await trainer.setTargetPower(250);
+		const order: string[] = [];
+		const drop = device.gatt.disconnect;
+		device.gatt.disconnect = () => {
+			order.push('gatt.disconnect');
+			drop();
+		};
+		control.answer = (f) => {
+			order.push(`write:${f[0] === 0x05 ? targetWatts(f) : f[0]}`);
+			return 'ack';
+		};
+		await trainer.disconnect();
+		expect(order).toEqual(['write:0', 'gatt.disconnect']);
+		expect(trainer.status).toBe('disconnected');
+	});
+
+	it('still drops the link when the release is refused or never answered', async () => {
+		const { trainer, control } = await paired();
+		control.answer = () => 'silent';
+		const done = trainer.disconnect();
+		await vi.advanceTimersByTimeAsync(3_100);
+		await done;
+		expect(targetsWritten(control)).toEqual([0]);
+		expect(trainer.status).toBe('disconnected');
+	});
+
 	it('runs the next queued write after one has failed', async () => {
 		// The issue's reduction: with target-200 failing, 250 and 300 never reached
 		// the trainer again for the rest of the session. Written one at a time,

@@ -309,6 +309,18 @@ export class FtmsTrainer implements Trainer {
 
 	async disconnect(): Promise<void> {
 		this.#closed = true;
+		// Hand the hardware back with no target (#1848). Every caller wrote
+		// 0 W right before this, but a write sits on the queue for a later
+		// microtask while gatt.disconnect() is synchronous — so the release
+		// went to a dead characteristic and a Kickr kept the last target it
+		// was told. The round trip is awaited here, indication or the 3 s
+		// timeout, and a refusal is not a reason to keep the link.
+		if (this.#control && this.#status === 'connected') {
+			const payload = new DataView(new ArrayBuffer(3));
+			payload.setUint8(0, OP_SET_TARGET_POWER);
+			payload.setInt16(1, 0, true);
+			await this.#writeTarget(payload.buffer).catch(() => {});
+		}
 		this.#device?.gatt?.disconnect();
 		this.#attachment?.abort();
 		this.#setStatus('disconnected');

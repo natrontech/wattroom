@@ -1,0 +1,1 @@
+- Two trainer fixes: the trainer is now told to release its resistance before the app lets go of it at the end of a ride or on unpair — a Kickr used to keep the last target it was given — and in a room a trainer whose Bluetooth link drops and comes back mid-block gets its target set again instead of freewheeling for the rest of the interval.

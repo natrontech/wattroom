@@ -195,7 +195,21 @@ export function createRide(deps: RideDeps) {
 		latest = null;
 		guardSecond = -1;
 		pairing = true;
-		unsubscribe.push(next.onStatus((s) => (status = s)));
+		unsubscribe.push(
+			next.onStatus((s) => {
+				const back = s === 'connected' && status !== 'connected';
+				status = s;
+				// The link came back (#1846): the driver re-requested control,
+				// but the target had not changed, so the actuation effect below
+				// had nothing to say — and the trainer held no ERG target for
+				// the rest of the block. Say it again, and forget the sprint
+				// mode so a window still open re-issues its slope.
+				if (back && trainer === next) {
+					sprintMode = false;
+					void next.setTargetPower(target);
+				}
+			}),
+		);
 		try {
 			await next.connect();
 			status = next.status;

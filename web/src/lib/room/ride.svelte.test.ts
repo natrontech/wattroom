@@ -61,8 +61,17 @@ class FakeTrainer implements Trainer {
 		this.listener = cb;
 		return () => (this.listener = null);
 	}
-	onStatus() {
-		return () => {};
+	private statusListener: ((s: TrainerStatus) => void) | null = null;
+	onStatus(cb: (s: TrainerStatus) => void) {
+		this.statusListener = cb;
+		return () => (this.statusListener = null);
+	}
+	/** The link dropping and coming back, as the driver reports it. */
+	blip() {
+		this.status = 'connecting';
+		this.statusListener?.('connecting');
+		this.status = 'connected';
+		this.statusListener?.('connected');
 	}
 	/**
 	 * One ~1 Hz reading, as the BLE layer would deliver it — a second apart,
@@ -277,6 +286,28 @@ describe('the personal guards in a group ride (#788)', () => {
 		ride.unpair();
 		expect(ride.reading).toBeUndefined();
 		dispose();
+	});
+
+	// A reattach mid-block re-asserts the target (#1846): the driver re-took
+	// control, the target had not changed, and the effect had nothing to
+	// say — the trainer held no ERG for the rest of the block.
+	it('says the target again when the link comes back', async () => {
+		vi.useFakeTimers();
+		const { deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.target).toBe(200);
+		const before = trainer.commands.length;
+		trainer.blip();
+		await settle();
+		expect(trainer.commands.slice(before)).toEqual(['erg:200']);
+		dispose();
+		vi.useRealTimers();
 	});
 
 	it('releases the target when the rider stops, leaving the room clock alone', async () => {
