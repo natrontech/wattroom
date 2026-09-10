@@ -65,10 +65,13 @@ export function createRide(deps: RideDeps) {
 	 * re-run this once a second, since a sample that never arrives cannot
 	 * invalidate anything by itself.
 	 */
+	// The local second the guards' countdowns run on; the silence check reads
+	// it too (#1852) — off the server tick, losing the socket froze the check.
+	let now = $state(Date.now());
 	const fault = $derived.by((): 'reconnecting' | 'silent' | null => {
 		if (!trainer) return null;
 		if (status !== 'connected') return 'reconnecting';
-		void deps.live.tick?.at;
+		void now;
 		// Counted from the connect, not the first sample: a trainer that never
 		// sends one is the reported failure, and exempting it would hide it.
 		return Date.now() - lastSampleAt > 10_000 ? 'silent' : null;
@@ -126,6 +129,7 @@ export function createRide(deps: RideDeps) {
 	$effect(() => {
 		if (!trainer) return;
 		const id = setInterval(() => {
+			now = Date.now();
 			guards.tick();
 			syncGuards();
 		}, 1000);

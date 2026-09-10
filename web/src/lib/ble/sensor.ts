@@ -94,6 +94,8 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 		const { signal } = (attachment = new AbortController());
 
 		const server = await device!.gatt!.connect();
+		// Forget while the link was opening (#1852): same race as the trainer's.
+		if (abandoned(signal)) return;
 		const service = await server.getPrimaryService(spec.service);
 		const characteristic = await service.getCharacteristic(spec.characteristic);
 
@@ -131,8 +133,16 @@ export function createBleSensor(spec: BleSensorSpec): Sensor {
 			{ signal },
 		);
 
+		if (abandoned(signal)) return;
 		retryDelayMs = 1000;
 		setStatus('connected');
+	}
+
+	/** A Forget landed while this attach was in flight: drop the link it opened. */
+	function abandoned(signal: AbortSignal): boolean {
+		if (!closed && !signal.aborted) return false;
+		device?.gatt?.disconnect();
+		return true;
 	}
 
 	function scheduleReattach(): void {
