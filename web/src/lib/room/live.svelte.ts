@@ -106,6 +106,20 @@ export function createRoomLive(slug: string) {
 	// — because that is what a recovered .fit is named and dated by.
 	let riding = false;
 	let openedFor = 0;
+	let openedName = '';
+	// How many seconds of this rider's own ride the buffer holds. The floor
+	// the recovery card uses is the floor for saying anything about it: a
+	// phone watching from the sofa buffers nothing and has nothing to lose.
+	let bufferedRows = 0;
+	// The session the server came back without (#1466, ADR-0052). A session
+	// that ends leaves a `done` tick and a saved ride; a process that
+	// restarted leaves an idle room, because session.go only ever exits a
+	// riding phase through done. Persistent status, not a toast: the ride is
+	// the rider's to rescue and they are three metres from the screen
+	// (.claude/rules/errors.md).
+	let lostSession = $state<{ workoutName: string; minutes: number } | null>(
+		null,
+	);
 	function followSession(t: ServerTick) {
 		const phase = t.state?.phase;
 		const now =
@@ -113,17 +127,38 @@ export function createRoomLive(slug: string) {
 		if (now === riding) return;
 		riding = now;
 		if (!now) {
-			settle(buffer);
+			// `done` is the hub saying it closed the session and handed the
+			// ride to the saver. Anything else is the room re-forming around
+			// a session nothing remembers, and the buffer is then the only
+			// copy: settling it would stamp that copy finished, because the
+			// fresh process acks the live stream it hears while holding
+			// nothing to save.
+			if (phase === 'done') settle(buffer);
+			else if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
+				// No workout at all is the fresh process: a session that
+				// closed keeps its workout named on every later tick, and a
+				// new pick names the next one, so an idle room that can name
+				// nothing is one that remembers nothing. Only the banner
+				// hangs on this — the buffer is kept on the `done` test
+				// alone, which cannot be fooled by a coach who picks the
+				// next workout before this tick arrives.
+				lostSession = {
+					workoutName: openedName,
+					minutes: Math.round(bufferedRows / 60),
+				};
 			buffer = null;
 			return;
 		}
+		lostSession = null;
 		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
 		openedFor = startedAt;
+		openedName = t.state.workoutName || 'Room ride';
 		bufferedSecond = -1;
+		bufferedRows = 0;
 		void openRideBuffer({
 			rideId: `room-${slug}-${startedAt}`,
 			startedAt,
-			workoutName: t.state.workoutName || 'Room ride',
+			workoutName: openedName,
 		}).then((opened) => {
 			if (riding && openedFor === startedAt) buffer = opened;
 		});
@@ -310,6 +345,12 @@ export function createRoomLive(slug: string) {
 		get refusal() {
 			return refusal;
 		},
+		/** The ride the server came back without, for the shell's status
+		 * banner (#1466) — null unless a session vanished with a minute or
+		 * more of this rider's own samples buffered. */
+		get lostSession() {
+			return lostSession;
+		},
 		get jukeboxRefusal() {
 			return jukeboxRefusal;
 		},
@@ -342,13 +383,18 @@ export function createRoomLive(slug: string) {
 			const second = Math.floor(at / 1000);
 			if (second > bufferedSecond) {
 				bufferedSecond = second;
-				buffer?.append({
-					seq: metrics.seq,
-					watts: metrics.watts,
-					cadence: metrics.cadence ?? 0,
-					heartRate: metrics.hr ?? 0,
-					at,
-				});
+				if (buffer) {
+					// Counted where it is written, so the count is what the
+					// recovery card will actually find (#1466).
+					bufferedRows++;
+					buffer.append({
+						seq: metrics.seq,
+						watts: metrics.watts,
+						cadence: metrics.cadence ?? 0,
+						heartRate: metrics.hr ?? 0,
+						at,
+					});
+				}
 			}
 			send({ metrics });
 		},

@@ -158,6 +158,32 @@
 		</div>
 	{/if}
 
+	<!-- Not in the ranked chain above (#1466, ADR-0052): that chain is about
+	     the ride happening now, and this is about the one that vanished.
+	     Both can be true — a restart drops the trainer's socket too — and
+	     this must not mask a trainer fault to say so. Persistent status with
+	     the way back on it, because the samples are the rider's to rescue
+	     and nobody else holds a copy. -->
+	{#if live.lostSession}
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="error">
+				<p>
+					<span class="font-medium"
+						>The room came back without the session — the server restarted.</span
+					>
+					<span class="text-muted"
+						>{live.lostSession.minutes} min of {live.lostSession.workoutName}
+						never reached your account. This browser still has the ride: open the
+						ride screen to download it as a .fit file.</span
+					>
+				</p>
+				{#snippet action()}
+					<a href="/ride" class="btn btn-primary btn-lg">Recover the ride</a>
+				{/snippet}
+			</Banner>
+		</div>
+	{/if}
+
 	{#if live.refusal}
 		<!-- A refused command — a sprint armed at the wrong moment, a control
 		     from a stale role — is status on every place, not a line under
