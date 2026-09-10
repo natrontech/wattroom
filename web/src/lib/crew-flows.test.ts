@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	confirm: vi.fn(),
 	leaveCrew: vi.fn(),
+	transferCrew: vi.fn(),
 	goto: vi.fn(),
 	push: vi.fn(),
 	rooms: [] as {
@@ -16,6 +17,7 @@ vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
 vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
 vi.mock('$lib/crew', () => ({
 	leaveCrew: mocks.leaveCrew,
+	transferCrew: mocks.transferCrew,
 	joinCrew: vi.fn(),
 	inviteLink: (code: string) => `/c/${code}`,
 }));
@@ -32,7 +34,8 @@ vi.mock('$lib/room/connection.svelte', () => ({
 }));
 vi.mock('$lib/toast.svelte', () => ({ toasts: { push: mocks.push } }));
 
-const { leaveBody, leaveCrewFlow } = await import('./crew-flows');
+const { HAND_OVER_BODY, handOverCrewFlow, leaveBody, leaveCrewFlow } =
+	await import('./crew-flows');
 
 describe('leaveBody', () => {
 	it('names what goes', () => {
@@ -71,5 +74,62 @@ describe('leaveCrewFlow', () => {
 		expect(await leaveCrewFlow({ id: 'c1', name: 'Natron' })).toBe(true);
 		expect(mocks.leaveCrew).toHaveBeenCalledWith('c1');
 		expect(mocks.push).toHaveBeenCalledWith('You left Natron.');
+	});
+});
+
+describe('handOverCrewFlow (#2095)', () => {
+	const crew = { id: 'c1', name: 'Natron' };
+	const to = { id: 'u2', displayName: 'Mira' };
+
+	beforeEach(() => {
+		mocks.confirm.mockReset();
+		mocks.transferCrew.mockReset();
+		mocks.push.mockReset();
+	});
+
+	it('asks first, and a declined confirm hands nothing over', async () => {
+		mocks.confirm.mockResolvedValue(false);
+		expect(await handOverCrewFlow(crew, to)).toBe(false);
+		expect(mocks.transferCrew).not.toHaveBeenCalled();
+		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it('asks in the house voice, with the safe answer spelled Keep it', async () => {
+		mocks.confirm.mockResolvedValue(false);
+		await handOverCrewFlow(crew, to);
+		expect(mocks.confirm.mock.calls[0][0]).toEqual({
+			title: 'Hand Natron to Mira?',
+			body: HAND_OVER_BODY,
+			action: 'Hand it over',
+			cancel: 'Keep it',
+		});
+	});
+
+	it('says what happens and what it costs the rider (errors.md)', () => {
+		expect(HAND_OVER_BODY).toMatch(/become its owner/);
+		expect(HAND_OVER_BODY).toMatch(/you drop to admin/);
+		expect(HAND_OVER_BODY).toMatch(/cannot take this back/);
+	});
+
+	it('hands over on yes, and says who owns it now', async () => {
+		mocks.confirm.mockResolvedValue(true);
+		mocks.transferCrew.mockResolvedValue({ ok: true, data: undefined });
+		expect(await handOverCrewFlow(crew, to)).toBe(true);
+		expect(mocks.transferCrew).toHaveBeenCalledWith('c1', 'u2');
+		expect(mocks.push).toHaveBeenCalledWith(
+			'Mira owns Natron now. You are an admin.',
+		);
+	});
+
+	it('keeps the crew, and says why, when the server refuses', async () => {
+		mocks.confirm.mockResolvedValue(true);
+		mocks.transferCrew.mockResolvedValue({
+			ok: false,
+			error: { error: 'conflict', message: 'Mira left the crew.' },
+		});
+		expect(await handOverCrewFlow(crew, to)).toBe(false);
+		expect(mocks.push).toHaveBeenCalledWith('Mira left the crew.', {
+			tone: 'error',
+		});
 	});
 });

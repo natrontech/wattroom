@@ -89,6 +89,23 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
+		// #2095: it did ask, but through a bespoke `Modal` spelling the safe
+		// answer `Cancel`, with no danger token and the action first in the
+		// DOM. The ask lives in the flow now, so this row watches the call
+		// site keep going through it.
+		file: 'routes/crew/[id]/CrewPeople.svelte',
+		action: 'hand the crew on — only the new owner can hand it back',
+		asks: /handOverCrewFlow\(/,
+	},
+	{
+		// Tied to the copy rather than to `confirm(` alone: this file holds two
+		// asks, and a bare `confirm(` row would stay green with the hand-over's
+		// stripped out and leaving's left standing.
+		file: 'lib/crew-flows.ts',
+		action: 'hand a crew on, from the flow both call sites share',
+		asks: /confirm\(\{[\s\S]{0,200}?body: HAND_OVER_BODY/,
+	},
+	{
 		file: 'routes/crew/[id]/settings/+page.svelte',
 		action: 'rotate the crew invite link — the same shape as a calendar reset',
 		asks: /confirm\(/,
@@ -158,6 +175,14 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		call: /\bdeleteRide\(/,
 		callers: ['lib/ride/detail.ts', 'lib/ride/delete-ride.ts'],
 		guard: 'deleteRideAfterConfirm',
+	},
+	{
+		call: /\btransferCrew\(/,
+		callers: [
+			'lib/crew.ts', // the definition
+			'lib/crew-flows.ts',
+		],
+		guard: 'handOverCrewFlow in lib/crew-flows.ts',
 	},
 ];
 
