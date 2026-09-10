@@ -129,7 +129,9 @@ func flatten(steps []Step, at, depth int, budget *int) ([]Segment, int, error) {
 }
 
 // TargetAt is the shared timeline's target for one rider at one second.
-// scored=false marks seconds the SPEC excludes: warmup, cooldown, freeride.
+// scored=false marks the seconds the SPEC excludes from execution: warmup,
+// cooldown and the editor's ramp do carry a target, just an unscored one;
+// sprint and freeride carry none at all.
 func TargetAt(segments []Segment, ftp float64, second int) (watts float64, scored bool) {
 	for _, seg := range segments {
 		if second < seg.Start || second >= seg.Start+seg.Seconds {
