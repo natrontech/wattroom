@@ -276,6 +276,7 @@ func securedHeaders(t *testing.T, overTLS bool) http.Header {
 
 // Every hardening header the middleware owns, asserted by value (#1609, #1737).
 func TestSecuredSetsEveryHardeningHeader(t *testing.T) {
+	h := securedHeaders(t, false)
 	for header, want := range map[string]string{
 		"Content-Security-Policy":             enforcedCSP,
 		"Content-Security-Policy-Report-Only": reportOnlyCSP,
@@ -284,7 +285,7 @@ func TestSecuredSetsEveryHardeningHeader(t *testing.T) {
 		"Strict-Transport-Security":           "max-age=31536000",
 		"Permissions-Policy":                  permissionsPolicy,
 	} {
-		if got := securedHeaders(t, false).Get(header); got != want {
+		if got := h.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
 	}
@@ -327,6 +328,12 @@ func TestPermissionsPolicyGrantsOnlyWhatTheAppUses(t *testing.T) {
 		if !ok {
 			t.Fatalf("entry %q is not feature=allowlist", entry)
 		}
+		// Structured fields let the last of two entries for one feature win,
+		// so a second `camera=` appended by mistake would silently override
+		// the first. That is the bug this test is for — name it.
+		if _, dupe := got[feature]; dupe {
+			t.Errorf("%s is named twice; the last entry silently wins", feature)
+		}
 		got[feature] = allowlist
 	}
 
@@ -358,8 +365,9 @@ func TestReportOnlyCSPNamesEveryOriginTheAppLoads(t *testing.T) {
 		{"LiveKit signaling", "connect-src 'self' wss: https:"},
 		// The ride ticker's blob Worker (web/src/lib/workout/ticker.ts).
 		{"the ride ticker's worker", "worker-src 'self' blob:"},
-		// app.html:8 paints the rider's cached theme before the bundle runs.
-		{"the inline theme block", "'unsafe-inline'"},
+		// The theme block at app.html:8 is inline script, pinned by the
+		// script-src row above; this is the inline <style> it injects.
+		{"the theme block's injected stylesheet", "style-src 'self' 'unsafe-inline'"},
 	} {
 		if !strings.Contains(policy, tc.directive) {
 			t.Errorf("%s: policy is missing %q\ngot %q", tc.what, tc.directive, policy)
