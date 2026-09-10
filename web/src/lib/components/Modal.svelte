@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from './focus-trap';
 	import type { Snippet } from 'svelte';
@@ -44,7 +45,11 @@
 <div
 	{@attach () => {
 		const off = countModal();
-		depth = modals.open;
+		// untrack: this attachment just bumped the count it would otherwise
+		// depend on, and re-ran itself forever (effect_update_depth_exceeded)
+		// — after which Svelte abandons the flush and every binding on the
+		// page goes dead. The depth is a fact of the mount, not a dependency.
+		depth = untrack(() => modals.open);
 		return off;
 	}}
 	{@attach portal}
