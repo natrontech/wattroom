@@ -927,6 +927,22 @@ func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessPara
 	return err
 }
 
+const setCrewCode = `-- name: SetCrewCode :exec
+update crews set code = $2 where id = $1
+`
+
+type SetCrewCodeParams struct {
+	ID   pgtype.UUID
+	Code *string
+}
+
+// A new invite (#1930): the old code, and every link carrying it, stops
+// working the moment this commits. The unique index is the collision check.
+func (q *Queries) SetCrewCode(ctx context.Context, arg SetCrewCodeParams) error {
+	_, err := q.db.Exec(ctx, setCrewCode, arg.ID, arg.Code)
+	return err
+}
+
 const setCrewImage = `-- name: SetCrewImage :exec
 update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1
 `

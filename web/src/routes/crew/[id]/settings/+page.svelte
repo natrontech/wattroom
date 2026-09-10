@@ -16,11 +16,13 @@
 		renameCrew,
 		setCrewImage,
 		type Crew,
+		rotateCrewCode,
 	} from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
+	import { confirm } from '$lib/confirm.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let crew = $state<Crew | null>(untrack(() => data.crew));
@@ -110,6 +112,28 @@
 		}
 		bump += 1;
 		await reload();
+	}
+
+	async function rotateCode() {
+		if (!crew) return;
+		const ok = await confirm({
+			title: 'Make a new invite link?',
+			body: 'The old link and code stop working the moment you do. Anyone you already shared it with needs the new one.',
+			action: 'Make a new link',
+			cancel: 'Keep it',
+		});
+		if (!ok) return;
+		busy = true;
+		const res = await rotateCrewCode(crew.id);
+		busy = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		toasts.push("New invite link — copy it from the crew's page.", {
+			href: `/crew/${crew.id}`,
+		});
+		presence.reload();
 	}
 
 	async function removeImage() {
@@ -239,8 +263,25 @@
 			</div>
 		</section>
 
+		<!-- The invite's one home is the crew's page (ADR-0020); re-keying it
+		     is a setting, and the one destructive one here — a confirm, since
+		     there is no undo for a link already shared (errors.md). -->
+		<section class="panel mt-5 p-6">
+			<span class="eyebrow">invite</span>
+			<p class="text-muted mt-1 text-sm">
+				The crew's code is its only door, and anyone in the crew may share it.
+				If it got somewhere it should not have, make a new one: the old link
+				stops working the moment you do.
+			</p>
+			<button
+				onclick={() => void rotateCode()}
+				disabled={busy}
+				class="btn btn-secondary btn-xs mt-3">Make a new invite link</button
+			>
+		</section>
+
 		<p class="text-muted mt-6 text-xs">
-			The invite, admins, bans and handing the crew on live on <a
+			The invite itself, admins, bans and handing the crew on live on <a
 				href="/crew/{crew.id}"
 				class="underline">the crew's page</a
 			>.

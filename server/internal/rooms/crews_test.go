@@ -1254,3 +1254,26 @@ func TestReopeningWithTheListingRestoresIt(t *testing.T) {
 		t.Fatalf("the undo did not restore both: listed=%v crewVisible=%v", body["listed"], body["crewVisible"])
 	}
 }
+
+// A leaked invite is not permanent (#1930): the owner or an admin makes a
+// new code, the old door shuts, a member may not.
+func TestANewInviteCodeShutsTheOldDoor(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Rotate Code")
+	crew := h.crewOf(t, slug)
+	h.enter(t, "bob", code, slug)
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/code", ""); status != http.StatusForbidden {
+		t.Fatalf("a member re-keyed the crew: %d", status)
+	}
+	status, body := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/code", "")
+	fresh, _ := body["code"].(string)
+	if status != http.StatusOK || len(fresh) != 6 || fresh == code {
+		t.Fatalf("rotate: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "carol", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusNotFound {
+		t.Errorf("the old code still opens the door: %d", status)
+	}
+	if status, door := h.call(t, "carol", http.MethodGet, "/api/crew-doors/"+fresh, ""); status != http.StatusOK || door["name"] == nil {
+		t.Errorf("the new code does not open the door: %d %v", status, door)
+	}
+}

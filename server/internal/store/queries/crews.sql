@@ -135,6 +135,11 @@ update crews set name = $2, icon = $3,
        renamed_at = case when name <> $2 then now() else renamed_at end
 where id = $1 returning *;
 
+-- name: SetCrewCode :exec
+-- A new invite (#1930): the old code, and every link carrying it, stops
+-- working the moment this commits. The unique index is the collision check.
+update crews set code = $2 where id = $1;
+
 -- name: SetCrewImage :exec
 update crews set image_mime = $2, image = $3, image_set_at = now() where id = $1;
 
