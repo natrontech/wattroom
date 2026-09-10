@@ -27,6 +27,23 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
+// maxExportTracks bounds the one category a rider can run up on purpose
+// (#1089). Every other category is read whole, which is fine because nothing
+// in them is created in bulk; ADR-0015's quota is 2 GB of audio per rider and
+// nothing bounds how small an MP3 may be, so the shelf's ROW count is the
+// number this route cannot let grow without end. Ten thousand rows means an
+// average track under 200 KB — no real library reaches it, and the manifest
+// says so when one does rather than going quietly short.
+//
+// A var rather than a const because the test that proves the manifest says
+// "truncated" lowers it: a guard against a quietly short export that no test
+// has ever seen bite is not a guard.
+var maxExportTracks int32 = 10000
+
+// tracksFile is the one category name spelled in two places — the archive
+// entry and the truncation flag it sets — so it is spelled once.
+const tracksFile = "tracks.json"
+
 // Sessions is what account needs from auth: who is asking, and the ability to
 // end their session after the purge.
 type Sessions interface {
@@ -124,6 +141,16 @@ func (s *Service) Register(mux *http.ServeMux) {
 // person's data, not theirs); whole DM threads, which are as much about them
 // as about the peer and which they can already read; a friend's display name
 // but never their email, id, or a single watt of anyone else's ride.
+//
+// One thing is left out on purpose, and it is the only one: the AUDIO a rider
+// uploaded to the music pool. Their track rows are here in full (#1089) — the
+// titles, artists, albums and tags they typed are theirs under Art. 15 and
+// they are exactly "what the rider can already see". The files are not:
+// ADR-0015's copyright fence allows no public share links to audio files and
+// the ADR settled the same question for backups ("metadata is; files are
+// re-uploadable"), and a 2 GB shelf cannot go into an archive this route
+// builds whole in memory. tracks.json names each file by its content address,
+// so nothing about the omission is silent.
 //
 // Not legal advice — a lawyer should confirm the reading before it is relied
 // on. The provisions are cited so the next person can check rather than
@@ -242,8 +269,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	type entry struct {
 		Name string `json:"name"`
 		Ok   bool   `json:"ok"`
+		// Set when a bounded category held more rows than its bound (#1089):
+		// a category that is short without saying so is the silent omission
+		// this whole route exists to avoid.
+		Truncated bool `json:"truncated,omitempty"`
 	}
-	manifest := []entry{{"profile.json", true}, {"rides.json", true}}
+	manifest := []entry{{Name: "profile.json", Ok: true}, {Name: "rides.json", Ok: true}}
+	// Filled by a bounded category, read into its manifest entry below.
+	truncated := map[string]bool{}
 
 	// Everything else the account holds (#696). One query per category, each
 	// user-scoped and each mapped to the keys a person reads rather than the
@@ -313,6 +346,33 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"tracks": json.RawMessage(row.Tracks)}
 			})
 		}},
+		{tracksFile, func() (any, error) {
+			// The music the rider uploaded (#1089): the rows of their own
+			// shelf, which since #1095 is exactly the part of the pool they
+			// can see. Every field they typed, plus what the file measured,
+			// plus the content address so a row still names its file.
+			//
+			// Never the audio. ADR-0015's copyright fence has no public share
+			// links to audio files, and the ADR already answered this for
+			// backups — "metadata is; files are re-uploadable, so v1 excludes
+			// them" — which is the same question with the same answer. It is
+			// also the only version that stays inside the export's shape:
+			// this archive is built whole in memory and a shelf is 2 GB.
+			rows, err := s.store.Queries.ExportUserTracks(r.Context(), db.ExportUserTracksParams{
+				UploadedBy: user.ID, Lim: maxExportTracks,
+			})
+			truncated[tracksFile] = len(rows) >= int(maxExportTracks)
+			return mapRows(rows, err, func(row db.ExportUserTracksRow) any {
+				var bpm any
+				if row.Bpm != nil {
+					bpm = *row.Bpm
+				}
+				return map[string]any{"title": row.Title, "artist": row.Artist,
+					"album": row.Album, "tags": row.Tags, "bpm": bpm,
+					"durationMs": row.DurationMs, "sizeBytes": row.SizeBytes,
+					"uploadedAt": row.CreatedAt.Time, "contentAddress": row.Sha256}
+			})
+		}},
 		{"planned-sessions.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserRsvps(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserRsvpsRow) any {
@@ -377,13 +437,13 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		rows, err := cat.rows()
 		if err != nil {
 			s.log.Error("export category failed", "category", cat.name, "err", err)
-			manifest = append(manifest, entry{cat.name, false})
+			manifest = append(manifest, entry{Name: cat.name, Ok: false})
 			continue
 		}
 		if !writeJSON(cat.name, rows) {
 			return
 		}
-		manifest = append(manifest, entry{cat.name, true})
+		manifest = append(manifest, entry{Name: cat.name, Ok: true, Truncated: truncated[cat.name]})
 	}
 
 	// One blob at a time: read, stream into the zip, let it go. Held together
@@ -417,7 +477,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		"generatedAt": time.Now().UTC(),
 		"categories":  manifest,
 		"samples":     map[string]int{"rides": len(rides), "written": samplesWritten},
-		"complete":    samplesWritten == len(rides) && !slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok }),
+		"complete": samplesWritten == len(rides) &&
+			!slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok || e.Truncated }),
 	}) {
 		return
 	}

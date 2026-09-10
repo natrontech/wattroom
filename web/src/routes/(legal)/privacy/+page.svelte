@@ -4,7 +4,7 @@
 
 <h1 class="page-title">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
-	Datenschutzerklärung · last updated 9 September 2026
+	Datenschutzerklärung · last updated 10 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
@@ -70,6 +70,14 @@
 			<strong class="text-ink font-medium">Chat.</strong> Room chat and direct messages
 			are rolling logs: only the most recent 500 messages per room or conversation
 			are kept, older ones are deleted automatically.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">Music you upload.</strong> If you add MP3s
+			to your library we store the file on our own disk and a row about it: the title,
+			artist, album, tags and BPM you typed or its tag carried, plus what the file
+			itself measures. Only you browse your library; a room hears what someone in
+			it puts on. Delete a track and both go, and deleting your account takes every
+			file nobody else has uploaded too.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Voice, camera, screenshare.</strong>
@@ -203,10 +211,13 @@
 		<strong class="text-ink font-medium">export everything</strong> — a zip of
 		your profile, every ride with its per-second samples, the messages you
 		wrote, your DM threads, friends, rooms, playlists, workouts, planned
-		sessions you said yes to, and your XP and trophies, all as machine-readable
-		JSON. It stops where other people begin: someone else's chat line is theirs,
-		not yours, and the only thing it says about anyone else is the display name
-		you already see in the app. There is also
+		sessions you said yes to, the library tracks you uploaded, and your XP and
+		trophies, all as machine-readable JSON. It stops where other people begin:
+		someone else's chat line is theirs, not yours, and the only thing it says
+		about anyone else is the display name you already see in the app. The one
+		thing left out is the audio: a track's row is in the zip and names the file
+		it belongs to, the MP3 itself is not — you have the file you uploaded, and
+		we do not hand out audio. There is also
 		<strong class="text-ink font-medium">delete account</strong> (a full purge,
 		not a soft delete). Beyond that you have the usual GDPR rights — access,
 		rectification, erasure, restriction, portability, objection, withdrawal of

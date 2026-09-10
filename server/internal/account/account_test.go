@@ -726,3 +726,203 @@ func (f *fakeRevoker) all() []db.Identity {
 	defer f.mu.Unlock()
 	return append([]db.Identity(nil), f.revoked...)
 }
+
+// The music the rider uploaded is theirs to take (#1089): the export used to
+// carry the YouTube playlists and none of the pool shelf, so a rider who had
+// uploaded and tagged their whole library exported none of it.
+//
+// It carries the ROWS and never the audio. ADR-0015's copyright fence allows
+// no public share links to audio files and already answered the same question
+// for backups ("metadata is; files are re-uploadable"), and 2 GB of MP3s in
+// an archive built whole in memory is the export exhausting the server.
+func TestExportCarriesTheRidersOwnTracksAndNeverTheAudio(t *testing.T) {
+	h := setup(t)
+	// One of alice's, one of bob's — and one sha they both hold, which is one
+	// file on disk and a row each (#1095).
+	shared := strings.Repeat("c", 64)
+	for _, row := range []struct{ who, sha, title, tag string }{
+		{"alice", strings.Repeat("a", 64), "Italo Sunset", "italo disco"},
+		{"alice", shared, "Shared Anthem", "peaks"},
+		{"bob", shared, "Bob's Name For It", "bobs tag"},
+	} {
+		if _, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
+			Sha256: row.sha, UploadedBy: h.id(row.who), Title: row.title,
+			Artist: "Some Artist", Album: "Some Album",
+			DurationMs: 214000, SizeBytes: 5 << 20, Tags: []string{row.tag},
+		}); err != nil {
+			t.Fatalf("track %s/%s: %v", row.who, row.title, err)
+		}
+	}
+
+	// And a personal playlist holding one of them, which is what a library
+	// entry is since ADR-0045: no video id anywhere in the row.
+	list, err := h.store.Queries.CreatePlaylist(t.Context(), db.CreatePlaylistParams{
+		UserID: h.id("alice"), Name: "My own uploads",
+	})
+	if err != nil {
+		t.Fatalf("playlist: %v", err)
+	}
+	mine, err := h.store.Queries.TrackBySha(t.Context(), db.TrackByShaParams{
+		UploadedBy: h.id("alice"), Sha256: strings.Repeat("a", 64),
+	})
+	if err != nil {
+		t.Fatalf("track by sha: %v", err)
+	}
+	if _, err := h.store.Queries.InsertPlaylistTrack(t.Context(), db.InsertPlaylistTrackParams{
+		PlaylistID: list.ID, Position: 0, Title: "Italo Sunset",
+		TrackID: mine.ID, Tracks: []byte(`[]`),
+	}); err != nil {
+		t.Fatalf("playlist entry: %v", err)
+	}
+
+	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("body is not a zip: %v", err)
+	}
+	var body, lists []byte
+	for _, f := range zr.File {
+		if strings.HasSuffix(f.Name, ".mp3") {
+			t.Errorf("the export carries audio (%s) — ADR-0015 says metadata only", f.Name)
+		}
+		if f.Name != "tracks.json" && f.Name != "playlists.json" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open %s: %v", f.Name, err)
+		}
+		read, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read %s: %v", f.Name, err)
+		}
+		if f.Name == "tracks.json" {
+			body = read
+		} else {
+			lists = read
+		}
+	}
+	if body == nil {
+		t.Fatalf("the export has no tracks.json — the rider's uploads are missing from their own export")
+	}
+	var got []map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("tracks.json: %v (%q)", err, body)
+	}
+	if len(got) != 2 {
+		t.Fatalf("tracks.json should hold alice's two rows, got %v", got)
+	}
+	// Newest first, the order the shelf is browsed in.
+	if got[0]["title"] != "Shared Anthem" || got[1]["title"] != "Italo Sunset" {
+		t.Errorf("tracks.json is not alice's shelf newest-first: %v", got)
+	}
+	// Every field she typed, and what the file itself measured.
+	first := got[1]
+	for key, want := range map[string]any{
+		"title": "Italo Sunset", "artist": "Some Artist", "album": "Some Album",
+		"durationMs": float64(214000), "sizeBytes": float64(5 << 20),
+	} {
+		if first[key] != want {
+			t.Errorf("tracks.json[%q] = %v, want %v", key, first[key], want)
+		}
+	}
+	if tags, _ := first["tags"].([]any); len(tags) != 1 || tags[0] != "italo disco" {
+		t.Errorf("the tags she typed are missing: %v", first["tags"])
+	}
+	if first["contentAddress"] != strings.Repeat("a", 64) {
+		t.Errorf("a row must name its file: %v", first["contentAddress"])
+	}
+	// Bob's row for the same song is his, not hers.
+	if strings.Contains(string(body), "Bob's Name For It") || strings.Contains(string(body), "bobs tag") {
+		t.Errorf("the export carries another rider's track row:\n%s", body)
+	}
+
+	// The same music seen from the playlist side: an entry that points at one
+	// of her uploads used to export as a blank video id and nothing else.
+	var playlists []struct {
+		Name    string `json:"name"`
+		Entries []struct {
+			Source  string  `json:"source"`
+			Title   string  `json:"title"`
+			VideoID *string `json:"videoId"`
+		} `json:"tracks"`
+	}
+	if err := json.Unmarshal(lists, &playlists); err != nil {
+		t.Fatalf("playlists.json: %v (%q)", err, lists)
+	}
+	if len(playlists) != 1 || len(playlists[0].Entries) != 1 {
+		t.Fatalf("playlists.json should hold her one playlist and its one entry: %s", lists)
+	}
+	if got := playlists[0].Entries[0]; got.Source != "library" || got.Title != "Italo Sunset" || got.VideoID != nil {
+		t.Errorf("a library entry exported as %+v — it must name the track, not an empty video id", got)
+	}
+}
+
+// A shelf past the bound says so (#1089). The bound exists because ADR-0015's
+// quota is 2 GB of audio and nothing bounds how small an MP3 is, so the row
+// count is the one a rider can run up; an export that goes short without
+// saying so is the bug this file's route is about.
+func TestExportSaysWhenAShelfWasTooLongToCarryWhole(t *testing.T) {
+	h := setup(t)
+	was := maxExportTracks
+	maxExportTracks = 1
+	t.Cleanup(func() { maxExportTracks = was })
+	for _, sha := range []string{strings.Repeat("d", 64), strings.Repeat("e", 64)} {
+		if _, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
+			Sha256: sha, UploadedBy: h.id("alice"), Title: "t " + sha[:1],
+			DurationMs: 1000, SizeBytes: 1024, Tags: []string{},
+		}); err != nil {
+			t.Fatalf("track: %v", err)
+		}
+	}
+
+	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("body is not a zip: %v", err)
+	}
+	var manifest struct {
+		Complete   bool `json:"complete"`
+		Categories []struct {
+			Name      string `json:"name"`
+			Ok        bool   `json:"ok"`
+			Truncated bool   `json:"truncated"`
+		} `json:"categories"`
+	}
+	for _, f := range zr.File {
+		if f.Name != "manifest.json" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open manifest.json: %v", err)
+		}
+		body, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read manifest.json: %v", err)
+		}
+		if err := json.Unmarshal(body, &manifest); err != nil {
+			t.Fatalf("manifest.json: %v (%q)", err, body)
+		}
+	}
+	var said bool
+	for _, cat := range manifest.Categories {
+		if cat.Name == "tracks.json" {
+			said = cat.Truncated
+		}
+	}
+	if !said {
+		t.Errorf("the manifest does not say tracks.json was cut short: %+v", manifest.Categories)
+	}
+	if manifest.Complete {
+		t.Error(`the manifest claims "complete" over a category it cut short`)
+	}
+}
