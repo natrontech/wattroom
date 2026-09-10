@@ -30,18 +30,29 @@ while read -r dir; do
 	branch=$(git -C "$dir" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
 	ahead=$(git -C "$dir" rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
 
+	# "Has the remote ever seen this?" is `refs/remotes/origin/<branch>`, NOT the
+	# upstream. `git worktree add -b x origin/main` sets the upstream to
+	# origin/main, so a branch nobody has pushed still has one — which read as
+	# in-flight and hid the orphan this script exists to catch.
 	if [ "$ahead" -eq 0 ]; then
 		reason="nothing beyond origin/main"
-	elif [ -n "$branch" ] && [ -z "$(git for-each-ref --format='%(upstream)' "refs/heads/$branch")" ]; then
-		# Commits that exist only here: never pushed, so no PR and no ref for
-		# anyone to find. This is the case worth a human.
-		orphans+=("$name|${branch:-detached}|$ahead")
+	elif [ -z "$branch" ]; then
+		orphans+=("$dir|detached HEAD|$ahead")
 		kept=$((kept + 1))
 		continue
-	elif [ -n "$branch" ] && git for-each-ref --format='%(upstream:track)' "refs/heads/$branch" | grep -q gone; then
+	elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+		echo "keep    $name — $ahead commit(s) in flight"
+		kept=$((kept + 1))
+		continue
+	elif git for-each-ref --format='%(upstream)' "refs/heads/$branch" |
+		grep -qx "refs/remotes/origin/$branch"; then
+		# Its own remote branch was tracked and is now gone: squash-merged and
+		# deleted, which is what `gh pr merge --delete-branch` leaves behind.
 		reason="squash-merged, remote branch gone"
 	else
-		echo "keep    $name — $ahead commit(s) in flight"
+		# Commits that exist only here. No remote ref, so no PR and nothing for
+		# `gh pr list` or a neighbour's `git worktree list` to find.
+		orphans+=("$dir|$branch|$ahead")
 		kept=$((kept + 1))
 		continue
 	fi
@@ -73,9 +84,10 @@ if [ ${#orphans[@]} -gt 0 ]; then
 	echo
 	echo "NOT removed — these hold commits the remote has never seen:"
 	for o in "${orphans[@]}"; do
-		IFS='|' read -r n b a <<<"$o"
-		echo "    $n ($b, $a commit(s))"
-		echo "        git -C .claude/worktrees/$n push -u origin $b   # or delete it deliberately"
+		IFS='|' read -r d b a <<<"$o"
+		echo "    ${d##*/} — $a commit(s) on $b"
+		echo "        git -C $d push -u origin $b"
+		echo "        # or, if it is genuinely dead: git worktree remove --force $d"
 	done
 	exit 1
 fi
