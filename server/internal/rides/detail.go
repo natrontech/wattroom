@@ -286,7 +286,9 @@ func normWatts(row db.GetRideRow) int {
 // handleDelete is the rider throwing one of their own rides away. Destructive
 // and unrecoverable — the sample blob is not kept anywhere else — so the
 // confirmation lives client-side and this just deletes once. The ride's medals
-// go with it through medals.ride_id's on-delete-cascade.
+// go with it through medals.ride_id's on-delete-cascade; its XP does not go
+// with it — DeleteRide writes the offsetting ledger row in the same statement,
+// so the rider's level does not fall for using this button (#1452, ADR-0047).
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {

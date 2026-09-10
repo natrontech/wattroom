@@ -3,6 +3,7 @@ package rides
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -554,6 +556,120 @@ func TestDeleteRide(t *testing.T) {
 	_, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides", "")
 	if rides, _ := body["rides"].([]any); len(rides) != 0 {
 		t.Fatalf("deleted ride still listed: %v", body)
+	}
+}
+
+// levelFromXp is docs/SPEC.md's ladder — level n holds at 500 × n^1.6
+// cumulative XP — restated here because the level itself is drawn on the web
+// (web/src/lib/level.ts) from the lifetime XP this side serves. #1452 was a
+// level falling, so these tests assert the level, not only the number under it.
+func levelFromXp(xp int64) int {
+	n := 0
+	for math.Round(500*math.Pow(float64(n+1), 1.6)) <= float64(xp) {
+		n++
+	}
+	return n
+}
+
+func (h *harness) totalXp(t *testing.T, user string) int64 {
+	t.Helper()
+	xp, err := h.store.Queries.UserTotalXp(t.Context(), h.users.ByToken[user].ID)
+	if err != nil {
+		t.Fatalf("total xp: %v", err)
+	}
+	return xp
+}
+
+// offset reads the one ledger row a deleted ride leaves behind, by the ride's
+// own id — the ref DeleteRide writes, and the ledger's idempotency key.
+func (h *harness) offset(t *testing.T, user, rideID string) (int64, bool) {
+	t.Helper()
+	var amount int64
+	err := h.store.Pool.QueryRow(t.Context(),
+		"select amount from xp_events where user_id = $1 and source = 'ride_deleted' and ref = $2",
+		h.users.ByToken[user].ID, rideID).Scan(&amount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false
+	}
+	if err != nil {
+		t.Fatalf("read offset: %v", err)
+	}
+	return amount, true
+}
+
+// Deleting a ride deletes the record, not the fact that it was ridden
+// (#1452, ADR-0047). The delete is hard, so the ride's XP leaves
+// `sum(rides.xp)`; the offsetting `ride_deleted` ledger row is what holds
+// `user_total_xp` — and therefore the level — exactly where it was.
+func TestDeletingARideKeepsItsXpAndLevel(t *testing.T) {
+	tests := []struct {
+		name string
+		// One entry per ride alice saves: seconds ridden, and at how many
+		// watts. 3000 s at 250 W is 750 kJ, so a single one of these carries
+		// the rider past level 1 and a lost ride would drop them to 0.
+		rides [][2]int
+		// How many of those rides she then throws away, oldest first.
+		deletes int
+		// The level the fixture must actually reach, so a case meant to catch
+		// a fall cannot pass by starting at zero.
+		floor int
+	}{
+		{"a ride worth a level", [][2]int{{3000, 250}}, 1, 1},
+		{"a ride worth no xp at all", [][2]int{{120, 0}}, 1, 0},
+		{"two successive deletes", [][2]int{{3000, 250}, {3000, 250}}, 2, 1},
+		{"one of two, the other kept", [][2]int{{3000, 250}, {3000, 250}}, 1, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := setup(t)
+			ids := make([]string, 0, len(tt.rides))
+			for _, r := range tt.rides {
+				ids = append(ids, h.save(t, "alice", r[0], r[1]))
+			}
+			before := h.totalXp(t, "alice")
+			wantLevel := levelFromXp(before)
+			if wantLevel < tt.floor {
+				t.Fatalf("fixture reached level %d on %d xp, want at least %d — "+
+					"a case that starts at level 0 cannot show a level failing to fall", wantLevel, before, tt.floor)
+			}
+
+			for i := range tt.deletes {
+				if status, body := call(t, h.mux, "alice",
+					http.MethodDelete, "/api/rides/"+ids[i], ""); status != http.StatusNoContent {
+					t.Fatalf("delete %d: %d %v", i, status, body)
+				}
+				after := h.totalXp(t, "alice")
+				if after != before {
+					t.Fatalf("lifetime xp %d after %d delete(s), want %d unchanged — "+
+						"the offsetting ledger row is missing or wrong", after, i+1, before)
+				}
+				if got := levelFromXp(after); got != wantLevel {
+					t.Fatalf("level %d after %d delete(s), want %d — a level only goes up", got, i+1, wantLevel)
+				}
+			}
+
+			// One row per deleted ride, keyed by that ride's id, carrying that
+			// ride's own XP — never the whole lot on one row, and never a row
+			// for a ride still there.
+			offsets := int64(0)
+			for i, id := range ids {
+				amount, found := h.offset(t, "alice", id)
+				if deleted := i < tt.deletes; found != deleted {
+					t.Fatalf("ride %d: offsetting row found = %v, deleted = %v", i, found, deleted)
+				}
+				offsets += amount
+			}
+			var kept int64
+			if err := h.store.Pool.QueryRow(t.Context(),
+				"select coalesce(sum(xp), 0)::bigint from rides where user_id = $1",
+				h.users.ByToken["alice"].ID).Scan(&kept); err != nil {
+				t.Fatalf("kept xp: %v", err)
+			}
+			if kept+offsets != before {
+				t.Fatalf("rides %d + offsets %d = %d, want %d — the two halves double-count or lose XP",
+					kept, offsets, kept+offsets, before)
+			}
+		})
 	}
 }
 

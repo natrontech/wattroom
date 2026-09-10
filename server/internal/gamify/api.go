@@ -82,7 +82,12 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 	}
 	out := Response{
 		Xp: xpJSON{
-			Rides:        t.rideXp,
+			// Riding XP is the rides still here plus the rides that were
+			// ridden and then deleted (#1452, ADR-0047) — both are work done
+			// on a bike, and adding the offsetting rows here is what keeps
+			// this hand-summed Total equal to `user_total_xp`, which is what
+			// every level on every other surface is computed from.
+			Rides:        t.rideXp + t.bySource[sourceRideDeleted].Amount,
 			Lounge:       t.bySource[sourceLounge].Amount,
 			Sessions:     t.bySource[sourceSession].Amount,
 			Achievements: t.bySource[sourceAchievement].Amount,

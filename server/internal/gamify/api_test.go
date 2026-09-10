@@ -30,6 +30,62 @@ func get(t *testing.T, mux *http.ServeMux, path, as string) (*httptest.ResponseR
 	return rec, body
 }
 
+// The trophy case hand-sums its Lifetime figure from four buckets, so the
+// offsetting rows a deleted ride leaves (#1452, ADR-0047) have to land in the
+// Riding one — they are riding XP. A case whose Lifetime disagrees with the
+// level drawn beside it is the same bug one layer up.
+func TestTrophyCaseCountsADeletedRideAsRiding(t *testing.T) {
+	s, _, alice, _ := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+	addRide(t, s, alice, time.Now().Add(-2*time.Hour), 3600, 720, 300)
+	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
+
+	before, err := s.store.Queries.UserTotalXp(t.Context(), alice.ID)
+	if err != nil {
+		t.Fatalf("total xp: %v", err)
+	}
+
+	var doomed pgtype.UUID
+	if err := s.store.Pool.QueryRow(t.Context(),
+		"select id from rides where user_id = $1 and xp = 100", alice.ID).Scan(&doomed); err != nil {
+		t.Fatalf("find ride: %v", err)
+	}
+	n, err := s.store.Queries.DeleteRide(t.Context(), db.DeleteRideParams{ID: doomed, UserID: alice.ID})
+	if err != nil || n != 1 {
+		t.Fatalf("delete ride: %d rows, %v", n, err)
+	}
+
+	after, err := s.store.Queries.UserTotalXp(t.Context(), alice.ID)
+	if err != nil {
+		t.Fatalf("total xp: %v", err)
+	}
+	if after != before || after != 400 {
+		t.Fatalf("lifetime xp %d after the delete, want %d unchanged", after, before)
+	}
+
+	rec, body := get(t, mux, "/api/me/trophies", "alice")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if body.Xp.Rides != 400 || body.Xp.Total != after {
+		t.Fatalf("xp = %+v, want 400 riding and a total matching user_total_xp (%d)", body.Xp, after)
+	}
+	// Nothing else moved: the row is not a lounge block, a session or a badge.
+	if body.Xp.Lounge != 0 || body.Xp.Sessions != 0 || body.Xp.Achievements != 0 {
+		t.Fatalf("xp = %+v, want the offset in the riding bucket only", body.Xp)
+	}
+	// And it is not work: no count the badge catalogue judges may see it.
+	if body.Counts != (countsJSON{}) {
+		t.Fatalf("counts = %+v, want every one of them still zero", body.Counts)
+	}
+	// The energy is the rides that are still here — a deleted ride's kJ is
+	// gone with its record, and only its XP is kept.
+	if body.EnergyKj != 720 {
+		t.Fatalf("energy = %d, want the surviving ride's 720 kJ", body.EnergyKj)
+	}
+}
+
 func TestTrophies(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
