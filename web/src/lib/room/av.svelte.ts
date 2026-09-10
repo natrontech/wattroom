@@ -788,6 +788,10 @@ export function createRoomAv(slug: string) {
 		r.on(client.RoomEvent.LocalTrackUnpublished, (pub) => {
 			if (pub.source !== client.Track.Source.ScreenShare) return;
 			av.sharing = false;
+			// The sound went with the picture (#1881): left true, the next
+			// share's notice claimed the machine's sound while the picker was
+			// still open.
+			av.sharingAudio = false;
 			if (dropOwned(screenTracks, conn.me, conn.myIdentity))
 				stage.dropScreen(conn.me);
 		});
@@ -815,8 +819,13 @@ export function createRoomAv(slug: string) {
 			// The tab that took the mic is gone: this one may have it back, and
 			// it goes back the way it left, without asking (ux.md: recovery is
 			// automatic where it can be).
+			// Not during a full reconnect (#1878): the SDK unwinds every remote
+			// first, so the tab holding the mic looks gone for a moment and a
+			// background tab would take it — with a newer claim, so the tab
+			// the rider is looking at then stands down. Reconnected re-asks.
 			if (
 				av.handedOff &&
+				av.status !== 'reconnecting' &&
 				rider === conn.me &&
 				!claims.stillHere(conn.me, conn.myIdentity)
 			)
@@ -877,6 +886,10 @@ export function createRoomAv(slug: string) {
 		});
 		r.on(client.RoomEvent.Reconnected, () => {
 			if (av.status === 'reconnecting') av.status = 'live';
+			// The roster is back: if the tab that held the mic really went
+			// while the link was down, this one has it back now (#1878).
+			if (av.handedOff && !claims.stillHere(conn.me, conn.myIdentity))
+				void takeOver({ reopenMic: claims.micBeforeHandoff });
 		});
 		r.on(client.RoomEvent.Disconnected, () => {
 			const unexpected = av.status === 'live' || av.status === 'reconnecting';
@@ -895,6 +908,7 @@ export function createRoomAv(slug: string) {
 			conn.micBeforeDrop = av.micOn;
 			av.micOn = false;
 			av.sharing = false;
+			av.sharingAudio = false;
 			av.handedOff = false;
 			claims.current = null;
 			conn.room = null;
@@ -1067,8 +1081,26 @@ export function createRoomAv(slug: string) {
 		},
 		async setCam(id: string) {
 			devices.setCam(id);
-			if (av.camOn && conn.room) {
-				await conn.room.switchActiveDevice('videoinput', id).catch(() => {});
+			if (!conn.room) return;
+			// Told to LiveKit whether or not the camera is on (#1876): it keeps
+			// the pick as the capture default for the next open, and the picker
+			// is reached with the camera off far more often than on. The empty
+			// id is "the browser's default", which as an exact constraint
+			// matches nothing — so not exact.
+			try {
+				await conn.room.switchActiveDevice('videoinput', id, id !== '');
+			} catch (cause) {
+				// Another app holding it, an unplugged USB cam, a revoked
+				// permission: the mic path says why (#824), this one was silent
+				// (#1880). Trust the publication for whether a picture survives.
+				failedMedia(cause, 'camera');
+				if (
+					av.camOn &&
+					!conn.room.localParticipant.getTrackPublication(
+						conn.liveKit!.Track.Source.Camera,
+					)?.videoTrack
+				)
+					av.camOn = false;
 			}
 		},
 		setOut(id: string) {
@@ -1198,6 +1230,9 @@ export function createRoomAv(slug: string) {
 			av.status = 'off';
 			av.error = null;
 			av.micOn = av.camOn = av.sharing = av.away = false;
+			// The hand-off and the blocked-playback strips are about a call
+			// that is over (#1877); both offered a button that could do nothing.
+			av.handedOff = av.playbackBlocked = av.sharingAudio = false;
 			chain.clearFault();
 			// The room is behind you: its mute goes with it, or the next
 			// room — and every cue outside one — starts silent.
