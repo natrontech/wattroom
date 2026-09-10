@@ -23,6 +23,13 @@ export interface TrendRide {
 	executionScored?: boolean;
 	ftp: number;
 	best20m: number;
+	/**
+	 * The FTP this ride PRODUCED, absent on every ride that produced none —
+	 * which is all of them but a ramp test whose number the rider accepted
+	 * (#1572). `ftp` above is the number the ride was SCORED against, so a
+	 * ramp's own ride carries the old one.
+	 */
+	ftpAfter?: number;
 }
 
 export interface FormPoint {
