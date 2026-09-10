@@ -85,8 +85,11 @@ export const test = base.extend<{
 				const plus = page.getByRole('button', {
 					name: 'open a room or join a crew with a code',
 				});
-				if (!(await plus.isVisible()))
-					await page.getByRole('button', { name: 'open navigation' }).click();
+				const menu = page.getByRole('button', { name: 'open navigation' });
+				// The shell draws once /api/me answers: wait for whichever of the
+				// two is this width's way in before asking which it was.
+				await expect(plus.or(menu).first()).toBeVisible({ timeout: 15_000 });
+				if (!(await plus.isVisible())) await menu.click();
 				await plus.click();
 				const sheet = page.getByRole('dialog', { name: 'Open a room' });
 				await sheet.locator('#open-room-name-sheet').fill(name);
