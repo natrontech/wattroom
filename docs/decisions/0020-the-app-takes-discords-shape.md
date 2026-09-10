@@ -430,6 +430,9 @@ anchor.
 
 What is left in the Sound panel is the gate threshold and the mic test — a
 level that is a picture, and the button that makes the picture move.
+_(That sentence never described the shipped panel — see the
+[2026-09-10 amendment](#amendment--the-sound-panel-holds-the-whole-mix-not-the-leftovers-2026-09-10-2010),
+which supersedes it.)_
 
 ## Amendment — the crew is a mode, not a level (2026-09-08, #1023)
 
@@ -632,6 +635,45 @@ says it does; nothing builds one —
 parent for means the tree is wrong, not the report. Amend the tree here
 first; then build.
 
+## Amendment — the Sound panel holds the whole mix, not the leftovers (2026-09-10, #2010)
+
+The sentence that closes #920 above reads as an inventory of the Sound panel,
+and as an inventory it never was one: at the time it was written the panel
+still drew the mixer and the device pickers, and it draws more of both now
+(#2010). Left standing, it invites the next reader to delete working controls
+until the code matches the ADR. What each amendment above actually did was give
+a control a home **on its object**; none of them took the panel's copy away,
+because `ux.md` forbids a control that lives only in a menu.
+
+`QuickAudio.svelte` draws four blocks, and is meant to:
+
+- **how you transmit** — voice activation and push to talk as two big targets,
+  the second labelled with the key it needs and drawn only where there is one
+  to hold (`canHoldToTalk`, #1879);
+- **`GateTune`** with its meter, and the mic test that makes the meter move
+  before you are in voice;
+- **the whole of `MixFaders`** — music, cues, soundboard (#877), shared screens
+  (#1699), how far they dip under a voice, whether your own voice dips them,
+  and a fader for every rider you have moved;
+- **all three `DevicePickers`** — microphone, camera (#952) and, where the
+  browser can switch sinks, speakers — the same component `/settings/voice`
+  draws, unnamed-device hint included (#1858, #1887).
+
+That makes the panel the in-room twin of `/settings/voice`, assembled from the
+same components, and at the same time the second door to every control that
+also sits on its object: the mic's menu (mute, mode, which microphone, "Tune
+your gate…"), the you-menu (cue level, duck depth, speakers) and the jukebox's
+music fader. The gate threshold is the one control with no second home, for the
+reason #914 gives — a menu cannot draw a meter — so it lives on the two
+surfaces that can: this panel and `/settings/voice#gate`, which its own copy
+links to.
+
+So read the amendments above as _this control gained a home on its object_,
+never as _this control left the panel_. Rule 4 of the map amendment is not the
+counter-argument: one home per object is about **addresses** — a page and the
+door to it — while a fader drawn both on its object and in the panel that shows
+what you have changed is this rule working as intended.
+
 ## Consequences
 
 - **The room stops being a special page.** One shell renders every route, so
@@ -664,7 +706,7 @@ first; then build.
 - **A narrow window and a phone are different questions.** Below `md` the
   sidebar becomes a drawer, which is what Discord does — that is the _window_
   answer. The _phone_ answer is not this shell at all — see the
-  [2026-09-05 amendment](#amendment--a-phone-reaches-the-room-directly-2026-09-05),
+  [2026-09-05 amendment](#amendment--a-phone-reaches-the-room-directly-2026-09-05-412),
   which supersedes this bullet's original reading (a redirect to a separate
   spectator page). Do not let the drawer imply the phone gets the desk shell
   unmodified.
