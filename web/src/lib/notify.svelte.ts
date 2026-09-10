@@ -16,6 +16,7 @@
  */
 import { toasts } from '$lib/toast.svelte';
 const KEY = 'wattroom.notify.v1'; // '1' on, '0' off; the shell's default is on
+const OFFER_KEY = 'wattroom.notify-offer.v1'; // 'no' once waved away
 
 interface ShellNotification {
 	title: string;
@@ -33,26 +34,35 @@ interface Bridge {
 const bridge = () => (globalThis as { wattroom?: Bridge }).wattroom;
 const inShell = () => typeof bridge()?.notify === 'function';
 
-function stored(): string | null {
+function read(key: string): string | null {
 	try {
-		return localStorage.getItem(KEY);
+		return localStorage.getItem(key);
 	} catch {
 		return null;
 	}
 }
-function store(value: string) {
+function write(key: string, value: string) {
 	try {
-		localStorage.setItem(KEY, value);
+		localStorage.setItem(key, value);
 	} catch {
 		/* no storage: the choice lasts this page load */
 	}
 }
+const stored = () => read(KEY);
+const store = (value: string) => write(KEY, value);
 const granted = () =>
 	typeof Notification !== 'undefined' && Notification.permission === 'granted';
 
 let enabled = $state(
 	inShell() ? stored() !== '0' : stored() === '1' && granted(),
 );
+
+// The in-context offer (#1485), remembered where the switch it flips is
+// remembered: per device. A notification permission belongs to one browser,
+// so a rider who said no here and rides from a second machine is a rider who
+// has not been asked on that one — an account column would call that asked
+// and never offer again.
+let offerWaved = $state(read(OFFER_KEY) === 'no');
 
 /** How a notification answers back: the placeholder, and where the text goes. */
 export interface ReplyTo {
@@ -152,6 +162,29 @@ export const notify = {
 	disable() {
 		enabled = false;
 		store('0');
+	},
+	/**
+	 * Whether to offer notifications in context (#1485) — where a rider first
+	 * sees a session planned in one of their rooms, the moment being told
+	 * would matter. Only where the button can succeed: possible here, not
+	 * already on, not blocked by this browser (it will never ask again), and
+	 * not something the rider has switched off or waved away before. The
+	 * shell's default of on is covered by `enabled`; a shell rider who
+	 * switched it off stored '0' and is not asked again.
+	 */
+	get offered(): boolean {
+		return (
+			!offerWaved &&
+			notify.supported &&
+			!enabled &&
+			notify.permission !== 'denied' &&
+			stored() !== '0'
+		);
+	},
+	/** Waved away, for good, on this device. */
+	waveOffer() {
+		offerWaved = true;
+		write(OFFER_KEY, 'no');
 	},
 	/**
 	 * Fires only when enabled AND nobody is looking — never over the open

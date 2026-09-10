@@ -29,6 +29,7 @@
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
+	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -519,6 +520,11 @@
 								</a>
 							{/each}
 						</div>
+						<!-- Notifications, offered where they would matter (#1485): the
+						     rider can see a session is coming, so this is the moment to
+						     say the app can tell them when it starts. Once, and only
+						     where the button can succeed — NotifyOffer decides. -->
+						<NotifyOffer />
 					{:else}
 						<p class="text-muted mt-3 text-sm">
 							Nothing on the calendar.

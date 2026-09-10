@@ -166,3 +166,75 @@ describe('in a browser', () => {
 		expect(again.notify.enabled).toBe(false);
 	});
 });
+
+// The in-context offer (#1485): shown where a session is planned in one of
+// the rider's rooms, and only where pressing it could do anything.
+describe('the offer to turn them on', () => {
+	// lib.dom types Notification as always present; these cases are about the
+	// browsers where it is not, so the global goes through a loose record.
+	const g = globalThis as unknown as Record<string, unknown>;
+	let asked = 0;
+	function browser(permission: 'default' | 'granted' | 'denied') {
+		asked = 0;
+		g.Notification = Object.assign(
+			function () {
+				/* a constructed notification is not what these cases are about */
+			},
+			{
+				permission,
+				requestPermission: async () => {
+					asked++;
+					return permission === 'default' ? 'granted' : permission;
+				},
+			},
+		);
+	}
+	afterEach(() => {
+		delete g.Notification;
+	});
+
+	it('is offered to a browser that has never been asked, and asks nothing until the click', async () => {
+		browser('default');
+		const { notify } = await fresh();
+		expect(notify.offered).toBe(true);
+		// Reading the gate is not asking: no dialog without a deliberate press.
+		expect(asked).toBe(0);
+		await notify.enable();
+		expect(asked).toBe(1);
+	});
+
+	it('is not offered once notifications are on', async () => {
+		browser('granted');
+		localStorage.setItem('wattroom.notify.v1', '1');
+		const { notify } = await fresh();
+		expect(notify.enabled).toBe(true);
+		expect(notify.offered).toBe(false);
+	});
+
+	it('is not offered where the button could not succeed', async () => {
+		// Blocked: this browser will never show the prompt again.
+		browser('denied');
+		expect((await fresh()).notify.offered).toBe(false);
+
+		// Switched off deliberately — in the shell, where the default is on.
+		delete g.Notification;
+		(globalThis as W).wattroom = { notify: () => {}, onNotification: () => {} };
+		const shell = await fresh();
+		shell.notify.disable();
+		expect(shell.notify.offered).toBe(false);
+		expect((await fresh()).notify.offered).toBe(false);
+
+		// No notifications here at all (iOS Safari in a tab).
+		delete (globalThis as W).wattroom;
+		expect((await fresh()).notify.offered).toBe(false);
+	});
+
+	it('is offered once and, waved away, never again on this device', async () => {
+		browser('default');
+		const first = await fresh();
+		expect(first.notify.offered).toBe(true);
+		first.notify.waveOffer();
+		expect(first.notify.offered).toBe(false);
+		expect((await fresh()).notify.offered).toBe(false);
+	});
+});
