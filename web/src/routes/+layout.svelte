@@ -107,6 +107,7 @@
 		page.url.pathname === '/login' ||
 			page.url.pathname === '/' ||
 			page.url.pathname === '/legal' ||
+			page.url.pathname === '/terms' ||
 			page.url.pathname === '/privacy' ||
 			page.url.pathname === '/download' ||
 			// The HUD says "sign in on the main window" itself (#1667).

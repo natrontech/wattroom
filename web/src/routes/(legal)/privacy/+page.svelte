@@ -168,12 +168,11 @@
 			address, but only if you saved one.
 		</li>
 		<li>
-			<!-- The provider and jurisdiction are the operator's to name (#1297); until
-			     then this says who runs it without saying where. -->
 			<strong class="text-ink font-medium">Infrastructure.</strong> The service runs
-			on servers operated for Natron Tech AG; DNS is provided by Cloudflare. IP addresses
-			appear in technical server logs, which we keep briefly for operations and security
-			— never for profiling.
+			in Switzerland, on infrastructure Natron Tech AG operates itself — the controller
+			named above and the operator are the same company, so your ride data reaches
+			no third-party host. DNS is provided by Cloudflare. IP addresses appear in technical
+			server logs, which we keep briefly for operations and security — never for profiling.
 		</li>
 	</ul>
 </section>
