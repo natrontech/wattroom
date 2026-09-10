@@ -48,3 +48,25 @@ path — remote content chooses the words, never where the app goes.
   message to answer.
 - Windows and Linux get the click; the reply field is macOS. When Electron
   grows it elsewhere, nothing here changes but the platform note.
+
+## Amendment — the offer that makes "on" reachable (2026-09-10, #1485)
+
+This ADR assumed notifications were on; nothing ever offered them. The only
+switch was in Settings, the browser's default is off, and the first-hour
+journey audit found the rider who joins a crew and closes the tab is never
+told the app could tell them the room is riding — the most valuable
+notification it has.
+
+**Offered once, where it would matter**: the first time a rider sees a
+session planned in one of their rooms — Home's _What's next_ — an inline
+line offers the switch. Not a set-up step and not a prompt on minute one:
+the 95 % rule cuts against asking for a permission before the rider has a
+reason to want it, and a browser permission is a dialog. The offer renders
+only where pressing it could succeed — possible on this device, not already
+on, not blocked, not switched off or waved away before — and the browser is
+asked nothing until the press.
+
+**The dismissal is per device**, in `localStorage` beside the switch it
+flips, not a column on the account: the permission is one browser's, so a
+rider who declined on a laptop and opens the app on a desktop has not been
+asked there. Settings keeps the answer changeable either way.
