@@ -28,6 +28,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import UserCheck from '@lucide/svelte/icons/user-check';
 	import UserMinus from '@lucide/svelte/icons/user-minus';
+	import { serverNow } from '$lib/room/server-clock';
 
 	const room = useRoom();
 	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
@@ -45,8 +46,10 @@
 	const minutes = (json: string) =>
 		Math.round(segmentsDuration(parseSharedSegments(json)) / 60);
 
-	/** Due enough to offer "start now" — the same window the card always used. */
-	const due = (iso: string) => Date.parse(iso) - Date.now() < 15 * 60_000;
+	/** Due enough to offer "start now" — the same window the card always used,
+	 * on the server's clock like the timeline's reminder (#1909): a laptop
+	 * twenty minutes fast offered it thirty-five minutes early. */
+	const due = (iso: string) => Date.parse(iso) - serverNow() < 15 * 60_000;
 
 	/** A plan with an RSVP is what #450 calls an event; no second object. */
 	const going = (entry: { going?: { id: string; displayName: string }[] }) =>

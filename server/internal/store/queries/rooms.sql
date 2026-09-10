@@ -248,6 +248,9 @@ join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
 join users u on u.id = s.created_by
 where s.starts_at > $2
+  -- A crew ban leaves the membership row and lives in visible_rooms alone
+  -- (#1904): the rail asks it, and so does the calendar.
+  and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
 order by s.starts_at;
 
 -- name: SetRsvp :exec

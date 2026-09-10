@@ -200,10 +200,11 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 	case sessionPlanned:
 	case sessionReminder:
 		// Deliberately relative, and so the one session mail that needs no
-		// zone at all: "in an hour" is correct everywhere, and a one-minute
-		// tick against a one-hour window keeps it accurate to the minute.
-		verb = "rides in an hour"
-		heading = room.Name + " rides in an hour"
+		// zone at all. The gap is measured, not assumed (#1903): a plan made
+		// forty minutes ahead, or one moved inside the hour, is claimed the
+		// same minute, and "in an hour" was a lie four minutes before a start.
+		verb = "rides " + inWords(time.Until(startsAt))
+		heading = room.Name + " " + verb
 	case sessionMoved:
 		prefix = "Moved: "
 		verb = "moved a planned session to"
@@ -221,8 +222,9 @@ func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName str
 		subject := fmt.Sprintf("%s%s rides %s — %s", prefix, room.Name, workoutName, when)
 		detail := when
 		if change == sessionReminder {
-			subject = fmt.Sprintf("%s rides %s in an hour", room.Name, workoutName)
-			detail = "in an hour"
+			gap := inWords(time.Until(startsAt))
+			subject = fmt.Sprintf("%s rides %s %s", room.Name, workoutName, gap)
+			detail = gap
 		}
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
 			s.baseURL, store.UUIDString(t.ID), store.UUIDString(t.UnsubToken))
@@ -470,3 +472,19 @@ type sendError struct {
 
 func (e *sendError) Error() string  { return "resend: " + e.status }
 func (e *sendError) Detail() string { return e.detail }
+
+// inWords is how far off a start is, as the reminder says it: the hour the
+// claim window is named for, else the minutes that are actually left.
+func inWords(gap time.Duration) string {
+	minutes := int(gap.Round(time.Minute) / time.Minute)
+	switch {
+	case minutes >= 55:
+		return "in an hour"
+	case minutes > 1:
+		return fmt.Sprintf("in %d minutes", minutes)
+	case minutes == 1:
+		return "in a minute"
+	default:
+		return "now"
+	}
+}

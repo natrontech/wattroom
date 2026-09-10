@@ -201,6 +201,50 @@ func TestSessionMailSkipsABannedMember(t *testing.T) {
 	}
 }
 
+// The crew's ban, not the room's (#1904): the membership row stays as it
+// was and only visible_rooms knows, so the targets query has to ask it.
+func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
+
+	code := "CRWBAN"
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Crew", OwnerID: h.planner.ID, Code: &code,
+	})
+	if err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	// LIFO with the harness's room cleanup: the room lets go of the crew
+	// first, or the crew's delete is refused and the room's slug is left
+	// behind for the next test to trip on.
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "update rooms set crew_id = null where id = $1", h.room.ID)
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
+	})
+	if _, err := h.store.Pool.Exec(t.Context(), "update rooms set crew_id = $2 where id = $1", h.room.ID, crew.ID); err != nil {
+		t.Fatalf("place room in crew: %v", err)
+	}
+	s.sessionMail(t.Context(), h.room, "Sweet Spot", starts, h.planner.ID, sessionPlanned)
+	if len(fake.payloads) != 1 {
+		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
+	}
+
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.optIn.ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("crew ban: %v", err)
+	}
+	fake.payloads = nil
+	s.sessionMail(t.Context(), h.room, "Sweet Spot", starts, h.planner.ID, sessionPlanned)
+	if len(fake.payloads) != 0 {
+		t.Errorf("mailed a crew-banned member: %v", fake.payloads[0]["to"])
+	}
+}
+
 func TestSessionRescheduledSaysMoved(t *testing.T) {
 	h := setup(t)
 	fake := &fakeResend{}
