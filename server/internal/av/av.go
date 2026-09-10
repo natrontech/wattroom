@@ -36,6 +36,12 @@ type Access interface {
 // the consumer, like fs.ErrNotExist: rooms sits above av in the import graph.
 var ErrNoSession = errors.New("av: no session")
 
+// ErrNotMember is Authorize's refusal proper — signed in, not this room's.
+// Anything else it returns is the database not answering (#1984), which the
+// socket door and the token endpoint answer as a failure to retry, not as a
+// refusal to believe.
+var ErrNotMember = errors.New("av: not a member")
+
 type Config struct {
 	URL    string
 	Key    string
@@ -92,8 +98,12 @@ func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
 				"Your session expired — sign in again to join voice.")
 			return
 		}
-		httpx.WriteError(w, http.StatusForbidden, "forbidden",
-			"Voice and camera are for the room's members — you are not one any more.")
+		if errors.Is(err, ErrNotMember) {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden",
+				"Voice and camera are for the room's members — you are not one any more.")
+			return
+		}
+		httpx.Fail(w, s.log, "av token authorize", err, "The call could not be set up. Try again.", "room", r.PathValue("slug"))
 		return
 	}
 	token, err := s.mint(slug, rider)

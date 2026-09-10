@@ -318,8 +318,12 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 		return protocol.Rider{}, "", av.ErrNoSession
 	}
 	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(slug))
+	if errors.Is(err, pgx.ErrNoRows) {
+		// No such room reads the same as not yours: nothing to learn here.
+		return protocol.Rider{}, "", errNotMember
+	}
 	if err != nil {
-		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize: %w", err)
+		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize room: %w", err)
 	}
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
@@ -350,4 +354,6 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 	}, room.Slug, nil
 }
 
-var errNotMember = errors.New("rooms: not a member")
+// The consumers' sentinel (av.ErrNoSession's note): the socket door and the
+// token endpoint tell a refusal from a database that did not answer by it.
+var errNotMember = av.ErrNotMember
