@@ -74,5 +74,5 @@ export function deleteRoomBody(
 	const room =
 		"Removes the room for everyone in it — its chat, its planned sessions and their RSVPs, its session recaps, its medal history and its streak. Rides already ridden stay in each rider's own history. This can't be undone.";
 	if (!crew?.goesWithRoom) return room;
-	return `${room} It is the only room in ${crew.name} and nobody else is in the crew, so the crew goes with it — its name, its logo and its invite link. Your next room starts a fresh crew.`;
+	return `${room} It is ${crew.name}'s only room and nobody else is in the crew, so the crew goes with it — its name, its logo and its invite link. Your next room starts a fresh crew.`;
 }
