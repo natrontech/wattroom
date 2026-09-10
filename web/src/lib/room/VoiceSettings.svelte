@@ -6,8 +6,7 @@
 	// `GateTune` and `MixFaders` this page does.
 	import GateTune from '$lib/room/GateTune.svelte';
 	import MixFaders from '$lib/room/MixFaders.svelte';
-	import Select from '$lib/components/Select.svelte';
-	import { deviceOptions } from '$lib/room/device-options';
+	import DevicePickers from '$lib/room/DevicePickers.svelte';
 
 	let {
 		micOn = false,
@@ -55,50 +54,7 @@
 	} = $props();
 </script>
 
-<div class="grid gap-4 sm:grid-cols-3">
-	<label class="block">
-		<!-- Anchors the room's Sound panel deep-links to (#1330). -->
-		<span id="devices"></span>
-		<span class="eyebrow">microphone</span>
-		<div class="mt-1">
-			<Select
-				label="Microphone"
-				value={micId}
-				options={deviceOptions(devices.mics, 'Microphone')}
-				onchange={(id) => onDevice?.('mic', id)}
-			/>
-		</div>
-	</label>
-	<label class="block">
-		<span class="eyebrow">camera</span>
-		<div class="mt-1">
-			<Select
-				label="Camera"
-				value={camId}
-				options={deviceOptions(devices.cams, 'Camera')}
-				onchange={(id) => onDevice?.('cam', id)}
-			/>
-		</div>
-	</label>
-	{#if canPickOutput}
-		<label class="block">
-			<span class="eyebrow">speakers · voice only</span>
-			<div class="mt-1">
-				<Select
-					label="Speakers"
-					value={outId}
-					options={deviceOptions(devices.outs, 'Speakers')}
-					onchange={(id) => onDevice?.('out', id)}
-				/>
-			</div>
-		</label>
-	{/if}
-</div>
-{#if devices.mics.length > 0 && !devices.mics.some((d) => d.label)}
-	<p class="text-muted/70 mt-2 text-[11px]">
-		Names appear once a mic test or a voice join grants mic access.
-	</p>
-{/if}
+<DevicePickers {devices} {micId} {camId} {outId} {canPickOutput} {onDevice} />
 
 <div class="border-ink/5 mt-5 border-t pt-4">
 	<span class="eyebrow">how you transmit</span>

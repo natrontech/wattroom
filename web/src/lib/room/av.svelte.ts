@@ -5,7 +5,7 @@ import type {
 } from 'livekit-client';
 import { api } from '$lib/api';
 import { mixer } from '$lib/sound/mixer.svelte';
-import { createDeviceChoices } from '$lib/room/av-devices.svelte';
+import { deviceChoices } from '$lib/room/av-devices.svelte';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { canPickOutput, createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
@@ -96,7 +96,7 @@ export function createRoomAv(slug: string) {
 	// Device selection and the rider-audio bus own their own state now (#892).
 	// The bus reads the chosen sink through a getter: the AudioContext outlives
 	// any one pick.
-	const devices = createDeviceChoices();
+	const devices = deviceChoices();
 	// Who is talking, measured off the voice on its way to the speakers (#987)
 	// rather than remembered from the server's broadcast. `level` answers
 	// whether anything actually moved, so the reactive write happens on a
