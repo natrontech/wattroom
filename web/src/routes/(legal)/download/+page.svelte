@@ -72,7 +72,7 @@
 	<title>Download · WattRoom</title>
 </svelte:head>
 
-<h1 class="font-display mt-10 text-2xl font-bold">WattRoom on your desk</h1>
+<h1 class="page-title">WattRoom on your desk</h1>
 <p class="text-muted mt-2 max-w-prose text-sm leading-relaxed">
 	The same WattRoom, in a window of its own. Your machine stays awake through an
 	interval, nothing throttles it when you switch away, and your trainer pairs

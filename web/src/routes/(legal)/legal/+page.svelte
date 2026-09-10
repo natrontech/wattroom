@@ -2,7 +2,7 @@
 	<title>Legal notice · WattRoom</title>
 </svelte:head>
 
-<h1 class="font-display mt-10 text-2xl font-bold">Legal notice</h1>
+<h1 class="page-title">Legal notice</h1>
 <p class="text-muted mt-1 text-sm">Impressum</p>
 
 <section>

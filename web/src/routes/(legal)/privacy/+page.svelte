@@ -2,7 +2,7 @@
 	<title>Privacy policy · WattRoom</title>
 </svelte:head>
 
-<h1 class="font-display mt-10 text-2xl font-bold">Privacy policy</h1>
+<h1 class="page-title">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
 	Datenschutzerklärung · last updated 9 September 2026
 </p>
