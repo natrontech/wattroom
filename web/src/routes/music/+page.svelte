@@ -7,17 +7,18 @@
 	// The rider's own playlists live here too (#1460): the library's home is
 	// where a list of its tracks gets built, room or no room.
 	import { confirm } from '$lib/confirm.svelte';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	import type { MenuEntry } from '$lib/context-menu.svelte';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import ListMusic from '@lucide/svelte/icons/list-music';
-	import { createPlaylistStore } from '$lib/room/playlists.svelte';
+	import {
+		createPlaylistStore,
+		type PlaylistStore,
+	} from '$lib/room/playlists.svelte';
+	import { saveToPlaylist } from '$lib/room/save-to-playlist';
 	import { SvelteSet } from 'svelte/reactivity';
-	import Select from '$lib/components/Select.svelte';
+	import LibraryPicked from './LibraryPicked.svelte';
 	import LibraryPlaylists from './LibraryPlaylists.svelte';
+	import LibraryTrackRow from './LibraryTrackRow.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -34,10 +35,7 @@
 		deleteTrack,
 		listTracks,
 		parseTags,
-		queueTracks,
 		saveTrack,
-		trackClock,
-		trackSize,
 		uploadTrack,
 		whyNotUploadable,
 		type PoolTag,
@@ -177,21 +175,22 @@
 	const roomLists = $derived(
 		room ? createPlaylistStore(`/api/rooms/${room.slug}/playlists`) : null,
 	);
-	async function saveTo(
+	function saveTo(
 		track: Track,
-		store: ReturnType<typeof createPlaylistStore>,
+		store: PlaylistStore,
 		id: string,
 		name: string,
-	) {
-		const res = await store.addTrack(id, {
-			action: 'add',
-			trackId: track.id,
-			title: track.title,
-			artist: track.artist,
-		});
-		toasts.push(
-			res.ok ? `Saved “${track.title}” to “${name}”.` : res.error.message,
-			res.ok ? undefined : { tone: 'error' },
+	): Promise<void> {
+		return saveToPlaylist(
+			store,
+			{ id, name },
+			{
+				action: 'add',
+				trackId: track.id,
+				title: track.title,
+				artist: track.artist,
+			},
+			track.title,
 		);
 	}
 
@@ -217,54 +216,10 @@
 	const owned = (track: Track) => track.uploadedBy === account.me?.displayName;
 
 	// ── Multi-select (#1433) ──────────────────────────────────────────────────
-	// A checkbox per row, a bar while anything is picked. Queueing goes through
-	// one request (see queueTracks); saving is one call per track, which the
-	// REST side takes without a throttle.
+	// A checkbox per row; what the ticked ones can do together is the bar
+	// (LibraryPicked), which owns those verbs and the toasts they end in.
 	const selected = new SvelteSet<string>();
-	let bulkBusy = $state(false);
-	let saveTarget = $state('');
-	const pickedTracks = $derived(tracks.filter((t) => selected.has(t.id)));
-
-	async function queueSelected() {
-		if (!room || !selected.size) return;
-		bulkBusy = true;
-		const res = await queueTracks(room.slug, [...selected]);
-		bulkBusy = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		toasts.push(
-			`Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'} in ${roomName}.` +
-				(res.data.skipped ? ` ${res.data.skipped} could not be queued.` : ''),
-		);
-		selected.clear();
-	}
-
-	async function saveSelected(targetId: string) {
-		const target = [
-			...(roomLists?.all ?? []).map((p) => ({ store: roomLists!, p })),
-			...mine.all.map((p) => ({ store: mine, p })),
-		].find(({ p }) => p.id === targetId);
-		if (!target || !selected.size) return;
-		bulkBusy = true;
-		let saved = 0;
-		for (const track of pickedTracks) {
-			const res = await target.store.addTrack(target.p.id, {
-				action: 'add',
-				trackId: track.id,
-				title: track.title,
-				artist: track.artist,
-			});
-			if (res.ok) saved++;
-		}
-		bulkBusy = false;
-		toasts.push(
-			`Saved ${saved} track${saved === 1 ? '' : 's'} to “${target.p.name}”.`,
-		);
-		selected.clear();
-		saveTarget = '';
-	}
+	const picked = $derived(tracks.filter((t) => selected.has(t.id)));
 
 	// Every object with more than one action gets a menu (ux.md, #465): the
 	// buttons stay, the menu is the shortcut. Queue only when there is a room
@@ -350,46 +305,14 @@
 		/>
 	</label>
 
-	{#if selected.size}
-		<!-- What the picked rows can do together (#1433). Queue is one request;
-		     Save runs one per track. Both say what happened in a toast. -->
-		<div
-			class="panel mt-3 flex flex-wrap items-center gap-2 px-4 py-2 text-sm"
-			role="region"
-			aria-label="picked tracks"
-		>
-			<span class="font-display tabular-nums">{selected.size} picked</span>
-			{#if room}
-				<button
-					onclick={() => void queueSelected()}
-					disabled={bulkBusy}
-					class="btn btn-secondary btn-xs"
-					><ListPlus size={13} /> Queue in {roomName}</button
-				>
-			{/if}
-			{#if (roomLists?.all.length ?? 0) + mine.all.length}
-				<div class="w-56">
-					<Select
-						label="save the picked tracks to"
-						value={saveTarget}
-						options={[
-							{ value: '', label: 'Save to…' },
-							...(roomLists?.all ?? []).map((p) => ({
-								value: p.id,
-								label: `${p.name} · ${roomName}`,
-							})),
-							...mine.all.map((p) => ({ value: p.id, label: p.name })),
-						]}
-						onchange={(id) => id && void saveSelected(id)}
-					/>
-				</div>
-			{/if}
-			<button
-				onclick={() => selected.clear()}
-				class="btn btn-ghost btn-xs ml-auto">Clear</button
-			>
-		</div>
-	{/if}
+	<LibraryPicked
+		{picked}
+		slug={room?.slug}
+		{roomName}
+		{mine}
+		{roomLists}
+		onDone={() => selected.clear()}
+	/>
 
 	<!-- The shelf labels. Wide enough to scroll sideways in their own strip
 	     rather than widening the page (ux.md, phone width). -->
@@ -508,155 +431,22 @@
 		{:else}
 			<ul class="space-y-2">
 				{#each tracks as track (track.id)}
-					<li
-						class="panel px-4 py-3"
-						title={menu(track).length ? MENU_HINT : undefined}
-						{@attach contextMenu(() => menu(track))}
-					>
-						{#if editing === track.id}
-							<!-- Editable in place: real-world tags are garbage and
-							     edit-beats-cleanup (ADR-0015). -->
-							<form
-								onsubmit={(event) => {
-									event.preventDefault();
-									void save(track, event.currentTarget);
-								}}
-								class="grid gap-2 sm:grid-cols-4"
-							>
-								<label class="block">
-									<span class="eyebrow">title</span>
-									<input
-										name="title"
-										value={track.title}
-										required
-										class="input mt-1 w-full"
-									/>
-								</label>
-								<label class="block">
-									<span class="eyebrow">artist</span>
-									<input
-										name="artist"
-										value={track.artist ?? ''}
-										class="input mt-1 w-full"
-									/>
-								</label>
-								<label class="block">
-									<span class="eyebrow">album</span>
-									<input
-										name="album"
-										value={track.album ?? ''}
-										class="input mt-1 w-full"
-									/>
-								</label>
-								<label class="block">
-									<span class="eyebrow">bpm</span>
-									<input
-										name="bpm"
-										type="number"
-										min="1"
-										max="399"
-										value={track.bpm ?? ''}
-										placeholder="–"
-										class="input mt-1 w-full font-mono tabular-nums"
-									/>
-								</label>
-								<label class="block sm:col-span-4">
-									<span class="eyebrow">tags</span>
-									<input
-										name="tags"
-										value={track.tags.join(', ')}
-										placeholder="synthwave, warmup, italo disco"
-										class="input mt-1 w-full"
-									/>
-									<span class="text-muted mt-1 block text-xs">
-										Comma-separated, and whatever you like — genre, mood, which
-										part of a ride it suits.
-									</span>
-								</label>
-								<div class="flex gap-2 sm:col-span-4">
-									<button type="submit" class="btn btn-primary btn-xs"
-										>Save</button
-									>
-									<button
-										type="button"
-										onclick={() => (editing = null)}
-										class="btn btn-secondary btn-xs">Cancel</button
-									>
-								</div>
-							</form>
-						{:else}
-							<div class="flex items-center gap-4">
-								<input
-									type="checkbox"
-									checked={selected.has(track.id)}
-									onchange={(event) =>
-										event.currentTarget.checked
-											? selected.add(track.id)
-											: selected.delete(track.id)}
-									aria-label="Pick {track.title}"
-									class="h-5 w-5 shrink-0 accent-[var(--color-neon)]"
-								/>
-								<div class="min-w-0 flex-1">
-									<p class="truncate text-sm font-medium">{track.title}</p>
-									<p class="text-muted truncate text-xs">
-										{track.artist || 'Unknown artist'}{track.album
-											? ` · ${track.album}`
-											: ''}
-										{#if track.uploadedBy}· added by {track.uploadedBy}{/if}
-									</p>
-									{#if track.tags.length}
-										<p class="mt-1 flex flex-wrap gap-1">
-											{#each track.tags as name (name)}
-												<button
-													onclick={() => pick(name)}
-													class="border-muted/25 text-muted hover:border-neon/50 rounded-full border px-2 py-1.5 text-[11px]"
-													>{name}</button
-												>
-											{/each}
-										</p>
-									{/if}
-								</div>
-								{#if track.bpm}
-									<span
-										class="border-muted/30 text-muted shrink-0 rounded border px-1.5 text-[10px] tabular-nums"
-										title="beats per minute">{track.bpm} bpm</span
-									>
-								{/if}
-								<span class="text-muted shrink-0 font-mono text-xs tabular-nums"
-									>{trackClock(track.durationMs)}</span
-								>
-								<span class="text-muted hidden shrink-0 text-xs sm:inline"
-									>{trackSize(track.sizeBytes)}</span
-								>
-								<!-- Capability gating (ux.md): somebody else's track shows no
-								     controls rather than buttons that would 403. -->
-								<!-- Capability gating again (ux.md): with no room open there
-								     is nowhere to queue, so the button is not drawn — the
-								     line under the list says why. -->
-								{#if room}
-									<button
-										onclick={() => queue(track)}
-										aria-label="Queue {track.title}"
-										title="Queue in {roomName}"
-										class="btn btn-secondary btn-xs shrink-0"
-										><ListPlus size={13} /></button
-									>
-								{/if}
-								{#if owned(track)}
-									<button
-										onclick={() => (editing = track.id)}
-										class="btn btn-secondary btn-xs shrink-0">Edit</button
-									>
-									<button
-										onclick={() => void remove(track)}
-										aria-label="Delete {track.title}"
-										class="btn btn-danger btn-xs shrink-0"
-										><Trash2 size={13} /></button
-									>
-								{/if}
-							</div>
-						{/if}
-					</li>
+					<LibraryTrackRow
+						{track}
+						editing={editing === track.id}
+						picked={selected.has(track.id)}
+						owned={owned(track)}
+						roomName={room ? roomName : null}
+						menu={() => menu(track)}
+						onPick={pick}
+						onPicked={(on) =>
+							on ? selected.add(track.id) : selected.delete(track.id)}
+						onQueue={() => queue(track)}
+						onEdit={() => (editing = track.id)}
+						onCancel={() => (editing = null)}
+						onSave={(fields) => void save(track, fields)}
+						onDelete={() => void remove(track)}
+					/>
 				{/each}
 			</ul>
 			{#if !room}
