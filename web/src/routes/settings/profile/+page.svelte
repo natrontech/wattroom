@@ -33,7 +33,6 @@
 
 	let name = $state('');
 	let email = $state('');
-	let notifyPlanned = $state(false);
 	let ftp = $state(profile.current.ftp);
 	let kg = $state(profile.current.kg);
 
@@ -85,7 +84,6 @@
 		// A pending address is the one the rider last asked for — show that,
 		// not the confirmed one it is replacing (#781).
 		email = me.emailPending ?? me.email ?? '';
-		notifyPlanned = me.notifyPlanned ?? false;
 	});
 
 	async function save(nextFtp = ftp) {
@@ -119,14 +117,9 @@
 				// window mints a new token and kills the link already in their
 				// inbox, and a legacy unverified address was mailed on every
 				// save (#824).
-				...(account.me.mailAvailable
-					? {
-							...(email.trim() !==
-							(account.me.emailPending ?? account.me.email ?? '')
-								? { email: email.trim() }
-								: {}),
-							notifyPlanned,
-						}
+				...(account.me.mailAvailable &&
+				email.trim() !== (account.me.emailPending ?? account.me.email ?? '')
+					? { email: email.trim() }
 					: {}),
 			});
 			// A refusal is not a status line (errors.md): it used to read
@@ -436,25 +429,15 @@
 								this account, and it is never shown to anyone.
 							</span>
 						{/if}
+						<!-- What the address is used for beyond recovery lives with
+						     the other notifications (#1828), not in the profile form. -->
+						<span class="text-muted mt-1 block text-[11px]"
+							>Whether a planned session mails you is on <a
+								href="/settings/notifications"
+								class="btn-link">Notifications</a
+							>.</span
+						>
 					</label>
-					<div class="self-end pb-2">
-						<label class="text-muted flex items-start gap-2 text-xs">
-							<input
-								type="checkbox"
-								bind:checked={notifyPlanned}
-								disabled={!email.trim()}
-								class="mt-0.5"
-							/>
-							<span>
-								Email me when a session is planned
-								{#if !email.trim()}
-									<span class="text-muted block text-[11px]"
-										>Needs an email address first.</span
-									>
-								{/if}
-							</span>
-						</label>
-					</div>
 				{/if}
 			</div>
 			<div class="mt-5 flex items-center gap-3">

@@ -3,8 +3,31 @@
 	// things a browser can say and the section says each of them: on, off,
 	// blocked — the rider once pressed Block and no prompt will ever show
 	// again — and not supported at all, as on iOS Safari in a tab.
+	import { account } from '$lib/account.svelte';
 	import { shellVersion } from '$lib/desktop';
 	import { notify } from '$lib/notify.svelte';
+
+	// The one email switch (ADR-0030's `notify_planned`) lives here with the
+	// other notifications, not in the profile form (#1828). A toggle saves
+	// itself (errors.md: undo over confirm); the address it needs is typed in
+	// on the profile, and MailAvailable hides the whole thing on a server
+	// that cannot send.
+	const hasAddress = $derived(
+		!!(account.me?.email || account.me?.emailPending),
+	);
+	let mailError = $state<string | null>(null);
+	async function setPlanned(on: boolean) {
+		const me = account.me;
+		if (!me) return;
+		mailError = null;
+		const err = await account.save({
+			displayName: me.displayName,
+			ftpWatts: me.ftpWatts,
+			weightKg: me.weightKg,
+			notifyPlanned: on,
+		});
+		if (err) mailError = err.message;
+	}
 
 	let blocked = $state(notify.permission === 'denied');
 	async function turnOn() {
@@ -61,5 +84,33 @@
 				notifications for this site.
 			{/if}
 		</p>
+	{/if}
+	{#if account.me?.mailAvailable}
+		<div class="border-ink/5 mt-5 border-t pt-4">
+			<span class="eyebrow">email</span>
+			<label class="text-muted mt-2 flex items-start gap-2 text-sm">
+				<input
+					type="checkbox"
+					checked={account.me.notifyPlanned ?? false}
+					disabled={!hasAddress}
+					onchange={(e) => void setPlanned(e.currentTarget.checked)}
+					class="mt-1"
+				/>
+				<span>
+					Email me when a session is planned
+					{#if !hasAddress}
+						<span class="text-muted block text-xs"
+							>Needs an email address first — add one on <a
+								href="/settings/profile"
+								class="btn-link">Profile</a
+							>.</span
+						>
+					{/if}
+				</span>
+			</label>
+			{#if mailError}
+				<p class="text-danger mt-2 text-xs">{mailError}</p>
+			{/if}
+		</div>
 	{/if}
 </section>
