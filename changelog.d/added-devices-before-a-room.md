@@ -1,0 +1,1 @@
+- Settings → Voice & audio lets you choose your microphone, camera and speakers before you are in a room. The pick is the one your next voice join uses, and a "name them now" link grants the mic once so the list shows names instead of numbers.

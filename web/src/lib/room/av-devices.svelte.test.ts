@@ -22,7 +22,8 @@ vi.stubGlobal('navigator', {
 	},
 });
 
-const { createDeviceChoices } = await import('$lib/room/av-devices.svelte');
+const { createDeviceChoices, deviceChoices } =
+	await import('$lib/room/av-devices.svelte');
 
 /** enumerateDevices' shape, only the fields this module reads. */
 function device(kind: MediaDeviceKind, deviceId: string) {
@@ -48,6 +49,13 @@ describe('device choices', () => {
 		expect(second.micId).toBe('headset');
 		expect(second.camId).toBe('webcam');
 		expect(second.outId).toBe('speakers');
+	});
+
+	it('is one store above the router, so a pick made with no room is the pick a join applies', () => {
+		// #1858: /settings/voice writes it, the room's mic chain reads it.
+		deviceChoices().setMic('usb');
+		expect(deviceChoices().micId).toBe('usb');
+		expect(deviceChoices()).toBe(deviceChoices());
 	});
 
 	it('sorts what it enumerates by kind', async () => {
