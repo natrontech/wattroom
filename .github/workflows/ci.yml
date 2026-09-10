@@ -177,3 +177,50 @@ jobs:
           git diff --exit-code static/legal/web.json
       - run: pnpm run test
       - run: pnpm run build
+
+  # The same suite on the Node the `web` job above does not run (#2074).
+  #
+  # Node 24 is the Active LTS and stays the gate. Node 26 is Current, and it
+  # became the version contributors actually have: four `web` tests were red on
+  # a clean `main` for everyone on 26 and green here for a week, because Node 26
+  # ships the Web Storage globals and vitest's happy-dom environment then
+  # declines to install its own (#2058, fixed in #2073). CI could not have found
+  # that, and the loud four tests were the better half — the storage-backed
+  # stores guard on `typeof localStorage === 'undefined'`, so the rest of the
+  # suite took the no-storage branch and *passed on default data*. Any future
+  # Node that lands a web global can shadow happy-dom the same silent way, so
+  # the durable answer is to run the suite on more than one Node rather than to
+  # pin one.
+  #
+  # Advisory, not a gate: `continue-on-error` keeps a Node-26 regression in a
+  # dependency from blocking every unrelated PR in the repo, and this job's name
+  # is deliberately not `web` — it is not in the branch ruleset's required
+  # contexts (server, web, vulncheck, docs), and a matrix on the job above would
+  # have renamed that required `web` context to `web (24)` and wedged every
+  # merge. Whether this should graduate to a blocking check is a risk-appetite
+  # call left open on #2074.
+  #
+  # Only `pnpm run test`: `check`, `format:check`, the notices and `build` do
+  # not vary with the interpreter the way the test environment does, and
+  # duplicating them doubles the job for no new signal.
+  #
+  # When 26 becomes the Active LTS, it moves up into the `web` job and this one
+  # takes the next Current. One version to edit, in the `node-version` below.
+  web-node-next:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test
