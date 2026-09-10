@@ -154,6 +154,9 @@
 		);
 	});
 	$effect(() => {
+		// The HUD window runs this layout too (#1938): with no ride in its own
+		// renderer it told the shell hud(false) and closed itself on load.
+		if (page.url.pathname === '/hud') return;
 		(
 			globalThis as { wattroom?: { hud?: (on: boolean) => void } }
 		).wattroom?.hud?.(riding);

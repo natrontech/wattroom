@@ -57,7 +57,7 @@
 			title: 'Linux',
 			steps: [
 				'AppImage: make it executable and run it — chmod +x WattRoom-*.AppImage.',
-				'Debian and Ubuntu: sudo apt install ./wattroom-desktop_*.deb puts it in your app menu.',
+				'Debian and Ubuntu: sudo apt install ./WattRoom-*.deb puts it in your app menu.',
 			],
 		},
 	];
@@ -74,9 +74,10 @@
 
 <h1 class="page-title">WattRoom on your desk</h1>
 <p class="text-muted mt-2 max-w-prose text-sm leading-relaxed">
-	The same WattRoom, in a window of its own. Your machine stays awake through an
-	interval, nothing throttles it when you switch away, and your trainer pairs
-	the moment you open it.
+	The same WattRoom, in a window of its own — with what a browser tab cannot do:
+	a heads-up display that floats over whatever else you have open, notifications
+	that reach you behind another window, and on macOS and Windows the room can
+	hear your computer's own sound.
 </p>
 
 {#if shell}
@@ -85,7 +86,8 @@
 		{#if newer && release && shellSelfUpdates()}
 			<!-- The shell fetches it itself (#1303); the restart is on Home. -->
 			— <span class="font-medium">{release.version} is out.</span> The app is fetching
-			it on its own; restart when Home offers it.
+			it on its own; restart from the update row at the top of the sidebar when it
+			offers.
 		{:else if newer && release}
 			— <span class="font-medium">{release.version} is out.</span>
 		{:else if release}
