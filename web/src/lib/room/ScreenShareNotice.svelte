@@ -6,7 +6,11 @@
 	// rider is on, on every page, until the share ends. It is deliberately
 	// NOT an overlay — a floating pill would sooner or later land on the
 	// jukebox player, and RMF forbids drawing over it.
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { shareNotice } from '$lib/room/share-notice';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
@@ -45,37 +49,39 @@
 	);
 
 	const notice = $derived(shareNotice(sharing, room, pathname));
+
+	// Stopping the share is the destructive one, so it sits last after a
+	// separator (ux.md) — it used to sit in the middle of the menu, one entry
+	// above "Back to the room".
+	function menu(): MenuEntry[] {
+		const entries: MenuEntry[] = [];
+		if (onSound)
+			entries.push({
+				label: soundLabel,
+				icon: sharingAudio ? VolumeOff : Volume2,
+				onSelect: () => onSound(!sharingAudio),
+			});
+		if (notice?.href)
+			entries.push({
+				label: `Back to ${notice.room}`,
+				icon: MonitorUp,
+				onSelect: () => void goto(notice.href as string),
+			});
+		if (entries.length) entries.push('separator');
+		entries.push({
+			label: 'Stop sharing your screen',
+			icon: ScreenShareOff,
+			onSelect: onStop,
+			danger: true,
+		});
+		return entries;
+	}
 </script>
 
 {#if notice}
 	<div
 		title={MENU_HINT}
-		{@attach contextMenu(() => [
-			...(onSound
-				? [
-						{
-							label: soundLabel,
-							icon: sharingAudio ? VolumeOff : Volume2,
-							onSelect: () => onSound(!sharingAudio),
-						},
-					]
-				: []),
-			{
-				label: 'Stop sharing your screen',
-				icon: ScreenShareOff,
-				onSelect: onStop,
-				danger: true,
-			},
-			...(notice.href
-				? [
-						{
-							label: `Back to ${notice.room}`,
-							icon: MonitorUp,
-							onSelect: () => void goto(notice.href as string),
-						},
-					]
-				: []),
-		])}
+		{@attach contextMenu(menu)}
 		class="border-danger/50 bg-danger/10 flex shrink-0 items-center gap-3 border-b px-3 py-2"
 		role="status"
 		aria-live="polite"

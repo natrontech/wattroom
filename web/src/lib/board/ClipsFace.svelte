@@ -138,6 +138,7 @@
 								},
 							]
 						: []),
+					'separator',
 					{
 						label: 'Delete clip',
 						danger: true,
