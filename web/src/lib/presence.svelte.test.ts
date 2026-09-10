@@ -135,6 +135,45 @@ describe('a room you are not standing in', () => {
 		await vi.waitFor(() => expect(announced).toHaveLength(1));
 		expect(announced[0]).toMatchObject({ tag: 'chat-velvet', reading: false });
 	});
+
+	// A session starting there is the one event nobody wants to miss
+	// (ADR-0042, #1910): announced on the flip to live, once, and only to a
+	// rider who is not standing in the room — the in-room path has them.
+	it('announces a session starting, once, unless you are standing in it', async () => {
+		presence.start();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(0));
+		history.pushState({}, '', '/home');
+		const velvet = (live: boolean) => ({
+			slug: 'velvet',
+			name: 'Velvet Hammer',
+			live,
+			members: 2,
+			session: live ? { workoutName: 'Openers', elapsedSec: 3 } : undefined,
+		});
+		world = { rooms: [velvet(false)], maxOwned: 0 };
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(1));
+		world = { rooms: [velvet(true)], maxOwned: 0 };
+		ping();
+		await vi.waitFor(() => expect(announced).toHaveLength(1));
+		expect(announced[0]).toMatchObject({ tag: 'session-velvet' });
+		// Still live on the next list: old news.
+		const seen = fetches;
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
+		expect(announced).toHaveLength(1);
+
+		// Standing in the room, the in-room path announces; this one is quiet.
+		announced.length = 0;
+		world = { rooms: [velvet(false)], maxOwned: 0 };
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen + 1));
+		history.pushState({}, '', '/r/velvet/chat');
+		world = { rooms: [velvet(true)], maxOwned: 0 };
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen + 2));
+		expect(announced).toHaveLength(0);
+	});
 });
 
 // The feed survives its socket (#1742): a drop re-dials with a jittered

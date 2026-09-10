@@ -19,6 +19,8 @@ let maxOwned = $state(0);
 // now the list you had stays and the page can say what happened.
 let error = $state<string | null>(null);
 let version = $state(0);
+/** Slugs live on the last list — a flip to live is what gets announced. */
+let wasLive = new Set<string>();
 let socket: WebSocket | null = null;
 let fallback: ReturnType<typeof setInterval> | null = null;
 let reconnect: ReturnType<typeof setTimeout> | null = null;
@@ -44,16 +46,40 @@ async function refresh() {
 		maxOwned = list.maxOwned;
 	}
 	version += 1;
+	// Which rooms were live on the last list, for the flip below. Taken
+	// before the first-list return so a room already live at sign-in is
+	// old news rather than an announcement.
+	const before = wasLive;
+	wasLive = new Set(rooms.filter((room) => room.live).map((room) => room.slug));
 	if (!announced) {
 		announced = true;
 		return;
+	}
+	// A session starting in a room you are NOT standing in (#1910): ADR-0042
+	// names it, and it used to reach only the riders already holding that
+	// room's socket. Announced the way chat is — toast in front, OS
+	// notification behind — and left to the in-room path once you are there.
+	const here = location.pathname;
+	for (const room of rooms) {
+		if (!room.live || before.has(room.slug) || !room.slug) continue;
+		if (here === `/r/${room.slug}` || here.startsWith(`/r/${room.slug}/`))
+			continue;
+		announce({
+			tag: `session-${room.slug}`,
+			at: Date.now(),
+			title: room.name,
+			body: room.session
+				? `${room.session.workoutName} is starting — saddle up`
+				: 'The session is starting — saddle up',
+			href: `/r/${room.slug}/training`,
+			reading: false,
+		});
 	}
 	// A room you are NOT standing in reaches you the way a DM does (#568).
 	// Its unread count is the whole trigger: standing in a room reads it
 	// (#468), so a count above zero already means you are somewhere else.
 	// The tag is the room's own, shared with the in-room path — whichever
 	// path sees a line first announces it, and never both.
-	const here = location.pathname;
 	for (const room of rooms) {
 		const last = room.lastChat;
 		if (!last?.at || !room.unread) continue;
