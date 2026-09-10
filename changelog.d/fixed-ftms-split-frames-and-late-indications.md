@@ -1,1 +1,0 @@
-- A trainer that splits its Indoor Bike Data across two Bluetooth notifications (cadence in one, power in the next) no longer reports 0 rpm on every sample. A control-point answer that arrives after its timeout no longer counts as the answer to the next command, so a target the trainer rejected is not reported as applied.

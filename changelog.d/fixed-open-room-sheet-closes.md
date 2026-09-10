@@ -1,1 +1,0 @@
-- Opening a room, or joining a crew with a code, from the sidebar's + no longer leaves the "Open a room" sheet standing over the room you just landed in.
