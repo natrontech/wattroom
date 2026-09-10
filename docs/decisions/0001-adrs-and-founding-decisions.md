@@ -14,3 +14,10 @@ The project started with an intensive decision phase: platform, stack, feature s
 ## Consequences
 
 "Why did we do X?" has one answer path: WATTROOM.md table → ADR number. The founding document keeps its shape instead of becoming a changelog. Cost: small ceremony per decision — deliberately smaller than the decision itself.
+
+## Amended 2026-09-10 (#656, [ADR-0050](0050-founding-record-and-current-state.md))
+
+"WATTROOM.md is frozen as the founding decision record" now binds §§1–4 and 6–9 rather than the whole file: §5's scope and milestones move to `docs/ROADMAP.md` as current state, because a roadmap is a claim about the present and freezing one guarantees it goes false. "Edited only to mark a decision as superseded" gains a fixed shape — the inline divergence annotation ADR-0050 defines, which must name the issue or PR where the divergence happened.
+
+The freeze itself is unchanged. A founding statement is still never deleted or rewritten, only annotated.
+
