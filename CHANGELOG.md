@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.107] - 2026-09-10
+
+### Added
+
+- A session starting in one of your rooms reaches you wherever you are in the app — a toast in front, a system notification behind another window — not only once you are already in the room.
+
+### Fixed
+
+- A video or track that fails only in your browser no longer skips it for the whole room: you sit that one out and rejoin on the next, while a video nobody can play — blocked, removed, or a track that is gone — still moves the room on. A soundboard pad no longer lights for a press the server dropped inside its one-a-second limit; the pads dim until the next press may go.
+- The sidebar jukebox's play, skip, ±30 s and stop-for-me buttons are big enough to tap mid-ride.
+
 ## [2026.09.106] - 2026-09-10
 
 ### Fixed
@@ -1902,7 +1913,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.106...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.107...HEAD
+[2026.09.107]: https://github.com/natrontech/wattroom/compare/2026.09.106...2026.09.107
 [2026.09.106]: https://github.com/natrontech/wattroom/compare/2026.09.105...2026.09.106
 [2026.09.105]: https://github.com/natrontech/wattroom/compare/2026.09.104...2026.09.105
 [2026.09.104]: https://github.com/natrontech/wattroom/compare/2026.09.103...2026.09.104
