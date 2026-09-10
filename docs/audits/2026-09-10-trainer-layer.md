@@ -11,10 +11,10 @@
 | #1846 | A trainer that reattaches mid-block never gets its ERG target back (room) | high | fixed (#1854) |
 | #1847 | The mid-ride recovery card is wired to a trainer the session no longer holds | high | fixed (#1856) — a regression from #1808 the same night |
 | #1848 | The 0 W release before disconnect is guaranteed never to reach the trainer | high | fixed (#1854): the driver writes the release and awaits it before dropping the link |
-| #1849 | An Indoor Bike Data frame with no power field is thrown away whole; a never-power trainer is told to turn the cranks | bug | open |
-| #1850 | Control-point indications are not matched to the op that was written | bug | open |
-| #1851 | Starting on a reconnecting trainer opens a second chooser and stacks a listener; pairing in a room does not take the trainer back from the solo slot | bug | half fixed (#1856: Start waits, one device, one listener); the room half open |
-| #1852 | Polish: the attach race on Forget, the room's silence detector blind without ticks, the sprint's second step after the release, two docs describing three drivers | low | open |
+| #1849 | An Indoor Bike Data frame with no power field is thrown away whole; a never-power trainer is told to turn the cranks | bug | half fixed (#1870): frames merge field by field; the "reporting, but not power" fault is still open |
+| #1850 | Control-point indications are not matched to the op that was written | bug | fixed (#1870) |
+| #1851 | Starting on a reconnecting trainer opens a second chooser and stacks a listener; pairing in a room does not take the trainer back from the solo slot | bug | fixed (#1856: Start waits, one device, one listener; #1871: the room's Pair adopts the solo slot's trainer) |
+| #1852 | Polish: the attach race on Forget, the room's silence detector blind without ticks, the sprint's second step after the release, two docs describing three drivers | low | fixed (#1873) |
 | #1853 | Decision: a tab whose trainer claim the hub refused keeps writing ERG targets (ADR-0025) | decision | `needs-human-input` |
 
 Cited rather than re-filed: #4 (WcpsTrainer), #806, #1799.
