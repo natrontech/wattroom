@@ -99,6 +99,26 @@ func TestAMovedSessionIsRemindedAgain(t *testing.T) {
 	}
 }
 
+// A plan already started is not reminded (#1905): the hour-before mail for a
+// session the room is riding would be a mail about the past.
+func TestAStartedPlanIsNotReminded(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+
+	plan(t, h, "Started Early", 30*time.Minute)
+	if _, err := h.store.Pool.Exec(t.Context(),
+		`update scheduled_sessions set started_at = now() where room_id = $1 and workout_name = 'Started Early'`, h.room.ID); err != nil {
+		t.Fatalf("mark started: %v", err)
+	}
+	s.remindDue(t.Context())
+	if mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(mine) != 0 {
+		t.Fatalf("a started plan was reminded: %v", mine)
+	}
+}
+
 // A reminder names no wall-clock time, which is the entire reason it needs no
 // per-rider timezone. If an absolute time creeps back into this mail, the zone
 // question comes with it.

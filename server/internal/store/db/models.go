@@ -254,6 +254,7 @@ type ScheduledSession struct {
 	CreatedBy   pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 	RemindedAt  pgtype.Timestamptz
+	StartedAt   pgtype.Timestamptz
 }
 
 type Session struct {

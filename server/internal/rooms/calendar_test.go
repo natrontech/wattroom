@@ -210,3 +210,36 @@ func TestACrewBanTakesTheRoomOutOfTheCalendar(t *testing.T) {
 		t.Fatalf("a crew-banned rider still sees the crew's plans: %d %v", status, body["sessions"])
 	}
 }
+
+// A started plan is marked once and stops offering itself (#1905): the
+// room's upcoming list drops it, and a second start is a conflict.
+func TestAStartedPlanStopsOfferingItself(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Start Once")
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	starts := time.Now().UTC().Add(5 * time.Minute).Truncate(time.Second)
+	plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts.Format(time.RFC3339))
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan)
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	id, _ := body["id"].(string)
+	if id == "" {
+		t.Fatalf("no id in %v", body)
+	}
+	_, room := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if before, _ := room["upcoming"].([]any); len(before) != 1 {
+		t.Fatalf("upcoming before the start: %v — test proves nothing", room["upcoming"])
+	}
+
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule/"+id+"/started", ""); status != http.StatusNoContent {
+		t.Fatalf("started: %d %v", status, body)
+	}
+	_, room = h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	if after, _ := room["upcoming"].([]any); len(after) != 0 {
+		t.Fatalf("a started plan still offers itself: %v", room["upcoming"])
+	}
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule/"+id+"/started", ""); status != http.StatusConflict {
+		t.Fatalf("a second start: %d, want 409", status)
+	}
+}

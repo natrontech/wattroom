@@ -17,6 +17,7 @@ set reminded_at = now()
 where id in (
     select id from scheduled_sessions
     where reminded_at is null
+      and started_at is null
       and starts_at > now()
       and starts_at <= now() + interval '1 hour'
     order by starts_at
@@ -151,7 +152,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 
 const createScheduledSession = `-- name: CreateScheduledSession :one
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
+values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at
 `
 
 type CreateScheduledSessionParams struct {
@@ -180,6 +181,7 @@ func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateSchedule
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.RemindedAt,
+		&i.StartedAt,
 	)
 	return i, err
 }
@@ -652,8 +654,8 @@ select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as crea
 from scheduled_sessions s
 join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
+  and s.started_at is null
 order by s.starts_at
-limit 10
 `
 
 type ListRoomUpcomingRow struct {
@@ -665,7 +667,9 @@ type ListRoomUpcomingRow struct {
 }
 
 // Grace of 30 min: a plan stays visible (and startable) a little past its
-// time, then falls off — no cron, the read is the cleanup.
+// time, then falls off — no cron, the read is the cleanup. A started plan
+// is done with (#1905). Uncapped like the rider's calendar (#1908): ten
+// silently shown of thirteen planned had the two disagreeing about one room.
 func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]ListRoomUpcomingRow, error) {
 	rows, err := q.db.Query(ctx, listRoomUpcoming, roomID)
 	if err != nil {
@@ -807,6 +811,7 @@ left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
     where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
+      and s.started_at is null
     order by s.starts_at
     limit 1
 ) upcoming on true
@@ -931,12 +936,32 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 	return items, nil
 }
 
+const markSessionStarted = `-- name: MarkSessionStarted :execrows
+update scheduled_sessions
+set started_at = now()
+where id = $1 and room_id = $2 and started_at is null
+`
+
+type MarkSessionStartedParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+// Once: the row count says whether this was the first start (#1905).
+func (q *Queries) MarkSessionStarted(ctx context.Context, arg MarkSessionStartedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markSessionStarted, arg.ID, arg.RoomID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const rescheduleSession = `-- name: RescheduleSession :one
 update scheduled_sessions
 set starts_at = $3,
     reminded_at = case when starts_at = $3 then reminded_at else null end
 where id = $1 and room_id = $2
-returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at
+returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at
 `
 
 type RescheduleSessionParams struct {
@@ -962,6 +987,7 @@ func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionPa
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.RemindedAt,
+		&i.StartedAt,
 	)
 	return i, err
 }
