@@ -18,7 +18,7 @@
 | #1945 | A notification reply over 500 characters is silently cut                          | bug       | fixed (#1950)                                                                                        |
 | #1946 | `ownPath` lets a backslash through the notification href gate                     | security  | fixed (#1950)                                                                                        |
 | #1947 | The update watcher is bound to the first window only                              | bug       | fixed (#1950)                                                                                        |
-| #1948 | Remember the window's size, position and display                                  | not built | open                                                                                                 |
+| #1948 | Remember the window's size, position and display                                  | not built | built (#1958) |
 | #1949 | Decision: ANT+ — one of the two capabilities the shell was built for — is unbuilt | decision  | `needs-human-input`                                                                                  |
 
 Fixed in #1950 without an issue: `/download` and the home offer sold wake locks the browser already holds (ADR-0037's own refusal) and machine audio on Linux; the restart lives in the sidebar's update row, not on Home; the deb glob never matched the artifact name. Cited rather than re-filed: #1314 (the hardware pass on the signed build), #1303, #1737.
