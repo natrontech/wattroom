@@ -1,0 +1,1 @@
+- Your account export now includes the music-pool tracks you uploaded — the titles, artists and tags you typed. It carries the metadata you own, never the audio files themselves.
