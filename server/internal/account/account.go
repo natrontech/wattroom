@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -136,20 +137,29 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=%q", "wattroom-export-"+time.Now().UTC().Format("2006-01-02")+".zip"))
-	archive := zip.NewWriter(w)
-	defer func() { _ = archive.Close() }()
-
+	// Built whole before the first byte goes out (#1990): a zip header already
+	// on the wire turns every later failure into a 200 with a silent, short
+	// archive — on the one route where "everything we hold" being short is
+	// the failure that matters. ponytail: the whole archive sits in memory;
+	// it is deflated JSON, a season's samples are a few MB, and #894's
+	// one-blob-at-a-time read still bounds the working set.
+	var buf bytes.Buffer
+	archive := zip.NewWriter(&buf)
+	fail := func(what string, err error) {
+		httpx.Fail(w, s.log, what, err, "The export could not be built. Try again.", "user", store.UUIDString(user.ID))
+	}
 	writeJSON := func(name string, v any) bool {
 		f, err := archive.Create(name)
+		if err == nil {
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			err = enc.Encode(v)
+		}
 		if err != nil {
+			fail("export write "+name, err)
 			return false
 		}
-		enc := json.NewEncoder(f)
-		enc.SetIndent("", "  ")
-		return enc.Encode(v) == nil
+		return true
 	}
 
 	profile := map[string]any{
@@ -202,10 +212,9 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// What went in and what did not (#1550): once the first byte is out,
-	// every failure below yields a valid, openable, incomplete zip under a
-	// 200. The manifest, written last, is how a rider tells the two apart —
-	// and its absence says the archive was cut short.
+	// What went in and what did not (#1550): a category whose read failed is
+	// left out rather than sinking the export, and the manifest, written
+	// last, says which.
 	type entry struct {
 		Name string `json:"name"`
 		Ok   bool   `json:"ok"`
@@ -368,6 +377,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			ride.StartedAt.Time.UTC().Format("2006-01-02-1504"), store.UUIDString(ride.ID)[:8])
 		f, err := archive.Create(name)
 		if err != nil {
+			fail("export write "+name, err)
 			return
 		}
 		zr, err := gzip.NewReader(bytes.NewReader(blob))
@@ -379,12 +389,23 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		_ = zr.Close()
 		samplesWritten++
 	}
-	writeJSON("manifest.json", map[string]any{
+	if !writeJSON("manifest.json", map[string]any{
 		"generatedAt": time.Now().UTC(),
 		"categories":  manifest,
 		"samples":     map[string]int{"rides": len(rides), "written": samplesWritten},
 		"complete":    samplesWritten == len(rides) && !slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok }),
-	})
+	}) {
+		return
+	}
+	if err := archive.Close(); err != nil {
+		fail("export close", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf("attachment; filename=%q", "wattroom-export-"+time.Now().UTC().Format("2006-01-02")+".zip"))
+	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	_, _ = w.Write(buf.Bytes())
 }
 
 // handleDelete is the purge. The confirmation lives client-side (a typed
