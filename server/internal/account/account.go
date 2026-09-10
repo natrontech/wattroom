@@ -214,8 +214,17 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		{"messages.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserDms(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserDmsRow) any {
-				return map[string]any{"with": row.PeerName, "fromMe": row.SentByMe,
+				// A picture line exports its id and the edit its time (#1819):
+				// an image-only message used to export as an empty line.
+				line := map[string]any{"with": row.PeerName, "fromMe": row.SentByMe,
 					"text": row.Text, "at": row.CreatedAt.Time}
+				if row.ImageID.Valid {
+					line["imageId"] = store.UUIDString(row.ImageID)
+				}
+				if row.EditedAt.Valid {
+					line["editedAt"] = row.EditedAt.Time
+				}
+				return line
 			})
 		}},
 		{"sessions.json", func() (any, error) {

@@ -14,8 +14,13 @@
 	{/snippet}
 	<p class="font-display text-ink mt-3 text-base font-bold">Messages</p>
 	<p class="mt-1 text-sm">
-		Every room's chat and your notes between friends. Pick a friend in the
+		Every room's chat and your notes between friends. Pick a conversation in the
 		sidebar, or the unread count on one of your rooms to read its chat — from
 		here a room reads and writes without joining it.
 	</p>
+	<!-- The way to a first thread (#1819): the sidebar lists threads, never
+	     friends, so "pick a friend in the sidebar" pointed at an empty heading. -->
+	{#snippet cta()}
+		<a href="/friends" class="btn btn-primary btn-xs">Message a friend</a>
+	{/snippet}
 </EmptyState>

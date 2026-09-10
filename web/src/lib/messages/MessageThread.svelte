@@ -53,6 +53,8 @@
 		composerHint,
 		composerLock = null,
 		extraSendError = null,
+		editHint = 'Escape cancels · the room sees the change',
+		lineGapMs = 1000,
 		emptyState,
 	}: {
 		source: ThreadSource;
@@ -67,6 +69,10 @@
 		/** A persistent banner unrelated to the last send attempt, e.g. a
 		 *  room reconnecting with its queue full. */
 		extraSendError?: string | null;
+		/** Who sees an edit land — a room, or the one person a DM has (#1819). */
+		editHint?: string;
+		/** The composer's own gap between lines: the hub's second, or none. */
+		lineGapMs?: number;
 		emptyState: Snippet;
 	} = $props();
 
@@ -375,9 +381,7 @@
 												onclick={cancelEdit}
 												class="btn btn-ghost btn-xs">Cancel</button
 											>
-											<span class="text-muted/60 text-[10px]"
-												>Escape cancels · the room sees the change</span
-											>
+											<span class="text-muted/60 text-[10px]">{editHint}</span>
 										</span>
 									</form>
 								{:else}
@@ -479,6 +483,7 @@
      button above is the way down. -->
 <Composer
 	send={source.send}
+	{lineGapMs}
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}

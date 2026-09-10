@@ -504,7 +504,15 @@
 				/></button
 			>
 		</div>
-		{#if dmHeads.heads.length > 0 && !dmsFolded}
+		{#if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
+			<!-- A heading over nothing taught nothing (#1819): the first thread
+			     starts on a friend's page. -->
+			<a
+				href="/friends"
+				class="text-muted hover:text-ink mx-2 mb-2 block rounded px-2 py-1 text-xs"
+				>Message a friend to start one</a
+			>
+		{:else if dmHeads.heads.length > 0 && !dmsFolded}
 			<ul class="pb-2">
 				{#each dmHeads.heads as head (head.peerId)}
 					{@const on = pathname === `/messages/dm/${head.peerId}`}
