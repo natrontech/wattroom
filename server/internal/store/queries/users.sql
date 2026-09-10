@@ -190,3 +190,20 @@ limit $1;
 update users set avatar_url = null
 where id = $1 and avatar_url is not null
   and (avatar_url not like '/%' or avatar_url like '//%');
+
+-- name: GetUserAvatarSetAt :one
+-- Whether a rider has picture bytes of their own, and when they were set —
+-- without dragging the bytes along. The mirror asks this on every sign-in
+-- (#2078) and the answer for most riders is "yes, so do nothing", so reading
+-- the image out to discard it would be a few hundred kB per sign-in for
+-- nothing. GetUserAvatar stays for the route that actually serves them.
+select set_at from user_avatars where user_id = $1;
+
+-- name: SetUserAvatarURL :exec
+-- Point a rider's address at bytes already stored for them, without
+-- rewriting the bytes. Guarded to a row that still names somebody else's
+-- host, which nothing in the app writes — an upload sets bytes and address in
+-- one statement — so this is the belt on a row that somehow held both.
+update users set avatar_url = $2
+where id = $1 and avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%');

@@ -132,7 +132,10 @@ func (m *Mirror) Adopt(ctx context.Context, user db.User, providerURL string) db
 // whether the row was written.
 func (m *Mirror) adopt(ctx context.Context, id pgtype.UUID, current *string, providerURL string) (*string, bool) {
 	rider := store.UUIDString(id)
-	switch img, err := m.st.Queries.GetUserAvatar(ctx, id); {
+	// The set time and not the picture: this runs on every sign-in and the
+	// answer for a rider who already has one is "do nothing", so the bytes
+	// would be read out and dropped.
+	switch setAt, err := m.st.Queries.GetUserAvatarSetAt(ctx, id); {
 	case err == nil:
 		// Bytes of their own — an upload, or a picture an earlier sign-in
 		// mirrored — and those are never overwritten by a provider's. The
@@ -144,9 +147,9 @@ func (m *Mirror) adopt(ctx context.Context, id pgtype.UUID, current *string, pro
 		if !OffOrigin(current) {
 			return nil, false
 		}
-		url := Path(id, img.SetAt.Time)
-		if _, err := m.st.Queries.SetUserAvatar(ctx, db.SetUserAvatarParams{
-			ID: id, Mime: img.Mime, Image: img.Image, SetAt: img.SetAt, AvatarUrl: &url,
+		url := Path(id, setAt.Time)
+		if err := m.st.Queries.SetUserAvatarURL(ctx, db.SetUserAvatarURLParams{
+			ID: id, AvatarUrl: &url,
 		}); err != nil {
 			m.log.Error("sign-in picture: repoint", "rider", rider, "err", err)
 			return nil, false

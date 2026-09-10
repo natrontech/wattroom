@@ -138,6 +138,34 @@ func TestAdopt(t *testing.T) {
 		}
 	})
 
+	// No code path writes this row — an upload sets the bytes and the address
+	// in one statement — so it is reachable only by hand. It is covered
+	// because the alternative is a row that keeps the leak AND stops the
+	// backfill making progress, which is the one shape that could hide.
+	t.Run("bytes with somebody else's address are pointed at the bytes", func(t *testing.T) {
+		h := &host{data: tinyPNG, mime: "image/png"}
+		m, st := setup(t, h)
+		legacy := atTheProvider
+		user := rider(t, st, &legacy)
+		setAt := time.Now().Truncate(time.Millisecond)
+		if _, err := st.Pool.Exec(t.Context(),
+			"insert into user_avatars (user_id, mime, image, set_at) values ($1, 'image/png', $2, $3)",
+			user.ID, tinyPNG, setAt); err != nil {
+			t.Fatal(err)
+		}
+
+		got := m.Adopt(t.Context(), user, atTheProvider)
+		if got.AvatarUrl == nil || *got.AvatarUrl != Path(user.ID, setAt) {
+			t.Fatalf("avatar_url = %v, want the address of the stored bytes", got.AvatarUrl)
+		}
+		if stored := urlOf(t, st, user.ID); stored == nil || *stored != *got.AvatarUrl {
+			t.Fatalf("the row says %v", stored)
+		}
+		if len(h.asked) != 0 {
+			t.Fatalf("asked %v for a picture already stored", h.asked)
+		}
+	})
+
 	t.Run("a picture the rider chose is never replaced", func(t *testing.T) {
 		h := &host{data: tinyPNG, mime: "image/png"}
 		m, st := setup(t, h)
