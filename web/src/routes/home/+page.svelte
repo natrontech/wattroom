@@ -328,7 +328,7 @@
 		<a
 			href="/u/me"
 			class="panel hover:border-muted/40 block px-4 py-3"
-			title="Trophy case: medals, achievements, where your XP comes from"
+			title="Your rider page: medals, achievements, where your XP comes from"
 		>
 			<p class="eyebrow">level · trophies</p>
 			<p class="font-display text-2xl font-bold tabular-nums">{level}</p>

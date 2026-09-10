@@ -76,8 +76,8 @@ export function personMenu(
 		ban?: () => void;
 	} = {},
 ): MenuEntry[] {
-	const profile: MenuItem = {
-		label: 'View profile',
+	const riderPage: MenuItem = {
+		label: 'Rider page',
 		icon: User,
 		onSelect: () => go(`/u/${id}`),
 	};
@@ -102,8 +102,8 @@ export function personMenu(
 	};
 	// The menu leads with what a click on the object already does.
 	const items: MenuEntry[] = options.conversation
-		? [message, profile, friend]
-		: [profile, message, friend];
+		? [message, riderPage, friend]
+		: [riderPage, message, friend];
 	if (poke) items.splice(2, 0, poke);
 	// After the room's own verbs, before the friendship: the fader is what you
 	// came for mid-ride, but the list still reads person-first.
