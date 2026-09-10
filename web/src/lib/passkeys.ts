@@ -8,6 +8,7 @@
  * affordance never renders rather than failing on click.
  */
 import { api } from '$lib/api';
+import { confirm } from '$lib/confirm.svelte';
 import type { Me } from '$lib/account.svelte';
 
 export interface Passkey {
@@ -114,4 +115,25 @@ export async function rename(id: string, name: string): Promise<string | null> {
 export async function remove(id: string): Promise<string | null> {
 	const res = await api(`/api/me/passkeys/${id}`, { method: 'DELETE' });
 	return res.ok ? null : res.error.message;
+}
+
+/** What removing one costs, and the way back — said before the button. */
+export function removeBody(name: string): string {
+	return `${name} stops signing you in, and the phone, key or password manager it lives on cannot re-create this same passkey — you would add a new one instead. Your other ways in are untouched.`;
+}
+
+/**
+ * The ask before a removal (errors.md, #1493). No undo exists to offer: the
+ * credential is destroyed at the authenticator's end too, and the rider finds
+ * out the next time they reach for it — possibly from somewhere they cannot
+ * enrol a replacement. ADR-0029 keeps the account's last way in, so this is
+ * never a lock-out, which is why the body can say so.
+ */
+export function confirmRemoval(key: Pick<Passkey, 'name'>): Promise<boolean> {
+	return confirm({
+		title: `Remove “${key.name}”?`,
+		body: removeBody(`“${key.name}”`),
+		action: 'Remove',
+		cancel: 'Keep it',
+	});
 }

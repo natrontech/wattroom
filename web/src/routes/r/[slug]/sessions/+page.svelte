@@ -10,6 +10,7 @@
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { segmentsDuration } from '$lib/workout/engine';
 	import { confirm } from '$lib/confirm.svelte';
+	import { confirmCalendarReset, RESET_DONE } from '$lib/calendar-link';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -52,6 +53,15 @@
 	 * on the server's clock like the timeline's reminder (#1909): a laptop
 	 * twenty minutes fast offered it thirty-five minutes early. */
 	const due = (iso: string) => Date.parse(iso) - serverNow() < 15 * 60_000;
+
+	/** The room's calendar link, rotated — the ask first, because nothing puts
+	 *  the old link back and it is the subscribers' calendars that go quiet
+	 *  (errors.md, #1493). Owners only; the expander says where, not what. */
+	async function resetIcs() {
+		if (!(await confirmCalendarReset('room'))) return;
+		const ok = await Promise.resolve(room.rotateIcs());
+		if (ok !== false) toasts.push(RESET_DONE);
+	}
 
 	/** A plan with an RSVP is what #450 calls an event; no second object. */
 	const going = (entry: { going?: { id: string; displayName: string }[] }) =>
@@ -334,13 +344,7 @@
 					until it subscribes again.
 				</p>
 				<button
-					onclick={() =>
-						void Promise.resolve(room.rotateIcs()).then((ok) => {
-							if (ok !== false)
-								toasts.push(
-									'Calendar link reset — calendars on the old link stop updating.',
-								);
-						})}
+					onclick={() => void resetIcs()}
 					class="btn btn-secondary btn-xs mt-2">Reset calendar link</button
 				>
 			</details>

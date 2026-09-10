@@ -6,6 +6,11 @@
 	// in four rooms subscribed four times (#1374). Home's What's next is the
 	// list it mirrors, so the link lives under it.
 	import { api } from '$lib/api';
+	import {
+		confirmCalendarReset,
+		copyCalendarLink,
+		RESET_DONE,
+	} from '$lib/calendar-link';
 	import { toasts } from '$lib/toast.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -29,23 +34,11 @@
 		token ? `${location.origin}/api/calendar/${token}.ics` : '',
 	);
 
-	function copy() {
-		void navigator.clipboard.writeText(link).then(
-			() =>
-				toasts.push(
-					'Calendar link copied — subscribe "from URL" in your calendar app.',
-				),
-			() =>
-				toasts.push(`Could not copy — the link is ${link}`, {
-					tone: 'error',
-					seconds: 12,
-				}),
-		);
-	}
-
-	// Rotating is instant and breaks every subscription on the old link —
-	// the escape hatch for a leak, which 95% of riders never need (ux.md).
+	// The escape hatch for a leaked link, which 95% of riders never need
+	// (ux.md) — and it asks first: nothing puts the old link back, and it is
+	// other people's calendars that go quiet (errors.md, #1493).
 	async function rotate() {
+		if (!(await confirmCalendarReset('yours'))) return;
 		const res = await api<{ icsToken: string }>('/api/calendar/rotate', {
 			method: 'POST',
 		});
@@ -54,9 +47,7 @@
 			return;
 		}
 		token = res.data.icsToken;
-		toasts.push(
-			'Calendar link reset — calendars on the old link stop updating.',
-		);
+		toasts.push(RESET_DONE);
 	}
 </script>
 
@@ -72,7 +63,7 @@
 		{/if}
 	</p>
 	<button
-		onclick={copy}
+		onclick={() => void copyCalendarLink(link)}
 		disabled={!token}
 		class="btn btn-secondary btn-xs shrink-0"
 		><Copy size={13} /> Copy calendar link</button
