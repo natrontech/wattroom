@@ -187,7 +187,7 @@
 	</span>
 	{#if inRoom}
 		<a href="/r/{inRoom.slug}" class="btn btn-accent btn-xs ml-auto shrink-0"
-			><Radio size={13} /> Join them</a
+			><Radio size={13} /> Walk in</a
 		>
 	{/if}
 </header>

@@ -303,18 +303,21 @@
 				: `${Math.round(ride.execution * 100)}%`}</span
 		>
 		{#if server}
-			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip. -->
+			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
+			     The icon says where the ride stands, the word what the press
+			     does, and aria-pressed carries the state (#2004). -->
 			<button
 				onclick={() => void setShared(server, !server.sharedWithFriends)}
 				class="btn btn-ghost btn-xs relative -my-1 -mr-2"
+				aria-pressed={server.sharedWithFriends}
 				title={server.sharedWithFriends
 					? 'Friends see this ride on your page — make it private'
 					: 'Only you see this ride — share it with your friends'}
 			>
 				{#if server.sharedWithFriends}
-					<Users size={13} /> shared
+					<Users size={13} /> Make private
 				{:else}
-					<Lock size={13} /> private
+					<Lock size={13} /> Share
 				{/if}
 			</button>
 		{/if}

@@ -241,15 +241,18 @@
 						</span>
 					</div>
 					<!-- Being there is not a role (#450): every member says yes for
-					     themselves, and there is no maybe. -->
+					     themselves, and there is no maybe. The word is what the
+					     press does, never where you already stand (#2004) — that
+					     is aria-pressed's job, and the fill's. -->
 					<div class="mt-2 flex flex-wrap items-center gap-3">
 						<button
 							onclick={() => room.rsvp(entry.id, !youAreIn(entry))}
 							disabled={room.adminBusy}
+							aria-pressed={youAreIn(entry)}
 							class="btn btn-xs disabled:opacity-40 {youAreIn(entry)
 								? 'btn-secondary'
 								: 'btn-primary'}"
-							>{youAreIn(entry) ? "You're in" : "I'm in"}</button
+							>{youAreIn(entry) ? "I'm out" : "I'm in"}</button
 						>
 						<span class="text-muted text-xs">
 							{#if going(entry).length}

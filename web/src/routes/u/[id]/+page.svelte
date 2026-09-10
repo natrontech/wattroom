@@ -302,14 +302,16 @@
 					>
 				{/if}
 				{#if rider.presence.room && rider.friend !== 'self'}
-					<!-- Your own page reached the app in #575; "Join them" on it
-					     offered to join the room you are already standing in. -->
+					<!-- Your own page reached the app in #575; the way in on it
+					     offered the room you are already standing in. -->
 					<!-- Riding: the ride is joined on Training (#1332). -->
 					<a
 						href="/r/{rider.presence.room.slug}{rider.presence.riding
 							? '/training'
 							: ''}"
-						class="btn btn-accent"><Radio size={15} /> Join them</a
+						class="btn btn-accent"
+						><Radio size={15} />
+						{rider.presence.riding ? 'Join the ride' : 'Walk in'}</a
 					>
 				{/if}
 			</div>

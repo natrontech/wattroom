@@ -174,7 +174,7 @@
 			return {
 				slug: around.slug,
 				text: `${(around.riders ?? []).join(', ')} ${(around.riders ?? []).length === 1 ? 'is' : 'are'} in ${around.name}.`,
-				cta: 'Join them',
+				cta: 'Walk in',
 			};
 		return null;
 	});
@@ -416,7 +416,7 @@
 									</div>
 									<span
 										class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
-										>Join <ArrowRight size={13} /></span
+										>Walk in <ArrowRight size={13} /></span
 									>
 								</a>
 							{/each}
