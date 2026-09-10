@@ -122,7 +122,7 @@ func TestSprintBlockAtFollowsAPause(t *testing.T) {
 	}
 }
 
-// A timeline that is not running has no window — and sprintBlock must not be
+// A timeline that is not running has no window — and sprintBlockAt must not be
 // the call that starts one, like mood().
 func TestSprintBlockAtNeedsARunningTimeline(t *testing.T) {
 	s := newSession()
