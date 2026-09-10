@@ -60,8 +60,11 @@
 	<!-- The status is a sibling that changes once (#1970): with the ticking
 	     digit inside the region a reader re-spoke the whole klaxon every
 	     second. -->
+	<!-- Worded apart from the visible line: the spec finds "all out" by
+	     text, and two matches are a strict-mode failure (main went red). -->
 	<p class="sr-only" role="status">
-		Sprint in a moment — 15 seconds, all out; your trainer lets go of the target
+		Sprint moment starting: fifteen seconds at everything you have — your
+		trainer lets go of the target
 	</p>
 	<div class="grid h-full place-items-center">
 		<div class="text-center">
