@@ -114,19 +114,18 @@ repo owner 2026-09-10). Also not a fourth exception — it is difference 3 read
 out loud. A room's shared timeline is the workout everyone agreed to ride, so
 `+1 min` and `Skip block` (`session.extend(60)` and `session.skip()` in
 `lib/ride/RidingScreen.svelte`) belong to the rider who owns their own clock
-and to nobody in a room: the actions `room.control()` takes are
-`game`, `game-end`, `sprint`, `pick`, `start`, `pause`, `resume` and `end`,
-and it does not learn two more. Not the coach either, for now — a workout is
-picked and then ridden as planned, and
-changing the work itself is what the workout editor is for; pause and end
-remain the coach's only hold on the clock. And not every rider locally, the
-option that had to be argued down: their targets would shift while the room's
-clock did not, quietly making the execution scores incomparable, which is the
-thing the room is for. This declines the controls rather than overlooking
-them. If it is ever reopened, the coach's version is the one with a live
-argument — the coach already pauses and ends for everybody, so the authority
-exists; what it costs is a recap whose timeline no longer matches the workout
-that was planned.
+and to nobody in a room: the actions `room.control()` takes are `game`,
+`game-end`, `sprint`, `pick`, `start`, `pause`, `resume` and `end`, and it
+does not learn two more. Not the coach either, for now — a workout is picked
+and then ridden as planned, and changing the work itself is what the workout
+editor is for; pause and end remain the coach's only hold on the clock. And
+not every rider locally, the option that had to be argued down: their targets
+would shift while the room's clock did not, quietly making the execution
+scores incomparable, which is the thing the room is for. This declines the
+controls rather than overlooking them. If it is ever reopened, the coach's
+version is the one with a live argument — the coach already pauses and ends
+for everybody, so the authority exists; what it costs is a recap whose
+timeline no longer matches the workout that was planned.
 
 **The ramp test is a workout, not a third thing.** `buildRampTest()` already
 returns a normal `Workout` on the normal engine, so `describeBlock()` gives it
