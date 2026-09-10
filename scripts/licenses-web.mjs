@@ -31,8 +31,24 @@ const raw = JSON.parse(
 	}),
 );
 
+// A package that declares `os` or `cpu` is a platform-native binary — esbuild's
+// and rolldown's compiled bindings, fsevents. They are build machinery that
+// cannot appear in a browser bundle, and including them would make this file
+// differ on every contributor's machine: a Mac produces
+// @rolldown/binding-darwin-arm64 where CI produces -linux-x64-gnu, and the
+// drift check could never pass on both.
+function isPlatformBinary(dir) {
+	try {
+		const meta = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+		return Boolean(meta.os || meta.cpu);
+	} catch {
+		return false;
+	}
+}
+
 const packages = Object.values(raw)
 	.flat()
+	.filter((p) => !isPlatformBinary((p.paths ?? [])[0] ?? ''))
 	.map((p) => ({
 		name: p.name,
 		version: (p.versions ?? []).join(', '),

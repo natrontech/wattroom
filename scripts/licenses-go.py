@@ -18,9 +18,22 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SERVER = os.path.join(ROOT, "server")
 
 
+# The module set is GOOS-dependent — github.com/prometheus/procfs links on
+# Linux and not on macOS — so an unpinned `go list` produces a different file
+# on every contributor's machine and can never match what CI regenerates.
+# Pin to what the published image runs (ADR-0002: a single VM, linux). Both
+# linux arches resolve identically, so amd64 stands for the multi-arch build.
+TARGET = {"GOOS": "linux", "GOARCH": "amd64"}
+
+
 def go(*args: str) -> str:
     return subprocess.run(
-        ["go", *args], cwd=SERVER, check=True, capture_output=True, text=True
+        ["go", *args],
+        cwd=SERVER,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **TARGET},
     ).stdout
 
 

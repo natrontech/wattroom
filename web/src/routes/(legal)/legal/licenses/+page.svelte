@@ -69,7 +69,9 @@
 <p class="text-muted mt-3 text-sm leading-relaxed">
 	The list errs on the side of including too much: a bundler pulls assets out of
 	build-time dependencies as readily as runtime ones, so everything in the tree
-	is listed rather than only what is strictly linked.
+	is listed rather than only what is strictly linked. The exception is compiled
+	platform binaries — a build tool's native bindings, which cannot reach a
+	browser.
 </p>
 
 {#if failed}
