@@ -15,17 +15,8 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
-
-// The compose default, tried when WATTROOM_TEST_DB says nothing else.
-const defaultTestDSN = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials — NEVER the dev db, tests delete users
-
-func testDSN() string {
-	if dsn := os.Getenv("WATTROOM_TEST_DB"); dsn != "" {
-		return dsn
-	}
-	return defaultTestDSN
-}
 
 // Needs a running Postgres (make infra) and skips without one, so a bare
 // `go test` stays green on a machine with no database. `make test` and CI set
@@ -33,7 +24,7 @@ func testDSN() string {
 // TestDatabaseReachableWhenRequired.
 func open(t *testing.T) *store.Store {
 	t.Helper()
-	dsn := testDSN()
+	dsn := storetest.DSN()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	st, err := store.Open(ctx, dsn)
@@ -124,7 +115,7 @@ func TestDatabaseReachableWhenRequired(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	st, err := store.Open(ctx, testDSN())
+	st, err := store.Open(ctx, storetest.DSN())
 	if err != nil {
 		t.Fatalf("no test database, so every DB-backed package would skip and the suite would still say ok — run `make infra` here, or set WATTROOM_TEST_DB: %v", err)
 	}
@@ -148,10 +139,7 @@ func TestOpenSaysWhenTheDatabaseIsUnreachable(t *testing.T) {
 // three (2026-09-09). The database is created here, so the migrations
 // genuinely run for the first time under the race.
 func TestConcurrentOpensMigrateOnce(t *testing.T) {
-	base := os.Getenv("WATTROOM_TEST_DB")
-	if base == "" {
-		base = "postgres://wattroom:wattroom@localhost:5432/wattroom_test" //nolint:gosec // compose test credentials
-	}
+	base := storetest.DSN()
 	admin, err := pgx.Connect(t.Context(), strings.TrimRight(base[:strings.LastIndex(base, "/")], "/")+"/postgres")
 	if err != nil {
 		t.Skipf("no database available: %v", err)
