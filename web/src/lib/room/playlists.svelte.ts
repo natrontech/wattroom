@@ -180,6 +180,20 @@ export function commandFromEntry(entry: JukeboxEntry): JukeboxCommand {
 	};
 }
 
+/**
+ * A saved entry as the add command that saved it — what an undo re-posts
+ * after a removal (#2002). A saved playlist is a saved queue (ADR-0045), so
+ * this is `commandFromEntry` on the shelf's own shape rather than a second
+ * copy of its three-way branch: the two can never drift apart.
+ */
+export function commandFromSavedTrack(track: SavedTrack): JukeboxCommand {
+	return commandFromEntry({
+		...track,
+		addedBy: '',
+		startSec: track.positionSec,
+	});
+}
+
 /** Appends a saved playlist's tracks onto the room's live queue. */
 export function queueSavedPlaylist(slug: string, id: string) {
 	return api<{ queued: number }>(`/api/rooms/${slug}/playlists/${id}/queue`, {

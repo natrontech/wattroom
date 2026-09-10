@@ -15,6 +15,7 @@
 	import { thumbnailFor } from '$lib/room/jukebox-add';
 	import JukeboxAdd from '$lib/room/JukeboxAdd.svelte';
 	import {
+		commandFromSavedTrack,
 		queueSavedPlaylist,
 		type SavedPlaylist,
 		type SavedTrack,
@@ -111,18 +112,39 @@
 			entries.push('separator', {
 				label: 'Remove',
 				icon: Trash2,
-				onSelect: () => void removeTrack(track.id),
+				onSelect: () => void removeTrack(track, i),
 				danger: true,
 			});
 		return entries;
 	}
 
-	async function removeTrack(trackId: string) {
-		const message = await store.removeTrack(playlist.id, trackId);
+	// Undo over confirm (errors.md), the way the deck offers it for these same
+	// two verbs (Jukebox.svelte): the removal happens at once and the toast
+	// hands back the way in. Nothing here can un-delete server-side, so an
+	// undo re-posts what its snapshot holds — see recreate() for what a
+	// re-created playlist cannot bring with it.
+	async function removeTrack(track: SavedTrack, index: number) {
+		const snapshot = $state.snapshot(track) as SavedTrack;
+		const message = await store.removeTrack(playlist.id, track.id);
 		if (message) {
 			error = message;
 			return;
 		}
+		await load();
+		toasts.push(`Removed “${snapshot.playlistTitle ?? snapshot.title}”.`, {
+			undo: () => void readdTrack(snapshot, index),
+		});
+	}
+
+	async function readdTrack(track: SavedTrack, index: number) {
+		const res = await store.addTrack(playlist.id, commandFromSavedTrack(track));
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		// It lands at the end; the reorder (#1428) puts it back where it was.
+		// A refused move leaves it last, which the reloaded list then shows.
+		if (res.data?.id) await store.moveTrack(playlist.id, res.data.id, index);
 		await load();
 	}
 
@@ -141,13 +163,51 @@
 	}
 
 	async function remove() {
-		const snapshot = playlist;
+		const name = playlist.name;
+		const saved = await trackSnapshot();
 		const message = await store.remove(playlist.id);
 		if (message) {
 			error = message;
 			return;
 		}
-		toasts.push(`Deleted "${snapshot.name}".`);
+		toasts.push(`Deleted “${name}”.`, {
+			undo: () => void recreate(name, saved),
+		});
+	}
+
+	/** The tracks as they stand, read from the server when the row is folded:
+	 * a delete has to carry them or the undo puts back an empty playlist. */
+	async function trackSnapshot(): Promise<SavedTrack[]> {
+		if (tracks) return $state.snapshot(tracks) as SavedTrack[];
+		const res = await store.detail(playlist.id);
+		return res.ok ? (res.data?.tracks ?? []) : [];
+	}
+
+	/** Re-creates a deleted playlist and re-posts its tracks in order — a new
+	 * id, and no longer the room's active playlist: neither is a client's to
+	 * restore. This row is unmounted by the time an undo runs (the list
+	 * refreshed without it), so failures speak through a toast, not `error`. */
+	async function recreate(name: string, saved: SavedTrack[]) {
+		const created = await store.create(name);
+		if (!created.ok || !created.data?.id) {
+			toasts.push(
+				created.ok
+					? 'That playlist could not be brought back. Try again.'
+					: created.error.message,
+				{ tone: 'error' },
+			);
+			return;
+		}
+		for (const track of saved) {
+			const added = await store.addTrack(
+				created.data.id,
+				commandFromSavedTrack(track),
+			);
+			if (!added.ok) {
+				toasts.push(added.error.message, { tone: 'error' });
+				return;
+			}
+		}
 	}
 
 	async function queue() {
@@ -292,7 +352,7 @@
 							{/if}
 							{#if canManage}
 								<button
-									onclick={() => void removeTrack(track.id)}
+									onclick={() => void removeTrack(track, i)}
 									aria-label="remove this track"
 									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100"
 									><X size={12} /></button
