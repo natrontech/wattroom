@@ -32,6 +32,7 @@
 	import { remindersFor } from '$lib/room/reminders';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
+	import { modals } from '$lib/modals.svelte';
 
 	let props: RoomShellProps = $props();
 
@@ -350,7 +351,8 @@
 		// The topmost layer only (audit 2026-09-09): one Escape used to close
 		// TV mode, the picker, the sheet and the tile focus all at once — and
 		// the layout's drawer on top of them (#1625).
-		if (navDrawer.open) return;
+		// …and a Modal of its own (the summary, #1969) answers first.
+		if (navDrawer.open || modals.open > 0) return;
 		if (tv) tv = false;
 		else if (session.open) session.open = false;
 		else if (peopleSheet) peopleSheet = false;

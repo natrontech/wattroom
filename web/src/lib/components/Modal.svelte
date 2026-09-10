@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { countModal } from '$lib/modals.svelte';
+	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from './focus-trap';
 	import type { Snippet } from 'svelte';
 
@@ -28,13 +28,25 @@
 		class?: string;
 		children: Snippet;
 	} = $props();
+
+	/** This modal's place in the stack: Escape is its while it is the top. */
+	let depth = $state(0);
 </script>
 
-<svelte:window onkeydown={(event) => event.key === 'Escape' && onclose()} />
+<!-- Escape closes the topmost layer only (#1969): every mounted Modal used
+     to answer it, so a dialog over a sheet took both down at once. -->
+<svelte:window
+	onkeydown={(event) =>
+		event.key === 'Escape' && depth === modals.open && onclose()}
+/>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div
-	{@attach countModal}
+	{@attach () => {
+		const off = countModal();
+		depth = modals.open;
+		return off;
+	}}
 	{@attach portal}
 	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
 	onclick={(event) => event.target === event.currentTarget && onclose()}

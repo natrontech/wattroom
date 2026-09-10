@@ -1,0 +1,1 @@
+- A toast with Undo no longer vanishes before you can reach it, timed toasts pause while your pointer or focus is on them, and the toast stack sits two Tab presses from the top of the page. Escape closes only the topmost dialog. On a phone, Tab stays inside the open navigation drawer.
