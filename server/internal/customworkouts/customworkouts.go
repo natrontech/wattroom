@@ -153,7 +153,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	// by a fraction of a millisecond steps over every row inside it. Silent
 	// skipping is the bug being fixed here, not one to reintroduce at the page
 	// boundary.
-	body := map[string]any{"workouts": out, "more": len(rows) == listPage}
+	// The ceiling rides along, the way the rooms list carries maxOwned: the
+	// number lives in docs/SPEC.md and in one Go constant, and no screen has
+	// to hard-code a second copy of it to know when the shelf is full.
+	body := map[string]any{"workouts": out, "more": len(rows) == listPage, "max": maxWorkoutsPerAccount}
 	if len(rows) == listPage {
 		last := rows[len(rows)-1]
 		// UTC, so the cursor never carries a "+" that a caller has to

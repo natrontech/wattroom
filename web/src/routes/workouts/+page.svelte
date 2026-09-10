@@ -134,9 +134,18 @@
 			/>
 
 			<h2 class="eyebrow">your workouts</h2>
-			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
-				>Build a workout</a
-			>
+			{#if custom.full}
+				<!-- The ceiling is said where the shelf is, not discovered on the
+				     editor's Save (#1414, errors.md). -->
+				<span class="text-muted text-xs"
+					>{custom.max} workouts — the shelf is full. Delete one to build
+					another.</span
+				>
+			{:else}
+				<a href="/workouts/edit" class="hover:text-ink text-xs underline"
+					>Build a workout</a
+				>
+			{/if}
 		</div>
 		{#if custom.error}
 			<!-- A shelf that could not be read is not an empty shelf (errors.md). -->
