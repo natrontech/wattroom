@@ -73,7 +73,11 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 	}
 
 	/** Start something already on the calendar, now. */
-	function startScheduled(entry: { workoutName: string; workoutJson: string }) {
+	function startScheduled(entry: {
+		id: string;
+		workoutName: string;
+		workoutJson: string;
+	}) {
 		const segments = parseSharedSegments(entry.workoutJson);
 		const total = segments.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -95,6 +99,12 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 			totalSeconds: total,
 		});
 		deps.control('start');
+		// The plan is done with (#1905): marked, it stops offering itself while
+		// its own session runs and after. Best effort — the session is already
+		// running, and a refusal here is a plan that lingers, not a ride lost.
+		void api(`/api/rooms/${deps.slug()}/schedule/${entry.id}/started`, {
+			method: 'POST',
+		});
 	}
 
 	return {

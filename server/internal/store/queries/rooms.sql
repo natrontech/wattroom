@@ -95,6 +95,7 @@ left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
     where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
+      and s.started_at is null
     order by s.starts_at
     limit 1
 ) upcoming on true
@@ -155,13 +156,21 @@ values ($1, $2, $3, $4, $5) returning *;
 
 -- name: ListRoomUpcoming :many
 -- Grace of 30 min: a plan stays visible (and startable) a little past its
--- time, then falls off — no cron, the read is the cleanup.
+-- time, then falls off — no cron, the read is the cleanup. A started plan
+-- is done with (#1905). Uncapped like the rider's calendar (#1908): ten
+-- silently shown of thirteen planned had the two disagreeing about one room.
 select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
 from scheduled_sessions s
 join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
-order by s.starts_at
-limit 10;
+  and s.started_at is null
+order by s.starts_at;
+
+-- name: MarkSessionStarted :execrows
+-- Once: the row count says whether this was the first start (#1905).
+update scheduled_sessions
+set started_at = now()
+where id = $1 and room_id = $2 and started_at is null;
 
 -- name: DeleteScheduledSession :one
 -- Returns the name so the room's timeline can say which plan went (#359), and
@@ -190,6 +199,7 @@ set reminded_at = now()
 where id in (
     select id from scheduled_sessions
     where reminded_at is null
+      and started_at is null
       and starts_at > now()
       and starts_at <= now() + interval '1 hour'
     order by starts_at

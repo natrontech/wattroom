@@ -132,6 +132,32 @@ func (s *Service) announce(room db.Room, verb, actor, workout string, startsAt t
 	s.presence.PresenceChanged()
 }
 
+// handleSessionStarted marks a plan as started (#1905), once. The client
+// calls it beside the hub's pick and start, so the plan stops offering
+// itself while its own session runs and after it ends. Coach or owner, like
+// planning; a second start is a conflict, which is the point.
+func (s *Service) handleSessionStarted(w http.ResponseWriter, r *http.Request) {
+	room, _, ok := s.requireControl(w, r)
+	if !ok {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
+		return
+	}
+	n, err := s.store.Queries.MarkSessionStarted(r.Context(), db.MarkSessionStartedParams{ID: id, RoomID: room.ID})
+	if err != nil {
+		httpx.Fail(w, s.log, "mark session started failed", err, "That could not be saved. Try again.", "room", room.Slug)
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict", "That planned session was already started, or does not exist.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	room, user, ok := s.requireControl(w, r)
 	if !ok {

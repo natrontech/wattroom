@@ -152,7 +152,11 @@ export interface RoomContext {
 	 */
 	ban(userId: string, name: string): void;
 	removeMember(userId: string): void;
-	startScheduled(entry: { workoutJson: string; workoutName: string }): void;
+	startScheduled(entry: {
+		id: string;
+		workoutJson: string;
+		workoutName: string;
+	}): void;
 	copyIcsUrl(): void;
 
 	readonly reminders: RoomEvent[];
