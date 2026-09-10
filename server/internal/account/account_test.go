@@ -549,8 +549,11 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 			t.Fatalf("identity %s: %v", name, err)
 		}
 	}
+	// An empty go-webauthn record: gosec reads a string on a field called
+	// Credential as a secret, and this is a test's stand-in for one.
+	record := []byte("{}")
 	if _, err := h.store.Queries.CreatePasskey(t.Context(), db.CreatePasskeyParams{
-		CredentialID: []byte{0xa1, 0x1c, 0xe0}, UserID: h.id("alice"), Credential: []byte(`{}`), Name: "YubiKey on the desk",
+		CredentialID: []byte{0xa1, 0x1c, 0xe0}, UserID: h.id("alice"), Credential: record, Name: "YubiKey on the desk",
 	}); err != nil {
 		t.Fatalf("passkey: %v", err)
 	}
