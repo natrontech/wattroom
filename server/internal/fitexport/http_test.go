@@ -9,23 +9,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// signedIn is a session that resolves; refusing mirrors auth.RequireUser,
-// which writes the 401 itself and returns false.
-type signedIn struct{}
+// The one shared double (#1696): the X-Test-User header is the session, and
+// a request without it is signed out and gets RequireUser's own 401.
+const rider = "rider"
 
-func (signedIn) RequireUser(http.ResponseWriter, *http.Request, string) (db.User, bool) {
-	return db.User{}, true
-}
-
-type signedOut struct{}
-
-func (signedOut) RequireUser(w http.ResponseWriter, _ *http.Request, message string) (db.User, bool) {
-	httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", message)
-	return db.User{}, false
+func users() *testx.Users {
+	return &testx.Users{ByToken: map[string]db.User{rider: {}}}
 }
 
 // readCounter counts what the handler actually pulled off the wire: a
@@ -44,8 +37,9 @@ func (c *readCounter) Read(p []byte) (int, error) {
 func post(t *testing.T, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rides/export", strings.NewReader(body))
+	req.Header.Set("X-Test-User", rider)
 	rec := httptest.NewRecorder()
-	Handler(signedIn{}, slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
+	Handler(users(), slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
 	return rec
 }
 
@@ -56,7 +50,7 @@ func TestHandlerRefusesWithoutASession(t *testing.T) {
 	counter := &readCounter{r: strings.NewReader(goodRide)}
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rides/export", counter)
 	rec := httptest.NewRecorder()
-	Handler(signedOut{}, slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
+	Handler(users(), slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401. body = %s", rec.Code, rec.Body.String())

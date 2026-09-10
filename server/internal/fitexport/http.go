@@ -60,7 +60,9 @@ type exportSample struct {
 	HeartRate int `json:"heartRate"`
 }
 
-// UserSource is auth.Service's RequireUser, as rides.UserSource is.
+// UserSource is the sign-in gate — the same shape rides and rooms consume.
+// An account is the whole requirement: the ride arrives in the body, so
+// there is no row to own and nobody else's data to reach.
 type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
