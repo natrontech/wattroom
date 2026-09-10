@@ -189,6 +189,10 @@
 	// A refused save is its own slot with its own tone: it shared `status`
 	// with two unrelated notices and read as a warning (#1392).
 	let saveError = $state<string | null>(null);
+	// A new workout on a full shelf is a 429 waiting to happen (#1414), and
+	// errors.md says not to render the button that will fail. Editing one
+	// that is already saved is never refused, so only a new one is gated.
+	const shelfFull = $derived(!editingId && custom.full);
 	async function save() {
 		const result = await custom.save(
 			$state.snapshot(workout) as Workout,
@@ -247,7 +251,7 @@
 			<a href="/workouts" class="text-muted hover:text-ink text-sm">Discard</a>
 			<button
 				onclick={save}
-				disabled={!check.ok || !hydrated}
+				disabled={!check.ok || !hydrated || shelfFull}
 				class="btn btn-primary">Save</button
 			>
 		</div>
@@ -277,6 +281,16 @@
 							class="btn-link text-xs">Show the step</button
 						>
 					{/if}
+				{/snippet}
+			</Banner>
+		</div>
+	{:else if shelfFull}
+		<div class="mt-3">
+			<Banner tone="warn">
+				Your shelf holds {custom.max} workouts, the most an account can keep. Delete
+				one to save this.
+				{#snippet action()}
+					<a href="/workouts" class="btn-link text-xs">Open the shelf</a>
 				{/snippet}
 			</Banner>
 		</div>

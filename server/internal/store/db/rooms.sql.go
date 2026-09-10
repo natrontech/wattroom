@@ -97,6 +97,23 @@ func (q *Queries) CountOwnedRooms(ctx context.Context, ownerID pgtype.UUID) (int
 	return count, err
 }
 
+const countRoomUpcoming = `-- name: CountRoomUpcoming :one
+select count(*) from scheduled_sessions
+where room_id = $1 and starts_at > now() - interval '30 minutes'
+  and started_at is null
+`
+
+// docs/SPEC.md's 50-planned-session ceiling (#1414). Deliberately the same
+// predicate as ListRoomUpcoming, so what the ceiling counts is exactly what
+// the room shows as planned: a plan that started, was cancelled, or fell past
+// its 30-minute grace has given its slot back.
+func (q *Queries) CountRoomUpcoming(ctx context.Context, roomID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoomUpcoming, roomID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createMembership = `-- name: CreateMembership :exec
 insert into memberships (room_id, user_id, role)
 values ($1, $2, $3)
@@ -475,9 +492,18 @@ select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by
 from scheduled_sessions s
 join users u on u.id = s.created_by
-where s.room_id = $1 and s.starts_at > now() - interval '30 days'
+where s.room_id = $1
+  and s.starts_at > $2 and s.starts_at < $3
 order by s.starts_at
+limit $4
 `
+
+type ListRoomCalendarParams struct {
+	RoomID      pgtype.UUID
+	StartsFrom  pgtype.Timestamptz
+	StartsUntil pgtype.Timestamptz
+	RowLimit    int32
+}
 
 type ListRoomCalendarRow struct {
 	ID          pgtype.UUID
@@ -488,10 +514,22 @@ type ListRoomCalendarRow struct {
 	CreatedBy   string
 }
 
-// The iCal feed (#245): unlike the in-room list, it keeps a month of history
-// and has no cap — a calendar that self-erases reads as broken.
-func (q *Queries) ListRoomCalendar(ctx context.Context, roomID pgtype.UUID) ([]ListRoomCalendarRow, error) {
-	rows, err := q.db.Query(ctx, listRoomCalendar, roomID)
+// The iCal feed (#245): unlike the in-room list, it keeps a month of history.
+// Bounded at both ends now (#1414) — the whole result is rendered into one
+// in-memory ICS string per request, on a URL whose only credential is a
+// bearer token, so row growth was a memory spike anybody holding the link
+// could ask for. Neither bound can erase a plan somebody made: planning is
+// capped three months out (plannableAt), well inside the year, and the row
+// limit is far above the room's own 50-session ceiling. The window is the
+// caller's, like ListUserCalendar's, so both feeds read their numbers from
+// the same Go constants rather than from an interval literal in here.
+func (q *Queries) ListRoomCalendar(ctx context.Context, arg ListRoomCalendarParams) ([]ListRoomCalendarRow, error) {
+	rows, err := q.db.Query(ctx, listRoomCalendar,
+		arg.RoomID,
+		arg.StartsFrom,
+		arg.StartsUntil,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -708,16 +746,19 @@ from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
 join users u on u.id = s.created_by
-where s.starts_at > $2
+where s.starts_at > $2 and s.starts_at < $3
   -- A crew ban leaves the membership row and lives in visible_rooms alone
   -- (#1904): the rail asks it, and so does the calendar.
   and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
 order by s.starts_at
+limit $4
 `
 
 type ListUserCalendarParams struct {
-	UserID   pgtype.UUID
-	StartsAt pgtype.Timestamptz
+	UserID      pgtype.UUID
+	StartsFrom  pgtype.Timestamptz
+	StartsUntil pgtype.Timestamptz
+	RowLimit    int32
 }
 
 type ListUserCalendarRow struct {
@@ -732,12 +773,19 @@ type ListUserCalendarRow struct {
 	YourRole    string
 }
 
-// Every room the rider is in, one list (#325). $2 is the horizon and is the
-// only difference between the two callers: the iCal feed keeps a month of
-// history, the sessions page starts at the same 30-minute grace the in-room
-// list uses. Uncapped — a calendar that self-erases reads as broken.
+// Every room the rider is in, one list (#325). `from` is the only difference
+// between the two callers: the iCal feed keeps a month of history, the
+// sessions page starts at the same 30-minute grace the in-room list uses.
+// `until` and the row limit are the same for both (#1414) — the rider feed is
+// the wider of the two memory spikes, since membership is uncapped and every
+// room's 50 plans land in one ICS string.
 func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarParams) ([]ListUserCalendarRow, error) {
-	rows, err := q.db.Query(ctx, listUserCalendar, arg.UserID, arg.StartsAt)
+	rows, err := q.db.Query(ctx, listUserCalendar,
+		arg.UserID,
+		arg.StartsFrom,
+		arg.StartsUntil,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -938,6 +986,24 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockRoom = `-- name: LockRoom :exec
+select 1 from rooms where id = $1 for update
+`
+
+// The room's write lock, held for the length of a transaction. LockUser's
+// sibling: what serialises a room-scoped ceiling check against the insert
+// that follows it.
+//
+// Lock order in this app is USERS BEFORE ROOMS. Room create and room
+// hand-over both take LockUser and then touch a rooms row, so a transaction
+// that wants both takes them in that order — the reverse would deadlock a
+// hand-over against a plan made by the incoming owner, and Postgres would
+// resolve it by killing one of them with a 500.
+func (q *Queries) LockRoom(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockRoom, id)
+	return err
 }
 
 const markSessionStarted = `-- name: MarkSessionStarted :execrows

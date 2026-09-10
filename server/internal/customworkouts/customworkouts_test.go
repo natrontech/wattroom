@@ -16,7 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-func setup(t *testing.T) (*http.ServeMux, *store.Store) {
+func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 	t.Helper()
 	st := storetest.Open(t)
 
@@ -35,7 +35,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store) {
 	}
 	mux := http.NewServeMux()
 	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
-	return mux, st
+	return mux, st, users
 }
 
 func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (int, map[string]any) {
@@ -58,7 +58,7 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 const valid = `{"workout":{"name":"My 2x8","steps":[{"type":"steady","seconds":480,"target":0.95},{"type":"steady","seconds":240,"target":0.5}]}}`
 
 func TestWorkoutCRUD(t *testing.T) {
-	mux, _ := setup(t)
+	mux, _, _ := setup(t)
 
 	// Unauthenticated → 401 on every verb (#1713).
 	for _, anon := range []struct{ method, path string }{
@@ -108,7 +108,7 @@ func TestWorkoutCRUD(t *testing.T) {
 }
 
 func TestWorkoutValidation(t *testing.T) {
-	mux, _ := setup(t)
+	mux, _, _ := setup(t)
 	for name, tc := range map[string]struct {
 		body  string
 		field string
@@ -128,7 +128,7 @@ func TestWorkoutValidation(t *testing.T) {
 // The editor's per-step bounds hold at the API too (audit 2026-09-09): what
 // the shelf would refuse to read is refused before it is stored.
 func TestWorkoutStepBoundsMatchTheEditor(t *testing.T) {
-	mux, _ := setup(t)
+	mux, _, _ := setup(t)
 	for name, body := range map[string]string{
 		"a two-second step":                    `{"workout":{"name":"Blink","author":"x","steps":[{"type":"steady","seconds":2,"target":0.8}]}}`,
 		"a 2500 % target":                      `{"workout":{"name":"Sun","author":"x","steps":[{"type":"steady","seconds":600,"target":25}]}}`,

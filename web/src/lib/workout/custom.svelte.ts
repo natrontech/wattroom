@@ -59,18 +59,48 @@ export function createCustomStore() {
 	// from an older version, or written through the API before the server
 	// bounded steps (#1393). Counted and said, never silently eaten.
 	let dropped = $state(0);
+	// docs/SPEC.md's shelf ceiling, as the server reports it (#1414) — never
+	// a second copy of the number here. 0 until the first read answers, which
+	// reads as "no ceiling known yet" and gates nothing.
+	let max = $state(0);
+
+	// The shelf is paged (#1414): the server answers 100 at a time and hands
+	// back the cursor for the next page, so a rider whose shelf predates the
+	// 200-workout ceiling still sees all of it. Every page or none — a
+	// half-read shelf shown as the whole shelf is the silent hiding the
+	// paging exists to end.
+	//
+	// A runaway guard, an order of magnitude above the ceiling: reaching it
+	// means a server that keeps saying "more" or a cursor that stopped
+	// advancing, never a rider with two thousand workouts.
+	const MAX_PAGES = 20;
 
 	async function refresh(): Promise<void> {
-		const res = await api<{ workouts: unknown[] }>('/api/workouts');
-		if (res.ok) {
+		const collected: unknown[] = [];
+		let query = '';
+		for (let page = 0; page < MAX_PAGES; page++) {
+			const res = await api<{
+				workouts: unknown[];
+				more?: boolean;
+				nextBefore?: string;
+				nextBeforeId?: string;
+				max?: number;
+			}>(`/api/workouts${query}`);
+			if (!res.ok) {
+				error = res.error.message;
+				loaded = true;
+				return;
+			}
 			// data can be null on a malformed body — the shelf shows empty, not a crash
-			const raw = res.data?.workouts ?? [];
-			entries = raw.flatMap((entry) => parseEntry(entry) ?? []);
-			dropped = raw.length - entries.length;
-			error = null;
-		} else {
-			error = res.error.message;
+			collected.push(...(res.data?.workouts ?? []));
+			const { more, nextBefore, nextBeforeId } = res.data ?? {};
+			max = res.data?.max ?? max;
+			if (!more || !nextBefore || !nextBeforeId) break;
+			query = `?before=${encodeURIComponent(nextBefore)}&beforeId=${encodeURIComponent(nextBeforeId)}`;
 		}
+		entries = collected.flatMap((entry) => parseEntry(entry) ?? []);
+		dropped = collected.length - entries.length;
+		error = null;
 		loaded = true;
 	}
 
@@ -110,6 +140,18 @@ export function createCustomStore() {
 		/** Saved workouts this version could not read, and does not show. */
 		get dropped(): number {
 			return dropped;
+		},
+		/** docs/SPEC.md's ceiling, as the server reports it; 0 until loaded. */
+		get max(): number {
+			return max;
+		},
+		/**
+		 * True when a new save would be refused with a 429. Editing an
+		 * existing workout is never refused, so only the surfaces that create
+		 * one gate on this.
+		 */
+		get full(): boolean {
+			return max > 0 && entries.length + dropped >= max;
 		},
 		retry: refresh,
 		get all(): CustomWorkout[] {
