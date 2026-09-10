@@ -6,6 +6,7 @@ import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
 import { targetAt } from '$lib/workout/engine';
+import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/room/recording.svelte';
@@ -84,22 +85,37 @@ export function createRide(deps: RideDeps) {
 		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
 	}
 
-	/** What the room asks of this rider, before their own guards get a say. */
-	const prescribed = $derived.by(() => {
+	/**
+	 * What the room asks of this rider, before their own guards get a say —
+	 * and whether the block asking is the workout's own sprint.
+	 *
+	 * The sprint flag is not decoration: `targetAt` returns no target for a
+	 * sprint block, `?? 0` folds that into zero, and zero in ERG is a
+	 * freewheel — the rider pedalled against nothing for the whole block
+	 * (#2014). That is the room's half of #1529, which fixed the solo ride
+	 * on the assumption the room was already right. It was not: the room
+	 * flips to slope only for a sprint the SERVER armed, and nothing arms
+	 * one from the timeline.
+	 */
+	const block = $derived.by((): { watts: number; sprint: boolean } => {
 		const game = deps.live.tick?.game;
 		const mine = game?.riders?.[deps.myId() ?? ''];
 		if (game?.phase === 'running' && mine && mine.targetPct) {
-			return Math.round(mine.targetPct * deps.profile.current.ftp);
+			return {
+				watts: Math.round(mine.targetPct * deps.profile.current.ftp),
+				sprint: false,
+			};
 		}
 		const shared = deps.shared();
 		const segments = deps.segments();
 		if (!shared || shared.phase !== 'running' || segments.length === 0)
-			return 0;
-		const raw =
-			targetAt(segments, deps.profile.current.ftp, shared.elapsed)
-				.targetWatts ?? 0;
-		return Math.round(raw * bias);
+			return { watts: 0, sprint: false };
+		const info = targetAt(segments, deps.profile.current.ftp, shared.elapsed);
+		if (!info.done && info.segment?.kind === 'sprint')
+			return { watts: 0, sprint: true };
+		return { watts: Math.round((info.targetWatts ?? 0) * bias), sprint: false };
 	});
+	const prescribed = $derived(block.watts);
 
 	/**
 	 * Auto-pause and the spiral release, the same machine the solo ride runs
@@ -162,6 +178,39 @@ export function createRide(deps: RideDeps) {
 		const at = Math.max(sprintClock, serverNow());
 		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
 	});
+	/**
+	 * The workout's own sprint blocks (#2014), as a window the room's
+	 * SprintMoment and klaxon already know how to draw — the same module the
+	 * solo ride runs (#1793). Anchored off the room's elapsed, so every rider
+	 * counts the same block in at the same moment.
+	 */
+	const blockWindow = createSprintWindow(() => {
+		const shared = deps.shared();
+		const segments = deps.segments();
+		const running = !!shared && shared.phase === 'running';
+		const info =
+			running && segments.length > 0
+				? targetAt(segments, deps.profile.current.ftp, shared.elapsed)
+				: undefined;
+		return {
+			segments,
+			segment: info?.segment,
+			index: info?.segmentIndex ?? 0,
+			clock: shared?.elapsed ?? 0,
+			done: info?.done ?? true,
+			over: !running,
+		};
+	});
+	// Re-anchored on the room's clock rather than a local interval: the window
+	// carries a deadline in server-ms, and reading it half a second after the
+	// tick that moved `elapsed` would count the block in half a second late.
+	$effect(() => {
+		void deps.shared()?.elapsed;
+		blockWindow.sync();
+	});
+
+	/** Slope, whoever asked for it: the coach's armed sprint or the workout's. */
+	const sprinting = $derived(sprintLive || block.sprint);
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
@@ -170,7 +219,7 @@ export function createRide(deps: RideDeps) {
 		// are about to answer, and a rider who was sitting at zero when it
 		// sounded would otherwise never be given the hill. (Tried the other
 		// way round first; the two-rider e2e is what showed the cost.)
-		if (sprintLive) {
+		if (sprinting) {
 			if (!sprintMode) {
 				sprintMode = true;
 				if (deps.profile.current.singleSpeed) {
@@ -329,6 +378,14 @@ export function createRide(deps: RideDeps) {
 		/** The spiral-of-death release: targets off for a few seconds, on purpose. */
 		get spiralActive() {
 			return spiralActive;
+		},
+		/**
+		 * The workout's own sprint block as a window (#2014). The room draws
+		 * and sounds it exactly as it does a coach's; the server's armed
+		 * sprint outranks it, since that is the one being scored.
+		 */
+		get blockSprint() {
+			return blockWindow.current;
 		},
 		nudgeBias,
 		ride,
