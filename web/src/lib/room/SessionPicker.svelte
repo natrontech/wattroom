@@ -251,7 +251,11 @@
 								<!-- The shelf has not answered yet (#1766). -->
 								<span aria-busy="true">Loading workouts…</span>
 							{:else}
-								No workouts to pick from yet.
+								<!-- Teach, do not apologise (ux.md): the shelf carries the
+								     curated library plus your own, so an empty one means
+								     there is one to build. -->
+								Your own workouts land here beside the curated ones.
+								<a href="/workouts/edit" class="btn-link">Build a workout</a>
 							{/if}
 						</li>
 					{/each}
