@@ -48,23 +48,33 @@
 	function setDay(date: string) {
 		value = `${date}T${time}`;
 	}
+	// A rejected time says so (#1967): the box used to snap back with no word.
+	let timeRefused = $state(false);
+	const timeErrorId = `when-time-${Math.random().toString(36).slice(2, 8)}`;
 	function setTime(raw: string) {
 		const clock = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(raw.trim());
+		timeRefused = !clock;
 		if (!clock) return;
 		value = `${picked || days[0].date}T${String(clock[1]).padStart(2, '0')}:${clock[2]}`;
 	}
 </script>
 
 <div class="flex flex-wrap items-center gap-1.5">
-	{#each days as day (day.date)}
-		<button
-			type="button"
-			onclick={() => setDay(day.date)}
-			class="rounded border px-2.5 py-1.5 text-xs {picked === day.date
-				? 'border-neon/60 text-ink'
-				: 'border-muted/25 text-muted hover:text-ink'}">{day.label}</button
-		>
-	{/each}
+	<!-- The chips are one choice among seven (#1967): radios, as IconPicker
+	     draws the same shape, so the chosen day is not a border colour alone. -->
+	<div role="radiogroup" aria-label="day" class="contents">
+		{#each days as day (day.date)}
+			<button
+				type="button"
+				role="radio"
+				aria-checked={picked === day.date}
+				onclick={() => setDay(day.date)}
+				class="rounded border px-2.5 py-1.5 text-xs {picked === day.date
+					? 'border-neon/60 text-ink'
+					: 'border-muted/25 text-muted hover:text-ink'}">{day.label}</button
+			>
+		{/each}
+	</div>
 	{#if dateOpen}
 		<input
 			type="date"
@@ -92,6 +102,13 @@
 			e.currentTarget.value = value.split('T')[1] ?? time;
 		}}
 		aria-label="Time"
+		aria-invalid={timeRefused ? 'true' : undefined}
+		aria-describedby={timeRefused ? timeErrorId : undefined}
 		class="border-muted/25 focus:border-muted/60 w-16 rounded border bg-transparent px-2 py-1.5 text-center font-mono text-xs tabular-nums outline-none"
 	/>
+	{#if timeRefused}
+		<p id={timeErrorId} role="alert" class="text-danger w-full text-[11px]">
+			A time reads 19:30 — the box kept {time}.
+		</p>
+	{/if}
 </div>
