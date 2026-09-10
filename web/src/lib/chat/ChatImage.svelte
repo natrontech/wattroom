@@ -36,9 +36,9 @@
 	async function copyLink() {
 		try {
 			await navigator.clipboard.writeText(url);
-			toasts.push('Image link copied');
+			toasts.push('Image link copied.');
 		} catch {
-			toasts.push('Could not copy the link', { tone: 'error' });
+			toasts.push('Could not copy the link.', { tone: 'error' });
 		}
 	}
 </script>

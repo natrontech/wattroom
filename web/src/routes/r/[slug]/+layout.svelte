@@ -253,7 +253,9 @@
 					`/api/rooms/${room?.slug}/grants`,
 					{ json: { userId } },
 					{
-						message: name ? `${name} can walk in now.` : 'Let in.',
+						message: name
+							? `${name} can walk in now.`
+							: 'They can walk in now.',
 						undo: () =>
 							void act(`/api/rooms/${room?.slug}/grants/${userId}`, {
 								method: 'DELETE',

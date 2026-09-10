@@ -336,7 +336,9 @@
 					onclick={() =>
 						void Promise.resolve(room.rotateIcs()).then((ok) => {
 							if (ok !== false)
-								toasts.push('Calendar link reset — shared links stop working.');
+								toasts.push(
+									'Calendar link reset — calendars on the old link stop updating.',
+								);
 						})}
 					class="btn btn-secondary btn-xs mt-2">Reset calendar link</button
 				>
