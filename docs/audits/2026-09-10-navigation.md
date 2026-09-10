@@ -9,10 +9,10 @@
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
 | #1857 | The first-run checklist is gated on owning a crew, so the account that needs it never sees it; its first step is labelled for a fact it does not test | high | fixed (#1864) |
-| #1858 | A rider cannot choose a microphone or camera anywhere until they are standing in a room | high | open — needs a room-less device path the way `soloTrainer` is one for pairing |
-| #1859 | Following the sidebar's own "Get the desktop app" row deletes the sidebar (`/download`, `/legal`, `/privacy` drop the shell) | bug | open |
+| #1858 | A rider cannot choose a microphone or camera anywhere until they are standing in a room | high | fixed (#1869): `deviceChoices()` is one store above the router, `/settings/voice` picks from it with no room |
+| #1859 | Following the sidebar's own "Get the desktop app" row deletes the sidebar (`/download`, `/legal`, `/privacy` drop the shell) | bug | fixed (#1866): `framed` split from `publicPath` |
 | #1860 | Decision: single-speed and sprint grade on Profile, Sign out under Your data, the calendar link on Home | decision | `needs-human-input` |
-| #1861 | Every golden-path spec enters through the retired `/rooms` stub; the shipped door (the sidebar `+`) and the first-run card have no test | test | open |
+| #1861 | Every golden-path spec enters through the retired `/rooms` stub; the shipped door (the sidebar `+`) and the first-run card have no test | test | fixed (#1868) — and taking the door found the sheet standing over the room it had just opened, fixed in the same PR |
 | #1862 | Polish: `/sessions` lands on Home's top, duplicate form ids, no rides empty state, the new-account notice waits for Home, ADR-0020's tree lacks two rows | low | fixed (#1864) |
 | #1863 | Decision: `/rooms/directory` and `/messages` are pages with no row to light | decision | `needs-human-input` |
 
