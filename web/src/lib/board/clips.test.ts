@@ -57,7 +57,7 @@ describe('movePad', () => {
 							delete (c as { pad?: number }).pad;
 				if (pad === null) delete (moving as { pad?: number }).pad;
 				else (moving as { pad?: number }).pad = pad;
-				return { ok: true };
+				return { ok: true, status: 204 };
 			}
 			return { ok: true, json: async () => ({ clips, used: 0, limit: 1 }) };
 		});
