@@ -23,7 +23,7 @@ Cited rather than re-filed: #1255 (the roster's visibility), #1334 (a crew-wide 
 
 ## The owner's first ten minutes
 
-Sign in, **Open a room** on Home (the same sheet as the sidebar's `+`), name it, land in the room — the sheet says before the click that this makes your crew, named after you. Then **Members** or the first-run card's "Invite someone", **Copy invite link**, paste it outside. The friend opens `/c/{code}`, is bounced through sign-in and back, reads the crew's name, picture and headcount and nothing else, presses **Join**, and — since #1937 — lands in the room when the crew has one, with "Walk in" saying it is open to the crew. Four taps each side, every one signposted. The stumble that remains: "Name your crew" is never on that path; the owner reaches the ride without being told the crew carries their own name until they are back on Home.
+Sign in, **Open a room** on Home (the same sheet as the sidebar's `+`), name it, land in the room — the sheet says before the click that this makes your crew, named after you. Then **Members** or the first-run card's "Invite someone", **Copy invite link**, paste it outside. The friend opens `/c/{code}`, is bounced through sign-in and back, reads the crew's name and picture and nothing else (the headcount went with #1399), presses **Join**, and — since #1937 — lands in the room when the crew has one, with "Walk in" saying it is open to the crew. Four taps each side, every one signposted. The stumble that remains: "Name your crew" is never on that path; the owner reaches the ride without being told the crew carries their own name until they are back on Home.
 
 ## Checked and found sound
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -430,23 +431,78 @@ func TestTheCrewDoorKnowsWhoIsAlreadyIn(t *testing.T) {
 	if owner["inCrew"] != true || owner["id"] != store.UUIDString(crew.ID) {
 		t.Errorf("the owner at their own door is not told they are in: %v", owner)
 	}
-	// Signed out (#1677): the name, the icon, the count and the image — and
-	// nothing that is only a member's to know.
+	// The headcount is a member's to know (#1399): they can read the roster
+	// itself on the crew's page.
+	if owner["members"] == nil {
+		t.Errorf("the owner at their own door is not told how many are in it: %v", owner)
+	}
+	// Signed out (#1677): the name, the icon and the image — and nothing that
+	// is only a member's to know, the headcount included (#1399).
 	status, anon := h.call(t, "", http.MethodGet, "/api/crew-doors/"+code, "")
 	if status != http.StatusOK {
 		t.Fatalf("the door signed out: %d", status)
 	}
-	for _, key := range []string{"id", "inCrew", "banned", "code", "rooms", "people"} {
+	for _, key := range []string{"id", "inCrew", "banned", "code", "rooms", "people", "members"} {
 		if _, has := anon[key]; has {
 			t.Errorf("the door hands a signed-out caller %q: %v", key, anon)
 		}
 	}
-	if anon["name"] == nil || anon["members"] == nil {
-		t.Errorf("the door withholds the name or the count signed out: %v", anon)
+	if anon["name"] == nil {
+		t.Errorf("the door withholds the name signed out: %v", anon)
 	}
 	if status, _ := h.call(t, "", http.MethodGet, "/api/crew-doors/ZZZZZZ", ""); status != http.StatusNotFound {
 		t.Errorf("an unknown code: %d, want 404", status)
 	}
+}
+
+// A stranger at the door cannot tell a crew of one from a crew of two
+// (#1399). ADR-0038's amendment gives the door the crew's name and what
+// joining shows; ADR-0039 refused a headcount to a stranger as "a separate
+// disclosure". So two crews alike in everything but their size must read
+// identically to a caller who has only the code — signed out, and signed in
+// as somebody who is in neither.
+func TestTheDoorTellsAStrangerNothingAboutCrewSize(t *testing.T) {
+	h := setup(t)
+	_, small := h.createRoom(t, "alice", "Door Size Small")
+	slug, large := h.createRoom(t, "bob", "Door Size Large")
+	h.enter(t, "carol", large, slug)
+	// Everything but the size held equal, so any difference in the two
+	// responses is the size and nothing else.
+	for _, code := range []string{small, large} {
+		if _, err := h.store.Pool.Exec(t.Context(),
+			"update crews set name = 'Same Name', icon = 'bolt' where code = $1", code); err != nil {
+			t.Fatalf("level the crews: %v", err)
+		}
+	}
+	// A signed-in caller who is in neither crew: the stranger ADR-0039 means,
+	// who holds a code and nothing else.
+	for _, who := range []string{"", h.stranger(t)} {
+		_, one := h.call(t, who, http.MethodGet, "/api/crew-doors/"+small, "")
+		_, two := h.call(t, who, http.MethodGet, "/api/crew-doors/"+large, "")
+		if !maps.Equal(one, two) {
+			t.Errorf("the door tells %q the crew's size: %v vs %v", who, one, two)
+		}
+		if _, has := two["members"]; has {
+			t.Errorf("the door hands %q a headcount: %v", who, two)
+		}
+	}
+}
+
+// stranger is a signed-in rider in no crew at all, for the disclosures that
+// turn on membership rather than on being signed in.
+func (h *harness) stranger(t *testing.T) string {
+	t.Helper()
+	u, err := h.store.Queries.CreateUser(t.Context(), db.CreateUserParams{
+		DisplayName: "dave", FtpWatts: 200, WeightKg: 75,
+	})
+	if err != nil {
+		t.Fatalf("create the stranger: %v", err)
+	}
+	h.users.ByToken["dave"] = u
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
+	})
+	return "dave"
 }
 
 func roomID(t *testing.T, h *harness, slug string) pgtype.UUID {
@@ -1204,7 +1260,9 @@ func TestTheDoorCountsTheOwnerOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("stray owner row: %v", err)
 	}
-	status, door := h.call(t, "", http.MethodGet, "/api/crew-doors/"+code, "")
+	// Read as the owner: the count is a member's to see and no stranger's
+	// (#1399).
+	status, door := h.call(t, "alice", http.MethodGet, "/api/crew-doors/"+code, "")
 	if status != http.StatusOK {
 		t.Fatalf("door: %d %v", status, door)
 	}

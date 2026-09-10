@@ -123,15 +123,18 @@ export function setRoomAccess(
 	});
 }
 
-/** What a share link shows before the join (#1236): the name, and how many. */
+/** What a share link shows before the join (#1236): the crew's name and mark,
+ *  and nothing a stranger holding the code has no business learning — the
+ *  headcount included (#1399). */
 export interface CrewDoor {
 	name: string;
 	icon?: string;
 	imageUrl?: string;
-	members: number;
 	/** Set only for someone already in the crew: the way in is the page. */
 	inCrew?: boolean;
 	id?: string;
+	/** A member's to know, and only then (#1399): the roster shows it anyway. */
+	members?: number;
 	/** The crew removed you: no Join, the code will not get you back. */
 	banned?: boolean;
 }

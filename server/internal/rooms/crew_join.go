@@ -16,9 +16,11 @@ import (
 // join by code, and leaving. Split from crews.go (#1234).
 
 // handleCrewDoor is what a share link shows before the join (#1236): the
-// crew's name and icon and how many are in it, and nothing else — not its id,
-// not its rooms, not its people. A code is a secret, so an unknown one and a
-// malformed one read the same.
+// crew's name and icon, and nothing else — not its id, not its rooms, not its
+// people, and not how many of them there are. ADR-0038's amendment authorises
+// the name and what joining shows; ADR-0039 refused a headcount to a stranger
+// as "a separate disclosure", and the count shipped here anyway (#1399). A
+// code is a secret, so an unknown one and a malformed one read the same.
 func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 	if s.throttleDoor(w, r) {
 		return
@@ -36,14 +38,14 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
 		return
 	}
-	members, _ := s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
 	out := map[string]any{
-		"name": crew.Name, "icon": crew.Icon, "members": members,
+		"name": crew.Name, "icon": crew.Icon,
 		"imageUrl": crewDoorImageURL(code, crew.HasImage),
 	}
 	// Someone already in the crew who follows its own link again gets the
-	// way in rather than a Join that would do nothing: the id is theirs to
-	// know, and only then.
+	// way in rather than a Join that would do nothing: the id and the
+	// headcount are theirs to know, and only then — the roster on the crew's
+	// own page shows both already.
 	if user, signedIn := s.users.User(r); signedIn {
 		role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 		switch {
@@ -56,6 +58,7 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		case role != "":
 			out["inCrew"] = true
 			out["id"] = store.UUIDString(crew.ID)
+			out["members"], _ = s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)

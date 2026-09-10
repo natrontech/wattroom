@@ -43,8 +43,10 @@
 		nonce ? `/login?desktop=${nonce}` : page.url.searchParams.get('next');
 
 	// A rider who arrived by a crew's invite link (#1236) meets this gate
-	// first, and the gate should say what is on the other side: the door is
-	// public, so it is one read away. Anything else in `next` stays a path.
+	// first, and the gate should name what is on the other side: the door is
+	// public, so it is one read away. It names the crew and no more — a
+	// signed-out caller is a stranger, and gets no headcount (#1399).
+	// Anything else in `next` stays a path.
 	const inviteCode = $derived(
 		/^\/c\/([A-Za-z0-9]{6})$/.exec(
 			page.url.searchParams.get('next') ?? '',
@@ -215,11 +217,6 @@
 					<p class="min-w-0 text-sm">
 						You are invited to <span class="font-display font-bold"
 							>{invite.name}</span
-						>
-						<span class="text-muted"
-							>· {invite.members === 1
-								? '1 rider'
-								: `${invite.members} riders`}</span
 						>
 						<span class="text-muted block text-xs">Sign in to join.</span>
 					</p>
