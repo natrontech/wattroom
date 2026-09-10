@@ -1,18 +1,16 @@
-import type { LocalVideoTrack, RemoteTrack } from 'livekit-client';
+import type {
+	LocalVideoTrack,
+	RemoteTrack,
+	Track as LiveKitTrack,
+} from 'livekit-client';
 
 /**
- * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
- * token the server mints against the same membership check as the metrics
- * socket. AV is transit-only and never recorded (locked privacy decision) —
- * nothing here persists anything.
+ * The names the room's AV seams share (#892).
  *
- * Mic starts on with browser echoCancellation + autoGainControl and no noise
- * suppression (SPEC room audio defaults, ADR-0043); camera starts off. Track ownership: LiveKit owns the media
- * elements' streams, this store owns attachment points keyed by rider id so
- * the dashboard can put faces on the tiles it already has.
- *
- * The types live beside the store rather than inside it (#892), so the seams
- * lifted out of it can name them without importing the store back.
+ * Beside the store rather than inside it, so that every seam lifted out of
+ * `av.svelte.ts` can say what it takes and returns without importing the
+ * store back. What the call itself is and where each part of it lives is at
+ * the head of `av.svelte.ts`.
  */
 export type LiveKitClient = typeof import('livekit-client');
 
@@ -32,3 +30,17 @@ export interface AvError {
 
 /** One rider's track, and which connection of theirs published it (#293). */
 export type Owned = { owner: string; track: RemoteTrack | LocalVideoTrack };
+
+/**
+ * As much of a LiveKit participant as the claim protocol needs (#293). Named
+ * here because two seams hand one over — the event surface on
+ * ParticipantConnected, the join path walking the roster it arrives to — and
+ * neither should have to spell the shape out again.
+ */
+export interface ClaimantSource {
+	identity: string;
+	joinedAt?: Date;
+	getTrackPublication: (
+		source: LiveKitTrack.Source,
+	) => { isMuted: boolean } | undefined;
+}

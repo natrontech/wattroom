@@ -159,3 +159,37 @@ export function clearNote(tab: string): void {
 		// per-device convenience only
 	}
 }
+
+/**
+ * Keep this tab's note warm while the call is live (#480).
+ *
+ * The heartbeat is what makes an hour of riding still read as a refresh
+ * rather than a note from the join. `stop` leaves the note standing — a
+ * refresh during the drop-rejoin window is still a refresh — and only
+ * `clear` tears it up, which is the rider hanging up.
+ */
+export function createNoteKeeper(slug: string, micOpen: () => boolean) {
+	const tab = tabId();
+	let beat: ReturnType<typeof setInterval> | null = null;
+
+	function stamp(): void {
+		writeNote(tab, { slug, at: Date.now(), mic: micOpen() });
+	}
+
+	return {
+		stamp,
+		start(): void {
+			stamp();
+			beat ??= setInterval(stamp, REJOIN_HEARTBEAT_MS);
+		},
+		stop(): void {
+			if (beat !== null) clearInterval(beat);
+			beat = null;
+		},
+		clear(): void {
+			clearNote(tab);
+		},
+	};
+}
+
+export type NoteKeeper = ReturnType<typeof createNoteKeeper>;

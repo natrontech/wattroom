@@ -53,6 +53,8 @@ interface Chain {
 	capture: MediaStreamTrack | undefined;
 }
 
+export type MicChain = ReturnType<typeof createMicChain>;
+
 export function createMicChain(host: MicChainHost) {
 	const settings = createGateSettings();
 	let chain: Chain | null = null;
