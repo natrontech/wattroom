@@ -145,8 +145,11 @@ type Hub struct {
 	access Access
 	saver  SessionSaver
 	now    func() time.Time
-	mu     sync.Mutex
-	rooms  map[string]*room
+	// What every socket's writer pings on (keepalive.go). A field, like now,
+	// so a test can shorten it for one hub.
+	keepalive keepalive
+	mu        sync.Mutex
+	rooms     map[string]*room
 	// Session saves and recaps in flight: fire-and-forget from the tick, but
 	// not from the process — Drain waits on them before the server exits
 	// (audit 2026-09-09).
@@ -216,7 +219,8 @@ func (h *Hub) SetTrackHistory(k TrackHistory) { h.history = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
-		rooms: make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
+		keepalive: keepalive{every: socketKeepalive, pong: socketPingTimeout},
+		rooms:     make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
 		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not

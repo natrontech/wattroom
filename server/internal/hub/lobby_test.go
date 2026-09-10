@@ -17,7 +17,8 @@ import (
 
 // The lobby socket (#251): holding it is being online, every presence change
 // pings it, and closing it is going offline — the Slack green dot, derived
-// from connection state instead of heartbeats.
+// from connection state rather than from anything the client reports. What
+// keeps that honest when the close never arrives is keepalive_test.go.
 func TestLobbyPresence(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetLobbyAuth(func(r *http.Request) (string, bool) {
@@ -183,47 +184,4 @@ func TestChatPingsTheLobby(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("a line said in velvet never pinged the lobby")
 	}
-}
-
-// A lobby socket whose peer went quiet without a close frame — a sleeping
-// laptop, a NAT drop, a phone losing signal — reads offline once a ping goes
-// unanswered (#1742, #1506, #1740), rather than holding the rider online for
-// every friend until TCP notices. The peer here completes the handshake and
-// then never reads, which is exactly a half-open socket's behaviour: the
-// server's ping reaches the kernel, and nothing ever answers it.
-func TestAHalfOpenLobbySocketReadsOffline(t *testing.T) {
-	keepalive, timeout := lobbyKeepalive, lobbyPingTimeout
-	lobbyKeepalive, lobbyPingTimeout = 20*time.Millisecond, 100*time.Millisecond
-	t.Cleanup(func() { lobbyKeepalive, lobbyPingTimeout = keepalive, timeout })
-
-	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	h.SetLobbyAuth(func(r *http.Request) (string, bool) {
-		name, _, _ := strings.Cut(r.Header.Get("X-Rider"), ":")
-		return name, name != ""
-	})
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	base := "ws" + strings.TrimPrefix(srv.URL, "http")
-
-	quiet := dial(t, base+"/ws/presence", "jan:member")
-	eventually(t, "jan reads lobby-online", func() bool {
-		_, online := h.WhereIs([]string{"jan"})["jan"]
-		return online
-	})
-	// No Read on `quiet`, ever: a coder/websocket client answers pings only
-	// from its read loop, so this peer is as silent as a dead link.
-	eventually(t, "jan reads offline once a ping went unanswered", func() bool {
-		_, online := h.WhereIs([]string{"jan"})["jan"]
-		return !online
-	})
-	// And the socket budget the leak used to hold is released with it — the
-	// handler's own deferred release, a moment after the presence map.
-	eventually(t, "jan's socket budget is released", func() bool {
-		h.mu.Lock()
-		defer h.mu.Unlock()
-		return h.sockets["jan"] == 0
-	})
-	_ = quiet.CloseNow()
 }

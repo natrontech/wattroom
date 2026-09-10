@@ -102,7 +102,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
 	defer close(writerDone)
-	safego.Go(h.log, "room writer "+slug, func() { c.writeLoop(writerDone) })
+	safego.Go(h.log, "room writer "+slug, func() { c.writeLoop(writerDone, h.keepalive) })
 	rm.join(c)
 	h.PresenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
@@ -331,17 +331,30 @@ func (c *client) sendJSON(log *slog.Logger, msg protocol.ServerMessage) {
 
 // writeLoop is this socket's only writer, so frames leave in the order they
 // were queued and a slow write holds up nothing but this client. It returns
-// when the socket's reader returns, or when a write fails.
-func (c *client) writeLoop(done <-chan struct{}) {
+// when the socket's reader returns, when a write fails, or when the keepalive
+// finds nobody home — a room socket carries the "in room X" half of presence
+// (WhereIs), so it needs the ping as much as the lobby's does (#1506).
+func (c *client) writeLoop(done <-chan struct{}, k keepalive) {
+	beat := k.beat()
+	defer beat.Stop()
 	for {
 		select {
 		case <-done:
 			return
+		case <-beat.C:
+			if !k.pingOrClose(context.Background(), c.conn) {
+				return
+			}
 		case frame := <-c.out:
 			ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
 			err := c.conn.Write(ctx, websocket.MessageText, frame)
 			cancel()
 			if err != nil {
+				// A write that failed says the socket is gone as surely as an
+				// unanswered ping does, and only the reader's return retires
+				// the rider — so close, rather than leaving the reader parked
+				// on a socket this goroutine has already given up on.
+				_ = c.conn.CloseNow()
 				return
 			}
 		}
