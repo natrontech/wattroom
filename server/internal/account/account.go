@@ -667,11 +667,20 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				UserID: user.ID, Lim: maxExportRows,
 			})
 			out, err := mapRows(rows, err, func(row db.ExportUserBoardClipsRow) any {
+				// end_ms is stored as 0 for "to the end of the file", the way
+				// keptMillis reads it — so a 500 ms clip exported a literal
+				// endMs of 0 and read like one that plays nothing. This is a
+				// file a person opens: the trim says null for the end it does
+				// not cut, and playsMs is the length the strip shows.
+				end, plays := any(nil), row.DurationMs-row.StartMs
+				if row.EndMs > 0 {
+					end, plays = row.EndMs, row.EndMs-row.StartMs
+				}
 				return map[string]any{"clip": store.UUIDString(row.ID), "name": row.Name,
 					"pad": row.Pad, "key": row.Key, "durationMs": row.DurationMs,
-					"sizeBytes": row.SizeBytes, "startMs": row.StartMs, "endMs": row.EndMs,
-					"gainDb": row.GainDb, "fadeInMs": row.FadeInMs, "fadeOutMs": row.FadeOutMs,
-					"uploadedAt": row.CreatedAt.Time}
+					"sizeBytes": row.SizeBytes, "startMs": row.StartMs, "endMs": end,
+					"playsMs": plays, "gainDb": row.GainDb, "fadeInMs": row.FadeInMs,
+					"fadeOutMs": row.FadeOutMs, "uploadedAt": row.CreatedAt.Time}
 			})
 			return out, len(rows), err
 		}),

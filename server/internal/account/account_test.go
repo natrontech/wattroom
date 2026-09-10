@@ -1050,13 +1050,22 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		t.Fatalf("grant: %v", err)
 	}
 
-	// A soundboard clip, on a pad and bound to a key.
+	// Two soundboard clips: one untrimmed, which is what the upload stores
+	// for anything under the clip ceiling (end_ms 0, meaning "to the end"),
+	// and one the rider trimmed. One of each because the two read differently
+	// and the untrimmed one is where the export used to lie.
 	clip, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
 		UserID: h.id("alice"), Name: "Airhorn", DurationMs: 1200,
-		Bytes: []byte("not really audio"), EndMs: 1200,
+		Bytes: []byte("not really audio"), EndMs: 0,
 	})
 	if err != nil {
 		t.Fatalf("clip: %v", err)
+	}
+	if _, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
+		UserID: h.id("alice"), Name: "Cowbell", DurationMs: 4000,
+		Bytes: []byte("nor is this"), EndMs: 2500,
+	}); err != nil {
+		t.Fatalf("clip trimmed: %v", err)
 	}
 	pad := int16(3)
 	if _, err := h.store.Queries.SetBoardClipPad(t.Context(), db.SetBoardClipPadParams{
@@ -1151,6 +1160,35 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	if !strings.Contains(files["crews.json"], "\"myRole\": \"admin\"") {
 		t.Errorf("crews.json lost her standing in the crew she administers:\n%s", files["crews.json"])
 	}
+	// A clip's trim reads the way the strip shows it: end_ms 0 means "to the
+	// end of the file", so the export says null and gives the length that
+	// actually plays. A literal 0 there reads as a clip that plays nothing.
+	var clips []struct {
+		Name    string `json:"name"`
+		EndMs   *int   `json:"endMs"`
+		PlaysMs int    `json:"playsMs"`
+	}
+	if err := json.Unmarshal([]byte(files["soundboard.json"]), &clips); err != nil {
+		t.Fatalf("soundboard.json: %v (%q)", err, files["soundboard.json"])
+	}
+	trim := map[string]struct {
+		EndMs   *int
+		PlaysMs int
+	}{}
+	for _, clip := range clips {
+		trim[clip.Name] = struct {
+			EndMs   *int
+			PlaysMs int
+		}{clip.EndMs, clip.PlaysMs}
+	}
+	if got := trim["Airhorn"]; got.EndMs != nil || got.PlaysMs != 1200 {
+		t.Errorf("an untrimmed clip must say endMs null and play its whole 1200 ms: %s",
+			files["soundboard.json"])
+	}
+	if got := trim["Cowbell"]; got.EndMs == nil || *got.EndMs != 2500 || got.PlaysMs != 2500 {
+		t.Errorf("a trimmed clip must carry the end it was cut to: %s", files["soundboard.json"])
+	}
+
 	// The clip's audio stays out, the way a track's does.
 	for _, f := range []string{"soundboard.json", "manifest.json"} {
 		if strings.Contains(files[f], "not really audio") {
