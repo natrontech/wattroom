@@ -108,17 +108,25 @@ starting late is the point of it: the first block's target reaches the trainer
 when the count-in ends, not at the tap. Specced in docs/SPEC.md's session
 lifecycle.
 
-**The count-in is not a fourth exception** ([#1800](https://github.com/natrontech/wattroom/issues/1800), decided by the repo
-owner 2026-09-10). Who owns the timeline is a difference; *counting the
-timeline in* is not — a rider taps Start on the laptop beside the bike and
-needs a moment to get back on it whether or not anybody else is waiting. So
-every riding surface counts in before its clock moves: ten seconds in a room
-because a roster is being gathered, three solo and on the ramp because nobody
-is, and the same 3-2-1-go cues and one-digit screen on all three
-(`lib/room/CountdownScreen.svelte`, `countdown` on `RideSoundDeps`). The
-clock starting late is the point of it: the first block's target reaches the
-trainer when the count-in ends, not at the tap. Specced in docs/SPEC.md's
-session lifecycle.
+**Skipping a block and adding a minute stay solo**
+([#1635](https://github.com/natrontech/wattroom/issues/1635), decided by the
+repo owner 2026-09-10). Also not a fourth exception — it is difference 3 read
+out loud. A room's shared timeline is the workout everyone agreed to ride, so
+`+1 min` and `Skip block` (`session.extend(60)` and `session.skip()` in
+`lib/ride/RidingScreen.svelte`) belong to the rider who owns their own clock
+and to nobody in a room: the actions `room.control()` takes are
+`game`, `game-end`, `sprint`, `pick`, `start`, `pause`, `resume` and `end`,
+and it does not learn two more. Not the coach either, for now — a workout is
+picked and then ridden as planned, and
+changing the work itself is what the workout editor is for; pause and end
+remain the coach's only hold on the clock. And not every rider locally, the
+option that had to be argued down: their targets would shift while the room's
+clock did not, quietly making the execution scores incomparable, which is the
+thing the room is for. This declines the controls rather than overlooking
+them. If it is ever reopened, the coach's version is the one with a live
+argument — the coach already pauses and ends for everybody, so the authority
+exists; what it costs is a recap whose timeline no longer matches the workout
+that was planned.
 
 **The ramp test is a workout, not a third thing.** `buildRampTest()` already
 returns a normal `Workout` on the normal engine, so `describeBlock()` gives it
@@ -143,11 +151,6 @@ never called it; that, and not a missing design, is why they say less.
 - The end-of-session card is *not* part of this surface. It has its own issue
   (#1559) and its own answer: one card that grows a roster section in a room.
 - Nothing here changes what the hub sends. Every gap in the table above is a
-  client that did not draw what it already had, except skip/extend in a room,
-  which is a protocol question and is filed as one.
-
-## Open
-
-- May a rider skip a block or add a minute **in a room**, and if so is it the
-  coach's control or everyone's? Filed `needs-human-input`; until it is
-  answered the room simply does not offer them.
+  client that did not draw what it already had — including skip/extend in a
+  room, which was the one protocol question here and is now answered above
+  (#1635): the hub gains no control for it.
