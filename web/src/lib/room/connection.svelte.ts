@@ -26,6 +26,7 @@ import { toasts } from '$lib/toast.svelte';
 import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
+import { listening } from '$lib/room/listening.svelte';
 
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
@@ -592,6 +593,10 @@ export const roomConnection = {
 		current.dispose();
 		current.live.close();
 		current.av.leave();
+		// Being out of the music is for this room, this sitting (#1898): the
+		// next room's dock must not open on "the room is listening" with the
+		// player unloaded.
+		listening.rejoin();
 		current = null;
 		if (reason === 'rider') return;
 		// The leave cue, not the fault buzz: the sound already means "someone

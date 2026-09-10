@@ -1,0 +1,1 @@
+- The docked player never takes a seat smaller than the 200 px YouTube requires — a sidebar dragged to its floor keeps the dock in its corner, and the floor itself is wide enough for the rail's seat. Moving the soundboard fader during a clip keeps the clip's own gain. "Stop the music for me" ends when you leave the room, so the next room plays.

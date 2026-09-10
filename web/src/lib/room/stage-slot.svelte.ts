@@ -93,9 +93,17 @@ export function onScreen(rect: DOMRectReadOnly): boolean {
 	);
 }
 
-/** The seat a hole's rect amounts to; none while hidden or not laid out. */
+/**
+ * YouTube's floor for a playing embed (WATTROOM.md §2, web/AGENTS.md): a
+ * seat smaller than this is not offered, and the dock stays in its corner
+ * (#1893) — the sidebar dragged to its own floor used to hand the player a
+ * 156 px hole.
+ */
+export const MIN_SEAT_PX = 200;
+
+/** The seat a hole's rect amounts to; none while hidden, not laid out, or under the floor. */
 export function seatOf(rect: DOMRectReadOnly, visible: boolean): Seat | null {
-	return visible && rect.width > 0
+	return visible && rect.width >= MIN_SEAT_PX && rect.height >= MIN_SEAT_PX
 		? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
 		: null;
 }

@@ -338,8 +338,10 @@ export function applyLevels(): void {
 	const audio = bus();
 	if (!audio) return;
 	for (const [riderId, live] of sounding) {
+		// The clip's own gain rides along (#1894): without it a fader nudge
+		// mid-clip threw away the ±12 dB the editor set.
 		live.gain.gain.setTargetAtTime(
-			levelFor(riderId),
+			levelFor(riderId) * live.clipGain,
 			audio.ctx.currentTime,
 			0.02,
 		);

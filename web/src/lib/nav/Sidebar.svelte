@@ -364,7 +364,7 @@
      backdrop to tap. -->
 <nav
 	{@attach (node) => keepSize(node, 'sidebar')}
-	class="bg-surface border-ink/5 relative flex h-full w-60 shrink-0 flex-col border-r max-md:w-60! md:max-w-[40vw] md:min-w-45"
+	class="bg-surface border-ink/5 relative flex h-full w-60 shrink-0 flex-col border-r max-md:w-60! md:max-w-[40vw] md:min-w-56"
 >
 	<div
 		{@attach edgeDivider}
