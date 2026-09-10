@@ -5,7 +5,7 @@
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
-	import { account } from '$lib/account.svelte';
+	import { account, unchosen } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
@@ -103,8 +103,20 @@
 	const xp = $derived(account.me?.totalXp ?? 0);
 	const level = $derived(levelFromXp(xp));
 	const toNext = $derived(Math.max(0, xpForLevel(level + 1) - xp));
+	// The number nobody chose must not read as one somebody measured (#1484).
+	// An account is created holding 200 W and 75 kg, and this tile printed
+	// them in the same display type, with the same authority, as a
+	// ramp-measured FTP — under which every FTP-relative target, the
+	// execution score, the XP bonus, the category and the load were scaled
+	// (docs/SPEC.md). While the source says nobody chose it, the tile says so
+	// too, and the first-run card above is where it gets answered.
+	const guessedFtp = $derived(!!account.me && unchosen(account.me.ftpSource));
+	// w/kg is two guesses divided by each other — a fiction with a decimal
+	// point. It waits until at least one of the pair is the rider's own.
 	const wkgNow = $derived(
-		account.me && account.me.weightKg > 0
+		account.me &&
+			account.me.weightKg > 0 &&
+			!(unchosen(account.me.ftpSource) && unchosen(account.me.weightSource))
 			? (account.me.ftpWatts / account.me.weightKg).toFixed(1)
 			: null,
 	);
@@ -321,6 +333,10 @@
 			</p>
 			{#if wkgNow}
 				<p class="text-muted text-[11px] tabular-nums">{wkgNow} w/kg</p>
+			{:else if guessedFtp}
+				<p class="text-muted text-[11px]">
+					a starting guess, not a measurement
+				</p>
 			{/if}
 		</div>
 		<!-- The one tile that opens: the level's receipts live in the trophy

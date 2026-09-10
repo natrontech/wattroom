@@ -12,7 +12,7 @@
 	import PasskeyList from '$lib/components/PasskeyList.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
+	import { account, unchosen } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
@@ -303,6 +303,11 @@
 								measured,
 							).toLocaleDateString()}.
 						{:else}
+							{#if unchosen(account.me?.ftpSource)}
+								<!-- Said where it is fixed, too (#1484): the field
+								     showed 200 W with nothing to say nobody chose it. -->
+								This 200 W is where we start everyone, not a measurement.
+							{/if}
 							<a href="/ramp" class="hover:text-ink underline"
 								>A ramp test measures it for you.</a
 							>
