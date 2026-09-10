@@ -142,6 +142,9 @@ export function createPlaylistStore(base: string) {
 	};
 }
 
+/** One store over one base — what a saving helper is handed (save-to-playlist.ts). */
+export type PlaylistStore = ReturnType<typeof createPlaylistStore>;
+
 /** Somewhere an entry can be saved to (#1427): one of the room's playlists
  *  or one of the rider's own. */
 export interface SaveTarget {
