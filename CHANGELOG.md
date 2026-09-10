@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.101] - 2026-09-10
+
+### Changed
+
+- The privacy page names every YouTube host the jukebox contacts — the player script and link lookups from www.youtube.com, artwork from i.ytimg.com — and says the player is created when you enter a room.
+- "Email me when a session is planned" moved from Profile to Settings → Notifications, next to the browser notifications, and saves as soon as you flip it. The profile's email field points there.
+
+### Fixed
+
+- The docked player never takes a seat smaller than the 200 px YouTube requires — a sidebar dragged to its floor keeps the dock in its corner, and the floor itself is wide enough for the rail's seat. Moving the soundboard fader during a clip keeps the clip's own gain. "Stop the music for me" ends when you leave the room, so the next room plays.
+- A trainer that reports over Bluetooth but never sends watts is told apart from a silent one: the pairing card and the room's banner say it sends no power and suggest a power meter, instead of "turn the cranks".
+- Push to talk says its key — hold Space — wherever it is offered, and is not offered on a phone or tablet, where there is no key to hold. The room's Sound panel uses the same device pickers as Settings, unnamed-device hint included, and the mic, camera and share buttons announce their on/off state to screen readers.
+- Forgetting a trainer or a sensor while it was still reconnecting no longer leaves a Bluetooth link open that nothing owns. In a room, a trainer that stops sending watts is called silent on your own clock, even while the room's connection is down. A ride that ends in the half second between a sprint's flat and its hill no longer writes the hill to a trainer that was just released.
+
 ## [2026.09.100] - 2026-09-10
 
 ### Added
@@ -1858,7 +1872,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.100...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.101...HEAD
+[2026.09.101]: https://github.com/natrontech/wattroom/compare/2026.09.100...2026.09.101
 [2026.09.100]: https://github.com/natrontech/wattroom/compare/2026.09.99...2026.09.100
 [2026.09.99]: https://github.com/natrontech/wattroom/compare/2026.09.98...2026.09.99
 [2026.09.98]: https://github.com/natrontech/wattroom/compare/2026.09.97...2026.09.98

@@ -1,1 +1,0 @@
-- The privacy page names every YouTube host the jukebox contacts — the player script and link lookups from www.youtube.com, artwork from i.ytimg.com — and says the player is created when you enter a room.

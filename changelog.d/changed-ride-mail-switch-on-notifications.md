@@ -1,1 +1,0 @@
-- "Email me when a session is planned" moved from Profile to Settings → Notifications, next to the browser notifications, and saves as soon as you flip it. The profile's email field points there.
