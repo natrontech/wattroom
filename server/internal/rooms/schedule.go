@@ -71,6 +71,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
+	s.warnIfTruncated(len(rows), "sessions page", "user", store.UUIDString(user.ID))
 	sessions := make([]plannedJSON, 0, len(rows))
 	for _, row := range rows {
 		sessions = append(sessions, plannedJSON{
@@ -220,6 +221,15 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
+	// Users before rooms (see LockRoom): the insert below takes a key-share
+	// lock on the planner's row for its foreign key, and taking that after
+	// the room's would be the one lock order in this app that runs against
+	// room create and room hand-over. The planner's own row, so it costs
+	// nothing anybody else is waiting on.
+	if err := q.LockUser(r.Context(), user.ID); err != nil {
+		httpx.Fail(w, s.log, "schedule lock failed", err, "The session could not be planned. Try again.", "room", room.Slug)
+		return
+	}
 	if err := q.LockRoom(r.Context(), room.ID); err != nil {
 		httpx.Fail(w, s.log, "schedule lock failed", err, "The session could not be planned. Try again.", "room", room.Slug)
 		return

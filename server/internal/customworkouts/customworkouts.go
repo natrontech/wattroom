@@ -147,16 +147,16 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			SavedAt: row.CreatedAt.Time.UnixMilli(),
 		})
 	}
+	// The ceiling rides along, the way the rooms list carries maxOwned: the
+	// number lives in docs/SPEC.md and in one Go constant, so no screen has to
+	// hard-code a second copy of it to know the shelf is full.
+	body := map[string]any{"workouts": out, "more": len(rows) == listPage, "max": maxWorkoutsPerAccount}
 	// A full page means there may be more, and the cursor comes from the
 	// server rather than from the rider's own `savedAt`: that field is
 	// milliseconds where created_at is microseconds, and a cursor rounded down
 	// by a fraction of a millisecond steps over every row inside it. Silent
 	// skipping is the bug being fixed here, not one to reintroduce at the page
 	// boundary.
-	// The ceiling rides along, the way the rooms list carries maxOwned: the
-	// number lives in docs/SPEC.md and in one Go constant, and no screen has
-	// to hard-code a second copy of it to know when the shelf is full.
-	body := map[string]any{"workouts": out, "more": len(rows) == listPage, "max": maxWorkoutsPerAccount}
 	if len(rows) == listPage {
 		last := rows[len(rows)-1]
 		// UTC, so the cursor never carries a "+" that a caller has to

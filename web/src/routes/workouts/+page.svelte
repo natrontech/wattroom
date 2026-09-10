@@ -138,8 +138,7 @@
 				<!-- The ceiling is said where the shelf is, not discovered on the
 				     editor's Save (#1414, errors.md). -->
 				<span class="text-muted text-xs"
-					>{custom.max} workouts — the shelf is full. Delete one to build
-					another.</span
+					>{custom.max} workouts — the shelf is full. Delete one to build another.</span
 				>
 			{:else}
 				<a href="/workouts/edit" class="hover:text-ink text-xs underline"

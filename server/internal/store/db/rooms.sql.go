@@ -995,6 +995,12 @@ select 1 from rooms where id = $1 for update
 // The room's write lock, held for the length of a transaction. LockUser's
 // sibling: what serialises a room-scoped ceiling check against the insert
 // that follows it.
+//
+// Lock order in this app is USERS BEFORE ROOMS. Room create and room
+// hand-over both take LockUser and then touch a rooms row, so a transaction
+// that wants both takes them in that order — the reverse would deadlock a
+// hand-over against a plan made by the incoming owner, and Postgres would
+// resolve it by killing one of them with a 500.
 func (q *Queries) LockRoom(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, lockRoom, id)
 	return err

@@ -42,6 +42,18 @@ const (
 // ahead a plan is visible.
 func calendarUntil() pgtype.Timestamptz { return pgTime(time.Now().Add(calendarHorizon)) }
 
+// warnIfTruncated says so when a read came back exactly full. A row bound
+// that silently drops plans is the failure this whole change is about
+// (#1908, #1414) — nothing the product can produce reaches it, so if one
+// ever does, the operator hears about it rather than a rider losing a
+// session out of their calendar in silence.
+func (s *Service) warnIfTruncated(rows int, feed string, args ...any) {
+	if rows < maxCalendarEvents {
+		return
+	}
+	s.log.Warn("calendar feed hit its row bound", append([]any{"feed", feed, "bound", maxCalendarEvents}, args...)...)
+}
+
 // icsEvent is what both feeds agree on — the row types differ, the calendar
 // entry doesn't.
 type icsEvent struct {
@@ -83,6 +95,7 @@ func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 			planner: row.CreatedBy, roomName: room.Name, roomSlug: room.Slug,
 		})
 	}
+	s.warnIfTruncated(len(rows), "room", "room", room.Slug)
 	writeICS(w, room.Name+" · WattRoom", r.Host, events)
 }
 
@@ -112,6 +125,7 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 			planner: row.CreatedBy, roomName: row.RoomName, roomSlug: row.RoomSlug,
 		})
 	}
+	s.warnIfTruncated(len(rows), "rider", "user", store.UUIDString(user.ID))
 	writeICS(w, "WattRoom sessions", r.Host, events)
 }
 

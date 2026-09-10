@@ -158,6 +158,12 @@ values ($1, $2, $3, $4, $5) returning *;
 -- The room's write lock, held for the length of a transaction. LockUser's
 -- sibling: what serialises a room-scoped ceiling check against the insert
 -- that follows it.
+--
+-- Lock order in this app is USERS BEFORE ROOMS. Room create and room
+-- hand-over both take LockUser and then touch a rooms row, so a transaction
+-- that wants both takes them in that order — the reverse would deadlock a
+-- hand-over against a plan made by the incoming owner, and Postgres would
+-- resolve it by killing one of them with a 500.
 select 1 from rooms where id = $1 for update;
 
 -- name: CountRoomUpcoming :one
