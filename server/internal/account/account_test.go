@@ -582,7 +582,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 
 	// Every category, and the content that proves the query ran rather than
 	// an empty array being written.
-	for name, want := range map[string]string{
+	for name, want := range map[string]string{ //nolint:gosec // "passkeys.json" is a file name, not a password
 		"chat.json":     "starting in five",
 		"messages.json": "bring legs",
 		"friends.json":  "bob",
@@ -596,7 +596,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		"trophies.json":           "first-ride",
 		"medals.json":             "diesel",
 		"identities.json":         "acct-export-alice",
-		"passkeys.json":           "YubiKey on the desk", //nolint:gosec // a file name, not a password
+		"passkeys.json":           "YubiKey on the desk",
 		"profile.json":            "\"lthr\"",
 		// Every field the ride page shows (#1550).
 		"rides.json": "\"sharedWithFriends\"",
