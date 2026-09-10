@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // Bounds on untrusted input. A ride is client-recorded, so the request is
@@ -59,10 +60,19 @@ type exportSample struct {
 	HeartRate int `json:"heartRate"`
 }
 
-// Handler returns the .fit export endpoint. Stateless: the client owns the ride
-// until there is somewhere to persist it (#15), so this encodes and returns.
-func Handler(log *slog.Logger) http.HandlerFunc {
+// UserSource is auth.Service's RequireUser, as rides.UserSource is.
+type UserSource interface {
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+}
+
+// Handler returns the .fit export endpoint: stateless — the ride arrives in
+// the body and leaves as a file — but signed-in, because ADR-0009 gates the
+// whole app and a stranger was buying a 21 600-sample encode for free (#1547).
+func Handler(users UserSource, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := users.RequireUser(w, r, "Sign in to export a ride."); !ok {
+			return
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
 		var req exportRequest

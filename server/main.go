@@ -99,9 +99,12 @@ func main() {
 	defer stop()
 	var hubForDrain *hub.Hub
 
-	// The database is optional: unset WATTROOM_DB runs the server as before —
-	// solo rides, .fit export, dev — and every DB-backed route stays unmounted,
-	// so nothing dark-fails later. Set, it connects and migrates before listening.
+	// The database is optional only in the sense that the binary starts
+	// without it: /api/healthz and /api/version answer, every other route
+	// stays unmounted and /api/ answers its own 404, so nothing dark-fails
+	// later. There is no usable app without it (ADR-0009 — no local-only
+	// mode), which is why even the stateless .fit export mounts inside.
+	// Set, it connects and migrates before listening.
 	var st *store.Store
 	if dsn := os.Getenv("WATTROOM_DB"); dsn != "" {
 		var err error
@@ -134,9 +137,6 @@ func main() {
 	// slug or rider reaches this route), and a scraper cannot sign in.
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /api/version", versionHandler())
-	// The client owns the ride until there is somewhere to persist it (#15); this
-	// takes the recorded samples and hands back a file.
-	mux.HandleFunc("POST /api/rides/export", fitexport.Handler(log))
 	// What a link preview may say about a room: listed rooms only (#1734).
 	var roomIdentity og.LookupRoom
 	if st != nil {
@@ -216,6 +216,10 @@ func main() {
 			ridesService.SetUploader(uploader)
 		}
 		ridesService.Register(mux)
+		// The client still owns the ride the samples come from (#15) — this
+		// encodes a body, it reads no row — but it is a signed-in rider's
+		// ride, so it sits in here with the users service (#1547).
+		mux.HandleFunc("POST /api/rides/export", fitexport.Handler(authService, log))
 		// Live rooms exist only with the durable side present: the WS needs
 		// membership, and membership needs the database.
 		saver := stats.NewSaver(st, log)

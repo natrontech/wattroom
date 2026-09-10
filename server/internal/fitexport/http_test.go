@@ -8,14 +8,72 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
+
+// signedIn is a session that resolves; refusing mirrors auth.RequireUser,
+// which writes the 401 itself and returns false.
+type signedIn struct{}
+
+func (signedIn) RequireUser(http.ResponseWriter, *http.Request, string) (db.User, bool) {
+	return db.User{}, true
+}
+
+type signedOut struct{}
+
+func (signedOut) RequireUser(w http.ResponseWriter, _ *http.Request, message string) (db.User, bool) {
+	httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", message)
+	return db.User{}, false
+}
+
+// readCounter counts what the handler actually pulled off the wire: a
+// stranger must not buy the decode, let alone the encode (#1547).
+type readCounter struct {
+	r io.Reader
+	n int
+}
+
+func (c *readCounter) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += n
+	return n, err
+}
 
 func post(t *testing.T, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rides/export", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-	Handler(slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
+	Handler(signedIn{}, slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
 	return rec
+}
+
+// The route sits behind RequireUser since #1547: no session, no encode, and
+// the refusal carries errors.md's machine code rather than a bare 403 or a
+// redirect.
+func TestHandlerRefusesWithoutASession(t *testing.T) {
+	counter := &readCounter{r: strings.NewReader(goodRide)}
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rides/export", counter)
+	rec := httptest.NewRecorder()
+	Handler(signedOut{}, slog.New(slog.DiscardHandler)).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401. body = %s", rec.Code, rec.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("error body is not JSON: %v", err)
+	}
+	if payload["error"] != "unauthorized" {
+		t.Errorf("error code = %q, want unauthorized", payload["error"])
+	}
+	if payload["message"] == "" {
+		t.Error("no message telling the rider what to do")
+	}
+	if counter.n != 0 {
+		t.Errorf("read %d bytes of the body before refusing, want 0", counter.n)
+	}
 }
 
 const goodRide = `{"startedAt":"2026-08-29T06:00:00Z","samples":[
