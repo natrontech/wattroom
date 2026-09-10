@@ -1,0 +1,1 @@
+- One word for trying a failed thing again: "Retry". Pairing a sensor that failed and a sign-in provider that did not connect both said "Try again", and the provider's banner asked in prose instead of giving you a button — it now offers Retry next to the message, like every other failure in the app.

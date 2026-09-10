@@ -107,7 +107,7 @@
 					>{busy
 						? 'Pairing…'
 						: state === 'failed'
-							? 'Try again'
+							? 'Retry'
 							: 'Pair'}</button
 				>
 			{/if}

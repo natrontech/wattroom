@@ -23,6 +23,14 @@
 		providerName[page.url.searchParams.get('provider') ?? ''] ??
 			'That provider',
 	);
+	// Retry means the whole OAuth round trip again, so it is offered only for a
+	// provider this server actually has credentials for (`ux.md`): a hand-typed
+	// ?link=failed carries no provider, and that button would 404.
+	const retryProvider = $derived(
+		account.providers.find(
+			(id) => id === page.url.searchParams.get('provider'),
+		) ?? '',
+	);
 
 	function connect(id: string) {
 		window.location.href = `/api/auth/${id}/start?link=1`;
@@ -77,9 +85,18 @@
 		</div>
 	{:else if outcome === 'failed'}
 		<div class="mt-2">
-			<Banner>Connecting {outcomeProvider} did not work. Try again.</Banner>
+			<Banner action={retryProvider ? retryConnect : undefined}>
+				Connecting {outcomeProvider} did not work.
+			</Banner>
 		</div>
 	{/if}
+
+	{#snippet retryConnect()}
+		<button
+			onclick={() => connect(retryProvider)}
+			class="text-muted hover:text-ink text-xs underline">Retry</button
+		>
+	{/snippet}
 
 	{#if disconnectError}
 		<div class="mt-2"><Banner>{disconnectError}</Banner></div>
