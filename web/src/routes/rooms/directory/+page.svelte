@@ -57,7 +57,7 @@
 
 <main class="page">
 	<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-		<h1 class="font-display text-2xl font-bold tracking-tight">Find a room</h1>
+		<h1 class="page-title">Find a room</h1>
 		<p class="text-muted text-xs">
 			Rooms whose owners chose to be findable; joining one puts you in its crew.
 			Everything else takes the crew's invite.
@@ -70,9 +70,11 @@
 		<div class="mt-6">
 			<Banner tone="error">
 				{error}
-				<button onclick={() => void load()} class="ml-1 underline"
-					>Try again</button
-				>
+				{#snippet action()}
+					<button onclick={() => void load()} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
 			</Banner>
 		</div>
 	{:else if rooms === null}

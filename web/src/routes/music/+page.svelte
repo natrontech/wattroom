@@ -314,7 +314,7 @@
 
 <main class="page">
 	<header class="flex flex-wrap items-center gap-4">
-		<h1 class="font-display text-2xl font-bold tracking-tight">Music</h1>
+		<h1 class="page-title">Music</h1>
 		<p class="text-muted text-xs">
 			Your own library. Everything here plays in any room you are in. 2 GB.
 		</p>
@@ -414,10 +414,11 @@
 		<div class="mt-4">
 			<Banner tone="error">
 				{error}
-				<button
-					onclick={() => void load(query)}
-					class="btn btn-secondary btn-xs ml-3">Try again</button
-				>
+				{#snippet action()}
+					<button onclick={() => void load(query)} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/snippet}
 			</Banner>
 		</div>
 	{/if}

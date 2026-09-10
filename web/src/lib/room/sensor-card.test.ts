@@ -52,7 +52,7 @@ describe('cardView', () => {
 		const view = cardView({ state: 'failed', supported: true });
 		expect(view).toMatchObject({
 			tone: 'danger',
-			button: { label: 'Try again' },
+			button: { label: 'Retry' },
 		});
 	});
 
