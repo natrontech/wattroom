@@ -550,7 +550,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		}
 	}
 	if _, err := h.store.Queries.CreatePasskey(t.Context(), db.CreatePasskeyParams{
-		CredentialID: []byte("cred-alice"), UserID: h.id("alice"), Credential: []byte(`{}`), Name: "YubiKey on the desk",
+		CredentialID: []byte{0xa1, 0x1c, 0xe0}, UserID: h.id("alice"), Credential: []byte(`{}`), Name: "YubiKey on the desk",
 	}); err != nil {
 		t.Fatalf("passkey: %v", err)
 	}
