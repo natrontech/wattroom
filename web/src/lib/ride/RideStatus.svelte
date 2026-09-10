@@ -2,27 +2,43 @@
 	/**
 	 * The ride's own status, persistent, never a toast (errors.md): your
 	 * guard — paused, counting back in, released — and the trainer going
-	 * quiet. Lifted out of RidingScreen so /ramp draws the same four (#1799,
-	 * ADR-0046): mid-ramp the resistance could vanish for ten seconds and the
-	 * one screen whose number a rider keeps for a month said nothing.
+	 * quiet, with the one big button back (#1847). Lifted out of RidingScreen
+	 * so /ramp draws the same (#1799, ADR-0046). The card reads the SESSION's
+	 * trainer: the pairing slot let go of it at Start, and a card wired to
+	 * the slot read "Not connected — Pair" for a trainer that was connected
+	 * and reattaching, and paired a second one the ride never heard.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
-	import type { Snippet } from 'svelte';
+	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { pairError } from '$lib/ble/pair-error';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 
 	let {
 		session,
 		signalLost,
 		lost = 'Trainer signal lost — reconnecting. Keep pedalling; your targets resume the moment it is back.',
-		recover,
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		signalLost: boolean;
 		/** What the banner says while the trainer is quiet. */
 		lost?: string;
-		/** The way back when it stays quiet — one big button (errors.md). */
-		recover?: Snippet;
 	} = $props();
+
+	let repairing = $state(false);
+	let repairError = $state<string | null>(null);
+	async function repair() {
+		repairing = true;
+		repairError = null;
+		const next = new FtmsTrainer();
+		try {
+			await next.connect();
+			session.repair(next);
+		} catch (cause) {
+			repairError = pairError(cause);
+		} finally {
+			repairing = false;
+		}
+	}
 </script>
 
 {#if session.state === 'autopaused'}
@@ -58,8 +74,26 @@
 {#if signalLost}
 	<div class="mt-4">
 		<Banner tone="error">{lost}</Banner>
-		{#if recover}
-			<div class="mt-3">{@render recover()}</div>
+		<!-- Manual recovery is one big button (errors.md): pick the trainer
+		     again and the ride carries on with it. -->
+		<div class="mt-3 flex flex-wrap items-center gap-3">
+			<span class="text-muted text-xs">
+				{session.trainerName} —
+				{#if session.trainerStatus === 'connected'}
+					connected, but sending nothing
+				{:else}
+					reconnecting on its own
+				{/if}
+			</span>
+			<button
+				onclick={() => void repair()}
+				disabled={repairing}
+				class="btn btn-secondary btn-lg"
+				>{repairing ? 'Pairing…' : 'Pair the trainer again'}</button
+			>
+		</div>
+		{#if repairError}
+			<p class="text-danger mt-2 text-xs">{repairError}</p>
 		{/if}
 	</div>
 {/if}

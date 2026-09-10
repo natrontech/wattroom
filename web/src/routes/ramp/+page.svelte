@@ -355,10 +355,15 @@
 					const trainer = solo.handOff();
 					if (trainer) void begin(trainer);
 				}}
-				disabled={!solo.trainer}
+				disabled={!solo.trainer || solo.fault === 'reconnecting'}
 				class="btn btn-primary btn-lg">Start ramp test</button
 			>
 		</div>
+		{#if solo.fault === 'reconnecting'}
+			<p class="text-muted mt-3 text-xs">
+				Waiting for the trainer to come back.
+			</p>
+		{/if}
 		{#if device.spectator}
 			<!-- The grid above is hidden on a spectator device, so the disabled
 			     button needs its own reason (errors.md). -->

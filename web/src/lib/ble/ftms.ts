@@ -185,6 +185,14 @@ export class FtmsTrainer implements Trainer {
 		this.#setStatus('connecting');
 		this.#closed = false;
 
+		// A device already granted is kept (#1851): connect() on an instance
+		// that has one — a start pressed mid-reattach — used to open a second
+		// chooser and add a second disconnect listener, doubling the reattach
+		// chains on every drop after.
+		if (this.#device) {
+			await this.#attach();
+			return;
+		}
 		// Web Bluetooth only exposes services declared up front.
 		this.#device = await navigator.bluetooth.requestDevice({
 			filters: [{ services: [FTMS_SERVICE] }],
@@ -193,7 +201,7 @@ export class FtmsTrainer implements Trainer {
 		this.name = this.#device.name ?? 'FTMS trainer';
 		// Recovery is automatic (#37): the granted device persists in-page, so a
 		// dropout re-attaches with backoff — the rider is three meters away and
-		// mid-interval, not at the keyboard.
+		// mid-interval, not at the keyboard. One listener per device, for life.
 		this.#device.addEventListener('gattserverdisconnected', () => {
 			this.#settlePending(new Error('trainer disconnected'));
 			// The control grant died with the link, so everything still queued

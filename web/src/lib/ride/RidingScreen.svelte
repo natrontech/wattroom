@@ -16,10 +16,7 @@
 	 * the screen a rider in a room gets.
 	 */
 	import Flag from '@lucide/svelte/icons/flag';
-	import { FtmsTrainer } from '$lib/ble/ftms';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
@@ -57,9 +54,6 @@
 		onFlag: () => void;
 		onTv: () => void;
 	} = $props();
-
-	// The trainer this ride holds, for the way back when it goes quiet.
-	const solo = soloTrainer();
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.
@@ -125,28 +119,9 @@
 	</RideHeader>
 
 	<!-- Ride-critical states are persistent status, never toasts
-	     (.claude/rules/errors.md). When the trainer stays quiet the way back
-	     is a big button, not a banner to read (#1799): the same card the
-	     pre-ride grid draws, wired to the same trainer. -->
-	<RideStatus {session} {signalLost}>
-		{#snippet recover()}
-			<SensorOverview
-				compact
-				trainer={{
-					state: solo.state,
-					device: solo.trainer?.name,
-					reading: solo.reading,
-					hint:
-						solo.fault === 'silent'
-							? 'no watts yet — turn the cranks'
-							: undefined,
-					error: solo.error,
-					onPair: () => void solo.pair(new FtmsTrainer()),
-					onForget: () => solo.forget(),
-				}}
-			/>
-		{/snippet}
-	</RideStatus>
+	     (.claude/rules/errors.md); the way back from a dropout is the
+	     status's own button, wired to this ride's trainer (#1847). -->
+	<RideStatus {session} {signalLost} />
 
 	<!-- The focus slot takes the free height rather than sitting under the
 	     header with a screen of nothing below it (#1531: "two thirds empty"). -->

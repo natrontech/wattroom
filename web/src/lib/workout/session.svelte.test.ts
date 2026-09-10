@@ -68,6 +68,28 @@ const sprintWorkout: Workout = {
 	],
 };
 
+describe('the recovery (#1847)', () => {
+	it('carries the ride over to another trainer and lets the first go', async () => {
+		const first = new SimulatedTrainer();
+		const session = createRideSession({ trainer: first, workout, ftp: 200 });
+		await session.start();
+		expect(session.trainerStatus).toBe('connected');
+		pedal(session, 200, 90, 3);
+
+		const next = new SimulatedTrainer();
+		const erg = vi.spyOn(next, 'setTargetPower');
+		const gone = vi.spyOn(first, 'disconnect');
+		session.repair(next);
+		expect(session.trainerName).toBe(next.name);
+		expect(erg).toHaveBeenLastCalledWith(200);
+		expect(gone).toHaveBeenCalled();
+		// The clock and the record carried on: repair is not a restart.
+		expect(session.recording).toHaveLength(3);
+		expect(session.state).toBe('running');
+		session.stop();
+	});
+});
+
 describe('the sprint window (#1793)', () => {
 	it('is on from the first tick of a sprint block and gone after it', async () => {
 		const session = createRideSession({
