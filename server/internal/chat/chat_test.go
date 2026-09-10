@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/natrontech/wattroom/server/internal/budget"
 
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -341,5 +345,39 @@ func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat", `{"text":"look","imageId":"`+theirs+`"}`)
 	if code != http.StatusBadRequest || body["field"] != "imageId" {
 		t.Fatalf("foreign image over http: %d %v", code, body)
+	}
+}
+
+// One account's writes through the HTTP door are bounded (#1982) the way the
+// socket's and the DM door's are: posts, edits and reactions share a minute,
+// uploads an hour, and another member is not held back by it.
+func TestChatWritesAreBoundedPerAccount(t *testing.T) {
+	svc, mux, _, _ := setup(t)
+	svc.lines = budget.New[pgtype.UUID](2, time.Minute)
+	svc.uploads = budget.New[pgtype.UUID](1, time.Hour)
+
+	var id string
+	for i := 0; i < 2; i++ {
+		code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat", `{"text":"hi"}`)
+		if code != http.StatusOK {
+			t.Fatalf("post %d: %d %v", i, code, body)
+		}
+		id, _ = body["id"].(string)
+	}
+	code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat", `{"text":"one more"}`)
+	if code != http.StatusTooManyRequests || body["error"] != "rate_limited" {
+		t.Fatalf("the third line in a minute: %d %v", code, body)
+	}
+	if code, _ := post(t, mux, "alice", "/api/rooms/chat-cave/chat/reactions", `{"messageId":"`+id+`","emoji":"🔥"}`); code != http.StatusTooManyRequests {
+		t.Fatalf("a reaction past the ceiling: %d", code)
+	}
+	if code, _ := post(t, mux, "bob", "/api/rooms/chat-cave/chat", `{"text":"still here"}`); code != http.StatusOK {
+		t.Fatalf("bob held back by alice's ceiling: %d", code)
+	}
+	if _, img := postImage(t, mux, "alice", "chat-cave", tinyPNG); img == "" {
+		t.Fatal("first upload refused")
+	}
+	if code, _ := postImage(t, mux, "alice", "chat-cave", tinyPNG); code != http.StatusTooManyRequests {
+		t.Fatalf("the second upload in an hour: %d", code)
 	}
 }

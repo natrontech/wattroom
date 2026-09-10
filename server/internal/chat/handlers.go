@@ -37,6 +37,11 @@ func (s *Service) handleImageUpload(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !s.uploads.Spend(me.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"That is a lot of pictures in one hour — a moment, then attach it again.")
+		return
+	}
 	data, mime, ok := httpx.ReadImageUpload(w, r)
 	if !ok {
 		return
@@ -162,7 +167,7 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 // id already on it and reactions work at once.
 func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 	room, me, ok := s.member(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	var req struct {
@@ -236,7 +241,7 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 // path, because an edit is a once-in-a-while repair, not a mid-ride input.
 func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	room, me, ok := s.member(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
@@ -304,7 +309,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 // the room the same way a socket toggle does.
 func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 	room, me, ok := s.member(w, r)
-	if !ok {
+	if !ok || s.overLine(w, me.ID) {
 		return
 	}
 	var req struct {
