@@ -177,7 +177,7 @@
 	{:else if !administers}
 		<!-- Capability gating (ux.md): a member gets the one line and the way
 		     back, never a page of controls that refuse. -->
-		<h1 class="font-display text-xl font-bold">{crew.name}</h1>
+		<h1 class="page-title">{crew.name}</h1>
 		<p class="text-muted mt-2 text-sm">
 			The crew's settings are its owner's and admins'. <a
 				href="/crew/{crew.id}"
@@ -186,7 +186,7 @@
 		</p>
 	{:else}
 		<header class="flex items-baseline gap-3">
-			<h1 class="font-display text-xl font-bold">Crew settings</h1>
+			<h1 class="page-title">Crew settings</h1>
 			<a
 				href="/crew/{crew.id}"
 				class="text-muted hover:text-ink text-xs underline">{crew.name}</a

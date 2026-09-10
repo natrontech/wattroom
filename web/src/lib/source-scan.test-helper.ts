@@ -61,6 +61,30 @@ export function scan(
 	return { offenders, used };
 }
 
+/**
+ * Like `scan`, but the pattern runs over the whole file: a tag whose
+ * attributes wrap onto the next line is still one match. Needs `s` and `g`.
+ */
+export function scanSource(
+	pattern: RegExp,
+	allowlist: Allowlist,
+): { offenders: string[]; used: Set<string> } {
+	const offenders: string[] = [];
+	const used = new Set<string>();
+	for (const file of FILES) {
+		const rule = allowedBy(allowlist, file);
+		const source = code(readFileSync(join(SRC, file), 'utf8'));
+		for (const m of source.matchAll(pattern)) {
+			if (rule) used.add(rule);
+			else {
+				const line = source.slice(0, m.index).split('\n').length;
+				offenders.push(`  ${file}:${line}  ${m[0].replace(/\s+/g, ' ')}`);
+			}
+		}
+	}
+	return { offenders, used };
+}
+
 /** Allowlist rules that excused nothing — entries to delete. */
 export function stale(allowlist: Allowlist, used: Set<string>): string[] {
 	return Object.keys(allowlist).filter((rule) => !used.has(rule));

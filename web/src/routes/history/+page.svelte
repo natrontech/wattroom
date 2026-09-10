@@ -324,7 +324,7 @@
 <main class="page">
 	<div class="flex flex-wrap items-center gap-3">
 		<div>
-			<h1 class="font-display text-2xl leading-tight font-bold">Rides</h1>
+			<h1 class="page-title">Rides</h1>
 			<p class="text-muted text-xs">
 				Private by default — share one with your friends from its row.
 			</p>
