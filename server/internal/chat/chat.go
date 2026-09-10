@@ -11,6 +11,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -46,16 +48,41 @@ type Live interface {
 // maxChatRunes is the cap the socket path and the client's maxlength agree on.
 const maxChatRunes = 500
 
+// The HTTP door's ceilings (#1982), the DM door's numbers: the socket path
+// allows one line a second, and a door with no ceiling beside one with is
+// the one a script uses.
+const (
+	linesPerMinute = 60
+	uploadsPerHour = 60
+)
+
 type Service struct {
 	store   *store.Store
 	members Members
 	log     *slog.Logger
 	live    Live
 	recaps  Recaps
+	// Per account: posts, edits and reactions share one; uploads have their own.
+	lines   *budget.Budget[pgtype.UUID]
+	uploads *budget.Budget[pgtype.UUID]
 }
 
 func New(st *store.Store, members Members, log *slog.Logger) *Service {
-	return &Service{store: st, members: members, log: log}
+	return &Service{
+		store: st, members: members, log: log,
+		lines:   budget.New[pgtype.UUID](linesPerMinute, time.Minute),
+		uploads: budget.New[pgtype.UUID](uploadsPerHour, time.Hour),
+	}
+}
+
+// overLine answers 429 when the account has written its minute's worth.
+func (s *Service) overLine(w http.ResponseWriter, me pgtype.UUID) bool {
+	if s.lines.Spend(me) {
+		return false
+	}
+	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+		"That is a lot of lines in one minute — a moment, then say it again.")
+	return true
 }
 
 // SetLive wires the hub in after construction — the hub needs this service
