@@ -55,6 +55,12 @@
 		>.
 	</p>
 	<p class="text-muted mt-3 text-sm leading-relaxed">
+		WattRoom is built on open-source work of its own; the
+		<a href="/legal/licenses" class="hover:text-ink underline"
+			>third-party notices</a
+		> reproduce each licence.
+	</p>
+	<p class="text-muted mt-3 text-sm leading-relaxed">
 		How we handle your data is described in the
 		<a href="/privacy" class="hover:text-ink underline">privacy policy</a>, and
 		what we expect of each other in the
