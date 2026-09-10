@@ -25,7 +25,7 @@ test('a phone opens a room lounge and reaches its chat place', async ({
 	page,
 	rooms,
 }) => {
-	await signInAs(page, 'Mobile Room', '/rooms');
+	await signInAs(page, 'Mobile Room', '/home');
 	const name = `Mobile Room ${Date.now() % 100000}`;
 	const { slug } = await rooms.open(page, name);
 
@@ -60,7 +60,7 @@ test('no place in a room scrolls sideways on a phone', async ({
 	page,
 	rooms,
 }) => {
-	await signInAs(page, 'Phone Places', '/rooms');
+	await signInAs(page, 'Phone Places', '/home');
 	const { slug } = await rooms.open(
 		page,
 		`Phone Places ${Date.now() % 100000}`,
@@ -122,7 +122,7 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 	riders,
 	rooms,
 }) => {
-	await signInAs(page, 'Phone Rows', '/rooms');
+	await signInAs(page, 'Phone Rows', '/home');
 	const room = await rooms.open(page, `Phone Rows ${Date.now() % 100000}`);
 	const guest = await riders('Phone Guest');
 	await rooms.enter(guest, room);
