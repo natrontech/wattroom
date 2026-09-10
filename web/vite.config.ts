@@ -67,6 +67,11 @@ function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
 			buildEnd() {
 				eager.clear();
 				const stack = [...this.getModuleIds()].filter(isSeed);
+				if (stack.length === 0) {
+					// Renamed upstream: the shell silently falls back to Rolldown's
+					// default chunking, which is the 122-preload shape #1516 is about.
+					this.warn('wattroom-eager-shell: no seed module matched');
+				}
 				while (stack.length > 0) {
 					const id = stack.pop() as string;
 					if (eager.has(id)) continue;
