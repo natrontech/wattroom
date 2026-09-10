@@ -416,3 +416,47 @@ func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
 		t.Errorf("a banned rider kept the join code: %v", body["code"])
 	}
 }
+
+// TestTheDoorSaysTheRoomKeepsABoard is ADR-0036's "turned on ... visibly —
+// what the room shares is fixed and legible *before* anyone is inside it".
+// `boardEnabled` used to be set only in handleGet's members-only branch, so
+// walking in published the joiner's week to the room with the door never
+// having said a board existed (#1651). Stated as the property rather than as
+// a field: two doors identical but for the switch must not read the same.
+//
+// The numbers themselves stay behind the membership. Disclosing that a board
+// exists is not disclosing what is on it — ADR-0039's asymmetry keeps every
+// other outsider fact as narrow as it already was.
+func TestTheDoorSaysTheRoomKeepsABoard(t *testing.T) {
+	h := setup(t)
+	loud, code := h.createRoom(t, "alice", "Board Door Test")
+	quiet, _ := h.createRoom(t, "alice", "Quiet Door Test")
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+loud,
+		`{"name":"Board Door Test","listed":false,"boardEnabled":true}`); status != http.StatusOK {
+		t.Fatalf("owner could not enable the board")
+	}
+	// Bob is in the crew and at both doors, and a member of neither room.
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/join",
+		fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("bob could not join the crew")
+	}
+
+	_, door := h.call(t, "bob", http.MethodGet, "/api/rooms/"+loud, "")
+	if door["role"] != nil {
+		t.Fatalf("bob is already a member of %s: %v", loud, door)
+	}
+	if door["canEnter"] != true {
+		t.Fatalf("the door does not open for a crew-mate: %v", door)
+	}
+	if enabled, _ := door["boardEnabled"].(bool); !enabled {
+		t.Errorf("the door of a room with a weekly board does not say so: %v", door)
+	}
+	if door["board"] != nil {
+		t.Errorf("the door handed an outsider the board's rows: %v", door["board"])
+	}
+
+	_, shut := h.call(t, "bob", http.MethodGet, "/api/rooms/"+quiet, "")
+	if enabled, _ := shut["boardEnabled"].(bool); enabled {
+		t.Errorf("a room with no board tells its door otherwise: %v", shut)
+	}
+}
