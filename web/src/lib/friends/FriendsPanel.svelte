@@ -267,7 +267,7 @@
 								>
 								<!-- Lifetime level is friend-visible identity (#253);
 								     watts are not (ADR-0012). -->
-								<span class="text-muted/70 text-[10px] font-normal"
+								<span class="text-muted-dim text-[10px] font-normal"
 									>lv {levelFromXp(friend.totalXp ?? 0)}</span
 								>
 							</span>

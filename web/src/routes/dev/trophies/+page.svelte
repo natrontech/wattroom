@@ -189,7 +189,7 @@
 	<section class="mt-8">
 		<div class="flex items-baseline gap-3">
 			<h2 class="eyebrow">Achievements</h2>
-			<span class="text-muted/70 text-[11px]">6 of 12</span>
+			<span class="text-muted-dim text-[11px]">6 of 12</span>
 		</div>
 		<ul class="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
 			{#each achievements as a (a.name)}
@@ -209,7 +209,7 @@
 						<span class="block text-sm font-medium">{a.name}</span>
 						<span class="text-muted block text-[11px]">{a.how}</span>
 						{#if a.done}
-							<span class="text-muted/70 mt-1 block text-[10px]"
+							<span class="text-muted-dim mt-1 block text-[10px]"
 								>earned {a.when}</span
 							>
 						{:else}
@@ -291,7 +291,7 @@
 						{/each}
 					</ol>
 				</div>
-				<p class="text-muted/70 mt-3 text-[10px]">
+				<p class="text-muted-dim mt-3 text-[10px]">
 					An event is a session with an RSVP and a standing. Series (weekly)
 					roll a season leaderboard — proposal.
 				</p>

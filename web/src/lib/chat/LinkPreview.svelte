@@ -64,11 +64,11 @@
 				{#if card.description}
 					<!-- One line: the card is a hint about where the link goes, not
 					     the article. -->
-					<span class="text-muted/80 block truncate text-[10px] leading-tight"
+					<span class="text-muted-dim block truncate text-[10px] leading-tight"
 						>{card.description}</span
 					>
 				{/if}
-				<span class="text-muted/70 block truncate font-mono text-[10px]"
+				<span class="text-muted-dim block truncate font-mono text-[10px]"
 					>{card.siteName || card.host}</span
 				>
 			</span>

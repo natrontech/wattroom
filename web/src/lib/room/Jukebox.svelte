@@ -181,7 +181,7 @@
 					>Save as a playlist</button
 				>
 			</div>
-			<p class="text-muted/70 mt-1.5 text-[10px]">
+			<p class="text-muted-dim mt-1.5 text-[10px]">
 				Votes float a track up the queue.
 			</p>
 		</div>

@@ -161,7 +161,7 @@
 					? 'bg-surface-raised border-ink/40'
 					: 'border-muted/15 hover:border-muted/40'}"
 			>
-				<GripVertical size={14} class="text-muted/50 -ml-1 shrink-0" />
+				<GripVertical size={14} class="text-muted-dim -ml-1 shrink-0" />
 				<span
 					class="h-8 w-1.5 shrink-0 rounded-full {step.type === 'sprint'
 						? 'bg-z7'

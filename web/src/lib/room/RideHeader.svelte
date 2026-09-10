@@ -105,7 +105,7 @@
 		class="text-muted ml-auto shrink-0 text-sm tabular-nums"
 	>
 		{formatClock(elapsed)}
-		<span class="text-muted/50">/ {formatClock(total)}</span>
+		<span class="text-muted-dim">/ {formatClock(total)}</span>
 	</p>
 	{@render aside?.()}
 	{@render controls?.()}

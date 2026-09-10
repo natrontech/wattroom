@@ -136,17 +136,17 @@
 					title={open ? undefined : mark?.label}
 					class="flex min-h-11 min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-sm {open
 						? 'hover:bg-ink/5 text-ink'
-						: 'text-muted/60'}"
+						: 'text-muted-dim'}"
 				>
 					<RoomIcon icon={room.icon} size={15} />
 					<span class="min-w-0 flex-1 truncate">{room.name}</span>
 					{#if mark}
 						<mark.icon
 							size={13}
-							class="text-muted/60 shrink-0"
+							class="text-muted-dim shrink-0"
 							aria-label={mark.label}
 						/>
-						<span class="text-muted/70 hidden text-[11px] sm:inline"
+						<span class="text-muted-dim hidden text-[11px] sm:inline"
 							>{mark.label}</span
 						>
 					{/if}

@@ -149,7 +149,7 @@
 			{/each}
 		</div>
 		{#if more > 0}
-			<p class="text-muted/70 pt-1 text-[10px]">+{more} more</p>
+			<p class="text-muted-dim pt-1 text-[10px]">+{more} more</p>
 		{/if}
 	</div>
 {/if}

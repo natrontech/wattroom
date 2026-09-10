@@ -176,7 +176,7 @@
 	<!-- Giphy's terms require the credit, and it says where a bad GIF came
 	     from without a settings page to explain it. ponytail: their guidelines
 	     want the official mark; the wordmark asset is a follow-up (#909). -->
-	<p class="text-muted/70 border-ink/5 border-t px-3 py-1.5 text-[10px]">
+	<p class="text-muted-dim border-ink/5 border-t px-3 py-1.5 text-[10px]">
 		Powered by GIPHY
 	</p>
 </div>

@@ -44,7 +44,7 @@
 			</div>
 		{/if}
 		{#if page.error?.message && page.error.message !== 'Not Found'}
-			<p class="text-muted/60 mt-6 font-mono text-xs">{page.error.message}</p>
+			<p class="text-muted-dim mt-6 font-mono text-xs">{page.error.message}</p>
 		{/if}
 	</div>
 </main>

@@ -250,7 +250,7 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 /**
  * The text ramp (#1522). Two steps, both legible: `muted` for quiet text and
  * `muted-dim` for the quietest a theme may draw. Before this, "dimmer" was
- * spelled `text-muted/70` down to `text-muted/40` at 76 call sites, which
+ * spelled `text-muted/70` down to `text-muted/40` at 120 call sites, which
  * composites to 3.3:1 and 1.8:1 against the cave — an alpha utility routes
  * around a token gate, so the gate has to own the dim step itself. The floor
  * above is what stops the ramp drifting back; these two say the step is real

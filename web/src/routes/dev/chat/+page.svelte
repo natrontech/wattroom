@@ -163,7 +163,7 @@
 					<span class="truncate text-sm {t.unread ? 'font-semibold' : ''}"
 						>{t.name}</span
 					>
-					<span class="text-muted/60 ml-auto shrink-0 font-mono text-[10px]"
+					<span class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
 						>{formatThreadWhen(t.at, NOW)}</span
 					>
 				</span>
@@ -181,7 +181,7 @@
 				</span>
 				{#if t.kind === 'room' && (t.here || t.voice)}
 					<span
-						class="text-muted/70 mt-0.5 flex items-center gap-1.5 text-[10px]"
+						class="text-muted-dim mt-0.5 flex items-center gap-1.5 text-[10px]"
 					>
 						{#if t.riding}<RidingBars size={8} />{/if}
 						{t.here} here{#if t.voice}
@@ -197,7 +197,8 @@
 	<div class="px-3 pt-3 pb-2">
 		<span class="input input-xs flex items-center gap-2">
 			<Search size={12} class="text-muted shrink-0" />
-			<span class="text-muted/70 min-w-0 flex-1 truncate">Search messages</span>
+			<span class="text-muted-dim min-w-0 flex-1 truncate">Search messages</span
+			>
 		</span>
 	</div>
 	<ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -246,7 +247,7 @@
 					<span class="min-w-0 flex-1">
 						<span class="flex items-baseline gap-2">
 							<span class="text-sm font-medium">{m.from}</span>
-							<span class="text-muted/40 font-mono text-[10px]"
+							<span class="text-muted-dim font-mono text-[10px]"
 								>{formatTime(m.at)}</span
 							>
 						</span>
@@ -272,12 +273,12 @@
 	<div class="border-ink/5 shrink-0 border-t px-5 py-3">
 		<div class="flex items-center gap-2">
 			<span class="text-muted p-1"><ImageIcon size={16} /></span>
-			<span class="input text-muted/70 min-w-0 flex-1 truncate"
+			<span class="input text-muted-dim min-w-0 flex-1 truncate"
 				>Message {room.name} — you are not in the room, they still see it</span
 			>
 			<span class="btn btn-primary">Send</span>
 		</div>
-		<p class="text-muted/70 mt-1.5 text-[10px]">
+		<p class="text-muted-dim mt-1.5 text-[10px]">
 			Reactions and links work from here. Being in the room adds voice, the ride
 			and queuing a link to the jukebox — not the words.
 		</p>
@@ -368,7 +369,7 @@
 					<li
 						class="flex items-center gap-2 rounded px-2 py-1.5 {r.slug === HERE
 							? 'text-ink'
-							: 'text-muted/70'}"
+							: 'text-muted-dim'}"
 					>
 						{#if r.slug === HERE}
 							<span
@@ -390,7 +391,7 @@
 						{:else if r.connected}
 							<span class="ml-auto flex shrink-0 items-center gap-1"
 								><span class="bg-z4 h-1.5 w-1.5 rounded-full"></span><span
-									class="text-muted/70 font-mono text-[10px]"
+									class="text-muted-dim font-mono text-[10px]"
 									>{r.connected}</span
 								></span
 							>
@@ -425,7 +426,7 @@
 					</li>
 				{/each}
 			</ul>
-			<p class="text-muted/70 mt-2 text-[11px]">
+			<p class="text-muted-dim mt-2 text-[11px]">
 				{here.name} carries no count anywhere else: you are standing in it, and that
 				counts as reading. The Chat place answers with
 				<code>missedSince</code> instead — {missed?.count} lines since you last had
@@ -463,7 +464,7 @@
 						>{/if}
 				</div>
 			</div>
-			<p class="text-muted/70 mt-2 text-[11px]">
+			<p class="text-muted-dim mt-2 text-[11px]">
 				Nothing sums anything up today. With the sidebar collapsed into its
 				drawer, {summary.rooms} rooms and {summary.dms} DM are waiting behind a button
 				that says nothing — which is Jan's first ask, on a phone.
@@ -546,7 +547,7 @@
 					<span class="text-ink/80 font-medium">The other answer:</span>
 					{question.other}
 				</p>
-				<p class="text-muted/70 mt-1 text-[11px]">{question.cost}</p>
+				<p class="text-muted-dim mt-1 text-[11px]">{question.cost}</p>
 			</li>
 		{/each}
 	</ol>

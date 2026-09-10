@@ -80,7 +80,7 @@
 									pct={(badge.progress.have / badge.progress.need) * 100}
 								/></span
 							>
-							<span class="text-muted/70 text-[10px] tabular-nums"
+							<span class="text-muted-dim text-[10px] tabular-nums"
 								>{meta.name} · {badge.progress.need.toLocaleString()}</span
 							>
 						</span>

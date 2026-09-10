@@ -328,7 +328,7 @@
 						: 'border-muted/30 text-muted hover:border-neon/50'}"
 				>
 					{facet.tag}
-					<span class="text-muted/70 ml-1 tabular-nums">{facet.tracks}</span>
+					<span class="text-muted-dim ml-1 tabular-nums">{facet.tracks}</span>
 				</button>
 			{/each}
 		</div>
@@ -378,7 +378,7 @@
 			<EmptyState>
 				{#snippet icon()}<Music
 						size={20}
-						class="text-muted/60 mb-2"
+						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
 					Nothing tagged “{tag}”{query ? ` matches “${query}”` : ''}.
@@ -393,7 +393,7 @@
 			<EmptyState>
 				{#snippet icon()}<Music
 						size={20}
-						class="text-muted/60 mb-2"
+						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">Nothing here matches “{query}”.</p>
 				<p class="text-muted mt-1 text-xs">
@@ -406,7 +406,7 @@
 			<EmptyState>
 				{#snippet icon()}<Music
 						size={20}
-						class="text-muted/60 mb-2"
+						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
 					This is your library. Everything here plays in any room's jukebox,

@@ -80,7 +80,7 @@
 </div>
 <!-- The warning on the page, not buried (ADR-0021): this link says more than
      a room's did. The reset is folded, because needing it is rare. -->
-<p class="text-muted/70 mt-1.5 text-[11px]">
+<p class="text-muted-dim mt-1.5 text-[11px]">
 	The link carries a private key: anyone holding it sees what you plan to ride
 	and which rooms you are in.
 </p>

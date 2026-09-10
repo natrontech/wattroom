@@ -96,7 +96,7 @@
 				{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 				<!-- Privacy is architecture (WATTROOM.md): say what joining shows
 				     before the button. Joining a crew shows nobody anything yet. -->
-				<p class="text-muted/70 mt-4 text-[11px]">
+				<p class="text-muted-dim mt-4 text-[11px]">
 					Joining shows nobody your numbers. Your watts are visible to a room
 					while you ride in it, and nowhere else.
 				</p>

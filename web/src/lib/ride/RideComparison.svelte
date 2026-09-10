@@ -49,7 +49,7 @@
 	<div class="flex items-baseline gap-3">
 		<h2 class="eyebrow">Against your best</h2>
 		<!-- ADR-0016: every load-derived surface says what it is scoped to. -->
-		<span class="text-muted/70 text-[11px]">based on your WattRoom rides</span>
+		<span class="text-muted-dim text-[11px]">based on your WattRoom rides</span>
 	</div>
 
 	{#if error}

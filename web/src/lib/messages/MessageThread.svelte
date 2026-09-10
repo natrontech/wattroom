@@ -296,7 +296,7 @@
 									? ScreenShare
 									: Music}
 						<p
-							class="text-muted/70 flex items-baseline gap-1.5 pl-9 text-[11px] italic"
+							class="text-muted-dim flex items-baseline gap-1.5 pl-9 text-[11px] italic"
 						>
 							<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
 							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
@@ -357,7 +357,7 @@
 								{#if !grouped}
 									<span class="flex items-baseline gap-2">
 										<span class="text-sm font-medium">{message.from}</span>
-										<span class="text-muted/40 font-mono text-[10px]"
+										<span class="text-muted-dim font-mono text-[10px]"
 											>{formatTime(message.at)}</span
 										>
 									</span>
@@ -401,7 +401,7 @@
 												onclick={cancelEdit}
 												class="btn btn-ghost btn-xs">Cancel</button
 											>
-											<span class="text-muted/60 text-[10px]">{editHint}</span>
+											<span class="text-muted-dim text-[10px]">{editHint}</span>
 										</span>
 									</form>
 								{:else}
@@ -422,7 +422,7 @@
 											     timestamp: WHEN it was fixed is nobody's
 											     business, THAT it was is everybody's. -->
 											<span
-												class="text-muted/50 ml-1 align-baseline text-[10px]"
+												class="text-muted-dim ml-1 align-baseline text-[10px]"
 												title="edited {formatTime(message.editedAt)}"
 												>edited</span
 											>
@@ -458,14 +458,14 @@
 								{#if canEdit(message) && editingId !== message.id}
 									<button
 										onclick={() => startEdit(message)}
-										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
+										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
 										aria-label="edit message"><Pencil size={13} /></button
 									>
 								{/if}
 								{#if message.text}
 									<button
 										onclick={() => copy(message.text)}
-										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
+										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
 										aria-label="copy message"><Copy size={13} /></button
 									>
 								{/if}
@@ -473,7 +473,7 @@
 									{@const id = message.id}
 									<button
 										onclick={() => (reactingTo = reactingTo === id ? null : id)}
-										class="icon-btn text-muted/60 hover:text-ink h-6 w-6"
+										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
 										aria-label="react"><SmilePlus size={14} /></button
 									>
 								{/if}

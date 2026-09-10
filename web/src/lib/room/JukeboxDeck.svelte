@@ -397,7 +397,7 @@
 				><Headphones size={17} /></button
 			>
 		{:else}
-			<span class="text-muted/70 min-w-0 flex-1 truncate">yours only</span>
+			<span class="text-muted-dim min-w-0 flex-1 truncate">yours only</span>
 			<button
 				onclick={() => stepOut('skip')}
 				class="text-muted hover:text-ink icon-btn"

@@ -26,11 +26,11 @@
 	<div class="flex items-baseline gap-3">
 		<h2 class="eyebrow">Achievements</h2>
 		{#if mine}
-			<span class="text-muted/70 text-[11px]"
+			<span class="text-muted-dim text-[11px]"
 				>{earned} of {ACHIEVEMENTS.length}</span
 			>
 		{:else if earned > 0}
-			<span class="text-muted/70 text-[11px]"
+			<span class="text-muted-dim text-[11px]"
 				>{earned === 1 ? '1 earned' : `${earned} earned`}</span
 			>
 		{/if}
@@ -54,13 +54,13 @@
 				<span class="min-w-0 flex-1">
 					<span class="flex items-baseline justify-between gap-2">
 						<span class="text-sm font-medium">{meta.name}</span>
-						<span class="text-muted/70 text-[10px] tabular-nums"
+						<span class="text-muted-dim text-[10px] tabular-nums"
 							>{meta.xp} XP</span
 						>
 					</span>
 					<span class="text-muted block text-[11px]">{meta.how}</span>
 					{#if done && state?.earnedAt}
-						<span class="text-muted/70 mt-1 block text-[10px]">
+						<span class="text-muted-dim mt-1 block text-[10px]">
 							earned {new Date(state.earnedAt).toLocaleDateString(undefined, {
 								month: 'short',
 								day: 'numeric',
@@ -75,13 +75,13 @@
 									: ''}"
 							/>
 						</span>
-						<span class="text-muted/70 mt-1 block text-[10px] tabular-nums">
+						<span class="text-muted-dim mt-1 block text-[10px] tabular-nums">
 							{state.progress.have.toLocaleString()} / {state.progress.need.toLocaleString()}{meta.unit
 								? ` ${meta.unit}`
 								: ''}
 						</span>
 					{:else if mine}
-						<span class="text-muted/70 mt-1 block text-[10px]"
+						<span class="text-muted-dim mt-1 block text-[10px]"
 							>one ride does it</span
 						>
 					{/if}

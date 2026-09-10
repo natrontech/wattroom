@@ -232,6 +232,6 @@
 	{#if lock}
 		<p class="text-muted mt-1.5 text-xs">{lock}</p>
 	{:else if hint}
-		<p class="text-muted/70 mt-1.5 text-[10px]">{hint}</p>
+		<p class="text-muted-dim mt-1.5 text-[10px]">{hint}</p>
 	{/if}
 </div>

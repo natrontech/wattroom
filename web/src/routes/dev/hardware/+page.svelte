@@ -213,13 +213,13 @@
 							{#each service.characteristics as char (char.uuid)}
 								<li class="text-muted font-mono text-[11px] leading-relaxed">
 									<span class="text-ink/80">{char.name ?? char.uuid}</span>
-									<span class="text-muted/70">
+									<span class="text-muted-dim">
 										[{char.properties.join(' ')}]</span
 									>
 									{#if char.text}
 										<span class="text-watt"> “{char.text}”</span>
 									{:else if char.value}
-										<span class="text-muted/60"> {char.value}</span>
+										<span class="text-muted-dim"> {char.value}</span>
 									{/if}
 								</li>
 							{/each}
@@ -349,7 +349,7 @@
 		<ul class="mt-3 space-y-1 font-mono text-[11px]">
 			{#each log as entry, i (i)}
 				<li class="flex gap-3">
-					<span class="text-muted/60 tabular-nums">{entry.at}</span>
+					<span class="text-muted-dim tabular-nums">{entry.at}</span>
 					<span class={entry.bad ? 'text-danger' : 'text-muted'}
 						>{entry.text}</span
 					>

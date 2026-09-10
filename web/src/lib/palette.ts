@@ -165,7 +165,7 @@ export const CONTRAST = { text: 4.5, accent: 3 } as const;
 /**
  * The second step of the text ramp (#1522). `muted` is the quiet text colour;
  * `muted-dim` is the quietest one a theme is allowed to have, and it is
- * derived rather than reached for with an alpha — 76 call sites had spelled
+ * derived rather than reached for with an alpha — 120 call sites had spelled
  * "dimmer" as `text-muted/70` down to `/40`, which composites to 3.3:1 and
  * 1.8:1 on the cave surface. An alpha routes around the gate; a token does
  * not.

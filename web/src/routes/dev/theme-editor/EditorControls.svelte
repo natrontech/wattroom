@@ -75,7 +75,7 @@
 
 	<div>
 		<span class="eyebrow">derive from hue</span>
-		<p class="text-muted/70 mt-1 text-[11px] leading-snug">
+		<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 			Rotates every token that has no direct override below.
 		</p>
 		<div class="mt-2 space-y-3">
@@ -135,7 +135,7 @@
 
 	<div>
 		<span class="eyebrow">every colour</span>
-		<p class="text-muted/70 mt-1 text-[11px] leading-snug">
+		<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 			Paints over the derived value for that one token. The zone ramp (Z1–Z7) is
 			shared across every theme by design and isn't editable here.
 		</p>

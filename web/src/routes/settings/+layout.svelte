@@ -48,7 +48,7 @@
 
 	{@render children()}
 
-	<footer class="text-muted/60 mt-10 text-center font-mono text-[11px]">
+	<footer class="text-muted-dim mt-10 text-center font-mono text-[11px]">
 		<p>
 			wattroom
 			{#if data.release}

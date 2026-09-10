@@ -341,7 +341,7 @@
 						>
 							{entry.workout.name}
 							<span
-								class="text-muted/60 block font-mono text-[10px] tabular-nums"
+								class="text-muted-dim block font-mono text-[10px] tabular-nums"
 								>{formatClock(durationSeconds(entry.workout))} · yours</span
 							>
 						</button>
@@ -358,7 +358,7 @@
 						>
 							{entry.workout.name}
 							<span
-								class="text-muted/60 block font-mono text-[10px] tabular-nums"
+								class="text-muted-dim block font-mono text-[10px] tabular-nums"
 								>{formatClock(durationSeconds(entry.workout))}</span
 							>
 						</button>

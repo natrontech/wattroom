@@ -257,7 +257,7 @@
 						>
 					{:else}
 						<span
-							class="text-muted/55 absolute inset-0 flex flex-col items-center justify-center gap-1"
+							class="text-muted-dim absolute inset-0 flex flex-col items-center justify-center gap-1"
 						>
 							<Plus size={16} />
 							<span class="text-[10px]">empty</span>

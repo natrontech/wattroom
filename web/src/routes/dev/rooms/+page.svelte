@@ -163,7 +163,7 @@
 					with.
 				</p>
 				<input
-					class="border-muted/25 placeholder:text-muted/60 focus:border-muted/60 mt-3 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+					class="border-muted/25 placeholder:text-muted-dim focus:border-muted/60 mt-3 w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
 					placeholder="Room name"
 				/>
 				<button

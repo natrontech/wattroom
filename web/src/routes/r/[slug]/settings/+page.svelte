@@ -327,7 +327,7 @@
 			<!-- Not offered in the phone's drawer (#412), so anyone standing here
 			     arrived by link or bookmark. Say so rather than let the forms
 			     imply this is where the job gets done. -->
-			<p class="text-muted/70 mt-2 text-[11px]">
+			<p class="text-muted-dim mt-2 text-[11px]">
 				Laid out for a wider screen — this is a desk job, not a mid-ride one.
 			</p>
 		{/if}

@@ -86,11 +86,11 @@
 				class="text-z4 shrink-0"
 			/>{:else if r.muted}<MicOff
 				size={11}
-				class="text-muted/50 shrink-0"
+				class="text-muted-dim shrink-0"
 			/>{/if}
 		{#if r.voice && !dense}<Volume2
 				size={12}
-				class="text-muted/50 shrink-0"
+				class="text-muted-dim shrink-0"
 			/>{/if}
 	</li>
 {/snippet}
@@ -119,9 +119,9 @@
 	<ul class="space-y-1 px-3 pb-3">
 		{#each queue as q (q.title)}
 			<li class="flex items-baseline gap-2 text-[11px]">
-				<span class="text-muted/50 shrink-0 font-mono">·</span>
+				<span class="text-muted-dim shrink-0 font-mono">·</span>
 				<span class="min-w-0 flex-1 truncate">{q.title}</span>
-				<span class="text-muted/50 shrink-0">{q.by}</span>
+				<span class="text-muted-dim shrink-0">{q.by}</span>
 			</li>
 		{/each}
 	</ul>
@@ -133,7 +133,7 @@
 			<li class="text-xs leading-snug">
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted truncate font-medium">{m.from}</span>
-					<span class="text-muted/40 font-mono text-[10px]">{m.at}</span>
+					<span class="text-muted-dim font-mono text-[10px]">{m.at}</span>
 				</div>
 				<div class="text-ink/85 wrap-anywhere">{m.text}</div>
 				{#if m.react}
@@ -151,7 +151,7 @@
 	<div class="border-ink/5 border-t p-3">
 		<div class="flex gap-1.5">
 			<span
-				class="input input-xs text-muted/50 min-w-0 flex-1 truncate leading-6"
+				class="input input-xs text-muted-dim min-w-0 flex-1 truncate leading-6"
 				>Say something…</span
 			>
 			<button class="btn btn-secondary btn-xs">Send</button>
@@ -206,7 +206,7 @@
 				</div>
 				<div class="border-ink/5 shrink-0 border-b">
 					<div
-						class="bg-surface-raised text-muted/50 m-3 flex h-[200px] items-center justify-center rounded text-[11px]"
+						class="bg-surface-raised text-muted-dim m-3 flex h-[200px] items-center justify-center rounded text-[11px]"
 					>
 						the player docks here
 					</div>
