@@ -211,7 +211,10 @@ export function createRide(deps: RideDeps) {
 			}),
 		);
 		try {
-			await next.connect();
+			// A trainer handed over live (#1851) is not connected again: on the
+			// FTMS driver that would tear its listeners down and re-request
+			// control mid-ride for nothing.
+			if (next.status !== 'connected') await next.connect();
 			status = next.status;
 			// t0 for the silence check above; the first frame should be ~1 s away.
 			lastSampleAt = Date.now();

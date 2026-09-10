@@ -13,8 +13,9 @@ vi.mock('$lib/room/connection.svelte', () => ({
 	},
 }));
 
-const { createSoloTrainer, soloTrainer } =
+const { createSoloTrainer, soloTrainer, trainerForRoom } =
 	await import('./solo-trainer.svelte');
+const { FtmsTrainer } = await import('$lib/ble/ftms');
 
 class FakeTrainer implements Trainer {
 	status: TrainerStatus = 'disconnected';
@@ -153,6 +154,18 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 	// /settings/equipment and walking to /ride showed "Not connected" over a
 	// trainer that was still connected — and pairing again put two GATT
 	// clients on one machine.
+	it('walks into a room as it is, or the room gets a chooser', async () => {
+		// #1851: Pair in a room takes the trainer this slot holds, live, and
+		// only opens a chooser when there is none.
+		const trainer = new FakeTrainer();
+		await soloTrainer().pair(trainer);
+		expect(trainerForRoom()).toBe(trainer);
+		expect(trainer.connects).toBe(1);
+		expect(trainer.disconnects).toBe(0);
+		expect(soloTrainer().trainer).toBeNull();
+		expect(trainerForRoom()).toBeInstanceOf(FtmsTrainer);
+	});
+
 	it('is one trainer for the whole app, not one per screen', () => {
 		expect(soloTrainer()).toBe(soloTrainer());
 	});

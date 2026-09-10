@@ -11,7 +11,7 @@
 	// but they are still two: a room's belongs to standing in the room, the
 	// solo one to a rider who has paired and not yet started.
 	import { canSimulate } from '$lib/ble/can-simulate';
-	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { trainerForRoom } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { useRoom } from '$lib/room/context';
@@ -54,7 +54,7 @@
 		hint:
 			ride?.fault === 'silent' ? 'no watts yet — turn the cranks' : undefined,
 		error: ride?.error,
-		onPair: () => void ride?.ride(new FtmsTrainer()),
+		onPair: () => void ride?.ride(trainerForRoom()),
 		onForget: () => ride?.unpair(),
 		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
 	}}
