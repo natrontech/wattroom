@@ -49,7 +49,10 @@ class FakeTrainer implements Trainer {
 	private listener: ((sample: TrainerSample) => void) | null = null;
 	constructor(readonly name = 'Kickr') {}
 	async connect() {}
-	async disconnect() {}
+	disconnected = false;
+	async disconnect() {
+		this.disconnected = true;
+	}
 	/** Every actuator command, in order — what the sprint effect is judged on. */
 	commands: string[] = [];
 	async setTargetPower(watts: number) {
@@ -234,42 +237,42 @@ describe('a sprint the ticks stop under (#789)', () => {
 	});
 });
 
+/** A room mid-interval: the shared timeline is running and asks for 200 W. */
+function inASession() {
+	const live = createRoomLive('mfw');
+	const socket = FakeSocket.last!;
+	const deps = {
+		live,
+		profile: {
+			current: {
+				ftp: 200,
+				shareHr: true,
+				singleSpeed: false,
+				sprintGrade: 5,
+			},
+		},
+		recording: { record() {} } as never,
+		myId: () => 'me',
+		shared: () => ({ phase: 'running', elapsed: 10 }),
+		segments: () => [
+			{
+				kind: 'steady' as const,
+				startSeconds: 0,
+				seconds: 600,
+				fromFraction: 1,
+				toFraction: 1,
+				stepPath: [0],
+			},
+		],
+	};
+	return { live, socket, deps };
+}
+
 describe('the personal guards in a group ride (#788)', () => {
 	const settle = async () => {
 		await Promise.resolve();
 		flushSync();
 	};
-
-	/** A room mid-interval: the shared timeline is running and asks for 200 W. */
-	function inASession() {
-		const live = createRoomLive('mfw');
-		const socket = FakeSocket.last!;
-		const deps = {
-			live,
-			profile: {
-				current: {
-					ftp: 200,
-					shareHr: true,
-					singleSpeed: false,
-					sprintGrade: 5,
-				},
-			},
-			recording: { record() {} } as never,
-			myId: () => 'me',
-			shared: () => ({ phase: 'running', elapsed: 10 }),
-			segments: () => [
-				{
-					kind: 'steady' as const,
-					startSeconds: 0,
-					seconds: 600,
-					fromFraction: 1,
-					toFraction: 1,
-					stepPath: [0],
-				},
-			],
-		};
-		return { live, socket, deps };
-	}
 
 	it('knows its own reading, for the equipment screen (#1799)', async () => {
 		const { deps } = inASession();
@@ -551,6 +554,93 @@ describe("a workout's own sprint block (#2014)", () => {
 		seek(80);
 		await settle();
 		expect(ride.blockSprint).toBe(null);
+
+		dispose();
+		live.close();
+	});
+});
+
+describe('a trainer claim the hub refused (#1853)', () => {
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	/** The hub's answer to this tab's claim, off the tick as it really is. */
+	function answer(socket: FakeSocket, pairing: unknown) {
+		socket.onmessage!({ data: JSON.stringify({ pairing }) });
+	}
+
+	// ADR-0025 arbitrated the sample stream and the pairing affordance and
+	// stopped there, so both of a rider's tabs kept writing the control
+	// point — the same watts until their per-tab bias differed, and then a
+	// 1 Hz fight over the trainer of a ride in progress.
+	it('writes no target while another screen holds the trainer', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(trainer.commands).toEqual([]);
+
+		// Everything else the refused tab keeps: the link, the samples it
+		// renders, and Forget — which must not zero a target the driving
+		// screen is holding.
+		trainer.pedal(210, 88);
+		await settle();
+		expect(ride.reading).toBe('210 W · 88 rpm');
+		ride.unpair();
+		expect(trainer.commands).toEqual([]);
+		expect(trainer.disconnected).toBe(true);
+
+		dispose();
+		live.close();
+	});
+
+	it('re-asserts the current target the moment the grant comes back', async () => {
+		// ERG holds the last value written, so a grant regained after a
+		// reconnect is holding a target as stale as the gap was long. Waiting
+		// for the next natural change would leave it there for the rest of
+		// the block.
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(trainer.commands).toEqual([]);
+
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(trainer.commands).toEqual(['erg:200']);
+
+		dispose();
+		live.close();
+	});
+
+	it('rides as before while the hub has arbitrated nothing', async () => {
+		// The hub's own rule (ownsTrainerLocked): no claim, no refusal. A tab
+		// whose answer has not arrived, or whose socket is down, must not
+		// lose its resistance — nothing is contending for the trainer.
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(trainer.commands).toEqual(['erg:200']);
 
 		dispose();
 		live.close();

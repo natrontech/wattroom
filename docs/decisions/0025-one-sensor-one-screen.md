@@ -42,3 +42,41 @@ Two properties are deliberate.
 - A rider whose phone dies mid-ride keeps the claim until the socket closes — seconds, on a TCP timeout at worst. Not free, but a claim that expired on a timer would be worse: it would hand the trainer away from a rider who is still pedalling.
 - The device word is coarse on purpose. It is a hint about which screen to walk to, and anything narrower would be a fingerprint bought for nothing.
 - A fourth kind, or a second trainer, extends the same map; an unknown kind is dropped rather than stored, so an older or newer client cannot grow the per-rider map past the four kinds.
+
+## Amendment — the claim covers actuation too (2026-09-10, #1853)
+
+The decision above arbitrated the **sample stream** and the pairing
+affordance, and said nothing about the control point. So it half-worked:
+`setMetrics` took samples from one screen, while both of a rider's screens
+went on writing ERG targets to the trainer they were each still connected to.
+Usually the same watts — until the two tabs' per-tab `bias` differed, and then
+they fought at 1 Hz over the resistance of a ride in progress.
+
+**A screen without the `trainer` grant does not write the control point.** It
+keeps everything else: the GATT link, the samples it renders, and *Forget*.
+Refusing the claim was always meant to make one screen authoritative, and half
+a claim is a bug rather than a scope boundary.
+
+The two alternatives are rejected for the same reason each way round.
+Documenting the fight as a consequence leaves the trainer arbitrated for
+reading and unarbitrated for writing. Making the refused screen *release* the
+trainer recreates exactly what "first claim wins" ruled out above — a phone
+that just woke up would drop the ride's targets, only now by disconnecting
+rather than by stealing.
+
+Two details this commits to:
+
+- **Zeroing is an actuation.** *Forget* on a refused screen drops its own link
+  and writes nothing, so it cannot release a target the driving screen holds.
+- **A grant regained re-asserts the current target immediately**, rather than
+  waiting for the next natural change. ERG holds the last value written, so a
+  gap leaves the trainer on a target as stale as the gap was long; the
+  known cost of this amendment is that stale target, never an absent one.
+
+The client says the hub's own rule (`ownsTrainerLocked`) rather than a
+stricter one, because the hub cannot refuse a Bluetooth write it never sees:
+a claim held by **another** of the rider's screens refuses this one, and
+anything else rides as before. A screen whose answer has not arrived, or whose
+socket is down, therefore keeps its resistance — nothing is contending for the
+trainer, and silencing it would be the ADR's own "drop the ERG targets of a
+ride in progress" arriving by a new route.

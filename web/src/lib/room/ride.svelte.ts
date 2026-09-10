@@ -8,9 +8,13 @@ import { wireMetrics } from '$lib/room/wire';
 import { targetAt } from '$lib/workout/engine';
 import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
 import type { Segment } from '$lib/workout/types';
-import type { GameState, SprintState } from '$lib/protocol';
+import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/room/recording.svelte';
-import { quietFault, type TrainerFault } from '$lib/room/sensor-status';
+import {
+	mayActuate,
+	quietFault,
+	type TrainerFault,
+} from '$lib/room/sensor-status';
 
 interface RideDeps {
 	/** The room socket: metrics go out on it, targets and ticks come off it. */
@@ -21,6 +25,12 @@ interface RideDeps {
 			| { at?: number; game?: GameState; sprint?: SprintState }
 			| null
 			| undefined;
+		/**
+		 * The hub's answer to this tab's sensor claim (#610). Read for one
+		 * question only — whether this screen is the one driving the trainer
+		 * (#1853); the pairing surfaces read it for themselves.
+		 */
+		readonly pairing?: SensorPairing;
 	};
 	profile: {
 		readonly current: {
@@ -78,6 +88,16 @@ export function createRide(deps: RideDeps) {
 		// sends one is the reported failure, and exempting it would hide it.
 		return Date.now() - lastSampleAt > 10_000 ? quietFault(trainer) : null;
 	});
+
+	/**
+	 * Whether this screen is the one driving the trainer (#1853). Derived, not
+	 * read at the moment of writing, so a grant regained after a reconnect
+	 * re-runs the actuation effect on the spot: ERG holds the last value
+	 * written, so the trainer is sitting on a target as stale as the gap was
+	 * long, and waiting for the next natural change would leave it there for
+	 * the rest of the block.
+	 */
+	const actuating = $derived(mayActuate(deps.live.pairing));
 
 	// Bias is personal: ±% on my own targets, the shared timeline untouched.
 	let bias = $state(1);
@@ -214,6 +234,16 @@ export function createRide(deps: RideDeps) {
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
+		// Another of this rider's screens holds the trainer claim (#1853), so
+		// this one keeps its link, its samples and its Forget and writes
+		// nothing: two tabs actuating fight at 1 Hz as soon as their bias
+		// differs. Forget the sprint mode on the way out, so a grant that
+		// comes back re-issues the slope rather than assuming the trainer is
+		// still in it — the screen that was driving may have left it in ERG.
+		if (!actuating) {
+			sprintMode = false;
+			return;
+		}
 		// A sprint outranks the guards, deliberately. Auto-pause is an
 		// INFERENCE that the rider left; the klaxon is an announced event they
 		// are about to answer, and a rider who was sitting at zero when it
@@ -258,7 +288,7 @@ export function createRide(deps: RideDeps) {
 				// had nothing to say — and the trainer held no ERG target for
 				// the rest of the block. Say it again, and forget the sprint
 				// mode so a window still open re-issues its slope.
-				if (back && trainer === next) {
+				if (back && trainer === next && actuating) {
 					sprintMode = false;
 					void next.setTargetPower(target);
 				}
@@ -326,7 +356,9 @@ export function createRide(deps: RideDeps) {
 	function unpair() {
 		for (const off of unsubscribe) off();
 		unsubscribe = [];
-		void trainer?.setTargetPower(0);
+		// Zeroing is an actuation like any other (#1853): a screen that is not
+		// driving must not release a target the screen that IS driving holds.
+		if (actuating) void trainer?.setTargetPower(0);
 		void trainer?.disconnect();
 		trainer = null;
 		error = null;
