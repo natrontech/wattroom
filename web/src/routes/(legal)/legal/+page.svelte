@@ -56,6 +56,8 @@
 	</p>
 	<p class="text-muted mt-3 text-sm leading-relaxed">
 		How we handle your data is described in the
-		<a href="/privacy" class="hover:text-ink underline">privacy policy</a>.
+		<a href="/privacy" class="hover:text-ink underline">privacy policy</a>, and
+		what we expect of each other in the
+		<a href="/terms" class="hover:text-ink underline">terms of service</a>.
 	</p>
 </section>
