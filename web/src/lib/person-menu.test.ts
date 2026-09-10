@@ -32,13 +32,13 @@ const faders = (entries: ReturnType<typeof personMenu>) =>
 describe('personMenu (#486)', () => {
 	it('leads with what a click on the object already does', () => {
 		expect(labels(personMenu('u1', () => {}))).toEqual([
-			'View profile',
+			'Rider page',
 			'Message',
 			'Add friend',
 		]);
 		expect(labels(personMenu('u1', () => {}, { conversation: true }))).toEqual([
 			'Open the conversation',
-			'View profile',
+			'Rider page',
 			'Add friend',
 		]);
 	});
@@ -67,7 +67,7 @@ describe('personMenu (#486)', () => {
 			}),
 		);
 		expect(entries.map((item) => item.label)).toEqual([
-			'View profile',
+			'Rider page',
 			'Message',
 			'Poke',
 			'Add friend',
@@ -86,7 +86,7 @@ describe('personMenu (#486)', () => {
 		const banned = vi.fn();
 		const entries = personMenu('u1', () => {}, { ban: banned });
 		expect(labels(entries)).toEqual([
-			'View profile',
+			'Rider page',
 			'Message',
 			'Add friend',
 			'—',
@@ -156,7 +156,7 @@ describe('personMenu volume', () => {
 		]);
 		// Before the friendship, after the room's own verbs.
 		expect(labels(entries)).toEqual([
-			'View profile',
+			'Rider page',
 			'Message',
 			'Volume',
 			'Add friend',

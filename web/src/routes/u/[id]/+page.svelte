@@ -477,7 +477,7 @@
 				<!-- The rules, on the page they govern (ADR-0024). -->
 				<section class="border-muted/15 rounded-lg border p-4">
 					<h2 class="flex items-center gap-1.5 text-xs font-semibold">
-						<Lock size={12} /> What a profile shows
+						<Lock size={12} /> What a rider page shows
 					</h2>
 					<ul class="text-muted mt-2 space-y-1 text-[11px] leading-relaxed">
 						<li>
