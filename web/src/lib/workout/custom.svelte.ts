@@ -69,6 +69,10 @@ export function createCustomStore() {
 	// 200-workout ceiling still sees all of it. Every page or none — a
 	// half-read shelf shown as the whole shelf is the silent hiding the
 	// paging exists to end.
+	//
+	// A runaway guard, an order of magnitude above the ceiling: reaching it
+	// means a server that keeps saying "more" or a cursor that stopped
+	// advancing, never a rider with two thousand workouts.
 	const MAX_PAGES = 20;
 
 	async function refresh(): Promise<void> {
