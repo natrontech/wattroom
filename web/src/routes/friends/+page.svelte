@@ -8,7 +8,7 @@
 <svelte:head><title>Friends · WattRoom</title></svelte:head>
 
 <main class="page">
-	<h1 class="font-display text-2xl font-bold tracking-tight">Friends</h1>
+	<h1 class="page-title">Friends</h1>
 	<p class="text-muted mt-1 text-sm">
 		Trade codes to see when each other are around — online, in a room, riding.
 		Friends see that, never what you're pushing.

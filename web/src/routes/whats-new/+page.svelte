@@ -15,7 +15,7 @@
 <main class="page">
 	<div class="flex flex-wrap items-center gap-3">
 		<div>
-			<h1 class="font-display text-2xl leading-tight font-bold">What's new</h1>
+			<h1 class="page-title">What's new</h1>
 			<p class="text-muted text-xs">
 				{#if changelog.version}
 					You are running {changelog.version}.

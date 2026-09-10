@@ -115,7 +115,7 @@
 <main class="page">
 	<div class="flex items-center gap-3">
 		<div>
-			<h1 class="font-display text-2xl leading-tight font-bold">Workouts</h1>
+			<h1 class="page-title">Workouts</h1>
 			<p class="text-muted text-xs">
 				{library.length} curated workouts · every target scales to your FTP
 			</p>

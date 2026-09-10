@@ -79,7 +79,7 @@ export function cardView(args: {
 			shape: 'note',
 			note: "Couldn't connect",
 			tone: 'danger',
-			button: { label: 'Try again', variant: 'secondary' },
+			button: { label: 'Retry', variant: 'secondary' },
 		};
 
 	return {

@@ -259,7 +259,7 @@
 			<Banner tone="error">
 				{saveError}
 				{#snippet action()}
-					<button onclick={save} class="btn-link text-xs">Try again</button>
+					<button onclick={save} class="btn-link text-xs">Retry</button>
 				{/snippet}
 			</Banner>
 		</div>
