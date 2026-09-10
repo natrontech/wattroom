@@ -111,5 +111,7 @@ audience to configure for.
 - **Check that an API still accepts clients before writing it into an ADR.**
   This one cost a merged feature and a same-day revert of its provider. A
   vendor's reference pages outlive the vendor's willingness to serve.
-- Stickers remain undecided — #879 holds that question, and this ADR does not
-  answer it.
+- Stickers were **declined** on 2026-09-10 — #879, closed not-planned: this
+  picker, #223's per-room reaction palette and #74's emoji cheers cover the
+  want between them, and a grid to browse mid-ride does not survive the 95%
+  rule. Nothing was ever built, so nothing changes but this line.
