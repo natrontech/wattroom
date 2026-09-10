@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.109] - 2026-09-10
+
+### Added
+
+- A crew's owner or admin can make a new invite link from the crew's settings; the old code and every link carrying it stop working at once, so a link that got somewhere it should not have is no longer permanent.
+
+### Fixed
+
+- Desktop app: the heads-up display stays open instead of closing itself the moment it appears; a crashed window shows the retry screen instead of going blank; a long reply typed into a notification is refused rather than silently cut; the update prompt reaches a window reopened from the Dock; the embedded player can no longer inherit the app's microphone or notification permissions; the download page and the home offer describe what the app actually adds.
+
 ## [2026.09.108] - 2026-09-10
 
 ### Fixed
@@ -1919,7 +1929,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.108...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.109...HEAD
+[2026.09.109]: https://github.com/natrontech/wattroom/compare/2026.09.108...2026.09.109
 [2026.09.108]: https://github.com/natrontech/wattroom/compare/2026.09.107...2026.09.108
 [2026.09.107]: https://github.com/natrontech/wattroom/compare/2026.09.106...2026.09.107
 [2026.09.106]: https://github.com/natrontech/wattroom/compare/2026.09.105...2026.09.106
