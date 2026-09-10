@@ -8,6 +8,7 @@
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
+	import { completeMention, mentionCompletion } from '$lib/messages/mention';
 	import Banner from '$lib/components/Banner.svelte';
 	import GifPicker from '$lib/chat/GifPicker.svelte';
 	import type { Gif } from '$lib/chat/gifs';
@@ -21,6 +22,7 @@
 		hint,
 		error = null,
 		lock = null,
+		names = [],
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
 		send: (text: string, image?: Blob) => Promise<string | null>;
@@ -35,10 +37,39 @@
 		 * would refuse the line is disabled and says so, never a 403 on Send).
 		 */
 		lock?: string | null;
+		/** Who `@` can complete to (#1766): the people in this thread. */
+		names?: string[];
 	} = $props();
 
 	let draft = $state('');
 	let composer = $state<HTMLInputElement | null>(null);
+
+	// `@` completes over the thread's people (#1766). Escape puts the list
+	// away for this draft; typing on brings it back.
+	let dismissed = $state('');
+	const mention = $derived(
+		draft === dismissed ? null : mentionCompletion(draft, names),
+	);
+	let pick = $state(0);
+	$effect(() => {
+		mention;
+		pick = 0;
+	});
+	function complete(name: string) {
+		if (!mention) return;
+		draft = completeMention(draft, mention.at, name);
+		composer?.focus({ preventScroll: true });
+	}
+	function onKey(e: KeyboardEvent) {
+		if (!mention) return;
+		const { hits } = mention;
+		if (e.key === 'ArrowDown') pick = (pick + 1) % hits.length;
+		else if (e.key === 'ArrowUp') pick = (pick + hits.length - 1) % hits.length;
+		else if (e.key === 'Enter' || e.key === 'Tab') complete(hits[pick]);
+		else if (e.key === 'Escape') dismissed = draft;
+		else return;
+		e.preventDefault();
+	}
 	// The account gate can mount this thread after initial navigation finished.
 	onMount(() => composer?.focus({ preventScroll: true }));
 	// Navigation includes switching peers in the reused DM page. Live updates
@@ -108,6 +139,29 @@
 		</div>
 	{/if}
 	<ImageChip image={pending.current} onClear={pending.clear} />
+	{#if mention}
+		<ul
+			role="listbox"
+			aria-label="people to mention"
+			class="panel absolute bottom-full left-5 z-30 mb-1 min-w-44 p-1 shadow-2xl"
+		>
+			{#each mention.hits as name, i (name)}
+				<li>
+					<!-- mousedown is swallowed so the input keeps focus for the next word. -->
+					<button
+						type="button"
+						role="option"
+						aria-selected={i === pick}
+						onmousedown={(e) => e.preventDefault()}
+						onclick={() => complete(name)}
+						class="block w-full rounded px-3 py-2 text-left text-sm {i === pick
+							? 'bg-surface-raised text-ink'
+							: 'text-muted hover:text-ink'}">@{name}</button
+					>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 	<form
 		class="flex items-center gap-2"
 		onsubmit={(e) => {
@@ -151,6 +205,9 @@
 			bind:this={composer}
 			bind:value={draft}
 			onpaste={pending.paste}
+			onkeydown={onKey}
+			aria-autocomplete="list"
+			aria-expanded={!!mention}
 			maxlength="500"
 			{placeholder}
 			aria-label={placeholder}

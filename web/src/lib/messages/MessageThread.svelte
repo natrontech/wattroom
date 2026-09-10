@@ -55,6 +55,7 @@
 		extraSendError = null,
 		editHint = 'Escape cancels · the room sees the change',
 		lineGapMs = 1000,
+		mentionNames = [],
 		emptyState,
 	}: {
 		source: ThreadSource;
@@ -73,10 +74,29 @@
 		editHint?: string;
 		/** The composer's own gap between lines: the hub's second, or none. */
 		lineGapMs?: number;
+		/** People `@` can complete to beyond whoever has spoken (#1766). */
+		mentionNames?: string[];
 		emptyState: Snippet;
 	} = $props();
 
 	const timeline = $derived(source.timeline);
+	// Who `@` completes to: the caller's people first (the room's riders),
+	// then whoever has spoken here; never yourself.
+	const names = $derived.by(() => {
+		const seen = new Set<string>([account.me?.displayName ?? '']);
+		const out: string[] = [];
+		const spoke = timeline.flatMap((e) =>
+			e.kind === 'message'
+				? [people.face(e.message.fromId)?.name ?? e.message.from]
+				: [],
+		);
+		for (const name of [...mentionNames, ...spoke]) {
+			if (!name || seen.has(name)) continue;
+			seen.add(name);
+			out.push(name);
+		}
+		return out;
+	});
 	const me = $derived(account.me?.id);
 
 	// The "N new" line: above the first message from someone else since the
@@ -484,6 +504,7 @@
 <Composer
 	send={source.send}
 	{lineGapMs}
+	{names}
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
