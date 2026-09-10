@@ -184,3 +184,29 @@ func TestRiderCalendarFeed(t *testing.T) {
 		t.Fatalf("left room still in feed:\n%s", ics)
 	}
 }
+
+// A crew ban lives in visible_rooms alone; the calendar used to read the
+// membership row and keep mailing the banned rider the crew's plans (#1904).
+func TestACrewBanTakesTheRoomOutOfTheCalendar(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Feed Banned")
+	h.enter(t, "bob", code, slug)
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
+	plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts.Format(time.RFC3339))
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	_, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
+	if before, _ := body["sessions"].([]any); len(before) != 1 {
+		t.Fatalf("bob before the ban: %v — test proves nothing", body["sessions"])
+	}
+
+	h.crewBan(t, slug, "bob")
+
+	status, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
+	after, _ := body["sessions"].([]any)
+	if status != http.StatusOK || len(after) != 0 {
+		t.Fatalf("a crew-banned rider still sees the crew's plans: %d %v", status, body["sessions"])
+	}
+}

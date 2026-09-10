@@ -46,7 +46,9 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	if len(mine) != 1 {
 		t.Fatalf("sent %d reminders, want exactly the one starting inside the hour: %v", len(mine), mine)
 	}
-	if !strings.Contains(mine[0], "Openers") || !strings.Contains(mine[0], "in an hour") {
+	// Claimed thirty minutes ahead, and it says so (#1903) — "in an hour"
+	// was the window's name, not the gap.
+	if !strings.Contains(mine[0], "Openers") || !strings.Contains(mine[0], "in 30 minutes") {
 		t.Fatalf("subject %q is not the reminder", mine[0])
 	}
 
@@ -84,8 +86,16 @@ func TestAMovedSessionIsRemindedAgain(t *testing.T) {
 	}
 	s.remindDue(t.Context())
 
-	if mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(mine) != 2 {
+	mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test")
+	if len(mine) != 2 {
 		t.Fatalf("a moved session was reminded %d times, want one per start: %v", len(mine), mine)
+	}
+	// And each says how far off the start really is (#1903): the first was
+	// claimed thirty minutes ahead, the second fifty — neither is "an hour".
+	for i, want := range []string{"in 30 minutes", "in 50 minutes"} {
+		if !strings.Contains(mine[i], want) {
+			t.Errorf("reminder %d: %q does not say %q", i+1, mine[i], want)
+		}
 	}
 }
 
@@ -99,7 +109,7 @@ func TestReminderNamesNoClockTime(t *testing.T) {
 	defer srv.Close()
 	s := service(h, srv.URL)
 
-	starts := time.Date(2026, 9, 8, 19, 0, 0, 0, time.Local)
+	starts := time.Now().Add(time.Hour)
 	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, noActor, sessionReminder)
 
 	if len(fake.payloads) != 1 {
@@ -107,7 +117,7 @@ func TestReminderNamesNoClockTime(t *testing.T) {
 	}
 	p := fake.payloads[0]
 	for _, part := range []string{fmt.Sprint(p["text"]), fmt.Sprint(p["html"])} {
-		if strings.Contains(part, "19:00") || strings.Contains(part, "8 Sep") {
+		if strings.Contains(part, starts.Format("15:04")) || strings.Contains(part, starts.Format("2 Jan")) {
 			t.Fatalf("a reminder named a clock time, which no zone makes right for everyone: %s", part)
 		}
 		if !strings.Contains(part, "in an hour") {

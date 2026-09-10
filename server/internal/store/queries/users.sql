@@ -36,6 +36,8 @@ select u.id, u.email, u.unsub_token, u.timezone
 from memberships m
 join users u on u.id = m.user_id
 where m.room_id = $1 and m.role != 'banned' and m.notify and u.notify_planned
+  -- The crew's ban too (#1904), which the membership row does not carry.
+  and exists (select 1 from visible_rooms v where v.room_id = m.room_id and v.user_id = m.user_id)
   -- ADR-0030: nothing but its own confirmation reaches an unverified address.
   -- Every current writer of email verifies first; the predicate makes the
   -- rule structural rather than an accident of write order (audit 2026-09-09).

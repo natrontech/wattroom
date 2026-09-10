@@ -12,9 +12,11 @@
 	// itself (errors.md: undo over confirm); the address it needs is typed in
 	// on the profile, and MailAvailable hides the whole thing on a server
 	// that cannot send.
-	const hasAddress = $derived(
-		!!(account.me?.email || account.me?.emailPending),
-	);
+	// Only a verified address is ever mailed (ADR-0030; the targets query
+	// says so structurally), so the switch waits for the link, not the
+	// typing (#1906) — ticked while pending, it saved and nothing arrived.
+	const verified = $derived(!!account.me?.emailVerified);
+	const pending = $derived(!!account.me?.emailPending && !verified);
 	let mailError = $state<string | null>(null);
 	async function setPlanned(on: boolean) {
 		const me = account.me;
@@ -92,15 +94,22 @@
 				<input
 					type="checkbox"
 					checked={account.me.notifyPlanned ?? false}
-					disabled={!hasAddress}
+					disabled={!verified}
 					onchange={(e) => void setPlanned(e.currentTarget.checked)}
 					class="mt-1"
 				/>
 				<span>
-					Email me when a session is planned
-					{#if !hasAddress}
+					<!-- One switch, four mails (ADR-0030): say so, or a rider
+					     signs up for one and gets four. -->
+					Email me about sessions in my rooms — planned, moved, cancelled, and an
+					hour before
+					{#if pending}
 						<span class="text-muted block text-xs"
-							>Needs an email address first — add one on <a
+							>Confirm your address first — the link is in your inbox.</span
+						>
+					{:else if !verified}
+						<span class="text-muted block text-xs"
+							>Needs a confirmed email address first — add one on <a
 								href="/settings/profile"
 								class="btn-link">Profile</a
 							>.</span
