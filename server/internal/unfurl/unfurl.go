@@ -76,16 +76,16 @@ type entry struct {
 }
 
 type Service struct {
-	users  UserSource
-	log    *slog.Logger
-	client *http.Client
+	users UserSource
+	log   *slog.Logger
+	// The guarded outbound client (guard.go). Held rather than reached for:
+	// nothing in this package opens a socket any other way.
+	out *Fetcher
 
 	mu      sync.Mutex
 	cache   map[cacheKey]entry
 	buckets map[string]*bucket
 	now     func() time.Time
-	// The ports an outbound fetch may use; nil means any (tests only).
-	ports map[string]bool
 	// The ration, as fields so a test can measure the cache and the ration
 	// separately instead of one masking the other. burst 0 means no ration.
 	burst  float64
@@ -93,19 +93,16 @@ type Service struct {
 }
 
 func New(users UserSource, log *slog.Logger) *Service {
-	s := &Service{
+	return &Service{
 		users:   users,
 		log:     log,
+		out:     NewFetcher(log),
 		cache:   map[cacheKey]entry{},
 		buckets: map[string]*bucket{},
 		now:     time.Now,
 		burst:   riderBurst,
 		refill:  riderRefill,
-		ports:   webPorts,
 	}
-	// After ports: the client's redirect check reads the policy off s.
-	s.client = s.newClient()
-	return s
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -123,7 +120,7 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := r.URL.Query().Get("url")
 	target, err := url.Parse(raw)
-	if err != nil || s.checkTarget(target) != nil {
+	if err != nil || s.out.checkTarget(target) != nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That is not a link WattRoom can preview.", "url")
 		return
@@ -169,7 +166,7 @@ func (s *Service) respond(w http.ResponseWriter, e entry) {
 func (s *Service) fetch(ctx context.Context, target string) (Card, bool) {
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
-	res, err := s.get(ctx, target)
+	res, err := s.out.get(ctx, target)
 	if err != nil {
 		s.log.Debug("unfurl fetch", "err", err, "url", target)
 		return Card{}, false
@@ -206,7 +203,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	target := r.URL.Query().Get("url")
-	if u, err := url.Parse(target); err != nil || s.checkTarget(u) != nil {
+	if u, err := url.Parse(target); err != nil || s.out.checkTarget(u) != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That is not an image WattRoom can load.")
 		return
 	}
@@ -217,7 +214,7 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), fetchTimeout)
 	defer cancel()
-	res, err := s.get(ctx, target)
+	res, err := s.out.get(ctx, target)
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That preview image could not be loaded.")
 		return
@@ -239,19 +236,6 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(w, io.LimitReader(res.Body, maxImageBytes)); err != nil {
 		s.log.Debug("unfurl image copy", "err", err)
 	}
-}
-
-// renderableImage is the narrow set a preview thumbnail may be. SVG is
-// deliberately absent: it is a document, not a picture — served from our own
-// origin it can carry script, and a rider who opens the image in a tab is
-// then running a stranger's markup as WattRoom. The CSP below would catch it;
-// not serving it at all is the answer that does not depend on a header.
-func renderableImage(kind string) bool {
-	switch kind {
-	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif":
-		return true
-	}
-	return false
 }
 
 func isHTML(contentType string) bool {

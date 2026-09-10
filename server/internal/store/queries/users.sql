@@ -167,3 +167,26 @@ returning *;
 
 -- name: GetUserAvatar :one
 select mime, image, set_at from user_avatars where user_id = $1;
+
+-- name: ListProviderAvatars :many
+-- The rows still pointing at a sign-in provider's own host (#2078). "Ours" is
+-- a path on this origin — one leading slash and not two, because //host/x is
+-- a protocol-relative URL that loads from a stranger all the same. A stricter
+-- test than 'http%', which would miss both that and a scheme nobody thought
+-- of. The backfill converts these; every row it touches leaves this set,
+-- whether the picture came back or not.
+select id, avatar_url from users
+where avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+order by id
+limit $1;
+
+-- name: ClearProviderAvatarURL :exec
+-- Give up on one: the rider gets the initial the app draws for a rider with
+-- no picture, rather than a URL that leaks where they are to a host that
+-- would not hand the picture over anyway. The not-like guard is what makes it
+-- safe beside a concurrent upload — that writes a path on this origin, and
+-- this statement will not touch one.
+update users set avatar_url = null
+where id = $1 and avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%');

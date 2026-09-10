@@ -96,7 +96,7 @@ func TestCheckURLTakesOnlyHTTP(t *testing.T) {
 func TestCheckTargetTakesOnlyTheWebsPorts(t *testing.T) {
 	// Without this the endpoint is a port scanner: a public host is still a
 	// host with an SSH daemon, a database, and a redirect pointing at them.
-	s := New(nil, nil)
+	f := NewFetcher(nil)
 	for _, raw := range []string{
 		"https://example.com/a",
 		"https://example.com:443/a",
@@ -107,7 +107,7 @@ func TestCheckTargetTakesOnlyTheWebsPorts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.checkTarget(u); err != nil {
+		if err := f.checkTarget(u); err != nil {
 			t.Fatalf("%s refused: %v", raw, err)
 		}
 	}
@@ -122,7 +122,7 @@ func TestCheckTargetTakesOnlyTheWebsPorts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.checkTarget(u); err == nil {
+		if err := f.checkTarget(u); err == nil {
 			t.Fatalf("%s was allowed", raw)
 		}
 	}

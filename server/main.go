@@ -27,6 +27,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/account"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/board"
 	"github.com/natrontech/wattroom/server/internal/chat"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
@@ -163,7 +164,13 @@ func main() {
 			log.Error("refusing to start", "err", err)
 			os.Exit(1)
 		}
-		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"), keys)
+		// A rider's sign-in picture is copied onto this origin rather than
+		// fetched from Google, GitHub or Strava by every browser that draws
+		// their face (#2078) — through the same guarded outbound client the
+		// link previews use, because a second one would be a second SSRF
+		// surface to keep in step.
+		pictures := avatars.New(st, unfurl.NewFetcher(log), log)
+		authService := auth.New(st, log, baseURL, strings.HasPrefix(baseURL, "https://"), keys, pictures)
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
 		accountService.Register(mux)
@@ -209,6 +216,16 @@ func main() {
 		readAuth := tokenService.ReadSource(authService)
 		mcp.New(st, tokenService, log).Register(mux)
 		progression.New(st, readAuth, log).Register(mux)
+		// The accounts that signed in before #2078: their avatar_url still
+		// names a provider's host, which the enforced img-src refuses to load,
+		// so until this pass converts them those riders draw as an initial.
+		// Off the boot path and best-effort — a picture that will not download
+		// is not a reason for a server not to serve.
+		safego.Go(log, "avatar backfill", func() {
+			backfillCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+			defer cancel()
+			pictures.Backfill(backfillCtx)
+		})
 		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
 		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(ctx, st, log) })
 		ridesService := rides.New(st, readAuth, log)

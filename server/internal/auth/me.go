@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -230,7 +230,7 @@ func (s *Service) handleSetAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setAt := time.Now()
-	url := "/api/riders/" + store.UUIDString(user.ID) + "/avatar?v=" + strconv.FormatInt(setAt.UnixMilli(), 10)
+	url := avatars.Path(user.ID, setAt)
 	updated, err := s.store.Queries.SetUserAvatar(r.Context(), db.SetUserAvatarParams{
 		ID: user.ID, Mime: mime, Image: data,
 		SetAt:     pgtype.Timestamptz{Time: setAt, Valid: true},

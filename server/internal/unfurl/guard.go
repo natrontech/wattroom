@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +14,31 @@ import (
 // The outbound fetch policy (ADR-0031). This file is the reason the package
 // exists: fetching a URL a rider typed is an SSRF primitive, and everything
 // below is what makes it a bounded one.
+
+// Fetcher is that policy without the endpoints: one guarded client, and the
+// reads WattRoom does through it. It is a type rather than a set of methods on
+// Service so that the other caller who has to fetch from a host we do not
+// control can have the same guard instead of a second one — a rider's sign-in
+// picture, copied onto this origin at sign-in (server/internal/avatars,
+// #2078). Two outbound clients would be two SSRF surfaces to keep in step,
+// and one of them would fall behind.
+type Fetcher struct {
+	log *slog.Logger
+	// The one client this package fetches with. Never http.Get, never
+	// http.DefaultClient: this is what decides where a socket may go.
+	client *http.Client
+	// The ports an outbound fetch may use; nil means any (tests only).
+	ports map[string]bool
+}
+
+// NewFetcher builds the guarded client. Callers that only fetch — no
+// endpoints, no rider ration — take one of these directly.
+func NewFetcher(log *slog.Logger) *Fetcher {
+	f := &Fetcher{log: log, ports: webPorts}
+	// After ports: the client's redirect check reads the policy off f.
+	f.client = f.newClient()
+	return f
+}
 
 const (
 	// maxRedirects: enough for the http→https→www chain every real site has,
@@ -106,17 +132,17 @@ func checkURL(u *url.URL) error {
 // endpoint is a port scanner anyone with a chat box can point at any host on
 // the internet, one redirect at a time.
 //
-// A Service field rather than a constant so a test can widen it — an httptest
+// A Fetcher field rather than a constant so a test can widen it — an httptest
 // server lives on a random high port, and a policy nothing can exercise is
 // not one worth having.
 var webPorts = map[string]bool{"": true, "80": true, "443": true, "8080": true, "8443": true}
 
 // checkTarget is the full policy for one URL: scheme, host, port.
-func (s *Service) checkTarget(u *url.URL) error {
+func (f *Fetcher) checkTarget(u *url.URL) error {
 	if err := checkURL(u); err != nil {
 		return err
 	}
-	if s.ports != nil && !s.ports[u.Port()] {
+	if f.ports != nil && !f.ports[u.Port()] {
 		return fmt.Errorf("%w: %q", errBadPort, u.Port())
 	}
 	return nil
@@ -155,7 +181,7 @@ func safeDial(ctx context.Context, network, addr string) (net.Conn, error) {
 // newClient builds the one client this package fetches with. Redirects are
 // re-checked per hop and capped; the dialer above re-checks the address on
 // every hop for free, because each hop opens its own connection.
-func (s *Service) newClient() *http.Client {
+func (f *Fetcher) newClient() *http.Client {
 	return &http.Client{
 		Timeout: fetchTimeout,
 		Transport: &http.Transport{
@@ -169,24 +195,24 @@ func (s *Service) newClient() *http.Client {
 			if len(via) >= maxRedirects {
 				return errTooManyHop
 			}
-			return s.checkTarget(req.URL)
+			return f.checkTarget(req.URL)
 		},
 	}
 }
 
 // get issues one guarded GET. The caller reads at most limit bytes off the
 // body it gets back — nothing here trusts Content-Length.
-func (s *Service) get(ctx context.Context, raw string) (*http.Response, error) {
+func (f *Fetcher) get(ctx context.Context, raw string) (*http.Response, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil, fmt.Errorf("unfurl: parse: %w", err)
 	}
-	if err := s.checkTarget(u); err != nil {
+	if err := f.checkTarget(u); err != nil {
 		return nil, err
 	}
 	// gosec's taint analysis is right that this URL came from a rider, and
 	// that is the whole premise of the package: the address is not trusted,
-	// so it is s.client — and only ever s.client — that decides where a
+	// so it is f.client — and only ever f.client — that decides where a
 	// socket may go. See guard.go's safeDial and ADR-0031. Reaching for a
 	// plain http.Get here instead is the mistake this comment exists to stop.
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil) //nolint:gosec // G704: guarded by safeDial's pinned, address-checked dial
@@ -197,5 +223,5 @@ func (s *Service) get(ctx context.Context, raw string) (*http.Response, error) {
 	// carries a session — the fetch is WattRoom's, not theirs.
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept-Language", "en;q=0.9")
-	return s.client.Do(req) //nolint:gosec,bodyclose // G704: see above; the caller closes the body
+	return f.client.Do(req) //nolint:gosec,bodyclose // G704: see above; the caller closes the body
 }

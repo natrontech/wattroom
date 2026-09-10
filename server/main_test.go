@@ -278,12 +278,11 @@ func securedHeaders(t *testing.T, overTLS bool) http.Header {
 func TestSecuredSetsEveryHardeningHeader(t *testing.T) {
 	h := securedHeaders(t, false)
 	for header, want := range map[string]string{
-		"Content-Security-Policy":             enforcedCSP,
-		"Content-Security-Policy-Report-Only": reportOnlyCSP,
-		"X-Content-Type-Options":              "nosniff",
-		"Referrer-Policy":                     "strict-origin-when-cross-origin",
-		"Strict-Transport-Security":           "max-age=31536000",
-		"Permissions-Policy":                  permissionsPolicy,
+		"Content-Security-Policy":   enforcedCSP,
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "strict-origin-when-cross-origin",
+		"Strict-Transport-Security": "max-age=31536000",
+		"Permissions-Policy":        permissionsPolicy,
 	} {
 		if got := h.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
@@ -390,10 +389,13 @@ func TestEnforcedCSPNamesEveryOriginTheAppLoads(t *testing.T) {
 		// The theme block at app.html:8 injects a <style>, and Svelte renders
 		// `style=` attributes, which fall back to here from style-src-attr.
 		{"the theme block's stylesheet and every style= attribute", "style-src", "'self' 'unsafe-inline'"},
-		// Not the report-only list: a provider sign-in picture is served by
-		// Google, GitHub or Strava, so the host stays open and only the scheme
-		// is enforced until #2078 serves those ourselves.
-		{"pictures, including a provider's sign-in avatar", "img-src", "'self' data: blob: https:"},
+		// The closed host list, enforced since #2078 mirrored provider
+		// sign-in pictures onto this origin: 'self' is every rider's face
+		// (/api/riders/{id}/avatar) and every proxied link thumbnail, i.ytimg
+		// the jukebox deck, giphy/tenor a picked or pasted GIF at its own CDN
+		// (ADR-0032). No `https:`, so an injected <img> has nowhere to send a
+		// rider's address.
+		{"pictures, from the four hosts the app knowingly loads them from", "img-src", "'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"},
 		// The audio pool streams from /api/tracks/{id}/audio; a pasted image
 		// previews from a blob.
 		{"the audio pool and a pasted image's preview", "media-src", "'self' blob:"},
@@ -424,34 +426,32 @@ func TestEnforcedCSPNamesEveryOriginTheAppLoads(t *testing.T) {
 	}
 }
 
-// The two policies must differ in `img-src` and nowhere else (#1737). Without
-// this, a directive added to one and not the other ships a host that either
-// nothing enforces or nothing reports — and the report-only header is the only
-// warning anyone gets before the next promotion.
-func TestTheTwoPoliciesDifferOnlyInImgSrc(t *testing.T) {
-	h := securedHeaders(t, false)
-	enforced := directives(t, h.Get("Content-Security-Policy"))
-	reported := directives(t, h.Get("Content-Security-Policy-Report-Only"))
-
-	if len(enforced) != len(reported) {
-		t.Errorf("the policies name different directives:\n enforced %v\n reported %v", enforced, reported)
+// There is one policy now, and img-src is the reason there used to be two
+// (#1737 → #2069 → #2078). What replaces the drift guard is the property the
+// promotion depended on: no source in the enforced policy may name a host, or
+// a scheme, wide enough to let a rider's picture come from somebody else's
+// server again.
+//
+// A wildcard scheme source in img-src is what made the old policy honest but
+// weak — `https:` allowed any host on the web, so an injected <img> could
+// carry a rider's address anywhere. Losing that was the point.
+func TestImgSrcNamesHostsAndNotSchemes(t *testing.T) {
+	if _, reportOnly := securedHeaders(t, false)["Content-Security-Policy-Report-Only"]; reportOnly {
+		t.Error("a report-only policy is back; it existed only while img-src could not be enforced (#2078)")
 	}
-	for name, sources := range enforced {
-		other, ok := reported[name]
-		switch {
-		case !ok:
-			t.Errorf("%s is enforced but never reported", name)
-		case name == "img-src":
-			// The deliberate difference. Report-only is the target: the host
-			// list the app knowingly loads pictures from.
-			if other != "'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com" {
-				t.Errorf("the report-only img-src is not the target host list: %q", other)
-			}
-			if sources == other {
-				t.Error("img-src no longer differs — if #2078 landed, promote it and delete reportOnlyCSP")
-			}
-		case sources != other:
-			t.Errorf("%s differs between the policies: enforced %q, reported %q", name, sources, other)
+	sources := strings.Fields(directives(t, enforcedCSP)["img-src"])
+	if len(sources) == 0 {
+		t.Fatal("img-src names nothing at all")
+	}
+	for _, source := range sources {
+		// data: and blob: are the app's own bytes, in the document and in
+		// memory — neither reaches a network. Any other bare scheme is "every
+		// host that speaks it".
+		if source == "data:" || source == "blob:" {
+			continue
+		}
+		if !strings.Contains(source, "//") && strings.HasSuffix(source, ":") {
+			t.Errorf("img-src names the scheme %q — that is every host on the internet, which is what #2078 closed", source)
 		}
 	}
 }

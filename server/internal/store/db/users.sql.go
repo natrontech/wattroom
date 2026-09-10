@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearProviderAvatarURL = `-- name: ClearProviderAvatarURL :exec
+update users set avatar_url = null
+where id = $1 and avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+`
+
+// Give up on one: the rider gets the initial the app draws for a rider with
+// no picture, rather than a URL that leaks where they are to a host that
+// would not hand the picture over anyway. The not-like guard is what makes it
+// safe beside a concurrent upload — that writes a path on this origin, and
+// this statement will not touch one.
+func (q *Queries) ClearProviderAvatarURL(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearProviderAvatarURL, id)
+	return err
+}
+
 const clearUserEmail = `-- name: ClearUserEmail :one
 update users
 set email = null, email_verified_at = null, email_pending = null,
@@ -268,6 +284,45 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.RecoverExpires,
 	)
 	return i, err
+}
+
+const listProviderAvatars = `-- name: ListProviderAvatars :many
+select id, avatar_url from users
+where avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+order by id
+limit $1
+`
+
+type ListProviderAvatarsRow struct {
+	ID        pgtype.UUID
+	AvatarUrl *string
+}
+
+// The rows still pointing at a sign-in provider's own host (#2078). "Ours" is
+// a path on this origin — one leading slash and not two, because //host/x is
+// a protocol-relative URL that loads from a stranger all the same. A stricter
+// test than 'http%', which would miss both that and a scheme nobody thought
+// of. The backfill converts these; every row it touches leaves this set,
+// whether the picture came back or not.
+func (q *Queries) ListProviderAvatars(ctx context.Context, limit int32) ([]ListProviderAvatarsRow, error) {
+	rows, err := q.db.Query(ctx, listProviderAvatars, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProviderAvatarsRow
+	for rows.Next() {
+		var i ListProviderAvatarsRow
+		if err := rows.Scan(&i.ID, &i.AvatarUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRoomNotifyTargets = `-- name: ListRoomNotifyTargets :many

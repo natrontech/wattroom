@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -25,10 +26,38 @@ import (
 
 func testService(t *testing.T) *Service {
 	t.Helper()
+	return testServiceWithPictures(t, &providerPicture{data: tinyPNG})
+}
+
+// testServiceWithPictures is testService with the sign-in-picture mirror's
+// outbound fetch under the test's control (#2078).
+func testServiceWithPictures(t *testing.T, pictures *providerPicture) *Service {
+	t.Helper()
 	st := storetest.Open(t)
+	log := slog.New(slog.DiscardHandler)
 	// nil cipher: the unencrypted path is what every existing case here
 	// asserts, and the sealed one has its own test (#697).
-	return New(st, slog.New(slog.DiscardHandler), "http://localhost:8080", false, nil)
+	return New(st, log, "http://localhost:8080", false, nil, avatars.New(st, pictures, log))
+}
+
+// providerPicture stands in for a sign-in provider's picture host. The real
+// fetch is unfurl.Fetcher and has its own tests; what these cases are about is
+// what the sign-in does with what comes back — and that no test in this
+// package reaches the network to find out.
+type providerPicture struct {
+	data []byte
+	err  error
+	// Every URL it was asked for, in order: the point of the mirror is that
+	// this list is short and that nothing but a sign-in puts anything on it.
+	asked []string
+}
+
+func (p *providerPicture) Image(_ context.Context, url string, _ int64) ([]byte, string, error) {
+	p.asked = append(p.asked, url)
+	if p.err != nil {
+		return nil, "", p.err
+	}
+	return p.data, http.DetectContentType(p.data), nil
 }
 
 func testUser(t *testing.T, s *Service) db.User {
