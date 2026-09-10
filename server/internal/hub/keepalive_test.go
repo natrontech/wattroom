@@ -42,14 +42,10 @@ func TestAHalfOpenSocketStopsReadingAsPresent(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Restored before the server is closed, not after: cleanups run
-			// last-registered-first, so srv.Close() below waits out the
-			// handler goroutines that read these two.
-			keepalive, timeout := socketKeepalive, socketPingTimeout
-			socketKeepalive, socketPingTimeout = 20*time.Millisecond, 100*time.Millisecond
-			t.Cleanup(func() { socketKeepalive, socketPingTimeout = keepalive, timeout })
-
 			h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+			// This hub's own schedule, so the half-minute wait becomes a
+			// twentieth of a second and no other test is affected.
+			h.keepalive = keepalive{every: 20 * time.Millisecond, pong: 100 * time.Millisecond}
 			h.SetLobbyAuth(func(r *http.Request) (string, bool) {
 				name, _, _ := strings.Cut(r.Header.Get("X-Rider"), ":")
 				return name, name != ""

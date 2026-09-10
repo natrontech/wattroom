@@ -14,23 +14,34 @@ import (
 	"github.com/coder/websocket"
 )
 
-// How often a quiet socket is pinged, and how long its peer has to answer.
-// Variables, not constants, so the half-open tests run in milliseconds rather
-// than half a minute.
-var (
+// How often a quiet socket is pinged, and how long its peer then has to
+// answer before it is treated as gone.
+const (
 	socketKeepalive   = 30 * time.Second
 	socketPingTimeout = 5 * time.Second
 )
 
-// pingOrClose pings conn and waits socketPingTimeout for the pong. A peer that
-// does not answer is gone: the conn is closed, which is what unblocks the
-// reader parked on it so its handler runs the deferred leave and release, and
-// false tells this socket's writer to return.
+// keepalive is a socket's ping schedule. Carried on the Hub like h.now rather
+// than read from package-level variables, so the half-open tests can run in
+// milliseconds without two of them sharing mutable state.
+type keepalive struct {
+	every time.Duration
+	pong  time.Duration
+}
+
+// beat is the writer's own ticker: a socket is pinged only when it has been
+// quiet, and every write loop already selects.
+func (k keepalive) beat() *time.Ticker { return time.NewTicker(k.every) }
+
+// pingOrClose pings conn and gives the peer k.pong to answer. A peer that
+// does not is gone: the conn is closed, which is what unblocks the reader
+// parked on it so its handler runs the deferred leave and release, and false
+// tells this socket's writer to return.
 //
 // Call it from the goroutine that writes this conn — a ping is a frame, and a
 // conn takes one writer at a time.
-func pingOrClose(ctx context.Context, conn *websocket.Conn) bool {
-	ctx, cancel := context.WithTimeout(ctx, socketPingTimeout)
+func (k keepalive) pingOrClose(ctx context.Context, conn *websocket.Conn) bool {
+	ctx, cancel := context.WithTimeout(ctx, k.pong)
 	err := conn.Ping(ctx)
 	cancel()
 	if err != nil {

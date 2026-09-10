@@ -11,7 +11,6 @@ package hub
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/coder/websocket"
 
@@ -71,14 +70,14 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 		// Writer: exits when the reader below returns (done), a write fails,
 		// or a ping goes unanswered (keepalive.go — pingOrClose closes the
 		// conn, which unblocks the reader below).
-		keepalive := time.NewTicker(socketKeepalive)
-		defer keepalive.Stop()
+		beat := h.keepalive.beat()
+		defer beat.Stop()
 		for {
 			select {
 			case <-done:
 				return
-			case <-keepalive.C:
-				if !pingOrClose(r.Context(), conn) {
+			case <-beat.C:
+				if !h.keepalive.pingOrClose(r.Context(), conn) {
 					return
 				}
 			case <-c.ping:
