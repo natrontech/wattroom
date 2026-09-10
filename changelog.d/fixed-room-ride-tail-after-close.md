@@ -1,1 +1,0 @@
-- A room ride whose connection dropped near the end and came back after the session closed now gets its last minutes added to the saved ride — its duration, energy, score and XP grow with them — instead of losing everything after the drop. Medals stay as they were awarded in the room.
