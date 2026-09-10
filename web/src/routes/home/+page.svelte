@@ -500,8 +500,16 @@
 						</div>
 					{:else}
 						<p class="text-muted mt-3 text-sm">
-							Nothing on the calendar. Open a room's <em>Sessions</em> and plan one
-							— it shows up here, and in everyone's calendar.
+							Nothing on the calendar.
+							{#if firstRoom}
+								<!-- The CTA that creates the first one (ux.md), not a word in italics (#1911). -->
+								<a href="/r/{firstRoom.slug}/sessions" class="btn-link"
+									>Plan one</a
+								> — it shows up here, and in everyone's calendar.
+							{:else}
+								Open a room's <em>Sessions</em> and plan one — it shows up here, and
+								in everyone's calendar.
+							{/if}
 						</p>
 					{/if}
 					<!-- Your own feed, under the list it mirrors (ADR-0021, #1374) —

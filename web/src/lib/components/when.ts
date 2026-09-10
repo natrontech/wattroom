@@ -1,8 +1,8 @@
 /**
  * The value format WhenPicker speaks: datetime-local, YYYY-MM-DDTHH:MM, in
- * the rider's own zone. Three surfaces plan or move a session (the room's
- * picker, the room's card, /sessions) and every one of them was doing the
- * timezone-offset shuffle by hand.
+ * the rider's own zone. The picker's default and the card's move field both
+ * speak it (the cross-room /sessions retired with ADR-0020), and each was
+ * doing the timezone-offset shuffle by hand.
  */
 export function toLocalInput(when: Date): string {
 	const t = new Date(when);
