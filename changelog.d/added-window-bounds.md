@@ -1,1 +1,0 @@
-- Desktop app: the window opens where you left it — size, position and maximized — and falls back to the main display's default position when that screen is gone.

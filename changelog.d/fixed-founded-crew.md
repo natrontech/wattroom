@@ -1,1 +1,0 @@
-- "Your own crew" is the one made for you with your first room, even after someone hands you another: a new room lands there, and Home's getting-started card sets up that one.
